@@ -25,12 +25,18 @@ import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
+import java.awt.event.MouseEvent;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+
 import javax.xml.parsers.SAXParserFactory;
 
+import org.assertj.swing.exception.UnexpectedException;
 import org.jspecify.annotations.Nullable;
 
 import org.assertj.swing.core.BasicRobot;
@@ -95,8 +101,8 @@ public abstract class E2ETest {
     private static boolean frameInitialized = false;
     private static int passCount = 0;
     private static int failCount = 0;
-    @Nullable private static JWindow statusOverlay;
-    @Nullable private static JLabel statusLabel;
+    @Nullable private static JWindow statusOverlay = null;
+    @Nullable private static JLabel statusLabel = null;
 
     protected Robot robot;
     protected FrameFixture window;
@@ -104,28 +110,32 @@ public abstract class E2ETest {
     @BeforeAll
     protected void setUpOnce() {
         synchronized (INIT_LOCK) {
-            if (!frameInitialized) {
-                OptionDialogs.setSuppressDialogs(false);
-                FailOnThreadViolationRepaintManager.install();
-                SongScribe.logBanner("SongScribe (E2E Tests)");
-
-                GuiActionRunner.execute(() -> {
-                    UIUtils.initLaf();
-
-                    var mainFrame = MainFrame.getInstance();
-                    mainFrame.initFrame();
-                    return mainFrame;
-                });
-
-                frameInitialized = true;
-            }
+            initMainFrame();
         }
 
         robot = BasicRobot.robotWithCurrentAwtHierarchy();
         window = new FrameFixture(robot, MainFrame.getInstance());
         window.show();
 
-        GuiActionRunner.execute(this::createStatusOverlay);
+        GuiActionRunner.execute(E2ETest::createStatusOverlay);
+    }
+
+    private static void initMainFrame() {
+        if (!frameInitialized) {
+            OptionDialogs.setSuppressDialogs(false);
+            FailOnThreadViolationRepaintManager.install();
+            SongScribe.logBanner("SongScribe (E2E Tests)");
+
+            GuiActionRunner.execute(() -> {
+                UIUtils.initLaf();
+
+                var mainFrame = MainFrame.getInstance();
+                mainFrame.initFrame();
+                return mainFrame;
+            });
+
+            frameInitialized = true;
+        }
     }
 
     protected void resetSong() {
@@ -146,14 +156,12 @@ public abstract class E2ETest {
             }
         });
 
-        if (window != null) {
-            window.cleanUp();
-        }
+        window.cleanUp();
     }
 
     // -- Status overlay --
 
-    private void createStatusOverlay() {
+    public static void createStatusOverlay() {
         statusOverlay = new JWindow(MainFrame.getInstance());
         statusOverlay.setBackground(new Color(0, 0, 0, 0));
         statusLabel = new JLabel("", SwingConstants.CENTER);
@@ -218,7 +226,7 @@ public abstract class E2ETest {
      * Finds a toolbar button by its component name (set from the action command).
      */
     protected AbstractButton findButtonByName(String name) {
-        return robot.finder().find(new GenericTypeMatcher<AbstractButton>(AbstractButton.class) {
+        return robot.finder().find(new GenericTypeMatcher<>(AbstractButton.class) {
             @Override
             protected boolean isMatching(AbstractButton b) {
                 return name.equals(b.getName());
@@ -251,7 +259,7 @@ public abstract class E2ETest {
      * current mode's action command ("edit-mode" or "select-mode").
      */
     private void clickModeCycleButton() {
-        var button = robot.finder().find(new GenericTypeMatcher<AbstractButton>(AbstractButton.class) {
+        var button = robot.finder().find(new GenericTypeMatcher<>(AbstractButton.class) {
             @Override
             protected boolean isMatching(AbstractButton b) {
                 var name = b.getName();
@@ -519,7 +527,7 @@ public abstract class E2ETest {
      * keyboard modifiers on synthesized click events.
      */
     protected void shiftClickAt(Point screenPoint) {
-        dispatchSyntheticClick(screenPoint, java.awt.event.InputEvent.SHIFT_DOWN_MASK);
+        dispatchSyntheticClick(screenPoint, InputEvent.SHIFT_DOWN_MASK);
     }
 
     /**
@@ -529,7 +537,7 @@ public abstract class E2ETest {
      * keyboard modifiers on synthesized click events.
      */
     protected void altClickAt(Point screenPoint) {
-        dispatchSyntheticClick(screenPoint, java.awt.event.InputEvent.ALT_DOWN_MASK);
+        dispatchSyntheticClick(screenPoint, InputEvent.ALT_DOWN_MASK);
     }
 
     /**
@@ -544,9 +552,9 @@ public abstract class E2ETest {
         GuiActionRunner.execute(() -> {
             var frame = MainFrame.getInstance();
             var frameLocation = frame.getLocationOnScreen();
-            int modifiers = java.awt.event.InputEvent.ALT_DOWN_MASK
-                | java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
-            long now = System.currentTimeMillis();
+            var modifiers = InputEvent.ALT_DOWN_MASK
+                | InputEvent.BUTTON1_DOWN_MASK;
+            var now = System.currentTimeMillis();
 
             // All events go to the component under the start point (drag capture)
             var component = UIUtils.getDeepestComponentAt(frame, startPoint);
@@ -559,25 +567,25 @@ public abstract class E2ETest {
             var startLocal = SwingUtilities.convertPoint(frame,
                 startPoint.x - frameLocation.x, startPoint.y - frameLocation.y,
                 component);
-            component.dispatchEvent(new java.awt.event.MouseEvent(
-                component, java.awt.event.MouseEvent.MOUSE_PRESSED, now, modifiers,
+            component.dispatchEvent(new MouseEvent(
+                component, MouseEvent.MOUSE_PRESSED, now, modifiers,
                 startLocal.x, startLocal.y, 1, false,
-                java.awt.event.MouseEvent.BUTTON1));
+                MouseEvent.BUTTON1));
 
             // Drag to end
             var endLocal = SwingUtilities.convertPoint(frame,
                 endPoint.x - frameLocation.x, endPoint.y - frameLocation.y,
                 component);
-            component.dispatchEvent(new java.awt.event.MouseEvent(
-                component, java.awt.event.MouseEvent.MOUSE_DRAGGED, now, modifiers,
+            component.dispatchEvent(new MouseEvent(
+                component, MouseEvent.MOUSE_DRAGGED, now, modifiers,
                 endLocal.x, endLocal.y, 0, false,
-                java.awt.event.MouseEvent.BUTTON1));
+                MouseEvent.BUTTON1));
 
             // Release at end
-            component.dispatchEvent(new java.awt.event.MouseEvent(
-                component, java.awt.event.MouseEvent.MOUSE_RELEASED, now, modifiers,
+            component.dispatchEvent(new MouseEvent(
+                component, MouseEvent.MOUSE_RELEASED, now, modifiers,
                 endLocal.x, endLocal.y, 1, false,
-                java.awt.event.MouseEvent.BUTTON1));
+                MouseEvent.BUTTON1));
         });
 
         pause();
@@ -597,17 +605,17 @@ public abstract class E2ETest {
                 var local = SwingUtilities.convertPoint(frame,
                     screenPoint.x - frameLocation.x, screenPoint.y - frameLocation.y,
                     component);
-                int modifiers = modifierMask | java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
-                long now = System.currentTimeMillis();
+                var modifiers = modifierMask | InputEvent.BUTTON1_DOWN_MASK;
+                var now = System.currentTimeMillis();
 
-                for (int id : new int[]{
-                    java.awt.event.MouseEvent.MOUSE_PRESSED,
-                    java.awt.event.MouseEvent.MOUSE_RELEASED,
-                    java.awt.event.MouseEvent.MOUSE_CLICKED}) {
-                    component.dispatchEvent(new java.awt.event.MouseEvent(
+                for (var id : new int[]{
+                    MouseEvent.MOUSE_PRESSED,
+                    MouseEvent.MOUSE_RELEASED,
+                    MouseEvent.MOUSE_CLICKED}) {
+                    component.dispatchEvent(new MouseEvent(
                         component, id, now, modifiers,
                         local.x, local.y, 1, false,
-                        java.awt.event.MouseEvent.BUTTON1));
+                        MouseEvent.BUTTON1));
                 }
             }
         });
@@ -630,7 +638,7 @@ public abstract class E2ETest {
         GuiActionRunner.execute(() -> {
             var target = score();
             target.requestFocusInWindow();
-            long now = System.currentTimeMillis();
+            var now = System.currentTimeMillis();
 
             target.dispatchEvent(new KeyEvent(
                 target, KeyEvent.KEY_PRESSED, now, modifiers,
@@ -716,7 +724,7 @@ public abstract class E2ETest {
      * The fixture is deserialized via the same path as File > Open, then set
      * on the score and laid out.
      */
-    protected Song loadFixture(String fixtureName) throws Exception {
+    protected Song loadFixture(String fixtureName) throws UnexpectedException {
         var song = Objects.requireNonNull(GuiActionRunner.execute(() -> {
             var loaded = UnitTest.loadFixture(fixtureName);
             score().setSong(loaded);
@@ -728,7 +736,7 @@ public abstract class E2ETest {
 
     // -- Save/load round-trip --
 
-    protected Song roundTrip(Song original) throws Exception {
+    protected Song roundTrip(Song original) throws IOException, SAXException, ParserConfigurationException {
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
         SongIO.writeSong(original, pw);
@@ -745,6 +753,7 @@ public abstract class E2ETest {
 
     // -- Test result tracking --
 
+    @SuppressWarnings({"AssignmentToStaticFieldFromInstanceMethod", "PackageVisibleInnerClass"})
     static class ResultTracker implements TestWatcher, ExecutionCondition, BeforeTestExecutionCallback {
 
         private boolean continueMode = false;
@@ -795,7 +804,7 @@ public abstract class E2ETest {
          * from the ExtensionContext parent chain.
          */
         private static String buildTestIdentity(ExtensionContext context) {
-            var parts = new java.util.ArrayList<String>();
+            var parts = new ArrayList<String>();
             var current = context;
 
             while (current != null) {
@@ -847,7 +856,7 @@ public abstract class E2ETest {
          */
         private void showDebugDialog(String testIdentity) {
             var result = new DebugAction[]{DebugAction.OK};
-            var latch = new java.util.concurrent.CountDownLatch(1);
+            var latch = new CountDownLatch(1);
 
             SwingUtilities.invokeLater(() -> {
                 var dialog = new JDialog(MainFrame.getInstance(), "E2E Debug", true);
@@ -897,9 +906,9 @@ public abstract class E2ETest {
                 dialog.add(buttonPanel, BorderLayout.SOUTH);
                 dialog.pack();
                 dialog.setLocationRelativeTo(MainFrame.getInstance());
-                dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+                dialog.addWindowListener(new WindowAdapter() {
                     @Override
-                    public void windowOpened(java.awt.event.WindowEvent e) {
+                    public void windowOpened(WindowEvent e) {
                         okButton.requestFocusInWindow();
                     }
                 });
