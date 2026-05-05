@@ -56,7 +56,7 @@ public abstract class TickSlider extends JSlider {
         super(stops[0], stops[stops.length - 1]);
 
         this.stops = stops;
-        this.stopSet = new HashSet<>();
+        stopSet = new HashSet<>();
 
         for (var stop : stops) {
             stopSet.add(stop);

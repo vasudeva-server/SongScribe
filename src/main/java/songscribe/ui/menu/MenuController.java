@@ -82,7 +82,6 @@ public class MenuController {
     private static @Nullable MacNativeMenuController nativeMenuController = null;
 
     private final MainFrame mainFrame;
-    private final Score score;
     private JMenu openRecentMenu;
 
     public static void init(MainFrame mainFrame) {
@@ -91,7 +90,7 @@ public class MenuController {
 
     public MenuController(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
-        this.score = mainFrame.requireScore();
+        Score score = mainFrame.requireScore();
         initMenus();
         MessageCenter.subscribe(this);
     }
@@ -190,7 +189,7 @@ public class MenuController {
         rebuildOpenRecentMenu();
     }
 
-    private static List<String> buildLabels(List<Path> paths) {
+    private static List<String> buildLabels(List<? extends Path> paths) {
         var nameToIndices = new LinkedHashMap<String, List<Integer>>();
 
         for (var i = 0; i < paths.size(); i++) {
@@ -215,7 +214,7 @@ public class MenuController {
     }
 
     private static void disambiguate(
-        List<Path> paths,
+        List<? extends Path> paths,
         List<Integer> indices,
         String filename,
         String[] labels

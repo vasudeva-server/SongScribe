@@ -44,11 +44,7 @@ import songscribe.ui.layout.ScaleContext;
 public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement> {
 
     /** Bravura font scaled for metronome glyph display. */
-    protected static final Font TEMPO_NOTE_FONT;
-
-    static {
-        TEMPO_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * MetronomeAttachment.NOTE_SCALE);
-    }
+    protected static final Font TEMPO_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * MetronomeAttachment.NOTE_SCALE);
 
     /**
      * Returns the SMuFL metronome glyph for the given element type,

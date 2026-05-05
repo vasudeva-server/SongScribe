@@ -36,10 +36,13 @@ import songscribe.music.Song;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Tempo;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.InsertionSpacingCalculator;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.util.MyFontUtils;
 import songscribe.util.Utils;
 
 public final class SongIO {
@@ -329,13 +332,17 @@ public final class SongIO {
             Attributes attributes
         ) {
             if (where == Where.NOTES) {
-                if (noteReader == null || parsingSong == null) return;
+                if (noteReader == null || parsingSong == null) {
+                    return;
+                }
 
                 if (noteReader.startElement10(qName, attributes)) {
                     parsedLines.add(new Line(parsingSong));
                 }
             } else if (where == Where.TEMPO_CHANGE) {
-                if (tempoReader == null) return;
+                if (tempoReader == null) {
+                    return;
+                }
 
                 tempoReader.startElement10(qName);
             } else if (where == Where.SONG) {
@@ -356,15 +363,21 @@ public final class SongIO {
             Attributes attributes
         ) {
             if (where == Where.LINES) {
-                if (lineReader == null) return;
+                if (lineReader == null) {
+                    return;
+                }
 
                 lineReader.startElement11(qName, attributes);
             } else if (where == Where.VIEW) {
-                if (viewReader == null) return;
+                if (viewReader == null) {
+                    return;
+                }
 
                 viewReader.startElement11(qName);
             } else if (where == Where.TEMPO) {
-                if (tempoReader == null) return;
+                if (tempoReader == null) {
+                    return;
+                }
 
                 tempoReader.startElement11(qName);
             } else if (where == Where.SONG) {
@@ -403,13 +416,18 @@ public final class SongIO {
             } else if (qName.equals(XML_TEMPO_CHANGES)) {
                 where = Where.SONG;
             } else if (where == Where.NOTES) {
-                if (noteReader == null) return;
+                if (noteReader == null) {
+                    return;
+                }
 
                 var note = noteReader.endElement10(qName);
 
                 if (note != null) {
                     if (parsedLines.isEmpty()) {
-                        if (parsingSong == null) return;
+                        if (parsingSong == null) {
+                            return;
+                        }
+
                         parsedLines.add(new Line(parsingSong));
                     }
 
@@ -420,7 +438,9 @@ public final class SongIO {
                     line.addElement(note);
                 }
             } else if (where == Where.TEMPO_CHANGE) {
-                if (tempoReader == null) return;
+                if (tempoReader == null) {
+                    return;
+                }
 
                 var tc = tempoReader.endElement10(qName);
 
@@ -494,7 +514,9 @@ public final class SongIO {
             } else if (qName.equals(XML_VIEW)) {
                 where = Where.SONG;
             } else if (where == Where.LINES) {
-                if (lineReader == null) return;
+                if (lineReader == null) {
+                    return;
+                }
 
                 var l = lineReader.endElement11(qName);
 
@@ -502,7 +524,9 @@ public final class SongIO {
                     parsedLines.add(l);
                 }
             } else if (where == Where.TEMPO) {
-                if (tempoReader == null) return;
+                if (tempoReader == null) {
+                    return;
+                }
 
                 var t = tempoReader.endElement11(qName);
 
@@ -550,7 +574,9 @@ public final class SongIO {
                     }
                 }
             } else if (where == Where.VIEW) {
-                if (viewReader == null) return;
+                if (viewReader == null) {
+                    return;
+                }
 
                 viewReader.endElement11(qName);
             }
@@ -562,15 +588,25 @@ public final class SongIO {
         @Override
         public void characters(char[] ch, int start, int length) {
             if (where == Where.LINES) {
-                if (lineReader != null) lineReader.characters(ch, start, length);
+                if (lineReader != null) {
+                    lineReader.characters(ch, start, length);
+                }
             } else if (where == Where.VIEW) {
-                if (viewReader != null) viewReader.characters(ch, start, length);
+                if (viewReader != null) {
+                    viewReader.characters(ch, start, length);
+                }
             } else if (where == Where.NOTES) {
-                if (noteReader != null) noteReader.characters(ch, start, length);
+                if (noteReader != null) {
+                    noteReader.characters(ch, start, length);
+                }
             } else if (where == Where.TEMPO_CHANGE) {
-                if (tempoReader != null) tempoReader.characters(ch, start, length);
+                if (tempoReader != null) {
+                    tempoReader.characters(ch, start, length);
+                }
             } else if (where == Where.TEMPO) {
-                if (tempoReader != null) tempoReader.characters(ch, start, length);
+                if (tempoReader != null) {
+                    tempoReader.characters(ch, start, length);
+                }
             } else if ((where == Where.SONG) && (lastTag != null)) {
                 value.append(ch, start, length);
             }
@@ -630,8 +666,8 @@ public final class SongIO {
             // Layout calculation will recalculate this properly, but this provides
             // a reasonable default for any code that accesses topPadding before layout.
             if (topPaddingSs == 0) {
-                var tf = titleFont != null ? titleFont : defaultFontFromPrefs(songscribe.prefs.PrefsKey.TITLE_FONT, songscribe.prefs.PrefsKey.TITLE_FONT_SIZE);
-                var af = attributionFont != null ? attributionFont : defaultFontFromPrefs(songscribe.prefs.PrefsKey.ATTRIBUTION_FONT, songscribe.prefs.PrefsKey.ATTRIBUTION_FONT_SIZE);
+                var tf = titleFont != null ? titleFont : defaultFontFromPrefs(PrefsKey.TITLE_FONT, PrefsKey.TITLE_FONT_SIZE);
+                var af = attributionFont != null ? attributionFont : defaultFontFromPrefs(PrefsKey.ATTRIBUTION_FONT, PrefsKey.ATTRIBUTION_FONT_SIZE);
                 topPaddingSs = ((2 * tf.getSize()) +
                     (Utils.lineCount(attribution) * af.getSize())) -
                     ScaleContext.getInstance().toRoundedPixels(2.0);
@@ -712,9 +748,9 @@ public final class SongIO {
             return stub;
         }
 
-        private static Font defaultFontFromPrefs(songscribe.prefs.PrefsKey nameKey, songscribe.prefs.PrefsKey sizeKey) {
-            var prefs = songscribe.prefs.Prefs.getInstance();
-            return songscribe.util.MyFontUtils.createFont(
+        private static Font defaultFontFromPrefs(PrefsKey nameKey, PrefsKey sizeKey) {
+            var prefs = Prefs.getInstance();
+            return MyFontUtils.createFont(
                 prefs.getString(nameKey), prefs.getInt(sizeKey));
         }
 

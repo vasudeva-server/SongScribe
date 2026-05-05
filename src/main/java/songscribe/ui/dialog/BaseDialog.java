@@ -559,6 +559,7 @@ public abstract class BaseDialog {
          *
          * @return true to proceed, false to cancel showing the dialog
          */
+        @SuppressWarnings("SameReturnValue")
         protected boolean getData() {
             return true;
         }

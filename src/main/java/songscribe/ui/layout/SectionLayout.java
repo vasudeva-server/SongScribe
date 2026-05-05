@@ -76,7 +76,7 @@ public final class SectionLayout {
      */
     public static SectionLayout empty() {
         var emptyBounds = ElementBoundsSs.contentOnly(
-            new java.awt.geom.Rectangle2D.Double(0, 0, 0, 0)
+            new Rectangle2D.Double(0, 0, 0, 0)
         );
         return new SectionLayout(emptyBounds, List.of(), null, 0);
     }

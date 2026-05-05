@@ -27,7 +27,7 @@ public class TupletSpan extends Span {
     public TupletSpan(int start, int end, int grade) {
         super(start, end, null);
         this.grade = grade;
-        this.verticalPositionSs = 0;
+        verticalPositionSs = 0;
     }
 
     public int getGrade() {
@@ -43,7 +43,7 @@ public class TupletSpan extends Span {
     }
 
     public void setVerticalPositionSs(double verticalPosition) {
-        this.verticalPositionSs = verticalPosition;
+        verticalPositionSs = verticalPosition;
     }
 
     public boolean isVerticallyAdjusted() {

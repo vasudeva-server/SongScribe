@@ -82,14 +82,14 @@ class SelectionApplyIntegrationTest extends UnitTest {
         DurationArticulationAction.createStaccatoAction();
 
     private SelectionCoordinator createCoordinator(
-        List<StaffElement> notes,
+        List<? extends StaffElement> notes,
         List<UIAction.Reflectable> actions
     ) {
         return ReflectionTestHelper.createCoordinator(notes, actions, createSongMock());
     }
 
     private SelectionCoordinator createCoordinator(
-        List<StaffElement> notes,
+        List<? extends StaffElement> notes,
         List<UIAction.Reflectable> actions,
         List<UIAction> managedActions
     ) {

@@ -32,7 +32,7 @@ import songscribe.ui.component.MainFrame;
 
 public class PlatformFileDialog {
 
-    private SystemFileChooser chooser;
+    private final SystemFileChooser chooser;
     private final MainFrame mainFrame;
     private final boolean isOpenDialog;
     private MyFileFilter @Nullable [] originalFilters = null;
@@ -83,7 +83,7 @@ public class PlatformFileDialog {
         int initialFilterIndex
     ) {
         this(mainFrame, title, isOpenDialog, false);
-        this.originalFilters = filters;
+        originalFilters = filters;
 
         convertedFilters = new SystemFileChooser.FileNameExtensionFilter[filters.length];
         for (var i = 0; i < filters.length; i++) {
@@ -120,8 +120,8 @@ public class PlatformFileDialog {
         var filter = convertFilter(maf);
         chooser.setFileFilter(filter);
         chooser.setAcceptAllFileFilterUsed(false);
-        this.originalFilters = new MyFileFilter[] { maf };
-        this.convertedFilters = new SystemFileChooser.FileNameExtensionFilter[] { filter };
+        originalFilters = new MyFileFilter[] { maf };
+        convertedFilters = new SystemFileChooser.FileNameExtensionFilter[] { filter };
     }
 
     public @Nullable MyFileFilter getFileFilter() {

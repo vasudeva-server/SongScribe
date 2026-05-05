@@ -251,7 +251,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
     /**
      * Builds a {@link ToggleTupletCommand} backed by a mocked {@link TupletAction},
-     * avoiding the singleton {@link songscribe.ui.component.MainFrame} touched by the
+     * avoiding the singleton {@link MainFrame} touched by the
      * real {@code UIAction} constructor.
      */
     private static ToggleTupletCommand tupletCommand(TupletAction.Tuplet tuplet) {

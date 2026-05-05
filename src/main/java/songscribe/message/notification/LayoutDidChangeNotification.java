@@ -44,11 +44,11 @@ public class LayoutDidChangeNotification extends Message {
         @Nullable Double lineWidth,
         @Nullable Double attributionStartY
     ) {
-        this.topPaddingSs = topPadding;
+        topPaddingSs = topPadding;
         this.topPaddingSetByUser = topPaddingSetByUser;
-        this.rowHeightAdjustmentSs = rowHeightAdjustment;
-        this.lineWidthSs = lineWidth;
-        this.attributionStartYSs = attributionStartY;
+        rowHeightAdjustmentSs = rowHeightAdjustment;
+        lineWidthSs = lineWidth;
+        attributionStartYSs = attributionStartY;
     }
 
     @Nullable

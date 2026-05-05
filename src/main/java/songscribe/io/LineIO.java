@@ -152,7 +152,7 @@ public final class LineIO {
         pw.println("    </" + XML_LINE + '>');
     }
 
-    private static String endingsToString(List<Ending> endings) {
+    private static String endingsToString(List<? extends Ending> endings) {
         var sb = new StringBuilder(27);
 
         for (var ending : endings) {
@@ -185,7 +185,7 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String tupletSpanSetToString(SpanSet<TupletSpan> spanSet) {
+    private static String tupletSpanSetToString(SpanSet<? extends TupletSpan> spanSet) {
         var sb = new StringBuilder(27);
 
         for (var iterator = spanSet.listIterator(); iterator.hasNext(); ) {
@@ -207,7 +207,7 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String dynamicsSpanSetToString(SpanSet<DynamicsSpan> spanSet) {
+    private static String dynamicsSpanSetToString(SpanSet<? extends DynamicsSpan> spanSet) {
         var sb = new StringBuilder(27);
 
         for (var iterator = spanSet.listIterator(); iterator.hasNext(); ) {
@@ -289,7 +289,7 @@ public final class LineIO {
             });
         }
 
-        private static void stringToBeamSpanSet(SpanSet<BeamSpan> spanSet, String str) {
+        private static void stringToBeamSpanSet(SpanSet<? super BeamSpan> spanSet, String str) {
             forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var a = Integer.parseInt(str.substring(begin, firstComma));
@@ -298,7 +298,7 @@ public final class LineIO {
             });
         }
 
-        private static void stringToTieSpanSet(SpanSet<TieSpan> spanSet, String str) {
+        private static void stringToTieSpanSet(SpanSet<? super TieSpan> spanSet, String str) {
             forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var a = Integer.parseInt(str.substring(begin, firstComma));
@@ -307,7 +307,7 @@ public final class LineIO {
             });
         }
 
-        private static void stringToTupletSpanSet(SpanSet<TupletSpan> spanSet, String str) {
+        private static void stringToTupletSpanSet(SpanSet<? super TupletSpan> spanSet, String str) {
             forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var secondComma = str.indexOf(',', firstComma + 1);
@@ -348,7 +348,7 @@ public final class LineIO {
             });
         }
 
-        private static void stringToDynamicsSpanSet(SpanSet<DynamicsSpan> spanSet, String str) {
+        private static void stringToDynamicsSpanSet(SpanSet<? super DynamicsSpan> spanSet, String str) {
             forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var secondComma = str.indexOf(',', firstComma + 1);

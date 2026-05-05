@@ -103,9 +103,9 @@ public class NonEmptyGuard {
         this.parent = parent;
         this.dialogTitleKey = dialogTitleKey;
         this.messageKey = messageKey;
-        this.defaultValueKey = null;
-        this.useDefaultLabelKey = null;
-        this.continueEditingLabelKey = null;
+        defaultValueKey = null;
+        useDefaultLabelKey = null;
+        continueEditingLabelKey = null;
         install();
     }
 

@@ -46,6 +46,7 @@ import songscribe.message.MessageCenter;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.Song;
+import songscribe.music.StaffElement;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
 
@@ -114,7 +115,11 @@ class StaffElementIOTest extends UnitTest {
             var dynamic = song.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNotNull();
-            if (dynamic == null) return;
+
+            if (dynamic == null) {
+                return;
+            }
+
             assertThat(dynamic.getType()).isEqualTo(DynamicType.FORTE);
         }
 
@@ -127,7 +132,11 @@ class StaffElementIOTest extends UnitTest {
             var dynamic = comp2.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNotNull();
-            if (dynamic == null) return;
+
+            if (dynamic == null) {
+                return;
+            }
+
             assertThat(dynamic.getType()).isEqualTo(dynamicType);
         }
 
@@ -159,7 +168,7 @@ class StaffElementIOTest extends UnitTest {
 
     // -- Helpers --
 
-    private String writeNote(songscribe.music.StaffElement note) {
+    private String writeNote(StaffElement note) {
         var sw = new StringWriter();
         StaffElementIO.writeElement(note, new PrintWriter(sw), line, 0);
         return sw.toString();

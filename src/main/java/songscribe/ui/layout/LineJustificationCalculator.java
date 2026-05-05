@@ -116,12 +116,6 @@ public class LineJustificationCalculator {
     }
 
     /**
-     * Creates a new LineJustificationCalculator.
-     */
-    public LineJustificationCalculator() {
-    }
-
-    /**
      * Justifies a line by compressing spacing if it exceeds the right margin.
      * <p>
      * This method modifies column X positions in-place if compression is needed.
@@ -258,16 +252,7 @@ public class LineJustificationCalculator {
             var currColumn = columns.get(i);
 
             // Calculate current gap between column edges
-            var prevRightEdgeSs = prevColumn.getXSs() + prevColumn.getRightExtentSs();
-            var currLeftEdgeSs = currColumn.getXSs() + currColumn.getLeftExtentSs();
-            var currentGapSs = currLeftEdgeSs - prevRightEdgeSs;
-
-            // Calculate compressed gap
-            // When we compress, positions change relative to anchor (first column):
-            // Gap' = Gap - (X_i - X_{i-1}) * (1 - ratio)
-            // This is because center distances compress but extents stay fixed
-            var centerDistanceSs = currColumn.getXSs() - prevColumn.getXSs();
-            var compressedGapSs = currentGapSs - centerDistanceSs * (1.0 - compressionRatio);
+            var compressedGapSs = getCompressedGapSs(compressionRatio, prevColumn, currColumn);
 
             // Check minimum column gap
             if (compressedGapSs < minColumnGapSs) {
@@ -287,6 +272,20 @@ public class LineJustificationCalculator {
         }
 
         return CompressionValidation.valid();
+    }
+
+    private static double getCompressedGapSs(double compressionRatio, ElementColumn prevColumn, ElementColumn currColumn) {
+        var prevRightEdgeSs = prevColumn.getXSs() + prevColumn.getRightExtentSs();
+        var currLeftEdgeSs = currColumn.getXSs() + currColumn.getLeftExtentSs();
+        var currentGapSs = currLeftEdgeSs - prevRightEdgeSs;
+
+        // Calculate compressed gap
+        // When we compress, positions change relative to anchor (first column):
+        // Gap' = Gap - (X_i - X_{i-1}) * (1 - ratio)
+        // This is because center distances compress but extents stay fixed
+        var centerDistanceSs = currColumn.getXSs() - prevColumn.getXSs();
+        var compressedGapSs = currentGapSs - centerDistanceSs * (1.0 - compressionRatio);
+        return compressedGapSs;
     }
 
     /**

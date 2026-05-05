@@ -58,7 +58,7 @@ public class StackingContext {
         this.columns = columns;
         this.line = line;
         this.builder = builder;
-        this.columnsByElement = buildColumnMap(columns);
+        columnsByElement = buildColumnMap(columns);
     }
 
     public List<ElementColumn> getColumns() {

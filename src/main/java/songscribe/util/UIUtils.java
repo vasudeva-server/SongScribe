@@ -24,6 +24,7 @@ import module java.desktop;
 
 import java.util.Arrays;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -383,7 +384,10 @@ public final class UIUtils {
     }
 
     public static @Nullable Window getParentWindow(@Nullable Component parent) {
-        if (parent instanceof Window w) return w;
+        if (parent instanceof Window w) {
+            return w;
+        }
+
         return parent != null ? SwingUtilities.getWindowAncestor(parent) : null;
     }
 
@@ -446,18 +450,7 @@ public final class UIUtils {
                     return; // fallback if no suitable parent
                 }
 
-                var dummy = new JDialog((Frame) ancestor, "Pre-warm", false);
-                dummy.setResizable(false);
-                dummy.setSize(200, 100);
-
-                // Critical order: set location *and* make sure it's offscreen before any realization
-                dummy.setLocation(-10000, -10000);
-
-                // Optional but helps on some platforms: pack first (forces some peer init without showing)
-                dummy.pack();
-
-                // Make it visible very briefly on the EDT, then immediately hide/dispose
-                dummy.setVisible(true);
+                var dummy = getJDialog((Frame) ancestor);
 
                 // Give the native window a tiny moment to settle (usually not needed, but safe)
                 SwingUtilities.invokeLater(dummy::dispose);
@@ -465,6 +458,22 @@ public final class UIUtils {
                 // Never let pre-warming break startup
             }
         });
+    }
+
+    private static @NonNull JDialog getJDialog(Frame ancestor) {
+        var dummy = new JDialog(ancestor, "Pre-warm", false);
+        dummy.setResizable(false);
+        dummy.setSize(200, 100);
+
+        // Critical order: set location *and* make sure it's offscreen before any realization
+        dummy.setLocation(-10000, -10000);
+
+        // Optional but helps on some platforms: pack first (forces some peer init without showing)
+        dummy.pack();
+
+        // Make it visible very briefly on the EDT, then immediately hide/dispose
+        dummy.setVisible(true);
+        return dummy;
     }
 
     public static void initLaf() {

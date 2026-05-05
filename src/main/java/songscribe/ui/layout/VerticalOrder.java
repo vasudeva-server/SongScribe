@@ -103,6 +103,6 @@ public enum VerticalOrder {
      * Returns negative if this should be drawn above (higher on page).
      */
     public int compareByOrder(VerticalOrder other) {
-        return Integer.compare(this.order, other.order);
+        return Integer.compare(order, other.order);
     }
 }

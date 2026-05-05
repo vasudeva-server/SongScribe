@@ -60,7 +60,7 @@ public final class ReflectionTestHelper {
      * song mock with mutation tracking suspended.
      */
     public static SelectionCoordinator createCoordinator(
-        List<StaffElement> notes,
+        List<? extends StaffElement> notes,
         List<UIAction.Reflectable> actions
     ) {
         return createCoordinator(notes, actions, UnitTest.minimalSongMock());
@@ -72,7 +72,7 @@ public final class ReflectionTestHelper {
      * injected as the reflectable actions list.
      */
     public static SelectionCoordinator createCoordinator(
-        List<StaffElement> notes,
+        List<? extends StaffElement> notes,
         List<UIAction.Reflectable> actions,
         Song song
     ) {
@@ -92,7 +92,7 @@ public final class ReflectionTestHelper {
      * mutation tracking suspended.
      */
     public static SelectionCoordinator createCoordinator(
-        List<StaffElement> notes,
+        List<? extends StaffElement> notes,
         List<UIAction.Reflectable> actions,
         List<UIAction> managedActions
     ) {
@@ -105,7 +105,7 @@ public final class ReflectionTestHelper {
      * managed actions injected.
      */
     public static SelectionCoordinator createCoordinator(
-        List<StaffElement> notes,
+        List<? extends StaffElement> notes,
         List<UIAction.Reflectable> actions,
         List<UIAction> managedActions,
         Song song

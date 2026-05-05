@@ -113,7 +113,7 @@ public final class EditModeManager {
      * @param visible true to show the preview element, false to hide it
      */
     public void setPreviewElementVisible(boolean visible) {
-        this.previewElementIsVisible = visible;
+        previewElementIsVisible = visible;
     }
 
     /**

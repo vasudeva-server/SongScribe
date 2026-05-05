@@ -142,7 +142,7 @@ public final class LyricEditor extends MyJTextField {
     private static final int EXTRA_VERTICAL_PADDING_PX = 1;
 
     /**
-     * {@link javax.swing.plaf.basic.BasicTextUI#getVisibleEditorRect()} leaves one
+     * {@link BasicTextUI#getVisibleEditorRect()} leaves one
      * trailing pixel outside the view allocation. Account for it explicitly so the
      * selected text allocation gets the intended width without growing the visible
      * right margin.
@@ -560,7 +560,7 @@ public final class LyricEditor extends MyJTextField {
 
             var source = (Component) event.getSource();
 
-            if (source == LyricEditor.this || isAncestorOf(source)) {
+            if (source == this || isAncestorOf(source)) {
                 return;
             }
 
@@ -1142,6 +1142,6 @@ public final class LyricEditor extends MyJTextField {
 
     /** Test-only hook to set the suppress-dismiss-adjustment flag directly. */
     void setSuppressDismissAdjustmentForTesting(boolean suppress) {
-        this.suppressDismissAdjustment = suppress;
+        suppressDismissAdjustment = suppress;
     }
 }

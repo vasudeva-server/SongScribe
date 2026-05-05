@@ -42,7 +42,6 @@ public class LinePanel extends JPanel {
         Line line,
         int lineIndex
     ) {
-        super();
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 

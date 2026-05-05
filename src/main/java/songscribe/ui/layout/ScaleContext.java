@@ -62,7 +62,7 @@ public final class ScaleContext {
             );
         }
 
-        this.pixelsPerStaffSpace = pxPerSs;
+        pixelsPerStaffSpace = pxPerSs;
     }
 
     /** Convert a value in staff-space units to pixels. */

@@ -58,7 +58,7 @@ public class MacNativeMenuController {
         MessageCenter.subscribe(this);
     }
 
-    @Handler(priority = Message.LOW_PRIORITY)
+    @Handler()
     public void dialogVisibilityDidChange(DialogVisibilityDidChangeNotification notification) {
         var enabled = !notification.isVisible();
 

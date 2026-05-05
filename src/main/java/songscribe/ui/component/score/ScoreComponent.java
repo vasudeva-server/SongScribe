@@ -88,10 +88,10 @@ public abstract class ScoreComponent extends JComponent {
      * @param margin Margin in pixels
      */
     public void setMargin(int margin) {
-        this.marginTop = margin;
-        this.marginRight = margin;
-        this.marginBottom = margin;
-        this.marginLeft = margin;
+        marginTop = margin;
+        marginRight = margin;
+        marginBottom = margin;
+        marginLeft = margin;
     }
 
     /**
@@ -103,10 +103,10 @@ public abstract class ScoreComponent extends JComponent {
      * @param left   Left margin in pixels
      */
     public void setMargin(int top, int right, int bottom, int left) {
-        this.marginTop = top;
-        this.marginRight = right;
-        this.marginBottom = bottom;
-        this.marginLeft = left;
+        marginTop = top;
+        marginRight = right;
+        marginBottom = bottom;
+        marginLeft = left;
     }
 
     public int getMarginTop() {

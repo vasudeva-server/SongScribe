@@ -131,7 +131,7 @@ public class StructuralStacker {
      */
     private void bridgeLegacyTupletSpans(
         Line line,
-        List<Tuplet> existingTuplets,
+        List<? extends Tuplet> existingTuplets,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
@@ -223,7 +223,7 @@ public class StructuralStacker {
         Line line,
         SpanSet<DynamicsSpan> spanSet,
         List<? extends RangeElement> existingRangeElements,
-        BiFunction<StaffElement, StaffElement, RangeElement> factory,
+        BiFunction<? super StaffElement, ? super StaffElement, ? extends RangeElement> factory,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 

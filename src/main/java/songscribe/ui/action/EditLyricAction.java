@@ -58,12 +58,7 @@ public final class EditLyricAction extends UIAction {
     @Override
     protected boolean enableFromSelection(boolean activeSelection, Score score) {
         var element = score.getSelectionCoordinator().getSingleSelectedElement();
-
-        if (element == null) {
-            return false;
-        }
-
-        return element.getType().isPitchedNote() || element.getType().isRest();
+        return element != null && (element.getType().isPitchedNote() || element.getType().isRest());
     }
 
     @Override

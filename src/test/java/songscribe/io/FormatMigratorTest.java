@@ -48,7 +48,11 @@ class FormatMigratorTest extends UnitTest {
 
             var dynamic = line.getElement(0).findAttachment(DynamicAttachment.class);
             assertThat(dynamic).isNotNull();
-            if (dynamic == null) return;
+
+            if (dynamic == null) {
+                return;
+            }
+
             assertThat(dynamic.getType()).isEqualTo(DynamicType.FORTE);
         }
 
@@ -60,7 +64,11 @@ class FormatMigratorTest extends UnitTest {
 
             var dynamic = line.getElement(0).findAttachment(DynamicAttachment.class);
             assertThat(dynamic).isNotNull();
-            if (dynamic == null) return;
+
+            if (dynamic == null) {
+                return;
+            }
+
             assertThat(dynamic.getType()).isEqualTo(DynamicType.PIANISSIMO);
         }
 
@@ -102,7 +110,11 @@ class FormatMigratorTest extends UnitTest {
 
             var dynamic = note.findAttachment(DynamicAttachment.class);
             assertThat(dynamic).isSameAs(existingDynamic);
-            if (dynamic == null) return;
+
+            if (dynamic == null) {
+                return;
+            }
+
             assertThat(dynamic.getType()).isEqualTo(DynamicType.MEZZO_FORTE);
         }
 
@@ -122,7 +134,11 @@ class FormatMigratorTest extends UnitTest {
             var note = line.getElement(0);
             var annotation = note.getAnnotation();
             assertThat(annotation).isNotNull();
-            if (annotation == null) return;
+
+            if (annotation == null) {
+                return;
+            }
+
             note.addAttachment(new AnnotationAttachment(note, annotation));
 
             FormatMigrator.migrateAnnotationDynamics(List.of(line));

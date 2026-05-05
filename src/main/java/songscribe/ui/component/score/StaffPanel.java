@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import songscribe.error.RuntimeError;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Song;
@@ -63,7 +64,6 @@ public class StaffPanel extends JPanel {
      * Creates a new StaffPanel.
      */
     public StaffPanel() {
-        super();
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
@@ -211,6 +211,14 @@ public class StaffPanel extends JPanel {
         // Lay out each line in order, threading lyric-extender continuation across line
         // boundaries so that a melisma that runs off the end of one line reappears as a
         // leading stub on the next.
+        var layouts = getLayoutResults();
+        var lyricsFont = score.getSong().getLyricsFont();
+        var lyricAscentSs = ScaleContext.getInstance().fontAscentSs(lyricsFont);
+        var metrics = SongLayoutMetricsBuilder.build(layouts, lyricAscentSs);
+        score.setSongLayoutMetrics(metrics);
+    }
+
+    private ArrayList<LayoutResult> getLayoutResults() {
         var layouts = new ArrayList<LayoutResult>();
         var hasLeadingLyricContinuation = false;
 
@@ -227,11 +235,7 @@ public class StaffPanel extends JPanel {
                 hasLeadingLyricContinuation = false;
             }
         }
-
-        var lyricsFont = score.getSong().getLyricsFont();
-        var lyricAscentSs = ScaleContext.getInstance().fontAscentSs(lyricsFont);
-        var metrics = SongLayoutMetricsBuilder.build(layouts, lyricAscentSs);
-        score.setSongLayoutMetrics(metrics);
+        return layouts;
     }
 
     @Override

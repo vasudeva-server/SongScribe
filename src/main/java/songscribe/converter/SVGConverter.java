@@ -43,7 +43,7 @@ public class SVGConverter {
     @FileArgument
     public File[] files = new File[0];
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
         SongScribe.configureLogging();
         var reader = new ArgumentReader<>(args, SVGConverter.class);
         var converter = reader.getObj();

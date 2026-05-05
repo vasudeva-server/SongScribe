@@ -122,7 +122,7 @@ public final class SongScribe {
         log.info("Log level: {}", System.getProperty("songscribe.log.level", "INFO"));
     }
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
         configureLogging();
 
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {

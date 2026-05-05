@@ -361,11 +361,15 @@ public final class StaffElementIO {
 
         public void startElement11(String qName, Attributes attributes) {
             if (where == Where.TEMPO_CHANGE) {
-                if (tempoReader == null) return;
+                if (tempoReader == null) {
+                    return;
+                }
 
                 tempoReader.startElement11(qName);
             } else if (where == Where.ANNOTATION) {
-                if (annotationReader == null) return;
+                if (annotationReader == null) {
+                    return;
+                }
 
                 annotationReader.startElement11(qName);
             } else if (qName.equals(XML_NOTE)) {
@@ -451,7 +455,9 @@ public final class StaffElementIO {
         @Nullable
         public StaffElement endElement11(String qName) {
             if (where == Where.TEMPO_CHANGE) {
-                if (tempoReader == null || element == null) return null;
+                if (tempoReader == null || element == null) {
+                    return null;
+                }
 
                 var t = tempoReader.endElement11(qName);
 
@@ -460,7 +466,9 @@ public final class StaffElementIO {
                     where = Where.ELEMENT;
                 }
             } else if (where == Where.ANNOTATION) {
-                if (annotationReader == null || element == null) return null;
+                if (annotationReader == null || element == null) {
+                    return null;
+                }
 
                 var a = annotationReader.endElement11(qName);
 
@@ -469,28 +477,13 @@ public final class StaffElementIO {
                     where = Where.ELEMENT;
                 }
             } else if (where == Where.LYRIC) {
-                if (element == null) return null;
+                if (element == null) {
+                    return null;
+                }
 
                 if (qName.equals(XML_LYRIC)) {
                     // STOP/CONTINUE carriers have no syllabic/text.
-                    var isCarrier = lyricExtend == Lyric.Extend.STOP
-                        || lyricExtend == Lyric.Extend.CONTINUE;
-                    Lyric.@Nullable Syllabic syllabic;
-
-                    if (isCarrier) {
-                        syllabic = null;
-                    } else {
-                        syllabic = switch (lyricSyllabic) {
-                            case "single" -> Lyric.Syllabic.SINGLE;
-                            case "begin" -> Lyric.Syllabic.BEGIN;
-                            case "middle" -> Lyric.Syllabic.MIDDLE;
-                            case "end" -> Lyric.Syllabic.END;
-                            // Absent <syllabic>: implies SINGLE; the post-load syllabic
-                            // backfill normalizes further if needed.
-                            default -> Lyric.Syllabic.SINGLE;
-                        };
-                    }
-
+                    var syllabic = getSyllabic();
                     var isCompoundEligible = syllabic == Lyric.Syllabic.BEGIN
                         || syllabic == Lyric.Syllabic.MIDDLE;
                     var compound = isCompoundEligible && lyricText.endsWith(COMPOUND_WORD_MARKER);
@@ -513,7 +506,9 @@ public final class StaffElementIO {
                     }
                 }
             } else if (where == Where.ELEMENT) {
-                if (element == null) return null;
+                if (element == null) {
+                    return null;
+                }
                 if (qName.equals(XML_NOTE)) {
                     return element;
                 }
@@ -602,11 +597,36 @@ public final class StaffElementIO {
             return null;
         }
 
+        private Lyric.@Nullable Syllabic getSyllabic() {
+            var isCarrier = lyricExtend == Lyric.Extend.STOP
+                || lyricExtend == Lyric.Extend.CONTINUE;
+            Lyric.@Nullable Syllabic syllabic;
+
+            if (isCarrier) {
+                syllabic = null;
+            } else {
+                syllabic = switch (lyricSyllabic) {
+                    case "single" -> Lyric.Syllabic.SINGLE;
+                    case "begin" -> Lyric.Syllabic.BEGIN;
+                    case "middle" -> Lyric.Syllabic.MIDDLE;
+                    case "end" -> Lyric.Syllabic.END;
+                    // Absent <syllabic>: implies SINGLE; the post-load syllabic
+                    // backfill normalizes further if needed.
+                    default -> Lyric.Syllabic.SINGLE;
+                };
+            }
+            return syllabic;
+        }
+
         public void characters(char[] ch, int start, int lenght) {
             if (where == Where.TEMPO_CHANGE) {
-                if (tempoReader != null) tempoReader.characters(ch, start, lenght);
+                if (tempoReader != null) {
+                    tempoReader.characters(ch, start, lenght);
+                }
             } else if (where == Where.ANNOTATION) {
-                if (annotationReader != null) annotationReader.characters(ch, start, lenght);
+                if (annotationReader != null) {
+                    annotationReader.characters(ch, start, lenght);
+                }
             } else if (lastTag != null &&
                 (where == Where.ELEMENT || where == Where.LYRIC)) {
                 value.append(ch, start, lenght);

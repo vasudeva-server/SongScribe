@@ -42,10 +42,14 @@ public final class ComponentHierarchyNavigator {
     @Nullable
     public LineComponent getLineComponent(int lineIndex) {
         var mainPanel = provider.getMainPanel();
-        if (mainPanel == null) return null;
+        if (mainPanel == null) {
+            return null;
+        }
 
         var staffPanel = mainPanel.getStaffPanel();
-        if (staffPanel == null) return null;
+        if (staffPanel == null) {
+            return null;
+        }
 
         for (var linePanel : staffPanel.getLinePanels()) {
             var lineComponent = linePanel.getLineComponent();
@@ -170,13 +174,21 @@ public final class ComponentHierarchyNavigator {
     public void updateLayoutFromComponents(Consumer<int[]> layoutUpdater) {
         var mainPanel = provider.getMainPanel();
 
-        if (mainPanel == null) return;
+        if (mainPanel == null) {
+            return;
+        }
 
         var staffPanel = mainPanel.getStaffPanel();
-        if (staffPanel == null) return;
+
+        if (staffPanel == null) {
+            return;
+        }
 
         var linePanels = staffPanel.getLinePanels();
-        if (linePanels.isEmpty()) return;
+
+        if (linePanels.isEmpty()) {
+            return;
+        }
 
         // middleLineY = first line's absolute middle Y
         var middleLineY = getActualLineMiddleY(0);

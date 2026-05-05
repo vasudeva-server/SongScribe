@@ -224,7 +224,7 @@ public final class OptionDialogs {
         String title,
         String message,
         int messageType,
-        Consumer<String> logger,
+        Consumer<? super String> logger,
         boolean beep
     ) {
         logger.accept(message);

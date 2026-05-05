@@ -28,6 +28,7 @@ import songscribe.util.GraphicUtils;
  * margins, and content area calculations. Reads the active page size from
  * the {@link PrefsKey#PAGE_SIZE} preference.
  */
+@SuppressWarnings("SameReturnValue")
 public final class PageModel {
 
     private static final PageModel INSTANCE = new PageModel();

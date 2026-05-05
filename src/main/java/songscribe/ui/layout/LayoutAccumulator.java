@@ -39,7 +39,7 @@ public class LayoutAccumulator {
     private final Area accumulatedArea;
 
     public LayoutAccumulator() {
-        this.accumulatedArea = new Area();
+        accumulatedArea = new Area();
     }
 
     /**

@@ -128,7 +128,7 @@ public final class LayoutResult {
             mergedStems.putAll(beamLayout.stems());
         }
 
-        this.allStemLayouts = Map.copyOf(mergedStems);
+        allStemLayouts = Map.copyOf(mergedStems);
         this.tieLayouts = Map.copyOf(tieLayouts);
         this.decorationLayouts = Map.copyOf(decorationLayouts);
         this.spanLayouts = Map.copyOf(spanLayouts);
@@ -272,10 +272,10 @@ public final class LayoutResult {
      * @param type The element type to filter by
      * @return List of matching entries (element + layout)
      */
-    public <T extends LineElement> java.util.List<Map.Entry<T, DecorationLayout>> getDecorationLayoutsByType(
-        Class<T> type) {
+    public <T extends LineElement> List<Map.Entry<T, DecorationLayout>> getDecorationLayoutsByType(
+        Class<? extends T> type) {
 
-        var result = new java.util.ArrayList<Map.Entry<T, DecorationLayout>>();
+        var result = new ArrayList<Map.Entry<T, DecorationLayout>>();
 
         for (var entry : decorationLayouts.entrySet()) {
             if (type.isInstance(entry.getKey())) {
@@ -467,13 +467,13 @@ public final class LayoutResult {
      */
     public @Nullable ElementBoundsSs findAttachmentBounds(
         StaffElement parentElement,
-        Class<? extends songscribe.ui.layout.Attachment> attachmentType) {
+        Class<? extends Attachment> attachmentType) {
 
         for (var entry : elementBounds.entrySet()) {
             var element = entry.getKey();
 
             if (attachmentType.isInstance(element)) {
-                var attachment = (songscribe.ui.layout.Attachment) element;
+                var attachment = (Attachment) element;
 
                 if (attachment.getOwnerElement() == parentElement) {
                     return entry.getValue();
@@ -495,13 +495,13 @@ public final class LayoutResult {
      * @return The attachment if found, null otherwise
      */
     @SuppressWarnings("unchecked")
-    public @Nullable <A extends songscribe.ui.layout.Attachment> A findAttachment(
+    public @Nullable <A extends Attachment> A findAttachment(
         StaffElement parentElement,
         Class<A> attachmentType) {
 
         for (var element : elementBounds.keySet()) {
             if (attachmentType.isInstance(element)) {
-                var attachment = (songscribe.ui.layout.Attachment) element;
+                var attachment = (Attachment) element;
 
                 if (attachment.getOwnerElement() == parentElement) {
                     return (A) attachment;
@@ -526,13 +526,13 @@ public final class LayoutResult {
     public @Nullable ElementBoundsSs findRangeElementBounds(
         StaffElement anchorElement,
         StaffElement endElement,
-        Class<? extends songscribe.ui.layout.RangeElement> rangeElementType) {
+        Class<? extends RangeElement> rangeElementType) {
 
         for (var entry : elementBounds.entrySet()) {
             var element = entry.getKey();
 
             if (rangeElementType.isInstance(element)) {
-                var rangeElement = (songscribe.ui.layout.RangeElement) element;
+                var rangeElement = (RangeElement) element;
 
                 if (rangeElement.getAnchorElement() == anchorElement &&
                     rangeElement.getEndElement() == endElement) {
@@ -553,11 +553,7 @@ public final class LayoutResult {
      * @return true if bounds exist for this element
      */
     public boolean contains(Object element) {
-        if (element instanceof LineElement) {
-            return elementBounds.containsKey((LineElement) element);
-        }
-
-        return false;
+        return element instanceof LineElement && elementBounds.containsKey((LineElement) element);
     }
 
     // ==========================================================================
@@ -761,7 +757,7 @@ public final class LayoutResult {
      * @param line     The line containing the elements
      * @return Element index, or {@code -1} if mouseXSs is not within any element head's horizontal bounds
      */
-    public int findElementAtXSs(double mouseXSs, songscribe.music.Line line) {
+    public int findElementAtXSs(double mouseXSs, Line line) {
         for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);
             var column = elementColumns.get(element);
@@ -796,7 +792,7 @@ public final class LayoutResult {
      * @param line     The line containing the elements
      * @return Insertion index (0 to elementCount inclusive)
      */
-    public int findInsertionIndex(double mouseXSs, songscribe.music.Line line) {
+    public int findInsertionIndex(double mouseXSs, Line line) {
         // Exclude the auto-maintained terminal: insertions always occur before it,
         // and the gap between the last real element and the barline should behave as
         // "after the last element" rather than a between-elements midpoint.
@@ -880,7 +876,7 @@ public final class LayoutResult {
         int insertionIndex,
         double mouseXSs,
         StaffElement previewElement,
-        songscribe.music.Line line) {
+        Line line) {
 
         // Exclude the auto-maintained terminal from positioning decisions —
         // it sits at the line's right edge and must not be treated as a real
@@ -945,7 +941,7 @@ public final class LayoutResult {
             // Build a temporary column for the preview element to calculate proper spacing
             var insertionColumn = new ElementColumn(
                 previewElement,
-                java.util.Collections.emptyList(),
+                Collections.emptyList(),
                 ElementColumnBuilder.calculateLeftExtentSs(previewElement),
                 ElementColumnBuilder.calculateRightExtentSs(previewElement, false, true),
                 0,
@@ -1020,15 +1016,15 @@ public final class LayoutResult {
         private boolean hasTrailingLyricContinuation = false;
 
         public Builder() {
-            this.elementColumns = new HashMap<>();
-            this.elementBounds = new HashMap<>();
-            this.beamLayouts = new HashMap<>();
-            this.stemLayouts = new HashMap<>();
-            this.tieLayouts = new HashMap<>();
-            this.decorationLayouts = new HashMap<>();
-            this.spanLayouts = new HashMap<>();
-            this.lyricBoxes = new HashMap<>();
-            this.lyricConnectors = new ArrayList<>();
+            elementColumns = new HashMap<>();
+            elementBounds = new HashMap<>();
+            beamLayouts = new HashMap<>();
+            stemLayouts = new HashMap<>();
+            tieLayouts = new HashMap<>();
+            decorationLayouts = new HashMap<>();
+            spanLayouts = new HashMap<>();
+            lyricBoxes = new HashMap<>();
+            lyricConnectors = new ArrayList<>();
         }
 
         /**

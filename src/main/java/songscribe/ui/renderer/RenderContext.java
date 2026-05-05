@@ -115,29 +115,4 @@ public interface RenderContext {
      * Returns the index of the note currently being played, or -1 if not playing.
      */
     int getPlayingNote();
-
-    // -------------------------------------------------------------------------
-    // Debug visualization (for development)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Returns whether layout boxes should be shown for debugging.
-     * <p>
-     * When enabled, renders section bounds (title, attribution, score, etc.).
-     */
-    boolean isShowLayoutBoxes();
-
-    /**
-     * Returns whether bounding boxes should be shown for debugging.
-     * <p>
-     * When enabled, renders element bounds (notes, tempo, annotations, etc.).
-     */
-    boolean isShowBoundingBoxes();
-
-    /**
-     * Returns whether margins should be shown for debugging.
-     * <p>
-     * When enabled, renders margin regions around elements.
-     */
-    boolean isShowMargins();
 }

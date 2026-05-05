@@ -23,6 +23,7 @@ package songscribe.ui.component;
 import module java.desktop;
 // Disambiguates from javax.print.attribute.AttributeSet (also in java.desktop)
 import javax.swing.text.AttributeSet;
+import javax.swing.text.Document;
 
 import java.text.ParseException;
 import java.util.regex.Pattern;
@@ -127,7 +128,7 @@ public final class InputUtils {
         }
 
         private static boolean isProspectiveTextValid(
-            javax.swing.text.Document doc,
+            Document doc,
             int offset,
             int length,
             String text

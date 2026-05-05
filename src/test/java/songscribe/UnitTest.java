@@ -21,6 +21,7 @@
 package songscribe;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -40,6 +41,7 @@ import songscribe.music.Song;
 import songscribe.ui.OptionDialogs;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.xml.sax.SAXException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -89,7 +91,7 @@ public abstract class UnitTest {
      * Loads a fixture file and returns the parsed song.
      * Fixture files live in {@code src/test/resources/fixtures/{name}.mssw}.
      */
-    public static Song loadFixture(String fixtureName) throws IllegalArgumentException, java.io.IOException, org.xml.sax.SAXException, URISyntaxException {
+    public static Song loadFixture(String fixtureName) throws IllegalArgumentException, IOException, SAXException, URISyntaxException {
         var url = UnitTest.class.getClassLoader().getResource("fixtures/" + fixtureName + ".mssw");
 
         if (url == null) {

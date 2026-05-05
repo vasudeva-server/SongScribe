@@ -73,7 +73,6 @@ public class MainPanel extends JPanel {
      * Creates a new MainPanel.
      */
     public MainPanel() {
-        super();
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 

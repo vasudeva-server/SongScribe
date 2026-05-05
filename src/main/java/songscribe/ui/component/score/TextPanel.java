@@ -59,7 +59,6 @@ public class TextPanel extends JPanel {
      * Creates a new TextPanel.
      */
     public TextPanel() {
-        super();
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 

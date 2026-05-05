@@ -698,7 +698,7 @@ public class SongSettingsDialog extends StandardDialog {
 
             var tempoChanged = tempoType != tempo.getTempoType()
                 || visibleTempo != tempo.getVisibleTempo()
-                || !Objects.equals(tempoDescription, tempo.getTempoDescription())
+                || !tempoDescription.equals(tempo.getTempoDescription())
                 || showTempo != tempo.shouldShowTempo();
 
             var keyChanged = typeAndCount.keyType() != song.getDefaultKeyType()

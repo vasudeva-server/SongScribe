@@ -62,7 +62,7 @@ class BatchMutationTest extends UnitTest {
      * accepts mutations as if a real bracket were open.
      */
     private SelectionCoordinator createCoordinator(
-        List<StaffElement> notes,
+        List<? extends StaffElement> notes,
         List<UIAction.Reflectable> actions
     ) {
         return ReflectionTestHelper.createCoordinator(notes, actions, createSongMock());

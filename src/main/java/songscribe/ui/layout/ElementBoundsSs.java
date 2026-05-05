@@ -60,10 +60,10 @@ public final class ElementBoundsSs {
         Rectangle2D marginBounds,
         @Nullable Rectangle2D visualBounds
     ) {
-        this.contentBoundsSs = contentBounds;
-        this.paddingBoundsSs = paddingBounds;
-        this.marginBoundsSs = marginBounds;
-        this.visualBoundsSs = visualBounds;
+        contentBoundsSs = contentBounds;
+        paddingBoundsSs = paddingBounds;
+        marginBoundsSs = marginBounds;
+        visualBoundsSs = visualBounds;
     }
 
     /**

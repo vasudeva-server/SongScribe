@@ -253,7 +253,7 @@ public final class LyricLayoutBuilder {
      * column on this line) extends from x = 0 through the leading run of CONTINUE/STOP markers.
      */
     private static void emitDanglingExtender(
-        List<LyricConnectorLayout> connectors,
+        List<? super LyricConnectorLayout> connectors,
         List<ElementColumn> columns,
         ExtenderState state,
         int verse
@@ -290,7 +290,7 @@ public final class LyricLayoutBuilder {
      * on the line, so finding none here indicates a layout invariant violation.
      */
     private static void emitDanglingHyphen(
-        List<LyricConnectorLayout> connectors,
+        List<? super LyricConnectorLayout> connectors,
         List<ElementColumn> columns,
         ExtenderState state,
         int verse
@@ -322,12 +322,12 @@ public final class LyricLayoutBuilder {
         int pendingHyphenColumnIndex = LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
 
         ExtenderState(boolean hasLeadingContinuation) {
-            this.extenderActive = hasLeadingContinuation;
-            this.extenderStartXSs = 0.0;
+            extenderActive = hasLeadingContinuation;
+            extenderStartXSs = 0.0;
         }
 
         /** If an extender is active, emit it ending at endXSs and clear the active flag. */
-        void closeExtender(List<LyricConnectorLayout> connectors, int verse, double endXSs) {
+        void closeExtender(List<? super LyricConnectorLayout> connectors, int verse, double endXSs) {
             if (extenderActive) {
                 connectors.add(new LyricConnectorLayout(
                     extenderStartXSs,

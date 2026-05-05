@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.renderer.GraphicsState;
 import songscribe.util.StringUtils;
 
 /**
@@ -44,7 +45,6 @@ public class TitleComponent extends ScoreComponent {
      * Creates a new TitleComponent.
      */
     public TitleComponent() {
-        super();
         setMarginBottom(ScaleContext.getInstance().toRoundedPixels(TITLE_MARGIN_BOTTOM_SS));
     }
 
@@ -66,10 +66,10 @@ public class TitleComponent extends ScoreComponent {
             title = number + ". " + title;
         }
 
-        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+        try (var ignored = GraphicsState.save(
             g2,
-            songscribe.ui.renderer.GraphicsState.Property.FONT,
-            songscribe.ui.renderer.GraphicsState.Property.COLOR
+            GraphicsState.Property.FONT,
+            GraphicsState.Property.COLOR
         )) {
             var font = song.getTitleFont();
             g2.setFont(font);

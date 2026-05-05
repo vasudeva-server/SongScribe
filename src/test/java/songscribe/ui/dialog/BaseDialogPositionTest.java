@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
 import songscribe.UnitTest;
 import songscribe.prefs.Prefs;
@@ -123,7 +124,7 @@ class BaseDialogPositionTest extends UnitTest {
             // Open a second instance; no saved position exists, so default positioning applies
             new TestDialog().setVisible(true);
 
-            uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()), org.mockito.Mockito.times(2));
+            uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()), Mockito.times(2));
         }
     }
 
@@ -152,7 +153,7 @@ class BaseDialogPositionTest extends UnitTest {
             // positionDialog called only for the two first opens
             uiUtilsMock.verify(
                 () -> UIUtils.positionDialog(any(), any()),
-                org.mockito.Mockito.times(2)
+                Mockito.times(2)
             );
 
             // TestDialog's second JDialog instance gets DIALOG_POSITION

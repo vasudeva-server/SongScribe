@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.renderer.GraphicsState;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -49,7 +50,6 @@ public class TranslationComponent extends ScoreComponent {
      * Creates a new TranslationComponent.
      */
     public TranslationComponent() {
-        super();
         setMarginTop(TRANSLATION_TOP_MARGIN);
     }
 
@@ -62,7 +62,7 @@ public class TranslationComponent extends ScoreComponent {
      * @param contentX X position, or -1 to center based on own width
      */
     public void setContentX(float contentX) {
-        this.contentXPx = contentX;
+        contentXPx = contentX;
     }
 
     /**
@@ -94,9 +94,9 @@ public class TranslationComponent extends ScoreComponent {
 
         double maxWidth = 0;
 
-        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+        try (var ignored = GraphicsState.save(
             g2,
-            songscribe.ui.renderer.GraphicsState.Property.FONT
+            GraphicsState.Property.FONT
         )) {
             // Header width
             g2.setFont(headerFont);
@@ -125,10 +125,10 @@ public class TranslationComponent extends ScoreComponent {
             return;
         }
 
-        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+        try (var ignored = GraphicsState.save(
             g2,
-            songscribe.ui.renderer.GraphicsState.Property.FONT,
-            songscribe.ui.renderer.GraphicsState.Property.COLOR
+            GraphicsState.Property.FONT,
+            GraphicsState.Property.COLOR
         )) {
             var lyricsFont = song.getLyricsFont();
             var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());

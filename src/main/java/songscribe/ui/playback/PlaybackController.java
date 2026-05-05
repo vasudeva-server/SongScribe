@@ -243,7 +243,7 @@ public final class PlaybackController {
         playWithRepeats = settings.playWithRepeats();
     }
 
-    public static javax.sound.midi.Sequence buildSequence(Song song)
+    public static Sequence buildSequence(Song song)
         throws InvalidMidiDataException {
         return new MidiSequenceBuilder(song, getPlaybackSettings()).buildFullSequence();
     }

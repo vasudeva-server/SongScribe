@@ -109,12 +109,12 @@ public class LayoutEngine {
         this.staffRightMarginSs = staffRightMarginSs;
 
         // Initialize calculators
-        this.columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
-        this.horizontalCalculator = new HorizontalSpacingCalculator();
-        this.verticalCalculator = new VerticalStackingCalculator();
-        this.justificationCalculator = new LineJustificationCalculator();
+        columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
+        horizontalCalculator = new HorizontalSpacingCalculator();
+        verticalCalculator = new VerticalStackingCalculator();
+        justificationCalculator = new LineJustificationCalculator();
 
-        this.lastError = null;
+        lastError = null;
     }
 
     /**

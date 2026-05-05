@@ -581,7 +581,7 @@ public class NoteAttachedStacker {
     private void bridgeLegacyTrillFlags(
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
-        List<Trill> existingTrills,
+        List<? extends Trill> existingTrills,
         LayoutResult.Builder builder) {
 
         for (var i = 0; i < line.effectiveElementCount(); i++) {

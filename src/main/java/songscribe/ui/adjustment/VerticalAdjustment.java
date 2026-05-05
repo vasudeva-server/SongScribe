@@ -31,6 +31,7 @@ import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.Line;
 import songscribe.ui.component.Score;
+import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.Crescendo;
@@ -40,6 +41,7 @@ import songscribe.ui.layout.TempoChangeAttachment;
 import songscribe.ui.layout.Trill;
 import songscribe.ui.layout.Tuplet;
 import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.renderer.GraphicsState;
 
 public class VerticalAdjustment extends Adjustment {
 
@@ -175,7 +177,7 @@ public class VerticalAdjustment extends Adjustment {
 
             if (note.getBeatChange() != null) {
                 for (var attachment : note.getAttachments()) {
-                    if (attachment instanceof songscribe.ui.layout.BeatChangeAttachment) {
+                    if (attachment instanceof BeatChangeAttachment) {
                         attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + diffY);
                     }
                 }
@@ -186,7 +188,7 @@ public class VerticalAdjustment extends Adjustment {
     private void adjustFirstSecondEnding(Line line, int diffY) {
         // Update per-instance offset on all ending objects in this line
         for (var element : line.getRangeElements()) {
-            if (element instanceof songscribe.ui.layout.Ending ending) {
+            if (element instanceof Ending ending) {
                 ending.setYPositionSs(ending.getYPositionSs() + diffY);
             }
         }
@@ -210,7 +212,7 @@ public class VerticalAdjustment extends Adjustment {
     private void adjustTrill(Line line, int diffY) {
         // Update per-instance offset on all trill objects in this line
         for (var element : line.getRangeElements()) {
-            if (element instanceof songscribe.ui.layout.Trill trill) {
+            if (element instanceof Trill trill) {
                 trill.setYPositionSs(trill.getYPositionSs() + diffY);
             }
         }
@@ -250,9 +252,9 @@ public class VerticalAdjustment extends Adjustment {
     @Override
     public void repaint(Graphics2D g2) {
         for (var ar : adjustRects) {
-            try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            try (var ignored = GraphicsState.save(
                 g2,
-                songscribe.ui.renderer.GraphicsState.Property.COLOR
+                GraphicsState.Property.COLOR
             )) {
                 g2.setPaint(ar.type.getColor());
                 g2.fill(ar.rect);
@@ -564,6 +566,16 @@ public class VerticalAdjustment extends Adjustment {
             throw new IllegalStateException("MainPanel not available");
         }
 
+        var layoutResult = getLayoutResult(lineIndex, mainPanel);
+
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result not available for line " + lineIndex);
+        }
+
+        return layoutResult;
+    }
+
+    private static @Nullable LayoutResult getLayoutResult(int lineIndex, MainPanel mainPanel) {
         var staffPanel = mainPanel.getStaffPanel();
 
         if (staffPanel == null) {
@@ -578,11 +590,6 @@ public class VerticalAdjustment extends Adjustment {
 
         var lineComponent = linePanels.get(lineIndex).getLineComponent();
         var layoutResult = lineComponent.getLayoutResult();
-
-        if (layoutResult == null) {
-            throw new IllegalStateException("Layout result not available for line " + lineIndex);
-        }
-
         return layoutResult;
     }
 

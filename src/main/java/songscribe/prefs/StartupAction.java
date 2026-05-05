@@ -23,5 +23,5 @@ package songscribe.prefs;
 public enum StartupAction {
     DO_NOTHING,
     SHOW_FILE_CHOOSER,
-    OPEN_MOST_RECENT;
+    OPEN_MOST_RECENT
 }

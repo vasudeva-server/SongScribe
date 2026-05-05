@@ -30,7 +30,7 @@ import songscribe.smufl.Engraving;
  * a gradual change in volume. The user can adjust the horizontal endpoints
  * and vertical position.
  */
-public sealed abstract class Hairpin extends RangeElement
+public abstract sealed class Hairpin extends RangeElement
         permits Crescendo, Diminuendo {
 
     /**

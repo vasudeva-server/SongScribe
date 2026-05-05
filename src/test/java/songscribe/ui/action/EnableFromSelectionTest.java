@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import module java.desktop;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.ui.component.MainFrame;
@@ -203,7 +204,7 @@ class EnableFromSelectionTest extends UnitTest {
     // -- helpers --
 
     private MockEnvHelper.MockEnv setupMockEnv(
-        org.mockito.MockedStatic<MainFrame> mainFrameMock
+        MockedStatic<MainFrame> mainFrameMock
     ) {
         return MockEnvHelper.setupMockEnv(mainFrameMock);
     }

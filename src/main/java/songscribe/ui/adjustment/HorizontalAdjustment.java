@@ -32,6 +32,7 @@ import songscribe.music.StaffElement;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.renderer.GlissandoRenderer;
+import songscribe.ui.renderer.GraphicsState;
 
 public class HorizontalAdjustment extends Adjustment {
 
@@ -308,9 +309,9 @@ public class HorizontalAdjustment extends Adjustment {
     @Override
     public void repaint(Graphics2D g2) {
         for (var ar : adjustRects) {
-            try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            try (var ignored = GraphicsState.save(
                 g2,
-                songscribe.ui.renderer.GraphicsState.Property.COLOR
+                GraphicsState.Property.COLOR
             )) {
                 g2.setPaint(ar.horizontalAdjustmentType.getColor());
                 g2.fill(ar.rect);

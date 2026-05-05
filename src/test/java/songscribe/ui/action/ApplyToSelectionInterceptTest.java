@@ -30,6 +30,8 @@ import static org.mockito.Mockito.when;
 import module java.desktop;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.music.Line;
@@ -68,8 +70,8 @@ class ApplyToSelectionInterceptTest extends UnitTest {
 
             assertThat(action.applyToSelectionIfActive()).isFalse();
             verify(env.coordinator(), never()).applyActionToSelection(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.anyBoolean()
+                ArgumentMatchers.any(),
+                ArgumentMatchers.anyBoolean()
             );
         }
     }
@@ -109,7 +111,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
     // -- helpers --
 
     private MockEnvHelper.MockEnv setupMockEnv(
-        org.mockito.MockedStatic<MainFrame> mainFrameMock
+        MockedStatic<MainFrame> mainFrameMock
     ) {
         return MockEnvHelper.setupMockEnv(mainFrameMock);
     }

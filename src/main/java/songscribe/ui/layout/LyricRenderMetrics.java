@@ -113,8 +113,8 @@ public record LyricRenderMetrics(
 
     /**
      * Returns a stable lyric-box height in staff spaces — ascent + descent of the lyrics
-     * font. Matches what {@link javax.swing.JTextField} actually paints (its baseline
-     * lands at {@code insets.top + ascent} from {@link java.awt.font.LineMetrics}, and
+     * font. Matches what {@link JTextField} actually paints (its baseline
+     * lands at {@code insets.top + ascent} from {@link LineMetrics}, and
      * the descender extends {@code descent} below), so the box hugs the rendered glyphs
      * with no slack. Independent of the currently typed text so the editor box does not
      * change height as characters with descenders are typed or deleted.

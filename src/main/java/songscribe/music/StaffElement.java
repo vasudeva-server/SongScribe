@@ -131,7 +131,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public StaffElement(ElementType noteType) {
-        this.type = noteType;
+        type = noteType;
     }
 
     /**
@@ -140,27 +140,27 @@ public class StaffElement extends LineElement implements Cloneable {
      * missing (visible, safe) rather than stale (invisible, potentially corrupt).
      */
     public StaffElement(ElementType targetType, StaffElement source) {
-        this.type = targetType;
+        type = targetType;
 
         // Always copy
-        this.xOffset = source.xOffset;
-        this.dotCount = source.dotCount;
-        this.fermata = source.fermata;
-        this.tempoChange = source.tempoChange;
-        this.beatChange = source.beatChange;
-        this.annotation = source.annotation;
-        this.line = source.line;
-        this.properties.lyrics.addAll(source.properties.lyrics);
+        xOffset = source.xOffset;
+        dotCount = source.dotCount;
+        fermata = source.fermata;
+        tempoChange = source.tempoChange;
+        beatChange = source.beatChange;
+        annotation = source.annotation;
+        line = source.line;
+        properties.lyrics.addAll(source.properties.lyrics);
 
         // Copy only if target is a note (not a rest)
         if (targetType.isNote()) {
-            this.accidental = source.accidental;
-            this.isAccidentalInParentheses = source.isAccidentalInParentheses;
-            this.glissando = source.glissando;
-            this.trill = source.trill;
-            this.upper = source.upper;
-            this.stemDirectionAuto = source.stemDirectionAuto;
-            this.staffPosition = source.staffPosition;
+            accidental = source.accidental;
+            isAccidentalInParentheses = source.isAccidentalInParentheses;
+            glissando = source.glissando;
+            trill = source.trill;
+            upper = source.upper;
+            stemDirectionAuto = source.stemDirectionAuto;
+            staffPosition = source.staffPosition;
 
             // Deep-copy articulations
             for (var art : source.articulations) {
@@ -168,7 +168,7 @@ public class StaffElement extends LineElement implements Cloneable {
             }
         } else {
             // Rest: use default staff position for the target type
-            this.staffPosition = targetType.getDefaultStaffPosition();
+            staffPosition = targetType.getDefaultStaffPosition();
         }
 
         setParentLine(source.getParentLine());
@@ -212,7 +212,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     void initType(ElementType noteType) {
-        this.type = noteType;
+        type = noteType;
     }
 
     @Override
@@ -400,7 +400,7 @@ public class StaffElement extends LineElement implements Cloneable {
      * @param xPosPx The X offset value in pixels (0 = no user adjustment)
      */
     public void setXOffsetPx(int xPosPx) {
-        this.xOffset = xPosPx;
+        xOffset = xPosPx;
     }
 
     public int getStaffPosition() {

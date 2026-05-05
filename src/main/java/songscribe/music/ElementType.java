@@ -160,16 +160,16 @@ public enum ElementType {
         this.name = name;
         this.defaultDuration = defaultDuration;
         this.defaultStaffPosition = defaultStaffPosition;
-        this.aliasOf = null;
+        aliasOf = null;
 
         if (keyCode != 0) {
             if (modifiers == -1) {
                 modifiers = getMenuShortcutKeyMask();
             }
 
-            this.acceleratorKey = KeyStroke.getKeyStroke(keyCode, modifiers);
+            acceleratorKey = KeyStroke.getKeyStroke(keyCode, modifiers);
         } else {
-            this.acceleratorKey = null;
+            acceleratorKey = null;
         }
     }
 
@@ -183,10 +183,10 @@ public enum ElementType {
 
     ElementType(ElementType aliasOf) {
         this.aliasOf = aliasOf;
-        this.name = aliasOf.name;
-        this.acceleratorKey = aliasOf.acceleratorKey;
-        this.defaultDuration = aliasOf.defaultDuration;
-        this.defaultStaffPosition = aliasOf.defaultStaffPosition;
+        name = aliasOf.name;
+        acceleratorKey = aliasOf.acceleratorKey;
+        defaultDuration = aliasOf.defaultDuration;
+        defaultStaffPosition = aliasOf.defaultStaffPosition;
     }
 
     private StaffElement createDefaultInstance() {
@@ -637,25 +637,25 @@ public enum ElementType {
     private void setSymmetricBounds(
         double width, double height, double topOffset
     ) {
-        this.fullWidthSs = width;
-        this.baseWidthSs = width;
-        this.fullElementHeightSs = height;
-        this.noteheadTopOffsetSs = topOffset;
-        this.heightUpSs = height;
-        this.heightDownSs = height;
-        this.topOffsetUpSs = topOffset;
-        this.topOffsetDownSs = topOffset;
+        fullWidthSs = width;
+        baseWidthSs = width;
+        fullElementHeightSs = height;
+        noteheadTopOffsetSs = topOffset;
+        heightUpSs = height;
+        heightDownSs = height;
+        topOffsetUpSs = topOffset;
+        topOffsetDownSs = topOffset;
     }
 
     private void copyBoundsFrom(ElementType source) {
-        this.fullWidthSs = source.fullWidthSs;
-        this.baseWidthSs = source.baseWidthSs;
-        this.fullElementHeightSs = source.fullElementHeightSs;
-        this.noteheadTopOffsetSs = source.noteheadTopOffsetSs;
-        this.heightUpSs = source.heightUpSs;
-        this.heightDownSs = source.heightDownSs;
-        this.topOffsetUpSs = source.topOffsetUpSs;
-        this.topOffsetDownSs = source.topOffsetDownSs;
+        fullWidthSs = source.fullWidthSs;
+        baseWidthSs = source.baseWidthSs;
+        fullElementHeightSs = source.fullElementHeightSs;
+        noteheadTopOffsetSs = source.noteheadTopOffsetSs;
+        heightUpSs = source.heightUpSs;
+        heightDownSs = source.heightDownSs;
+        topOffsetUpSs = source.topOffsetUpSs;
+        topOffsetDownSs = source.topOffsetDownSs;
     }
 
     private static void computeGlyphBoundsSs(SMuFLMetadata metadata, ElementType... types) {

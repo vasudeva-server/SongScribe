@@ -20,6 +20,7 @@
 package songscribe.io;
 
 
+import songscribe.music.Annotation;
 import songscribe.music.DynamicsSpan;
 import songscribe.music.ElementType;
 import songscribe.music.Span;
@@ -97,7 +98,7 @@ public final class FormatMigrator {
      * @param lines The lines to migrate
      * @param formatVersion The current format version (migration is skipped if >= 2)
      */
-    public static void migrate(List<Line> lines, int formatVersion) {
+    public static void migrate(List<? extends Line> lines, int formatVersion) {
         if (formatVersion >= 2) {
             return;
         }
@@ -118,7 +119,7 @@ public final class FormatMigrator {
      *
      * @param lines The lines with pixel values to convert
      */
-    public static void migratePixelsToStaffSpace(List<Line> lines) {
+    public static void migratePixelsToStaffSpace(List<? extends Line> lines) {
         var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
 
         for (var lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
@@ -172,7 +173,7 @@ public final class FormatMigrator {
     }
 
     private static void migrateDynamicsSpans(
-        SpanSet<DynamicsSpan> spanSet,
+        SpanSet<? extends DynamicsSpan> spanSet,
         double pps
     ) {
         for (var iter = spanSet.listIterator(); iter.hasNext(); ) {
@@ -313,9 +314,9 @@ public final class FormatMigrator {
             if (yPosPx > 0) {
                 // Below-staff annotation: convert to above-staff with offset
                 // The visual position difference is: BELOW - ABOVE = yPosPx - ABOVE
-                double offset = yPosPx - songscribe.music.Annotation.ABOVE;
+                double offset = yPosPx - Annotation.ABOVE;
                 annotation.setUserYOffsetSs(annotation.getUserYOffsetSs() + offset);
-                annotation.setYPosPx(songscribe.music.Annotation.ABOVE);
+                annotation.setYPosPx(Annotation.ABOVE);
             }
         }
     }
@@ -466,7 +467,7 @@ public final class FormatMigrator {
      *
      * @param lines The lines to migrate
      */
-    public static void migrateAnnotationDynamics(List<Line> lines) {
+    public static void migrateAnnotationDynamics(List<? extends Line> lines) {
         var symbolMap = buildDynamicSymbolMap();
 
         for (var line : lines) {
@@ -545,7 +546,7 @@ public final class FormatMigrator {
      *
      * @param lines the lines to migrate (not yet attached to a {@code Song})
      */
-    public static void migrateFinalTerminal(List<Line> lines) {
+    public static void migrateFinalTerminal(List<? extends Line> lines) {
         if (lines.isEmpty()) {
             return;
         }

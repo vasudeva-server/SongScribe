@@ -45,7 +45,7 @@ public class AnnotationAttachment extends Attachment {
      * @param text The annotation text
      */
     public AnnotationAttachment(String text) {
-        this.annotation = new Annotation(text);
+        annotation = new Annotation(text);
         setAlignment(Alignment.LEFT);
     }
 

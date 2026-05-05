@@ -87,8 +87,8 @@ public class StaffExtents {
      */
     public StaffExtents(double lineWidthSs) {
         this.lineWidthSs = lineWidthSs;
-        this.top = new double[YSTEP];
-        this.bot = new double[YSTEP];
+        top = new double[YSTEP];
+        bot = new double[YSTEP];
         Arrays.fill(bot, STAFF_HEIGHT_SS);
     }
 

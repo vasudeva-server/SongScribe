@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.ElementType;
 import songscribe.music.KeyType;
+import songscribe.music.Song;
 import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
 
@@ -122,7 +123,7 @@ class LayoutResultTest extends UnitTest {
 
     @Test
     void testHitTestLyricHitsInsideBounds() {
-        var song = new songscribe.music.Song();
+        var song = new Song();
         var line = song.getLine(0);
         var element = ElementType.CROTCHET.newInstance();
         song.withoutMutationTracking(() -> line.addElement(0, element));
@@ -154,7 +155,7 @@ class LayoutResultTest extends UnitTest {
 
     @Test
     void testHitTestLyricMissesOutsideBounds() {
-        var song = new songscribe.music.Song();
+        var song = new Song();
         var line = song.getLine(0);
         var element = ElementType.CROTCHET.newInstance();
         song.withoutMutationTracking(() -> line.addElement(0, element));

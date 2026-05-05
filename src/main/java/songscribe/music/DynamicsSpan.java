@@ -27,9 +27,9 @@ public class DynamicsSpan extends Span {
 
     public DynamicsSpan(int start, int end) {
         super(start, end, null);
-        this.x1ShiftSs = 0;
-        this.x2ShiftSs = 0;
-        this.yShiftSs = 0;
+        x1ShiftSs = 0;
+        x2ShiftSs = 0;
+        yShiftSs = 0;
     }
 
     public double getX1ShiftSs() {
@@ -37,7 +37,7 @@ public class DynamicsSpan extends Span {
     }
 
     public void setX1ShiftSs(double x1Shift) {
-        this.x1ShiftSs = x1Shift;
+        x1ShiftSs = x1Shift;
     }
 
     public double getX2ShiftSs() {
@@ -45,7 +45,7 @@ public class DynamicsSpan extends Span {
     }
 
     public void setX2ShiftSs(double x2Shift) {
-        this.x2ShiftSs = x2Shift;
+        x2ShiftSs = x2Shift;
     }
 
     public double getYShiftSs() {
@@ -53,7 +53,7 @@ public class DynamicsSpan extends Span {
     }
 
     public void setYShiftSs(double yShift) {
-        this.yShiftSs = yShift;
+        yShiftSs = yShift;
     }
 
     @Override

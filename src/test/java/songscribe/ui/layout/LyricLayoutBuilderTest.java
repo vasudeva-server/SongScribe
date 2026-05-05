@@ -111,7 +111,7 @@ class LyricLayoutBuilderTest extends UnitTest {
     }
 
     private static List<LyricBoxLayout> boxesOf(
-        Map<StaffElement, List<LyricBoxLayout>> boxes,
+        Map<StaffElement, ? extends List<LyricBoxLayout>> boxes,
         StaffElement element) {
         var list = boxes.get(element);
 

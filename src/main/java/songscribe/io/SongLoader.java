@@ -22,6 +22,7 @@ package songscribe.io;
 import java.io.File;
 import java.io.IOException;
 
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
@@ -57,7 +58,7 @@ public final class SongLoader {
             var reader = new SongIO.DocumentReader();
             parser.parse(file, reader);
             return reader.getSong();
-        } catch (javax.xml.parsers.ParserConfigurationException e) {
+        } catch (ParserConfigurationException e) {
             throw new SAXException("Failed to create SAX parser", e);
         }
     }

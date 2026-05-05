@@ -28,7 +28,7 @@ public class PropertiesStateStore implements SystemFileChooser.StateStore {
     private final Preferences prefs;
 
     public PropertiesStateStore() {
-        this.prefs = Preferences.userNodeForPackage(PropertiesStateStore.class)
+        prefs = Preferences.userNodeForPackage(PropertiesStateStore.class)
             .node("fileDialog");
     }
 

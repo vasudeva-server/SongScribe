@@ -23,9 +23,11 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
@@ -118,7 +120,7 @@ public final class Song {
     private String year = "";
 
     // The language of the song
-    private LANGUAGE language = LANGUAGE.NONE;
+    private final LANGUAGE language = LANGUAGE.NONE;
 
     // The full native lyrics of the song, displayed under the music
     private String underLyrics = "";
@@ -324,7 +326,7 @@ public final class Song {
      */
     public void loadFrom(SongData data) {
         // Apply all scalar fields using apply methods (no individual message posting)
-        this.tempo = data.tempo();
+        tempo = data.tempo();
         applyNumber(data.number());
         applyTitle(data.title());
         applyPlace(data.place());
@@ -370,22 +372,7 @@ public final class Song {
         var loadedLines = data.lines();
 
         for (var lineIndex = 0; lineIndex < loadedLines.size(); lineIndex++) {
-            var line = loadedLines.get(lineIndex);
-
-            if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
-                line.setKeyAccidentalCount(defaultKeyAccidentalCount);
-                line.setKeyType(defaultKeyType);
-            }
-
-            if (line.getTempoChangeYPosPx() == 0) {
-                line.setTempoChangeYPosPx(
-                    (lineIndex == 0)
-                        ? ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
-                        : ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_OTHER_LINES_SS)
-                );
-            }
-
-            lines.add(line);
+            lines.add(getLine(loadedLines, lineIndex));
         }
 
         // Loading bypasses the addElement path that normally handles this.
@@ -393,8 +380,8 @@ public final class Song {
             lines.get(0).attachInitialTempoIfNeeded();
         }
 
-        this.hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
-        this.formatVersion = data.formatVersion();
+        hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
+        formatVersion = data.formatVersion();
 
         // Loaded file starts unmodified
         modified = false;
@@ -402,6 +389,24 @@ public final class Song {
         // Note: SongChanged(FULL) is NOT posted here because the
         // song hasn't been installed into Score yet. Score.setSong()
         // posts the FULL message after all state is consistent.
+    }
+
+    private @NonNull Line getLine(List<? extends Line> loadedLines, int lineIndex) {
+        var line = loadedLines.get(lineIndex);
+
+        if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
+            line.setKeyAccidentalCount(defaultKeyAccidentalCount);
+            line.setKeyType(defaultKeyType);
+        }
+
+        if (line.getTempoChangeYPosPx() == 0) {
+            line.setTempoChangeYPosPx(
+                (lineIndex == 0)
+                    ? ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+                    : ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_OTHER_LINES_SS)
+            );
+        }
+        return line;
     }
 
     // ========== Getters (public, read-only API) ==========
@@ -855,7 +860,7 @@ public final class Song {
     }
 
     private void mutateFont(FontField field, Font current, Font newFont, Runnable apply) {
-        if (Objects.equals(current, newFont)) {
+        if (current.equals(newFont)) {
             return;
         }
 
@@ -1268,7 +1273,7 @@ public final class Song {
         modificationDepth--;
 
         if (modificationDepth == 0 && accumulatedMutations != null) {
-            this.modified = true;
+            modified = true;
             // Wrap-and-transfer ownership: the notification constructor stores the
             // list directly, so we wrap once here instead of letting it defensively
             // copy a list whose only reference is about to be dropped.
@@ -1590,11 +1595,11 @@ public final class Song {
     }
 
     private void applyDefaultKeyType(KeyType keyType) {
-        this.defaultKeyType = keyType;
+        defaultKeyType = keyType;
     }
 
     private void applyDefaultKeyAccidentalCount(int count) {
-        this.defaultKeyAccidentalCount = count;
+        defaultKeyAccidentalCount = count;
     }
 
     private void applyTitleFont(Font font) {
@@ -1633,15 +1638,15 @@ public final class Song {
     }
 
     private void applyAttributionStartYSs(double attributionStartY) {
-        this.attributionStartYSs = attributionStartY;
+        attributionStartYSs = attributionStartY;
     }
 
     private void applyRowHeightAdjustmentSs(double rowHeightAdjustment) {
-        this.rowHeightAdjustmentSs = rowHeightAdjustment;
+        rowHeightAdjustmentSs = rowHeightAdjustment;
     }
 
     private void applyLineWidthSs(double lineWidth) {
-        this.lineWidthSs = lineWidth;
+        lineWidthSs = lineWidth;
     }
 
     private String processText(String text) {

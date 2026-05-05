@@ -85,9 +85,9 @@ public final class AnnotationIO {
             if (qName.equals(XML_ANNOTATION)) {
                 return annotation;
             }
-            if (annotation == null) return null;
 
-            if (lastTag != null && qName.equals(lastTag)) {
+            //noinspection PointlessNullCheck -- required for NullAway
+            if (lastTag != null && annotation != null && qName.equals(lastTag)) {
                 var str = value.toString();
 
                 switch (lastTag) {

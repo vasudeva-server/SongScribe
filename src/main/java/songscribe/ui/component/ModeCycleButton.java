@@ -23,6 +23,8 @@ package songscribe.ui.component;
 import static songscribe.ui.action.Actions.CYCLE_MODE_ACTION;
 import static songscribe.ui.action.Actions.MODE_ACTION_GROUP;
 
+import javax.swing.DefaultButtonModel;
+
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.MessageCenter;
@@ -49,7 +51,7 @@ public class ModeCycleButton extends ToolbarToggleButton {
         // on press and leave a persistent highlight when the mouse is released
         // outside the button, because ToggleButtonModel toggles selection on
         // every armed release.
-        setModel(new javax.swing.DefaultButtonModel());
+        setModel(new DefaultButtonModel());
 
         updateButton(CYCLE_MODE_ACTION.getCurrentAction());
 

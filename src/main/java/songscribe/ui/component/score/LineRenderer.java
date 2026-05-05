@@ -98,7 +98,7 @@ class LineRenderer {
      * @param lineComponent The LineComponent to render for
      */
     LineRenderer(LineComponent lineComponent) {
-        this.lc = lineComponent;
+        lc = lineComponent;
     }
 
     // ==========================================================================

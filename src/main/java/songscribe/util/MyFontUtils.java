@@ -106,11 +106,13 @@ public final class MyFontUtils {
         return allFonts;
     }
 
+    @SuppressWarnings("SameReturnValue")
     private static Set<String> getFamilyNames() {
         getAllFonts();
         return familyNames;
     }
 
+    @SuppressWarnings("SameReturnValue")
     private static Map<String, Font> getPSFonts() {
         getAllFonts();
         return psFonts;

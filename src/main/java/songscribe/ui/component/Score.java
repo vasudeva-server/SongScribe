@@ -37,6 +37,8 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.export.ExportOptions;
+import songscribe.export.ImageExporter;
+import songscribe.export.SVGExporter;
 import songscribe.io.SongIO;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -67,12 +69,14 @@ import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.layout.HorizontalSpacingCalculator;
 import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
+import songscribe.ui.renderer.GraphicsState;
 import songscribe.util.GraphicUtils;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
@@ -106,7 +110,7 @@ public final class Score
     InputHandlerCallback,
     LineComponent.SelectionProvider,
     RenderContext,
-    songscribe.ui.edit.ScoreActions {
+    ScoreActions {
 
     private static final Logger LOG = LoggerFactory.getLogger(Score.class);
 
@@ -144,7 +148,7 @@ public final class Score
 
     @Nullable
     private SAXParser saxParser;
-    private Dimension sheetSize = new Dimension();
+    private final Dimension sheetSize = new Dimension();
 
     @Nullable
     private HorizontalAdjustment horizontalAdjustment = null;
@@ -152,8 +156,7 @@ public final class Score
     private VerticalAdjustment verticalAdjustment = null;
 
     // Called when a file is successfully opened (e.g. to update the window title)
-    @Nullable
-    private final Consumer<File> onFileOpened;
+    private final @Nullable Consumer<? super File> onFileOpened;
 
     // The current editing mode
     private Mode mode = Mode.EDIT;
@@ -189,17 +192,17 @@ public final class Score
     private int middleLineYPx = 0;
 
     // Coordinates selection state across lines
-    private SelectionCoordinator selectionCoordinator;
+    private final SelectionCoordinator selectionCoordinator;
 
     // Handles music editing operations
     @Nullable
     private MusicEditOperations operations = null;
 
     // Manages clipboard state for copy/paste operations
-    private ClipboardManager clipboardManager;
+    private final ClipboardManager clipboardManager;
 
     // Manages edit mode state (insertion note and position)
-    private EditModeManager editModeManager;
+    private final EditModeManager editModeManager;
 
     // New JComponent-based score panel (Phase 2 hierarchy)
     @Nullable
@@ -248,7 +251,7 @@ public final class Score
      * @param onFileOpened callback invoked when a file is successfully opened,
      *                     or {@code null} for headless (converter) use
      */
-    public Score(@Nullable Consumer<File> onFileOpened) {
+    public Score(@Nullable Consumer<? super File> onFileOpened) {
         this.onFileOpened = onFileOpened;
         var headless = onFileOpened == null;
         control = Control.valueOf(Prefs.getInstance().getString(PrefsKey.CONTROL));
@@ -287,7 +290,7 @@ public final class Score
     }
 
     public void createSVG(File outputFile) {
-        songscribe.export.SVGExporter.createSVG(outputFile);
+        SVGExporter.createSVG(outputFile);
     }
 
     /**
@@ -661,9 +664,9 @@ public final class Score
 
         var g2 = (Graphics2D) g;
 
-        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+        try (var ignored = GraphicsState.save(
             g2,
-            songscribe.ui.renderer.GraphicsState.Property.COLOR
+            GraphicsState.Property.COLOR
         )) {
             g2.setColor(FlatLafProps.get(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND));
             g2.fillRect(0, 0, getWidth(), getHeight());
@@ -725,20 +728,6 @@ public final class Score
     }
 
     @Override
-    public boolean isShowLayoutBoxes() {
-        return false;
-    }
-
-    @Override
-    public boolean isShowBoundingBoxes() {
-        return false;
-    }
-
-    @Override
-    public boolean isShowMargins() {
-        return false;
-    }
-
     public void clearSelection() {
         selectionCoordinator.clearSelection();
         selectionChanged();
@@ -1057,12 +1046,14 @@ public final class Score
         return selectionCoordinator.getSelectedLine();
     }
 
+    @Override
     public int getPlayingLine() {
         // Playback state is now managed by PlaybackController
         // For now, return -1 (not playing) since LineComponents handle their own state
         return -1;
     }
 
+    @Override
     public int getPlayingNote() {
         // Playback state is now managed by PlaybackController
         // For now, return -1 (not playing) since LineComponents handle their own state
@@ -1080,7 +1071,7 @@ public final class Score
         MyBorder border,
         ExportOptions options
     ) {
-        return songscribe.export.ImageExporter.createImageForExport(
+        return ImageExporter.createImageForExport(
             this,
             background,
             scale,
@@ -1113,7 +1104,7 @@ public final class Score
     }
 
     public void setSongLayoutMetrics(SongLayoutMetrics metrics) {
-        this.songLayoutMetrics = metrics;
+        songLayoutMetrics = metrics;
     }
 
     public LyricRenderMetrics getLyricRenderMetrics() {
@@ -1126,7 +1117,7 @@ public final class Score
     }
 
     public void setLyricRenderMetrics(LyricRenderMetrics metrics) {
-        this.lyricRenderMetrics = metrics;
+        lyricRenderMetrics = metrics;
     }
 
     /**
@@ -1159,7 +1150,7 @@ public final class Score
     }
 
     public void setActiveLyricEditor(@Nullable LyricEditor editor) {
-        this.activeLyricEditor = editor;
+        activeLyricEditor = editor;
     }
 
     /**

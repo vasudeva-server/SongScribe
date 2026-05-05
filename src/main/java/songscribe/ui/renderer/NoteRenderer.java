@@ -70,20 +70,15 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Stem width in staff-space units (LilyPond multiplier-derived).
      */
-    public static final double STEM_WIDTH_SS;
+    public static final double STEM_WIDTH_SS = LineThickness.getInstance().stemSs();
     /**
      * Stem anchor point for small black noteheads (stem-up, south-east corner).
      * Used for grace notes which use pre-sized small glyphs.
      */
-    public static final GlyphAnchors.Anchor STEM_UP_SE_BLACK_SMALL;
-
-    static {
-        STEM_WIDTH_SS = LineThickness.getInstance().stemSs();
-        STEM_UP_SE_BLACK_SMALL = new GlyphAnchors.Anchor(
-            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() * GRACE_NOTE_SCALE,
-            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.y() * GRACE_NOTE_SCALE
-        );
-    }
+    public static final GlyphAnchors.Anchor STEM_UP_SE_BLACK_SMALL = new GlyphAnchors.Anchor(
+        Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() * GRACE_NOTE_SCALE,
+        Engraving.NOTEHEAD_BLACK_STEM_UP_SE.y() * GRACE_NOTE_SCALE
+    );
 
     // ==========================================================================
     // Constants
@@ -317,7 +312,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
             var noteY = noteStaffPositionToCoordinateSs(element.getStaffPosition(), ctx.getMiddleLineYSs());
 
             g2.translate(noteX, noteY);
-            g2.setFont(ctx.getMusicFont());
+            g2.setFont(BaseElementRenderer.MUSIC_FONT);
 
             var isBeamed = isNoteBeamed(element, ctx);
             renderNoteHead(g2, element, isBeamed, ctx);
@@ -565,7 +560,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
      */
     static void forEachDotPosition(
         StaffElement note, boolean beamed, boolean upper,
-        BiConsumer<Double, Double> consumer
+        BiConsumer<? super Double, ? super Double> consumer
     ) {
         if (note.getDotCount() == 0) {
             return;

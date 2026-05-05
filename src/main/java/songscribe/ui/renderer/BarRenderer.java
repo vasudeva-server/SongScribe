@@ -119,9 +119,7 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
         var bottomY = STAFF_HALF_HEIGHT_SS;
 
         switch (noteType) {
-            case SINGLE_BARLINE -> {
-                drawBar(g2, 0, thin, topY, bottomY);
-            }
+            case SINGLE_BARLINE -> drawBar(g2, 0, thin, topY, bottomY);
 
             case DOUBLE_BARLINE -> {
                 drawBar(g2, 0, thin, topY, bottomY);

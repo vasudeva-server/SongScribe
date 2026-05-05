@@ -81,9 +81,6 @@ public final class GlissandoMidiHelper {
     private boolean needsPitchBendReset;
     private boolean needsExpressionReset;
 
-    public GlissandoMidiHelper() {
-    }
-
     /**
      * Returns the target MIDI pitch based on the glissando type.
      *

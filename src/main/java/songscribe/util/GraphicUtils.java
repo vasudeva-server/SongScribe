@@ -427,7 +427,7 @@ public final class GraphicUtils {
 
     /**
      * Returns the glyph outline for the given SMuFL glyph rendered with {@code font},
-     * suitable for use as an {@link java.awt.geom.Area} component.
+     * suitable for use as an {@link Area} component.
      */
     public static Shape glyphOutline(Font font, FontRenderContext frc, SMuFLGlyph glyph) {
         return font.createGlyphVector(frc, glyph.asString()).getOutline();

@@ -98,6 +98,6 @@ public class Tuplet extends RangeElement {
      * Sets the user-adjustable Y offset for this tuplet bracket.
      */
     public void setVerticalPositionSs(int verticalPosition) {
-        this.verticalPositionSs = verticalPosition;
+        verticalPositionSs = verticalPosition;
     }
 }

@@ -285,12 +285,7 @@ class LineSelectionHandler {
         }
 
         var mode = score.getMode();
-
-        if (mode == Mode.ADJUSTMENT || mode == Mode.VERTICAL_ADJUSTMENT) {
-            return false;
-        }
-
-        return mode == Mode.SELECT || e.isAltDown();
+        return mode != Mode.ADJUSTMENT && mode != Mode.VERTICAL_ADJUSTMENT && (mode == Mode.SELECT || e.isAltDown());
     }
 
     // ======================================================================

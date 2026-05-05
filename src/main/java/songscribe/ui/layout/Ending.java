@@ -325,9 +325,7 @@ public class Ending extends RangeElement {
                     x2 += lt.thinBarlineSs() / 2;
                     hasClosingStroke = false;
                 }
-                case REPEAT_LEFT -> {
-                    hasClosingStroke = false;
-                }
+                case REPEAT_LEFT -> hasClosingStroke = false;
                 default -> {
                     if (end + 1 < line.elementCount()) {
                         var nextElement = line.getElement(end + 1);

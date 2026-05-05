@@ -134,7 +134,7 @@ public final class GeneralPathFile {
             .getOutline();
     }
 
-    public static void main(String[] args)
+    static void main(String[] args)
         throws IOException, FileNotFoundException, FileNotFoundException {
         writeGeneralPath(
             FERMATA_CHAR,

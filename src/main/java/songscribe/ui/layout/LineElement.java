@@ -189,7 +189,7 @@ public abstract class LineElement {
      * Sets the position relative to the parent line origin.
      */
     public void setPosition(double xSs, double ySs) {
-        this.positionSs = new Point2D.Double(xSs, ySs);
+        positionSs = new Point2D.Double(xSs, ySs);
     }
 
     // ========================================================================
@@ -232,10 +232,10 @@ public abstract class LineElement {
      * Sets uniform margin on all sides.
      */
     public void setMarginSs(double margin) {
-        this.marginTopSs = margin;
-        this.marginRightSs = margin;
-        this.marginBottomSs = margin;
-        this.marginLeftSs = margin;
+        marginTopSs = margin;
+        marginRightSs = margin;
+        marginBottomSs = margin;
+        marginLeftSs = margin;
     }
 
     /**
@@ -247,10 +247,10 @@ public abstract class LineElement {
      * @param left   Left margin in staff spaces
      */
     public void setMarginSs(double top, double right, double bottom, double left) {
-        this.marginTopSs = top;
-        this.marginRightSs = right;
-        this.marginBottomSs = bottom;
-        this.marginLeftSs = left;
+        marginTopSs = top;
+        marginRightSs = right;
+        marginBottomSs = bottom;
+        marginLeftSs = left;
     }
 
     public double getMarginTopSs() {
@@ -325,7 +325,7 @@ public abstract class LineElement {
      * @return The effective margin between the two elements
      */
     public double collapsedVerticalMarginWith(LineElement below) {
-        return Math.max(this.marginBottomSs, below.marginTopSs);
+        return Math.max(marginBottomSs, below.marginTopSs);
     }
 
     /**
@@ -336,7 +336,7 @@ public abstract class LineElement {
      * @return The effective margin between the two elements
      */
     public double collapsedHorizontalMarginWith(LineElement right) {
-        return Math.max(this.marginRightSs, right.marginLeftSs);
+        return Math.max(marginRightSs, right.marginLeftSs);
     }
 
     // ========================================================================
@@ -371,7 +371,7 @@ public abstract class LineElement {
      */
     public void addChild(LineElement child) {
         child.setParentElement(this);
-        child.setParentLine(this.parentLine);
+        child.setParentLine(parentLine);
         children.add(child);
     }
 

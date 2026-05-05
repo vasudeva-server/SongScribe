@@ -26,36 +26,16 @@ package songscribe.message.mutation;
  * {@link LineLayoutChange}'s canonical constructor validates values against this type.
  */
 public enum LineLayoutField {
-    /**
-     * Y-position of tempo markings (pixels).
-     *
-     * @deprecated Use per-instance userYOffset on TempoChangeAttachment instead.
-     */
-    @Deprecated
+    /** Y-position of tempo markings (pixels). Retained for deserializing legacy document formats. */
     TEMPO_CHANGE_Y_POS_PX(Integer.class),
 
-    /**
-     * Y-position of beat-change markings (pixels).
-     *
-     * @deprecated Use per-instance userYOffset on BeatChangeAttachment instead.
-     */
-    @Deprecated
+    /** Y-position of beat-change markings (pixels). Retained for deserializing legacy document formats. */
     BEAT_CHANGE_Y_POS_PX(Integer.class),
 
-    /**
-     * Y-position of first/second ending spans (pixels).
-     *
-     * @deprecated Use per-instance yPosition on Ending objects instead.
-     */
-    @Deprecated
+    /** Y-position of first/second ending spans (pixels). Retained for deserializing legacy document formats. */
     FIRST_SECOND_ENDING_Y_POS_PX(Integer.class),
 
-    /**
-     * Y-position of trill markings (pixels).
-     *
-     * @deprecated Use per-instance yPosition on Trill objects instead.
-     */
-    @Deprecated
+    /** Y-position of trill markings (pixels). Retained for deserializing legacy document formats. */
     TRILL_Y_POS_PX(Integer.class),
 
     /** Y-position of lyrics baseline (staff spaces). */

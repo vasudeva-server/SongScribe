@@ -28,6 +28,7 @@ import module java.desktop;
 
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
+import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LineElement;
 
 /**
@@ -86,7 +87,7 @@ public final class DynamicsRenderer extends BaseElementRenderer<LineElement> {
      * @param ctx         Render context
      */
     private void renderSingleHairpin(
-        songscribe.ui.layout.LayoutResult.DecorationLayout layout,
+        LayoutResult.DecorationLayout layout,
         boolean isCrescendo,
         Graphics2D g2,
         ElementRenderContext ctx
@@ -106,11 +107,11 @@ public final class DynamicsRenderer extends BaseElementRenderer<LineElement> {
             ));
 
             if (isCrescendo) {
-                g2.draw(new java.awt.geom.Line2D.Double(x1, middleYSs, x2, topYSs));
-                g2.draw(new java.awt.geom.Line2D.Double(x1, middleYSs, x2, bottomYSs));
+                g2.draw(new Line2D.Double(x1, middleYSs, x2, topYSs));
+                g2.draw(new Line2D.Double(x1, middleYSs, x2, bottomYSs));
             } else {
-                g2.draw(new java.awt.geom.Line2D.Double(x1, topYSs, x2, middleYSs));
-                g2.draw(new java.awt.geom.Line2D.Double(x1, bottomYSs, x2, middleYSs));
+                g2.draw(new Line2D.Double(x1, topYSs, x2, middleYSs));
+                g2.draw(new Line2D.Double(x1, bottomYSs, x2, middleYSs));
             }
         }
     }

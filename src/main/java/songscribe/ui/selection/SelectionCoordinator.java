@@ -24,11 +24,13 @@ import java.awt.AWTEvent;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.MouseEvent;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
@@ -297,6 +299,7 @@ public final class SelectionCoordinator {
     }
 
     public boolean isLyricSelected(StaffElement element, int verse, int lineIndex) {
+        //noinspection SimplifiableIfStatement
         if (activeLineIndex != lineIndex || lyricSelection == null) {
             return false;
         }
@@ -335,12 +338,7 @@ public final class SelectionCoordinator {
         }
 
         var state = lineStates.get(activeLineIndex);
-
-        if (state == null || !state.isLineSelected()) {
-            return false;
-        }
-
-        return songSupplier.get().lineCount() > 1;
+        return state != null && state.isLineSelected() && songSupplier.get().lineCount() > 1;
     }
 
     /**
@@ -537,11 +535,11 @@ public final class SelectionCoordinator {
     /**
      * Scans all static fields in Actions for UIAction instances matching the given predicate.
      */
-    private <T> List<T> collectActions(Class<T> type, java.util.function.Predicate<UIAction> filter) {
+    private <T> List<T> collectActions(Class<? extends T> type, Predicate<? super UIAction> filter) {
         var result = new ArrayList<T>();
 
         for (var field : Actions.class.getDeclaredFields()) {
-            if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+            if (!Modifier.isStatic(field.getModifiers())) {
                 continue;
             }
 
@@ -612,7 +610,10 @@ public final class SelectionCoordinator {
      */
     public void applyActionToSelection(UIAction.Reflectable action, boolean selected) {
         var selection = getSelection();
-        if (selection == null) return;
+
+        if (selection == null) {
+            return;
+        }
 
         var line = selection.line();
         var song = line.getSong();
@@ -623,7 +624,9 @@ public final class SelectionCoordinator {
             for (var i = selection.begin(); i <= selection.end(); i++) {
                 var element = line.getElement(i);
 
-                if (!action.appliesTo(element)) continue;
+                if (!action.appliesTo(element)) {
+                    continue;
+                }
 
                 if (action instanceof UIAction.ElementReplaceable replaceable) {
                     if (!selected) {
@@ -878,7 +881,7 @@ public final class SelectionCoordinator {
      * Fires at LOW_PRIORITY so it runs after all UIAction handlers have processed
      * the selection-changed message.
      */
-    @Handler(priority = Message.LOW_PRIORITY)
+    @Handler()
     public void musicSelectionDidChangeReflectSelection(MusicSelectionDidChangeNotification message) {
         triggerReflection();
     }

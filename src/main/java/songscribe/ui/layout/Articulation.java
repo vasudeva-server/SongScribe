@@ -79,7 +79,7 @@ public class Articulation extends LineElement {
      * @param type   The articulation type
      */
     public Articulation(@Nullable StaffElement parent, ArticulationType type) {
-        this.ownerElement = parent;
+        ownerElement = parent;
         this.type = type;
 
         if (parent != null) {

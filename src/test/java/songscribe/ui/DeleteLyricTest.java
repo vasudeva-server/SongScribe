@@ -37,6 +37,7 @@ import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.PasteboardOpCommand;
 import songscribe.music.ElementType;
+import songscribe.music.Line;
 import songscribe.music.Lyric;
 import songscribe.music.Song;
 import songscribe.music.StaffElement;
@@ -102,7 +103,7 @@ class DeleteLyricTest extends UnitTest {
         }
     }
 
-    private SelectionCoordinator createCoordinator(songscribe.music.Line line) {
+    private SelectionCoordinator createCoordinator(Line line) {
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
 
         try {

@@ -84,7 +84,7 @@ public class Attribution extends LineElement {
      * @param rightAligned true for right-aligned, false for left-aligned
      */
     public void setRightAligned(boolean rightAligned) {
-        this.isRightAligned = rightAligned;
+        isRightAligned = rightAligned;
     }
 
     /**

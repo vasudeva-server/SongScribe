@@ -134,6 +134,6 @@ public final class ClipboardManager {
      * @param spanSets The span sets array
      */
     public void setSpanSetsCopyBuffer(SpanSet[] spanSets) {
-        this.spanSetsCopyBuffer = spanSets;
+        spanSetsCopyBuffer = spanSets;
     }
 }

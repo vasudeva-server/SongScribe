@@ -104,15 +104,6 @@ public class ElementRenderContext {
     }
 
     /**
-     * Returns the music notation font.
-     * <p>
-     * This font contains glyphs for notes, rests, accidentals, clefs, etc.
-     */
-    public Font getMusicFont() {
-        return BaseElementRenderer.MUSIC_FONT;
-    }
-
-    /**
      * Returns the current line being rendered.
      */
     public @Nullable Line getCurrentLine() {
@@ -222,7 +213,7 @@ public class ElementRenderContext {
     /** Sets the song-wide layout metrics. */
     @Initializer
     public void setSongLayoutMetrics(SongLayoutMetrics metrics) {
-        this.songLayoutMetrics = metrics;
+        songLayoutMetrics = metrics;
     }
 
     /** Returns the song-wide lyric render metrics. */
@@ -233,7 +224,7 @@ public class ElementRenderContext {
     /** Sets the song-wide lyric render metrics. */
     @Initializer
     public void setLyricRenderMetrics(LyricRenderMetrics metrics) {
-        this.lyricRenderMetrics = metrics;
+        lyricRenderMetrics = metrics;
     }
 
     /** Returns the element currently being edited in the lyric overlay, or null. */
@@ -244,7 +235,7 @@ public class ElementRenderContext {
 
     /** Sets the element being edited; pass null when no lyric editor is open. */
     public void setActivelyEditedElement(@Nullable StaffElement element) {
-        this.activelyEditedElement = element;
+        activelyEditedElement = element;
     }
 
     /**
@@ -539,7 +530,7 @@ public class ElementRenderContext {
      * @param xSs the exact X coordinate in staff spaces
      */
     public void setOverrideElementXSs(double xSs) {
-        this.overrideElementXSs = xSs;
+        overrideElementXSs = xSs;
     }
 
     /**
@@ -572,8 +563,8 @@ public class ElementRenderContext {
      * @param shiftSs   shift amount in staff spaces (must be &gt;= 0)
      */
     public void setPreviewShift(int fromIndex, double shiftSs) {
-        this.previewShiftFromIndex = fromIndex;
-        this.previewShiftSs = shiftSs;
+        previewShiftFromIndex = fromIndex;
+        previewShiftSs = shiftSs;
     }
 
     /** Returns whether a preview shift is currently active. */

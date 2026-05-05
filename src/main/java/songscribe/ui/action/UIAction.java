@@ -453,6 +453,7 @@ public class UIAction extends AbstractAction {
     }
 
     protected boolean enableInRestMode() {
+        //noinspection SimplifiableIfStatement
         if (!hasFlag(Flag.DISABLE_IN_REST_MODE)) {
             return true;
         }
@@ -507,6 +508,7 @@ public class UIAction extends AbstractAction {
     }
 
     protected boolean enableFromBarSelection(boolean activeSelection) {
+        //noinspection SimplifiableIfStatement
         if (activeSelection) {
             return true;
         }
@@ -528,6 +530,7 @@ public class UIAction extends AbstractAction {
             return coordinator.isApplicableToSelection(reflectable);
         }
 
+        //noinspection SimplifiableIfStatement
         if (hasFlag(Flag.DISABLE_WHEN_BAR_SELECTED)) {
             return coordinator.selectionHasDurations();
         }

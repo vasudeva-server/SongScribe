@@ -22,6 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
+import songscribe.ui.renderer.GraphicsState;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -36,13 +37,6 @@ public class UnderLyricsComponent extends ScoreComponent {
     private float contentXPx = -1;
 
     /**
-     * Creates a new UnderLyricsComponent.
-     */
-    public UnderLyricsComponent() {
-        super();
-    }
-
-    /**
      * Sets the X position for content rendering.
      * <p>
      * Used by TextPanel to achieve union width centering across
@@ -51,7 +45,7 @@ public class UnderLyricsComponent extends ScoreComponent {
      * @param contentX X position, or -1 to center based on own width
      */
     public void setContentX(float contentX) {
-        this.contentXPx = contentX;
+        contentXPx = contentX;
     }
 
     /**
@@ -78,9 +72,9 @@ public class UnderLyricsComponent extends ScoreComponent {
             return 0;
         }
 
-        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+        try (var ignored = GraphicsState.save(
             g2,
-            songscribe.ui.renderer.GraphicsState.Property.FONT
+            GraphicsState.Property.FONT
         )) {
             g2.setFont(song.getLyricsFont());
             return GraphicUtils.getTextBlockWidth(lyrics, g2);
@@ -99,10 +93,10 @@ public class UnderLyricsComponent extends ScoreComponent {
             return;
         }
 
-        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+        try (var ignored = GraphicsState.save(
             g2,
-            songscribe.ui.renderer.GraphicsState.Property.FONT,
-            songscribe.ui.renderer.GraphicsState.Property.COLOR
+            GraphicsState.Property.FONT,
+            GraphicsState.Property.COLOR
         )) {
             var font = song.getLyricsFont();
             g2.setFont(font);

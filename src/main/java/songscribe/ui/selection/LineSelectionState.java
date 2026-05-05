@@ -308,6 +308,7 @@ public final class LineSelectionState {
             return false;
         }
 
+        //noinspection SimplifiableIfStatement
         if (!IntStream.rangeClosed(selectionBegin, selectionEnd).allMatch(
                 i -> line.getElement(i).getType().isBeamable())) {
             return false;
@@ -405,12 +406,8 @@ public final class LineSelectionState {
      * Returns whether the current selection can toggle trill.
      */
     public boolean canToggleTrill() {
-        if (selectionBegin == -1) {
-            return false;
-        }
-
-        return line
-            .getElements(selectionBegin, selectionEnd)
+        return selectionBegin != -1 &&
+            line.getElements(selectionBegin, selectionEnd)
             .stream()
             .anyMatch(element -> element.getType().isPitchedNote());
     }
@@ -419,12 +416,8 @@ public final class LineSelectionState {
      * Returns whether the stem direction can be flipped.
      */
     public boolean canFlipStemDirection() {
-        if (getSelectionSize() == 0) {
-            return false;
-        }
-
-        return line
-            .getElements(selectionBegin, selectionEnd)
+        return getSelectionSize() != 0 &&
+            line.getElements(selectionBegin, selectionEnd)
             .stream()
             .anyMatch(element -> !element.getType().isRest());
     }

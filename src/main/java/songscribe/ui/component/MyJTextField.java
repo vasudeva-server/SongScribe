@@ -41,7 +41,7 @@ public class MyJTextField extends JTextField {
 
     protected MyJTextField(@Nullable String text, int columns) {
         super(text, columns);
-        this.focusDelegate = createFocusDelegate();
+        focusDelegate = createFocusDelegate();
         setCaret(new SelectionHidingCaret());
     }
 

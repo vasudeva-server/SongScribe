@@ -112,11 +112,9 @@ class NoteDragHandler {
      * and the event should not be processed further.
      */
     boolean handlePress(MouseEvent e) {
-        boolean pressHandled = false;
-
         var score = lc.getScore();
 
-        if (score == null || score.getMode() != Mode.SELECT) {
+        if (score.getMode() != Mode.SELECT) {
             return false;
         }
 
@@ -220,7 +218,6 @@ class NoteDragHandler {
             editModeManager.setPreviewElementVisible(false);
         }
 
-        pressHandled = true;
         dragActive = true;
         lc.repaint();
         return true;

@@ -63,7 +63,7 @@ public final class LegacyLyricsImporter {
      * Walks {@code lyricsBlock} left-to-right and populates
      * {@code Properties.lyrics} on each element of {@code lines}.
      */
-    public static void importLegacyLyrics(List<Line> lines, String lyricsBlock) {
+    public static void importLegacyLyrics(List<? extends Line> lines, String lyricsBlock) {
         if (lyricsBlock.isBlank()) {
             return;
         }

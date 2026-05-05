@@ -26,6 +26,7 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import com.formdev.flatlaf.themes.FlatMacLightLaf;
+import com.formdev.flatlaf.util.SystemInfo;
 import com.jthemedetecor.OsThemeDetector;
 
 import songscribe.UnitTest;
@@ -85,7 +86,7 @@ class AppearanceManagerTest extends UnitTest {
         void testDarkReturnsCorrectLafClass() {
             var laf = AppearanceManager.createLaf(true);
 
-            if (com.formdev.flatlaf.util.SystemInfo.isMacOS) {
+            if (SystemInfo.isMacOS) {
                 assertThat(laf).isInstanceOf(FlatMacDarkLaf.class);
             } else {
                 assertThat(laf).isInstanceOf(FlatDarkLaf.class);
@@ -96,7 +97,7 @@ class AppearanceManagerTest extends UnitTest {
         void testLightReturnsCorrectLafClass() {
             var laf = AppearanceManager.createLaf(false);
 
-            if (com.formdev.flatlaf.util.SystemInfo.isMacOS) {
+            if (SystemInfo.isMacOS) {
                 assertThat(laf).isInstanceOf(FlatMacLightLaf.class);
             } else {
                 assertThat(laf).isInstanceOf(FlatLightLaf.class);

@@ -448,7 +448,7 @@ class NoteDragHandlerTest extends UnitTest {
         handler.handleDrag(event);
     }
 
-    private MouseEvent mouseEvent(java.awt.Component source, int id, int x, int y, int button) {
+    private MouseEvent mouseEvent(Component source, int id, int x, int y, int button) {
         return new MouseEvent(source, id, 0L, 0, x, y, x, y, 1, false, button);
     }
 

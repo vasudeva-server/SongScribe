@@ -155,7 +155,6 @@ public class LineComponent extends ScoreComponent
      * Creates a new LineComponent.
      */
     public LineComponent() {
-        super();
         addMouseMotionListener(this);
         addMouseListener(this);
     }
@@ -170,9 +169,9 @@ public class LineComponent extends ScoreComponent
         this.line = line;
         this.lineIndex = lineIndex;
         setName(ComponentNames.line(lineIndex));
-        this.lineSelectionState = new LineSelectionState(line);
-        this.layoutDirty = true;
-        this.layoutResult = null;
+        lineSelectionState = new LineSelectionState(line);
+        layoutDirty = true;
+        layoutResult = null;
 
         // Register with coordinator if score is available
         if (score != null) {
@@ -318,8 +317,8 @@ public class LineComponent extends ScoreComponent
      * Marks the layout as dirty, requiring recalculation on next render.
      */
     public void invalidateLayout() {
-        this.layoutDirty = true;
-        this.layoutResult = null;
+        layoutDirty = true;
+        layoutResult = null;
         revalidate();
         repaint();
     }
@@ -340,7 +339,7 @@ public class LineComponent extends ScoreComponent
     /**
      * Ensures the layout is up to date, computing it if dirty.
      * <p>
-     * Called by {@link songscribe.ui.component.score.StaffPanel} before collecting
+     * Called by {@link StaffPanel} before collecting
      * all layout results to build {@link SongLayoutMetrics}.
      */
     public void ensureLayout() {
@@ -361,7 +360,7 @@ public class LineComponent extends ScoreComponent
     public void setHasLeadingLyricContinuation(boolean hasLeadingLyricContinuation) {
         if (this.hasLeadingLyricContinuation != hasLeadingLyricContinuation) {
             this.hasLeadingLyricContinuation = hasLeadingLyricContinuation;
-            this.layoutDirty = true;
+            layoutDirty = true;
         }
     }
 
@@ -706,7 +705,7 @@ public class LineComponent extends ScoreComponent
         return selectionProvider;
     }
 
-    private LayoutResult.@Nullable LyricHit hitTestLyric(java.awt.Point pointPx) {
+    private LayoutResult.@Nullable LyricHit hitTestLyric(Point pointPx) {
         var ready = readyLayout();
         return ready != null
             ? ready.layoutResult().hitTestLyric(getScore().getLyricRenderMetrics(), ready.line(), pointPx)

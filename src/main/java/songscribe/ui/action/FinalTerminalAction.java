@@ -29,7 +29,7 @@ import songscribe.music.Song;
 /**
  * Action that sets the song's auto-maintained terminal to a specific valid
  * terminal type ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}). Renders as
- * a {@link javax.swing.JRadioButtonMenuItem} whose selected state tracks
+ * a {@link JRadioButtonMenuItem} whose selected state tracks
  * {@link Song#currentTerminalType()}.
  */
 public final class FinalTerminalAction extends ElementTypeAction {

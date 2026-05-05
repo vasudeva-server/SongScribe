@@ -678,10 +678,6 @@ public final class PreviewElementManager {
 
         var score = lc.getScore();
 
-        if (score == null) {
-            return false;
-        }
-
         return score.getControl() == Control.MOUSE
             && score.getMode() == Mode.EDIT
             && !PlaybackController.isPlaying();

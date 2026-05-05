@@ -78,7 +78,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
     private final List<Mutation> capturedMutations = new ArrayList<>();
 
     private SelectionCoordinator createCoordinator(
-        List<StaffElement> notes,
+        List<? extends StaffElement> notes,
         List<UIAction.Reflectable> actions
     ) {
         return ReflectionTestHelper.createCoordinator(notes, actions, createSongMock());
@@ -106,7 +106,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         return Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
     }
 
-    private <T extends Mutation> List<T> mutationsOfType(Class<T> type) {
+    private <T extends Mutation> List<T> mutationsOfType(Class<? extends T> type) {
         var list = new ArrayList<T>();
 
         for (var mutation : capturedMutations) {

@@ -105,12 +105,6 @@ public class HorizontalSpacingCalculator {
     public static final double KEY_ACCIDENTAL_WIDTH_SS = 1.0;  // 8px
 
     /**
-     * Creates a new HorizontalSpacingCalculator.
-     */
-    public HorizontalSpacingCalculator() {
-    }
-
-    /**
      * Calculates the X position of the first note in a line, in staff-space units.
      * <p>
      * Formula: clefWidth + keySignatureWidth + FIRST_NOTE_OFFSET
@@ -355,7 +349,9 @@ public class HorizontalSpacingCalculator {
     private static double ensureGlissandoSpacing(
         ElementColumn prev, ElementColumn curr, double spacingSs
     ) {
-        if (!prev.hasGlissando()) return spacingSs;
+        if (!prev.hasGlissando()) {
+            return spacingSs;
+        }
 
         // Compute ledger-line-inclusive extents on-the-fly
         var prevOverhang = NoteRenderer.getLedgerLineOverhangSs(prev.getElement());
@@ -444,7 +440,7 @@ public class HorizontalSpacingCalculator {
      * @return BeamGroupRange if found, null otherwise
      */
     private @Nullable BeamGroupRange findBeamGroupStartingAt(
-        List<BeamGroupRange> ranges,
+        List<? extends BeamGroupRange> ranges,
         int index) {
 
         for (var range : ranges) {
