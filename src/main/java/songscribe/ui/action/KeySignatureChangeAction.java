@@ -29,7 +29,7 @@ import songscribe.message.Message;
 import songscribe.ui.dialog.KeySignatureChangeDialog;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 
-public class KeySignatureChangeAction extends UIAction {
+public final class KeySignatureChangeAction extends UIAction {
 
     public static KeySignatureChangeAction createAction() {
         return new KeySignatureChangeAction();

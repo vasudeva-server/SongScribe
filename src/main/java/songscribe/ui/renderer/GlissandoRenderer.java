@@ -46,7 +46,7 @@ import songscribe.ui.layout.ScaleContext;
  * <p>
  * Glissando data is stored on the source note via {@link StaffElement#getGlissando()}.
  */
-public class GlissandoRenderer {
+public final class GlissandoRenderer {
 
     // ==========================================================================
     // Constants

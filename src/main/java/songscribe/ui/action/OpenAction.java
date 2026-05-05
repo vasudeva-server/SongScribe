@@ -26,7 +26,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.ShowOpenDialogCommand;
 import songscribe.util.UIUtils;
 
-public class OpenAction extends UIAction {
+public final class OpenAction extends UIAction {
 
     public static OpenAction createAction() {
         return new OpenAction();

@@ -30,7 +30,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.command.RemoveDynamicsCommand;
 
-public class RemoveDynamicsAction extends UIAction {
+public final class RemoveDynamicsAction extends UIAction {
 
     public static RemoveDynamicsAction createAction() {
         return new RemoveDynamicsAction();

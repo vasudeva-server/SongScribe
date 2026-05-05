@@ -51,8 +51,6 @@ class LyricTest {
 
     @Test
     void testEqualRecordsWithAllSyllabicValues() {
-        record Variant(Lyric.Syllabic syllabic, boolean compound) {}
-
         var variants = new Variant[] {
             new Variant(Lyric.Syllabic.SINGLE, false),
             new Variant(Lyric.Syllabic.BEGIN, false),
@@ -99,4 +97,6 @@ class LyricTest {
         assertThatThrownBy(() -> new Lyric(1, "", Lyric.Extend.STOP, Lyric.Syllabic.SINGLE, false))
             .isInstanceOf(IllegalStateException.class);
     }
+
+    private record Variant(Lyric.Syllabic syllabic, boolean compound) {}
 }

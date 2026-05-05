@@ -27,7 +27,7 @@ import songscribe.ui.OptionDialogs;
 /**
  * Utility class for exporting music scores as SVG files.
  */
-public class SVGExporter {
+public final class SVGExporter {
 
     private SVGExporter() {
         // Utility class - prevent instantiation

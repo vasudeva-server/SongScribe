@@ -47,7 +47,7 @@ import songscribe.smufl.SMuFLGlyph;
  *   <li>Left-right repeat</li>
  * </ul>
  */
-public class BarRenderer extends BaseElementRenderer<StaffElement> {
+public final class BarRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants

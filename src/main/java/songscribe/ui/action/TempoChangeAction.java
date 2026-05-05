@@ -28,7 +28,7 @@ import songscribe.Strings;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.dialog.TempoChangeDialog;
 
-public class TempoChangeAction extends UIAction {
+public final class TempoChangeAction extends UIAction {
 
     public static TempoChangeAction createAction() {
         return new TempoChangeAction();

@@ -36,7 +36,7 @@ import songscribe.ui.layout.ScaleContext;
  * Annotations are text labels that appear above or below notes,
  * typically used for performance instructions or other markings.
  */
-public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
+public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
 
     private static final AnnotationRenderer INSTANCE = new AnnotationRenderer();
 

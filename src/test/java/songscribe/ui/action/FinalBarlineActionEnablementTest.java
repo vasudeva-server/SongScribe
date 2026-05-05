@@ -42,13 +42,12 @@ import songscribe.ui.component.MainFrame;
 class FinalBarlineActionEnablementTest extends UnitTest {
 
     private MockedStatic<MainFrame> mainFrameMock;
-    private MockEnvHelper.MockEnv env;
     private Song song;
 
     @BeforeEach
     void setUp() {
         mainFrameMock = mockStatic(MainFrame.class);
-        env = MockEnvHelper.setupMockEnv(mainFrameMock);
+        MockEnvHelper.MockEnv env = MockEnvHelper.setupMockEnv(mainFrameMock);
 
         // PlaybackController's static initializer creates UIAction instances with
         // keyboard shortcuts that call mainFrame.getRootPane(), so we need a JRootPane mock.

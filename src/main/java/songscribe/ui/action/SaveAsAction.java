@@ -26,7 +26,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.SaveAsCommand;
 import songscribe.util.UIUtils;
 
-public class SaveAsAction extends UIAction {
+public final class SaveAsAction extends UIAction {
 
     public static SaveAsAction createAction() {
         return new SaveAsAction();

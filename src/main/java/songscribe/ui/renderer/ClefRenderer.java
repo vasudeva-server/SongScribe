@@ -32,7 +32,7 @@ import songscribe.ui.layout.Clef;
  * The treble clef is positioned so that its inner curve wraps around
  * the G line (second line from bottom, staff line index 3).
  */
-public class ClefRenderer extends BaseElementRenderer<Clef> {
+public final class ClefRenderer extends BaseElementRenderer<Clef> {
 
     /** Singleton instance. */
     private static final ClefRenderer INSTANCE = new ClefRenderer();

@@ -53,7 +53,7 @@ import songscribe.error.RuntimeError;
  *   <li>Ledger lines (for notes above/below staff)</li>
  * </ul>
  */
-public class NoteRenderer extends BaseElementRenderer<StaffElement> {
+public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * SMuFL standard stem length in staff-space units.
      */
@@ -170,8 +170,6 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     private static float @Nullable [] baseAccidentalWidthsSs = null;
     private static float @Nullable [] baseAccidentalParenthesisWidthsSs = null;
     private static float @Nullable [] smallAccidentalWidthsSs = null;
-    private static float beginParenthesisWidthSs = 0.0f;
-    private static float endParenthesisWidthSs = 0.0f;
 
     // Singleton instance
     private static final NoteRenderer INSTANCE = new NoteRenderer();
@@ -736,8 +734,8 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         // Calculate parenthesis widths (advance widths are already in ss)
         var parensLeftWidth = METADATA.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
         var parensRightWidth = METADATA.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
-        beginParenthesisWidthSs = (parensLeftWidth != null) ? parensLeftWidth.floatValue() : 0f;
-        endParenthesisWidthSs = (parensRightWidth != null) ? parensRightWidth.floatValue() : 0f;
+        float beginParenthesisWidthSs = (parensLeftWidth != null) ? parensLeftWidth.floatValue() : 0f;
+        float endParenthesisWidthSs = (parensRightWidth != null) ? parensRightWidth.floatValue() : 0f;
 
         // Parenthesized width = parens left + accidental components + parens right
         baseAccidentalParenthesisWidthsSs = new float[ACCIDENTAL_COMPONENTS.length];

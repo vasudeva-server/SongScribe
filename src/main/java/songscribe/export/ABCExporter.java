@@ -30,7 +30,7 @@ import songscribe.ui.OptionDialogs;
  * Note: ABC export is currently not supported and this class serves as a stub
  * for future implementation.
  */
-public class ABCExporter {
+public final class ABCExporter {
 
     private ABCExporter() {
         // Utility class - prevent instantiation

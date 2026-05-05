@@ -60,7 +60,7 @@ import songscribe.file.FileUtils;
  * 5. Syllables under grace notes. Solution: put together with the syllable of next note with \
  * 6. Forcing syllable under a rest (new SongScribe feature)
  */
-public class ExportABCAction extends UIAction {
+public final class ExportABCAction extends UIAction {
 
     private static final String[] ACCIDENTAL_MAP = new String[]{
         "=",

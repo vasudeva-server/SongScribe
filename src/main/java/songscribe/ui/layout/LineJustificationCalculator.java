@@ -69,7 +69,7 @@ public class LineJustificationCalculator {
     /**
      * Result of line justification attempt.
      */
-    public static class JustificationResult {
+    public static final class JustificationResult {
         private final boolean success;
         @Nullable
         private final String errorMessage;
@@ -204,7 +204,7 @@ public class LineJustificationCalculator {
     /**
      * Represents validation result for compression.
      */
-    private static class CompressionValidation {
+    private static final class CompressionValidation {
         private final boolean valid;
         @Nullable
         private final String errorMessage;

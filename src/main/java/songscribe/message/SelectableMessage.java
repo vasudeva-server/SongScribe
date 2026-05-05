@@ -20,6 +20,7 @@
 
 package songscribe.message;
 
+@FunctionalInterface
 public interface SelectableMessage {
     boolean isSelected();
 }

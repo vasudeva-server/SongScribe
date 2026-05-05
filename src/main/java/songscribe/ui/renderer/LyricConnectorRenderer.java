@@ -47,7 +47,7 @@ import songscribe.util.GraphicUtils;
  * Following Gould/Ross engraving rules: hyphens mark syllable division only;
  * extenders mark duration only.
  */
-public class LyricConnectorRenderer {
+public final class LyricConnectorRenderer {
 
     // ==========================================================================
     // Constants

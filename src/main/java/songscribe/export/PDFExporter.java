@@ -28,7 +28,7 @@ import songscribe.util.GraphicUtils;
 /**
  * Utility class for exporting music scores as PDF files.
  */
-public class PDFExporter {
+public final class PDFExporter {
 
     private PDFExporter() {
         // Utility class - prevent instantiation

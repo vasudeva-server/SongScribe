@@ -37,7 +37,6 @@ import songscribe.util.Utils;
 
 public class TipFrame extends JFrame {
 
-    private final MainFrame mainFrame;
     private static final File tipFile = new File(
         Utils.getResourcePath("help/tips")
     );
@@ -50,7 +49,6 @@ public class TipFrame extends JFrame {
     public TipFrame(MainFrame mainFrame)
         throws IOException, FileNotFoundException {
         super(Strings.get(Strings.DIALOG_TIP_TITLE));
-        this.mainFrame = mainFrame;
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         addWindowListener(
             new WindowAdapter() {

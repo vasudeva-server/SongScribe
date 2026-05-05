@@ -325,25 +325,18 @@ class LineMutationTest extends UnitTest {
     @Nested
     class EndingInvalidationConditions {
 
-        private StaffElement anchor;
-        private StaffElement note1;
-        private StaffElement note2;
-        private StaffElement split;
-        private StaffElement note4;
-        private StaffElement note5;
-        private StaffElement end;
         private Ending ending;
 
         @BeforeEach
         void setUpEnding() {
             var fixture = EndingLineFixture.primary(song);
-            anchor = fixture.anchor();
-            note1  = fixture.note1();
-            note2  = fixture.note2();
-            split  = fixture.split();
-            note4  = fixture.note4();
-            note5  = fixture.note5();
-            end    = fixture.end();
+            StaffElement anchor = fixture.anchor();
+            StaffElement note1 = fixture.note1();
+            StaffElement note2 = fixture.note2();
+            StaffElement split = fixture.split();
+            StaffElement note4 = fixture.note4();
+            StaffElement note5 = fixture.note5();
+            StaffElement end = fixture.end();
             ending = fixture.ending();
         }
 

@@ -25,7 +25,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.util.UIUtils;
 
-public class DeleteAction extends PasteboardAction {
+public final class DeleteAction extends PasteboardAction {
 
     public static DeleteAction createAction() {
         return new DeleteAction();

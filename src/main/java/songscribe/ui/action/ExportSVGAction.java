@@ -27,7 +27,7 @@ import songscribe.file.MyFileFilter;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.file.FileUtils;
 
-public class ExportSVGAction extends UIAction {
+public final class ExportSVGAction extends UIAction {
 
     private final PlatformFileDialog fileDialog;
 

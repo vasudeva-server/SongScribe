@@ -27,7 +27,7 @@ import songscribe.message.command.TogglePlayWithRepeatsCommand;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.action.SelectableUIAction;
 
-public class PlayWithRepeatsAction extends SelectableUIAction {
+public final class PlayWithRepeatsAction extends SelectableUIAction {
 
     public static PlayWithRepeatsAction createAction() {
         return new PlayWithRepeatsAction();

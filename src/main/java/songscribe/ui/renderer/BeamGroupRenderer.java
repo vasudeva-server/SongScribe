@@ -45,7 +45,7 @@ import songscribe.ui.layout.StaffExtents;
  * Beams are drawn as filled parallelograms connecting the stems of beamed notes.
  * Multiple beam levels (8th, 16th, 32nd) are stacked vertically.
  */
-public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
+public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
 
     // ==========================================================================
     // Constants from Renderer

@@ -18,27 +18,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.action;
+package songscribe.ui.component;
 
 import module java.desktop;
 
-import songscribe.Strings;
-import songscribe.util.UIUtils;
+import org.jspecify.annotations.Nullable;
 
-public final class PasteAction extends PasteboardAction {
+import songscribe.ui.Control;
+import songscribe.ui.Mode;
 
-    public static PasteAction createAction() {
-        return new PasteAction();
-    }
+/**
+ * Callback interface for ScoreInputHandler to communicate with Score.
+ */
+public interface InputHandlerCallback {
 
-    private PasteAction() {
-        super(
-            Operation.PASTE,
-            Strings.get(Strings.ACTION_EDIT_PASTE),
-            "edit-paste",
-            KeyEvent.VK_V,
-            UIUtils.MENU_SHORTCUT_MASK,
-            Flag.DISABLE_WHEN_PLAYING
-        );
-    }
+    void repaint();
+
+    Control getControl();
+
+    Mode getMode();
+
+    @Nullable JPopupMenu getEditPopup();
+
+    boolean requestFocusInWindow();
 }

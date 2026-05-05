@@ -28,7 +28,7 @@ import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.music.StaffElement;
 
-public class AccidentalAction extends NoteOnlyAction {
+public final class AccidentalAction extends NoteOnlyAction {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.ACCIDENTAL);
 

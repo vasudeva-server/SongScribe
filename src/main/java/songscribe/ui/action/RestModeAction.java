@@ -27,7 +27,7 @@ import songscribe.message.MessageCenter;
 import songscribe.music.StaffElement;
 import songscribe.message.notification.RestModeDidChangeNotification;
 
-public class RestModeAction extends SelectableUIAction implements UIAction.Reflectable {
+public final class RestModeAction extends SelectableUIAction implements UIAction.Reflectable {
 
     public static RestModeAction createAction() {
         return new RestModeAction();

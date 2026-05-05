@@ -24,7 +24,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.util.UIUtils;
 
-public class RewindAction extends SequencerAction {
+public final class RewindAction extends SequencerAction {
 
     public static RewindAction createAction() {
         return new RewindAction();

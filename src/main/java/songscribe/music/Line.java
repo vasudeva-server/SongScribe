@@ -517,9 +517,6 @@ public class Line {
 
         var predecessorElement = elements.get(predecessorIndex);
         var lyrics = predecessorElement.properties.lyrics;
-
-        record ExtendFix(int lyricIndex, int verse, Lyric.Extend newExtend) {}
-
         var fixes = new ArrayList<ExtendFix>();
 
         for (var i = 0; i < lyrics.size(); i++) {
@@ -1542,6 +1539,8 @@ public class Line {
             .anyMatch(r -> r instanceof Ending e &&
                            e.isInvalidatedByInsertion(insertedIndex, insertedType, this));
     }
+
+    private record ExtendFix(int lyricIndex, int verse, Lyric.Extend newExtend) {}
 
     // =========================================================================
     // Beam Group Management (Phase 4+)

@@ -27,7 +27,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.DeselectCommand;
 import songscribe.util.UIUtils;
 
-public class DeselectAction extends UIAction {
+public final class DeselectAction extends UIAction {
 
     public static DeselectAction createAction() {
         return new DeselectAction();

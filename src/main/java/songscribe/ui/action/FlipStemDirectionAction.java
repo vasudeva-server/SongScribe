@@ -30,7 +30,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 
-public class FlipStemDirectionAction extends UIAction {
+public final class FlipStemDirectionAction extends UIAction {
 
     public static FlipStemDirectionAction createAction() {
         return new FlipStemDirectionAction();

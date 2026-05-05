@@ -35,7 +35,7 @@ import songscribe.ui.layout.LayoutResult;
  * Reads pre-computed cubic Bezier geometry from {@link LayoutResult.TieLayout}
  * and draws a filled lens shape using an outer and inner cubic Bezier curve.
  */
-public class TieRenderer {
+public final class TieRenderer {
 
     // Singleton instance
     private static final TieRenderer INSTANCE = new TieRenderer();

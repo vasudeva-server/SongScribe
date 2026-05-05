@@ -25,7 +25,7 @@ import java.util.EnumSet;
 import songscribe.message.mutation.ElementField;
 import songscribe.music.StaffElement;
 
-public class AccidentalInParensAction extends NoteOnlyAction {
+public final class AccidentalInParensAction extends NoteOnlyAction {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS =
         EnumSet.of(ElementField.ACCIDENTAL_IN_PARENS);

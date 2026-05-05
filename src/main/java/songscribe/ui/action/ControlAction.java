@@ -25,7 +25,7 @@ import songscribe.message.MessageCenter;
 import songscribe.ui.Control;
 import songscribe.message.notification.ControlDidChangeNotification;
 
-public class ControlAction extends SelectableUIAction {
+public final class ControlAction extends SelectableUIAction {
 
     public final Control control;
 

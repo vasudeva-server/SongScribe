@@ -60,14 +60,13 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
     private LineComponent lc;
     private EditModeManager editModeManager;
 
-    private Song song;
     private Line line;
 
     @BeforeEach
     void setUp() {
         // Build real model objects before mocking MessageCenter so their constructors
         // see the real bus.
-        song = new Song();
+        Song song = new Song();
         line = song.getLine(0);
 
         messageCenterMock = mockStatic(MessageCenter.class);

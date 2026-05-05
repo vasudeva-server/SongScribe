@@ -26,7 +26,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.InsertLineCommand;
 import songscribe.util.UIUtils;
 
-public class InsertLineAction extends UIAction {
+public final class InsertLineAction extends UIAction {
 
     // If the index is this value, add a line to the end
     public static final int ADD = -1;

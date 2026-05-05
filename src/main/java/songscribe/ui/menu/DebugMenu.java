@@ -30,11 +30,8 @@ import songscribe.ui.component.Score;
  */
 public class DebugMenu extends JMenu {
 
-    private final Score score;
-
     public DebugMenu(Score score) {
         super("Debug");
-        this.score = score;
 
         var inspectorItem = new JCheckBoxMenuItem("Enable Inspector");
         inspectorItem.setAccelerator(

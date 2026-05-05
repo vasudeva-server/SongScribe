@@ -39,7 +39,7 @@ import songscribe.ui.layout.StaffExtents;
  * The key signature follows the clef and shows the sharps or flats
  * in the order they appear (FCGDAEB for sharps, BEADGCF for flats).
  */
-public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
+public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
     // ==========================================================================
     // Accidental Glyphs

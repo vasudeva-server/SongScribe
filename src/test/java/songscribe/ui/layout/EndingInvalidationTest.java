@@ -54,7 +54,6 @@ import songscribe.music.StaffElement;
  */
 class EndingInvalidationTest extends UnitTest {
 
-    private Song song;
     private Line line;
     private Ending ending;
 
@@ -70,7 +69,7 @@ class EndingInvalidationTest extends UnitTest {
     @BeforeEach
     void setUp() {
         var fixture = EndingLineFixture.primary();
-        song = fixture.song();
+        Song song = fixture.song();
         line        = fixture.line();
         anchor      = fixture.anchor();
         note1       = fixture.note1();
@@ -264,7 +263,6 @@ class EndingInvalidationTest extends UnitTest {
         @Nested
         class WhenSplitIsRepeatLeftRight {
 
-            private Song comp2;
             private Line line2;
             private StaffElement anchor2;
             private StaffElement end2;
@@ -272,7 +270,7 @@ class EndingInvalidationTest extends UnitTest {
 
             @BeforeEach
             void setUp() {
-                comp2 = new Song();
+                Song comp2 = new Song();
                 line2 = comp2.getLine(0);
                 anchor2 = new StaffElement(ElementType.SINGLE_BARLINE);
                 var lrSplit = new StaffElement(ElementType.REPEAT_LEFT_RIGHT);
@@ -445,9 +443,7 @@ class EndingInvalidationTest extends UnitTest {
         @Nested
         class WhenSplitIsRepeatLeftRight {
 
-            private Song comp2;
             private Line line2;
-            private StaffElement anchor2;
             private StaffElement lrSplit;
             private StaffElement end2;
             private Ending ending2;
@@ -455,9 +451,9 @@ class EndingInvalidationTest extends UnitTest {
             @BeforeEach
             void setUp() {
                 var fixture = EndingLineFixture.secondary();
-                comp2   = fixture.song();
+                Song comp2 = fixture.song();
                 line2   = fixture.line();
-                anchor2 = fixture.anchor();
+                StaffElement anchor2 = fixture.anchor();
                 lrSplit = fixture.split();
                 end2    = fixture.end();
                 ending2 = fixture.ending();

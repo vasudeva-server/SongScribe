@@ -23,9 +23,9 @@ package songscribe.ui.component;
 import module java.desktop;
 
 import java.awt.event.MouseEvent;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
-
-import org.jspecify.annotations.Nullable;
 
 import songscribe.message.MessageCenter;
 import songscribe.ui.Control;
@@ -36,24 +36,7 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.menu.DebugState;
 import songscribe.message.command.DeselectCommand;
-import songscribe.ui.playback.MidiController;
 import songscribe.util.UIUtils;
-
-/**
- * Callback interface for ScoreInputHandler to communicate with Score.
- */
-interface InputHandlerCallback {
-
-    void repaint();
-
-    Control getControl();
-
-    Mode getMode();
-
-    @Nullable JPopupMenu getEditPopup();
-
-    boolean requestFocusInWindow();
-}
 
 /**
  * Handles mouse and keyboard input for the Score component.
@@ -62,8 +45,8 @@ interface InputHandlerCallback {
  * Selection handling (click-to-select, drag-to-select, Alt-switch) is
  * handled by {@link LineComponent}.
  */
-public final class ScoreInputHandler
-    implements MouseListener, MouseMotionListener, KeyListener {
+public final class ScoreInputHandler extends KeyAdapter
+    implements MouseListener, MouseMotionListener {
 
     private final InputHandlerCallback callback;
     private final EditModeManager editModeManager;
@@ -90,10 +73,6 @@ public final class ScoreInputHandler
         }
 
         callback.requestFocusInWindow();
-
-        if (MidiController.isPlaying()) {
-            return;
-        }
     }
 
     @Override
@@ -164,9 +143,7 @@ public final class ScoreInputHandler
     //******************************
     @Override
     public void mouseDragged(MouseEvent e) {
-        if (DebugState.isInspectorEnabled()) {
-            return;
-        }
+        // Interface requires mouseDragged to be implemented
     }
 
     @Override
@@ -211,18 +188,44 @@ public final class ScoreInputHandler
         }
     }
 
-    @Override
-    public void keyTyped(KeyEvent e) {
-    }
-
     //***********************
     // Helper methods
     //***********************
 
+    private static final int[] KEY_CODES = {
+        KeyEvent.VK_UP,
+        KeyEvent.VK_DOWN,
+        KeyEvent.VK_LEFT,
+        KeyEvent.VK_RIGHT,
+        KeyEvent.VK_PAGE_UP,
+        KeyEvent.VK_PAGE_DOWN,
+        KeyEvent.VK_ENTER,
+    };
+
+    /**
+     * Registers key bindings on {@code component} and returns the keystroke→action-key
+     * map so the caller can temporarily disable them (e.g. during text editing).
+     */
+    Map<KeyStroke, Object> installKeyBindings(JComponent component) {
+        var bindings = new LinkedHashMap<KeyStroke, Object>();
+        var inputMap = component.getInputMap(JComponent.WHEN_FOCUSED);
+        var actionMap = component.getActionMap();
+
+        for (var keyCode : KEY_CODES) {
+            var actionKey = new Object();
+            var keyStroke = KeyStroke.getKeyStroke(keyCode, 0);
+            bindings.put(keyStroke, actionKey);
+            inputMap.put(keyStroke, actionKey);
+            actionMap.put(actionKey, new KeyAction(callback, editModeManager, keyCode));
+        }
+
+        return bindings;
+    }
+
     /**
      * Action for handling keyboard input in keyboard control mode.
      */
-    static class KeyAction extends AbstractAction {
+    private static class KeyAction extends AbstractAction {
 
         private final InputHandlerCallback callback;
         private final EditModeManager editModeManager;

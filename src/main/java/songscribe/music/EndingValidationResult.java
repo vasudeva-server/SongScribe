@@ -24,7 +24,7 @@ package songscribe.music;
  * validation passed, what action is needed for the preceding element,
  * and the final span bounds.
  */
-public class EndingValidationResult {
+public final class EndingValidationResult {
 
     public enum PrecedingAction {
         /** No adjustment needed (preceding element is already suitable). */

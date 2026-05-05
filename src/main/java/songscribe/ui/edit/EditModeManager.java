@@ -58,9 +58,6 @@ public final class EditModeManager {
         return instance;
     }
 
-    // Dependencies
-    private final ClipboardManager clipboardManager;
-    private final SelectionCoordinator selectionCoordinator;
     private final ScoreActions scoreActions;
     private final GraceModeManager graceModeManager;
 
@@ -86,10 +83,9 @@ public final class EditModeManager {
         SelectionCoordinator selectionCoordinator,
         ScoreActions scoreActions
     ) {
-        this.clipboardManager = clipboardManager;
-        this.selectionCoordinator = selectionCoordinator;
+        // Dependencies
         this.scoreActions = scoreActions;
-        this.graceModeManager = new GraceModeManager(this, selectionCoordinator);
+        graceModeManager = new GraceModeManager(this, selectionCoordinator);
         instance = this;
     }
 

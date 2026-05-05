@@ -27,7 +27,7 @@ import songscribe.message.command.ToggleLoopPlaybackCommand;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.action.SelectableUIAction;
 
-public class LoopPlaybackAction extends SelectableUIAction {
+public final class LoopPlaybackAction extends SelectableUIAction {
 
     public static LoopPlaybackAction createAction() {
         return new LoopPlaybackAction();

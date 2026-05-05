@@ -27,7 +27,7 @@ import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 
-public class PlayPauseAction extends SequencerAction {
+public final class PlayPauseAction extends SequencerAction {
 
     private static final String PLAY_NAME = Strings.get(Strings.ACTION_PLAY_PLAY);
     private static final String PLAY_ICON = "@\uF446";

@@ -34,7 +34,7 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.Score;
 import songscribe.util.StringUtils;
 
-public class TupletAction extends UIAction {
+public final class TupletAction extends UIAction {
 
     public enum Tuplet {
         REMOVE(0),

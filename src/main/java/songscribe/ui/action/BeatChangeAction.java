@@ -25,7 +25,7 @@ import songscribe.Strings;
 
 import songscribe.ui.dialog.BeatChangeDialog;
 
-public class BeatChangeAction extends UIAction {
+public final class BeatChangeAction extends UIAction {
 
     public static BeatChangeAction createAction() {
         return new BeatChangeAction();

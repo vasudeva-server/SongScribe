@@ -28,7 +28,7 @@ import songscribe.music.ArticulationType;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.Articulation;
 
-public class DurationArticulationAction extends NoteOnlyAction {
+public final class DurationArticulationAction extends NoteOnlyAction {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.ARTICULATION);
 

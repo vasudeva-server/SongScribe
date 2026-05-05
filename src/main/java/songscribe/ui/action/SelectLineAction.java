@@ -27,7 +27,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.SelectLineCommand;
 import songscribe.util.UIUtils;
 
-public class SelectLineAction extends UIAction {
+public final class SelectLineAction extends UIAction {
 
     public static SelectLineAction createAction() {
         return new SelectLineAction();

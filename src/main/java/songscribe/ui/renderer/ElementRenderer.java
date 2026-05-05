@@ -33,6 +33,7 @@ import songscribe.ui.layout.LineElement;
  *
  * @param <T> The LineElement type this renderer handles
  */
+@FunctionalInterface
 public interface ElementRenderer<T extends LineElement> {
 
     /**

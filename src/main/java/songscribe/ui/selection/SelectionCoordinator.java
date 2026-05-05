@@ -97,7 +97,6 @@ public final class SelectionCoordinator {
     @Nullable
     private ElementSelection contentCacheSelection = null;
     private boolean hasDurations;
-    private boolean hasNonDurations;
     private boolean hasRests;
 
     // Applicability cache: maps action to whether it applies to any element in the selection.
@@ -506,7 +505,7 @@ public final class SelectionCoordinator {
         }
 
         hasDurations = false;
-        hasNonDurations = false;
+        boolean hasNonDurations = false;
         hasRests = false;
         contentCacheSelection = selection;
 

@@ -36,7 +36,7 @@ import songscribe.ui.layout.LineElement;
  * Crescendo: opens from left to right (gets louder)
  * Diminuendo: opens from right to left (gets softer)
  */
-public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
+public final class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
     // ==========================================================================
     // Constants

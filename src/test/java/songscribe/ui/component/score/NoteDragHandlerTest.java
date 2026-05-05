@@ -75,7 +75,6 @@ class NoteDragHandlerTest extends UnitTest {
 
     // Instance mocks
     private LineComponent lc;
-    private LineSelectionHandler mockSelectionHandler;
     private LineSelectionState mockSelectionState;
     private ScaleContext mockScaleContext;
 
@@ -110,7 +109,7 @@ class NoteDragHandlerTest extends UnitTest {
 
         lc = mock(LineComponent.class);
         var mockScore = mock(Score.class);
-        mockSelectionHandler = mock(LineSelectionHandler.class);
+        LineSelectionHandler mockSelectionHandler = mock(LineSelectionHandler.class);
         mockSelectionState = mock(LineSelectionState.class);
 
         when(lc.getScore()).thenReturn(mockScore);

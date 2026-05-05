@@ -28,7 +28,7 @@ import songscribe.music.StaffElement;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
 
-public class DynamicMarkingAction extends NoteOnlyAction {
+public final class DynamicMarkingAction extends NoteOnlyAction {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS =
         EnumSet.of(ElementField.DYNAMIC_ATTACHMENT);

@@ -24,19 +24,9 @@ import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Song;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.StaffPanel;
 import songscribe.ui.layout.ScaleContext;
-
-interface ComponentHierarchyProvider {
-
-    @Nullable
-    MainPanel getMainPanel();
-
-    Song getSong();
-}
 
 public final class ComponentHierarchyNavigator {
 

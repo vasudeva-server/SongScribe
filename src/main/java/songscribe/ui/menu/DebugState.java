@@ -31,11 +31,14 @@ import songscribe.ui.layout.ElementBoundsSs;
 /**
  * Manages debug visualization state.
  */
-public class DebugState {
+public final class DebugState {
 
     private static boolean inspectorEnabled = false;
     private static @Nullable HoveredElement hoveredElement = null;
     private static @Nullable Point mousePosition = null;
+
+    private DebugState() {
+    }
 
     public static boolean isInspectorEnabled() {
         return inspectorEnabled;

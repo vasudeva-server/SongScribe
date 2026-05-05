@@ -83,9 +83,6 @@ public final class PreviewElementManager {
     /** Current Y position on the staff (in staff position units, not pixels). */
     static int currentStaffPosition = 0;
 
-    /** Whether the Alt key is currently held down. */
-    private static boolean altPressed = false;
-
     /** The LineComponent the mouse is currently over (independent of insertion note state). */
     @Nullable
     private static LineComponent currentMouseLine = null;
@@ -181,7 +178,7 @@ public final class PreviewElementManager {
      * @param pressed true if Alt is pressed
      */
     static void setAltPressed(boolean pressed) {
-        altPressed = pressed;
+        /** Whether the Alt key is currently held down. */
 
         // When Alt is released, re-trigger preview element from current mouse position
         if (!pressed) {

@@ -38,7 +38,7 @@ import songscribe.ui.layout.SongLayoutMetrics;
  * baseline provided by the song-wide
  * {@link SongLayoutMetrics}. Stateless.
  */
-public class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
+public final class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
 
     private static final LyricTextRenderer INSTANCE = new LyricTextRenderer();
 

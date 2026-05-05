@@ -222,9 +222,6 @@ public final class Score
     // True after init() has been called (interactive mode only)
     private boolean initialized = false;
 
-    // If true, the score is played with repeats
-    private boolean playWithRepeats = false;
-
     // Song-wide layout metrics shared across all line components.
     // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
     @SuppressWarnings("NullAway.Init")
@@ -342,25 +339,8 @@ public final class Score
     }
 
     private void initKeys() {
-        var keyCodes = new int[]{
-            KeyEvent.VK_UP,
-            KeyEvent.VK_DOWN,
-            KeyEvent.VK_LEFT,
-            KeyEvent.VK_RIGHT,
-            KeyEvent.VK_PAGE_UP,
-            KeyEvent.VK_PAGE_DOWN,
-            KeyEvent.VK_ENTER,
-        };
-
-        var inputMap = getInputMap(JComponent.WHEN_FOCUSED);
-        var actionMap = getActionMap();
-
-        for (var keyCode : keyCodes) {
-            var actionKey = new Object();
-            var keyStroke = KeyStroke.getKeyStroke(keyCode, 0);
-            scoreKeyBindings.put(keyStroke, actionKey);
-            inputMap.put(keyStroke, actionKey);
-            actionMap.put(actionKey, new ScoreInputHandler.KeyAction(this, editModeManager, keyCode));
+        if (inputHandler != null) {
+            scoreKeyBindings.putAll(inputHandler.installKeyBindings(this));
         }
     }
 
@@ -428,6 +408,7 @@ public final class Score
      * <p>
      * This is the top-level panel for the Phase 2 JComponent-based rendering.
      */
+    @Override
     public @Nullable MainPanel getMainPanel() {
         return mainPanel;
     }
@@ -553,7 +534,8 @@ public final class Score
     public void syncPlaybackPrefs() {
         var prefs = Prefs.getInstance();
         editModeManager.setPlayInsertedNote(prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
-        playWithRepeats = prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS);
+        // If true, the score is played with repeats
+        boolean playWithRepeats = prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS);
 
         // Delegate playback settings to PlaybackController
         PlaybackController.setInstrument(prefs.getInt(PrefsKey.INSTRUMENT));

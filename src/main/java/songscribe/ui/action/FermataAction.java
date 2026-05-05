@@ -26,7 +26,7 @@ import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.music.StaffElement;
 
-public class FermataAction extends NoteOnlyAction {
+public final class FermataAction extends NoteOnlyAction {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.FERMATA);
 

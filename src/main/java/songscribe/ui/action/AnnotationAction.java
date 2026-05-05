@@ -24,7 +24,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.ui.dialog.AnnotationDialog;
 
-public class AnnotationAction extends UIAction {
+public final class AnnotationAction extends UIAction {
 
     public static AnnotationAction createAction() {
         return new AnnotationAction();

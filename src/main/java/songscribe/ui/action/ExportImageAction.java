@@ -37,7 +37,7 @@ import songscribe.file.FileUtils;
 import songscribe.util.GraphicUtils;
 import songscribe.util.Utils;
 
-public class ExportImageAction extends UIAction {
+public final class ExportImageAction extends UIAction {
 
     private final PlatformFileDialog fileDialog;
     private @Nullable ResolutionDialog resolutionDialog = null;

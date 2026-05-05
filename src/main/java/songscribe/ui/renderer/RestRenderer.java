@@ -43,7 +43,7 @@ import songscribe.ui.layout.StaffExtents;
  * applied by LineComponent handles pixel conversion.
  * Rests don't have stems, flags, or accidentals.
  */
-public class RestRenderer extends BaseElementRenderer<StaffElement> {
+public final class RestRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Rest Glyphs (SMuFL/Bravura)

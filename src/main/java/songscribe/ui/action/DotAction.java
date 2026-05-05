@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.message.mutation.ElementField;
 import songscribe.music.StaffElement;
 
-public class DotAction extends PreviewElementAction implements UIAction.ElementModifiable {
+public final class DotAction extends PreviewElementAction implements UIAction.ElementModifiable {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.DOT_COUNT);
 

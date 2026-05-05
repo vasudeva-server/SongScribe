@@ -35,7 +35,7 @@ import songscribe.ui.layout.stacking.NoteAttachedStacker;
  * centered over the notehead. This renderer is separate from
  * {@link DynamicsRenderer}, which handles hairpin (crescendo/diminuendo) lines.
  */
-public class DynamicMarkingRenderer extends BaseElementRenderer<StaffElement> {
+public final class DynamicMarkingRenderer extends BaseElementRenderer<StaffElement> {
 
     // Singleton instance
     private static final DynamicMarkingRenderer INSTANCE = new DynamicMarkingRenderer();

@@ -24,7 +24,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.prefs.RecentDocumentsManager;
 
-public class ClearRecentsAction extends UIAction {
+public final class ClearRecentsAction extends UIAction {
 
     public static ClearRecentsAction createAction() {
         return new ClearRecentsAction();

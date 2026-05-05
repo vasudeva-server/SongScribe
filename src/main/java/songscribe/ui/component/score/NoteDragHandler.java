@@ -66,7 +66,6 @@ class NoteDragHandler {
 
     private boolean dragActive = false;
     private boolean dragMoved = false;
-    private boolean pressHandled = false;
     private boolean pressPreservedMultiSelection = false;
     private int dragElementIndex = -1;
 
@@ -113,7 +112,7 @@ class NoteDragHandler {
      * and the event should not be processed further.
      */
     boolean handlePress(MouseEvent e) {
-        pressHandled = false;
+        boolean pressHandled = false;
 
         var score = lc.getScore();
 

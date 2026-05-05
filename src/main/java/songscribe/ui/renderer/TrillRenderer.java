@@ -39,7 +39,7 @@ import songscribe.util.GraphicUtils;
 /**
  * Renders trill markings (tr symbol + wavy line for extended trills).
  */
-public class TrillRenderer extends BaseElementRenderer<Trill> {
+public final class TrillRenderer extends BaseElementRenderer<Trill> {
 
     // ==========================================================================
     // Constants

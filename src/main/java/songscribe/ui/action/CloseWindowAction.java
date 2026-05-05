@@ -25,7 +25,7 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.CloseWindowCommand;
 
-public class CloseWindowAction extends UIAction {
+public final class CloseWindowAction extends UIAction {
 
     public static CloseWindowAction createAction() {
         return new CloseWindowAction();

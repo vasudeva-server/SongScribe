@@ -26,7 +26,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.NewFileCommand;
 import songscribe.util.UIUtils;
 
-public class NewAction extends UIAction {
+public final class NewAction extends UIAction {
 
     public static NewAction createAction() {
         return new NewAction();

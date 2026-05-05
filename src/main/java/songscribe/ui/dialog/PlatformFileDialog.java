@@ -35,9 +35,7 @@ public class PlatformFileDialog {
     private SystemFileChooser chooser;
     private final MainFrame mainFrame;
     private final boolean isOpenDialog;
-    private final boolean directoriesOnly;
     private MyFileFilter @Nullable [] originalFilters = null;
-    private int initialFilterIndex = 0;
     private SystemFileChooser.FileNameExtensionFilter @Nullable [] convertedFilters = null;
 
     private static SystemFileChooser.FileNameExtensionFilter convertFilter(MyFileFilter maf) {
@@ -86,7 +84,6 @@ public class PlatformFileDialog {
     ) {
         this(mainFrame, title, isOpenDialog, false);
         this.originalFilters = filters;
-        this.initialFilterIndex = initialFilterIndex;
 
         convertedFilters = new SystemFileChooser.FileNameExtensionFilter[filters.length];
         for (var i = 0; i < filters.length; i++) {
@@ -106,7 +103,6 @@ public class PlatformFileDialog {
     ) {
         this.mainFrame = mainFrame;
         this.isOpenDialog = isOpenDialog;
-        this.directoriesOnly = directoriesOnly;
 
         chooser = new SystemFileChooser();
         chooser.setDialogTitle(title);

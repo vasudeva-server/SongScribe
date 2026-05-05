@@ -33,6 +33,7 @@ public final class ModifierState {
     }
 
     // ==================== macOS ====================
+    @FunctionalInterface
     private interface ApplicationServices extends Library {
         ApplicationServices INSTANCE = Native.load("ApplicationServices", ApplicationServices.class);
         int CGEventSourceKeyState(int sourceState, int keyCode);
@@ -60,6 +61,7 @@ public final class ModifierState {
     }
 
     // ==================== Windows ====================
+    @FunctionalInterface
     private interface User32 extends Library {
         User32 INSTANCE = Native.load("user32", User32.class);
         short GetAsyncKeyState(int vKey);

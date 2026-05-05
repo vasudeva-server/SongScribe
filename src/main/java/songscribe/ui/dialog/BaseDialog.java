@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.uber.nullaway.annotations.Initializer;
 import net.engio.mbassy.listener.Handler;
 
 import org.intellij.lang.annotations.MagicConstant;
@@ -331,10 +332,6 @@ public abstract class BaseDialog {
                 throw e;
             }
         } else {
-            if (dialog == null) {
-                return;
-            }
-
             try {
                 for (var tab : tabs) {
                     tab.tabWillHide();
@@ -464,7 +461,7 @@ public abstract class BaseDialog {
 
     /**
      * Returns the underlying {@link JDialog}, or null if the dialog is not
-     * currently visible. Useful when a caller needs a {@link java.awt.Component}
+     * currently visible. Useful when a caller needs a {@link Component}
      * parent for a nested dialog.
      */
     public @Nullable JDialog getWindow() {
@@ -510,6 +507,7 @@ public abstract class BaseDialog {
         return true;
     }
 
+    @SuppressWarnings("NoopMethodInAbstractClass")
     protected abstract class Tab extends JPanel {
 
         protected final GridBagConstraints constraints =

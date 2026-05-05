@@ -28,7 +28,7 @@ import songscribe.ui.dialog.ExportMidiDialog;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.file.FileUtils;
 
-public class ExportMidiAction extends UIAction {
+public final class ExportMidiAction extends UIAction {
 
     private final PlatformFileDialog fileDialog;
 

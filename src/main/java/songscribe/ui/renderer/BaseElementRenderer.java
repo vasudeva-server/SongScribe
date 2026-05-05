@@ -187,7 +187,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * then overlays debug visualization if enabled.
      */
     @Override
-    public final void render(
+    public void render(
         T element,
         Graphics2D g2,
         ElementRenderContext ctx

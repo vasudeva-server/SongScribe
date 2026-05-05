@@ -45,16 +45,13 @@ import static org.mockito.Mockito.when;
 class BaseDialogCounterTest extends UnitTest {
 
     private MockedStatic<MainFrame> mainFrameMock;
-    private MainFrame mockFrame;
 
     @BeforeEach
     void setUp() {
         mainFrameMock = mockStatic(MainFrame.class);
-        mockFrame = mock(MainFrame.class);
+        var mockFrame = mock(MainFrame.class);
         mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-
         BaseDialogTestHelper.configureMockFrame(mockFrame);
-
         BaseDialog.resetVisibleBlockingDialogCount();
     }
 

@@ -26,7 +26,7 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.AddDynamicsCommand;
 
-public class AddDynamicsAction extends UIAction {
+public final class AddDynamicsAction extends UIAction {
 
     private final boolean isCrescendo;
 

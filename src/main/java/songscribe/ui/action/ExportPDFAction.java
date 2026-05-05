@@ -33,7 +33,7 @@ import songscribe.ui.dialog.ExportPDFDialog;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.file.FileUtils;
 
-public class ExportPDFAction extends UIAction {
+public final class ExportPDFAction extends UIAction {
 
     private final PlatformFileDialog fileDialog;
     private @Nullable ExportPDFDialog exportPDFDialog = null;

@@ -35,7 +35,7 @@ import songscribe.ui.layout.stacking.NoteAttachedStacker;
  * A fermata indicates that a note should be held longer than its written duration.
  * The symbol consists of a dot under an arc (like an eyebrow over an eye).
  */
-public class FermataRenderer extends BaseElementRenderer<StaffElement> {
+public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants

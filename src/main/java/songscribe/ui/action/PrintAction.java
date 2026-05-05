@@ -26,7 +26,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.PrintCommand;
 import songscribe.util.UIUtils;
 
-public class PrintAction extends UIAction {
+public final class PrintAction extends UIAction {
 
     public static PrintAction createAction() {
         return new PrintAction();

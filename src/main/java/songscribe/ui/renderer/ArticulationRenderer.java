@@ -37,7 +37,7 @@ import songscribe.ui.layout.stacking.NoteAttachedStacker;
  *   <li>Accent - emphasized attack (> symbol)</li>
  * </ul>
  */
-public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
+public final class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants

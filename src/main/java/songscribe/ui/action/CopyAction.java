@@ -25,7 +25,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.util.UIUtils;
 
-public class CopyAction extends PasteboardAction {
+public final class CopyAction extends PasteboardAction {
 
     public static CopyAction createAction() {
         return new CopyAction();

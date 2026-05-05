@@ -30,7 +30,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.command.ToggleTrillCommand;
 
-public class ToggleTrillAction extends UIAction {
+public final class ToggleTrillAction extends UIAction {
 
     public static ToggleTrillAction createAction() {
         return new ToggleTrillAction();

@@ -40,7 +40,7 @@ import songscribe.music.StaffElement;
  *   <li>Insert element in middle: {@link #calculateInsertionShiftSs(Line, StaffElement, int, LayoutResult)}</li>
  * </ul>
  */
-public class InsertionSpacingCalculator {
+public final class InsertionSpacingCalculator {
 
     /**
      * Result of an insertion spacing calculation, providing the X position for the

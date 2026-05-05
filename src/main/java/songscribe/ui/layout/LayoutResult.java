@@ -62,7 +62,6 @@ public final class LayoutResult {
     private final Map<StaffElement, ElementColumn> elementColumns;
     private final Map<LineElement, ElementBoundsSs> elementBounds;
     private final Map<Span, BeamLayout> beamLayouts;
-    private final Map<StaffElement, StemLayout> stemLayouts;
     /**
      * Flat lookup keyed by element for every stem in the line — beamed stems
      * (extracted from {@link BeamLayout#stems()}) and unbeamed stems alike.
@@ -121,7 +120,7 @@ public final class LayoutResult {
         this.elementColumns = Map.copyOf(elementColumns);
         this.elementBounds = Map.copyOf(elementBounds);
         this.beamLayouts = Map.copyOf(beamLayouts);
-        this.stemLayouts = Map.copyOf(stemLayouts);
+        Map<StaffElement, StemLayout> stemLayouts1 = Map.copyOf(stemLayouts);
 
         var mergedStems = new HashMap<StaffElement, StemLayout>(stemLayouts);
 

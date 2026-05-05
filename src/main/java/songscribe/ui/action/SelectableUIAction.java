@@ -30,6 +30,7 @@ import songscribe.prefs.PrefsKey;
  * (e.g. accidentals, note durations, rest mode).
  * Non-selectable actions extend UIAction directly.
  */
+@SuppressWarnings("NonStaticInitializer")
 public abstract class SelectableUIAction extends UIAction
     implements UIAction.Selectable {
 

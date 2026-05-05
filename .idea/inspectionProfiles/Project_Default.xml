@@ -15,8 +15,6 @@
     <inspection_tool class="ArrayEquality" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="AssertMessageNotString" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="AssignmentToLambdaParameter" enabled="true" level="WARNING" enabled_by_default="true" />
-    <inspection_tool class="AssignmentToNull" enabled="true" level="WARNING" enabled_by_default="true" />
-    <inspection_tool class="AssignmentToStaticFieldFromInstanceMethod" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="BadExceptionDeclared" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="exceptionsString" value="" />
       <option name="exceptions">
@@ -103,9 +101,6 @@
     <inspection_tool class="InnerClassVariableHidesOuterClassVariable" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="m_ignoreInvisibleFields" value="true" />
     </inspection_tool>
-    <inspection_tool class="InstanceVariableInitialization" enabled="true" level="WARNING" enabled_by_default="true">
-      <option name="m_ignorePrimitives" value="false" />
-    </inspection_tool>
     <inspection_tool class="InstanceVariableUninitializedUse" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="m_ignorePrimitives" value="false" />
       <option name="annotationNamesString" value="" />
@@ -132,6 +127,7 @@
       <option name="m_ignoreInvisibleFields" value="true" />
       <option name="m_ignoreStaticMethods" value="true" />
     </inspection_tool>
+    <inspection_tool class="MagicConstant" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="MapReplaceableByEnumMap" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="MetaAnnotationWithoutRuntimeRetention" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="MethodMayBeStatic" enabled="false" level="WARNING" enabled_by_default="false">
@@ -168,8 +164,9 @@
     </inspection_tool>
     <inspection_tool class="NonShortCircuitBoolean" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="NoopMethodInAbstractClass" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="NotNullFieldNotInitialized" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="NumericToString" enabled="true" level="WARNING" enabled_by_default="true" />
-    <inspection_tool class="ObjectEquality" enabled="true" level="WARNING" enabled_by_default="true" editorAttributes="WARNING_ATTRIBUTES">
+    <inspection_tool class="ObjectEquality" enabled="false" level="WARNING" enabled_by_default="false" editorAttributes="WARNING_ATTRIBUTES">
       <option name="m_ignoreEnums" value="true" />
       <option name="m_ignoreClassObjects" value="true" />
       <option name="m_ignorePrivateConstructors" value="false" />
@@ -228,6 +225,7 @@
     </inspection_tool>
     <inspection_tool class="ReturnSeparatedFromComputation" enabled="false" level="INFORMATION" enabled_by_default="false" />
     <inspection_tool class="ReuseOfLocalVariable" enabled="false" level="INFORMATION" enabled_by_default="false" />
+    <inspection_tool class="SameParameterValue" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="SetReplaceableByEnumSet" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="SimplifiableEqualsExpression" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="SimplifiableIfStatement" enabled="true" level="WARNING" enabled_by_default="true" editorAttributes="WARNING_ATTRIBUTES" />
