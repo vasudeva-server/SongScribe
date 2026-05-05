@@ -92,9 +92,9 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
 
     @Override
     public boolean matchesElement(StaffElement element) {
-        return switch (dotLevel) {
-            case SINGLE -> element.getDotCount() == 1;
-            case DOUBLE -> element.getDotCount() == 2;
+        return element.getDotCount() == switch (dotLevel) {
+            case SINGLE -> 1;
+            case DOUBLE -> 2;
         };
     }
 

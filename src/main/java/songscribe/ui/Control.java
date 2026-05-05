@@ -27,9 +27,9 @@ public enum Control {
     KEYBOARD;
 
     public String getDescription() {
-        return switch (this) {
-            case MOUSE -> Strings.get(Strings.ACTION_CONTROL_MOUSE);
-            case KEYBOARD -> Strings.get(Strings.ACTION_CONTROL_KEYBOARD);
-        };
+        return Strings.get(switch (this) {
+            case MOUSE -> Strings.ACTION_CONTROL_MOUSE;
+            case KEYBOARD -> Strings.ACTION_CONTROL_KEYBOARD;
+        });
     }
 }

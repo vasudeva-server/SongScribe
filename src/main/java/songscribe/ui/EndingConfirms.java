@@ -107,11 +107,11 @@ public final class EndingConfirms {
     }
 
     private static String typeNameFor(ElementType type) {
-        return switch (type) {
-            case REPEAT_RIGHT -> Strings.get(Strings.ELEMENT_TYPE_NAME_RIGHT_REPEAT);
-            case REPEAT_LEFT_RIGHT -> Strings.get(Strings.ELEMENT_TYPE_NAME_LEFT_RIGHT_REPEAT);
-            case REPEAT_LEFT -> Strings.get(Strings.ELEMENT_TYPE_NAME_LEFT_REPEAT);
-            default -> Strings.get(Strings.ELEMENT_TYPE_NAME_BARLINE);
-        };
+        return Strings.get(switch (type) {
+            case REPEAT_RIGHT -> Strings.ELEMENT_TYPE_NAME_RIGHT_REPEAT;
+            case REPEAT_LEFT_RIGHT -> Strings.ELEMENT_TYPE_NAME_LEFT_RIGHT_REPEAT;
+            case REPEAT_LEFT -> Strings.ELEMENT_TYPE_NAME_LEFT_REPEAT;
+            default -> Strings.ELEMENT_TYPE_NAME_BARLINE;
+        });
     }
 }
