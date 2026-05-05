@@ -724,14 +724,14 @@ public abstract class E2ETest {
      * The fixture is deserialized via the same path as File > Open, then set
      * on the score and laid out.
      */
-    protected Song loadFixture(String fixtureName) throws UnexpectedException {
+    protected void loadFixture(String fixtureName) throws UnexpectedException {
         var song = Objects.requireNonNull(GuiActionRunner.execute(() -> {
             var loaded = UnitTest.loadFixture(fixtureName);
             score().setSong(loaded);
             return loaded;
         }));
+
         performLayout(0);
-        return song;
     }
 
     // -- Save/load round-trip --

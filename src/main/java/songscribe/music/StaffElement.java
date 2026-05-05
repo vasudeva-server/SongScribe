@@ -270,15 +270,11 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Removes an articulation from this element.
      */
-    public boolean removeArticulation(Articulation articulation) {
+    public void removeArticulation(Articulation articulation) {
         if (articulations.remove(articulation)) {
             articulation.setOwnerElement(null);
             removeChild(articulation);
-
-            return true;
         }
-
-        return false;
     }
 
     /**
@@ -344,15 +340,11 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Removes an attachment from this note.
      */
-    public boolean removeAttachment(Attachment attachment) {
+    public void removeAttachment(Attachment attachment) {
         if (attachments.remove(attachment)) {
             attachment.setOwnerElement(null);
             removeChild(attachment);
-
-            return true;
         }
-
-        return false;
     }
 
     /**

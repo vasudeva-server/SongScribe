@@ -38,6 +38,7 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.util.MyFontUtils;
 
+@SuppressWarnings("SameReturnValue")
 class ViewIOTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")

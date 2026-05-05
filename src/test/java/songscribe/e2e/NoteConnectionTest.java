@@ -50,7 +50,7 @@ import songscribe.ui.action.Actions;
 class NoteConnectionTest extends E2ETest {
 
     @BeforeAll
-    void loadConnectionsFixture() throws Exception {
+    void loadConnectionsFixture() {
         resetSong();
         loadFixture("connections");
     }

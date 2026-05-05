@@ -472,18 +472,16 @@ public final class GraceModeManager {
         return true;
     }
 
-    public boolean keyPressed(KeyEvent e) {
+    public void keyPressed(KeyEvent e) {
         if (!isInProgress()) {
-            return false;
+            return;
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             finish(true);
-            return true;
         }
 
         // Duration/embellishment keys pass through to normal handling
-        return false;
     }
 
     // -------------------------------------------------------------------------

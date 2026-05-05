@@ -57,7 +57,7 @@ import songscribe.ui.layout.ScaleContext;
 class SelectionTest extends E2ETest {
 
     @BeforeAll
-    void loadSelection1Fixture() throws Exception {
+    void loadSelection1Fixture() {
         resetSong();
         loadFixture("selection1");
     }
@@ -258,7 +258,7 @@ class SelectionTest extends E2ETest {
     class BarlineSelection {
 
         @BeforeAll
-        void loadSelection2Fixture() throws Exception {
+        void loadSelection2Fixture() {
             resetSong();
             loadFixture("selection2");
         }

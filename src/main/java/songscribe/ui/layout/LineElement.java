@@ -379,15 +379,11 @@ public abstract class LineElement {
      * Removes a child element.
      *
      * @param child The element to remove
-     * @return true if the child was removed
      */
-    public boolean removeChild(LineElement child) {
+    public void removeChild(LineElement child) {
         if (children.remove(child)) {
             child.setParentElement(null);
-            return true;
         }
-
-        return false;
     }
 
     /**

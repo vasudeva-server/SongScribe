@@ -38,11 +38,10 @@ final class RenderContextTestHelper {
      * that reports {@code selectedElementIndex} on line 0 as selected. Returns the mock so
      * callers can stub additional behavior.
      */
-    static LineComponent.SelectionProvider enableSelection(ElementRenderContext ctx, int selectedElementIndex) {
+    static void enableSelection(ElementRenderContext ctx, int selectedElementIndex) {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isElementSelected(selectedElementIndex, 0)).thenReturn(true);
         ctx.setEditMode(true);
         ctx.setSelectionProvider(selectionProvider);
-        return selectionProvider;
     }
 }

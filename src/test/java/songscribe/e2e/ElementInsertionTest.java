@@ -93,7 +93,7 @@ class ElementInsertionTest extends E2ETest {
     private static final int AFTER_PAIR_C_GRACE_DELETED = AFTER_PAIR_B_DELETED + 1;
 
     @BeforeAll
-    void loadInsertionFixture() throws Exception {
+    void loadInsertionFixture() {
         resetSong();
         loadFixture("insertion");
     }
@@ -608,7 +608,7 @@ class ElementInsertionTest extends E2ETest {
     class FullLine {
 
         @BeforeAll
-        void setUp() throws Exception {
+        void setUp() {
             resetSong();
             loadFixture("full-line");
         }

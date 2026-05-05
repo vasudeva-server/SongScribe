@@ -64,7 +64,7 @@ class DynamicsMarkingTest extends E2ETest {
     }
 
     @BeforeAll
-    void loadSelection1Fixture() throws Exception {
+    void loadSelection1Fixture() {
         resetSong();
         loadFixture("selection1");
     }

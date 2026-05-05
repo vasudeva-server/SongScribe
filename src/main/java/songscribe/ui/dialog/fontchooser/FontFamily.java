@@ -37,8 +37,8 @@ public class FontFamily {
         this.name = name;
     }
 
-    public boolean add(Font font) {
-        return styles.add(font);
+    public void add(Font font) {
+        styles.add(font);
     }
 
     public String getName() {

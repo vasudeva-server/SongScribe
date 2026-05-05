@@ -95,21 +95,20 @@ public class LineTrackBuilder {
     /**
      * Adds this line's elements to a MIDI track.
      *
-     * @param track The MIDI track to add to
-     * @param lineIndex This line's index in the song (for colorize messages)
-     * @param startTicks Starting tick position
+     * @param track        The MIDI track to add to
+     * @param lineIndex    This line's index in the song (for colorize messages)
+     * @param startTicks   Starting tick position
      * @param initialTempo Tempo at the start of this line
-     * @param settings Playback settings
-     * @return Pair of (ending tick position, ending tempo)
+     * @param settings     Playback settings
      */
-    public TrackPosition addToTrack(
+    public void addToTrack(
         Track track,
         int lineIndex,
         int startTicks,
         Tempo initialTempo,
         PlaybackSettings settings
     ) throws InvalidMidiDataException {
-        return addToTrack(track, lineIndex, startTicks, initialTempo, settings,
+        addToTrack(track, lineIndex, startTicks, initialTempo, settings,
             0, line.effectiveElementCount() - 1, (VelocityMap) null);
     }
 

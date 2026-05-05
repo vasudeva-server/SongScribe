@@ -50,6 +50,7 @@ import songscribe.music.StaffElement;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
 
+@SuppressWarnings("SameReturnValue")
 class StaffElementIOTest extends UnitTest {
 
     private static final SAXParserFactory PARSER_FACTORY = SAXParserFactory.newInstance();
