@@ -33,6 +33,7 @@ public final class ModifierState {
     }
 
     // ==================== macOS ====================
+    @SuppressWarnings("InterfaceNeverImplemented")
     @FunctionalInterface
     private interface ApplicationServices extends Library {
         ApplicationServices INSTANCE = Native.load("ApplicationServices", ApplicationServices.class);
@@ -61,6 +62,7 @@ public final class ModifierState {
     }
 
     // ==================== Windows ====================
+    @SuppressWarnings("InterfaceNeverImplemented")
     @FunctionalInterface
     private interface User32 extends Library {
         User32 INSTANCE = Native.load("user32", User32.class);

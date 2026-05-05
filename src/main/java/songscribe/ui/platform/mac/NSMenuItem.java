@@ -28,6 +28,7 @@ import org.rococoa.Rococoa;
  * Minimal Rococoa wrapper for NSMenuItem — exposes only the methods
  * needed to enable/disable and identify menu items.
  */
+@SuppressWarnings("ALL")
 public abstract class NSMenuItem implements ObjCObject {
 
     @SuppressWarnings("unused")

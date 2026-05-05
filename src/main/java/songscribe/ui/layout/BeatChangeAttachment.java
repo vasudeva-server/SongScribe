@@ -88,6 +88,7 @@ public class BeatChangeAttachment extends MetronomeAttachment {
      * @param attrFont the attribution font (used for the "=" sign)
      * @return width and collision sub-regions in staff-space units
      */
+    @Override
     public ContentMetrics computeContentMetrics(Font attrFont) {
         var metadata = SMuFLMetadata.getInstance();
         var scale = ScaleContext.getInstance();

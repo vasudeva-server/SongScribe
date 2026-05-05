@@ -122,6 +122,7 @@ public abstract class MetronomeAttachment extends Attachment {
     /**
      * Returns the content height in staff-space units.
      */
+    @Override
     public double getContentHeightSs() {
         return QUARTER_NOTE_HEIGHT_SS;
     }

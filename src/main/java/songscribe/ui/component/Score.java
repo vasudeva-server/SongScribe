@@ -703,6 +703,7 @@ public final class Score
         return editModeManager.getPreviewElement();
     }
 
+    @Override
     public void setPreviewElement(@Nullable StaffElement previewElement) {
         if (previewElement != null) {
             var currentPreviewElement = editModeManager.getPreviewElement();
@@ -944,14 +945,17 @@ public final class Score
         selectionCoordinator.setInSelectMode(inSelectMode);
     }
 
+    @Override
     public Control getControl() {
         return control;
     }
 
+    @Override
     public void setControl(Control control) {
         this.control = control;
     }
 
+    @Override
     public Mode getMode() {
         return mode;
     }

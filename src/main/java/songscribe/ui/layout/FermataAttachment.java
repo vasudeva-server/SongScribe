@@ -69,6 +69,7 @@ public class FermataAttachment extends Attachment {
     /**
      * Returns the content width in staff-space units, derived from SMuFL bounding box data.
      */
+    @Override
     public double getContentWidthSs() {
         return FERMATA_WIDTH_SS;
     }
@@ -76,6 +77,7 @@ public class FermataAttachment extends Attachment {
     /**
      * Returns the content height in staff-space units, derived from SMuFL bounding box data.
      */
+    @Override
     public double getContentHeightSs() {
         return FERMATA_HEIGHT_SS;
     }

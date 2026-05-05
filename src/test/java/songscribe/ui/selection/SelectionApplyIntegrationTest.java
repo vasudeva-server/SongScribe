@@ -518,11 +518,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             var note = ElementType.CROTCHET.newInstance();
 
             var fermataAction = FermataAction.createAction();
-            var flaggedAction = new UIAction("Beam", null, 0, "beam", "Toggle beam") {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                }
-            };
+            var flaggedAction = new UIAction("Beam", null, 0, "beam", "Toggle beam");
             flaggedAction.setFlags(UIAction.Flag.DISABLE_WHEN_BAR_SELECTED);
 
             var reflectableActions = List.<UIAction.Reflectable>of(fermataAction);

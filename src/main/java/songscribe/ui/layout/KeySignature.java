@@ -117,6 +117,7 @@ public class KeySignature extends LineElement {
      * Returns the content height in staff-space units — the bbox height of the active
      * accidental glyph. Kerning and inter-glyph vertical variation are out of scope.
      */
+    @Override
     public double getContentHeightSs() {
         if (!hasAccidentals()) {
             return 0;

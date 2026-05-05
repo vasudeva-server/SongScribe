@@ -117,10 +117,6 @@ class UIActionFlagBehaviorTest extends UnitTest {
     // -- helpers --
 
     private UIAction createActionWithFlag(UIAction.Flag... flags) {
-        return new UIAction("Test", "test-cmd", flags) {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-            }
-        };
+        return new UIAction("Test", "test-cmd", flags);
     }
 }

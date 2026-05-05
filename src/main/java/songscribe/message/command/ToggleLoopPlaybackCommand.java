@@ -31,6 +31,7 @@ public class ToggleLoopPlaybackCommand extends Message implements SelectableMess
         this.selected = selected;
     }
 
+    @Override
     public boolean isSelected() {
         return selected;
     }

@@ -151,11 +151,6 @@ public abstract class RangeElement extends LineElement {
         return ScaleContext.getInstance().toPixels(getContentWidthSs());
     }
 
-    /**
-     * Returns the content height of this range element in staff-space units.
-     */
-    public abstract double getContentHeightSs();
-
     @Override
     public double getContentHeightPx() {
         return ScaleContext.getInstance().toPixels(getContentHeightSs());

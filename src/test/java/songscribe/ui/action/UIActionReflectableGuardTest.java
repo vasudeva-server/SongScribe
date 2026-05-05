@@ -55,11 +55,7 @@ class UIActionReflectableGuardTest extends UnitTest {
             when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(2);
 
-            var nonReflectable = new UIAction("Test", null, 0, "test", "Test") {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                }
-            };
+            var nonReflectable = new UIAction("Test", null, 0, "test", "Test");
             nonReflectable.setFlags(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE);
             nonReflectable.setEnabled(true);
 

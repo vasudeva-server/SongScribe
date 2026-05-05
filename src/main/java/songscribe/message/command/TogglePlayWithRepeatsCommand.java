@@ -31,6 +31,7 @@ public class TogglePlayWithRepeatsCommand extends Message implements SelectableM
         this.selected = selected;
     }
 
+    @Override
     public boolean isSelected() {
         return selected;
     }

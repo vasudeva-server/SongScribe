@@ -48,6 +48,7 @@ public class StructuralElement extends StaffElement {
         super(note);
     }
 
+    @SuppressWarnings("MethodDoesntCallSuperMethod")
     @Override
     public StructuralElement clone() {
         return new StructuralElement(this);

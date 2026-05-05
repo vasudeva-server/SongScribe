@@ -58,6 +58,7 @@ public class TempoChangeAttachment extends MetronomeAttachment {
         this.tempo = tempo;
     }
 
+    @Override
     public ContentMetrics computeContentMetrics(Font attrFont) {
         var regions = new ArrayList<CollisionRegion>(2);
         var glyphWidth = glyphWidthSs();

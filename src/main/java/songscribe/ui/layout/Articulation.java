@@ -133,6 +133,7 @@ public class Articulation extends LineElement {
     /**
      * Returns the content width in staff-space units, derived from SMuFL bounding box data.
      */
+    @Override
     public double getContentWidthSs() {
         return isStaccato() ? STACCATO_WIDTH_SS : ACCENT_WIDTH_SS;
     }
@@ -140,6 +141,7 @@ public class Articulation extends LineElement {
     /**
      * Returns the content height in staff-space units, derived from SMuFL bounding box data.
      */
+    @Override
     public double getContentHeightSs() {
         return isStaccato() ? STACCATO_HEIGHT_SS : ACCENT_HEIGHT_SS;
     }

@@ -28,6 +28,7 @@ import org.rococoa.Rococoa;
  * Minimal Rococoa wrapper for NSApplication — exposes only the methods
  * needed to access the native application menu.
  */
+@SuppressWarnings("ALL")
 public abstract class NSApplication implements ObjCObject {
 
     private static final _Class CLASS = Rococoa.createClass("NSApplication", _Class.class);

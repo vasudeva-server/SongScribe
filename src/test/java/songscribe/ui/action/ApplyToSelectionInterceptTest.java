@@ -46,13 +46,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
     void testNonReflectableReturnsFalse() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var env = setupMockEnv(mainFrameMock);
-
-            var action = new UIAction("Test", null, 0, "test", "Test") {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                }
-            };
-
+            var action = new UIAction("Test", null, 0, "test", "Test");
             assertThat(action.applyToSelectionIfActive()).isFalse();
         }
     }

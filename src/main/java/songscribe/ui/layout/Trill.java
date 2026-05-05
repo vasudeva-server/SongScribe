@@ -83,6 +83,7 @@ public class Trill extends RangeElement {
      * For vertical stacking, only the glyph width matters since the wavy
      * extension is drawn at the same Y level.
      */
+    @Override
     public double getContentWidthSs() {
         return TRILL_GLYPH_WIDTH_SS;
     }

@@ -139,6 +139,7 @@ public class DynamicAttachment extends Attachment {
     /**
      * Returns the content width in staff-space units.
      */
+    @Override
     public double getContentWidthSs() {
         var glyph = type.getGlyph();
 
@@ -152,6 +153,7 @@ public class DynamicAttachment extends Attachment {
     /**
      * Returns the content height in staff-space units.
      */
+    @Override
     public double getContentHeightSs() {
         var glyph = type.getGlyph();
 

@@ -29,6 +29,7 @@ import org.rococoa.cocoa.foundation.NSInteger;
  * Minimal Rococoa wrapper for NSMenu — exposes only the methods
  * needed to locate menu items by title or index.
  */
+@SuppressWarnings("ALL")
 public abstract class NSMenu implements ObjCObject {
 
     @SuppressWarnings("unused")
