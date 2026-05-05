@@ -20,6 +20,7 @@
 
 package songscribe.ui.layout;
 
+import java.awt.Font;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -69,6 +70,11 @@ public abstract class MetronomeAttachment extends Attachment {
             setParentLine(parent.getParentLine());
         }
     }
+
+    /**
+     * Computes the content width and per-sub-region collision geometry for this marking.
+     */
+    public abstract ContentMetrics computeContentMetrics(Font attrFont);
 
     /**
      * Returns the SMuFL metronome glyph for the given element type, or null if unmapped.

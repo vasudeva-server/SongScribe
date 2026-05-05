@@ -22,130 +22,21 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.ui.renderer.GraphicsState;
-import songscribe.util.GraphicUtils;
-
 /**
  * Component that renders the main under-lyrics section.
  * <p>
  * Displays multi-line lyrics text centered horizontally below the staff lines.
  * Uses the song's lyrics font.
  */
-public class UnderLyricsComponent extends ScoreComponent {
+public class UnderLyricsComponent extends LyricsComponent {
 
-    /** X position for content (used for union width centering). */
-    private float contentXPx = -1;
-
-    /**
-     * Sets the X position for content rendering.
-     * <p>
-     * Used by TextPanel to achieve union width centering across
-     * all text components.
-     *
-     * @param contentX X position, or -1 to center based on own width
-     */
-    public void setContentX(float contentX) {
-        contentXPx = contentX;
-    }
-
-    /**
-     * Returns the X position for content rendering.
-     */
-    public float getContentX() {
-        return contentXPx;
-    }
-
-    /**
-     * Calculates the width of the text content.
-     *
-     * @param g2 Graphics context
-     * @return Text width in pixels
-     */
-    public double getTextWidth(Graphics2D g2) {
-        if (song == null) {
-            return 0;
-        }
-
-        var lyrics = song.getUnderLyrics();
-
-        if (lyrics.isEmpty()) {
-            return 0;
-        }
-
-        try (var ignored = GraphicsState.save(
-            g2,
-            GraphicsState.Property.FONT
-        )) {
-            g2.setFont(song.getLyricsFont());
-            return GraphicUtils.getTextBlockWidth(lyrics, g2);
-        }
+    @Override
+    protected String getLyrics() {
+        return getSong().getUnderLyrics();
     }
 
     @Override
-    protected void render(Graphics2D g2) {
-        if (song == null) {
-            return;
-        }
-
-        var lyrics = song.getUnderLyrics();
-
-        if (lyrics.isEmpty()) {
-            return;
-        }
-
-        try (var ignored = GraphicsState.save(
-            g2,
-            GraphicsState.Property.FONT,
-            GraphicsState.Property.COLOR
-        )) {
-            var font = song.getLyricsFont();
-            g2.setFont(font);
-            g2.setColor(Color.BLACK);
-
-            var metrics = g2.getFontMetrics();
-            var lineHeight = metrics.getHeight();
-
-            // Use contentX if set (for union width centering), otherwise center based on own width
-            float x;
-
-            if (contentXPx >= 0) {
-                x = contentXPx;
-            } else {
-                var textWidth = GraphicUtils.getTextBlockWidth(lyrics, g2);
-                x = (float) ((song.getLineWidthPx() - textWidth) / 2);
-            }
-
-            var y = (float) metrics.getAscent();
-
-            // Draw each line
-            var lines = lyrics.split("\n");
-
-            for (var line : lines) {
-                g2.drawString(line, x, y);
-                y += lineHeight;
-            }
-        }
-    }
-
-    @Override
-    public Dimension getPreferredSize() {
-        if (song == null) {
-            return new Dimension(0, 0);
-        }
-
-        var lyrics = song.getUnderLyrics();
-
-        if (lyrics.isEmpty()) {
-            return new Dimension(0, 0);
-        }
-
-        var font = song.getLyricsFont();
-        var metrics = getFontMetrics(font);
-
-        var lines = lyrics.split("\n");
-        var lineHeight = metrics.getHeight();
-        var height = lineHeight * lines.length;
-
-        return new Dimension(song.getLineWidthPx(), height);
+    protected Font getLyricsFont() {
+        return getSong().getLyricsFont();
     }
 }

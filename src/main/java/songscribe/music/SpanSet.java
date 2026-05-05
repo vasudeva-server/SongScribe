@@ -31,7 +31,6 @@ public class SpanSet<T extends Span> {
     private final LinkedList<T> spans = new LinkedList<>();
 
     @Nullable
-    @SuppressWarnings("unchecked")
     public T addSpan(int start, int end) {
         return addSpan(start, end, null);
     }

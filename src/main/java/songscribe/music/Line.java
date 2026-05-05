@@ -753,6 +753,10 @@ public class Line {
                 replaceSyllabicAndCompound(index, verse, newSyllabic, newCompound));
         }
 
+        fixSuccessorSyllabic(index, verse, !isWordEnd);
+    }
+
+    private void fixSuccessorSyllabic(int index, int verse, boolean predecessorContinues) {
         var nextIndex = nextLyricBearingIndex(index, verse);
 
         if (nextIndex < 0) {
@@ -767,18 +771,17 @@ public class Line {
 
         var nextContinues = nextLyric.syllabic() == Lyric.Syllabic.BEGIN
             || nextLyric.syllabic() == Lyric.Syllabic.MIDDLE;
-        var thisContinues = !isWordEnd;
-        Lyric.Syllabic newNextSyllabic;
+        Lyric.Syllabic newSyllabic;
 
-        if (thisContinues) {
-            newNextSyllabic = nextContinues ? Lyric.Syllabic.MIDDLE : Lyric.Syllabic.END;
+        if (predecessorContinues) {
+            newSyllabic = nextContinues ? Lyric.Syllabic.MIDDLE : Lyric.Syllabic.END;
         } else {
-            newNextSyllabic = nextContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
+            newSyllabic = nextContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
         }
 
-        if (newNextSyllabic != nextLyric.syllabic()) {
+        if (newSyllabic != nextLyric.syllabic()) {
             modifyElement(nextIndex, ElementField.LYRIC, () ->
-                replaceSyllabicAndCompound(nextIndex, verse, newNextSyllabic, nextLyric.compound()));
+                replaceSyllabicAndCompound(nextIndex, verse, newSyllabic, nextLyric.compound()));
         }
     }
 
@@ -874,26 +877,7 @@ public class Line {
         }
 
         // No predecessor — fix the successor if it now lacks a continuing predecessor.
-        var nextIndex = nextLyricBearingIndex(index, verse);
-
-        if (nextIndex < 0) {
-            return;
-        }
-
-        var nextLyric = elements.get(nextIndex).getLyricForVerse(verse);
-
-        if (nextLyric == null || nextLyric.syllabic() == null) {
-            return;
-        }
-
-        var nextContinues = nextLyric.syllabic() == Lyric.Syllabic.MIDDLE
-            || nextLyric.syllabic() == Lyric.Syllabic.BEGIN;
-        var newSyllabic = nextContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
-
-        if (newSyllabic != nextLyric.syllabic()) {
-            modifyElement(nextIndex, ElementField.LYRIC, () ->
-                replaceSyllabicAndCompound(nextIndex, verse, newSyllabic, nextLyric.compound()));
-        }
+        fixSuccessorSyllabic(index, verse, false);
     }
 
     private static int findLyricIndexForVerse(StaffElement element, int verse) {
@@ -1243,7 +1227,7 @@ public class Line {
     public SpanSet<?>[] copySpans(int a, int b) {
         var retSpanSets = Arrays.stream(spanSets)
             .map(spanSet -> spanSet.copySpan(a, b))
-            .toArray(SpanSet[]::new); //noinspection unchecked
+            .toArray(SpanSet[]::new);
 
         shiftSpans(retSpanSets, 0, -a);
         return retSpanSets;

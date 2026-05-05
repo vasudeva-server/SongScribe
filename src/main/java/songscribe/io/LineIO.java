@@ -271,21 +271,28 @@ public final class LineIO {
             this.song = song;
         }
 
+        private record SegmentParts(int a, int b, int secondComma) {}
+
+        private static SegmentParts parseSegmentAB(String str, int begin, int end) {
+            var firstComma = str.indexOf(',', begin);
+            var secondComma = str.indexOf(',', firstComma + 1);
+
+            if (secondComma > end) {
+                secondComma = -1;
+            }
+
+            var a = Integer.parseInt(str.substring(begin, firstComma));
+            var b = Integer.parseInt(
+                str.substring(firstComma + 1, (secondComma == -1) ? end : secondComma)
+            );
+            return new SegmentParts(a, b, secondComma);
+        }
+
         private static void stringToBeamingSpanSet(SpanSet<Span> spanSet, String str) {
             forEachSegment(str, (begin, end) -> {
-                var firstComma = str.indexOf(',', begin);
-                var secondComma = str.indexOf(',', firstComma + 1);
-
-                if (secondComma > end) {
-                    secondComma = -1;
-                }
-
-                var a = Integer.parseInt(str.substring(begin, firstComma));
-                var b = Integer.parseInt(
-                    str.substring(firstComma + 1, (secondComma == -1) ? end : secondComma)
-                );
-                var data = (secondComma == -1) ? null : str.substring(secondComma + 1, end);
-                spanSet.addSpan(a, b, data);
+                var parts = parseSegmentAB(str, begin, end);
+                var data = (parts.secondComma() == -1) ? null : str.substring(parts.secondComma() + 1, end);
+                spanSet.addSpan(parts.a(), parts.b(), data);
             });
         }
 
@@ -309,23 +316,13 @@ public final class LineIO {
 
         private static void stringToTupletSpanSet(SpanSet<? super TupletSpan> spanSet, String str) {
             forEachSegment(str, (begin, end) -> {
-                var firstComma = str.indexOf(',', begin);
-                var secondComma = str.indexOf(',', firstComma + 1);
-
-                if (secondComma > end) {
-                    secondComma = -1;
-                }
-
-                var a = Integer.parseInt(str.substring(begin, firstComma));
-                var b = Integer.parseInt(
-                    str.substring(firstComma + 1, (secondComma == -1) ? end : secondComma)
-                );
+                var segment = parseSegmentAB(str, begin, end);
                 var grade = 3; // default to triplet
                 var verticalPositionSs = 0.0;
 
-                if (secondComma != -1) {
+                if (segment.secondComma() != -1) {
                     // Has data portion: grade[,vertPos]
-                    var parts = str.substring(secondComma + 1, end).split(",");
+                    var parts = str.substring(segment.secondComma() + 1, end).split(",");
 
                     try {
                         grade = Integer.parseInt(parts[0]);
@@ -342,7 +339,7 @@ public final class LineIO {
                     }
                 }
 
-                var tuplet = new TupletSpan(a, b, grade);
+                var tuplet = new TupletSpan(segment.a(), segment.b(), grade);
                 tuplet.setVerticalPositionSs(verticalPositionSs);
                 spanSet.addSpan(tuplet);
             });
@@ -350,22 +347,12 @@ public final class LineIO {
 
         private static void stringToDynamicsSpanSet(SpanSet<? super DynamicsSpan> spanSet, String str) {
             forEachSegment(str, (begin, end) -> {
-                var firstComma = str.indexOf(',', begin);
-                var secondComma = str.indexOf(',', firstComma + 1);
+                var segment = parseSegmentAB(str, begin, end);
+                var dynamics = new DynamicsSpan(segment.a(), segment.b());
 
-                if (secondComma > end) {
-                    secondComma = -1;
-                }
-
-                var a = Integer.parseInt(str.substring(begin, firstComma));
-                var b = Integer.parseInt(
-                    str.substring(firstComma + 1, (secondComma == -1) ? end : secondComma)
-                );
-                var dynamics = new DynamicsSpan(a, b);
-
-                if (secondComma != -1) {
+                if (segment.secondComma() != -1) {
                     // Has data portion: x1,x2,y
-                    var parts = str.substring(secondComma + 1, end).split(",");
+                    var parts = str.substring(segment.secondComma() + 1, end).split(",");
 
                     if (parts.length >= 3) {
                         try {

@@ -89,7 +89,6 @@ public class ImageConverter {
         }
     }
 
-    @SuppressWarnings("ConstantValue")
     private void convert() {
         // Image export not yet implemented with component-based rendering
         LOG.warn("Image conversion is not yet implemented");

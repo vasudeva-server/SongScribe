@@ -37,6 +37,7 @@ import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.Ending;
+import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.TempoChangeAttachment;
 import songscribe.ui.layout.Trill;
 import songscribe.ui.layout.Tuplet;
@@ -416,26 +417,9 @@ public class VerticalAdjustment extends Adjustment {
             case FIRST_SECOND_ENDING -> {
                 var ending = line.findEndingAt(adjustRect.xIndex);
 
-                if (ending == null) {
+                if (!getRangeElementAdjustRect(adjustRect, ending, Ending.class, HANDLE_SIZE_PX)) {
                     return;
                 }
-
-                var startNote = ending.getAnchorElement();
-                var endNote = ending.getEndElement();
-
-                if (startNote == null || endNote == null) {
-                    return;
-                }
-
-                var layoutResult = getLayoutResultForLine(adjustRect.line);
-                var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Ending.class);
-
-                if (bounds == null) {
-                    throw new IllegalStateException("No bounds found for Ending");
-                }
-
-                adjustRect.rect.x = startNote.getXOffsetPx() - HANDLE_SIZE_PX;
-                adjustRect.rect.y = (int) bounds.getTopSs() - HANDLE_SIZE_PX;
             }
             case ANNOTATION -> {
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
@@ -449,7 +433,6 @@ public class VerticalAdjustment extends Adjustment {
                 adjustRect.rect.y = (int) bounds.getTopSs() - HANDLE_SIZE_PX;
             }
             case TRILL -> {
-                // Find the Trill range element containing this note
                 var trill = line.getRangeElements().stream()
                     .filter(e -> e instanceof Trill)
                     .map(e -> (Trill) e)
@@ -463,26 +446,9 @@ public class VerticalAdjustment extends Adjustment {
                     .findFirst()
                     .orElse(null);
 
-                if (trill == null) {
+                if (!getRangeElementAdjustRect(adjustRect, trill, Trill.class, TRILL_HANDLE_X_OFFSET_PX)) {
                     return;
                 }
-
-                var startNote = trill.getAnchorElement();
-                var endNote = trill.getEndElement();
-
-                if (startNote == null || endNote == null) {
-                    return;
-                }
-
-                var layoutResult = getLayoutResultForLine(adjustRect.line);
-                var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Trill.class);
-
-                if (bounds == null) {
-                    throw new IllegalStateException("No bounds found for Trill");
-                }
-
-                adjustRect.rect.x = startNote.getXOffsetPx() - TRILL_HANDLE_X_OFFSET_PX;
-                adjustRect.rect.y = (int) bounds.getTopSs() - HANDLE_SIZE_PX;
             }
             case CRESCENDO_Y, DIMINUENDO_Y -> {
                 var span = getCresDecrSpanSet(line, adjustRect.type)
@@ -534,6 +500,35 @@ public class VerticalAdjustment extends Adjustment {
 
         adjustRect.rect.width = HANDLE_SIZE_PX;
         adjustRect.rect.height = HANDLE_SIZE_PX;
+    }
+
+    private boolean getRangeElementAdjustRect(
+        AdjustRect adjustRect,
+        @Nullable RangeElement rangeElement,
+        Class<? extends RangeElement> elementClass,
+        int xOffsetPx
+    ) {
+        if (rangeElement == null) {
+            return false;
+        }
+
+        var startNote = rangeElement.getAnchorElement();
+        var endNote = rangeElement.getEndElement();
+
+        if (startNote == null || endNote == null) {
+            return false;
+        }
+
+        var layoutResult = getLayoutResultForLine(adjustRect.line);
+        var bounds = layoutResult.findRangeElementBounds(startNote, endNote, elementClass);
+
+        if (bounds == null) {
+            throw new IllegalStateException("No bounds found for " + elementClass.getSimpleName());
+        }
+
+        adjustRect.rect.x = startNote.getXOffsetPx() - xOffsetPx;
+        adjustRect.rect.y = (int) bounds.getTopSs() - HANDLE_SIZE_PX;
+        return true;
     }
 
     private void getAttributionAdjustRect(AdjustRect adjustRect) {

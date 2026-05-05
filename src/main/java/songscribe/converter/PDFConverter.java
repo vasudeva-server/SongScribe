@@ -32,7 +32,7 @@ import songscribe.ui.action.ExportPDFAction;
 import songscribe.ui.component.Score;
 import songscribe.file.FileUtils;
 
-@SuppressWarnings({ "ConstantValue", "FieldMayBeStatic" })
+@SuppressWarnings({"FieldMayBeStatic" })
 public class PDFConverter {
 
     private static final Logger LOG = LoggerFactory.getLogger(PDFConverter.class);

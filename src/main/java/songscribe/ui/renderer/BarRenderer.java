@@ -141,25 +141,12 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
                 drawRepeatDots(g2, x);
             }
 
-            case REPEAT_RIGHT -> {
-                // dots | sep | thin | sep | thick
-                double x = 0;
-                drawRepeatDots(g2, x);
-                x += Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
-                drawBar(g2, x, thin, topY, bottomY);
-                x += thin + sep;
-                drawBar(g2, x, thick, topY, bottomY);
-            }
+            case REPEAT_RIGHT -> drawRightRepeat(g2, 0, thin, thick, topY, bottomY, sep);
 
             case REPEAT_LEFT_RIGHT -> {
                 // dots | sep | thin | sep | thick | sep | thin | sep | dots
-                double x = 0;
-                drawRepeatDots(g2, x);
-                x += Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
-                drawBar(g2, x, thin, topY, bottomY);
-                x += thin + sep;
-                drawBar(g2, x, thick, topY, bottomY);
-                x += thick + sep;
+                var x = drawRightRepeat(g2, 0, thin, thick, topY, bottomY, sep);
+                x += sep;
                 drawBar(g2, x, thin, topY, bottomY);
                 x += thin + sep;
                 drawRepeatDots(g2, x);
@@ -174,6 +161,24 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
     // Drawing Helpers
     // ==========================================================================
+
+    // dots | sep | thin | sep | thick; returns x after the thick bar
+    private static double drawRightRepeat(
+        Graphics2D g2,
+        double x,
+        double thin,
+        double thick,
+        double topY,
+        double bottomY,
+        double sep
+    ) {
+        drawRepeatDots(g2, x);
+        x += Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
+        drawBar(g2, x, thin, topY, bottomY);
+        x += thin + sep;
+        drawBar(g2, x, thick, topY, bottomY);
+        return x + thick;
+    }
 
     /**
      * Draws a single barline as a filled rectangle.

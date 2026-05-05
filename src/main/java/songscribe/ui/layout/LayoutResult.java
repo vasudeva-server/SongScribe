@@ -300,19 +300,7 @@ public final class LayoutResult {
         StaffElement ownerElement,
         Class<? extends Attachment> attachmentType) {
 
-        for (var entry : decorationLayouts.entrySet()) {
-            var element = entry.getKey();
-
-            if (attachmentType.isInstance(element)) {
-                var attachment = (Attachment) element;
-
-                if (attachment.getOwnerElement() == ownerElement) {
-                    return entry.getValue();
-                }
-            }
-        }
-
-        return null;
+        return findByAttachment(decorationLayouts, ownerElement, attachmentType);
     }
 
     /**
@@ -469,19 +457,7 @@ public final class LayoutResult {
         StaffElement parentElement,
         Class<? extends Attachment> attachmentType) {
 
-        for (var entry : elementBounds.entrySet()) {
-            var element = entry.getKey();
-
-            if (attachmentType.isInstance(element)) {
-                var attachment = (Attachment) element;
-
-                if (attachment.getOwnerElement() == parentElement) {
-                    return entry.getValue();
-                }
-            }
-        }
-
-        return null;
+        return findByAttachment(elementBounds, parentElement, attachmentType);
     }
 
     /**
@@ -505,6 +481,26 @@ public final class LayoutResult {
 
                 if (attachment.getOwnerElement() == parentElement) {
                     return (A) attachment;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private <T> @Nullable T findByAttachment(
+        Map<LineElement, T> map,
+        StaffElement ownerElement,
+        Class<? extends Attachment> attachmentType) {
+
+        for (var entry : map.entrySet()) {
+            var element = entry.getKey();
+
+            if (attachmentType.isInstance(element)) {
+                var attachment = (Attachment) element;
+
+                if (attachment.getOwnerElement() == ownerElement) {
+                    return entry.getValue();
                 }
             }
         }

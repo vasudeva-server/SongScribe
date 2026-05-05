@@ -27,6 +27,7 @@ import songscribe.error.RuntimeError;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Song;
+import songscribe.util.GraphicUtils;
 
 /**
  * Abstract base class for score rendering components.
@@ -52,6 +53,9 @@ public abstract class ScoreComponent extends JComponent {
     protected int marginRight = 0;
     protected int marginBottom = 0;
     protected int marginLeft = 0;
+
+    /** X position for content (used for union width centering). */
+    private float contentXPx = -1;
 
     /**
      * Creates a new ScoreComponent.
@@ -139,6 +143,44 @@ public abstract class ScoreComponent extends JComponent {
 
     public void setMarginLeft(int marginLeft) {
         this.marginLeft = marginLeft;
+    }
+
+    /**
+     * Sets the X position for content rendering.
+     * <p>
+     * Used by TextPanel to achieve union width centering across
+     * all text components.
+     *
+     * @param contentX X position, or -1 to center based on own width
+     */
+    public void setContentX(float contentX) {
+        contentXPx = contentX;
+    }
+
+    /**
+     * Returns the X position for content rendering.
+     */
+    public float getContentX() {
+        return contentXPx;
+    }
+
+    /**
+     * Resolves the X position for content rendering.
+     * <p>
+     * Returns the value set by {@link #setContentX} if non-negative,
+     * otherwise computes a centered X based on the given text width.
+     *
+     * @param text text to measure for centering
+     * @param g2   graphics context with font already set
+     * @return X position in pixels
+     */
+    protected float resolveContentX(String text, Graphics2D g2) {
+        if (contentXPx >= 0) {
+            return contentXPx;
+        }
+
+        var textWidth = GraphicUtils.getTextBlockWidth(text, g2);
+        return (float) ((getSong().getLineWidthPx() - textWidth) / 2);
     }
 
     /**

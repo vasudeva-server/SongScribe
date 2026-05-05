@@ -23,8 +23,6 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.renderer.GraphicsState;
-import songscribe.util.GraphicUtils;
 
 /**
  * Component that renders Bengali (Bangla) lyrics.
@@ -32,13 +30,10 @@ import songscribe.util.GraphicUtils;
  * Displays multi-line Bangla text centered horizontally below the main lyrics.
  * Uses the song's Bangla font with appropriate spacing.
  */
-public class BanglaLyricsComponent extends ScoreComponent {
+public class BanglaLyricsComponent extends LyricsComponent {
 
     /** Vertical spacing for Bangla lyrics (2 staff lines). */
     private static final int BANGLA_LYRICS_TOP_MARGIN = ScaleContext.getInstance().toRoundedPixels(2.0);
-
-    /** X position for content (used for union width centering). */
-    private float contentXPx = -1;
 
     /**
      * Creates a new BanglaLyricsComponent.
@@ -47,116 +42,13 @@ public class BanglaLyricsComponent extends ScoreComponent {
         setMarginTop(BANGLA_LYRICS_TOP_MARGIN);
     }
 
-    /**
-     * Sets the X position for content rendering.
-     * <p>
-     * Used by TextPanel to achieve union width centering across
-     * all text components.
-     *
-     * @param contentX X position, or -1 to center based on own width
-     */
-    public void setContentX(float contentX) {
-        contentXPx = contentX;
-    }
-
-    /**
-     * Returns the X position for content rendering.
-     */
-    public float getContentX() {
-        return contentXPx;
-    }
-
-    /**
-     * Calculates the width of the text content.
-     *
-     * @param g2 Graphics context
-     * @return Text width in pixels
-     */
-    public double getTextWidth(Graphics2D g2) {
-        if (song == null) {
-            return 0;
-        }
-
-        var banglaLyrics = song.getBanglaLyrics();
-
-        if (banglaLyrics.isEmpty()) {
-            return 0;
-        }
-
-        try (var ignored = GraphicsState.save(
-            g2,
-            GraphicsState.Property.FONT
-        )) {
-            g2.setFont(song.getBanglaFont());
-            return GraphicUtils.getTextBlockWidth(banglaLyrics, g2);
-        }
+    @Override
+    protected String getLyrics() {
+        return getSong().getBanglaLyrics();
     }
 
     @Override
-    protected void render(Graphics2D g2) {
-        if (song == null) {
-            return;
-        }
-
-        var banglaLyrics = song.getBanglaLyrics();
-
-        if (banglaLyrics.isEmpty()) {
-            return;
-        }
-
-        try (var ignored = GraphicsState.save(
-            g2,
-            GraphicsState.Property.FONT,
-            GraphicsState.Property.COLOR
-        )) {
-            var font = song.getBanglaFont();
-            g2.setFont(font);
-            g2.setColor(Color.BLACK);
-
-            var metrics = g2.getFontMetrics();
-            var lineHeight = metrics.getHeight();
-
-            // Use contentX if set (for union width centering), otherwise center based on own width
-            float x;
-
-            if (contentXPx >= 0) {
-                x = contentXPx;
-            } else {
-                var textWidth = GraphicUtils.getTextBlockWidth(banglaLyrics, g2);
-                x = (float) ((song.getLineWidthPx() - textWidth) / 2);
-            }
-
-            var y = (float) (marginTop + metrics.getAscent());
-
-            // Draw each line
-            var lines = banglaLyrics.split("\n");
-
-            for (var line : lines) {
-                g2.drawString(line, x, y);
-                y += lineHeight;
-            }
-        }
-    }
-
-    @Override
-    public Dimension getPreferredSize() {
-        if (song == null) {
-            return new Dimension(0, 0);
-        }
-
-        var banglaLyrics = song.getBanglaLyrics();
-
-        if (banglaLyrics.isEmpty()) {
-            return new Dimension(0, 0);
-        }
-
-        var font = song.getBanglaFont();
-        var metrics = getFontMetrics(font);
-
-        var lines = banglaLyrics.split("\n");
-        var lineHeight = metrics.getHeight();
-        var height = lineHeight * lines.length;
-
-        return new Dimension(song.getLineWidthPx(), height + marginTop);
+    protected Font getLyricsFont() {
+        return getSong().getBanglaFont();
     }
 }

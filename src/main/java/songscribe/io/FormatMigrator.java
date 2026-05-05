@@ -216,7 +216,6 @@ public final class FormatMigrator {
      *
      * @param line The line to migrate
      */
-    @SuppressWarnings("deprecation")
     private static void migrateLineLevelOffsets(Line line) {
         // Migrate tempo change offset to per-instance
         var tempoOffset = line.getTempoChangeYPosPx();

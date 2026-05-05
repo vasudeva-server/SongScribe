@@ -43,33 +43,11 @@ public class TranslationComponent extends ScoreComponent {
     /** Translation header for unofficial translations. */
     private static final String TRANSLATION_HEADER_UNOFFICIAL = "Unofficial translation:";
 
-    /** X position for content (used for union width centering). */
-    private float contentXPx = -1;
-
     /**
      * Creates a new TranslationComponent.
      */
     public TranslationComponent() {
         setMarginTop(TRANSLATION_TOP_MARGIN);
-    }
-
-    /**
-     * Sets the X position for content rendering.
-     * <p>
-     * Used by TextPanel to achieve union width centering across
-     * all text components.
-     *
-     * @param contentX X position, or -1 to center based on own width
-     */
-    public void setContentX(float contentX) {
-        contentXPx = contentX;
-    }
-
-    /**
-     * Returns the X position for content rendering.
-     */
-    public float getContentX() {
-        return contentXPx;
     }
 
     /**
@@ -143,15 +121,7 @@ public class TranslationComponent extends ScoreComponent {
 
             var headerMetrics = g2.getFontMetrics();
 
-            // Use contentX if set (for union width centering), otherwise center based on own width
-            float x;
-
-            if (contentXPx >= 0) {
-                x = contentXPx;
-            } else {
-                var headerWidth = GraphicUtils.getTextBlockWidth(headerText, g2);
-                x = (float) ((song.getLineWidthPx() - headerWidth) / 2);
-            }
+            var x = resolveContentX(headerText, g2);
 
             var y = (float) (marginTop + headerMetrics.getAscent());
 

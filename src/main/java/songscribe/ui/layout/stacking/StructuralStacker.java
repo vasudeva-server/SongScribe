@@ -27,6 +27,7 @@ import java.util.function.BiFunction;
 
 import songscribe.music.DynamicsSpan;
 import songscribe.music.Line;
+import songscribe.music.Span;
 import songscribe.music.SpanSet;
 import songscribe.music.StaffElement;
 import songscribe.music.TupletSpan;
@@ -43,6 +44,8 @@ import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.Tuplet;
 import songscribe.ui.renderer.LineThickness;
+
+import org.jspecify.annotations.Nullable;
 
 import static songscribe.ui.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.ui.layout.stacking.StackingUtils.stackAboveWithRegions;
@@ -137,26 +140,18 @@ public class StructuralStacker {
 
         for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
             var span = iter.next();
-            var startNote = line.getElement(span.getStart());
-            var endNote = line.getElement(span.getEnd());
+            var resolved = resolveSpan(line, span, existingTuplets, columnsByElement);
 
-            // Check if already covered by a range element
-            if (StackingUtils.isRangeCovered(startNote, endNote, existingTuplets)) {
+            if (resolved == null) {
                 continue;
             }
 
-            var startColumn = columnsByElement.get(startNote);
-            var endColumn = columnsByElement.get(endNote);
-
-            if (startColumn == null || endColumn == null) {
-                continue;
-            }
-
-            var bridged = new Tuplet(startNote, endNote, span.getGrade());
+            var startNote = resolved.startNote();
+            var bridged = new Tuplet(startNote, resolved.endNote(), span.getGrade());
 
             // Compute actual visual bracket bounds
-            var noteheadRightXSs = startColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
-            var endNoteheadRightXSs = endColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
+            var noteheadRightXSs = resolved.startColumn().getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
+            var endNoteheadRightXSs = resolved.endColumn().getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
             var isUpper = startNote.isUpper();
             var stemSs = LineThickness.getInstance().stemSs();
             var leftXSs = noteheadRightXSs - (isUpper ? stemSs : Engraving.NOTE_HEAD_WIDTH_SS) - Tuplet.ARM_EXTENSION_SS;
@@ -227,25 +222,17 @@ public class StructuralStacker {
 
         for (var iter = spanSet.listIterator(); iter.hasNext(); ) {
             var span = iter.next();
-            var startNote = line.getElement(span.getStart());
-            var endNote = line.getElement(span.getEnd());
+            var resolved = resolveSpan(line, span, existingRangeElements, columnsByElement);
 
-            // Check if already covered by a range element
-            if (StackingUtils.isRangeCovered(startNote, endNote, existingRangeElements)) {
-                continue;
-            }
-
-            var startColumn = columnsByElement.get(startNote);
-            var endColumn = columnsByElement.get(endNote);
-
-            if (startColumn == null || endColumn == null) {
+            if (resolved == null) {
                 continue;
             }
 
             // Bridge to temporary range element for dimension calculations
-            var anchorXSs = startColumn.getXSs();
-            var endXSs = endColumn.getXSs();
-            var bridged = factory.apply(startNote, endNote);
+            var startNote = resolved.startNote();
+            var anchorXSs = resolved.startColumn().getXSs();
+            var endXSs = resolved.endColumn().getXSs();
+            var bridged = factory.apply(startNote, resolved.endNote());
 
             var staffPosition = startNote.getStaffPosition();
             var widthSs = endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS;
@@ -385,5 +372,36 @@ public class StructuralStacker {
         stackAbove(structuralExtents, element, anchorXSs, widthSs,
             element.getContentHeightSs(), marginSs,
             staffPosition, builder);
+    }
+
+    private record ResolvedSpan(
+        StaffElement startNote,
+        StaffElement endNote,
+        ElementColumn startColumn,
+        ElementColumn endColumn
+    ) {}
+
+    @Nullable
+    private ResolvedSpan resolveSpan(
+        Line line,
+        Span span,
+        List<? extends RangeElement> existingRangeElements,
+        Map<StaffElement, ElementColumn> columnsByElement) {
+
+        var startNote = line.getElement(span.getStart());
+        var endNote = line.getElement(span.getEnd());
+
+        if (StackingUtils.isRangeCovered(startNote, endNote, existingRangeElements)) {
+            return null;
+        }
+
+        var startColumn = columnsByElement.get(startNote);
+        var endColumn = columnsByElement.get(endNote);
+
+        if (startColumn == null || endColumn == null) {
+            return null;
+        }
+
+        return new ResolvedSpan(startNote, endNote, startColumn, endColumn);
     }
 }

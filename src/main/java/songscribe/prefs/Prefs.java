@@ -319,7 +319,6 @@ public final class Prefs {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private static @Nullable Object parseJsonValue(JsonElement element) {
         if (element.isJsonPrimitive()) {
             var primitive = element.getAsJsonPrimitive();

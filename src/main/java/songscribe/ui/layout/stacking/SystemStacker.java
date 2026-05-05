@@ -25,6 +25,7 @@ import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.MetronomeAttachment;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.TempoChangeAttachment;
@@ -104,14 +105,7 @@ public class SystemStacker {
             return;
         }
 
-        var xSs = column.getXSs();
-        var staffPosition = note.getStaffPosition();
-        var attrFont = line.getSong().getAttributionFont();
-        var metrics = tempo.computeContentMetrics(attrFont);
-
-        stackAboveWithRegions(systemExtents, tempo, metrics.regions(), xSs,
-            metrics.widthSs(), TEMPO_MARGIN_SS,
-            staffPosition, builder);
+        stackMetronomeAttachment(tempo, column, line, TEMPO_MARGIN_SS, builder);
     }
 
     /**
@@ -140,14 +134,7 @@ public class SystemStacker {
             return;
         }
 
-        var xSs = column.getXSs();
-        var staffPosition = note.getStaffPosition();
-        var attrFont = line.getSong().getAttributionFont();
-        var metrics = beatChange.computeContentMetrics(attrFont);
-
-        stackAboveWithRegions(systemExtents, beatChange, metrics.regions(), xSs,
-            metrics.widthSs(), BEAT_CHANGE_MARGIN_SS,
-            staffPosition, builder);
+        stackMetronomeAttachment(beatChange, column, line, BEAT_CHANGE_MARGIN_SS, builder);
     }
 
     /**
@@ -193,5 +180,21 @@ public class SystemStacker {
             widthSs, heightSs,
             ANNOTATION_MARGIN_SS,
             staffPosition, builder);
+    }
+
+    private void stackMetronomeAttachment(
+        MetronomeAttachment attachment,
+        ElementColumn column,
+        Line line,
+        double marginSs,
+        LayoutResult.Builder builder) {
+
+        var xSs = column.getXSs();
+        var staffPosition = column.getElement().getStaffPosition();
+        var attrFont = line.getSong().getAttributionFont();
+        var metrics = attachment.computeContentMetrics(attrFont);
+
+        stackAboveWithRegions(systemExtents, attachment, metrics.regions(), xSs,
+            metrics.widthSs(), marginSs, staffPosition, builder);
     }
 }

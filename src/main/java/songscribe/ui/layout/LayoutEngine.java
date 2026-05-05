@@ -24,6 +24,7 @@ import module java.desktop;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
@@ -289,6 +290,7 @@ public class LayoutEngine {
      * Calculates beam geometry for all beamed note groups in the line.
      * Populates {@code builder} with a {@link LayoutResult.BeamLayout} for each beam span.
      */
+    @SuppressWarnings("StatementWithEmptyBody")
     private void calculateBeams(
         Line line,
         List<ElementColumn> columns,
@@ -413,18 +415,13 @@ public class LayoutEngine {
                     var allOk = true;
 
                     for (var i = span.getStart(); i <= span.getEnd(); i++) {
-                        var element = line.getElement(i);
-                        var col = elementToColumn.get(element);
+                        var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemsUp, slope, firstXSs, startYSs);
 
-                        if (col == null) {
+                        if (geometry == null) {
                             continue;
                         }
 
-                        var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
-                        var beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
-                        var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
-
-                        if (stemLenSs < MIN_STEM_SS - 1e-9) {
+                        if (geometry.stemLenSs() < MIN_STEM_SS - 1e-9) {
                             allOk = false;
                             break;
                         }
@@ -446,17 +443,13 @@ public class LayoutEngine {
                 var maxDeficitSs = 0.0;
 
                 for (var i = span.getStart(); i <= span.getEnd(); i++) {
-                    var element = line.getElement(i);
-                    var col = elementToColumn.get(element);
+                    var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemsUp, slope, firstXSs, startYSs);
 
-                    if (col == null) {
+                    if (geometry == null) {
                         continue;
                     }
 
-                    var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
-                    var beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
-                    var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
-                    var deficitSs = MIN_STEM_SS - stemLenSs;
+                    var deficitSs = MIN_STEM_SS - geometry.stemLenSs();
 
                     if (deficitSs > maxDeficitSs) {
                         maxDeficitSs = deficitSs;
@@ -494,16 +487,16 @@ public class LayoutEngine {
                 var firstXSs = firstColumn.getXSs();
 
                 for (var i = span.getStart(); i <= span.getEnd(); i++) {
-                    var element = line.getElement(i);
-                    var col = elementToColumn.get(element);
+                    var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemsUp, slope, firstXSs, startYSs);
 
-                    if (col == null) {
+                    if (geometry == null) {
                         continue;
                     }
 
-                    var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
-                    var beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
-                    var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
+                    var element = geometry.element();
+                    var elementYSs = geometry.elementYSs();
+                    var beamYSs = geometry.beamYSs();
+                    var stemLenSs = geometry.stemLenSs();
                     var lengtheningSs = stemLenSs - MIN_STEM_SS;
 
                     var topYSs = stemsUp ? beamYSs : elementYSs;
@@ -529,10 +522,8 @@ public class LayoutEngine {
                     if (hasStub) {
                         if (i == span.getStart()) {
                             stubRight = true;                   // first element → stub right
-                        } else if (i == span.getEnd()) {
-                            stubRight = false;                  // last element → stub left
-                        } else if (rightBeams < myBeams) {
-                            stubRight = false;                  // element before a beam break → left
+                        } else if (i == span.getEnd() || rightBeams < myBeams) {
+                            // last element → stub left || element after a beam break → left
                         } else if (leftBeams < myBeams) {
                             stubRight = true;                   // element at a beam break → right
                         } else {
@@ -547,6 +538,23 @@ public class LayoutEngine {
             var beamLayout = new LayoutResult.BeamLayout(slope, startYSs, stemsUp, thickeningSs, stemLayouts);
             builder.putBeamLayout(span, beamLayout);
         }
+    }
+
+    @Nullable
+    private BeamElementGeometry computeBeamElementGeometry(
+        Line line, int i, Map<StaffElement, ElementColumn> elementToColumn,
+        boolean stemsUp, double slope, double firstXSs, double startYSs) {
+        var element = line.getElement(i);
+        var column = elementToColumn.get(element);
+
+        if (column == null) {
+            return null;
+        }
+
+        var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
+        var beamYSs = slope * (column.getXSs() - firstXSs) + startYSs;
+        var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
+        return new BeamElementGeometry(element, elementYSs, beamYSs, stemLenSs);
     }
 
     /**
@@ -750,4 +758,10 @@ public class LayoutEngine {
     public double getStaffRightMarginSs() {
         return staffRightMarginSs;
     }
+
+    private record BeamElementGeometry(
+        StaffElement element,
+        double elementYSs,
+        double beamYSs,
+        double stemLenSs) {}
 }

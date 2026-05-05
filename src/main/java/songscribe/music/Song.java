@@ -393,7 +393,11 @@ public final class Song {
 
     private @NonNull Line getLine(List<? extends Line> loadedLines, int lineIndex) {
         var line = loadedLines.get(lineIndex);
+        applyLineDefaults(line, lineIndex);
+        return line;
+    }
 
+    private void applyLineDefaults(Line line, int lineIndex) {
         if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
             line.setKeyAccidentalCount(defaultKeyAccidentalCount);
             line.setKeyType(defaultKeyType);
@@ -406,7 +410,6 @@ public final class Song {
                     : ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_OTHER_LINES_SS)
             );
         }
-        return line;
     }
 
     // ========== Getters (public, read-only API) ==========
@@ -933,18 +936,7 @@ public final class Song {
             applyChange(new LineInsertion(lineIndex, line), () -> {
                 lines.add(lineIndex, line);
 
-                if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
-                    line.setKeyAccidentalCount(defaultKeyAccidentalCount);
-                    line.setKeyType(defaultKeyType);
-                }
-
-                if (line.getTempoChangeYPosPx() == 0) {
-                    line.setTempoChangeYPosPx(
-                        (lineIndex == 0)
-                            ? ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
-                            : ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_OTHER_LINES_SS)
-                    );
-                }
+                applyLineDefaults(line, lineIndex);
             });
 
             if (willBecomeNewLast && !isMutationTrackingSuspended()) {
