@@ -114,17 +114,17 @@ public final class Prefs {
 
     public int getInt(PrefsKey key) {
         var value = store.get(key.key());
-        return value != null ? ((Number) value).intValue() : ((Number) getDefault(key)).intValue();
+        return ((Number) (value != null ? value : getDefault(key))).intValue();
     }
 
     public long getLong(PrefsKey key) {
         var value = store.get(key.key());
-        return value != null ? ((Number) value).longValue() : ((Number) getDefault(key)).longValue();
+        return ((Number) (value != null ? value : getDefault(key))).longValue();
     }
 
     public boolean getBoolean(PrefsKey key) {
         var value = store.get(key.key());
-        return value != null ? (Boolean) value : (Boolean) getDefault(key);
+        return (Boolean) (value != null ? value : getDefault(key));
     }
 
     public List<String> getStringList(PrefsKey key) {
@@ -326,13 +326,17 @@ public final class Prefs {
 
             if (primitive.isBoolean()) {
                 return primitive.getAsBoolean();
-            } else if (primitive.isNumber()) {
+            }
+
+            if (primitive.isNumber()) {
                 // Store all integers as Long so both getInt and getLong work
                 return primitive.getAsLong();
-            } else {
-                return primitive.getAsString();
             }
-        } else if (element.isJsonObject()) {
+
+            return primitive.getAsString();
+        }
+
+        if (element.isJsonObject()) {
             return GSON.fromJson(element, Map.class);
         }
 

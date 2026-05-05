@@ -163,6 +163,7 @@ public final class AttachmentLayout {
      */
     @SuppressWarnings("unchecked")
     public <T> @Nullable T getDataAs(Class<T> type) {
+        //noinspection PointlessNullCheck
         if (data != null && type.isInstance(data)) {
             return (T) data;
         }

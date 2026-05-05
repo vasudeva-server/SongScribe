@@ -437,9 +437,13 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
     protected static double stemCenterXOffsetSs(ElementType noteType, boolean upper) {
         var isMinim = noteType == ElementType.MINIM;
-        var anchorX = upper
-            ? (isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE.x() : Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x())
-            : (isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW.x() : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x());
+        double anchorX;
+
+        if (isMinim) {
+            anchorX = (upper ? Engraving.NOTEHEAD_HALF_STEM_UP_SE : Engraving.NOTEHEAD_HALF_STEM_DOWN_NW).x();
+        } else {
+            anchorX = (upper ? Engraving.NOTEHEAD_BLACK_STEM_UP_SE : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW).x();
+        }
 
         // upper: SE anchor is the stem's right edge; center = anchorX - half stem width
         // lower: NW anchor is the stem's left edge (after notehead shift); center = anchorX

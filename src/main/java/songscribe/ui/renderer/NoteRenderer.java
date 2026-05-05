@@ -271,10 +271,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         // Stem left edge: for up-stems, the anchor marks the RIGHT edge of the stem;
         // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
         // left by STEM_WIDTH_SS/2, so we compensate.
-        var stemLeftX = upper
-            ? anchorX - STEM_WIDTH_SS
-            : anchorX - STEM_WIDTH_SS / 2;
-
+        var stemLeftX = anchorX - (upper ? STEM_WIDTH_SS : STEM_WIDTH_SS / 2);
         var stemLength = isGrace ? GRACE_NOTE_STEM_LENGTH_SS : STEM_LENGTH_SS;
 
         return new StemGeometry(stemLeftX, anchor.y(), stemLength);
@@ -461,31 +458,25 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
             ? HALF_BEAM_THICKNESS_SS + beamThickeningSs / 2.0
             : 0.0;
 
+        double stemTipY;
+        double drawTop;
+        double drawBottom;
+        var arcDiameter = stemWidthSs * STEM_ARC_RATIO;
+
         if (upper) {
-            var stemTipY = -stemLength;
-
-            var drawTop = -(stemLength - beamInsetSs);
-            var drawBottom = anchorY;
-
-            var arcDiameter = stemWidthSs * STEM_ARC_RATIO;
-            g2.fill(new RoundRectangle2D.Double(
-                stemLeftX, drawTop, stemWidthSs, drawBottom - drawTop,
-                arcDiameter, arcDiameter));
-
-            return new Point2D.Double(stemLeftX, stemTipY);
+            stemTipY = -stemLength;
+            drawTop = -(stemLength - beamInsetSs);
+            drawBottom = anchorY;
         } else {
-            var stemTipY = stemLength;
-
-            var drawTop = anchorY;
-            var drawBottom = stemLength - beamInsetSs;
-
-            var arcDiameter = stemWidthSs * STEM_ARC_RATIO;
-            g2.fill(new RoundRectangle2D.Double(
-                stemLeftX, drawTop, stemWidthSs, drawBottom - drawTop,
-                arcDiameter, arcDiameter));
-
-            return new Point2D.Double(stemLeftX, stemTipY);
+            stemTipY = stemLength;
+            drawTop = anchorY;
+            drawBottom = stemLength - beamInsetSs;
         }
+
+        g2.fill(new RoundRectangle2D.Double(
+            stemLeftX, drawTop, stemWidthSs, drawBottom - drawTop,
+            arcDiameter, arcDiameter));
+        return new Point2D.Double(stemLeftX, stemTipY);
     }
 
     // ==========================================================================

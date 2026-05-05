@@ -219,10 +219,17 @@ public class ElementColumnBuilder {
         if (!beamed && flagGlyph != null) {
             var flagAdvanceWidthSs = advanceWidthSs(flagGlyph);
 
-            // Grace notes always stem up, use the small notehead anchor
-            var stemAnchorX = type.isGraceNote()
-                ? NoteRenderer.STEM_UP_SE_BLACK_SMALL.x()
-                : (upper ? Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x());
+            // Grace notes always stem up, use the small notehead anchor.
+            // Use explicit if/else instead of a nested ternary for clarity.
+            double stemAnchorX;
+
+            if (type.isGraceNote()) {
+                stemAnchorX = NoteRenderer.STEM_UP_SE_BLACK_SMALL.x();
+            } else if (upper) {
+                stemAnchorX = Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x();
+            } else {
+                stemAnchorX = Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x();
+            }
 
             flagRightExtent = stemAnchorX + flagAdvanceWidthSs;
         }

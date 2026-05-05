@@ -368,12 +368,12 @@ public final class ExportABCAction extends UIAction {
             if (accidental != null) {
                 sb.append(translateAccidental(accidental));
             }
+
             sb.append(translatePitch(note.getStaffPosition()));
-            var duration =
-                switch (noteType) {
-                    case GRACE_QUAVER -> ElementType.QUAVER.getDefaultDuration();
-                    default -> note.getDefaultDurationWithDots();
-                };
+
+            var duration = (noteType == ElementType.GRACE_QUAVER)
+                ? ElementType.QUAVER.getDefaultDuration()
+                : note.getDefaultDurationWithDots();
 
             sb.append(translateNoteLength(duration, songUnitLength));
 

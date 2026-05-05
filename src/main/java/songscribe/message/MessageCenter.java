@@ -24,9 +24,9 @@ public final class MessageCenter {
 
         if (cause != null) {
             throw RuntimeError.exit(detail, cause);
-        } else {
-            throw RuntimeError.exit(error.getMessage() != null ? error.getMessage() : detail);
         }
+
+        throw RuntimeError.exit(error.getMessage() != null ? error.getMessage() : detail);
     }
 
     private MessageCenter() {}

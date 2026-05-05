@@ -96,6 +96,7 @@ public final class ViewIO {
         }
 
         public void endElement11(String qName) {
+            //noinspection PointlessNullCheck
             if (lastTag != null && qName.equals(lastTag)) {
                 var str = value.toString();
 

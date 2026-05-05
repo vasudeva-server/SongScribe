@@ -677,7 +677,7 @@ public final class LyricEditor extends MyJTextField {
 
         var existingText = existingLyric != null ? existingLyric.text() : "";
         var wantsCarrier = extend == Lyric.Extend.STOP || extend == Lyric.Extend.CONTINUE;
-        var wantsContinues = !(kind == CommitKind.WORD_FINAL);
+        var wantsContinues = kind != CommitKind.WORD_FINAL;
         var wantsCompound = kind == CommitKind.WORD_CONTINUING_COMPOUND;
         var existingContinues = existingLyric != null
             && (existingLyric.syllabic() == Lyric.Syllabic.BEGIN

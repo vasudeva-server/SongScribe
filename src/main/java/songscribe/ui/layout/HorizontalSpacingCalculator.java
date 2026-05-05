@@ -315,11 +315,7 @@ public class HorizontalSpacingCalculator {
         double currXSs) {
 
         // Only check if current note has an accidental
-        if (currColumn.getElement().getAccidental() == null) {
-            return false;
-        }
-
-        return true; // Let calculateNextColumnX handle the actual push calculation
+        return currColumn.getElement().getAccidental() != null;
     }
 
     /**

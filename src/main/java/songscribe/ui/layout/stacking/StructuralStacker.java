@@ -159,9 +159,7 @@ public class StructuralStacker {
             var endNoteheadRightXSs = endColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
             var isUpper = startNote.isUpper();
             var stemSs = LineThickness.getInstance().stemSs();
-            var leftXSs = isUpper
-                ? noteheadRightXSs - stemSs - Tuplet.ARM_EXTENSION_SS
-                : noteheadRightXSs - Engraving.NOTE_HEAD_WIDTH_SS - Tuplet.ARM_EXTENSION_SS;
+            var leftXSs = noteheadRightXSs - (isUpper ? stemSs : Engraving.NOTE_HEAD_WIDTH_SS) - Tuplet.ARM_EXTENSION_SS;
             var rightXSs = endNoteheadRightXSs + Tuplet.ARM_EXTENSION_SS;
 
             var staffPosition = startNote.getStaffPosition();

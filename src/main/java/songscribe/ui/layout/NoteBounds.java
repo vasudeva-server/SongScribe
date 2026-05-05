@@ -124,15 +124,15 @@ public final class NoteBounds {
                 noteWithArticulationsBounds.getWidth(),
                 noteHeadBounds.getCenterY() - noteWithArticulationsBounds.getY()
             );
-        } else {
-            var headCenterY = noteHeadBounds.getCenterY();
-            return new Rectangle2D.Double(
-                noteWithArticulationsBounds.getX(),
-                headCenterY,
-                noteWithArticulationsBounds.getWidth(),
-                noteWithArticulationsBounds.getMaxY() - headCenterY
-            );
         }
+
+        var headCenterY = noteHeadBounds.getCenterY();
+        return new Rectangle2D.Double(
+            noteWithArticulationsBounds.getX(),
+            headCenterY,
+            noteWithArticulationsBounds.getWidth(),
+            noteWithArticulationsBounds.getMaxY() - headCenterY
+        );
     }
 
     /**
@@ -150,14 +150,14 @@ public final class NoteBounds {
                 noteWithArticulationsBounds.getWidth(),
                 noteWithArticulationsBounds.getMaxY() - headCenterY
             );
-        } else {
-            return new Rectangle2D.Double(
-                noteWithArticulationsBounds.getX(),
-                noteWithArticulationsBounds.getY(),
-                noteWithArticulationsBounds.getWidth(),
-                noteHeadBounds.getCenterY() - noteWithArticulationsBounds.getY()
-            );
         }
+
+        return new Rectangle2D.Double(
+            noteWithArticulationsBounds.getX(),
+            noteWithArticulationsBounds.getY(),
+            noteWithArticulationsBounds.getWidth(),
+            noteHeadBounds.getCenterY() - noteWithArticulationsBounds.getY()
+        );
     }
 
     /**

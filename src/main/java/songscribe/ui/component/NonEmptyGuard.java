@@ -146,10 +146,10 @@ public class NonEmptyGuard {
 
         if (defaultValueKey != null) {
             return showDefaultValueDialog();
-        } else {
-            showWarningAndRefocus();
-            return false;
         }
+
+        showWarningAndRefocus();
+        return false;
     }
 
     private void handleFocusLost() {
@@ -180,11 +180,11 @@ public class NonEmptyGuard {
         if (result == useDefaultIndex) {
             field.setText(defaultVal);
             return true;
-        } else {
-            // Closed or "continue editing" -- return focus to the field
-            SwingUtilities.invokeLater(field::requestFocusInWindow);
-            return false;
         }
+
+        // Closed or "continue editing" -- return focus to the field
+        SwingUtilities.invokeLater(field::requestFocusInWindow);
+        return false;
     }
 
     private void showWarningAndRefocus() {

@@ -236,9 +236,14 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
             }
 
             var stubStemLayout = ctx.getLayoutResult().getStemLayout(beginNote);
-            leftOriented = (stubStemLayout != null)
-                ? !stubStemLayout.stubRight()
-                : (prevBeginIndex == prevEndIndex) ? isPrevLeftOriented : (beginIndex != prevBeginIndex);
+
+            if (stubStemLayout != null) {
+                leftOriented = !stubStemLayout.stubRight();
+            } else if (prevBeginIndex == prevEndIndex) {
+                leftOriented = isPrevLeftOriented;
+            } else {
+                leftOriented = (beginIndex != prevBeginIndex);
+            }
 
             int begin, end;
 

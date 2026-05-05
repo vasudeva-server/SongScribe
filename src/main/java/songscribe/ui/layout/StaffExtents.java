@@ -159,15 +159,14 @@ public class StaffExtents {
 
             return minY;
         }
-        else {
-            var maxY = bot[startStep];
 
-            for (var i = startStep + 1; i <= endStep; i++) {
-                maxY = Math.max(maxY, bot[i]);
-            }
+        var maxY = bot[startStep];
 
-            return maxY;
+        for (var i = startStep + 1; i <= endStep; i++) {
+            maxY = Math.max(maxY, bot[i]);
         }
+
+        return maxY;
     }
 
     /**

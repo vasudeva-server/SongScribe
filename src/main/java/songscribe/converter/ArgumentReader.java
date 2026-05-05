@@ -125,6 +125,7 @@ public class ArgumentReader<T> {
 
                 var f = findField(arg.substring(1, equalPos));
 
+                //noinspection ConfusingElseBranch -- else is necessary for NullAway to recognize that f is non-null in the else branch
                 if (f == null) {
                     System.out.println("Bad argument: " + arg);
                     System.exit(-1);

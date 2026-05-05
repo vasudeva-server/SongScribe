@@ -433,6 +433,7 @@ public final class LineIO {
                     createEndingsFromPendingPairs(line);
                     return line;
                 }
+                //noinspection PointlessNullCheck
                 if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
 

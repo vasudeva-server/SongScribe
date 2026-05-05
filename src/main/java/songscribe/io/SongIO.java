@@ -470,6 +470,7 @@ public final class SongIO {
                     }
                 }
             } else if (where == Where.SONG) {
+                //noinspection PointlessNullCheck
                 if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
 
@@ -535,6 +536,7 @@ public final class SongIO {
                     where = Where.SONG;
                 }
             } else if (where == Where.SONG) {
+                //noinspection PointlessNullCheck
                 if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
                     var useDouble = majorVersion >= 2 && minorVersion >= 1;

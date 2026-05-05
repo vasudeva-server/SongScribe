@@ -116,6 +116,7 @@ public final class TempoIO {
             if (tempo == null) {
                 return null;
             }
+            //noinspection PointlessNullCheck
             if (lastTag != null && qName.equals(lastTag)) {
                 var str = value.toString();
 
@@ -154,6 +155,7 @@ public final class TempoIO {
             if (tempo == null) {
                 return null;
             }
+            //noinspection PointlessNullCheck
             if (lastTag != null && qName.equals(lastTag)) {
                 var str = value.toString();
 

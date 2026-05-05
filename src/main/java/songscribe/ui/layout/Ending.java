@@ -467,14 +467,13 @@ public class Ending extends RangeElement {
             return (!firstContent.isEmpty() && deletedElements.containsAll(firstContent))
                 || (!secondContent.isEmpty() && deletedElements.containsAll(secondContent));
         }
-        else {
-            var singleContent = IntStream.range(anchorIndex + 1, endIndex)
-                .mapToObj(line::getElement)
-                .filter(el -> el.getType().isContentElement())
-                .toList();
 
-            return !singleContent.isEmpty() && deletedElements.containsAll(singleContent);
-        }
+        var singleContent = IntStream.range(anchorIndex + 1, endIndex)
+            .mapToObj(line::getElement)
+            .filter(el -> el.getType().isContentElement())
+            .toList();
+
+        return !singleContent.isEmpty() && deletedElements.containsAll(singleContent);
     }
 
     /**
@@ -593,10 +592,9 @@ public class Ending extends RangeElement {
             // Inserting at the split boundary is allowed; anywhere else interior is not
             return insertedIndex != splitIndex;
         }
-        else {
-            // No split: any interior barline/repeat invalidates the ending
-            return true;
-        }
+
+        // No split: any interior barline/repeat invalidates the ending
+        return true;
     }
 
     /**

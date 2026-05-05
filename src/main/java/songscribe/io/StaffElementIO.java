@@ -496,7 +496,8 @@ public final class StaffElementIO {
                         new Lyric(lyricNumber, lyricText, lyricExtend, syllabic, compound)
                     );
                     where = Where.ELEMENT;
-                } else if (lastTag != null && qName.equals(lastTag)) {
+                } else //noinspection PointlessNullCheck
+                    if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
 
                     if (lastTag.equals(XML_SYLLABIC)) {
@@ -512,6 +513,7 @@ public final class StaffElementIO {
                 if (qName.equals(XML_NOTE)) {
                     return element;
                 }
+                //noinspection PointlessNullCheck
                 if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
 

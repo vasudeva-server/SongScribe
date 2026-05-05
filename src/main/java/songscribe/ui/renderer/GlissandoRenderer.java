@@ -667,13 +667,25 @@ public final class GlissandoRenderer {
         double cx, double cy,
         double nx, double ny
     ) {
-        var tx = nx > 0 ? (bounds.getMaxX() - cx) / nx
-            : nx < 0 ? (bounds.getMinX() - cx) / nx
-            : Double.MAX_VALUE;
+        double tx;
 
-        var ty = ny > 0 ? (bounds.getMaxY() - cy) / ny
-            : ny < 0 ? (bounds.getMinY() - cy) / ny
-            : Double.MAX_VALUE;
+        if (nx > 0) {
+            tx = (bounds.getMaxX() - cx) / nx;
+        } else if (nx < 0) {
+            tx = (bounds.getMinX() - cx) / nx;
+        } else {
+            tx = Double.MAX_VALUE;
+        }
+
+        double ty;
+
+        if (ny > 0) {
+            ty = (bounds.getMaxY() - cy) / ny;
+        } else if (ny < 0) {
+            ty = (bounds.getMinY() - cy) / ny;
+        } else {
+            ty = Double.MAX_VALUE;
+        }
 
         return Math.min(tx, ty);
     }

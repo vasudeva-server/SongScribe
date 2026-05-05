@@ -160,6 +160,7 @@ public final class RangeLayout {
      */
     @SuppressWarnings("unchecked")
     public <T> @Nullable T getDataAs(Class<T> type) {
+        //noinspection PointlessNullCheck
         if (data != null && type.isInstance(data)) {
             return (T) data;
         }
@@ -172,13 +173,12 @@ public final class RangeLayout {
      */
     public VerticalOrder getVerticalOrder() {
         if (above) {
-            return switch (type) {
-                case ENDING -> VerticalOrder.ENDINGS;
-                default -> VerticalOrder.RANGE_ELEMENTS_ABOVE;
-            };
-        } else {
-            return VerticalOrder.RANGE_ELEMENTS_BELOW;
+            return (type == Type.ENDING)
+                ? VerticalOrder.ENDINGS
+                : VerticalOrder.RANGE_ELEMENTS_ABOVE;
         }
+
+        return VerticalOrder.RANGE_ELEMENTS_BELOW;
     }
 
     /**
