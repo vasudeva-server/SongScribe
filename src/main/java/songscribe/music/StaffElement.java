@@ -416,7 +416,7 @@ public class StaffElement extends LineElement implements Cloneable {
      * Consistent with {@link songscribe.ui.renderer.BaseElementRenderer#forEachLedgerLineYSs}.
      */
     public int getLedgerLineCount() {
-        int a = Math.abs(staffPosition);
+        var a = Math.abs(staffPosition);
 
         if (a % 2 != 0) {
             a--;
@@ -630,7 +630,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     private int calculatePitch(@Nullable Accidental accidental) {
-        int adjustment = (accidental != null) ? MIDI_PITCH_ADJUSTMENT[accidental.ordinal()] : 0;
+        var adjustment = (accidental != null) ? MIDI_PITCH_ADJUSTMENT[accidental.ordinal()] : 0;
 
         return (
             MIDI_PITCHES[getPitchIndex()] +

@@ -490,7 +490,7 @@ class LineRenderer {
         g2.setColor(Color.BLACK);
 
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
-            boolean attachmentShiftActive = false;
+            var attachmentShiftActive = false;
 
             for (var i = 0; i < line.elementCount(); i++) {
                 if (!attachmentShiftActive && ctx.hasPreviewShift() && i >= ctx.getPreviewShiftFromIndex()) {

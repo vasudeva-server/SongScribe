@@ -60,27 +60,27 @@ public class TempoChangeAttachment extends MetronomeAttachment {
 
     public ContentMetrics computeContentMetrics(Font attrFont) {
         var regions = new ArrayList<CollisionRegion>(2);
-        double glyphWidth = glyphWidthSs();
+        var glyphWidth = glyphWidthSs();
 
         if (glyphWidth > 0) {
             regions.add(new CollisionRegion(0, 0, glyphWidth, QUARTER_NOTE_HEIGHT_SS));
         }
 
-        double textWidth = textWidthSs(tempoText(), attrFont);
+        var textWidth = textWidthSs(tempoText(), attrFont);
 
         if (textWidth > 0) {
-            double textXOffsetSs = glyphWidth > 0 ? glyphWidth : 0;
+            var textXOffsetSs = glyphWidth > 0 ? glyphWidth : 0;
             var scale = ScaleContext.getInstance();
             var textLm = attrFont.getLineMetrics("", GraphicUtils.SCREEN_FRC);
-            double textAscentSs = scale.fromPixels(textLm.getAscent());
-            double textDescentSs = scale.fromPixels(textLm.getDescent());
-            double textYOffsetSs = QUARTER_NOTE_HEIGHT_SS - textAscentSs;
-            double textHeightSs = textAscentSs + textDescentSs;
+            var textAscentSs = scale.fromPixels(textLm.getAscent());
+            var textDescentSs = scale.fromPixels(textLm.getDescent());
+            var textYOffsetSs = QUARTER_NOTE_HEIGHT_SS - textAscentSs;
+            var textHeightSs = textAscentSs + textDescentSs;
             regions.add(new CollisionRegion(
                 textXOffsetSs, textYOffsetSs, textWidth, textHeightSs));
         }
 
-        double widthSs = glyphWidth + textWidth;
+        var widthSs = glyphWidth + textWidth;
 
         return new ContentMetrics(widthSs, regions);
     }

@@ -72,9 +72,9 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
             applyDecorationColor(g2, element, ctx);
 
             var metrics = ctx.getSong().getAnnotationFontMetrics();
-            double ascentSs = ScaleContext.getInstance().fromPixels(metrics.getAscent());
-            double xSs = decorationLayout.xSs();
-            double baselineYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx) + ascentSs;
+            var ascentSs = ScaleContext.getInstance().fromPixels(metrics.getAscent());
+            var xSs = decorationLayout.xSs();
+            var baselineYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx) + ascentSs;
 
             g2.drawString(annotation.getAnnotation(), (float) xSs, (float) baselineYSs);
         }

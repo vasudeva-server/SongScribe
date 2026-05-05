@@ -140,7 +140,7 @@ public class LineJustificationCalculator {
 
         // Check if line exceeds margin
         var lastColumn = columns.get(columns.size() - 1);
-        double lineWidthSs = lastColumn.getRightEdgeXSs();
+        var lineWidthSs = lastColumn.getRightEdgeXSs();
 
         if (lineWidthSs <= staffRightMarginSs) {
             // Line fits - no adjustment needed (uneven spacing is correct per Gould/Ross)
@@ -173,14 +173,14 @@ public class LineJustificationCalculator {
         // The total width includes the span between column centers plus the extents
         // Width = centerSpan + (lastRightExtent - firstLeftExtent)
         // When compressing, only the centerSpan changes, extents stay fixed
-        double centerSpanSs = lastColumn.getXSs() - firstColumn.getXSs();
-        double extentOffsetSs = lastColumn.getRightExtentSs() - firstColumn.getLeftExtentSs();
+        var centerSpanSs = lastColumn.getXSs() - firstColumn.getXSs();
+        var extentOffsetSs = lastColumn.getRightExtentSs() - firstColumn.getLeftExtentSs();
 
-        double calculatedWidthSs = centerSpanSs + extentOffsetSs;
-        double targetWidthSs = staffRightMarginSs - firstColumn.getLeftEdgeXSs();
+        var calculatedWidthSs = centerSpanSs + extentOffsetSs;
+        var targetWidthSs = staffRightMarginSs - firstColumn.getLeftEdgeXSs();
 
         // ratio = (targetWidth - extentOffset) / centerSpan
-        double compressionRatio = (targetWidthSs - extentOffsetSs) / centerSpanSs;
+        var compressionRatio = (targetWidthSs - extentOffsetSs) / centerSpanSs;
 
         // Validate that compression is possible
         var validation = validateCompression(columns, compressionRatio);
@@ -246,23 +246,23 @@ public class LineJustificationCalculator {
         var minSyllableGapSs = LyricRenderMetrics.COMPRESSED_MIN_SYLLABLE_GAP_SS;
 
         var firstColumn = columns.get(0);
-        double anchorXSs = firstColumn.getXSs();
+        var anchorXSs = firstColumn.getXSs();
 
         for (var i = 1; i < columns.size(); i++) {
             var prevColumn = columns.get(i - 1);
             var currColumn = columns.get(i);
 
             // Calculate current gap between column edges
-            double prevRightEdgeSs = prevColumn.getXSs() + prevColumn.getRightExtentSs();
-            double currLeftEdgeSs = currColumn.getXSs() + currColumn.getLeftExtentSs();
-            double currentGapSs = currLeftEdgeSs - prevRightEdgeSs;
+            var prevRightEdgeSs = prevColumn.getXSs() + prevColumn.getRightExtentSs();
+            var currLeftEdgeSs = currColumn.getXSs() + currColumn.getLeftExtentSs();
+            var currentGapSs = currLeftEdgeSs - prevRightEdgeSs;
 
             // Calculate compressed gap
             // When we compress, positions change relative to anchor (first column):
             // Gap' = Gap - (X_i - X_{i-1}) * (1 - ratio)
             // This is because center distances compress but extents stay fixed
-            double centerDistanceSs = currColumn.getXSs() - prevColumn.getXSs();
-            double compressedGapSs = currentGapSs - centerDistanceSs * (1.0 - compressionRatio);
+            var centerDistanceSs = currColumn.getXSs() - prevColumn.getXSs();
+            var compressedGapSs = currentGapSs - centerDistanceSs * (1.0 - compressionRatio);
 
             // Check minimum column gap
             if (compressedGapSs < minColumnGapSs) {
@@ -272,7 +272,7 @@ public class LineJustificationCalculator {
 
             // Check minimum syllable gap if both columns have syllables
             if (prevColumn.hasSyllable() && currColumn.hasSyllable()) {
-                double syllableGapSs = calculateSyllableGapSs(prevColumn, currColumn, compressionRatio);
+                var syllableGapSs = calculateSyllableGapSs(prevColumn, currColumn, compressionRatio);
 
                 if (syllableGapSs < minSyllableGapSs) {
                     return CompressionValidation.invalid(
@@ -298,16 +298,16 @@ public class LineJustificationCalculator {
         double compressionRatio) {
 
         // Current distance between column centers
-        double centerDistanceSs = currColumn.getXSs() - prevColumn.getXSs();
+        var centerDistanceSs = currColumn.getXSs() - prevColumn.getXSs();
 
         // Current syllable gap
-        double prevHalfWidthSs = prevColumn.getSyllableWidthSs() / 2.0;
-        double currHalfWidthSs = currColumn.getSyllableWidthSs() / 2.0;
-        double currentSyllableGapSs = centerDistanceSs - prevHalfWidthSs - currHalfWidthSs;
+        var prevHalfWidthSs = prevColumn.getSyllableWidthSs() / 2.0;
+        var currHalfWidthSs = currColumn.getSyllableWidthSs() / 2.0;
+        var currentSyllableGapSs = centerDistanceSs - prevHalfWidthSs - currHalfWidthSs;
 
         // Compressed syllable gap (same formula as column gap)
         // Gap' = Gap - centerDistance * (1 - ratio)
-        double compressedSyllableGapSs = currentSyllableGapSs - centerDistanceSs * (1.0 - compressionRatio);
+        var compressedSyllableGapSs = currentSyllableGapSs - centerDistanceSs * (1.0 - compressionRatio);
 
         return compressedSyllableGapSs;
     }
@@ -330,13 +330,13 @@ public class LineJustificationCalculator {
         }
 
         var firstColumn = columns.get(0);
-        double anchorXSs = firstColumn.getXSs();
+        var anchorXSs = firstColumn.getXSs();
 
         // Compress all positions relative to the first column
         for (var i = 1; i < columns.size(); i++) {
             var column = columns.get(i);
-            double currentOffsetSs = column.getXSs() - anchorXSs;
-            double compressedOffsetSs = currentOffsetSs * compressionRatio;
+            var currentOffsetSs = column.getXSs() - anchorXSs;
+            var compressedOffsetSs = currentOffsetSs * compressionRatio;
             column.setXSs(anchorXSs + compressedOffsetSs);
         }
     }

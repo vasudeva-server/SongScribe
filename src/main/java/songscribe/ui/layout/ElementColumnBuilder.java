@@ -121,23 +121,23 @@ public class ElementColumnBuilder {
      */
     public ElementColumn buildColumn(StaffElement element, Line line) {
         // Determine beam membership first — needed for right extent calculation
-        int elementIndex = line.getElementIndex(element);
-        boolean beamed = line.getBeamings().findSpan(elementIndex) != null;
+        var elementIndex = line.getElementIndex(element);
+        var beamed = line.getBeamings().findSpan(elementIndex) != null;
 
         // Calculate horizontal extents
-        double leftExtentSs = calculateLeftExtentSs(element);
-        double rightExtentSs = calculateRightExtentSs(element, beamed, element.isUpper());
+        var leftExtentSs = calculateLeftExtentSs(element);
+        var rightExtentSs = calculateRightExtentSs(element, beamed, element.isUpper());
 
         // Calculate stem positions
-        double stemTopSs = calculateStemTopSs(element);
-        double stemBottomSs = calculateStemBottomSs(element);
+        var stemTopSs = calculateStemTopSs(element);
+        var stemBottomSs = calculateStemBottomSs(element);
 
         // Get syllable and measure width
-        String syllable = getSyllable(element);
-        double syllableWidthSs = measureSyllableWidthSs(syllable);
+        var syllable = getSyllable(element);
+        var syllableWidthSs = measureSyllableWidthSs(syllable);
 
         // Get grace notes (currently not implemented in data model)
-        List<StaffElement> graceNotes = getGraceNotes(element);
+        var graceNotes = getGraceNotes(element);
 
         var column = new ElementColumn(
             element,
@@ -178,7 +178,7 @@ public class ElementColumnBuilder {
      */
     public static double calculateLeftExtentSs(StaffElement element) {
         // Element head left edge is at xSs (the glyph origin), so the base extent is 0
-        double extentSs = 0.0;
+        var extentSs = 0.0;
 
         // Add accidental width if present
         if (element.getAccidental() != null) {
@@ -209,12 +209,12 @@ public class ElementColumnBuilder {
         }
 
         // Element head right edge: use small notehead width for grace notes
-        double noteheadRightExtent = type.isGraceNote()
+        var noteheadRightExtent = type.isGraceNote()
             ? NOTE_HEAD_SMALL_WIDTH_SS
             : Engraving.NOTE_HEAD_WIDTH_SS;
 
         // Add dot widths if present
-        int dotCount = element.getDotCount();
+        var dotCount = element.getDotCount();
 
         if (dotCount > 0) {
             // First dot: gap + dot
@@ -228,13 +228,13 @@ public class ElementColumnBuilder {
 
         // Flag extent: only for unbeamed elements that have a flag
         var flagGlyph = type.getFlagGlyph(upper);
-        double flagRightExtent = 0.0;
+        var flagRightExtent = 0.0;
 
         if (!beamed && flagGlyph != null) {
-            double flagAdvanceWidthSs = advanceWidthSs(flagGlyph);
+            var flagAdvanceWidthSs = advanceWidthSs(flagGlyph);
 
             // Grace notes always stem up, use the small notehead anchor
-            double stemAnchorX = type.isGraceNote()
+            var stemAnchorX = type.isGraceNote()
                 ? NoteRenderer.STEM_UP_SE_BLACK_SMALL.x()
                 : (upper ? Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x());
 

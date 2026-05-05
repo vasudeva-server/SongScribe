@@ -90,7 +90,7 @@ class StringsTest extends UnitTest {
     }
 
     private static boolean isStringConstant(Field field) {
-        int modifiers = field.getModifiers();
+        var modifiers = field.getModifiers();
         return Modifier.isPublic(modifiers)
             && Modifier.isStatic(modifiers)
             && Modifier.isFinal(modifiers)

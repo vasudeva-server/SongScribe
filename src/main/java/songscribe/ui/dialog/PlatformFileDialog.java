@@ -41,11 +41,11 @@ public class PlatformFileDialog {
     private SystemFileChooser.FileNameExtensionFilter @Nullable [] convertedFilters = null;
 
     private static SystemFileChooser.FileNameExtensionFilter convertFilter(MyFileFilter maf) {
-        List<String> extensions = maf.getExtensions();
+        var extensions = maf.getExtensions();
 
         // Extract description without extension list (remove " (ext1, ext2)")
-        String description = maf.getDescription();
-        int parenIndex = description.lastIndexOf('(');
+        var description = maf.getDescription();
+        var parenIndex = description.lastIndexOf('(');
         if (parenIndex > 0) {
             description = description.substring(0, parenIndex).trim();
         }
@@ -89,7 +89,7 @@ public class PlatformFileDialog {
         this.initialFilterIndex = initialFilterIndex;
 
         convertedFilters = new SystemFileChooser.FileNameExtensionFilter[filters.length];
-        for (int i = 0; i < filters.length; i++) {
+        for (var i = 0; i < filters.length; i++) {
             convertedFilters[i] = convertFilter(filters[i]);
             chooser.addChoosableFileFilter(convertedFilters[i]);
         }
@@ -133,9 +133,9 @@ public class PlatformFileDialog {
         // This is more reliable than the filter dropdown on macOS native dialogs
         var selectedFile = chooser.getSelectedFile();
         if (selectedFile != null && originalFilters != null) {
-            String fileName = selectedFile.getName().toLowerCase();
-            for (MyFileFilter filter : originalFilters) {
-                for (String ext : filter.getExtensions()) {
+            var fileName = selectedFile.getName().toLowerCase();
+            for (var filter : originalFilters) {
+                for (var ext : filter.getExtensions()) {
                     if (fileName.endsWith("." + ext.toLowerCase())) {
                         return filter;
                     }
@@ -146,8 +146,8 @@ public class PlatformFileDialog {
         // Fall back to filter dropdown selection
         var selectedFilter = chooser.getFileFilter();
         if (originalFilters != null && convertedFilters != null && selectedFilter != null) {
-            String selectedDescription = selectedFilter.getDescription();
-            for (int i = 0; i < convertedFilters.length; i++) {
+            var selectedDescription = selectedFilter.getDescription();
+            for (var i = 0; i < convertedFilters.length; i++) {
                 if (convertedFilters[i].getDescription().equals(selectedDescription)) {
                     return originalFilters[i];
                 }
@@ -160,7 +160,7 @@ public class PlatformFileDialog {
     }
 
     public boolean showDialog() {
-        int result = isOpenDialog
+        var result = isOpenDialog
             ? chooser.showOpenDialog(mainFrame)
             : chooser.showSaveDialog(mainFrame);
 

@@ -308,7 +308,7 @@ public final class FormatMigrator {
             }
 
             // Check if annotation is below staff (legacy positioning)
-            int yPosPx = annotation.getYPosPx();
+            var yPosPx = annotation.getYPosPx();
 
             if (yPosPx > 0) {
                 // Below-staff annotation: convert to above-staff with offset
@@ -338,7 +338,7 @@ public final class FormatMigrator {
         migrateSpanSet(line, line.getTuplets(), (l, span) -> {
             var startElement = l.getElement(span.getStart());
             var endElement = l.getElement(span.getEnd());
-            int grade = extractTupletGrade((TupletSpan) span);
+            var grade = extractTupletGrade((TupletSpan) span);
 
             return new Tuplet(startElement, endElement, grade);
         });

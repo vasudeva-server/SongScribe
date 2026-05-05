@@ -57,7 +57,7 @@ public final class BeatChangeRenderer extends MetronomeRenderer {
         }
 
         var setup = buildRenderSetup(element, BeatChangeAttachment.class, ctx);
-        double xSs = setup.decorationLayout().xSs();
+        var xSs = setup.decorationLayout().xSs();
 
         drawBeatChange(g2, beatChange, xSs, setup.ySs(), setup.attrFont(), setup.color());
     }
@@ -70,7 +70,7 @@ public final class BeatChangeRenderer extends MetronomeRenderer {
         Font attrFont,
         Color color
     ) {
-        double nextXSs = drawDurationEquals(g2, beatChange.duration(), xSs, ySs, attrFont, color);
+        var nextXSs = drawDurationEquals(g2, beatChange.duration(), xSs, ySs, attrFont, color);
         drawDurationGlyph(g2, beatChange.beat(), nextXSs, ySs, color);
     }
 

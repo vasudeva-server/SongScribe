@@ -134,7 +134,7 @@ class BaseDialogPositionTest extends UnitTest {
         // so each class's mock dialog returns its expected saved location.
         var counter = new AtomicInteger(0);
 
-        try (MockedConstruction<JDialog> construction = mockConstruction(JDialog.class, (d, ctx) ->
+        try (var construction = mockConstruction(JDialog.class, (d, ctx) ->
             configureMockDialog(d, counter.getAndIncrement() % 2 == 0 ? DIALOG_POSITION : DIALOG2_POSITION)
         )) {
             var dialog1 = new TestDialog();

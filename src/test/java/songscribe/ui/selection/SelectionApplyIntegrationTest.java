@@ -212,7 +212,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
             coordinator.applyActionToSelection(DOUBLE_BARLINE_ACTION, true);
 
-            for (int i = 0; i <= 1; i++) {
+            for (var i = 0; i <= 1; i++) {
                 assertThat(line.getElement(i).getType())
                     .as("barline %d should be double barline", i)
                     .isEqualTo(ElementType.DOUBLE_BARLINE);
@@ -234,7 +234,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             // Apply dot to selection — DotAction applies to all durations (notes + rests)
             coordinator.applyActionToSelection(DOT_ACTION, true);
 
-            for (int i = 0; i <= 2; i++) {
+            for (var i = 0; i <= 2; i++) {
                 assertThat(line.getElement(i).getDotCount())
                     .as("note %d should have 1 dot", i)
                     .isEqualTo(1);
@@ -289,7 +289,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
             // Verify all notes changed to crotchet
-            for (int i = 0; i <= 2; i++) {
+            for (var i = 0; i <= 2; i++) {
                 assertThat(line.getElement(i).getType())
                     .as("note %d should be crotchet", i)
                     .isEqualTo(ElementType.CROTCHET);
@@ -428,7 +428,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             // Change duration — dots should be preserved by copy constructor
             coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-            for (int i = 0; i <= 1; i++) {
+            for (var i = 0; i <= 1; i++) {
                 var note = line.getElement(i);
                 assertThat(note.getType())
                     .as("note %d type", i).isEqualTo(ElementType.CROTCHET);
@@ -464,7 +464,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             coordinator.applyActionToSelection(STACCATO_ACTION, true);
 
             // Verify all attributes applied to both notes
-            for (int i = 0; i <= 1; i++) {
+            for (var i = 0; i <= 1; i++) {
                 var note = line.getElement(i);
                 assertThat(note.getType())
                     .as("note %d type", i).isEqualTo(ElementType.CROTCHET);

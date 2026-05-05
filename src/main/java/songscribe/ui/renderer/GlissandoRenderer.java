@@ -418,7 +418,7 @@ public class GlissandoRenderer {
         StaffElement note, int noteIndex, Line line,
         LayoutResult layoutResult, double middleLineYSs
     ) {
-        boolean beamed = line.getBeamings().findSpan(noteIndex) != null;
+        var beamed = line.getBeamings().findSpan(noteIndex) != null;
         var cx = noteheadCenterXSs(note, layoutResult);
         var cy = BaseElementRenderer.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
         var entry = noteAreaBuilder.getOrBuildArea(note, beamed);
@@ -461,7 +461,7 @@ public class GlissandoRenderer {
         NoteContext src, @Nullable NoteContext tgt,
         double x1Translate, double x2Translate
     ) {
-        boolean isSlideOut = (tgt == null);
+        var isSlideOut = (tgt == null);
 
         // Tangent direction in layout space
         double dx, dy;
@@ -479,14 +479,14 @@ public class GlissandoRenderer {
             dy = tgt.cySs - src.cySs;
         }
 
-        double len = Math.sqrt(dx * dx + dy * dy);
+        var len = Math.sqrt(dx * dx + dy * dy);
 
         if (!isSlideOut && len == 0) {
             return null;
         }
 
-        double nx = dx / len;
-        double ny = dy / len;
+        var nx = dx / len;
+        var ny = dy / len;
 
         // Areas are in local coordinates (origin at notehead glyph origin).
         // Local notehead center is at (noteheadRightEdge/2, 0).
@@ -494,16 +494,16 @@ public class GlissandoRenderer {
         // Exit points found in local space are translated to layout space by adding the offset.
 
         // Source: find entry point on offset area in local space
-        double localCx1 = NoteRenderer.getNoteheadRightEdgeSs(src.note) / 2.0;
-        double offset1X = src.cxSs - localCx1;
-        double offset1Y = src.cySs;
+        var localCx1 = NoteRenderer.getNoteheadRightEdgeSs(src.note) / 2.0;
+        var offset1X = src.cxSs - localCx1;
+        var offset1Y = src.cySs;
 
-        double stepSs = ScaleContext.getInstance().fromPixels(1.0);
+        var stepSs = ScaleContext.getInstance().fromPixels(1.0);
         var entry1 = findNoteAreaEntryPoint(src.offsetArea, src.offsetBounds, localCx1, 0, nx, ny, stepSs);
 
-        double effectiveX1Translate = Math.max(x1Translate, -NoteAreaBuilder.MIN_GAP_SS);
-        double startX = entry1.x + offset1X + nx * effectiveX1Translate;
-        double startY = entry1.y + offset1Y + ny * effectiveX1Translate;
+        var effectiveX1Translate = Math.max(x1Translate, -NoteAreaBuilder.MIN_GAP_SS);
+        var startX = entry1.x + offset1X + nx * effectiveX1Translate;
+        var startY = entry1.y + offset1Y + ny * effectiveX1Translate;
 
         double endX, endY;
 
@@ -517,13 +517,13 @@ public class GlissandoRenderer {
                 throw new IllegalStateException("tgt must be non-null when not a slide-out");
             }
 
-            double localCx2 = NoteRenderer.getNoteheadRightEdgeSs(tgt.note) / 2.0;
-            double offset2X = tgt.cxSs - localCx2;
-            double offset2Y = tgt.cySs;
+            var localCx2 = NoteRenderer.getNoteheadRightEdgeSs(tgt.note) / 2.0;
+            var offset2X = tgt.cxSs - localCx2;
+            var offset2Y = tgt.cySs;
 
             var entry2 = findNoteAreaEntryPoint(tgt.offsetArea, tgt.offsetBounds, localCx2, 0, -nx, -ny, stepSs);
 
-            double effectiveX2Translate = Math.max(x2Translate, -NoteAreaBuilder.MIN_GAP_SS);
+            var effectiveX2Translate = Math.max(x2Translate, -NoteAreaBuilder.MIN_GAP_SS);
             endX = entry2.x + offset2X - nx * effectiveX2Translate;
             endY = entry2.y + offset2Y - ny * effectiveX2Translate;
         }
@@ -531,7 +531,7 @@ public class GlissandoRenderer {
         // Compute glissando length
         dx = endX - startX;
         dy = endY - startY;
-        double length = Math.sqrt(dx * dx + dy * dy);
+        var length = Math.sqrt(dx * dx + dy * dy);
 
         // If the endpoints have crossed or the glissando is too short, skip rendering
         if ((dx * nx + dy * ny) < 0 || length < MIN_RECT_LENGTH_SS) {
@@ -568,9 +568,9 @@ public class GlissandoRenderer {
             return;
         }
 
-        double dx = endpoints.endXSs() - endpoints.startXSs();
-        double dy = endpoints.endYSs() - endpoints.startYSs();
-        double length = Math.sqrt(dx * dx + dy * dy);
+        var dx = endpoints.endXSs() - endpoints.startXSs();
+        var dy = endpoints.endYSs() - endpoints.startYSs();
+        var length = Math.sqrt(dx * dx + dy * dy);
 
         if (glissando != null) {
             glissando.cachedStartX = endpoints.startXSs();
@@ -586,7 +586,7 @@ public class GlissandoRenderer {
             g2.setColor(color);
             g2.translate(endpoints.startXSs(), endpoints.startYSs());
             g2.rotate(endpoints.angle());
-            double thicknessSs = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX);
+            var thicknessSs = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX);
             g2.fill(new RoundRectangle2D.Double(
                 0, -thicknessSs / 2.0,
                 length, thicknessSs,
@@ -638,22 +638,22 @@ public class GlissandoRenderer {
         }
 
         // Precompute bounding-box half-dimensions of the rotated tip rectangle
-        double halfStep = stepSs / 2.0;
-        double halfThickness = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX) / 2.0;
-        double halfW = halfStep * Math.abs(nx) + halfThickness * Math.abs(ny);
-        double halfH = halfStep * Math.abs(ny) + halfThickness * Math.abs(nx);
+        var halfStep = stepSs / 2.0;
+        var halfThickness = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX) / 2.0;
+        var halfW = halfStep * Math.abs(nx) + halfThickness * Math.abs(ny);
+        var halfH = halfStep * Math.abs(ny) + halfThickness * Math.abs(nx);
 
         // Start at the point where the outward ray exits the bounding box
-        double startT = computeFarBoundsT(offsetBounds, cx, cy, nx, ny);
+        var startT = computeFarBoundsT(offsetBounds, cx, cy, nx, ny);
 
         // Step inward; return the last non-intersecting position
-        for (double t = startT; t >= 0; t -= stepSs) {
-            double px = cx + nx * t;
-            double py = cy + ny * t;
+        for (var t = startT; t >= 0; t -= stepSs) {
+            var px = cx + nx * t;
+            var py = cy + ny * t;
             var tipRect = new Rectangle2D.Double(px - halfW, py - halfH, halfW * 2, halfH * 2);
 
             if (offsetArea.intersects(tipRect)) {
-                double endT = t + stepSs;
+                var endT = t + stepSs;
                 return new Point2D.Double(cx + nx * endT, cy + ny * endT);
             }
         }
@@ -667,11 +667,11 @@ public class GlissandoRenderer {
         double cx, double cy,
         double nx, double ny
     ) {
-        double tx = nx > 0 ? (bounds.getMaxX() - cx) / nx
+        var tx = nx > 0 ? (bounds.getMaxX() - cx) / nx
             : nx < 0 ? (bounds.getMinX() - cx) / nx
             : Double.MAX_VALUE;
 
-        double ty = ny > 0 ? (bounds.getMaxY() - cy) / ny
+        var ty = ny > 0 ? (bounds.getMaxY() - cy) / ny
             : ny < 0 ? (bounds.getMinY() - cy) / ny
             : Double.MAX_VALUE;
 

@@ -103,7 +103,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         int beginIndex,
         int endIndex
     ) {
-        int level = getBeamLevel(line, beginIndex, endIndex);
+        var level = getBeamLevel(line, beginIndex, endIndex);
         var highlightColor = getBeamHighlightColor(ctx, beginIndex, endIndex);
         drawBeams(g2, level, line, ctx, beginIndex, endIndex, highlightColor != null,
             highlightColor != null ? highlightColor : ctx.getSelectionColor());
@@ -170,12 +170,12 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
      * Determines the beam level based on the shortest note in the range.
      */
     private int getBeamLevel(Line line, int beginIndex, int endIndex) {
-        int maxLevel = 0;
+        var maxLevel = 0;
 
-        for (int i = beginIndex; i <= endIndex; i++) {
+        for (var i = beginIndex; i <= endIndex; i++) {
             var noteType = line.getElement(i).getType();
 
-            for (int j = 0; j < BEAM_LEVELS.length; j++) {
+            for (var j = 0; j < BEAM_LEVELS.length; j++) {
                 if (noteType == BEAM_LEVELS[j]) {
                     var level = BEAM_LEVELS.length - 1 - j;
                     maxLevel = Math.max(maxLevel, level);
@@ -282,7 +282,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var type = line.getElement(noteIndex).getType();
 
         if (!type.isGraceNote()) {
-            for (int i = 0; i < BEAM_LEVELS.length; i++) {
+            for (var i = 0; i < BEAM_LEVELS.length; i++) {
                 if (BEAM_LEVELS[i] == type) {
                     return i <= (BEAM_LEVELS.length - 1 - level);
                 }
@@ -291,8 +291,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         // Grace notes: check surrounding notes
-        int begin = noteIndex - 1;
-        int end = noteIndex + 1;
+        var begin = noteIndex - 1;
+        var end = noteIndex + 1;
 
         while (begin > 0 && line.getElement(begin).getType().isGraceNote()) {
             begin--;
@@ -322,34 +322,34 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var beginNote = line.getElement(beginIndex);
         var endNote = line.getElement(endIndex);
         var layoutResult = ctx.getLayoutResult();
-        double middleLineYSs = ctx.getMiddleLineYSs();
-        double halfStemWidthSs = NoteRenderer.STEM_WIDTH_SS / 2.0;
+        var middleLineYSs = ctx.getMiddleLineYSs();
+        var halfStemWidthSs = NoteRenderer.STEM_WIDTH_SS / 2.0;
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---
-        double thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
-        double effectiveBeamDepthSs = Engraving.BEAM_THICKNESS_SS + thickeningSs;
-        double beamDepthSs = isUpper ? effectiveBeamDepthSs : -effectiveBeamDepthSs;
-        double innerBeamOffsetSs = (effectiveBeamDepthSs + Engraving.BEAM_SPACING_SS) * recursionLevel * (isUpper ? 1 : -1);
+        var thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
+        var effectiveBeamDepthSs = Engraving.BEAM_THICKNESS_SS + thickeningSs;
+        var beamDepthSs = isUpper ? effectiveBeamDepthSs : -effectiveBeamDepthSs;
+        var innerBeamOffsetSs = (effectiveBeamDepthSs + Engraving.BEAM_SPACING_SS) * recursionLevel * (isUpper ? 1 : -1);
 
         // --- First note stem geometry ---
         var firstStemLayout = layoutResult.getStemLayout(beginNote);
-        double firstNoteXSs = layoutResult.getElementXSs(beginNote);
-        double firstStemCenterXSs = firstNoteXSs
+        var firstNoteXSs = layoutResult.getElementXSs(beginNote);
+        var firstStemCenterXSs = firstNoteXSs
             + stemCenterXOffsetSs(beginNote.getType(), isUpper);
-        double firstX = firstStemCenterXSs - halfStemWidthSs;
-        double firstTipYSs = stemTipYSsOffset(firstStemLayout, isUpper, beginNote);
-        double firstOuterY = middleLineYSs + firstTipYSs + innerBeamOffsetSs;
-        double firstInnerY = firstOuterY + beamDepthSs;
+        var firstX = firstStemCenterXSs - halfStemWidthSs;
+        var firstTipYSs = stemTipYSsOffset(firstStemLayout, isUpper, beginNote);
+        var firstOuterY = middleLineYSs + firstTipYSs + innerBeamOffsetSs;
+        var firstInnerY = firstOuterY + beamDepthSs;
 
         // --- Last note stem geometry ---
         var lastStemLayout = layoutResult.getStemLayout(endNote);
-        double lastNoteXSs = layoutResult.getElementXSs(endNote);
-        double lastStemCenterXSs = lastNoteXSs
+        var lastNoteXSs = layoutResult.getElementXSs(endNote);
+        var lastStemCenterXSs = lastNoteXSs
             + stemCenterXOffsetSs(endNote.getType(), isUpper);
-        double lastX = lastStemCenterXSs + halfStemWidthSs;
-        double lastTipYSs = stemTipYSsOffset(lastStemLayout, isUpper, endNote);
-        double lastOuterY = middleLineYSs + lastTipYSs + innerBeamOffsetSs;
-        double lastInnerY = lastOuterY + beamDepthSs;
+        var lastX = lastStemCenterXSs + halfStemWidthSs;
+        var lastTipYSs = stemTipYSsOffset(lastStemLayout, isUpper, endNote);
+        var lastOuterY = middleLineYSs + lastTipYSs + innerBeamOffsetSs;
+        var lastInnerY = lastOuterY + beamDepthSs;
 
         // --- Build and draw parallelogram ---
         var beam = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);
@@ -363,7 +363,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
 
         if (type != BeamType.FULL) {
             var clip = beam.getBounds2D();
-            double x1 = (type == BeamType.ATTACH_LEFT)
+            var x1 = (type == BeamType.ATTACH_LEFT)
                 ? firstX - CLIP_SLOP_SS
                 : lastX - BEAM_STUB_SS;
             clip.setRect(
@@ -405,7 +405,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         // Fallback: approximate from staff position + standard stem length
-        double elementYSs = StaffExtents.spToSs(element.getStaffPosition());
+        var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
         return isUpper
             ? elementYSs - NoteRenderer.STEM_LENGTH_SS
             : elementYSs + NoteRenderer.STEM_LENGTH_SS;

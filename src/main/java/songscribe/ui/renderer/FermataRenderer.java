@@ -95,12 +95,12 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        double fermataTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
+        var fermataTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
 
-        double x = centeredGlyphX(decorationLayout.xSs(), element,
+        var x = centeredGlyphX(decorationLayout.xSs(), element,
             FERMATA_BBOX_LEFT_SS, FERMATA_WIDTH_SS);
 
-        double y = glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
+        var y = glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
 
         applyDecorationColor(g2, element, ctx);
         drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);

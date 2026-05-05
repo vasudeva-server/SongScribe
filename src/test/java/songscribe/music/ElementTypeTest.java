@@ -176,7 +176,7 @@ class ElementTypeTest extends UnitTest {
         void testElementGetContentCenterXReturnsPx() {
             var element = ElementType.QUAVER.newInstance();
             var sc = ScaleContext.getInstance();
-            double expectedPx = sc.toPixels(ElementType.QUAVER.getFullElementCenterXSs());
+            var expectedPx = sc.toPixels(ElementType.QUAVER.getFullElementCenterXSs());
             assertThat(element.getContentCenterX()).isCloseTo(expectedPx, within(1e-9));
         }
 
@@ -184,7 +184,7 @@ class ElementTypeTest extends UnitTest {
         void testElementGetContentHeightReturnsPx() {
             var element = ElementType.CROTCHET.newInstance();
             var sc = ScaleContext.getInstance();
-            double expectedPx = sc.toPixels(ElementType.CROTCHET.getElementHeightSs(element.isUpper()));
+            var expectedPx = sc.toPixels(ElementType.CROTCHET.getElementHeightSs(element.isUpper()));
             assertThat(element.getContentHeightPx()).isCloseTo(expectedPx, within(1e-9));
         }
 
@@ -192,7 +192,7 @@ class ElementTypeTest extends UnitTest {
         void testElementGetContentWidthReturnsPx() {
             var element = ElementType.CROTCHET.newInstance();
             var sc = ScaleContext.getInstance();
-            double expectedPx = sc.toPixels(ElementType.CROTCHET.getFullElementWidthSs());
+            var expectedPx = sc.toPixels(ElementType.CROTCHET.getFullElementWidthSs());
             assertThat(element.getContentWidthPx()).isCloseTo(expectedPx, within(1e-9));
         }
     }
@@ -202,7 +202,7 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testBarlineHeightEqualsStaffHeight() {
-            double staffHeight = StaffExtents.STAFF_HEIGHT_SS;
+            var staffHeight = StaffExtents.STAFF_HEIGHT_SS;
 
             assertThat(ElementType.SINGLE_BARLINE.getElementHeightSs(true))
                 .isCloseTo(staffHeight, within(1e-9));
@@ -214,7 +214,7 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testRepeatHeightEqualsStaffHeight() {
-            double staffHeight = StaffExtents.STAFF_HEIGHT_SS;
+            var staffHeight = StaffExtents.STAFF_HEIGHT_SS;
 
             assertThat(ElementType.REPEAT_LEFT.getElementHeightSs(true))
                 .isCloseTo(staffHeight, within(1e-9));
@@ -252,7 +252,7 @@ class ElementTypeTest extends UnitTest {
         @Test
         void testDoubleBarlineWidth() {
             var lt = LineThickness.getInstance();
-            double expected = 2 * lt.thinBarlineSs() + lt.barlineSeparationSs();
+            var expected = 2 * lt.thinBarlineSs() + lt.barlineSeparationSs();
             assertThat(ElementType.DOUBLE_BARLINE.getFullElementWidthSs())
                 .isCloseTo(expected, within(1e-9));
         }
@@ -260,7 +260,7 @@ class ElementTypeTest extends UnitTest {
         @Test
         void testFinalDoubleBarlineWidth() {
             var lt = LineThickness.getInstance();
-            double expected = lt.thinBarlineSs() + lt.thickBarlineSs()
+            var expected = lt.thinBarlineSs() + lt.thickBarlineSs()
                 + lt.barlineSeparationSs();
             assertThat(ElementType.FINAL_DOUBLE_BARLINE.getFullElementWidthSs())
                 .isCloseTo(expected, within(1e-9));

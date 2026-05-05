@@ -133,14 +133,14 @@ class PreviewElementManagerTupletTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     private static void setStaticField(String name, @Nullable Object value) throws Exception {
-        Field field = PreviewElementManager.class.getDeclaredField(name);
+        var field = PreviewElementManager.class.getDeclaredField(name);
         field.setAccessible(true);
         field.set(null, value);
     }
 
     private void addNotes(int count, ElementType type) {
         song.withoutMutationTracking(() -> {
-            for (int i = 0; i < count; i++) {
+            for (var i = 0; i < count; i++) {
                 line.addElement(type.newInstance());
             }
         });

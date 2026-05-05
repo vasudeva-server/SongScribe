@@ -82,7 +82,7 @@ public enum ArticulationType {
             // Reverse order for upward stems (articulations above head)
             var reversed = new ArticulationType[values.length];
 
-            for (int i = 0; i < values.length; i++) {
+            for (var i = 0; i < values.length; i++) {
                 reversed[i] = values[values.length - 1 - i];
             }
 

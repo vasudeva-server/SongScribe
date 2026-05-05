@@ -93,24 +93,24 @@ public class BeatChangeAttachment extends MetronomeAttachment {
         var scale = ScaleContext.getInstance();
         var regions = new ArrayList<CollisionRegion>(3);
 
-        double leftNoteWidthSs = noteWidthSs(beatChange.duration().getNote(), metadata);
-        double equalsWidthSs = scale.textWidthSs(attrFont, "=");
-        double rightNoteWidthSs = noteWidthSs(beatChange.beat().getNote(), metadata);
+        var leftNoteWidthSs = noteWidthSs(beatChange.duration().getNote(), metadata);
+        var equalsWidthSs = scale.textWidthSs(attrFont, "=");
+        var rightNoteWidthSs = noteWidthSs(beatChange.beat().getNote(), metadata);
 
         regions.add(new CollisionRegion(0, 0, leftNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));
 
         var equalsLm = attrFont.getLineMetrics("=", GraphicUtils.SCREEN_FRC);
-        double equalsAscentSs = scale.fromPixels(equalsLm.getAscent());
-        double equalsDescentSs = scale.fromPixels(equalsLm.getDescent());
-        double equalsXOffsetSs = leftNoteWidthSs;
-        double equalsYOffsetSs = QUARTER_NOTE_HEIGHT_SS - equalsAscentSs;
+        var equalsAscentSs = scale.fromPixels(equalsLm.getAscent());
+        var equalsDescentSs = scale.fromPixels(equalsLm.getDescent());
+        var equalsXOffsetSs = leftNoteWidthSs;
+        var equalsYOffsetSs = QUARTER_NOTE_HEIGHT_SS - equalsAscentSs;
         regions.add(new CollisionRegion(
             equalsXOffsetSs, equalsYOffsetSs, equalsWidthSs, equalsAscentSs + equalsDescentSs));
 
-        double rightNoteXOffsetSs = equalsXOffsetSs + equalsWidthSs;
+        var rightNoteXOffsetSs = equalsXOffsetSs + equalsWidthSs;
         regions.add(new CollisionRegion(rightNoteXOffsetSs, 0, rightNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));
 
-        double totalWidthSs =
+        var totalWidthSs =
             leftNoteWidthSs + equalsWidthSs + rightNoteWidthSs;
 
         return new ContentMetrics(totalWidthSs, regions);

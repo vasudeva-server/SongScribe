@@ -1055,7 +1055,7 @@ public class Line {
      * Returns -1 otherwise.
      */
     public int precedingGraceNoteIndex(int index) {
-        int candidateIndex = index - 1;
+        var candidateIndex = index - 1;
 
         if (candidateIndex < 0) {
             return -1;
@@ -1410,8 +1410,8 @@ public class Line {
         var result = new ArrayList<RangeElement>();
 
         for (var element : rangeElements) {
-            int start = element.getAnchorElementIndex();
-            int end = element.getEndElementIndex();
+            var start = element.getAnchorElementIndex();
+            var end = element.getEndElementIndex();
 
             if (elementIndex >= start && elementIndex <= end) {
                 result.add(element);
@@ -1455,8 +1455,8 @@ public class Line {
      */
     public @Nullable Ending findEndingAt(int elementIndex) {
         for (var ending : findEndings()) {
-            int start = ending.getAnchorElementIndex();
-            int end = ending.getEndElementIndex();
+            var start = ending.getAnchorElementIndex();
+            var end = ending.getEndElementIndex();
 
             if (elementIndex >= start && elementIndex <= end) {
                 return ending;

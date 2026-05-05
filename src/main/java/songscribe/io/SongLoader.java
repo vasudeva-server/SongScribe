@@ -53,7 +53,7 @@ public final class SongLoader {
      */
     public static Song load(File file) throws IOException, SAXException {
         try {
-            SAXParser parser = PARSER_FACTORY.newSAXParser();
+            var parser = PARSER_FACTORY.newSAXParser();
             var reader = new SongIO.DocumentReader();
             parser.parse(file, reader);
             return reader.getSong();

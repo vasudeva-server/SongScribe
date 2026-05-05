@@ -70,7 +70,7 @@ class ResourceScanTest extends UnitTest {
         private List<String> findViolations(Pattern pattern) throws IOException {
             var violations = new ArrayList<String>();
 
-            try (Stream<Path> paths = Files.list(ICONS_DIR)) {
+            try (var paths = Files.list(ICONS_DIR)) {
                 var svgFiles = paths
                     .filter(p -> p.toString().endsWith(".svg"))
                     .toList();

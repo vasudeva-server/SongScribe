@@ -251,7 +251,7 @@ public class Ending extends RangeElement {
 
         // First bracket (before repeat, or entire span if no repeat)
         if (start < repeatSplitIndex || repeatSplitIndex == -1) {
-            double x1 = elementXSs.applyAsDouble(startElement);
+            var x1 = elementXSs.applyAsDouble(startElement);
             var startType = startElement.getType();
 
             // For barlines and repeats, align to the governing thin barline center.
@@ -261,7 +261,7 @@ public class Ending extends RangeElement {
             }
             else if (start > 0) {
                 var prevElement = line.getElement(start - 1);
-                double prevX = elementXSs.applyAsDouble(prevElement)
+                var prevX = elementXSs.applyAsDouble(prevElement)
                     + Engraving.NOTE_HEAD_WIDTH_SS;
                 x1 -= (x1 - prevX) / 2.0;
             }
@@ -269,7 +269,7 @@ public class Ending extends RangeElement {
             double x2;
 
             if (repeatSplitIndex != -1) {
-                double repeatElementX = elementXSs.applyAsDouble(
+                var repeatElementX = elementXSs.applyAsDouble(
                     line.getElement(repeatSplitIndex));
                 x2 = repeatElementX
                     + lt.repeatRightThinBarlineCenterXSs();
@@ -281,7 +281,7 @@ public class Ending extends RangeElement {
                 x2 = elementXSs.applyAsDouble(endElement);
 
                 if (end + 1 < line.elementCount()) {
-                    double nextX = elementXSs.applyAsDouble(
+                    var nextX = elementXSs.applyAsDouble(
                         line.getElement(end + 1));
                     x2 += (nextX - x2) / 2.0;
                 }
@@ -295,7 +295,7 @@ public class Ending extends RangeElement {
 
         // Second bracket (after repeat)
         if (repeatSplitIndex != -1 && end > repeatSplitIndex) {
-            double x2 = elementXSs.applyAsDouble(endElement);
+            var x2 = elementXSs.applyAsDouble(endElement);
             var endType = endElement.getType();
 
             // Extend to the next barline/repeat if end element is not one
@@ -393,8 +393,8 @@ public class Ending extends RangeElement {
         BracketRange bracket,
         double xBaseSs
     ) {
-        double spanWidthSs = bracket.widthSs();
-        double bracketThicknessSs = LineThickness.getInstance().voltaBracketSs();
+        var spanWidthSs = bracket.widthSs();
+        var bracketThicknessSs = LineThickness.getInstance().voltaBracketSs();
         var regions = new ArrayList<CollisionRegion>(4);
 
         // Horizontal bar
@@ -416,8 +416,8 @@ public class Ending extends RangeElement {
 
         // Label (e.g. "1." or "2.")
         var labelBounds = labelBoundsSs(bracket.number());
-        double labelWidthSs = labelBounds.getWidth();
-        double labelHeightSs = -labelBounds.getY();
+        var labelWidthSs = labelBounds.getWidth();
+        var labelHeightSs = -labelBounds.getY();
         regions.add(new CollisionRegion(
             xBaseSs + LABEL_X_INSET_SS, 0,
             labelWidthSs, LABEL_Y_OFFSET_SS + labelHeightSs));

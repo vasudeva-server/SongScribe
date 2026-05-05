@@ -52,8 +52,8 @@ class GlissandoRendererTest extends UnitTest {
         // ty = (2-1) / (1/√2) = √2 ≈ 1.41
         // Expected: min = ty ≈ 1.41
         var bounds = new Rectangle2D.Double(0, 0, 4, 2);
-        double inv = 1.0 / Math.sqrt(2);
-        double t = GlissandoRenderer.computeFarBoundsT(bounds, 2, 1, inv, inv);
+        var inv = 1.0 / Math.sqrt(2);
+        var t = GlissandoRenderer.computeFarBoundsT(bounds, 2, 1, inv, inv);
         assertThat(t).isCloseTo(Math.sqrt(2), within(STEP_SS));
     }
 
@@ -62,7 +62,7 @@ class GlissandoRendererTest extends UnitTest {
         // Bounds from (-2, -1) to (3, 1), center at (0, 0), going right (nx=1, ny=0)
         // Expected: t = (maxX - cx) / nx = (3 - 0) / 1 = 3.0
         var bounds = new Rectangle2D.Double(-2, -1, 5, 2);
-        double t = GlissandoRenderer.computeFarBoundsT(bounds, 0, 0, 1, 0);
+        var t = GlissandoRenderer.computeFarBoundsT(bounds, 0, 0, 1, 0);
         assertThat(t).isCloseTo(3.0, within(STEP_SS));
     }
 
@@ -74,7 +74,7 @@ class GlissandoRendererTest extends UnitTest {
     void testFindEntryPoint_circle() {
         // Circle centered at (0, 0) with radius 2; offsetSs baked into offset area
         var circle = new Area(new Ellipse2D.Double(-2, -2, 4, 4));
-        float offsetSs = 0.3f;
+        var offsetSs = 0.3f;
         var offsetArea = NoteAreaBuilder.createOffsetArea(circle, offsetSs);
         var offsetBounds = offsetArea.getBounds2D();
 
@@ -92,7 +92,7 @@ class GlissandoRendererTest extends UnitTest {
         // Rectangle + circle union; endpoint should be past the furthest component
         var composite = new Area(new Rectangle2D.Double(0, 0, 4, 2));
         composite.add(new Area(new Ellipse2D.Double(3, -1, 4, 4)));
-        float offsetSs = 0.3f;
+        var offsetSs = 0.3f;
         var offsetArea = NoteAreaBuilder.createOffsetArea(composite, offsetSs);
         var offsetBounds = offsetArea.getBounds2D();
 
@@ -109,7 +109,7 @@ class GlissandoRendererTest extends UnitTest {
     void testFindEntryPoint_fallback() {
         // Center is outside the offset area — should return center
         var farRect = new Area(new Rectangle2D.Double(5, 5, 2, 2));
-        float offsetSs = 0.3f;
+        var offsetSs = 0.3f;
         var offsetArea = NoteAreaBuilder.createOffsetArea(farRect, offsetSs);
         var offsetBounds = offsetArea.getBounds2D();
 
@@ -124,7 +124,7 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testFindEntryPoint_zeroDirection() {
         var rect = new Area(new Rectangle2D.Double(-1, -1, 2, 2));
-        float offsetSs = 0.3f;
+        var offsetSs = 0.3f;
         var offsetArea = NoteAreaBuilder.createOffsetArea(rect, offsetSs);
         var offsetBounds = offsetArea.getBounds2D();
 
@@ -164,7 +164,7 @@ class GlissandoRendererTest extends UnitTest {
         var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 0.0, 0.0, 45.0, 10.0);
 
-        double mid = 5.0 * Math.cos(Math.toRadians(45.0));
+        var mid = 5.0 * Math.cos(Math.toRadians(45.0));
         assertThat(RENDERER.hitTestGlissando(mid, mid, line)).isEqualTo(0);
     }
 

@@ -160,13 +160,13 @@ public class LayoutEngine {
         lastError = null;
 
         // Step 1: Build note columns
-        List<ElementColumn> columns = columnBuilder.buildColumns(line);
+        var columns = columnBuilder.buildColumns(line);
 
         if (columns.isEmpty()) {
             // Empty line — mirror the minimum content-fitted height from
             // VerticalStackingCalculator so header elements (clef, key signature)
             // have MIN_ABOVE_STAFF_SS room above the staff.
-            double emptyLineHeightSs = SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS;
+            var emptyLineHeightSs = SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS;
             var emptyBuilder = LayoutResult.builder()
                 .setLineHeightSs(emptyLineHeightSs)
                 .setAboveStaffSs(StaffExtents.MIN_ABOVE_STAFF_SS);
@@ -310,11 +310,11 @@ public class LayoutEngine {
             // Determine stem direction from the pitch contour of the group.
             // Staff position 0 = middle line; positive = below midpoint (Y-down) → stems up.
             // We compare (min + max) to 0 rather than dividing to keep integer arithmetic.
-            int minStaffPos = Integer.MAX_VALUE;
-            int maxStaffPos = Integer.MIN_VALUE;
+            var minStaffPos = Integer.MAX_VALUE;
+            var maxStaffPos = Integer.MIN_VALUE;
 
-            for (int i = span.getStart(); i <= span.getEnd(); i++) {
-                int pos = line.getElement(i).getStaffPosition();
+            for (var i = span.getStart(); i <= span.getEnd(); i++) {
+                var pos = line.getElement(i).getStaffPosition();
 
                 if (pos < minStaffPos) {
                     minStaffPos = pos;
@@ -328,7 +328,7 @@ public class LayoutEngine {
             // Scan for any manual override in the group; first one wins.
             Boolean manualDirection = null;
 
-            for (int i = span.getStart(); i <= span.getEnd(); i++) {
+            for (var i = span.getStart(); i <= span.getEnd(); i++) {
                 var n = line.getElement(i);
 
                 if (!n.isStemDirectionAuto()) {
@@ -337,13 +337,13 @@ public class LayoutEngine {
                 }
             }
 
-            boolean stemsUp = (manualDirection != null)
+            var stemsUp = (manualDirection != null)
                 ? manualDirection
                 : (minStaffPos + maxStaffPos) > 0;
 
             // Normalize auto-direction notes to the group stem direction.
             // Manual overrides are left untouched.
-            for (int i = span.getStart(); i <= span.getEnd(); i++) {
+            for (var i = span.getStart(); i <= span.getEnd(); i++) {
                 var n = line.getElement(i);
 
                 if (n.isStemDirectionAuto()) {
@@ -358,13 +358,13 @@ public class LayoutEngine {
             var firstColumn = elementToColumn.get(firstElement);
             var lastColumn = elementToColumn.get(lastElement);
 
-            double slope = 0.0;
+            var slope = 0.0;
 
             if (firstColumn != null && lastColumn != null) {
-                double dxSs = lastColumn.getXSs() - firstColumn.getXSs();
+                var dxSs = lastColumn.getXSs() - firstColumn.getXSs();
 
                 if (dxSs != 0.0) {
-                    double rawSlope =
+                    var rawSlope =
                         StaffExtents.spToSs(lastElement.getStaffPosition() - firstElement.getStaffPosition()) / dxSs;
 
                     // Hyperbolic dampening saturates extreme slopes without hard clamping.
@@ -377,16 +377,16 @@ public class LayoutEngine {
             //   stemsUp  → note with min staffPosition (highest pitch in Y-down, closest to beam above)
             //   stemsDown → note with max staffPosition (lowest pitch in Y-down, closest to beam below)
             // All Y values are in staff-space with Y-down positive (positive staffPos = below center).
-            double startYSs = 0.0;
+            var startYSs = 0.0;
 
             if (firstColumn != null) {
-                double firstXSs = firstColumn.getXSs();
+                var firstXSs = firstColumn.getXSs();
 
-                int anchorIdx = span.getStart();
-                int anchorStaffPos = firstElement.getStaffPosition();
+                var anchorIdx = span.getStart();
+                var anchorStaffPos = firstElement.getStaffPosition();
 
-                for (int i = span.getStart() + 1; i <= span.getEnd(); i++) {
-                    int pos = line.getElement(i).getStaffPosition();
+                for (var i = span.getStart() + 1; i <= span.getEnd(); i++) {
+                    var pos = line.getElement(i).getStaffPosition();
 
                     if (stemsUp ? pos < anchorStaffPos : pos > anchorStaffPos) {
                         anchorStaffPos = pos;
@@ -396,12 +396,12 @@ public class LayoutEngine {
 
                 var anchorElement = line.getElement(anchorIdx);
                 var anchorColumn = elementToColumn.get(anchorElement);
-                double anchorXSs = (anchorColumn != null) ? anchorColumn.getXSs() : firstXSs;
-                double anchorElementYSs = StaffExtents.spToSs(anchorElement.getStaffPosition());
+                var anchorXSs = (anchorColumn != null) ? anchorColumn.getXSs() : firstXSs;
+                var anchorElementYSs = StaffExtents.spToSs(anchorElement.getStaffPosition());
 
                 // Place beam exactly MIN_STEM_SS from the anchor notehead.
                 // Y-down: beam above notehead = smaller Y (subtract); beam below = larger Y (add).
-                double beamYAtAnchorSs = stemsUp
+                var beamYAtAnchorSs = stemsUp
                     ? anchorElementYSs - MIN_STEM_SS
                     : anchorElementYSs + MIN_STEM_SS;
 
@@ -409,10 +409,10 @@ public class LayoutEngine {
 
                 // Iteratively reduce slope until all stems are at least MIN_STEM_SS, or give up
                 // after 20 iterations.
-                for (int iter = 0; iter < 20; iter++) {
-                    boolean allOk = true;
+                for (var iter = 0; iter < 20; iter++) {
+                    var allOk = true;
 
-                    for (int i = span.getStart(); i <= span.getEnd(); i++) {
+                    for (var i = span.getStart(); i <= span.getEnd(); i++) {
                         var element = line.getElement(i);
                         var col = elementToColumn.get(element);
 
@@ -420,9 +420,9 @@ public class LayoutEngine {
                             continue;
                         }
 
-                        double elementYSs = StaffExtents.spToSs(element.getStaffPosition());
-                        double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
-                        double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
+                        var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
+                        var beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
+                        var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
 
                         if (stemLenSs < MIN_STEM_SS - 1e-9) {
                             allOk = false;
@@ -443,9 +443,9 @@ public class LayoutEngine {
                 }
 
                 // After slope reduction, shift beam vertically to cover any remaining deficit.
-                double maxDeficitSs = 0.0;
+                var maxDeficitSs = 0.0;
 
-                for (int i = span.getStart(); i <= span.getEnd(); i++) {
+                for (var i = span.getStart(); i <= span.getEnd(); i++) {
                     var element = line.getElement(i);
                     var col = elementToColumn.get(element);
 
@@ -453,10 +453,10 @@ public class LayoutEngine {
                         continue;
                     }
 
-                    double elementYSs = StaffExtents.spToSs(element.getStaffPosition());
-                    double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
-                    double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
-                    double deficitSs = MIN_STEM_SS - stemLenSs;
+                    var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
+                    var beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
+                    var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
+                    var deficitSs = MIN_STEM_SS - stemLenSs;
 
                     if (deficitSs > maxDeficitSs) {
                         maxDeficitSs = deficitSs;
@@ -480,9 +480,9 @@ public class LayoutEngine {
             // Beam thickening: angled beams appear thinner due to raster aliasing.
             // Compensate by increasing BEAM_DEPTH proportionally to 1/cos(angle),
             // clamped to a 3.3–8.8% increase over the nominal beam depth.
-            double angle = Math.atan(slope);
-            double factor = Math.clamp(1.0 / Math.cos(angle), 1.033, 1.088);
-            double thickeningSs = BEAM_DEPTH_SS * (factor - 1.0);
+            var angle = Math.atan(slope);
+            var factor = Math.clamp(1.0 / Math.cos(angle), 1.033, 1.088);
+            var thickeningSs = BEAM_DEPTH_SS * (factor - 1.0);
 
             // Build StemLayout for each element in the beam group and accumulate into a map
             // for the BeamLayout.  All Y values are in staff-space with Y-down positive.
@@ -491,9 +491,9 @@ public class LayoutEngine {
             var stemLayouts = new HashMap<StaffElement, LayoutResult.StemLayout>();
 
             if (firstColumn != null) {
-                double firstXSs = firstColumn.getXSs();
+                var firstXSs = firstColumn.getXSs();
 
-                for (int i = span.getStart(); i <= span.getEnd(); i++) {
+                for (var i = span.getStart(); i <= span.getEnd(); i++) {
                     var element = line.getElement(i);
                     var col = elementToColumn.get(element);
 
@@ -501,30 +501,30 @@ public class LayoutEngine {
                         continue;
                     }
 
-                    double elementYSs = StaffExtents.spToSs(element.getStaffPosition());
-                    double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
-                    double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
-                    double lengtheningSs = stemLenSs - MIN_STEM_SS;
+                    var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
+                    var beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
+                    var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
+                    var lengtheningSs = stemLenSs - MIN_STEM_SS;
 
-                    double topYSs = stemsUp ? beamYSs : elementYSs;
-                    double bottomYSs = stemsUp ? elementYSs : beamYSs;
+                    var topYSs = stemsUp ? beamYSs : elementYSs;
+                    var bottomYSs = stemsUp ? elementYSs : beamYSs;
 
                     // Determine stub direction for partial-beam elements.
                     // A stub is needed at beam level L when neither neighbour shares level L.
-                    int myBeams = beamCount(element);
-                    int leftBeams = i > span.getStart() ? beamCount(line.getElement(i - 1)) : 0;
-                    int rightBeams = i < span.getEnd() ? beamCount(line.getElement(i + 1)) : 0;
+                    var myBeams = beamCount(element);
+                    var leftBeams = i > span.getStart() ? beamCount(line.getElement(i - 1)) : 0;
+                    var rightBeams = i < span.getEnd() ? beamCount(line.getElement(i + 1)) : 0;
 
-                    boolean hasStub = false;
+                    var hasStub = false;
 
-                    for (int level = 2; level <= myBeams; level++) {
+                    for (var level = 2; level <= myBeams; level++) {
                         if (leftBeams < level && rightBeams < level) {
                             hasStub = true;
                             break;
                         }
                     }
 
-                    boolean stubRight = false;
+                    var stubRight = false;
 
                     if (hasStub) {
                         if (i == span.getStart()) {
@@ -571,15 +571,15 @@ public class LayoutEngine {
             }
 
             // isUpper() → stem up (upper=true means stem goes up)
-            boolean stemsUp = element.isUpper();
-            double elementYSs = StaffExtents.spToSs(element.getStaffPosition());
-            double stemLenSs = element.getType().isGraceNote()
+            var stemsUp = element.isUpper();
+            var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
+            var stemLenSs = element.getType().isGraceNote()
                 ? NoteRenderer.GRACE_NOTE_STEM_LENGTH_SS
                 : MIN_STEM_SS;
 
             // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
-            double topYSs = stemsUp ? elementYSs - stemLenSs : elementYSs;
-            double bottomYSs = stemsUp ? elementYSs : elementYSs + stemLenSs;
+            var topYSs = stemsUp ? elementYSs - stemLenSs : elementYSs;
+            var bottomYSs = stemsUp ? elementYSs : elementYSs + stemLenSs;
 
             builder.putStemLayout(element, new LayoutResult.StemLayout(topYSs, bottomYSs, 0.0, false));
         }
@@ -627,42 +627,42 @@ public class LayoutEngine {
 
             // Tie direction: stem-up elements tie below (+1), stem-down elements tie above (-1).
             // Y increases downward, so direction = +1 → arc bulges downward.
-            int direction = startElement.isUpper() ? 1 : -1;
+            var direction = startElement.isUpper() ? 1 : -1;
 
             // Tie attachment points: centered on notehead horizontally.
-            double startXSs = startColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
-            double endXSs = endColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
-            double startYSs = StaffExtents.spToSs(startElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
-            double endYSs = StaffExtents.spToSs(endElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+            var startXSs = startColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
+            var endXSs = endColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
+            var startYSs = StaffExtents.spToSs(startElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+            var endYSs = StaffExtents.spToSs(endElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
 
-            double tieWidthSs = endXSs - startXSs;
+            var tieWidthSs = endXSs - startXSs;
 
             // Shoulder height: sqrt growth curve, short ties are relatively tall, long ties flatten.
-            double shoulderHSs = TIE_MIN_SHOULDER_HEIGHT_SS
+            var shoulderHSs = TIE_MIN_SHOULDER_HEIGHT_SS
                 + TIE_SHOULDER_HEIGHT_SCALE * Math.sqrt(Math.max(tieWidthSs - 1, 0));
             shoulderHSs = Math.clamp(shoulderHSs, TIE_MIN_SHOULDER_HEIGHT_SS, TIE_MAX_SHOULDER_HEIGHT_SS);
 
             // Control point X positions: at 20% and 80% of tie width (shoulderW = 0.6).
-            double marginFraction = (1.0 - TIE_SHOULDER_W) * 0.5;
-            double cp1XSs = startXSs + tieWidthSs * marginFraction;
-            double cp2XSs = startXSs + tieWidthSs * (marginFraction + TIE_SHOULDER_W);
+            var marginFraction = (1.0 - TIE_SHOULDER_W) * 0.5;
+            var cp1XSs = startXSs + tieWidthSs * marginFraction;
+            var cp2XSs = startXSs + tieWidthSs * (marginFraction + TIE_SHOULDER_W);
 
             // Control point Y: both at shoulder height from the baseline.
             // Baseline is the midpoint Y of the two endpoints (identical for ties).
-            double baseYSs = (startYSs + endYSs) * 0.5;
-            double shoulderYSs = baseYSs + direction * shoulderHSs;
+            var baseYSs = (startYSs + endYSs) * 0.5;
+            var shoulderYSs = baseYSs + direction * shoulderHSs;
 
             // Outer curve control points: offset away from notes by midThickness.
-            double outerCpYSs = shoulderYSs + direction * TIE_MID_THICKNESS_SS;
+            var outerCpYSs = shoulderYSs + direction * TIE_MID_THICKNESS_SS;
 
             // Inner curve control points: offset toward notes by midThickness.
-            double innerCpYSs = shoulderYSs - direction * TIE_MID_THICKNESS_SS;
+            var innerCpYSs = shoulderYSs - direction * TIE_MID_THICKNESS_SS;
 
             // Interior note collision avoidance: only for ties spanning 3+ notes.
             if (span.getEnd() - span.getStart() >= 2) {
-                double maxDeflection = 0.0;
+                var maxDeflection = 0.0;
 
-                for (int i = span.getStart() + 1; i < span.getEnd(); i++) {
+                for (var i = span.getStart() + 1; i < span.getEnd(); i++) {
                     var interiorElement = line.getElement(i);
                     var interiorColumn = elementToColumn.get(interiorElement);
 
@@ -670,21 +670,21 @@ public class LayoutEngine {
                         continue;
                     }
 
-                    double elementXSs = interiorColumn.getXSs();
-                    double elementYSs = StaffExtents.spToSs(interiorElement.getStaffPosition());
+                    var elementXSs = interiorColumn.getXSs();
+                    var elementYSs = StaffExtents.spToSs(interiorElement.getStaffPosition());
 
                     // Evaluate outer cubic Bezier at approximate t (linear X interpolation).
-                    double t = tieWidthSs > 0
+                    var t = tieWidthSs > 0
                         ? Math.clamp((elementXSs - startXSs) / tieWidthSs, 0.0, 1.0) : 0.5;
-                    double mt = 1.0 - t;
-                    double tieYAtElementSs =
+                    var mt = 1.0 - t;
+                    var tieYAtElementSs =
                         mt * mt * mt * startYSs +
                             3 * mt * mt * t * outerCpYSs +
                             3 * mt * t * t * outerCpYSs +
                             t * t * t * endYSs;
 
                     // Deflection: how much the element protrudes into the tie arc.
-                    double deflection = (tieYAtElementSs - elementYSs) * direction;
+                    var deflection = (tieYAtElementSs - elementYSs) * direction;
 
                     if (deflection > maxDeflection) {
                         maxDeflection = deflection;
@@ -692,7 +692,7 @@ public class LayoutEngine {
                 }
 
                 if (maxDeflection > 0.0) {
-                    double push = TIE_COLLISION_PUSH * TIE_COLLISION_FACTOR * maxDeflection;
+                    var push = TIE_COLLISION_PUSH * TIE_COLLISION_FACTOR * maxDeflection;
                     shoulderHSs += push;
                     shoulderYSs = baseYSs + direction * shoulderHSs;
                     outerCpYSs = shoulderYSs + direction * TIE_MID_THICKNESS_SS;
@@ -725,7 +725,7 @@ public class LayoutEngine {
         var rawKeyType = line.getKeyType();
         var keyType = rawKeyType != null ? rawKeyType : KeyType.NONE;
         var keySig = new KeySignature(keyType, line.getKeyAccidentalCount());
-        double keySigXSs = CLEF_X_POSITION_SS
+        var keySigXSs = CLEF_X_POSITION_SS
             + Engraving.G_CLEF_WIDTH_SS
             + clef.getMarginRightSs();
         keySig.setPosition(keySigXSs, 0);

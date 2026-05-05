@@ -738,7 +738,7 @@ public final class LayoutResult {
         double maxX = 0;
 
         for (var column : elementColumns.values()) {
-            double rightEdge = column.getRightEdgeXSs();
+            var rightEdge = column.getRightEdgeXSs();
 
             if (rightEdge > maxX) {
                 maxX = rightEdge;
@@ -801,14 +801,14 @@ public final class LayoutResult {
         // Exclude the auto-maintained terminal: insertions always occur before it,
         // and the gap between the last real element and the barline should behave as
         // "after the last element" rather than a between-elements midpoint.
-        int elementCount = line.effectiveElementCount();
+        var elementCount = line.effectiveElementCount();
 
         if (elementCount == 0) {
             return 0;
         }
 
         // Check each element to see if mouse is within its head bounds
-        int elementAtX = findElementAtXSs(mouseXSs, line);
+        var elementAtX = findElementAtXSs(mouseXSs, line);
 
         if (elementAtX >= 0 && elementAtX < elementCount) {
             return elementAtX;
@@ -886,7 +886,7 @@ public final class LayoutResult {
         // Exclude the auto-maintained terminal from positioning decisions —
         // it sits at the line's right edge and must not be treated as a real
         // neighbour for spacing the preview.
-        int elementCount = line.effectiveElementCount();
+        var elementCount = line.effectiveElementCount();
 
         // Empty line - use first element position (clef + key signature + offset)
         if (elementCount == 0) {

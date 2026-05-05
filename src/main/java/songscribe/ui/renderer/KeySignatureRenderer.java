@@ -103,7 +103,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         }
 
         var keyType = element.getKeyType();
-        int accidentalCount = element.getAccidentalCount();
+        var accidentalCount = element.getAccidentalCount();
 
         if (keyType == KeyType.NONE || accidentalCount == 0) {
             return;
@@ -114,8 +114,8 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             g2.setColor(ELEMENT_COLOR);
 
             // Get the starting X position from the element
-            double xPosSs = element.getXSs();
-            double middleLineYSs = ctx.getMiddleLineYSs();
+            var xPosSs = element.getXSs();
+            var middleLineYSs = ctx.getMiddleLineYSs();
 
             // Determine glyph and Y positions based on key type
             SMuFLGlyph glyph;
@@ -132,9 +132,9 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             // Draw each accidental
             var glyphStr = glyph.asString();
 
-            for (int i = 0; i < accidentalCount; i++) {
-                int staffPosition = staffPositions[i % 7];
-                double y = middleLineYSs + StaffExtents.spToSs(staffPosition);
+            for (var i = 0; i < accidentalCount; i++) {
+                var staffPosition = staffPositions[i % 7];
+                var y = middleLineYSs + StaffExtents.spToSs(staffPosition);
 
                 g2.drawString(glyphStr, (float) xPosSs, (float) y);
                 xPosSs += ACCIDENTAL_SPACING_SS;
@@ -232,7 +232,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             var middleLineYSs = ctx.getMiddleLineYSs();
 
             // Calculate starting X position (right-aligned with margin)
-            double xPosSs = lineWidth - KEY_CHANGE_RIGHT_MARGIN_SS;
+            var xPosSs = lineWidth - KEY_CHANGE_RIGHT_MARGIN_SS;
 
             // Calculate total width needed
             for (var count : accidentalCounts) {

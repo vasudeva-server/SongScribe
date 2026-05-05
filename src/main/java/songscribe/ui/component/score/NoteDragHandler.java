@@ -264,7 +264,7 @@ class NoteDragHandler {
             return;
         }
 
-        boolean playSelected = Prefs.getInstance().getBoolean(PrefsKey.PLAY_SELECTED_NOTE);
+        var playSelected = Prefs.getInstance().getBoolean(PrefsKey.PLAY_SELECTED_NOTE);
 
         // Send NOTE_OFF for the pitch we were playing
         var oldNote = dragLine.getElement(dragElementIndex);
@@ -355,7 +355,7 @@ class NoteDragHandler {
                         line.removeElement(idx);
                     } else if (!element.getType().isGraceNote()) {
                         // Host note dragged to the same pitch as its preceding grace note — remove the grace note
-                        int graceIdx = line.precedingGraceNoteIndex(idx);
+                        var graceIdx = line.precedingGraceNoteIndex(idx);
 
                         if (graceIdx >= 0
                                 && line.getElement(graceIdx).getPitch() == element.getPitch()) {

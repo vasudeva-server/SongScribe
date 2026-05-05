@@ -117,16 +117,16 @@ public class StaffExtents {
      * @param ySs     the Y extent to reserve in staff-space units
      */
     public void ySet(boolean above, double xSs, double widthSs, double ySs) {
-        int startStep = xToStep(xSs);
-        int endStep = xToStep(xSs + widthSs);
+        var startStep = xToStep(xSs);
+        var endStep = xToStep(xSs + widthSs);
 
         if (above) {
-            for (int i = startStep; i <= endStep; i++) {
+            for (var i = startStep; i <= endStep; i++) {
                 top[i] = Math.min(top[i], ySs);
             }
         }
         else {
-            for (int i = startStep; i <= endStep; i++) {
+            for (var i = startStep; i <= endStep; i++) {
                 bot[i] = Math.max(bot[i], ySs);
             }
         }
@@ -147,22 +147,22 @@ public class StaffExtents {
      * @return the extreme Y value across the queried range, in staff-space units
      */
     public double yGet(boolean above, double xSs, double widthSs) {
-        int startStep = xToStep(xSs);
-        int endStep = xToStep(xSs + widthSs);
+        var startStep = xToStep(xSs);
+        var endStep = xToStep(xSs + widthSs);
 
         if (above) {
-            double minY = top[startStep];
+            var minY = top[startStep];
 
-            for (int i = startStep + 1; i <= endStep; i++) {
+            for (var i = startStep + 1; i <= endStep; i++) {
                 minY = Math.min(minY, top[i]);
             }
 
             return minY;
         }
         else {
-            double maxY = bot[startStep];
+            var maxY = bot[startStep];
 
-            for (int i = startStep + 1; i <= endStep; i++) {
+            for (var i = startStep + 1; i <= endStep; i++) {
                 maxY = Math.max(maxY, bot[i]);
             }
 
@@ -186,7 +186,7 @@ public class StaffExtents {
      * clamped to the valid range [0, YSTEP - 1].
      */
     private int xToStep(double xSs) {
-        int step = (int) (xSs * YSTEP / lineWidthSs);
+        var step = (int) (xSs * YSTEP / lineWidthSs);
         return Math.clamp(step, 0, YSTEP - 1);
     }
 }

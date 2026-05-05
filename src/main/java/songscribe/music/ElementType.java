@@ -574,12 +574,12 @@ public enum ElementType {
                 type.noteheadTopOffsetSs = headTop;
 
                 // Height up: from top of stem to bottom of notehead
-                double upTop = stemUpY - NoteRenderer.STEM_LENGTH_SS;
+                var upTop = stemUpY - NoteRenderer.STEM_LENGTH_SS;
                 type.heightUpSs = headBottom - upTop;
                 type.topOffsetUpSs = upTop;    // stem tip above center (negative)
 
                 // Height down: from top of notehead to bottom of stem
-                double downBottom = stemDownY + NoteRenderer.STEM_LENGTH_SS;
+                var downBottom = stemDownY + NoteRenderer.STEM_LENGTH_SS;
                 type.heightDownSs = downBottom - headTop;
                 type.topOffsetDownSs = headTop; // notehead top above center (negative)
             } else {
@@ -600,8 +600,8 @@ public enum ElementType {
         var headBBox = requireBBox(metadata, SMuFLGlyph.NOTEHEAD_BLACK, type);
         double scale = NoteRenderer.GRACE_NOTE_SCALE;
 
-        double headBottom = headBBox.bottom() * scale;
-        double headRight = headBBox.right() * scale;
+        var headBottom = headBBox.bottom() * scale;
+        var headRight = headBBox.right() * scale;
 
         var anchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
 
@@ -609,11 +609,11 @@ public enum ElementType {
             throw RuntimeError.exit("Missing stem anchors for NOTEHEAD_BLACK (needed for grace notes)");
         }
 
-        double stemUpX = anchors.stemUpSE().x() * scale;
-        double stemUpY = anchors.stemUpSE().y() * scale;
+        var stemUpX = anchors.stemUpSE().x() * scale;
+        var stemUpY = anchors.stemUpSE().y() * scale;
 
-        double upTop = stemUpY - NoteRenderer.GRACE_NOTE_STEM_LENGTH_SS;
-        double width = headRight;
+        var upTop = stemUpY - NoteRenderer.GRACE_NOTE_STEM_LENGTH_SS;
+        var width = headRight;
 
         var flagBBox = metadata.getBBox(SMuFLGlyph.FLAG_8TH_UP);
 
@@ -621,8 +621,8 @@ public enum ElementType {
             width = Math.max(width, stemUpX + flagBBox.right() * scale);
         }
 
-        double headTop = headBBox.top() * scale;
-        double height = headBottom - upTop;
+        var headTop = headBBox.top() * scale;
+        var height = headBottom - upTop;
 
         type.setSymmetricBounds(width, height, upTop);
         type.baseWidthSs = headRight;
@@ -668,11 +668,11 @@ public enum ElementType {
 
     private static void computeBarlineBoundsSs() {
         var lt = LineThickness.getInstance();
-        double thin = lt.thinBarlineSs();
-        double thick = lt.thickBarlineSs();
-        double sep = lt.barlineSeparationSs();
-        double staffHeight = StaffExtents.STAFF_HEIGHT_SS;
-        double topOffset = -staffHeight / 2;
+        var thin = lt.thinBarlineSs();
+        var thick = lt.thickBarlineSs();
+        var sep = lt.barlineSeparationSs();
+        var staffHeight = StaffExtents.STAFF_HEIGHT_SS;
+        var topOffset = -staffHeight / 2;
 
         SINGLE_BARLINE.setSymmetricBounds(thin, staffHeight, topOffset);
         DOUBLE_BARLINE.setSymmetricBounds(2 * thin + sep, staffHeight, topOffset);
@@ -681,21 +681,21 @@ public enum ElementType {
 
     private static void computeRepeatBoundsSs(SMuFLMetadata metadata) {
         var lt = LineThickness.getInstance();
-        double thin = lt.thinBarlineSs();
-        double thick = lt.thickBarlineSs();
-        double sep = lt.barlineSeparationSs();
-        double dotsAdvance = Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS;
-        double staffHeight = StaffExtents.STAFF_HEIGHT_SS;
-        double topOffset = -staffHeight / 2;
+        var thin = lt.thinBarlineSs();
+        var thick = lt.thickBarlineSs();
+        var sep = lt.barlineSeparationSs();
+        var dotsAdvance = Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS;
+        var staffHeight = StaffExtents.STAFF_HEIGHT_SS;
+        var topOffset = -staffHeight / 2;
 
         // Match the renderer's actual layout: dots | sep | thin | sep | thick
-        double singleRepeatWidth = dotsAdvance + sep + thin + sep + thick;
+        var singleRepeatWidth = dotsAdvance + sep + thin + sep + thick;
 
         REPEAT_LEFT.setSymmetricBounds(singleRepeatWidth, staffHeight, topOffset);
         REPEAT_RIGHT.setSymmetricBounds(singleRepeatWidth, staffHeight, topOffset);
 
         // REPEAT_LEFT_RIGHT shares the thick bar: dots | sep | thin | sep | thick | sep | thin | sep | dots
-        double leftRightWidth = 2 * dotsAdvance + 4 * sep + 2 * thin + thick;
+        var leftRightWidth = 2 * dotsAdvance + 4 * sep + 2 * thin + thick;
         REPEAT_LEFT_RIGHT.setSymmetricBounds(leftRightWidth, staffHeight, topOffset);
     }
 

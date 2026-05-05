@@ -106,7 +106,7 @@ class BeatChangeAttachmentTest extends UnitTest {
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var regions = metrics.regions();
 
-            double expectedWidth = regions.get(0).widthSs()
+            var expectedWidth = regions.get(0).widthSs()
                 + regions.get(1).widthSs()
                 + regions.get(2).widthSs();
 
@@ -123,9 +123,9 @@ class BeatChangeAttachmentTest extends UnitTest {
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
 
-            double equalsDescentSs = ScaleContext.getInstance().fromPixels(
+            var equalsDescentSs = ScaleContext.getInstance().fromPixels(
                 font.getLineMetrics("=", GraphicUtils.SCREEN_FRC).getDescent());
-            double equalsBottom = equals.yOffsetSs() + equals.heightSs();
+            var equalsBottom = equals.yOffsetSs() + equals.heightSs();
 
             assertThat(equalsBottom).isCloseTo(
                 MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS + equalsDescentSs,
@@ -138,7 +138,7 @@ class BeatChangeAttachmentTest extends UnitTest {
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
 
-            double equalsBottom = equals.yOffsetSs() + equals.heightSs();
+            var equalsBottom = equals.yOffsetSs() + equals.heightSs();
 
             assertThat(equalsBottom).isGreaterThan(MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS);
         }

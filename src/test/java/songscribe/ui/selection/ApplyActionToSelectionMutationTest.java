@@ -162,7 +162,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
 
         var line = getLine(coordinator);
 
-        for (int i = 0; i <= 2; i++) {
+        for (var i = 0; i <= 2; i++) {
             var replacement = replacements.get(i);
             assertThat(replacement.line()).isSameAs(line);
             assertThat(replacement.index()).isEqualTo(i);
@@ -299,7 +299,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
 
         var line = getLine(coordinator);
 
-        for (int i = 0; i <= 2; i++) {
+        for (var i = 0; i <= 2; i++) {
             var modification = modifications.get(i);
             assertThat(modification.line()).isSameAs(line);
             assertThat(modification.index()).isEqualTo(i);

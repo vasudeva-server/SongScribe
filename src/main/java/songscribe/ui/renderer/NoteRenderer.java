@@ -260,8 +260,8 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * @return The base stem geometry
      */
     public static StemGeometry computeBaseStemGeometry(ElementType noteType, boolean upper) {
-        boolean isMinim = noteType == ElementType.MINIM;
-        boolean isGrace = noteType.isGraceNote();
+        var isMinim = noteType == ElementType.MINIM;
+        var isGrace = noteType.isGraceNote();
 
         GlyphAnchors.Anchor anchor;
 
@@ -273,16 +273,16 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
         }
 
-        double anchorX = anchor.x();
+        var anchorX = anchor.x();
 
         // Stem left edge: for up-stems, the anchor marks the RIGHT edge of the stem;
         // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
         // left by STEM_WIDTH_SS/2, so we compensate.
-        double stemLeftX = upper
+        var stemLeftX = upper
             ? anchorX - STEM_WIDTH_SS
             : anchorX - STEM_WIDTH_SS / 2;
 
-        double stemLength = isGrace ? GRACE_NOTE_STEM_LENGTH_SS : STEM_LENGTH_SS;
+        var stemLength = isGrace ? GRACE_NOTE_STEM_LENGTH_SS : STEM_LENGTH_SS;
 
         return new StemGeometry(stemLeftX, anchor.y(), stemLength);
     }
@@ -380,12 +380,12 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         // Grace notes always have stem up
-        boolean upper = noteType.isGraceNote() || note.isUpper();
+        var upper = noteType.isGraceNote() || note.isUpper();
 
         // Note: Don't set color here - respect the color set by the caller
 
         // Adjust x position for lower stem notes
-        float noteHeadXPosSs = getNoteheadXOffsetSs(noteType, upper);
+        var noteHeadXPosSs = getNoteheadXOffsetSs(noteType, upper);
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(noteType.isGraceNote() ? GRACE_NOTE_FONT : MUSIC_FONT);
@@ -431,13 +431,13 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         // has been translated to the note's position — rounding in local coordinates
         // won't align to actual screen pixels.
         //
-        double stemLeftX = geom.stemLeftXSs();
+        var stemLeftX = geom.stemLeftXSs();
 
         var layoutResult = ctx.getLayoutResult();
         var stemLayout = layoutResult.getStemLayout(note);
-        double lengtheningSs = (stemLayout != null) ? stemLayout.lengtheningSs() : 0.0;
+        var lengtheningSs = (stemLayout != null) ? stemLayout.lengtheningSs() : 0.0;
 
-        double beamThickeningSs = 0.0;
+        var beamThickeningSs = 0.0;
 
         if (beamed) {
             var line = ctx.getCurrentLine();
@@ -518,8 +518,8 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
         // Position flag at the stem tip. SMuFL flag glyphs have their origin
         // at the left edge of the stem, so stemTip.x is already the left edge.
-        float flagX = (float) stemTip.x;
-        float flagY = (float) stemTip.y;
+        var flagX = (float) stemTip.x;
+        var flagY = (float) stemTip.y;
 
         Font flagFont;
 
@@ -576,10 +576,10 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var noteType = note.getType();
 
         // Dots shift up by 0.5 ss when note is on a line
-        double yOffset = (note.getStaffPosition() % 2 == 0) ? -0.5 : 0.0;
+        var yOffset = (note.getStaffPosition() % 2 == 0) ? -0.5 : 0.0;
 
         // X offset adjustments for wider noteheads and flags
-        double xAdjust = 0.0;
+        var xAdjust = 0.0;
 
         if (noteType == ElementType.SEMIBREVE) {
             xAdjust = 0.4375;
@@ -589,9 +589,9 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             xAdjust = (noteType == ElementType.QUAVER) ? 0.625 : 1.0;
         }
 
-        double dotX = FIRST_DOT_X_SS + xAdjust;
+        var dotX = FIRST_DOT_X_SS + xAdjust;
 
-        for (int i = 0; i < note.getDotCount(); i++) {
+        for (var i = 0; i < note.getDotCount(); i++) {
             consumer.accept(dotX, yOffset);
             dotX += DOT_SPACING_SS;
         }
@@ -602,14 +602,14 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     private void renderLedgerLines(Graphics2D g2, StaffElement note, ElementRenderContext ctx) {
-        double extensionSs = getLedgerLineOverhangSs(note);
+        var extensionSs = getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
             return;
         }
 
-        double ledgerWidthSs = getLedgerLineWidthSs(note, extensionSs);
-        double centerXSs = getLedgerLineCenterXSs(note);
+        var ledgerWidthSs = getLedgerLineWidthSs(note, extensionSs);
+        var centerXSs = getLedgerLineCenterXSs(note);
 
         forEachLedgerLineYSs(note.getStaffPosition(),
             y -> drawLedgerLine(g2, centerXSs, y, ledgerWidthSs, ctx));
@@ -630,7 +630,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        boolean isGrace = note.getType().isGraceNote();
+        var isGrace = note.getType().isGraceNote();
         var components = isGrace
             ? ACCIDENTAL_COMPONENTS_SMALL[accidental.ordinal()]
             : ACCIDENTAL_COMPONENTS[accidental.ordinal()];
@@ -638,8 +638,8 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(MUSIC_FONT);
 
-            float accidentalWidth = getAccidentalWidthSs(note);
-            float x = -ACCIDENTAL_PADDING_SS - accidentalWidth;
+            var accidentalWidth = getAccidentalWidthSs(note);
+            var x = -ACCIDENTAL_PADDING_SS - accidentalWidth;
 
             if (note.isAccidentalInParentheses()) {
                 x = drawGlyph(g2, SMuFLGlyph.ACCIDENTAL_PARENS_LEFT, x);
@@ -712,7 +712,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             return false;
         }
 
-        int noteIndex = line.getElementIndex(note);
+        var noteIndex = line.getElementIndex(note);
         return line.getBeamings().findSpan(noteIndex) != null &&
             note.getType() != ElementType.GRACE_QUAVER;
     }
@@ -758,7 +758,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
         for (var i = 0; i < componentTable.length; i++) {
             var components = componentTable[i];
-            float width = 0f;
+            var width = 0f;
 
             for (var c = 0; c < components.length; c++) {
                 if (c > 0) {

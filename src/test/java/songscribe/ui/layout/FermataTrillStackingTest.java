@@ -306,12 +306,12 @@ class FermataTrillStackingTest extends UnitTest {
 
             // Both should be above staff, and one should be above the other
             // (order depends on processing order: fermata first, then trill)
-            double fermataBottom = fermataLayout.ySs() + fermataLayout.heightSs();
-            double trillBottom = trillLayout.ySs() + trillLayout.heightSs();
+            var fermataBottom = fermataLayout.ySs() + fermataLayout.heightSs();
+            var trillBottom = trillLayout.ySs() + trillLayout.heightSs();
 
             // They should not overlap vertically
-            boolean fermataAboveTrill = fermataLayout.ySs() + fermataLayout.heightSs() <= trillLayout.ySs() + TOLERANCE;
-            boolean trillAboveFermata = trillLayout.ySs() + trillLayout.heightSs() <= fermataLayout.ySs() + TOLERANCE;
+            var fermataAboveTrill = fermataLayout.ySs() + fermataLayout.heightSs() <= trillLayout.ySs() + TOLERANCE;
+            var trillAboveFermata = trillLayout.ySs() + trillLayout.heightSs() <= fermataLayout.ySs() + TOLERANCE;
             assertThat(fermataAboveTrill || trillAboveFermata)
                 .describedAs("fermata (y=%.3f, h=%.3f, bot=%.3f) and trill (y=%.3f, h=%.3f, bot=%.3f) should not overlap",
                     fermataLayout.ySs(), fermataLayout.heightSs(), fermataBottom,

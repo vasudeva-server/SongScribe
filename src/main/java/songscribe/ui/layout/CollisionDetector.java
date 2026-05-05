@@ -62,8 +62,8 @@ public final class CollisionDetector {
         // Check all notes
         for (var note : line.getElements()) {
             var noteBounds = note.getMarginBounds();
-            double noteTop = noteBounds.getMinY() - staffMiddleYSs;
-            double noteBottom = noteBounds.getMaxY() - staffMiddleYSs;
+            var noteTop = noteBounds.getMinY() - staffMiddleYSs;
+            var noteBottom = noteBounds.getMaxY() - staffMiddleYSs;
 
             minY = Math.min(minY, noteTop);
             maxY = Math.max(maxY, noteBottom);
@@ -71,8 +71,8 @@ public final class CollisionDetector {
             // Include attachments
             for (var attachment : note.getAttachments()) {
                 var attBounds = attachment.getMarginBounds();
-                double attTop = attBounds.getMinY() - staffMiddleYSs;
-                double attBottom = attBounds.getMaxY() - staffMiddleYSs;
+                var attTop = attBounds.getMinY() - staffMiddleYSs;
+                var attBottom = attBounds.getMaxY() - staffMiddleYSs;
 
                 minY = Math.min(minY, attTop);
                 maxY = Math.max(maxY, attBottom);
@@ -81,8 +81,8 @@ public final class CollisionDetector {
             // Include articulations
             for (var articulation : note.getArticulations()) {
                 var artBounds = articulation.getMarginBounds();
-                double artTop = artBounds.getMinY() - staffMiddleYSs;
-                double artBottom = artBounds.getMaxY() - staffMiddleYSs;
+                var artTop = artBounds.getMinY() - staffMiddleYSs;
+                var artBottom = artBounds.getMaxY() - staffMiddleYSs;
 
                 minY = Math.min(minY, artTop);
                 maxY = Math.max(maxY, artBottom);
@@ -92,8 +92,8 @@ public final class CollisionDetector {
         // Include range elements
         for (var range : line.getRangeElements()) {
             var rangeBounds = range.getMarginBounds();
-            double rangeTop = rangeBounds.getMinY() - staffMiddleYSs;
-            double rangeBottom = rangeBounds.getMaxY() - staffMiddleYSs;
+            var rangeTop = rangeBounds.getMinY() - staffMiddleYSs;
+            var rangeBottom = rangeBounds.getMaxY() - staffMiddleYSs;
 
             minY = Math.min(minY, rangeTop);
             maxY = Math.max(maxY, rangeBottom);

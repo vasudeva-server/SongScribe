@@ -77,7 +77,7 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var keySig = require(result.getKeySignature(), "KeySignature");
 
-        double expectedXSs = CLEF_X_POSITION_SS
+        var expectedXSs = CLEF_X_POSITION_SS
             + Engraving.G_CLEF_WIDTH_SS
             + new Clef().getMarginRightSs();
 
@@ -94,7 +94,7 @@ class LayoutEngineTest extends UnitTest {
         var finalBarline = line.getElement(line.elementCount() - 1);
 
         var result = require(engine().layout(line, true), "LayoutResult");
-        double expectedXSs = ElementType.terminalFlushRightXSs(STAFF_RIGHT_MARGIN_SS, ElementType.FINAL_DOUBLE_BARLINE);
+        var expectedXSs = ElementType.terminalFlushRightXSs(STAFF_RIGHT_MARGIN_SS, ElementType.FINAL_DOUBLE_BARLINE);
 
         assertThat(result.getElementXSs(finalBarline)).isCloseTo(expectedXSs, within(TOLERANCE));
     }
@@ -110,7 +110,7 @@ class LayoutEngineTest extends UnitTest {
         assertThat(terminal.getType()).isEqualTo(ElementType.REPEAT_RIGHT);
 
         var result = require(engine().layout(line, true), "LayoutResult");
-        double expectedXSs = ElementType.terminalFlushRightXSs(STAFF_RIGHT_MARGIN_SS, ElementType.REPEAT_RIGHT);
+        var expectedXSs = ElementType.terminalFlushRightXSs(STAFF_RIGHT_MARGIN_SS, ElementType.REPEAT_RIGHT);
 
         assertThat(result.getElementXSs(terminal)).isCloseTo(expectedXSs, within(TOLERANCE));
     }
@@ -123,7 +123,7 @@ class LayoutEngineTest extends UnitTest {
         var finalBarline = line.getElement(line.elementCount() - 1);
 
         var result = require(engine().layout(line, false), "LayoutResult");
-        double flushRightXSs = ElementType.terminalFlushRightXSs(STAFF_RIGHT_MARGIN_SS, ElementType.FINAL_DOUBLE_BARLINE);
+        var flushRightXSs = ElementType.terminalFlushRightXSs(STAFF_RIGHT_MARGIN_SS, ElementType.FINAL_DOUBLE_BARLINE);
 
         assertThat(result.getElementXSs(finalBarline)).isNotCloseTo(flushRightXSs, within(TOLERANCE));
     }

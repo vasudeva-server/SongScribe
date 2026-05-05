@@ -544,11 +544,11 @@ public class PreferencesDialog extends BaseDialog {
         }
 
         private static int volumeToSliderIndex(int volume) {
-            int closestIndex = 0;
-            int minDist = Math.abs(volume - VALID_VOLUME_STOPS[0]);
+            var closestIndex = 0;
+            var minDist = Math.abs(volume - VALID_VOLUME_STOPS[0]);
 
-            for (int i = 1; i < VOLUME_STOP_COUNT; i++) {
-                int dist = Math.abs(volume - VALID_VOLUME_STOPS[i]);
+            for (var i = 1; i < VOLUME_STOP_COUNT; i++) {
+                var dist = Math.abs(volume - VALID_VOLUME_STOPS[i]);
 
                 if (dist < minDist) {
                     minDist = dist;

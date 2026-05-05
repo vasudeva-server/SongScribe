@@ -371,7 +371,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
     private static EndingValidationResult setCachedEndingResult(@Nullable EndingValidationResult value)
         throws ReflectiveOperationException
     {
-        Field field = FirstSecondEndingAction.class.getDeclaredField("cachedResult");
+        var field = FirstSecondEndingAction.class.getDeclaredField("cachedResult");
         field.setAccessible(true);
         var previous = (EndingValidationResult) field.get(FirstSecondEndingAction.MAKE_ENDING_ACTION);
         field.set(FirstSecondEndingAction.MAKE_ENDING_ACTION, value);

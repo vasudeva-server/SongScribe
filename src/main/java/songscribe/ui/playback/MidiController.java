@@ -173,7 +173,7 @@ public final class MidiController {
 
     private static File extractSoundfontToTempFile(String resourcePath)
             throws IOException {
-        try (InputStream in = MidiController.class.getResourceAsStream(resourcePath)) {
+        try (var in = MidiController.class.getResourceAsStream(resourcePath)) {
             if (in == null) {
                 throw new FileNotFoundException(
                         "Resource not found on classpath: " + resourcePath
@@ -200,7 +200,7 @@ public final class MidiController {
             );
             receiver.send(gmOn, -1);
 
-            for (int ch = 0; ch < 16; ch++) {
+            for (var ch = 0; ch < 16; ch++) {
                 if (ch == 9) {
                     // Drums: drier, no chorus
                     initChannel(receiver, ch, 100, 64, 127, 15, 0);
@@ -257,10 +257,10 @@ public final class MidiController {
             return;
         }
 
-        int midiValue = Math.round(Math.clamp(percent, 50, 100) / 100f * 127);
+        var midiValue = Math.round(Math.clamp(percent, 50, 100) / 100f * 127);
 
         try {
-            for (int ch = 0; ch < 16; ch++) {
+            for (var ch = 0; ch < 16; ch++) {
                 cc(midiReceiver, ch, 7, midiValue);
             }
         } catch (InvalidMidiDataException e) {

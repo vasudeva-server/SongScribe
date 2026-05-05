@@ -92,7 +92,7 @@ public class DynamicMarkingAction extends NoteOnlyAction {
         var existing = element.findAttachment(DynamicAttachment.class);
 
         if (existing != null) {
-            boolean isSameType = existing.getType() == dynamicType;
+            var isSameType = existing.getType() == dynamicType;
             element.removeAttachment(existing);
 
             if (isSameType) {

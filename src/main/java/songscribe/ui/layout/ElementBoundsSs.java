@@ -240,8 +240,8 @@ public final class ElementBoundsSs {
      * @return The effective margin between the two elements in staff spaces
      */
     public double collapsedMarginWith(ElementBoundsSs below) {
-        double thisBottomMargin = getMarginBottomSs() - getBottomSs();
-        double belowTopMargin = below.getTopSs() - below.getMarginTopSs();
+        var thisBottomMargin = getMarginBottomSs() - getBottomSs();
+        var belowTopMargin = below.getTopSs() - below.getMarginTopSs();
         return Math.max(thisBottomMargin, belowTopMargin);
     }
 
@@ -311,10 +311,10 @@ public final class ElementBoundsSs {
      * Formats spacing values as CSS shorthand.
      */
     private static String formatCssSpacing(double top, double right, double bottom, double left) {
-        int t = Math.abs((int) Math.round(top));
-        int r = Math.abs((int) Math.round(right));
-        int b = Math.abs((int) Math.round(bottom));
-        int l = Math.abs((int) Math.round(left));
+        var t = Math.abs((int) Math.round(top));
+        var r = Math.abs((int) Math.round(right));
+        var b = Math.abs((int) Math.round(bottom));
+        var l = Math.abs((int) Math.round(left));
 
         // All zero
         if (t == 0 && r == 0 && b == 0 && l == 0) {

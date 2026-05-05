@@ -79,9 +79,9 @@ public class LayoutAccumulator {
      * @return true if the areas intersect
      */
     public boolean intersects(Area area) {
-        Area testArea = new Area(area);
+        var testArea = new Area(area);
         testArea.intersect(accumulatedArea);
-        boolean result = !testArea.isEmpty();
+        var result = !testArea.isEmpty();
 
         if (DEBUG_COLLISION) {
             var bounds = area.getBounds2D();

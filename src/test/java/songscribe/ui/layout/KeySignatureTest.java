@@ -64,7 +64,7 @@ class KeySignatureTest extends UnitTest {
         void testWidthIsCountTimesSharpBBoxWidth() {
             var keySig = new KeySignature(KeyType.SHARPS, 3);
             var sharpBBox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ACCIDENTAL_SHARP);
-            double expected = 3 * sharpBBox.width();
+            var expected = 3 * sharpBBox.width();
 
             assertThat(keySig.getContentWidthSs()).isCloseTo(expected, within(EPSILON));
         }
@@ -85,7 +85,7 @@ class KeySignatureTest extends UnitTest {
         void testWidthIsCountTimesFlatBBoxWidth() {
             var keySig = new KeySignature(KeyType.FLATS, 4);
             var flatBBox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ACCIDENTAL_FLAT);
-            double expected = 4 * flatBBox.width();
+            var expected = 4 * flatBBox.width();
 
             assertThat(keySig.getContentWidthSs()).isCloseTo(expected, within(EPSILON));
         }

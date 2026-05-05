@@ -60,7 +60,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     private static Line lineWithCrotchets(int count, Line line) {
         for (var i = 0; i < count; i++) {
             var element = crotchet();
-            double xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, element, null);
+            var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, element, null);
             element.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(xSs));
             line.addElement(element);
         }
@@ -83,7 +83,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     private static Line lineWithGraceAtIndex(int numCrotchetsBefore, Line line) {
         lineWithCrotchets(numCrotchetsBefore, line);
         var grace = ElementType.GRACE_QUAVER.newInstance();
-        double xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, grace, null);
+        var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, grace, null);
         grace.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(xSs));
         line.addElement(grace);
         return line;
@@ -94,8 +94,8 @@ class InsertionSpacingCalculatorTest extends UnitTest {
      */
     private static double lastElementRightEdgeSs(Line line) {
         var last = line.getElement(line.elementCount() - 1);
-        double leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(last);
-        double rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(last, false, last.isUpper());
+        var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(last);
+        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(last, false, last.isUpper());
         var column = new ElementColumn(
             last, Collections.emptyList(), leftExtentSs, rightExtentSs, 0, 0, null, 0, false
         );

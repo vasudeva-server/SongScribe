@@ -116,7 +116,7 @@ class ManualOffsetStackingTest extends UnitTest {
         void testAnnotationAttachmentUserOffsetApplied() {
             var note = createNote(0, false);
             var attachment = new AnnotationAttachment("test");
-            double yOffsetSs = -1.5;
+            var yOffsetSs = -1.5;
             attachment.setUserYOffsetSs(yOffsetSs);
             note.addAttachment(attachment);
 
@@ -149,7 +149,7 @@ class ManualOffsetStackingTest extends UnitTest {
         void testAnnotationAttachmentXOffsetApplied() {
             var note = createNote(0, false);
             var attachment = new AnnotationAttachment("test");
-            double xOffsetSs = 2.0;
+            var xOffsetSs = 2.0;
             attachment.setUserXOffsetSs(xOffsetSs);
             note.addAttachment(attachment);
 
@@ -169,7 +169,7 @@ class ManualOffsetStackingTest extends UnitTest {
         void testLegacyAnnotationYOffsetApplied() {
             var note = createNote(0, false);
             var annotation = new Annotation("test");
-            double yOffsetSs = -2.0;
+            var yOffsetSs = -2.0;
             annotation.setUserYOffsetSs(yOffsetSs);
             note.setAnnotation(annotation);
 
@@ -205,7 +205,7 @@ class ManualOffsetStackingTest extends UnitTest {
         void testFermataUserYOffsetApplied() {
             var note = createNote(0, false);
             var fermata = new FermataAttachment(note);
-            double yOffsetSs = -1.0;
+            var yOffsetSs = -1.0;
             fermata.setUserYOffsetSs(yOffsetSs);
             note.addAttachment(fermata);
 
@@ -245,7 +245,7 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line,note1);
             populate(line,note2);
 
-            double yShiftSs = -1.5;
+            var yShiftSs = -1.5;
             var span = new DynamicsSpan(0, 1);
             span.setYShiftSs(yShiftSs);
             line.getCrescendos().addSpan(span);
@@ -288,8 +288,8 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line,note1);
             populate(line,note2);
 
-            double x1ShiftSs = 0.5;
-            double x2ShiftSs = -0.5;
+            var x1ShiftSs = 0.5;
+            var x2ShiftSs = -0.5;
             var span = new DynamicsSpan(0, 1);
             span.setX1ShiftSs(x1ShiftSs);
             span.setX2ShiftSs(x2ShiftSs);
@@ -338,7 +338,7 @@ class ManualOffsetStackingTest extends UnitTest {
             // detection is not re-run after offsets are applied.
             var note = createNote(0, false);
             var tempo = new TempoChangeAttachment(note, new Tempo());
-            double largeDownwardOffsetSs = 5.0;
+            var largeDownwardOffsetSs = 5.0;
             tempo.setUserYOffsetSs(largeDownwardOffsetSs);
             note.addAttachment(tempo);
 
@@ -385,7 +385,7 @@ class ManualOffsetStackingTest extends UnitTest {
         void testTempoUserYOffsetApplied() {
             var note = createNote(0, false);
             var tempo = new TempoChangeAttachment(note, new Tempo());
-            double yOffsetSs = -2.0;
+            var yOffsetSs = -2.0;
             tempo.setUserYOffsetSs(yOffsetSs);
             note.addAttachment(tempo);
 
@@ -417,7 +417,7 @@ class ManualOffsetStackingTest extends UnitTest {
         void testTempoUserXOffsetApplied() {
             var note = createNote(0, false);
             var tempo = new TempoChangeAttachment(note, new Tempo());
-            double xOffsetSs = 3.0;
+            var xOffsetSs = 3.0;
             tempo.setUserXOffsetSs(xOffsetSs);
             note.addAttachment(tempo);
 
@@ -443,7 +443,7 @@ class ManualOffsetStackingTest extends UnitTest {
             var line = newLine();
             populate(line,note);
 
-            int yPositionSs = -3;
+            var yPositionSs = -3;
             var trill = new Trill(note, note);
             trill.setYPositionSs(yPositionSs);
             setup(() -> line.addRangeElement(trill));
@@ -482,7 +482,7 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line,note1);
             populate(line,note2);
 
-            int yPositionSs = -2;
+            var yPositionSs = -2;
             var ending = new Ending(note1, note2, Ending.Type.FIRST);
             ending.setYPositionSs(yPositionSs);
             setup(() -> line.addRangeElement(ending));

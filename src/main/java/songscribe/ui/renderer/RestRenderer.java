@@ -150,8 +150,8 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         // Get rest position in staff-space units
-        double noteX = resolveRestXSs(g2, element, ctx);
-        double noteY = calculateRestYSs(element, ctx.getMiddleLineYSs());
+        var noteX = resolveRestXSs(g2, element, ctx);
+        var noteY = calculateRestYSs(element, ctx.getMiddleLineYSs());
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             g2.translate(noteX, noteY);
@@ -212,7 +212,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
             g2.setFont(MUSIC_FONT);
             var dotX = firstDotX;
 
-            for (int i = 0; i < note.getDotCount(); i++) {
+            for (var i = 0; i < note.getDotCount(); i++) {
                 g2.drawString(SMuFLGlyph.AUGMENTATION_DOT.asString(), dotX, 0f);
                 dotX += DOT_SPACING_SS;
             }

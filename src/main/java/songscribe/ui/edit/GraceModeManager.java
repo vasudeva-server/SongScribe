@@ -212,7 +212,7 @@ public final class GraceModeManager {
         }
 
         var previewElement = editModeManager.getPreviewElement();
-        double hostLeftExtentSs = previewElement != null
+        var hostLeftExtentSs = previewElement != null
             ? ElementColumnBuilder.calculateLeftExtentSs(previewElement)
             : 0;
 
@@ -339,9 +339,9 @@ public final class GraceModeManager {
             return true;
         }
 
-        int dx = e.getXOnScreen() - mouseDownPoint.x;
-        int dy = e.getYOnScreen() - mouseDownPoint.y;
-        boolean isDrag = System.currentTimeMillis() - mouseDownTime >= MIN_DRAG_MILLIS;
+        var dx = e.getXOnScreen() - mouseDownPoint.x;
+        var dy = e.getYOnScreen() - mouseDownPoint.y;
+        var isDrag = System.currentTimeMillis() - mouseDownTime >= MIN_DRAG_MILLIS;
 
         // Click (< slop in both axes, or too fast to be a drag): transition to GRACE_NOTE_INSERT.
         // Suppress the mouseClicked that Swing fires as part of the same click cycle.
@@ -387,13 +387,13 @@ public final class GraceModeManager {
 
         hidePreviewAndSetDefaultCursor(lineComponent);
 
-        boolean wasPendingCancel = pendingCancel;
-        boolean isDrag = System.currentTimeMillis() - mouseDownTime >= MIN_DRAG_MILLIS;
+        var wasPendingCancel = pendingCancel;
+        var isDrag = System.currentTimeMillis() - mouseDownTime >= MIN_DRAG_MILLIS;
         pendingCancel = isDrag && isMouseLeftOfGraceNote(e);
         pendingConnect = isDrag && !pendingCancel
             && isMouseRightOfGraceNote(e) && hasEligibleHostNote();
 
-        boolean hasGlissando = graceNote != null
+        var hasGlissando = graceNote != null
             && graceNote.getGlissando() != null;
 
         if (pendingConnect && !hasGlissando && graceNote != null) {
@@ -513,7 +513,7 @@ public final class GraceModeManager {
         graceLine = line;
 
         // The grace note is the most recently inserted element at the current x index
-        int insertedIndex = PreviewElementManager.getCurrentXIndex();
+        var insertedIndex = PreviewElementManager.getCurrentXIndex();
 
         if (insertedIndex < 0 || insertedIndex >= line.elementCount()) {
             // Insertion failed (e.g. triplet boundary)
@@ -562,7 +562,7 @@ public final class GraceModeManager {
 
         // Compute the locked x-position. Returns 0 if the grace note's layout is
         // unavailable (e.g., layout in progress), which signals that we should abort.
-        double lockedXSs = getLockedInsertionXSs();
+        var lockedXSs = getLockedInsertionXSs();
 
         if (lockedXSs == 0) {
             finish(true);
@@ -602,7 +602,7 @@ public final class GraceModeManager {
             return;
         }
 
-        int hostNoteIndex = graceNoteIndex + 1;
+        var hostNoteIndex = graceNoteIndex + 1;
 
         if (hostNoteIndex >= line.elementCount()) {
             finish(true);
@@ -653,7 +653,7 @@ public final class GraceModeManager {
             // runs outside an outer bracket (e.g. via Esc / drag-left cancel paths).
             // Brackets nest, so this is a no-op if a caller already opened one.
             var line = graceLine;
-            int idx = graceNoteIndex;
+            var idx = graceNoteIndex;
             line.withModification(() -> line.removeElement(idx));
         }
 
@@ -695,7 +695,7 @@ public final class GraceModeManager {
      * click in the insert phase.
      */
     private boolean isMouseLeftOfGraceNote(MouseEvent e) {
-        int threshold = internalGetCancelThresholdPx();
+        var threshold = internalGetCancelThresholdPx();
         return threshold >= 0 && e.getX() <= threshold;
     }
 
@@ -704,7 +704,7 @@ public final class GraceModeManager {
      * of the grace note's right edge. Used for connect detection during drag.
      */
     private boolean isMouseRightOfGraceNote(MouseEvent e) {
-        int threshold = internalGetConnectThresholdPx();
+        var threshold = internalGetConnectThresholdPx();
         return threshold >= 0 && e.getX() >= threshold;
     }
 
@@ -719,7 +719,7 @@ public final class GraceModeManager {
             return -1;
         }
 
-        double graceXSs = layout.getElementXSs(graceNote);
+        var graceXSs = layout.getElementXSs(graceNote);
         return ScaleContext.getInstance().toRoundedPixels(graceXSs) - GRACE_SLOP_PX;
     }
 
@@ -740,7 +740,7 @@ public final class GraceModeManager {
             return -1;
         }
 
-        double rightEdgeSs = graceColumn.getXSs() + graceColumn.getRightExtentSs();
+        var rightEdgeSs = graceColumn.getXSs() + graceColumn.getRightExtentSs();
         return ScaleContext.getInstance().toRoundedPixels(rightEdgeSs) + GRACE_SLOP_PX;
     }
 
@@ -753,7 +753,7 @@ public final class GraceModeManager {
             return false;
         }
 
-        int nextIndex = graceNoteIndex + 1;
+        var nextIndex = graceNoteIndex + 1;
         return nextIndex < graceLine.elementCount()
             && graceLine.getElement(nextIndex).getType().isPitchedNote();
     }

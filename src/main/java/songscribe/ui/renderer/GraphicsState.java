@@ -73,7 +73,7 @@ public final class GraphicsState implements AutoCloseable {
         Graphics2D g2,
         Property ... properties
     ) {
-        int mask = 0;
+        var mask = 0;
 
         for (var property : properties) {
             mask |= (1 << property.ordinal());

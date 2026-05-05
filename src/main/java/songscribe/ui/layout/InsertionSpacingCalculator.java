@@ -105,7 +105,7 @@ public class InsertionSpacingCalculator {
         var lastElement = line.getElement(effectiveCount - 1);
         var lastColumn = createLightweightColumn(lastElement);
 
-        double lastXSs = elementXSs(lastElement, layout);
+        var lastXSs = elementXSs(lastElement, layout);
         lastColumn.setXSs(lastXSs);
 
         var appendColumn = createLightweightColumn(elementToAppend);
@@ -159,7 +159,7 @@ public class InsertionSpacingCalculator {
 
         // If inserting at end, no shift needed (use calculateAppendPosition instead)
         if (insertIndex == elementCount) {
-            double appendXSs = calculateAppendPositionSs(line, insertedElement, layout);
+            var appendXSs = calculateAppendPositionSs(line, insertedElement, layout);
             var appendColumn = createLightweightColumn(insertedElement);
             appendColumn.setXSs(appendXSs);
             return new InsertionResult(appendXSs, 0, appendColumn.getRightEdgeXSs());
@@ -179,7 +179,7 @@ public class InsertionSpacingCalculator {
 
             // Space needed: firstElementX → inserted element → existing first element
             insertedColumn.setXSs(insertedElementXSs);
-            double insertedToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
+            var insertedToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
                 insertedColumn, nextColumn);
 
             // Shift = (where first element needs to be) - (where it currently is)
@@ -199,20 +199,20 @@ public class InsertionSpacingCalculator {
                 prevColumn, insertedColumn);
             insertedColumn.setXSs(insertedElementXSs);
 
-            double insertedToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
+            var insertedToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
                 insertedColumn, nextColumn);
 
             // Shift = (where next needs to be) - (where it currently is)
             requiredSpaceSs = insertedToNextSs - elementXSs(nextElement, layout);
         }
 
-        double shiftSs = Math.max(0, requiredSpaceSs);
+        var shiftSs = Math.max(0, requiredSpaceSs);
 
         // Compute projected line width: max of inserted element's right edge
         // and the last real element's right edge shifted by the insertion shift.
         // Exclude the auto-maintained FINAL_DOUBLE_BARLINE — its position is fixed.
         insertedColumn.setXSs(insertedElementXSs);
-        double newLineWidthSs = insertedColumn.getRightEdgeXSs();
+        var newLineWidthSs = insertedColumn.getRightEdgeXSs();
 
         var effectiveCount = line.effectiveElementCount();
 
@@ -256,7 +256,7 @@ public class InsertionSpacingCalculator {
      * @return {@code true} if the grace note fits on the line
      */
     public static boolean hasRoomForGraceNote(Line line, int atIndex, @Nullable LayoutResult layout) {
-        double staffRightMarginSs = line.getSong().getLineWidthSs();
+        var staffRightMarginSs = line.getSong().getLineWidthSs();
         // Shared singleton is safe: calculateInsertion only reads geometry from the element.
         var graceNote = ElementType.GRACE_QUAVER.getInstance();
         return calculateInsertion(line, graceNote, atIndex, layout).fitsWithinLine(staffRightMarginSs);
@@ -273,7 +273,7 @@ public class InsertionSpacingCalculator {
      * @return {@code true} if a host note fits after the grace note
      */
     public static boolean hasRoomForHostNoteAfterGrace(Line line, int graceNoteIndex) {
-        double staffRightMarginSs = line.getSong().getLineWidthSs();
+        var staffRightMarginSs = line.getSong().getLineWidthSs();
         // Shared singleton is safe: calculateInsertion only reads geometry from the element.
         var hostNote = ElementType.CROTCHET.getInstance();
         return calculateInsertion(line, hostNote, graceNoteIndex + 1, null).fitsWithinLine(staffRightMarginSs);
@@ -290,8 +290,8 @@ public class InsertionSpacingCalculator {
      */
     private static ElementColumn createLightweightColumn(StaffElement element) {
         // Calculate geometric extents using ElementColumnBuilder's static methods
-        double leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
-        double rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.isUpper());
+        var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
+        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.isUpper());
 
         // For insertion operations, we don't need stem positions or beam group info
         // since we're only calculating horizontal spacing

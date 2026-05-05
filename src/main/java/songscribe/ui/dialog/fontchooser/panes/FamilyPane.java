@@ -87,7 +87,7 @@ public class FamilyPane extends JPanel {
     public void setSelectedFamily(String family) {
         familyList.setSelectedValue(family, false);
         SwingUtilities.invokeLater(() -> {
-            int index = familyList.getSelectedIndex();
+            var index = familyList.getSelectedIndex();
 
             if (index >= 0) {
                 familyList.ensureIndexIsVisible(index);

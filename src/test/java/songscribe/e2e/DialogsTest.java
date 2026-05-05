@@ -110,7 +110,7 @@ class DialogsTest extends E2ETest {
 
         @Test
         void testReturnsTypedText() throws InterruptedException {
-            AtomicReference<@Nullable String> resultRef = new AtomicReference<>();
+            var resultRef = new AtomicReference<@Nullable String>();
             var latch = new CountDownLatch(1);
 
             SwingUtilities.invokeLater(() -> {

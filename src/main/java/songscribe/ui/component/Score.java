@@ -1060,15 +1060,15 @@ public final class Score
         getSong().setLineWidthSs(ScaleContext.getInstance().fromPixels(lineWidthPx));
 
         var pageModel = PageModel.getInstance();
-        int pageWidthPx = pageModel.getPageWidthPx();
-        int contentHeight = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
-        int minPageHeight = contentHeight + pageModel.getTopMarginPx() + pageModel.getBottomMarginPx();
+        var pageWidthPx = pageModel.getPageWidthPx();
+        var contentHeight = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
+        var minPageHeight = contentHeight + pageModel.getTopMarginPx() + pageModel.getBottomMarginPx();
 
         preferredSizePx.width = pageWidthPx;
         preferredSizePx.height = Math.max(pageModel.getPageHeightPx(), minPageHeight);
         setPreferredSize(preferredSizePx);
 
-        int horizontalMarginPx = pageModel.getHorizontalMarginPx(lineWidthPx);
+        var horizontalMarginPx = pageModel.getHorizontalMarginPx(lineWidthPx);
         setBorder(BorderFactory.createEmptyBorder(
             pageModel.getTopMarginPx(),
             horizontalMarginPx,

@@ -45,7 +45,7 @@ public record LineThickness(
     private static final LineThickness INSTANCE;
 
     static {
-        double base = LILYPOND_BASE_THICKNESS_SS;
+        var base = LILYPOND_BASE_THICKNESS_SS;
         INSTANCE = new LineThickness(
                 base,
                 base * STEM_MULTIPLIER,
@@ -78,7 +78,7 @@ public record LineThickness(
      * relative to the element's layout X position.
      */
     public double repeatRightAfterThickXSs() {
-        double sep = barlineSeparationSs();
+        var sep = barlineSeparationSs();
         return Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep + thinBarlineSs + sep + thickBarlineSs;
     }
 

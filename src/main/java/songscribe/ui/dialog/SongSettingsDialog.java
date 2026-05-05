@@ -364,7 +364,7 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected void setData() {
             // Validate number field
-            String number = numberField.getText();
+            var number = numberField.getText();
 
             try {
                 if (!number.isEmpty()) {
@@ -380,7 +380,7 @@ public class SongSettingsDialog extends StandardDialog {
             }
 
             // Validate year field
-            String year = yearField.getText();
+            var year = yearField.getText();
 
             try {
                 if (!year.isEmpty()) {
@@ -1165,7 +1165,7 @@ public class SongSettingsDialog extends StandardDialog {
             selections.add(noAccidentals);
             glyphs.put(noAccidentals, "\uF377");
 
-            String[] flatGlyphs = {
+            var flatGlyphs = new String[]{
                 "\uF37F", "\uF380", "\uF381", "\uF382", "\uF383", "\uF384", "\uF385"
             };
             for (var i = 0; i < MAX_ACCIDENTAL_COUNT; i++) {
@@ -1174,7 +1174,7 @@ public class SongSettingsDialog extends StandardDialog {
                 glyphs.put(sel, flatGlyphs[i]);
             }
 
-            String[] sharpGlyphs = {
+            var sharpGlyphs = new String[]{
                 "\uF378", "\uF379", "\uF37A", "\uF37B", "\uF37C", "\uF37D", "\uF37E"
             };
             for (var i = 0; i < MAX_ACCIDENTAL_COUNT; i++) {

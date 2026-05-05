@@ -45,7 +45,7 @@ class AttributionTest extends UnitTest {
         var font = new Font("Dialog", Font.PLAIN, 12);
 
         var attribution = new Attribution("Composer");
-        double expected = ScaleContext.getInstance().textWidthSs(font, "Composer");
+        var expected = ScaleContext.getInstance().textWidthSs(font, "Composer");
 
         assertThat(attribution.computeContentWidthSs(font)).isCloseTo(expected, within(EPSILON));
     }
@@ -79,7 +79,7 @@ class AttributionTest extends UnitTest {
 
         @Test
         void testGetContentWidthSsThrowsWhenParentLineNull() {
-            try (MockedStatic<RuntimeError> mockRuntimeError = mockStatic(RuntimeError.class)) {
+            try (var mockRuntimeError = mockStatic(RuntimeError.class)) {
                 mockRuntimeError.when(() -> RuntimeError.exit(anyString()))
                     .thenReturn(new RuntimeException("null parentLine"));
 
@@ -92,7 +92,7 @@ class AttributionTest extends UnitTest {
 
         @Test
         void testGetContentHeightSsThrowsWhenParentLineNull() {
-            try (MockedStatic<RuntimeError> mockRuntimeError = mockStatic(RuntimeError.class)) {
+            try (var mockRuntimeError = mockStatic(RuntimeError.class)) {
                 mockRuntimeError.when(() -> RuntimeError.exit(anyString()))
                     .thenReturn(new RuntimeException("null parentLine"));
 

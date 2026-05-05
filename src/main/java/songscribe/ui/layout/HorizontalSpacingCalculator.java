@@ -151,7 +151,7 @@ public class HorizontalSpacingCalculator {
         var beamGroupRanges = identifyBeamGroupRanges(columns);
 
         // Calculate first note position
-        double firstXSs = calculateFirstNoteXSs(line);
+        var firstXSs = calculateFirstNoteXSs(line);
         columns.get(0).setXSs(firstXSs);
 
         // Process remaining columns
@@ -168,7 +168,7 @@ public class HorizontalSpacingCalculator {
                 // Normal column-to-column spacing
                 var prevColumn = columns.get(i - 1);
                 var currColumn = columns.get(i);
-                double nextXSs = calculateNextColumnXSs(prevColumn, currColumn);
+                var nextXSs = calculateNextColumnXSs(prevColumn, currColumn);
                 currColumn.setXSs(nextXSs);
             }
         }
@@ -208,33 +208,33 @@ public class HorizontalSpacingCalculator {
 
         // Grace note → host note: use tight grace note spacing
         if (prevColumn.getElement().getType().isGraceNote()) {
-            double spacingSs = prevColumn.getRightExtentSs()
+            var spacingSs = prevColumn.getRightExtentSs()
                 + GRACE_NOTE_GAP_SS
                 + Math.abs(currColumn.getLeftExtentSs());
             return prevColumn.getXSs() + spacingSs;
         }
 
         // Calculate minimum spacing (from previous column's right extent)
-        double minimumSpacingSs = calculateMinimumColumnSpacingSs(prevColumn, currColumn);
+        var minimumSpacingSs = calculateMinimumColumnSpacingSs(prevColumn, currColumn);
 
         // Calculate lyric-driven spacing requirement
-        double lyricSpacingSs = calculateLyricSpacingSs(prevColumn, currColumn);
+        var lyricSpacingSs = calculateLyricSpacingSs(prevColumn, currColumn);
 
         // Use default comfortable spacing as a floor, then expand further if lyrics require it.
         // This prevents the case where only one side has a lyric from producing
         // tighter-than-default note-head-to-note-head spacing.
-        double defaultSpacingSs = calculateDefaultColumnSpacingSs(prevColumn, currColumn);
-        double requiredSpacingSs = Math.max(minimumSpacingSs, Math.max(defaultSpacingSs, lyricSpacingSs));
+        var defaultSpacingSs = calculateDefaultColumnSpacingSs(prevColumn, currColumn);
+        var requiredSpacingSs = Math.max(minimumSpacingSs, Math.max(defaultSpacingSs, lyricSpacingSs));
 
         // Calculate tentative X position
-        double nextXSs = prevColumn.getXSs() + requiredSpacingSs;
+        var nextXSs = prevColumn.getXSs() + requiredSpacingSs;
 
         // Check accidental clearance and push right if needed
         if (needsAccidentalPush(prevColumn, currColumn, nextXSs)) {
-            double accidentalClearanceSs = ACCIDENTAL_CLEARANCE_SS;
-            double prevRightEdgeSs = prevColumn.getRightEdgeXSs();
-            double currAccidentalLeftSs = nextXSs + currColumn.getLeftExtentSs();
-            double neededPushSs = prevRightEdgeSs + accidentalClearanceSs - currAccidentalLeftSs;
+            var accidentalClearanceSs = ACCIDENTAL_CLEARANCE_SS;
+            var prevRightEdgeSs = prevColumn.getRightEdgeXSs();
+            var currAccidentalLeftSs = nextXSs + currColumn.getLeftExtentSs();
+            var neededPushSs = prevRightEdgeSs + accidentalClearanceSs - currAccidentalLeftSs;
 
             if (neededPushSs > 0) {
                 nextXSs += neededPushSs;
@@ -242,7 +242,7 @@ public class HorizontalSpacingCalculator {
         }
 
         // Check glissando spacing: ensure enough horizontal room for the glissando
-        double spacingSs = nextXSs - prevColumn.getXSs();
+        var spacingSs = nextXSs - prevColumn.getXSs();
         spacingSs = ensureGlissandoSpacing(prevColumn, currColumn, spacingSs);
         nextXSs = prevColumn.getXSs() + spacingSs;
 
@@ -282,9 +282,9 @@ public class HorizontalSpacingCalculator {
             return 0;
         }
 
-        double prevHalfWidthSs = prevColumn.hasSyllable() ? prevColumn.getSyllableWidthSs() / 2.0 : 0;
-        double currHalfWidthSs = currColumn.hasSyllable() ? currColumn.getSyllableWidthSs() / 2.0 : 0;
-        double gapSs = prevColumn.hasSyllable()
+        var prevHalfWidthSs = prevColumn.hasSyllable() ? prevColumn.getSyllableWidthSs() / 2.0 : 0;
+        var currHalfWidthSs = currColumn.hasSyllable() ? currColumn.getSyllableWidthSs() / 2.0 : 0;
+        var gapSs = prevColumn.hasSyllable()
             ? prevColumn.getMinGapToNextSyllableSs()
             : LyricRenderMetrics.MIN_SYLLABLE_GAP_SS;
 
@@ -358,23 +358,23 @@ public class HorizontalSpacingCalculator {
         if (!prev.hasGlissando()) return spacingSs;
 
         // Compute ledger-line-inclusive extents on-the-fly
-        double prevOverhang = NoteRenderer.getLedgerLineOverhangSs(prev.getElement());
-        double prevGlissRight = prev.getRightExtentSs();
+        var prevOverhang = NoteRenderer.getLedgerLineOverhangSs(prev.getElement());
+        var prevGlissRight = prev.getRightExtentSs();
 
         if (prevOverhang > 0) {
-            double noteheadWidthSs = NoteRenderer.getNoteheadRightEdgeSs(prev.getElement());
+            var noteheadWidthSs = NoteRenderer.getNoteheadRightEdgeSs(prev.getElement());
             prevGlissRight = Math.max(prevGlissRight, noteheadWidthSs + prevOverhang);
         }
 
-        double currOverhang = NoteRenderer.getLedgerLineOverhangSs(curr.getElement());
-        double currGlissLeft = curr.getLeftExtentSs();
+        var currOverhang = NoteRenderer.getLedgerLineOverhangSs(curr.getElement());
+        var currGlissLeft = curr.getLeftExtentSs();
 
         if (currOverhang > 0) {
             currGlissLeft = Math.min(currGlissLeft, -currOverhang);
         }
 
-        double gap = spacingSs + currGlissLeft - prevGlissRight;
-        double needed = GlissandoRenderer.MIN_HORIZONTAL_RESERVATION_SS;
+        var gap = spacingSs + currGlissLeft - prevGlissRight;
+        var needed = GlissandoRenderer.MIN_HORIZONTAL_RESERVATION_SS;
 
         if (gap < needed) {
             spacingSs += (needed - gap);
@@ -418,8 +418,8 @@ public class HorizontalSpacingCalculator {
             }
 
             // Find the end of this consecutive beamed run
-            int start = i;
-            int end = i;
+            var start = i;
+            var end = i;
 
             for (var j = i + 1; j < columns.size(); j++) {
                 if (columns.get(j).isBeamed()) {
@@ -477,7 +477,7 @@ public class HorizontalSpacingCalculator {
         double prevColumnXSs) {
 
         var beamColumns = columns.subList(range.start, range.end + 1);
-        int columnCount = beamColumns.size();
+        var columnCount = beamColumns.size();
 
         if (columnCount == 0) {
             return;
@@ -486,7 +486,7 @@ public class HorizontalSpacingCalculator {
         // Calculate where first column of beam group should go
         var prevColumn = columns.get(range.start - 1);
         var firstBeamColumn = beamColumns.get(0);
-        double startXSs = calculateNextColumnXSs(prevColumn, firstBeamColumn);
+        var startXSs = calculateNextColumnXSs(prevColumn, firstBeamColumn);
 
         if (columnCount == 1) {
             // Single column "beam group" - just use normal spacing
@@ -495,9 +495,9 @@ public class HorizontalSpacingCalculator {
         }
 
         // Step 1: Calculate tight internal spacing
-        double tightGapSs = BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+        var tightGapSs = BEAM_GROUP_MIN_INTERNAL_GAP_SS;
         var tightPositions = new ArrayList<Double>();
-        double currentXSs = startXSs;
+        var currentXSs = startXSs;
 
         tightPositions.add(currentXSs);
 
@@ -506,13 +506,13 @@ public class HorizontalSpacingCalculator {
             var curr = beamColumns.get(i);
 
             // Use tight gap, ignoring syllables
-            double spacingSs = prev.getRightExtentSs() + tightGapSs + Math.abs(curr.getLeftExtentSs());
+            var spacingSs = prev.getRightExtentSs() + tightGapSs + Math.abs(curr.getLeftExtentSs());
             spacingSs = ensureGlissandoSpacing(prev, curr, spacingSs);
             currentXSs += spacingSs;
             tightPositions.add(currentXSs);
         }
 
-        double tightTotalWidthSs = currentXSs - startXSs;
+        var tightTotalWidthSs = currentXSs - startXSs;
 
         // Step 2: Calculate lyric-driven width requirement
         double lyricRequiredWidthSs = 0;
@@ -520,7 +520,7 @@ public class HorizontalSpacingCalculator {
         for (var i = 1; i < columnCount; i++) {
             var prev = beamColumns.get(i - 1);
             var curr = beamColumns.get(i);
-            double lyricSpacingSs = calculateLyricSpacingSs(prev, curr);
+            var lyricSpacingSs = calculateLyricSpacingSs(prev, curr);
 
             if (lyricSpacingSs > 0) {
                 lyricRequiredWidthSs += lyricSpacingSs;
@@ -538,15 +538,15 @@ public class HorizontalSpacingCalculator {
             }
         } else {
             // Need to expand - distribute expansion evenly
-            double expansionNeededSs = lyricRequiredWidthSs - tightTotalWidthSs;
-            double expansionPerGapSs = expansionNeededSs / (columnCount - 1);
+            var expansionNeededSs = lyricRequiredWidthSs - tightTotalWidthSs;
+            var expansionPerGapSs = expansionNeededSs / (columnCount - 1);
 
             beamColumns.get(0).setXSs(startXSs);
             currentXSs = startXSs;
 
             for (var i = 1; i < columnCount; i++) {
-                double tightSpacingSs = tightPositions.get(i) - tightPositions.get(i - 1);
-                double expandedSpacingSs = tightSpacingSs + expansionPerGapSs;
+                var tightSpacingSs = tightPositions.get(i) - tightPositions.get(i - 1);
+                var expandedSpacingSs = tightSpacingSs + expansionPerGapSs;
 
                 currentXSs += expandedSpacingSs;
                 beamColumns.get(i).setXSs(currentXSs);

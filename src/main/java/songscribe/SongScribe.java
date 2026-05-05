@@ -114,7 +114,7 @@ public final class SongScribe {
     }
 
     public static void logBanner(String appName) {
-        Logger log = LoggerFactory.getLogger(SongScribe.class);
+        var log = LoggerFactory.getLogger(SongScribe.class);
         var border = "*".repeat(40);
         log.info(border);
         log.info("* {} {}", appName, Version.PUBLIC_VERSION);

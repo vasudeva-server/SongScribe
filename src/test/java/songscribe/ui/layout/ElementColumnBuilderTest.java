@@ -39,8 +39,8 @@ class ElementColumnBuilderTest extends UnitTest {
     @Test
     void testBeamedQuaverExtentEqualsNoteheadOnly() {
         var quaver = element(ElementType.QUAVER);
-        double noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
-        double extent = ElementColumnBuilder.calculateRightExtentSs(quaver, true, true);
+        var noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
+        var extent = ElementColumnBuilder.calculateRightExtentSs(quaver, true, true);
 
         assertThat(extent).isEqualTo(noteheadOnly);
     }
@@ -51,12 +51,12 @@ class ElementColumnBuilderTest extends UnitTest {
         var dottedQuaver = element(ElementType.QUAVER);
         dottedQuaver.setDotCount(1);
 
-        double dotsOnlyExtent = Engraving.NOTE_HEAD_WIDTH_SS + 0.25 + 0.5; // DOT_GAP + DOT_WIDTH
+        var dotsOnlyExtent = Engraving.NOTE_HEAD_WIDTH_SS + 0.25 + 0.5; // DOT_GAP + DOT_WIDTH
 
         var undottedQuaver = element(ElementType.QUAVER);
-        double flagOnlyExtent = ElementColumnBuilder.calculateRightExtentSs(undottedQuaver, false, true);
+        var flagOnlyExtent = ElementColumnBuilder.calculateRightExtentSs(undottedQuaver, false, true);
 
-        double actual = ElementColumnBuilder.calculateRightExtentSs(dottedQuaver, false, true);
+        var actual = ElementColumnBuilder.calculateRightExtentSs(dottedQuaver, false, true);
 
         assertThat(actual)
             .isGreaterThanOrEqualTo(dotsOnlyExtent)
@@ -69,8 +69,8 @@ class ElementColumnBuilderTest extends UnitTest {
         var graceQuaver = element(ElementType.GRACE_QUAVER);
         var regularQuaver = element(ElementType.QUAVER);
 
-        double graceExtent = ElementColumnBuilder.calculateRightExtentSs(graceQuaver, false, true);
-        double regularExtent = ElementColumnBuilder.calculateRightExtentSs(regularQuaver, false, true);
+        var graceExtent = ElementColumnBuilder.calculateRightExtentSs(graceQuaver, false, true);
+        var regularExtent = ElementColumnBuilder.calculateRightExtentSs(regularQuaver, false, true);
 
         assertThat(graceExtent).isLessThan(regularExtent);
     }
@@ -80,9 +80,9 @@ class ElementColumnBuilderTest extends UnitTest {
     void testNonFlaggedTypesUnchanged() {
         for (var type : new ElementType[]{ElementType.CROTCHET, ElementType.MINIM, ElementType.SEMIBREVE}) {
             var n = element(type);
-            double noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
-            double extentUnbeamed = ElementColumnBuilder.calculateRightExtentSs(n, false, true);
-            double extentBeamed = ElementColumnBuilder.calculateRightExtentSs(n, true, true);
+            var noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
+            var extentUnbeamed = ElementColumnBuilder.calculateRightExtentSs(n, false, true);
+            var extentBeamed = ElementColumnBuilder.calculateRightExtentSs(n, true, true);
 
             assertThat(extentUnbeamed)
                 .as("Unbeamed %s should equal notehead extent", type)
@@ -97,8 +97,8 @@ class ElementColumnBuilderTest extends UnitTest {
     @Test
     void testStemUpVsStemDownProduceDifferentExtents() {
         var quaver = element(ElementType.QUAVER);
-        double upExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
-        double downExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, false);
+        var upExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
+        var downExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, false);
 
         assertThat(upExtent).isNotEqualTo(downExtent);
     }
@@ -107,8 +107,8 @@ class ElementColumnBuilderTest extends UnitTest {
     @Test
     void testUnbeamedQuaverExtentExceedsNoteheadOnly() {
         var quaver = element(ElementType.QUAVER);
-        double noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
-        double extent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
+        var noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
+        var extent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
 
         assertThat(extent).isGreaterThan(noteheadOnly);
     }

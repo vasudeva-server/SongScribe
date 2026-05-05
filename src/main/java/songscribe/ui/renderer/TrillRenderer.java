@@ -98,8 +98,8 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
             return;
         }
 
-        double trillTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
-        double layoutXSs = decorationLayout.xSs();
+        var trillTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
+        var layoutXSs = decorationLayout.xSs();
 
         renderTrillAtPosition(
             g2, anchorNote, element.getEndElement(),
@@ -120,10 +120,10 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         LayoutResult layoutResult
     ) {
         if (endNote != null && endNote != anchor) {
-            double endXSs = layoutResult.getElementXSs(endNote) + Engraving.NOTE_HEAD_WIDTH_SS;
+            var endXSs = layoutResult.getElementXSs(endNote) + Engraving.NOTE_HEAD_WIDTH_SS;
             renderTrill(g2, layoutXSs, endXSs, trillTopYSs, color);
         } else {
-            double trillXSs = centeredGlyphX(layoutXSs,
+            var trillXSs = centeredGlyphX(layoutXSs,
                 anchor, 0, TRILL_ADVANCE_WIDTH_SS);
             renderTrill(g2, trillXSs, Double.NaN, trillTopYSs, color);
         }
@@ -149,15 +149,15 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         // SMuFL ornamentTrill glyph origin is at the baseline (bottom of glyph).
         // trillTopYSs is the top, so offset down by the glyph height.
         var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
-        double y = trillTopYSs + bbox.height();
+        var y = trillTopYSs + bbox.height();
 
         g2.setColor(color);
         drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, xSs, y, true);
 
         // Draw wavy line extension for multi-note trills
         if (!Double.isNaN(endXSs)) {
-            double wavyStartX = xSs + TRILL_ADVANCE_WIDTH_SS;
-            double wavyEndX = endXSs;
+            var wavyStartX = xSs + TRILL_ADVANCE_WIDTH_SS;
+            var wavyEndX = endXSs;
             drawWavyLine(g2, wavyStartX, y, wavyEndX, color);
         }
     }
@@ -184,8 +184,8 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
             }
 
             var color = getDecorationColor(anchor, ctx);
-            double layoutXSs = layout.xSs();
-            double trillTopYSs = layoutYToComponentYSs(layout.ySs(), ctx);
+            var layoutXSs = layout.xSs();
+            var trillTopYSs = layoutYToComponentYSs(layout.ySs(), ctx);
 
             renderTrillAtPosition(
                 g2, anchor, trill.getEndElement(),
@@ -204,23 +204,23 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         double x2,
         Color color
     ) {
-        double length = x2 - x1;
+        var length = x2 - x1;
 
         if (length <= 0) {
             return;
         }
 
-        int segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH_SS));
+        var segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH_SS));
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
             g2.setFont(MUSIC_FONT);
             g2.setColor(color);
             g2.translate(x1, y);
 
-            double scale = length / WIGGLE_SEGMENT_WIDTH_SS / segments;
+            var scale = length / WIGGLE_SEGMENT_WIDTH_SS / segments;
             g2.scale(scale, 1d);
 
-            for (int i = 0; i < segments; i++) {
+            for (var i = 0; i < segments; i++) {
                 g2.drawString(
                     SMuFLGlyph.WIGGLE_TRILL.asString(),
                     (float) (i * WIGGLE_SEGMENT_WIDTH_SS),

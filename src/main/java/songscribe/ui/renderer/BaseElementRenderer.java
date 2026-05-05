@@ -346,7 +346,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         double layoutXSs, StaffElement note,
         double glyphBBoxLeft, double glyphWidthSs) {
 
-        double noteCenterXSs = note.getType().getFullElementCenterXSs();
+        var noteCenterXSs = note.getType().getFullElementCenterXSs();
         return layoutXSs + noteCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
     }
 
@@ -421,13 +421,13 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param consumer      Called once per ledger line with the Y offset in staff spaces
      */
     static void forEachLedgerLineYSs(int staffPosition, DoubleConsumer consumer) {
-        int i = staffPosition;
+        var i = staffPosition;
 
         if ((staffPosition % 2) != 0) {
             i += (staffPosition > 0) ? -1 : 1;
         }
 
-        int step = (staffPosition > 0) ? -2 : 2;
+        var step = (staffPosition > 0) ? -2 : 2;
 
         while (Math.abs(i) > 5) {
             consumer.accept(StaffExtents.spToSs(i - staffPosition));
@@ -436,8 +436,8 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     }
 
     protected static double stemCenterXOffsetSs(ElementType noteType, boolean upper) {
-        boolean isMinim = noteType == ElementType.MINIM;
-        double anchorX = upper
+        var isMinim = noteType == ElementType.MINIM;
+        var anchorX = upper
             ? (isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE.x() : Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x())
             : (isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW.x() : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x());
 

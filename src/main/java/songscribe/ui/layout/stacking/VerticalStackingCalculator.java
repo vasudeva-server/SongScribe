@@ -94,36 +94,36 @@ public class VerticalStackingCalculator {
         // Apply manual offsets post-layout (no collision re-run)
         applyManualOffsets(builder);
 
-        double lowestNoteBotSs = context.getLowestNoteBotSs();
+        var lowestNoteBotSs = context.getLowestNoteBotSs();
 
         // Stacking coordinates put the middle staff line at y=0: staff top at
         // y=-STAFF_HALF_SS, staff bottom at y=+STAFF_HALF_SS. aboveStaffSs and
         // belowStaffSs are distances beyond the staff top/bottom respectively;
         // both subtract STAFF_HALF_SS from the signed extent.
-        double topExtentSs = systemExtents.yGet(true, 0, lineWidthSs);
-        double aboveStaffSs = Math.max(
+        var topExtentSs = systemExtents.yGet(true, 0, lineWidthSs);
+        var aboveStaffSs = Math.max(
             StaffExtents.MIN_ABOVE_STAFF_SS,
             -topExtentSs - StaffExtents.STAFF_HALF_SS);
 
-        double botExtentSs = Math.max(
+        var botExtentSs = Math.max(
             Math.max(
                 noteAttachedExtents.yGet(false, 0, lineWidthSs),
                 structuralExtents.yGet(false, 0, lineWidthSs)),
             Math.max(
                 systemExtents.yGet(false, 0, lineWidthSs),
                 lowestNoteBotSs));
-        double belowStaffSs = Math.max(
+        var belowStaffSs = Math.max(
             StaffExtents.MIN_BELOW_STAFF_SS,
             botExtentSs - StaffExtents.STAFF_HALF_SS);
 
         // True extent of staff-element content below the staff bottom — distinct from the
         // sizing reservation above. Tracked in the context as elements seed their bounds
         // (notes, downward ties), defaults to staff bottom for an empty line.
-        double belowContentSs = Math.max(
+        var belowContentSs = Math.max(
             0.0,
             context.getBotContentExtentSs() - StaffExtents.STAFF_HALF_SS);
 
-        double lineHeightSs = StaffExtents.STAFF_HEIGHT_SS
+        var lineHeightSs = StaffExtents.STAFF_HEIGHT_SS
             + aboveStaffSs
             + belowStaffSs
             + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
@@ -171,8 +171,8 @@ public class VerticalStackingCalculator {
             var element = entry.getKey();
             var layout = entry.getValue();
 
-            double xOffsetSs = element.getUserXOffsetSs();
-            double yOffsetSs = element.getUserYOffsetSs();
+            var xOffsetSs = element.getUserXOffsetSs();
+            var yOffsetSs = element.getUserYOffsetSs();
 
             // Element-specific additional offsets
             if (element instanceof Trill trill) {
@@ -209,9 +209,9 @@ public class VerticalStackingCalculator {
             var layout = entry.getValue();
 
             if (span instanceof DynamicsSpan dynSpan) {
-                double x1ShiftSs = dynSpan.getX1ShiftSs();
-                double x2ShiftSs = dynSpan.getX2ShiftSs();
-                double yShiftSs = dynSpan.getYShiftSs();
+                var x1ShiftSs = dynSpan.getX1ShiftSs();
+                var x2ShiftSs = dynSpan.getX2ShiftSs();
+                var yShiftSs = dynSpan.getYShiftSs();
 
                 if (x1ShiftSs != 0 || x2ShiftSs != 0 || yShiftSs != 0) {
                     builder.putSpanLayout(span, new LayoutResult.SpanLayout(
@@ -221,7 +221,7 @@ public class VerticalStackingCalculator {
                         layout.heightSs()));
                 }
             } else if (span instanceof TupletSpan tupletSpan) {
-                double yShiftSs = tupletSpan.getVerticalPositionSs();
+                var yShiftSs = tupletSpan.getVerticalPositionSs();
 
                 if (yShiftSs != 0) {
                     builder.putSpanLayout(span, new LayoutResult.SpanLayout(

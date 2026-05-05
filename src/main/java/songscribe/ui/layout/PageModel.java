@@ -106,7 +106,7 @@ public final class PageModel {
      * within the page. Returns 0 if the line width equals or exceeds the page width.
      */
     public int getHorizontalMarginPx(int lineWidthPx) {
-        int pageWidthPx = getPageWidthPx();
+        var pageWidthPx = getPageWidthPx();
         return Math.max(0, (pageWidthPx - lineWidthPx) / 2);
     }
 

@@ -31,7 +31,7 @@ class EngravingTest extends UnitTest {
     // T6: G_CLEF_WIDTH_SS is derived from the SMuFL advance width, not hardcoded
     @Test
     void testGClefWidthMatchesSmuflAdvanceWidth() {
-        double expected = SMuFLMetadata.getInstance().requireAdvanceWidth(SMuFLGlyph.G_CLEF);
+        var expected = SMuFLMetadata.getInstance().requireAdvanceWidth(SMuFLGlyph.G_CLEF);
         assertThat(Engraving.G_CLEF_WIDTH_SS).isEqualTo(expected);
     }
 }

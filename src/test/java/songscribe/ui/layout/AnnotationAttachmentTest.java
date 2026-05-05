@@ -61,7 +61,7 @@ class AnnotationAttachmentTest extends UnitTest {
             // RuntimeError.exit calls System.exit, which cannot be tested without interception.
             // mockStatic intercepts exit(String) so the returned RuntimeException is thrown
             // by the caller's throw expression, without reaching System.exit.
-            try (MockedStatic<RuntimeError> mockRuntimeError = mockStatic(RuntimeError.class)) {
+            try (var mockRuntimeError = mockStatic(RuntimeError.class)) {
                 mockRuntimeError.when(() -> RuntimeError.exit(anyString()))
                     .thenReturn(new RuntimeException("null parentLine"));
 

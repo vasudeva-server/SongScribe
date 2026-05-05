@@ -250,7 +250,7 @@ class NoteAreaBuilderTest extends UnitTest {
     @Test
     void testCreateOffsetAreaContainsOriginal() {
         var square = new Rectangle2D.Double(-0.5, -0.5, 1.0, 1.0);
-        float offsetSs = 0.3f;
+        var offsetSs = 0.3f;
         var offsetArea = NoteAreaBuilder.createOffsetArea(square, offsetSs);
 
         // All corners of the original should be contained in the offset area
@@ -264,7 +264,7 @@ class NoteAreaBuilderTest extends UnitTest {
     void testCreateOffsetAreaExpandsShape() {
         // A unit square centered at origin
         var square = new Rectangle2D.Double(-0.5, -0.5, 1.0, 1.0);
-        float offsetSs = 0.3f;
+        var offsetSs = 0.3f;
         var offsetArea = NoteAreaBuilder.createOffsetArea(square, offsetSs);
         var offsetBounds = offsetArea.getBounds2D();
         var origBounds = square.getBounds2D();
@@ -321,7 +321,7 @@ class NoteAreaBuilderTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
 
         // Positions within the staff: 0, ±1, ±2, ±3, ±4, ±5
-        for (int sp = -5; sp <= 5; sp++) {
+        for (var sp = -5; sp <= 5; sp++) {
             note.setStaffPosition(sp);
             assertThat(note.getLedgerLineCount())
                 .as("staffPosition %d", sp)

@@ -124,7 +124,7 @@ class BatchMutationTest extends UnitTest {
 
         var line = getLine(coordinator);
 
-        for (int i = 0; i <= 2; i++) {
+        for (var i = 0; i <= 2; i++) {
             assertThat(line.getElement(i).isFermata())
                 .as("note %d should have fermata", i)
                 .isTrue();
@@ -366,7 +366,7 @@ class BatchMutationTest extends UnitTest {
 
         var line = getLine(coordinator);
 
-        for (int i = 0; i <= 2; i++) {
+        for (var i = 0; i <= 2; i++) {
             assertThat(line.getElement(i).isFermata())
                 .as("note %d should not have fermata", i)
                 .isFalse();

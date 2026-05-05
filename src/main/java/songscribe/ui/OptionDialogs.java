@@ -133,7 +133,7 @@ public final class OptionDialogs {
             showOptionPane(pane, parent, title);
 
             var value = pane.getValue();
-            int result = value instanceof Integer i ? i : JOptionPane.CLOSED_OPTION;
+            var result = value instanceof Integer i ? i : JOptionPane.CLOSED_OPTION;
 
             if (result == JOptionPane.CLOSED_OPTION) {
                 return optionType == JOptionPane.YES_NO_CANCEL_OPTION

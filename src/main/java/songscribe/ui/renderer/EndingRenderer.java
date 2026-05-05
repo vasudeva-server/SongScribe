@@ -104,12 +104,12 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
         Ending ending,
         Ending.BracketRange bracket
     ) {
-        double x1 = bracket.x1Ss();
-        double x2 = bracket.x2Ss();
-        double yTopSs = getEffectiveEndingYSs(ctx, ending);
-        double yBottomSs = yTopSs + ending.getContentHeightSs();
+        var x1 = bracket.x1Ss();
+        var x2 = bracket.x2Ss();
+        var yTopSs = getEffectiveEndingYSs(ctx, ending);
+        var yBottomSs = yTopSs + ending.getContentHeightSs();
 
-        double thicknessSs = ctx.getLineThickness().voltaBracketSs();
+        var thicknessSs = ctx.getLineThickness().voltaBracketSs();
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(ELEMENT_COLOR);
@@ -129,10 +129,10 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
             g2.setFont(Ending.ENDING_FONT);
             var label = bracket.label();
             var glyphVector = Ending.ENDING_FONT.createGlyphVector(g2.getFontRenderContext(), label);
-            double glyphHeightSs = -glyphVector.getVisualBounds().getY();
+            var glyphHeightSs = -glyphVector.getVisualBounds().getY();
 
             // Add 1 device-pixel gap between the digit and the period
-            double onePixelSs = 1.0 / g2.getTransform().getScaleX();
+            var onePixelSs = 1.0 / g2.getTransform().getScaleX();
             var periodPos = glyphVector.getGlyphPosition(1);
             glyphVector.setGlyphPosition(1, new Point2D.Double(
                 periodPos.getX() + onePixelSs, periodPos.getY()));

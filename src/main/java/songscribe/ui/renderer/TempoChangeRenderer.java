@@ -72,8 +72,8 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
         ElementRenderContext ctx
     ) {
         var setup = buildRenderSetup(note, TempoChangeAttachment.class, ctx);
-        double xSs = setup.decorationLayout().xSs();
-        double textBaselineYSs = setup.ySs() + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
+        var xSs = setup.decorationLayout().xSs();
+        var textBaselineYSs = setup.ySs() + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
         var tempoBuilder = new StringBuilder(25);
         var showTempo = tempo.shouldShowTempo();
 

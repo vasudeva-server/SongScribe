@@ -125,7 +125,7 @@ public class NoteAttachedStacker {
      */
     public static LayoutResult computePreviewDecorationLayouts(StaffElement note, double xSs) {
         // Create minimal extents just wide enough to contain the note
-        double lineWidthSs = xSs + Engraving.NOTE_HEAD_WIDTH_SS + 1.0;
+        var lineWidthSs = xSs + Engraving.NOTE_HEAD_WIDTH_SS + 1.0;
         var extents = new StaffExtents(lineWidthSs);
 
         // Seed note bounds using the non-beamed path
@@ -134,7 +134,7 @@ public class NoteAttachedStacker {
         extents.ySet(false, xSs, Engraving.NOTE_HEAD_WIDTH_SS, bounds.botSs());
 
         var builder = new LayoutResult.Builder();
-        int staffPosition = note.getStaffPosition();
+        var staffPosition = note.getStaffPosition();
 
         // Tier 1: Articulations
         Articulation staccatoArticulation = null;
@@ -176,13 +176,13 @@ public class NoteAttachedStacker {
      * Computes note vertical bounds from element type geometry alone (no stem layout).
      */
     private static NoteBounds computeNoteBounds(StaffElement element) {
-        double centerYSs = StaffExtents.spToSs(element.getStaffPosition());
+        var centerYSs = StaffExtents.spToSs(element.getStaffPosition());
         var type = element.getType();
-        boolean upper = element.isUpper();
-        double noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
-        double noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
-        double topSs = Math.min(centerYSs + type.getTopYOffsetSs(upper), noteheadTopSs);
-        double botSs = Math.max(topSs + type.getElementHeightSs(upper), noteheadBotSs);
+        var upper = element.isUpper();
+        var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
+        var noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
+        var topSs = Math.min(centerYSs + type.getTopYOffsetSs(upper), noteheadTopSs);
+        var botSs = Math.max(topSs + type.getElementHeightSs(upper), noteheadBotSs);
         return new NoteBounds(topSs, botSs);
     }
 
@@ -202,17 +202,17 @@ public class NoteAttachedStacker {
         for (var column : columns) {
             var element = column.getElement();
             var stemLayout = builder.getStemLayout(element);
-            double xSs = column.getXSs();
+            var xSs = column.getXSs();
 
             double topSs;
             double botSs;
 
             if (stemLayout != null) {
-                double centerYSs = element.getStaffPosition()
+                var centerYSs = element.getStaffPosition()
                     * StaffExtents.STAFF_POSITION_OFFSET_SS;
                 var type = element.getType();
-                double noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
-                double noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
+                var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
+                var noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
                 topSs = Math.min(stemLayout.topYSs(), noteheadTopSs);
                 botSs = Math.max(stemLayout.bottomYSs(), noteheadBotSs);
             } else {
@@ -225,7 +225,7 @@ public class NoteAttachedStacker {
             noteAttachedExtents.ySet(false, xSs, Engraving.NOTE_HEAD_WIDTH_SS, botSs);
 
             // Track lowest notehead bottom for lyrics baseline calculation
-            double noteheadCenterYSs = element.getStaffPosition()
+            var noteheadCenterYSs = element.getStaffPosition()
                 * StaffExtents.STAFF_POSITION_OFFSET_SS;
             context.updateLowestNoteBotSs(
                 noteheadCenterYSs + StackingUtils.NOTE_HEAD_RADIUS_SS);
@@ -276,9 +276,9 @@ public class NoteAttachedStacker {
             var endElement = line.getElement(span.getEnd());
 
             // Sample the outer Bezier curve to reserve tie vertical extent
-            double sx = tieLayout.startXSs();
-            double ex = tieLayout.endXSs();
-            double spanWidthSs = ex - sx;
+            var sx = tieLayout.startXSs();
+            var ex = tieLayout.endXSs();
+            var spanWidthSs = ex - sx;
 
             if (spanWidthSs <= 0) {
                 continue;
@@ -290,10 +290,10 @@ public class NoteAttachedStacker {
             var startColumn = columnsByElement.get(startElement);
             var endColumn = columnsByElement.get(endElement);
 
-            double startEdgeT = Math.min(Engraving.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
-            double endEdgeT = Math.max(1.0 - Engraving.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
-            double startEdgeYSs = evaluateBezierYSs(startEdgeT, tieLayout);
-            double endEdgeYSs = evaluateBezierYSs(endEdgeT, tieLayout);
+            var startEdgeT = Math.min(Engraving.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
+            var endEdgeT = Math.max(1.0 - Engraving.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
+            var startEdgeYSs = evaluateBezierYSs(startEdgeT, tieLayout);
+            var endEdgeYSs = evaluateBezierYSs(endEdgeT, tieLayout);
 
             // Upper notes (stem up) get downward-arcing ties; others get upward-arcing ties.
             var arcsDown = startElement.isUpper();
@@ -353,12 +353,12 @@ public class NoteAttachedStacker {
             }
         }
 
-        double segmentWidthSs = spanWidthSs / sampleCount;
+        var segmentWidthSs = spanWidthSs / sampleCount;
 
-        for (int i = 0; i < sampleCount; i++) {
-            double tMid = (i + 0.5) / sampleCount;
-            double ySs = evaluateBezierYSs(tMid, tieLayout);
-            double segmentXSs = sx + i * segmentWidthSs;
+        for (var i = 0; i < sampleCount; i++) {
+            var tMid = (i + 0.5) / sampleCount;
+            var ySs = evaluateBezierYSs(tMid, tieLayout);
+            var segmentXSs = sx + i * segmentWidthSs;
             noteAttachedExtents.ySet(above, segmentXSs, segmentWidthSs, ySs);
 
             if (!above) {
@@ -375,7 +375,7 @@ public class NoteAttachedStacker {
      * @return the Y coordinate of the outer curve at {@code t}
      */
     private static double evaluateBezierYSs(double t, LayoutResult.TieLayout tieLayout) {
-        double mt = 1.0 - t;
+        var mt = 1.0 - t;
         return mt * mt * mt * tieLayout.startYSs()
             + 3 * mt * mt * t * tieLayout.cp1YSs()
             + 3 * mt * t * t * tieLayout.cp2YSs()
@@ -404,8 +404,8 @@ public class NoteAttachedStacker {
             return;
         }
 
-        double xSs = column.getXSs();
-        int staffPosition = note.getStaffPosition();
+        var xSs = column.getXSs();
+        var staffPosition = note.getStaffPosition();
 
         // Identify articulation types
         Articulation staccatoArticulation = null;
@@ -420,7 +420,7 @@ public class NoteAttachedStacker {
         }
 
         // Use reduced margin for notes with upward ties
-        double marginSs = context.getNotesWithUpwardTie().contains(note)
+        var marginSs = context.getNotesWithUpwardTie().contains(note)
             ? TIE_DECORATION_MARGIN_SS
             : NOTE_DECORATION_MARGIN_SS;
 
@@ -499,8 +499,8 @@ public class NoteAttachedStacker {
             return;
         }
 
-        double xSs = column.getXSs();
-        int staffPosition = note.getStaffPosition();
+        var xSs = column.getXSs();
+        var staffPosition = note.getStaffPosition();
 
         stackAbove(noteAttachedExtents, fermata, xSs,
             fermata.getContentWidthSs(), fermata.getContentHeightSs(),
@@ -552,8 +552,8 @@ public class NoteAttachedStacker {
             return;
         }
 
-        double anchorXSs = anchorColumn.getXSs();
-        double endXSs = anchorXSs;
+        var anchorXSs = anchorColumn.getXSs();
+        var endXSs = anchorXSs;
 
         var endNote = trill.getEndElement();
 
@@ -565,8 +565,8 @@ public class NoteAttachedStacker {
             }
         }
 
-        int staffPosition = anchor.getStaffPosition();
-        double widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
+        var staffPosition = anchor.getStaffPosition();
+        var widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
         stackAbove(noteAttachedExtents, trill, anchorXSs, widthSs,
             trill.getContentHeightSs(), NOTE_DECORATION_MARGIN_SS,
             staffPosition, builder);
@@ -584,7 +584,7 @@ public class NoteAttachedStacker {
         List<Trill> existingTrills,
         LayoutResult.Builder builder) {
 
-        for (int i = 0; i < line.effectiveElementCount(); i++) {
+        for (var i = 0; i < line.effectiveElementCount(); i++) {
             var element = line.getElement(i);
 
             if (!element.isTrill()) {
@@ -597,7 +597,7 @@ public class NoteAttachedStacker {
             }
 
             // Find the end of the consecutive trill sequence
-            int trillEnd = i;
+            var trillEnd = i;
 
             while (trillEnd + 1 < line.effectiveElementCount()
                     && line.getElement(trillEnd + 1).isTrill()) {

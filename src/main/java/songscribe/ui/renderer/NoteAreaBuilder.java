@@ -182,7 +182,7 @@ class NoteAreaBuilder {
     Area buildNoteArea(StaffElement note, boolean beamed) {
         var area = new Area();
         var noteType = note.getType();
-        boolean upper = note.isUpper();
+        var upper = note.isUpper();
 
         // Grace notes always stem up
         if (noteType.isGraceNote()) {
@@ -227,7 +227,7 @@ class NoteAreaBuilder {
             shape = NOTEHEAD_BLACK_SHAPE;
         }
 
-        float offsetX = NoteRenderer.getNoteheadXOffsetSs(noteType, upper);
+        var offsetX = NoteRenderer.getNoteheadXOffsetSs(noteType, upper);
 
         if (offsetX != 0f) {
             shape = AffineTransform.getTranslateInstance(offsetX, 0).createTransformedShape(shape);
@@ -270,7 +270,7 @@ class NoteAreaBuilder {
             return;
         }
 
-        float accWidth = NoteRenderer.getAccidentalWidthSs(note);
+        var accWidth = NoteRenderer.getAccidentalWidthSs(note);
 
         if (accWidth <= 0) {
             return;
@@ -282,8 +282,8 @@ class NoteAreaBuilder {
 
         // Use the tallest accidental bbox height as a reasonable approximation.
         // The actual accidental may be shorter, but this gives a safe bounding area.
-        double heightSs = ACCIDENTAL_HEIGHT_SS;
-        double halfHeightSs = heightSs / 2.0;
+        var heightSs = ACCIDENTAL_HEIGHT_SS;
+        var halfHeightSs = heightSs / 2.0;
 
         area.add(new Area(new Rectangle2D.Double(
             xSs, -halfHeightSs,
@@ -296,16 +296,16 @@ class NoteAreaBuilder {
      * Mirrors the positioning logic in {@link NoteRenderer#renderLedgerLines}.
      */
     private void addLedgerLinesToArea(Area area, StaffElement note) {
-        double extensionSs = NoteRenderer.getLedgerLineOverhangSs(note);
+        var extensionSs = NoteRenderer.getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
             return;
         }
 
-        double ledgerWidthSs = NoteRenderer.getLedgerLineWidthSs(note, extensionSs);
-        double centerXSs = NoteRenderer.getLedgerLineCenterXSs(note);
-        double thicknessSs = Engraving.LEDGER_LINE_THICKNESS_SS;
-        double halfThicknessSs = thicknessSs / 2.0;
+        var ledgerWidthSs = NoteRenderer.getLedgerLineWidthSs(note, extensionSs);
+        var centerXSs = NoteRenderer.getLedgerLineCenterXSs(note);
+        var thicknessSs = Engraving.LEDGER_LINE_THICKNESS_SS;
+        var halfThicknessSs = thicknessSs / 2.0;
 
         BaseElementRenderer.forEachLedgerLineYSs(note.getStaffPosition(), y ->
             area.add(new Area(new Rectangle2D.Double(
@@ -328,8 +328,8 @@ class NoteAreaBuilder {
         boolean upper
     ) {
         var geom = NoteRenderer.computeBaseStemGeometry(noteType, upper);
-        double stemLeftXSs = geom.stemLeftXSs();
-        double stemTipYSs = geom.stemTipYSs(upper);
+        var stemLeftXSs = geom.stemLeftXSs();
+        var stemTipYSs = geom.stemTipYSs(upper);
 
         if (upper) {
             area.add(new Area(new Rectangle2D.Double(

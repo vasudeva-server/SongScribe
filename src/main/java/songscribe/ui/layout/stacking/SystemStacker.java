@@ -104,8 +104,8 @@ public class SystemStacker {
             return;
         }
 
-        double xSs = column.getXSs();
-        int staffPosition = note.getStaffPosition();
+        var xSs = column.getXSs();
+        var staffPosition = note.getStaffPosition();
         var attrFont = line.getSong().getAttributionFont();
         var metrics = tempo.computeContentMetrics(attrFont);
 
@@ -140,8 +140,8 @@ public class SystemStacker {
             return;
         }
 
-        double xSs = column.getXSs();
-        int staffPosition = note.getStaffPosition();
+        var xSs = column.getXSs();
+        var staffPosition = note.getStaffPosition();
         var attrFont = line.getSong().getAttributionFont();
         var metrics = beatChange.computeContentMetrics(attrFont);
 
@@ -176,18 +176,18 @@ public class SystemStacker {
             return;
         }
 
-        double columnXSs = column.getXSs();
-        int staffPosition = note.getStaffPosition();
+        var columnXSs = column.getXSs();
+        var staffPosition = note.getStaffPosition();
         var annotationFont = line.getSong().getAnnotationFont();
-        double widthSs = annotation.computeContentWidthSs(annotationFont);
-        double heightSs = ScaleContext.getInstance().textHeightSs(annotationFont);
+        var widthSs = annotation.computeContentWidthSs(annotationFont);
+        var heightSs = ScaleContext.getInstance().textHeightSs(annotationFont);
 
         // xAlignment is 0.0 (left), 0.5 (center), or 1.0 (right). The text is
         // anchored to the matching point on the notehead: left edge → left,
         // center → center, right edge → right.
         double xAlignment = annotation.getAnnotation().getXAlignment();
-        double noteheadWidthSs = NoteRenderer.getNoteheadRightEdgeSs(note);
-        double xSs = columnXSs + xAlignment * (noteheadWidthSs - widthSs);
+        var noteheadWidthSs = NoteRenderer.getNoteheadRightEdgeSs(note);
+        var xSs = columnXSs + xAlignment * (noteheadWidthSs - widthSs);
 
         stackAbove(systemExtents, annotation, xSs,
             widthSs, heightSs,

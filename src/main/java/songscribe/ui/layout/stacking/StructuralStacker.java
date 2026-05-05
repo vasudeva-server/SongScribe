@@ -155,20 +155,20 @@ public class StructuralStacker {
             var bridged = new Tuplet(startNote, endNote, span.getGrade());
 
             // Compute actual visual bracket bounds
-            double noteheadRightXSs = startColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
-            double endNoteheadRightXSs = endColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
-            boolean isUpper = startNote.isUpper();
-            double stemSs = LineThickness.getInstance().stemSs();
-            double leftXSs = isUpper
+            var noteheadRightXSs = startColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
+            var endNoteheadRightXSs = endColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
+            var isUpper = startNote.isUpper();
+            var stemSs = LineThickness.getInstance().stemSs();
+            var leftXSs = isUpper
                 ? noteheadRightXSs - stemSs - Tuplet.ARM_EXTENSION_SS
                 : noteheadRightXSs - Engraving.NOTE_HEAD_WIDTH_SS - Tuplet.ARM_EXTENSION_SS;
-            double rightXSs = endNoteheadRightXSs + Tuplet.ARM_EXTENSION_SS;
+            var rightXSs = endNoteheadRightXSs + Tuplet.ARM_EXTENSION_SS;
 
-            int staffPosition = startNote.getStaffPosition();
-            double widthSs = rightXSs - leftXSs;
-            double contentHeightSs = bridged.getContentHeightSs();
+            var staffPosition = startNote.getStaffPosition();
+            var widthSs = rightXSs - leftXSs;
+            var contentHeightSs = bridged.getContentHeightSs();
 
-            double ySs = stackAbove(structuralExtents, bridged, leftXSs, widthSs,
+            var ySs = stackAbove(structuralExtents, bridged, leftXSs, widthSs,
                 contentHeightSs, TUPLET_MARGIN_SS,
                 staffPosition, builder);
 
@@ -245,13 +245,13 @@ public class StructuralStacker {
             }
 
             // Bridge to temporary range element for dimension calculations
-            double anchorXSs = startColumn.getXSs();
-            double endXSs = endColumn.getXSs();
+            var anchorXSs = startColumn.getXSs();
+            var endXSs = endColumn.getXSs();
             var bridged = factory.apply(startNote, endNote);
 
-            int staffPosition = startNote.getStaffPosition();
-            double widthSs = endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS;
-            double ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
+            var staffPosition = startNote.getStaffPosition();
+            var widthSs = endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS;
+            var ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
                 Hairpin.HAIRPIN_OPENING_HEIGHT_SS, HAIRPIN_MARGIN_SS,
                 staffPosition, builder);
 
@@ -279,10 +279,10 @@ public class StructuralStacker {
             return;
         }
 
-        double columnXSs = column.getXSs();
-        double contentWidthSs = dynamic.getContentWidthSs();
-        double centeredXSs = columnXSs + note.getType().getFullElementCenterXSs() - contentWidthSs / 2.0;
-        int staffPosition = note.getStaffPosition();
+        var columnXSs = column.getXSs();
+        var contentWidthSs = dynamic.getContentWidthSs();
+        var centeredXSs = columnXSs + note.getType().getFullElementCenterXSs() - contentWidthSs / 2.0;
+        var staffPosition = note.getStaffPosition();
         stackAbove(structuralExtents, dynamic, centeredXSs,
             contentWidthSs, dynamic.getContentHeightSs(),
             NoteAttachedStacker.NOTE_DECORATION_MARGIN_SS,
@@ -330,21 +330,21 @@ public class StructuralStacker {
             }
 
             // Element anchor X = first bracket's left edge
-            double anchorXSs = brackets.getFirst().x1Ss();
+            var anchorXSs = brackets.getFirst().x1Ss();
 
             // Combine collision regions from all brackets
             var allRegions = new ArrayList<CollisionRegion>();
 
             for (var bracket : brackets) {
-                double xBaseSs = bracket.x1Ss() - anchorXSs;
+                var xBaseSs = bracket.x1Ss() - anchorXSs;
                 allRegions.addAll(
                     ending.computeCollisionRegions(bracket, xBaseSs));
             }
 
             // Overall width = from first bracket start to last bracket end
-            double widthSs = brackets.getLast().x2Ss() - anchorXSs;
+            var widthSs = brackets.getLast().x2Ss() - anchorXSs;
 
-            int staffPosition = anchor.getStaffPosition();
+            var staffPosition = anchor.getStaffPosition();
 
             stackAboveWithRegions(structuralExtents, ending, allRegions,
                 anchorXSs, widthSs,
@@ -379,10 +379,10 @@ public class StructuralStacker {
             return;
         }
 
-        int staffPosition = anchor.getStaffPosition();
-        double anchorXSs = anchorColumn.getXSs();
-        double endXSs = endColumn.getXSs();
-        double widthSs = element.getSpanWidthSs(anchorXSs, endXSs);
+        var staffPosition = anchor.getStaffPosition();
+        var anchorXSs = anchorColumn.getXSs();
+        var endXSs = endColumn.getXSs();
+        var widthSs = element.getSpanWidthSs(anchorXSs, endXSs);
 
         stackAbove(structuralExtents, element, anchorXSs, widthSs,
             element.getContentHeightSs(), marginSs,

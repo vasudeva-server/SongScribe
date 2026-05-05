@@ -697,7 +697,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var index = line.getElementIndex(element);
-        Lyric.@Nullable Syllabic placeholderSyllabic = wantsCarrier ? null : Lyric.Syllabic.SINGLE;
+        var placeholderSyllabic = wantsCarrier ? null : Lyric.Syllabic.SINGLE;
 
         line.modifyElement(index, ElementField.LYRIC, () ->
             element.setLyricForVerse(CURRENT_VERSE, placeholderSyllabic, false, text, extend));

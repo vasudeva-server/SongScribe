@@ -91,11 +91,11 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         Graphics2D g2,
         ElementRenderContext ctx
     ) {
-        double x1 = layout.xSs();
-        double x2 = x1 + layout.widthSs();
-        double topYSs = layoutYToComponentYSs(layout.ySs(), ctx);
-        double bottomYSs = topYSs + layout.heightSs();
-        double middleYSs = topYSs + layout.heightSs() / 2.0;
+        var x1 = layout.xSs();
+        var x2 = x1 + layout.widthSs();
+        var topYSs = layoutYToComponentYSs(layout.ySs(), ctx);
+        var bottomYSs = topYSs + layout.heightSs();
+        var middleYSs = topYSs + layout.heightSs() / 2.0;
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
             g2.setColor(ELEMENT_COLOR);

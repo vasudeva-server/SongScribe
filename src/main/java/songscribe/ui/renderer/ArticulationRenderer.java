@@ -104,8 +104,8 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
 
         applyDecorationColor(g2, element, ctx);
 
-        boolean hasStaccato = false;
-        boolean hasAccent = false;
+        var hasStaccato = false;
+        var hasAccent = false;
 
         for (var a : element.getArticulations()) {
             if (a.isStaccato()) {
@@ -115,7 +115,7 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
             }
         }
 
-        boolean isCombo = hasStaccato && hasAccent;
+        var isCombo = hasStaccato && hasAccent;
 
         for (var articulation : element.getArticulations()) {
             var layout = layoutResult.getDecorationLayout(articulation);
@@ -125,23 +125,23 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
                 continue;
             }
 
-            double componentTopYSs = layoutYToComponentYSs(layout.ySs(), ctx);
+            var componentTopYSs = layoutYToComponentYSs(layout.ySs(), ctx);
 
             if (isCombo && articulation.isStaccato()) {
-                double x = centeredGlyphX(layout.xSs(), element,
+                var x = centeredGlyphX(layout.xSs(), element,
                     ACCENT_STACCATO_BBOX_LEFT_SS, ACCENT_STACCATO_WIDTH_SS);
-                double y = glyphOriginYFromLayoutTop(componentTopYSs,
+                var y = glyphOriginYFromLayoutTop(componentTopYSs,
                     SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE);
                 drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE, x, y, true);
             } else if (articulation.isStaccato()) {
-                double x = centeredGlyphX(layout.xSs(), element,
+                var x = centeredGlyphX(layout.xSs(), element,
                     STACCATO_BBOX_LEFT_SS, STACCATO_WIDTH_SS);
-                double y = glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_STACCATO_ABOVE);
+                var y = glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_STACCATO_ABOVE);
                 drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y, true);
             } else if (articulation.isAccent()) {
-                double x = centeredGlyphX(layout.xSs(), element,
+                var x = centeredGlyphX(layout.xSs(), element,
                     ACCENT_BBOX_LEFT_SS, ACCENT_WIDTH_SS);
-                double y = glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_ACCENT_ABOVE);
+                var y = glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_ACCENT_ABOVE);
                 drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_ABOVE, x, y, true);
             }
         }

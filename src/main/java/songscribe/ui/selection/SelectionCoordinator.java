@@ -621,7 +621,7 @@ public final class SelectionCoordinator {
         song.withModification(() -> {
             var needsSpanCleanup = false;
 
-            for (int i = selection.begin(); i <= selection.end(); i++) {
+            for (var i = selection.begin(); i <= selection.end(); i++) {
                 var element = line.getElement(i);
 
                 if (!action.appliesTo(element)) continue;
@@ -712,13 +712,13 @@ public final class SelectionCoordinator {
         var overlapping = beamings.findOverlapping(begin, end);
 
         for (var beam : overlapping) {
-            int newStart = beam.start;
+            var newStart = beam.start;
 
             while (newStart <= beam.end && !line.getElement(newStart).getType().isBeamable()) {
                 newStart++;
             }
 
-            int newEnd = beam.end;
+            var newEnd = beam.end;
 
             while (newEnd >= newStart && !line.getElement(newEnd).getType().isBeamable()) {
                 newEnd--;
@@ -733,7 +733,7 @@ public final class SelectionCoordinator {
             // Check for any non-beamable element in the interior of the trimmed span.
             var hasInteriorInvalid = false;
 
-            for (int i = newStart; i <= newEnd; i++) {
+            for (var i = newStart; i <= newEnd; i++) {
                 if (!line.getElement(i).getType().isBeamable()) {
                     hasInteriorInvalid = true;
                     break;

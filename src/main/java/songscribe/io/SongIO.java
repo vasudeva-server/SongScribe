@@ -578,7 +578,7 @@ public final class SongIO {
 
         public Song getSong() {
             // Determine format version for migration
-            int formatVersion = majorVersion >= 2 ? 2 : 1;
+            var formatVersion = majorVersion >= 2 ? 2 : 1;
 
             // Migrate from legacy format (IntervalSets, inline Note attachments)
             // to new format (RangeElements, Attachment objects).

@@ -373,7 +373,7 @@ public final class PreviewElementManager {
         currentMouseXSs = mouseXss;
 
         // Calculate Y position from mouse (in staff-space coordinates)
-        int staffPosition = calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
+        var staffPosition = calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
 
         if (!isValidStaffPosition(staffPosition)) {
             // Mouse is outside valid range, clear insertion note if on this line
@@ -396,14 +396,14 @@ public final class PreviewElementManager {
             return;
         }
 
-        int xIndex = layoutResult.findInsertionIndex(mouseXss, line);
+        var xIndex = layoutResult.findInsertionIndex(mouseXss, line);
 
         // In grace mode the locked x coincides with an existing note that will be
         // shifted (not replaced), so suppress the element-at-x match to avoid
         // painting it red as if it were the replacement target.
-        boolean inGraceMode = editModeManager != null
+        var inGraceMode = editModeManager != null
             && editModeManager.getGraceModeManager().isInProgress();
-        int elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXss, line);
+        var elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXss, line);
 
         // Suppress preview over the song's auto-maintained terminal (unless the
         // active preview element can legally replace it — exemption in isPositionBlockedByTerminal).
@@ -431,8 +431,8 @@ public final class PreviewElementManager {
         // Compute new position match flags before the early-return check, so that a
         // change in hover state (e.g., mouse slides from gap into element-head bounds at
         // the same xIndex) is not silently dropped.
-        boolean newXMatch = elementAtX >= 0;
-        boolean newYMatch = newXMatch
+        var newXMatch = elementAtX >= 0;
+        var newYMatch = newXMatch
             && Math.abs(staffPosition - line.getElement(elementAtX).getStaffPosition()) <= 1;
 
         // Compute glissando zone before change detection so zone changes trigger repaints.

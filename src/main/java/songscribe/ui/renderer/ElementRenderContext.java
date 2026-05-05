@@ -486,7 +486,7 @@ public class ElementRenderContext {
         }
 
         var syllabic = lyric.syllabic();
-        boolean extendsForward = lyric.extend() == Lyric.Extend.START
+        var extendsForward = lyric.extend() == Lyric.Extend.START
                 || syllabic == Lyric.Syllabic.BEGIN
                 || syllabic == Lyric.Syllabic.MIDDLE;
 
@@ -494,9 +494,9 @@ public class ElementRenderContext {
             return false;
         }
 
-        int count = currentLine.elementCount();
+        var count = currentLine.elementCount();
 
-        for (int i = anchorIndex + 1; i < count; i++) {
+        for (var i = anchorIndex + 1; i < count; i++) {
             var next = currentLine.getElement(i).getLyricForVerse(verseIndex);
 
             if (next == null) {
@@ -505,7 +505,7 @@ public class ElementRenderContext {
 
             // A carrier (STOP/CONTINUE) belongs to this anchor's melisma — span includes it.
             // A text-bearing lyric starts a new span — this anchor's span ends just before it.
-            int spanEnd = (next.extend() == Lyric.Extend.STOP
+            var spanEnd = (next.extend() == Lyric.Extend.STOP
                     || next.extend() == Lyric.Extend.CONTINUE)
                     ? i
                     : i - 1;

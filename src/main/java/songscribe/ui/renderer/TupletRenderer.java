@@ -203,8 +203,8 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
         var inkBounds = glyphVector.getVisualBounds();
 
         // Center ink bounding box on the bracket line
-        float x = (float) (centerXSs - inkBounds.getWidth() / 2.0);
-        float baseline = (float) (bracketYSs - inkBounds.getCenterY());
+        var x = (float) (centerXSs - inkBounds.getWidth() / 2.0);
+        var baseline = (float) (bracketYSs - inkBounds.getCenterY());
         g2.drawString(text, x, baseline);
     }
 

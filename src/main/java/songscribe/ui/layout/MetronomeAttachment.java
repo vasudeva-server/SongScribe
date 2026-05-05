@@ -104,7 +104,7 @@ public abstract class MetronomeAttachment extends Attachment {
             return 0;
         }
 
-        double widthSs = metadata.requireAdvanceWidth(glyph) * NOTE_SCALE;
+        var widthSs = metadata.requireAdvanceWidth(glyph) * NOTE_SCALE;
 
         if (note.getDotCount() > 0) {
             widthSs += 2 * dotAdvanceWidthSs(metadata);

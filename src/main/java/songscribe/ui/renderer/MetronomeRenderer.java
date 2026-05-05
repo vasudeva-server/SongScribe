@@ -94,7 +94,7 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
 
         var color = getDecorationColor(element, ctx);
         var decorationLayout = requireDecorationLayout(element, attachmentClass, ctx);
-        double ySs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
+        var ySs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
         var attrFont = ctx.getSong().getAnnotationFont();
 
         return new RenderSetup(color, decorationLayout, ySs, attrFont);
@@ -144,8 +144,8 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
         var metadata = SMuFLMetadata.getInstance();
         var note = duration.getNote();
         var metGlyph = requireMetronomeGlyph(note.getType());
-        double glyphOriginYSs = ySs - metadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
-        double textBaselineYSs = ySs + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
+        var glyphOriginYSs = ySs - metadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
+        var textBaselineYSs = ySs + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(color);
@@ -168,7 +168,7 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
             g2.setFont(scale.scaleFont(attrFont));
             g2.drawString(MetronomeAttachment.EQUALS_STR, (float) xSs, (float) textBaselineYSs);
 
-            double equalsWidthSs = scale.fromPixels(
+            var equalsWidthSs = scale.fromPixels(
                 attrFont.getStringBounds(MetronomeAttachment.EQUALS_STR, g2.getFontRenderContext()).getWidth());
             xSs += equalsWidthSs;
         }
@@ -195,7 +195,7 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
         var metadata = SMuFLMetadata.getInstance();
         var note = duration.getNote();
         var metGlyph = requireMetronomeGlyph(note.getType());
-        double glyphOriginYSs = ySs - metadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
+        var glyphOriginYSs = ySs - metadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(color);

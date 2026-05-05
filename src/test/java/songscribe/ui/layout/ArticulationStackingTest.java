@@ -192,7 +192,7 @@ class ArticulationStackingTest extends UnitTest {
 
             // Create builder with a StemLayout that extends above the note
             var builder = new LayoutResult.Builder();
-            double stemTopSs = -3.5;
+            var stemTopSs = -3.5;
             builder.putStemLayout(note,
                 new LayoutResult.StemLayout(stemTopSs, 0.0, 0.0, false));
 

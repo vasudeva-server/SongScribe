@@ -94,7 +94,7 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        double noteX = resolveBarXSs(g2, element, ctx);
+        var noteX = resolveBarXSs(g2, element, ctx);
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
             g2.translate(noteX, ctx.getMiddleLineYSs());
@@ -111,9 +111,9 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
         ElementRenderContext ctx
     ) {
         var lt = ctx.getLineThickness();
-        double thin = lt.thinBarlineSs();
-        double thick = lt.thickBarlineSs();
-        double sep = lt.barlineSeparationSs();
+        var thin = lt.thinBarlineSs();
+        var thick = lt.thickBarlineSs();
+        var sep = lt.barlineSeparationSs();
 
         var topY = -STAFF_HALF_HEIGHT_SS;
         var bottomY = STAFF_HALF_HEIGHT_SS;

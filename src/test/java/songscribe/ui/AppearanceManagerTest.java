@@ -189,7 +189,7 @@ class AppearanceManagerTest extends UnitTest {
 
             AppearanceManager.switchTheme(Appearance.DARK);
 
-            InOrder inOrder = inOrder(mockLafOps);
+            var inOrder = inOrder(mockLafOps);
             inOrder.verify(mockLafOps).showSnapshot();
             inOrder.verify(mockLafOps).installLaf(any(LookAndFeel.class));
             inOrder.verify(mockLafOps).updateUI();

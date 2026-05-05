@@ -260,7 +260,7 @@ public final class ScoreMessageCoordinator {
      * fields and do not affect rendered layout.
      */
     private static boolean hasLineLayoutMutation(SongDidChangeNotification message) {
-        for (Mutation mutation : message.getMutations()) {
+        for (var mutation : message.getMutations()) {
             if (mutation instanceof LineScopedMutation
                 || mutation instanceof LineInsertion
                 || mutation instanceof LineDeletion) {
@@ -276,7 +276,7 @@ public final class ScoreMessageCoordinator {
      * song relayout (font / metadata / layout property changes).
      */
     private static boolean hasFullRelayoutMutation(SongDidChangeNotification message) {
-        for (Mutation mutation : message.getMutations()) {
+        for (var mutation : message.getMutations()) {
             if (mutation instanceof FontChange
                 || mutation instanceof MetadataChange
                 || mutation instanceof LayoutChange) {

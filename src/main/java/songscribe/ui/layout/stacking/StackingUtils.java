@@ -74,7 +74,7 @@ public final class StackingUtils {
             return STAFF_TOP_Y_SS;
         }
 
-        double noteHeadYSs = staffPosition * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = staffPosition * StaffExtents.STAFF_POSITION_OFFSET_SS;
         return noteHeadYSs - NOTE_HEAD_RADIUS_SS;
     }
 
@@ -134,22 +134,22 @@ public final class StackingUtils {
         LayoutResult.Builder builder
     ) {
         var anchorSs = anchorCeilingSs(staffPosition);
-        double elementYSs = Double.MAX_VALUE;
+        var elementYSs = Double.MAX_VALUE;
 
         // Query phase: each sub-region finds its own ceiling independently.
         // The element Y is the min (highest on page) across all sub-regions,
         // so the element clears all content beneath every sub-region.
-        for (int i = 0; i < regions.size(); i++) {
+        for (var i = 0; i < regions.size(); i++) {
             var region = regions.get(i);
-            double regionXSs = xSs + region.xOffsetSs();
-            double queryXSs = regionXSs - STRUCTURAL_HORIZONTAL_MARGIN_SS;
-            double queryWidthSs = region.widthSs() + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS;
+            var regionXSs = xSs + region.xOffsetSs();
+            var queryXSs = regionXSs - STRUCTURAL_HORIZONTAL_MARGIN_SS;
+            var queryWidthSs = region.widthSs() + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS;
 
-            double regionTopSs = extents.yGet(true, queryXSs, queryWidthSs);
-            double regionCeilingSs = Math.min(regionTopSs, anchorSs);
+            var regionTopSs = extents.yGet(true, queryXSs, queryWidthSs);
+            var regionCeilingSs = Math.min(regionTopSs, anchorSs);
 
             // Constraint: elementY + yOffset + height <= ceiling - margin
-            double regionYSs = regionCeilingSs - marginSs
+            var regionYSs = regionCeilingSs - marginSs
                 - region.yOffsetSs() - region.heightSs();
 
             elementYSs = Math.min(elementYSs, regionYSs);
@@ -159,8 +159,8 @@ public final class StackingUtils {
         // Shorter sub-regions (e.g. text) have a higher yOffset → shallower reservation,
         // enabling later elements to nestle closer where only the short sub-region exists.
         for (var region : regions) {
-            double regionXSs = xSs + region.xOffsetSs();
-            double regionTopSs = elementYSs + region.yOffsetSs();
+            var regionXSs = xSs + region.xOffsetSs();
+            var regionTopSs = elementYSs + region.yOffsetSs();
             extents.ySet(true, regionXSs, region.widthSs(), regionTopSs);
         }
 

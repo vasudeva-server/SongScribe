@@ -656,7 +656,7 @@ public final class MusicEditOperations {
                     // Flip the whole beam group together, once per group.
                     if (processedBeamSpans.add(beamSpan)) {
                         var firstElement = line.getElement(beamSpan.getStart());
-                        boolean newUpper = !firstElement.isUpper();
+                        var newUpper = !firstElement.isUpper();
 
                         for (var j = beamSpan.getStart(); j <= beamSpan.getEnd(); j++) {
                             var beamIndex = j;
@@ -669,7 +669,7 @@ public final class MusicEditOperations {
                     }
                 } else {
                     var noteIndex = i;
-                    boolean newUpper = !note.isUpper();
+                    var newUpper = !note.isUpper();
                     line.modifyElement(noteIndex, stemFields, () -> {
                         var target = line.getElement(noteIndex);
                         target.setStemDirectionAuto(false);
@@ -699,7 +699,7 @@ public final class MusicEditOperations {
 
             for (var i : tiePartnersToFlip) {
                 var partnerIndex = i;
-                boolean newUpper = !line.getElement(partnerIndex).isUpper();
+                var newUpper = !line.getElement(partnerIndex).isUpper();
                 line.modifyElement(partnerIndex, stemFields, () -> {
                     var note = line.getElement(partnerIndex);
                     note.setStemDirectionAuto(false);
