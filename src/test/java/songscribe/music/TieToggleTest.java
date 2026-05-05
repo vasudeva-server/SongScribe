@@ -37,7 +37,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * Unit tests for tie toggling and stem direction flipping on tied notes
  * via {@link MusicEditOperations}, using the {@code connections} fixture.
  */
-@SuppressWarnings("OverlyBroadThrowsClause")
+@SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized", "StaticVariableUsedBeforeInitialization" })
 class TieToggleTest extends UnitTest {
 
     // Element indices in connections.mssw

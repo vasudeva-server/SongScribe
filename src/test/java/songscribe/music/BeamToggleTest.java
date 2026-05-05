@@ -23,6 +23,7 @@ package songscribe.music;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import com.uber.nullaway.annotations.Initializer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * Unit tests for beam toggling and stem direction flipping via
  * {@link MusicEditOperations}, using the {@code connections} fixture.
  */
-@SuppressWarnings("OverlyBroadThrowsClause")
+@SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized", "StaticVariableUsedBeforeInitialization" })
 class BeamToggleTest extends UnitTest {
 
     // Element indices in connections.mssw

@@ -203,12 +203,12 @@ public final class Song {
 
     // Modification bracket depth counter. Mutations are accumulated while > 0 and
     // flushed as a single SongDidChangeNotification when depth returns to 0.
-    private int modificationDepth;
+    private int modificationDepth = 0;
 
     // Suspension depth counter. While > 0, Line.applyChange bypasses the strict
     // bracket check and runs the mutator directly. Used by test setup that
     // populates lines without emitting notifications or recording undo history.
-    private int suspensionDepth;
+    private int suspensionDepth = 0;
 
     // While true, Line mutation guards are bypassed so Song can auto-maintain
     // the terminal invariant without triggering the guards that protect against
@@ -219,14 +219,13 @@ public final class Song {
     private ArrayList<Mutation> accumulatedMutations;
 
     /** Whether the user has already been notified about short-ă replacement in this session. */
-    private boolean shortANotified;
+    private boolean shortANotified = false;
 
 
     public Song() {
         attribution = Strings.get(Strings.SONG_DEFAULT_ATTRIBUTION);
         tempo = new Tempo();
         defaultKeyAccidentalCount = DEFAULT_KEY_ACCIDENTAL_COUNT;
-        defaultKeyType = DEFAULT_KEY_TYPE;
         initFontsFromPrefs();
 
         // Initial topPadding of 0 - layout calculation will set the correct value
@@ -309,7 +308,7 @@ public final class Song {
 
     @Handler
     public void documentWasSaved(DocumentWasSavedNotification message) {
-        setModified(false);
+        modified = false;
     }
 
     /**
@@ -324,6 +323,7 @@ public final class Song {
      *
      * @param data the parsed song data to apply
      */
+    @SuppressWarnings("CallToSimpleSetterFromWithinClass")
     public void loadFrom(SongData data) {
         // Apply all scalar fields using apply methods (no individual message posting)
         tempo = data.tempo();
@@ -377,7 +377,7 @@ public final class Song {
 
         // Loading bypasses the addElement path that normally handles this.
         if (!lines.isEmpty()) {
-            lines.get(0).attachInitialTempoIfNeeded();
+            lines.getFirst().attachInitialTempoIfNeeded();
         }
 
         hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
@@ -391,7 +391,7 @@ public final class Song {
         // posts the FULL message after all state is consistent.
     }
 
-    private @NonNull Line getLine(List<? extends Line> loadedLines, int lineIndex) {
+    private Line getLine(List<? extends Line> loadedLines, int lineIndex) {
         var line = loadedLines.get(lineIndex);
         applyLineDefaults(line, lineIndex);
         return line;
@@ -930,7 +930,7 @@ public final class Song {
 
         var lineIndex = (index == InsertLineAction.ADD) ? lines.size() : index;
         var willBecomeNewLast = lineIndex == lines.size();
-        var previousLastLine = lines.isEmpty() ? null : lines.get(lines.size() - 1);
+        var previousLastLine = lines.isEmpty() ? null : lines.getLast();
 
         withModification(() -> incrementAutoMaintenance(() -> {
             applyChange(new LineInsertion(lineIndex, line), () -> {
@@ -982,7 +982,7 @@ public final class Song {
             );
 
             if (wasLast && !lines.isEmpty() && !isMutationTrackingSuspended()) {
-                maintainTerminalOnLastLineChange(null, lines.get(lines.size() - 1));
+                maintainTerminalOnLastLineChange(null, lines.getLast());
             }
         }));
     }
@@ -1009,6 +1009,7 @@ public final class Song {
         var outgoingTerminalType = outgoingTerminalType(previousLastLine, newLastLine);
         var typeToInstall = terminalTypeToInstall(outgoingTerminalType, newLastLine);
 
+        //noinspection ConstantValue
         if (outgoingTerminalType != null && previousLastLine != null) {
             previousLastLine.removeElement(previousLastLine.elementCount() - 1);
         }

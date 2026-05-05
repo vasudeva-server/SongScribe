@@ -21,6 +21,8 @@ package songscribe.ui.dialog.fontchooser;
 
 import module java.desktop;
 
+import com.uber.nullaway.annotations.Initializer;
+
 import songscribe.Strings;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
@@ -148,11 +150,8 @@ public class FontChooser extends JPanel implements FontContainer {
      *
      * @param newModel the new {@code FontSelectionModel} object
      */
+    @Initializer
     public void setSelectionModel(FontSelectionModel newModel) {
-        if (newModel == null) {
-            throw new IllegalArgumentException("New model must not be null");
-        }
-
         var oldModel = selectionModel;
         selectionModel = newModel;
         selectionModel.addChangeListener(stylePane);
@@ -178,6 +177,7 @@ public class FontChooser extends JPanel implements FontContainer {
     }
 
     private void initPanes() {
+        //noinspection InstanceVariableUsedBeforeInitialized
         familyPane.setSelectedFamily(selectionModel.getSelectedFontFamily());
         familyPane.addListSelectionListener(familyPaneListener);
 

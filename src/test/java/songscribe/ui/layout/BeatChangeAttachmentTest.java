@@ -33,6 +33,7 @@ import songscribe.music.Song;
 import songscribe.music.Duration;
 import songscribe.util.GraphicUtils;
 
+@SuppressWarnings("StaticVariableMayNotBeInitialized")
 class BeatChangeAttachmentTest extends UnitTest {
 
     private static final double EPSILON = 1e-10;

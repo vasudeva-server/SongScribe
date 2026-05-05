@@ -40,6 +40,7 @@ import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
+@SuppressWarnings({ "StaticVariableMayNotBeInitialized", "StaticVariableUsedBeforeInitialization" })
 class SystemTierStackingTest extends UnitTest {
 
     private static final double LINE_WIDTH_SS = 64.0;

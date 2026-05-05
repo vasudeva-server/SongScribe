@@ -45,6 +45,7 @@ import songscribe.ui.layout.stacking.VerticalStackingCalculator;
  * Tests that manual user offsets are applied correctly post-layout,
  * without re-running collision detection.
  */
+@SuppressWarnings({ "StaticVariableMayNotBeInitialized", "StaticVariableUsedBeforeInitialization" })
 class ManualOffsetStackingTest extends UnitTest {
 
     private static Song song;

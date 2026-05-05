@@ -355,7 +355,7 @@ public final class Actions {
         ACCIDENTAL_IN_PARENS_ACTION.reset();
     }
 
-    private static @Nullable List<AppMenuAction> appMenuActions;
+    private static @Nullable List<AppMenuAction> appMenuActions = null;
 
     /**
      * Returns all actions that implement {@link AppMenuAction}, discovered

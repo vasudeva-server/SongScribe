@@ -36,8 +36,8 @@ import org.jspecify.annotations.Nullable;
  */
 public final class ActivationGate {
     private static final int CMD_TAB_DELAY_MS = 300;
-    private static @Nullable JPanel glassPane;
-    private static @Nullable Timer cmdTabTimer;
+    private static @Nullable JPanel glassPane = null;
+    private static @Nullable Timer cmdTabTimer = null;
 
     private ActivationGate() {
     }
