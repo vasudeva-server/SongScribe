@@ -88,6 +88,7 @@ BASE_LAUNCHER_ARGS=(
 )
 
 run_tests() {
+  echo "Running tests..."
   local launcher_args=("$SUBCOMMAND" "${BASE_LAUNCHER_ARGS[@]}" "$@")
   local stdout_target="/dev/stdout"
 
