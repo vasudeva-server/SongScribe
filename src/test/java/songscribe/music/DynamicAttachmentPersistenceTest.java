@@ -41,20 +41,7 @@ class DynamicAttachmentPersistenceTest extends UnitTest {
 
     @Test
     void testRoundTripPreservesDynamicAttachments() throws Exception {
-        var song = new Song();
-        var line = song.getLine(0);
-
-        song.withModification(() -> {
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
-
-            var forteNote = line.getElement(FORTE_INDEX);
-            forteNote.addAttachment(new DynamicAttachment(forteNote, DynamicType.FORTE));
-
-            var pianissimoNote = line.getElement(PIANISSIMO_INDEX);
-            pianissimoNote.addAttachment(new DynamicAttachment(pianissimoNote, DynamicType.PIANISSIMO));
-        });
+        var song = getSong();
 
         var reloaded = roundTrip(song);
         var reloadedLine = reloaded.getLine(0);
@@ -75,5 +62,23 @@ class DynamicAttachmentPersistenceTest extends UnitTest {
             () -> assertThat(reloadedUntouched)
                 .as("untouched note has no dynamic after round-trip").isNull()
         );
+    }
+
+    private static Song getSong() {
+        var song = new Song();
+        var line = song.getLine(0);
+
+        song.withModification(() -> {
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
+
+            var forteNote = line.getElement(FORTE_INDEX);
+            forteNote.addAttachment(new DynamicAttachment(forteNote, DynamicType.FORTE));
+
+            var pianissimoNote = line.getElement(PIANISSIMO_INDEX);
+            pianissimoNote.addAttachment(new DynamicAttachment(pianissimoNote, DynamicType.PIANISSIMO));
+        });
+        return song;
     }
 }

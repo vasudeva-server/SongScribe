@@ -167,20 +167,7 @@ public class LineJustificationCalculator {
         double staffRightMarginSs) {
 
         // Calculate compression ratio
-        var firstColumn = columns.get(0);
-        var lastColumn = columns.get(columns.size() - 1);
-
-        // The total width includes the span between column centers plus the extents
-        // Width = centerSpan + (lastRightExtent - firstLeftExtent)
-        // When compressing, only the centerSpan changes, extents stay fixed
-        var centerSpanSs = lastColumn.getXSs() - firstColumn.getXSs();
-        var extentOffsetSs = lastColumn.getRightExtentSs() - firstColumn.getLeftExtentSs();
-
-        var calculatedWidthSs = centerSpanSs + extentOffsetSs;
-        var targetWidthSs = staffRightMarginSs - firstColumn.getLeftEdgeXSs();
-
-        // ratio = (targetWidth - extentOffset) / centerSpan
-        var compressionRatio = (targetWidthSs - extentOffsetSs) / centerSpanSs;
+        var compressionRatio = getCompressionRatio(columns, staffRightMarginSs);
 
         // Validate that compression is possible
         var validation = validateCompression(columns, compressionRatio);
@@ -199,6 +186,24 @@ public class LineJustificationCalculator {
         applyCompression(columns, compressionRatio);
 
         return JustificationResult.successWithCompression();
+    }
+
+    private static double getCompressionRatio(List<ElementColumn> columns, double staffRightMarginSs) {
+        var firstColumn = columns.get(0);
+        var lastColumn = columns.get(columns.size() - 1);
+
+        // The total width includes the span between column centers plus the extents
+        // Width = centerSpan + (lastRightExtent - firstLeftExtent)
+        // When compressing, only the centerSpan changes, extents stay fixed
+        var centerSpanSs = lastColumn.getXSs() - firstColumn.getXSs();
+        var extentOffsetSs = lastColumn.getRightExtentSs() - firstColumn.getLeftExtentSs();
+
+        var calculatedWidthSs = centerSpanSs + extentOffsetSs;
+        var targetWidthSs = staffRightMarginSs - firstColumn.getLeftEdgeXSs();
+
+        // ratio = (targetWidth - extentOffset) / centerSpan
+        var compressionRatio = (targetWidthSs - extentOffsetSs) / centerSpanSs;
+        return compressionRatio;
     }
 
     /**

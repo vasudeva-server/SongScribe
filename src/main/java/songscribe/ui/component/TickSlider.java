@@ -68,6 +68,7 @@ public abstract class TickSlider extends JSlider {
         setPaintTicks(true);
         setPaintLabels(true);
 
+        //noinspection UseOfObsoleteCollectionType -- Swing's setLabelTable uses Hashtable, so we have to use it too.
         var labelTable = new Hashtable<Integer, JLabel>();
 
         for (var i = 0; i < stops.length; i++) {
@@ -77,7 +78,6 @@ public abstract class TickSlider extends JSlider {
         }
 
         setLabelTable(labelTable);
-
         lastCommittedValue = getValue();
 
         addChangeListener(_ -> {

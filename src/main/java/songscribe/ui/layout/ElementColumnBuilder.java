@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
@@ -209,22 +210,7 @@ public class ElementColumnBuilder {
         }
 
         // Element head right edge: use small notehead width for grace notes
-        var noteheadRightExtent = type.isGraceNote()
-            ? NOTE_HEAD_SMALL_WIDTH_SS
-            : Engraving.NOTE_HEAD_WIDTH_SS;
-
-        // Add dot widths if present
-        var dotCount = element.getDotCount();
-
-        if (dotCount > 0) {
-            // First dot: gap + dot
-            noteheadRightExtent += DOT_GAP_SS + DOT_WIDTH_SS;
-
-            // Additional dots: gap + dot each
-            for (var i = 1; i < dotCount; i++) {
-                noteheadRightExtent += DOT_GAP_SS + DOT_WIDTH_SS;
-            }
-        }
+        var noteheadRightExtent = getNoteheadRightExtent(element, type);
 
         // Flag extent: only for unbeamed elements that have a flag
         var flagGlyph = type.getFlagGlyph(upper);
@@ -242,6 +228,27 @@ public class ElementColumnBuilder {
         }
 
         return Math.max(noteheadRightExtent, flagRightExtent);
+    }
+
+    private static double getNoteheadRightExtent(StaffElement element, ElementType type) {
+        var noteheadRightExtent = type.isGraceNote()
+            ? NOTE_HEAD_SMALL_WIDTH_SS
+            : Engraving.NOTE_HEAD_WIDTH_SS;
+
+        // Add dot widths if present
+        var dotCount = element.getDotCount();
+
+        if (dotCount > 0) {
+            // First dot: gap + dot
+            noteheadRightExtent += DOT_GAP_SS + DOT_WIDTH_SS;
+
+            // Additional dots: gap + dot each
+            for (var i = 1; i < dotCount; i++) {
+                noteheadRightExtent += DOT_GAP_SS + DOT_WIDTH_SS;
+            }
+        }
+
+        return noteheadRightExtent;
     }
 
     private static double advanceWidthSs(SMuFLGlyph glyph) {
