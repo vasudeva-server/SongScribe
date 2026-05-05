@@ -201,12 +201,7 @@ public final class MidiController {
             receiver.send(gmOn, -1);
 
             for (var ch = 0; ch < 16; ch++) {
-                if (ch == 9) {
-                    // Drums: drier, no chorus
-                    initChannel(receiver, ch, 100, 64, 127, 15, 0);
-                } else {
-                    initChannel(receiver, ch, 100, 64, 110, 35, 10);
-                }
+                initChannel(receiver, ch, 100, 64, 110, 35, 10);
             }
         } catch (InvalidMidiDataException e) {
             LOG.warn("Failed to initialize MIDI channels", e);
