@@ -61,7 +61,7 @@ class ViewIOTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class FontXmlParsing {
 
@@ -130,7 +130,7 @@ class ViewIOTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class LegacyFontStyleElements {
 

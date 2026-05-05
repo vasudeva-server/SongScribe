@@ -32,7 +32,6 @@ import songscribe.UnitTest;
 import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.KeyType;
-import songscribe.music.Line;
 import songscribe.smufl.Engraving;
 
 class LayoutEngineTest extends UnitTest {

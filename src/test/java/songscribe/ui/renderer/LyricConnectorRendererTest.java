@@ -30,7 +30,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static songscribe.ui.layout.LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
 
-import java.awt.font.GlyphVector;
 import java.util.List;
 
 import module java.desktop;

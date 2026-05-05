@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.uber.nullaway.annotations.Initializer;
 import net.engio.mbassy.listener.Handler;
 
 import org.intellij.lang.annotations.MagicConstant;

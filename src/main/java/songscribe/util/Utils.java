@@ -70,6 +70,7 @@ public final class Utils {
 
     @FunctionalInterface
     private interface DesktopOperation {
+        @SuppressWarnings("ProhibitedExceptionDeclared") // Can't know in advance what perform will throw
         void perform(DesktopUtils desktop) throws Exception;
     }
 

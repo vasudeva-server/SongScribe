@@ -26,8 +26,6 @@ import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 
 import module java.desktop;
 
-import java.awt.font.GlyphVector;
-import java.awt.geom.Line2D;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 

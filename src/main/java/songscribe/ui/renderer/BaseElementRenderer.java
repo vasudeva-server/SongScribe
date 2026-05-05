@@ -260,7 +260,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     }
 
 
-
     // ==========================================================================
     // Shared Drawing Utilities
     // ==========================================================================

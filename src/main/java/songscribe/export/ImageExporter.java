@@ -25,8 +25,6 @@ import module java.desktop;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.component.Score;
 
-import static songscribe.export.ExportOptions.ALL;
-
 /**
  * Utility class for exporting music scores as images.
  */

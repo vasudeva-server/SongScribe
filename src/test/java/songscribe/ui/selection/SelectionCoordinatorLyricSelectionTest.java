@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.ElementType;
-import songscribe.music.Line;
 
 class SelectionCoordinatorLyricSelectionTest extends UnitTest {
 

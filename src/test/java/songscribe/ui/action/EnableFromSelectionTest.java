@@ -21,7 +21,6 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
@@ -32,7 +31,6 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.selection.SelectionCoordinator;
 
 class EnableFromSelectionTest extends UnitTest {
 

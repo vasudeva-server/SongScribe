@@ -45,15 +45,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.music.Lyric;
 import songscribe.music.Song;
 import songscribe.ui.layout.LyricRenderMetrics;
 
+@SuppressWarnings("OverlyBroadThrowsClause")
 class LyricEditorTest extends LyricEditorTestSupport {
 
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);

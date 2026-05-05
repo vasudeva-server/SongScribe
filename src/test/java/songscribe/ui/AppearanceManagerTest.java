@@ -37,7 +37,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -106,7 +105,7 @@ class AppearanceManagerTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class Init {
 
@@ -174,7 +173,7 @@ class AppearanceManagerTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class SwitchTheme {
 

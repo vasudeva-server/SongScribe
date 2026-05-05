@@ -419,6 +419,7 @@ public enum ElementType {
      * Returns the rest equivalent of this type, or {@code this} if no rest counterpart exists.
      */
     public ElementType toRest() {
+        //noinspection DuplicatedCode
         return switch (this) {
             case SEMIBREVE -> SEMIBREVE_REST;
             case MINIM -> MINIM_REST;
@@ -434,6 +435,7 @@ public enum ElementType {
      * Returns the note equivalent of this type, or {@code this} if no note counterpart exists.
      */
     public ElementType toNote() {
+        //noinspection DuplicatedCode
         return switch (this) {
             case SEMIBREVE_REST -> SEMIBREVE;
             case MINIM_REST -> MINIM;

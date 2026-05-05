@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.util.SystemInfo;

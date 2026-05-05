@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.Song;
-import songscribe.music.Line;
 import songscribe.music.TieSpan;
 import songscribe.ui.component.Score;
 

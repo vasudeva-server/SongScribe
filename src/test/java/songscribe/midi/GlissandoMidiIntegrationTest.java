@@ -43,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * fixture. Verifies that connected glissandos and slide-outs produce correct
  * pitch bend and RPN control change events when rendered to a MIDI track.
  */
+@SuppressWarnings("OverlyBroadThrowsClause")
 class GlissandoMidiIntegrationTest extends UnitTest {
 
     // Element indices in connections.mssw

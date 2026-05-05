@@ -52,6 +52,7 @@ import static org.mockito.Mockito.when;
  * Base class for unit tests. Suppresses modal error dialogs
  * so tests don't block on user interaction.
  */
+@SuppressWarnings("OverlyBroadThrowsClause")
 public abstract class UnitTest {
 
     private static volatile boolean bannerShown = false;

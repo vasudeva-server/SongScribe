@@ -671,21 +671,13 @@ public class Line {
 
             if (prevLyric != null) {
                 var prevSyllabic = prevLyric.syllabic();
-                prevContinues = prevSyllabic == Lyric.Syllabic.BEGIN || prevSyllabic == Lyric.Syllabic.MIDDLE;
+                prevContinues = syllabicContinues(prevSyllabic);
                 break;
             }
         }
 
         // BEGIN was assigned by best-guess load to signal "this syllable continues to the next".
-        var thisContinues = lyric.syllabic() == Lyric.Syllabic.BEGIN
-                || lyric.syllabic() == Lyric.Syllabic.MIDDLE;
-        Lyric.Syllabic derived;
-
-        if (prevContinues) {
-            derived = thisContinues ? Lyric.Syllabic.MIDDLE : Lyric.Syllabic.END;
-        } else {
-            derived = thisContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
-        }
+        var derived = deriveSyllabic(prevContinues, syllabicContinues(lyric.syllabic()));
 
         if (derived == lyric.syllabic()) {
             return;
@@ -738,13 +730,7 @@ public class Line {
         }
 
         var prevContinues = previousLyricContinues(index, verse);
-        Lyric.Syllabic newSyllabic;
-
-        if (isWordEnd) {
-            newSyllabic = prevContinues ? Lyric.Syllabic.END : Lyric.Syllabic.SINGLE;
-        } else {
-            newSyllabic = prevContinues ? Lyric.Syllabic.MIDDLE : Lyric.Syllabic.BEGIN;
-        }
+        var newSyllabic = deriveSyllabic(prevContinues, !isWordEnd);
 
         var newCompound = !isWordEnd && isCompound;
 
@@ -769,15 +755,7 @@ public class Line {
             return;
         }
 
-        var nextContinues = nextLyric.syllabic() == Lyric.Syllabic.BEGIN
-            || nextLyric.syllabic() == Lyric.Syllabic.MIDDLE;
-        Lyric.Syllabic newSyllabic;
-
-        if (predecessorContinues) {
-            newSyllabic = nextContinues ? Lyric.Syllabic.MIDDLE : Lyric.Syllabic.END;
-        } else {
-            newSyllabic = nextContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
-        }
+        var newSyllabic = deriveSyllabic(predecessorContinues, syllabicContinues(nextLyric.syllabic()));
 
         if (newSyllabic != nextLyric.syllabic()) {
             modifyElement(nextIndex, ElementField.LYRIC, () ->
@@ -799,8 +777,7 @@ public class Line {
             var prevLyric = elements.get(i).getLyricForVerse(verse);
 
             if (prevLyric != null && prevLyric.syllabic() != null) {
-                return prevLyric.syllabic() == Lyric.Syllabic.BEGIN
-                    || prevLyric.syllabic() == Lyric.Syllabic.MIDDLE;
+                return syllabicContinues(prevLyric.syllabic());
             }
         }
 
@@ -890,6 +867,18 @@ public class Line {
         }
 
         return -1;
+    }
+
+    private static boolean syllabicContinues(Lyric.@Nullable Syllabic syllabic) {
+        return syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE;
+    }
+
+    private static Lyric.Syllabic deriveSyllabic(boolean prevContinues, boolean thisContinues) {
+        if (prevContinues) {
+            return thisContinues ? Lyric.Syllabic.MIDDLE : Lyric.Syllabic.END;
+        }
+
+        return thisContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
     }
 
     /** Attaches the song's initial tempo to the first element of this line if not already set. */

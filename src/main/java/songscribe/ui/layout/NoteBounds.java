@@ -22,8 +22,6 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import org.jspecify.annotations.Nullable;
-
 /**
  * Represents the hierarchical bounding boxes for a note.
  * <p>

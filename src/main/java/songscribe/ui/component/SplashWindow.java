@@ -23,7 +23,6 @@ package songscribe.ui.component;
 import module java.desktop;
 
 import java.lang.reflect.InvocationTargetException;
-import java.nio.Buffer;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;

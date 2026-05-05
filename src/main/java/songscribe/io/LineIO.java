@@ -36,7 +36,6 @@ import songscribe.music.TupletSpan;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Song;
-import songscribe.music.StaffElement;
 import songscribe.ui.layout.Ending;
 
 public final class LineIO {

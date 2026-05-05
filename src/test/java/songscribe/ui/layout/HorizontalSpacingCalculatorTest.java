@@ -30,7 +30,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.ElementType;
-import songscribe.music.Line;
 import songscribe.smufl.Engraving;
 
 class HorizontalSpacingCalculatorTest extends UnitTest {

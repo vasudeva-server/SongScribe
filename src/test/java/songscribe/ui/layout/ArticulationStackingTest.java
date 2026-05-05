@@ -32,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
-import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;

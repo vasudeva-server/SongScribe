@@ -34,6 +34,7 @@ import songscribe.UnitTest;
  * Unit tests verifying that glissando data persists correctly through
  * save/load round-trips, using the {@code connections} fixture.
  */
+@SuppressWarnings("OverlyBroadThrowsClause")
 class GlissandoPersistenceTest extends UnitTest {
 
     // PAIR_B_SRC (index 7) has a CONNECTED glissando in the fixture

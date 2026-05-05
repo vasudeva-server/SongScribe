@@ -36,7 +36,7 @@ import songscribe.UnitTest;
 import songscribe.music.Song;
 import songscribe.music.Lyric;
 
-@SuppressWarnings("SameReturnValue")
+@SuppressWarnings({ "SameReturnValue", "OverlyBroadThrowsClause" })
 class SongIOTest extends UnitTest {
 
     private static final SAXParserFactory PARSER_FACTORY = SAXParserFactory.newInstance();

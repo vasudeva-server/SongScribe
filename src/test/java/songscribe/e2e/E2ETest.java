@@ -34,8 +34,6 @@ import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 
-import javax.xml.parsers.SAXParserFactory;
-
 import org.assertj.swing.exception.UnexpectedException;
 import org.jspecify.annotations.Nullable;
 
@@ -55,7 +53,6 @@ import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
-import org.xml.sax.InputSource;
 
 import songscribe.SongScribe;
 import songscribe.UnitTest;

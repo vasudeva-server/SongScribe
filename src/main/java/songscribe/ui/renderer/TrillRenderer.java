@@ -34,7 +34,6 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.smufl.Engraving;
 import songscribe.ui.layout.Trill;
-import songscribe.util.GraphicUtils;
 
 /**
  * Renders trill markings (tr symbol + wavy line for extended trills).

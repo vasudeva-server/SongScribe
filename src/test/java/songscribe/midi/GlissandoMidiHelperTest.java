@@ -109,7 +109,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class CreatePitchBendMessages {
 
@@ -170,7 +170,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class CreatePitchBendReset {
 
@@ -198,7 +198,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class CreateRpnMessages {
 
@@ -245,7 +245,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class CreateRpnMessagesIfNeeded {
 

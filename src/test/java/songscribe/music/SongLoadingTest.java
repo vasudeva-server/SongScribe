@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.util.MyFontUtils;
 
+@SuppressWarnings("OverlyBroadThrowsClause")
 class SongLoadingTest extends UnitTest {
 
     private Song song;

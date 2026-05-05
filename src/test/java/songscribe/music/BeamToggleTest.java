@@ -36,6 +36,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * Unit tests for beam toggling and stem direction flipping via
  * {@link MusicEditOperations}, using the {@code connections} fixture.
  */
+@SuppressWarnings("OverlyBroadThrowsClause")
 class BeamToggleTest extends UnitTest {
 
     // Element indices in connections.mssw

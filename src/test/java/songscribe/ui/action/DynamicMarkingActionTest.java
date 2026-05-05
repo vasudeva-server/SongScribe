@@ -36,7 +36,6 @@ import org.mockito.MockedStatic;
 import songscribe.UnitTest;
 import songscribe.music.DynamicsSpan;
 import songscribe.music.ElementType;
-import songscribe.music.Line;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;

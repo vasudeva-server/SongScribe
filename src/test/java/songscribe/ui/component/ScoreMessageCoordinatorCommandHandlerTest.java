@@ -27,8 +27,6 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 import static songscribe.music.StaffElementFactory.*;
 
-import java.lang.reflect.Field;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -84,6 +82,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * already covered by {@code MusicEditOperationsMutationTest} — this suite focuses
  * on the wiring between the coordinator and the operations layer.
  */
+@SuppressWarnings("OverlyBroadThrowsClause")
 class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
     private Song song;

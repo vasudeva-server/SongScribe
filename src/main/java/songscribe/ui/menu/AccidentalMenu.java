@@ -22,7 +22,6 @@ package songscribe.ui.menu;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 
 public class AccidentalMenu extends JMenu {

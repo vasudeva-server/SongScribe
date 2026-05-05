@@ -28,7 +28,6 @@ import org.rococoa.cocoa.foundation.NSInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.ui.action.Actions;

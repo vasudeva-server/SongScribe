@@ -47,7 +47,6 @@ import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.MetadataChange;
-import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.ControlDidChangeNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;

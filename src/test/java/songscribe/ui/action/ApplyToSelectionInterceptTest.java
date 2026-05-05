@@ -37,7 +37,6 @@ import songscribe.UnitTest;
 import songscribe.music.Line;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.selection.ElementSelection;
-import songscribe.ui.selection.SelectionCoordinator;
 
 class ApplyToSelectionInterceptTest extends UnitTest {
 

@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@SuppressWarnings("OverlyBroadThrowsClause")
 class StringsTest extends UnitTest {
 
     // Template string: doubled apostrophe produces a literal apostrophe

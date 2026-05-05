@@ -278,7 +278,7 @@ public final class SongIO {
             String localName,
             String qName,
             Attributes attributes
-        ) throws SAXException {
+        ) throws SAXException, NewerVersionException {
             if (where == null) {
                 if (qName.equals(XML_SONG) || qName.equals(XML_COMPOSITION_LEGACY)) {
                     try {

@@ -33,6 +33,7 @@ import songscribe.ui.selection.LineSelectionState;
  * Unit tests for {@link LineSelectionState#canToggleTie()} pitch validation logic.
  * Uses the {@code tie-pitch-validation} fixture (Db major, 5 flats).
  */
+@SuppressWarnings("OverlyBroadThrowsClause")
 class TiePitchValidationTest extends UnitTest {
 
     // Element indices in tie-pitch-validation.mssw (ordinals match fixture order)

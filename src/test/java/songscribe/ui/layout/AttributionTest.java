@@ -24,7 +24,6 @@ import java.awt.Font;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.error.RuntimeError;
