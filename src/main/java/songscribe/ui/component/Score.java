@@ -673,7 +673,6 @@ public final class Score
         }
 
         drawEditElements(g2);
-        drawDebugOverlays(g2);
     }
 
     private void drawEditElements(Graphics2D g2) {
@@ -684,11 +683,6 @@ public final class Score
         } else if (mode == Mode.VERTICAL_ADJUSTMENT && verticalAdjustment != null) {
             verticalAdjustment.repaint(g2);
         }
-    }
-
-    private void drawDebugOverlays(Graphics2D g2) {
-        // TODO: Implement debug overlays with component hierarchy
-        // debugRenderer.drawDebugVisualization(g2, layoutResult, this);
     }
 
     @Override
