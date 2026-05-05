@@ -93,9 +93,9 @@ public class Line {
     // ---------------------------------------------------------------------
     // Legacy View Properties (Y positions relative to middleLineY)
     // ---------------------------------------------------------------------
-    // DEPRECATED: These line-level Y position fields are retained for backward
-    // compatibility with legacy documents (pre-Phase 11). New code should use
-    // per-instance offsets on the element objects themselves:
+    // LEGACY SERIALIZATION: These line-level Y position fields exist solely
+    // to read pre-Phase 11 documents. New code must use per-instance offsets
+    // on the element objects themselves:
     //   - Tempo/BeatChange: use Attachment.getUserYOffset()
     //   - Endings: use Ending.getYPosition()
     //   - Trills: use Trill.getYPosition()
@@ -108,11 +108,9 @@ public class Line {
 
     /**
      * Y offset for tempo change display. Line 0 default: -40, others: -24.
-     *
-     * @deprecated Use per-instance userYOffset on TempoChangeAttachment instead.
-     *             Retained for backward compatibility with legacy documents.
+     * For legacy deserialization only — new code uses per-instance userYOffset
+     * on TempoChangeAttachment.
      */
-    @Deprecated
     private int tempoChangeYPosPx = 0;
 
     /**
@@ -121,11 +119,9 @@ public class Line {
     public static final double BEAT_CHANGE_DEFAULT_Y_SS = -3.0;  // -24px
     /**
      * Y offset for beat change display (default: -24, above staff).
-     *
-     * @deprecated Use per-instance userYOffset on BeatChangeAttachment instead.
-     *             Retained for backward compatibility with legacy documents.
+     * For legacy deserialization only — new code uses per-instance userYOffset
+     * on BeatChangeAttachment.
      */
-    @Deprecated
     private int beatChangeYPosPx = ScaleContext.getInstance().toRoundedPixels(BEAT_CHANGE_DEFAULT_Y_SS);
 
     /**
@@ -146,11 +142,9 @@ public class Line {
     public static final double ENDING_DEFAULT_Y_SS = -3.125;  // -25px
     /**
      * Y offset for first/second ending display (default: -25, above staff).
-     *
-     * @deprecated Use per-instance yPosition on Ending objects instead.
-     *             Retained for backward compatibility with legacy documents.
+     * For legacy deserialization only — new code uses per-instance yPosition
+     * on Ending objects.
      */
-    @Deprecated
     private int firstSecondEndingYPosPx = ScaleContext.getInstance().toRoundedPixels(ENDING_DEFAULT_Y_SS);
 
     /**
@@ -159,11 +153,9 @@ public class Line {
     public static final double TRILL_DEFAULT_Y_SS = -3.375;  // -27px
     /**
      * Y offset for trill display (default: -27, above staff).
-     *
-     * @deprecated Use per-instance yPosition on Trill objects instead.
-     *             Retained for backward compatibility with legacy documents.
+     * For legacy deserialization only — new code uses per-instance yPosition
+     * on Trill objects.
      */
-    @Deprecated
     private int trillYPosPx = ScaleContext.getInstance().toRoundedPixels(TRILL_DEFAULT_Y_SS);
 
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
@@ -1093,18 +1085,12 @@ public class Line {
         );
     }
 
-    /**
-     * @deprecated Use per-instance userYOffset on TempoChangeAttachment instead.
-     */
-    @Deprecated
+    /** For legacy deserialization only — see field Javadoc. */
     public int getTempoChangeYPosPx() {
         return tempoChangeYPosPx;
     }
 
-    /**
-     * @deprecated Use per-instance userYOffset on TempoChangeAttachment instead.
-     */
-    @Deprecated
+    /** For legacy deserialization only — see field Javadoc. */
     public void setTempoChangeYPosPx(int tempoChangeYPosPx) {
         var old = this.tempoChangeYPosPx;
         applyChange(
@@ -1113,18 +1099,12 @@ public class Line {
         );
     }
 
-    /**
-     * @deprecated Use per-instance userYOffset on BeatChangeAttachment instead.
-     */
-    @Deprecated
+    /** For legacy deserialization only — see field Javadoc. */
     public int getBeatChangeYPosPx() {
         return beatChangeYPosPx;
     }
 
-    /**
-     * @deprecated Use per-instance userYOffset on BeatChangeAttachment instead.
-     */
-    @Deprecated
+    /** For legacy deserialization only — see field Javadoc. */
     public void setBeatChangeYPosPx(int beatChangeYPosPx) {
         var old = this.beatChangeYPosPx;
         applyChange(
@@ -1145,18 +1125,12 @@ public class Line {
         );
     }
 
-    /**
-     * @deprecated Use per-instance yPosition on Ending objects instead.
-     */
-    @Deprecated
+    /** For legacy deserialization only — see field Javadoc. */
     public int getFirstSecondEndingYPosPx() {
         return firstSecondEndingYPosPx;
     }
 
-    /**
-     * @deprecated Use per-instance yPosition on Ending objects instead.
-     */
-    @Deprecated
+    /** For legacy deserialization only — see field Javadoc. */
     public void setFirstSecondEndingYPosPx(int fsEndingYPosPx) {
         var old = firstSecondEndingYPosPx;
         applyChange(
@@ -1165,18 +1139,12 @@ public class Line {
         );
     }
 
-    /**
-     * @deprecated Use per-instance yPosition on Trill objects instead.
-     */
-    @Deprecated
+    /** For legacy deserialization only — see field Javadoc. */
     public int getTrillYPosPx() {
         return trillYPosPx;
     }
 
-    /**
-     * @deprecated Use per-instance yPosition on Trill objects instead.
-     */
-    @Deprecated
+    /** For legacy deserialization only — see field Javadoc. */
     public void setTrillYPosPx(int trillYPosPx) {
         var old = this.trillYPosPx;
         applyChange(
