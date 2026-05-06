@@ -75,6 +75,11 @@ public class AnnotationAttachment extends Attachment {
         }
     }
 
+    @Override
+    public Attachment copy(StaffElement newOwner) {
+        return new AnnotationAttachment(newOwner, annotation);
+    }
+
     /**
      * Returns the annotation data.
      */

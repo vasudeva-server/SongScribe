@@ -63,6 +63,11 @@ public class BeatChangeAttachment extends MetronomeAttachment {
         this.beatChange = beatChange;
     }
 
+    @Override
+    public Attachment copy(StaffElement newOwner) {
+        return new BeatChangeAttachment(newOwner, beatChange);
+    }
+
     /**
      * Returns the beat change data.
      */

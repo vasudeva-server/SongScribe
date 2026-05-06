@@ -66,6 +66,11 @@ public class FermataAttachment extends Attachment {
         }
     }
 
+    @Override
+    public Attachment copy(StaffElement newOwner) {
+        return new FermataAttachment(newOwner);
+    }
+
     /**
      * Returns the content width in staff-space units, derived from SMuFL bounding box data.
      */

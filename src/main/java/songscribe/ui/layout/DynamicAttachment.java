@@ -122,6 +122,11 @@ public class DynamicAttachment extends Attachment {
         }
     }
 
+    @Override
+    public Attachment copy(StaffElement newOwner) {
+        return new DynamicAttachment(newOwner, type);
+    }
+
     /**
      * Returns the dynamic type.
      */

@@ -80,4 +80,9 @@ public abstract class Attachment extends LineElement {
     public void setAlignment(Alignment alignment) {
         this.alignment = alignment;
     }
+
+    /**
+     * Returns a deep copy of this attachment, re-owned by {@code newOwner}.
+     */
+    public abstract Attachment copy(StaffElement newOwner);
 }

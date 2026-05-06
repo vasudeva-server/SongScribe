@@ -988,9 +988,9 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Replaces an existing element entirely with the current preview element.
-     * The x position and lyrics are preserved from the existing element; all other attributes
-     * (type, duration, dots, beaming, ties) come from the preview element.
+     * Replaces an existing element with the current preview element's type and pitch,
+     * preserving all decorations (fermata, trill, annotation, tempo/beat change,
+     * articulations, dynamic attachments, lyrics, x position) from the existing element.
      * Called when the user clicks on an existing element head with the preview element active.
      *
      * @param lc           The LineComponent
@@ -1006,19 +1006,23 @@ public final class PreviewElementManager {
 
         var editModeManager = EditModeManager.getInstance();
 
-        // Preserve the existing element's x position and lyrics
+        // Deep-copy the existing element under the new type to carry over all decorations
+        // (fermata, trill, annotation, tempo/beat change, articulations, attachments, lyrics,
+        // x position), then override with the preview's note-entry attributes.
         var existing = line.getElement(elementIndex);
-        previewElement.setXOffsetPx(existing.getXOffsetPx());
-
-        for (var lyric : existing.getLyrics()) {
-            previewElement.setLyricForVerse(lyric.verse(), lyric.syllabic(), lyric.compound(), lyric.text(), lyric.extend());
-        }
+        var replacement = new StaffElement(previewElement.getType(), existing);
+        replacement.setDotCount(previewElement.getDotCount());
+        replacement.setAccidental(previewElement.getAccidental());
+        replacement.setAccidentalInParentheses(previewElement.isAccidentalInParentheses());
+        replacement.setStemDirectionAuto(previewElement.isStemDirectionAuto());
 
         // Rests snap to their default staff position; pitched notes use the mouse Y position
-        applyStaffPosition(previewElement, currentStaffPosition);
+        applyStaffPosition(replacement, currentStaffPosition);
 
-        if (previewElement.isStemDirectionAuto()) {
-            previewElement.setUpper(Score.defaultUpperNote(previewElement));
+        if (replacement.isStemDirectionAuto()) {
+            replacement.setUpper(Score.defaultUpperNote(replacement));
+        } else {
+            replacement.setUpper(previewElement.isUpper());
         }
 
         // Remove all beam spans touching this element — the new element type may differ
@@ -1039,14 +1043,14 @@ public final class PreviewElementManager {
 
         // Remove any containing tuplet if the duration type or dot count changes —
         // the replacement would make the tuplet rhythmically invalid.
-        if (existing.getType() != previewElement.getType()
-                || existing.getDotCount() != previewElement.getDotCount()) {
+        if (existing.getType() != replacement.getType()
+                || existing.getDotCount() != replacement.getDotCount()) {
             line.removeOverlappingTuplets(elementIndex, elementIndex);
         }
 
         // Check whether replacing this element would affect a first-second ending,
         // and show the appropriate confirmation dialog if so.
-        var endingEffect = line.findEndingReplacementEffect(elementIndex, previewElement);
+        var endingEffect = line.findEndingReplacementEffect(elementIndex, replacement);
 
         switch (endingEffect) {
             case Ending.EndingEffect.Invalidate _ -> {
@@ -1062,7 +1066,7 @@ public final class PreviewElementManager {
                 EndingConfirms.applyCompensatingEndChange(line, ce);
             }
             case Ending.EndingEffect.CompensateSplit cs -> {
-                if (!EndingConfirms.confirmCompensateSplit(cs, previewElement.getType())) {
+                if (!EndingConfirms.confirmCompensateSplit(cs, replacement.getType())) {
                     return;
                 }
                 EndingConfirms.applyCompensatingSplitChange(line, cs);
@@ -1071,7 +1075,7 @@ public final class PreviewElementManager {
         }
 
         // Replace the element entirely (line.setElement marks the song modified)
-        line.setElement(elementIndex, previewElement);
+        line.setElement(elementIndex, replacement);
 
         applyAutomaticBeaming(line, elementIndex);
 
@@ -1087,7 +1091,7 @@ public final class PreviewElementManager {
         // setElement preserves the element index.
         if (elementIndex > 0
                 && line.isPairedGraceNote(elementIndex - 1)
-                && !previewElement.getType().isPitchedNote()) {
+                && !replacement.getType().isPitchedNote()) {
             line.removeElement(elementIndex - 1);
             elementIndex--;
         }

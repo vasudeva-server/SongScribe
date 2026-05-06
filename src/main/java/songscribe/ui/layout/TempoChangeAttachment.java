@@ -50,6 +50,11 @@ public class TempoChangeAttachment extends MetronomeAttachment {
         this.tempo = tempo;
     }
 
+    @Override
+    public Attachment copy(StaffElement newOwner) {
+        return new TempoChangeAttachment(newOwner, tempo);
+    }
+
     public Tempo getTempo() {
         return tempo;
     }

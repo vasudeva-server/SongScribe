@@ -151,6 +151,12 @@ public class StaffElement extends LineElement implements Cloneable {
         annotation = source.annotation;
         line = source.line;
         properties.lyrics.addAll(source.properties.lyrics);
+        setParentLine(source.getParentLine());
+
+        // Deep-copy attachments
+        for (var attachment : source.attachments) {
+            addAttachment(attachment.copy(this));
+        }
 
         // Copy only if target is a note (not a rest)
         if (targetType.isNote()) {
@@ -170,8 +176,6 @@ public class StaffElement extends LineElement implements Cloneable {
             // Rest: use default staff position for the target type
             staffPosition = targetType.getDefaultStaffPosition();
         }
-
-        setParentLine(source.getParentLine());
     }
 
     protected StaffElement(StaffElement note) {
@@ -193,6 +197,11 @@ public class StaffElement extends LineElement implements Cloneable {
 
         // Copy LineElement hierarchy data
         setParentLine(note.getParentLine());
+
+        // Deep-copy attachments
+        for (var attachment : note.attachments) {
+            addAttachment(attachment.copy(this));
+        }
 
         // Deep-copy articulations
         for (var art : note.articulations) {
