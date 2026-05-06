@@ -57,8 +57,23 @@ public final class EditLyricAction extends UIAction {
 
     @Override
     protected boolean enableFromSelection(boolean activeSelection, Score score) {
-        var element = score.getSelectionCoordinator().getSingleSelectedElement();
-        return element != null && (element.getType().isPitchedNote() || element.getType().isRest());
+        var coordinator = score.getSelectionCoordinator();
+        var element = coordinator.getSingleSelectedElement();
+
+        if (element == null) {
+            return false;
+        }
+
+        var activeLineState = coordinator.getActiveSelection();
+
+        if (activeLineState == null) {
+            return false;
+        }
+
+        var line = activeLineState.getLine();
+        var index = activeLineState.getSelectionBegin();
+
+        return LyricEditor.isLyricTargetEligible(line, index);
     }
 
     @Override

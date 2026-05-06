@@ -244,8 +244,14 @@ public class LineTrackBuilder {
                 MidiEventFactory.addTempoEvent(track, ticks, currentTempo, settings.tempoChangePercent());
             }
 
-            // Always emit a colorize meta message for playback highlighting
-            addColorizeMetaMessage(track, lineIndex, i, ticks);
+            // Always emit colorize meta message(s) for playback highlighting.
+            // For a paired grace note, also emit the host's colorize at the same
+            // tick so the grace+host pair highlights together from the grace's onset.
+            if (line.isPairedGraceNote(i)) {
+                addColorizeForGraceAndHost(track, lineIndex, i, ticks);
+            } else {
+                addColorizeMetaMessage(track, lineIndex, i, ticks);
+            }
 
             // Add note on/off messages and update ticks
             ticks = addNoteMessages(track, lineIndex, i, ticks, currentTempo, settings,
@@ -276,6 +282,20 @@ public class LineTrackBuilder {
             4
         );
         track.add(new MidiEvent(playNoteMessage, ticks));
+    }
+
+    /**
+     * Emits colorize messages for a paired grace note and its host at the same tick,
+     * so both elements highlight together from the grace's onset.
+     */
+    private void addColorizeForGraceAndHost(
+        Track track,
+        int lineIndex,
+        int graceIndex,
+        int ticks
+    ) throws InvalidMidiDataException {
+        addColorizeMetaMessage(track, lineIndex, graceIndex, ticks);
+        addColorizeMetaMessage(track, lineIndex, graceIndex + 1, ticks);
     }
 
     /**

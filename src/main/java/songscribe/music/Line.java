@@ -1042,6 +1042,11 @@ public class Line {
             && glissando.type == StaffElement.Glissando.Type.CONNECTED;
     }
 
+    /** Returns true when the element at {@code index} is the host of a paired grace note. */
+    public boolean isHostOfPairedGraceNote(int index) {
+        return index >= 1 && isPairedGraceNote(index - 1);
+    }
+
     /**
      * @param pitchType 0 for B, 1 for C, 2 for D, ..., 6 for A
      * @return true if there is a leading key for that pitch type

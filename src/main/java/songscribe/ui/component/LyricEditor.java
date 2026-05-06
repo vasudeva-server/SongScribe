@@ -788,6 +788,20 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
+     * Returns true when {@code index} is a structurally valid lyric target: a pitched note,
+     * rest, or grace note that is NOT the host of a paired grace note. This is the single
+     * source of truth for the host-block rule used by both action enablement and navigation.
+     */
+    public static boolean isLyricTargetEligible(Line line, int index) {
+        if (line.isHostOfPairedGraceNote(index)) {
+            return false;
+        }
+
+        var type = line.getElement(index).getType();
+        return type.isPitchedNote() || type.isRest() || type.isGraceNote();
+    }
+
+    /**
      * An element is eligible to carry a lyric in {@code verse} if it is a non-rest, or a
      * rest that already carries a non-blank lyric in that verse.
      */
@@ -800,12 +814,12 @@ public final class LyricEditor extends MyJTextField {
         return lyric != null && !lyric.text().isBlank();
     }
 
-    private int findNextEligibleIndex() {
-        var currentIndex = line.getElementIndex(element);
-        var count = line.effectiveElementCount();
+    /** Package-private for testing. */
+    static int findNextEligibleIndex(Line searchLine, int currentIndex, int verse) {
+        var count = searchLine.effectiveElementCount();
 
         for (var i = currentIndex + 1; i < count; i++) {
-            if (isEligibleForLyric(line.getElement(i), CURRENT_VERSE)) {
+            if (isLyricTargetEligible(searchLine, i) && isEligibleForLyric(searchLine.getElement(i), verse)) {
                 return i;
             }
         }
@@ -813,16 +827,23 @@ public final class LyricEditor extends MyJTextField {
         return -1;
     }
 
-    private int findPreviousEligibleIndex() {
-        var currentIndex = line.getElementIndex(element);
-
+    /** Package-private for testing. */
+    static int findPreviousEligibleIndex(Line searchLine, int currentIndex, int verse) {
         for (var i = currentIndex - 1; i >= 0; i--) {
-            if (isEligibleForLyric(line.getElement(i), CURRENT_VERSE)) {
+            if (isLyricTargetEligible(searchLine, i) && isEligibleForLyric(searchLine.getElement(i), verse)) {
                 return i;
             }
         }
 
         return -1;
+    }
+
+    private int findNextEligibleIndex() {
+        return findNextEligibleIndex(line, line.getElementIndex(element), CURRENT_VERSE);
+    }
+
+    private int findPreviousEligibleIndex() {
+        return findPreviousEligibleIndex(line, line.getElementIndex(element), CURRENT_VERSE);
     }
 
     private void handleHyphen() {

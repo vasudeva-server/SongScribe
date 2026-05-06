@@ -146,10 +146,21 @@ public final class LyricLayoutBuilder {
         var boxesByElement = new HashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
         var connectors = new ArrayList<LyricConnectorLayout>(columns.size());
         var state = new ExtenderState(hasLeadingContinuation);
+        // Columns are built 1:1 with line elements by ElementColumnBuilder, so columnIndex
+        // matches the line element index. Used to consult Line.isHostOfPairedGraceNote.
+        var line = columns.isEmpty() ? null : columns.get(0).getElement().getLine();
 
         for (var columnIndex = 0; columnIndex < columns.size(); columnIndex++) {
             var column = columns.get(columnIndex);
             var element = column.getElement();
+
+            // The host of a paired grace note never carries a lyric; skip its column outright
+            // so hyphens and extenders originating from the grace pass through to the next
+            // lyric-bearing element, never terminating at the host.
+            if (line != null && line.isHostOfPairedGraceNote(columnIndex)) {
+                continue;
+            }
+
             var lyric = element.getLyricForVerse(verse);
             var extend = lyric != null ? lyric.extend() : null;
 
@@ -192,8 +203,7 @@ public final class LyricLayoutBuilder {
             var widthSs = (verse == 1)
                 ? column.getSyllableWidthSs()
                 : lyricRenderMetrics.lyricBoxWidthSs(text);
-            var centerXSs = column.getXSs() + column.getRightExtentSs() / 2.0;
-            var boxXSs = centerXSs - widthSs / 2.0;
+            var boxXSs = computeLyricBoxLeftXSs(column, text, widthSs, lyricRenderMetrics);
             var box = new LyricBoxLayout(boxXSs, widthSs, verse, text);
             boxesByElement.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
 
@@ -245,6 +255,37 @@ public final class LyricLayoutBuilder {
     }
 
     /**
+     * Returns the left-edge X (staff spaces) at which to place a syllable's lyric box.
+     * <p>
+     * Normal notes / rests: centre the entire syllable's advance width on the column's
+     * right-extent centre (the established Gould/Ross rule).
+     * <p>
+     * Grace notes: centre only the <strong>first glyph</strong> of the syllable on the
+     * grace note's notehead centre. This deliberately differs from the normal-note rule
+     * — a grace is transitory, so centring the whole syllable on it would push too much
+     * text to the left of the grace's onset and visually anchor the lyric to the host.
+     * Do not "fix" this to use the normal-note centring helper.
+     */
+    private static double computeLyricBoxLeftXSs(
+        ElementColumn column,
+        String text,
+        double widthSs,
+        LyricRenderMetrics lyricRenderMetrics) {
+
+        var element = column.getElement();
+
+        if (element.getType().isGraceNote()) {
+            var noteheadCenterXSs = column.getXSs() + element.getType().getElementCenterXSs();
+            var firstGlyph = text.substring(0, Character.charCount(text.codePointAt(0)));
+            var firstGlyphWidthSs = lyricRenderMetrics.lyricBoxWidthSs(firstGlyph);
+            return noteheadCenterXSs - firstGlyphWidthSs / 2.0;
+        }
+
+        var centerXSs = column.getXSs() + column.getRightExtentSs() / 2.0;
+        return centerXSs - widthSs / 2.0;
+    }
+
+    /**
      * Emits a {@link LyricConnectorLayout.Kind#DANGLING_EXTENDER} starting at the syllable end
      * and walking forward from the START column, extending only through elements that explicitly
      * carry {@link Lyric.Extend#CONTINUE} or {@link Lyric.Extend#STOP}. The extender ends at the
@@ -263,7 +304,15 @@ public final class LyricLayoutBuilder {
             ? columns.get(startColumnIndex).getRightEdgeXSs()
             : state.extenderStartXSs;
 
+        var line = columns.isEmpty() ? null : columns.get(0).getElement().getLine();
+
         for (var i = startColumnIndex + 1; i < columns.size(); i++) {
+            // Pass through the host of a paired grace; the host never carries a lyric, but
+            // the extender's silent run must not be broken by it.
+            if (line != null && line.isHostOfPairedGraceNote(i)) {
+                continue;
+            }
+
             var column = columns.get(i);
             var lyric = column.getElement().getLyricForVerse(verse);
             var extend = lyric != null ? lyric.extend() : null;
