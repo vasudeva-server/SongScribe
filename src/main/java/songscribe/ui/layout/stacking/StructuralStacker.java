@@ -44,6 +44,7 @@ import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.Tuplet;
 import songscribe.ui.renderer.LineThickness;
+import songscribe.ui.renderer.NoteRenderer;
 
 import org.jspecify.annotations.Nullable;
 
@@ -265,8 +266,11 @@ public class StructuralStacker {
         }
 
         var columnXSs = column.getXSs();
+        var noteType = note.getType();
+        var noteheadCenterXSs = noteType.getElementCenterXSs()
+            + NoteRenderer.getNoteheadXOffsetSs(noteType, note.isUpper());
         var contentWidthSs = dynamic.getContentWidthSs();
-        var centeredXSs = columnXSs + note.getType().getFullElementCenterXSs() - contentWidthSs / 2.0;
+        var centeredXSs = columnXSs + noteheadCenterXSs - contentWidthSs / 2.0;
         var staffPosition = note.getStaffPosition();
         stackAbove(structuralExtents, dynamic, centeredXSs,
             contentWidthSs, dynamic.getContentHeightSs(),

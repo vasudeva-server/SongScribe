@@ -329,24 +329,29 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
     /**
      * Returns the X position that centers a glyph of the given width over the notehead
-     * of the specified element, snapped to device pixels.
+     * of the specified element.
      * <p>
      * The glyph's visual left edge is at {@code origin + bboxLeft}, so centering
      * the visual content requires offsetting by {@code bboxLeft}.
+     * <p>
+     * Uses the notehead-only width (excluding flag extent) and accounts for the
+     * down-stem notehead shift so ornaments stay centered over the notehead
+     * regardless of note duration or stem direction.
      *
-     * @param g2           Graphics context (for device-pixel snapping)
-     * @param layoutXSs    the layout X position (left edge of the note column)
-     * @param note         the note whose notehead center is used
+     * @param layoutXSs     the layout X position (left edge of the note column)
+     * @param note          the note whose notehead center is used
      * @param glyphBBoxLeft the glyph's bounding box left edge (x offset from origin)
-     * @param glyphWidthSs the width of the glyph to center (bBox right - left)
-     * @return the snapped X coordinate for drawing
+     * @param glyphWidthSs  the width of the glyph to center (bBox right - left)
+     * @return the X coordinate for drawing
      */
     protected static double centeredGlyphX(
         double layoutXSs, StaffElement note,
         double glyphBBoxLeft, double glyphWidthSs) {
 
-        var noteCenterXSs = note.getType().getFullElementCenterXSs();
-        return layoutXSs + noteCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
+        var type = note.getType();
+        var noteheadCenterXSs = type.getElementCenterXSs()
+            + NoteRenderer.getNoteheadXOffsetSs(type, note.isUpper());
+        return layoutXSs + noteheadCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
     }
 
     /**
