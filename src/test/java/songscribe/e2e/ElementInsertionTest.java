@@ -575,7 +575,7 @@ class ElementInsertionTest extends E2ETest {
 
         @Order(6)
         @Test
-        void testSameTypeClickStripsDecorations() {
+        void testSameTypeClickKeepsDecorations() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, baseIndex + 1));
             clickAction(Actions.STACCATO_ACTION);
@@ -593,7 +593,7 @@ class ElementInsertionTest extends E2ETest {
             assertAll(
                 () -> assertThat(GuiActionRunner.execute(
                     () -> song().getLine(0).getElement(baseIndex + 1).hasArticulation(ArticulationType.STACCATO)
-                )).as("staccato removed").isFalse(),
+                )).as("staccato copied to new note").isTrue(),
                 () -> assertThat(score().getMode())
                     .as("mode stays EDIT").isEqualTo(Mode.EDIT)
             );
