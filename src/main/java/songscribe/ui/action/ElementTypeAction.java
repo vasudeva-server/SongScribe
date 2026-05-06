@@ -129,7 +129,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_GLISSANDO), "connecting-glissando.svg", 26,
             "glissando", Strings.get(Strings.ACTION_DURATION_GLISSANDO_TOOLTIP),
             KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK,
-            NON_DURATION_FLAGS // Glissandos do not have a duration
+            withFlags(NON_DURATION_FLAGS, Flag.DISABLE_IN_SELECT_MODE) // Glissandos do not have a duration
         );
     }
 
@@ -139,7 +139,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_SLIDE_OUT), "slide-out.svg", 26,
             "slide-out", Strings.get(Strings.ACTION_DURATION_SLIDE_OUT_TOOLTIP),
             KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK | InputEvent.META_DOWN_MASK,
-            NON_DURATION_FLAGS // Glissandos do not have a duration
+            withFlags(NON_DURATION_FLAGS, Flag.DISABLE_IN_SELECT_MODE) // Glissandos do not have a duration
         );
     }
 
