@@ -33,6 +33,7 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.component.Score;
 import songscribe.ui.layout.ElementBoundsSs;
 import songscribe.ui.layout.LineElement;
 
@@ -135,9 +136,9 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * Uses {@link ElementRenderContext#getCurrentElementIndex()} when set (avoids
      * a linear scan), otherwise falls back to {@code line.getElementIndex(element)}.
      * <p>
-     * Returns {@link #ELEMENT_COLOR} when the element is not found in the current
-     * line (index &lt; 0), which is correct for insertion preview elements that are
-     * not yet part of the line.
+     * Returns the preview element color when the element is not found in the current
+     * line (index &lt; 0): the element is the insertion preview, so its decorations
+     * must match the preview note's color.
      */
     protected static Color getDecorationColor(
         StaffElement element,
@@ -152,13 +153,13 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         var line = ctx.getCurrentLine();
 
         if (line == null) {
-            return ELEMENT_COLOR;
+            return Score.getPreviewElementColor();
         }
 
         index = line.getElementIndex(element);
 
         if (index < 0) {
-            return ELEMENT_COLOR;
+            return Score.getPreviewElementColor();
         }
 
         return ctx.getElementColor(index);

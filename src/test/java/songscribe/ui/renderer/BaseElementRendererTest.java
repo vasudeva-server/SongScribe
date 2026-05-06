@@ -35,21 +35,21 @@ import songscribe.ui.component.Score;
 
 class BaseElementRendererTest extends UnitTest {
 
-    // T1: line == null → ELEMENT_COLOR
+    // T1: line == null → preview element color (treated as preview)
     @Test
-    void testGetDecorationColorNullLineReturnsElementColor() {
+    void testGetDecorationColorNullLineReturnsPreviewColor() {
         var element = new StaffElement(ElementType.CROTCHET);
         var ctx = new ElementRenderContext(new Song());
         // currentLine is null by default
 
         var color = BaseElementRenderer.getDecorationColor(element, ctx);
 
-        assertThat(color).isEqualTo(BaseElementRenderer.ELEMENT_COLOR);
+        assertThat(color).isEqualTo(Score.getPreviewElementColor());
     }
 
-    // T2: element not in line (index < 0) → ELEMENT_COLOR
+    // T2: element not in line (index < 0) → preview element color
     @Test
-    void testGetDecorationColorElementNotInLineReturnsElementColor() {
+    void testGetDecorationColorElementNotInLineReturnsPreviewColor() {
         var element = new StaffElement(ElementType.CROTCHET);
         var line = mock(Line.class);
         when(line.getElementIndex(element)).thenReturn(-1);
@@ -59,7 +59,7 @@ class BaseElementRendererTest extends UnitTest {
 
         var color = BaseElementRenderer.getDecorationColor(element, ctx);
 
-        assertThat(color).isEqualTo(BaseElementRenderer.ELEMENT_COLOR);
+        assertThat(color).isEqualTo(Score.getPreviewElementColor());
     }
 
     // T3: element in line (index >= 0) → ctx.getElementColor(index) result
