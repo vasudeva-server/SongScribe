@@ -221,7 +221,7 @@ public record NoteBounds(Rectangle2D noteHeadBounds, Rectangle2D noteWithStemBou
             ", withStem=" + rectToString(noteWithStemBounds) +
             ", withArticulations=" + rectToString(noteWithArticulationsBounds) +
             ", stemUp=" + stemUp +
-            "}";
+            '}';
     }
 
     private static String rectToString(Rectangle2D r) {

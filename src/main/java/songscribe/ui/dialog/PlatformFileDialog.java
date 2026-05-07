@@ -130,7 +130,7 @@ public class PlatformFileDialog {
             var fileName = selectedFile.getName().toLowerCase();
             for (var filter : originalFilters) {
                 for (var ext : filter.getExtensions()) {
-                    if (fileName.endsWith("." + ext.toLowerCase())) {
+                    if (fileName.endsWith('.' + ext.toLowerCase())) {
                         return filter;
                     }
                 }

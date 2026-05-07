@@ -135,6 +135,6 @@ public record SectionLayout(ElementBoundsSs bounds, List<String> lines, @Nullabl
             "bounds=" + bounds +
             ", lines=" + lines.size() +
             ", hasContent=" + hasContent() +
-            "}";
+            '}';
     }
 }

@@ -18,8 +18,8 @@ public final class MessageCenter {
         var cause    = error.getCause();
 
         var detail = "Unhandled exception in @Handler\n" +
-            "  listener: " + (listener != null ? listener.getClass().getSimpleName() : "<null>") + "\n" +
-            "  handler:  " + (handler  != null ? handler.getName()                   : "<null>") + "\n" +
+            "  listener: " + (listener != null ? listener.getClass().getSimpleName() : "<null>") + '\n' +
+            "  handler:  " + (handler  != null ? handler.getName()                   : "<null>") + '\n' +
             "  message:  " + (message  != null ? message.getClass().getSimpleName()  : "<null>");
 
         if (cause != null) {

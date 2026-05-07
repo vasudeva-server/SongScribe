@@ -346,7 +346,7 @@ public final class ElementBoundsSs {
             ", padding=" + rectToString(paddingBoundsSs) +
             ", margin=" + rectToString(marginBoundsSs) +
             (visualBoundsSs != null ? ", visual=" + rectToString(visualBoundsSs) : "") +
-            "}";
+            '}';
     }
 
     private static String rectToString(Rectangle2D r) {

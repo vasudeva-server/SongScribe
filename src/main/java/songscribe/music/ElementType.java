@@ -705,7 +705,7 @@ public enum ElementType {
         var bbox = (glyph != null) ? metadata.getBBox(glyph) : null;
 
         if (bbox == null) {
-            throw RuntimeError.exit("Missing SMuFL bounding box for " + glyph + " (needed by " + context + ")");
+            throw RuntimeError.exit("Missing SMuFL bounding box for " + glyph + " (needed by " + context + ')');
         }
 
         return bbox;

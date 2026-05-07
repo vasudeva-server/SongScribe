@@ -53,7 +53,7 @@ final class FieldTypeValidator {
     ) {
         if (value != null && !expectedType.isInstance(value)) {
             throw new IllegalArgumentException(
-                recordName + "." + field.name() + " expected " + parameter
+                recordName + '.' + field.name() + " expected " + parameter
                     + " of type " + expectedType.getSimpleName()
                     + " but got " + value.getClass().getSimpleName()
             );

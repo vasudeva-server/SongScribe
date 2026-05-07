@@ -191,9 +191,9 @@ public record RangeLayout(Type type, int startElementIndex, int endElementIndex,
     public String toString() {
         return "RangeLayout{" +
             "type=" + type +
-            ", range=[" + startElementIndex + ".." + endElementIndex + "]" +
+            ", range=[" + startElementIndex + ".." + endElementIndex + ']' +
             ", above=" + above +
             (data != null ? ", data=" + data : "") +
-            "}";
+            '}';
     }
 }

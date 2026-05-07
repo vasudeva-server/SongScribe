@@ -259,23 +259,23 @@ public final class StaffElementIO {
         if (beatChange != null) {
             XML.writeEmptyTag(
                 writer,
-                XML_BEAT_CHANGE + " " + XML_BEAT_CHANGE_DURATION + "=\"" +
+                XML_BEAT_CHANGE + ' ' + XML_BEAT_CHANGE_DURATION + "=\"" +
                     beatChange.duration().name() + "\" " +
-                    XML_BEAT_CHANGE_BEAT + "=\"" + beatChange.beat().name() + "\""
+                    XML_BEAT_CHANGE_BEAT + "=\"" + beatChange.beat().name() + '"'
             );
         }
 
 
         for (var lyric : element.properties.lyrics) {
-            writer.println("            <" + XML_LYRIC + " " + XML_LYRIC_NUMBER + "=\"" + lyric.verse() + "\">");
+            writer.println("            <" + XML_LYRIC + ' ' + XML_LYRIC_NUMBER + "=\"" + lyric.verse() + "\">");
 
             // STOP/CONTINUE carriers have no text and only emit the extender marker.
             if (lyric.extend() == Lyric.Extend.STOP || lyric.extend() == Lyric.Extend.CONTINUE) {
                 writer.println(
-                    "              <" + XML_EXTEND_TAG + " " + XML_TYPE + "=\"" +
+                    "              <" + XML_EXTEND_TAG + ' ' + XML_TYPE + "=\"" +
                         extendTypeAttr(lyric.extend()) + "\"/>"
                 );
-                writer.println("            </" + XML_LYRIC + ">");
+                writer.println("            </" + XML_LYRIC + '>');
                 continue;
             }
 
@@ -287,21 +287,21 @@ public final class StaffElementIO {
                 case null -> "single";
             };
 
-            writer.println("              <" + XML_SYLLABIC + ">" + syllabicValue + "</" + XML_SYLLABIC + ">");
+            writer.println("              <" + XML_SYLLABIC + '>' + syllabicValue + "</" + XML_SYLLABIC + '>');
 
             var lyricText = lyric.compound() ? lyric.text() + COMPOUND_WORD_MARKER : lyric.text();
             writer.println(
-                "              <" + XML_LYRIC_TEXT + ">" +
-                    XML.escapeXML(lyricText) + "</" + XML_LYRIC_TEXT + ">"
+                "              <" + XML_LYRIC_TEXT + '>' +
+                    XML.escapeXML(lyricText) + "</" + XML_LYRIC_TEXT + '>'
             );
 
             if (lyric.extend() == Lyric.Extend.START) {
                 writer.println(
-                    "              <" + XML_EXTEND_TAG + " " + XML_TYPE + "=\"start\"/>"
+                    "              <" + XML_EXTEND_TAG + ' ' + XML_TYPE + "=\"start\"/>"
                 );
             }
 
-            writer.println("            </" + XML_LYRIC + ">");
+            writer.println("            </" + XML_LYRIC + '>');
         }
 
         writer.println("          </" + XML_NOTE + '>');

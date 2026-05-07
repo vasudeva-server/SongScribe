@@ -124,7 +124,7 @@ public final class FileUtils {
     }
 
     private static String toDotExt(String ext) {
-        return ext.startsWith(".") ? ext : "." + ext;
+        return ext.startsWith(".") ? ext : '.' + ext;
     }
 
     @Nullable

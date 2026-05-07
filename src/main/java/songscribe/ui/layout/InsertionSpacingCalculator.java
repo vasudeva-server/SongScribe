@@ -154,7 +154,7 @@ public final class InsertionSpacingCalculator {
         // Validate index
         if (insertIndex < 0 || insertIndex > elementCount) {
             throw new IllegalArgumentException(
-                "insertIndex " + insertIndex + " out of bounds [0, " + elementCount + "]");
+                "insertIndex " + insertIndex + " out of bounds [0, " + elementCount + ']');
         }
 
         // If inserting at end, no shift needed (use calculateAppendPosition instead)

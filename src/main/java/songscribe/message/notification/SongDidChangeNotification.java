@@ -114,6 +114,6 @@ public class SongDidChangeNotification extends Message {
 
     @Override
     public String toString() {
-        return super.toString() + "(mutations=" + mutations + ")";
+        return super.toString() + "(mutations=" + mutations + ')';
     }
 }

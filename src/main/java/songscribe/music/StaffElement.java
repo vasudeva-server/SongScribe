@@ -595,7 +595,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
         if (!isBlankText && isCarrier) {
             throw new IllegalArgumentException(
-                "carrier lyric (extend=" + extend + ") cannot have text; got: \"" + text + "\"");
+                "carrier lyric (extend=" + extend + ") cannot have text; got: \"" + text + '"');
         }
 
         if (isBlankText && extend == Lyric.Extend.START) {

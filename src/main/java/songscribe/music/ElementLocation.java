@@ -11,7 +11,7 @@ public record ElementLocation(int lineIndex, int elementIndex) {
         if (lineIndex < 0 || elementIndex < 0) {
             throw new IllegalArgumentException(
                 "ElementLocation indices must be non-negative; got ("
-                    + lineIndex + ", " + elementIndex + ")");
+                    + lineIndex + ", " + elementIndex + ')');
         }
     }
 

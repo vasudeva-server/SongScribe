@@ -796,7 +796,7 @@ public class UIConverter extends MainFrame {
             );
             var renamedSongFile = new File(
                 currentDir,
-                numberStr + " " + selectedSong + FileExtensions.SONGWRITER
+                numberStr + ' ' + selectedSong + FileExtensions.SONGWRITER
             );
 
             if (!isLegalFileName(renamedSongFile.getName())) {
