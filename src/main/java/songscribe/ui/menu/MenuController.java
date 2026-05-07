@@ -90,7 +90,7 @@ public class MenuController {
 
     public MenuController(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
-        Score score = mainFrame.requireScore();
+        var score = mainFrame.requireScore();
         initMenus();
         MessageCenter.subscribe(this);
     }
@@ -204,7 +204,7 @@ public class MenuController {
             var indices = entry.getValue();
 
             if (indices.size() == 1) {
-                labels[indices.get(0)] = filename;
+                labels[indices.getFirst()] = filename;
             } else {
                 disambiguate(paths, indices, filename, labels);
             }
@@ -251,7 +251,7 @@ public class MenuController {
 
             if (allUnique) {
                 for (var idx : indices) {
-                    labels[idx] = filename + " \u2014 " + suffixMap.get(idx);
+                    labels[idx] = filename + " — " + suffixMap.get(idx);
                 }
 
                 return;
