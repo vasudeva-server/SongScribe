@@ -380,16 +380,9 @@ public class HorizontalSpacingCalculator {
     // ==========================================================================
 
     /**
-     * Represents a range of columns that form a beam group.
-     */
-    private static class BeamGroupRange {
-        final int start;
-        final int end;
-
-        BeamGroupRange(int start, int end) {
-            this.start = start;
-            this.end = end;
-        }
+         * Represents a range of columns that form a beam group.
+         */
+        private record BeamGroupRange(int start, int end) {
     }
 
     /**

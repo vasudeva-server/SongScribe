@@ -35,12 +35,8 @@ import module java.desktop;
  * The stem direction affects where articulations are placed and which side
  * ties default to.
  */
-public final class NoteBounds {
-
-    private final Rectangle2D noteHeadBounds;
-    private final Rectangle2D noteWithStemBounds;
-    private final Rectangle2D noteWithArticulationsBounds;
-    private final boolean stemUp;
+public record NoteBounds(Rectangle2D noteHeadBounds, Rectangle2D noteWithStemBounds,
+                         Rectangle2D noteWithArticulationsBounds, boolean stemUp) {
 
     /**
      * Creates note bounds with all hierarchy levels.
@@ -50,16 +46,7 @@ public final class NoteBounds {
      * @param noteWithArticulationsBounds Full note including articulations
      * @param stemUp                      True if stem points up
      */
-    public NoteBounds(
-        Rectangle2D noteHeadBounds,
-        Rectangle2D noteWithStemBounds,
-        Rectangle2D noteWithArticulationsBounds,
-        boolean stemUp
-    ) {
-        this.noteHeadBounds = noteHeadBounds;
-        this.noteWithStemBounds = noteWithStemBounds;
-        this.noteWithArticulationsBounds = noteWithArticulationsBounds;
-        this.stemUp = stemUp;
+    public NoteBounds {
     }
 
     /**
@@ -83,28 +70,32 @@ public final class NoteBounds {
     /**
      * Returns bounds for just the note head.
      */
-    public Rectangle2D getNoteHeadBounds() {
+    @Override
+    public Rectangle2D noteHeadBounds() {
         return noteHeadBounds;
     }
 
     /**
      * Returns bounds for note head + stem.
      */
-    public Rectangle2D getNoteWithStemBounds() {
+    @Override
+    public Rectangle2D noteWithStemBounds() {
         return noteWithStemBounds;
     }
 
     /**
      * Returns bounds for full note including articulations.
      */
-    public Rectangle2D getNoteWithArticulationsBounds() {
+    @Override
+    public Rectangle2D noteWithArticulationsBounds() {
         return noteWithArticulationsBounds;
     }
 
     /**
      * Returns whether the stem points up.
      */
-    public boolean isStemUp() {
+    @Override
+    public boolean stemUp() {
         return stemUp;
     }
 

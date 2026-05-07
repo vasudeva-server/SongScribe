@@ -34,7 +34,8 @@ import org.jspecify.annotations.Nullable;
  * directly to {@code Graphics2D}); {@code bounds} is the hit-test region in staff spaces.
  * Callers must construct {@code ElementBoundsSs} in staff spaces consistently.
  */
-public final class AttachmentLayout {
+public record AttachmentLayout(Type type, int elementIndex, Point positionPx, ElementBoundsSs bounds,
+                               @Nullable Object data) {
 
     /**
      * Types of note attachments.
@@ -68,12 +69,6 @@ public final class AttachmentLayout {
         DIMINUENDO
     }
 
-    private final Type type;
-    private final int elementIndex;
-    private final Point positionPx;
-    private final ElementBoundsSs bounds;
-    private final @Nullable Object data;
-
     /**
      * Creates attachment layout.
      *
@@ -83,18 +78,7 @@ public final class AttachmentLayout {
      * @param bounds    Element bounds for hit testing
      * @param data      Type-specific data (e.g., tempo value, annotation text)
      */
-    public AttachmentLayout(
-        Type type,
-        int elementIndex,
-        Point positionPx,
-        ElementBoundsSs bounds,
-        @Nullable Object data
-    ) {
-        this.type = type;
-        this.elementIndex = elementIndex;
-        this.positionPx = positionPx;
-        this.bounds = bounds;
-        this.data = data;
+    public AttachmentLayout {
     }
 
     /**
@@ -112,21 +96,24 @@ public final class AttachmentLayout {
     /**
      * Returns the attachment type.
      */
-    public Type getType() {
+    @Override
+    public Type type() {
         return type;
     }
 
     /**
      * Returns the index of the note this attachment belongs to.
      */
-    public int getElementIndex() {
+    @Override
+    public int elementIndex() {
         return elementIndex;
     }
 
     /**
      * Returns the rendered position.
      */
-    public Point getPositionPx() {
+    @Override
+    public Point positionPx() {
         return positionPx;
     }
 
@@ -147,14 +134,16 @@ public final class AttachmentLayout {
     /**
      * Returns the element bounds for hit testing.
      */
-    public ElementBoundsSs getBounds() {
+    @Override
+    public ElementBoundsSs bounds() {
         return bounds;
     }
 
     /**
      * Returns type-specific data, or null if none.
      */
-    public @Nullable Object getData() {
+    @Override
+    public @Nullable Object data() {
         return data;
     }
 
@@ -204,8 +193,8 @@ public final class AttachmentLayout {
         return "AttachmentLayout{" +
             "type=" + type +
             ", elementIndex=" + elementIndex +
-            ", pos=(" + positionPx.x + "," + positionPx.y + ")" +
+            ", pos=(" + positionPx.x + ',' + positionPx.y + ')' +
             (data != null ? ", data=" + data : "") +
-            "}";
+            '}';
     }
 }

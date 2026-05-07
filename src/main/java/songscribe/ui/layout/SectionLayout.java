@@ -32,12 +32,7 @@ import org.jspecify.annotations.Nullable;
  * Sections are block-level elements that stack vertically with margin collapsing.
  * Each section has bounds and text content to render.
  */
-public final class SectionLayout {
-
-    private final ElementBoundsSs bounds;
-    private final List<String> lines;
-    private final @Nullable Font font;
-    private final int baselineY;
+public record SectionLayout(ElementBoundsSs bounds, List<String> lines, @Nullable Font font, int baselineY) {
 
     /**
      * Creates section layout for multi-line text.
@@ -84,14 +79,16 @@ public final class SectionLayout {
     /**
      * Returns the element bounds.
      */
-    public ElementBoundsSs getBounds() {
+    @Override
+    public ElementBoundsSs bounds() {
         return bounds;
     }
 
     /**
      * Returns the text lines.
      */
-    public List<String> getLines() {
+    @Override
+    public List<String> lines() {
         return lines;
     }
 
@@ -105,14 +102,16 @@ public final class SectionLayout {
     /**
      * Returns the font for rendering, or null if section is empty.
      */
-    public @Nullable Font getFont() {
+    @Override
+    public @Nullable Font font() {
         return font;
     }
 
     /**
      * Returns the Y coordinate of the first text baseline.
      */
-    public int getBaselineY() {
+    @Override
+    public int baselineY() {
         return baselineY;
     }
 

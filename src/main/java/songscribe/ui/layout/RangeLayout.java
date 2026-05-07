@@ -31,7 +31,8 @@ import org.jspecify.annotations.Nullable;
  * extent of all notes in the range. Placement (above or below) is determined
  * by scanning ALL notes in the range for stem direction.
  */
-public final class RangeLayout {
+public record RangeLayout(Type type, int startElementIndex, int endElementIndex, boolean above, ElementBoundsSs bounds,
+                          @Nullable Path2D path, @Nullable Object data) {
 
     /**
      * Types of range elements.
@@ -56,14 +57,6 @@ public final class RangeLayout {
         DIMINUENDO
     }
 
-    private final Type type;
-    private final int startElementIndex;
-    private final int endElementIndex;
-    private final boolean above;
-    private final ElementBoundsSs bounds;
-    private final @Nullable Path2D path;
-    private final @Nullable Object data;
-
     /**
      * Creates range layout.
      *
@@ -75,22 +68,7 @@ public final class RangeLayout {
      * @param path           Rendered curve/line path (may be null for some types)
      * @param data           Type-specific data (e.g., tuplet number, ending number)
      */
-    public RangeLayout(
-        Type type,
-        int startElementIndex,
-        int endElementIndex,
-        boolean above,
-        ElementBoundsSs bounds,
-        @Nullable Path2D path,
-        @Nullable Object data
-    ) {
-        this.type = type;
-        this.startElementIndex = startElementIndex;
-        this.endElementIndex = endElementIndex;
-        this.above = above;
-        this.bounds = bounds;
-        this.path = path;
-        this.data = data;
+    public RangeLayout {
     }
 
     /**
@@ -109,49 +87,56 @@ public final class RangeLayout {
     /**
      * Returns the range element type.
      */
-    public Type getType() {
+    @Override
+    public Type type() {
         return type;
     }
 
     /**
      * Returns the index of the first note in the range.
      */
-    public int getStartElementIndex() {
+    @Override
+    public int startElementIndex() {
         return startElementIndex;
     }
 
     /**
      * Returns the index of the last note in the range.
      */
-    public int getEndElementIndex() {
+    @Override
+    public int endElementIndex() {
         return endElementIndex;
     }
 
     /**
      * Returns whether this element is placed above the notes.
      */
-    public boolean isAbove() {
+    @Override
+    public boolean above() {
         return above;
     }
 
     /**
      * Returns the element bounds.
      */
-    public ElementBoundsSs getBounds() {
+    @Override
+    public ElementBoundsSs bounds() {
         return bounds;
     }
 
     /**
      * Returns the rendered path (curve for ties, lines for brackets).
      */
-    public @Nullable Path2D getPath() {
+    @Override
+    public @Nullable Path2D path() {
         return path;
     }
 
     /**
      * Returns type-specific data.
      */
-    public @Nullable Object getData() {
+    @Override
+    public @Nullable Object data() {
         return data;
     }
 
