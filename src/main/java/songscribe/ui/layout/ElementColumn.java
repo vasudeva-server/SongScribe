@@ -292,7 +292,7 @@ public final class ElementColumn {
 
     @Override
     public String toString() {
-        var sb = new StringBuilder();
+        var sb = new StringBuilder(200);
         sb.append("ElementColumn{");
         sb.append("element=").append(element.getType());
 
@@ -300,19 +300,19 @@ public final class ElementColumn {
             sb.append(", graceNotes=").append(graceNotes.size());
         }
 
-        sb.append(", extent=[").append(leftExtentSs).append(", ").append(rightExtentSs).append("]");
+        sb.append(", extent=[").append(leftExtentSs).append(", ").append(rightExtentSs).append(']');
 
         if (hasSyllable()) {
-            sb.append(", syllable='").append(syllable).append("'");
+            sb.append(", syllable='").append(syllable).append('\'');
             sb.append(", syllableWidth=").append(syllableWidthSs);
         }
 
-        if (isBeamed()) {
+        if (beamed) {
             sb.append(", beamed");
         }
 
         sb.append(", x=").append(xSs);
-        sb.append("}");
+        sb.append('}');
 
         return sb.toString();
     }

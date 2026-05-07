@@ -501,11 +501,10 @@ public final class Song {
 
     /**
      * Returns a syllabified-style text assembled from all per-note {@link Lyric} records.
-     * Returns an empty string when no per-note lyrics are set (always the case during
-     * phases 2–4 of the per-note lyrics migration — populated starting Phase 5).
+     * Returns an empty string when no per-note lyrics are set.
      */
     public String getLyricsText() {
-        var sb = new StringBuilder();
+        var sb = new StringBuilder(1000);
 
         for (var i = 0; i < lines.size(); i++) {
             var line = lines.get(i);
