@@ -633,16 +633,16 @@ class ElementInsertionTest extends E2ETest {
     // -- Grace note assertion helpers --
 
     private boolean isGraceModeActive() {
-        return Objects.requireNonNull(GuiActionRunner.execute(() -> GraceModeManager.isActive()));
+        return Objects.requireNonNull(GuiActionRunner.execute(GraceModeManager::isActive));
     }
 
     private boolean isActionEnabled(UIAction action) {
-        return Objects.requireNonNull(GuiActionRunner.execute(() -> action.isEnabled()));
+        return Objects.requireNonNull(GuiActionRunner.execute(action::isEnabled));
     }
 
     private boolean isActionSelected(UIAction action) {
         var selectable = (UIAction.Selectable) action;
-        return Objects.requireNonNull(GuiActionRunner.execute(() -> selectable.isSelected()));
+        return Objects.requireNonNull(GuiActionRunner.execute(selectable::isSelected));
     }
 
 }

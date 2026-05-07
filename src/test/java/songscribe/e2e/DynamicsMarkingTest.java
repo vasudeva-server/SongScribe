@@ -153,7 +153,7 @@ class DynamicsMarkingTest extends E2ETest {
             clickMenuItem(Actions.DYNAMIC_F_ACTION);
 
             assertAll(
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.FERMATA_ACTION.isSelected()))
+                () -> assertThat(GuiActionRunner.execute(Actions.FERMATA_ACTION::isSelected))
                     .as("fermata still applied").isTrue(),
                 () -> assertThat(requireAttachmentOnNote(Note.FERMATA_COEXIST.index).getType())
                     .as("forte dynamic coexists with fermata").isEqualTo(DynamicType.FORTE)

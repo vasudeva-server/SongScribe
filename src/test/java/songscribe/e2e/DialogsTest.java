@@ -148,7 +148,7 @@ class DialogsTest extends E2ETest {
                 latch.countDown();
             });
 
-            JOptionPaneFinder.findOptionPane().using(robot).button(new GenericTypeMatcher<JButton>(JButton.class) {
+            JOptionPaneFinder.findOptionPane().using(robot).button(new GenericTypeMatcher<>(JButton.class) {
                 @Override
                 protected boolean isMatching(JButton button) {
                     return button.getText().equals("Option B");

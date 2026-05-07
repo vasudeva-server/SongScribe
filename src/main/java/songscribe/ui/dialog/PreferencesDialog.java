@@ -497,11 +497,9 @@ public class PreferencesDialog extends BaseDialog {
                 syncPlaybackPrefs();
             });
 
-            playSelectedNoteCheck.addActionListener(_ -> {
-                Prefs.getInstance().put(
-                    PrefsKey.PLAY_SELECTED_NOTE, playSelectedNoteCheck.isSelected()
-                );
-            });
+            playSelectedNoteCheck.addActionListener(_ -> Prefs.getInstance().put(
+                PrefsKey.PLAY_SELECTED_NOTE, playSelectedNoteCheck.isSelected()
+            ));
         }
 
         private JPanel createFeedbackSection() {

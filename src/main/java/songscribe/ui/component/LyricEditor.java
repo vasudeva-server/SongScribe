@@ -519,8 +519,8 @@ public final class LyricEditor extends MyJTextField {
      * would otherwise insert their literal characters; Escape has no default binding.
      */
     private void installKeyBindings() {
-        bindKey(KeyEvent.VK_TAB, 0, ACTION_KEY_TAB, () -> advance());
-        bindKey(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK, ACTION_KEY_SHIFT_TAB, () -> retreat());
+        bindKey(KeyEvent.VK_TAB, 0, ACTION_KEY_TAB, this::advance);
+        bindKey(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK, ACTION_KEY_SHIFT_TAB, this::retreat);
 
         bindKey(KeyEvent.VK_ENTER, ACTION_KEY_ENTER, () -> {
             var commitSpec = navigationCommitSpec();

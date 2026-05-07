@@ -121,7 +121,7 @@ public final class LayoutResult {
         this.beamLayouts = Map.copyOf(beamLayouts);
         var stemLayouts1 = Map.copyOf(stemLayouts);
 
-        var mergedStems = new HashMap<StaffElement, StemLayout>(stemLayouts);
+        var mergedStems = new HashMap<>(stemLayouts);
 
         for (var beamLayout : beamLayouts.values()) {
             mergedStems.putAll(beamLayout.stems());

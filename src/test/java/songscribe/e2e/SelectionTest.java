@@ -489,7 +489,7 @@ class SelectionTest extends E2ETest {
     // -- Assertion helpers --
 
     private void assertActionEnabled(UIAction action, boolean expected, String label) {
-        var isEnabled = GuiActionRunner.execute(() -> action.isEnabled());
+        var isEnabled = GuiActionRunner.execute(action::isEnabled);
         assertThat(isEnabled).as("%s: action '%s' enabled", label, action.getActionCommand()).isEqualTo(expected);
     }
 
