@@ -1672,7 +1672,7 @@ public final class Song {
         // We want the attribution to start half of the song title font size below the song title
         var lineCount = Utils.lineCount(title);
         var lineHeight = MyFontUtils.getFontMetrics(titleFont).getHeight();
-        return (lineHeight * lineCount) + (lineHeight / 2);
+        return (lineHeight * lineCount) + (lineHeight / 2.0);
     }
 
 }
