@@ -1089,8 +1089,7 @@ public final class PreviewElementManager {
         // glissando to the replaced host), and the replacement is not a pitched note, remove the
         // grace note. For pitched note replacements the glissando reattaches automatically since
         // setElement preserves the element index.
-        if (elementIndex > 0
-                && line.isPairedGraceNote(elementIndex - 1)
+        if (line.isHostOfPairedGraceNote(elementIndex)
                 && !replacement.getType().isPitchedNote()) {
             line.removeElement(elementIndex - 1);
             elementIndex--;

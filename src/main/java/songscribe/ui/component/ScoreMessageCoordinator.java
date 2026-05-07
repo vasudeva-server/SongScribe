@@ -418,7 +418,7 @@ public final class ScoreMessageCoordinator {
             // When the element immediately before the selection is a paired grace note,
             // deleteNote must remove it along with the first selected note — a non-contiguous
             // operation that cannot be expressed as a single range. Fall back to the per-element loop.
-            if (begin > 0 && line.isPairedGraceNote(begin - 1)) {
+            if (line.isHostOfPairedGraceNote(begin)) {
                 song.withModification(() -> deleteSelection(begin, end, line));
             } else {
                 // Contiguous range: clean up the element before the range, then batch-remove.
@@ -513,7 +513,7 @@ public final class ScoreMessageCoordinator {
     static int deleteNote(int xIndex, Line line) {
         // If the preceding note is a paired grace note, it becomes orphaned when
         // this note is deleted and must be removed along with it.
-        var hasPrecedingPairedGraceNote = xIndex > 0 && line.isPairedGraceNote(xIndex - 1);
+        var hasPrecedingPairedGraceNote = line.isHostOfPairedGraceNote(xIndex);
 
         // Determine the left edge of the deletion — if a paired grace note precedes
         // the deleted note, it is also being removed, so the gap starts there.

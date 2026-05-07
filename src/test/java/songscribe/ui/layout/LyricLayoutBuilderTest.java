@@ -148,7 +148,12 @@ class LyricLayoutBuilderTest extends UnitTest {
 
     @Test
     void testLineWithoutLyricsProducesEmptyResult() {
-        var columns = List.of(columnAt(note(), 5), columnAt(note(), 10), columnAt(note(), 15));
+        var n1 = note();
+        var n2 = note();
+        var n3 = note();
+        addToLine(n1, n2, n3);
+
+        var columns = List.of(columnAt(n1, 5), columnAt(n2, 10), columnAt(n3, 15));
         var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes()).isEmpty();

@@ -20,6 +20,7 @@
 
 package songscribe.ui.layout;
 
+import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -146,9 +147,6 @@ public final class LyricLayoutBuilder {
         var boxesByElement = new HashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
         var connectors = new ArrayList<LyricConnectorLayout>(columns.size());
         var state = new ExtenderState(hasLeadingContinuation);
-        // Columns are built 1:1 with line elements by ElementColumnBuilder, so columnIndex
-        // matches the line element index. Used to consult Line.isHostOfPairedGraceNote.
-        var line = columns.isEmpty() ? null : columns.get(0).getElement().getLine();
 
         for (var columnIndex = 0; columnIndex < columns.size(); columnIndex++) {
             var column = columns.get(columnIndex);
@@ -157,7 +155,7 @@ public final class LyricLayoutBuilder {
             // The host of a paired grace note never carries a lyric; skip its column outright
             // so hyphens and extenders originating from the grace pass through to the next
             // lyric-bearing element, never terminating at the host.
-            if (line != null && line.isHostOfPairedGraceNote(columnIndex)) {
+            if (isHostOfPairedGraceColumn(columns, columnIndex)) {
                 continue;
             }
 
@@ -260,11 +258,15 @@ public final class LyricLayoutBuilder {
      * Normal notes / rests: centre the entire syllable's advance width on the column's
      * right-extent centre (the established Gould/Ross rule).
      * <p>
-     * Grace notes: centre only the <strong>first glyph</strong> of the syllable on the
-     * grace note's notehead centre. This deliberately differs from the normal-note rule
-     * — a grace is transitory, so centring the whole syllable on it would push too much
-     * text to the left of the grace's onset and visually anchor the lyric to the host.
+     * Grace notes: centre only the <strong>first grapheme cluster</strong> of the syllable
+     * on the grace note's notehead centre. This deliberately differs from the normal-note
+     * rule — a grace is transitory, so centring the whole syllable on it would push too
+     * much text to the left of the grace's onset and visually anchor the lyric to the host.
      * Do not "fix" this to use the normal-note centring helper.
+     * <p>
+     * No notehead-offset correction is applied for graces: graces are always rendered
+     * stem-up (see {@code NoteRenderer}), so {@code NoteRenderer.getNoteheadXOffsetSs}
+     * would always return zero for them.
      */
     private static double computeLyricBoxLeftXSs(
         ElementColumn column,
@@ -276,13 +278,31 @@ public final class LyricLayoutBuilder {
 
         if (element.getType().isGraceNote()) {
             var noteheadCenterXSs = column.getXSs() + element.getType().getElementCenterXSs();
-            var firstGlyph = text.substring(0, Character.charCount(text.codePointAt(0)));
+            var firstGlyph = text.substring(0, firstGraphemeClusterEndIndex(text));
             var firstGlyphWidthSs = lyricRenderMetrics.lyricBoxWidthSs(firstGlyph);
             return noteheadCenterXSs - firstGlyphWidthSs / 2.0;
         }
 
         var centerXSs = column.getXSs() + column.getRightExtentSs() / 2.0;
         return centerXSs - widthSs / 2.0;
+    }
+
+    /**
+     * Returns the end index (exclusive) of the first grapheme cluster in {@code text}.
+     * This correctly handles surrogate pairs, combining marks, and Indic scripts (e.g.
+     * Bengali matras and conjuncts) where a single visible character may span multiple
+     * code points.
+     */
+    private static int firstGraphemeClusterEndIndex(String text) {
+        var iterator = BreakIterator.getCharacterInstance();
+        iterator.setText(text);
+        var end = iterator.next();
+        return end == BreakIterator.DONE ? text.length() : end;
+    }
+
+    private static boolean isHostOfPairedGraceColumn(List<ElementColumn> columns, int index) {
+        var line = columns.get(0).getElement().getLine();
+        return line.isHostOfPairedGraceNote(index);
     }
 
     /**
@@ -304,12 +324,10 @@ public final class LyricLayoutBuilder {
             ? columns.get(startColumnIndex).getRightEdgeXSs()
             : state.extenderStartXSs;
 
-        var line = columns.isEmpty() ? null : columns.get(0).getElement().getLine();
-
         for (var i = startColumnIndex + 1; i < columns.size(); i++) {
             // Pass through the host of a paired grace; the host never carries a lyric, but
             // the extender's silent run must not be broken by it.
-            if (line != null && line.isHostOfPairedGraceNote(i)) {
+            if (isHostOfPairedGraceColumn(columns, i)) {
                 continue;
             }
 

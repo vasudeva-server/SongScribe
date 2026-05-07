@@ -65,7 +65,7 @@ class EditLyricActionGraceNoteTest extends UnitTest {
         line.addElement(grace);
         line.addElement(ElementType.CROTCHET.newInstance());
 
-        when(mockCoordinator.getSingleSelectedElement()).thenReturn(grace);
+        when(mockLineState.getSingleSelectedElement()).thenReturn(grace);
         when(mockLineState.getLine()).thenReturn(line);
         when(mockLineState.getSelectionBegin()).thenReturn(graceIndex);
         return grace;
@@ -84,7 +84,7 @@ class EditLyricActionGraceNoteTest extends UnitTest {
         var host = ElementType.CROTCHET.newInstance();
         line.addElement(host);
 
-        when(mockCoordinator.getSingleSelectedElement()).thenReturn(host);
+        when(mockLineState.getSingleSelectedElement()).thenReturn(host);
         when(mockLineState.getLine()).thenReturn(line);
         when(mockLineState.getSelectionBegin()).thenReturn(hostIndex);
         return host;
@@ -109,7 +109,7 @@ class EditLyricActionGraceNoteTest extends UnitTest {
         line.addElement(grace);
         line.addElement(ElementType.CROTCHET.newInstance());
 
-        when(mockCoordinator.getSingleSelectedElement()).thenReturn(grace);
+        when(mockLineState.getSingleSelectedElement()).thenReturn(grace);
         when(mockLineState.getLine()).thenReturn(line);
         when(mockLineState.getSelectionBegin()).thenReturn(0);
 
@@ -118,7 +118,7 @@ class EditLyricActionGraceNoteTest extends UnitTest {
 
     @Test
     void testDisabledWhenNoElementSelected() {
-        when(mockCoordinator.getSingleSelectedElement()).thenReturn(null);
+        when(mockLineState.getSingleSelectedElement()).thenReturn(null);
         assertThat(action.enableFromSelection(true, mockScore)).isFalse();
     }
 }
