@@ -437,6 +437,7 @@ public class Ending extends RangeElement {
      * @param deletedElements elements about to be deleted
      * @param line            the owning line (pre-deletion state)
      */
+    @SuppressWarnings("SlowListContainsAll")
     public boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
         // Condition 2: REPEAT_RIGHT split element is deleted
         var splitElement = findRepeatSplitElement(line);
