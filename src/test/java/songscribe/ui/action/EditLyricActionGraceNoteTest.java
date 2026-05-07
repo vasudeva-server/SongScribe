@@ -52,7 +52,7 @@ class EditLyricActionGraceNoteTest extends UnitTest {
         action = EditLyricAction.createAction();
     }
 
-    private StaffElement pairedGraceAt(int graceIndex) {
+    private void pairedGraceAt(int graceIndex) {
         var line = detachedLine();
 
         for (var i = 0; i < graceIndex; i++) {
@@ -67,10 +67,9 @@ class EditLyricActionGraceNoteTest extends UnitTest {
         when(mockLineState.getSingleSelectedElement()).thenReturn(grace);
         when(mockLineState.getLine()).thenReturn(line);
         when(mockLineState.getSelectionBegin()).thenReturn(graceIndex);
-        return grace;
     }
 
-    private StaffElement hostOfPairedGraceAt(int hostIndex) {
+    private void hostOfPairedGraceAt(int hostIndex) {
         var line = detachedLine();
 
         for (var i = 0; i < hostIndex - 1; i++) {
@@ -86,7 +85,6 @@ class EditLyricActionGraceNoteTest extends UnitTest {
         when(mockLineState.getSingleSelectedElement()).thenReturn(host);
         when(mockLineState.getLine()).thenReturn(line);
         when(mockLineState.getSelectionBegin()).thenReturn(hostIndex);
-        return host;
     }
 
     @Test

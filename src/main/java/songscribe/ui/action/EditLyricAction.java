@@ -59,6 +59,7 @@ public final class EditLyricAction extends UIAction {
     protected boolean enableFromSelection(boolean activeSelection, Score score) {
         var activeLineState = score.getSelectionCoordinator().getActiveSelection();
 
+        //noinspection SimplifiableIfStatement
         if (activeLineState == null || activeLineState.getSingleSelectedElement() == null) {
             return false;
         }

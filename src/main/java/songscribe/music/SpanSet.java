@@ -59,10 +59,9 @@ public class SpanSet<T extends Span> {
         return newSpan;
     }
 
-    @Nullable
-    public T addSpan(T span) {
+    public void addSpan(T span) {
         if (span.start >= span.end) {
-            return null;
+            return;
         }
 
         // Expand bounds if overlapping spans exist
@@ -82,7 +81,6 @@ public class SpanSet<T extends Span> {
 
         // Add the span
         spans.addFirst(span);
-        return span;
     }
 
     public void removeSpan(int start, int end) {

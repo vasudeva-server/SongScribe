@@ -122,10 +122,8 @@ public final class StackingUtils {
      * from staff) position needed across all sub-regions. Each sub-region is then
      * reserved at its own visual bottom, allowing later elements to nestle into
      * the gaps between shorter and taller sub-regions.
-     *
-     * @return the computed top Y in staff-space units
      */
-    public static double stackAboveWithRegions(
+    public static void stackAboveWithRegions(
         StaffExtents extents,
         LineElement element,
         List<CollisionRegion> regions,
@@ -176,7 +174,6 @@ public final class StackingUtils {
             new LayoutResult.DecorationLayout(
                 xSs, elementYSs, widthSs, overallHeightSs, marginSs, regions));
 
-        return elementYSs;
     }
 
     /**
