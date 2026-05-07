@@ -94,12 +94,12 @@ class ManualOffsetStackingTest extends UnitTest {
      * about the mutation system and would otherwise have to wrap every
      * {@code addElement} / {@code addRangeElement} call in a modification bracket.
      */
-    private static void setup(Runnable body) {
+    private static void setupTest(Runnable body) {
         song.withoutMutationTracking(body);
     }
 
     private static void populate(Line target, StaffElement... elements) {
-        setup(() -> {
+        setupTest(() -> {
             for (var element : elements) {
                 target.addElement(element);
             }
@@ -453,7 +453,7 @@ class ManualOffsetStackingTest extends UnitTest {
             var yPositionSs = -3;
             var trill = new Trill(note, note);
             trill.setYPositionSs(yPositionSs);
-            setup(() -> line.addRangeElement(trill));
+            setupTest(() -> line.addRangeElement(trill));
 
             var resultWithOffset = stackColumns(List.of(columnFor(note)), line);
             var layoutWithOffset = require(
@@ -466,7 +466,7 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line2,note2);
 
             var trill2 = new Trill(note2, note2);
-            setup(() -> line2.addRangeElement(trill2));
+            setupTest(() -> line2.addRangeElement(trill2));
 
             var resultBaseline = stackColumns(List.of(columnFor(note2)), line2);
             var layoutBaseline = require(
@@ -493,7 +493,7 @@ class ManualOffsetStackingTest extends UnitTest {
             var yPositionSs = -2;
             var ending = new Ending(note1, note2, Ending.Type.FIRST);
             ending.setYPositionSs(yPositionSs);
-            setup(() -> line.addRangeElement(ending));
+            setupTest(() -> line.addRangeElement(ending));
 
             var resultWithOffset = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -510,7 +510,7 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line2,note4);
 
             var ending2 = new Ending(note3, note4, Ending.Type.FIRST);
-            setup(() -> line2.addRangeElement(ending2));
+            setupTest(() -> line2.addRangeElement(ending2));
 
             var resultBaseline = stackColumns(
                 List.of(columnFor(note3, NOTE1_X_SS), columnFor(note4, NOTE2_X_SS)),

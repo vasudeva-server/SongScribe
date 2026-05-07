@@ -78,12 +78,12 @@ class SystemTierStackingTest extends UnitTest {
      * care about the mutation system and would otherwise have to wrap every
      * {@code addElement} call in a modification bracket.
      */
-    private static void setup(Runnable body) {
+    private static void setupTest(Runnable body) {
         song.withoutMutationTracking(body);
     }
 
     private static void populate(Line target, StaffElement... elements) {
-        setup(() -> {
+        setupTest(() -> {
             for (var element : elements) {
                 target.addElement(element);
             }
@@ -153,7 +153,7 @@ class SystemTierStackingTest extends UnitTest {
 
             // Add a hairpin in the structural layer
             var crescendo = new Crescendo(note1, note2);
-            setup(() -> line.addRangeElement(crescendo));
+            setupTest(() -> line.addRangeElement(crescendo));
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -247,7 +247,7 @@ class SystemTierStackingTest extends UnitTest {
             populate(line, note2);
 
             var crescendo = new Crescendo(note1, note2);
-            setup(() -> line.addRangeElement(crescendo));
+            setupTest(() -> line.addRangeElement(crescendo));
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -340,7 +340,7 @@ class SystemTierStackingTest extends UnitTest {
             populate(line, note2);
 
             var crescendo = new Crescendo(note1, note2);
-            setup(() -> line.addRangeElement(crescendo));
+            setupTest(() -> line.addRangeElement(crescendo));
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),

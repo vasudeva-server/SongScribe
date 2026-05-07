@@ -124,7 +124,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
      * {@code subscribe} call from construction is intercepted as a no-op. This is
      * desirable: the test invokes handlers directly, bypassing the bus.
      */
-    private Env setup(StaffElement... elements) {
+    private Env setupTest(StaffElement... elements) {
         var line = new Line(song);
 
         song.withoutMutationTracking(() -> {
@@ -163,7 +163,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         var mock = messageCenterMock;
 
         if (mock == null) {
-            throw new IllegalStateException("messageCenterMock not set — call setup() first");
+            throw new IllegalStateException("messageCenterMock not set — call setupTest() first");
         }
 
         var captor = ArgumentCaptor.forClass(Message.class);
@@ -186,7 +186,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
     @Test
     void testHandleToggleBeamEmitsOneBeamingAddition() {
-        var env = setup(quaver(), quaver(), quaver());
+        var env = setupTest(quaver(), quaver(), quaver());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
 
         env.scoreMessageCoordinator().handleToggleBeam(new ToggleBeamCommand());
@@ -202,7 +202,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
     @Test
     void testHandleToggleTieEmitsOneTieAddition() {
-        var env = setup(crotchet(), crotchet());
+        var env = setupTest(crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
 
         env.scoreMessageCoordinator().handleToggleTie(new ToggleTieCommand());
@@ -218,7 +218,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
     @Test
     void testHandleToggleTupletEmitsOneTupletAddition() {
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupTest(crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
 
         env.scoreMessageCoordinator().handleToggleTuplet(tupletCommand(TupletAction.Tuplet.TRIPLET));
@@ -234,7 +234,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         // Existing triplet over [0..2] with the full span selected, handler invoked with
         // quintuplet — emits [TupletRemoval, TupletAddition] inside one modification bracket
         // so the grade change replays atomically under undo.
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupTest(crotchet(), crotchet(), crotchet());
         env.line().getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
 
@@ -266,7 +266,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testHandleAddDynamicsEmitsOneAddition(boolean crescendo) {
-        var env = setup(crotchet(), crotchet());
+        var env = setupTest(crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
 
         env.scoreMessageCoordinator().handleAddDynamics(new AddDynamicsCommand(crescendo));
@@ -285,7 +285,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
     void testHandleRemoveDynamicsEmitsRemovals() {
         // One crescendo, one diminuendo — the handler must coalesce both removals
         // into a single notification.
-        var env = setup(crotchet(), crotchet(), crotchet(), crotchet());
+        var env = setupTest(crotchet(), crotchet(), crotchet(), crotchet());
         env.line().getCrescendos().addSpan(new DynamicsSpan(0, 1));
         env.line().getDiminuendos().addSpan(new DynamicsSpan(2, 3));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 3);
@@ -302,7 +302,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
     @Test
     void testHandleToggleTrillEmitsOneNotificationWithModificationsPerNote() {
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupTest(crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
 
         env.scoreMessageCoordinator().handleToggleTrill(new ToggleTrillCommand());
@@ -322,7 +322,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
     @Test
     void testHandleFlipStemDirectionEmitsOneNotificationWithModificationsPerNote() {
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupTest(crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
 
         env.scoreMessageCoordinator().handleFlipStemDirection(new FlipStemDirectionCommand());
@@ -345,7 +345,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         // The handler reads the cached EndingValidationResult from the singleton
         // FirstSecondEndingAction. Inject a valid result via reflection, then restore
         // the prior value to avoid leaking state into other tests.
-        var env = setup(crotchet(), crotchet(), crotchet(), crotchet());
+        var env = setupTest(crotchet(), crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectNote(env.coordinator(), 0);
 
         var validResult = EndingValidationResult.valid(

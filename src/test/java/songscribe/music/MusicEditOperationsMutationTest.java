@@ -92,7 +92,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
      * this call — {@link SpanSet#addSpan} bypasses {@code applyChange}
      * and does not require an open modification bracket.
      */
-    private Env setup(StaffElement... elements) {
+    private Env setupEnv(StaffElement... elements) {
         var line = new Line(song);
 
         // addLine fires a real LineInsertion notification on the pre-mock bus.
@@ -119,7 +119,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var mock = messageCenterMock;
 
         if (mock == null) {
-            throw new IllegalStateException("messageCenterMock not set — call setup() first");
+            throw new IllegalStateException("messageCenterMock not set — call setupEnv() first");
         }
 
         var captor = ArgumentCaptor.forClass(Message.class);
@@ -142,7 +142,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testToggleBeamingAddEmitsBeamingAddition() {
-        var env = setup(quaver(), quaver(), quaver());
+        var env = setupEnv(quaver(), quaver(), quaver());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleBeaming();
 
@@ -158,7 +158,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testToggleBeamingRemoveEmitsBeamingRemoval() {
-        var env = setup(quaver(), quaver(), quaver());
+        var env = setupEnv(quaver(), quaver(), quaver());
         env.line().getBeamings().addSpan(new BeamSpan(0, 2));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleBeaming();
@@ -176,7 +176,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testToggleTieAddEmitsTieAddition() {
-        var env = setup(crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
         env.operations().toggleTie();
 
@@ -192,7 +192,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testToggleTieRemoveEmitsTieRemoval() {
-        var env = setup(crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet());
         env.line().getTies().addSpan(new TieSpan(0, 1));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
         env.operations().toggleTie();
@@ -210,7 +210,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testToggleTupletAddEmitsTupletAddition() {
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), env.operations().canToggleTuplet());
 
@@ -227,7 +227,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testToggleTupletRemoveEmitsTupletRemoval() {
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
         env.line().getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), env.operations().canToggleTuplet());
@@ -245,7 +245,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // different grade must remove the existing span and add the new one
         // inside a single bracket — one notification, two mutations, undo replays
         // both atomically.
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
         env.line().getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTuplet(TupletAction.Tuplet.QUINTUPLET.getSize(), env.operations().canToggleTuplet());
@@ -268,7 +268,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     @Test
     void testToggleTupletMatchingGradeRemovesOnly() {
         // Clicking the same grade over an existing tuplet removes it (no add).
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
         env.line().getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), env.operations().canToggleTuplet());
@@ -284,7 +284,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // Partial-coverage selection inside an existing tuplet is a caller bug:
         // the UI disables this path, and toggleTuplet now throws IllegalStateException
         // rather than silently replacing the tuplet with a sub-range one.
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
         var originalTuplet = new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize());
         env.line().getTuplets().addSpan(originalTuplet);
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
@@ -305,7 +305,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testAddDynamicsEmitsOneAddition(boolean crescendo) {
-        var env = setup(crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
         env.operations().addDynamicsToSelection(crescendo);
 
@@ -325,7 +325,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // One crescendo at [0..1] and one diminuendo at [2..3], selection covers all four notes.
         // getDynamicsSpansFromSelection iterates per index, so each span appears once per
         // covered index within the selection — the exact count depends on span range.
-        var env = setup(crotchet(), crotchet(), crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
         env.line().getCrescendos().addSpan(new DynamicsSpan(0, 1));
         env.line().getDiminuendos().addSpan(new DynamicsSpan(2, 3));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 3);
@@ -351,7 +351,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testToggleTrillEmitsOneElementModificationPerNote() {
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTrill();
 
@@ -373,7 +373,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testFlipStemDirectionEmitsElementModificationPerAffectedIndex() {
-        var env = setup(crotchet(), crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().flipStemDirection();
 
@@ -399,7 +399,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // Four notes [n0..n3]. Result: INSERT_BARLINE at index 0, ending over [0..3].
         // makeFirstSecondEnding inserts the barline at start=0 (shifting indices to
         // start=1 and end=4), then adds an Ending spanning the adjusted bounds.
-        var env = setup(crotchet(), crotchet(), crotchet(), crotchet());
+        var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectNote(env.coordinator(), 0);
         var result = EndingValidationResult.valid(
             EndingValidationResult.PrecedingAction.INSERT_BARLINE, 0, 3);
@@ -423,7 +423,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // Selection already starts with a single barline [barline, n1, n2, n3].
         // Result: NONE action at index 0, ending over [0..3].
         // No barline should be inserted — only the Ending range element is added.
-        var env = setup(ElementType.SINGLE_BARLINE.newInstance(), crotchet(), crotchet(), crotchet());
+        var env = setupEnv(ElementType.SINGLE_BARLINE.newInstance(), crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectNote(env.coordinator(), 0);
         var result = EndingValidationResult.valid(EndingValidationResult.PrecedingAction.NONE, 0, 3);
         env.operations().makeFirstSecondEnding(result);
@@ -459,7 +459,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     class CanMakeFirstSecondEndingWithRepeatLeftRightSplit {
 
         private Env buildEnv(StaffElement terminal) {
-            return setup(
+            return setupEnv(
                 repeatLeft(), crotchet(), crotchet(), repeatLeftRight(), crotchet(), crotchet(), terminal
             );
         }
@@ -519,7 +519,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
         @Test
         void testSelectionEndingBeforeAutoMaintainedTerminalIsValid() {
-            var env = setup(
+            var env = setupEnv(
                 repeatLeft(), crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(),
                 finalDoubleBarline()
             );
@@ -550,7 +550,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
             // idx: 0            1        2        3              4        5        6             7        8        9
             //      REPEAT_LEFT  CROTCHET CROTCHET DOUBLE_BARLINE CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
             // Selection 4–9 hits DOUBLE_BARLINE before reaching REPEAT_LEFT → invalid
-            var env = setup(
+            var env = setupEnv(
                 repeatLeft(), crotchet(), crotchet(), doubleBarline(),
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
             );
@@ -562,7 +562,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         @Test
         void testFinalDoubleBarlineBlocksScan() {
             // Same layout, FINAL_DOUBLE_BARLINE at idx 3 instead of DOUBLE_BARLINE
-            var env = setup(
+            var env = setupEnv(
                 repeatLeft(), crotchet(), crotchet(), finalDoubleBarline(),
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
             );
@@ -611,7 +611,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
                 song.addLine(line0);
             });
 
-            var env = setup(
+            var env = setupEnv(
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
             );
             ReflectionTestHelper.selectRange(env.coordinator(), 0, 5);
@@ -633,7 +633,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
                 song.addLine(line0);
             });
 
-            var env = setup(
+            var env = setupEnv(
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
             );
             ReflectionTestHelper.selectRange(env.coordinator(), 0, 5);
