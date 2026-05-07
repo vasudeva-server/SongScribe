@@ -758,6 +758,7 @@ public final class Score
     }
 
     public TupletToggleInfo canToggleTuplet() {
+        //noinspection ReplaceNullCheck
         if (cachedTupletToggleInfo != null) {
             return cachedTupletToggleInfo;
         }

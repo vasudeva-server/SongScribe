@@ -397,42 +397,45 @@ public final class StaffElementIO {
                 annotationReader = new AnnotationIO.AnnotationReader();
                 annotationReader.startElement11(qName);
             } else if (where == Where.ELEMENT) {
-                if (qName.equals(XML_LYRIC)) {
-                    where = Where.LYRIC;
-                    var numberStr = attributes.getValue(XML_LYRIC_NUMBER);
-                    lyricNumber = numberStr != null ? Integer.parseInt(numberStr) : 1;
-                    lyricSyllabic = "";
-                    lyricText = "";
-                    lyricExtend = Lyric.Extend.NONE;
-                    lastTag = null;
-                } else if (qName.equals(XML_DYNAMIC)) {
-                    if (element != null) {
-                        var typeStr = attributes.getValue(XML_TYPE);
+                switch (qName) {
+                    case XML_LYRIC -> {
+                        where = Where.LYRIC;
+                        var numberStr = attributes.getValue(XML_LYRIC_NUMBER);
+                        lyricNumber = numberStr != null ? Integer.parseInt(numberStr) : 1;
+                        lyricSyllabic = "";
+                        lyricText = "";
+                        lyricExtend = Lyric.Extend.NONE;
+                        lastTag = null;
+                    }
+                    case XML_DYNAMIC -> {
+                        if (element != null) {
+                            var typeStr = attributes.getValue(XML_TYPE);
 
-                        if (typeStr != null) {
-                            try {
-                                var dynamicType = DynamicAttachment.DynamicType.valueOf(typeStr);
-                                element.addAttachment(new DynamicAttachment(element, dynamicType));
-                            } catch (IllegalArgumentException e) {
-                                LOG.warn("Unknown dynamic type: {}, skipping", typeStr);
+                            if (typeStr != null) {
+                                try {
+                                    var dynamicType = DynamicAttachment.DynamicType.valueOf(typeStr);
+                                    element.addAttachment(new DynamicAttachment(element, dynamicType));
+                                } catch (IllegalArgumentException e) {
+                                    LOG.warn("Unknown dynamic type: {}, skipping", typeStr);
+                                }
                             }
                         }
                     }
-                } else if (qName.equals(XML_BEAT_CHANGE)) {
-                    var duration = attributes.getValue(XML_BEAT_CHANGE_DURATION);
-                    var beat = attributes.getValue(XML_BEAT_CHANGE_BEAT);
+                    case XML_BEAT_CHANGE -> {
+                        var duration = attributes.getValue(XML_BEAT_CHANGE_DURATION);
+                        var beat = attributes.getValue(XML_BEAT_CHANGE_BEAT);
 
-                    if (duration != null && beat != null && element != null) {
-                        // New two-attribute format (v2.5+)
-                        element.setBeatChange(
-                            new BeatChange(Duration.valueOf(duration), Duration.valueOf(beat))
-                        );
-                    } else {
-                        // Legacy text-content format — defer to endElement11
-                        lastTag = qName;
+                        if (duration != null && beat != null && element != null) {
+                            // New two-attribute format (v2.5+)
+                            element.setBeatChange(
+                                new BeatChange(Duration.valueOf(duration), Duration.valueOf(beat))
+                            );
+                        } else {
+                            // Legacy text-content format — defer to endElement11
+                            lastTag = qName;
+                        }
                     }
-                } else {
-                    lastTag = qName;
+                    default -> lastTag = qName;
                 }
             } else if (where == Where.LYRIC) {
                 if (qName.equals(XML_SYLLABIC)) {

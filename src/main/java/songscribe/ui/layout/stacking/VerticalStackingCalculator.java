@@ -175,12 +175,12 @@ public class VerticalStackingCalculator {
             var yOffsetSs = element.getUserYOffsetSs();
 
             // Element-specific additional offsets
-            if (element instanceof Trill trill) {
-                yOffsetSs += trill.getYPositionSs();
-            } else if (element instanceof Ending ending) {
-                yOffsetSs += ending.getYPositionSs();
-            } else if (element instanceof AnnotationAttachment annAttach) {
-                yOffsetSs += annAttach.getAnnotation().getUserYOffsetSs();
+            switch (element) {
+                case Trill trill -> yOffsetSs += trill.getYPositionSs();
+                case Ending ending -> yOffsetSs += ending.getYPositionSs();
+                case AnnotationAttachment annAttach -> yOffsetSs += annAttach.getAnnotation().getUserYOffsetSs();
+                default -> {
+                }
             }
 
             if (xOffsetSs != 0 || yOffsetSs != 0) {
