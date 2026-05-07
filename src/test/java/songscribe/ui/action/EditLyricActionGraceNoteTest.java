@@ -37,14 +37,13 @@ import songscribe.ui.selection.SelectionCoordinator;
 class EditLyricActionGraceNoteTest extends UnitTest {
 
     private Score mockScore;
-    private SelectionCoordinator mockCoordinator;
     private LineSelectionState mockLineState;
     private EditLyricAction action;
 
     @BeforeEach
     void setUp() {
         mockScore = mock(Score.class);
-        mockCoordinator = mock(SelectionCoordinator.class);
+        var mockCoordinator = mock(SelectionCoordinator.class);
         mockLineState = mock(LineSelectionState.class);
 
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
