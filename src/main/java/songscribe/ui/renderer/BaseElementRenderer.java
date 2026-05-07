@@ -411,14 +411,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     }
 
     /**
-     * Returns the X offset in staff spaces from the note reference point to the stem center,
-     * for the given stem direction and note type.
-     *
-     * @param noteType the note type (determines which notehead anchor to use)
-     * @param upper    true = stem goes up (stem-up SE anchor); false = stem goes down (stem-down NW anchor)
-     * @return X offset from note reference point to stem center, in staff spaces
-     */
-    /**
      * Iterates over the Y offsets (in staff spaces, relative to the note's staff position)
      * of each ledger line needed for a note at the given staff position.
      *
@@ -440,6 +432,14 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         }
     }
 
+    /**
+     * Returns the X offset in staff spaces from the note reference point to the stem center,
+     * for the given stem direction and note type.
+     *
+     * @param noteType the note type (determines which notehead anchor to use)
+     * @param upper    true = stem goes up (stem-up SE anchor); false = stem goes down (stem-down NW anchor)
+     * @return X offset from note reference point to stem center, in staff spaces
+     */
     protected static double stemCenterXOffsetSs(ElementType noteType, boolean upper) {
         var isMinim = noteType == ElementType.MINIM;
         double anchorX;

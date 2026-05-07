@@ -38,7 +38,7 @@ public class Tuplet extends RangeElement {
     public static final double ARM_EXTENSION_SS = 0.2;  // 1.6px
     /**
      * Total vertical extent of a tuplet bracket (arms + number label).
-     * Engraving convention, not measured — in the same category as {@link #STAFF_HEIGHT_SS}.
+     * Engraving convention, not measured.
      */
     public static final double TUPLET_BRACKET_HEIGHT_SS = 1.5;  // 12px
 

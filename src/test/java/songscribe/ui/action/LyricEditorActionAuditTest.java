@@ -41,10 +41,10 @@ import static org.mockito.Mockito.mockStatic;
 
 /**
  * T25 — Audit test locking the DISABLE_WHEN_EDITING_TEXT invariant for all toolbar actions.
- *
+ * <p>
  * Every action in a toolbar must carry Flag.DISABLE_WHEN_EDITING_TEXT so that single-character
  * accelerators cannot fire while the lyric editor is focused. See LyricEditor for the invariant.
- *
+ * <p>
  * To add a new toolbar action: instantiate it in testAllToolbarActionsCarryDisableWhenEditingTextFlag
  * and add Flag.DISABLE_WHEN_EDITING_TEXT to the action's flags.
  * To remove an action from enforcement: remove it from the list below and leave a comment explaining why.

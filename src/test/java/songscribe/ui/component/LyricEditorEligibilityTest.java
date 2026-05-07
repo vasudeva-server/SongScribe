@@ -33,7 +33,7 @@ import songscribe.music.StaffElement;
 /**
  * Tests for {@link LyricEditor#isLyricTargetEligible} and the package-private
  * navigation helpers {@code findNextEligibleIndex} / {@code findPreviousEligibleIndex}.
- *
+ * <p>
  * Line layout used throughout: [normal(0), grace(1)+CONNECTED, host(2), normal(3)]
  */
 class LyricEditorEligibilityTest extends UnitTest {

@@ -274,7 +274,7 @@ public class ElementRenderContext {
 
     /**
      * Returns the color used to render selected elements and beams.
-     * Defaults to {@link Score#SELECTION_STROKE_COLOR}; override during an
+     * Defaults to {@link Score#getSelectionColor()}; override during an
      * element pitch-drag to use {@code INSERTION_NOTE_COLOR} instead.
      */
     public Color getSelectionColor() {

@@ -126,7 +126,6 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
      * @param ctx        render context
      * @param spanLayout pre-computed bracket position in layout-relative staff spaces
      * @param grade      tuplet number (3 for triplet, 5 for quintuplet, etc.)
-     * @param isUpper    true if the first note has an up stem
      * @param numberOnly true to draw only the number (no bracket)
      */
     private void renderTuplet(

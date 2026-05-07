@@ -74,7 +74,7 @@ public record AttachmentLayout(Type type, int elementIndex, Point positionPx, El
      *
      * @param type      Type of attachment
      * @param elementIndex Index of the element this attaches to
-     * @param position  Rendered position (X, Y)
+     * @param positionPx Rendered position (X, Y)
      * @param bounds    Element bounds for hit testing
      * @param data      Type-specific data (e.g., tempo value, annotation text)
      */
