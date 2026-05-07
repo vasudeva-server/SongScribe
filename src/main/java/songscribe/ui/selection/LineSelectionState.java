@@ -51,7 +51,7 @@ public final class LineSelectionState {
     private Boolean canTie = null;
 
     @Nullable
-    private SpanSet tieSpanSet = null;
+    private SpanSet<?> tieSpanSet = null;
 
     public LineSelectionState(Line line) {
         this.line = line;
@@ -123,7 +123,7 @@ public final class LineSelectionState {
     }
 
     @Nullable
-    public SpanSet getTieSpanSet() {
+    public SpanSet<?> getTieSpanSet() {
         return tieSpanSet;
     }
 
@@ -428,14 +428,14 @@ public final class LineSelectionState {
      * endpoints would be newly connected by {@code target} but are already connected by
      * {@code conflicting}.
      */
-    private boolean selectionWouldConflict(SpanSet target, SpanSet conflicting) {
+    private boolean selectionWouldConflict(SpanSet<?> target, SpanSet<?> conflicting) {
         return shouldConnectSelection(target) && !shouldConnectSelection(conflicting);
     }
 
     /**
      * Returns whether the selection should connect (add) or disconnect (remove) a span.
      */
-    public boolean shouldConnectSelection(SpanSet spanSet) {
+    public boolean shouldConnectSelection(SpanSet<?> spanSet) {
         var beginSpan = spanSet.findSpan(selectionBegin);
         var endSpan = spanSet.findSpan(selectionEnd);
 

@@ -40,7 +40,7 @@ public final class ClipboardManager {
     private final ArrayList<StaffElement> pasteboard = new ArrayList<>();
 
     // Associated span sets (ties, etc.) for the copied elements
-    private SpanSet @Nullable [] spanSetsCopyBuffer = null;
+    private SpanSet<?> @Nullable [] spanSetsCopyBuffer = null;
 
     // -------------------------------------------------------------------------
     // Pasteboard accessors
@@ -97,7 +97,7 @@ public final class ClipboardManager {
      *
      * @return The span sets array, or null if none
      */
-    public SpanSet @Nullable [] getSpanSetsCopyBuffer() {
+    public SpanSet<?> @Nullable [] getSpanSetsCopyBuffer() {
         return spanSetsCopyBuffer;
     }
 
@@ -133,7 +133,7 @@ public final class ClipboardManager {
      *
      * @param spanSets The span sets array
      */
-    public void setSpanSetsCopyBuffer(SpanSet[] spanSets) {
+    public void setSpanSetsCopyBuffer(SpanSet<?>[] spanSets) {
         spanSetsCopyBuffer = spanSets;
     }
 }
