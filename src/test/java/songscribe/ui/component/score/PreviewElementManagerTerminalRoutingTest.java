@@ -66,7 +66,7 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
     void setUp() {
         // Build real model objects before mocking MessageCenter so their constructors
         // see the real bus.
-        Song song = new Song();
+        var song = new Song();
         line = song.getLine(0);
 
         messageCenterMock = mockStatic(MessageCenter.class);

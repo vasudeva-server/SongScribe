@@ -503,7 +503,7 @@ public final class SelectionCoordinator {
         }
 
         hasDurations = false;
-        boolean hasNonDurations = false;
+        var hasNonDurations = false;
         hasRests = false;
         contentCacheSelection = selection;
 

@@ -47,7 +47,7 @@ class FinalBarlineActionEnablementTest extends UnitTest {
     @BeforeEach
     void setUp() {
         mainFrameMock = mockStatic(MainFrame.class);
-        MockEnvHelper.MockEnv env = MockEnvHelper.setupMockEnv(mainFrameMock);
+        var env = MockEnvHelper.setupMockEnv(mainFrameMock);
 
         // PlaybackController's static initializer creates UIAction instances with
         // keyboard shortcuts that call mainFrame.getRootPane(), so we need a JRootPane mock.

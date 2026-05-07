@@ -537,7 +537,7 @@ public final class Score
         var prefs = Prefs.getInstance();
         editModeManager.setPlayInsertedNote(prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
         // If true, the score is played with repeats
-        boolean playWithRepeats = prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS);
+        var playWithRepeats = prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS);
 
         // Delegate playback settings to PlaybackController
         PlaybackController.setInstrument(prefs.getInt(PrefsKey.INSTRUMENT));

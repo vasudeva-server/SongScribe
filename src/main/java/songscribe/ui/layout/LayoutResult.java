@@ -119,7 +119,7 @@ public final class LayoutResult {
         this.elementColumns = Map.copyOf(elementColumns);
         this.elementBounds = Map.copyOf(elementBounds);
         this.beamLayouts = Map.copyOf(beamLayouts);
-        Map<StaffElement, StemLayout> stemLayouts1 = Map.copyOf(stemLayouts);
+        var stemLayouts1 = Map.copyOf(stemLayouts);
 
         var mergedStems = new HashMap<StaffElement, StemLayout>(stemLayouts);
 

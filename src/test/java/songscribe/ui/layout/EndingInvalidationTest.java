@@ -69,7 +69,7 @@ class EndingInvalidationTest extends UnitTest {
     @BeforeEach
     void setUp() {
         var fixture = EndingLineFixture.primary();
-        Song song = fixture.song();
+        var song = fixture.song();
         line        = fixture.line();
         anchor      = fixture.anchor();
         note1       = fixture.note1();
@@ -274,7 +274,7 @@ class EndingInvalidationTest extends UnitTest {
 
             @BeforeEach
             void setUp() {
-                Song comp2 = new Song();
+                var comp2 = new Song();
                 line2 = comp2.getLine(0);
                 anchor2 = new StaffElement(ElementType.SINGLE_BARLINE);
                 var lrSplit = new StaffElement(ElementType.REPEAT_LEFT_RIGHT);
@@ -457,9 +457,9 @@ class EndingInvalidationTest extends UnitTest {
             @BeforeEach
             void setUp() {
                 var fixture = EndingLineFixture.secondary();
-                Song comp2 = fixture.song();
+                var comp2 = fixture.song();
                 line2   = fixture.line();
-                StaffElement anchor2 = fixture.anchor();
+                var anchor2 = fixture.anchor();
                 lrSplit = fixture.split();
                 end2    = fixture.end();
                 ending2 = fixture.ending();

@@ -720,8 +720,8 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         // Calculate parenthesis widths (advance widths are already in ss)
         var parensLeftWidth = METADATA.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
         var parensRightWidth = METADATA.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
-        float beginParenthesisWidthSs = (parensLeftWidth != null) ? parensLeftWidth.floatValue() : 0f;
-        float endParenthesisWidthSs = (parensRightWidth != null) ? parensRightWidth.floatValue() : 0f;
+        var beginParenthesisWidthSs = (parensLeftWidth != null) ? parensLeftWidth.floatValue() : 0f;
+        var endParenthesisWidthSs = (parensRightWidth != null) ? parensRightWidth.floatValue() : 0f;
 
         // Parenthesized width = parens left + accidental components + parens right
         baseAccidentalParenthesisWidthsSs = new float[ACCIDENTAL_COMPONENTS.length];

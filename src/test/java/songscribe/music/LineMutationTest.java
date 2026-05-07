@@ -335,13 +335,13 @@ class LineMutationTest extends UnitTest {
         @BeforeEach
         void setUpEnding() {
             var fixture = EndingLineFixture.primary(song);
-            StaffElement anchor = fixture.anchor();
-            StaffElement note1 = fixture.note1();
-            StaffElement note2 = fixture.note2();
-            StaffElement split = fixture.split();
-            StaffElement note4 = fixture.note4();
-            StaffElement note5 = fixture.note5();
-            StaffElement end = fixture.end();
+            var anchor = fixture.anchor();
+            var note1 = fixture.note1();
+            var note2 = fixture.note2();
+            var split = fixture.split();
+            var note4 = fixture.note4();
+            var note5 = fixture.note5();
+            var end = fixture.end();
             ending = fixture.ending();
         }
 
