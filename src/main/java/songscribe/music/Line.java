@@ -634,8 +634,8 @@ public class Line {
         for (var index = 0; index < elements.size(); index++) {
             var lyrics = elements.get(index).properties.lyrics;
 
-            for (var lyricIndex = 0; lyricIndex < lyrics.size(); lyricIndex++) {
-                backfillSyllabicAt(index, lyrics.get(lyricIndex).verse());
+            for (var lyric : lyrics) {
+                backfillSyllabicAt(index, lyric.verse());
             }
         }
     }
@@ -726,7 +726,7 @@ public class Line {
 
         if (lyric.syllabic() == null) {
             throw new IllegalStateException(
-                "setSyllableBoundary cannot run on carrier lyric (extend=" + lyric.extend() + ")");
+                "setSyllableBoundary cannot run on carrier lyric (extend=" + lyric.extend() + ')');
         }
 
         var prevContinues = previousLyricContinues(index, verse);
@@ -1233,8 +1233,8 @@ public class Line {
         for (var i = 0; i < spanSets.length; i++) {
             for (var li = copySpanSets[i].listIterator(); li.hasNext(); ) {
                 var span = li.next();
-                //noinspection unchecked,rawtypes
-                ((SpanSet) spanSets[i]).addSpan(span);
+                //noinspection unchecked
+                spanSets[i].addSpan(span);
             }
         }
 
@@ -1457,7 +1457,7 @@ public class Line {
             .map(r -> ((Ending) r).checkReplacement(oldElement, newElement, this))
             .filter(e -> !(e instanceof Ending.EndingEffect.None))
             .findFirst()
-            .orElse(new Ending.EndingEffect.None());
+            .orElseGet(Ending.EndingEffect.None::new);
     }
 
     /**

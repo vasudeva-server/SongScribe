@@ -450,9 +450,7 @@ public final class SongIO {
                     } else {
                         var firstElementInLine = 0;
 
-                        for (var l = 0; l < parsedLines.size(); l++) {
-                            var line = parsedLines.get(l);
-
+                        for (var line : parsedLines) {
                             if (
                                 tempoReader.getPos10() <
                                     (firstElementInLine + line.elementCount())

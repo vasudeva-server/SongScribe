@@ -136,9 +136,7 @@ public class SpanSet<T extends Span> {
     public List<T> findOverlapping(int begin, int end) {
         var result = new ArrayList<T>();
 
-        for (var iter = spans.listIterator(); iter.hasNext(); ) {
-            var span = iter.next();
-
+        for (var span : spans) {
             if (span.start <= end && span.end >= begin) {
                 result.add(span);
             }

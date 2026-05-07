@@ -137,8 +137,7 @@ public final class StackingUtils {
         // Query phase: each sub-region finds its own ceiling independently.
         // The element Y is the min (highest on page) across all sub-regions,
         // so the element clears all content beneath every sub-region.
-        for (var i = 0; i < regions.size(); i++) {
-            var region = regions.get(i);
+        for (var region : regions) {
             var regionXSs = xSs + region.xOffsetSs();
             var queryXSs = regionXSs - STRUCTURAL_HORIZONTAL_MARGIN_SS;
             var queryWidthSs = region.widthSs() + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS;

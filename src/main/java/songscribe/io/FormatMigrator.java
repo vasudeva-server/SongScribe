@@ -122,9 +122,7 @@ public final class FormatMigrator {
     public static void migratePixelsToStaffSpace(List<? extends Line> lines) {
         var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
 
-        for (var lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
-            var line = lines.get(lineIndex);
-
+        for (var line : lines) {
             // Line-level fields
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
 
