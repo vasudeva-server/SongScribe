@@ -161,7 +161,7 @@ public class TranslationComponent extends ScoreComponent {
 
         // Calculate header height
         var headerMetrics = getFontMetrics(headerFont);
-        var height = marginTop + headerMetrics.getHeight();
+        var height = (float) marginTop + headerMetrics.getHeight();
 
         // Margin below header
         height += lyricsFont.getSize2D() / 4f;
