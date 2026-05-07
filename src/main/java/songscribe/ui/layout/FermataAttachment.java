@@ -89,11 +89,11 @@ public class FermataAttachment extends Attachment {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.getInstance().toPixels(getContentWidthSs());
+        return ScaleContext.getInstance().toPixels(FERMATA_WIDTH_SS);
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(getContentHeightSs());
+        return ScaleContext.getInstance().toPixels(FERMATA_HEIGHT_SS);
     }
 }

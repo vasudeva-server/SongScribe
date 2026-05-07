@@ -136,8 +136,8 @@ public abstract class RangeElement extends LineElement {
      */
     @Override
     public double getContentWidthSs() {
-        var anchor = getAnchorElement();
-        var endElement = getEndElement();
+        var anchor = anchorElement;
+        var endElement = this.endElement;
 
         if (anchor == null || endElement == null) {
             return 0;

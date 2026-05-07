@@ -53,7 +53,7 @@ public class TupletSpan extends Span {
     @Override
     public TupletSpan copyRange(int newStart, int newEnd) {
         var copy = new TupletSpan(newStart, newEnd, grade);
-        copy.setVerticalPositionSs(verticalPositionSs);
+        copy.verticalPositionSs = verticalPositionSs;
         return copy;
     }
 }

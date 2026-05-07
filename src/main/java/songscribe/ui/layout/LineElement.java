@@ -370,8 +370,8 @@ public abstract class LineElement {
      * @param child The element to add
      */
     public void addChild(LineElement child) {
-        child.setParentElement(this);
-        child.setParentLine(parentLine);
+        child.parentElement = this;
+        child.parentLine = parentLine;
         children.add(child);
     }
 
@@ -382,7 +382,7 @@ public abstract class LineElement {
      */
     public void removeChild(LineElement child) {
         if (children.remove(child)) {
-            child.setParentElement(null);
+            child.parentElement = null;
         }
     }
 
@@ -391,7 +391,7 @@ public abstract class LineElement {
      */
     public void clearChildren() {
         for (var child : children) {
-            child.setParentElement(null);
+            child.parentElement = null;
         }
 
         children.clear();

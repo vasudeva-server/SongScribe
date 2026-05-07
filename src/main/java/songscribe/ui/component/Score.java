@@ -1136,11 +1136,11 @@ public final class Score
         }
 
         var scale = ScaleContext.getInstance();
-        setLyricRenderMetrics(new LyricRenderMetrics(
+        lyricRenderMetrics = new LyricRenderMetrics(
             lyricsFont,
             scale.scaleFont(lyricsFont),
             scale.textWidthSs(lyricsFont, "-"),
-            scale.textWidthSs(lyricsFont, "  ")));
+            scale.textWidthSs(lyricsFont, "  "));
     }
 
     @Nullable

@@ -59,9 +59,9 @@ public class DynamicsSpan extends Span {
     @Override
     public DynamicsSpan copyRange(int newStart, int newEnd) {
         var copy = new DynamicsSpan(newStart, newEnd);
-        copy.setX1ShiftSs(x1ShiftSs);
-        copy.setX2ShiftSs(x2ShiftSs);
-        copy.setYShiftSs(yShiftSs);
+        copy.x1ShiftSs = x1ShiftSs;
+        copy.x2ShiftSs = x2ShiftSs;
+        copy.yShiftSs = yShiftSs;
         return copy;
     }
 }

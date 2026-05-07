@@ -268,7 +268,7 @@ public enum ElementType {
      * @param terminalType the terminal element type ({@link #isValidTerminal()} must be true)
      */
     public static double terminalFlushRightXSs(double lineWidthSs, ElementType terminalType) {
-        return lineWidthSs - terminalType.getElementWidthSs();
+        return lineWidthSs - terminalType.baseWidthSs;
     }
 
     /**
