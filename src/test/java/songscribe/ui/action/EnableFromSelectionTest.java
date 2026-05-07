@@ -73,8 +73,7 @@ class EnableFromSelectionTest extends UnitTest {
             var env = setupMockEnv(mainFrameMock);
             when(env.coordinator().hasActiveSelection()).thenReturn(true);
 
-            var action = new UIAction("Test", null, 0, "test", "Test") {
-            };
+            var action = new UIAction("Test", null, 0, "test", "Test");
             action.setFlags(UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED);
 
             // Even with the flag, the method defers during active selection.
@@ -89,8 +88,7 @@ class EnableFromSelectionTest extends UnitTest {
             var env = setupMockEnv(mainFrameMock);
             when(env.coordinator().hasActiveSelection()).thenReturn(false);
 
-            var action = new UIAction("Test", null, 0, "test", "Test") {
-            };
+            var action = new UIAction("Test", null, 0, "test", "Test");
             // No ENABLE_WHEN_DURATION_SELECTED flag -> returns true (no check needed)
             assertThat(action.enableFromDurationSelection(
                 env.coordinator().hasActiveSelection())).isTrue();
