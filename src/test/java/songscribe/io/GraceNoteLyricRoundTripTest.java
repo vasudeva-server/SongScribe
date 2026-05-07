@@ -33,6 +33,7 @@ import songscribe.UnitTest;
 import songscribe.music.Lyric;
 import songscribe.music.Song;
 
+@SuppressWarnings("OverlyBroadThrowsClause")
 class GraceNoteLyricRoundTripTest extends UnitTest {
 
     private static final SAXParserFactory PARSER_FACTORY = SAXParserFactory.newInstance();
