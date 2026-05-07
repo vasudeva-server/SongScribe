@@ -268,16 +268,7 @@ public final class LyricEditor extends MyJTextField {
     // PlainDocument replaces '\n' with space before calling the filter; override to strip instead.
     @Override
     protected Document createDefaultModel() {
-        return new PlainDocument() {
-            @Override
-            public void insertString(int offset, String str, AttributeSet a) throws BadLocationException {
-                if (str != null && str.indexOf('\n') >= 0) {
-                    str = str.replace("\n", "");
-                }
-
-                super.insertString(offset, str, a);
-            }
-        };
+        return new MyPlainDocument();
     }
 
     private void configureLAF() {
@@ -401,6 +392,18 @@ public final class LyricEditor extends MyJTextField {
     @Override
     protected TextFocusDelegate createFocusDelegate() {
         return new LyricFocusDelegate();
+    }
+
+    @SuppressWarnings("ParameterNameDiffersFromOverriddenParameter")
+    private static class MyPlainDocument extends PlainDocument {
+        @Override
+        public void insertString(int offset, String str, AttributeSet a) throws BadLocationException {
+            if (str.indexOf('\n') >= 0) {
+                str = str.replace("\n", "");
+            }
+
+            super.insertString(offset, str, a);
+        }
     }
 
     private class LyricFocusDelegate extends TextFocusDelegate {
