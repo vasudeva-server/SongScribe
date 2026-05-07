@@ -393,8 +393,8 @@ public final class GraphicUtils {
 
         var width = Math.min(bounds.width, screen.width);
         var height = Math.min(bounds.height, screen.height);
-        var x = Math.max(screen.x, Math.min(bounds.x, screen.x + screen.width - width));
-        var y = Math.max(screen.y, Math.min(bounds.y, screen.y + screen.height - height));
+        var x = Math.clamp(bounds.x, screen.x, screen.x + screen.width - width);
+        var y = Math.clamp(bounds.y, screen.y, screen.y + screen.height - height);
 
         return new Rectangle(x, y, width, height);
     }

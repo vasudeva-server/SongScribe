@@ -133,7 +133,7 @@ public class LineJustificationCalculator {
         }
 
         // Check if line exceeds margin
-        var lastColumn = columns.get(columns.size() - 1);
+        var lastColumn = columns.getLast();
         var lineWidthSs = lastColumn.getRightEdgeXSs();
 
         if (lineWidthSs <= staffRightMarginSs) {
@@ -183,8 +183,8 @@ public class LineJustificationCalculator {
     }
 
     private static double getCompressionRatio(List<ElementColumn> columns, double staffRightMarginSs) {
-        var firstColumn = columns.get(0);
-        var lastColumn = columns.get(columns.size() - 1);
+        var firstColumn = columns.getFirst();
+        var lastColumn = columns.getLast();
 
         // The total width includes the span between column centers plus the extents
         // Width = centerSpan + (lastRightExtent - firstLeftExtent)
@@ -244,7 +244,7 @@ public class LineJustificationCalculator {
         var minColumnGapSs = COMPRESSED_MIN_COLUMN_GAP_SS;
         var minSyllableGapSs = LyricRenderMetrics.COMPRESSED_MIN_SYLLABLE_GAP_SS;
 
-        var firstColumn = columns.get(0);
+        var firstColumn = columns.getFirst();
         var anchorXSs = firstColumn.getXSs();
 
         for (var i = 1; i < columns.size(); i++) {
@@ -333,7 +333,7 @@ public class LineJustificationCalculator {
             return;
         }
 
-        var firstColumn = columns.get(0);
+        var firstColumn = columns.getFirst();
         var anchorXSs = firstColumn.getXSs();
 
         // Compress all positions relative to the first column

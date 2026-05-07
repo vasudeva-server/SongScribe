@@ -547,35 +547,35 @@ class SongSetterMutationTest extends UnitTest {
             .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
-        return didChanges.get(0);
+        return didChanges.getFirst();
     }
 
     private MetadataChange captureSingleMetadataChange() {
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().get(0)).isInstanceOf(MetadataChange.class);
-        return (MetadataChange) notification.getMutations().get(0);
+        assertThat(notification.getMutations().getFirst()).isInstanceOf(MetadataChange.class);
+        return (MetadataChange) notification.getMutations().getFirst();
     }
 
     private LyricsChange captureSingleLyricsChange() {
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().get(0)).isInstanceOf(LyricsChange.class);
-        return (LyricsChange) notification.getMutations().get(0);
+        assertThat(notification.getMutations().getFirst()).isInstanceOf(LyricsChange.class);
+        return (LyricsChange) notification.getMutations().getFirst();
     }
 
     private FontChange captureSingleFontChange() {
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().get(0)).isInstanceOf(FontChange.class);
-        return (FontChange) notification.getMutations().get(0);
+        assertThat(notification.getMutations().getFirst()).isInstanceOf(FontChange.class);
+        return (FontChange) notification.getMutations().getFirst();
     }
 
     private LayoutChange captureSingleLayoutChange() {
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().get(0)).isInstanceOf(LayoutChange.class);
-        return (LayoutChange) notification.getMutations().get(0);
+        assertThat(notification.getMutations().getFirst()).isInstanceOf(LayoutChange.class);
+        return (LayoutChange) notification.getMutations().getFirst();
     }
 
     private void verifyNoNotificationPosted() {

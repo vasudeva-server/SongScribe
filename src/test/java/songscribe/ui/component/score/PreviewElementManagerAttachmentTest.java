@@ -205,7 +205,7 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
 
             var articulations = line.getElement(0).getArticulations();
             assertThat(articulations).as("articulation preserved").hasSize(1);
-            assertThat(articulations.get(0).getType())
+            assertThat(articulations.getFirst().getType())
                 .as("articulation type preserved").isEqualTo(ArticulationType.STACCATO);
         }
 

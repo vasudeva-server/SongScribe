@@ -56,7 +56,7 @@ public class KeySignature extends LineElement {
      */
     public KeySignature(KeyType keyType, int accidentalCount) {
         this.keyType = keyType;
-        this.accidentalCount = Math.max(0, Math.min(7, accidentalCount));
+        this.accidentalCount = Math.clamp(accidentalCount, 0, 7);
 
         // Default margin from key signature to first note
         setMarginRightSs(1.0);
@@ -89,7 +89,7 @@ public class KeySignature extends LineElement {
      * @param accidentalCount Number of accidentals (clamped to 0-7)
      */
     public void setAccidentalCount(int accidentalCount) {
-        this.accidentalCount = Math.max(0, Math.min(7, accidentalCount));
+        this.accidentalCount = Math.clamp(accidentalCount, 0, 7);
     }
 
     /**

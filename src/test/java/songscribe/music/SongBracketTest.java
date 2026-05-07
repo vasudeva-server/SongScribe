@@ -179,6 +179,6 @@ class SongBracketTest extends UnitTest {
             .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
-        return didChanges.get(0);
+        return didChanges.getFirst();
     }
 }

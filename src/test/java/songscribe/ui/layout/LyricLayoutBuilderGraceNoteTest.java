@@ -153,7 +153,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         var graceBoxes = boxesOf(result, grace);
         assertThat(graceBoxes).hasSize(1);
 
-        var graceBox = graceBoxes.get(0);
+        var graceBox = graceBoxes.getFirst();
         var firstGlyph = "l";
         var firstGlyphWidthSs = LYRIC_METRICS.lyricBoxWidthSs(firstGlyph);
         var noteheadCenterXSs = GRACE_X_SS + ElementType.GRACE_QUAVER.getElementCenterXSs();
@@ -187,8 +187,8 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             .toList();
         assertThat(hyphens).hasSize(1);
 
-        var nextBox = boxesOf(result, next).get(0);
-        assertThat(hyphens.get(0).endXSs())
+        var nextBox = boxesOf(result, next).getFirst();
+        assertThat(hyphens.getFirst().endXSs())
             .as("hyphen must reach the next lyric-bearing element's box, skipping the host")
             .isCloseTo(nextBox.xSs(), within(POSITION_TOLERANCE_SS));
     }

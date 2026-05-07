@@ -130,7 +130,7 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
 
     public void selectNext() {
         if (selected == null) {
-            setSelected(actions.get(0), true);
+            setSelected(actions.getFirst(), true);
             return;
         }
 

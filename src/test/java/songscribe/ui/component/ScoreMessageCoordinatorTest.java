@@ -242,7 +242,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
 
             ScoreMessageCoordinator.deleteNote(1, line);
 
-            assertThat(predecessor.properties.lyrics.get(0).syllabic())
+            assertThat(predecessor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -258,7 +258,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
 
             ScoreMessageCoordinator.deleteNote(1, line);
 
-            assertThat(first.properties.lyrics.get(0).syllabic())
+            assertThat(first.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.BEGIN);
         }
 

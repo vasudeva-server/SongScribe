@@ -177,7 +177,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
             .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
-        return didChanges.get(0);
+        return didChanges.getFirst();
     }
 
     // -----------------------------------------------------------------------
@@ -193,7 +193,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().get(0)).isInstanceOf(BeamingAddition.class);
+        assertThat(notification.getMutations().getFirst()).isInstanceOf(BeamingAddition.class);
     }
 
     // -----------------------------------------------------------------------
@@ -209,7 +209,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().get(0)).isInstanceOf(TieAddition.class);
+        assertThat(notification.getMutations().getFirst()).isInstanceOf(TieAddition.class);
     }
 
     // -----------------------------------------------------------------------
@@ -225,7 +225,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        var addition = (TupletAddition) notification.getMutations().get(0);
+        var addition = (TupletAddition) notification.getMutations().getFirst();
         assertThat(addition.span().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
     }
 
@@ -275,9 +275,9 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         assertThat(notification.getMutations()).hasSize(1);
 
         if (crescendo) {
-            assertThat(notification.getMutations().get(0)).isInstanceOf(CrescendoAddition.class);
+            assertThat(notification.getMutations().getFirst()).isInstanceOf(CrescendoAddition.class);
         } else {
-            assertThat(notification.getMutations().get(0)).isInstanceOf(DiminuendoAddition.class);
+            assertThat(notification.getMutations().getFirst()).isInstanceOf(DiminuendoAddition.class);
         }
     }
 

@@ -126,7 +126,7 @@ class SongMetadataDialogFlowTest extends UnitTest {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
-            var change = (MetadataChange) notification.getMutations().get(0);
+            var change = (MetadataChange) notification.getMutations().getFirst();
             assertThat(change.field()).isEqualTo(MetadataField.TITLE);
         }
     }
@@ -190,6 +190,6 @@ class SongMetadataDialogFlowTest extends UnitTest {
             .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
-        return didChanges.get(0);
+        return didChanges.getFirst();
     }
 }

@@ -159,7 +159,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
-            assertThat(((ElementModification) notification.getMutations().get(0)).fields())
+            assertThat(((ElementModification) notification.getMutations().getFirst()).fields())
                 .containsExactly(ElementField.LYRIC);
             assertThat(element.getMainLyric())
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::extend)

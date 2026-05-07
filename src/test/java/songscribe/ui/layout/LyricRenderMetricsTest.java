@@ -82,7 +82,7 @@ class LyricRenderMetricsTest extends UnitTest {
 
         assertThat(boxes).hasSize(1);
 
-        var box = boxes.get(0);
+        var box = boxes.getFirst();
 
         assertThat(box.widthSs()).isCloseTo(LYRIC_METRICS.lyricBoxWidthSs(text), within(TOLERANCE));
     }

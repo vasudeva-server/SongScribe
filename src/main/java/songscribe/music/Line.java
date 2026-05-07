@@ -292,7 +292,7 @@ public class Line {
         var displacedFirstElement = (index == 0
             && !elements.isEmpty()
             && song.indexOfLine(this) == 0)
-            ? elements.get(0)
+            ? elements.getFirst()
             : null;
         var displacedTempo = displacedFirstElement != null ? displacedFirstElement.getTempoChange() : null;
 
@@ -887,7 +887,7 @@ public class Line {
             return;
         }
 
-        var element = elements.get(0);
+        var element = elements.getFirst();
 
         if (element.getTempoChange() == null) {
             var initialTempo = song.getTempo();

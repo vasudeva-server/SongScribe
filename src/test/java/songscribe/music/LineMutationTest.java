@@ -97,7 +97,7 @@ class LineMutationTest extends UnitTest {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
-            var deletion = (LineDeletion) notification.getMutations().get(0);
+            var deletion = (LineDeletion) notification.getMutations().getFirst();
             assertThat(deletion.lineIndex()).isEqualTo(0);
             assertThat(deletion.deletedLine()).isSameAs(line);
         }
@@ -135,7 +135,7 @@ class LineMutationTest extends UnitTest {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
-            var deletion = (ElementDeletion) notification.getMutations().get(0);
+            var deletion = (ElementDeletion) notification.getMutations().getFirst();
             assertThat(deletion.line()).isSameAs(line);
             assertThat(deletion.index()).isEqualTo(1);
             assertThat(deletion.deletedElement()).isSameAs(e1);
@@ -196,7 +196,7 @@ class LineMutationTest extends UnitTest {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
-            var deletion = (ElementRangeDeletion) notification.getMutations().get(0);
+            var deletion = (ElementRangeDeletion) notification.getMutations().getFirst();
             assertThat(deletion.line()).isSameAs(line);
             assertThat(deletion.from()).isEqualTo(2);
             assertThat(deletion.to()).isEqualTo(5);
@@ -300,7 +300,7 @@ class LineMutationTest extends UnitTest {
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
 
-            var deletion = (ElementRangeDeletion) notification.getMutations().get(0);
+            var deletion = (ElementRangeDeletion) notification.getMutations().getFirst();
             assertThat(deletion.line()).isSameAs(line);
             assertThat(deletion.from()).isEqualTo(begin);
             assertThat(deletion.to()).isEqualTo(end);
@@ -684,7 +684,7 @@ class LineMutationTest extends UnitTest {
         void testInsertionBreaksSyllableRelation() {
             setLyric(predecessor, Lyric.Syllabic.BEGIN, false);
             song.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
-            assertThat(predecessor.properties.lyrics.get(0).syllabic())
+            assertThat(predecessor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -692,7 +692,7 @@ class LineMutationTest extends UnitTest {
         void testInsertionBreaksCompoundWordRelation() {
             setLyric(predecessor, Lyric.Syllabic.BEGIN, true);
             song.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
-            assertThat(predecessor.properties.lyrics.get(0).syllabic())
+            assertThat(predecessor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -700,7 +700,7 @@ class LineMutationTest extends UnitTest {
         void testInsertionLeavesNoneRelationUnchanged() {
             setLyric(predecessor, Lyric.Syllabic.SINGLE, false);
             song.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
-            assertThat(predecessor.properties.lyrics.get(0).syllabic())
+            assertThat(predecessor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -709,7 +709,7 @@ class LineMutationTest extends UnitTest {
             setLyric(predecessor, Lyric.Syllabic.BEGIN, false);
             assertThatNoException().isThrownBy(() ->
                 song.withModification(() -> line.adjustSyllablesForNeighborChange(-1, null)));
-            assertThat(predecessor.properties.lyrics.get(0).syllabic())
+            assertThat(predecessor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.BEGIN);
         }
 
@@ -718,7 +718,7 @@ class LineMutationTest extends UnitTest {
             setLyric(predecessor, Lyric.Syllabic.BEGIN, false);
             setLyric(neighbor, Lyric.Syllabic.SINGLE, false);
             song.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
-            assertThat(predecessor.properties.lyrics.get(0).syllabic())
+            assertThat(predecessor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -727,7 +727,7 @@ class LineMutationTest extends UnitTest {
             setLyric(predecessor, Lyric.Syllabic.BEGIN, false);
             setLyric(neighbor, Lyric.Syllabic.BEGIN, false);
             song.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
-            assertThat(predecessor.properties.lyrics.get(0).syllabic())
+            assertThat(predecessor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.BEGIN);
         }
 
@@ -736,7 +736,7 @@ class LineMutationTest extends UnitTest {
             setLyric(predecessor, Lyric.Syllabic.BEGIN, false);
             // neighbor has no lyric
             song.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
-            assertThat(predecessor.properties.lyrics.get(0).syllabic())
+            assertThat(predecessor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -786,7 +786,7 @@ class LineMutationTest extends UnitTest {
         void testInsertionBeforeMiddleSyllablePromotesToBegin() {
             setLyric(Lyric.Syllabic.MIDDLE);
             song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(0));
-            assertThat(successor.properties.lyrics.get(0).syllabic())
+            assertThat(successor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.BEGIN);
         }
 
@@ -794,7 +794,7 @@ class LineMutationTest extends UnitTest {
         void testInsertionBeforeEndSyllablePromotesToSingle() {
             setLyric(Lyric.Syllabic.END);
             song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(0));
-            assertThat(successor.properties.lyrics.get(0).syllabic())
+            assertThat(successor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -802,7 +802,7 @@ class LineMutationTest extends UnitTest {
         void testInsertionBeforeBeginSyllableLeavesUnchanged() {
             setLyric(Lyric.Syllabic.BEGIN);
             song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(0));
-            assertThat(successor.properties.lyrics.get(0).syllabic())
+            assertThat(successor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.BEGIN);
         }
 
@@ -810,7 +810,7 @@ class LineMutationTest extends UnitTest {
         void testInsertionBeforeSingleSyllableLeavesUnchanged() {
             setLyric(Lyric.Syllabic.SINGLE);
             song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(0));
-            assertThat(successor.properties.lyrics.get(0).syllabic())
+            assertThat(successor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -826,7 +826,7 @@ class LineMutationTest extends UnitTest {
             // insertionIndex 1 means successorIndex 2, out of bounds for a 2-element line
             assertThatNoException().isThrownBy(() ->
                 song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(1)));
-            assertThat(successor.properties.lyrics.get(0).syllabic())
+            assertThat(successor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.MIDDLE);
         }
     }
@@ -1079,7 +1079,7 @@ class LineMutationTest extends UnitTest {
             .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
-        return didChanges.get(0);
+        return didChanges.getFirst();
     }
 
     private <T extends Mutation> T findSingleMutationOfType(
@@ -1094,7 +1094,7 @@ class LineMutationTest extends UnitTest {
             .as("expected exactly one %s mutation, got: %s", type.getSimpleName(), matches)
             .hasSize(1);
 
-        return matches.get(0);
+        return matches.getFirst();
     }
 
     private StaffElement makeExtendElement(Lyric.Extend extend) {
@@ -1106,7 +1106,7 @@ class LineMutationTest extends UnitTest {
     }
 
     private Lyric.Extend extendOf(StaffElement element) {
-        return element.properties.lyrics.get(0).extend();
+        return element.properties.lyrics.getFirst().extend();
     }
 
     private void addExtendChain(StaffElement... elements) {

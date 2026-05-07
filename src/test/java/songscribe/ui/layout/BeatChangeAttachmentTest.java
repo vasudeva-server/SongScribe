@@ -68,7 +68,7 @@ class BeatChangeAttachmentTest extends UnitTest {
         void testLeftNoteRegionStartsAtOrigin() {
             var font = song.getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
-            var leftNote = metrics.regions().get(0);
+            var leftNote = metrics.regions().getFirst();
 
             assertThat(leftNote.xOffsetSs()).isEqualTo(0.0);
             assertThat(leftNote.yOffsetSs()).isEqualTo(0.0);

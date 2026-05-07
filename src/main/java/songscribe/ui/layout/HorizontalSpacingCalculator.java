@@ -146,7 +146,7 @@ public class HorizontalSpacingCalculator {
 
         // Calculate first note position
         var firstXSs = calculateFirstNoteXSs(line);
-        columns.get(0).setXSs(firstXSs);
+        columns.getFirst().setXSs(firstXSs);
 
         // Process remaining columns
         for (var i = 1; i < columns.size(); i++) {
@@ -470,12 +470,12 @@ public class HorizontalSpacingCalculator {
 
         // Calculate where first column of beam group should go
         var prevColumn = columns.get(range.start - 1);
-        var firstBeamColumn = beamColumns.get(0);
+        var firstBeamColumn = beamColumns.getFirst();
         var startXSs = calculateNextColumnXSs(prevColumn, firstBeamColumn);
 
         if (columnCount == 1) {
             // Single column "beam group" - just use normal spacing
-            beamColumns.get(0).setXSs(startXSs);
+            beamColumns.getFirst().setXSs(startXSs);
             return;
         }
 
@@ -526,7 +526,7 @@ public class HorizontalSpacingCalculator {
             var expansionNeededSs = lyricRequiredWidthSs - tightTotalWidthSs;
             var expansionPerGapSs = expansionNeededSs / (columnCount - 1);
 
-            beamColumns.get(0).setXSs(startXSs);
+            beamColumns.getFirst().setXSs(startXSs);
             currentXSs = startXSs;
 
             for (var i = 1; i < columnCount; i++) {

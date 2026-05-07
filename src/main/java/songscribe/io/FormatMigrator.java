@@ -554,7 +554,7 @@ public final class FormatMigrator {
             stripFinalBarlines(lines.get(i));
         }
 
-        var lastLine = lines.get(lines.size() - 1);
+        var lastLine = lines.getLast();
         stripNonTerminalFinalBarlines(lastLine);
 
         var lastIdx = lastLine.elementCount() - 1;

@@ -71,7 +71,7 @@ class StaffElementCopyConstructorTest extends UnitTest {
         assertThat(copy.getArticulations()).hasSize(2);
         assertThat(copy.getArticulations().get(0).getType()).isEqualTo(ArticulationType.STACCATO);
         assertThat(copy.getArticulations().get(1).getType()).isEqualTo(ArticulationType.ACCENT);
-        assertThat(copy.getArticulations().get(0)).isNotSameAs(source.getArticulations().get(0));
+        assertThat(copy.getArticulations().get(0)).isNotSameAs(source.getArticulations().getFirst());
     }
 
     @Test

@@ -201,8 +201,8 @@ class LineSelectionHandler {
         dragging = true;
 
         // Clamp coordinates to component bounds
-        var x = Math.max(0, Math.min(e.getX(), lc.getWidth() - 1));
-        var y = Math.max(0, Math.min(e.getY(), lc.getHeight() - 1));
+        var x = Math.clamp(e.getX(), 0, lc.getWidth() - 1);
+        var y = Math.clamp(e.getY(), 0, lc.getHeight() - 1);
 
         dragRectangle.setBounds(
             Math.min(dragStart.x, x),

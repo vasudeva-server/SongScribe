@@ -101,7 +101,7 @@ public class CompactTestReporter implements TestExecutionListener {
             var name = current.getDisplayName();
 
             if (!name.startsWith("[engine:")) {
-                parts.add(0, name);
+                parts.addFirst(name);
             }
 
             current = plan.getParent(current).orElse(null);

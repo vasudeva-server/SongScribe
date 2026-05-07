@@ -144,12 +144,12 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.get(0).span()).isSameAs(originalBeam);
+        assertThat(removals.getFirst().span()).isSameAs(originalBeam);
 
         var additions = mutationsOfType(BeamingAddition.class);
         assertThat(additions).hasSize(1);
-        assertThat(additions.get(0).span().start).isEqualTo(1);
-        assertThat(additions.get(0).span().end).isEqualTo(2);
+        assertThat(additions.getFirst().span().start).isEqualTo(1);
+        assertThat(additions.getFirst().span().end).isEqualTo(2);
     }
 
     @Test
@@ -172,12 +172,12 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.get(0).span()).isSameAs(originalBeam);
+        assertThat(removals.getFirst().span()).isSameAs(originalBeam);
 
         var additions = mutationsOfType(BeamingAddition.class);
         assertThat(additions).hasSize(1);
-        assertThat(additions.get(0).span().start).isEqualTo(0);
-        assertThat(additions.get(0).span().end).isEqualTo(1);
+        assertThat(additions.getFirst().span().start).isEqualTo(0);
+        assertThat(additions.getFirst().span().end).isEqualTo(1);
     }
 
     @Test
@@ -202,7 +202,7 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.get(0).span()).isSameAs(originalBeam);
+        assertThat(removals.getFirst().span()).isSameAs(originalBeam);
 
         assertThat(mutationsOfType(BeamingAddition.class))
             .as("interior puncture kills the beam without a replacement")
@@ -228,7 +228,7 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.get(0).span()).isSameAs(originalBeam);
+        assertThat(removals.getFirst().span()).isSameAs(originalBeam);
 
         assertThat(mutationsOfType(BeamingAddition.class))
             .as("single remaining beamable element cannot form a beam")
@@ -310,6 +310,6 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
 
         var removals = mutationsOfType(TupletRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.get(0).span()).isSameAs(tuplet);
+        assertThat(removals.getFirst().span()).isSameAs(tuplet);
     }
 }

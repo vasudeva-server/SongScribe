@@ -198,7 +198,7 @@ public final class ComponentHierarchyNavigator {
         if (linePanels.size() >= 2) {
             rowHeight = getActualLineMiddleY(1) - getActualLineMiddleY(0);
         } else {
-            var linePanel = linePanels.get(0);
+            var linePanel = linePanels.getFirst();
             rowHeight = linePanel.getLineComponent().getHeight()
                 + ScaleContext.getInstance().toRoundedPixels(StaffPanel.LINE_MARGIN_BOTTOM_SS);
         }

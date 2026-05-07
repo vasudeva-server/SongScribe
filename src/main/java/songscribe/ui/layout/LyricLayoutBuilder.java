@@ -301,7 +301,7 @@ public final class LyricLayoutBuilder {
     }
 
     private static boolean isHostOfPairedGraceColumn(List<ElementColumn> columns, int index) {
-        var line = columns.get(0).getElement().getLine();
+        var line = columns.getFirst().getElement().getLine();
         return line.isHostOfPairedGraceNote(index);
     }
 

@@ -214,16 +214,16 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
 
         var replacements = mutationsOfType(ElementReplacement.class);
         assertThat(replacements).hasSize(1);
-        assertThat(replacements.get(0).index()).isEqualTo(3);
+        assertThat(replacements.getFirst().index()).isEqualTo(3);
 
         var beamRemovals = mutationsOfType(BeamingRemoval.class);
         assertThat(beamRemovals).hasSize(1);
-        assertThat(beamRemovals.get(0).span()).isSameAs(originalBeam);
+        assertThat(beamRemovals.getFirst().span()).isSameAs(originalBeam);
 
         var beamAdditions = mutationsOfType(BeamingAddition.class);
         assertThat(beamAdditions).hasSize(1);
-        assertThat(beamAdditions.get(0).span().start).isEqualTo(0);
-        assertThat(beamAdditions.get(0).span().end).isEqualTo(2);
+        assertThat(beamAdditions.getFirst().span().start).isEqualTo(0);
+        assertThat(beamAdditions.getFirst().span().end).isEqualTo(2);
 
         assertNoTieMutations();
     }
@@ -249,11 +249,11 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
 
         var replacements = mutationsOfType(ElementReplacement.class);
         assertThat(replacements).hasSize(1);
-        assertThat(replacements.get(0).index()).isEqualTo(2);
+        assertThat(replacements.getFirst().index()).isEqualTo(2);
 
         var tupletRemovals = mutationsOfType(TupletRemoval.class);
         assertThat(tupletRemovals).hasSize(1);
-        assertThat(tupletRemovals.get(0).span()).isSameAs(tuplet);
+        assertThat(tupletRemovals.getFirst().span()).isSameAs(tuplet);
 
         assertThat(mutationsOfType(TupletAddition.class))
             .as("tuplet invalidation never re-adds a split tuplet")

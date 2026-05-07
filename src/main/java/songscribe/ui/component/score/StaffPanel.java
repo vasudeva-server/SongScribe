@@ -200,7 +200,7 @@ public class StaffPanel extends JPanel {
      * so that all lines report a uniform preferred height.
      */
     private void updateSongMetrics() {
-        var score = linePanels.get(0).getLineComponent().getScore();
+        var score = linePanels.getFirst().getLineComponent().getScore();
 
         // Ensure LyricRenderMetrics on Score is up-to-date before any line layout runs.
         // Line layouts read hyphenWidthSs and spaceWidthSs from these metrics to reserve

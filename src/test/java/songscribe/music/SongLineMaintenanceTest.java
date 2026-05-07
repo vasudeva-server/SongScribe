@@ -146,8 +146,8 @@ class SongLineMaintenanceTest extends UnitTest {
                 .map(m -> (ElementInsertion) m)
                 .toList();
             assertThat(insertions).hasSize(1);
-            assertThat(insertions.get(0).line()).isSameAs(newLast);
-            assertThat(insertions.get(0).index()).isEqualTo(1);
+            assertThat(insertions.getFirst().line()).isSameAs(newLast);
+            assertThat(insertions.getFirst().index()).isEqualTo(1);
 
             // Trailing note is still there, followed by FINAL.
             assertThat(newLast.elementCount()).isEqualTo(2);
@@ -425,7 +425,7 @@ class SongLineMaintenanceTest extends UnitTest {
             .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
-        return didChanges.get(0);
+        return didChanges.getFirst();
     }
 
     private <T> T singleMutationOfType(
@@ -441,6 +441,6 @@ class SongLineMaintenanceTest extends UnitTest {
                 type.getSimpleName(), notification.getMutations())
             .hasSize(1);
 
-        return matches.get(0);
+        return matches.getFirst();
     }
 }

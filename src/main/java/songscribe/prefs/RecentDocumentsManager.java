@@ -70,10 +70,10 @@ public final class RecentDocumentsManager {
         var normalized = absolutePath.normalize();
 
         paths.remove(normalized);
-        paths.add(0, normalized);
+        paths.addFirst(normalized);
 
         while (paths.size() > MAX_SIZE) {
-            paths.remove(paths.size() - 1);
+            paths.removeLast();
         }
 
         persist();

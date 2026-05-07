@@ -431,7 +431,7 @@ public final class SongIO {
                         parsedLines.add(new Line(parsingSong));
                     }
 
-                    var line = parsedLines.get(parsedLines.size() - 1);
+                    var line = parsedLines.getLast();
                     note.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(
                         InsertionSpacingCalculator.calculateAppendPositionSs(line, note, null)));
                     note.setUpper(Score.defaultUpperNote(note));
@@ -499,7 +499,7 @@ public final class SongIO {
             endElement12(qName);
 
             if ((where == Where.LINES) && !parsedLines.isEmpty()) {
-                var lastLine = parsedLines.get(parsedLines.size() - 1);
+                var lastLine = parsedLines.getLast();
 
                 for (var i = 0; i < lastLine.elementCount(); i++) {
                     if (lastLine.getElement(i).getType().isGraceNote()) {

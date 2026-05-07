@@ -133,7 +133,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
             .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
-        return didChanges.get(0);
+        return didChanges.getFirst();
     }
 
     // -----------------------------------------------------------------------
@@ -149,8 +149,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
-        assertThat(mutations.get(0)).isInstanceOf(BeamingAddition.class);
-        var addition = (BeamingAddition) mutations.get(0);
+        assertThat(mutations.getFirst()).isInstanceOf(BeamingAddition.class);
+        var addition = (BeamingAddition) mutations.getFirst();
         assertThat(addition.span().start).isEqualTo(0);
         assertThat(addition.span().end).isEqualTo(2);
         assertThat(addition.line()).isSameAs(env.line());
@@ -166,8 +166,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
-        assertThat(mutations.get(0)).isInstanceOf(BeamingRemoval.class);
-        assertThat(((BeamingRemoval) mutations.get(0)).line()).isSameAs(env.line());
+        assertThat(mutations.getFirst()).isInstanceOf(BeamingRemoval.class);
+        assertThat(((BeamingRemoval) mutations.getFirst()).line()).isSameAs(env.line());
     }
 
     // -----------------------------------------------------------------------
@@ -183,8 +183,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
-        assertThat(mutations.get(0)).isInstanceOf(TieAddition.class);
-        var addition = (TieAddition) mutations.get(0);
+        assertThat(mutations.getFirst()).isInstanceOf(TieAddition.class);
+        var addition = (TieAddition) mutations.getFirst();
         assertThat(addition.span().start).isEqualTo(0);
         assertThat(addition.span().end).isEqualTo(1);
         assertThat(addition.line()).isSameAs(env.line());
@@ -200,8 +200,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
-        assertThat(mutations.get(0)).isInstanceOf(TieRemoval.class);
-        assertThat(((TieRemoval) mutations.get(0)).line()).isSameAs(env.line());
+        assertThat(mutations.getFirst()).isInstanceOf(TieRemoval.class);
+        assertThat(((TieRemoval) mutations.getFirst()).line()).isSameAs(env.line());
     }
 
     // -----------------------------------------------------------------------
@@ -217,8 +217,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
-        assertThat(mutations.get(0)).isInstanceOf(TupletAddition.class);
-        var addition = (TupletAddition) mutations.get(0);
+        assertThat(mutations.getFirst()).isInstanceOf(TupletAddition.class);
+        var addition = (TupletAddition) mutations.getFirst();
         assertThat(addition.span().start).isEqualTo(0);
         assertThat(addition.span().end).isEqualTo(2);
         assertThat(addition.span().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
@@ -235,8 +235,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
-        assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
-        assertThat(((TupletRemoval) mutations.get(0)).line()).isSameAs(env.line());
+        assertThat(mutations.getFirst()).isInstanceOf(TupletRemoval.class);
+        assertThat(((TupletRemoval) mutations.getFirst()).line()).isSameAs(env.line());
     }
 
     @Test
@@ -253,8 +253,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(2);
-        assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
-        var removal = (TupletRemoval) mutations.get(0);
+        assertThat(mutations.getFirst()).isInstanceOf(TupletRemoval.class);
+        var removal = (TupletRemoval) mutations.getFirst();
         assertThat(removal.span().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
         assertThat(removal.line()).isSameAs(env.line());
         assertThat(mutations.get(1)).isInstanceOf(TupletAddition.class);
@@ -276,7 +276,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
-        assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
+        assertThat(mutations.getFirst()).isInstanceOf(TupletRemoval.class);
     }
 
     @Test
@@ -314,9 +314,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(mutations).hasSize(1);
 
         if (crescendo) {
-            assertThat(mutations.get(0)).isInstanceOf(CrescendoAddition.class);
+            assertThat(mutations.getFirst()).isInstanceOf(CrescendoAddition.class);
         } else {
-            assertThat(mutations.get(0)).isInstanceOf(DiminuendoAddition.class);
+            assertThat(mutations.getFirst()).isInstanceOf(DiminuendoAddition.class);
         }
     }
 
@@ -431,9 +431,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
-        assertThat(mutations.get(0)).isInstanceOf(RangeElementAddition.class);
+        assertThat(mutations.getFirst()).isInstanceOf(RangeElementAddition.class);
 
-        var rangeAddition = (RangeElementAddition) mutations.get(0);
+        var rangeAddition = (RangeElementAddition) mutations.getFirst();
         assertThat(rangeAddition.element()).isInstanceOf(Ending.class);
     }
 

@@ -181,9 +181,9 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         assertThat(result.boxes()).hasSize(3);
         assertThat(boxesOf(result.boxes(), n1)).hasSize(1);
-        assertThat(boxesOf(result.boxes(), n1).get(0).text()).isEqualTo("do");
-        assertThat(boxesOf(result.boxes(), n2).get(0).text()).isEqualTo("re");
-        assertThat(boxesOf(result.boxes(), n3).get(0).text()).isEqualTo("mi");
+        assertThat(boxesOf(result.boxes(), n1).getFirst().text()).isEqualTo("do");
+        assertThat(boxesOf(result.boxes(), n2).getFirst().text()).isEqualTo("re");
+        assertThat(boxesOf(result.boxes(), n3).getFirst().text()).isEqualTo("mi");
 
         var hyphens = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN);
         assertThat(hyphens).hasSize(2);
@@ -212,8 +212,8 @@ class LyricLayoutBuilderTest extends UnitTest {
         var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes()).hasSize(2);
-        assertThat(boxesOf(result.boxes(), n1).get(0).text()).isEqualTo("heart");
-        assertThat(boxesOf(result.boxes(), n4).get(0).text()).isEqualTo("garden");
+        assertThat(boxesOf(result.boxes(), n1).getFirst().text()).isEqualTo("heart");
+        assertThat(boxesOf(result.boxes(), n4).getFirst().text()).isEqualTo("garden");
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
@@ -244,7 +244,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
-        assertThat(extenders.get(0).endXSs())
+        assertThat(extenders.getFirst().endXSs())
             .as("extender ends at rest's left edge")
             .isCloseTo(columns.get(2).getLeftEdgeXSs(), within(TOLERANCE));
     }
@@ -301,20 +301,20 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(resultA.hasTrailingContinuation()).isTrue();
         var trailingExtenders = connectorsOfKind(resultA.connectors(), LyricConnectorLayout.Kind.DANGLING_EXTENDER);
         assertThat(trailingExtenders).hasSize(1);
-        assertThat(trailingExtenders.get(0).endXSs())
+        assertThat(trailingExtenders.getFirst().endXSs())
             .as("trailing stub ends at last note's right edge")
-            .isCloseTo(columnsA.get(0).getRightEdgeXSs(), within(TOLERANCE));
+            .isCloseTo(columnsA.getFirst().getRightEdgeXSs(), within(TOLERANCE));
 
         var resultB = LyricLayoutBuilder.build(columnsB, LYRIC_METRICS, true, LINE_WIDTH_SS);
 
         var leadingExtenders = connectorsOfKind(resultB.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(leadingExtenders).hasSize(1);
-        assertThat(leadingExtenders.get(0).startXSs())
+        assertThat(leadingExtenders.getFirst().startXSs())
             .as("leading stub starts at line left edge")
             .isCloseTo(0.0, within(TOLERANCE));
-        assertThat(leadingExtenders.get(0).endXSs())
+        assertThat(leadingExtenders.getFirst().endXSs())
             .as("leading stub ends at garden's left edge")
-            .isEqualTo(boxesOf(resultB.boxes(), n3).get(0).xSs(), within(TOLERANCE));
+            .isEqualTo(boxesOf(resultB.boxes(), n3).getFirst().xSs(), within(TOLERANCE));
     }
 
     // Dangling extender: note with extend=START followed only by bare notes with no lyrics →
@@ -339,9 +339,9 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var danglingExtenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.DANGLING_EXTENDER);
         assertThat(danglingExtenders).hasSize(1);
-        assertThat(danglingExtenders.get(0).endXSs())
+        assertThat(danglingExtenders.getFirst().endXSs())
             .as("dangling extender ends at START note's right edge")
-            .isCloseTo(columns.get(0).getRightEdgeXSs(), within(TOLERANCE));
+            .isCloseTo(columns.getFirst().getRightEdgeXSs(), within(TOLERANCE));
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER)).isEmpty();
     }
 
@@ -370,7 +370,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var danglingExtenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.DANGLING_EXTENDER);
         assertThat(danglingExtenders).hasSize(1);
-        assertThat(danglingExtenders.get(0).endXSs())
+        assertThat(danglingExtenders.getFirst().endXSs())
             .as("dangling extender ends at last CONTINUE note's right edge (n3), not n4 (no extend marker)")
             .isCloseTo(columns.get(2).getRightEdgeXSs(), within(TOLERANCE));
     }
@@ -410,7 +410,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
-        assertThat(extenders.get(0).endXSs())
+        assertThat(extenders.getFirst().endXSs())
             .as("extender ends 0.25 ss beyond stop carrier note's right edge")
             .isCloseTo(
                 columns.get(1).getRightEdgeXSs() + LyricLayoutBuilder.STOP_MELISMA_OVERSHOOT_SS,

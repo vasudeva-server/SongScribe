@@ -98,7 +98,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        var modification = (ElementModification) notification.getMutations().get(0);
+        var modification = (ElementModification) notification.getMutations().getFirst();
         assertThat(modification.fields()).containsExactly(ElementField.LYRIC);
         assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ho");
     }
@@ -118,7 +118,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        var modification = (ElementModification) notification.getMutations().get(0);
+        var modification = (ElementModification) notification.getMutations().getFirst();
         assertThat(modification.fields()).containsExactly(ElementField.LYRIC);
         assertThat(element.getMainLyric()).isNull();
     }
@@ -297,7 +297,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(((ElementModification) notification.getMutations().get(0)).fields())
+        assertThat(((ElementModification) notification.getMutations().getFirst()).fields())
             .containsExactly(ElementField.LYRIC);
 
         var captor = ArgumentCaptor.forClass(LyricEditor.class);
@@ -329,7 +329,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(((ElementModification) notification.getMutations().get(0)).fields())
+        assertThat(((ElementModification) notification.getMutations().getFirst()).fields())
             .containsExactly(ElementField.LYRIC);
 
         var captor = ArgumentCaptor.forClass(LyricEditor.class);
@@ -358,7 +358,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(((ElementModification) notification.getMutations().get(0)).fields())
+        assertThat(((ElementModification) notification.getMutations().getFirst()).fields())
             .containsExactly(ElementField.LYRIC);
 
         verify(score, never()).addOverlay(any(LyricEditor.class));
@@ -549,7 +549,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(((ElementModification) notification.getMutations().get(0)).fields())
+        assertThat(((ElementModification) notification.getMutations().getFirst()).fields())
             .containsExactly(ElementField.LYRIC);
         assertThat(e0.getLyricForVerse(1)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
     }

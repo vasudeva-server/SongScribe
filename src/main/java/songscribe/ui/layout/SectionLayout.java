@@ -96,7 +96,7 @@ public record SectionLayout(ElementBoundsSs bounds, List<String> lines, @Nullabl
      * Returns the first text line, or empty string if none.
      */
     public String getText() {
-        return lines.isEmpty() ? "" : lines.get(0);
+        return lines.isEmpty() ? "" : lines.getFirst();
     }
 
     /**
@@ -119,7 +119,7 @@ public record SectionLayout(ElementBoundsSs bounds, List<String> lines, @Nullabl
      * Returns whether this section has any content.
      */
     public boolean hasContent() {
-        return !lines.isEmpty() && !lines.get(0).isEmpty();
+        return !lines.isEmpty() && !lines.getFirst().isEmpty();
     }
 
     /**

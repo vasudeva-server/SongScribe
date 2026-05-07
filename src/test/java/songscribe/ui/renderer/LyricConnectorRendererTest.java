@@ -203,7 +203,7 @@ class LyricConnectorRendererTest extends UnitTest {
             .toList();
 
         assertThat(actualStrokes).hasSize(1);
-        assertThat(actualStrokes.get(0).getLineWidth()).isEqualTo(0.1045f);
+        assertThat(actualStrokes.getFirst().getLineWidth()).isEqualTo(0.1045f);
     }
 
     @Test
