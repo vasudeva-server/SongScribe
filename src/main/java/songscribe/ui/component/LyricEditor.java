@@ -440,9 +440,9 @@ public final class LyricEditor extends MyJTextField {
     public void attachListeners() {
         ((AbstractDocument) getDocument()).setDocumentFilter(new DocumentFilter() {
             @Override
-            public void insertString(FilterBypass fb, int offset, String text, AttributeSet attr)
+            public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr)
                 throws BadLocationException {
-                var filtered = filterInsertion(fb.getDocument().getLength(), 0, text);
+                var filtered = filterInsertion(fb.getDocument().getLength(), 0, string);
 
                 if (filtered != null) {
                     super.insertString(fb, offset, filtered, attr);

@@ -639,8 +639,8 @@ public final class Score
     }
 
     @Override
-    public boolean isElementSelected(int xIndex, int line) {
-        return selectionCoordinator.isElementSelected(xIndex, line);
+    public boolean isElementSelected(int elementIndex, int lineIndex) {
+        return selectionCoordinator.isElementSelected(elementIndex, lineIndex);
     }
 
     @Override
@@ -686,10 +686,10 @@ public final class Score
     }
 
     @Override
-    public int getNoteYPosPx(int staffPosition, int line) {
+    public int getNoteYPosPx(int staffPosition, int lineIndex) {
         return (int) (middleLineYPx +
             (staffPosition * STAFF_POSITION_OFFSET_PX) +
-            (line * rowHeightPx));
+            (lineIndex * rowHeightPx));
     }
 
     @Override
@@ -704,21 +704,21 @@ public final class Score
     }
 
     @Override
-    public void setPreviewElement(@Nullable StaffElement previewElement) {
-        if (previewElement != null) {
+    public void setPreviewElement(@Nullable StaffElement element) {
+        if (element != null) {
             var currentPreviewElement = editModeManager.getPreviewElement();
 
             if (currentPreviewElement != null) {
-                previewElement.setStaffPosition(currentPreviewElement.getStaffPosition());
-                previewElement.setXOffsetPx(currentPreviewElement.getXOffsetPx());
+                element.setStaffPosition(currentPreviewElement.getStaffPosition());
+                element.setXOffsetPx(currentPreviewElement.getXOffsetPx());
             } else {
-                editModeManager.setPreviewElement(previewElement);
+                editModeManager.setPreviewElement(element);
             }
 
-            previewElement.setUpper(defaultUpperNote(previewElement));
+            element.setUpper(defaultUpperNote(element));
         }
 
-        editModeManager.setPreviewElement(previewElement);
+        editModeManager.setPreviewElement(element);
         repaint();
     }
 
@@ -902,7 +902,7 @@ public final class Score
     }
 
     @Override
-    public void drawWidthIfWiderLine(Line line, boolean strict) {
+    public void drawWidthIfWiderLine(Line line, boolean revalidateOnly) {
         // Exclude the auto-maintained FINAL_DOUBLE_BARLINE from stretch calculations:
         // its position is fixed at the line's right edge and must not be treated as
         // the end note when computing the ratio.
@@ -912,7 +912,7 @@ public final class Score
             var endNote = line.getElement(effectiveCount - 1);
             float idealSpace;
 
-            if (strict) {
+            if (revalidateOnly) {
                 idealSpace = (float) endNote.getContentWidthPx();
             } else {
                 idealSpace = (float) ScaleContext.getInstance().toPixels(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS) + 20;

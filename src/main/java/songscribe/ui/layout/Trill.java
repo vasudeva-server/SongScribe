@@ -59,6 +59,7 @@ public class Trill extends RangeElement {
      *
      * @param anchorElement The note with the trill
      */
+    @SuppressWarnings("ParameterNameDiffersFromOverriddenParameter")
     public Trill(StaffElement anchorElement) {
         this(anchorElement, anchorElement);
     }

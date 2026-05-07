@@ -150,9 +150,9 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void propertyChange(PropertyChangeEvent e) {
-        if (selectLevel == 0 && Action.SELECTED_KEY.equals(e.getPropertyName())) {
-            setSelected((T) e.getSource(), (Boolean) e.getNewValue());
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (selectLevel == 0 && Action.SELECTED_KEY.equals(evt.getPropertyName())) {
+            setSelected((T) evt.getSource(), (Boolean) evt.getNewValue());
         }
     }
 }

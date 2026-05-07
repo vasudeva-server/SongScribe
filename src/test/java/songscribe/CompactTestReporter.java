@@ -56,17 +56,17 @@ public class CompactTestReporter implements TestExecutionListener {
     }
 
     @Override
-    public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult result) {
+    public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult testExecutionResult) {
         if (!testIdentifier.isTest()) {
             return;
         }
 
-        switch (result.getStatus()) {
+        switch (testExecutionResult.getStatus()) {
             case SUCCESSFUL -> passed.incrementAndGet();
             case FAILED, ABORTED -> {
                 failed.incrementAndGet();
                 System.err.println("\nFAILED: " + buildDisplayPath(testIdentifier));
-                result.getThrowable().ifPresent(this::printThrowable);
+                testExecutionResult.getThrowable().ifPresent(this::printThrowable);
             }
         }
     }

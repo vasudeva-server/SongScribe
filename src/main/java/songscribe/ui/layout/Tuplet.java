@@ -48,12 +48,12 @@ public class Tuplet extends RangeElement {
     /**
      * Creates a tuplet grouping.
      *
-     * @param anchorNote The first note in the tuplet
-     * @param endNote    The last note in the tuplet
+     * @param anchorElement The first note in the tuplet
+     * @param endElement    The last note in the tuplet
      * @param grade      The tuplet number (3 for triplet, 5 for quintuplet, etc.)
      */
-    public Tuplet(StaffElement anchorNote, StaffElement endNote, int grade) {
-        super(anchorNote, endNote);
+    public Tuplet(StaffElement anchorElement, StaffElement endElement, int grade) {
+        super(anchorElement, endElement);
         this.grade = grade;
     }
 

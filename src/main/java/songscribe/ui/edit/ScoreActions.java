@@ -48,9 +48,9 @@ public interface ScoreActions {
     /**
      * Sets the insertion note.
      *
-     * @param insertionNote The note to set as the insertion note
+     * @param element The note to set as the insertion note
      */
-    void setPreviewElement(@Nullable StaffElement insertionNote);
+    void setPreviewElement(@Nullable StaffElement element);
 
     /**
      * Adjusts the drawing width if the line is wider than the current width.
