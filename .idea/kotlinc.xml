@@ -8,6 +8,5 @@
   </component>
   <component name="KotlinJpsPluginSettings">
     <option name="externalSystemId" value="Maven" />
-    <option name="version" value="2.3.0" />
   </component>
 </project>

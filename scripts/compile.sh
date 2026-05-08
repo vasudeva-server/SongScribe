@@ -5,7 +5,7 @@ source "$(dirname "$0")/set-java-home.sh"
 if [[ "$1" == "--test" ]]; then
   goals="test-compile"
 else
-  goals="generate-sources dependency:copy@copy-native-libs resources:resources kotlin:compile compiler:compile"
+  goals="generate-sources dependency:copy@copy-native-libs resources:resources compiler:compile"
 fi
 
 # shellcheck disable=SC2086

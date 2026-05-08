@@ -1,5 +1,5 @@
 ---
-paths: src/**/*.{java,kt}
+paths: src/**/*.java
 ---
 
 ## CRITICAL: No Logic Duplication
@@ -76,9 +76,7 @@ private static double getRightExtentSs(
 
 ---
 
-## Java+Kotlin Code Style
-
-These rules are written for Java, adjust for equivalent concepts in Kotlin.
+## Java Code Style
 
 ### File Headers
 
