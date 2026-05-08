@@ -49,6 +49,7 @@ class LyricTest {
         assertThat(notCompound.compound()).isFalse();
     }
 
+    @SuppressWarnings("DuplicateExpressions")
     @Test
     void testEqualRecordsWithAllSyllabicValues() {
         var variants = new Variant[] {

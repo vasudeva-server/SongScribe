@@ -3,4 +3,5 @@
 # Usage: source scripts/set-java-home.sh
 # Or:    $(scripts/set-java-home.sh)
 
-export JAVA_HOME=$(/usr/libexec/java_home -v 25 2>/dev/null || /usr/libexec/java_home)
+JAVA_HOME=$(/usr/libexec/java_home -v 25 2>/dev/null || /usr/libexec/java_home)
+export JAVA_HOME

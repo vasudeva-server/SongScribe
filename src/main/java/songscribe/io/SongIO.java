@@ -535,7 +535,6 @@ public final class SongIO {
                 //noinspection PointlessNullCheck
                 if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
-                    var useDouble = majorVersion >= 2 && minorVersion >= 1;
 
                     switch (lastTag) {
                         case XML_KEYS -> defaultKeyAccidentalCount =
@@ -560,13 +559,13 @@ public final class SongIO {
                         case XML_FOOTNOTES -> footnotes = str;
                         case XML_INFO -> attribution = str;
                         case XML_TOP_SPACE -> topPaddingSs =
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                            parseVersionedDouble(str);
                         case XML_INFO_STARTY -> attributionStartYSs =
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                            parseVersionedDouble(str);
                         case XML_ROW_HEIGHT -> rowHeightAdjustmentSs =
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                            parseVersionedDouble(str);
                         case XML_LINE_WIDTH -> lineWidthSs =
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                            parseVersionedDouble(str);
                         case XML_DYNAMIC_LAYOUT -> hasBeenDynamicallyLaidOut =
                             Boolean.parseBoolean(str);
                     }
@@ -744,6 +743,12 @@ public final class SongIO {
             var stub = Song.newParsingStub();
             stub.beginSuspendMutationTracking();
             return stub;
+        }
+
+        private double parseVersionedDouble(String str) {
+            return (majorVersion >= 2 && minorVersion >= 1)
+                ? Double.parseDouble(str)
+                : Integer.parseInt(str);
         }
 
         private static Font defaultFontFromPrefs(PrefsKey nameKey, PrefsKey sizeKey) {

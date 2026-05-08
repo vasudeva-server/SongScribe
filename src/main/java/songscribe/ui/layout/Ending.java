@@ -499,6 +499,7 @@ public class Ending extends RangeElement {
         var splitEl = findRepeatSplitElement(line);
 
         // Condition 2 — split element replaced
+        //noinspection ConditionCoveredByFurtherCondition -- false positive
         if (splitEl != null && oldElement == splitEl) {
             if (newType == ElementType.REPEAT_RIGHT) {
                 // REPEAT_RIGHT → REPEAT_RIGHT: no change needed

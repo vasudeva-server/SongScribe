@@ -94,7 +94,13 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     public static final Font MUSIC_FONT;
 
     /**
-     * The music font scaled for grace note rendering ({@link NoteRenderer#GRACE_NOTE_SCALE}).
+     * Scale factor applied to grace notes relative to regular notes.
+     * Grace notes use the regular glyphs drawn with a scaled-down Bravura font.
+     */
+    public static final float GRACE_NOTE_SCALE = 0.75f;
+
+    /**
+     * The music font scaled for grace note rendering ({@link #GRACE_NOTE_SCALE}).
      */
     public static final Font GRACE_NOTE_FONT;
 
@@ -117,7 +123,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     static {
         try {
             MUSIC_FONT = getMusicFont();
-            GRACE_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * NoteRenderer.GRACE_NOTE_SCALE);
+            GRACE_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * GRACE_NOTE_SCALE);
         } catch (Exception e) {
             throw new RuntimeException("Cannot load required fonts for rendering.", e);
         }

@@ -433,9 +433,6 @@ public class LayoutEngine {
 
                     // Reduce slope and reanchor so the anchor note still has exactly MIN_STEM_SS.
                     slope *= 0.85;
-                    beamYAtAnchorSs = stemsUp
-                        ? anchorElementYSs - MIN_STEM_SS
-                        : anchorElementYSs + MIN_STEM_SS;
                     startYSs = beamYAtAnchorSs - slope * (anchorXSs - firstXSs);
                 }
 

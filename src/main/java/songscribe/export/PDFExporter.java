@@ -63,7 +63,7 @@ public final class PDFExporter {
         var horizontalScale = (paperWidth - horizontalMargin) / sheetWidth;
         var verticalMargin = (data.topMarginPx + data.bottomMarginPx) * resolution;
         var verticalScale = (paperHeight - verticalMargin) / sheetHeight;
-        var scale = (horizontalScale < verticalScale) ? horizontalScale : verticalScale;
+        var scale = Math.min(horizontalScale, verticalScale);
         var leftMargin = (double) data.leftInnerMarginPx * resolution;
 
         if (horizontalScale >= verticalScale) {

@@ -63,11 +63,6 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
      */
     public static final double GRACE_NOTE_STEM_LENGTH_SS = 2.5;
     /**
-     * Scale factor applied to grace notes relative to regular notes.
-     * Grace notes use the regular glyphs drawn with a scaled-down Bravura font.
-     */
-    public static final float GRACE_NOTE_SCALE = 0.75f;
-    /**
      * Stem width in staff-space units (LilyPond multiplier-derived).
      */
     public static final double STEM_WIDTH_SS = LineThickness.getInstance().stemSs();

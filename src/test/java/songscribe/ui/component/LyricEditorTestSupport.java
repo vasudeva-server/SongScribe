@@ -43,6 +43,7 @@ import songscribe.music.Line;
 import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
 
+@SuppressWarnings("resource")
 abstract class LyricEditorTestSupport extends UnitTest {
 
     @Nullable

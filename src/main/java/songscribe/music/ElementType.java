@@ -33,6 +33,7 @@ import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.StaffExtents;
+import songscribe.ui.renderer.BaseElementRenderer;
 import songscribe.ui.renderer.LineThickness;
 import songscribe.error.RuntimeError;
 import songscribe.ui.renderer.NoteRenderer;
@@ -601,7 +602,7 @@ public enum ElementType {
 
     private static void computeGraceNoteBoundsSs(SMuFLMetadata metadata, ElementType type) {
         var headBBox = requireBBox(metadata, SMuFLGlyph.NOTEHEAD_BLACK, type);
-        double scale = NoteRenderer.GRACE_NOTE_SCALE;
+        double scale = BaseElementRenderer.GRACE_NOTE_SCALE;
 
         var headBottom = headBBox.bottom() * scale;
         var headRight = headBBox.right() * scale;

@@ -169,8 +169,7 @@ public record AttachmentLayout(Type type, int elementIndex, Point positionPx, El
             case BEAT_CHANGE -> VerticalOrder.BEAT_CHANGE;
             case FERMATA, TRILL -> VerticalOrder.TRILL;
             case ANNOTATION_ABOVE -> VerticalOrder.ANNOTATIONS_ABOVE;
-            case ANNOTATION_BELOW, DYNAMIC -> VerticalOrder.DYNAMICS;
-            case CRESCENDO, DIMINUENDO -> VerticalOrder.DYNAMICS;
+            case ANNOTATION_BELOW, DYNAMIC, CRESCENDO, DIMINUENDO -> VerticalOrder.DYNAMICS;
         };
     }
 
