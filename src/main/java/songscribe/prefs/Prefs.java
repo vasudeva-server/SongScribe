@@ -56,11 +56,24 @@ public final class Prefs {
 
     // Maps old flat-properties key names to PrefsKey values.
     // Used only during one-time migration from ~/.songscribe/props.
-    private static final Map<String, PrefsKey> MIGRATION_MAP;
-
-    static {
-        MIGRATION_MAP = Map.ofEntries(Map.entry("playinsertingnote", PrefsKey.PLAY_INSERTED_NOTE), Map.entry("playInsertingNote", PrefsKey.PLAY_INSERTED_NOTE), Map.entry("withrepeat", PrefsKey.PLAY_WITH_REPEATS), Map.entry("strip-short-a", PrefsKey.STRIP_SHORT_A), Map.entry("autosave-after-strip-short-a", PrefsKey.AUTO_SAVE_AFTER_STRIP_SHORT_A), Map.entry("tipindex", PrefsKey.TIP_INDEX), Map.entry("tempochange", PrefsKey.TEMPO_CHANGE_PERCENT), Map.entry("dpi", PrefsKey.EXPORT_DPI), Map.entry("showtip", PrefsKey.SHOW_TIPS), Map.entry("playcontinuously", PrefsKey.LOOP_PLAYBACK), Map.entry("control", PrefsKey.CONTROL), Map.entry("imageexportfilter", PrefsKey.IMAGE_EXPORT_FILTER), Map.entry("durationshortitude", PrefsKey.PLAYBACK_NOTE_DURATION), Map.entry("instrument", PrefsKey.INSTRUMENT), Map.entry("metric", PrefsKey.METRIC), Map.entry("firstrun", PrefsKey.FIRST_RUN));
-    }
+    private static final Map<String, PrefsKey> MIGRATION_MAP = Map.ofEntries(
+        Map.entry("playinsertingnote", PrefsKey.PLAY_INSERTED_NOTE),
+        Map.entry("playInsertingNote", PrefsKey.PLAY_INSERTED_NOTE),
+        Map.entry("withrepeat", PrefsKey.PLAY_WITH_REPEATS),
+        Map.entry("strip-short-a", PrefsKey.STRIP_SHORT_A),
+        Map.entry("autosave-after-strip-short-a", PrefsKey.AUTO_SAVE_AFTER_STRIP_SHORT_A),
+        Map.entry("tipindex", PrefsKey.TIP_INDEX),
+        Map.entry("tempochange", PrefsKey.TEMPO_CHANGE_PERCENT),
+        Map.entry("dpi", PrefsKey.EXPORT_DPI),
+        Map.entry("showtip", PrefsKey.SHOW_TIPS),
+        Map.entry("playcontinuously", PrefsKey.LOOP_PLAYBACK),
+        Map.entry("control", PrefsKey.CONTROL),
+        Map.entry("imageexportfilter", PrefsKey.IMAGE_EXPORT_FILTER),
+        Map.entry("durationshortitude", PrefsKey.PLAYBACK_NOTE_DURATION),
+        Map.entry("instrument", PrefsKey.INSTRUMENT),
+        Map.entry("metric", PrefsKey.METRIC),
+        Map.entry("firstrun", PrefsKey.FIRST_RUN)
+    );
 
     private static final List<String> OBSOLETE_KEYS = List.of("colorizeNote", "defaultProfile");
 
