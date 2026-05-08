@@ -650,10 +650,10 @@ public final class SongIO {
             }
 
             // Extract fonts from ViewReader (null for v1.0 files without View section)
-            @Nullable Font titleFont = null;
-            @Nullable Font lyricsFont = null;
-            @Nullable Font attributionFont = null;
-            @Nullable Font annotationFont = null;
+            Font titleFont = null;
+            Font lyricsFont = null;
+            Font attributionFont = null;
+            Font annotationFont = null;
 
             if (viewReader != null) {
                 titleFont = viewReader.getTitleFont();

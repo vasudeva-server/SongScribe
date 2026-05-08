@@ -126,6 +126,7 @@ public abstract class UnitTest {
      * Shared by {@link #detachedLine()} and
      * {@link songscribe.ui.selection.ReflectionTestHelper}.
      */
+    @SuppressWarnings("ReturnOfNull")
     public static Song minimalSongMock() {
         var songMock = mock(Song.class);
         when(songMock.isMutationTrackingSuspended()).thenReturn(true);

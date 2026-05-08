@@ -68,6 +68,7 @@ class BatchMutationTest extends UnitTest {
         return ReflectionTestHelper.createCoordinator(notes, actions, createSongMock());
     }
 
+    @SuppressWarnings("ReturnOfNull")
     private static Song createSongMock() {
         var songMock = mock(Song.class);
         when(songMock.isModifying()).thenReturn(true);

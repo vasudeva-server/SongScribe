@@ -96,6 +96,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         return ReflectionTestHelper.createCoordinator(notes, actions, managedActions, createSongMock());
     }
 
+    @SuppressWarnings("ReturnOfNull")
     private static Song createSongMock() {
         var songMock = mock(Song.class);
         when(songMock.isModifying()).thenReturn(true);

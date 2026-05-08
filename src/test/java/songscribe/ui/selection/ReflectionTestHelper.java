@@ -104,6 +104,7 @@ public final class ReflectionTestHelper {
      * registered and activated at line index 0, with the given reflectable and
      * managed actions injected.
      */
+    @SuppressWarnings("ReturnOfNull")
     public static SelectionCoordinator createCoordinator(
         List<? extends StaffElement> notes,
         List<UIAction.Reflectable> actions,

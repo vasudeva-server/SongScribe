@@ -24,7 +24,6 @@ import module java.desktop;
 
 import java.util.Arrays;
 
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -460,7 +459,7 @@ public final class UIUtils {
         });
     }
 
-    private static @NonNull JDialog getJDialog(Frame ancestor) {
+    private static JDialog getJDialog(Frame ancestor) {
         var dummy = new JDialog(ancestor, "Pre-warm", false);
         dummy.setResizable(false);
         dummy.setSize(200, 100);

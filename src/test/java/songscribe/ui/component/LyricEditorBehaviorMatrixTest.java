@@ -1224,6 +1224,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             assertThat(editor.getParent()).isNull();
         }
 
+        @SuppressWarnings("ReturnOfNull")
         @Test
         void f3_outsideMousePressedParentedAndFocusedCommitsAndDismisses() {
             var element = crotchet();

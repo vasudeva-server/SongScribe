@@ -84,6 +84,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         return ReflectionTestHelper.createCoordinator(notes, actions, createSongMock());
     }
 
+    @SuppressWarnings("ReturnOfNull")
     private Song createSongMock() {
         var songMock = mock(Song.class);
         when(songMock.isModifying()).thenReturn(true);
