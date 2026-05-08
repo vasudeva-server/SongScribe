@@ -429,7 +429,7 @@ public class HorizontalSpacingCalculator {
      * @return BeamGroupRange if found, null otherwise
      */
     private @Nullable BeamGroupRange findBeamGroupStartingAt(
-        List<? extends BeamGroupRange> ranges,
+        List<BeamGroupRange> ranges,
         int index) {
 
         for (var range : ranges) {
