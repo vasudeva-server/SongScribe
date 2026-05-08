@@ -63,7 +63,6 @@ import songscribe.ui.action.SaveAction;
 import songscribe.ui.action.SaveAsAction;
 import songscribe.ui.action.TipAction;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
 import songscribe.ui.dialog.KeyMapDialog;
 import songscribe.ui.platform.mac.MacNativeMenuController;
 import songscribe.ui.dialog.ReportBugDialog;
