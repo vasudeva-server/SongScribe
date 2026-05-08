@@ -403,7 +403,7 @@ class SelectionTest extends E2ETest {
 
             var originalStaccatoSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> song().getLine(0).getElement(Sel2.STACCATO.index).getStaffPosition()));
-            var originalAccentSp = Objects.requireNonNull(GuiActionRunner.execute(
+            int originalAccentSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> song().getLine(0).getElement(Sel2.ACCENT.index).getStaffPosition()));
             var originalFermataSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> song().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()));
@@ -434,7 +434,7 @@ class SelectionTest extends E2ETest {
 
             var currentFermataSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> song().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()));
-            var currentTied1Sp = Objects.requireNonNull(GuiActionRunner.execute(
+            int currentTied1Sp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> song().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()));
             var currentTied2Sp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> song().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition()));
@@ -465,7 +465,7 @@ class SelectionTest extends E2ETest {
 
             var currentRestSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> song().getLine(0).getElement(Sel2.DEMI_SEMIQUAVER_REST.index).getStaffPosition()));
-            var currentNoteSp = Objects.requireNonNull(GuiActionRunner.execute(
+            int currentNoteSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> song().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()));
 
             var targetSp = currentNoteSp - 2;

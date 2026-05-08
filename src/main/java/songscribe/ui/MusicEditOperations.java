@@ -698,7 +698,7 @@ public final class MusicEditOperations {
             }
 
             for (var i : tiePartnersToFlip) {
-                var partnerIndex = i;
+                int partnerIndex = i;
                 var newUpper = !line.getElement(partnerIndex).isUpper();
                 line.modifyElement(partnerIndex, stemFields, () -> {
                     var note = line.getElement(partnerIndex);

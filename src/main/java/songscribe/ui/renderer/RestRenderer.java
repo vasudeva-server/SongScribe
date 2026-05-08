@@ -210,7 +210,7 @@ public final class RestRenderer extends BaseElementRenderer<StaffElement> {
         // Draw augmentation dots using SMuFL glyph
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(MUSIC_FONT);
-            var dotX = firstDotX;
+            float dotX = firstDotX;
 
             for (var i = 0; i < note.getDotCount(); i++) {
                 g2.drawString(SMuFLGlyph.AUGMENTATION_DOT.asString(), dotX, 0f);
