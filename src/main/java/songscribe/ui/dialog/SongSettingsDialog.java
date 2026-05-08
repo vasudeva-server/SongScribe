@@ -247,7 +247,7 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private JPanel createPlaceAndDateSection() {
-            var section = new StandardDialog.TitledSection(
+            var section = new BaseDialog.TitledSection(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_PLACE_AND_DATE)
             );
 
@@ -291,7 +291,7 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private JPanel createInfoSection() {
-            var section = new StandardDialog.TitledSection(
+            var section = new BaseDialog.TitledSection(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION),
                 BoxLayout.X_AXIS
             );
