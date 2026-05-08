@@ -228,13 +228,25 @@ The project uses [NullAway](https://github.com/uber/NullAway) for compile-time n
 - Never use the broad `@SuppressWarnings("NullAway")` for deferred init — it silences all NullAway violations in scope, not just the init warning.
 - Never place `@SuppressWarnings` on a constructor to cover deferred-init fields — put the annotation on the specific field or init method.
 
+**Annotation placement:** `@Nullable` is a type-use annotation and must appear immediately before the type it annotates, after any access modifiers:
+
+```java
+// Correct
+private @Nullable String value;
+public @Nullable String getOptionalValue()
+public void setFoo(@Nullable Bar bar)
+
+// Wrong — annotation before modifiers
+@Nullable private String value;
+@Nullable public String getOptionalValue()
+```
+
 ```java
 // Non-null by default — no annotation needed
 public Note getNote(String name)
 
 // Nullable must be explicit
-@Nullable
-public String getOptionalValue()
+public @Nullable String getOptionalValue()
 ```
 
 ### Class Structure Order
