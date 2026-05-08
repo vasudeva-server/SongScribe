@@ -7,6 +7,13 @@ def KEY_REGEX = Pattern.compile('[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)*')
 
 def propsFile = new File("${project.basedir}/src/main/resources/songscribe/strings.properties")
 def outDir = new File("${project.build.directory}/generated-sources/songscribe")
+def outFile = new File(outDir, 'Strings.java')
+
+if (outFile.exists() && outFile.lastModified() >= propsFile.lastModified()) {
+    println "Strings.java is up to date — skipping generation."
+    return
+}
+
 outDir.mkdirs()
 
 def props = new Properties()
@@ -34,7 +41,7 @@ props.stringPropertyNames().sort().each { key ->
 }
 
 // Generate Strings.java
-new File(outDir, 'Strings.java').withWriter('UTF-8') { out ->
+outFile.withWriter('UTF-8') { out ->
     out.println '// This is an auto generated code. DO NOT MODIFY!'
     out.println 'package songscribe;'
     out.println ''

@@ -7,6 +7,13 @@ import java.util.regex.Pattern
 def PREFIX = 'SongScribe.'
 def PROPS_FILE = new File("${project.basedir}/src/main/resources/songscribe/FlatLaf.properties")
 def OUT_DIR = new File("${project.build.directory}/generated-sources/songscribe/ui")
+def OUT_FILE = new File(OUT_DIR, 'FlatLafKeys.java')
+
+if (OUT_FILE.exists() && OUT_FILE.lastModified() >= PROPS_FILE.lastModified()) {
+    println "FlatLafKeys.java is up to date — skipping generation."
+    return
+}
+
 OUT_DIR.mkdirs()
 
 // Parse keys manually — java.util.Properties doesn't handle FlatLaf's [dark] prefix syntax
@@ -39,7 +46,7 @@ keys.each { key ->
 }
 
 // Generate FlatLafKeys.java
-new File(OUT_DIR, 'FlatLafKeys.java').withWriter('UTF-8') { out ->
+OUT_FILE.withWriter('UTF-8') { out ->
     out.println '// This is an auto generated code. DO NOT MODIFY!'
     out.println 'package songscribe.ui;'
     out.println ''
