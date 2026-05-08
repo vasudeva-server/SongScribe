@@ -1,5 +1,19 @@
 # SongScribe Project Configuration
 
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`vasudeva-server/SongScribe`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
 ## Global Rules
 
 ### GitHub Repository
@@ -55,13 +69,13 @@ Key packages under `src/main/java/songscribe/`:
 
 For semantic code exploration and refactoring, see [Serena Tool Usage](.agents/rules/serena.md).
 
-When you need API documentation for Java, Kotlin, or any third-party library (FlatLaf, Jackson, etc.), use context7 MCP tools instead of web search. Example: `resolve-library-id` for "flatlaf", then `query-docs` with the resolved ID.
+When you need API documentation for Java or any third-party library (FlatLaf, Jackson, etc.), use context7 MCP tools instead of web search. Example: `resolve-library-id` for "flatlaf", then `query-docs` with the resolved ID.
 
 ### Spawning Explore Agents
 
-When spawning an `Explore` subagent for Java/Kotlin code, always include this instruction in the prompt:
+When spawning an `Explore` subagent for Java code, always include this instruction in the prompt:
 
-> **Use Serena semantic tools first for all Java/Kotlin code exploration** (`jet_brains_get_symbols_overview`, `jet_brains_find_symbol`, `jet_brains_find_referencing_symbols`). Fall back to Grep/Glob/Read only for non-code files or when Serena returns no results.
+> **Use Serena semantic tools first for all Java code exploration** (`jet_brains_get_symbols_overview`, `jet_brains_find_symbol`, `jet_brains_find_referencing_symbols`). Fall back to Grep/Glob/Read only for non-code files or when Serena returns no results.
 
 ### References
 
