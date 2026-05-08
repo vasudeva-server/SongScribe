@@ -325,8 +325,8 @@ public final class LineIO {
 
                     try {
                         grade = Integer.parseInt(parts[0]);
-                    } catch (NumberFormatException e) {
-                        grade = 3;
+                    } catch (NumberFormatException _) {
+                        // Leave grade at default of 3
                     }
 
                     if (parts.length > 1) {

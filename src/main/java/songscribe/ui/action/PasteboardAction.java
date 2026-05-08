@@ -67,7 +67,6 @@ public class PasteboardAction extends UIAction {
                 );
                 // DELETE is handled by DeleteAction.updateEnabledState() above.
                 case DELETE -> {}
-                case null -> setEnabled(message.getSelectionSize() > 0);
             }
         }
     }

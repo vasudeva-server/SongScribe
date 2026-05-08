@@ -97,7 +97,7 @@ class SystemTierStackingTest extends UnitTest {
         return builder.build();
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class TempoStacking {
 
@@ -192,7 +192,7 @@ class SystemTierStackingTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class BeatChangeStacking {
 
@@ -285,7 +285,7 @@ class SystemTierStackingTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class AnnotationStacking {
 

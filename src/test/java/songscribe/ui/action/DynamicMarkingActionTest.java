@@ -49,7 +49,7 @@ class DynamicMarkingActionTest extends UnitTest {
     private static final DynamicMarkingAction PIANO_ACTION =
         DynamicMarkingAction.createPianoAction();
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class ApplyToElement {
 

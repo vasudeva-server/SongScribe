@@ -79,9 +79,15 @@ public class KeySignatureChangeDialog extends StandardDialog {
 
     @Override
     protected void setData() {
+        var keyType = (KeyType) keysCombo.getSelectedItem();
+
+        if (keyType == null) {
+            return;
+        }
+
         requireScore().getSong().postWithModification(new KeySignatureDidChangeNotification(
             requireScore().getSelectedLine(),
-            (KeyType) keysCombo.getSelectedItem(),
+            keyType,
             (Integer) keysSpinner.getValue()
         ));
     }

@@ -194,6 +194,7 @@ class SongIOTest extends UnitTest {
         void testLegacyDoubleHyphenPreservesCompoundWord() throws Exception {
             var song = parseXml(legacyLyricsXml("heart--garden", "2.5"));
 
+            //noinspection DataFlowIssue -- false positive for Lyric::compound
             assertThat(song.getLine(0).getElement(0).getMainLyric())
                 .isNotNull()
                 .extracting(Lyric::compound)

@@ -80,6 +80,7 @@ class AttributionTest extends UnitTest {
         @Test
         void testGetContentWidthSsThrowsWhenParentLineNull() {
             try (var mockRuntimeError = mockStatic(RuntimeError.class)) {
+                //noinspection ThrowableNotThrown
                 mockRuntimeError.when(() -> RuntimeError.exit(anyString()))
                     .thenReturn(new RuntimeException("null parentLine"));
 
@@ -93,6 +94,7 @@ class AttributionTest extends UnitTest {
         @Test
         void testGetContentHeightSsThrowsWhenParentLineNull() {
             try (var mockRuntimeError = mockStatic(RuntimeError.class)) {
+                //noinspection ThrowableNotThrown
                 mockRuntimeError.when(() -> RuntimeError.exit(anyString()))
                     .thenReturn(new RuntimeException("null parentLine"));
 

@@ -52,7 +52,7 @@ import songscribe.music.Lyric;
 import songscribe.music.Song;
 import songscribe.ui.layout.LyricRenderMetrics;
 
-@SuppressWarnings("OverlyBroadThrowsClause")
+@SuppressWarnings({ "OverlyBroadThrowsClause", "DataFlowIssue" })
 class LyricEditorTest extends LyricEditorTestSupport {
 
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);

@@ -594,8 +594,9 @@ public final class GraceModeManager {
     private void enterGraceNotePaired(boolean connectNext) {
         var note = graceNote;
         var line = graceLine;
+        var component = graceLineComponent;
 
-        if (note == null || line == null) {
+        if (note == null || line == null || component == null) {
             finish(true);
             return;
         }
@@ -619,7 +620,7 @@ public final class GraceModeManager {
                 }
 
                 OptionDialogs.showErrorMessage(
-                    SwingUtilities.getWindowAncestor(graceLineComponent),
+                    SwingUtilities.getWindowAncestor(component),
                     Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
                     Strings.ERROR_GRACE_NOTE_SAME_PITCH
                 );

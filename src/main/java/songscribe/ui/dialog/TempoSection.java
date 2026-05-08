@@ -101,7 +101,13 @@ class TempoSection extends JPanel {
     }
 
     Duration getTempoType() {
-        return (Duration) tempoTypeCombo.getSelectedItem();
+        var item = tempoTypeCombo.getSelectedItem();
+
+        if (item == null) {
+            throw new IllegalStateException("No tempo type selected");
+        }
+
+        return (Duration) item;
     }
 
     int getVisibleTempo() {

@@ -34,6 +34,7 @@ import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.smufl.Engraving;
 
+@SuppressWarnings("DataFlowIssue")
 class LayoutEngineTest extends UnitTest {
 
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;

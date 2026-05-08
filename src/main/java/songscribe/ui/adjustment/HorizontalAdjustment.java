@@ -50,6 +50,10 @@ public class HorizontalAdjustment extends Adjustment {
 
     @Override
     protected void startedDrag() {
+        if (startPoint == null) {
+            return;
+        }
+
         draggingRect = adjustRects
             .stream()
             .filter(adjustRect -> adjustRect.rect.contains(startPoint))

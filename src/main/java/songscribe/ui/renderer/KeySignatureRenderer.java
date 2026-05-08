@@ -241,11 +241,13 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
 
             // Render each key signature group
             for (var kt = 0; kt < keyTypes.length; kt++) {
-                if (keyTypes[kt] == null) {
+                var keyType = keyTypes[kt];
+
+                if (keyType == null) {
                     break;
                 }
 
-                var keyTypeOrdinal = keyTypes[kt].ordinal();
+                var keyTypeOrdinal = keyType.ordinal();
 
                 if (keyTypeOrdinal == 0) {
                     // NONE - skip
@@ -253,7 +255,7 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
                 }
 
                 var staffPositions = KEY_STAFF_POSITIONS[keyTypeOrdinal];
-                var glyph = isNaturals[kt] ? NATURAL_GLYPH : getGlyphForKeyType(keyTypes[kt]);
+                var glyph = isNaturals[kt] ? NATURAL_GLYPH : getGlyphForKeyType(keyType);
                 var glyphStr = glyph.asString();
 
                 for (var i = 0; i < accidentalCounts[kt]; i++) {

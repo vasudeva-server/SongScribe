@@ -211,9 +211,13 @@ public final class SMuFLMetadata {
         static final SMuFLMetadata INSTANCE = load();
 
         private static SMuFLMetadata load() {
-            try (var reader = new InputStreamReader(
-                    SMuFLMetadata.class.getResourceAsStream(METADATA_RESOURCE),
-                    StandardCharsets.UTF_8)) {
+            var stream = SMuFLMetadata.class.getResourceAsStream(METADATA_RESOURCE);
+
+            if (stream == null) {
+                throw new RuntimeException("SMuFL metadata resource not found: " + METADATA_RESOURCE);
+            }
+
+            try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
                 var root = JsonParser.parseReader(reader).getAsJsonObject();
                 return new SMuFLMetadata(root);
             } catch (IOException e) {

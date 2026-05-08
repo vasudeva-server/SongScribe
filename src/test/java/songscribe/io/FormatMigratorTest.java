@@ -37,7 +37,7 @@ import songscribe.ui.layout.DynamicAttachment.DynamicType;
 
 class FormatMigratorTest extends UnitTest {
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class MigrateAnnotationDynamics {
 

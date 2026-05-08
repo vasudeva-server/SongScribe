@@ -25,9 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.FocusEvent;
-import java.awt.event.KeyEvent;
+import java.awt.event.*;
 
 import javax.swing.JComponent;
 import javax.swing.KeyStroke;
@@ -165,7 +163,7 @@ abstract class LyricEditorTestSupport extends UnitTest {
     }
 
     protected void fireShiftTab(LyricEditor editor) {
-        var shiftTabKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_TAB, KeyEvent.SHIFT_DOWN_MASK);
+        var shiftTabKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK);
         var shiftTabActionKey = editor.getInputMap(JComponent.WHEN_FOCUSED).get(shiftTabKeyStroke);
         assertThat(shiftTabActionKey).as("Shift+Tab must be bound in WHEN_FOCUSED map").isNotNull();
         editor.getActionMap().get(shiftTabActionKey).actionPerformed(

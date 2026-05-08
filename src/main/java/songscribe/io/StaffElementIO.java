@@ -197,26 +197,24 @@ public final class StaffElementIO {
             }
         }
 
-        if (element.getGlissando() != null) {
-            XML.writeValue(
-                writer,
-                XML_GLISSANDO,
-                element.getGlissando().type.name()
-            );
+        var glissando = element.getGlissando();
 
-            if (element.getGlissando().x1Translate != 0) {
+        if (glissando != null) {
+            XML.writeValue(writer, XML_GLISSANDO, glissando.type.name());
+
+            if (glissando.x1Translate != 0) {
                 XML.writeValue(
                     writer,
                     XML_GLISSANDO_X1_TRANSLATE,
-                    Double.toString(element.getGlissando().x1Translate)
+                    Double.toString(glissando.x1Translate)
                 );
             }
 
-            if (element.getGlissando().x2Translate != 0) {
+            if (glissando.x2Translate != 0) {
                 XML.writeValue(
                     writer,
                     XML_GLISSANDO_X2_TRANSLATE,
-                    Double.toString(element.getGlissando().x2Translate)
+                    Double.toString(glissando.x2Translate)
                 );
             }
         }
@@ -455,6 +453,7 @@ public final class StaffElementIO {
             return endElement11(qName);
         }
 
+        @SuppressWarnings("StatementWithEmptyBody")
         @Nullable
         public StaffElement endElement11(String qName) {
             if (where == Where.TEMPO_CHANGE) {
@@ -587,9 +586,7 @@ public final class StaffElementIO {
                         element.setFermata(true);
                     } else if (lastTag.equals(XML_STEM_DIRECTION_AUTO)) {
                         element.setStemDirectionAuto(false);
-                    } else if (
-                        lastTag.equals(XML_INVERT_FRACTION_BEAM_ORIENTATION)
-                    ) {
+                    } else if (lastTag.equals(XML_INVERT_FRACTION_BEAM_ORIENTATION)) {
                         // Silently ignored — partial beam stub direction is now automatic.
                     } else if (lastTag.equals(XML_BEAT_CHANGE)) {
                         element.setBeatChange(BeatChange.fromLegacyName(str));

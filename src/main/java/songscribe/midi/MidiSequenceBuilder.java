@@ -147,7 +147,6 @@ public class MidiSequenceBuilder {
             var result = buildSequenceWithRepeats(
                 track, startLine, startNote, endLine, initialTempo, velocityMap);
             ticks = result.ticks();
-            currentTempo = result.tempo();
         }
 
         // Place END_OF_TRACK at the end of the last note's full written duration.

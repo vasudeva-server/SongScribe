@@ -37,6 +37,7 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
+@SuppressWarnings("DataFlowIssue")
 class ArticulationStackingTest extends UnitTest {
 
     private static final double LINE_WIDTH_SS = 64.0;

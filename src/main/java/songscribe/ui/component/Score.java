@@ -674,6 +674,7 @@ public final class Score
     }
 
     private void drawEditElements(Graphics2D g2) {
+        //noinspection StatementWithEmptyBody
         if (mode == Mode.EDIT) {
             // Insertion note rendering is now handled by LineComponent
         } else if (mode == Mode.ADJUSTMENT && horizontalAdjustment != null) {

@@ -37,6 +37,7 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
+@SuppressWarnings("DataFlowIssue")
 class FermataTrillStackingTest extends UnitTest {
 
     private static final double LINE_WIDTH_SS = 64.0;

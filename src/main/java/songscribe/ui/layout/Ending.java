@@ -129,7 +129,7 @@ public class Ending extends RangeElement {
         record CompensateSplit(Ending ending, ElementType newSplitType) implements EndingEffect {}
     }
 
-    private Type type = Type.FIRST;
+    private Type type;
     private int yPositionSs = 0;
     private int repeatSplitIndex = -1;
     private List<BracketRange> bracketRanges = List.of();

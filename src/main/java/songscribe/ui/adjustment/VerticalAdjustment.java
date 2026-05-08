@@ -73,6 +73,11 @@ public class VerticalAdjustment extends Adjustment {
     protected void startedDrag() {
         // TODO: Hoist duplicate code to superclass
 
+        if (startPoint == null) {
+            startedDrag = false;
+            return;
+        }
+
         dragRect = adjustRects
             .stream()
             .filter(adjustRect -> adjustRect.rect.contains(startPoint))
@@ -96,10 +101,6 @@ public class VerticalAdjustment extends Adjustment {
             case ANNOTATION, TUPLET, CRESCENDO_Y, DIMINUENDO_Y -> {
                 upLeft.y = score.getNoteYPosPx(6, dragRect.line - 1);
                 downRight.y = score.getNoteYPosPx(-6, dragRect.line + 1);
-            }
-            case null, default -> {
-                upLeft.x = 0;
-                downRight.x = Integer.MAX_VALUE;
             }
         }
 

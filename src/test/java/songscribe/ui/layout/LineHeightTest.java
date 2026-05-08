@@ -40,6 +40,7 @@ import songscribe.music.StaffElement;
  * content-fitted height, and lines with decorations above or notes extending
  * below the staff must grow accordingly.
  */
+@SuppressWarnings("DataFlowIssue")
 class LineHeightTest extends UnitTest {
 
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;

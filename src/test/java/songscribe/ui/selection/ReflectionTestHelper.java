@@ -45,9 +45,8 @@ public final class ReflectionTestHelper {
      * Creates a SelectionCoordinator for an existing Line (e.g. from a fixture),
      * registered and activated at line index 0, with no reflectable actions.
      */
-    @SuppressWarnings("ReturnOfNull")
     public static SelectionCoordinator createCoordinatorForLine(Line line) {
-        var coordinator = new SelectionCoordinator(() -> null);
+        var coordinator = new SelectionCoordinator(line::getSong);
         var state = new LineSelectionState(line);
         coordinator.registerLineState(0, state);
         coordinator.activateLine(0);
@@ -105,7 +104,6 @@ public final class ReflectionTestHelper {
      * registered and activated at line index 0, with the given reflectable and
      * managed actions injected.
      */
-    @SuppressWarnings("ReturnOfNull")
     public static SelectionCoordinator createCoordinator(
         List<? extends StaffElement> notes,
         List<UIAction.Reflectable> actions,
@@ -118,7 +116,7 @@ public final class ReflectionTestHelper {
             line.addElement(note);
         }
 
-        var coordinator = new SelectionCoordinator(() -> null);
+        var coordinator = new SelectionCoordinator(() -> song);
         var state = new LineSelectionState(line);
         coordinator.registerLineState(0, state);
         coordinator.activateLine(0);

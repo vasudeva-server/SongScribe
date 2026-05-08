@@ -194,6 +194,11 @@ public class ArgumentReader<T> {
     private void setField(Field field, @Nullable String value) {
         try {
             if (field.getType() == int.class) {
+                if (value == null) {
+                    LOG.error("No value given for parameter {}", field.getName());
+                    return;
+                }
+
                 field.setInt(obj, Integer.parseInt(value));
             } else if (field.getType() == boolean.class) {
                 field.setBoolean(

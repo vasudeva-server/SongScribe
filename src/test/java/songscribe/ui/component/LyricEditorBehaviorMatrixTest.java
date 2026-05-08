@@ -138,7 +138,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     // K1–K2: Tab
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class TabKey {
 
@@ -200,7 +200,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     // K3: Shift+Tab
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class ShiftTabKey {
 
@@ -236,7 +236,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     // K4: Enter
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class EnterKey {
 
@@ -262,7 +262,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     // K5–K6: Escape
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class EscapeKey {
 
@@ -306,7 +306,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     // S1–S8: Space
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class Space {
 
@@ -509,7 +509,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     // H1–H8: Hyphen
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class Hyphen {
 
@@ -698,7 +698,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     // E1–E6: Equals
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class Equals {
 
@@ -860,7 +860,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     // U1–U11: Underscore
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class Underscore {
 
@@ -1180,7 +1180,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     // F1–F3: Focus loss
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class FocusLoss {
 

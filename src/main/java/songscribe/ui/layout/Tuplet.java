@@ -42,7 +42,7 @@ public class Tuplet extends RangeElement {
      */
     public static final double TUPLET_BRACKET_HEIGHT_SS = 1.5;  // 12px
 
-    private int grade = 3;
+    private int grade;
     private int verticalPositionSs = 0;
 
     /**

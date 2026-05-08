@@ -751,7 +751,13 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private KeySelection getKeyTypeAndCountFromCombo() {
-            return (KeySelection) keyCombo.getSelectedItem();
+            var selected = (KeySelection) keyCombo.getSelectedItem();
+
+            if (selected == null) {
+                throw RuntimeError.exit("Key combo has no selection");
+            }
+
+            return selected;
         }
 
         private void revertLineWidthField() {

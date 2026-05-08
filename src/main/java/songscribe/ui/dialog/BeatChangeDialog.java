@@ -78,10 +78,14 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 
     @Override
     protected void applyChange(StaffElement element) {
-        element.setBeatChange(new BeatChange(
-            (Duration) durationCombo.getSelectedItem(),
-            (Duration) beatCombo.getSelectedItem()
-        ));
+        var duration = (Duration) durationCombo.getSelectedItem();
+        var beat = (Duration) beatCombo.getSelectedItem();
+
+        if (duration == null || beat == null) {
+            return;
+        }
+
+        element.setBeatChange(new BeatChange(duration, beat));
     }
 
     @Override

@@ -260,7 +260,7 @@ class DeleteLyricTest extends UnitTest {
 
             assertThat(lyricNote.getLyricForVerse(VERSE))
                 .isNotNull()
-                .extracting(Lyric::syllabic)
+                .extracting(lyric -> lyric != null ? lyric.syllabic() : null)
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -280,7 +280,7 @@ class DeleteLyricTest extends UnitTest {
 
             assertThat(otherNote.getLyricForVerse(VERSE))
                 .isNotNull()
-                .extracting(Lyric::syllabic)
+                .extracting(lyric -> lyric != null ? lyric.syllabic() : null)
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
     }

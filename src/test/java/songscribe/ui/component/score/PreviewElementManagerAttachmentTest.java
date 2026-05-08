@@ -131,7 +131,7 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
     // modifyExistingElement — decoration preservation
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class ModifyExistingElement {
 

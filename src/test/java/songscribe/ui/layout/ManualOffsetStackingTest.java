@@ -110,7 +110,7 @@ class ManualOffsetStackingTest extends UnitTest {
         return stackColumns(columns, newLine());
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class AnnotationOffsets {
 
@@ -200,7 +200,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class FermataOffsets {
 
@@ -237,7 +237,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class HairpinOffsets {
 
@@ -332,7 +332,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class NoCollisionRerun {
 
@@ -383,7 +383,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class TempoOffsets {
 
@@ -440,7 +440,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class TrillOffsets {
 
@@ -478,7 +478,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class EndingOffsets {
 
