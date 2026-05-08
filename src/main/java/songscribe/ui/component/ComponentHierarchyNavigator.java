@@ -42,17 +42,14 @@ public final class ComponentHierarchyNavigator {
     @Nullable
     public LineComponent getLineComponent(int lineIndex) {
         var mainPanel = provider.getMainPanel();
+
         if (mainPanel == null) {
             return null;
         }
 
-        var staffPanel = mainPanel.getStaffPanel();
-        if (staffPanel == null) {
-            return null;
-        }
-
-        for (var linePanel : staffPanel.getLinePanels()) {
+        for (var linePanel : mainPanel.getStaffPanel().getLinePanels()) {
             var lineComponent = linePanel.getLineComponent();
+
             if (lineComponent.getLineIndex() == lineIndex) {
                 return lineComponent;
             }
@@ -66,16 +63,12 @@ public final class ComponentHierarchyNavigator {
      */
     public int getActualLineMiddleY(int lineIndex) {
         var mainPanel = provider.getMainPanel();
+
         if (mainPanel == null) {
             return 0;
         }
 
         var staffPanel = mainPanel.getStaffPanel();
-
-        if (staffPanel == null) {
-            return 0;
-        }
-
         var linePanels = staffPanel.getLinePanels();
 
         if (lineIndex < 0 || lineIndex >= linePanels.size()) {
@@ -110,13 +103,8 @@ public final class ComponentHierarchyNavigator {
             return (int) (y - song.getTopPaddingSs()) / rowHeight;
         }
 
-        var staffPanel = mainPanel.getStaffPanel();
-
-        if (staffPanel == null) {
-            return (int) (y - song.getTopPaddingSs()) / rowHeight;
-        }
-
         // Convert Score Y to StaffPanel Y
+        var staffPanel = mainPanel.getStaffPanel();
         var staffPanelY = y - mainPanel.getY() - staffPanel.getY();
 
         // Find which LinePanel contains this Y
@@ -152,10 +140,6 @@ public final class ComponentHierarchyNavigator {
 
         var staffPanel = mainPanel.getStaffPanel();
 
-        if (staffPanel == null) {
-            return;
-        }
-
         for (var linePanel : staffPanel.getLinePanels()) {
             var lineComponent = linePanel.getLineComponent();
             lineComponent.setSelectionProvider(selectionProvider);
@@ -179,11 +163,6 @@ public final class ComponentHierarchyNavigator {
         }
 
         var staffPanel = mainPanel.getStaffPanel();
-
-        if (staffPanel == null) {
-            return;
-        }
-
         var linePanels = staffPanel.getLinePanels();
 
         if (linePanels.isEmpty()) {

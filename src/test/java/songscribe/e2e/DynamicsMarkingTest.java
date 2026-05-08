@@ -95,6 +95,7 @@ class DynamicsMarkingTest extends E2ETest {
             requireAttachment(song().getLine(0).getElement(noteIndex))
         );
 
+        //noinspection ConstantValue
         if (attachment == null) {
             throw new AssertionError("GuiActionRunner returned null unexpectedly");
         }

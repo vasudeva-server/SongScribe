@@ -138,10 +138,7 @@ public class SizePane extends JPanel {
     @Override
     public void updateUI() {
         super.updateUI();
-
-        if (sizeSpinner != null) {
-            setupSpinnerEditor(sizeSpinner);
-        }
+        setupSpinnerEditor(sizeSpinner);
     }
 
     public void addListSelectionListener(ListSelectionListener listener) {

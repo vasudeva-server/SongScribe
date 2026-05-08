@@ -176,10 +176,7 @@ public class LineComponent extends ScoreComponent
         // Register with coordinator if score is available
         if (score != null) {
             var coordinator = score.getSelectionCoordinator();
-
-            if (coordinator != null) {
-                coordinator.registerLineState(lineIndex, lineSelectionState);
-            }
+            coordinator.registerLineState(lineIndex, lineSelectionState);
         }
 
         revalidate();
@@ -270,10 +267,7 @@ public class LineComponent extends ScoreComponent
         // Register LineSelectionState with coordinator when score is set
         if (lineSelectionState != null) {
             var coordinator = score.getSelectionCoordinator();
-
-            if (coordinator != null) {
-                coordinator.registerLineState(lineIndex, lineSelectionState);
-            }
+            coordinator.registerLineState(lineIndex, lineSelectionState);
         }
     }
 

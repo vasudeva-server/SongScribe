@@ -514,6 +514,7 @@ public final class GlissandoRenderer {
         } else {
             // Target: find entry point on offset area in local space (reverse direction)
             // tgt is non-null when isSlideOut is false (isSlideOut = (tgt == null))
+            //noinspection ConstantValue
             if (tgt == null) {
                 throw new IllegalStateException("tgt must be non-null when not a slide-out");
             }

@@ -101,6 +101,7 @@ public final class InputUtils {
             String string,
             AttributeSet attr
         ) throws BadLocationException {
+            //noinspection ConstantValue -- overridden method may be called with null string
             if (string != null) {
                 if (isProspectiveTextValid(fb.getDocument(), offset, 0, string)) {
                     super.insertString(fb, offset, string, attr);
@@ -118,6 +119,7 @@ public final class InputUtils {
             String text,
             AttributeSet attrs
         ) throws BadLocationException {
+            //noinspection ConstantValue -- overridden method may be called with null string
             if (text != null) {
                 if (isProspectiveTextValid(fb.getDocument(), offset, length, text)) {
                     super.replace(fb, offset, length, text, attrs);
@@ -154,6 +156,7 @@ public final class InputUtils {
             String string,
             AttributeSet attr
         ) throws BadLocationException {
+            //noinspection ConstantValue -- overridden method may be called with null string
             if (string != null) {
                 if (string.isEmpty() || pattern.matcher(string).matches()) {
                     super.insertString(fb, offset, string, attr);
@@ -171,6 +174,7 @@ public final class InputUtils {
             String text,
             AttributeSet attrs
         ) throws BadLocationException {
+            //noinspection ConstantValue -- overridden method may be called with null string
             if (text != null) {
                 if (text.isEmpty() || pattern.matcher(text).matches()) {
                     super.replace(fb, offset, length, text, attrs);

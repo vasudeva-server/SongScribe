@@ -86,6 +86,7 @@ public enum ElementType {
     static {
         // Create instances for canonical types
         for (var type : values()) {
+            //noinspection ConstantValue
             if (type.instance == null && type.aliasOf == null) {
                 type.instance = type.createDefaultInstance();
             }
@@ -131,7 +132,7 @@ public enum ElementType {
             : 0;
     }
 
-    @SuppressWarnings("NullAway.Init") // set by static initializer for every enum constant
+    @SuppressWarnings("NullAway") // instance is initialized in static block, but NullAway doesn't track that
     private StaffElement instance;
     @Nullable
     private final String name;

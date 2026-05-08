@@ -50,6 +50,7 @@ class FormatMigratorTest extends UnitTest {
             var dynamic = line.getElement(0).findAttachment(DynamicAttachment.class);
             assertThat(dynamic).isNotNull();
 
+            //noinspection ConstantValue -- need for NullAway
             if (dynamic == null) {
                 return;
             }
@@ -66,6 +67,7 @@ class FormatMigratorTest extends UnitTest {
             var dynamic = line.getElement(0).findAttachment(DynamicAttachment.class);
             assertThat(dynamic).isNotNull();
 
+            //noinspection ConstantValue -- need for NullAway
             if (dynamic == null) {
                 return;
             }
@@ -136,6 +138,7 @@ class FormatMigratorTest extends UnitTest {
             var annotation = note.getAnnotation();
             assertThat(annotation).isNotNull();
 
+            //noinspection ConstantValue -- need for NullAway
             if (annotation == null) {
                 return;
             }

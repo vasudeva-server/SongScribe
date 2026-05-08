@@ -23,6 +23,8 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.error.RuntimeError;
 import songscribe.music.ElementType;
 import songscribe.ui.Mode;
@@ -85,8 +87,7 @@ class LineRenderer {
      * Render context reused across paint passes to avoid per-paint allocation.
      * Only mutated within {@link #render} on the EDT.
      */
-    @SuppressWarnings("NullAway.Init")
-    private ElementRenderContext ctx;
+    private @Nullable ElementRenderContext ctx;
 
     // ==========================================================================
     // Constructor
@@ -571,7 +572,7 @@ class LineRenderer {
         // Don't render preview element when in select mode
         var score = lc.getScore();
 
-        if (score != null && score.getMode() == Mode.SELECT) {
+        if (score.getMode() == Mode.SELECT) {
             return;
         }
 

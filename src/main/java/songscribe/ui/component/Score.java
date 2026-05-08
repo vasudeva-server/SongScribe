@@ -226,13 +226,11 @@ public final class Score
 
     // Song-wide layout metrics shared across all line components.
     // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
-    @SuppressWarnings("NullAway.Init")
-    private SongLayoutMetrics songLayoutMetrics;
+    private @Nullable SongLayoutMetrics songLayoutMetrics;
 
     // Song-wide lyric render metrics shared across all line components.
     // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
-    @SuppressWarnings("NullAway.Init")
-    private LyricRenderMetrics lyricRenderMetrics;
+    private @Nullable LyricRenderMetrics lyricRenderMetrics;
 
     // The currently-open lyric editor overlay, if any. Set by LyricEditor.openOn /
     // dismiss so getActiveLyricEditor() doesn't have to scan getComponents() per paint.
@@ -801,11 +799,6 @@ public final class Score
 
     public void setSong(Song song) {
         this.song = song;
-
-        if (song == null) {
-            return;
-        }
-
         var lineWidthPx = ScaleContext.getInstance().toRoundedPixels(song.getLineWidthSs());
 
         // Core setup needed for both headless and interactive modes
@@ -929,11 +922,11 @@ public final class Score
                 for (var i = 1; i < effectiveCount; i++) {
                     var note = line.getElement(i);
                     note.setXOffsetPx(
-                        (int) (firstX + Math.round((note.getXOffsetPx() - firstX) * ratio))
+                        firstX + Math.round((note.getXOffsetPx() - firstX) * ratio)
                     );
                 }
 
-                line.changeElementSpacingRatio((float) ratio);
+                line.changeElementSpacingRatio(ratio);
             }
         }
     }

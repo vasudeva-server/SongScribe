@@ -107,6 +107,7 @@ abstract class LyricEditorTestSupport extends UnitTest {
         for (var i = captor.getAllValues().size() - 1; i >= 0; i--) {
             var value = captor.getAllValues().get(i);
 
+            //noinspection ConstantValue -- need for NullAway
             if (value != null) {
                 return value;
             }

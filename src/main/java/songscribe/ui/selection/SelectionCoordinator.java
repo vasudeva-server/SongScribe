@@ -633,7 +633,7 @@ public final class SelectionCoordinator {
                         continue;
                     }
 
-                    var replacement = replaceable.createReplacement(element, selected);
+                    var replacement = replaceable.createReplacement(element, true);
                     var effect = line.findEndingReplacementEffect(i, replacement);
 
                     switch (effect) {

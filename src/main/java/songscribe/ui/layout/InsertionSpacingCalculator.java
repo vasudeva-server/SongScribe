@@ -302,6 +302,7 @@ public final class InsertionSpacingCalculator {
         String syllable = null;
         double syllableWidthSs = 0;
 
+        //noinspection ConstantValue
         return new ElementColumn(
             element,
             Collections.emptyList(),  // No grace notes

@@ -168,11 +168,6 @@ public final class UIUtils {
     ) {
         if (maybeAction instanceof UIAction action) {
             var keyStroke = action.getAccelerator();
-
-            if (keyStroke == null) {
-                return;
-            }
-
             registerActionKeystroke(keyStroke, action);
         }
     }

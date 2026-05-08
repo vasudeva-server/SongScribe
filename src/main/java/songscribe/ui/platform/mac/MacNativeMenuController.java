@@ -91,6 +91,7 @@ public class MacNativeMenuController {
                     var item = appMenu.itemAtIndex(new NSInteger(i));
                     var title = item.title();
 
+                    //noinspection ConstantValue -- need for NullAway
                     if (title != null && title.startsWith(action.getNativeMenuTitle())) {
                         items.add(item);
                         matched = true;

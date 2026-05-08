@@ -226,17 +226,14 @@ public final class ScoreMessageCoordinator {
 
         if (hasLineLayoutMutation(message)) {
             var staffPanel = mainPanel.getStaffPanel();
+            var targetLine = message.getLine();
 
-            if (staffPanel != null) {
-                var targetLine = message.getLine();
+            for (var linePanel : staffPanel.getLinePanels()) {
+                if (targetLine == null || linePanel.getLine() == targetLine) {
+                    linePanel.getLineComponent().invalidateLayout();
 
-                for (var linePanel : staffPanel.getLinePanels()) {
-                    if (targetLine == null || linePanel.getLine() == targetLine) {
-                        linePanel.getLineComponent().invalidateLayout();
-
-                        if (targetLine != null) {
-                            break;
-                        }
+                    if (targetLine != null) {
+                        break;
                     }
                 }
             }

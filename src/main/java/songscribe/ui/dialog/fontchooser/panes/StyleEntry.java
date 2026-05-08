@@ -48,6 +48,7 @@ public final class StyleEntry {
             return true;
         }
 
+        //noinspection ConstantValue -- overridden method may be called with null obj
         if ((obj == null) || (getClass() != obj.getClass())) {
             return false;
         }

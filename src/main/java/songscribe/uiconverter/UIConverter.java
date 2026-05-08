@@ -760,6 +760,7 @@ public class UIConverter extends MainFrame {
         private void handleNumberSong() {
             var selectedSong = (String) rejectList.getSelectedValue();
 
+            //noinspection ConstantValue -- need for NullAway
             if (selectedSong == null) {
                 OptionDialogs.showErrorMessage(UIConverter.this, Strings.ALERT_TITLE_CONVERSION_ERROR, Strings.ERROR_CONVERTER_NO_REJECTED_SONG);
                 return;

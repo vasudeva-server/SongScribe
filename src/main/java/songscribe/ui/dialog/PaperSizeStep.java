@@ -253,6 +253,7 @@ public class PaperSizeStep extends Step {
         );
 
         for (var i = 0; i < templates.getSize(); i++) {
+            //noinspection ConstantValue -- need for NullAway
             if (templates.getElementAt(i) != null) {
                 var to = templates.getElementAt(i);
 

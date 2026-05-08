@@ -333,6 +333,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         private Shape keepAllocationAtContentOrigin(Shape input, Shape adjusted) {
+            //noinspection ConstantValue -- overridden method may be called with null string
             if (input == null || adjusted == null) {
                 return adjusted;
             }
@@ -366,6 +367,7 @@ public final class LyricEditor extends MyJTextField {
         protected Shape adjustAllocation(Shape a) {
             Shape adjusted;
 
+            //noinspection ConstantValue -- overridden method may be called with null Shape
             if (paintingWithLeadingSlack && a != null) {
                 var textAllocation = a.getBounds();
                 textAllocation.x += LEADING_PAINT_SLACK_PX;

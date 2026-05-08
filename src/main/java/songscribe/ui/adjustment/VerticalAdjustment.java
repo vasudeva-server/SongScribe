@@ -572,11 +572,6 @@ public class VerticalAdjustment extends Adjustment {
 
     private static @Nullable LayoutResult getLayoutResult(int lineIndex, MainPanel mainPanel) {
         var staffPanel = mainPanel.getStaffPanel();
-
-        if (staffPanel == null) {
-            throw new IllegalStateException("StaffPanel not available");
-        }
-
         var linePanels = staffPanel.getLinePanels();
 
         if (lineIndex < 0 || lineIndex >= linePanels.size()) {

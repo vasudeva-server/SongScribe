@@ -52,7 +52,7 @@ public class MyJTextField extends JTextField {
 
     @Override
     protected void processKeyEvent(KeyEvent e) {
-        if (focusDelegate != null && focusDelegate.processKeyEvent(e)) {
+        if (focusDelegate.processKeyEvent(e)) {
             return;
         }
         super.processKeyEvent(e);

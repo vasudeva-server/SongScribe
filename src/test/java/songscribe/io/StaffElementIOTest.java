@@ -119,6 +119,7 @@ class StaffElementIOTest extends UnitTest {
 
             assertThat(dynamic).isNotNull();
 
+            //noinspection ConstantValue -- need for NullAway
             if (dynamic == null) {
                 return;
             }
@@ -136,6 +137,7 @@ class StaffElementIOTest extends UnitTest {
 
             assertThat(dynamic).isNotNull();
 
+            //noinspection ConstantValue -- need for NullAway
             if (dynamic == null) {
                 return;
             }

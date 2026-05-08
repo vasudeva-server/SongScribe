@@ -694,10 +694,6 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public @Nullable Accidental findLastAccidental() {
-        if (line == null) {
-            return null;
-        }
-
         for (var i = line.getElementIndex(this) - 1; i >= 0; i--) {
             var note = line.getElement(i);
 

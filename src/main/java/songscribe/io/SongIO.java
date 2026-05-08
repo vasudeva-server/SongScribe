@@ -114,10 +114,8 @@ public final class SongIO {
             Integer.toString(c.getDefaultKeyAccidentalCount())
         );
         var keyType = c.getDefaultKeyType();
+        XML.writeValue(pw, XML_KEYTYPE, keyType.name());
 
-        if (keyType != null) {
-            XML.writeValue(pw, XML_KEYTYPE, keyType.name());
-        }
         var tempo = c.getTempo();
 
         if (tempo != null) {

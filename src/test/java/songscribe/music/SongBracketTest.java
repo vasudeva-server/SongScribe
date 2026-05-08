@@ -65,6 +65,7 @@ class SongBracketTest extends UnitTest {
         assertThatThrownBy(() -> song.applyChange(mutation, () -> ranInTryBlock[0] = true))
             .isInstanceOf(IllegalStateException.class);
 
+        //noinspection ConstantValue -- false because the lambda is not run
         assertThat(ranInTryBlock[0])
             .as("mutator must not run when applyChange is called outside a bracket")
             .isFalse();

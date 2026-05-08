@@ -276,7 +276,7 @@ class LineSelectionHandler {
         var score = lc.getScore();
         var line = lc.getLine();
 
-        if (score == null || line == null) {
+        if (line == null) {
             return false;
         }
 
@@ -385,11 +385,6 @@ class LineSelectionHandler {
         }
 
         var coordinator = score.getSelectionCoordinator();
-
-        if (coordinator == null) {
-            return;
-        }
-
         coordinator.activateLine(lc.getLineIndex());
         lineSelectionState.clearSelection();
 

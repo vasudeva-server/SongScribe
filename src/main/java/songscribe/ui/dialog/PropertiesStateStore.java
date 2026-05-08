@@ -39,6 +39,7 @@ public class PropertiesStateStore implements SystemFileChooser.StateStore {
 
     @Override
     public void put(String key, String value) {
+        //noinspection ConstantValue -- overridden method may be called with null string
         if (value == null) {
             prefs.remove(key);
         } else {

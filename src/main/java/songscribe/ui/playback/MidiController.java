@@ -89,10 +89,6 @@ public final class MidiController {
         Exception lastError = null;
 
         for (var synth : candidates) {
-            if (synth == null) {
-                continue;
-            }
-
             try {
                 synth.open();
 
@@ -124,6 +120,7 @@ public final class MidiController {
             }
         }
 
+        //noinspection ConstantValue -- need for NullAway
         throw new MidiUnavailableException(
                 "No synthesizer could load the soundbank" +
                 (lastError != null ? ": " + lastError.getMessage() : "")

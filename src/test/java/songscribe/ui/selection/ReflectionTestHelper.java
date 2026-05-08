@@ -45,6 +45,7 @@ public final class ReflectionTestHelper {
      * Creates a SelectionCoordinator for an existing Line (e.g. from a fixture),
      * registered and activated at line index 0, with no reflectable actions.
      */
+    @SuppressWarnings("ReturnOfNull")
     public static SelectionCoordinator createCoordinatorForLine(Line line) {
         var coordinator = new SelectionCoordinator(() -> null);
         var state = new LineSelectionState(line);
