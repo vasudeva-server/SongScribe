@@ -1,4 +1,4 @@
-@../../.agents/rules/code-styles/java-kotlin.md
+@../../.agents/rules/code-styles/java.md
 @../../.agents/rules/development.md
 @../../.agents/rules/logging.md
 @../../.agents/rules/messages.md

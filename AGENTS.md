@@ -8,7 +8,7 @@ The remote is `vasudeva-server/SongScribe`. Always use this for `gh` commands (i
 
 ### Overview
 
-SongScribe is a Java/Kotlin-based music notation application. SongScribe files use the `.mssw` extension.
+SongScribe is a Java-based music notation application. SongScribe files use the `.mssw` extension.
 
 ### Quick Commands
 

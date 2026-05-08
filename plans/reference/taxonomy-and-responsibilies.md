@@ -46,7 +46,7 @@
                 v
 +------------------------------------------------------------------+
 |                      MESSAGE / EVENT BUS                          |
-|  MessageCenter (Kotlin singleton, mbassy)                        |
+|  MessageCenter (Java singleton, mbassy)                          |
 |  ScoreMessageCoordinator (@Handler, HIGH_PRIORITY)               |
 |  MessageLogger                                                   |
 |  Messages: ModeChanged, MusicSelectionChanged, LayoutChange,     |
@@ -203,15 +203,15 @@ StandardDialog (abstract)
 
 ## Design Patterns in Use
 
-| Pattern | Where |
-|---------|-------|
+| Pattern | Where                                                                            |
+|---------|----------------------------------------------------------------------------------|
 | MVC | Model=Composition/Line/Note, View=Score/Renderers, Controller=Actions/InputHandler |
-| Strategy | ElementRenderer hierarchy (one renderer per element type) |
-| Observer | MessageCenter event bus with @Handler annotations |
-| Command | UIAction hierarchy encapsulates user operations |
-| Composite | Composition > Line > Note tree; LineElement tree |
-| Registry | RendererRegistry maps element types to renderers |
-| Builder | NoteColumnBuilder, MidiSequenceBuilder, LayoutResult.builder() |
-| Template Method | BaseElementRenderer, StandardDialog |
-| Facade | Score as the central access point for score state |
-| Singleton | MessageCenter (Kotlin object), RendererRegistry |
+| Strategy | ElementRenderer hierarchy (one renderer per element type)                        |
+| Observer | MessageCenter event bus with @Handler annotations                                |
+| Command | UIAction hierarchy encapsulates user operations                                  |
+| Composite | Composition > Line > Note tree; LineElement tree                                 |
+| Registry | RendererRegistry maps element types to renderers                                 |
+| Builder | NoteColumnBuilder, MidiSequenceBuilder, LayoutResult.builder()                   |
+| Template Method | BaseElementRenderer, StandardDialog                                              |
+| Facade | Score as the central access point for score state                                |
+| Singleton | MessageCenter, RendererRegistry                                                  |

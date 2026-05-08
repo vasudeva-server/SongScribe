@@ -22,7 +22,7 @@ For domain objects that are always required (e.g. a `Score`'s bounding box), add
 
 ### Use the Provided Scripts
 
-NEVER invoke `mvn compile`, `mvn test`, `javac`, `kotlinc`, `java -cp`, `mvn exec:java`, or any other raw build/run/test commands. ALWAYS use the provided shell scripts described below.
+NEVER invoke `mvn compile`, `mvn test`, `javac`, `java -cp`, `mvn exec:java`, or any other raw build/run/test commands. ALWAYS use the provided shell scripts described below.
 
 ## Development Workflow
 
@@ -46,11 +46,11 @@ If you **do** need to run the application:
 
 ### All Available Scripts
 
-| Script                 | Purpose                                  |
-|------------------------|------------------------------------------|
-| `./scripts/compile.sh` | Compile Java/Kotlin sources              |
+| Script                 | Purpose                                 |
+|------------------------|-----------------------------------------|
+| `./scripts/compile.sh` | Compile Java sources              |
 | `./scripts/run.sh`     | Run the application (MUST compile first) |
-| `./scripts/crun.sh`    | Compile and run in one step              |
+| `./scripts/crun.sh`    | Compile and run in one step             |
 | `./scripts/test.sh`    | Run tests (MUST compile first; see examples below) |
 
 `run.sh` and `crun.sh` accept these options:

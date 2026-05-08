@@ -43,7 +43,7 @@ These decisions apply across phases. Re-read before any phase that touches the r
 - **`getLyricAnchor` throws `IllegalStateException`** when neither boxes nor column exist. No silent fallback.
 - **`lyricBoxWidthSs` is the single source of truth for box width.** Both `LyricBoxLayout` and `LyricEditor` call it; identity is asserted by a unit test.
 - **All user-facing strings externalized.** Phase 1a adds none — `action.add.lyric` and `action.add.lyric.tooltip` already exist.
-- **Java/Kotlin code exploration uses Serena tools** (`jet_brains_get_symbols_overview`, `jet_brains_find_symbol`, `jet_brains_find_referencing_symbols`). See `.agent/rules/serena.md`.
+- **Java code exploration uses Serena tools** (`jet_brains_get_symbols_overview`, `jet_brains_find_symbol`, `jet_brains_find_referencing_symbols`). See `.agent/rules/serena.md`.
 
 ---
 
@@ -431,5 +431,5 @@ Every test in the spec maps to exactly one phase:
 - [Mutation system](../../../.agents/rules/mutations.md) — `Line.modifyElement`, `ElementField.LYRIC`, `withModification` brackets.
 - [Message system](../../../.agents/rules/messages.md) — handler conventions (no editor handler in 1a, but referenced for general patterns).
 - [Strings](../../../.agents/rules/strings.md) — externalization conventions (no new strings in 1a).
-- [Serena tool usage](../../../.agents/rules/serena.md) — semantic exploration for Java/Kotlin code.
+- [Serena tool usage](../../../.agents/rules/serena.md) — semantic exploration for Java code.
 - [Unit conversion](../../../.agents/rules/unit-conversion.md) — `ScaleContext` for staff-space ↔ pixel conversion.

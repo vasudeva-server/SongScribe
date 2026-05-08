@@ -1,6 +1,6 @@
 ## Serena Tool Usage (CRITICAL - READ THIS FIRST)
 
-**MANDATORY: Always use Serena tools for Java/Kotlin code exploration and refactoring.**
+**MANDATORY: Always use Serena tools for Java code exploration and refactoring.**
 
 The Serena MCP server provides semantic code understanding tools that are far more efficient and accurate than text-based searches. You MUST use these tools for code exploration and all refactoring operations (rename, move, delete, inline).
 
