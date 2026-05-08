@@ -1,11 +1,15 @@
 # Local Claude config
 .claude.local.md
 
-# No maven stuff
+# Build output
+build/
 target/
 **/Version.java
 out/
 jpackage
+
+# Gradle
+.gradle/
 
 # No node stuff
 node_modules/

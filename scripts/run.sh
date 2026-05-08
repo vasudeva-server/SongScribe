@@ -7,7 +7,10 @@
 # Any other arguments are passed through to the application.
 # To enable UI debug features (FlatLaf inspector, debug drawing): DEBUG=1 ./scripts/run.sh
 
-source "$(dirname "$0")/set-java-home.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+source "$SCRIPT_DIR/set-java-home.sh"
 java_args=()
 
 for arg in "$@"; do
@@ -20,6 +23,6 @@ done
 
 java --enable-native-access=ALL-UNNAMED \
   -XX:+UseZGC \
-  -Djna.library.path=target/native \
-  -cp "target/classes:$(mvn dependency:build-classpath -q -Dmdep.outputFile=/dev/stdout)" \
+  -Djna.library.path="$PROJECT_DIR/build/native" \
+  -cp "$("$SCRIPT_DIR/../gradlew" -q printClasspath --project-dir "$PROJECT_DIR")" \
   songscribe.SongScribe "${java_args[@]}"

@@ -65,18 +65,14 @@ JVM_ARGS+=(
 
 echo "Compiling tests..."
 
-if ! mvn -q resources:testResources compiler:testCompile -f "$PROJECT_DIR/pom.xml"; then
+if ! "$SCRIPT_DIR/../gradlew" -q testClasses --project-dir "$PROJECT_DIR"; then
   echo "Compilation failed."
   exit 1
 fi
 
-CP_FILE=$(mktemp)
-trap 'rm -f "$CP_FILE"' EXIT
-mvn -q dependency:build-classpath -f "$PROJECT_DIR/pom.xml" \
-  -DincludeScope=test -Dmdep.outputFile="$CP_FILE" || exit 1
-CLASSPATH="$PROJECT_DIR/target/classes:$PROJECT_DIR/target/test-classes:$(cat "$CP_FILE")"
+CLASSPATH="$("$SCRIPT_DIR/../gradlew" -q printTestClasspath --project-dir "$PROJECT_DIR")"
 
-TEST_DIR="$PROJECT_DIR/target/test-classes"
+TEST_DIR="$PROJECT_DIR/build/classes/java/test"
 SCAN_CLASSPATH="--scan-classpath=$TEST_DIR"
 UNIT_FILTER="--exclude-package=songscribe.e2e"
 E2E_FILTER="--include-package=songscribe.e2e"
