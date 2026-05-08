@@ -712,6 +712,11 @@ public class StaffElement extends LineElement implements Cloneable {
         return getAccidental(line);
     }
 
+    @Override
+    public String toString() {
+        return "StaffElement{type=" + (type != null ? type.name() : "null") + ", staffPosition=" + staffPosition + '}';
+    }
+
     public enum Accidental {
         NATURAL("Natural", 1, 0, -1),
         FLAT("Flat", 1, 1, -1),
