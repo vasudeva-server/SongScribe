@@ -57,7 +57,6 @@ import songscribe.message.notification.MetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
@@ -216,9 +215,6 @@ public final class Song {
 
     @Nullable
     private ArrayList<Mutation> accumulatedMutations;
-
-    /** Whether the user has already been notified about short-ă replacement in this session. */
-    private boolean shortANotified = false;
 
 
     public Song() {
@@ -1644,15 +1640,6 @@ public final class Song {
         var strip = Prefs.getInstance().getBoolean(PrefsKey.STRIP_SHORT_A);
 
         if (strip && SHORT_A_PATTERN.matcher(text).find()) {
-            if (!shortANotified) {
-                shortANotified = true;
-                OptionDialogs.showInfoMessage(
-                    null,
-                    Strings.ALERT_TITLE_INFORMATION,
-                    Strings.INFO_CHARACTER_REPLACEMENT
-                );
-            }
-
             return text.replace("ă", "a").replace("Ă", "A");
         }
 
