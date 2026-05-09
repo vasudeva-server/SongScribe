@@ -81,7 +81,7 @@ public class AboutDialog extends BaseDialog {
             label.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    Utils.openWebPage(getMainFrame(), url);
+                    Utils.openWebPage(url);
                 }
 
                 @Override

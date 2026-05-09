@@ -35,6 +35,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -83,7 +84,7 @@ class EditLyricActionTest extends UnitTest {
     @Test
     void testDisabledWhenEditingText() {
         try (var uiUtilsMock = mockStatic(UIUtils.class)) {
-            uiUtilsMock.when(UIUtils::isEditingText).thenReturn(true);
+            uiUtilsMock.when(() -> UIUtils.isEditingTextIn(any(Window.class))).thenReturn(true);
             assertThat(action.enableFromTextEditingState()).isFalse();
         }
     }
@@ -91,8 +92,15 @@ class EditLyricActionTest extends UnitTest {
     @Test
     void testEnabledWhenNotEditingText() {
         try (var uiUtilsMock = mockStatic(UIUtils.class)) {
-            uiUtilsMock.when(UIUtils::isEditingText).thenReturn(false);
+            uiUtilsMock.when(() -> UIUtils.isEditingTextIn(any(Window.class))).thenReturn(false);
             assertThat(action.enableFromTextEditingState()).isTrue();
         }
+    }
+
+    @Test
+    void testIsEditingTextInReturnsFalseForUnfocusedWindow() {
+        // No mockStatic needed — isEditingTextIn takes a Window directly.
+        // In a headless test environment the focused frame is null, so editing is never active.
+        assertThat(UIUtils.isEditingTextIn(new JFrame())).isFalse();
     }
 }

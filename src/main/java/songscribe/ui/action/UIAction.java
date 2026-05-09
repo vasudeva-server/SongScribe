@@ -239,7 +239,7 @@ public class UIAction extends AbstractAction {
                 KeyStroke.getKeyStroke(virtualKey, modifiers)
             );
 
-            UIUtils.addAction(this);
+            UIUtils.addAction(getMainFrame().getRootPane(), this);
         }
 
         MessageCenter.subscribe(this);
@@ -498,7 +498,7 @@ public class UIAction extends AbstractAction {
 
     protected boolean enableFromTextEditingState() {
         return (
-            !hasFlag(Flag.DISABLE_WHEN_EDITING_TEXT) || !UIUtils.isEditingText()
+            !hasFlag(Flag.DISABLE_WHEN_EDITING_TEXT) || !UIUtils.isEditingTextIn(getMainFrame())
         );
     }
 

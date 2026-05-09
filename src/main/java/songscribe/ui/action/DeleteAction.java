@@ -42,8 +42,10 @@ public final class DeleteAction extends PasteboardAction {
             ),
         };
 
+        var rootPane = getMainFrame().getRootPane();
+
         for (var keystroke : keystrokes) {
-            UIUtils.registerActionKeystroke(keystroke, this);
+            UIUtils.registerActionKeystroke(rootPane, keystroke, this);
         }
     }
 

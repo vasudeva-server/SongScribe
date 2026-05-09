@@ -32,7 +32,6 @@ import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.component.MainFrame;
 
 public final class Utils {
 
@@ -92,7 +91,7 @@ public final class Utils {
         }
     }
 
-    public static void openWebPage(MainFrame mainFrame, String webPage) {
+    public static void openWebPage(String webPage) {
         withDesktop(
             desktop -> desktop.browse(new URI(webPage)),
             Strings.ALERT_TITLE_BROWSER_ERROR,
@@ -100,7 +99,7 @@ public final class Utils {
         );
     }
 
-    public static void openEmail(MainFrame mainFrame, String email) {
+    public static void openEmail(String email) {
         withDesktop(
             desktop -> desktop.mail(new URI("mailto", email, null)),
             Strings.ALERT_TITLE_EMAIL_ERROR,

@@ -163,22 +163,30 @@ public final class UIUtils {
         }
     }
 
-    public static void addAction(
-        Object maybeAction
-    ) {
+    public static void addAction(JRootPane rootPane, Object maybeAction) {
+        if (rootPane == null) {
+            throw new IllegalArgumentException("rootPane");
+        }
+
         if (maybeAction instanceof UIAction action) {
             var keyStroke = action.getAccelerator();
-            registerActionKeystroke(keyStroke, action);
+            registerActionKeystroke(rootPane, keyStroke, action);
         }
     }
 
-    public static void registerActionKeystroke(KeyStroke keyStroke, UIAction action) {
+    public static void registerActionKeystroke(
+        JRootPane rootPane,
+        KeyStroke keyStroke,
+        UIAction action
+    ) {
+        if (rootPane == null) {
+            throw new IllegalArgumentException("rootPane");
+        }
+
         var actionCommand = action.getActionCommand();
-        var rootPane = MainFrame.getInstance().getRootPane();
         rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
             .put(keyStroke, actionCommand);
         rootPane.getActionMap().put(actionCommand, action);
-
     }
 
     public static void setupDesktopHandlers(MainFrame mainFrame, boolean hasPrefs) {
@@ -508,11 +516,15 @@ public final class UIUtils {
     // Misc
     //
 
-    public static boolean isEditingText() {
+    public static boolean isEditingTextIn(Window window) {
+        if (window == null) {
+            throw new IllegalArgumentException("window");
+        }
+
         var focusFrame = UIUtils.getFocusedFrame();
 
         //noinspection ObjectEquality
-        if (MainFrame.getInstance() != focusFrame) {
+        if (window != focusFrame) {
             return false;
         }
 

@@ -138,7 +138,7 @@ public final class ScoreInputHandler extends KeyAdapter
         } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             if (editModeManager.getGraceModeManager().isInProgress()) {
                 editModeManager.getGraceModeManager().keyPressed(e);
-            } else if (callback.getMode() == Mode.SELECT && !UIUtils.isEditingText()) {
+            } else if (callback.getMode() == Mode.SELECT && !UIUtils.isEditingTextIn(MainFrame.getInstance())) {
                 MessageCenter.post(new DeselectCommand());
             }
         }
