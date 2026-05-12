@@ -25,7 +25,7 @@ import com.formdev.flatlaf.util.SystemFileChooser;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.file.MyFileFilter;
+import songscribe.util.ExtensionFileFilter;
 import songscribe.ui.component.MainFrame;
 
 public class PlatformFileDialog {
@@ -33,10 +33,10 @@ public class PlatformFileDialog {
     private final SystemFileChooser chooser;
     private final MainFrame mainFrame;
     private final boolean isOpenDialog;
-    private MyFileFilter @Nullable [] originalFilters = null;
+    private ExtensionFileFilter @Nullable [] originalFilters = null;
     private SystemFileChooser.FileNameExtensionFilter @Nullable [] convertedFilters = null;
 
-    private static SystemFileChooser.FileNameExtensionFilter convertFilter(MyFileFilter maf) {
+    private static SystemFileChooser.FileNameExtensionFilter convertFilter(ExtensionFileFilter maf) {
         var extensions = maf.getExtensions();
 
         // Extract description without extension list (remove " (ext1, ext2)")
@@ -57,7 +57,7 @@ public class PlatformFileDialog {
         MainFrame mainFrame,
         String title,
         boolean isOpenDialog,
-        MyFileFilter filter
+        ExtensionFileFilter filter
     ) {
         this(mainFrame, title, isOpenDialog, false);
         setFileFiler(filter);
@@ -67,7 +67,7 @@ public class PlatformFileDialog {
         MainFrame mainFrame,
         String title,
         boolean isOpenDialog,
-        MyFileFilter filter,
+        ExtensionFileFilter filter,
         boolean directoriesOnly
     ) {
         this(mainFrame, title, isOpenDialog, directoriesOnly);
@@ -78,7 +78,7 @@ public class PlatformFileDialog {
         MainFrame mainFrame,
         String title,
         boolean isOpenDialog,
-        MyFileFilter[] filters,
+        ExtensionFileFilter[] filters,
         int initialFilterIndex
     ) {
         this(mainFrame, title, isOpenDialog, false);
@@ -115,15 +115,15 @@ public class PlatformFileDialog {
 
     }
 
-    public void setFileFiler(MyFileFilter maf) {
+    public void setFileFiler(ExtensionFileFilter maf) {
         var filter = convertFilter(maf);
         chooser.setFileFilter(filter);
         chooser.setAcceptAllFileFilterUsed(false);
-        originalFilters = new MyFileFilter[] { maf };
+        originalFilters = new ExtensionFileFilter[] { maf };
         convertedFilters = new SystemFileChooser.FileNameExtensionFilter[] { filter };
     }
 
-    public @Nullable MyFileFilter getFileFilter() {
+    public @Nullable ExtensionFileFilter getFileFilter() {
         // First, try to infer format from the filename extension
         // This is more reliable than the filter dropdown on macOS native dialogs
         var selectedFile = chooser.getSelectedFile();
@@ -178,5 +178,36 @@ public class PlatformFileDialog {
 
     public void setMultiSelectionEnabled(boolean enabled) {
         chooser.setMultiSelectionEnabled(enabled);
+    }
+
+    public static @Nullable File showSaveDialog(
+        MainFrame mainFrame,
+        String title,
+        String filterDescription,
+        String suggestedFileName,
+        String... extensions
+    ) {
+        var dialog = new PlatformFileDialog(
+            mainFrame, title, false, new ExtensionFileFilter(filterDescription, extensions)
+        );
+        dialog.setFile(suggestedFileName);
+
+        if (!dialog.showDialog()) {
+            return null;
+        }
+
+        var file = dialog.getFile();
+        var name = file.getName().toLowerCase();
+
+        for (var ext : extensions) {
+            var dotExt = ext.startsWith(".") ? ext.toLowerCase() : '.' + ext.toLowerCase();
+
+            if (name.endsWith(dotExt)) {
+                return file;
+            }
+        }
+
+        var firstExt = extensions[0];
+        return new File(file.getAbsolutePath() + (firstExt.startsWith(".") ? firstExt : '.' + firstExt));
     }
 }

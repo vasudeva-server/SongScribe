@@ -30,7 +30,7 @@ import songscribe.SongScribe;
 import songscribe.export.PageLayoutData;
 import songscribe.ui.action.ExportPDFAction;
 import songscribe.ui.component.Score;
-import songscribe.file.FileUtils;
+import songscribe.util.FileUtils;
 
 @SuppressWarnings({"FieldMayBeStatic" })
 public class PDFConverter {

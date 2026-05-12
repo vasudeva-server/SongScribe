@@ -78,6 +78,7 @@ import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.renderer.GraphicsState;
 import songscribe.util.GraphicUtils;
+import songscribe.util.StringUtils;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.ElementSelection;
@@ -796,6 +797,27 @@ public final class Score
         }
 
         return song;
+    }
+
+    public String getSuggestedFileName() {
+        var song = getSong();
+        var title = song.getTitle();
+        var numberStr = song.getNumber();
+        var sb = new StringBuilder(title.length() + 10);
+
+        try {
+            var number = Integer.parseInt(numberStr);
+            sb.append(String.format("%03d", number));
+        } catch (NumberFormatException nfe) {
+            sb.append(numberStr);
+        }
+
+        if (!numberStr.isEmpty()) {
+            sb.append(' ');
+        }
+
+        sb.append(StringUtils.stripDiacritics(title));
+        return sb.toString();
     }
 
     public void setSong(Song song) {

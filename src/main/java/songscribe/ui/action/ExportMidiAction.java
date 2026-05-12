@@ -23,14 +23,10 @@ import module java.desktop;
 
 
 import songscribe.Strings;
-import songscribe.file.MyFileFilter;
 import songscribe.ui.dialog.ExportMidiDialog;
 import songscribe.ui.dialog.PlatformFileDialog;
-import songscribe.file.FileUtils;
 
 public final class ExportMidiAction extends UIAction {
-
-    private final PlatformFileDialog fileDialog;
 
     public static ExportMidiAction createAction() {
         return new ExportMidiAction();
@@ -39,17 +35,18 @@ public final class ExportMidiAction extends UIAction {
     private ExportMidiAction() {
         super(Strings.get(Strings.ACTION_EXPORT_MIDI), "export-midi");
         setFlags(Flag.OPENS_DIALOG);
-        fileDialog = new PlatformFileDialog(
-            getMainFrame(),
-            "Export MIDI",
-            false,
-            new MyFileFilter(Strings.get(Strings.FILTER_MIDI), "mid")
-        );
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(requireScore(), fileDialog, "mid");
+        var score = requireScore();
+        var saveFile = PlatformFileDialog.showSaveDialog(
+            getMainFrame(),
+            "Export MIDI",
+            Strings.get(Strings.FILTER_MIDI),
+            score.getSuggestedFileName(),
+            "mid"
+        );
 
         if (saveFile == null) {
             return;

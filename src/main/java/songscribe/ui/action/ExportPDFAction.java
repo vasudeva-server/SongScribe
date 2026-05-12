@@ -26,16 +26,13 @@ import java.io.File;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.file.MyFileFilter;
 import songscribe.export.PageLayoutData;
 import songscribe.export.PDFExporter;
 import songscribe.ui.dialog.ExportPDFDialog;
 import songscribe.ui.dialog.PlatformFileDialog;
-import songscribe.file.FileUtils;
 
 public final class ExportPDFAction extends UIAction {
 
-    private final PlatformFileDialog fileDialog;
     private @Nullable ExportPDFDialog exportPDFDialog = null;
 
     public static ExportPDFAction createAction() {
@@ -45,12 +42,6 @@ public final class ExportPDFAction extends UIAction {
     private ExportPDFAction() {
         super(Strings.get(Strings.ACTION_EXPORT_PDF), "export-pdf");
         setFlags(Flag.OPENS_DIALOG);
-        fileDialog = new PlatformFileDialog(
-            getMainFrame(),
-            "Export PDF",
-            false,
-            new MyFileFilter(Strings.get(Strings.FILTER_PDF), "pdf")
-        );
     }
 
     public static void createPDF(
@@ -62,7 +53,14 @@ public final class ExportPDFAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(requireScore(), fileDialog, "pdf");
+        var score = requireScore();
+        var saveFile = PlatformFileDialog.showSaveDialog(
+            getMainFrame(),
+            "Export PDF",
+            Strings.get(Strings.FILTER_PDF),
+            score.getSuggestedFileName(),
+            "pdf"
+        );
 
         if (saveFile == null) {
             return;

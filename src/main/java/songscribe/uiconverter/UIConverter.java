@@ -31,7 +31,7 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
 import songscribe.Strings;
-import songscribe.file.FileExtensions;
+import songscribe.FileExtensions;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.QuitAction;
 import songscribe.SongScribe;

@@ -22,7 +22,7 @@ package songscribe.uiconverter;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.file.MyFileFilter;
+import songscribe.util.ExtensionFileFilter;
 import songscribe.ui.dialog.PlatformFileDialog;
 
 public class ChooseDirectoryAction extends AbstractAction {
@@ -37,7 +37,7 @@ public class ChooseDirectoryAction extends AbstractAction {
             uiConverter,
             Strings.get(Strings.DIALOG_OPEN_FOLDER_TITLE),
             true,
-            new MyFileFilter("Folders"),
+            new ExtensionFileFilter("Folders"),
             true
         );
     }

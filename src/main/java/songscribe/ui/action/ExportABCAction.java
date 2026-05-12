@@ -35,7 +35,6 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Version;
 import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
-import songscribe.file.MyFileFilter;
 import songscribe.music.Annotation;
 import songscribe.music.ArticulationType;
 import songscribe.music.Song;
@@ -48,7 +47,6 @@ import songscribe.music.Tempo;
 import songscribe.ui.Constants;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.midi.MidiSequenceBuilder;
-import songscribe.file.FileUtils;
 
 /**
  * The following features are not supported in abc 2.1
@@ -89,8 +87,6 @@ public final class ExportABCAction extends UIAction {
         "Cb",
     };
 
-    private final PlatformFileDialog fileDialog;
-
     public static ExportABCAction createAction() {
         return new ExportABCAction();
     }
@@ -98,17 +94,18 @@ public final class ExportABCAction extends UIAction {
     private ExportABCAction() {
         super(Strings.get(Strings.ACTION_EXPORT_ABC), "export-abc");
         setFlags(Flag.OPENS_DIALOG);
-        fileDialog = new PlatformFileDialog(
-            getMainFrame(),
-            "Export ABC",
-            false,
-            new MyFileFilter(Strings.get(Strings.FILTER_ABC), "abc")
-        );
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(requireScore(), fileDialog, "abc");
+        var score = requireScore();
+        var saveFile = PlatformFileDialog.showSaveDialog(
+            getMainFrame(),
+            "Export ABC",
+            Strings.get(Strings.FILTER_ABC),
+            score.getSuggestedFileName(),
+            "abc"
+        );
 
         if (saveFile == null) {
             return;

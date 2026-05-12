@@ -68,12 +68,12 @@ public final class Utils {
     }
 
     @FunctionalInterface
-    private interface DesktopOperation {
+    public interface DesktopOperation {
         @SuppressWarnings("ProhibitedExceptionDeclared") // Can't know in advance what perform will throw
         void perform(DesktopUtils desktop) throws Exception;
     }
 
-    private static void withDesktop(DesktopOperation operation, String title, String message) {
+    public static void withDesktop(DesktopOperation operation, String title, String message) {
         if (!DesktopUtils.isDesktopSupported()) {
             return;
         }

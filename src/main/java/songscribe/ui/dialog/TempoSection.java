@@ -21,7 +21,7 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
-import songscribe.file.FileUtils;
+import songscribe.util.UIUtils;
 import songscribe.music.Duration;
 import songscribe.music.Tempo;
 import songscribe.ui.FlatLafKeys;
@@ -57,7 +57,7 @@ class TempoSection extends JPanel {
         tempoDescriptionCombo.setEditable(true);
 
         for (var fileName : fileNames) {
-            FileUtils.readComboValuesFromFile(tempoDescriptionCombo, fileName);
+            UIUtils.readComboValuesFromFile(tempoDescriptionCombo, fileName);
         }
 
         var spinner = new JSpinner(tempoSpinnerModel);

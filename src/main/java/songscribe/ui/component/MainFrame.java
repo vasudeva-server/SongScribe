@@ -37,9 +37,9 @@ import org.slf4j.LoggerFactory;
 import songscribe.Strings;
 import songscribe.Version;
 import songscribe.error.RuntimeError;
-import songscribe.file.FileExtensions;
-import songscribe.file.FileUtils;
-import songscribe.file.MyFileFilter;
+import songscribe.FileExtensions;
+import songscribe.util.FileUtils;
+import songscribe.util.ExtensionFileFilter;
 import songscribe.io.SongIO;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageLogger;
@@ -629,7 +629,7 @@ public class MainFrame extends JFrame implements Printable {
             this,
             Strings.get(Strings.DIALOG_OPEN_TITLE),
             true,
-            new MyFileFilter(
+            new ExtensionFileFilter(
                 Strings.get(Strings.FILTER_SONGSCRIBE),
                 FileExtensions.SONGWRITER.substring(1)
             )
@@ -768,33 +768,24 @@ public class MainFrame extends JFrame implements Printable {
             return;
         }
 
-        var fileDialog = new PlatformFileDialog(
+        var suggestedFileName = currentFile == null ? score.getSuggestedFileName() : "";
+        var saveFile = PlatformFileDialog.showSaveDialog(
             this,
             Strings.get(Strings.DIALOG_SAVE_AS_TITLE),
-            false,
-            new MyFileFilter(
-                Strings.get(Strings.FILTER_SONGSCRIBE),
-                FileExtensions.SONGWRITER.substring(1)
-            )
+            Strings.get(Strings.FILTER_SONGSCRIBE),
+            suggestedFileName,
+            FileExtensions.SONGWRITER
         );
 
-        if (currentFile == null) {
-            fileDialog.setFile(FileUtils.getSongFileNameForFileChooser(score));
-        } else {
-            fileDialog.setFile("");
+        if (saveFile == null) {
+            return;
         }
 
-        if (fileDialog.showDialog()) {
-            var saveFile = fileDialog.getFile();
+        setCurrentFile(saveFile);
+        saveCurrentFile();
 
-            saveFile = FileUtils.ensureExtension(saveFile, FileExtensions.SONGWRITER);
-
-            setCurrentFile(saveFile);
-            saveCurrentFile();
-
-            if (!score.getSong().isModified()) {
-                RecentDocumentsManager.getInstance().add(saveFile.toPath().toAbsolutePath());
-            }
+        if (!score.getSong().isModified()) {
+            RecentDocumentsManager.getInstance().add(saveFile.toPath().toAbsolutePath());
         }
     }
 

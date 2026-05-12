@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 import songscribe.SongScribe;
 import songscribe.io.SongLoader;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.file.FileUtils;
+import songscribe.util.FileUtils;
 
 @SuppressWarnings("FieldMayBeStatic")
 public class MidiConverter {

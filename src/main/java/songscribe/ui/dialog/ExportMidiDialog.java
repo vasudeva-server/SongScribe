@@ -30,7 +30,7 @@ import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.file.FileUtils;
+import songscribe.export.ExportUtils;
 
 public class ExportMidiDialog extends StandardDialog {
 
@@ -78,7 +78,7 @@ public class ExportMidiDialog extends StandardDialog {
             try {
                 var sequence = PlaybackController.buildSequence(score.getSong());
                 MidiSystem.write(sequence, 1, saveFile);
-                FileUtils.openExportFile(saveFile);
+                ExportUtils.openExportedFile(saveFile);
             } finally {
                 PlaybackController.applySettings(savedSettings);
             }

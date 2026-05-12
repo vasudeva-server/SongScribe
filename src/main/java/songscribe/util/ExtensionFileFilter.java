@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.file;
+package songscribe.util;
 
 import module java.desktop;
 
@@ -26,12 +26,12 @@ import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MyFileFilter extends FileFilter implements FilenameFilter {
+public class ExtensionFileFilter extends FileFilter implements FilenameFilter {
 
     private final String description;
     private final ArrayList<String> extensions;
 
-    public MyFileFilter(String description, String... extensions) {
+    public ExtensionFileFilter(String description, String... extensions) {
         this.extensions = new ArrayList<>(extensions.length);
         this.extensions.addAll(List.of(extensions));
         this.description = description +

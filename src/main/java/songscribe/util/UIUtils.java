@@ -22,6 +22,11 @@ package songscribe.util;
 
 import module java.desktop;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import org.jspecify.annotations.Nullable;
@@ -32,7 +37,9 @@ import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.extras.FlatInspector;
 import com.formdev.flatlaf.extras.FlatUIDefaultsInspector;
 
+import songscribe.Strings;
 import songscribe.ui.AppearanceManager;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.FlatLafProps;
 
 import songscribe.font.SourceSans3Font;
@@ -565,5 +572,38 @@ public final class UIUtils {
         }
 
         return new TaggedString(text, null);
+    }
+
+    public static void readComboValuesFromFile(
+        JComboBox<? super String> combo,
+        String file
+    ) {
+        try {
+            var inputStream =
+                UIUtils.class.getResourceAsStream("/conf/" + file);
+
+            if (inputStream == null) {
+                throw new FileNotFoundException("File not found: " + file);
+            }
+
+            try (
+                var reader = new BufferedReader(
+                    new InputStreamReader(inputStream, StandardCharsets.UTF_8)
+                )
+            ) {
+                var line = reader.readLine();
+
+                while (line != null) {
+                    combo.addItem(line);
+                    line = reader.readLine();
+                }
+            }
+        } catch (IOException e) {
+            OptionDialogs.showErrorMessage(
+                null,
+                Strings.ALERT_TITLE_FILE_ERROR,
+                Strings.ERROR_FILE_REINSTALL
+            );
+        }
     }
 }

@@ -36,7 +36,7 @@ import songscribe.ui.component.MyBorder;
 import songscribe.ui.dialog.ProgressBarDialog;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.error.RuntimeError;
-import songscribe.file.FileUtils;
+import songscribe.util.FileUtils;
 import songscribe.util.GraphicUtils;
 
 public class ConvertAction extends AbstractAction {

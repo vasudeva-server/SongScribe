@@ -24,7 +24,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.file.FileUtils;
+import songscribe.util.UIUtils;
 import songscribe.message.mutation.ElementField;
 import songscribe.music.Annotation;
 import songscribe.music.StaffElement;
@@ -52,7 +52,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         super(Strings.get(Strings.DIALOG_ANNOTATION_TITLE));
 
         annotationCombo.setEditable(true);
-        FileUtils.readComboValuesFromFile(annotationCombo, ANNOTATION_FILE);
+        UIUtils.readComboValuesFromFile(annotationCombo, ANNOTATION_FILE);
 
         var alignmentGroup = new ButtonGroup();
         alignmentGroup.add(leftRadio);

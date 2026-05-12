@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.SongScribe;
 import songscribe.ui.component.Score;
-import songscribe.file.FileUtils;
+import songscribe.util.FileUtils;
 
 @SuppressWarnings("FieldMayBeStatic")
 public class SVGConverter {

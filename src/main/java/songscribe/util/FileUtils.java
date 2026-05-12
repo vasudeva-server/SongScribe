@@ -18,17 +18,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.file;
+package songscribe.util;
 
-import module java.desktop;
-
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -38,15 +33,6 @@ import java.util.zip.ZipOutputStream;
 import com.formdev.flatlaf.util.SystemInfo;
 
 import org.jspecify.annotations.Nullable;
-
-import songscribe.Strings;
-import songscribe.util.DesktopUtils;
-import songscribe.util.StringUtils;
-import songscribe.ui.OptionDialogs;
-import songscribe.ui.Constants;
-
-import songscribe.ui.component.Score;
-import songscribe.ui.dialog.PlatformFileDialog;
 
 public final class FileUtils {
 
@@ -90,27 +76,6 @@ public final class FileUtils {
         return (parent != null) ? parent.toString() : "";
     }
 
-    public static String getSongFileNameForFileChooser(Score score) {
-        var song = score.getSong();
-        var title = song.getTitle();
-        var numberStr = song.getNumber();
-        var sb = new StringBuilder(title.length() + 10);
-
-        try {
-            var number = Integer.parseInt(numberStr);
-            sb.append(String.format("%03d", number));
-        } catch (NumberFormatException nfe) {
-            sb.append(numberStr);
-        }
-
-        if (!numberStr.isEmpty()) {
-            sb.append(' ');
-        }
-
-        sb.append(StringUtils.stripDiacritics(title));
-        return sb.toString();
-    }
-
     public static File ensureExtension(File file, String... extensions) {
         var name = file.getName().toLowerCase();
 
@@ -127,21 +92,6 @@ public final class FileUtils {
         return ext.startsWith(".") ? ext : '.' + ext;
     }
 
-    @Nullable
-    public static File showExportDialog(
-        Score score,
-        PlatformFileDialog fileDialog,
-        String... extensions
-    ) {
-        fileDialog.setFile(getSongFileNameForFileChooser(score));
-
-        if (!fileDialog.showDialog()) {
-            return null;
-        }
-
-        return ensureExtension(fileDialog.getFile(), extensions);
-    }
-
     public static File getDocumentsDirectory() {
         var directory = new File(System.getProperty("user.home"), "Documents");
 
@@ -151,78 +101,11 @@ public final class FileUtils {
         return new File(System.getenv("USERPROFILE"), "Documents");
     }
 
-    public static File getSongScribeDirectory() {
-        return new File(getDocumentsDirectory(), Constants.PACKAGE_NAME);
-    }
-
-    public static void readComboValuesFromFile(
-        JComboBox<? super String> combo,
-        String file
-    ) {
-        try {
-            var inputStream =
-                FileUtils.class.getResourceAsStream("/conf/" + file);
-
-            if (inputStream == null) {
-                throw new FileNotFoundException("File not found: " + file);
-            }
-
-            try (
-                var reader = new BufferedReader(
-                    new InputStreamReader(inputStream, StandardCharsets.UTF_8)
-                )
-            ) {
-                var line = reader.readLine();
-
-                while (line != null) {
-                    combo.addItem(line);
-                    line = reader.readLine();
-                }
-            }
-        } catch (IOException e) {
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.ALERT_TITLE_FILE_ERROR,
-                Strings.ERROR_FILE_REINSTALL
-            );
-        }
-    }
-
     public static void copyFile(File in, File out) {
         try {
             Files.copy(in.toPath(), out.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             // Ignore
-        }
-    }
-
-    public static void openExportFile(File file) {
-        if (DesktopUtils.isDesktopSupported()) {
-            var desktop = DesktopUtils.getDesktop();
-
-            if (desktop == null) {
-                return;
-            }
-
-            var answer = OptionDialogs.showConfirmDialog(
-                null,
-                Strings.ALERT_TITLE_FILE_ERROR,
-                Strings.CONFIRM_FILE_OPEN,
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-            );
-
-            if (answer == JOptionPane.YES_OPTION) {
-                try {
-                    desktop.open(file);
-                } catch (Exception e) {
-                    OptionDialogs.showErrorMessage(
-                        null,
-                        Strings.ALERT_TITLE_FILE_ERROR,
-                        Strings.ERROR_FILE_OPEN
-                    );
-                }
-            }
         }
     }
 

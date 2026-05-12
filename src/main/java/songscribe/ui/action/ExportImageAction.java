@@ -26,14 +26,15 @@ import java.io.IOException;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.file.MyFileFilter;
+import songscribe.util.ExtensionFileFilter;
 import songscribe.export.ExportOptions;
 import songscribe.ui.OptionDialogs;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.ResolutionDialog;
-import songscribe.file.FileUtils;
+import songscribe.export.ExportUtils;
+import songscribe.util.FileUtils;
 import songscribe.util.GraphicUtils;
 import songscribe.util.Utils;
 
@@ -42,9 +43,9 @@ public final class ExportImageAction extends UIAction {
     private final PlatformFileDialog fileDialog;
     private @Nullable ResolutionDialog resolutionDialog = null;
 
-    private final MyFileFilter[] myFileFilters = new MyFileFilter[] {
-        new MyFileFilter(Strings.get(Strings.FILTER_JPEG), "jpg"),
-        new MyFileFilter(Strings.get(Strings.FILTER_PNG), "png"),
+    private final ExtensionFileFilter[] myFileFilters = new ExtensionFileFilter[] {
+        new ExtensionFileFilter(Strings.get(Strings.FILTER_JPEG), "jpg"),
+        new ExtensionFileFilter(Strings.get(Strings.FILTER_PNG), "png"),
     };
 
     public static ExportImageAction createAction() {
@@ -67,7 +68,7 @@ public final class ExportImageAction extends UIAction {
     public void actionPerformed(ActionEvent e) {
         var score = requireScore();
 
-        fileDialog.setFile(FileUtils.getSongFileNameForFileChooser(score));
+        fileDialog.setFile(score.getSuggestedFileName());
 
         if (fileDialog.showDialog()) {
             var filter = fileDialog.getFileFilter();
@@ -128,7 +129,7 @@ public final class ExportImageAction extends UIAction {
                         Strings.ERROR_IMAGE_EXPORT
                     );
                 } else {
-                    FileUtils.openExportFile(saveFile);
+                    ExportUtils.openExportedFile(saveFile);
                 }
             } catch (IOException e1) {
                 OptionDialogs.showErrorMessage(

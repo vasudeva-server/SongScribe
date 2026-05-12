@@ -23,13 +23,9 @@ import module java.desktop;
 
 
 import songscribe.Strings;
-import songscribe.file.MyFileFilter;
 import songscribe.ui.dialog.PlatformFileDialog;
-import songscribe.file.FileUtils;
 
 public final class ExportSVGAction extends UIAction {
-
-    private final PlatformFileDialog fileDialog;
 
     public static ExportSVGAction createAction() {
         return new ExportSVGAction();
@@ -38,18 +34,18 @@ public final class ExportSVGAction extends UIAction {
     private ExportSVGAction() {
         super(Strings.get(Strings.ACTION_EXPORT_SVG), "export-svg");
         setFlags(Flag.OPENS_DIALOG);
-        fileDialog = new PlatformFileDialog(
-            getMainFrame(),
-            NAME,
-            false,
-            new MyFileFilter("Portable Document Format", "svg")
-        );
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         var score = requireScore();
-        var saveFile = FileUtils.showExportDialog(score, fileDialog, "svg");
+        var saveFile = PlatformFileDialog.showSaveDialog(
+            getMainFrame(),
+            NAME,
+            "Portable Document Format",
+            score.getSuggestedFileName(),
+            "svg"
+        );
 
         if (saveFile == null) {
             return;
