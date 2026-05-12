@@ -474,7 +474,7 @@ public class UIConverter extends MainFrame {
                 false
             )
         );
-        rejectList = new JList();
+        rejectList = new JList<>();
         Font rejectListFont =
             this.$$$getFont$$$(null, Font.PLAIN, -1, rejectList.getFont());
         if (rejectListFont != null) {
