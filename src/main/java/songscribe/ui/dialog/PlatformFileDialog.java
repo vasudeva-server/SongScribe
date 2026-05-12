@@ -42,6 +42,7 @@ public class PlatformFileDialog {
         // Extract description without extension list (remove " (ext1, ext2)")
         var description = maf.getDescription();
         var parenIndex = description.lastIndexOf('(');
+
         if (parenIndex > 0) {
             description = description.substring(0, parenIndex).trim();
         }
@@ -82,8 +83,8 @@ public class PlatformFileDialog {
     ) {
         this(mainFrame, title, isOpenDialog, false);
         originalFilters = filters;
-
         convertedFilters = new SystemFileChooser.FileNameExtensionFilter[filters.length];
+
         for (var i = 0; i < filters.length; i++) {
             convertedFilters[i] = convertFilter(filters[i]);
             chooser.addChoosableFileFilter(convertedFilters[i]);
@@ -126,6 +127,7 @@ public class PlatformFileDialog {
         // First, try to infer format from the filename extension
         // This is more reliable than the filter dropdown on macOS native dialogs
         var selectedFile = chooser.getSelectedFile();
+
         if (selectedFile != null && originalFilters != null) {
             var fileName = selectedFile.getName().toLowerCase();
             for (var filter : originalFilters) {
@@ -139,6 +141,7 @@ public class PlatformFileDialog {
 
         // Fall back to filter dropdown selection
         var selectedFilter = chooser.getFileFilter();
+
         if (originalFilters != null && convertedFilters != null && selectedFilter != null) {
             var selectedDescription = selectedFilter.getDescription();
             for (var i = 0; i < convertedFilters.length; i++) {
