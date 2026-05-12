@@ -61,7 +61,7 @@ public final class ComponentHierarchyNavigator {
     /**
      * Returns the actual middle Y coordinate of a line in the Score coordinate system.
      */
-    public int getActualLineMiddleY(int lineIndex) {
+    public int getActualLineMiddleYPx(int lineIndex) {
         var mainPanel = provider.getMainPanel();
 
         if (mainPanel == null) {
@@ -169,19 +169,20 @@ public final class ComponentHierarchyNavigator {
             return;
         }
 
-        // middleLineY = first line's absolute middle Y
-        var middleLineY = getActualLineMiddleY(0);
+        // middleLineYPx = first line's absolute middle Y
+        var middleLineYPx = getActualLineMiddleYPx(0);
 
-        // rowHeight = distance between consecutive line midpoints
-        int rowHeight;
+        // rowHeightPx = distance between consecutive line midpoints
+        int rowHeightPx;
+
         if (linePanels.size() >= 2) {
-            rowHeight = getActualLineMiddleY(1) - getActualLineMiddleY(0);
+            rowHeightPx = getActualLineMiddleYPx(1) - getActualLineMiddleYPx(0);
         } else {
             var linePanel = linePanels.getFirst();
-            rowHeight = linePanel.getLineComponent().getHeight()
+            rowHeightPx = linePanel.getLineComponent().getHeight()
                 + ScaleContext.getInstance().toRoundedPixels(StaffPanel.LINE_MARGIN_BOTTOM_SS);
         }
 
-        layoutUpdater.accept(new int[]{middleLineY, rowHeight});
+        layoutUpdater.accept(new int[]{middleLineYPx, rowHeightPx});
     }
 }

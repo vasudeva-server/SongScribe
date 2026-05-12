@@ -606,7 +606,9 @@ public final class Score
     }
 
     public void viewChanged() {
-        // Component hierarchy handles layout automatically
+        // Syncs derived coordinates from current child positions without re-running the
+        // layout manager. Callers either own child positions manually (drag) or expect
+        // Swing to drive doLayout() separately via revalidate().
         updateLayoutFromComponents();
     }
 
@@ -800,9 +802,9 @@ public final class Score
     }
 
     public String getSuggestedFileName() {
-        var song = getSong();
-        var title = song.getTitle();
-        var numberStr = song.getNumber();
+        var theSong = getSong();
+        var title = theSong.getTitle();
+        var numberStr = theSong.getNumber();
         var sb = new StringBuilder(title.length() + 10);
 
         try {
