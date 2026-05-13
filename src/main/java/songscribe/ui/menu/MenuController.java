@@ -40,6 +40,7 @@ import com.formdev.flatlaf.util.SystemInfo;
 import com.uber.nullaway.annotations.Initializer;
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.error.RuntimeError;
 import songscribe.Strings;
 import songscribe.Version;
 import songscribe.message.MessageCenter;
@@ -120,8 +121,11 @@ public class MenuController {
             try {
                 nativeMenuController = new MacNativeMenuController();
             } catch (Throwable e) {
-                // Rococoa native library not available (e.g. in test environments)
-                LOG.warn("MacNativeMenuController not available: {}", e.getMessage());
+                if (GraphicsEnvironment.isHeadless()) {
+                    LOG.debug("MacNativeMenuController not available: {}", e.getMessage());
+                } else {
+                    throw RuntimeError.exit("MacNativeMenuController not available", e);
+                }
             }
         }
     }
