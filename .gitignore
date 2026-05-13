@@ -21,3 +21,4 @@ images/CleanShot*.png
 
 # IntelliJ IDEA
 .idea/compiler.xml
+lib/
