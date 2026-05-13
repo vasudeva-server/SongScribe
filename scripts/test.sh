@@ -43,6 +43,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
   JVM_ARGS+=(
     "-Dapple.laf.useScreenMenuBar=true"
     "-Dapple.awt.application.appearance=system"
+    "-Djna.library.path=$PROJECT_DIR/build/native"
   )
 fi
 
