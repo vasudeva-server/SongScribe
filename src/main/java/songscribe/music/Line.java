@@ -67,8 +67,8 @@ public class Line {
     private final SpanSet<TupletSpan> tuplets = new SpanSet<>();
     private final SpanSet<DynamicsSpan> crescendo = new SpanSet<>();
     private final SpanSet<DynamicsSpan> diminuendo = new SpanSet<>();
-    @SuppressWarnings("rawtypes")
-    private final SpanSet[] spanSets = new SpanSet[]{
+    @SuppressWarnings("unchecked")
+    private final SpanSet<?>[] spanSets = new SpanSet[]{
         beamings,
         ties,
         tuplets,
@@ -1219,7 +1219,8 @@ public class Line {
     }
 
     public SpanSet<?>[] copySpans(int a, int b) {
-        var retSpanSets = Arrays.stream(spanSets)
+        @SuppressWarnings("unchecked")
+        var retSpanSets = (SpanSet<?>[]) Arrays.stream(spanSets)
             .map(spanSet -> spanSet.copySpan(a, b))
             .toArray(SpanSet[]::new);
 
@@ -1231,10 +1232,10 @@ public class Line {
         shiftSpans(copySpanSets, 0, xIndex);
 
         for (var i = 0; i < spanSets.length; i++) {
+            @SuppressWarnings("unchecked")
+            var typedSet = (SpanSet<Span>) spanSets[i];
             for (var li = copySpanSets[i].listIterator(); li.hasNext(); ) {
-                var span = li.next();
-                //noinspection unchecked
-                spanSets[i].addSpan(span);
+                typedSet.addSpan((Span) li.next());
             }
         }
 
