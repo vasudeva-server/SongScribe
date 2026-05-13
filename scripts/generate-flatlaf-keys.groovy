@@ -1,12 +1,14 @@
-// Reads FlatLaf.properties and generates target/generated-sources/songscribe/ui/FlatLafKeys.java.
+// Reads FlatLaf.properties and generates build/generated-sources/songscribe/ui/FlatLafKeys.java.
 // Only keys with the "SongScribe." prefix are included.
-// Runs during the generate-sources Maven phase via gmavenplus-plugin.
+// Bindings: basedir (project root), buildDir (build output directory).
 
 import java.util.regex.Pattern
 
+def RG = System.getenv('RG') ?: '/opt/homebrew/bin/rg'
+
 def PREFIX = 'SongScribe.'
-def PROPS_FILE = new File("${project.basedir}/src/main/resources/songscribe/FlatLaf.properties")
-def OUT_DIR = new File("${project.build.directory}/generated-sources/songscribe/ui")
+def PROPS_FILE = new File("${basedir}/src/main/resources/songscribe/FlatLaf.properties")
+def OUT_DIR = new File("${buildDir}/generated-sources/songscribe/ui")
 def OUT_FILE = new File(OUT_DIR, 'FlatLafKeys.java')
 
 if (OUT_FILE.exists() && OUT_FILE.lastModified() >= PROPS_FILE.lastModified()) {
@@ -37,66 +39,45 @@ keys.each { key ->
     def constant = suffix.toUpperCase().replace('.', '_')
 
     if (constantToKey.containsKey(constant)) {
-        System.err.println("ERROR: Key collision in FlatLaf.properties:")
-        System.err.println("       '${constantToKey[constant]}' and '${key}' both map to '${constant}'")
-        System.exit(1)
+        throw new RuntimeException("Key collision in FlatLaf.properties: '${constantToKey[constant]}' and '${key}' both map to '${constant}'")
     }
 
     constantToKey[constant] = key
 }
 
 // Generate FlatLafKeys.java
+def constants = constantToKey.toSorted().collect { constant, key ->
+    "    public static final String ${constant} = \"${key}\";"
+}.join('\n')
+
+def template = new File("${basedir}/scripts/templates/FlatLafKeys.java.template")
 OUT_FILE.withWriter('UTF-8') { out ->
-    out.println '// This is an auto generated code. DO NOT MODIFY!'
-    out.println 'package songscribe.ui;'
-    out.println ''
-    out.println '/**'
-    out.println ' * Constants for custom SongScribe.* keys defined in FlatLaf.properties.'
-    out.println ' * Generated from {@code src/main/resources/songscribe/FlatLaf.properties}.'
-    out.println ' */'
-    out.println 'public final class FlatLafKeys {'
-    out.println ''
-    out.println '    private FlatLafKeys() {}'
-    out.println ''
-
-    constantToKey.toSorted().each { constant, key ->
-        out.println "    public static final String ${constant} = \"${key}\";"
-    }
-
-    out.println '}'
+    out.write(template.getText('UTF-8').replace('{{CONSTANTS}}', constants))
 }
 
 println "Generated FlatLafKeys.java with ${constantToKey.size()} constants."
 
 // Audit: check that every constant is referenced somewhere in the Java sources.
-def sourceDirs = [
-    new File("${project.basedir}/src/main/java"),
-    new File("${project.basedir}/src/test/java"),
-]
+def rgConstantsProc = [RG, '--no-filename', '--no-line-number', '-o',
+                       'FlatLafKeys\\.[A-Z][A-Z0-9_]+',
+                       "${basedir}/src"]
+                      .execute()
+def rgConstantsOut = new StringBuilder()
+rgConstantsProc.waitForProcessOutput(rgConstantsOut, new StringBuilder())
+def referencedConstants = rgConstantsOut.toString().readLines().toSet()
 
-def allSource = new StringBuilder()
+def rgRawKeysProc = [RG, '--no-filename', '--no-line-number', '-o',
+                     'SongScribe\\.[\\w.]+',
+                     "${basedir}/src"]
+                    .execute()
+def rgRawKeysOut = new StringBuilder()
+rgRawKeysProc.waitForProcessOutput(rgRawKeysOut, new StringBuilder())
+def referencedRawKeys = rgRawKeysOut.toString().readLines().toSet()
 
-sourceDirs.each { dir ->
-    dir.eachFileRecurse { file ->
-        if (file.name.endsWith('.java')) {
-            allSource.append(file.getText('UTF-8'))
-        }
-    }
-}
-
-def sourceText = allSource.toString()
-def deadKeys = []
-
-constantToKey.each { constant, key ->
-    // Check for FlatLafKeys.CONSTANT or the raw key string in UIManager calls
-    if (!sourceText.contains("FlatLafKeys.${constant}") && !sourceText.contains("\"${key}\"")) {
-        deadKeys << key
-    }
-}
+def deadKeys = constantToKey.findAll { constant, key ->
+    !referencedConstants.contains("FlatLafKeys.${constant}".toString()) && !referencedRawKeys.contains(key.toString())
+}.values().sort()
 
 if (deadKeys) {
-    System.err.println("ERROR: ${deadKeys.size()} dead FlatLaf key(s) found in FlatLaf.properties:")
-    deadKeys.sort().each { System.err.println("  ${it}") }
-    System.err.println("\nRemove these keys or add references to them.")
-    System.exit(1)
+    throw new RuntimeException("${deadKeys.size()} dead FlatLaf key(s) found in FlatLaf.properties:\n${deadKeys.collect { "  $it" }.join('\n')}\n\nRemove these keys or add references to them.")
 }

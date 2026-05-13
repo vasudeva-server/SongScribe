@@ -1,12 +1,14 @@
-// Reads strings.properties and generates target/generated-sources/songscribe/Strings.java.
-// Runs during the generate-sources Maven phase via gmavenplus-plugin.
+// Reads strings.properties and generates build/generated-sources/songscribe/Strings.java.
+// Bindings: basedir (project root), buildDir (build output directory).
 
 import java.util.regex.Pattern
 
+def RG = System.getenv('RG') ?: '/opt/homebrew/bin/rg'
+
 def KEY_REGEX = Pattern.compile('[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)*')
 
-def propsFile = new File("${project.basedir}/src/main/resources/songscribe/strings.properties")
-def outDir = new File("${project.build.directory}/generated-sources/songscribe")
+def propsFile = new File("${basedir}/src/main/resources/songscribe/strings.properties")
+def outDir = new File("${buildDir}/generated-sources/songscribe")
 def outFile = new File(outDir, 'Strings.java')
 
 if (outFile.exists() && outFile.lastModified() >= propsFile.lastModified()) {
@@ -24,51 +26,26 @@ def constantToKey = [:]
 
 props.stringPropertyNames().sort().each { key ->
     if (!KEY_REGEX.matcher(key).matches()) {
-        System.err.println("ERROR: Invalid key format in strings.properties: '${key}'")
-        System.err.println("       Keys must match: [a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)*")
-        System.exit(1)
+        throw new RuntimeException("Invalid key format in strings.properties: '${key}'\nKeys must match: [a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)*")
     }
 
     def constant = key.toUpperCase().replace('.', '_')
 
     if (constantToKey.containsKey(constant)) {
-        System.err.println("ERROR: Key collision in strings.properties:")
-        System.err.println("       '${constantToKey[constant]}' and '${key}' both map to '${constant}'")
-        System.exit(1)
+        throw new RuntimeException("Key collision in strings.properties: '${constantToKey[constant]}' and '${key}' both map to '${constant}'")
     }
 
     constantToKey[constant] = key
 }
 
 // Generate Strings.java
+def constants = constantToKey.keySet().sort().collect { constant ->
+    "    public static final String ${constant} = \"${constantToKey[constant]}\";"
+}.join('\n')
+
+def template = new File("${basedir}/scripts/templates/Strings.java.template")
 outFile.withWriter('UTF-8') { out ->
-    out.println '// This is an auto generated code. DO NOT MODIFY!'
-    out.println 'package songscribe;'
-    out.println ''
-    out.println 'import java.text.MessageFormat;'
-    out.println 'import java.util.ResourceBundle;'
-    out.println ''
-    out.println 'public final class Strings {'
-    out.println '    private static final ResourceBundle BUNDLE ='
-    out.println '        ResourceBundle.getBundle("songscribe.strings");'
-    out.println ''
-
-    constantToKey.keySet().sort().each { constant ->
-        def key = constantToKey[constant]
-        out.println "    public static final String ${constant} = \"${key}\";"
-    }
-
-    out.println ''
-    out.println '    private Strings() {}'
-    out.println ''
-    out.println '    public static String get(String key) {'
-    out.println '        return BUNDLE.getString(key);'
-    out.println '    }'
-    out.println ''
-    out.println '    public static String get(String key, Object... args) {'
-    out.println '        return MessageFormat.format(BUNDLE.getString(key), args);'
-    out.println '    }'
-    out.println '}'
+    out.write(template.getText('UTF-8').replace('{{CONSTANTS}}', constants))
 }
 
 println "Generated Strings.java with ${constantToKey.size()} constants."
@@ -77,37 +54,19 @@ println "Generated Strings.java with ${constantToKey.size()} constants."
 // Keys with these prefixes are intentionally unreferenced (test fixtures, etc.).
 def EXEMPT_PREFIXES = ['test.', 'month.']
 
-def sourceDirs = [
-    new File("${project.basedir}/src/main/java"),
-    new File("${project.basedir}/src/test/java"),
-]
+def rgProc = [RG, '--no-filename', '--no-line-number', '-o',
+              'Strings\\.[A-Z][A-Z0-9_]+',
+              "${basedir}/src"]
+             .execute()
+def rgOut = new StringBuilder()
+def rgErr = new StringBuilder()
+rgProc.waitForProcessOutput(rgOut, rgErr)
+def referenced = rgOut.toString().readLines().toSet()
 
-def allSource = new StringBuilder()
-
-sourceDirs.each { dir ->
-    dir.eachFileRecurse { file ->
-        if (file.name.endsWith('.java')) {
-            allSource.append(file.getText('UTF-8'))
-        }
-    }
-}
-
-def sourceText = allSource.toString()
-def deadKeys = []
-
-constantToKey.each { constant, key ->
-    if (EXEMPT_PREFIXES.any { key.startsWith(it) }) {
-        return
-    }
-
-    if (!sourceText.contains("Strings.${constant}")) {
-        deadKeys << key
-    }
-}
+def deadKeys = constantToKey.findAll { constant, key ->
+    !EXEMPT_PREFIXES.any { key.startsWith(it) } && !referenced.contains("Strings.${constant}".toString())
+}.values().sort()
 
 if (deadKeys) {
-    System.err.println("ERROR: ${deadKeys.size()} dead string key(s) found in strings.properties:")
-    deadKeys.sort().each { System.err.println("  ${it}") }
-    System.err.println("\nRemove these keys or add references to them.")
-    System.exit(1)
+    throw new RuntimeException("${deadKeys.size()} dead string key(s) found in strings.properties:\n${deadKeys.collect { "  $it" }.join('\n')}\n\nRemove these keys or add references to them.")
 }

@@ -1,0 +1,22 @@
+// This is an auto generated code. DO NOT MODIFY!
+package songscribe;
+
+import java.text.MessageFormat;
+import java.util.ResourceBundle;
+
+public final class Strings {
+    private static final ResourceBundle BUNDLE =
+        ResourceBundle.getBundle("songscribe.strings");
+
+{{CONSTANTS}}
+
+    private Strings() {}
+
+    public static String get(String key) {
+        return BUNDLE.getString(key);
+    }
+
+    public static String get(String key, Object... args) {
+        return MessageFormat.format(BUNDLE.getString(key), args);
+    }
+}

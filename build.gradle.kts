@@ -1,7 +1,5 @@
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Properties
-import java.util.regex.Pattern
 import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
@@ -99,67 +97,10 @@ val generateStrings by tasks.registering {
     val outDir = generatedSourcesDir.map { it.dir("songscribe") }
     outputs.dir(outDir)
     doLast {
-        val keyRegex = Pattern.compile("[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)*")
-        val propsFile = file("src/main/resources/songscribe/strings.properties")
-        val props = Properties().apply { propsFile.reader(Charsets.UTF_8).use { load(it) } }
-
-        val constantToKey = sortedMapOf<String, String>()
-        for (key in props.stringPropertyNames().sorted()) {
-            if (!keyRegex.matcher(key).matches()) {
-                error("Invalid key format in strings.properties: '$key'\nKeys must match: [a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)*")
-            }
-            val constant = key.uppercase().replace('.', '_')
-            if (constantToKey.containsKey(constant)) {
-                error("Key collision in strings.properties: '${constantToKey[constant]}' and '$key' both map to '$constant'")
-            }
-            constantToKey[constant] = key
-        }
-
-        val dir = outDir.get().asFile
-        dir.mkdirs()
-        File(dir, "Strings.java").bufferedWriter(Charsets.UTF_8).use { out ->
-            out.appendLine("// This is an auto generated code. DO NOT MODIFY!")
-            out.appendLine("package songscribe;")
-            out.appendLine()
-            out.appendLine("import java.text.MessageFormat;")
-            out.appendLine("import java.util.ResourceBundle;")
-            out.appendLine()
-            out.appendLine("public final class Strings {")
-            out.appendLine("    private static final ResourceBundle BUNDLE =")
-            out.appendLine("        ResourceBundle.getBundle(\"songscribe.strings\");")
-            out.appendLine()
-            for ((constant, key) in constantToKey) {
-                out.appendLine("    public static final String $constant = \"$key\";")
-            }
-            out.appendLine()
-            out.appendLine("    private Strings() {}")
-            out.appendLine()
-            out.appendLine("    public static String get(String key) {")
-            out.appendLine("        return BUNDLE.getString(key);")
-            out.appendLine("    }")
-            out.appendLine()
-            out.appendLine("    public static String get(String key, Object... args) {")
-            out.appendLine("        return MessageFormat.format(BUNDLE.getString(key), args);")
-            out.appendLine("    }")
-            out.appendLine("}")
-        }
-
-        println("Generated Strings.java with ${constantToKey.size} constants.")
-
-        val exemptPrefixes = listOf("test.", "month.")
-        val sourceDirs = listOf(file("src/main/java"), file("src/test/java"))
-        val allSource = buildString {
-            for (d in sourceDirs) {
-                d.walkTopDown().filter { it.name.endsWith(".java") }.forEach { append(it.readText(Charsets.UTF_8)) }
-            }
-        }
-        val deadKeys = constantToKey.filter { (constant, key) ->
-            exemptPrefixes.none { key.startsWith(it) } && !allSource.contains("Strings.$constant")
-        }.values.sorted()
-
-        if (deadKeys.isNotEmpty()) {
-            error("${deadKeys.size} dead string key(s) found in strings.properties:\n${deadKeys.joinToString("\n") { "  $it" }}\n\nRemove these keys or add references to them.")
-        }
+        groovy.lang.GroovyShell(groovy.lang.Binding(mapOf(
+            "basedir" to projectDir.absolutePath,
+            "buildDir" to layout.buildDirectory.get().asFile.absolutePath
+        ))).evaluate(file("scripts/generate-strings.groovy"))
     }
 }
 
@@ -168,60 +109,10 @@ val generateFlatLafKeys by tasks.registering {
     val outDir = generatedSourcesDir.map { it.dir("songscribe/ui") }
     outputs.dir(outDir)
     doLast {
-        val prefix = "SongScribe."
-        val propsFile = file("src/main/resources/songscribe/FlatLaf.properties")
-        val keyPattern = Pattern.compile("^\\s*(${Pattern.quote(prefix)}[\\w.]+)\\s*=")
-        val keys = linkedSetOf<String>()
-
-        propsFile.forEachLine(Charsets.UTF_8) { line ->
-            val matcher = keyPattern.matcher(line)
-            if (matcher.find()) keys.add(matcher.group(1))
-        }
-
-        val constantToKey = linkedMapOf<String, String>()
-        for (key in keys) {
-            val constant = key.substring(prefix.length).uppercase().replace('.', '_')
-            if (constantToKey.containsKey(constant)) {
-                error("Key collision in FlatLaf.properties: '${constantToKey[constant]}' and '$key' both map to '$constant'")
-            }
-            constantToKey[constant] = key
-        }
-
-        val dir = outDir.get().asFile
-        dir.mkdirs()
-        File(dir, "FlatLafKeys.java").bufferedWriter(Charsets.UTF_8).use { out ->
-            out.appendLine("// This is an auto generated code. DO NOT MODIFY!")
-            out.appendLine("package songscribe.ui;")
-            out.appendLine()
-            out.appendLine("/**")
-            out.appendLine(" * Constants for custom SongScribe.* keys defined in FlatLaf.properties.")
-            out.appendLine(" * Generated from {@code src/main/resources/songscribe/FlatLaf.properties}.")
-            out.appendLine(" */")
-            out.appendLine("public final class FlatLafKeys {")
-            out.appendLine()
-            out.appendLine("    private FlatLafKeys() {}")
-            out.appendLine()
-            for ((constant, key) in constantToKey.toSortedMap()) {
-                out.appendLine("    public static final String $constant = \"$key\";")
-            }
-            out.appendLine("}")
-        }
-
-        println("Generated FlatLafKeys.java with ${constantToKey.size} constants.")
-
-        val sourceDirs = listOf(file("src/main/java"), file("src/test/java"))
-        val allSource = buildString {
-            for (d in sourceDirs) {
-                d.walkTopDown().filter { it.name.endsWith(".java") }.forEach { append(it.readText(Charsets.UTF_8)) }
-            }
-        }
-        val deadKeys = constantToKey.filter { (constant, key) ->
-            !allSource.contains("FlatLafKeys.$constant") && !allSource.contains("\"$key\"")
-        }.values.sorted()
-
-        if (deadKeys.isNotEmpty()) {
-            error("${deadKeys.size} dead FlatLaf key(s) found in FlatLaf.properties:\n${deadKeys.joinToString("\n") { "  $it" }}\n\nRemove these keys or add references to them.")
-        }
+        groovy.lang.GroovyShell(groovy.lang.Binding(mapOf(
+            "basedir" to projectDir.absolutePath,
+            "buildDir" to layout.buildDirectory.get().asFile.absolutePath
+        ))).evaluate(file("scripts/generate-flatlaf-keys.groovy"))
     }
 }
 
