@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run tests with JUnit Console Launcher (tree-style output)
-# Usage: ./scripts/test.sh [--debug] [--slow] [--keep-going] [--verbose] [list|e2e|unit|test-pattern]
+# Usage: ./scripts/test.sh [--debug] [--keep-going] [--verbose] [list|e2e|unit|test-pattern]
 # Examples:
 #   ./scripts/test.sh                           # Run all tests (unit then e2e, stops on first failure)
 #   ./scripts/test.sh list                      # List all tests in execution order (no run)
@@ -11,14 +11,13 @@
 #   ./scripts/test.sh --verbose                 # Run all tests with tree-style output
 #   ./scripts/test.sh --keep-going              # Run all tests, continue past failures
 #   ./scripts/test.sh --debug e2e              # Run e2e tests, pausing before each test (OK/Slow/Continue/Stop)
-#   ./scripts/test.sh --slow GlissandoTest      # Run with 1s pause between UI actions (no dialog)
 #   ./scripts/test.sh --debug 'NoteConnectionTest$Beaming'  # Debug a specific @Nested class
 #   ./scripts/test.sh SMuFLMetadataTest         # Run specific test class
 #   ./scripts/test.sh BeamingTest.testFlipStemDirection    # Run specific test method
 #   ./scripts/test.sh 'NoteConnectionTest$Beaming'         # Run all tests in a @Nested inner class (single quotes prevent $ expansion)
 #   ./scripts/test.sh 'NoteConnectionTest$Beaming.testToggleBeam'  # Run specific method in a @Nested inner class
 #   ./scripts/test.sh SMuFLMetadataTest BeamingTest        # Multiple classes (space-separated)
-#   ./scripts/test.sh -Dtest=*Test              # Run with Maven pattern
+#   ./scripts/test.sh -Dtest=*Test              # Run with class name pattern
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -33,7 +32,6 @@ SUPPRESS_LAUNCHER_OUTPUT=true
 while [[ "$1" == --* ]]; do
   case "$1" in
     --debug)   JVM_ARGS+=("-De2e.debug=true") ;;
-    --slow)    JVM_ARGS+=("-De2e.slow=true") ;;
     --keep-going) KEEP_GOING=true ;;
     --verbose)   DETAILS="tree"; SUPPRESS_LAUNCHER_OUTPUT=false ;;
     *)       break ;;
