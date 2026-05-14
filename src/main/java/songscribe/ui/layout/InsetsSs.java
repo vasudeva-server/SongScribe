@@ -28,10 +28,10 @@ public record InsetsSs(double top, double left, double bottom, double right) {
     public Insets toInsetsPx() {
         var scaleContext = ScaleContext.getInstance();
         return new Insets(
-            scaleContext.toRoundedPixels(top),
-            scaleContext.toRoundedPixels(left),
-            scaleContext.toRoundedPixels(bottom),
-            scaleContext.toRoundedPixels(right)
+            scaleContext.ssToRoundedPx(top),
+            scaleContext.ssToRoundedPx(left),
+            scaleContext.ssToRoundedPx(bottom),
+            scaleContext.ssToRoundedPx(right)
         );
     }
 }

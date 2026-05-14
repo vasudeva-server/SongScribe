@@ -147,6 +147,6 @@ public class AnnotationAttachment extends Attachment {
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(getContentHeightSs());
+        return ScaleContext.getInstance().ssToPx(getContentHeightSs());
     }
 }

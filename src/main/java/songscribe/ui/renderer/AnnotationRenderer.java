@@ -72,7 +72,7 @@ public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> 
             applyDecorationColor(g2, element, ctx);
 
             var metrics = ctx.getSong().getAnnotationFontMetrics();
-            var ascentSs = ScaleContext.getInstance().fromPixels(metrics.getAscent());
+            var ascentSs = ScaleContext.getInstance().pxToSs(metrics.getAscent());
             var xSs = decorationLayout.xSs();
             var baselineYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx) + ascentSs;
 

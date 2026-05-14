@@ -45,7 +45,7 @@ public class TitleComponent extends ScoreComponent {
      * Creates a new TitleComponent.
      */
     public TitleComponent() {
-        setMarginBottom(ScaleContext.getInstance().toRoundedPixels(TITLE_MARGIN_BOTTOM_SS));
+        setMarginBottom(ScaleContext.getInstance().ssToRoundedPx(TITLE_MARGIN_BOTTOM_SS));
     }
 
     @Override

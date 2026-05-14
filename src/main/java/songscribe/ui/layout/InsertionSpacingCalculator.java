@@ -76,7 +76,7 @@ public final class InsertionSpacingCalculator {
     private static double elementXSs(StaffElement element, @Nullable LayoutResult layout) {
         return layout != null
             ? layout.getElementXSs(element)
-            : ScaleContext.getInstance().fromPixels(element.getXOffsetPx());
+            : ScaleContext.getInstance().pxToSs(element.getXOffsetPx());
     }
 
     /**

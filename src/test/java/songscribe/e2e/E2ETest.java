@@ -418,8 +418,8 @@ public abstract class E2ETest {
             var sc = ScaleContext.getInstance();
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + sc.toRoundedPixels(hitRect.x + hitRect.width / 2),
-                locationOnScreen.y + sc.toRoundedPixels(hitRect.y + hitRect.height / 2)
+                locationOnScreen.x + sc.ssToRoundedPx(hitRect.x + hitRect.width / 2),
+                locationOnScreen.y + sc.ssToRoundedPx(hitRect.y + hitRect.height / 2)
             );
         }));
     }
@@ -446,7 +446,7 @@ public abstract class E2ETest {
                 var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastNote) : 0.0;
                 var sc = ScaleContext.getInstance();
                 // Place 30px past the last note
-                xPx = (int) Math.round(sc.toPixels(lastXSs)) + 30;
+                xPx = (int) Math.round(sc.ssToPx(lastXSs)) + 30;
             }
 
             var yPx = lc.staffPositionToYPx(staffPositionSp);
@@ -472,7 +472,7 @@ public abstract class E2ETest {
             var element = line.getElement(elementIndex);
             var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
             var sc = ScaleContext.getInstance();
-            var xPx = (int) Math.round(sc.toPixels(elementXSs)) - 10;
+            var xPx = (int) Math.round(sc.ssToPx(elementXSs)) - 10;
 
             var yPx = lc.staffPositionToYPx(staffPositionSp);
 

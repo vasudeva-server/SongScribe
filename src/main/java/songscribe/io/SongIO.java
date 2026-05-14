@@ -430,7 +430,7 @@ public final class SongIO {
                     }
 
                     var line = parsedLines.getLast();
-                    note.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(
+                    note.setXOffsetPx(ScaleContext.getInstance().ssToRoundedPx(
                         InsertionSpacingCalculator.calculateAppendPositionSs(line, note, null)));
                     note.setUpper(Score.defaultUpperNote(note));
                     line.addElement(note);
@@ -667,7 +667,7 @@ public final class SongIO {
                 var af = attributionFont != null ? attributionFont : defaultFontFromPrefs(PrefsKey.ATTRIBUTION_FONT, PrefsKey.ATTRIBUTION_FONT_SIZE);
                 topPaddingSs = ((2 * tf.getSize()) +
                     (Utils.lineCount(attribution) * af.getSize())) -
-                    ScaleContext.getInstance().toRoundedPixels(2.0);
+                    ScaleContext.getInstance().ssToRoundedPx(2.0);
             }
 
             var data = new SongData(

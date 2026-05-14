@@ -105,9 +105,9 @@ public record LyricRenderMetrics(
         var scaleContext = ScaleContext.getInstance();
 
         return new LyricBoxMetrics(
-            scaleContext.fromPixels(layout.getAdvance()),
-            scaleContext.fromPixels(bounds.getX()),
-            scaleContext.fromPixels(bounds.getX() + bounds.getWidth())
+            scaleContext.pxToSs(layout.getAdvance()),
+            scaleContext.pxToSs(bounds.getX()),
+            scaleContext.pxToSs(bounds.getX() + bounds.getWidth())
         );
     }
 

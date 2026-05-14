@@ -148,11 +148,11 @@ public class Articulation extends LineElement {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.getInstance().toPixels(getContentWidthSs());
+        return ScaleContext.getInstance().ssToPx(getContentWidthSs());
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(getContentHeightSs());
+        return ScaleContext.getInstance().ssToPx(getContentHeightSs());
     }
 }

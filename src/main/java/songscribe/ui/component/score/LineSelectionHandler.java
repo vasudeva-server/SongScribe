@@ -88,8 +88,8 @@ class LineSelectionHandler {
         }
 
         var scaleCtx = ScaleContext.getInstance();
-        var clickXSs = scaleCtx.fromPixels(point.x);
-        var clickYSs = scaleCtx.fromPixels(point.y);
+        var clickXSs = scaleCtx.pxToSs(point.x);
+        var clickYSs = scaleCtx.pxToSs(point.y);
 
         var glissandoIndex = hitTestGlissandoAtPoint(clickXSs, clickYSs);
 
@@ -391,10 +391,10 @@ class LineSelectionHandler {
         // Convert pixel drag rect to staff spaces for intersection with hit rects
         var sc = ScaleContext.getInstance();
         var dragRectSs = new Rectangle2D.Double(
-            sc.fromPixels(dragRect.x),
-            sc.fromPixels(dragRect.y),
-            sc.fromPixels(dragRect.width),
-            sc.fromPixels(dragRect.height)
+            sc.pxToSs(dragRect.x),
+            sc.pxToSs(dragRect.y),
+            sc.pxToSs(dragRect.width),
+            sc.pxToSs(dragRect.height)
         );
         var helper = new Rectangle2D.Double();
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {

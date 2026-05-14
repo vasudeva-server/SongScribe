@@ -143,8 +143,8 @@ class LayoutResultTest extends UnitTest {
             lyricRenderMetrics,
             line,
             new Point2D.Double(
-                ScaleContext.getInstance().toRoundedPixels(4.0),
-                ScaleContext.getInstance().toRoundedPixels(baselineYSs)
+                ScaleContext.getInstance().ssToRoundedPx(4.0),
+                ScaleContext.getInstance().ssToRoundedPx(baselineYSs)
             )
         );
 
@@ -172,8 +172,8 @@ class LayoutResultTest extends UnitTest {
             lyricRenderMetrics,
             line,
             new Point2D.Double(
-                ScaleContext.getInstance().toRoundedPixels(5.5),
-                ScaleContext.getInstance().toRoundedPixels(7.0)
+                ScaleContext.getInstance().ssToRoundedPx(5.5),
+                ScaleContext.getInstance().ssToRoundedPx(7.0)
             )
         );
 

@@ -234,7 +234,7 @@ public class LineComponent extends ScoreComponent
      * Will be removed when renderers and mouse code are converted.
      */
     public int getMiddleLineYPx() {
-        return (int) Math.round(ScaleContext.getInstance().toPixels(getMiddleLineYSs()));
+        return (int) Math.round(ScaleContext.getInstance().ssToPx(getMiddleLineYSs()));
     }
 
     /**
@@ -428,8 +428,8 @@ public class LineComponent extends ScoreComponent
         var metrics = getScore().getSongLayoutMetrics();
 
         return new Dimension(
-            (int) Math.ceil(scale.toPixels(result.getLineWidthSs())),
-            (int) Math.ceil(scale.toPixels(metrics.totalLineHeightSs())));
+            (int) Math.ceil(scale.ssToPx(result.getLineWidthSs())),
+            (int) Math.ceil(scale.ssToPx(metrics.totalLineHeightSs())));
     }
 
     private double calculateMiddleLineYSs() {

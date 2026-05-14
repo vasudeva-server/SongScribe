@@ -108,8 +108,8 @@ class KeySignatureTest extends UnitTest {
         var scale = ScaleContext.getInstance();
 
         assertThat(keySig.getContentWidthPx())
-            .isCloseTo(scale.toPixels(keySig.getContentWidthSs()), within(EPSILON));
+            .isCloseTo(scale.ssToPx(keySig.getContentWidthSs()), within(EPSILON));
         assertThat(keySig.getContentHeightPx())
-            .isCloseTo(scale.toPixels(keySig.getContentHeightSs()), within(EPSILON));
+            .isCloseTo(scale.ssToPx(keySig.getContentHeightSs()), within(EPSILON));
     }
 }

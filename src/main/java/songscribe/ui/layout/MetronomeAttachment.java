@@ -134,6 +134,6 @@ public abstract class MetronomeAttachment extends Attachment {
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(QUARTER_NOTE_HEIGHT_SS);
+        return ScaleContext.getInstance().ssToPx(QUARTER_NOTE_HEIGHT_SS);
     }
 }

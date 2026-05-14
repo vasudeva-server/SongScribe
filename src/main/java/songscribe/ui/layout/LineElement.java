@@ -96,7 +96,7 @@ public abstract class LineElement {
      * Subclasses computing in staff-space natively should override this.
      */
     public double getContentWidthSs() {
-        return ScaleContext.getInstance().fromPixels(getContentWidthPx());
+        return ScaleContext.getInstance().pxToSs(getContentWidthPx());
     }
 
     /**
@@ -106,7 +106,7 @@ public abstract class LineElement {
      * Subclasses computing in staff-space natively should override this.
      */
     public double getContentHeightSs() {
-        return ScaleContext.getInstance().fromPixels(getContentHeightPx());
+        return ScaleContext.getInstance().pxToSs(getContentHeightPx());
     }
 
     /**

@@ -331,7 +331,7 @@ public final class GlissandoRenderer {
      * @return the note index of the hit glissando's owner, or -1 if no hit
      */
     public int hitTestGlissando(double clickXSs, double clickYSs, Line line) {
-        var halfHitSs = ScaleContext.getInstance().fromPixels(HIT_THICKNESS_PX) / 2.0;
+        var halfHitSs = ScaleContext.getInstance().pxToSs(HIT_THICKNESS_PX) / 2.0;
 
         for (var i = 0; i < line.effectiveElementCount(); i++) {
             var glissando = line.getElement(i).getGlissando();
@@ -499,7 +499,7 @@ public final class GlissandoRenderer {
         var offset1X = src.cxSs - localCx1;
         var offset1Y = src.cySs;
 
-        var stepSs = ScaleContext.getInstance().fromPixels(1.0);
+        var stepSs = ScaleContext.getInstance().pxToSs(1.0);
         var entry1 = findNoteAreaEntryPoint(src.offsetArea, src.offsetBounds, localCx1, 0, nx, ny, stepSs);
 
         var effectiveX1Translate = Math.max(x1Translate, -NoteAreaBuilder.MIN_GAP_SS);
@@ -588,7 +588,7 @@ public final class GlissandoRenderer {
             g2.setColor(color);
             g2.translate(endpoints.startXSs(), endpoints.startYSs());
             g2.rotate(endpoints.angle());
-            var thicknessSs = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX);
+            var thicknessSs = ScaleContext.getInstance().pxToSs(RECT_THICKNESS_PX);
             g2.fill(new RoundRectangle2D.Double(
                 0, -thicknessSs / 2.0,
                 length, thicknessSs,
@@ -641,7 +641,7 @@ public final class GlissandoRenderer {
 
         // Precompute bounding-box half-dimensions of the rotated tip rectangle
         var halfStep = stepSs / 2.0;
-        var halfThickness = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX) / 2.0;
+        var halfThickness = ScaleContext.getInstance().pxToSs(RECT_THICKNESS_PX) / 2.0;
         var halfW = halfStep * Math.abs(nx) + halfThickness * Math.abs(ny);
         var halfH = halfStep * Math.abs(ny) + halfThickness * Math.abs(nx);
 

@@ -122,7 +122,7 @@ public class Line {
      * For legacy deserialization only — new code uses per-instance userYOffset
      * on BeatChangeAttachment.
      */
-    private int beatChangeYPosPx = ScaleContext.getInstance().toRoundedPixels(BEAT_CHANGE_DEFAULT_Y_SS);
+    private int beatChangeYPosPx = ScaleContext.getInstance().ssToRoundedPx(BEAT_CHANGE_DEFAULT_Y_SS);
 
     /**
      * Default lyrics Y position (below staff)
@@ -145,7 +145,7 @@ public class Line {
      * For legacy deserialization only — new code uses per-instance yPosition
      * on Ending objects.
      */
-    private int firstSecondEndingYPosPx = ScaleContext.getInstance().toRoundedPixels(ENDING_DEFAULT_Y_SS);
+    private int firstSecondEndingYPosPx = ScaleContext.getInstance().ssToRoundedPx(ENDING_DEFAULT_Y_SS);
 
     /**
      * Default trill Y position (above staff)
@@ -156,7 +156,7 @@ public class Line {
      * For legacy deserialization only — new code uses per-instance yPosition
      * on Trill objects.
      */
-    private int trillYPosPx = ScaleContext.getInstance().toRoundedPixels(TRILL_DEFAULT_Y_SS);
+    private int trillYPosPx = ScaleContext.getInstance().ssToRoundedPx(TRILL_DEFAULT_Y_SS);
 
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
     private float elementSpacingRatio = 1f;

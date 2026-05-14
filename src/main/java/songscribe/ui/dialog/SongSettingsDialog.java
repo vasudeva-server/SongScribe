@@ -762,7 +762,7 @@ public class SongSettingsDialog extends StandardDialog {
 
         private void revertLineWidthField() {
             var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
-            var lineWidthInches = ScaleContext.getInstance().toPixels(
+            var lineWidthInches = ScaleContext.getInstance().ssToPx(
                 getSong().getLineWidthSs()
             ) / GraphicUtils.getDpi();
             var displayValue = isMetric

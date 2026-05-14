@@ -55,11 +55,11 @@ public class Clef extends LineElement {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.getInstance().toPixels(CONTENT_WIDTH_SS);
+        return ScaleContext.getInstance().ssToPx(CONTENT_WIDTH_SS);
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(CONTENT_HEIGHT_SS);
+        return ScaleContext.getInstance().ssToPx(CONTENT_HEIGHT_SS);
     }
 }

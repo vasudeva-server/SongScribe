@@ -441,13 +441,13 @@ class NoteDragHandlerTest extends UnitTest {
     /**
      * Simulates a drag to the given staff position. The handler computes the new position
      * from the screen-Y delta between press and drag; this helper mocks
-     * {@code ScaleContext.fromPixels} to return the staff-space delta that maps to the
+     * {@code ScaleContext.pxToSs} to return the staff-space delta that maps to the
      * requested target position.
      */
     private void dragToPosition(int targetPositionSp) {
         var deltaSp = targetPositionSp - pressOriginalSp;
         var deltaYSs = deltaSp * StaffExtents.STAFF_POSITION_OFFSET_SS;
-        when(mockScaleContext.fromPixels(anyDouble())).thenReturn(deltaYSs);
+        when(mockScaleContext.pxToSs(anyDouble())).thenReturn(deltaYSs);
 
         var event = mouseEvent(lc, MouseEvent.MOUSE_DRAGGED, 100, DRAG_SCREEN_Y, MouseEvent.BUTTON1);
         handler.handleDrag(event);

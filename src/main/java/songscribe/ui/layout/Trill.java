@@ -110,11 +110,11 @@ public class Trill extends RangeElement {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.getInstance().toPixels(TRILL_GLYPH_WIDTH_SS);
+        return ScaleContext.getInstance().ssToPx(TRILL_GLYPH_WIDTH_SS);
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(TRILL_GLYPH_HEIGHT_SS);
+        return ScaleContext.getInstance().ssToPx(TRILL_GLYPH_HEIGHT_SS);
     }
 }

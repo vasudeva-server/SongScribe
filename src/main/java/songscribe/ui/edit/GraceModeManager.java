@@ -719,7 +719,7 @@ public final class GraceModeManager {
         }
 
         var graceXSs = layout.getElementXSs(graceNote);
-        return ScaleContext.getInstance().toRoundedPixels(graceXSs) - GRACE_SLOP_PX;
+        return ScaleContext.getInstance().ssToRoundedPx(graceXSs) - GRACE_SLOP_PX;
     }
 
     private int internalGetConnectThresholdPx() {
@@ -740,7 +740,7 @@ public final class GraceModeManager {
         }
 
         var rightEdgeSs = graceColumn.getXSs() + graceColumn.getRightExtentSs();
-        return ScaleContext.getInstance().toRoundedPixels(rightEdgeSs) + GRACE_SLOP_PX;
+        return ScaleContext.getInstance().ssToRoundedPx(rightEdgeSs) + GRACE_SLOP_PX;
     }
 
     /**

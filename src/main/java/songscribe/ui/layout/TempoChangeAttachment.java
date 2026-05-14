@@ -78,8 +78,8 @@ public class TempoChangeAttachment extends MetronomeAttachment {
             var textXOffsetSs = glyphWidth > 0 ? glyphWidth : 0;
             var scale = ScaleContext.getInstance();
             var textLm = attrFont.getLineMetrics("", GraphicUtils.SCREEN_FRC);
-            var textAscentSs = scale.fromPixels(textLm.getAscent());
-            var textDescentSs = scale.fromPixels(textLm.getDescent());
+            var textAscentSs = scale.pxToSs(textLm.getAscent());
+            var textDescentSs = scale.pxToSs(textLm.getDescent());
             var textYOffsetSs = QUARTER_NOTE_HEIGHT_SS - textAscentSs;
             var textHeightSs = textAscentSs + textDescentSs;
             regions.add(new CollisionRegion(

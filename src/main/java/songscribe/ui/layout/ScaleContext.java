@@ -66,39 +66,39 @@ public final class ScaleContext {
     }
 
     /** Convert a value in staff-space units to pixels. */
-    public double toPixels(double ss) {
+    public double ssToPx(double ss) {
         return ss * pixelsPerStaffSpace;
     }
 
     /** Convert a value in staff-space units to pixels, rounded to the nearest integer. */
-    public int toRoundedPixels(double ss) {
+    public int ssToRoundedPx(double ss) {
         return (int) Math.round(ss * pixelsPerStaffSpace);
     }
 
     /** Convert a value in pixels to staff-space units. */
-    public double fromPixels(double px) {
+    public double pxToSs(double px) {
         return px / pixelsPerStaffSpace;
     }
 
     /** Returns {@code font} scaled from pixel units to staff-space units. */
     public Font scaleFont(Font font) {
-        return font.deriveFont((float) fromPixels(font.getSize()));
+        return font.deriveFont((float) pxToSs(font.getSize()));
     }
 
     /** Returns the width of {@code text} in staff-space units for the given font. */
     public double textWidthSs(Font font, String text) {
-        return fromPixels(new TextLayout(text, font, GraphicUtils.SCREEN_FRC).getAdvance());
+        return pxToSs(new TextLayout(text, font, GraphicUtils.SCREEN_FRC).getAdvance());
     }
 
     /** Returns the text height (ascent + descent) in staff-space units for the given font. */
     public double textHeightSs(Font font) {
         var lm = font.getLineMetrics("", GraphicUtils.SCREEN_FRC);
-        return fromPixels(lm.getAscent() + lm.getDescent());
+        return pxToSs(lm.getAscent() + lm.getDescent());
     }
 
     /** Returns the font ascent in staff-space units for the given font. */
     public double fontAscentSs(Font font) {
-        return fromPixels(font.getLineMetrics("", GraphicUtils.SCREEN_FRC).getAscent());
+        return pxToSs(font.getLineMetrics("", GraphicUtils.SCREEN_FRC).getAscent());
     }
 
     /**
@@ -108,12 +108,12 @@ public final class ScaleContext {
      * currently typed.
      */
     public double fontMaxAscentSs(Font font) {
-        return fromPixels(MyFontUtils.getFontMetrics(font).getMaxAscent());
+        return pxToSs(MyFontUtils.getFontMetrics(font).getMaxAscent());
     }
 
     /** Returns the font descent in staff-space units for the given font. */
     public double fontDescentSs(Font font) {
-        return fromPixels(font.getLineMetrics("", GraphicUtils.SCREEN_FRC).getDescent());
+        return pxToSs(font.getLineMetrics("", GraphicUtils.SCREEN_FRC).getDescent());
     }
 
     /**

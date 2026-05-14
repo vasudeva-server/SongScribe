@@ -388,7 +388,7 @@ public final class PreviewElementManager {
 
         // Convert mouse pixel coordinates to staff-space units
         var scale = ScaleContext.getInstance();
-        var mouseYss = scale.fromPixels(e.getY());
+        var mouseYss = scale.pxToSs(e.getY());
 
         // In grace mode, lock the x-position to the host note slot
         var editModeManager = EditModeManager.getInstance();
@@ -397,7 +397,7 @@ public final class PreviewElementManager {
         if (editModeManager != null && editModeManager.getGraceModeManager().isInProgress()) {
             mouseXss = editModeManager.getGraceModeManager().getLockedInsertionXSs();
         } else {
-            mouseXss = scale.fromPixels(e.getX());
+            mouseXss = scale.pxToSs(e.getX());
         }
 
         currentMouseXSs = mouseXss;
@@ -854,7 +854,7 @@ public final class PreviewElementManager {
             return;
         }
 
-        previewElement.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
+        previewElement.setXOffsetPx(ScaleContext.getInstance().ssToRoundedPx(insertion.insertedElementXSs()));
         line.addElement(previewElement);
 
         applyAutomaticBeaming(line, line.elementCount() - 1);
@@ -906,7 +906,7 @@ public final class PreviewElementManager {
             return;
         }
 
-        previewElement.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
+        previewElement.setXOffsetPx(ScaleContext.getInstance().ssToRoundedPx(insertion.insertedElementXSs()));
 
         if (line.hasEndingInvalidatedByInsertion(xIndex, previewElement.getType())) {
             if (!EndingConfirms.confirmInvalidation()) {
@@ -918,7 +918,7 @@ public final class PreviewElementManager {
         line.adjustExtendsForInsertion(xIndex);
         line.addElement(xIndex, previewElement);
         line.adjustSyllablesForSuccessorAfterInsertion(xIndex);
-        var shift = ScaleContext.getInstance().toRoundedPixels(insertion.shiftForSubsequentElementsSs());
+        var shift = ScaleContext.getInstance().ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
 
         for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {
             line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);

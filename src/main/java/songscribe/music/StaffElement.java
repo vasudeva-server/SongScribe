@@ -239,20 +239,20 @@ public class StaffElement extends LineElement implements Cloneable {
     // ========================================================================
 
     // TODO: When the layout system moves to staff spaces, these should return ss directly
-    //  and the toPixels() conversion should move to the rendering boundary.
+    //  and the ssToPx() conversion should move to the rendering boundary.
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.getInstance().toPixels(getType().getFullElementWidthSs());
+        return ScaleContext.getInstance().ssToPx(getType().getFullElementWidthSs());
     }
 
     public double getContentCenterX() {
-        return ScaleContext.getInstance().toPixels(getType().getFullElementCenterXSs());
+        return ScaleContext.getInstance().ssToPx(getType().getFullElementCenterXSs());
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(getType().getElementHeightSs(upper));
+        return ScaleContext.getInstance().ssToPx(getType().getElementHeightSs(upper));
     }
 
     // ========================================================================

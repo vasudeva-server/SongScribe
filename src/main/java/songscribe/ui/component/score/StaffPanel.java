@@ -66,7 +66,7 @@ public class StaffPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        lineMargin = ScaleContext.getInstance().toRoundedPixels(LINE_MARGIN_BOTTOM_SS);
+        lineMargin = ScaleContext.getInstance().ssToRoundedPx(LINE_MARGIN_BOTTOM_SS);
     }
 
     /**

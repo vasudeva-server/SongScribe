@@ -616,8 +616,8 @@ public final class LayoutResult {
         var scaleContext = ScaleContext.getInstance();
         var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
         var baseYSs = lyricAreaBaseYSs();
-        var pointXSs = scaleContext.fromPixels(pointPx.getX());
-        var pointYSs = scaleContext.fromPixels(pointPx.getY());
+        var pointXSs = scaleContext.pxToSs(pointPx.getX());
+        var pointYSs = scaleContext.pxToSs(pointPx.getY());
 
         for (var element : line.getElements()) {
             for (var box : getLyricBoxes(element)) {
@@ -648,7 +648,7 @@ public final class LayoutResult {
 
         var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
         var baseYSs = lyricAreaBaseYSs();
-        var pointYSs = ScaleContext.getInstance().fromPixels(pointYPx);
+        var pointYSs = ScaleContext.getInstance().pxToSs(pointYPx);
 
         return pointYSs >= baseYSs && pointYSs <= baseYSs + verseCount * rowHeightSs;
     }

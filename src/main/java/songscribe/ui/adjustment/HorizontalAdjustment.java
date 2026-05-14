@@ -461,7 +461,7 @@ public class HorizontalAdjustment extends Adjustment {
             rect.horizontalAdjustmentType.getStaffPosition(),
             rect.line
         );
-        rect.rect.y = yPosPx + ScaleContext.getInstance().toRoundedPixels(
+        rect.rect.y = yPosPx + ScaleContext.getInstance().ssToRoundedPx(
             note.getType().getTopYOffsetSs(note.isUpper()));
         var lineComponent = score.getLineComponent(rect.line);
 
@@ -477,7 +477,7 @@ public class HorizontalAdjustment extends Adjustment {
 
                 if (layoutResult != null && glissando != null) {
                     rect.rect.x = (int) Math.round(
-                        ScaleContext.getInstance().toPixels(
+                        ScaleContext.getInstance().ssToPx(
                             GlissandoRenderer.getGlissandoX1Ss(
                                 rect.xIndex,
                                 glissando,
@@ -495,7 +495,7 @@ public class HorizontalAdjustment extends Adjustment {
 
                 if (layoutResult != null && glissando != null) {
                     rect.rect.x = (int) Math.round(
-                        ScaleContext.getInstance().toPixels(
+                        ScaleContext.getInstance().ssToPx(
                             GlissandoRenderer.getGlissandoX2Ss(
                                 rect.xIndex,
                                 glissando,

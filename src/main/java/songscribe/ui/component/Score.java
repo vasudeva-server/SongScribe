@@ -116,7 +116,7 @@ public final class Score
     private static final Logger LOG = LoggerFactory.getLogger(Score.class);
 
     // The vertical distance between whole tones on the staff (e.g. A to B)
-    public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(StaffExtents.STAFF_POSITION_OFFSET_SS);
+    public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().ssToPx(StaffExtents.STAFF_POSITION_OFFSET_SS);
 
     // Runs before all HIGH_PRIORITY subscribers so the tuplet info cache is warm
     // by the time TupletAction handlers (HIGH_PRIORITY) read it.
@@ -309,7 +309,7 @@ public final class Score
         initScorePanel();
         initMainPanel();
 
-        updatePageLayout(ScaleContext.getInstance().toRoundedPixels(song.getLineWidthSs()));
+        updatePageLayout(ScaleContext.getInstance().ssToRoundedPx(song.getLineWidthSs()));
         if (inputHandler != null) {
             addMouseMotionListener(inputHandler);
             addMouseListener(inputHandler);
@@ -476,7 +476,7 @@ public final class Score
             saxParser.parse(file, reader);
             var newSong = reader.getSong();
             var lineWidthInches =
-                ScaleContext.getInstance().toPixels(newSong.getLineWidthSs()) /
+                ScaleContext.getInstance().ssToPx(newSong.getLineWidthSs()) /
                     GraphicUtils.getDpi();
 
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
@@ -587,7 +587,7 @@ public final class Score
             case LOOP_PLAYBACK, PLAY_WITH_REPEATS -> syncPlaybackPrefs();
             case PAGE_SIZE -> {
                 if (song != null) {
-                    updatePageLayout(ScaleContext.getInstance().toRoundedPixels(song.getLineWidthSs()));
+                    updatePageLayout(ScaleContext.getInstance().ssToRoundedPx(song.getLineWidthSs()));
                 }
             }
             default -> { }
@@ -824,7 +824,7 @@ public final class Score
 
     public void setSong(Song song) {
         this.song = song;
-        var lineWidthPx = ScaleContext.getInstance().toRoundedPixels(song.getLineWidthSs());
+        var lineWidthPx = ScaleContext.getInstance().ssToRoundedPx(song.getLineWidthSs());
 
         // Core setup needed for both headless and interactive modes
         updatePageLayout(lineWidthPx);
@@ -897,7 +897,7 @@ public final class Score
     }
 
     public int getSheetWidthPx() {
-        return ScaleContext.getInstance().toRoundedPixels(getSong().getLineWidthSs());
+        return ScaleContext.getInstance().ssToRoundedPx(getSong().getLineWidthSs());
     }
 
     public int getSheetHeightPx() {
@@ -933,7 +933,7 @@ public final class Score
             if (revalidateOnly) {
                 idealSpace = (float) endNote.getContentWidthPx();
             } else {
-                idealSpace = (float) ScaleContext.getInstance().toPixels(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS) + 20;
+                idealSpace = (float) ScaleContext.getInstance().ssToPx(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS) + 20;
             }
 
             var lineWidthPx = getSong().getLineWidthPx();
@@ -1027,7 +1027,7 @@ public final class Score
     }
 
     public void updatePageLayout(int lineWidthPx) {
-        getSong().setLineWidthSs(ScaleContext.getInstance().fromPixels(lineWidthPx));
+        getSong().setLineWidthSs(ScaleContext.getInstance().pxToSs(lineWidthPx));
 
         var pageModel = PageModel.getInstance();
         var pageWidthPx = pageModel.getPageWidthPx();

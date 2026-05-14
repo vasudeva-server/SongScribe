@@ -86,8 +86,8 @@ public final class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
                 g2.setColor(ctx.getLyricColor(ctx.getCurrentElementIndex(), element, box.verseIndex()));
 
                 var baselineYSs = metrics.verseYSsInLine(box.verseIndex());
-                var xPx = scaleContext.toRoundedPixels(box.xSs());
-                var yPx = scaleContext.toRoundedPixels(baselineYSs);
+                var xPx = scaleContext.ssToRoundedPx(box.xSs());
+                var yPx = scaleContext.ssToRoundedPx(baselineYSs);
                 g2.drawString(box.text(), xPx, yPx);
             }
         }
