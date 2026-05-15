@@ -47,7 +47,7 @@
 +------------------------------------------------------------------+
 |                      MESSAGE / EVENT BUS                          |
 |  MessageCenter (Java singleton, mbassy)                          |
-|  ScoreMessageCoordinator (@Handler, HIGH_PRIORITY)               |
+|  ScoreViewController (@Handler, HIGH_PRIORITY)               |
 |  MessageLogger                                                   |
 |  Messages: ModeChanged, MusicSelectionChanged, LayoutChange,     |
 |    DurationSelected, ToggleBeam/Tie/Tuplet/Trill, NewFile,       |

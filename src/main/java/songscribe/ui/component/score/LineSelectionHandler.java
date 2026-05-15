@@ -264,7 +264,7 @@ class LineSelectionHandler {
      * <p>
      * Selection is active when:
      * <ul>
-     *   <li>Score is available and not in an adjustment mode</li>
+     *   <li>ScoreView is available and not in an adjustment mode</li>
      *   <li>Not playing back</li>
      *   <li>In SELECT mode (alt-click switches to SELECT mode permanently)</li>
      * </ul>

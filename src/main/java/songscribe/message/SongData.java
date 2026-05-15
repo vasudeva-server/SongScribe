@@ -29,6 +29,7 @@ import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Song;
 import songscribe.music.Tempo;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Immutable snapshot of all song-level fields, built by
@@ -36,7 +37,7 @@ import songscribe.music.Tempo;
  * <p>
  * Passed to {@link Song#loadFrom(SongData)} so that
  * Song can apply all fields atomically. After installation,
- * {@link songscribe.ui.component.Score#setSong(Song)} posts
+ * {@link ScoreView#setSong(Song)} posts
  * a {@link songscribe.message.notification.DocumentDidLoadNotification}.
  * <p>
  * Font fields are {@code @Nullable} because v1.0 files have no View section;

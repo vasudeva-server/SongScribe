@@ -47,8 +47,8 @@ import songscribe.ui.action.PasteboardAction;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
-import songscribe.ui.component.ScoreMessageCoordinator;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.selection.ReflectionTestHelper;
@@ -56,7 +56,7 @@ import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Integration tests for the {@link EndingConfirms} wiring in
- * {@link SelectionCoordinator} and {@link ScoreMessageCoordinator}.
+ * {@link SelectionCoordinator} and {@link ScoreViewController}.
  *
  * <p>Primary canonical line layout (split = {@code REPEAT_RIGHT}):
  * <pre>
@@ -145,15 +145,15 @@ class EndingConfirmsTest extends UnitTest {
     }
 
     /**
-     * Creates a {@link ScoreMessageCoordinator} backed by a mock Score.
+     * Creates a {@link ScoreViewController} backed by a mock ScoreView.
      * Must be called AFTER {@link MessageCenter} is mocked so the coordinator's
      * {@code subscribe} call goes to the mock bus.
      */
-    private ScoreMessageCoordinator scoreCoordinator(Song song, SelectionCoordinator coordinator) {
-        var score = mock(Score.class);
+    private ScoreViewController scoreCoordinator(Song song, SelectionCoordinator coordinator) {
+        var score = mock(ScoreView.class);
         when(score.getSong()).thenReturn(song);
         when(score.isFocusOwner()).thenReturn(true);
-        return new ScoreMessageCoordinator(
+        return new ScoreViewController(
             score,
             new MusicEditOperations(song, coordinator),
             mock(EditModeManager.class),

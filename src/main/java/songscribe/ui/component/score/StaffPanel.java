@@ -29,6 +29,7 @@ import songscribe.error.RuntimeError;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Song;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.SongLayoutMetricsBuilder;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
@@ -40,7 +41,7 @@ import songscribe.ui.layout.SongLayoutMetrics;
  * Uses BoxLayout.Y_AXIS to stack {@link LinePanel} components with
  * {@code LINE_MARGIN_BOTTOM_MU} spacing between them.
  * <p>
- * Note: Named StaffPanel to avoid conflict with Score.ScorePanel inner class.
+ * Note: Named StaffPanel to avoid conflict with ScoreView.ScorePanel inner class.
  */
 public class StaffPanel extends JPanel {
 
@@ -196,13 +197,13 @@ public class StaffPanel extends JPanel {
 
     /**
      * Forces all line layouts, builds {@link SongLayoutMetrics}
-     * from the results, and pushes the metrics onto the owning {@link songscribe.ui.component.Score}
+     * from the results, and pushes the metrics onto the owning {@link ScoreView}
      * so that all lines report a uniform preferred height.
      */
     private void updateSongMetrics() {
         var score = linePanels.getFirst().getLineComponent().getScore();
 
-        // Ensure LyricRenderMetrics on Score is up-to-date before any line layout runs.
+        // Ensure LyricRenderMetrics on ScoreView is up-to-date before any line layout runs.
         // Line layouts read hyphenWidthSs and spaceWidthSs from these metrics to reserve
         // column spacing for syllable gaps.
         score.rebuildLyricRenderMetrics();

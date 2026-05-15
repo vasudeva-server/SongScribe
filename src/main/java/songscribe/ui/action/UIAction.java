@@ -48,7 +48,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.music.Song;
 import songscribe.music.StaffElement;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.playback.PlaybackController;
@@ -256,11 +256,11 @@ public class UIAction extends AbstractAction {
         return mainFrame;
     }
 
-    protected @Nullable Score getScore() {
+    protected @Nullable ScoreView getScore() {
         return mainFrame.getScore();
     }
 
-    protected Score requireScore() {
+    protected ScoreView requireScore() {
         return mainFrame.requireScore();
     }
 
@@ -396,14 +396,14 @@ public class UIAction extends AbstractAction {
         updateEnabledState();
     }
 
-    protected boolean enableInAdjustmentMode(Score score) {
+    protected boolean enableInAdjustmentMode(ScoreView score) {
         return (
             !hasFlag(Flag.DISABLE_IN_ADJUSTMENT_MODE) ||
                 !score.getMode().isAdjustmentMode()
         );
     }
 
-    protected boolean enableInSelectMode(Score score) {
+    protected boolean enableInSelectMode(ScoreView score) {
         return (
             !hasFlag(Flag.DISABLE_IN_SELECT_MODE) ||
                 !score.getSelectionCoordinator().isInSelectMode()
@@ -417,7 +417,7 @@ public class UIAction extends AbstractAction {
         updateEnabledState();
     }
 
-    protected boolean enableFromSelectionSize(Score score) {
+    protected boolean enableFromSelectionSize(ScoreView score) {
         var size = score.getSelectionSize();
 
         if (hasFlag(Flag.REQUIRES_SELECTION)) {
@@ -519,7 +519,7 @@ public class UIAction extends AbstractAction {
         );
     }
 
-    protected boolean enableFromSelection(boolean activeSelection, Score score) {
+    protected boolean enableFromSelection(boolean activeSelection, ScoreView score) {
         if (!activeSelection) {
             return true;
         }

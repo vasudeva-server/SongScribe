@@ -37,7 +37,7 @@ import songscribe.music.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.selection.ElementSelection;
 
@@ -56,7 +56,7 @@ public final class PlaybackController {
     private static final Logger LOG = LoggerFactory.getLogger(PlaybackController.class);
 
     @Nullable
-    private static Score registeredScore = null;
+    private static ScoreView registeredScore = null;
 
     private static PlaybackState state = PlaybackState.STOPPED;
     private static int previousPlayingLine = -1;
@@ -84,7 +84,7 @@ public final class PlaybackController {
     private PlaybackController() {
     }
 
-    public static void register(Score score) {
+    public static void register(ScoreView score) {
         registeredScore = score;
     }
 
@@ -97,11 +97,11 @@ public final class PlaybackController {
     }
 
     @Nullable
-    public static Score getRegisteredScore() {
+    public static ScoreView getRegisteredScore() {
         return registeredScore;
     }
 
-    public static void setRegisteredScore(@Nullable Score score) {
+    public static void setRegisteredScore(@Nullable ScoreView score) {
         registeredScore = score;
     }
 
@@ -457,7 +457,7 @@ public final class PlaybackController {
 
     private static void setSequenceToPlayFromSelection(
         @Nullable ElementSelection noteSelection,
-        Score score,
+        ScoreView score,
         Sequencer sequencer
     ) throws InvalidMidiDataException {
         var sequence = buildSequenceForSelection(

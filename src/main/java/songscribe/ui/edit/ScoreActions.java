@@ -27,11 +27,11 @@ import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 
 /**
- * Callback interface for Score actions needed by EditModeManager.
+ * Callback interface for ScoreView actions needed by EditModeManager.
  * <p>
- * This interface decouples EditModeManager from Score, allowing it to request
- * Score to perform UI-related actions without creating a circular dependency.
- * Created as part of Phase 6 of the Score Cleanup refactoring.
+ * This interface decouples EditModeManager from ScoreView, allowing it to request
+ * ScoreView to perform UI-related actions without creating a circular dependency.
+ * Created as part of Phase 6 of the ScoreView Cleanup refactoring.
  */
 public interface ScoreActions {
 

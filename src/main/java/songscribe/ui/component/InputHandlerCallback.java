@@ -28,7 +28,7 @@ import songscribe.ui.Control;
 import songscribe.ui.Mode;
 
 /**
- * Callback interface for ScoreInputHandler to communicate with Score.
+ * Callback interface for ScoreInputHandler to communicate with ScoreView.
  */
 public interface InputHandlerCallback {
 

@@ -33,7 +33,7 @@ import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.LayoutResult;
@@ -160,7 +160,7 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         if (anyHovered) {
-            return Score.getPreviewElementColor();
+            return ScoreView.getPreviewElementColor();
         }
 
         return null;

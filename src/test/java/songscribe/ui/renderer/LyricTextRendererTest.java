@@ -38,7 +38,7 @@ import org.mockito.ArgumentCaptor;
 import songscribe.UnitTest;
 import songscribe.music.Song;
 import songscribe.music.ElementType;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
@@ -216,7 +216,7 @@ class LyricTextRendererTest extends UnitTest {
 
         LyricTextRenderer.getInstance().render(element, g2, ctx);
 
-        verify(g2).setColor(Score.getSelectionColor());
+        verify(g2).setColor(ScoreView.getSelectionColor());
         verify(g2).drawString("v1", toPx(2.0), toPx(7.0));
     }
 
@@ -236,6 +236,6 @@ class LyricTextRendererTest extends UnitTest {
 
         LyricTextRenderer.getInstance().render(element, g2, ctx);
 
-        verify(g2).setColor(Score.getSelectionColor());
+        verify(g2).setColor(ScoreView.getSelectionColor());
     }
 }

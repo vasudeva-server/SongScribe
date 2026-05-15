@@ -33,7 +33,7 @@ import songscribe.ui.playback.MidiMetaMessageTypes;
  * Coordinates MIDI sequence building for a song.
  * Delegates note-level MIDI generation to Line objects.
  * <p>
- * Phase 1 of the Score Cleanup refactoring (Step 5).
+ * Phase 1 of the ScoreView Cleanup refactoring (Step 5).
  */
 public class MidiSequenceBuilder {
 
@@ -160,7 +160,7 @@ public class MidiSequenceBuilder {
 
     /**
      * Builds a MIDI sequence with repeat handling.
-     * This implements the same logic as the old Score.addLineToTrack method.
+     * This implements the same logic as the old ScoreView.addLineToTrack method.
      *
      * @param track The MIDI track to add to
      * @param startLine The starting line index

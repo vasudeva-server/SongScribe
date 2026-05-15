@@ -36,7 +36,7 @@ import songscribe.message.command.DeselectCommand;
 import songscribe.util.UIUtils;
 
 /**
- * Handles mouse and keyboard input for the Score component.
+ * Handles mouse and keyboard input for the ScoreView component.
  * <p>
  * Manages popup triggers, focus, and playback guards.
  * Selection handling (click-to-select, drag-to-select, Alt-switch) is

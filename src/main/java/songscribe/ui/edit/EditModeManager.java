@@ -33,11 +33,11 @@ import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
- * Manages edit mode state for the Score.
+ * Manages edit mode state for the ScoreView.
  * <p>
  * EditModeManager holds the state related to the preview element (the element that will be inserted),
  * including its type, duration, and accidentals. Also handles element creation, decoration,
- * and modification logic. Extracted from Score.java as part of Phase 6 of the Score Cleanup refactoring.
+ * and modification logic. Extracted from ScoreView.java as part of Phase 6 of the ScoreView Cleanup refactoring.
  */
 public final class EditModeManager {
 
@@ -76,7 +76,7 @@ public final class EditModeManager {
      *
      * @param clipboardManager The clipboard manager for paste operations
      * @param selectionCoordinator The selection coordinator for selection operations
-     * @param scoreActions Callback interface for Score actions
+     * @param scoreActions Callback interface for ScoreView actions
      */
     public EditModeManager(
         ClipboardManager clipboardManager,

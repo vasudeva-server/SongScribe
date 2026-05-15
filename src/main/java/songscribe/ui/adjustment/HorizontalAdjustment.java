@@ -29,7 +29,7 @@ import songscribe.music.DynamicsSpan;
 import songscribe.music.SpanSet;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.GraphicsState;
@@ -44,7 +44,7 @@ public class HorizontalAdjustment extends Adjustment {
 
     private float @Nullable [] stretchHelper;
 
-    public HorizontalAdjustment(Score score) {
+    public HorizontalAdjustment(ScoreView score) {
         super(score);
     }
 

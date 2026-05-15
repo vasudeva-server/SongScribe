@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.playback.PlaybackController.PlaybackState;
 import songscribe.ui.selection.ElementSelection;
@@ -51,7 +51,7 @@ class PlaybackControllerTest extends UnitTest {
 
         @Test
         void testClearsHighlightAndUpdatesSelectionWhenPausedWithSelection() {
-            var mockScore = mock(Score.class);
+            var mockScore = mock(ScoreView.class);
             var mockLineComponent = mock(LineComponent.class);
             when(mockScore.getLineComponent(0)).thenReturn(mockLineComponent);
             PlaybackController.register(mockScore);

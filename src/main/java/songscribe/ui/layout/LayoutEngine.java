@@ -570,7 +570,7 @@ public class LayoutEngine {
             }
 
             // Set auto stem direction: elements below the middle line (staffPosition > 0) get stems up.
-            // This matches Score.defaultUpperNote: upper=true means stem up.
+            // This matches ScoreView.defaultUpperNote: upper=true means stem up.
             if (element.isStemDirectionAuto()) {
                 element.setUpper(element.getType().isGraceNote() || element.getStaffPosition() > 0);
             }

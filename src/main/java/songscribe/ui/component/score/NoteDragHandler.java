@@ -39,7 +39,7 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
@@ -273,7 +273,7 @@ class NoteDragHandler {
         for (var entry : dragGroup) {
             var groupNote = dragLine.getElement(entry.index());
             groupNote.setStaffPosition(entry.originalStaffPositionSp() + deltaSp);
-            groupNote.setUpper(Score.defaultUpperNote(groupNote));
+            groupNote.setUpper(ScoreView.defaultUpperNote(groupNote));
         }
 
         // Play NOTE_ON for the new pitch of the dragged note

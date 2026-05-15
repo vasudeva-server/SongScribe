@@ -21,15 +21,15 @@ package songscribe.ui.menu;
 
 import module java.desktop;
 
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 
 public class FermataMenuItem
     extends JCheckBoxMenuItem
     implements ActionListener {
 
-    private final Score score;
+    private final ScoreView score;
 
-    public FermataMenuItem(Score score) {
+    public FermataMenuItem(ScoreView score) {
         super("Fermata");
         this.score = score;
         addActionListener(this);

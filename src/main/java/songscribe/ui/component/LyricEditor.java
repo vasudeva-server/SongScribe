@@ -48,7 +48,7 @@ import songscribe.ui.layout.ScaleContext;
 import songscribe.util.UIUtils;
 
 /**
- * In-place lyric editor overlay parented to {@link Score}. Edits the active-verse lyric
+ * In-place lyric editor overlay parented to {@link ScoreView}. Edits the active-verse lyric
  * of a single {@link StaffElement} with width and baseline matching the rendered lyric box.
  *
  * <pre>
@@ -176,7 +176,7 @@ public final class LyricEditor extends MyJTextField {
     private static final String ACTION_KEY_ENTER = "lyric.editor.enter";
     private static final String ACTION_KEY_ESCAPE = "lyric.editor.escape";
 
-    private final Score score;
+    private final ScoreView score;
     private final Line line;
     private final StaffElement element;
     private final @Nullable LineComponent lineComponent;
@@ -207,7 +207,7 @@ public final class LyricEditor extends MyJTextField {
      * and gives it focus. Used by both {@link EditLyricAction} and
      * {@link #advance()} so the open sequence is centralized.
      */
-    public static void openOn(Score score, Line line, StaffElement element) {
+    public static void openOn(ScoreView score, Line line, StaffElement element) {
         var editor = new LyricEditor(score, line, element);
         score.addOverlay(editor);
         score.setComponentZOrder(editor, 0);
@@ -231,7 +231,7 @@ public final class LyricEditor extends MyJTextField {
         score.repaint(editor.getBounds());
     }
 
-    public LyricEditor(Score score, Line line, StaffElement element) {
+    public LyricEditor(ScoreView score, Line line, StaffElement element) {
         this.score = score;
         this.line = line;
         this.element = element;
@@ -583,7 +583,7 @@ public final class LyricEditor extends MyJTextField {
     /**
      * Recomputes the editor's pixel bounds from the current text using the same width
      * formula the renderer uses, then translates the resulting line-local rectangle into
-     * Score-local coordinates.
+     * ScoreView-local coordinates.
      */
     public void recomputeBounds() {
         if (lineComponent == null) {
@@ -1111,7 +1111,7 @@ public final class LyricEditor extends MyJTextField {
 
     /**
      * Removes the editor from its parent, clears the active-editor reference on
-     * {@code Score}, and repaints the vacated region.
+     * {@code ScoreView}, and repaints the vacated region.
      */
     public void dismiss(boolean isDoneEditing) {
         if (outsideClickListener != null) {

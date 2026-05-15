@@ -39,7 +39,7 @@ import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.music.Song;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LyricConnectorLayout;
@@ -215,7 +215,7 @@ class LyricConnectorRendererTest extends UnitTest {
 
         LyricConnectorRenderer.getInstance().render(g2, ctx);
 
-        verify(g2).setColor(Score.getSelectionColor());
+        verify(g2).setColor(ScoreView.getSelectionColor());
     }
 
     @Test

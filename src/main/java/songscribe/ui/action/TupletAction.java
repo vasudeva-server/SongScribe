@@ -31,7 +31,7 @@ import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.StringUtils;
 
 public final class TupletAction extends UIAction {
@@ -145,7 +145,7 @@ public final class TupletAction extends UIAction {
         }
     }
 
-    private void handleChange(Score score) {
+    private void handleChange(ScoreView score) {
         if (!updateEnabledState()) {
             return;
         }

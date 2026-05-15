@@ -25,11 +25,11 @@ import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 
 public abstract class Adjustment extends MouseAdapter {
 
-    protected final Score score;
+    protected final ScoreView score;
     protected boolean enabled = false;
     protected boolean startedDrag = false;
     @Nullable
@@ -38,7 +38,7 @@ public abstract class Adjustment extends MouseAdapter {
     protected final Point topLeftDragBounds = new Point();
     protected final Point bottomRightDragBounds = new Point();
 
-    protected Adjustment(Score score) {
+    protected Adjustment(ScoreView score) {
         this.score = score;
         score.addMouseListener(this);
         score.addMouseMotionListener(this);

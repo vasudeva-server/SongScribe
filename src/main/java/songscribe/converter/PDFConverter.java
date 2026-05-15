@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 import songscribe.SongScribe;
 import songscribe.export.PageLayoutData;
 import songscribe.ui.action.ExportPDFAction;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.FileUtils;
 
 @SuppressWarnings({"FieldMayBeStatic" })
@@ -143,7 +143,7 @@ public class PDFConverter {
             }
         }
 
-        var score = new Score(null);
+        var score = new ScoreView(null);
 
         var data = new PageLayoutData();
         data.paperWidthPx = paperWidth;

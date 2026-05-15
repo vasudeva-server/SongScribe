@@ -31,7 +31,7 @@ Port the beam algorithm from abc2svg (`calculate_beam()`, `draw_beams()`, `set_b
 
 1. **BeamCalculator deleted.** All beam layout logic moves to a private method inside `LayoutEngine`. No standalone class survives.
 2. **Beam geometry in LayoutResult.** `BeamLayout` and `StemLayout` records store all computed geometry (slope, startY, stem topY/bottomY, lengthening). `Note.Properties.lengthening`, `beamThickening`, and `stem` (Line2D.Double) are removed.
-3. **Eager call sites removed.** All `BeamCalculator.calculateLengthenings()` calls in `MusicEditOperations`, `EditModeManager`, `ScoreMessageCoordinator`, `InsertionNoteManager`, `Score` are deleted. Layout runs on the next render cycle via the normal invalidation path.
+3. **Eager call sites removed.** All `BeamCalculator.calculateLengthenings()` calls in `MusicEditOperations`, `EditModeManager`, `ScoreViewController`, `InsertionNoteManager`, `Score` are deleted. Layout runs on the next render cycle via the normal invalidation path.
 4. **`stemDirectionAuto` flag.** `true` = algorithm writes `note.upper` each layout pass. `false` = user override, stored value preserved. Serialized as `<stemDirectionAuto/>` when false. Absence on read = auto. Format version bumped to 2.2.
 5. **`invertFractionBeamOrientation` removed.** Field deleted from `Note`. NoteIO silently discards the tag on read. No migration entry needed.
 6. **Slope algorithm.** Hyperbolic dampening (`BEAM_SLOPE_MAX * a / (BEAM_SLOPE_MAX + |a|)`) replaces linear clamping. Flat beam snapping applied when slope near zero. All math in staff-space units.
@@ -195,7 +195,7 @@ This phase implements the full abc2svg-ported beam algorithm as a private pipeli
 - [x] **Remove from `EditModeManager`**
   - Delete call (approximately line 391)
 
-- [x] **Remove from `ScoreMessageCoordinator`**
+- [x] **Remove from `ScoreViewController`**
   - Delete calls (approximately lines 370–371)
 
 - [x] **Remove from `InsertionNoteManager`**
@@ -209,7 +209,7 @@ This phase implements the full abc2svg-ported beam algorithm as a private pipeli
 
 - [x] **Remove flip-partial-beam feature entirely**
   - Delete `FlipPartialBeamAction.java`
-  - Remove the `flipPartialBeamOrientation()` dispatch in `ScoreMessageCoordinator` (~line 228)
+  - Remove the `flipPartialBeamOrientation()` dispatch in `ScoreViewController` (~line 228)
   - Delete `Score.canFlipPartialBeamOrientation()` and its delegate call
   - Delete `LineSelectionState.canFlipPartialBeamOrientation()`
   - Delete `MusicEditOperations.canFlipPartialBeamOrientation()` and `flipPartialBeamOrientation()` (now a no-op)

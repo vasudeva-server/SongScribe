@@ -45,15 +45,15 @@ import songscribe.ui.action.PasteboardAction;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
-import songscribe.ui.component.ScoreMessageCoordinator;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Integration tests for the lyric-deletion dispatch in
- * {@link ScoreMessageCoordinator#handleDelete()} (Phase 3).
+ * {@link ScoreViewController#handleDelete()} (Phase 3).
  *
  * <p>Line layout used throughout:
  * <pre>
@@ -117,11 +117,11 @@ class DeleteLyricTest extends UnitTest {
         return coordinator;
     }
 
-    private ScoreMessageCoordinator scoreCoordinator() {
-        var mockScore = mock(Score.class);
+    private ScoreViewController scoreCoordinator() {
+        var mockScore = mock(ScoreView.class);
         when(mockScore.getSong()).thenReturn(song);
         when(mockScore.isFocusOwner()).thenReturn(true);
-        return new ScoreMessageCoordinator(
+        return new ScoreViewController(
             mockScore,
             new MusicEditOperations(song, coordinator),
             mock(EditModeManager.class),

@@ -94,7 +94,7 @@ import songscribe.ui.selection.TupletToggleInfo;
  *
  *   JScrollPane
  *   └── ScorePanel [GridBagLayout, gray background]
- *       └── Score [BorderLayout, white background, full page size]
+ *       └── ScoreView [BorderLayout, white background, full page size]
  *           │  EmptyBorder: top/bottom = 0.5", left/right = horizontal margin
  *           └── MainPanel [BoxLayout Y_AXIS, CENTER]
  *               ├── TitleComponent
@@ -104,7 +104,7 @@ import songscribe.ui.selection.TupletToggleInfo;
  * </pre>
  */
 
-public final class Score
+public final class ScoreView
     extends JComponent
     implements
     ComponentHierarchyProvider,
@@ -113,7 +113,7 @@ public final class Score
     RenderContext,
     ScoreActions {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Score.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ScoreView.class);
 
     // The vertical distance between whole tones on the staff (e.g. A to B)
     public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().ssToPx(StaffExtents.STAFF_POSITION_OFFSET_SS);
@@ -211,7 +211,7 @@ public final class Score
 
     // Coordinates message handling
     @Nullable
-    private ScoreMessageCoordinator messageCoordinator = null;
+    private ScoreViewController messageCoordinator = null;
 
     // Preferred size of the score panel
     private final Dimension preferredSizePx = new Dimension();
@@ -241,7 +241,7 @@ public final class Score
     private final Map<KeyStroke, Object> scoreKeyBindings = new LinkedHashMap<>();
 
     /**
-     * Creates a Score with core infrastructure (SAX parser, selection, clipboard,
+     * Creates a ScoreView with core infrastructure (SAX parser, selection, clipboard,
      * edit mode). This is sufficient for headless use (converters pass {@code null}).
      * <p>
      * For interactive use, call {@link #init()} after construction to create the
@@ -250,7 +250,7 @@ public final class Score
      * @param onFileOpened callback invoked when a file is successfully opened,
      *                     or {@code null} for headless (converter) use
      */
-    public Score(@Nullable Consumer<? super File> onFileOpened) {
+    public ScoreView(@Nullable Consumer<? super File> onFileOpened) {
         this.onFileOpened = onFileOpened;
         var headless = onFileOpened == null;
         control = Control.valueOf(Prefs.getInstance().getString(PrefsKey.CONTROL));
@@ -328,7 +328,7 @@ public final class Score
 
         // Create operations and message coordinator (requires mainPanel to be set)
         operations = new MusicEditOperations(song, selectionCoordinator);
-        messageCoordinator = new ScoreMessageCoordinator(
+        messageCoordinator = new ScoreViewController(
             this,
             operations,
             editModeManager,
@@ -395,7 +395,7 @@ public final class Score
     /**
      * Sets up selection provider and initial state for all LineComponents.
      * <p>
-     * This wires up the selection checking from Score to enable
+     * This wires up the selection checking from ScoreView to enable
      * note coloring in the component-based rendering.
      */
     void setupLineComponentState() {
@@ -844,7 +844,7 @@ public final class Score
         operations = new MusicEditOperations(song, selectionCoordinator);
 
         if (messageCoordinator == null) {
-            messageCoordinator = new ScoreMessageCoordinator(
+            messageCoordinator = new ScoreViewController(
                 this,
                 operations,
                 editModeManager,
@@ -868,9 +868,9 @@ public final class Score
         syncPlaybackPrefs();
         viewChanged();
 
-        // Notify all subscribers (LyricsPanel, ScoreMessageCoordinator, UIActions, etc.)
+        // Notify all subscribers (LyricsPanel, ScoreViewController, UIActions, etc.)
         // that the song has been fully replaced. This must happen after all
-        // Score state is consistent.
+        // ScoreView state is consistent.
         MessageCenter.post(new DocumentDidLoadNotification(song));
 
         // Reset scroll position to top-left for the new/opened song
@@ -1176,7 +1176,7 @@ public final class Score
     }
 
     /**
-     * Adds {@code overlay} as a free-floating absolute-bounds child. Score uses BorderLayout
+     * Adds {@code overlay} as a free-floating absolute-bounds child. ScoreView uses BorderLayout
      * for its main panel, so we must register the overlay with null constraints (so the
      * layout manager ignores it) and restore the main panel's center mapping that
      * {@link #add(Component)} silently overwrote.

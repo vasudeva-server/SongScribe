@@ -57,7 +57,7 @@ shift values.
 | `music/MusicEditOperations.java` | `addDynamicsToSelection()`, `removeDynamicsFromSelection()` |
 | `message/command/AddDynamicsCommand.java` | Current add command (to be removed) |
 | `message/command/RemoveDynamicsCommand.java` | Current remove command (to be removed) |
-| `ui/component/ScoreMessageCoordinator.java` | Command handlers |
+| `ui/component/ScoreViewController.java` | Command handlers |
 | `ui/selection/LineSelectionState.java` | Selection state |
 | `ui/selection/SelectionCoordinator.java` | Selection coordination, action state management |
 | `ui/component/score/SelectionHandler.java` | Click-to-select routing |
@@ -159,7 +159,7 @@ public class AddHairpinCommand extends Message {
 }
 ```
 
-The handler in `ScoreMessageCoordinator` calls
+The handler in `ScoreViewController` calls
 `MusicEditOperations.addDynamicsToSelection(crescendo)` (existing method). The
 IntervalSet handles merging when this is an extend operation.
 
@@ -261,7 +261,7 @@ matching type shows Extend, and the other type is hidden.
 - `RemoveDynamicsAction.java` -- replaced by direct selection + Delete
 - `AddDynamicsCommand.java` -- replaced by `AddHairpinCommand`
 - `RemoveDynamicsCommand.java` -- deletion handled directly, no command needed
-- Command handlers in `ScoreMessageCoordinator` for the old commands
+- Command handlers in `ScoreViewController` for the old commands
 - `MusicEditOperations.removeDynamicsFromSelection()` -- no longer used
 - Related string keys in `strings.properties` (after verifying no other
   references)
@@ -281,7 +281,7 @@ matching type shows Extend, and the other type is hidden.
 | `ui/component/score/SelectionHandler.java` | Hairpin hit testing and click handling |
 | `ui/action/PasteboardAction.java` | Enable DELETE for hairpin selection |
 | `ui/menu/NotationMenu.java` | Replace `createDynamicsMenu()` with controller-managed submenu |
-| `ui/component/ScoreMessageCoordinator.java` | Replace old handlers with `AddHairpinCommand` handler |
+| `ui/component/ScoreViewController.java` | Replace old handlers with `AddHairpinCommand` handler |
 | `message/notification/MusicSelectionDidChangeNotification.java` | Add `hasHairpinSelection` |
 | `music/MusicEditOperations.java` | Remove `removeDynamicsFromSelection()` |
 | Renderer (hairpin) | Draw in selection color when selected |

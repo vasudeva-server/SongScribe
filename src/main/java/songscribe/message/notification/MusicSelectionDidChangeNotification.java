@@ -23,7 +23,7 @@ package songscribe.message.notification;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.message.Message;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.SelectionCoordinator.LyricSelection;
 
 public class MusicSelectionDidChangeNotification extends Message {
@@ -32,9 +32,9 @@ public class MusicSelectionDidChangeNotification extends Message {
     private final boolean hasGlissandoSelection;
     @Nullable
     private final LyricSelection lyricSelection;
-    private final Score score;
+    private final ScoreView score;
 
-    public MusicSelectionDidChangeNotification(Score score) {
+    public MusicSelectionDidChangeNotification(ScoreView score) {
         selectionSize = score.getSelectionSize();
         hasGlissandoSelection = score.getSelectionCoordinator().hasGlissandoSelection();
         lyricSelection = score.getSelectionCoordinator().getLyricSelection();
@@ -57,7 +57,7 @@ public class MusicSelectionDidChangeNotification extends Message {
         return lyricSelection;
     }
 
-    public Score getScore() {
+    public ScoreView getScore() {
         return score;
     }
 }

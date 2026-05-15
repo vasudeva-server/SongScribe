@@ -24,7 +24,7 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 
 public class PageLayoutData {
 
@@ -37,7 +37,7 @@ public class PageLayoutData {
     public int bottomMarginPx = 0;
     public boolean mirrored = false;
     public int songsPerPage = 2;
-    public @Nullable Score score = null;
+    public @Nullable ScoreView score = null;
 
     /**
      * Sets all four margins to a default, then applies per-edge overrides.

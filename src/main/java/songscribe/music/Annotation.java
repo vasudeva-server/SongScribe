@@ -21,13 +21,13 @@ package songscribe.music;
 
 import module java.desktop;
 
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 
 public class Annotation {
 
-    public static final int ABOVE = (int) (-4 * Score.STAFF_POSITION_OFFSET_PX);
+    public static final int ABOVE = (int) (-4 * ScoreView.STAFF_POSITION_OFFSET_PX);
     private int yPosPx = ABOVE;
-    public static final int BELOW = (int) (8 * Score.STAFF_POSITION_OFFSET_PX);
+    public static final int BELOW = (int) (8 * ScoreView.STAFF_POSITION_OFFSET_PX);
     private String annotation;
     private float xAlignment = Component.LEFT_ALIGNMENT;
 

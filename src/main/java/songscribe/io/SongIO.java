@@ -38,7 +38,7 @@ import songscribe.music.Line;
 import songscribe.music.Tempo;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.InsertionSpacingCalculator;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
@@ -432,7 +432,7 @@ public final class SongIO {
                     var line = parsedLines.getLast();
                     note.setXOffsetPx(ScaleContext.getInstance().ssToRoundedPx(
                         InsertionSpacingCalculator.calculateAppendPositionSs(line, note, null)));
-                    note.setUpper(Score.defaultUpperNote(note));
+                    note.setUpper(ScoreView.defaultUpperNote(note));
                     line.addElement(note);
                 }
             } else if (where == Where.TEMPO_CHANGE) {

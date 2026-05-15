@@ -29,13 +29,14 @@ import javax.xml.parsers.SAXParserFactory;
 import org.xml.sax.SAXException;
 
 import songscribe.music.Song;
+import songscribe.ui.component.ScoreView;
 
 /**
- * Loads a {@link Song} from a file without requiring a {@link songscribe.ui.component.Score}.
+ * Loads a {@link Song} from a file without requiring a {@link ScoreView}.
  * <p>
  * Use this for headless operations (ABC export, MIDI export) that only need
  * the song data. For operations that also need rendering (image, PDF,
- * SVG export), use {@link songscribe.ui.component.Score#openFile} instead.
+ * SVG export), use {@link ScoreView#openFile} instead.
  */
 public final class SongLoader {
 

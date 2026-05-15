@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.Song;
 import songscribe.music.TieSpan;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 
 class ElementRenderContextTest extends UnitTest {
 
@@ -42,17 +42,17 @@ class ElementRenderContextTest extends UnitTest {
         assertThat(ctx.getElementColor(0)).isEqualTo(Color.BLACK);
     }
 
-    // T2: edit mode + element is playing → Score.getPlayingNoteColor()
+    // T2: edit mode + element is playing → ScoreView.getPlayingNoteColor()
     @Test
     void testPlayingElementReturnsPlayingColor() {
         var ctx = new ElementRenderContext(new Song());
         ctx.setEditMode(true);
         ctx.setPlayingNoteIndex(0);
 
-        assertThat(ctx.getElementColor(0)).isEqualTo(Score.getPlayingNoteColor());
+        assertThat(ctx.getElementColor(0)).isEqualTo(ScoreView.getPlayingNoteColor());
     }
 
-    // T3: edit mode + element is in a tie with the playing note → Score.getPlayingNoteColor()
+    // T3: edit mode + element is in a tie with the playing note → ScoreView.getPlayingNoteColor()
     @Test
     void testElementInPlayingTieReturnsPlayingColor() {
         var line = detachedLine();
@@ -64,7 +64,7 @@ class ElementRenderContextTest extends UnitTest {
         ctx.setPlayingNoteIndex(0);
 
         // Index 2 is in the [0, 2] tie but is not the playing note itself
-        assertThat(ctx.getElementColor(2)).isEqualTo(Score.getPlayingNoteColor());
+        assertThat(ctx.getElementColor(2)).isEqualTo(ScoreView.getPlayingNoteColor());
     }
 
     // T4: edit mode + element is selected → selectionColor

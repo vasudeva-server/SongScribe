@@ -33,7 +33,7 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.ElementBoundsSs;
 import songscribe.ui.layout.LineElement;
 
@@ -159,13 +159,13 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         var line = ctx.getCurrentLine();
 
         if (line == null) {
-            return Score.getPreviewElementColor();
+            return ScoreView.getPreviewElementColor();
         }
 
         index = line.getElementIndex(element);
 
         if (index < 0) {
-            return Score.getPreviewElementColor();
+            return ScoreView.getPreviewElementColor();
         }
 
         return ctx.getElementColor(index);

@@ -75,7 +75,7 @@ import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
- * Verifies that each {@link ScoreMessageCoordinator} command handler delegates
+ * Verifies that each {@link ScoreViewController} command handler delegates
  * to {@link MusicEditOperations} such that exactly one
  * {@link SongDidChangeNotification} is emitted, and that the notification
  * carries mutations of the expected type. Field-level mutation assertions are
@@ -83,7 +83,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * on the wiring between the coordinator and the operations layer.
  */
 @SuppressWarnings("OverlyBroadThrowsClause")
-class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
+class ScoreViewControllerCommandHandlerTest extends UnitTest {
 
     private Song song;
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
@@ -107,7 +107,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
     private record Env(
         SelectionCoordinator coordinator,
-        ScoreMessageCoordinator scoreMessageCoordinator,
+        ScoreViewController scoreMessageCoordinator,
         Line line
     ) {}
 
@@ -115,7 +115,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
      * Builds a Line with the given elements, attaches it to the song (which fires a
      * real LineInsertion notification on the unobserved bus), wires up real
      * {@link SelectionCoordinator} and {@link MusicEditOperations} instances, then
-     * constructs a real {@link ScoreMessageCoordinator} backed by mocked Score /
+     * constructs a real {@link ScoreViewController} backed by mocked ScoreView /
      * EditModeManager / ClipboardManager dependencies. Finally, mocks
      * {@link MessageCenter} so subsequent posts can be captured.
      *
@@ -138,13 +138,13 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         var operations = new MusicEditOperations(song, coordinator);
 
-        var score = mock(Score.class);
+        var score = mock(ScoreView.class);
         var editModeManager = mock(EditModeManager.class);
         var clipboardManager = mock(ClipboardManager.class);
 
         messageCenterMock = mockStatic(MessageCenter.class);
 
-        var scoreMessageCoordinator = new ScoreMessageCoordinator(
+        var scoreMessageCoordinator = new ScoreViewController(
             score,
             operations,
             editModeManager,

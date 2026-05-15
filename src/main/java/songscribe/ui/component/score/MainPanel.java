@@ -42,7 +42,7 @@ import songscribe.ui.layout.ScaleContext;
  * <p>
  * This panel serves as the entry point for the new JComponent-based
  * rendering system. It is initially embedded alongside the existing
- * Score rendering to allow gradual migration.
+ * ScoreView rendering to allow gradual migration.
  */
 public class MainPanel extends JPanel {
 

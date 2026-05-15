@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.error.RuntimeError;
 import songscribe.music.ElementType;
 import songscribe.ui.Mode;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.DynamicAttachment;
@@ -180,7 +180,7 @@ class LineRenderer {
             && selectionProvider != null
             && selectionProvider.isLineSelected(lineIndex);
 
-        g2.setColor(staffSelected ? Score.getSelectionColor() : BaseElementRenderer.STAFF_LINE_COLOR);
+        g2.setColor(staffSelected ? ScoreView.getSelectionColor() : BaseElementRenderer.STAFF_LINE_COLOR);
 
         var lineWidth = lc.getSong().getLineWidthSs();
         var middleLineYSs = lc.getMiddleLineYSs();
@@ -609,7 +609,7 @@ class LineRenderer {
                 return;  // Already has this glissando type — no preview needed
             }
 
-            g2.setColor(Score.getPreviewElementColor());
+            g2.setColor(ScoreView.getPreviewElementColor());
             GlissandoRenderer.getInstance().renderPreviewGlissando(
                 g2, sourceIndex, type, line, ctx
             );
@@ -645,7 +645,7 @@ class LineRenderer {
 
         // Set the preview element position
         previewElement.setStaffPosition(currentStaffPosition);
-        previewElement.setUpper(Score.defaultUpperNote(previewElement));
+        previewElement.setUpper(ScoreView.defaultUpperNote(previewElement));
 
         // Render the preview element with the preview element color.
         // Pass x as an override so NoteRenderer and decoration renderers apply
@@ -653,7 +653,7 @@ class LineRenderer {
         // preview rendering via hasOverrideElementX() and avoid looking up the
         // preview element in the layout (it isn't there).
         ctx.setOverrideElementXSs(x);
-        g2.setColor(Score.getPreviewElementColor());
+        g2.setColor(ScoreView.getPreviewElementColor());
         NoteRenderer.getInstance().render(g2, previewElement, ctx);
 
         // Render articulations and fermata on the preview element.
@@ -691,7 +691,7 @@ class LineRenderer {
                 SELECTION_RECT_ARC_PX, SELECTION_RECT_ARC_PX);
         var originalStroke = g2.getStroke();
         g2.setStroke(SELECTION_RECT_STROKE);
-        g2.setColor(Score.getSelectionColor());
+        g2.setColor(ScoreView.getSelectionColor());
         g2.draw(roundRect);
         g2.setStroke(originalStroke);
     }

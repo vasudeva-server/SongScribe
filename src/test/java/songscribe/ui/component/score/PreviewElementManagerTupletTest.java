@@ -42,7 +42,7 @@ import songscribe.music.StaffElement;
 import songscribe.music.TupletSpan;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.playback.PlaybackController;
 
@@ -65,7 +65,7 @@ class PreviewElementManagerTupletTest extends UnitTest {
     // Static mocks
     private MockedStatic<MessageCenter> messageCenterMock;
     private MockedStatic<EditModeManager> editModeMgrMock;
-    private MockedStatic<Score> scoreMock;
+    private MockedStatic<ScoreView> scoreMock;
     private MockedStatic<PlaybackController> playbackMock;
 
     // Instance mocks
@@ -85,11 +85,11 @@ class PreviewElementManagerTupletTest extends UnitTest {
 
         messageCenterMock = mockStatic(MessageCenter.class);
         editModeMgrMock = mockStatic(EditModeManager.class);
-        scoreMock = mockStatic(Score.class);
+        scoreMock = mockStatic(ScoreView.class);
         playbackMock = mockStatic(PlaybackController.class);
 
         lc = mock(LineComponent.class);
-        var score = mock(Score.class);
+        var score = mock(ScoreView.class);
         editModeManager = mock(EditModeManager.class);
 
         when(lc.isEditMode()).thenReturn(true);
@@ -105,7 +105,7 @@ class PreviewElementManagerTupletTest extends UnitTest {
         playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
 
         // defaultUpperNote is called when the preview element's stem direction is auto
-        scoreMock.when(() -> Score.defaultUpperNote(any())).thenReturn(true);
+        scoreMock.when(() -> ScoreView.defaultUpperNote(any())).thenReturn(true);
 
         PreviewElementManager.setCurrentPreviewLine(lc);
         PreviewElementManager.setCurrentStaffPosition(0);

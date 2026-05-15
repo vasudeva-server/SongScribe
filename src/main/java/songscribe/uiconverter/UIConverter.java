@@ -37,7 +37,7 @@ import songscribe.ui.action.QuitAction;
 import songscribe.SongScribe;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyJTextField;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.playback.MidiController;
 import songscribe.util.GraphicUtils;
 
@@ -82,7 +82,7 @@ public class UIConverter extends MainFrame {
         setTitle(appName);
         setIconImage(GraphicUtils.getImage("songwriter-icon.png"));
         new MyQuitAction();
-        score = new Score(null);
+        score = new ScoreView(null);
 
         var chooseDirectoryAction = new ChooseDirectoryAction(this);
         chooseDirectoryAction.addPropertyChangeListener(

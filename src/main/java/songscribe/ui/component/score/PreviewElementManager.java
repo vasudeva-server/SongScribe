@@ -44,7 +44,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ElementTypeAction;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.InsertionSpacingCalculator;
@@ -597,7 +597,7 @@ public final class PreviewElementManager {
 
         // Determine action based on position. Wrap in a modification bracket so the
         // line.add/setElement calls inside actually accumulate mutations and fire a
-        // SongDidChangeNotification, which the ScoreMessageCoordinator uses to
+        // SongDidChangeNotification, which the ScoreViewController uses to
         // invalidate the line's cached layout.
         line.withModification(() -> {
             if (currentXIndex == line.elementCount()) {
@@ -1020,7 +1020,7 @@ public final class PreviewElementManager {
         applyStaffPosition(replacement, currentStaffPosition);
 
         if (replacement.isStemDirectionAuto()) {
-            replacement.setUpper(Score.defaultUpperNote(replacement));
+            replacement.setUpper(ScoreView.defaultUpperNote(replacement));
         } else {
             replacement.setUpper(previewElement.isUpper());
         }

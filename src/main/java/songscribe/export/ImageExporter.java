@@ -23,7 +23,7 @@ import module java.desktop;
 
 
 import songscribe.ui.component.MyBorder;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Utility class for exporting music scores as images.
@@ -45,7 +45,7 @@ public final class ImageExporter {
      * @return a new BufferedImage containing the exported score
      */
     public static BufferedImage createImageForExport(
-        Score score,
+        ScoreView score,
         Color background,
         double scale,
         MyBorder border,

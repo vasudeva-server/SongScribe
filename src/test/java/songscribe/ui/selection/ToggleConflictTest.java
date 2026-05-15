@@ -109,7 +109,7 @@ class ToggleConflictTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Helpers — simulate the operations that ScoreMessageCoordinator performs
+    // Helpers — simulate the operations that ScoreViewController performs
     // -------------------------------------------------------------------------
 
     private void changeDuration(ElementType type) {

@@ -120,4 +120,4 @@ API:
 - `hasMutationOf(Class<? extends Mutation>)` — `true` if the list contains at least one instance of the given subclass.
 
 Filter with `instanceof` / pattern switches, not enum. Canonical large example:
-`ScoreMessageCoordinator.songDidChange`.
+`ScoreViewController.songDidChange`.

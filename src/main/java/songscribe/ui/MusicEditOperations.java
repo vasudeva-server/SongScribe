@@ -47,7 +47,7 @@ import songscribe.ui.selection.TupletToggleInfo;
 
 /**
  * Handles music editing operations for a song.
- * Extracted from Score.java as part of Phase 5 of the Score Cleanup refactoring.
+ * Extracted from ScoreView.java as part of Phase 5 of the ScoreView Cleanup refactoring.
  */
 public final class MusicEditOperations {
 

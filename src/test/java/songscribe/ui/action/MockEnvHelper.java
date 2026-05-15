@@ -30,7 +30,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -44,13 +44,13 @@ public final class MockEnvHelper {
 
     public record MockEnv(
         MainFrame frame,
-        Score score,
+        ScoreView score,
         SelectionCoordinator coordinator
     ) {}
 
     public static MockEnv setupMockEnv(MockedStatic<MainFrame> mainFrameMock) {
         var mockFrame = mock(MainFrame.class);
-        var mockScore = mock(Score.class);
+        var mockScore = mock(ScoreView.class);
         var mockCoordinator = mock(SelectionCoordinator.class);
 
         mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);

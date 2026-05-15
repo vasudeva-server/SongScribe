@@ -30,7 +30,7 @@ import songscribe.music.SpanSet;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.Line;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
@@ -65,7 +65,7 @@ public class VerticalAdjustment extends Adjustment {
     // TODO: Hoist to superclass
     private final ArrayList<AdjustRect> adjustRects = new ArrayList<>();
 
-    public VerticalAdjustment(Score score) {
+    public VerticalAdjustment(ScoreView score) {
         super(score);
     }
 

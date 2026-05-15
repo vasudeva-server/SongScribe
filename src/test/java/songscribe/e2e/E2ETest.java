@@ -63,7 +63,7 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.score.ElementHitTest;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.UIUtils;
 
@@ -209,7 +209,7 @@ public abstract class E2ETest {
 
     // -- Accessors --
 
-    protected Score score() {
+    protected ScoreView score() {
         return Objects.requireNonNull(MainFrame.getInstance().getScore());
     }
 

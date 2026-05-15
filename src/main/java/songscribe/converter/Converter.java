@@ -23,7 +23,7 @@ package songscribe.converter;
 import java.io.File;
 
 import songscribe.music.Song;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 
 public final class Converter {
 
@@ -34,7 +34,7 @@ public final class Converter {
      *
      * @return the loaded song
      */
-    public static Song loadSong(File file, Score score) {
+    public static Song loadSong(File file, ScoreView score) {
         score.openFile(file, false);
         return score.getSong();
     }

@@ -60,12 +60,12 @@ class LyricEditorTest extends LyricEditorTestSupport {
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
 
     private Song song;
-    private Score score;
+    private ScoreView score;
 
     @BeforeEach
     void setUp() {
         song = new Song();
-        score = mock(Score.class);
+        score = mock(ScoreView.class);
         when(score.getLyricRenderMetrics()).thenReturn(LYRIC_METRICS);
         when(score.getSong()).thenReturn(song);
         when(score.getLineComponent(anyInt())).thenReturn(null);

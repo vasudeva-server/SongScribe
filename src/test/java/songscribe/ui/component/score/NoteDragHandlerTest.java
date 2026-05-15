@@ -53,7 +53,7 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.TieSpan;
 import songscribe.ui.Mode;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
@@ -108,7 +108,7 @@ class NoteDragHandlerTest extends UnitTest {
         scaleContextMock.when(ScaleContext::getInstance).thenReturn(mockScaleContext);
 
         lc = mock(LineComponent.class);
-        var mockScore = mock(Score.class);
+        var mockScore = mock(ScoreView.class);
         var mockSelectionHandler = mock(LineSelectionHandler.class);
         mockSelectionState = mock(LineSelectionState.class);
 

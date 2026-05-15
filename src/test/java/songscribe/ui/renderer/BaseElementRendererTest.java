@@ -31,7 +31,7 @@ import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 
 class BaseElementRendererTest extends UnitTest {
 
@@ -44,7 +44,7 @@ class BaseElementRendererTest extends UnitTest {
 
         var color = BaseElementRenderer.getDecorationColor(element, ctx);
 
-        assertThat(color).isEqualTo(Score.getPreviewElementColor());
+        assertThat(color).isEqualTo(ScoreView.getPreviewElementColor());
     }
 
     // T2: element not in line (index < 0) → preview element color
@@ -59,7 +59,7 @@ class BaseElementRendererTest extends UnitTest {
 
         var color = BaseElementRenderer.getDecorationColor(element, ctx);
 
-        assertThat(color).isEqualTo(Score.getPreviewElementColor());
+        assertThat(color).isEqualTo(ScoreView.getPreviewElementColor());
     }
 
     // T3: element in line (index >= 0) → ctx.getElementColor(index) result
@@ -76,6 +76,6 @@ class BaseElementRendererTest extends UnitTest {
 
         var color = BaseElementRenderer.getDecorationColor(element, ctx);
 
-        assertThat(color).isEqualTo(Score.getPlayingNoteColor());
+        assertThat(color).isEqualTo(ScoreView.getPlayingNoteColor());
     }
 }

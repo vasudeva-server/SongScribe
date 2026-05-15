@@ -113,7 +113,7 @@ public class MainFrame extends JFrame implements Printable {
 
     // The music sheet that is displayed in the main window
     @Nullable
-    protected Score score = null;
+    protected ScoreView score = null;
 
     // The current open file
     @Nullable
@@ -275,7 +275,7 @@ public class MainFrame extends JFrame implements Printable {
         setAppIcon();
 
         // A lot of init code depends on this being set
-        score = new Score(this::setCurrentFile);
+        score = new ScoreView(this::setCurrentFile);
         PlaybackController.register(score);
 
 
@@ -373,7 +373,7 @@ public class MainFrame extends JFrame implements Printable {
         // We lay out the content in a border layout:
         // +---------------------+
         // | NORTH: Toolbar      |
-        // | CENTER: Score       |
+        // | CENTER: ScoreView       |
         // +---------------------+
         var contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
@@ -527,7 +527,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Nullable
-    public Score getScore() {
+    public ScoreView getScore() {
         return score;
     }
 
@@ -536,7 +536,7 @@ public class MainFrame extends JFrame implements Printable {
      * Use this in code that runs after initialization, where a null score
      * indicates corrupted application state.
      */
-    public Score requireScore() {
+    public ScoreView requireScore() {
         var result = score;
 
         if (result == null) {
@@ -546,7 +546,7 @@ public class MainFrame extends JFrame implements Printable {
         return result;
     }
 
-    public void setScore(Score score) {
+    public void setScore(ScoreView score) {
         this.score = score;
     }
 

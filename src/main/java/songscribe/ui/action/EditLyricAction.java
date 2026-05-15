@@ -26,7 +26,7 @@ import static java.awt.event.KeyEvent.*;
 
 import songscribe.Strings;
 import songscribe.ui.component.LyricEditor;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 
 public final class EditLyricAction extends UIAction {
 
@@ -56,7 +56,7 @@ public final class EditLyricAction extends UIAction {
     }
 
     @Override
-    protected boolean enableFromSelection(boolean activeSelection, Score score) {
+    protected boolean enableFromSelection(boolean activeSelection, ScoreView score) {
         var activeLineState = score.getSelectionCoordinator().getActiveSelection();
 
         //noinspection SimplifiableIfStatement

@@ -40,7 +40,7 @@ import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.playback.PlaybackController;
 
@@ -54,7 +54,7 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
 
     private MockedStatic<MessageCenter> messageCenterMock;
     private MockedStatic<EditModeManager> editModeMgrMock;
-    private MockedStatic<Score> scoreMock;
+    private MockedStatic<ScoreView> scoreMock;
     private MockedStatic<PlaybackController> playbackMock;
 
     private LineComponent lc;
@@ -71,11 +71,11 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
 
         messageCenterMock = mockStatic(MessageCenter.class);
         editModeMgrMock = mockStatic(EditModeManager.class);
-        scoreMock = mockStatic(Score.class);
+        scoreMock = mockStatic(ScoreView.class);
         playbackMock = mockStatic(PlaybackController.class);
 
         lc = mock(LineComponent.class);
-        var score = mock(Score.class);
+        var score = mock(ScoreView.class);
         editModeManager = mock(EditModeManager.class);
 
         when(lc.isEditMode()).thenReturn(true);

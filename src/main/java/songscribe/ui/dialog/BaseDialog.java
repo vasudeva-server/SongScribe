@@ -41,7 +41,7 @@ import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
@@ -475,11 +475,11 @@ public abstract class BaseDialog {
         return mainFrame;
     }
 
-    protected @Nullable Score getScore() {
+    protected @Nullable ScoreView getScore() {
         return mainFrame.getScore();
     }
 
-    protected Score requireScore() {
+    protected ScoreView requireScore() {
         return mainFrame.requireScore();
     }
 

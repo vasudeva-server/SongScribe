@@ -59,7 +59,7 @@ public final class ComponentHierarchyNavigator {
     }
 
     /**
-     * Returns the actual middle Y coordinate of a line in the Score coordinate system.
+     * Returns the actual middle Y coordinate of a line in the ScoreView coordinate system.
      */
     public int getActualLineMiddleYPx(int lineIndex) {
         var mainPanel = provider.getMainPanel();
@@ -78,7 +78,7 @@ public final class ComponentHierarchyNavigator {
         var linePanel = linePanels.get(lineIndex);
         var lineComponent = linePanel.getLineComponent();
 
-        // Get the LineComponent's Y position in the Score coordinate system
+        // Get the LineComponent's Y position in the ScoreView coordinate system
         var linePanelY = linePanel.getY();
         var staffPanelY = staffPanel.getY();
         var mainPanelY = mainPanel.getY();
@@ -92,7 +92,7 @@ public final class ComponentHierarchyNavigator {
     /**
      * Finds the line index at the given Y coordinate.
      *
-     * @param y The Y coordinate in Score coordinate system
+     * @param y The Y coordinate in ScoreView coordinate system
      * @return The line index, or -1 if not found
      */
     public int findLineIndexAtPoint(int y, int rowHeight) {
@@ -103,7 +103,7 @@ public final class ComponentHierarchyNavigator {
             return (int) (y - song.getTopPaddingSs()) / rowHeight;
         }
 
-        // Convert Score Y to StaffPanel Y
+        // Convert ScoreView Y to StaffPanel Y
         var staffPanel = mainPanel.getStaffPanel();
         var staffPanelY = y - mainPanel.getY() - staffPanel.getY();
 
@@ -130,7 +130,7 @@ public final class ComponentHierarchyNavigator {
      */
     public void setupLineComponentState(
         LineComponent.SelectionProvider selectionProvider,
-        Score score
+        ScoreView score
     ) {
         var mainPanel = provider.getMainPanel();
 

@@ -61,8 +61,8 @@ public class AddDynamicsCommand extends Message {
 A handler class subscribes itself in its constructor (and must stay strongly reachable — here via the owning `Score`):
 
 ```java
-public final class ScoreMessageCoordinator {
-    ScoreMessageCoordinator(...) {
+public final class ScoreViewController {
+    ScoreViewController(...) {
         ...
         MessageCenter.subscribe(this);
     }

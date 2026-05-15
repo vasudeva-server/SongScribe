@@ -34,7 +34,7 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.music.Song;
 import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -50,7 +50,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * construction, so whichever frame was in scope the first time {@code Actions}
  * was loaded is the frame these calls go through. Rather than fight that
  * cache, this test wires the real {@code MainFrame} singleton to a mock
- * {@code Score} — if some earlier test cached a Mockito mock frame, that mock
+ * {@code ScoreView} — if some earlier test cached a Mockito mock frame, that mock
  * already has {@code requireScore} stubbed by {@link MockEnvHelper}; if the
  * cached frame is the real singleton, the explicit {@code setScore} call here
  * supplies the score it needs.
@@ -59,7 +59,7 @@ class ActionsResetOnDocumentLoadTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        var mockScore = mock(Score.class);
+        var mockScore = mock(ScoreView.class);
         var mockCoordinator = mock(SelectionCoordinator.class);
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
         when(mockScore.getMode()).thenReturn(Mode.EDIT);

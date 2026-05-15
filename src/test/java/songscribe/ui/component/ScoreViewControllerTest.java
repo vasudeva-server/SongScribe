@@ -58,7 +58,7 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
-class ScoreMessageCoordinatorTest extends UnitTest {
+class ScoreViewControllerTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -78,12 +78,12 @@ class ScoreMessageCoordinatorTest extends UnitTest {
                 new SelectionCoordinator.LyricSelection(element, 1));
             assertThat(line.getElementIndex(element)).isGreaterThanOrEqualTo(0);
 
-            var scoreMock = mock(Score.class);
+            var scoreMock = mock(ScoreView.class);
             when(scoreMock.isFocusOwner()).thenReturn(true);
             when(scoreMock.getSong()).thenReturn(song);
             when(scoreMock.canDeleteLine()).thenReturn(false);
 
-            var coordinator = new ScoreMessageCoordinator(
+            var coordinator = new ScoreViewController(
                 scoreMock,
                 mock(MusicEditOperations.class),
                 mock(EditModeManager.class),
@@ -100,9 +100,9 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             verify(scoreMock).repaint();
         }
 
-        private void invokeHandleDelete(ScoreMessageCoordinator coordinator) {
+        private void invokeHandleDelete(ScoreViewController coordinator) {
             try {
-                var method = ScoreMessageCoordinator.class.getDeclaredMethod("handleDelete");
+                var method = ScoreViewController.class.getDeclaredMethod("handleDelete");
                 method.setAccessible(true);
                 method.invoke(coordinator);
             } catch (ReflectiveOperationException e) {
@@ -118,7 +118,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
         @Test
         void testDeleteNoteRemovesOneElement() {
             var line = lineWith(crotchet(), crotchet(), crotchet());
-            var removed = ScoreMessageCoordinator.deleteNote(1, line);
+            var removed = ScoreViewController.deleteNote(1, line);
 
             assertThat(removed).isEqualTo(1);
             assertThat(line.elementCount()).isEqualTo(2);
@@ -127,7 +127,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
         @Test
         void testDeleteNoteRemovesPrecedingPairedGraceNote() {
             var line = lineWith(crotchet(), pairedGraceNote(), crotchet());
-            var removed = ScoreMessageCoordinator.deleteNote(2, line);
+            var removed = ScoreViewController.deleteNote(2, line);
 
             assertThat(removed).isEqualTo(2);
             assertThat(line.elementCount()).isEqualTo(1);
@@ -137,7 +137,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
         void testDeleteNoteDoesNotRemoveUnpairedGraceNote() {
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = lineWith(crotchet(), graceNote, crotchet());
-            var removed = ScoreMessageCoordinator.deleteNote(2, line);
+            var removed = ScoreViewController.deleteNote(2, line);
 
             assertThat(removed).isEqualTo(1);
             assertThat(line.elementCount()).isEqualTo(2);
@@ -148,7 +148,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             var prev = crotchet();
             prev.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
             var line = lineWith(prev, crotchet());
-            ScoreMessageCoordinator.deleteNote(1, line);
+            ScoreViewController.deleteNote(1, line);
 
             assertThat(prev.getGlissando()).isNull();
         }
@@ -167,7 +167,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             noteC.setXOffsetPx(20);
             var line = lineWith(noteA, grace, noteB, noteC);
 
-            ScoreMessageCoordinator.deleteNote(2, line);
+            ScoreViewController.deleteNote(2, line);
 
             // firstDeletedIndex is 1 (grace), so shift = grace.x - noteC.x = 8 - 20 = -12
             // noteC.x + (-12) = 20 - 12 = 8
@@ -187,7 +187,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             var selectionEnd = 3;
 
             for (var i = selectionEnd; i >= selectionBegin; i--) {
-                var removedCount = ScoreMessageCoordinator.deleteNote(i, line);
+                var removedCount = ScoreViewController.deleteNote(i, line);
                 i -= (removedCount - 1);
             }
 
@@ -207,7 +207,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             var selectionEnd = 2;
 
             for (var i = selectionEnd; i >= selectionBegin; i--) {
-                var removedCount = ScoreMessageCoordinator.deleteNote(i, line);
+                var removedCount = ScoreViewController.deleteNote(i, line);
                 i -= (removedCount - 1);
             }
 
@@ -225,7 +225,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             var selectionEnd = 2;
 
             for (var i = selectionEnd; i >= selectionBegin; i--) {
-                var removedCount = ScoreMessageCoordinator.deleteNote(i, line);
+                var removedCount = ScoreViewController.deleteNote(i, line);
                 i -= (removedCount - 1);
             }
 
@@ -240,7 +240,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             terminus.properties.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
             var line = lineWith(predecessor, terminus);
 
-            ScoreMessageCoordinator.deleteNote(1, line);
+            ScoreViewController.deleteNote(1, line);
 
             assertThat(predecessor.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.SINGLE);
@@ -256,7 +256,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             last.properties.lyrics.add(new Lyric(1, "mi", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
             var line = lineWith(first, middle, last);
 
-            ScoreMessageCoordinator.deleteNote(1, line);
+            ScoreViewController.deleteNote(1, line);
 
             assertThat(first.properties.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.BEGIN);
@@ -296,7 +296,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
 
         private Line line;
         private LineComponent lineComponentMock;
-        private ScoreMessageCoordinator coordinator;
+        private ScoreViewController coordinator;
 
         @BeforeEach
         void setUp() {
@@ -313,10 +313,10 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             var mainPanelMock = mock(MainPanel.class);
             when(mainPanelMock.getStaffPanel()).thenReturn(staffPanelMock);
 
-            var scoreMock = mock(Score.class);
+            var scoreMock = mock(ScoreView.class);
             when(scoreMock.getMainPanel()).thenReturn(mainPanelMock);
 
-            coordinator = new ScoreMessageCoordinator(
+            coordinator = new ScoreViewController(
                 scoreMock,
                 mock(MusicEditOperations.class),
                 mock(EditModeManager.class),

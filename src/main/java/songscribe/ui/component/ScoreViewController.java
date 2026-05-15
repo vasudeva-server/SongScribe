@@ -70,15 +70,15 @@ import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
- * Coordinates message handling for the Score component.
+ * Coordinates message handling for the ScoreView component.
  * Handles all @Handler methods for messages posted to the MessageCenter.
  */
-public final class ScoreMessageCoordinator {
+public final class ScoreViewController {
 
     // Delay in milliseconds for debouncing repaint when layout changes occur
     private static final int REPAINT_DEBOUNCE_DELAY_MS = 300;
 
-    private final Score score;
+    private final ScoreView score;
     private MusicEditOperations operations;
     private final EditModeManager editModeManager;
     private final SelectionCoordinator selectionCoordinator;
@@ -87,8 +87,8 @@ public final class ScoreMessageCoordinator {
     // Timer for debouncing repaints when layout changes occur
     private final Timer repaintDebounceTimer;
 
-    public ScoreMessageCoordinator(
-        Score score,
+    public ScoreViewController(
+        ScoreView score,
         MusicEditOperations operations,
         EditModeManager editModeManager,
         SelectionCoordinator selectionCoordinator,

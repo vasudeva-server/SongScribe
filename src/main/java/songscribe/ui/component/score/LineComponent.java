@@ -34,7 +34,7 @@ import songscribe.ui.component.ComponentNames;
 import songscribe.ui.component.LyricEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.LayoutEngine;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
@@ -63,7 +63,7 @@ public class LineComponent extends ScoreComponent
     /**
      * Interface for checking selection state.
      * <p>
-     * Allows LineComponent to check selection without coupling to Score.
+     * Allows LineComponent to check selection without coupling to ScoreView.
      */
     public interface SelectionProvider {
         /**
@@ -118,9 +118,9 @@ public class LineComponent extends ScoreComponent
     @Nullable
     private SelectionProvider selectionProvider;
 
-    /** Reference to the Score for accessing song and services. */
+    /** Reference to the ScoreView for accessing song and services. */
     @Nullable
-    private Score score;
+    private ScoreView score;
 
     /** Index of the currently playing note (-1 if not playing). */
     private int playingNoteIndex = -1;
@@ -244,7 +244,7 @@ public class LineComponent extends ScoreComponent
      * @return Y coordinate in pixels
      */
     public int staffPositionToYPx(int staffPositionSp) {
-        return getMiddleLineYPx() + (int) Math.round(staffPositionSp * Score.STAFF_POSITION_OFFSET_PX);
+        return getMiddleLineYPx() + (int) Math.round(staffPositionSp * ScoreView.STAFF_POSITION_OFFSET_PX);
     }
 
     /**
@@ -257,11 +257,11 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Sets the Score reference for accessing song and services.
+     * Sets the ScoreView reference for accessing song and services.
      *
-     * @param score The Score component
+     * @param score The ScoreView component
      */
-    public void setScore(Score score) {
+    public void setScore(ScoreView score) {
         this.score = score;
 
         // Register LineSelectionState with coordinator when score is set
@@ -616,11 +616,11 @@ public class LineComponent extends ScoreComponent
     // ==========================================================================
 
     /**
-     * Returns the Score reference.
+     * Returns the ScoreView reference.
      */
-    Score getScore() {
+    ScoreView getScore() {
         if (score == null) {
-            throw RuntimeError.exit("Score reference not set on LineComponent");
+            throw RuntimeError.exit("ScoreView reference not set on LineComponent");
         }
 
         return score;
@@ -737,7 +737,7 @@ public class LineComponent extends ScoreComponent
 
     /**
      * Clears any active rubber-band drag rectangle on this line.
-     * Called from Score when a window-level mouseReleased catches an orphaned drag.
+     * Called from ScoreView when a window-level mouseReleased catches an orphaned drag.
      */
     public void clearDragRectangle() {
         selectionHandler.handleRelease();

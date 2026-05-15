@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.SelectionCoordinator;
 
 class UIActionReflectableGuardTest extends UnitTest {
@@ -41,7 +41,7 @@ class UIActionReflectableGuardTest extends UnitTest {
     void testNonReflectableWithSelectionRunsNormalLogic() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var mockFrame = mock(MainFrame.class);
-            var mockScore = mock(Score.class);
+            var mockScore = mock(ScoreView.class);
             var mockCoordinator = mock(SelectionCoordinator.class);
 
             mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
@@ -70,7 +70,7 @@ class UIActionReflectableGuardTest extends UnitTest {
     void testReflectableWithNoSelectionRunsNormalLogic() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var mockFrame = mock(MainFrame.class);
-            var mockScore = mock(Score.class);
+            var mockScore = mock(ScoreView.class);
             var mockCoordinator = mock(SelectionCoordinator.class);
 
             mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
@@ -98,7 +98,7 @@ class UIActionReflectableGuardTest extends UnitTest {
     void testReflectableWithSelectionStillRunsFlagLogic() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var mockFrame = mock(MainFrame.class);
-            var mockScore = mock(Score.class);
+            var mockScore = mock(ScoreView.class);
             var mockCoordinator = mock(SelectionCoordinator.class);
 
             mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);

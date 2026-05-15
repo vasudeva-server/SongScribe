@@ -257,7 +257,7 @@ public final class SelectionCoordinator {
     }
 
     // -------------------------------------------------------------------------
-    // Cross-line queries (needed for rendering and Score API)
+    // Cross-line queries (needed for rendering and ScoreView API)
     // -------------------------------------------------------------------------
 
     /**

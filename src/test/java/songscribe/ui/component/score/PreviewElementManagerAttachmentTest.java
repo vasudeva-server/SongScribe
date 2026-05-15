@@ -42,7 +42,7 @@ import songscribe.music.Song;
 import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.DynamicAttachment;
@@ -59,7 +59,7 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
     // Static mocks
     private MockedStatic<MessageCenter> messageCenterMock;
     private MockedStatic<EditModeManager> editModeManagerMock;
-    private MockedStatic<Score> scoreMock;
+    private MockedStatic<ScoreView> scoreMock;
     private MockedStatic<PlaybackController> playbackMock;
 
     // Instance mocks
@@ -79,11 +79,11 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
 
         messageCenterMock = mockStatic(MessageCenter.class);
         editModeManagerMock = mockStatic(EditModeManager.class);
-        scoreMock = mockStatic(Score.class);
+        scoreMock = mockStatic(ScoreView.class);
         playbackMock = mockStatic(PlaybackController.class);
 
         lineComponent = mock(LineComponent.class);
-        var score = mock(Score.class);
+        var score = mock(ScoreView.class);
         editModeManager = mock(EditModeManager.class);
 
         when(lineComponent.isEditMode()).thenReturn(true);
@@ -98,7 +98,7 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
 
         playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
 
-        scoreMock.when(() -> Score.defaultUpperNote(any())).thenReturn(true);
+        scoreMock.when(() -> ScoreView.defaultUpperNote(any())).thenReturn(true);
 
         PreviewElementManager.setCurrentPreviewLine(lineComponent);
         PreviewElementManager.setCurrentStaffPosition(0);

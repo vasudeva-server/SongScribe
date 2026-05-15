@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.SongScribe;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.FileUtils;
 
 @SuppressWarnings("FieldMayBeStatic")
@@ -57,7 +57,7 @@ public class SVGConverter {
     }
 
     public void convert() {
-        var score = new Score(null);
+        var score = new ScoreView(null);
 
         for (var file : files) {
             Converter.loadSong(file, score);

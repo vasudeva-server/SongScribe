@@ -33,7 +33,7 @@ import songscribe.music.Song;
 import songscribe.music.Span;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.layout.SongLayoutMetrics;
@@ -79,7 +79,7 @@ public class ElementRenderContext {
     private StaffElement activelyEditedElement;
     private LineComponent.@Nullable SelectionProvider selectionProvider;
     private boolean editMode;
-    private Color selectionColor = Score.getSelectionColor();
+    private Color selectionColor = ScoreView.getSelectionColor();
     private int playingNoteIndex = -1;
     private int playingGraceNoteIndex = -1;
     private int currentElementIndex = -1;
@@ -274,7 +274,7 @@ public class ElementRenderContext {
 
     /**
      * Returns the color used to render selected elements and beams.
-     * Defaults to {@link Score#getSelectionColor()}; override during an
+     * Defaults to {@link ScoreView#getSelectionColor()}; override during an
      * element pitch-drag to use {@code INSERTION_NOTE_COLOR} instead.
      */
     public Color getSelectionColor() {
@@ -370,7 +370,7 @@ public class ElementRenderContext {
         }
 
         if (playingCheck.getAsBoolean()) {
-            return Score.getPlayingNoteColor();
+            return ScoreView.getPlayingNoteColor();
         }
 
         if (extraSelectionCheck.getAsBoolean()) {

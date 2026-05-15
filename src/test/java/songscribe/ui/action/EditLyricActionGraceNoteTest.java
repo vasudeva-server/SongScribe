@@ -30,19 +30,19 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
-import songscribe.ui.component.Score;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
 
 class EditLyricActionGraceNoteTest extends UnitTest {
 
-    private Score mockScore;
+    private ScoreView mockScore;
     private LineSelectionState mockLineState;
     private EditLyricAction action;
 
     @BeforeEach
     void setUp() {
-        mockScore = mock(Score.class);
+        mockScore = mock(ScoreView.class);
         var mockCoordinator = mock(SelectionCoordinator.class);
         mockLineState = mock(LineSelectionState.class);
 

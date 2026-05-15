@@ -26,14 +26,14 @@ import songscribe.music.Song;
 /**
  * Interface providing render-time data for the Renderer.
  * <p>
- * RenderContext decouples Renderer from Score, enabling:
+ * RenderContext decouples Renderer from ScoreView, enabling:
  * <ul>
  *   <li>Pure rendering: (model + layout) → pixels</li>
  *   <li>Testability: Mock context for unit tests</li>
  *   <li>Clean separation of concerns</li>
  * </ul>
  * <p>
- * Score implements this interface to provide rendering data.
+ * ScoreView implements this interface to provide rendering data.
  */
 public interface RenderContext {
 

@@ -229,7 +229,7 @@ public final class Song {
 
         // Suspend mutation tracking so that setup changes don't post a spurious
         // SongDidChangeNotification to global subscribers before this Song is
-        // installed in any Score.
+        // installed in any ScoreView.
         withoutMutationTracking(() -> {
             var initialLine = new Line(this);
             initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
@@ -308,7 +308,7 @@ public final class Song {
 
     /**
      * Applies all fields from a {@link SongData} snapshot atomically.
-     * Does not post any notification — the caller ({@code Score.setSong})
+     * Does not post any notification — the caller ({@code ScoreView.setSong})
      * posts a {@link songscribe.message.notification.DocumentDidLoadNotification}
      * after the song is fully installed.
      * <p>
@@ -382,7 +382,7 @@ public final class Song {
         modified = false;
 
         // Note: SongChanged(FULL) is NOT posted here because the
-        // song hasn't been installed into Score yet. Score.setSong()
+        // song hasn't been installed into ScoreView yet. ScoreView.setSong()
         // posts the FULL message after all state is consistent.
     }
 
