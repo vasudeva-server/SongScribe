@@ -1,5 +1,6 @@
 # Local Claude config
 .claude.local.md
+.claude/**/*.lock
 
 # Build output
 build/
