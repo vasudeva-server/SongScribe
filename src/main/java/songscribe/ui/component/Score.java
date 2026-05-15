@@ -979,6 +979,11 @@ public final class Score
         return mode;
     }
 
+    @Override
+    public @Nullable Window getWindow() {
+        return SwingUtilities.getWindowAncestor(this);
+    }
+
     public void setMode(Mode mode) {
         this.mode = mode;
     }

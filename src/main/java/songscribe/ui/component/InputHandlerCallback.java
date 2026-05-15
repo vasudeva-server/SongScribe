@@ -40,5 +40,8 @@ public interface InputHandlerCallback {
 
     @Nullable JPopupMenu getEditPopup();
 
+    @SuppressWarnings("UnusedReturnValue")
     boolean requestFocusInWindow();
+
+    @Nullable Window getWindow();
 }
