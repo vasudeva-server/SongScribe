@@ -1,20 +1,21 @@
 # E2E Test Guide
 
-Read `.agent/testing-common.md` first for shared conventions.
+Read `./testing-common.md` first for shared conventions.
 
 ## Core Principle
 
-E2E tests simulate exactly what the user does. **All tests that simulate user actions must use real clicks, not direct API calls.** This ensures the entire event handling pipeline is exercised as part of the test. For example, when adding notes to a line, use `clickAt()` rather than calling model methods directly.
-
-Never call `UIAction.actionPerformed()`, `ActionGroup` selection mutating methods, or mutate the model directly — not even for precondition setup. Directly mutating the model (e.g. `line.addElement()`) skips the full UI update pipeline (layout, selection state, rendering caches), which can produce subtle false positives or false negatives. Always use real clicks via `clickAt()`, toolbar helpers, and menu helpers.
+Prefer unit tests — they are faster and run without approval. Use an E2E test
+only when the behavior genuinely requires simulating mouse actions through the
+real Swing pipeline. Running E2E tests requires user approval (see
+`.agents/rules/development.md`).
 
 ## Structure
 
 All E2E tests extend `E2ETest` and live in `src/test/java/songscribe/e2e/`.
+`E2ETest` is already annotated `@TestInstance(PER_CLASS)` — do not re-declare it
+on subclasses.
 
 ```java
-
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FooTest extends E2ETest {
     @Test
     void testSomething() {
@@ -73,16 +74,8 @@ Both must be called within `GuiActionRunner.execute()` for EDT safety. `insertio
 
 ```java
 clickAt(insertionPoint(0, 0));
-
 performLayout(0);  // Required before querying model or coordinates
-
-assertThat(song().
-
-getLine(0).
-
-elementCount()).
-
-isEqualTo(1);
+assertThat(song().getLine(0).elementCount()).isEqualTo(1);
 ```
 
 ## Model Query Helpers
@@ -127,57 +120,31 @@ private void buildTwoQuarterNotes() {
 
 ```java
 // Model state
-assertThat(line.elementCount()).
+assertThat(line.elementCount()).isEqualTo(2);
 
-isEqualTo(2);
+assertThat(element.getType()).isEqualTo(ElementType.CROTCHET);
 
-assertThat(element.getType()).
-
-isEqualTo(ElementType.CROTCHET);
-
-assertThat(isBeamed(0, 0)).
-
-isTrue();
+assertThat(isBeamed(0, 0)).isTrue();
 
 // Selection state
-assertThat(score().
+assertThat(score().getSelectionSize()).isEqualTo(2);
 
-getSelectionSize()).
-
-isEqualTo(2);
-
-var lss = score().getLineComponent(0).getLineSelectionState();
-
-assertThat(lss.canToggleTie()).
-
-isTrue();
+var selectionState = score().getLineComponent(0).getLineSelectionState();
+assertThat(selectionState.canToggleTie()).isTrue();
 
 // Toolbar reflection (verify UI tracks model)
 var selectable = (UIAction.Selectable) action;
 var isSelected = GuiActionRunner.execute(() -> selectable.isSelected());
-
-assertThat(isSelected).
-
-isEqualTo(expected);
+assertThat(isSelected).isEqualTo(expected);
 
 // Button state
 var button = findButtonByName(action.getActionCommand());
 var isSelected = GuiActionRunner.execute(() -> button.getModel().isSelected());
-
-assertThat(isSelected).
-
-isEqualTo(expected);
+assertThat(isSelected).isEqualTo(expected);
 
 // Save/load round-trip
 var reloaded = roundTrip(song());
-
-assertThat(reloaded.getLine(0).
-
-elementCount()).
-
-isEqualTo(original.getLine(0).
-
-elementCount());
+assertThat(reloaded.getLine(0).elementCount()).isEqualTo(original.getLine(0).elementCount());
 ```
 
 ## Common Patterns
@@ -186,28 +153,19 @@ elementCount());
 
 ```java
 selectDuration(Actions.EIGHTH_NOTE_ACTION);
-
 clickAt(insertionPoint(0, 0));
-
 performLayout(0);
-
 clickAt(insertionPoint(0, 2));
-
 performLayout(0);
 
 enterSelectMode();
-
 clickAt(noteScreenPosition(0, 0));
-
 shiftClickAt(noteScreenPosition(0, 1));
 
 triggerAction(Actions.TOGGLE_BEAM_ACTION);
-
 performLayout(0);
 
-assertThat(isBeamed(0, 0)).
-
-isTrue();
+assertThat(isBeamed(0, 0)).isTrue();
 ```
 
 ### Custom coordinate helpers for non-note features
