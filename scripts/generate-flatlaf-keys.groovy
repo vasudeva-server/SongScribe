@@ -22,6 +22,7 @@ OUT_DIR.mkdirs()
 def KEY_PATTERN = Pattern.compile('^\\s*(' + Pattern.quote(PREFIX) + '[\\w.]+)\\s*=')
 def keys = [] as LinkedHashSet<String>
 
+//noinspection GroovyMissingReturnStatement
 PROPS_FILE.eachLine('UTF-8') { line ->
     def matcher = KEY_PATTERN.matcher(line)
 
