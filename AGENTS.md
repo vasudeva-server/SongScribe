@@ -29,5 +29,6 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **User preferences** (`Prefs`, `PrefsKey`, `defaults.json`, `PrefsDidChangeNotification`): [Preferences](.agents/guides/prefs.md).
 - **Custom UI constants** (`FlatLafProps`, `FlatLafKeys`, `FlatLaf.properties`): [FlatLaf Properties](.agents/guides/flatlaf-props.md).
 - **File-based logging**: [Logging](.agents/guides/logging.md).
+- **Creating a new singleton class**: [Singletons](.agents/guides/singletons.md).
 - **Third-party API documentation lookup**: [Context7](.agents/guides/context7.md) — use context7 rather than web search.
 - **SMuFL glyph names, codepoints, or ranges**: look up at `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`.
