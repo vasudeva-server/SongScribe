@@ -171,10 +171,6 @@ public final class UIUtils {
     }
 
     public static void addAction(JRootPane rootPane, Object maybeAction) {
-        if (rootPane == null) {
-            throw new IllegalArgumentException("rootPane");
-        }
-
         if (maybeAction instanceof UIAction action) {
             var keyStroke = action.getAccelerator();
             registerActionKeystroke(rootPane, keyStroke, action);
@@ -186,10 +182,6 @@ public final class UIUtils {
         KeyStroke keyStroke,
         UIAction action
     ) {
-        if (rootPane == null) {
-            throw new IllegalArgumentException("rootPane");
-        }
-
         var actionCommand = action.getActionCommand();
         rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
             .put(keyStroke, actionCommand);
@@ -524,10 +516,6 @@ public final class UIUtils {
     //
 
     public static boolean isEditingTextIn(Window window) {
-        if (window == null) {
-            throw new IllegalArgumentException("window");
-        }
-
         var focusFrame = UIUtils.getFocusedFrame();
 
         //noinspection ObjectEquality
