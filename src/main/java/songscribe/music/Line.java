@@ -67,7 +67,6 @@ public class Line {
     private final SpanSet<TupletSpan> tuplets = new SpanSet<>();
     private final SpanSet<DynamicsSpan> crescendo = new SpanSet<>();
     private final SpanSet<DynamicsSpan> diminuendo = new SpanSet<>();
-    @SuppressWarnings("unchecked")
     private final SpanSet<?>[] spanSets = new SpanSet[]{
         beamings,
         ties,

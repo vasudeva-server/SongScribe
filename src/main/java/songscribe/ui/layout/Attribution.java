@@ -35,10 +35,9 @@ import songscribe.ui.render.RenderResources;
  */
 public class Attribution extends LineElement {
 
-    /**
-     * Margin from attribution bottom to score
-     */
+    /** Margin from attribution bottom to score */
     public static final double ATTRIBUTION_MARGIN_BOTTOM_SS = 2.0;  // 16px
+
     /** The attribution text (composer, arranger, etc.). */
     private String text;
 
@@ -104,7 +103,7 @@ public class Attribution extends LineElement {
 
     /**
      * Returns the content height in staff-space units, derived from the attribution font
-     * via {@link songscribe.ui.render.RenderResources#getAttributionFont()}.
+     * via {@link RenderResources#getAttributionFont()}.
      */
     @Override
     public double getContentHeightSs() {
