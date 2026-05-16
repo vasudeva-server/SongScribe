@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Song;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.render.RenderResources;
 import songscribe.ui.layout.SongLayoutMetricsBuilder;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
@@ -212,7 +213,7 @@ public class StaffPanel extends JPanel {
         // boundaries so that a melisma that runs off the end of one line reappears as a
         // leading stub on the next.
         var layouts = getLayoutResults();
-        var lyricsFont = score.getSong().getLyricsFont();
+        var lyricsFont = RenderResources.getLyricsFont();
         var lyricAscentSs = ScaleContext.getInstance().fontAscentSs(lyricsFont);
         var metrics = SongLayoutMetricsBuilder.build(layouts, lyricAscentSs);
         score.setSongLayoutMetrics(metrics);

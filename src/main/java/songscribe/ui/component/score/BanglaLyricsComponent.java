@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.render.RenderResources;
 
 /**
  * Component that renders Bengali (Bangla) lyrics.
@@ -49,6 +50,6 @@ public class BanglaLyricsComponent extends LyricsComponent {
 
     @Override
     protected Font getLyricsFont() {
-        return getSong().getBanglaFont();
+        return RenderResources.getBanglaFont();
     }
 }

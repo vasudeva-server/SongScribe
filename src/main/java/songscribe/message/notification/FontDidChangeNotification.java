@@ -36,17 +36,25 @@ public class FontDidChangeNotification extends Message {
     private final Font attributionFont;
     @Nullable
     private final Font annotationFont;
+    @Nullable
+    private final Font banglaFont;
+    @Nullable
+    private final Font footnoteFont;
 
     public FontDidChangeNotification(
         @Nullable Font titleFont,
         @Nullable Font lyricsFont,
         @Nullable Font attributionFont,
-        @Nullable Font annotationFont
+        @Nullable Font annotationFont,
+        @Nullable Font banglaFont,
+        @Nullable Font footnoteFont
     ) {
         this.titleFont = titleFont;
         this.lyricsFont = lyricsFont;
         this.attributionFont = attributionFont;
         this.annotationFont = annotationFont;
+        this.banglaFont = banglaFont;
+        this.footnoteFont = footnoteFont;
     }
 
     @Nullable
@@ -67,5 +75,15 @@ public class FontDidChangeNotification extends Message {
     @Nullable
     public Font getAnnotationFont() {
         return annotationFont;
+    }
+
+    @Nullable
+    public Font getBanglaFont() {
+        return banglaFont;
+    }
+
+    @Nullable
+    public Font getFootnoteFont() {
+        return footnoteFont;
     }
 }

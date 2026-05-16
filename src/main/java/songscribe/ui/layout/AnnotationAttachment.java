@@ -24,9 +24,9 @@ import java.awt.Font;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.error.RuntimeError;
 import songscribe.music.Annotation;
 import songscribe.music.StaffElement;
+import songscribe.ui.render.RenderResources;
 
 /**
  * Represents a text annotation attachment on a note.
@@ -119,24 +119,13 @@ public class AnnotationAttachment extends Attachment {
     }
 
     /**
-     * Returns the content height in staff-space units, derived from the song's
-     * annotation font via {@code parentLine}.
-     * <p>
-     * {@code parentLine} must be non-null; callers downstream of {@link songscribe.music.Line#addElement}
-     * can rely on this. Use {@link ScaleContext#textHeightSs(Font)} directly when
-     * the font is already in hand.
+     * Returns the content height in staff-space units, derived from the annotation font
+     * via {@link songscribe.ui.render.RenderResources#getAnnotationFont()}.
      */
     @Override
     public double getContentHeightSs() {
-        var parentLine = getParentLine();
-
-        if (parentLine == null) {
-            throw RuntimeError.exit(
-                "AnnotationAttachment.getContentHeightSs called with null parentLine");
-        }
-
         return ScaleContext.getInstance().textHeightSs(
-            parentLine.getSong().getAnnotationFont());
+            RenderResources.getAnnotationFont());
     }
 
     @Override

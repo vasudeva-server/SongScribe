@@ -29,6 +29,7 @@ import module java.desktop;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.render.RenderResources;
 
 /**
  * Renders text annotations attached to notes.
@@ -68,10 +69,10 @@ public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> 
         }
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
-            g2.setFont(ScaleContext.getInstance().scaleFont(ctx.getSong().getAnnotationFont()));
+            g2.setFont(ScaleContext.getInstance().scaleFont(RenderResources.getAnnotationFont()));
             applyDecorationColor(g2, element, ctx);
 
-            var metrics = ctx.getSong().getAnnotationFontMetrics();
+            var metrics = RenderResources.getAnnotationFontMetrics();
             var ascentSs = ScaleContext.getInstance().pxToSs(metrics.getAscent());
             var xSs = decorationLayout.xSs();
             var baselineYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx) + ascentSs;

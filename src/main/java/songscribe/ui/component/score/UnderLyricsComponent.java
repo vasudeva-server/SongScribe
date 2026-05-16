@@ -22,6 +22,8 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
+import songscribe.ui.render.RenderResources;
+
 /**
  * Component that renders the main under-lyrics section.
  * <p>
@@ -37,6 +39,6 @@ public class UnderLyricsComponent extends LyricsComponent {
 
     @Override
     protected Font getLyricsFont() {
-        return getSong().getLyricsFont();
+        return RenderResources.getLyricsFont();
     }
 }

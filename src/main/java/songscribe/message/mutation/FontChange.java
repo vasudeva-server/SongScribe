@@ -20,11 +20,14 @@
 
 package songscribe.message.mutation;
 
-import module java.desktop;
-
 /**
  * Mutation recording a change to one of the song's fonts.
+ * Fonts are identified by PostScript name and point size — the authoritative
+ * representation on {@link songscribe.music.Song}.
  */
-public record FontChange(FontField field, Font oldFont, Font newFont)
-    implements Mutation {
+public record FontChange(
+    FontField field,
+    String oldName, int oldSize,
+    String newName, int newSize
+) implements Mutation {
 }

@@ -201,13 +201,13 @@ class MutationRecordsTest extends UnitTest {
 
         @Test
         void testFontChangeExposesFields() {
-            var oldFont = new Font("Dialog", Font.PLAIN, 12);
-            var newFont = new Font("Dialog", Font.BOLD, 14);
-            var mutation = new FontChange(FontField.LYRICS, oldFont, newFont);
+            var mutation = new FontChange(FontField.LYRICS, "Dialog", 12, "Dialog-Bold", 14);
 
             assertThat(mutation.field()).isEqualTo(FontField.LYRICS);
-            assertThat(mutation.oldFont()).isSameAs(oldFont);
-            assertThat(mutation.newFont()).isSameAs(newFont);
+            assertThat(mutation.oldName()).isEqualTo("Dialog");
+            assertThat(mutation.oldSize()).isEqualTo(12);
+            assertThat(mutation.newName()).isEqualTo("Dialog-Bold");
+            assertThat(mutation.newSize()).isEqualTo(14);
         }
 
         @Test

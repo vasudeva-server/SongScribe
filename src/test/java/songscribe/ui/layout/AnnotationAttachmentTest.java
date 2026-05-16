@@ -24,15 +24,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.error.RuntimeError;
 import songscribe.music.Song;
 import songscribe.music.ElementType;
+import songscribe.util.MyFontUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mockStatic;
 
 class AnnotationAttachmentTest extends UnitTest {
 
@@ -51,27 +48,11 @@ class AnnotationAttachmentTest extends UnitTest {
             note.addAttachment(attachment);
             song.withoutMutationTracking(() -> line.addElement(note));
 
-            var expected = ScaleContext.getInstance().textHeightSs(song.getAnnotationFont());
+            var expected = ScaleContext.getInstance().textHeightSs(MyFontUtils.createFont(song.getAnnotationFontName(), song.getAnnotationFontSize()));
 
             assertThat(attachment.getContentHeightSs()).isCloseTo(expected, within(EPSILON));
         }
 
-        @Test
-        void testThrowsWhenParentLineNull() {
-            // RuntimeError.exit calls System.exit, which cannot be tested without interception.
-            // mockStatic intercepts exit(String) so the returned RuntimeException is thrown
-            // by the caller's throw expression, without reaching System.exit.
-            try (var mockRuntimeError = mockStatic(RuntimeError.class)) {
-                //noinspection ThrowableNotThrown
-                mockRuntimeError.when(() -> RuntimeError.exit(anyString()))
-                    .thenReturn(new RuntimeException("null parentLine"));
-
-                var attachment = new AnnotationAttachment("test");
-
-                assertThatThrownBy(attachment::getContentHeightSs)
-                    .isInstanceOf(RuntimeException.class);
-            }
-        }
     }
 
 }

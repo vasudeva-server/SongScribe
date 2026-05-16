@@ -138,7 +138,12 @@ public class SizePane extends JPanel {
     @Override
     public void updateUI() {
         super.updateUI();
-        setupSpinnerEditor(sizeSpinner);
+
+        // updateUI() is invoked from the JPanel superclass constructor,
+        // before our fields are initialized; skip on that first call.
+        if (sizeSpinner != null) {
+            setupSpinnerEditor(sizeSpinner);
+        }
     }
 
     public void addListSelectionListener(ListSelectionListener listener) {

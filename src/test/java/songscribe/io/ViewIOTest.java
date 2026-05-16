@@ -49,15 +49,43 @@ class ViewIOTest extends UnitTest {
         void testAnnotationFontRoundTripsCorrectly() throws Exception {
             var original = new Song();
             var customFont = MyFontUtils.createFont("LatoPlus-Bold", 22);
-            original.setAnnotationFont(customFont);
+            original.setAnnotationFont(customFont.getPSName(), customFont.getSize());
             addNote(original);
 
             var reloaded = roundTrip(original);
 
-            assertThat(reloaded.getAnnotationFont().getPSName())
+            assertThat(reloaded.getAnnotationFontName())
                 .isEqualTo(customFont.getPSName());
-            assertThat(reloaded.getAnnotationFont().getSize())
+            assertThat(reloaded.getAnnotationFontSize())
                 .isEqualTo(customFont.getSize());
+        }
+    }
+
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
+    @Nested
+    class BanglaAndFootnoteFontRoundTrip {
+
+        @Test
+        void testBanglaAndFootnoteFontsRoundTripCorrectly() throws Exception {
+            var original = new Song();
+            // Use non-default sizes to confirm the written values are read back,
+            // not the prefs defaults.
+            var customBanglaFont = MyFontUtils.createFont("TiroBangla-Regular", 24);
+            var customFootnoteFont = MyFontUtils.createFont("SourceSans3-Regular", 20);
+            original.setBanglaFont(customBanglaFont.getPSName(), customBanglaFont.getSize());
+            original.setFootnoteFont(customFootnoteFont.getPSName(), customFootnoteFont.getSize());
+            addNote(original);
+
+            var reloaded = roundTrip(original);
+
+            assertThat(reloaded.getBanglaFontName())
+                .isEqualTo(customBanglaFont.getPSName());
+            assertThat(reloaded.getBanglaFontSize())
+                .isEqualTo(customBanglaFont.getSize());
+            assertThat(reloaded.getFootnoteFontName())
+                .isEqualTo(customFootnoteFont.getPSName());
+            assertThat(reloaded.getFootnoteFontSize())
+                .isEqualTo(customFootnoteFont.getSize());
         }
     }
 
@@ -72,29 +100,29 @@ class ViewIOTest extends UnitTest {
             var lyricsFont = MyFontUtils.createFont("LatoPlus-Regular", 14);
             var attributionFont = MyFontUtils.createFont("LatoPlus-Regular", 12);
             var annotationFont = MyFontUtils.createFont("LatoPlus-Bold", 18);
-            original.setTitleFont(titleFont);
-            original.setLyricsFont(lyricsFont);
-            original.setAttributionFont(attributionFont);
-            original.setAnnotationFont(annotationFont);
+            original.setTitleFont(titleFont.getPSName(), titleFont.getSize());
+            original.setLyricsFont(lyricsFont.getPSName(), lyricsFont.getSize());
+            original.setAttributionFont(attributionFont.getPSName(), attributionFont.getSize());
+            original.setAnnotationFont(annotationFont.getPSName(), annotationFont.getSize());
             addNote(original);
 
             var reloaded = roundTrip(original);
 
-            assertThat(reloaded.getTitleFont().getPSName())
+            assertThat(reloaded.getTitleFontName())
                 .isEqualTo(titleFont.getPSName());
-            assertThat(reloaded.getTitleFont().getSize())
+            assertThat(reloaded.getTitleFontSize())
                 .isEqualTo(titleFont.getSize());
-            assertThat(reloaded.getLyricsFont().getPSName())
+            assertThat(reloaded.getLyricsFontName())
                 .isEqualTo(lyricsFont.getPSName());
-            assertThat(reloaded.getLyricsFont().getSize())
+            assertThat(reloaded.getLyricsFontSize())
                 .isEqualTo(lyricsFont.getSize());
-            assertThat(reloaded.getAttributionFont().getPSName())
+            assertThat(reloaded.getAttributionFontName())
                 .isEqualTo(attributionFont.getPSName());
-            assertThat(reloaded.getAttributionFont().getSize())
+            assertThat(reloaded.getAttributionFontSize())
                 .isEqualTo(attributionFont.getSize());
-            assertThat(reloaded.getAnnotationFont().getPSName())
+            assertThat(reloaded.getAnnotationFontName())
                 .isEqualTo(annotationFont.getPSName());
-            assertThat(reloaded.getAnnotationFont().getSize())
+            assertThat(reloaded.getAnnotationFontSize())
                 .isEqualTo(annotationFont.getSize());
         }
 
@@ -110,23 +138,37 @@ class ViewIOTest extends UnitTest {
             var song = reader.getSong();
 
             var prefs = Prefs.getInstance();
-            assertThat(song.getTitleFont().getPSName())
+            assertThat(song.getTitleFontName())
                 .isEqualTo(MyFontUtils.createFont(
                     prefs.getString(PrefsKey.TITLE_FONT),
                     prefs.getInt(PrefsKey.TITLE_FONT_SIZE)
                 ).getPSName());
-            assertThat(song.getTitleFont().getSize())
+            assertThat(song.getTitleFontSize())
                 .isEqualTo(prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
-            assertThat(song.getLyricsFont().getPSName())
+            assertThat(song.getLyricsFontName())
                 .isEqualTo(MyFontUtils.createFont(
                     prefs.getString(PrefsKey.LYRICS_FONT),
                     prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)
                 ).getPSName());
-            assertThat(song.getAnnotationFont().getPSName())
+            assertThat(song.getAnnotationFontName())
                 .isEqualTo(MyFontUtils.createFont(
                     prefs.getString(PrefsKey.ANNOTATION_FONT),
                     prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)
                 ).getPSName());
+            assertThat(song.getBanglaFontName())
+                .isEqualTo(MyFontUtils.createFont(
+                    prefs.getString(PrefsKey.BANGLA_FONT),
+                    prefs.getInt(PrefsKey.BANGLA_FONT_SIZE)
+                ).getPSName());
+            assertThat(song.getBanglaFontSize())
+                .isEqualTo(prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
+            assertThat(song.getFootnoteFontName())
+                .isEqualTo(MyFontUtils.createFont(
+                    prefs.getString(PrefsKey.FOOTNOTE_FONT),
+                    prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE)
+                ).getPSName());
+            assertThat(song.getFootnoteFontSize())
+                .isEqualTo(prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
         }
     }
 
@@ -146,8 +188,8 @@ class ViewIOTest extends UnitTest {
             var song = reader.getSong();
 
             // Should load without error and have valid fonts
-            assertThat(song.getTitleFont()).isNotNull();
-            assertThat(song.getLyricsFont()).isNotNull();
+            assertThat(song.getTitleFontName()).isNotNull();
+            assertThat(song.getLyricsFontName()).isNotNull();
         }
     }
 

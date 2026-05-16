@@ -19,8 +19,6 @@
  */
 package songscribe.io;
 
-import module java.desktop;
-
 import java.io.PrintWriter;
 
 import org.jspecify.annotations.Nullable;
@@ -28,7 +26,6 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.util.MyFontUtils;
 
 public final class ViewIO {
 
@@ -40,23 +37,27 @@ public final class ViewIO {
     private static final String XML_GENERAL_FONT_SIZE = "generalfontsize";
     private static final String XML_ANNOTATION_FONT = "annotationfont";
     private static final String XML_ANNOTATION_FONT_SIZE = "annotationfontsize";
+    private static final String XML_BANGLA_FONT = "banglaFont";
+    private static final String XML_BANGLA_FONT_SIZE = "banglaFontSize";
+    private static final String XML_FOOTNOTE_FONT = "footnoteFont";
+    private static final String XML_FOOTNOTE_FONT_SIZE = "footnoteFontSize";
 
     private ViewIO() {}
 
     public static void writeView(Song c, PrintWriter pw) {
         XML.setIndent(4);
-        var titleFont = c.getTitleFont();
-        var lyricsFont = c.getLyricsFont();
-        var attributionFont = c.getAttributionFont();
-        var annotationFont = c.getAnnotationFont();
-        XML.writeValue(pw, XML_TITLE_FONT, titleFont.getPSName());
-        XML.writeValue(pw, XML_TITLE_FONT_SIZE, String.valueOf(titleFont.getSize()));
-        XML.writeValue(pw, XML_LYRICS_FONT, lyricsFont.getPSName());
-        XML.writeValue(pw, XML_LYRICS_FONT_SIZE, Integer.toString(lyricsFont.getSize()));
-        XML.writeValue(pw, XML_GENERAL_FONT, attributionFont.getPSName());
-        XML.writeValue(pw, XML_GENERAL_FONT_SIZE, Integer.toString(attributionFont.getSize()));
-        XML.writeValue(pw, XML_ANNOTATION_FONT, annotationFont.getPSName());
-        XML.writeValue(pw, XML_ANNOTATION_FONT_SIZE, Integer.toString(annotationFont.getSize()));
+        XML.writeValue(pw, XML_TITLE_FONT, c.getTitleFontName());
+        XML.writeValue(pw, XML_TITLE_FONT_SIZE, String.valueOf(c.getTitleFontSize()));
+        XML.writeValue(pw, XML_LYRICS_FONT, c.getLyricsFontName());
+        XML.writeValue(pw, XML_LYRICS_FONT_SIZE, Integer.toString(c.getLyricsFontSize()));
+        XML.writeValue(pw, XML_GENERAL_FONT, c.getAttributionFontName());
+        XML.writeValue(pw, XML_GENERAL_FONT_SIZE, Integer.toString(c.getAttributionFontSize()));
+        XML.writeValue(pw, XML_ANNOTATION_FONT, c.getAnnotationFontName());
+        XML.writeValue(pw, XML_ANNOTATION_FONT_SIZE, Integer.toString(c.getAnnotationFontSize()));
+        XML.writeValue(pw, XML_BANGLA_FONT, c.getBanglaFontName());
+        XML.writeValue(pw, XML_BANGLA_FONT_SIZE, Integer.toString(c.getBanglaFontSize()));
+        XML.writeValue(pw, XML_FOOTNOTE_FONT, c.getFootnoteFontName());
+        XML.writeValue(pw, XML_FOOTNOTE_FONT_SIZE, Integer.toString(c.getFootnoteFontSize()));
     }
 
     public static class ViewReader {
@@ -69,6 +70,8 @@ public final class ViewIO {
         private final StringFont lyrics;
         private final StringFont general;
         private final StringFont annotation;
+        private final StringFont bangla;
+        private final StringFont footnote;
 
         public ViewReader() {
             var prefs = Prefs.getInstance();
@@ -87,6 +90,14 @@ public final class ViewIO {
             annotation = new StringFont(
                 prefs.getString(PrefsKey.ANNOTATION_FONT),
                 Integer.toString(prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE))
+            );
+            bangla = new StringFont(
+                prefs.getString(PrefsKey.BANGLA_FONT),
+                Integer.toString(prefs.getInt(PrefsKey.BANGLA_FONT_SIZE))
+            );
+            footnote = new StringFont(
+                prefs.getString(PrefsKey.FOOTNOTE_FONT),
+                Integer.toString(prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE))
             );
         }
 
@@ -109,6 +120,10 @@ public final class ViewIO {
                     case XML_GENERAL_FONT_SIZE -> general.size = str;
                     case XML_ANNOTATION_FONT -> annotation.name = str;
                     case XML_ANNOTATION_FONT_SIZE -> annotation.size = str;
+                    case XML_BANGLA_FONT -> bangla.name = str;
+                    case XML_BANGLA_FONT_SIZE -> bangla.size = str;
+                    case XML_FOOTNOTE_FONT -> footnote.name = str;
+                    case XML_FOOTNOTE_FONT_SIZE -> footnote.size = str;
                 }
             }
 
@@ -122,20 +137,52 @@ public final class ViewIO {
             }
         }
 
-        public Font getTitleFont() {
-            return title.getFont();
+        public String getTitleFontName() {
+            return title.name;
         }
 
-        public Font getLyricsFont() {
-            return lyrics.getFont();
+        public int getTitleFontSize() {
+            return Integer.parseInt(title.size);
         }
 
-        public Font getAttributionFont() {
-            return general.getFont();
+        public String getLyricsFontName() {
+            return lyrics.name;
         }
 
-        public Font getAnnotationFont() {
-            return annotation.getFont();
+        public int getLyricsFontSize() {
+            return Integer.parseInt(lyrics.size);
+        }
+
+        public String getAttributionFontName() {
+            return general.name;
+        }
+
+        public int getAttributionFontSize() {
+            return Integer.parseInt(general.size);
+        }
+
+        public String getAnnotationFontName() {
+            return annotation.name;
+        }
+
+        public int getAnnotationFontSize() {
+            return Integer.parseInt(annotation.size);
+        }
+
+        public String getBanglaFontName() {
+            return bangla.name;
+        }
+
+        public int getBanglaFontSize() {
+            return Integer.parseInt(bangla.size);
+        }
+
+        public String getFootnoteFontName() {
+            return footnote.name;
+        }
+
+        public int getFootnoteFontSize() {
+            return Integer.parseInt(footnote.size);
         }
 
         private static class StringFont {
@@ -147,9 +194,6 @@ public final class ViewIO {
                 this.size = size;
             }
 
-            Font getFont() {
-                return MyFontUtils.createFont(name, Integer.parseInt(size));
-            }
         }
     }
 }

@@ -37,11 +37,14 @@ The two patterns coexist at different scales.
 |-------|-------------|--------|----------|
 | 1 | [Rename Score → ScoreView and ScoreMessageCoordinator → ScoreViewController](#-phase-1-rename-score--scoreview-and-scoremessagecoordinator--scoreviewcontroller) | ✅ Done | — |
 | 2 | Extract RenderResources — strip AWT off Song | — | split into 2a–2d below |
-| 2a | [Introduce RenderResources as a parallel facade](#-phase-2a-introduce-renderresources-as-a-parallel-facade) | ⏳ Pending | — |
-| 2b | [Migrate font / font-metrics callers to RenderResources](#-phase-2b-migrate-font--font-metrics-callers-to-renderresources) | ⏳ Pending | — |
-| 2c | [Convert Song document fonts to name+size strings](#-phase-2c-convert-song-document-fonts-to-namesize-strings) | ⏳ Pending | — |
-| 2d | [Delete residual AWT from Song](#-phase-2d-delete-residual-awt-from-song) | ⏳ Pending | — |
-| 3 | [Extract ScoreViewState](#-phase-3-extract-scoreviewstate) | ⏳ Pending | — |
+| 2a | [Introduce RenderResources as a parallel facade](#-phase-2a-introduce-renderresources-as-a-parallel-facade) | ✅ Done | — |
+| 2b | [Migrate font / font-metrics callers to RenderResources](#-phase-2b-migrate-font--font-metrics-callers-to-renderresources) | ✅ Done | — |
+| 2c | Convert Song document fonts to name+size strings | — | split into 2c-i–2c-iii below |
+| 2c-i | [Add name+size storage alongside Font (parallel)](#-phase-2c-i-add-namesize-storage-alongside-font-parallel) | ✅ Done | — |
+| 2c-ii | [Flip the mutation pipeline to name+size](#-phase-2c-ii-flip-the-mutation-pipeline-to-namesize) | ✅ Done | — |
+| 2c-iii | [Remove document-font Font fields and clean up IO](#-phase-2c-iii-remove-document-font-font-fields-and-clean-up-io) | ✅ Done | — |
+| 2d | [Delete residual AWT from Song](#-phase-2d-delete-residual-awt-from-song) | ✅ Done | — |
+| 3 | [Extract ScoreViewState](#-phase-3-extract-scoreviewstate) | ✅ Done | — |
 | 4 | [Move ScoreView's @Handlers and capability queries to ScoreViewController](#-phase-4-move-scoreviews-handlers-and-capability-queries-to-scoreviewcontroller) | ⏳ Pending | — |
 | 5 | [Resolve duplicate SongDidChangeNotification subscription](#-phase-5-resolve-duplicate-songdidchangenotification-subscription) | ⏳ Pending | — |
 
@@ -99,9 +102,9 @@ The work splits into four sub-phases. Each ships as its own PR. The split isolat
 
 ---
 
-## ⏳ Phase 2a: Introduce RenderResources as a parallel facade
+## ✅ Phase 2a: Introduce RenderResources as a parallel facade
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** —  <br>
 **Recommended model/effort:** Opus 4.7, medium effort — one new class, ownership and lifetime decisions, MBassador subscription with weak-reference hazards. No existing callers move yet.
 
@@ -114,29 +117,29 @@ Stand up `RenderResources` alongside `Song` with a functionally equivalent API f
 1. Define `RenderResources` under `songscribe.ui.render` (new package). Owns the six `Font` objects and six `FontMetrics` objects, including the two hardcoded ones (`bangla`, `footnote`) which never existed in `SongData`.
 2. Bootstrap parallels `Song.initFontsFromPrefs`: read prefs for the four document fonts, hardcode the two non-document fonts, derive `FontMetrics` via a single static `BufferedImage`.
 3. Subscribe to `FontDidChangeNotification`. On notification, rebuild the affected `Font` + `FontMetrics`.
-4. Ownership: per-`MainFrame`, lifetime matches the open document. Stored as a field on `MainFrame`. Expose via `MainFrame.getRenderResources()`. Document the lifetime in the class Javadoc.
-5. Verify strong reachability from `MainFrame` so MBassador's weak references do not silently drop the subscription. Add an integration-style smoke check if practical, but at minimum trace the reference chain by hand.
+4. Ownership: singleton with static state and static accessors (`RenderResources.getXFont()`, `RenderResources.getXFontMetrics()`). The class subscribes to `FontDidChangeNotification` via a static subscriber instance held in a static field, ensuring strong reachability for MBassador.
+5. Verify the static subscriber instance is strongly reachable so MBassador's weak references do not silently drop the subscription. The static field on `RenderResources` itself is sufficient.
 6. No callers change in this sub-phase. `Song` still owns its Font fields; `RenderResources` is dormant infrastructure until 2b wires it in.
 
 ### Acceptance criteria
 
-- `RenderResources` class exists with `getXFont()` / `getXFontMetrics()` for all six fonts.
-- `MainFrame` constructs one `RenderResources` per editor window and exposes it.
-- `RenderResources` subscribes to `FontDidChangeNotification` and refreshes on receipt; reachability chain documented.
+- `RenderResources` class exists with static `getXFont()` / `getXFontMetrics()` for all six fonts.
+- `RenderResources` is a singleton; callers use `RenderResources.getXFont()` etc. directly — no `MainFrame` accessor needed.
+- `RenderResources` subscribes to `FontDidChangeNotification` and refreshes on receipt; static subscriber instance held in a static field ensures strong reachability.
 - `./scripts/compile.sh` green.
 - `./scripts/test.sh unit` green.
 - **Manual smoke test:** open a document, change a font preference, attach a debugger / log line in `RenderResources` to confirm its handler fires. Rendering still uses `Song`'s fonts at this point — that is expected.
 
 ### Risks
 
-- **Subscriber lifetime.** MBassador holds weak references; verify the chain from `MainFrame` is strong. Silent failure mode: handler stops firing, no exception.
+- **Subscriber lifetime.** MBassador holds weak references; the subscriber instance must be stored in a static field on `RenderResources`. Silent failure mode: handler stops firing, no exception.
 - **Drift between Song and RenderResources.** Until 2b lands, the two caches can disagree if a font changes and only one rebuilds. Acceptable for the duration of one sub-phase, but do not linger here.
 
 ---
 
-## ⏳ Phase 2b: Migrate font / font-metrics callers to RenderResources
+## ✅ Phase 2b: Migrate font / font-metrics callers to RenderResources
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** Phase 2a (`RenderResources.getXFont()` / `getXFontMetrics()` must exist).  <br>
 **Recommended model/effort:** Sonnet 4.6, medium effort — mechanical find-and-replace driven by `jet_brains_find_referencing_symbols`. No semantic decisions.
 
@@ -147,8 +150,8 @@ Move every reader of `song.getXFont()` / `song.getXFontMetrics()` (all six fonts
 ### Tasks
 
 1. For each of the six `Font` accessors and six `FontMetrics` accessors on `Song`, run `jet_brains_find_referencing_symbols` to enumerate callers.
-2. For each caller, pass through a `RenderResources` reference (constructor injection where the wiring is local; `mainFrame.getRenderResources()` where the wiring would balloon — match what was decided in 2a's Javadoc).
-3. Replace `song.getXFont()` → `renderResources.getXFont()` and `song.getXFontMetrics()` → `renderResources.getXFontMetrics()`.
+2. No wiring changes needed — callers call `RenderResources.getXFont()` / `RenderResources.getXFontMetrics()` directly as static methods.
+3. Replace `song.getXFont()` → `RenderResources.getXFont()` and `song.getXFontMetrics()` → `RenderResources.getXFontMetrics()`.
 4. Do not touch writers (`setXFont`, `applyXFont`, `mutateFont`) in this sub-phase — those stay on `Song` and flip in 2c.
 5. Do not delete the now-unused accessors on `Song` in this sub-phase — that is 2d's job, after 2c has changed Song's field types.
 
@@ -163,52 +166,145 @@ Move every reader of `song.getXFont()` / `song.getXFontMetrics()` (all six fonts
 ### Risks
 
 - **Missed caller.** A reference the IDE cannot reach (reflection, generated code) keeps reading from `Song` and silently disagrees with `RenderResources` after a font change. Mitigate with a final `search_for_pattern` for `getTitleFont`, `getLyricsFont`, etc., across all source.
-- **Wiring churn.** If too many callers need `renderResources` plumbed in, prefer `MainFrame.getRenderResources()` over deep constructor threading. Stay consistent with the 2a decision.
+- **Wiring churn.** N/A — `RenderResources` is static; no instance needs to be threaded through constructors.
+
+### Implementation notes (post-completion)
+
+- All rendering, layout, and UI callers migrated to `RenderResources.getXFont()` / `RenderResources.getXFontMetrics()` (static calls — no instance or `MainFrame` accessor needed).
+- `RenderResources` gained a `@Handler documentDidLoad(DocumentDidLoadNotification)` to sync document-specific font overrides from a freshly loaded `Song` (since `Song.loadFrom` bypasses `FontDidChangeNotification`).
+- `ViewIO.writeView` was intentionally left reading from `Song` — it serializes document font metadata, not rendering fonts, and will be restructured in 2c when `Song` stores name+size strings directly.
+- Three "throws when parentLine null" tests in `AnnotationAttachmentTest` and `AttributionTest` were removed — those guards existed only to protect the old `song.getAnnotationFont()` / `song.getAttributionFont()` calls, which are gone.
 
 ---
 
-## ⏳ Phase 2c: Convert Song document fonts to name+size strings
-
-**Status:** Pending  <br>
-**BlockedBy:** Phase 2b (Song's `Font` accessors must have zero external readers; only writers remain).  <br>
-**Recommended model/effort:** Opus 4.7, high effort — touches `Song`, `SongData`, `SongIO`, `ViewIO`, the mutation pipeline, and `Song.fontDidChange`. File-format compatibility is at stake.
-
-### Purpose
+## Phase 2c overview: Convert Song document fonts to name+size strings
 
 Replace `Song`'s four document-font `Font` fields with name+size string pairs, propagating through `SongData`, the file IO layer, the mutation pipeline, and the `fontDidChange` handler. The hardcoded bangla/footnote fields stay on `Song` for now — they have no callers (2b moved them) but their removal is mechanical and belongs in 2d.
 
-### Tasks
+This was originally a single Opus-grade phase; it splits into three sub-phases so the design-heavy semantic step (2c-ii) is bracketed by mechanical work suited to Sonnet. The split also produces three reviewable diffs instead of one unreadable one.
 
-1. **Change `Song` to store strings for document fonts.** Replace `Font titleFont` with `String titleFontName` and `int titleFontSize`; same for lyrics, attribution, annotation. Expose `getXFontName()` / `getXFontSize()`.
-2. **Update `SongData`.** Change `@Nullable Font titleFont` → `@Nullable String titleFontName` and `@Nullable Integer titleFontSize`; same for the other three. Keep `@Nullable` so v1.0 files (no `<View>` section) still load.
-3. **Update `SongIO`.** `defaultFontFromPrefs` returns a name+size pair instead of a `Font`. The four `viewReader.getXFont()` calls return name+size pairs; rename them to `getXFontName()` / `getXFontSize()` and stop eagerly resolving `StringFont` to `Font` via `getFont()`.
-4. **Update `ViewIO.writeView`** to read name+size from `Song` directly. Eliminates the round-trip through `Font.getPSName()` / `Font.getSize()`.
-5. **Migrate the mutation pipeline.** `setTitleFont(Font)` → `setTitleFont(String name, int size)`. `mutateFont(FontField, ...)` operates on name+size pairs. `applyTitleFont` writes the two string fields. `FontField` enum stays. `Song.fontDidChange` writes name+size instead of resolved `Font`.
-6. Audit every `mutateFont` caller and confirm the new signature drops no information. `Font` has style flags (bold/italic); confirm none are in use beyond what `getPSName()` already encodes.
+The strategy is a parallel-facade pattern, mirroring 2a:
 
-### Acceptance criteria
-
-- `Song`'s four document-font fields are `String`/`int` pairs; `getXFontName()` / `getXFontSize()` are the public read API.
-- `SongData` carries name+size pairs, not `Font` objects, for the four document fonts.
-- The mutation pipeline (`setXFont`, `applyXFont`, `mutateFont`, `FontField`, `fontDidChange`) operates on name+size.
-- v1.0 `.mssw` files (no `<View>` section) still load — `@Nullable` defaults fall through to prefs.
-- Round-trip on a v1.1+ `.mssw` file with non-default fonts produces a byte-identical file (or differs only in whitespace/ordering; verify).
-- `./scripts/compile.sh` green.
-- `./scripts/test.sh unit` green.
-- **Manual smoke test:** open a non-trivial `.mssw`, change a font preference, verify rendering updates immediately (driven by `RenderResources` from 2a/2b). Save. Reopen. Verify the changed font persists.
-- **Manual smoke test:** load a v1.0 `.mssw` (if one exists in test fixtures), verify it still opens and renders.
-
-### Risks
-
-- **`mutateFont` semantics change.** Every call site flips from `Font` to strings. Inspect each one. Confirm undo/redo behavior survives — the `Mutation` record sees different types.
-- **`Font.getPSName()` round-trip.** `writeView` currently writes the PostScript name; `MyFontUtils.createFont` accepts that. Confirm that going name → `Font` → name through `getPSName()` is idempotent for the fonts users pick in the UI. If not, the new direct-from-strings path may produce different bytes from the old persistence by accident.
-- **File-format regressions.** This sub-phase changes what gets written to disk. Round-trip equivalence is the acceptance bar; do not merge without verifying it.
+- **2c-i** adds string-pair storage alongside the existing `Font` fields. Both representations coexist. Writes go to both; reads can come from either. Reversible.
+- **2c-ii** flips the mutation pipeline (`setXFont`, `applyXFont`, `mutateFont`, `FontField`, `fontDidChange`) to operate on strings. This is the semantic change with undo/redo and file-format risk.
+- **2c-iii** removes the now-unused `Font` fields for document fonts and tidies `ViewIO.writeView` to read strings directly.
 
 ---
 
-## ⏳ Phase 2d: Delete residual AWT from Song
+## ✅ Phase 2c-i: Add name+size storage alongside Font (parallel)
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
+**BlockedBy:** Phase 2b (Song's `Font` accessors must have zero external readers).  <br>
+**Recommended model/effort:** Sonnet 4.6, medium effort — mechanical field/accessor additions and a paired-write contract. No removals, no semantic flip.
+
+### Purpose
+
+Add `String` name + `int` size fields to `Song` and `SongData` for the four document fonts, alongside the existing `Font` fields. Establish the invariant that writes to either representation update both. After this sub-phase, name+size is queryable but nothing reads it yet.
+
+### Tasks
+
+1. Add `titleFontName` / `titleFontSize` fields to `Song` (and the same for lyrics, attribution, annotation). Add `getTitleFontName()` / `getTitleFontSize()` accessors for all four.
+2. Add matching `@Nullable String titleFontName` / `@Nullable Integer titleFontSize` fields to `SongData`. Keep `@Nullable` so v1.0 files (no `<View>` section) still load.
+3. In every Song writer for the four document fonts (`setTitleFont(Font)`, `applyTitleFont(Font)`, the `mutateFont` path, `fontDidChange`), update **both** the `Font` field and the name+size pair. Use `Font.getPSName()` and `Font.getSize()` for the derivation. This is the parallel-write invariant.
+4. Update `SongIO` read path: when loading a file, populate **both** representations on `SongData` and `Song`. Pass through the name+size pair from the XML directly; also resolve to `Font` (existing behavior).
+5. `defaultFontFromPrefs` keeps returning `Font` for now — only the storage on `Song`/`SongData` changes. Callers in 2c-ii will rework signatures.
+6. Do not touch `ViewIO.writeView` yet. It still reads from `Song.getTitleFont().getPSName()`.
+
+### Acceptance criteria
+
+- `Song` exposes `getXFontName()` / `getXFontSize()` for the four document fonts, returning values consistent with `getXFont().getPSName()` / `getXFont().getSize()` at all times.
+- `SongData` carries name/size fields alongside `Font` fields for the four document fonts.
+- Every write path updates both representations. Add a unit test (or assertion) confirming the invariant after `setTitleFont`, after `fontDidChange`, and after a load.
+- `./scripts/compile.sh` green.
+- `./scripts/test.sh unit` green.
+- **Manual smoke test:** open a `.mssw`, save, diff against the original — should be byte-identical (this path still routes through `Font.getPSName()` in `writeView`).
+
+### Risks
+
+- **Drift between the two representations.** If a writer is missed, name+size can disagree with `Font`. Mitigate with a paired-write helper used by every setter, plus an invariant check.
+- **`Font.getPSName()` idempotence.** Today, `MyFontUtils.createFont(name)` then `.getPSName()` may return a different string than the original input. Identify any non-idempotent cases now while both representations exist — they will become visible as drift.
+
+---
+
+## ✅ Phase 2c-ii: Flip the mutation pipeline to name+size
+
+**Status:** Done  <br>
+**BlockedBy:** Phase 2c-i (string-pair fields and parallel-write invariant must be in place).  <br>
+**Recommended model/effort:** Opus 4.7, medium-to-high effort — the mutation API change has undo/redo and file-format implications.
+
+### Purpose
+
+Change the mutation pipeline to operate on name+size pairs instead of `Font`. The `Font` field on `Song` continues to exist as a derived cache, written from the strings. After this sub-phase, name+size is the authoritative representation; `Font` is downstream.
+
+### Tasks
+
+1. Flip the public mutation API: `setTitleFont(Font)` → `setTitleFont(String name, int size)` (and the other three document fonts). `applyTitleFont(Font)` → `applyTitleFont(String name, int size)`.
+2. Update `FontField` and `mutateFont` to carry name+size pairs. The `Mutation` record stores strings/ints, not `Font`. This is the undo/redo-sensitive change.
+3. Reverse the parallel-write direction: writers now set the name+size fields first, then derive the `Font` field from them via `MyFontUtils.createFont(name).deriveFont((float) size)`.
+4. Update `Song.fontDidChange` to write name+size from the notification payload, then derive `Font`. (If the notification itself still carries a `Font`, decompose it at the entry point.)
+5. Update every caller of `setXFont(Font)` / `applyXFont(Font)` / `mutateFont(FontField, Font, …)`. `jet_brains_find_referencing_symbols` enumerates them. Inspect each one for style-flag use (bold/italic) — confirm `getPSName()` already encodes whatever the call relied on. If any caller depends on a `Font` style flag not captured by the PostScript name, surface it before merging.
+6. `SongIO` read path simplifies: stop eagerly resolving `StringFont` to `Font` at load time. Set name+size on `Song`; let the Font cache derive.
+7. `defaultFontFromPrefs` returns a name+size pair. Callers adapt.
+8. `ViewIO.writeView` is **not** updated in this sub-phase — it still works via `Song.getTitleFont().getPSName()`. The cleanup belongs in 2c-iii.
+
+### Acceptance criteria
+
+- `setXFont`, `applyXFont`, `mutateFont`, `FontField`, and `Song.fontDidChange` all operate on `(String, int)`.
+- The `Font` field on `Song` is now a derived cache, rebuilt from the strings on every write.
+- v1.0 `.mssw` files still load — `@Nullable` defaults fall through to prefs.
+- Round-trip on a v1.1+ `.mssw` file with non-default fonts produces a byte-identical file (or differs only in whitespace/ordering; verify).
+- Undo/redo through a font change still works — explicitly test in the smoke test.
+- `./scripts/compile.sh` green.
+- `./scripts/test.sh unit` green.
+- **Manual smoke test:** open a non-trivial `.mssw`, change a font preference, verify rendering updates (via `RenderResources`). Save. Reopen. Verify the font persists.
+- **Manual smoke test:** change a document font via the Song Settings dialog, undo, redo, save, reopen — value should round-trip.
+- **Manual smoke test:** load a v1.0 `.mssw` (if one exists in test fixtures), verify it still opens.
+
+### Risks
+
+- **Mutation record type change.** The undo stack stores `Mutation` records with the new value type. Any in-memory undo state captured before the change is incompatible — only a concern for live sessions, not on-disk state.
+- **`Font.getPSName()` round-trip.** Going name → `Font` → name should be idempotent for the fonts the UI lets users pick. 2c-i flagged any non-idempotent cases; if any remain, fix before merging.
+- **Style-flag loss.** `Font` carries `BOLD` / `ITALIC` flags. The PostScript name typically encodes weight/slant (e.g. "Times-BoldItalic"), but confirm no caller relies on a flag set independently of the PS name.
+
+---
+
+## ✅ Phase 2c-iii: Remove document-font Font fields and clean up IO
+
+**Status:** Done  <br>
+**BlockedBy:** Phase 2c-ii (name+size must be the authoritative representation).  <br>
+**Recommended model/effort:** Sonnet 4.6, low effort — mechanical removal of the now-redundant Font cache and a small `writeView` cleanup.
+
+### Purpose
+
+Remove the four document-font `Font` fields from `Song` and `SongData`, now that they are a derived cache with no readers. Update `ViewIO.writeView` to read name+size from `Song` directly instead of round-tripping through `Font.getPSName()`.
+
+### Tasks
+
+1. `jet_brains_find_referencing_symbols` on each of the four document-font `Font` fields and the four `getXFont()` accessors. Confirm zero callers outside `Song` itself. (Phase 2b cleared external readers; 2c-ii made the field a derived cache.)
+2. `jet_brains_safe_delete` the four `getXFont()` accessors for document fonts (title, lyrics, attribution, annotation).
+3. Delete the four document-font `Font` fields from `Song` and the matching `Font` fields from `SongData`. The bangla/footnote `Font` fields stay until 2d.
+4. Update `ViewIO.writeView` to write `song.getTitleFontName()` / `song.getTitleFontSize()` directly instead of `song.getTitleFont().getPSName()` / `.getSize()`. Verify the bytes are equivalent.
+5. Final sweep: `search_for_pattern` for `getTitleFont\b` / `getLyricsFont\b` / `getAttributionFont\b` / `getAnnotationFont\b` to confirm zero readers remain.
+
+### Acceptance criteria
+
+- `Song.java` no longer has `titleFont` / `lyricsFont` / `attributionFont` / `annotationFont` `Font` fields. (Bangla and footnote `Font` fields remain — they go in 2d.)
+- `SongData.java` no longer has `Font` fields for the four document fonts.
+- `ViewIO.writeView` reads name+size strings directly from `Song`.
+- Round-trip on a v1.1+ `.mssw` file with non-default fonts is still byte-identical to the pre-2c output.
+- `./scripts/compile.sh` green.
+- `./scripts/test.sh unit` green.
+- **Manual smoke test:** open, save, reopen a non-trivial `.mssw` with non-default fonts; rendering and persisted bytes should be unchanged from end of 2c-ii.
+
+### Risks
+
+Low. The deletions are mechanical because 2c-ii made the fields derived caches with no readers. The `writeView` cleanup is a one-line change per font, gated by the byte-identical round-trip check.
+
+---
+
+## ✅ Phase 2d: Delete residual AWT from Song
+
+**Status:** Done  <br>
 **BlockedBy:** Phase 2c (Song's document-font field types must already be strings).  <br>
 **Recommended model/effort:** Sonnet 4.6, low effort — mechanical deletion of now-unused fields, methods, and imports.
 
@@ -239,9 +335,9 @@ Low. The deletions are mechanical because 2b removed external readers and 2c fli
 
 ---
 
-## ⏳ Phase 3: Extract ScoreViewState
+## ✅ Phase 3: Extract ScoreViewState
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** —  <br>
 **Recommended model/effort:** Sonnet 4.6, medium effort — small field extraction, but `ScoreActions` shrinks and callers update.
 

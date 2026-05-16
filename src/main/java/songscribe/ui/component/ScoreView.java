@@ -76,6 +76,7 @@ import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
+import songscribe.ui.render.RenderResources;
 import songscribe.ui.renderer.GraphicsState;
 import songscribe.util.GraphicUtils;
 import songscribe.util.StringUtils;
@@ -151,19 +152,10 @@ public final class ScoreView
     private SAXParser saxParser;
     private final Dimension sheetSize = new Dimension();
 
-    @Nullable
-    private HorizontalAdjustment horizontalAdjustment = null;
-    @Nullable
-    private VerticalAdjustment verticalAdjustment = null;
-
     // Called when a file is successfully opened (e.g. to update the window title)
     private final @Nullable Consumer<? super File> onFileOpened;
 
-    // The current editing mode
-    private Mode mode = Mode.EDIT;
-
-    // Whether editing is done via mouse or keyboard
-    private Control control;
+    private final ScoreViewState viewState;
 
     // In some contexts (such as playback), we don't want to allow dragging
     private boolean dragDisabled = false;
@@ -253,7 +245,7 @@ public final class ScoreView
     public ScoreView(@Nullable Consumer<? super File> onFileOpened) {
         this.onFileOpened = onFileOpened;
         var headless = onFileOpened == null;
-        control = Control.valueOf(Prefs.getInstance().getString(PrefsKey.CONTROL));
+        viewState = new ScoreViewState(Control.valueOf(Prefs.getInstance().getString(PrefsKey.CONTROL)));
 
         selectionCoordinator = new SelectionCoordinator(this::getSong);
         clipboardManager = new ClipboardManager();
@@ -452,8 +444,8 @@ public final class ScoreView
     }
 
     void initAdjustments() {
-        horizontalAdjustment = new HorizontalAdjustment(this);
-        verticalAdjustment = new VerticalAdjustment(this);
+        viewState.setHorizontalAdjustment(new HorizontalAdjustment(this));
+        viewState.setVerticalAdjustment(new VerticalAdjustment(this));
     }
 
     void initView() {
@@ -677,13 +669,17 @@ public final class ScoreView
     }
 
     private void drawEditElements(Graphics2D g2) {
+        var mode = viewState.getMode();
+        var ha = viewState.getHorizontalAdjustment();
+        var va = viewState.getVerticalAdjustment();
+
         //noinspection StatementWithEmptyBody
         if (mode == Mode.EDIT) {
             // Insertion note rendering is now handled by LineComponent
-        } else if (mode == Mode.ADJUSTMENT && horizontalAdjustment != null) {
-            horizontalAdjustment.repaint(g2);
-        } else if (mode == Mode.VERTICAL_ADJUSTMENT && verticalAdjustment != null) {
-            verticalAdjustment.repaint(g2);
+        } else if (mode == Mode.ADJUSTMENT && ha != null) {
+            ha.repaint(g2);
+        } else if (mode == Mode.VERTICAL_ADJUSTMENT && va != null) {
+            va.repaint(g2);
         }
     }
 
@@ -964,19 +960,22 @@ public final class ScoreView
         selectionCoordinator.setInSelectMode(inSelectMode);
     }
 
-    @Override
-    public Control getControl() {
-        return control;
+    public ScoreViewState getViewState() {
+        return viewState;
     }
 
     @Override
+    public Control getControl() {
+        return viewState.getControl();
+    }
+
     public void setControl(Control control) {
-        this.control = control;
+        viewState.setControl(control);
     }
 
     @Override
     public Mode getMode() {
-        return mode;
+        return viewState.getMode();
     }
 
     @Override
@@ -985,15 +984,15 @@ public final class ScoreView
     }
 
     public void setMode(Mode mode) {
-        this.mode = mode;
+        viewState.setMode(mode);
     }
 
     public @Nullable HorizontalAdjustment getHorizontalAdjustment() {
-        return horizontalAdjustment;
+        return viewState.getHorizontalAdjustment();
     }
 
     public @Nullable VerticalAdjustment getVerticalAdjustment() {
-        return verticalAdjustment;
+        return viewState.getVerticalAdjustment();
     }
 
     @Override
@@ -1028,7 +1027,7 @@ public final class ScoreView
     }
 
     public void saveProperties() {
-        Prefs.getInstance().put(PrefsKey.CONTROL, control.name());
+        Prefs.getInstance().put(PrefsKey.CONTROL, viewState.getControl().name());
     }
 
     public void updatePageLayout(int lineWidthPx) {
@@ -1152,7 +1151,7 @@ public final class ScoreView
             return;
         }
 
-        var lyricsFont = song.getLyricsFont();
+        var lyricsFont = RenderResources.getLyricsFont();
 
         if (lyricRenderMetrics != null && lyricRenderMetrics.lyricsFont().equals(lyricsFont)) {
             return;

@@ -20,7 +20,6 @@
 
 package songscribe.ui.layout.stacking;
 
-import songscribe.music.Line;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.ElementColumn;
@@ -29,6 +28,7 @@ import songscribe.ui.layout.MetronomeAttachment;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.ui.render.RenderResources;
 import songscribe.ui.renderer.NoteRenderer;
 
 import static songscribe.ui.layout.stacking.StackingUtils.stackAbove;
@@ -69,13 +69,12 @@ public class SystemStacker {
      */
     public void stack() {
         var columns = context.getColumns();
-        var line = context.getLine();
         var builder = context.getBuilder();
 
         for (var column : columns) {
-            stackTempo(column, line, builder);
-            stackBeatChange(column, line, builder);
-            stackAnnotations(column, line, builder);
+            stackTempo(column, builder);
+            stackBeatChange(column, builder);
+            stackAnnotations(column, builder);
         }
     }
 
@@ -88,7 +87,6 @@ public class SystemStacker {
      */
     private void stackTempo(
         ElementColumn column,
-        Line line,
         LayoutResult.Builder builder) {
 
         var note = column.getElement();
@@ -105,7 +103,7 @@ public class SystemStacker {
             return;
         }
 
-        stackMetronomeAttachment(tempo, column, line, TEMPO_MARGIN_SS, builder);
+        stackMetronomeAttachment(tempo, column, TEMPO_MARGIN_SS, builder);
     }
 
     /**
@@ -117,7 +115,6 @@ public class SystemStacker {
      */
     private void stackBeatChange(
         ElementColumn column,
-        Line line,
         LayoutResult.Builder builder) {
 
         var note = column.getElement();
@@ -134,7 +131,7 @@ public class SystemStacker {
             return;
         }
 
-        stackMetronomeAttachment(beatChange, column, line, BEAT_CHANGE_MARGIN_SS, builder);
+        stackMetronomeAttachment(beatChange, column, BEAT_CHANGE_MARGIN_SS, builder);
     }
 
     /**
@@ -146,7 +143,6 @@ public class SystemStacker {
      */
     private void stackAnnotations(
         ElementColumn column,
-        Line line,
         LayoutResult.Builder builder) {
 
         var note = column.getElement();
@@ -165,7 +161,7 @@ public class SystemStacker {
 
         var columnXSs = column.getXSs();
         var staffPosition = note.getStaffPosition();
-        var annotationFont = line.getSong().getAnnotationFont();
+        var annotationFont = RenderResources.getAnnotationFont();
         var widthSs = annotation.computeContentWidthSs(annotationFont);
         var heightSs = ScaleContext.getInstance().textHeightSs(annotationFont);
 
@@ -185,13 +181,12 @@ public class SystemStacker {
     private void stackMetronomeAttachment(
         MetronomeAttachment attachment,
         ElementColumn column,
-        Line line,
         double marginSs,
         LayoutResult.Builder builder) {
 
         var xSs = column.getXSs();
         var staffPosition = column.getElement().getStaffPosition();
-        var attrFont = line.getSong().getAttributionFont();
+        var attrFont = RenderResources.getAttributionFont();
         var metrics = attachment.computeContentMetrics(attrFont);
 
         stackAboveWithRegions(systemExtents, attachment, metrics.regions(), xSs,

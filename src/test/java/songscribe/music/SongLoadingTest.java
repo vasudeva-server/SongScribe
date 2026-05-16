@@ -26,7 +26,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.util.MyFontUtils;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
 class SongLoadingTest extends UnitTest {
@@ -41,29 +40,25 @@ class SongLoadingTest extends UnitTest {
 
     @Test
     void testSetAnnotationFontSetsModified() {
-        var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
-        song.setAnnotationFont(font);
+        song.setAnnotationFont("LatoPlus-Bold", 20);
         assertThat(song.isModified()).isTrue();
     }
 
     @Test
     void testSetAttributionFontSetsModified() {
-        var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
-        song.setAttributionFont(font);
+        song.setAttributionFont("LatoPlus-Bold", 20);
         assertThat(song.isModified()).isTrue();
     }
 
     @Test
     void testSetLyricsFontSetsModified() {
-        var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
-        song.setLyricsFont(font);
+        song.setLyricsFont("LatoPlus-Bold", 20);
         assertThat(song.isModified()).isTrue();
     }
 
     @Test
     void testSetTitleFontSetsModified() {
-        var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
-        song.setTitleFont(font);
+        song.setTitleFont("LatoPlus-Bold", 20);
         assertThat(song.isModified()).isTrue();
     }
 

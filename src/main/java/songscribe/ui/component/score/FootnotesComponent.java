@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.render.RenderResources;
 import songscribe.ui.renderer.GraphicsState;
 import songscribe.util.GraphicUtils;
 
@@ -65,7 +66,7 @@ public class FootnotesComponent extends ScoreComponent {
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR
         )) {
-            var font = song.getFootnoteFont();
+            var font = RenderResources.getFootnoteFont();
             g2.setFont(font);
             g2.setColor(Color.BLACK);
 
@@ -103,7 +104,7 @@ public class FootnotesComponent extends ScoreComponent {
             return new Dimension(0, 0);
         }
 
-        var font = song.getFootnoteFont();
+        var font = RenderResources.getFootnoteFont();
         var metrics = getFontMetrics(font);
 
         var lines = footnotes.split("\n");

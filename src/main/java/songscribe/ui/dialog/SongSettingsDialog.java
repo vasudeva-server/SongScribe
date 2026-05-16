@@ -55,6 +55,7 @@ import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.render.RenderResources;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
@@ -1105,21 +1106,19 @@ public class SongSettingsDialog extends StandardDialog {
 
         @Override
         protected boolean getData() {
-            var song = getSong();
-
-            var font = song.getTitleFont();
+            var font = RenderResources.getTitleFont();
             titleFontPreview.setFont(font);
             titleFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-            font = song.getLyricsFont();
+            font = RenderResources.getLyricsFont();
             lyricsFontPreview.setFont(font);
             lyricsFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-            font = song.getAttributionFont();
+            font = RenderResources.getAttributionFont();
             attributionFontPreview.setFont(font);
             attributionFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-            font = song.getAnnotationFont();
+            font = RenderResources.getAnnotationFont();
             annotationFontPreview.setFont(font);
             annotationFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
@@ -1128,20 +1127,20 @@ public class SongSettingsDialog extends StandardDialog {
 
         @Override
         protected void setData() {
-            var song = getSong();
-
-            if (titleFontPreview.getFont().equals(song.getTitleFont())
-                    && lyricsFontPreview.getFont().equals(song.getLyricsFont())
-                    && attributionFontPreview.getFont().equals(song.getAttributionFont())
-                    && annotationFontPreview.getFont().equals(song.getAnnotationFont())) {
+            if (titleFontPreview.getFont().equals(RenderResources.getTitleFont())
+                    && lyricsFontPreview.getFont().equals(RenderResources.getLyricsFont())
+                    && attributionFontPreview.getFont().equals(RenderResources.getAttributionFont())
+                    && annotationFontPreview.getFont().equals(RenderResources.getAnnotationFont())) {
                 return;
             }
 
-            song.postWithModification(new FontDidChangeNotification(
+            getSong().postWithModification(new FontDidChangeNotification(
                 titleFontPreview.getFont(),
                 lyricsFontPreview.getFont(),
                 attributionFontPreview.getFont(),
-                annotationFontPreview.getFont()
+                annotationFontPreview.getFont(),
+                null,
+                null
             ));
         }
     }

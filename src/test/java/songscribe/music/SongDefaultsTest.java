@@ -41,9 +41,9 @@ class SongDefaultsTest extends UnitTest {
         );
 
         var song = new Song();
-        assertThat(song.getAnnotationFont().getPSName())
+        assertThat(song.getAnnotationFontName())
             .isEqualTo(expectedFont.getPSName());
-        assertThat(song.getAnnotationFont().getSize())
+        assertThat(song.getAnnotationFontSize())
             .isEqualTo(expectedFont.getSize());
     }
 
@@ -56,9 +56,9 @@ class SongDefaultsTest extends UnitTest {
         );
 
         var song = new Song();
-        assertThat(song.getAttributionFont().getPSName())
+        assertThat(song.getAttributionFontName())
             .isEqualTo(expectedFont.getPSName());
-        assertThat(song.getAttributionFont().getSize())
+        assertThat(song.getAttributionFontSize())
             .isEqualTo(expectedFont.getSize());
     }
 
@@ -108,9 +108,9 @@ class SongDefaultsTest extends UnitTest {
         );
 
         var song = new Song();
-        assertThat(song.getLyricsFont().getPSName())
+        assertThat(song.getLyricsFontName())
             .isEqualTo(expectedFont.getPSName());
-        assertThat(song.getLyricsFont().getSize())
+        assertThat(song.getLyricsFontSize())
             .isEqualTo(expectedFont.getSize());
     }
 
@@ -145,9 +145,9 @@ class SongDefaultsTest extends UnitTest {
         );
 
         var song = new Song();
-        assertThat(song.getTitleFont().getPSName())
+        assertThat(song.getTitleFontName())
             .isEqualTo(expectedFont.getPSName());
-        assertThat(song.getTitleFont().getSize())
+        assertThat(song.getTitleFontSize())
             .isEqualTo(expectedFont.getSize());
     }
 }

@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.render.RenderResources;
 import songscribe.ui.renderer.GraphicsState;
 import songscribe.util.StringUtils;
 
@@ -71,7 +72,7 @@ public class TitleComponent extends ScoreComponent {
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR
         )) {
-            var font = song.getTitleFont();
+            var font = RenderResources.getTitleFont();
             g2.setFont(font);
             g2.setColor(Color.BLACK);
             var metrics = g2.getFontMetrics();
@@ -122,7 +123,7 @@ public class TitleComponent extends ScoreComponent {
             title = number + ". " + title;
         }
 
-        var font = song.getTitleFont();
+        var font = RenderResources.getTitleFont();
         var metrics = getFontMetrics(font);
 
         // Wrap the title to calculate height

@@ -550,7 +550,6 @@ public class MainFrame extends JFrame implements Printable {
         this.score = score;
     }
 
-
     @Nullable
     public File getCurrentFile() {
         return currentFile;

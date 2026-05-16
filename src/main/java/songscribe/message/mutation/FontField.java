@@ -22,7 +22,7 @@ package songscribe.message.mutation;
 
 /**
  * Identifies which font changed in a {@link FontChange} mutation.
- * All values carry {@code java.awt.Font} instances.
+ * Values are carried as PostScript name + point size.
  */
 public enum FontField {
     TITLE,

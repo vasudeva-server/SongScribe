@@ -490,6 +490,7 @@ public final class UIUtils {
             }
 
             MyFontUtils.installLocalFont("Poetica-SuppOrnaments.otf");
+            MyFontUtils.installLocalFont("TiroBangla-Regular.ttf");
 
             // Set up the base font families for FlatLaf
             FlatLaf.setPreferredFontFamily(SourceSans3Font.FAMILY);

@@ -26,14 +26,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.error.RuntimeError;
 import songscribe.music.Song;
+import songscribe.util.MyFontUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mockStatic;
 
 class AttributionTest extends UnitTest {
 
@@ -60,7 +57,7 @@ class AttributionTest extends UnitTest {
             var attribution = new Attribution("Composer");
             attribution.setParentLine(line);
 
-            var expected = attribution.computeContentWidthSs(song.getAttributionFont());
+            var expected = attribution.computeContentWidthSs(MyFontUtils.createFont(song.getAttributionFontName(), song.getAttributionFontSize()));
 
             assertThat(attribution.getContentWidthSs()).isCloseTo(expected, within(EPSILON));
         }
@@ -72,37 +69,10 @@ class AttributionTest extends UnitTest {
             var attribution = new Attribution("Composer");
             attribution.setParentLine(line);
 
-            var expected = ScaleContext.getInstance().textHeightSs(song.getAttributionFont());
+            var expected = ScaleContext.getInstance().textHeightSs(MyFontUtils.createFont(song.getAttributionFontName(), song.getAttributionFontSize()));
 
             assertThat(attribution.getContentHeightSs()).isCloseTo(expected, within(EPSILON));
         }
 
-        @Test
-        void testGetContentWidthSsThrowsWhenParentLineNull() {
-            try (var mockRuntimeError = mockStatic(RuntimeError.class)) {
-                //noinspection ThrowableNotThrown
-                mockRuntimeError.when(() -> RuntimeError.exit(anyString()))
-                    .thenReturn(new RuntimeException("null parentLine"));
-
-                var attribution = new Attribution("Composer");
-
-                assertThatThrownBy(attribution::getContentWidthSs)
-                    .isInstanceOf(RuntimeException.class);
-            }
-        }
-
-        @Test
-        void testGetContentHeightSsThrowsWhenParentLineNull() {
-            try (var mockRuntimeError = mockStatic(RuntimeError.class)) {
-                //noinspection ThrowableNotThrown
-                mockRuntimeError.when(() -> RuntimeError.exit(anyString()))
-                    .thenReturn(new RuntimeException("null parentLine"));
-
-                var attribution = new Attribution("Composer");
-
-                assertThatThrownBy(attribution::getContentHeightSs)
-                    .isInstanceOf(RuntimeException.class);
-            }
-        }
     }
 }

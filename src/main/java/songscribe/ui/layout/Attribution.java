@@ -22,7 +22,7 @@ package songscribe.ui.layout;
 
 import java.awt.Font;
 
-import songscribe.error.RuntimeError;
+import songscribe.ui.render.RenderResources;
 
 /**
  * Represents attribution text (composer/arranger) displayed on the staff.
@@ -103,11 +103,8 @@ public class Attribution extends LineElement {
     }
 
     /**
-     * Returns the content height in staff-space units, derived from the song's
-     * attribution font via {@code parentLine}.
-     * <p>
-     * {@code parentLine} must be non-null. Use {@link ScaleContext#textHeightSs(Font)}
-     * directly when the font is already in hand.
+     * Returns the content height in staff-space units, derived from the attribution font
+     * via {@link songscribe.ui.render.RenderResources#getAttributionFont()}.
      */
     @Override
     public double getContentHeightSs() {
@@ -125,13 +122,6 @@ public class Attribution extends LineElement {
     }
 
     private Font requireAttributionFont() {
-        var parentLine = getParentLine();
-
-        if (parentLine == null) {
-            throw RuntimeError.exit(
-                "Attribution content dimensions requested with null parentLine");
-        }
-
-        return parentLine.getSong().getAttributionFont();
+        return RenderResources.getAttributionFont();
     }
 }

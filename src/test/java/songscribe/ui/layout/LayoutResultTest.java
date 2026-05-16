@@ -36,6 +36,7 @@ import songscribe.music.KeyType;
 import songscribe.music.Song;
 import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
+import songscribe.util.MyFontUtils;
 
 class LayoutResultTest extends UnitTest {
 
@@ -130,14 +131,14 @@ class LayoutResultTest extends UnitTest {
         var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
         var baselineYSs = 1.0 + StaffExtents.STAFF_HEIGHT_SS + 0.5
             + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
-            + ScaleContext.getInstance().fontAscentSs(song.getLyricsFont());
+            + ScaleContext.getInstance().fontAscentSs(MyFontUtils.createFont(song.getLyricsFontName(), song.getLyricsFontSize()));
         var layoutResult = LayoutResult.builder()
             .setAboveStaffSs(1.0)
             .setBelowContentSs(0.5)
             .addLyricBox(element, box)
             .build();
 
-        var lyricsFont = song.getLyricsFont();
+        var lyricsFont = MyFontUtils.createFont(song.getLyricsFontName(), song.getLyricsFontSize());
         var lyricRenderMetrics = new LyricRenderMetrics(lyricsFont, lyricsFont, 0.0, 0.0);
         var hit = layoutResult.hitTestLyric(
             lyricRenderMetrics,
@@ -166,7 +167,7 @@ class LayoutResultTest extends UnitTest {
             .addLyricBox(element, box)
             .build();
 
-        var lyricsFont = song.getLyricsFont();
+        var lyricsFont = MyFontUtils.createFont(song.getLyricsFontName(), song.getLyricsFontSize());
         var lyricRenderMetrics = new LyricRenderMetrics(lyricsFont, lyricsFont, 0.0, 0.0);
         var hit = layoutResult.hitTestLyric(
             lyricRenderMetrics,

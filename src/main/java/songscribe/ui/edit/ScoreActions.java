@@ -24,7 +24,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.ui.Control;
 
 /**
  * Callback interface for ScoreView actions needed by EditModeManager.
@@ -59,18 +58,4 @@ public interface ScoreActions {
      * @param revalidateOnly Whether to only revalidate without changing width
      */
     void drawWidthIfWiderLine(Line line, boolean revalidateOnly);
-
-    /**
-     * Returns the current control state.
-     *
-     * @return The current control state
-     */
-    Control getControl();
-
-    /**
-     * Sets the current control state.
-     *
-     * @param control The control state to set
-     */
-    void setControl(Control control);
 }

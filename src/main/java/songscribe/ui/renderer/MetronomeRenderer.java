@@ -34,6 +34,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.MetronomeAttachment;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.render.RenderResources;
 
 /**
  * Abstract base renderer for metronome-style markings (tempo and beat change).
@@ -91,7 +92,7 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
         var color = getDecorationColor(element, ctx);
         var decorationLayout = requireDecorationLayout(element, attachmentClass, ctx);
         var ySs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
-        var attrFont = ctx.getSong().getAnnotationFont();
+        var attrFont = RenderResources.getAnnotationFont();
 
         return new RenderSetup(color, decorationLayout, ySs, attrFont);
     }
