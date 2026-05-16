@@ -31,7 +31,7 @@ import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.ScoreViewController;
 import songscribe.util.StringUtils;
 
 public final class TupletAction extends UIAction {
@@ -122,35 +122,39 @@ public final class TupletAction extends UIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        handleChange(message.getScore());
+        var ctrl = message.getScoreViewController();
+
+        if (ctrl != null) {
+            handleChange(ctrl);
+        }
     }
 
     @Override
     @Handler
     public void songDidChange(SongDidChangeNotification message) {
-        var score = getScore();
+        var ctrl = getScoreViewController();
 
-        if (score != null) {
-            handleChange(score);
+        if (ctrl != null) {
+            handleChange(ctrl);
         }
     }
 
     @Override
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
-        var score = getScore();
+        var ctrl = getScoreViewController();
 
-        if (score != null) {
-            handleChange(score);
+        if (ctrl != null) {
+            handleChange(ctrl);
         }
     }
 
-    private void handleChange(ScoreView score) {
+    private void handleChange(ScoreViewController ctrl) {
         if (!updateEnabledState()) {
             return;
         }
 
-        var info = score.canToggleTuplet();
+        var info = ctrl.canToggleTuplet();
 
         if (!info.canToggle()) {
             setEnabled(false);

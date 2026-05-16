@@ -45,7 +45,7 @@ The two patterns coexist at different scales.
 | 2c-iii | [Remove document-font Font fields and clean up IO](#-phase-2c-iii-remove-document-font-font-fields-and-clean-up-io) | ✅ Done | — |
 | 2d | [Delete residual AWT from Song](#-phase-2d-delete-residual-awt-from-song) | ✅ Done | — |
 | 3 | [Extract ScoreViewState](#-phase-3-extract-scoreviewstate) | ✅ Done | — |
-| 4 | [Move ScoreView's @Handlers and capability queries to ScoreViewController](#-phase-4-move-scoreviews-handlers-and-capability-queries-to-scoreviewcontroller) | ⏳ Pending | — |
+| 4 | [Move ScoreView's @Handlers and capability queries to ScoreViewController](#-phase-4-move-scoreviews-handlers-and-capability-queries-to-scoreviewcontroller) | ✅ Done | — |
 | 5 | [Resolve duplicate SongDidChangeNotification subscription](#-phase-5-resolve-duplicate-songdidchangenotification-subscription) | ⏳ Pending | — |
 
 Phases are independent except where noted under **BlockedBy**. Each ships as its own PR.
@@ -383,9 +383,9 @@ Low. Pure field extraction. The main hazard is forgetting a caller that reads `s
 
 ---
 
-## ⏳ Phase 4: Move ScoreView's @Handlers and capability queries to ScoreViewController
+## ✅ Phase 4: Move ScoreView's @Handlers and capability queries to ScoreViewController
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** Phase 3 (`ScoreViewController` needs `ScoreViewState` to read the same view-state).  <br>
 **Recommended model/effort:** Opus 4.7, medium-to-high effort — many references, but well-bounded. Subscriber lifetime and `cachedTupletToggleInfo` ownership require care.
 

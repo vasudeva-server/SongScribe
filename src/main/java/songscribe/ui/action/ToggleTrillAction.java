@@ -52,8 +52,10 @@ public final class ToggleTrillAction extends UIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        if (updateEnabledState()) {
-            setEnabled(message.getScore().canToggleTrill());
+        var ctrl = message.getScoreViewController();
+
+        if (ctrl != null && updateEnabledState()) {
+            setEnabled(ctrl.canToggleTrill());
         }
     }
 

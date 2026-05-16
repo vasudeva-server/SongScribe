@@ -58,4 +58,28 @@ public interface ScoreActions {
      * @param revalidateOnly Whether to only revalidate without changing width
      */
     void drawWidthIfWiderLine(Line line, boolean revalidateOnly);
+
+    /**
+     * Rebuilds lyric render metrics from current preferences.
+     */
+    void rebuildLyricRenderMetrics();
+
+    /**
+     * Synchronizes playback-related preferences (loop, play-with-repeats).
+     */
+    void syncPlaybackPrefs();
+
+    /**
+     * Updates the page layout for the given line width.
+     *
+     * @param lineWidthPx line width in pixels
+     */
+    void updatePageLayout(int lineWidthPx);
+
+    /**
+     * Enables or disables key bindings (disabled during lyric text editing).
+     *
+     * @param enabled {@code true} to enable, {@code false} to disable
+     */
+    void setKeyBindingsEnabled(boolean enabled);
 }

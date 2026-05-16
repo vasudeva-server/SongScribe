@@ -28,7 +28,7 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.music.EndingValidationResult;
-import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.ScoreViewController;
 
 public final class FirstSecondEndingAction extends UIAction {
 
@@ -46,8 +46,8 @@ public final class FirstSecondEndingAction extends UIAction {
         );
     }
 
-    public void validate(ScoreView score) {
-        cachedResult = score.canMakeFirstSecondEnding();
+    public void validate(ScoreViewController ctrl) {
+        cachedResult = ctrl.canMakeFirstSecondEnding();
         setEnabled(cachedResult.isValid());
     }
 

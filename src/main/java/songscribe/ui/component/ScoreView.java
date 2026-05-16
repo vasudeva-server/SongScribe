@@ -31,7 +31,6 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import net.engio.mbassy.listener.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,19 +39,13 @@ import songscribe.export.ExportOptions;
 import songscribe.export.ImageExporter;
 import songscribe.export.SVGExporter;
 import songscribe.io.SongIO;
-import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.music.Song;
-import songscribe.music.EndingValidationResult;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.MusicEditOperations;
-import songscribe.message.mutation.FontChange;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.message.notification.PrefsDidChangeNotification;
-import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Constants;
@@ -84,7 +77,6 @@ import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
-import songscribe.ui.selection.TupletToggleInfo;
 
 /**
  * This class is responsible for managing and drawing the music score
@@ -119,10 +111,6 @@ public final class ScoreView
     // The vertical distance between whole tones on the staff (e.g. A to B)
     public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().ssToPx(StaffExtents.STAFF_POSITION_OFFSET_SS);
 
-    // Runs before all HIGH_PRIORITY subscribers so the tuplet info cache is warm
-    // by the time TupletAction handlers (HIGH_PRIORITY) read it.
-    private static final int TUPLET_INFO_CACHE_PRIORITY = Message.HIGH_PRIORITY + 100;
-
     private static final String DISABLED_KEY_BINDING = "none";
 
     // Colors used to draw the music score in various states — read from UIManager for theming.
@@ -138,11 +126,6 @@ public final class ScoreView
     public static Color getSelectionColor() {
         return FlatLafProps.get(FlatLafKeys.SCORE_SELECTION_COLOR);
     }
-
-    // Cached per-notification-dispatch result of canToggleTuplet(), populated by
-    // a TUPLET_INFO_CACHE_PRIORITY handler before any TupletAction handler reads it.
-    @Nullable
-    private TupletToggleInfo cachedTupletToggleInfo = null;
 
     // Edit popup
     @Nullable
@@ -539,61 +522,13 @@ public final class ScoreView
         PlaybackController.applyPrefsDuringPlayback();
     }
 
-    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
-    public void musicSelectionDidChangeCacheTupletInfo(MusicSelectionDidChangeNotification message) {
-        cachedTupletToggleInfo = operations != null ? operations.canToggleTuplet() : null;
-    }
-
-    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
-    public void songDidChangeCacheTupletInfo(SongDidChangeNotification message) {
-        cachedTupletToggleInfo = operations != null ? operations.canToggleTuplet() : null;
-    }
-
-    @Handler
-    public void songDidChangeInvalidateLineLayouts(SongDidChangeNotification message) {
-        if (!message.hasMutationOf(FontChange.class) || song == null) {
-            return;
-        }
-
-        // Rebuild metrics before invalidating so that LineComponent.getPreferredSize()
-        // calls performLayout() with up-to-date measurements during the layout pass.
-        rebuildLyricRenderMetrics();
-
-        for (var i = 0; i < song.lineCount(); i++) {
-            var lineComponent = getLineComponent(i);
-
-            if (lineComponent != null) {
-                lineComponent.invalidateLayout();
-            }
-        }
-    }
-
-    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
-    public void documentDidLoadCacheTupletInfo(DocumentDidLoadNotification message) {
-        cachedTupletToggleInfo = operations != null ? operations.canToggleTuplet() : null;
-    }
-
-    @Handler
-    public void prefsDidChange(PrefsDidChangeNotification message) {
-        switch (message.getKey()) {
-            case LOOP_PLAYBACK, PLAY_WITH_REPEATS -> syncPlaybackPrefs();
-            case PAGE_SIZE -> {
-                if (song != null) {
-                    updatePageLayout(ScaleContext.getInstance().ssToRoundedPx(song.getLineWidthSs()));
-                }
-            }
-            default -> { }
-        }
-    }
-
-    @Handler
-    public void textEditingDidChange(TextEditingDidChangeNotification message) {
+    public void setKeyBindingsEnabled(boolean enabled) {
         var inputMap = getInputMap(JComponent.WHEN_FOCUSED);
 
-        if (message.isEditing()) {
-            scoreKeyBindings.keySet().forEach(keyStroke -> inputMap.put(keyStroke, DISABLED_KEY_BINDING));
-        } else {
+        if (enabled) {
             scoreKeyBindings.forEach(inputMap::put);
+        } else {
+            scoreKeyBindings.keySet().forEach(keyStroke -> inputMap.put(keyStroke, DISABLED_KEY_BINDING));
         }
     }
 
@@ -739,53 +674,12 @@ public final class ScoreView
         return selectionCoordinator.getSelectionSize();
     }
 
-    private MusicEditOperations requireOperations() {
-        if (operations == null) {
-            throw RuntimeError.exit("operations not initialized");
-        }
-
-        return operations;
-    }
-
-    public boolean canToggleBeaming() {
-        return requireOperations().canToggleBeaming();
-    }
-
-    public boolean canToggleTie() {
-        return requireOperations().canToggleTie();
-    }
-
-    public TupletToggleInfo canToggleTuplet() {
-        //noinspection ReplaceNullCheck
-        if (cachedTupletToggleInfo != null) {
-            return cachedTupletToggleInfo;
-        }
-
-        return requireOperations().canToggleTuplet();
-    }
-
-    public boolean canRemoveDynamicsFromSelection() {
-        return requireOperations().canRemoveDynamicsFromSelection();
-    }
-
-    public EndingValidationResult canMakeFirstSecondEnding() {
-        return requireOperations().canMakeFirstSecondEnding();
-    }
-
-    public boolean canChangeTempo() {
-        return requireOperations().canChangeTempo();
-    }
-
-    public boolean canToggleTrill() {
-        return requireOperations().canToggleTrill();
-    }
-
-    public boolean canFlipStemDirection() {
-        return requireOperations().canFlipStemDirection();
-    }
-
     public boolean isInitialized() {
         return song != null;
+    }
+
+    public @Nullable ScoreViewController getMessageCoordinator() {
+        return messageCoordinator;
     }
 
     @Override

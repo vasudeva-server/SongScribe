@@ -56,8 +56,10 @@ public final class TempoChangeAction extends UIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        if (updateEnabledState()) {
-            setEnabled(message.getScore().canChangeTempo());
+        var ctrl = message.getScoreViewController();
+
+        if (ctrl != null && updateEnabledState()) {
+            setEnabled(ctrl.canChangeTempo());
         }
     }
 

@@ -35,11 +35,11 @@ import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.ScoreViewController;
 
 public final class ToggleNotationAction extends UIAction {
 
-    private final Predicate<? super ScoreView> canToggle;
+    private final Predicate<? super ScoreViewController> canToggle;
     private final Supplier<? extends Message> commandFactory;
 
     public static ToggleNotationAction createBeamAction() {
@@ -50,7 +50,7 @@ public final class ToggleNotationAction extends UIAction {
             "toggle-beam",
             Strings.get(Strings.ACTION_BEAM_TOGGLE_TOOLTIP),
             KeyEvent.VK_B,
-            ScoreView::canToggleBeaming,
+            ScoreViewController::canToggleBeaming,
             ToggleBeamCommand::new
         );
     }
@@ -63,7 +63,7 @@ public final class ToggleNotationAction extends UIAction {
             "toggle-tie",
             Strings.get(Strings.ACTION_TIE_TOGGLE_TOOLTIP),
             KeyEvent.VK_T,
-            ScoreView::canToggleTie,
+            ScoreViewController::canToggleTie,
             ToggleTieCommand::new
         );
     }
@@ -75,7 +75,7 @@ public final class ToggleNotationAction extends UIAction {
         String actionCommand,
         String tooltip,
         int virtualKey,
-        Predicate<? super ScoreView> canToggle,
+        Predicate<? super ScoreViewController> canToggle,
         Supplier<? extends Message> commandFactory
     ) {
         super(
@@ -116,10 +116,10 @@ public final class ToggleNotationAction extends UIAction {
     }
 
     private void handleChange() {
-        var score = getScore();
+        var ctrl = getScoreViewController();
 
-        if (score != null && score.isInitialized() && updateEnabledState()) {
-            setEnabled(canToggle.test(score));
+        if (ctrl != null && updateEnabledState()) {
+            setEnabled(canToggle.test(ctrl));
         }
     }
 

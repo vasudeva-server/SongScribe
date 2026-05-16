@@ -49,6 +49,7 @@ import songscribe.music.Song;
 import songscribe.music.StaffElement;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.playback.PlaybackController;
@@ -258,6 +259,11 @@ public class UIAction extends AbstractAction {
 
     protected @Nullable ScoreView getScore() {
         return mainFrame.getScore();
+    }
+
+    protected @Nullable ScoreViewController getScoreViewController() {
+        var score = getScore();
+        return score != null ? score.getMessageCoordinator() : null;
     }
 
     protected ScoreView requireScore() {

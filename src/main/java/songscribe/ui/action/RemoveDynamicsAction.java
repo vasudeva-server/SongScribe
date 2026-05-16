@@ -56,8 +56,10 @@ public final class RemoveDynamicsAction extends UIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        if (updateEnabledState()) {
-            setEnabled(message.getScore().canRemoveDynamicsFromSelection());
+        var ctrl = message.getScoreViewController();
+
+        if (ctrl != null && updateEnabledState()) {
+            setEnabled(ctrl.canRemoveDynamicsFromSelection());
         }
     }
 

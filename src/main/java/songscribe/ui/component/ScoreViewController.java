@@ -24,6 +24,8 @@ import module java.desktop;
 
 import net.engio.mbassy.listener.Handler;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -47,13 +49,17 @@ import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.MetadataChange;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.ControlDidChangeNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
+import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
+import songscribe.message.notification.TextEditingDidChangeNotification;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.music.Line;
 import songscribe.music.Lyric;
 import songscribe.ui.EndingConfirms;
@@ -65,9 +71,12 @@ import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.SelectionCoordinator;
+import songscribe.music.EndingValidationResult;
+import songscribe.ui.selection.TupletToggleInfo;
 
 /**
  * Coordinates message handling for the ScoreView component.
@@ -78,11 +87,21 @@ public final class ScoreViewController {
     // Delay in milliseconds for debouncing repaint when layout changes occur
     private static final int REPAINT_DEBOUNCE_DELAY_MS = 300;
 
+    // Runs before all HIGH_PRIORITY subscribers so the tuplet info cache is warm
+    // by the time TupletAction handlers (HIGH_PRIORITY) read it.
+    static final int TUPLET_INFO_CACHE_PRIORITY = Message.HIGH_PRIORITY + 100;
+
     private final ScoreView score;
+    private final ScoreActions scoreActions;
     private MusicEditOperations operations;
     private final EditModeManager editModeManager;
     private final SelectionCoordinator selectionCoordinator;
     private final ClipboardManager clipboardManager;
+
+    // Cached per-notification-dispatch result of canToggleTuplet(), populated by
+    // a TUPLET_INFO_CACHE_PRIORITY handler before any TupletAction handler reads it.
+    @Nullable
+    private TupletToggleInfo cachedTupletToggleInfo = null;
 
     // Timer for debouncing repaints when layout changes occur
     private final Timer repaintDebounceTimer;
@@ -95,6 +114,7 @@ public final class ScoreViewController {
         ClipboardManager clipboardManager
     ) {
         this.score = score;
+        this.scoreActions = score;
         this.operations = operations;
         this.editModeManager = editModeManager;
         this.selectionCoordinator = selectionCoordinator;
@@ -214,6 +234,105 @@ public final class ScoreViewController {
     @Handler
     public void handleFlipStemDirection(FlipStemDirectionCommand message) {
         operations.flipStemDirection();
+    }
+
+    @Nullable
+    TupletToggleInfo getCachedTupletToggleInfo() {
+        return cachedTupletToggleInfo;
+    }
+
+    public boolean canToggleBeaming() {
+        return operations.canToggleBeaming();
+    }
+
+    public boolean canToggleTie() {
+        return operations.canToggleTie();
+    }
+
+    public TupletToggleInfo canToggleTuplet() {
+        var cached = cachedTupletToggleInfo;
+
+        if (cached != null) {
+            return cached;
+        }
+
+        return operations.canToggleTuplet();
+    }
+
+    public boolean canRemoveDynamicsFromSelection() {
+        return operations.canRemoveDynamicsFromSelection();
+    }
+
+    public EndingValidationResult canMakeFirstSecondEnding() {
+        return operations.canMakeFirstSecondEnding();
+    }
+
+    public boolean canChangeTempo() {
+        return operations.canChangeTempo();
+    }
+
+    public boolean canToggleTrill() {
+        return operations.canToggleTrill();
+    }
+
+    public boolean canFlipStemDirection() {
+        return operations.canFlipStemDirection();
+    }
+
+    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
+    public void musicSelectionDidChangeCacheTupletInfo(MusicSelectionDidChangeNotification message) {
+        cachedTupletToggleInfo = operations.canToggleTuplet();
+    }
+
+    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
+    public void songDidChangeCacheTupletInfo(SongDidChangeNotification message) {
+        cachedTupletToggleInfo = operations.canToggleTuplet();
+    }
+
+    @Handler
+    public void songDidChangeInvalidateLineLayouts(SongDidChangeNotification message) {
+        if (!message.hasMutationOf(FontChange.class)) {
+            return;
+        }
+
+        var song = score.getSong();
+
+        // Rebuild metrics before invalidating so that LineComponent.getPreferredSize()
+        // calls performLayout() with up-to-date measurements during the layout pass.
+        scoreActions.rebuildLyricRenderMetrics();
+
+        for (var i = 0; i < song.lineCount(); i++) {
+            var lineComponent = score.getLineComponent(i);
+
+            if (lineComponent != null) {
+                lineComponent.invalidateLayout();
+            }
+        }
+    }
+
+    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
+    public void documentDidLoadCacheTupletInfo(DocumentDidLoadNotification message) {
+        cachedTupletToggleInfo = operations.canToggleTuplet();
+    }
+
+    @Handler
+    public void prefsDidChange(PrefsDidChangeNotification message) {
+        switch (message.getKey()) {
+            case LOOP_PLAYBACK, PLAY_WITH_REPEATS -> scoreActions.syncPlaybackPrefs();
+            case PAGE_SIZE -> {
+                if (score.isInitialized()) {
+                    scoreActions.updatePageLayout(
+                        ScaleContext.getInstance().ssToRoundedPx(score.getSong().getLineWidthSs())
+                    );
+                }
+            }
+            default -> { }
+        }
+    }
+
+    @Handler
+    public void textEditingDidChange(TextEditingDidChangeNotification message) {
+        scoreActions.setKeyBindingsEnabled(!message.isEditing());
     }
 
     @Handler

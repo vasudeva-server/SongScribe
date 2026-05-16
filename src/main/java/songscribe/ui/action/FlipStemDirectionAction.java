@@ -57,8 +57,10 @@ public final class FlipStemDirectionAction extends UIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        if (updateEnabledState()) {
-            setEnabled(message.getScore().canFlipStemDirection());
+        var ctrl = message.getScoreViewController();
+
+        if (ctrl != null && updateEnabledState()) {
+            setEnabled(ctrl.canFlipStemDirection());
         }
     }
 

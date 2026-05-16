@@ -162,7 +162,7 @@ class TupletActionTest extends UnitTest {
 
     /** Fires {@code musicSelectionDidChange} on all seven actions with the given tuplet state. */
     private void fireAll(TupletToggleInfo info) {
-        when(env.score().canToggleTuplet()).thenReturn(info);
+        when(env.ctrl().canToggleTuplet()).thenReturn(info);
         var notification = new MusicSelectionDidChangeNotification(env.score());
 
         removeAction.musicSelectionDidChange(notification);

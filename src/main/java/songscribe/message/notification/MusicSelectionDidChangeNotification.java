@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.message.Message;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.selection.SelectionCoordinator.LyricSelection;
 
 public class MusicSelectionDidChangeNotification extends Message {
@@ -59,5 +60,9 @@ public class MusicSelectionDidChangeNotification extends Message {
 
     public ScoreView getScore() {
         return score;
+    }
+
+    public @Nullable ScoreViewController getScoreViewController() {
+        return score.getMessageCoordinator();
     }
 }
