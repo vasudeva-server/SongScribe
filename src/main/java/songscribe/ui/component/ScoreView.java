@@ -731,7 +731,11 @@ public final class ScoreView
 
         // Interactive-only setup below
 
-        operations = new MusicEditOperations(song, selectionCoordinator);
+        if (operations == null) {
+            operations = new MusicEditOperations(song, selectionCoordinator);
+        } else {
+            operations.setSong(song);
+        }
 
         if (controller == null) {
             controller = new ScoreViewController(
@@ -741,8 +745,6 @@ public final class ScoreView
                 selectionCoordinator,
                 clipboardManager
             );
-        } else {
-            controller.setOperations(operations);
         }
 
         PlaybackController.stop();

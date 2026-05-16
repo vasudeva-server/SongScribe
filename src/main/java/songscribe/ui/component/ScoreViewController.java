@@ -59,6 +59,7 @@ import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.music.Line;
 import songscribe.music.Lyric;
@@ -89,11 +90,11 @@ public final class ScoreViewController {
 
     // Runs before all HIGH_PRIORITY subscribers so the tuplet info cache is warm
     // by the time TupletAction handlers (HIGH_PRIORITY) read it.
-    static final int TUPLET_INFO_CACHE_PRIORITY = Message.HIGH_PRIORITY + 100;
+    private static final int TUPLET_INFO_CACHE_PRIORITY = Message.HIGH_PRIORITY + 100;
 
     private final ScoreView score;
     private final ScoreActions scoreActions;
-    private MusicEditOperations operations;
+    private final MusicEditOperations operations;
     private final EditModeManager editModeManager;
     private final SelectionCoordinator selectionCoordinator;
     private final ClipboardManager clipboardManager;
@@ -126,8 +127,8 @@ public final class ScoreViewController {
         MessageCenter.subscribe(this);
     }
 
-    public void setOperations(MusicEditOperations operations) {
-        this.operations = operations;
+    private void warmTupletCache() {
+        cachedTupletToggleInfo = operations.canToggleTuplet();
     }
 
     @Handler
@@ -236,11 +237,6 @@ public final class ScoreViewController {
         operations.flipStemDirection();
     }
 
-    @Nullable
-    TupletToggleInfo getCachedTupletToggleInfo() {
-        return cachedTupletToggleInfo;
-    }
-
     public boolean canToggleBeaming() {
         return operations.canToggleBeaming();
     }
@@ -281,26 +277,29 @@ public final class ScoreViewController {
 
     @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
     public void musicSelectionDidChangeCacheTupletInfo(MusicSelectionDidChangeNotification message) {
-        cachedTupletToggleInfo = operations.canToggleTuplet();
+        warmTupletCache();
     }
 
     @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
     public void documentDidLoadCacheTupletInfo(DocumentDidLoadNotification message) {
-        cachedTupletToggleInfo = operations.canToggleTuplet();
+        warmTupletCache();
     }
 
     @Handler
     public void prefsDidChange(PrefsDidChangeNotification message) {
-        switch (message.getKey()) {
-            case LOOP_PLAYBACK, PLAY_WITH_REPEATS -> scoreActions.syncPlaybackPrefs();
-            case PAGE_SIZE -> {
-                if (score.isInitialized()) {
-                    scoreActions.updatePageLayout(
-                        ScaleContext.getInstance().ssToRoundedPx(score.getSong().getLineWidthSs())
-                    );
-                }
-            }
-            default -> { }
+        // PrefsKey.ALL fires on resetAll() and is the only signal that any
+        // specific key may have changed — handle it for every affected effect.
+        var key = message.getKey();
+        var all = key == PrefsKey.ALL;
+
+        if (all || key == PrefsKey.LOOP_PLAYBACK || key == PrefsKey.PLAY_WITH_REPEATS) {
+            scoreActions.syncPlaybackPrefs();
+        }
+
+        if ((all || key == PrefsKey.PAGE_SIZE) && score.isInitialized()) {
+            scoreActions.updatePageLayout(
+                ScaleContext.getInstance().ssToRoundedPx(score.getSong().getLineWidthSs())
+            );
         }
     }
 
@@ -311,7 +310,7 @@ public final class ScoreViewController {
 
     @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
     public void songDidChange(SongDidChangeNotification message) {
-        cachedTupletToggleInfo = operations.canToggleTuplet();
+        warmTupletCache();
 
         var mainPanel = score.getMainPanel();
 

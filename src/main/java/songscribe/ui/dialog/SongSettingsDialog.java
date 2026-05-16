@@ -1134,6 +1134,11 @@ public class SongSettingsDialog extends StandardDialog {
                 return;
             }
 
+            // Bangla and footnote fonts are document-level (Song.{bangla,footnote}Font*),
+            // but this dialog only exposes the four primary fonts. Passing null leaves the
+            // existing per-document values untouched in Song.fontDidChange and
+            // RenderResources.fontDidChange.
+            // TODO: add bangla and footnote font rows here and to ResetFontsAction.
             getSong().postWithModification(new FontDidChangeNotification(
                 titleFontPreview.getFont(),
                 lyricsFontPreview.getFont(),

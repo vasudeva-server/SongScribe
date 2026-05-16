@@ -1421,31 +1421,37 @@ public final class Song {
     public void fontDidChange(FontDidChangeNotification update) {
         withModification(() -> {
             var titleFont = update.getTitleFont();
+
             if (titleFont != null) {
                 setTitleFont(titleFont.getPSName(), titleFont.getSize());
             }
 
             var lyricsFont = update.getLyricsFont();
+
             if (lyricsFont != null) {
                 setLyricsFont(lyricsFont.getPSName(), lyricsFont.getSize());
             }
 
             var attributionFont = update.getAttributionFont();
+
             if (attributionFont != null) {
                 setAttributionFont(attributionFont.getPSName(), attributionFont.getSize());
             }
 
             var annotationFont = update.getAnnotationFont();
+
             if (annotationFont != null) {
                 setAnnotationFont(annotationFont.getPSName(), annotationFont.getSize());
             }
 
             var banglaFont = update.getBanglaFont();
+
             if (banglaFont != null) {
                 setBanglaFont(banglaFont.getPSName(), banglaFont.getSize());
             }
 
             var footnoteFont = update.getFootnoteFont();
+
             if (footnoteFont != null) {
                 setFootnoteFont(footnoteFont.getPSName(), footnoteFont.getSize());
             }

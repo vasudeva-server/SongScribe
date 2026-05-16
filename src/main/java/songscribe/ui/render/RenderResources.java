@@ -22,6 +22,8 @@ package songscribe.ui.render;
 
 import java.awt.Font;
 import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -61,44 +63,55 @@ public final class RenderResources {
 
     private RenderResources() {
         var prefs = Prefs.getInstance();
+        var g = scratchGraphics();
+        try {
+            titleFont = MyFontUtils.createFont(
+                prefs.getString(PrefsKey.TITLE_FONT),
+                prefs.getInt(PrefsKey.TITLE_FONT_SIZE)
+            );
+            titleFontMetrics = g.getFontMetrics(titleFont);
 
-        titleFont = MyFontUtils.createFont(
-            prefs.getString(PrefsKey.TITLE_FONT),
-            prefs.getInt(PrefsKey.TITLE_FONT_SIZE)
-        );
-        titleFontMetrics = MyFontUtils.getFontMetrics(titleFont);
+            lyricsFont = MyFontUtils.createFont(
+                prefs.getString(PrefsKey.LYRICS_FONT),
+                prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)
+            );
+            lyricsFontMetrics = g.getFontMetrics(lyricsFont);
 
-        lyricsFont = MyFontUtils.createFont(
-            prefs.getString(PrefsKey.LYRICS_FONT),
-            prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)
-        );
-        lyricsFontMetrics = MyFontUtils.getFontMetrics(lyricsFont);
+            attributionFont = MyFontUtils.createFont(
+                prefs.getString(PrefsKey.ATTRIBUTION_FONT),
+                prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)
+            );
+            attributionFontMetrics = g.getFontMetrics(attributionFont);
 
-        attributionFont = MyFontUtils.createFont(
-            prefs.getString(PrefsKey.ATTRIBUTION_FONT),
-            prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)
-        );
-        attributionFontMetrics = MyFontUtils.getFontMetrics(attributionFont);
+            annotationFont = MyFontUtils.createFont(
+                prefs.getString(PrefsKey.ANNOTATION_FONT),
+                prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)
+            );
+            annotationFontMetrics = g.getFontMetrics(annotationFont);
 
-        annotationFont = MyFontUtils.createFont(
-            prefs.getString(PrefsKey.ANNOTATION_FONT),
-            prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)
-        );
-        annotationFontMetrics = MyFontUtils.getFontMetrics(annotationFont);
+            banglaFont = MyFontUtils.createFont(
+                prefs.getString(PrefsKey.BANGLA_FONT),
+                prefs.getInt(PrefsKey.BANGLA_FONT_SIZE)
+            );
+            banglaFontMetrics = g.getFontMetrics(banglaFont);
 
-        banglaFont = MyFontUtils.createFont(
-            prefs.getString(PrefsKey.BANGLA_FONT),
-            prefs.getInt(PrefsKey.BANGLA_FONT_SIZE)
-        );
-        banglaFontMetrics = MyFontUtils.getFontMetrics(banglaFont);
-
-        footnoteFont = MyFontUtils.createFont(
-            prefs.getString(PrefsKey.FOOTNOTE_FONT),
-            prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE)
-        );
-        footnoteFontMetrics = MyFontUtils.getFontMetrics(footnoteFont);
+            footnoteFont = MyFontUtils.createFont(
+                prefs.getString(PrefsKey.FOOTNOTE_FONT),
+                prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE)
+            );
+            footnoteFontMetrics = g.getFontMetrics(footnoteFont);
+        } finally {
+            g.dispose();
+        }
 
         MessageCenter.subscribe(this);
+    }
+
+    // Allocating one BufferedImage per metrics lookup is wasteful when several
+    // fonts are measured in a single pass; callers share one scratch Graphics
+    // and dispose it after the batch.
+    private static Graphics scratchGraphics() {
+        return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).getGraphics();
     }
 
     public static Font getTitleFont() {
@@ -151,34 +164,39 @@ public final class RenderResources {
 
     @Handler
     public void fontDidChange(FontDidChangeNotification message) {
-        if (message.getTitleFont() != null) {
-            titleFont = message.getTitleFont();
-            titleFontMetrics = MyFontUtils.getFontMetrics(titleFont);
-        }
+        var g = scratchGraphics();
+        try {
+            if (message.getTitleFont() != null) {
+                titleFont = message.getTitleFont();
+                titleFontMetrics = g.getFontMetrics(titleFont);
+            }
 
-        if (message.getLyricsFont() != null) {
-            lyricsFont = message.getLyricsFont();
-            lyricsFontMetrics = MyFontUtils.getFontMetrics(lyricsFont);
-        }
+            if (message.getLyricsFont() != null) {
+                lyricsFont = message.getLyricsFont();
+                lyricsFontMetrics = g.getFontMetrics(lyricsFont);
+            }
 
-        if (message.getAttributionFont() != null) {
-            attributionFont = message.getAttributionFont();
-            attributionFontMetrics = MyFontUtils.getFontMetrics(attributionFont);
-        }
+            if (message.getAttributionFont() != null) {
+                attributionFont = message.getAttributionFont();
+                attributionFontMetrics = g.getFontMetrics(attributionFont);
+            }
 
-        if (message.getAnnotationFont() != null) {
-            annotationFont = message.getAnnotationFont();
-            annotationFontMetrics = MyFontUtils.getFontMetrics(annotationFont);
-        }
+            if (message.getAnnotationFont() != null) {
+                annotationFont = message.getAnnotationFont();
+                annotationFontMetrics = g.getFontMetrics(annotationFont);
+            }
 
-        if (message.getBanglaFont() != null) {
-            banglaFont = message.getBanglaFont();
-            banglaFontMetrics = MyFontUtils.getFontMetrics(banglaFont);
-        }
+            if (message.getBanglaFont() != null) {
+                banglaFont = message.getBanglaFont();
+                banglaFontMetrics = g.getFontMetrics(banglaFont);
+            }
 
-        if (message.getFootnoteFont() != null) {
-            footnoteFont = message.getFootnoteFont();
-            footnoteFontMetrics = MyFontUtils.getFontMetrics(footnoteFont);
+            if (message.getFootnoteFont() != null) {
+                footnoteFont = message.getFootnoteFont();
+                footnoteFontMetrics = g.getFontMetrics(footnoteFont);
+            }
+        } finally {
+            g.dispose();
         }
     }
 
@@ -188,23 +206,27 @@ public final class RenderResources {
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
         var song = message.getSong();
+        var g = scratchGraphics();
+        try {
+            titleFont = MyFontUtils.createFont(song.getTitleFontName(), song.getTitleFontSize());
+            titleFontMetrics = g.getFontMetrics(titleFont);
 
-        titleFont = MyFontUtils.createFont(song.getTitleFontName(), song.getTitleFontSize());
-        titleFontMetrics = MyFontUtils.getFontMetrics(titleFont);
+            lyricsFont = MyFontUtils.createFont(song.getLyricsFontName(), song.getLyricsFontSize());
+            lyricsFontMetrics = g.getFontMetrics(lyricsFont);
 
-        lyricsFont = MyFontUtils.createFont(song.getLyricsFontName(), song.getLyricsFontSize());
-        lyricsFontMetrics = MyFontUtils.getFontMetrics(lyricsFont);
+            attributionFont = MyFontUtils.createFont(song.getAttributionFontName(), song.getAttributionFontSize());
+            attributionFontMetrics = g.getFontMetrics(attributionFont);
 
-        attributionFont = MyFontUtils.createFont(song.getAttributionFontName(), song.getAttributionFontSize());
-        attributionFontMetrics = MyFontUtils.getFontMetrics(attributionFont);
+            annotationFont = MyFontUtils.createFont(song.getAnnotationFontName(), song.getAnnotationFontSize());
+            annotationFontMetrics = g.getFontMetrics(annotationFont);
 
-        annotationFont = MyFontUtils.createFont(song.getAnnotationFontName(), song.getAnnotationFontSize());
-        annotationFontMetrics = MyFontUtils.getFontMetrics(annotationFont);
+            banglaFont = MyFontUtils.createFont(song.getBanglaFontName(), song.getBanglaFontSize());
+            banglaFontMetrics = g.getFontMetrics(banglaFont);
 
-        banglaFont = MyFontUtils.createFont(song.getBanglaFontName(), song.getBanglaFontSize());
-        banglaFontMetrics = MyFontUtils.getFontMetrics(banglaFont);
-
-        footnoteFont = MyFontUtils.createFont(song.getFootnoteFontName(), song.getFootnoteFontSize());
-        footnoteFontMetrics = MyFontUtils.getFontMetrics(footnoteFont);
+            footnoteFont = MyFontUtils.createFont(song.getFootnoteFontName(), song.getFootnoteFontSize());
+            footnoteFontMetrics = g.getFontMetrics(footnoteFont);
+        } finally {
+            g.dispose();
+        }
     }
 }

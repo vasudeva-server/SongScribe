@@ -142,7 +142,7 @@ public final class ViewIO {
         }
 
         public int getTitleFontSize() {
-            return Integer.parseInt(title.size);
+            return title.sizeAsInt();
         }
 
         public String getLyricsFontName() {
@@ -150,7 +150,7 @@ public final class ViewIO {
         }
 
         public int getLyricsFontSize() {
-            return Integer.parseInt(lyrics.size);
+            return lyrics.sizeAsInt();
         }
 
         public String getAttributionFontName() {
@@ -158,7 +158,7 @@ public final class ViewIO {
         }
 
         public int getAttributionFontSize() {
-            return Integer.parseInt(general.size);
+            return general.sizeAsInt();
         }
 
         public String getAnnotationFontName() {
@@ -166,7 +166,7 @@ public final class ViewIO {
         }
 
         public int getAnnotationFontSize() {
-            return Integer.parseInt(annotation.size);
+            return annotation.sizeAsInt();
         }
 
         public String getBanglaFontName() {
@@ -174,7 +174,7 @@ public final class ViewIO {
         }
 
         public int getBanglaFontSize() {
-            return Integer.parseInt(bangla.size);
+            return bangla.sizeAsInt();
         }
 
         public String getFootnoteFontName() {
@@ -182,7 +182,7 @@ public final class ViewIO {
         }
 
         public int getFootnoteFontSize() {
-            return Integer.parseInt(footnote.size);
+            return footnote.sizeAsInt();
         }
 
         private static class StringFont {
@@ -192,6 +192,10 @@ public final class ViewIO {
             StringFont(String name, String size) {
                 this.name = name;
                 this.size = size;
+            }
+
+            int sizeAsInt() {
+                return Integer.parseInt(size);
             }
 
         }

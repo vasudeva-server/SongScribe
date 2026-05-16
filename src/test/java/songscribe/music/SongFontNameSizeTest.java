@@ -35,8 +35,13 @@ import songscribe.util.MyFontUtils;
  */
 class SongFontNameSizeTest extends UnitTest {
 
-    private static final int TEST_FONT_SIZE = 20;
     private static final String TEST_FONT_NAME = "LatoPlus-Bold";
+
+    // Distinct per-font sizes prove fontDidChange routes each Font to the right field.
+    private static final int TEST_TITLE_FONT_SIZE = 20;
+    private static final int TEST_LYRICS_FONT_SIZE = 21;
+    private static final int TEST_ATTRIBUTION_FONT_SIZE = 22;
+    private static final int TEST_ANNOTATION_FONT_SIZE = 23;
 
     private Song song;
 
@@ -49,48 +54,48 @@ class SongFontNameSizeTest extends UnitTest {
 
     @Test
     void testSetTitleFontMaintainsInvariant() {
-        song.setTitleFont(TEST_FONT_NAME, TEST_FONT_SIZE);
+        song.setTitleFont(TEST_FONT_NAME, TEST_TITLE_FONT_SIZE);
         assertThat(song.getTitleFontName()).isEqualTo(TEST_FONT_NAME);
-        assertThat(song.getTitleFontSize()).isEqualTo(TEST_FONT_SIZE);
+        assertThat(song.getTitleFontSize()).isEqualTo(TEST_TITLE_FONT_SIZE);
     }
 
     @Test
     void testSetLyricsFontMaintainsInvariant() {
-        song.setLyricsFont(TEST_FONT_NAME, TEST_FONT_SIZE);
+        song.setLyricsFont(TEST_FONT_NAME, TEST_LYRICS_FONT_SIZE);
         assertThat(song.getLyricsFontName()).isEqualTo(TEST_FONT_NAME);
-        assertThat(song.getLyricsFontSize()).isEqualTo(TEST_FONT_SIZE);
+        assertThat(song.getLyricsFontSize()).isEqualTo(TEST_LYRICS_FONT_SIZE);
     }
 
     @Test
     void testSetAttributionFontMaintainsInvariant() {
-        song.setAttributionFont(TEST_FONT_NAME, TEST_FONT_SIZE);
+        song.setAttributionFont(TEST_FONT_NAME, TEST_ATTRIBUTION_FONT_SIZE);
         assertThat(song.getAttributionFontName()).isEqualTo(TEST_FONT_NAME);
-        assertThat(song.getAttributionFontSize()).isEqualTo(TEST_FONT_SIZE);
+        assertThat(song.getAttributionFontSize()).isEqualTo(TEST_ATTRIBUTION_FONT_SIZE);
     }
 
     @Test
     void testSetAnnotationFontMaintainsInvariant() {
-        song.setAnnotationFont(TEST_FONT_NAME, TEST_FONT_SIZE);
+        song.setAnnotationFont(TEST_FONT_NAME, TEST_ANNOTATION_FONT_SIZE);
         assertThat(song.getAnnotationFontName()).isEqualTo(TEST_FONT_NAME);
-        assertThat(song.getAnnotationFontSize()).isEqualTo(TEST_FONT_SIZE);
+        assertThat(song.getAnnotationFontSize()).isEqualTo(TEST_ANNOTATION_FONT_SIZE);
     }
 
     // --- fontDidChange path ---
 
     @Test
     void testFontDidChangeMaintainsInvariantForAllFonts() {
-        var titleFont = MyFontUtils.createFont(TEST_FONT_NAME, TEST_FONT_SIZE);
-        var lyricsFont = MyFontUtils.createFont(TEST_FONT_NAME, TEST_FONT_SIZE + 1);
-        var attributionFont = MyFontUtils.createFont(TEST_FONT_NAME, TEST_FONT_SIZE + 2);
-        var annotationFont = MyFontUtils.createFont(TEST_FONT_NAME, TEST_FONT_SIZE + 3);
+        var titleFont = MyFontUtils.createFont(TEST_FONT_NAME, TEST_TITLE_FONT_SIZE);
+        var lyricsFont = MyFontUtils.createFont(TEST_FONT_NAME, TEST_LYRICS_FONT_SIZE);
+        var attributionFont = MyFontUtils.createFont(TEST_FONT_NAME, TEST_ATTRIBUTION_FONT_SIZE);
+        var annotationFont = MyFontUtils.createFont(TEST_FONT_NAME, TEST_ANNOTATION_FONT_SIZE);
 
         song.fontDidChange(new FontDidChangeNotification(titleFont, lyricsFont, attributionFont, annotationFont, null, null));
 
         // fontDidChange decomposes Font via getPSName()/getSize(), so size must match.
-        assertThat(song.getTitleFontSize()).isEqualTo(TEST_FONT_SIZE);
-        assertThat(song.getLyricsFontSize()).isEqualTo(TEST_FONT_SIZE + 1);
-        assertThat(song.getAttributionFontSize()).isEqualTo(TEST_FONT_SIZE + 2);
-        assertThat(song.getAnnotationFontSize()).isEqualTo(TEST_FONT_SIZE + 3);
+        assertThat(song.getTitleFontSize()).isEqualTo(TEST_TITLE_FONT_SIZE);
+        assertThat(song.getLyricsFontSize()).isEqualTo(TEST_LYRICS_FONT_SIZE);
+        assertThat(song.getAttributionFontSize()).isEqualTo(TEST_ATTRIBUTION_FONT_SIZE);
+        assertThat(song.getAnnotationFontSize()).isEqualTo(TEST_ANNOTATION_FONT_SIZE);
     }
 
     // --- loadFrom path ---

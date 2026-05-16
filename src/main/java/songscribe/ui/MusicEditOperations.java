@@ -53,7 +53,9 @@ public final class MusicEditOperations {
 
     private static final int MIN_CONTENT_ELEMENTS = 4;
 
-    private final Song song;
+    // Mutable so the same MusicEditOperations instance can outlive a document
+    // load — ScoreView holds it across setSong(), avoiding stale references.
+    private Song song;
     private final SelectionCoordinator coordinator;
 
     public MusicEditOperations(
@@ -62,6 +64,10 @@ public final class MusicEditOperations {
     ) {
         this.song = song;
         this.coordinator = coordinator;
+    }
+
+    public void setSong(Song song) {
+        this.song = song;
     }
 
     // ========== Beaming Operations ==========
