@@ -186,7 +186,7 @@ public final class ScoreView
 
     // Coordinates message handling
     @Nullable
-    private ScoreViewController messageCoordinator = null;
+    private ScoreViewController controller = null;
 
     // Preferred size of the score panel
     private final Dimension preferredSizePx = new Dimension();
@@ -303,7 +303,7 @@ public final class ScoreView
 
         // Create operations and message coordinator (requires mainPanel to be set)
         operations = new MusicEditOperations(song, selectionCoordinator);
-        messageCoordinator = new ScoreViewController(
+        controller = new ScoreViewController(
             this,
             operations,
             editModeManager,
@@ -678,8 +678,8 @@ public final class ScoreView
         return song != null;
     }
 
-    public @Nullable ScoreViewController getMessageCoordinator() {
-        return messageCoordinator;
+    public @Nullable ScoreViewController getController() {
+        return controller;
     }
 
     @Override
@@ -733,8 +733,8 @@ public final class ScoreView
 
         operations = new MusicEditOperations(song, selectionCoordinator);
 
-        if (messageCoordinator == null) {
-            messageCoordinator = new ScoreViewController(
+        if (controller == null) {
+            controller = new ScoreViewController(
                 this,
                 operations,
                 editModeManager,
@@ -742,7 +742,7 @@ public final class ScoreView
                 clipboardManager
             );
         } else {
-            messageCoordinator.setOperations(operations);
+            controller.setOperations(operations);
         }
 
         PlaybackController.stop();

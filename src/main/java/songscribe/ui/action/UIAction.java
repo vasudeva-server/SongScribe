@@ -263,7 +263,7 @@ public class UIAction extends AbstractAction {
 
     protected @Nullable ScoreViewController getScoreViewController() {
         var score = getScore();
-        return score != null ? score.getMessageCoordinator() : null;
+        return score != null ? score.getController() : null;
     }
 
     protected ScoreView requireScore() {

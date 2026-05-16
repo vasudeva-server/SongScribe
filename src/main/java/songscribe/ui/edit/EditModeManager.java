@@ -37,7 +37,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * <p>
  * EditModeManager holds the state related to the preview element (the element that will be inserted),
  * including its type, duration, and accidentals. Also handles element creation, decoration,
- * and modification logic. Extracted from ScoreView.java as part of Phase 6 of the ScoreView Cleanup refactoring.
+ * and modification logic.
  */
 public final class EditModeManager {
 

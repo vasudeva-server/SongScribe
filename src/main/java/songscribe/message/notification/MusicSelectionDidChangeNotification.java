@@ -63,6 +63,6 @@ public class MusicSelectionDidChangeNotification extends Message {
     }
 
     public @Nullable ScoreViewController getScoreViewController() {
-        return score.getMessageCoordinator();
+        return score.getController();
     }
 }

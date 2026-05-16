@@ -63,7 +63,7 @@ public final class MockEnvHelper {
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
         when(mockScore.getMode()).thenReturn(Mode.EDIT);
         when(mockScore.getSelectionSize()).thenReturn(0);
-        when(mockScore.getMessageCoordinator()).thenReturn(mockCtrl);
+        when(mockScore.getController()).thenReturn(mockCtrl);
 
         return new MockEnv(mockFrame, mockScore, mockCoordinator, mockCtrl);
     }
