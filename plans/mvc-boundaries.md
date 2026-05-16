@@ -46,7 +46,7 @@ The two patterns coexist at different scales.
 | 2d | [Delete residual AWT from Song](#-phase-2d-delete-residual-awt-from-song) | ✅ Done | — |
 | 3 | [Extract ScoreViewState](#-phase-3-extract-scoreviewstate) | ✅ Done | — |
 | 4 | [Move ScoreView's @Handlers and capability queries to ScoreViewController](#-phase-4-move-scoreviews-handlers-and-capability-queries-to-scoreviewcontroller) | ✅ Done | — |
-| 5 | [Resolve duplicate SongDidChangeNotification subscription](#-phase-5-resolve-duplicate-songdidchangenotification-subscription) | ⏳ Pending | — |
+| 5 | [Resolve duplicate SongDidChangeNotification subscription](#-phase-5-resolve-duplicate-songdidchangenotification-subscription) | ✅ Done | — |
 
 Phases are independent except where noted under **BlockedBy**. Each ships as its own PR.
 
@@ -437,9 +437,9 @@ Stays on `ScoreView`:
 
 ---
 
-## ⏳ Phase 5: Resolve duplicate SongDidChangeNotification subscription
+## ✅ Phase 5: Resolve duplicate SongDidChangeNotification subscription
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** Phase 4 (the duplication disappears as a side effect; this phase is verification + any residual cleanup).  <br>
 **Recommended model/effort:** Sonnet 4.6, low effort — mostly verification of what Phase 4 already accomplished, plus any consolidation that didn't fall out cleanly.
 

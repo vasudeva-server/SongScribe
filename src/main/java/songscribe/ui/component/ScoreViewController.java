@@ -285,32 +285,6 @@ public final class ScoreViewController {
     }
 
     @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
-    public void songDidChangeCacheTupletInfo(SongDidChangeNotification message) {
-        cachedTupletToggleInfo = operations.canToggleTuplet();
-    }
-
-    @Handler
-    public void songDidChangeInvalidateLineLayouts(SongDidChangeNotification message) {
-        if (!message.hasMutationOf(FontChange.class)) {
-            return;
-        }
-
-        var song = score.getSong();
-
-        // Rebuild metrics before invalidating so that LineComponent.getPreferredSize()
-        // calls performLayout() with up-to-date measurements during the layout pass.
-        scoreActions.rebuildLyricRenderMetrics();
-
-        for (var i = 0; i < song.lineCount(); i++) {
-            var lineComponent = score.getLineComponent(i);
-
-            if (lineComponent != null) {
-                lineComponent.invalidateLayout();
-            }
-        }
-    }
-
-    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
     public void documentDidLoadCacheTupletInfo(DocumentDidLoadNotification message) {
         cachedTupletToggleInfo = operations.canToggleTuplet();
     }
@@ -335,15 +309,26 @@ public final class ScoreViewController {
         scoreActions.setKeyBindingsEnabled(!message.isEditing());
     }
 
-    @Handler
+    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
     public void songDidChange(SongDidChangeNotification message) {
+        cachedTupletToggleInfo = operations.canToggleTuplet();
+
         var mainPanel = score.getMainPanel();
 
         if (mainPanel == null) {
             return;
         }
 
-        if (hasLineLayoutMutation(message)) {
+        // Font changes require lyric metrics to be rebuilt before line layouts are
+        // invalidated so that LineComponent.getPreferredSize() calls performLayout()
+        // with up-to-date measurements during the layout pass.
+        if (message.hasMutationOf(FontChange.class)) {
+            scoreActions.rebuildLyricRenderMetrics();
+
+            for (var linePanel : mainPanel.getStaffPanel().getLinePanels()) {
+                linePanel.getLineComponent().invalidateLayout();
+            }
+        } else if (hasLineLayoutMutation(message)) {
             var staffPanel = mainPanel.getStaffPanel();
             var targetLine = message.getLine();
 
