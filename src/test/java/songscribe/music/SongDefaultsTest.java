@@ -26,41 +26,8 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
-import songscribe.util.MyFontUtils;
 
 class SongDefaultsTest extends UnitTest {
-
-    @Test
-    void testAnnotationFontMatchesPrefs() {
-        var prefs = Prefs.getInstance();
-        var expectedFont = MyFontUtils.createFont(
-            prefs.getString(PrefsKey.ANNOTATION_FONT),
-            prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)
-        );
-
-        var song = new Song();
-        assertThat(song.getAnnotationFontName())
-            .isEqualTo(expectedFont.getPSName());
-        assertThat(song.getAnnotationFontSize())
-            .isEqualTo(expectedFont.getSize());
-    }
-
-    @Test
-    void testAttributionFontMatchesPrefs() {
-        var prefs = Prefs.getInstance();
-        var expectedFont = MyFontUtils.createFont(
-            prefs.getString(PrefsKey.ATTRIBUTION_FONT),
-            prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)
-        );
-
-        var song = new Song();
-        assertThat(song.getAttributionFontName())
-            .isEqualTo(expectedFont.getPSName());
-        assertThat(song.getAttributionFontSize())
-            .isEqualTo(expectedFont.getSize());
-    }
 
     @Test
     void testDefaultAttribution() {
@@ -100,21 +67,6 @@ class SongDefaultsTest extends UnitTest {
     }
 
     @Test
-    void testLyricsFontMatchesPrefs() {
-        var prefs = Prefs.getInstance();
-        var expectedFont = MyFontUtils.createFont(
-            prefs.getString(PrefsKey.LYRICS_FONT),
-            prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)
-        );
-
-        var song = new Song();
-        assertThat(song.getLyricsFontName())
-            .isEqualTo(expectedFont.getPSName());
-        assertThat(song.getLyricsFontSize())
-            .isEqualTo(expectedFont.getSize());
-    }
-
-    @Test
     void testNewSongHasOneLine() {
         var song = new Song();
         assertThat(song.lineCount()).isEqualTo(1);
@@ -136,18 +88,4 @@ class SongDefaultsTest extends UnitTest {
         assertThat(song.isModified()).isFalse();
     }
 
-    @Test
-    void testTitleFontMatchesPrefs() {
-        var prefs = Prefs.getInstance();
-        var expectedFont = MyFontUtils.createFont(
-            prefs.getString(PrefsKey.TITLE_FONT),
-            prefs.getInt(PrefsKey.TITLE_FONT_SIZE)
-        );
-
-        var song = new Song();
-        assertThat(song.getTitleFontName())
-            .isEqualTo(expectedFont.getPSName());
-        assertThat(song.getTitleFontSize())
-            .isEqualTo(expectedFont.getSize());
-    }
 }

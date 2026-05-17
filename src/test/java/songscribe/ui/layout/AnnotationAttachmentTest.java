@@ -24,9 +24,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Song;
+import songscribe.font.DocumentFonts;
 import songscribe.music.ElementType;
-import songscribe.util.MyFontUtils;
+import songscribe.music.Song;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -37,10 +37,10 @@ class AnnotationAttachmentTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class GetContentHeightSs {
+    class ComputeContentHeightSs {
 
         @Test
-        void testReadsSongFontMetrics() {
+        void testUsesProvidedFont() {
             var song = new Song();
             var line = song.getLine(0);
             var note = ElementType.QUAVER.newInstance();
@@ -48,9 +48,10 @@ class AnnotationAttachmentTest extends UnitTest {
             note.addAttachment(attachment);
             song.withoutMutationTracking(() -> line.addElement(note));
 
-            var expected = ScaleContext.getInstance().textHeightSs(MyFontUtils.createFont(song.getAnnotationFontName(), song.getAnnotationFontSize()));
+            var font = DocumentFonts.defaultsFromPrefs().getAnnotationFont();
+            var expected = ScaleContext.getInstance().textHeightSs(font);
 
-            assertThat(attachment.getContentHeightSs()).isCloseTo(expected, within(EPSILON));
+            assertThat(attachment.computeContentHeightSs(font)).isCloseTo(expected, within(EPSILON));
         }
 
     }

@@ -56,6 +56,7 @@ import org.junit.jupiter.api.extension.TestWatcher;
 
 import songscribe.SongScribe;
 import songscribe.UnitTest;
+import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
 import songscribe.music.Song;
 import songscribe.ui.OptionDialogs;
@@ -142,6 +143,7 @@ public abstract class E2ETest {
         GuiActionRunner.execute(() -> {
             var song = new Song();
             score().setSong(song);
+            score().installDocumentFonts(DocumentFonts.defaultsFromPrefs());
         });
     }
 
@@ -723,9 +725,10 @@ public abstract class E2ETest {
      */
     protected void loadFixture(String fixtureName) throws UnexpectedException {
         var song = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-            var loaded = UnitTest.loadFixture(fixtureName);
-            score().setSong(loaded);
-            return loaded;
+            var result = UnitTest.loadFixtureResult(fixtureName);
+            score().setSong(result.song());
+            score().installDocumentFonts(result.fonts());
+            return result.song();
         }));
 
         performLayout(0);
@@ -734,9 +737,10 @@ public abstract class E2ETest {
     // -- Save/load round-trip --
 
     protected Song roundTrip(Song original) throws IOException, SAXException, ParserConfigurationException {
+        var fonts = DocumentFonts.defaultsFromPrefs();
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
-        SongIO.writeSong(original, pw);
+        SongIO.writeSong(original, fonts, pw);
         pw.flush();
         var xml = sw.toString();
 

@@ -31,6 +31,8 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import songscribe.Strings;
 import songscribe.message.SongData;
+import songscribe.font.DocumentFonts;
+import songscribe.font.DocumentFontsHolder;
 import songscribe.music.Song;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -92,7 +94,7 @@ public final class SongIO {
     private SongIO() {
     }
 
-    public static void writeSong(Song c, PrintWriter pw) {
+    public static void writeSong(Song c, DocumentFontsHolder fonts, PrintWriter pw) {
         pw.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         pw.println(
             '<' +
@@ -210,7 +212,7 @@ public final class SongIO {
 
         pw.println("  </" + XML_LINES + '>');
         pw.println("  <" + XML_VIEW + '>');
-        ViewIO.writeView(c, pw);
+        ViewIO.writeView(fonts, pw);
         pw.println("  </" + XML_VIEW + '>');
         pw.println("</" + XML_SONG + '>');
     }
@@ -644,44 +646,13 @@ public final class SongIO {
                 FormatMigrator.migratePixelsToStaffSpace(parsedLines);
             }
 
-            // Extract fonts from ViewReader (null for v1.0 files without View section).
-            // Document fonts are read as name+size strings only; the Font cache derives
-            // from those when applyXFont runs in Song.loadFrom.
-            String titleFontName = null;
-            Integer titleFontSize = null;
-            String lyricsFontName = null;
-            Integer lyricsFontSize = null;
-            String attributionFontName = null;
-            Integer attributionFontSize = null;
-            String annotationFontName = null;
-            Integer annotationFontSize = null;
-            String banglaFontName = null;
-            Integer banglaFontSize = null;
-            String footnoteFontName = null;
-            Integer footnoteFontSize = null;
-
-            if (viewReader != null) {
-                titleFontName = viewReader.getTitleFontName();
-                titleFontSize = viewReader.getTitleFontSize();
-                lyricsFontName = viewReader.getLyricsFontName();
-                lyricsFontSize = viewReader.getLyricsFontSize();
-                attributionFontName = viewReader.getAttributionFontName();
-                attributionFontSize = viewReader.getAttributionFontSize();
-                annotationFontName = viewReader.getAnnotationFontName();
-                annotationFontSize = viewReader.getAnnotationFontSize();
-                banglaFontName = viewReader.getBanglaFontName();
-                banglaFontSize = viewReader.getBanglaFontSize();
-                footnoteFontName = viewReader.getFootnoteFontName();
-                footnoteFontSize = viewReader.getFootnoteFontSize();
-            }
-
             // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
             // Layout calculation will recalculate this properly, but this provides
             // a reasonable default for any code that accesses topPadding before layout.
             if (topPaddingSs == 0) {
                 var prefs = Prefs.getInstance();
-                var titleSize = titleFontSize != null ? titleFontSize : prefs.getInt(PrefsKey.TITLE_FONT_SIZE);
-                var attributionSize = attributionFontSize != null ? attributionFontSize : prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE);
+                var titleSize = prefs.getInt(PrefsKey.TITLE_FONT_SIZE);
+                var attributionSize = prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE);
                 topPaddingSs = ((2 * titleSize) +
                     (Utils.lineCount(attribution) * attributionSize)) -
                     ScaleContext.getInstance().ssToRoundedPx(2.0);
@@ -703,18 +674,6 @@ public final class SongIO {
                 unofficialTranslation,
                 defaultKeyAccidentalCount,
                 defaultKeyType,
-                titleFontName,
-                titleFontSize,
-                lyricsFontName,
-                lyricsFontSize,
-                attributionFontName,
-                attributionFontSize,
-                annotationFontName,
-                annotationFontSize,
-                banglaFontName,
-                banglaFontSize,
-                footnoteFontName,
-                footnoteFontSize,
                 topPaddingSs,
                 attributionStartYSs,
                 rowHeightAdjustmentSs,
@@ -757,6 +716,22 @@ public final class SongIO {
             }
 
             return song;
+        }
+
+        /**
+         * Returns the document fonts parsed from the file's {@code <view>} block.
+         * For v1.0 files (which have no {@code <view>} section) and v1.1+ files
+         * whose block omits a role, the missing roles fall through to
+         * {@link DocumentFonts#defaultsFromPrefs()}.
+         * <p>
+         * Must be called after parsing completes; the result is independent of
+         * {@link #getSong()} and is the authoritative font source for the
+         * load path.
+         */
+        public DocumentFonts getDocumentFonts() {
+            return viewReader != null
+                ? viewReader.getDocumentFonts()
+                : DocumentFonts.defaultsFromPrefs();
         }
 
         /**

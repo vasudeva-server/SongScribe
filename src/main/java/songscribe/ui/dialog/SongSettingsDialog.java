@@ -32,7 +32,8 @@ import com.formdev.flatlaf.FlatClientProperties;
 
 import songscribe.Strings;
 import songscribe.error.RuntimeError;
-import songscribe.message.notification.FontDidChangeNotification;
+import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MetadataDidChangeNotification;
@@ -55,7 +56,6 @@ import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.render.RenderResources;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
@@ -1055,98 +1055,46 @@ public class SongSettingsDialog extends StandardDialog {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                var prefs = Prefs.getInstance();
-                resetFont(
-                    prefs,
-                    titleFontLabel,
-                    titleFontPreview,
-                    PrefsKey.TITLE_FONT,
-                    PrefsKey.TITLE_FONT_SIZE
-                );
-                resetFont(
-                    prefs,
-                    lyricsFontLabel,
-                    lyricsFontPreview,
-                    PrefsKey.LYRICS_FONT,
-                    PrefsKey.LYRICS_FONT_SIZE
-                );
-                resetFont(
-                    prefs,
-                    attributionFontLabel,
-                    attributionFontPreview,
-                    PrefsKey.ATTRIBUTION_FONT,
-                    PrefsKey.ATTRIBUTION_FONT_SIZE
-                );
-                resetFont(
-                    prefs,
-                    annotationFontLabel,
-                    annotationFontPreview,
-                    PrefsKey.ANNOTATION_FONT,
-                    PrefsKey.ANNOTATION_FONT_SIZE
-                );
+                applyDefaultFonts();
                 revalidate();
                 repaint();
             }
+        }
 
-            private static void resetFont(
-                Prefs prefs,
-                JLabel fontLabel,
-                JComponent preview,
-                PrefsKey fontKey,
-                PrefsKey sizeKey
-            ) {
-                var font = MyFontUtils.createFont(
-                    prefs.getString(fontKey),
-                    prefs.getInt(sizeKey)
-                );
-                fontLabel.setText(MyFontUtils.getFullFontDescription(font));
-                preview.setFont(font);
-            }
+        private void applyDefaultFonts() {
+            var defaults = DocumentFonts.defaultsFromPrefs();
+            applyFont(defaults.getFont(FontKey.TITLE),       titleFontLabel,       titleFontPreview);
+            applyFont(defaults.getFont(FontKey.LYRICS),      lyricsFontLabel,      lyricsFontPreview);
+            applyFont(defaults.getFont(FontKey.ATTRIBUTION), attributionFontLabel, attributionFontPreview);
+            applyFont(defaults.getFont(FontKey.ANNOTATION),  annotationFontLabel,  annotationFontPreview);
+        }
+
+        private static void applyFont(Font font, JLabel label, JComponent preview) {
+            label.setText(MyFontUtils.getFullFontDescription(font));
+            preview.setFont(font);
         }
 
         @Override
         protected boolean getData() {
-            var font = RenderResources.getTitleFont();
-            titleFontPreview.setFont(font);
-            titleFontLabel.setText(MyFontUtils.getFullFontDescription(font));
-
-            font = RenderResources.getLyricsFont();
-            lyricsFontPreview.setFont(font);
-            lyricsFontLabel.setText(MyFontUtils.getFullFontDescription(font));
-
-            font = RenderResources.getAttributionFont();
-            attributionFontPreview.setFont(font);
-            attributionFontLabel.setText(MyFontUtils.getFullFontDescription(font));
-
-            font = RenderResources.getAnnotationFont();
-            annotationFontPreview.setFont(font);
-            annotationFontLabel.setText(MyFontUtils.getFullFontDescription(font));
-
+            var fonts = requireScore().getDocumentFonts();
+            applyFont(fonts.getFont(FontKey.TITLE),       titleFontLabel,       titleFontPreview);
+            applyFont(fonts.getFont(FontKey.LYRICS),      lyricsFontLabel,      lyricsFontPreview);
+            applyFont(fonts.getFont(FontKey.ATTRIBUTION), attributionFontLabel, attributionFontPreview);
+            applyFont(fonts.getFont(FontKey.ANNOTATION),  annotationFontLabel,  annotationFontPreview);
             return true;
         }
 
         @Override
         protected void setData() {
-            if (titleFontPreview.getFont().equals(RenderResources.getTitleFont())
-                    && lyricsFontPreview.getFont().equals(RenderResources.getLyricsFont())
-                    && attributionFontPreview.getFont().equals(RenderResources.getAttributionFont())
-                    && annotationFontPreview.getFont().equals(RenderResources.getAnnotationFont())) {
-                return;
-            }
-
-            // Bangla and footnote fonts are document-level (Song.{bangla,footnote}Font*),
-            // but this dialog only exposes the four primary fonts. Passing null leaves the
-            // existing per-document values untouched in Song.fontDidChange and
-            // RenderResources.fontDidChange.
+            // Bangla and footnote fonts are document-level but this dialog only
+            // exposes the four primary fonts; preserve them by copying the current state.
             // TODO: add bangla and footnote font rows here and to ResetFontsAction.
-            getSong().postWithModification(new FontDidChangeNotification(
-                titleFontPreview.getFont(),
-                lyricsFontPreview.getFont(),
-                attributionFontPreview.getFont(),
-                annotationFontPreview.getFont(),
-                null,
-                null
-            ));
+            var newFonts = new DocumentFonts(requireScore().getDocumentFonts());
+            newFonts.setFont(FontKey.TITLE,       titleFontPreview.getFont());
+            newFonts.setFont(FontKey.LYRICS,      lyricsFontPreview.getFont());
+            newFonts.setFont(FontKey.ATTRIBUTION, attributionFontPreview.getFont());
+            newFonts.setFont(FontKey.ANNOTATION, annotationFontPreview.getFont());
+            requireScore().setFonts(newFonts);
         }
     }
 

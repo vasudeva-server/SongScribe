@@ -22,8 +22,6 @@ package songscribe.ui.layout;
 
 import java.awt.Font;
 
-import songscribe.ui.render.RenderResources;
-
 /**
  * Represents attribution text (composer/arranger) displayed on the staff.
  * <p>
@@ -96,31 +94,37 @@ public class Attribution extends LineElement {
         return ScaleContext.getInstance().textWidthSs(font, text);
     }
 
-    @Override
-    public double getContentWidthSs() {
-        return computeContentWidthSs(requireAttributionFont());
-    }
-
     /**
-     * Returns the content height in staff-space units, derived from the attribution font
-     * via {@link RenderResources#getAttributionFont()}.
+     * Computes the content height from the attribution font.
+     *
+     * @param font the attribution font
+     * @return height in staff-space units
      */
-    @Override
-    public double getContentHeightSs() {
-        return ScaleContext.getInstance().textHeightSs(requireAttributionFont());
+    public double computeContentHeightSs(Font font) {
+        return ScaleContext.getInstance().textHeightSs(font);
     }
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.getInstance().ssToPx(getContentWidthSs());
+        throw new UnsupportedOperationException(
+            "Attribution width is font-dependent; use computeContentWidthSs(font) instead.");
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().ssToPx(getContentHeightSs());
+        throw new UnsupportedOperationException(
+            "Attribution height is font-dependent; use computeContentHeightSs(font) instead.");
     }
 
-    private Font requireAttributionFont() {
-        return RenderResources.getAttributionFont();
+    @Override
+    public double getContentWidthSs() {
+        throw new UnsupportedOperationException(
+            "Attribution width is font-dependent; use computeContentWidthSs(font) instead.");
+    }
+
+    @Override
+    public double getContentHeightSs() {
+        throw new UnsupportedOperationException(
+            "Attribution height is font-dependent; use computeContentHeightSs(font) instead.");
     }
 }

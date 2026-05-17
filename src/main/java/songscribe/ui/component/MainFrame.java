@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import songscribe.Strings;
 import songscribe.Version;
 import songscribe.error.RuntimeError;
+import songscribe.font.DocumentFonts;
 import songscribe.FileExtensions;
 import songscribe.util.FileUtils;
 import songscribe.util.ExtensionFileFilter;
@@ -578,6 +579,7 @@ public class MainFrame extends JFrame implements Printable {
 
         if (score != null) {
             score.setSong(new Song());
+            score.installDocumentFonts(DocumentFonts.defaultsFromPrefs());
             score.requestFocusInWindow();
         }
 
@@ -748,7 +750,7 @@ public class MainFrame extends JFrame implements Printable {
                 currentFile,
                 StandardCharsets.UTF_8
             );
-            SongIO.writeSong(score.getSong(), printWriter);
+            SongIO.writeSong(score.getSong(), score, printWriter);
             printWriter.close();
             score.getSong().setModified(false);
             LOG.info("Saved: {}", currentFile.getName());

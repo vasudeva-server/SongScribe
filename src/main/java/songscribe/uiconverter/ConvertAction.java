@@ -158,6 +158,7 @@ public class ConvertAction extends AbstractAction {
                     );
                     SongIO.writeSong(
                         song,
+                        score,
                         tempMsswSongPrintWriter
                     );
                     tempMsswSongPrintWriter.close();

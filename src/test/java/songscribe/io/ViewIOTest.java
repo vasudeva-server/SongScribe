@@ -31,6 +31,8 @@ import org.junit.jupiter.api.Test;
 import org.xml.sax.InputSource;
 
 import songscribe.UnitTest;
+import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
 import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -41,90 +43,9 @@ import songscribe.util.MyFontUtils;
 @SuppressWarnings("SameReturnValue")
 class ViewIOTest extends UnitTest {
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class AnnotationFontRoundTrip {
-
-        @Test
-        void testAnnotationFontRoundTripsCorrectly() throws Exception {
-            var original = new Song();
-            var customFont = MyFontUtils.createFont("LatoPlus-Bold", 22);
-            original.setAnnotationFont(customFont.getPSName(), customFont.getSize());
-            addNote(original);
-
-            var reloaded = roundTrip(original);
-
-            assertThat(reloaded.getAnnotationFontName())
-                .isEqualTo(customFont.getPSName());
-            assertThat(reloaded.getAnnotationFontSize())
-                .isEqualTo(customFont.getSize());
-        }
-    }
-
-    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
-    @Nested
-    class BanglaAndFootnoteFontRoundTrip {
-
-        @Test
-        void testBanglaAndFootnoteFontsRoundTripCorrectly() throws Exception {
-            var original = new Song();
-            // Use non-default sizes to confirm the written values are read back,
-            // not the prefs defaults.
-            var customBanglaFont = MyFontUtils.createFont("TiroBangla-Regular", 24);
-            var customFootnoteFont = MyFontUtils.createFont("SourceSans3-Regular", 20);
-            original.setBanglaFont(customBanglaFont.getPSName(), customBanglaFont.getSize());
-            original.setFootnoteFont(customFootnoteFont.getPSName(), customFootnoteFont.getSize());
-            addNote(original);
-
-            var reloaded = roundTrip(original);
-
-            assertThat(reloaded.getBanglaFontName())
-                .isEqualTo(customBanglaFont.getPSName());
-            assertThat(reloaded.getBanglaFontSize())
-                .isEqualTo(customBanglaFont.getSize());
-            assertThat(reloaded.getFootnoteFontName())
-                .isEqualTo(customFootnoteFont.getPSName());
-            assertThat(reloaded.getFootnoteFontSize())
-                .isEqualTo(customFootnoteFont.getSize());
-        }
-    }
-
     @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class FontXmlParsing {
-
-        @Test
-        void testDocumentWithFontXmlAppliesFonts() throws Exception {
-            var original = new Song();
-            var titleFont = MyFontUtils.createFont("LatoPlus-Bold", 24);
-            var lyricsFont = MyFontUtils.createFont("LatoPlus-Regular", 14);
-            var attributionFont = MyFontUtils.createFont("LatoPlus-Regular", 12);
-            var annotationFont = MyFontUtils.createFont("LatoPlus-Bold", 18);
-            original.setTitleFont(titleFont.getPSName(), titleFont.getSize());
-            original.setLyricsFont(lyricsFont.getPSName(), lyricsFont.getSize());
-            original.setAttributionFont(attributionFont.getPSName(), attributionFont.getSize());
-            original.setAnnotationFont(annotationFont.getPSName(), annotationFont.getSize());
-            addNote(original);
-
-            var reloaded = roundTrip(original);
-
-            assertThat(reloaded.getTitleFontName())
-                .isEqualTo(titleFont.getPSName());
-            assertThat(reloaded.getTitleFontSize())
-                .isEqualTo(titleFont.getSize());
-            assertThat(reloaded.getLyricsFontName())
-                .isEqualTo(lyricsFont.getPSName());
-            assertThat(reloaded.getLyricsFontSize())
-                .isEqualTo(lyricsFont.getSize());
-            assertThat(reloaded.getAttributionFontName())
-                .isEqualTo(attributionFont.getPSName());
-            assertThat(reloaded.getAttributionFontSize())
-                .isEqualTo(attributionFont.getSize());
-            assertThat(reloaded.getAnnotationFontName())
-                .isEqualTo(annotationFont.getPSName());
-            assertThat(reloaded.getAnnotationFontSize())
-                .isEqualTo(annotationFont.getSize());
-        }
 
         @Test
         void testLegacyDocumentWithoutFontXmlUsesPrefsDefaults() throws Exception {
@@ -135,40 +56,27 @@ class ViewIOTest extends UnitTest {
             var parser = factory.newSAXParser();
             var reader = new SongIO.DocumentReader();
             parser.parse(new InputSource(new StringReader(xml)), reader);
-            var song = reader.getSong();
+            reader.getSong();
 
+            var fonts = reader.getDocumentFonts();
             var prefs = Prefs.getInstance();
-            assertThat(song.getTitleFontName())
-                .isEqualTo(MyFontUtils.createFont(
-                    prefs.getString(PrefsKey.TITLE_FONT),
-                    prefs.getInt(PrefsKey.TITLE_FONT_SIZE)
-                ).getPSName());
-            assertThat(song.getTitleFontSize())
-                .isEqualTo(prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
-            assertThat(song.getLyricsFontName())
-                .isEqualTo(MyFontUtils.createFont(
-                    prefs.getString(PrefsKey.LYRICS_FONT),
-                    prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)
-                ).getPSName());
-            assertThat(song.getAnnotationFontName())
-                .isEqualTo(MyFontUtils.createFont(
-                    prefs.getString(PrefsKey.ANNOTATION_FONT),
-                    prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)
-                ).getPSName());
-            assertThat(song.getBanglaFontName())
-                .isEqualTo(MyFontUtils.createFont(
-                    prefs.getString(PrefsKey.BANGLA_FONT),
-                    prefs.getInt(PrefsKey.BANGLA_FONT_SIZE)
-                ).getPSName());
-            assertThat(song.getBanglaFontSize())
-                .isEqualTo(prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
-            assertThat(song.getFootnoteFontName())
-                .isEqualTo(MyFontUtils.createFont(
-                    prefs.getString(PrefsKey.FOOTNOTE_FONT),
-                    prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE)
-                ).getPSName());
-            assertThat(song.getFootnoteFontSize())
-                .isEqualTo(prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
+            var expectedTitle = MyFontUtils.createFont(prefs.getString(PrefsKey.TITLE_FONT), prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.TITLE).getPSName()).isEqualTo(expectedTitle.getPSName());
+            assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+
+            var expectedLyrics = MyFontUtils.createFont(prefs.getString(PrefsKey.LYRICS_FONT), prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.LYRICS).getPSName()).isEqualTo(expectedLyrics.getPSName());
+
+            var expectedAnnotation = MyFontUtils.createFont(prefs.getString(PrefsKey.ANNOTATION_FONT), prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.ANNOTATION).getPSName()).isEqualTo(expectedAnnotation.getPSName());
+
+            var expectedBangla = MyFontUtils.createFont(prefs.getString(PrefsKey.BANGLA_FONT), prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.BANGLA).getPSName()).isEqualTo(expectedBangla.getPSName());
+            assertThat(fonts.getFont(FontKey.BANGLA).getSize()).isEqualTo(prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
+
+            var expectedFootnote = MyFontUtils.createFont(prefs.getString(PrefsKey.FOOTNOTE_FONT), prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.FOOTNOTE).getPSName()).isEqualTo(expectedFootnote.getPSName());
+            assertThat(fonts.getFont(FontKey.FOOTNOTE).getSize()).isEqualTo(prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
         }
     }
 
@@ -185,11 +93,67 @@ class ViewIOTest extends UnitTest {
             var parser = factory.newSAXParser();
             var reader = new SongIO.DocumentReader();
             parser.parse(new InputSource(new StringReader(xml)), reader);
-            var song = reader.getSong();
+            reader.getSong();
 
             // Should load without error and have valid fonts
-            assertThat(song.getTitleFontName()).isNotNull();
-            assertThat(song.getLyricsFontName()).isNotNull();
+            assertThat(reader.getDocumentFonts().getFont(FontKey.TITLE)).isNotNull();
+            assertThat(reader.getDocumentFonts().getFont(FontKey.LYRICS)).isNotNull();
+        }
+    }
+
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
+    @Nested
+    class DocumentFontsLoad {
+
+        private static final String CUSTOM_TITLE_FONT = "LatoPlus-Bold";
+        private static final int CUSTOM_TITLE_FONT_SIZE = 30;
+
+        @Test
+        void testV10FallbackUsesDefaultsForAllRoles() throws Exception {
+            var fonts = parseAndGetDocumentFonts(buildV10Xml());
+
+            assertThat(fonts).isEqualTo(DocumentFonts.defaultsFromPrefs());
+        }
+
+        @Test
+        void testPartialBlockOverridesOnlyPresentRoles() throws Exception {
+            var fonts = parseAndGetDocumentFonts(buildPartialViewXml());
+
+            var prefs = Prefs.getInstance();
+            var expectedTitle = MyFontUtils.createFont(CUSTOM_TITLE_FONT, CUSTOM_TITLE_FONT_SIZE);
+            assertThat(fonts.getFont(FontKey.TITLE).getPSName()).isEqualTo(expectedTitle.getPSName());
+            assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(CUSTOM_TITLE_FONT_SIZE);
+
+            // Remaining roles fall through to prefs defaults.
+            assertRoleMatchesPrefs(fonts, FontKey.LYRICS,      PrefsKey.LYRICS_FONT,      PrefsKey.LYRICS_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.ATTRIBUTION, PrefsKey.ATTRIBUTION_FONT, PrefsKey.ATTRIBUTION_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.ANNOTATION,  PrefsKey.ANNOTATION_FONT,  PrefsKey.ANNOTATION_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.BANGLA,      PrefsKey.BANGLA_FONT,      PrefsKey.BANGLA_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.FOOTNOTE,    PrefsKey.FOOTNOTE_FONT,    PrefsKey.FOOTNOTE_FONT_SIZE);
+        }
+
+        @Test
+        void testNewDocumentInstallsPrefsDefaults() {
+            assertThat(DocumentFonts.defaultsFromPrefs())
+                .isEqualTo(DocumentFonts.defaultsFromPrefs());
+            // New-document creation in ScoreView.init() installs exactly this object;
+            // the bootstrap source is the single home for the role -> PrefsKey mapping.
+        }
+
+        private static DocumentFonts parseAndGetDocumentFonts(String xml) throws Exception {
+            var factory = SAXParserFactory.newInstance();
+            var parser = factory.newSAXParser();
+            var reader = new SongIO.DocumentReader();
+            parser.parse(new InputSource(new StringReader(xml)), reader);
+            reader.getSong();
+            return reader.getDocumentFonts();
+        }
+
+        private static void assertRoleMatchesPrefs(DocumentFonts fonts, FontKey key, PrefsKey nameKey, PrefsKey sizeKey) {
+            var prefs = Prefs.getInstance();
+            var expected = MyFontUtils.createFont(prefs.getString(nameKey), prefs.getInt(sizeKey));
+            assertThat(fonts.getFont(key).getPSName()).isEqualTo(expected.getPSName());
+            assertThat(fonts.getFont(key).getSize()).isEqualTo(prefs.getInt(sizeKey));
         }
     }
 
@@ -232,6 +196,62 @@ class ViewIOTest extends UnitTest {
                 </line>
               </lines>
               <view>
+              </view>
+            </composition>
+            """;
+    }
+
+    private static String buildV10Xml() {
+        // v1.0 document — no <view> block exists in this format.
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="1.0">
+              <keys>0</keys>
+              <keytype>SHARPS</keytype>
+              <tempo>
+                <visibletempo>120</visibletempo>
+                <tempotype>CROTCHET</tempotype>
+                <tempodescription>Moderate</tempodescription>
+                <showtempo>true</showtempo>
+              </tempo>
+              <songtitle>Test</songtitle>
+              <notes>
+              </notes>
+            </composition>
+            """;
+    }
+
+    private static String buildPartialViewXml() {
+        // v1.1 document whose <view> block specifies only the TITLE role.
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="1.1">
+              <keys>0</keys>
+              <keytype>SHARPS</keytype>
+              <tempo>
+                <visibletempo>120</visibletempo>
+                <tempotype>CROTCHET</tempotype>
+                <tempodescription>Moderate</tempodescription>
+                <showtempo>true</showtempo>
+              </tempo>
+              <songtitle>Test</songtitle>
+              <lines>
+                <line>
+                  <keyCount>0</keyCount>
+                  <keyType>SHARPS</keyType>
+                  <tempoChangeYPos>-28</tempoChangeYPos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <yPos>0</yPos>
+                      <xPos>80</xPos>
+                      <upper>true</upper>
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view>
+                <titlefont>LatoPlus-Bold</titlefont>
+                <titlefontsize>30</titlefontsize>
               </view>
             </composition>
             """;

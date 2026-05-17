@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.font.DocumentFonts;
 import songscribe.music.ArticulationType;
 
 import songscribe.music.Line;
@@ -66,7 +67,7 @@ class FermataTrillStackingTest extends UnitTest {
     private static LayoutResult stackColumns(List<ElementColumn> columns, Line line) {
         var builder = new LayoutResult.Builder();
         var calculator = new VerticalStackingCalculator();
-        calculator.calculate(columns, line, builder, LINE_WIDTH_SS);
+        calculator.calculate(columns, line, builder, LINE_WIDTH_SS, DocumentFonts.defaultsFromPrefs());
         return builder.build();
     }
 

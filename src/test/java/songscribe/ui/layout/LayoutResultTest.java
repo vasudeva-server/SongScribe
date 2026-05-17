@@ -31,12 +31,12 @@ import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.font.DocumentFonts;
 import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.music.Song;
 import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
-import songscribe.util.MyFontUtils;
 
 class LayoutResultTest extends UnitTest {
 
@@ -129,16 +129,16 @@ class LayoutResultTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         song.withoutMutationTracking(() -> line.addElement(0, element));
         var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
+        var lyricsFont = DocumentFonts.defaultsFromPrefs().getLyricsFont();
         var baselineYSs = 1.0 + StaffExtents.STAFF_HEIGHT_SS + 0.5
             + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
-            + ScaleContext.getInstance().fontAscentSs(MyFontUtils.createFont(song.getLyricsFontName(), song.getLyricsFontSize()));
+            + ScaleContext.getInstance().fontAscentSs(lyricsFont);
         var layoutResult = LayoutResult.builder()
             .setAboveStaffSs(1.0)
             .setBelowContentSs(0.5)
             .addLyricBox(element, box)
             .build();
 
-        var lyricsFont = MyFontUtils.createFont(song.getLyricsFontName(), song.getLyricsFontSize());
         var lyricRenderMetrics = new LyricRenderMetrics(lyricsFont, lyricsFont, 0.0, 0.0);
         var hit = layoutResult.hitTestLyric(
             lyricRenderMetrics,
@@ -167,7 +167,7 @@ class LayoutResultTest extends UnitTest {
             .addLyricBox(element, box)
             .build();
 
-        var lyricsFont = MyFontUtils.createFont(song.getLyricsFontName(), song.getLyricsFontSize());
+        var lyricsFont = DocumentFonts.defaultsFromPrefs().getLyricsFont();
         var lyricRenderMetrics = new LyricRenderMetrics(lyricsFont, lyricsFont, 0.0, 0.0);
         var hit = layoutResult.hitTestLyric(
             lyricRenderMetrics,

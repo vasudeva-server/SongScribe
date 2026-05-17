@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.font.DocumentFonts;
 import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
@@ -84,7 +85,7 @@ class ArticulationStackingTest extends UnitTest {
     private static LayoutResult stackColumns(List<ElementColumn> columns) {
         var builder = new LayoutResult.Builder();
         var calculator = new VerticalStackingCalculator();
-        calculator.calculate(columns, detachedLine(), builder, LINE_WIDTH_SS);
+        calculator.calculate(columns, detachedLine(), builder, LINE_WIDTH_SS, DocumentFonts.defaultsFromPrefs());
         return builder.build();
     }
 
@@ -200,7 +201,7 @@ class ArticulationStackingTest extends UnitTest {
                 new LayoutResult.StemLayout(stemTopSs, 0.0, 0.0, false));
 
             var calculator = new VerticalStackingCalculator();
-            calculator.calculate(List.of(column), detachedLine(), builder, LINE_WIDTH_SS);
+            calculator.calculate(List.of(column), detachedLine(), builder, LINE_WIDTH_SS, DocumentFonts.defaultsFromPrefs());
             var result = builder.build();
 
             var layout = require(

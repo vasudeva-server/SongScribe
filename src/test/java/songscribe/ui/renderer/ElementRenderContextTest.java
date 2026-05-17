@@ -36,7 +36,7 @@ class ElementRenderContextTest extends UnitTest {
     // T1: not in edit mode → Color.BLACK regardless of playing/selection state
     @Test
     void testNotEditModeReturnsBlack() {
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         // editMode defaults to false
 
         assertThat(ctx.getElementColor(0)).isEqualTo(Color.BLACK);
@@ -45,7 +45,7 @@ class ElementRenderContextTest extends UnitTest {
     // T2: edit mode + element is playing → ScoreView.getPlayingNoteColor()
     @Test
     void testPlayingElementReturnsPlayingColor() {
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setEditMode(true);
         ctx.setPlayingNoteIndex(0);
 
@@ -58,7 +58,7 @@ class ElementRenderContextTest extends UnitTest {
         var line = detachedLine();
         line.getTies().addSpan(new TieSpan(0, 2));
 
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setEditMode(true);
         ctx.setCurrentLine(line);
         ctx.setPlayingNoteIndex(0);
@@ -70,7 +70,7 @@ class ElementRenderContextTest extends UnitTest {
     // T4: edit mode + element is selected → selectionColor
     @Test
     void testSelectedElementReturnsSelectionColor() {
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         RenderContextTestHelper.enableSelection(ctx, 0);
         ctx.setSelectionColor(Color.RED);
 
@@ -80,7 +80,7 @@ class ElementRenderContextTest extends UnitTest {
     // T5: edit mode, not playing, not selected → Color.BLACK
     @Test
     void testDefaultReturnsBlack() {
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setEditMode(true);
 
         assertThat(ctx.getElementColor(0)).isEqualTo(Color.BLACK);

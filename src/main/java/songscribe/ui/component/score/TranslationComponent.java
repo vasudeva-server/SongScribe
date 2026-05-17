@@ -23,7 +23,6 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.render.RenderResources;
 import songscribe.ui.renderer.GraphicsState;
 import songscribe.util.GraphicUtils;
 
@@ -68,7 +67,7 @@ public class TranslationComponent extends ScoreComponent {
             return 0;
         }
 
-        var lyricsFont = RenderResources.getLyricsFont();
+        var lyricsFont = getFont();
         var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
         double maxWidth = 0;
@@ -109,7 +108,7 @@ public class TranslationComponent extends ScoreComponent {
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR
         )) {
-            var lyricsFont = RenderResources.getLyricsFont();
+            var lyricsFont = getFont();
             var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
             // Draw header
@@ -157,7 +156,7 @@ public class TranslationComponent extends ScoreComponent {
             return new Dimension(0, 0);
         }
 
-        var lyricsFont = RenderResources.getLyricsFont();
+        var lyricsFont = getFont();
         var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
         // Calculate header height

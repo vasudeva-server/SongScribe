@@ -24,8 +24,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 
-import module java.desktop;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -36,8 +34,6 @@ import org.mockito.MockedStatic;
 import songscribe.UnitTest;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.mutation.FontChange;
-import songscribe.message.mutation.FontField;
 import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LayoutField;
 import songscribe.message.mutation.LyricsChange;
@@ -348,137 +344,6 @@ class SongSetterMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Font setters
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class FontSetters {
-
-        private static final Font ALT_FONT = new Font(Font.DIALOG, Font.BOLD, 99);
-
-        @Test
-        void testSetTitleFontPostsMutation() {
-            var oldName = song.getTitleFontName();
-            var oldSize = song.getTitleFontSize();
-            song.setTitleFont(ALT_FONT.getPSName(), ALT_FONT.getSize());
-
-            var mutation = captureSingleFontChange();
-            assertThat(mutation.field()).isEqualTo(FontField.TITLE);
-            assertThat(mutation.oldName()).isEqualTo(oldName);
-            assertThat(mutation.oldSize()).isEqualTo(oldSize);
-            assertThat(mutation.newName()).isEqualTo(ALT_FONT.getPSName());
-            assertThat(mutation.newSize()).isEqualTo(ALT_FONT.getSize());
-        }
-
-        @Test
-        void testSetTitleFontSameValuePostsNothing() {
-            song.setTitleFont(song.getTitleFontName(), song.getTitleFontSize());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetLyricsFontPostsMutation() {
-            var oldName = song.getLyricsFontName();
-            var oldSize = song.getLyricsFontSize();
-            song.setLyricsFont(ALT_FONT.getPSName(), ALT_FONT.getSize());
-
-            var mutation = captureSingleFontChange();
-            assertThat(mutation.field()).isEqualTo(FontField.LYRICS);
-            assertThat(mutation.oldName()).isEqualTo(oldName);
-            assertThat(mutation.oldSize()).isEqualTo(oldSize);
-            assertThat(mutation.newName()).isEqualTo(ALT_FONT.getPSName());
-            assertThat(mutation.newSize()).isEqualTo(ALT_FONT.getSize());
-        }
-
-        @Test
-        void testSetLyricsFontSameValuePostsNothing() {
-            song.setLyricsFont(song.getLyricsFontName(), song.getLyricsFontSize());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetAttributionFontPostsMutation() {
-            var oldName = song.getAttributionFontName();
-            var oldSize = song.getAttributionFontSize();
-            song.setAttributionFont(ALT_FONT.getPSName(), ALT_FONT.getSize());
-
-            var mutation = captureSingleFontChange();
-            assertThat(mutation.field()).isEqualTo(FontField.ATTRIBUTION);
-            assertThat(mutation.oldName()).isEqualTo(oldName);
-            assertThat(mutation.oldSize()).isEqualTo(oldSize);
-            assertThat(mutation.newName()).isEqualTo(ALT_FONT.getPSName());
-            assertThat(mutation.newSize()).isEqualTo(ALT_FONT.getSize());
-        }
-
-        @Test
-        void testSetAttributionFontSameValuePostsNothing() {
-            song.setAttributionFont(song.getAttributionFontName(), song.getAttributionFontSize());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetAnnotationFontPostsMutation() {
-            var oldName = song.getAnnotationFontName();
-            var oldSize = song.getAnnotationFontSize();
-            song.setAnnotationFont(ALT_FONT.getPSName(), ALT_FONT.getSize());
-
-            var mutation = captureSingleFontChange();
-            assertThat(mutation.field()).isEqualTo(FontField.ANNOTATION);
-            assertThat(mutation.oldName()).isEqualTo(oldName);
-            assertThat(mutation.oldSize()).isEqualTo(oldSize);
-            assertThat(mutation.newName()).isEqualTo(ALT_FONT.getPSName());
-            assertThat(mutation.newSize()).isEqualTo(ALT_FONT.getSize());
-        }
-
-        @Test
-        void testSetAnnotationFontSameValuePostsNothing() {
-            song.setAnnotationFont(song.getAnnotationFontName(), song.getAnnotationFontSize());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetBanglaFontPostsMutation() {
-            var oldName = song.getBanglaFontName();
-            var oldSize = song.getBanglaFontSize();
-            song.setBanglaFont(ALT_FONT.getPSName(), ALT_FONT.getSize());
-
-            var mutation = captureSingleFontChange();
-            assertThat(mutation.field()).isEqualTo(FontField.BANGLA);
-            assertThat(mutation.oldName()).isEqualTo(oldName);
-            assertThat(mutation.oldSize()).isEqualTo(oldSize);
-            assertThat(mutation.newName()).isEqualTo(ALT_FONT.getPSName());
-            assertThat(mutation.newSize()).isEqualTo(ALT_FONT.getSize());
-        }
-
-        @Test
-        void testSetBanglaFontSameValuePostsNothing() {
-            song.setBanglaFont(song.getBanglaFontName(), song.getBanglaFontSize());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetFootnoteFontPostsMutation() {
-            var oldName = song.getFootnoteFontName();
-            var oldSize = song.getFootnoteFontSize();
-            song.setFootnoteFont(ALT_FONT.getPSName(), ALT_FONT.getSize());
-
-            var mutation = captureSingleFontChange();
-            assertThat(mutation.field()).isEqualTo(FontField.FOOTNOTE);
-            assertThat(mutation.oldName()).isEqualTo(oldName);
-            assertThat(mutation.oldSize()).isEqualTo(oldSize);
-            assertThat(mutation.newName()).isEqualTo(ALT_FONT.getPSName());
-            assertThat(mutation.newSize()).isEqualTo(ALT_FONT.getSize());
-        }
-
-        @Test
-        void testSetFootnoteFontSameValuePostsNothing() {
-            song.setFootnoteFont(song.getFootnoteFontName(), song.getFootnoteFontSize());
-            verifyNoNotificationPosted();
-        }
-    }
-
-    // -----------------------------------------------------------------------
     // Layout setters
     // -----------------------------------------------------------------------
 
@@ -580,13 +445,6 @@ class SongSetterMutationTest extends UnitTest {
         assertThat(notification.getMutations()).hasSize(1);
         assertThat(notification.getMutations().getFirst()).isInstanceOf(LyricsChange.class);
         return (LyricsChange) notification.getMutations().getFirst();
-    }
-
-    private FontChange captureSingleFontChange() {
-        var notification = captureSingleDidChange();
-        assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().getFirst()).isInstanceOf(FontChange.class);
-        return (FontChange) notification.getMutations().getFirst();
     }
 
     private LayoutChange captureSingleLayoutChange() {

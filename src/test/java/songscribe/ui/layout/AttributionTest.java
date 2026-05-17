@@ -22,12 +22,9 @@ package songscribe.ui.layout;
 
 import java.awt.Font;
 
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Song;
-import songscribe.util.MyFontUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -46,33 +43,13 @@ class AttributionTest extends UnitTest {
         assertThat(attribution.computeContentWidthSs(font)).isCloseTo(expected, within(EPSILON));
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class ParentLineResolution {
+    @Test
+    void testComputeContentHeightSsUsesFontMetrics() {
+        var font = new Font("Dialog", Font.PLAIN, 12);
 
-        @Test
-        void testGetContentWidthSsReadsSongFontMetrics() {
-            var song = new Song();
-            var line = song.getLine(0);
-            var attribution = new Attribution("Composer");
-            attribution.setParentLine(line);
+        var attribution = new Attribution("Composer");
+        var expected = ScaleContext.getInstance().textHeightSs(font);
 
-            var expected = attribution.computeContentWidthSs(MyFontUtils.createFont(song.getAttributionFontName(), song.getAttributionFontSize()));
-
-            assertThat(attribution.getContentWidthSs()).isCloseTo(expected, within(EPSILON));
-        }
-
-        @Test
-        void testGetContentHeightSsReadsSongFontMetrics() {
-            var song = new Song();
-            var line = song.getLine(0);
-            var attribution = new Attribution("Composer");
-            attribution.setParentLine(line);
-
-            var expected = ScaleContext.getInstance().textHeightSs(MyFontUtils.createFont(song.getAttributionFontName(), song.getAttributionFontSize()));
-
-            assertThat(attribution.getContentHeightSs()).isCloseTo(expected, within(EPSILON));
-        }
-
+        assertThat(attribution.computeContentHeightSs(font)).isCloseTo(expected, within(EPSILON));
     }
 }

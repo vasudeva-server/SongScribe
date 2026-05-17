@@ -366,7 +366,7 @@ public class LineComponent extends ScoreComponent
         var staffRightMarginSs = song.getLineWidthSs();
         var isLastLine = lineIndex == song.lineCount() - 1;
         var lyricRenderMetrics = getScore().getLyricRenderMetrics();
-        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs);
+        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, getScore());
         layoutResult = layoutEngine.layout(line, isLastLine, hasLeadingLyricContinuation);
 
         if (layoutResult == null) {

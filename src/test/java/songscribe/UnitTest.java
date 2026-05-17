@@ -28,12 +28,14 @@ import java.io.StringWriter;
 import java.net.URISyntaxException;
 
 import javax.swing.UIManager;
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import org.xml.sax.InputSource;
 
+import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
 import songscribe.io.SongLoader;
 import songscribe.music.Line;
@@ -88,6 +90,9 @@ public abstract class UnitTest {
         flatLafInstalled = true;
     }
 
+    /** Carries both the parsed song and its document fonts from a fixture load. */
+    public record LoadResult(Song song, DocumentFonts fonts) {}
+
     /**
      * Loads a fixture file and returns the parsed song.
      * Fixture files live in {@code src/test/resources/fixtures/{name}.mssw}.
@@ -103,12 +108,32 @@ public abstract class UnitTest {
     }
 
     /**
+     * Like {@link #loadFixture} but also returns the document fonts parsed from the
+     * fixture's {@code <view>} block (or prefs defaults for v1.0 files).
+     */
+    public static LoadResult loadFixtureResult(String fixtureName)
+            throws IllegalArgumentException, IOException, SAXException, URISyntaxException, ParserConfigurationException {
+        var url = UnitTest.class.getClassLoader().getResource("fixtures/" + fixtureName + ".mssw");
+
+        if (url == null) {
+            throw new IllegalArgumentException("Fixture not found: " + fixtureName);
+        }
+
+        var factory = SAXParserFactory.newInstance();
+        var parser = factory.newSAXParser();
+        var reader = new SongIO.DocumentReader();
+        parser.parse(new File(url.toURI()), reader);
+        return new LoadResult(reader.getSong(), reader.getDocumentFonts());
+    }
+
+    /**
      * Serializes a song to XML and parses it back, verifying round-trip fidelity.
      */
     public static Song roundTrip(Song original) throws Exception {
+        var fonts = DocumentFonts.defaultsFromPrefs();
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
-        SongIO.writeSong(original, pw);
+        SongIO.writeSong(original, fonts, pw);
         pw.flush();
         var xml = sw.toString();
 

@@ -128,7 +128,7 @@ class LineRenderer {
         // Reuse the cached render context to avoid per-paint allocation. Recreate it
         // only when the song changes (the field is final on the context).
         if (ctx == null || ctx.getSong() != song) {
-            ctx = new ElementRenderContext(song);
+            ctx = new ElementRenderContext(song, lc.getScore());
         }
 
         ctx.setCurrentLine(line);

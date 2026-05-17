@@ -18,14 +18,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.message.mutation;
+package songscribe.font;
 
-import songscribe.font.DocumentFonts;
+import java.awt.Font;
 
-/**
- * Mutation recording a change to the document's fonts.
- * Carries full {@link DocumentFonts} snapshots so that a multi-role
- * commit produces one undoable group.
- */
-public record FontChange(DocumentFonts oldFonts, DocumentFonts newFonts) implements Mutation {
+/** Read interface for the six document-level font roles. */
+@FunctionalInterface
+public interface DocumentFontsHolder {
+
+    Font getFont(FontKey key);
+
+    default Font getTitleFont() {
+        return getFont(FontKey.TITLE);
+    }
+
+    default Font getLyricsFont() {
+        return getFont(FontKey.LYRICS);
+    }
+
+    default Font getAttributionFont() {
+        return getFont(FontKey.ATTRIBUTION);
+    }
+
+    default Font getAnnotationFont() {
+        return getFont(FontKey.ANNOTATION);
+    }
+
+    default Font getFootnoteFont() {
+        return getFont(FontKey.FOOTNOTE);
+    }
+
+    default Font getBanglaFont() {
+        return getFont(FontKey.BANGLA);
+    }
 }

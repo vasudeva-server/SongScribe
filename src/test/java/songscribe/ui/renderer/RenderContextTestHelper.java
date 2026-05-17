@@ -23,6 +23,8 @@ package songscribe.ui.renderer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import songscribe.font.DocumentFonts;
+import songscribe.music.Song;
 import songscribe.ui.component.score.LineComponent;
 
 /**
@@ -32,6 +34,11 @@ import songscribe.ui.component.score.LineComponent;
 final class RenderContextTestHelper {
 
     private RenderContextTestHelper() {}
+
+    /** Builds a context for the given song with fonts seeded from prefs. */
+    static ElementRenderContext newContext(Song song) {
+        return new ElementRenderContext(song, DocumentFonts.defaultsFromPrefs());
+    }
 
     /**
      * Puts {@code ctx} into edit mode and installs a mock {@link LineComponent.SelectionProvider}

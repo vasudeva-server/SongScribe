@@ -22,6 +22,7 @@ package songscribe.ui.layout.stacking;
 
 import java.util.List;
 
+import songscribe.font.DocumentFontsHolder;
 import songscribe.music.DynamicsSpan;
 import songscribe.music.Line;
 
@@ -70,7 +71,8 @@ public class VerticalStackingCalculator {
         List<ElementColumn> columns,
         Line line,
         LayoutResult.Builder builder,
-        double lineWidthSs) {
+        double lineWidthSs,
+        DocumentFontsHolder fonts) {
 
         var noteAttachedExtents = new StaffExtents(lineWidthSs);
         var structuralExtents = new StaffExtents(lineWidthSs);
@@ -89,7 +91,7 @@ public class VerticalStackingCalculator {
 
         // Tier 4: system-level stacking (tempo, beat changes, annotations)
         systemExtents.copyTopFrom(structuralExtents);
-        new SystemStacker(context, systemExtents).stack();
+        new SystemStacker(context, systemExtents, fonts).stack();
 
         // Apply manual offsets post-layout (no collision re-run)
         applyManualOffsets(builder);

@@ -35,8 +35,6 @@ import songscribe.io.SongIO;
 import songscribe.message.SongData;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.mutation.FontChange;
-import songscribe.message.mutation.FontField;
 import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LayoutField;
 import songscribe.message.mutation.LineDeletion;
@@ -48,7 +46,6 @@ import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
-import songscribe.message.notification.FontDidChangeNotification;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.notification.MetadataDidChangeNotification;
@@ -140,22 +137,6 @@ public final class Song {
     private int defaultKeyAccidentalCount;
     private KeyType defaultKeyType = DEFAULT_KEY_TYPE;
 
-    // Name+size pairs for all six document fonts. Authoritative representation;
-    // Font objects are derived on demand via RenderResources.
-    private String banglaFontName;
-    private int banglaFontSize;
-    private String footnoteFontName;
-    private int footnoteFontSize;
-
-    private String titleFontName;
-    private int titleFontSize;
-    private String lyricsFontName;
-    private int lyricsFontSize;
-    private String attributionFontName;
-    private int attributionFontSize;
-    private String annotationFontName;
-    private int annotationFontSize;
-
     // When the title is set, it is wrapped into lines and stored here
     private final ArrayList<String> titleLines = new ArrayList<>();
 
@@ -221,7 +202,6 @@ public final class Song {
         attribution = Strings.get(Strings.SONG_DEFAULT_ATTRIBUTION);
         tempo = new Tempo();
         defaultKeyAccidentalCount = DEFAULT_KEY_ACCIDENTAL_COUNT;
-        initFontsFromPrefs();
 
         // Initial topPadding of 0 - layout calculation will set the correct value
         // attributionStartY is calculated from title, will be recalculated on layout
@@ -245,20 +225,17 @@ public final class Song {
     }
 
     /**
-     * Loading constructor. Initializes fonts from preferences, applies the
-     * parsed data, and subscribes to the message bus. Avoids the wasted work
-     * of the no-arg constructor (default line, attributionStartY calculation).
+     * Loading constructor. Applies the parsed data and subscribes to the message bus.
+     * Avoids the wasted work of the no-arg constructor (default line, attributionStartY calculation).
      */
     public Song(SongData data) {
-        initFontsFromPrefs();
         loadFrom(data);
         MessageCenter.subscribe(this);
     }
 
     /**
-     * Creates a minimal stub Song for use during file parsing. Only fonts are
-     * initialized; all other fields stay at defaults until
-     * {@link #loadFrom(SongData)} is called with the real parsed data.
+     * Creates a minimal stub Song for use during file parsing. All fields stay at defaults
+     * until {@link #loadFrom(SongData)} is called with the real parsed data.
      * This avoids the double {@code loadFrom} that would result from using
      * {@link #Song(SongData)} with an empty snapshot.
      */
@@ -269,36 +246,7 @@ public final class Song {
     private enum Stub { INSTANCE }
 
     private Song(Stub ignored) {
-        initFontsFromPrefs();
         MessageCenter.subscribe(this);
-    }
-
-    private void initFontsFromPrefs() {
-        var prefs = Prefs.getInstance();
-
-        var titleFont = MyFontUtils.createFont(prefs.getString(PrefsKey.TITLE_FONT), prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
-        titleFontName = titleFont.getPSName();
-        titleFontSize = titleFont.getSize();
-
-        var lyricsFont = MyFontUtils.createFont(prefs.getString(PrefsKey.LYRICS_FONT), prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
-        lyricsFontName = lyricsFont.getPSName();
-        lyricsFontSize = lyricsFont.getSize();
-
-        var attributionFont = MyFontUtils.createFont(prefs.getString(PrefsKey.ATTRIBUTION_FONT), prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
-        attributionFontName = attributionFont.getPSName();
-        attributionFontSize = attributionFont.getSize();
-
-        var annotationFont = MyFontUtils.createFont(prefs.getString(PrefsKey.ANNOTATION_FONT), prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
-        annotationFontName = annotationFont.getPSName();
-        annotationFontSize = annotationFont.getSize();
-
-        var banglaFont = MyFontUtils.createFont(prefs.getString(PrefsKey.BANGLA_FONT), prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
-        banglaFontName = banglaFont.getPSName();
-        banglaFontSize = banglaFont.getSize();
-
-        var footnoteFont = MyFontUtils.createFont(prefs.getString(PrefsKey.FOOTNOTE_FONT), prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
-        footnoteFontName = footnoteFont.getPSName();
-        footnoteFontSize = footnoteFont.getSize();
     }
 
     @Handler
@@ -336,31 +284,6 @@ public final class Song {
         applyUnofficialTranslation(data.unofficialTranslation());
         applyDefaultKeyAccidentalCount(data.defaultKeyAccidentalCount());
         applyDefaultKeyType(data.defaultKeyType());
-
-        // Apply fonts (null means keep defaults from constructor/prefs)
-        if (data.titleFontName() != null && data.titleFontSize() != null) {
-            applyTitleFont(data.titleFontName(), data.titleFontSize());
-        }
-
-        if (data.lyricsFontName() != null && data.lyricsFontSize() != null) {
-            applyLyricsFont(data.lyricsFontName(), data.lyricsFontSize());
-        }
-
-        if (data.attributionFontName() != null && data.attributionFontSize() != null) {
-            applyAttributionFont(data.attributionFontName(), data.attributionFontSize());
-        }
-
-        if (data.annotationFontName() != null && data.annotationFontSize() != null) {
-            applyAnnotationFont(data.annotationFontName(), data.annotationFontSize());
-        }
-
-        if (data.banglaFontName() != null && data.banglaFontSize() != null) {
-            applyBanglaFont(data.banglaFontName(), data.banglaFontSize());
-        }
-
-        if (data.footnoteFontName() != null && data.footnoteFontSize() != null) {
-            applyFootnoteFont(data.footnoteFontName(), data.footnoteFontSize());
-        }
 
         // Apply layout
         applyTopPaddingSs(data.topPaddingSs(), false);
@@ -603,54 +526,6 @@ public final class Song {
         return lines.isEmpty() || lines.stream().allMatch(Line::isEmpty);
     }
 
-    public String getTitleFontName() {
-        return titleFontName;
-    }
-
-    public int getTitleFontSize() {
-        return titleFontSize;
-    }
-
-    public String getLyricsFontName() {
-        return lyricsFontName;
-    }
-
-    public int getLyricsFontSize() {
-        return lyricsFontSize;
-    }
-
-    public String getAttributionFontName() {
-        return attributionFontName;
-    }
-
-    public int getAttributionFontSize() {
-        return attributionFontSize;
-    }
-
-    public String getAnnotationFontName() {
-        return annotationFontName;
-    }
-
-    public int getAnnotationFontSize() {
-        return annotationFontSize;
-    }
-
-    public String getBanglaFontName() {
-        return banglaFontName;
-    }
-
-    public int getBanglaFontSize() {
-        return banglaFontSize;
-    }
-
-    public String getFootnoteFontName() {
-        return footnoteFontName;
-    }
-
-    public int getFootnoteFontSize() {
-        return footnoteFontSize;
-    }
-
     public double getTopPaddingSs() {
         return topPaddingSs;
     }
@@ -784,32 +659,6 @@ public final class Song {
         );
     }
 
-    // -- Font setters --
-
-    public void setTitleFont(String name, int size) {
-        mutateFont(FontField.TITLE, titleFontName, titleFontSize, name, size, () -> applyTitleFont(name, size));
-    }
-
-    public void setLyricsFont(String name, int size) {
-        mutateFont(FontField.LYRICS, lyricsFontName, lyricsFontSize, name, size, () -> applyLyricsFont(name, size));
-    }
-
-    public void setAttributionFont(String name, int size) {
-        mutateFont(FontField.ATTRIBUTION, attributionFontName, attributionFontSize, name, size, () -> applyAttributionFont(name, size));
-    }
-
-    public void setAnnotationFont(String name, int size) {
-        mutateFont(FontField.ANNOTATION, annotationFontName, annotationFontSize, name, size, () -> applyAnnotationFont(name, size));
-    }
-
-    public void setBanglaFont(String name, int size) {
-        mutateFont(FontField.BANGLA, banglaFontName, banglaFontSize, name, size, () -> applyBanglaFont(name, size));
-    }
-
-    public void setFootnoteFont(String name, int size) {
-        mutateFont(FontField.FOOTNOTE, footnoteFontName, footnoteFontSize, name, size, () -> applyFootnoteFont(name, size));
-    }
-
     // -- Layout setters --
 
     /**
@@ -862,20 +711,6 @@ public final class Song {
         }
 
         withModification(() -> applyChange(new MetadataChange(field, current, newValue), apply));
-    }
-
-    private void mutateFont(
-        FontField field,
-        String currentName, int currentSize,
-        String newName, int newSize,
-        Runnable apply
-    ) {
-        if (currentName.equals(newName) && currentSize == newSize) {
-            return;
-        }
-
-        withModification(() ->
-            applyChange(new FontChange(field, currentName, currentSize, newName, newSize), apply));
     }
 
     private void mutateLayout(LayoutField field, double current, double newValue, Runnable apply) {
@@ -1418,47 +1253,6 @@ public final class Song {
     }
 
     @Handler
-    public void fontDidChange(FontDidChangeNotification update) {
-        withModification(() -> {
-            var titleFont = update.getTitleFont();
-
-            if (titleFont != null) {
-                setTitleFont(titleFont.getPSName(), titleFont.getSize());
-            }
-
-            var lyricsFont = update.getLyricsFont();
-
-            if (lyricsFont != null) {
-                setLyricsFont(lyricsFont.getPSName(), lyricsFont.getSize());
-            }
-
-            var attributionFont = update.getAttributionFont();
-
-            if (attributionFont != null) {
-                setAttributionFont(attributionFont.getPSName(), attributionFont.getSize());
-            }
-
-            var annotationFont = update.getAnnotationFont();
-
-            if (annotationFont != null) {
-                setAnnotationFont(annotationFont.getPSName(), annotationFont.getSize());
-            }
-
-            var banglaFont = update.getBanglaFont();
-
-            if (banglaFont != null) {
-                setBanglaFont(banglaFont.getPSName(), banglaFont.getSize());
-            }
-
-            var footnoteFont = update.getFootnoteFont();
-
-            if (footnoteFont != null) {
-                setFootnoteFont(footnoteFont.getPSName(), footnoteFont.getSize());
-            }
-        });
-    }
-
-    @Handler
     public void tempoDidChange(TempoDidChangeNotification update) {
         // Skip the clone+mutation when the update record carries no actual fields.
         if (update.getTempoType() == null
@@ -1623,36 +1417,6 @@ public final class Song {
         defaultKeyAccidentalCount = count;
     }
 
-    private void applyTitleFont(String name, int size) {
-        titleFontName = name;
-        titleFontSize = size;
-    }
-
-    private void applyLyricsFont(String name, int size) {
-        lyricsFontName = name;
-        lyricsFontSize = size;
-    }
-
-    private void applyAttributionFont(String name, int size) {
-        attributionFontName = name;
-        attributionFontSize = size;
-    }
-
-    private void applyAnnotationFont(String name, int size) {
-        annotationFontName = name;
-        annotationFontSize = size;
-    }
-
-    private void applyBanglaFont(String name, int size) {
-        banglaFontName = name;
-        banglaFontSize = size;
-    }
-
-    private void applyFootnoteFont(String name, int size) {
-        footnoteFontName = name;
-        footnoteFontSize = size;
-    }
-
     private void applyTopPaddingSs(double padding, boolean setByUser) {
         topPaddingSs = padding;
         userSetTopPadding = userSetTopPadding || setByUser;
@@ -1689,9 +1453,13 @@ public final class Song {
      * is migrated to an offset-based system.
      */
     private double calculateAttributionStartY() {
-        // We want the attribution to start half of the song title font size below the song title
+        // We want the attribution to start half of the song title font size below the song title.
+        // Uses prefs defaults since this is only called during Song construction, before any
+        // document fonts are available on ScoreView.
         var lineCount = Utils.lineCount(title);
-        var lineHeight = MyFontUtils.getFontMetrics(MyFontUtils.createFont(titleFontName, titleFontSize)).getHeight();
+        var prefs = Prefs.getInstance();
+        var titleFont = MyFontUtils.createFont(prefs.getString(PrefsKey.TITLE_FONT), prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+        var lineHeight = MyFontUtils.getFontMetrics(titleFont).getHeight();
         return (lineHeight * lineCount) + (lineHeight / 2.0);
     }
 

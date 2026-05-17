@@ -28,6 +28,8 @@ import com.uber.nullaway.annotations.Initializer;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.font.DocumentFontsHolder;
+import songscribe.font.FontKey;
 import songscribe.music.Lyric;
 import songscribe.music.Song;
 import songscribe.music.Span;
@@ -68,6 +70,7 @@ public class ElementRenderContext {
     // ==========================================================================
 
     private final Song song;
+    private final DocumentFontsHolder fonts;
     @Nullable
     private Line currentLine;
     private double middleLineYSs;
@@ -90,10 +93,12 @@ public class ElementRenderContext {
     /**
      * Creates a render context for the given song.
      *
-     * @param song The song being rendered
+     * @param song  the song being rendered
+     * @param fonts the document fonts holder used by font-reading renderers
      */
-    public ElementRenderContext(Song song) {
+    public ElementRenderContext(Song song, DocumentFontsHolder fonts) {
         this.song = song;
+        this.fonts = fonts;
     }
 
     /**
@@ -101,6 +106,23 @@ public class ElementRenderContext {
      */
     public Song getSong() {
         return song;
+    }
+
+    /**
+     * Returns the document fonts holder, providing per-role rendering fonts.
+     */
+    public DocumentFontsHolder getFonts() {
+        return fonts;
+    }
+
+    /** Convenience accessor for the attribution font. */
+    public Font getAttributionFont() {
+        return fonts.getFont(FontKey.ATTRIBUTION);
+    }
+
+    /** Convenience accessor for the annotation font. */
+    public Font getAnnotationFont() {
+        return fonts.getFont(FontKey.ANNOTATION);
     }
 
     /**

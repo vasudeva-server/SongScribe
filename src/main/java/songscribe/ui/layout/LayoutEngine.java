@@ -28,6 +28,7 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.font.DocumentFontsHolder;
 import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.smufl.Engraving;
@@ -88,6 +89,7 @@ public class LayoutEngine {
 
     private final LyricRenderMetrics lyricRenderMetrics;
     private final double staffRightMarginSs;
+    private final DocumentFontsHolder fonts;
 
     // Calculators
     private final ElementColumnBuilder columnBuilder;
@@ -105,9 +107,13 @@ public class LayoutEngine {
      * @param lyricRenderMetrics Song-wide lyric render metrics (font + glyph widths)
      * @param staffRightMarginSs Right margin of the staff in staff-space units
      */
-    public LayoutEngine(LyricRenderMetrics lyricRenderMetrics, double staffRightMarginSs) {
+    public LayoutEngine(
+        LyricRenderMetrics lyricRenderMetrics,
+        double staffRightMarginSs,
+        DocumentFontsHolder fonts) {
         this.lyricRenderMetrics = lyricRenderMetrics;
         this.staffRightMarginSs = staffRightMarginSs;
+        this.fonts = fonts;
 
         // Initialize calculators
         columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
@@ -210,7 +216,7 @@ public class LayoutEngine {
         // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
         // Use the song's staff width for consistent StaffExtents discretization,
         // not the content width which varies with column count.
-        verticalCalculator.calculate(columns, line, builder, staffRightMarginSs);
+        verticalCalculator.calculate(columns, line, builder, staffRightMarginSs, fonts);
 
         // Step 7b: Compute lyric box and connector geometry.
         buildLyricLayout(columns, builder, hasLeadingLyricContinuation);

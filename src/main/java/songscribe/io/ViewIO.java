@@ -20,12 +20,16 @@
 package songscribe.io;
 
 import java.io.PrintWriter;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Song;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
+import songscribe.font.DocumentFonts;
+import songscribe.font.DocumentFontsHolder;
+import songscribe.font.FontKey;
 
 public final class ViewIO {
 
@@ -42,22 +46,26 @@ public final class ViewIO {
     private static final String XML_FOOTNOTE_FONT = "footnoteFont";
     private static final String XML_FOOTNOTE_FONT_SIZE = "footnoteFontSize";
 
+    private record FontTags(FontKey key, String nameTag, String sizeTag) {}
+
+    private static final FontTags[] FONT_TAGS = {
+        new FontTags(FontKey.TITLE,       XML_TITLE_FONT,      XML_TITLE_FONT_SIZE),
+        new FontTags(FontKey.LYRICS,      XML_LYRICS_FONT,     XML_LYRICS_FONT_SIZE),
+        new FontTags(FontKey.ATTRIBUTION, XML_GENERAL_FONT,    XML_GENERAL_FONT_SIZE),
+        new FontTags(FontKey.ANNOTATION,  XML_ANNOTATION_FONT, XML_ANNOTATION_FONT_SIZE),
+        new FontTags(FontKey.BANGLA,      XML_BANGLA_FONT,     XML_BANGLA_FONT_SIZE),
+        new FontTags(FontKey.FOOTNOTE,    XML_FOOTNOTE_FONT,   XML_FOOTNOTE_FONT_SIZE),
+    };
+
     private ViewIO() {}
 
-    public static void writeView(Song c, PrintWriter pw) {
+    public static void writeView(DocumentFontsHolder fonts, PrintWriter pw) {
         XML.setIndent(4);
-        XML.writeValue(pw, XML_TITLE_FONT, c.getTitleFontName());
-        XML.writeValue(pw, XML_TITLE_FONT_SIZE, String.valueOf(c.getTitleFontSize()));
-        XML.writeValue(pw, XML_LYRICS_FONT, c.getLyricsFontName());
-        XML.writeValue(pw, XML_LYRICS_FONT_SIZE, Integer.toString(c.getLyricsFontSize()));
-        XML.writeValue(pw, XML_GENERAL_FONT, c.getAttributionFontName());
-        XML.writeValue(pw, XML_GENERAL_FONT_SIZE, Integer.toString(c.getAttributionFontSize()));
-        XML.writeValue(pw, XML_ANNOTATION_FONT, c.getAnnotationFontName());
-        XML.writeValue(pw, XML_ANNOTATION_FONT_SIZE, Integer.toString(c.getAnnotationFontSize()));
-        XML.writeValue(pw, XML_BANGLA_FONT, c.getBanglaFontName());
-        XML.writeValue(pw, XML_BANGLA_FONT_SIZE, Integer.toString(c.getBanglaFontSize()));
-        XML.writeValue(pw, XML_FOOTNOTE_FONT, c.getFootnoteFontName());
-        XML.writeValue(pw, XML_FOOTNOTE_FONT_SIZE, Integer.toString(c.getFootnoteFontSize()));
+        for (var t : FONT_TAGS) {
+            var font = fonts.getFont(t.key);
+            XML.writeValue(pw, t.nameTag, font.getPSName());
+            XML.writeValue(pw, t.sizeTag, Integer.toString(font.getSize()));
+        }
     }
 
     public static class ViewReader {
@@ -66,39 +74,17 @@ public final class ViewIO {
         private String lastTag;
 
         private final StringBuilder value = new StringBuilder(40);
-        private final StringFont title;
-        private final StringFont lyrics;
-        private final StringFont general;
-        private final StringFont annotation;
-        private final StringFont bangla;
-        private final StringFont footnote;
+        private final Map<FontKey, StringFont> stringFonts = new EnumMap<>(FontKey.class);
+        private final Map<String, Consumer<String>> setters = new HashMap<>();
 
         public ViewReader() {
-            var prefs = Prefs.getInstance();
-            title = new StringFont(
-                prefs.getString(PrefsKey.TITLE_FONT),
-                Integer.toString(prefs.getInt(PrefsKey.TITLE_FONT_SIZE))
-            );
-            lyrics = new StringFont(
-                prefs.getString(PrefsKey.LYRICS_FONT),
-                Integer.toString(prefs.getInt(PrefsKey.LYRICS_FONT_SIZE))
-            );
-            general = new StringFont(
-                prefs.getString(PrefsKey.ATTRIBUTION_FONT),
-                Integer.toString(prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE))
-            );
-            annotation = new StringFont(
-                prefs.getString(PrefsKey.ANNOTATION_FONT),
-                Integer.toString(prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE))
-            );
-            bangla = new StringFont(
-                prefs.getString(PrefsKey.BANGLA_FONT),
-                Integer.toString(prefs.getInt(PrefsKey.BANGLA_FONT_SIZE))
-            );
-            footnote = new StringFont(
-                prefs.getString(PrefsKey.FOOTNOTE_FONT),
-                Integer.toString(prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE))
-            );
+            var defaults = DocumentFonts.defaultsFromPrefs();
+            for (var t : FONT_TAGS) {
+                var sf = StringFont.from(defaults, t.key);
+                stringFonts.put(t.key, sf);
+                setters.put(t.nameTag, v -> sf.name = v);
+                setters.put(t.sizeTag, v -> sf.size = v);
+            }
         }
 
         public void startElement11(String qName) {
@@ -109,21 +95,9 @@ public final class ViewIO {
         public void endElement11(String qName) {
             //noinspection PointlessNullCheck
             if (lastTag != null && qName.equals(lastTag)) {
-                var str = value.toString();
-
-                switch (lastTag) {
-                    case XML_TITLE_FONT -> title.name = str;
-                    case XML_TITLE_FONT_SIZE -> title.size = str;
-                    case XML_LYRICS_FONT -> lyrics.name = str;
-                    case XML_LYRICS_FONT_SIZE -> lyrics.size = str;
-                    case XML_GENERAL_FONT -> general.name = str;
-                    case XML_GENERAL_FONT_SIZE -> general.size = str;
-                    case XML_ANNOTATION_FONT -> annotation.name = str;
-                    case XML_ANNOTATION_FONT_SIZE -> annotation.size = str;
-                    case XML_BANGLA_FONT -> bangla.name = str;
-                    case XML_BANGLA_FONT_SIZE -> bangla.size = str;
-                    case XML_FOOTNOTE_FONT -> footnote.name = str;
-                    case XML_FOOTNOTE_FONT_SIZE -> footnote.size = str;
+                var setter = setters.get(lastTag);
+                if (setter != null) {
+                    setter.accept(value.toString());
                 }
             }
 
@@ -137,52 +111,17 @@ public final class ViewIO {
             }
         }
 
-        public String getTitleFontName() {
-            return title.name;
-        }
-
-        public int getTitleFontSize() {
-            return title.sizeAsInt();
-        }
-
-        public String getLyricsFontName() {
-            return lyrics.name;
-        }
-
-        public int getLyricsFontSize() {
-            return lyrics.sizeAsInt();
-        }
-
-        public String getAttributionFontName() {
-            return general.name;
-        }
-
-        public int getAttributionFontSize() {
-            return general.sizeAsInt();
-        }
-
-        public String getAnnotationFontName() {
-            return annotation.name;
-        }
-
-        public int getAnnotationFontSize() {
-            return annotation.sizeAsInt();
-        }
-
-        public String getBanglaFontName() {
-            return bangla.name;
-        }
-
-        public int getBanglaFontSize() {
-            return bangla.sizeAsInt();
-        }
-
-        public String getFootnoteFontName() {
-            return footnote.name;
-        }
-
-        public int getFootnoteFontSize() {
-            return footnote.sizeAsInt();
+        /**
+         * Builds a {@link DocumentFonts} from the parsed {@code <view>} block. Roles
+         * absent from the block fall through to the {@link Prefs} defaults the
+         * reader was constructed with — so partial blocks and v1.1+ files without
+         * a full font set produce the same result as a missing {@code <view>}
+         * (handled by {@code SongIO} returning {@link DocumentFonts#defaultsFromPrefs}).
+         */
+        public DocumentFonts getDocumentFonts() {
+            var fonts = new DocumentFonts();
+            stringFonts.forEach((key, sf) -> fonts.setFont(key, sf.name, sf.sizeAsInt()));
+            return fonts;
         }
 
         private static class StringFont {
@@ -192,6 +131,11 @@ public final class ViewIO {
             StringFont(String name, String size) {
                 this.name = name;
                 this.size = size;
+            }
+
+            static StringFont from(DocumentFonts defaults, FontKey key) {
+                var font = defaults.getFont(key);
+                return new StringFont(font.getPSName(), Integer.toString(font.getSize()));
             }
 
             int sizeAsInt() {

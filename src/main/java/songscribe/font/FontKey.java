@@ -18,13 +18,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.message.mutation;
+package songscribe.font;
 
-/**
- * Identifies which font changed in a {@link FontChange} mutation.
- * Values are carried as PostScript name + point size.
- */
-public enum FontField {
+/** The six document-level font roles managed by {@link DocumentFonts}. */
+public enum FontKey {
     TITLE,
     LYRICS,
     ATTRIBUTION,

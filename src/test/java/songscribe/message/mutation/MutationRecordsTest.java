@@ -34,6 +34,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
+import songscribe.font.DocumentFonts;
 import songscribe.music.BeamSpan;
 import songscribe.music.DynamicsSpan;
 import songscribe.music.ElementType;
@@ -201,13 +202,12 @@ class MutationRecordsTest extends UnitTest {
 
         @Test
         void testFontChangeExposesFields() {
-            var mutation = new FontChange(FontField.LYRICS, "Dialog", 12, "Dialog-Bold", 14);
+            var oldFonts = DocumentFonts.defaultsFromPrefs();
+            var newFonts = DocumentFonts.defaultsFromPrefs();
+            var mutation = new FontChange(oldFonts, newFonts);
 
-            assertThat(mutation.field()).isEqualTo(FontField.LYRICS);
-            assertThat(mutation.oldName()).isEqualTo("Dialog");
-            assertThat(mutation.oldSize()).isEqualTo(12);
-            assertThat(mutation.newName()).isEqualTo("Dialog-Bold");
-            assertThat(mutation.newSize()).isEqualTo(14);
+            assertThat(mutation.oldFonts()).isSameAs(oldFonts);
+            assertThat(mutation.newFonts()).isSameAs(newFonts);
         }
 
         @Test

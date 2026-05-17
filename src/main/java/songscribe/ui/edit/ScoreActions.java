@@ -60,11 +60,6 @@ public interface ScoreActions {
     void drawWidthIfWiderLine(Line line, boolean revalidateOnly);
 
     /**
-     * Rebuilds lyric render metrics from current preferences.
-     */
-    void rebuildLyricRenderMetrics();
-
-    /**
      * Synchronizes playback-related preferences (loop, play-with-repeats).
      */
     void syncPlaybackPrefs();

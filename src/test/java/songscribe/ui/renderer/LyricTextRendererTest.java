@@ -74,7 +74,7 @@ class LyricTextRendererTest extends UnitTest {
         var box = new LyricBoxLayout(3.25, 2.0, 1, "do");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
 
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setLayoutResult(layoutResult);
         ctx.setSongLayoutMetrics(metrics(1.0, 2.5, 1));
         ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
@@ -105,7 +105,7 @@ class LyricTextRendererTest extends UnitTest {
             .addLyricBox(element, verse2)
             .build();
 
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setLayoutResult(layoutResult);
         ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 2));
         ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
@@ -130,7 +130,7 @@ class LyricTextRendererTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         var layoutResult = LayoutResult.builder().build();
 
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setLayoutResult(layoutResult);
         ctx.setSongLayoutMetrics(metrics(0, 0, 0));
 
@@ -148,7 +148,7 @@ class LyricTextRendererTest extends UnitTest {
         var box = new LyricBoxLayout(0.0, 1.0, 1, "re");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
 
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setLayoutResult(layoutResult);
         ctx.setSongLayoutMetrics(metrics(0.5, 2.5, 1));
         ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
@@ -177,7 +177,7 @@ class LyricTextRendererTest extends UnitTest {
 
         var lyricRenderMetrics = new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
 
-        var activeCtx = new ElementRenderContext(new Song());
+        var activeCtx = RenderContextTestHelper.newContext(new Song());
         activeCtx.setLayoutResult(layoutResult);
         activeCtx.setSongLayoutMetrics(metrics(1.0, 2.5, 1));
         activeCtx.setLyricRenderMetrics(lyricRenderMetrics);
@@ -187,7 +187,7 @@ class LyricTextRendererTest extends UnitTest {
         LyricTextRenderer.getInstance().render(activeElement, g2Active, activeCtx);
         verifyNoInteractions(g2Active);
 
-        var otherCtx = new ElementRenderContext(new Song());
+        var otherCtx = RenderContextTestHelper.newContext(new Song());
         otherCtx.setLayoutResult(layoutResult);
         otherCtx.setSongLayoutMetrics(metrics(1.0, 2.5, 1));
         otherCtx.setLyricRenderMetrics(lyricRenderMetrics);
@@ -204,7 +204,7 @@ class LyricTextRendererTest extends UnitTest {
         var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setLayoutResult(layoutResult);
         ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 1));
         ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
@@ -225,7 +225,7 @@ class LyricTextRendererTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setLayoutResult(layoutResult);
         ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 1));
         ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));

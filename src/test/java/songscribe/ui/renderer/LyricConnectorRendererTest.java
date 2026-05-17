@@ -77,7 +77,7 @@ class LyricConnectorRendererTest extends UnitTest {
             builder.addLyricConnector(connector);
         }
 
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setLayoutResult(builder.build());
         ctx.setSongLayoutMetrics(metrics);
         ctx.setLyricRenderMetrics(TEST_LYRIC_RENDER_METRICS);

@@ -36,6 +36,9 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.export.ExportOptions;
+import songscribe.font.DocumentFonts;
+import songscribe.font.DocumentFontsHolder;
+import songscribe.font.FontKey;
 import songscribe.export.ImageExporter;
 import songscribe.export.SVGExporter;
 import songscribe.io.SongIO;
@@ -44,6 +47,7 @@ import songscribe.music.Song;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.MusicEditOperations;
+import songscribe.message.mutation.FontChange;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.prefs.Prefs;
@@ -69,7 +73,6 @@ import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
-import songscribe.ui.render.RenderResources;
 import songscribe.ui.renderer.GraphicsState;
 import songscribe.util.GraphicUtils;
 import songscribe.util.StringUtils;
@@ -101,6 +104,7 @@ public final class ScoreView
     extends JComponent
     implements
     ComponentHierarchyProvider,
+    DocumentFontsHolder,
     InputHandlerCallback,
     LineComponent.SelectionProvider,
     RenderContext,
@@ -208,6 +212,11 @@ public final class ScoreView
     // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
     private @Nullable LyricRenderMetrics lyricRenderMetrics;
 
+    // Authoritative document-level fonts. Null only before first bootstrap in init().
+    // Phase 5+: sole source of truth; ScoreView.setFonts() is the only write entry.
+    @Nullable
+    private DocumentFonts documentFonts = null;
+
     // The currently-open lyric editor overlay, if any. Set by LyricEditor.openOn /
     // dismiss so getActiveLyricEditor() doesn't have to scan getComponents() per paint.
     @Nullable private LyricEditor activeLyricEditor;
@@ -277,12 +286,14 @@ public final class ScoreView
 
         // Create initial song
         song = new Song();
+        documentFonts = DocumentFonts.defaultsFromPrefs();
 
         // Initialize UI components
         initView();
         initAdjustments();
         initScorePanel();
         initMainPanel();
+        applyDocumentFonts();
 
         updatePageLayout(ScaleContext.getInstance().ssToRoundedPx(song.getLineWidthSs()));
         if (inputHandler != null) {
@@ -475,6 +486,7 @@ public final class ScoreView
             }
 
             setSong(newSong);
+            installDocumentFonts(reader.getDocumentFonts());
 
             if (updateCurrentFile && onFileOpened != null) {
                 onFileOpened.accept(file);
@@ -1043,11 +1055,11 @@ public final class ScoreView
      * reads up-to-date hyphen and space widths.
      */
     public void rebuildLyricRenderMetrics() {
-        if (song == null) {
+        if (song == null || documentFonts == null) {
             return;
         }
 
-        var lyricsFont = RenderResources.getLyricsFont();
+        var lyricsFont = documentFonts.getLyricsFont();
 
         if (lyricRenderMetrics != null && lyricRenderMetrics.lyricsFont().equals(lyricsFont)) {
             return;
@@ -1068,6 +1080,96 @@ public final class ScoreView
 
     public void setActiveLyricEditor(@Nullable LyricEditor editor) {
         activeLyricEditor = editor;
+    }
+
+    // -------------------------------------------------------------------------
+    // Document fonts
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns internal document font storage. Do not retain — Phase 5 swaps the reference
+     * on each font change.
+     *
+     * @throws IllegalStateException if called before {@link #init()} completes
+     */
+    public DocumentFonts getDocumentFonts() {
+        if (documentFonts == null) {
+            throw new IllegalStateException("documentFonts not initialized");
+        }
+        return documentFonts;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Font getFont(FontKey key) {
+        return getDocumentFonts().getFont(key);
+    }
+
+    /**
+     * Applies the current {@link #documentFonts} to each JComponent leaf and rebuilds
+     * lyric render metrics. Each call triggers one {@link LyricRenderMetrics} rebuild
+     * and one Swing {@code revalidate()} pass on the ScoreView subtree. For batched
+     * font changes, build a single {@code DocumentFonts} and call {@code setFonts()}
+     * once rather than applying role-by-role.
+     */
+    private void applyDocumentFonts() {
+        if (documentFonts == null) {
+            throw new IllegalStateException("applyDocumentFonts called before documentFonts initialized");
+        }
+        // Headless converter path: openFile -> installDocumentFonts runs without init().
+        if (mainPanel == null) {
+            return;
+        }
+        rebuildLyricRenderMetrics();
+        var textPanel = mainPanel.getTextPanel();
+        mainPanel.getTitleComponent().setFont(documentFonts.getTitleFont());
+        textPanel.getUnderLyricsComponent().setFont(documentFonts.getLyricsFont());
+        textPanel.getBanglaLyricsComponent().setFont(documentFonts.getBanglaFont());
+        textPanel.getTranslationComponent().setFont(documentFonts.getLyricsFont());
+        mainPanel.getFootnotesComponent().setFont(documentFonts.getFootnoteFont());
+        revalidate();
+    }
+
+    /**
+     * Installs new document fonts and cascades them through the component tree.
+     * <p>
+     * Called by the load path ({@link #openFile} after {@link #setSong}) and
+     * by new-document creation. Unlike {@link #setFonts}, this is not undoable
+     * and does not record a {@link FontChange} mutation — it establishes the
+     * starting state, not a user edit.
+     */
+    public void installDocumentFonts(DocumentFonts fonts) {
+        documentFonts = fonts;
+        applyDocumentFonts();
+    }
+
+    /**
+     * Replaces the document fonts and cascades the change.
+     *
+     * <p>If {@code newFonts.equals(this.documentFonts)} the call is a no-op:
+     * no mutation is recorded, no cascade runs.
+     *
+     * <p>Otherwise records a single {@link FontChange} mutation inside the
+     * song's modification bracket — a commit that changes multiple roles
+     * produces one undoable group, not one per role.
+     *
+     * <p><b>Cost:</b> each non-no-op call triggers a full
+     * {@link LyricRenderMetrics} rebuild and one Swing {@code revalidate()}
+     * pass. For batched changes, construct a single {@link DocumentFonts} and
+     * call this method once rather than role-by-role.
+     */
+    public void setFonts(DocumentFonts newFonts) {
+        var oldFonts = getDocumentFonts();
+        if (newFonts.equals(oldFonts)) {
+            return;
+        }
+        var theSong = getSong();
+        theSong.withModification(() ->
+            theSong.applyChange(new FontChange(oldFonts, newFonts), () -> {
+                documentFonts = newFonts;
+                applyDocumentFonts();
+            })
+        );
     }
 
     /**

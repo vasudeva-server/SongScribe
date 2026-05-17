@@ -39,10 +39,11 @@ import songscribe.ui.component.ScoreView;
  * {@link ScoreView#setSong(Song)} posts
  * a {@link songscribe.message.notification.DocumentDidLoadNotification}.
  * <p>
- * Font name+size fields are {@code @Nullable} because v1.0 files have no View section;
- * when null, the Song retains its default (preferences-based) fonts.
  * The {@code tempo} field is {@code @Nullable}; a null value means the song
  * file contained no {@code <tempo>} element and the song has no explicit tempo.
+ * Fonts are not stored on {@code SongData}; they are built directly into a
+ * {@link songscribe.font.DocumentFonts} by the reader and installed on
+ * {@link ScoreView} separately.
  */
 public record SongData(
     @Nullable Tempo tempo,
@@ -60,18 +61,6 @@ public record SongData(
     boolean unofficialTranslation,
     int defaultKeyAccidentalCount,
     KeyType defaultKeyType,
-    @Nullable String titleFontName,
-    @Nullable Integer titleFontSize,
-    @Nullable String lyricsFontName,
-    @Nullable Integer lyricsFontSize,
-    @Nullable String attributionFontName,
-    @Nullable Integer attributionFontSize,
-    @Nullable String annotationFontName,
-    @Nullable Integer annotationFontSize,
-    @Nullable String banglaFontName,
-    @Nullable Integer banglaFontSize,
-    @Nullable String footnoteFontName,
-    @Nullable Integer footnoteFontSize,
     double topPaddingSs,
     double attributionStartYSs,
     double rowHeightAdjustmentSs,

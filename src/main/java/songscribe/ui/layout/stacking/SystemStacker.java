@@ -20,6 +20,7 @@
 
 package songscribe.ui.layout.stacking;
 
+import songscribe.font.DocumentFontsHolder;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.ElementColumn;
@@ -28,7 +29,6 @@ import songscribe.ui.layout.MetronomeAttachment;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.TempoChangeAttachment;
-import songscribe.ui.render.RenderResources;
 import songscribe.ui.renderer.NoteRenderer;
 
 import static songscribe.ui.layout.stacking.StackingUtils.stackAbove;
@@ -57,10 +57,15 @@ public class SystemStacker {
     public static final double ANNOTATION_MARGIN_SS = 1.0;  // 8px
     private final StackingContext context;
     private final StaffExtents systemExtents;
+    private final DocumentFontsHolder fonts;
 
-    public SystemStacker(StackingContext context, StaffExtents systemExtents) {
+    public SystemStacker(
+        StackingContext context,
+        StaffExtents systemExtents,
+        DocumentFontsHolder fonts) {
         this.context = context;
         this.systemExtents = systemExtents;
+        this.fonts = fonts;
     }
 
     /**
@@ -161,7 +166,7 @@ public class SystemStacker {
 
         var columnXSs = column.getXSs();
         var staffPosition = note.getStaffPosition();
-        var annotationFont = RenderResources.getAnnotationFont();
+        var annotationFont = fonts.getAnnotationFont();
         var widthSs = annotation.computeContentWidthSs(annotationFont);
         var heightSs = ScaleContext.getInstance().textHeightSs(annotationFont);
 
@@ -186,7 +191,7 @@ public class SystemStacker {
 
         var xSs = column.getXSs();
         var staffPosition = column.getElement().getStaffPosition();
-        var attrFont = RenderResources.getAttributionFont();
+        var attrFont = fonts.getAttributionFont();
         var metrics = attachment.computeContentMetrics(attrFont);
 
         stackAboveWithRegions(systemExtents, attachment, metrics.regions(), xSs,

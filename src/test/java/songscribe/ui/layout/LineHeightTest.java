@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.font.DocumentFonts;
 import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -63,7 +64,7 @@ class LineHeightTest extends UnitTest {
         var spaceWidthSs = scale.textWidthSs(lyricsFont, " ");
         var metrics = new LyricRenderMetrics(
             lyricsFont, scale.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
-        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS);
+        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultsFromPrefs());
     }
 
     @SuppressWarnings("NullAway")

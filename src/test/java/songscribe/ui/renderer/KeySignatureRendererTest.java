@@ -38,7 +38,7 @@ class KeySignatureRendererTest extends UnitTest {
     @Test
     void testRenderIsNoOpForCMajor() {
         var g2 = mock(Graphics2D.class);
-        var ctx = new ElementRenderContext(new Song());
+        var ctx = RenderContextTestHelper.newContext(new Song());
         var keySig = new KeySignature(KeyType.NONE, 0);
 
         KeySignatureRenderer.getInstance().render(keySig, g2, ctx);

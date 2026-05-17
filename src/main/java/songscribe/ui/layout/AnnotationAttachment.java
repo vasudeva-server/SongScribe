@@ -26,7 +26,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Annotation;
 import songscribe.music.StaffElement;
-import songscribe.ui.render.RenderResources;
 
 /**
  * Represents a text annotation attachment on a note.
@@ -119,23 +118,36 @@ public class AnnotationAttachment extends Attachment {
     }
 
     /**
-     * Returns the content height in staff-space units, derived from the annotation font
-     * via {@link songscribe.ui.render.RenderResources#getAnnotationFont()}.
+     * Computes the content height from the annotation font.
+     *
+     * @param font the annotation font
+     * @return height in staff-space units
      */
-    @Override
-    public double getContentHeightSs() {
-        return ScaleContext.getInstance().textHeightSs(
-            RenderResources.getAnnotationFont());
+    public double computeContentHeightSs(Font font) {
+        return ScaleContext.getInstance().textHeightSs(font);
     }
 
     @Override
     public double getContentWidthPx() {
-        // Legacy pixel API — not used for layout (computeContentWidthSs is used instead)
-        return 0;
+        throw new UnsupportedOperationException(
+            "AnnotationAttachment width is font-dependent; use computeContentWidthSs(font) instead.");
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().ssToPx(getContentHeightSs());
+        throw new UnsupportedOperationException(
+            "AnnotationAttachment height is font-dependent; use computeContentHeightSs(font) instead.");
+    }
+
+    @Override
+    public double getContentWidthSs() {
+        throw new UnsupportedOperationException(
+            "AnnotationAttachment width is font-dependent; use computeContentWidthSs(font) instead.");
+    }
+
+    @Override
+    public double getContentHeightSs() {
+        throw new UnsupportedOperationException(
+            "AnnotationAttachment height is font-dependent; use computeContentHeightSs(font) instead.");
     }
 }

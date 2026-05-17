@@ -318,12 +318,7 @@ public final class ScoreViewController {
             return;
         }
 
-        // Font changes require lyric metrics to be rebuilt before line layouts are
-        // invalidated so that LineComponent.getPreferredSize() calls performLayout()
-        // with up-to-date measurements during the layout pass.
         if (message.hasMutationOf(FontChange.class)) {
-            scoreActions.rebuildLyricRenderMetrics();
-
             for (var linePanel : mainPanel.getStaffPanel().getLinePanels()) {
                 linePanel.getLineComponent().invalidateLayout();
             }
