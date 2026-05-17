@@ -144,10 +144,10 @@ public class PreferencesDialog extends BaseDialog {
     }
 
     private void syncPlaybackPrefs() {
-        var score = getScore();
+        var scoreView = getScoreView();
 
-        if (score != null) {
-            score.syncPlaybackPrefs();
+        if (scoreView != null) {
+            scoreView.syncPlaybackPrefs();
         }
     }
 

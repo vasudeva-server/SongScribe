@@ -53,12 +53,12 @@ public final class ExportPDFAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var score = requireScore();
+        var scoreView = requireScoreView();
         var saveFile = PlatformFileDialog.showSaveDialog(
             getMainFrame(),
             "Export PDF",
             Strings.get(Strings.FILTER_PDF),
-            score.getSuggestedFileName(),
+            scoreView.getSuggestedFileName(),
             "pdf"
         );
 

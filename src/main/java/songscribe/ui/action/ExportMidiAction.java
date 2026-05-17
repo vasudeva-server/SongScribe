@@ -39,12 +39,12 @@ public final class ExportMidiAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var score = requireScore();
+        var scoreView = requireScoreView();
         var saveFile = PlatformFileDialog.showSaveDialog(
             getMainFrame(),
             "Export MIDI",
             Strings.get(Strings.FILTER_MIDI),
-            score.getSuggestedFileName(),
+            scoreView.getSuggestedFileName(),
             "mid"
         );
 

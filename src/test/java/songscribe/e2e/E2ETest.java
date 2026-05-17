@@ -89,10 +89,10 @@ public abstract class E2ETest {
     /** Corner arc radius for the status overlay background. */
     private static final int OVERLAY_ARC_PX = 4;
 
-    /** Margin between overlay bottom and score bottom when score fits on screen. */
+    /** Margin between overlay bottom and scoreView bottom when scoreView fits on screen. */
     private static final int OVERLAY_SCORE_MARGIN_PX = 8;
 
-    /** Margin between overlay bottom and screen bottom when score extends below the screen. */
+    /** Margin between overlay bottom and screen bottom when scoreView extends below the screen. */
     private static final int OVERLAY_SCREEN_MARGIN_PX = 13;
 
     private static final Object INIT_LOCK = new Object();
@@ -142,8 +142,8 @@ public abstract class E2ETest {
 
         GuiActionRunner.execute(() -> {
             var song = new Song();
-            score().setSong(song);
-            score().installDocumentFonts(DocumentFonts.defaultsFromPrefs());
+            scoreView().setSong(song);
+            scoreView().installDocumentFonts(DocumentFonts.defaultsFromPrefs());
         });
     }
 
@@ -188,9 +188,9 @@ public abstract class E2ETest {
 
     private static void positionOverlay() {
         var overlay = Objects.requireNonNull(statusOverlay);
-        var score = Objects.requireNonNull(MainFrame.getInstance().getScore());
-        var scoreLoc = score.getLocationOnScreen();
-        var scoreSize = score.getSize();
+        var scoreView = Objects.requireNonNull(MainFrame.getInstance().getScoreView());
+        var scoreLoc = scoreView.getLocationOnScreen();
+        var scoreSize = scoreView.getSize();
         var overlaySize = overlay.getPreferredSize();
         var screenBounds = overlay.getGraphicsConfiguration().getBounds();
 
@@ -211,12 +211,12 @@ public abstract class E2ETest {
 
     // -- Accessors --
 
-    protected ScoreView score() {
-        return Objects.requireNonNull(MainFrame.getInstance().getScore());
+    protected ScoreView scoreView() {
+        return Objects.requireNonNull(MainFrame.getInstance().getScoreView());
     }
 
     protected Song song() {
-        return score().getSong();
+        return scoreView().getSong();
     }
 
     // -- Toolbar button helpers --
@@ -410,7 +410,7 @@ public abstract class E2ETest {
      */
     protected Point noteScreenPosition(int lineIndex, int noteIndex) {
         return Objects.requireNonNull(GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
+            var lc = Objects.requireNonNull(scoreView().getLineComponent(lineIndex));
             var line = Objects.requireNonNull(lc.getLine());
             var note = line.getElement(noteIndex);
 
@@ -434,7 +434,7 @@ public abstract class E2ETest {
      */
     protected Point insertionPoint(int lineIndex, int staffPositionSp) {
         return Objects.requireNonNull(GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
+            var lc = Objects.requireNonNull(scoreView().getLineComponent(lineIndex));
             var line = Objects.requireNonNull(lc.getLine());
 
             int xPx;
@@ -467,7 +467,7 @@ public abstract class E2ETest {
      */
     protected Point insertionPointBefore(int lineIndex, int elementIndex, int staffPositionSp) {
         return Objects.requireNonNull(GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
+            var lc = Objects.requireNonNull(scoreView().getLineComponent(lineIndex));
             var line = Objects.requireNonNull(lc.getLine());
             var layoutResult = lc.getLayoutResult();
 
@@ -493,7 +493,7 @@ public abstract class E2ETest {
         var startPoint = noteScreenPosition(lineIndex, noteIndex);
 
         var endPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
+            var lc = Objects.requireNonNull(scoreView().getLineComponent(lineIndex));
             var endYPx = lc.staffPositionToYPx(targetStaffPositionSp);
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(startPoint.x, locationOnScreen.y + endYPx);
@@ -635,7 +635,7 @@ public abstract class E2ETest {
      */
     protected void pressKey(int keyCode, int modifiers) {
         GuiActionRunner.execute(() -> {
-            var target = score();
+            var target = scoreView();
             target.requestFocusInWindow();
             var now = System.currentTimeMillis();
 
@@ -657,7 +657,7 @@ public abstract class E2ETest {
      */
     protected void performLayout(int lineIndex) {
         GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
+            var lc = Objects.requireNonNull(scoreView().getLineComponent(lineIndex));
             lc.invalidateLayout();
             lc.paintImmediately(lc.getBounds());
         });
@@ -721,13 +721,13 @@ public abstract class E2ETest {
     /**
      * Loads a fixture file and replaces the current song.
      * The fixture is deserialized via the same path as File > Open, then set
-     * on the score and laid out.
+     * on the scoreView and laid out.
      */
     protected void loadFixture(String fixtureName) throws UnexpectedException {
         var song = Objects.requireNonNull(GuiActionRunner.execute(() -> {
             var result = UnitTest.loadFixtureResult(fixtureName);
-            score().setSong(result.song());
-            score().installDocumentFonts(result.fonts());
+            scoreView().setSong(result.song());
+            scoreView().installDocumentFonts(result.fonts());
             return result.song();
         }));
 

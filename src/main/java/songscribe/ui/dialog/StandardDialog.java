@@ -79,10 +79,10 @@ public abstract class StandardDialog extends BaseDialog {
     }
 
     private void repaintScore() {
-        var score = getScore();
+        var scoreView = getScoreView();
 
-        if (score != null) {
-            score.repaint();
+        if (scoreView != null) {
+            scoreView.repaint();
         }
     }
 

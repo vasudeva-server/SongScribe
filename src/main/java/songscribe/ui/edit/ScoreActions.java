@@ -40,7 +40,7 @@ public interface ScoreActions {
     void clearSelection();
 
     /**
-     * Repaints the score.
+     * Repaints the scoreView.
      */
     void repaint();
 

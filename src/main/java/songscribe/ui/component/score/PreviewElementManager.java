@@ -709,10 +709,10 @@ public final class PreviewElementManager {
             return false;
         }
 
-        var score = lc.getScore();
+        var scoreView = lc.getScoreView();
 
-        return score.getControl() == Control.MOUSE
-            && score.getMode() == Mode.EDIT
+        return scoreView.getControl() == Control.MOUSE
+            && scoreView.getMode() == Mode.EDIT
             && !PlaybackController.isPlaying();
     }
 
@@ -834,7 +834,7 @@ public final class PreviewElementManager {
      * @param line The line to add the element to
      */
     private static void addPreviewElement(LineComponent lc, Line line) {
-        var score = lc.getScore();
+        var score = lc.getScoreView();
         var previewElement = getActivePreviewElement();
 
         if (previewElement == null) {

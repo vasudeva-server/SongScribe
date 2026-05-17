@@ -65,7 +65,7 @@ public class HorizontalAdjustment extends Adjustment {
             return;
         }
 
-        var song = score.getSong();
+        var song = scoreView.getSong();
         var line = song.getLine(draggingRect.line);
         var lineWidth = song.getLineWidthPx();
 
@@ -190,7 +190,7 @@ public class HorizontalAdjustment extends Adjustment {
             return;
         }
 
-        var song = score.getSong();
+        var song = scoreView.getSong();
         var line = song.getLine(draggingRect.line);
         var note = line.getElement(draggingRect.xIndex);
 
@@ -302,7 +302,7 @@ public class HorizontalAdjustment extends Adjustment {
 
         song.setModified(true);
         revalidateRects();
-        score.repaint();
+        scoreView.repaint();
     }
 
     @Override
@@ -330,7 +330,7 @@ public class HorizontalAdjustment extends Adjustment {
         super.setEnabled(enabled);
 
         if (enabled) {
-            var song = score.getSong();
+            var song = scoreView.getSong();
 
             for (
                 var lineIndex = 0;
@@ -455,15 +455,15 @@ public class HorizontalAdjustment extends Adjustment {
     }
 
     private void getAdjustRect(AdjustRect rect) {
-        var line = score.getSong().getLine(rect.line);
+        var line = scoreView.getSong().getLine(rect.line);
         var note = line.getElement(rect.xIndex);
-        var yPosPx = score.getNoteYPosPx(
+        var yPosPx = scoreView.getNoteYPosPx(
             rect.horizontalAdjustmentType.getStaffPosition(),
             rect.line
         );
         rect.rect.y = yPosPx + ScaleContext.getInstance().ssToRoundedPx(
             note.getType().getTopYOffsetSs(note.isUpper()));
-        var lineComponent = score.getLineComponent(rect.line);
+        var lineComponent = scoreView.getLineComponent(rect.line);
 
         if (lineComponent == null) {
             return;
@@ -482,7 +482,7 @@ public class HorizontalAdjustment extends Adjustment {
                                 rect.xIndex,
                                 glissando,
                                 rect.line,
-                                score.getSong(),
+                                scoreView.getSong(),
                                 layoutResult,
                                 lineComponent.getMiddleLineYSs()
                             )
@@ -500,7 +500,7 @@ public class HorizontalAdjustment extends Adjustment {
                                 rect.xIndex,
                                 glissando,
                                 rect.line,
-                                score.getSong(),
+                                scoreView.getSong(),
                                 layoutResult,
                                 lineComponent.getMiddleLineYSs()
                             )
@@ -517,7 +517,7 @@ public class HorizontalAdjustment extends Adjustment {
                 if (x1Span != null) {
                     rect.rect.x = (int) ((line.getElement(rect.xIndex).getXOffsetPx() - 12) +
                         x1Span.getX1ShiftSs());
-                    rect.rect.y = (int) ((score.getNoteYPosPx(6, rect.line) - 4) +
+                    rect.rect.y = (int) ((scoreView.getNoteYPosPx(6, rect.line) - 4) +
                         x1Span.getYShiftSs());
                 }
             }
@@ -531,7 +531,7 @@ public class HorizontalAdjustment extends Adjustment {
                     rect.rect.x = (int) (line.getElement(rect.xIndex).getXOffsetPx() +
                         16 +
                         x2Span.getX2ShiftSs());
-                    rect.rect.y = (int) ((score.getNoteYPosPx(6, rect.line) - 4) +
+                    rect.rect.y = (int) ((scoreView.getNoteYPosPx(6, rect.line) - 4) +
                         x2Span.getYShiftSs());
                 }
             }

@@ -98,12 +98,12 @@ public final class ExportABCAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var score = requireScore();
+        var scoreView = requireScoreView();
         var saveFile = PlatformFileDialog.showSaveDialog(
             getMainFrame(),
             "Export ABC",
             Strings.get(Strings.FILTER_ABC),
-            score.getSuggestedFileName(),
+            scoreView.getSuggestedFileName(),
             "abc"
         );
 

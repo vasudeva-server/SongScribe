@@ -87,7 +87,7 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
         editModeManager = mock(EditModeManager.class);
 
         when(lineComponent.isEditMode()).thenReturn(true);
-        when(lineComponent.getScore()).thenReturn(score);
+        when(lineComponent.getScoreView()).thenReturn(score);
         when(lineComponent.getLine()).thenReturn(line);
         when(score.getControl()).thenReturn(Control.MOUSE);
         when(score.getMode()).thenReturn(Mode.EDIT);

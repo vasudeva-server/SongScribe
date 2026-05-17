@@ -475,16 +475,16 @@ public abstract class BaseDialog {
         return mainFrame;
     }
 
-    protected @Nullable ScoreView getScore() {
-        return mainFrame.getScore();
+    protected @Nullable ScoreView getScoreView() {
+        return mainFrame.getScoreView();
     }
 
-    protected ScoreView requireScore() {
-        return mainFrame.requireScore();
+    protected ScoreView requireScoreView() {
+        return mainFrame.requireScoreView();
     }
 
     protected Song getSong() {
-        return mainFrame.requireScore().getSong();
+        return mainFrame.requireScoreView().getSong();
     }
 
     /**

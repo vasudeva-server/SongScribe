@@ -201,21 +201,21 @@ public class StaffPanel extends JPanel {
      * so that all lines report a uniform preferred height.
      */
     private void updateSongMetrics() {
-        var score = linePanels.getFirst().getLineComponent().getScore();
+        var scoreView = linePanels.getFirst().getLineComponent().getScoreView();
 
         // Ensure LyricRenderMetrics on ScoreView is up-to-date before any line layout runs.
         // Line layouts read hyphenWidthSs and spaceWidthSs from these metrics to reserve
         // column spacing for syllable gaps.
-        score.rebuildLyricRenderMetrics();
+        scoreView.rebuildLyricRenderMetrics();
 
         // Lay out each line in order, threading lyric-extender continuation across line
         // boundaries so that a melisma that runs off the end of one line reappears as a
         // leading stub on the next.
         var layouts = getLayoutResults();
-        var lyricsFont = score.getLyricsFont();
+        var lyricsFont = scoreView.getLyricsFont();
         var lyricAscentSs = ScaleContext.getInstance().fontAscentSs(lyricsFont);
         var metrics = SongLayoutMetricsBuilder.build(layouts, lyricAscentSs);
-        score.setSongLayoutMetrics(metrics);
+        scoreView.setSongLayoutMetrics(metrics);
     }
 
     private ArrayList<LayoutResult> getLayoutResults() {

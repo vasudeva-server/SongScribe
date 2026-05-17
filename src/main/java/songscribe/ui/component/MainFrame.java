@@ -114,7 +114,7 @@ public class MainFrame extends JFrame implements Printable {
 
     // The music sheet that is displayed in the main window
     @Nullable
-    protected ScoreView score = null;
+    protected ScoreView scoreView = null;
 
     // The current open file
     @Nullable
@@ -276,8 +276,8 @@ public class MainFrame extends JFrame implements Printable {
         setAppIcon();
 
         // A lot of init code depends on this being set
-        score = new ScoreView(this::setCurrentFile);
-        PlaybackController.register(score);
+        scoreView = new ScoreView(this::setCurrentFile);
+        PlaybackController.register(scoreView);
 
 
         initContent();
@@ -336,7 +336,7 @@ public class MainFrame extends JFrame implements Printable {
         ActivationGate.install(this);
         LOG.info("Application UI ready");
 
-        score.requestFocusInWindow();
+        scoreView.requestFocusInWindow();
     }
 
     private void hidePreviewNote() {
@@ -411,7 +411,7 @@ public class MainFrame extends JFrame implements Printable {
         }
 
 
-        requireScore().init();
+        requireScoreView().init();
 
         contentPane.add(createCenterContent(), BorderLayout.CENTER);
 
@@ -427,7 +427,7 @@ public class MainFrame extends JFrame implements Printable {
         pane.setResizeWeight(SystemInfo.isLinux ? 0.85 : 1.0);
         pane.setBorder(BorderFactory.createEmptyBorder());
         pane.setDividerSize(0);
-        pane.setTopComponent(requireScore().getScoreScrollPane());
+        pane.setTopComponent(requireScoreView().getScoreScrollPane());
 
         return pane;
     }
@@ -449,7 +449,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private boolean showSaveDialog() {
-        if (score == null || !score.getSong().isModified()) {
+        if (scoreView == null || !scoreView.getSong().isModified()) {
             return true;
         }
 
@@ -481,7 +481,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private void updateTitle() {
-        if (score == null || !score.isInitialized()) {
+        if (scoreView == null || !scoreView.isInitialized()) {
             return;
         }
 
@@ -491,7 +491,7 @@ public class MainFrame extends JFrame implements Printable {
         }
 
         var name = getDisplayName();
-        var isModified = score.getSong().isModified();
+        var isModified = scoreView.getSong().isModified();
         var title = isModified ? '•' + name : name;
         setTitle(title);
 
@@ -528,27 +528,27 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Nullable
-    public ScoreView getScore() {
-        return score;
+    public ScoreView getScoreView() {
+        return scoreView;
     }
 
     /**
-     * Returns the score, exiting fatally if it is null.
-     * Use this in code that runs after initialization, where a null score
+     * Returns the scoreView, exiting fatally if it is null.
+     * Use this in code that runs after initialization, where a null scoreView
      * indicates corrupted application state.
      */
-    public ScoreView requireScore() {
-        var result = score;
+    public ScoreView requireScoreView() {
+        var result = scoreView;
 
         if (result == null) {
-            throw RuntimeError.exit("score not initialized");
+            throw RuntimeError.exit("scoreView not initialized");
         }
 
         return result;
     }
 
-    public void setScore(ScoreView score) {
-        this.score = score;
+    public void setScoreView(ScoreView scoreView) {
+        this.scoreView = scoreView;
     }
 
     @Nullable
@@ -577,10 +577,10 @@ public class MainFrame extends JFrame implements Printable {
 
         setCurrentFile(null);
 
-        if (score != null) {
-            score.setSong(new Song());
-            score.installDocumentFonts(DocumentFonts.defaultsFromPrefs());
-            score.requestFocusInWindow();
+        if (scoreView != null) {
+            scoreView.setSong(new Song());
+            scoreView.installDocumentFonts(DocumentFonts.defaultsFromPrefs());
+            scoreView.requestFocusInWindow();
         }
 
         LOG.info("New song");
@@ -603,8 +603,8 @@ public class MainFrame extends JFrame implements Printable {
             return false;
         }
 
-        if (score != null) {
-            score.saveProperties();
+        if (scoreView != null) {
+            scoreView.saveProperties();
         }
 
         MidiController.closeMidi();
@@ -642,13 +642,13 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     public void handleOpenFile(File file) {
-        if (!showSaveDialog() || score == null) {
+        if (!showSaveDialog() || scoreView == null) {
             return;
         }
 
         var recents = RecentDocumentsManager.getInstance();
         var path = file.toPath().toAbsolutePath();
-        var opened = score.openFile(file, true);
+        var opened = scoreView.openFile(file, true);
 
         if (opened) {
             recents.add(path);
@@ -741,7 +741,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private void saveCurrentFile() {
-        if (currentFile == null || score == null) {
+        if (currentFile == null || scoreView == null) {
             return;
         }
 
@@ -750,9 +750,9 @@ public class MainFrame extends JFrame implements Printable {
                 currentFile,
                 StandardCharsets.UTF_8
             );
-            SongIO.writeSong(score.getSong(), score, printWriter);
+            SongIO.writeSong(scoreView.getSong(), scoreView, printWriter);
             printWriter.close();
-            score.getSong().setModified(false);
+            scoreView.getSong().setModified(false);
             LOG.info("Saved: {}", currentFile.getName());
             MessageCenter.post(new DocumentWasSavedNotification());
         } catch (IOException e1) {
@@ -765,11 +765,11 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private void saveAsNewFile() {
-        if (score == null) {
+        if (scoreView == null) {
             return;
         }
 
-        var suggestedFileName = currentFile == null ? score.getSuggestedFileName() : "";
+        var suggestedFileName = currentFile == null ? scoreView.getSuggestedFileName() : "";
         var saveFile = PlatformFileDialog.showSaveDialog(
             this,
             Strings.get(Strings.DIALOG_SAVE_AS_TITLE),
@@ -785,7 +785,7 @@ public class MainFrame extends JFrame implements Printable {
         setCurrentFile(saveFile);
         saveCurrentFile();
 
-        if (!score.getSong().isModified()) {
+        if (!scoreView.getSong().isModified()) {
             RecentDocumentsManager.getInstance().add(saveFile.toPath().toAbsolutePath());
         }
     }

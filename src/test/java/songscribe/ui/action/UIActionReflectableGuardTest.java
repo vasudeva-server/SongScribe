@@ -45,8 +45,8 @@ class UIActionReflectableGuardTest extends UnitTest {
             var mockCoordinator = mock(SelectionCoordinator.class);
 
             mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-            when(mockFrame.getScore()).thenReturn(mockScore);
-            when(mockFrame.requireScore()).thenReturn(mockScore);
+            when(mockFrame.getScoreView()).thenReturn(mockScore);
+            when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
             when(mockCoordinator.getSelectionSize()).thenReturn(2);
 
@@ -74,8 +74,8 @@ class UIActionReflectableGuardTest extends UnitTest {
             var mockCoordinator = mock(SelectionCoordinator.class);
 
             mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-            when(mockFrame.getScore()).thenReturn(mockScore);
-            when(mockFrame.requireScore()).thenReturn(mockScore);
+            when(mockFrame.getScoreView()).thenReturn(mockScore);
+            when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
             when(mockCoordinator.getSelectionSize()).thenReturn(0);
 
@@ -102,8 +102,8 @@ class UIActionReflectableGuardTest extends UnitTest {
             var mockCoordinator = mock(SelectionCoordinator.class);
 
             mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-            when(mockFrame.getScore()).thenReturn(mockScore);
-            when(mockFrame.requireScore()).thenReturn(mockScore);
+            when(mockFrame.getScoreView()).thenReturn(mockScore);
+            when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
             when(mockCoordinator.getSelectionSize()).thenReturn(2);
 

@@ -60,7 +60,7 @@ public class PasteboardAction extends UIAction {
         if (updateEnabledState()) {
             switch (op) {
                 case PASTE -> setEnabled(
-                    message.getScore().getPasteboardSize() > 0
+                    message.getScoreView().getPasteboardSize() > 0
                 );
                 case COPY, CUT -> setEnabled(
                     message.getSelectionSize() > 0

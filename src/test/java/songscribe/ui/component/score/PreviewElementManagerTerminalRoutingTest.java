@@ -75,14 +75,14 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
         playbackMock = mockStatic(PlaybackController.class);
 
         lc = mock(LineComponent.class);
-        var score = mock(ScoreView.class);
+        var scoreView = mock(ScoreView.class);
         editModeManager = mock(EditModeManager.class);
 
         when(lc.isEditMode()).thenReturn(true);
-        when(lc.getScore()).thenReturn(score);
+        when(lc.getScoreView()).thenReturn(scoreView);
         when(lc.getLine()).thenReturn(line);
-        when(score.getControl()).thenReturn(Control.MOUSE);
-        when(score.getMode()).thenReturn(Mode.EDIT);
+        when(scoreView.getControl()).thenReturn(Control.MOUSE);
+        when(scoreView.getMode()).thenReturn(Mode.EDIT);
 
         editModeMgrMock.when(EditModeManager::getInstance).thenReturn(editModeManager);
         when(editModeManager.hasPreviewElement()).thenReturn(true);

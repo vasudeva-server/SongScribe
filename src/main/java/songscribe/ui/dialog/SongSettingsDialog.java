@@ -730,10 +730,10 @@ public class SongSettingsDialog extends StandardDialog {
 
             var widthInches = validateLineWidth();
             var lineWidthPx = (int) Math.round(widthInches * GraphicUtils.getDpi());
-            var score = getScore();
+            var scoreView = getScoreView();
 
-            if (score != null) {
-                score.updatePageLayout(lineWidthPx);
+            if (scoreView != null) {
+                scoreView.updatePageLayout(lineWidthPx);
             }
         }
 
@@ -1076,7 +1076,7 @@ public class SongSettingsDialog extends StandardDialog {
 
         @Override
         protected boolean getData() {
-            var fonts = requireScore().getDocumentFonts();
+            var fonts = requireScoreView().getDocumentFonts();
             applyFont(fonts.getFont(FontKey.TITLE),       titleFontLabel,       titleFontPreview);
             applyFont(fonts.getFont(FontKey.LYRICS),      lyricsFontLabel,      lyricsFontPreview);
             applyFont(fonts.getFont(FontKey.ATTRIBUTION), attributionFontLabel, attributionFontPreview);
@@ -1089,12 +1089,12 @@ public class SongSettingsDialog extends StandardDialog {
             // Bangla and footnote fonts are document-level but this dialog only
             // exposes the four primary fonts; preserve them by copying the current state.
             // TODO: add bangla and footnote font rows here and to ResetFontsAction.
-            var newFonts = new DocumentFonts(requireScore().getDocumentFonts());
+            var newFonts = new DocumentFonts(requireScoreView().getDocumentFonts());
             newFonts.setFont(FontKey.TITLE,       titleFontPreview.getFont());
             newFonts.setFont(FontKey.LYRICS,      lyricsFontPreview.getFont());
             newFonts.setFont(FontKey.ATTRIBUTION, attributionFontPreview.getFont());
             newFonts.setFont(FontKey.ANNOTATION, annotationFontPreview.getFont());
-            requireScore().setFonts(newFonts);
+            requireScoreView().setFonts(newFonts);
         }
     }
 

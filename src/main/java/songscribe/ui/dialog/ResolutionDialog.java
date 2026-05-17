@@ -87,7 +87,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     protected boolean getData() {
         approved = false;
         resolutionSpinner.setValue(Prefs.getInstance().getInt(PrefsKey.EXPORT_DPI));
-        var score = requireScore();
+        var score = requireScoreView();
         var song = score.getSong();
         sheetWidthPx = score.getSheetWidthPx();
         sheetHeightPx = score.getSheetHeightPx();

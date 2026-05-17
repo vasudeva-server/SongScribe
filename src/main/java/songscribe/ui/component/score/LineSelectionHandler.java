@@ -133,7 +133,7 @@ class LineSelectionHandler {
 
         // Don't clear selection on shift+click (preserve for extend)
         if (!e.isShiftDown() || lineSelectionState == null || lineSelectionState.getSelectionAnchor() == -1) {
-            lc.getScore().clearSelection();
+            lc.getScoreView().clearSelection();
 
             if (MidiController.sequencer != null) {
                 MidiController.sequencer.setTickPosition(0);
@@ -157,7 +157,7 @@ class LineSelectionHandler {
                 if (lineSelectionState != null) {
                     prepareSelection();
                     lineSelectionState.selectGlissando(elementIndex);
-                    lc.getScore().selectionChanged();
+                    lc.getScoreView().selectionChanged();
                     pressHandled = true;
                 }
             }
@@ -175,7 +175,7 @@ class LineSelectionHandler {
                 if (lineSelectionState != null) {
                     prepareSelection();
                     lineSelectionState.setLineSelected(true);
-                    lc.getScore().selectionChanged();
+                    lc.getScoreView().selectionChanged();
                     pressHandled = true;
                 }
             }
@@ -194,7 +194,7 @@ class LineSelectionHandler {
         }
 
         if (!dragging) {
-            var coordinator = lc.getScore().getSelectionCoordinator();
+            var coordinator = lc.getScoreView().getSelectionCoordinator();
             coordinator.dragDidStart(lc);
         }
 
@@ -238,7 +238,7 @@ class LineSelectionHandler {
             && lineSelectionState != null
             && lineSelectionState.getSelectionAnchor() != -1) {
             lineSelectionState.extendSelectionTo(index);
-            lc.getScore().selectionChanged();
+            lc.getScoreView().selectionChanged();
             playNoteIfPitched(index);
             lc.repaint();
         }
@@ -250,7 +250,7 @@ class LineSelectionHandler {
         if (dragging) {
             dragging = false;
             dragRectangle.setBounds(0, 0, 0, 0);
-            lc.getScore().selectionChanged();
+            lc.getScoreView().selectionChanged();
             lc.repaint();
         }
     }
@@ -273,7 +273,7 @@ class LineSelectionHandler {
      * @return true if selection handling should be active
      */
     boolean isSelectionActive(MouseEvent e) {
-        var score = lc.getScore();
+        var scoreView = lc.getScoreView();
         var line = lc.getLine();
 
         if (line == null) {
@@ -284,7 +284,7 @@ class LineSelectionHandler {
             return false;
         }
 
-        var mode = score.getMode();
+        var mode = scoreView.getMode();
         return mode != Mode.ADJUSTMENT && mode != Mode.VERTICAL_ADJUSTMENT && (mode == Mode.SELECT || e.isAltDown());
     }
 
@@ -296,8 +296,8 @@ class LineSelectionHandler {
      * Clears all selection and activates this line for new selection.
      */
     private void prepareSelection() {
-        lc.getScore().clearSelection();
-        lc.getScore().getSelectionCoordinator().activateLine(lc.getLineIndex());
+        lc.getScoreView().clearSelection();
+        lc.getScoreView().getSelectionCoordinator().activateLine(lc.getLineIndex());
     }
 
     /**
@@ -313,7 +313,7 @@ class LineSelectionHandler {
         }
 
         selState.setSelectionFromClick(elementIndex);
-        lc.getScore().selectionChanged();
+        lc.getScoreView().selectionChanged();
     }
 
     /**
@@ -376,7 +376,7 @@ class LineSelectionHandler {
     }
 
     private void calculateLineSelectionFromDrag(Rectangle dragRect) {
-        var score = lc.getScore();
+        var scoreView = lc.getScoreView();
         var line = lc.getLine();
         var lineSelectionState = lc.getLineSelectionState();
 
@@ -384,7 +384,7 @@ class LineSelectionHandler {
             return;
         }
 
-        var coordinator = score.getSelectionCoordinator();
+        var coordinator = scoreView.getSelectionCoordinator();
         coordinator.activateLine(lc.getLineIndex());
         lineSelectionState.clearSelection();
 

@@ -112,9 +112,9 @@ class NoteDragHandler {
      * and the event should not be processed further.
      */
     boolean handlePress(MouseEvent e) {
-        var score = lc.getScore();
+        var scoreView = lc.getScoreView();
 
-        if (score.getMode() != Mode.SELECT) {
+        if (scoreView.getMode() != Mode.SELECT) {
             return false;
         }
 

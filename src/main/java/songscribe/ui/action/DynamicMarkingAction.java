@@ -116,13 +116,13 @@ public final class DynamicMarkingAction extends NoteOnlyAction {
             return false;
         }
 
-        var score = getScore();
+        var scoreView = getScoreView();
 
-        if (score == null) {
+        if (scoreView == null) {
             return false;
         }
 
-        var selection = score.getSelectionCoordinator().getSelection();
+        var selection = scoreView.getSelectionCoordinator().getSelection();
 
         if (selection == null) {
             return false;

@@ -71,7 +71,7 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
     @Override
     protected boolean getData() {
         if (selectedElement == null) {
-            var score = requireScore();
+            var score = requireScoreView();
             selectedElement = score.getSingleSelectedElement();
             selectedLine = score.getSong().getLine(
                 score.getSelectionCoordinator().getActiveLineIndex());

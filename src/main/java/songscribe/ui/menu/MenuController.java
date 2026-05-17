@@ -90,7 +90,7 @@ public class MenuController {
 
     public MenuController(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
-        var score = mainFrame.requireScore();
+        var scoreView = mainFrame.requireScoreView();
         initMenus();
         MessageCenter.subscribe(this);
     }

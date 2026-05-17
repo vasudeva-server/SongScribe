@@ -29,7 +29,7 @@ import songscribe.ui.component.ScoreView;
 
 public abstract class Adjustment extends MouseAdapter {
 
-    protected final ScoreView score;
+    protected final ScoreView scoreView;
     protected boolean enabled = false;
     protected boolean startedDrag = false;
     @Nullable
@@ -38,10 +38,10 @@ public abstract class Adjustment extends MouseAdapter {
     protected final Point topLeftDragBounds = new Point();
     protected final Point bottomRightDragBounds = new Point();
 
-    protected Adjustment(ScoreView score) {
-        this.score = score;
-        score.addMouseListener(this);
-        score.addMouseMotionListener(this);
+    protected Adjustment(ScoreView scoreView) {
+        this.scoreView = scoreView;
+        scoreView.addMouseListener(this);
+        scoreView.addMouseMotionListener(this);
     }
 
     public void setEnabled(boolean enabled) {
@@ -59,7 +59,7 @@ public abstract class Adjustment extends MouseAdapter {
         startedDrag();
 
         if (startedDrag) {
-            score.setDragDisabled(true);
+            scoreView.setDragDisabled(true);
         }
     }
 
@@ -72,7 +72,7 @@ public abstract class Adjustment extends MouseAdapter {
         if (startedDrag) {
             startedDrag = false;
             finishedDrag();
-            score.setDragDisabled(false);
+            scoreView.setDragDisabled(false);
         }
     }
 

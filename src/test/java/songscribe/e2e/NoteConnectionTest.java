@@ -96,7 +96,7 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(midpoint(0, Element.PAIR_B_SRC.index, Element.PAIR_B_TGT.index));
 
-            var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
+            var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
             assertAll(
                 () -> assertThat(Objects.requireNonNull(lss).hasGlissandoSelection())
                     .as("glissando selected by click").isTrue(),
@@ -110,7 +110,7 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Element.PAIR_B_SRC.index));
 
-            var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
+            var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
             assertThat(Objects.requireNonNull(lss).isElementSelected(Element.PAIR_B_SRC.index))
                 .as("source note selected").isTrue();
 
@@ -123,7 +123,7 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Element.PAIR_B_TGT.index));
 
-            var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
+            var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
             assertThat(Objects.requireNonNull(lss).isElementSelected(Element.PAIR_B_TGT.index))
                 .as("target note selected").isTrue();
 
@@ -192,7 +192,7 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(midpoint(0, Element.PAIR_D_SRC.index, Element.PAIR_D_TGT.index));
 
-            var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
+            var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
             assertThat(Objects.requireNonNull(lss).hasGlissandoSelection()).as("glissando selected").isTrue();
 
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);

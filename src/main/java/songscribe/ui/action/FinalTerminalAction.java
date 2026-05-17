@@ -72,9 +72,9 @@ public final class FinalTerminalAction extends ElementTypeAction {
             return false;
         }
 
-        var score = getScore();
-        setSelected(score != null && score.isInitialized()
-            && score.getSong().currentTerminalType() == getType());
+        var scoreView = getScoreView();
+        setSelected(scoreView != null && scoreView.isInitialized()
+            && scoreView.getSong().currentTerminalType() == getType());
         return true;
     }
 }

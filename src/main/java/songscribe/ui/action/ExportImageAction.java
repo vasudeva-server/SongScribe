@@ -66,9 +66,9 @@ public final class ExportImageAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var score = requireScore();
+        var scoreView = requireScoreView();
 
-        fileDialog.setFile(score.getSuggestedFileName());
+        fileDialog.setFile(scoreView.getSuggestedFileName());
 
         if (fileDialog.showDialog()) {
             var filter = fileDialog.getFileFilter();
@@ -110,7 +110,7 @@ public final class ExportImageAction extends UIAction {
             );
 
             try {
-                var sheetImageForExport = score.createImageForExport(
+                var sheetImageForExport = scoreView.createImageForExport(
                     Color.white,
                     scale,
                     resolutionDialog.getBorder(),

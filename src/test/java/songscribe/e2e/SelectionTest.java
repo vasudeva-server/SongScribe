@@ -147,12 +147,12 @@ class SelectionTest extends E2ETest {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.WHOLE.index));
             var emptyPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
                 var loc = lc.getLocationOnScreen();
                 return new Point(loc.x + lc.getWidth() - 10, loc.y + lc.getHeight() - 5);
             }));
             clickAt(emptyPoint);
-            assertThat(score().getSelectionSize()).as("click empty deselects").isEqualTo(0);
+            assertThat(scoreView().getSelectionSize()).as("click empty deselects").isEqualTo(0);
         }
     }
 
@@ -170,7 +170,7 @@ class SelectionTest extends E2ETest {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.WHOLE.index));
             shiftClickAt(noteScreenPosition(0, Sel1.QUARTER.index));
-            assertThat(score().getSelectionSize()).as("shift-click range").isEqualTo(3);
+            assertThat(scoreView().getSelectionSize()).as("shift-click range").isEqualTo(3);
         }
 
         @Order(2)
@@ -178,8 +178,8 @@ class SelectionTest extends E2ETest {
         void testShiftClickShrinksSelection() {
             shiftClickAt(noteScreenPosition(0, Sel1.HALF.index));
             assertAll(
-                () -> assertThat(score().getSelectionSize()).as("shrunk range size").isEqualTo(2),
-                () -> assertThat(score().isElementSelected(Sel1.QUARTER.index, 0))
+                () -> assertThat(scoreView().getSelectionSize()).as("shrunk range size").isEqualTo(2),
+                () -> assertThat(scoreView().isElementSelected(Sel1.QUARTER.index, 0))
                     .as("index 3 not selected").isFalse()
             );
         }
@@ -198,7 +198,7 @@ class SelectionTest extends E2ETest {
             pause();
             robot.releaseMouseButtons();
             pause();
-            assertThat(score().getSelectionSize()).as("drag-select").isGreaterThanOrEqualTo(3);
+            assertThat(scoreView().getSelectionSize()).as("drag-select").isGreaterThanOrEqualTo(3);
         }
 
     }
@@ -219,7 +219,7 @@ class SelectionTest extends E2ETest {
         void testClickInStaffHeaderSelectsLine() {
             enterSelectMode();
             var lineClickPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
                 var loc = lc.getLocationOnScreen();
                 // Click at the midpoint of the clef — squarely inside the header region
                 var clefMidXPx = (int) Math.round(
@@ -228,14 +228,14 @@ class SelectionTest extends E2ETest {
                 return new Point(loc.x + clefMidXPx, loc.y + yPx);
             }));
             clickAt(lineClickPoint);
-            assertThat(score().isLineSelected(0)).as("line selected").isTrue();
+            assertThat(scoreView().isLineSelected(0)).as("line selected").isTrue();
         }
 
         @Test
         void testClickPastElementsDoesNotSelectLine() {
             enterSelectMode();
             var lineClickPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
                 var line = Objects.requireNonNull(lc.getLine());
                 var layoutResult = lc.getLayoutResult();
                 var lastElement = line.getElement(line.effectiveElementCount() - 1);
@@ -246,7 +246,7 @@ class SelectionTest extends E2ETest {
                 return new Point(loc.x + pastLastXPx, loc.y + yPx);
             }));
             clickAt(lineClickPoint);
-            assertThat(score().isLineSelected(0)).as("line not selected past music").isFalse();
+            assertThat(scoreView().isLineSelected(0)).as("line not selected past music").isFalse();
         }
     }
 
@@ -305,14 +305,14 @@ class SelectionTest extends E2ETest {
         void testAltClickEmptySpaceEntersSelectWithNoSelection() {
             enterEditMode();
             var emptyPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
                 var loc = lc.getLocationOnScreen();
                 return new Point(loc.x + lc.getWidth() - 10, loc.y + lc.getHeight() / 2);
             }));
             altClickAt(emptyPoint);
             assertAll(
-                () -> assertThat(score().getMode()).as("mode is SELECT").isEqualTo(Mode.SELECT),
-                () -> assertThat(score().getSelectionSize()).as("no selection").isEqualTo(0)
+                () -> assertThat(scoreView().getMode()).as("mode is SELECT").isEqualTo(Mode.SELECT),
+                () -> assertThat(scoreView().getSelectionSize()).as("no selection").isEqualTo(0)
             );
         }
 
@@ -321,10 +321,10 @@ class SelectionTest extends E2ETest {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.NOTE.index));
             assertAll(
-                () -> assertThat(score().getSingleSelectedElement())
+                () -> assertThat(scoreView().getSingleSelectedElement())
                     .as("note selected")
                     .isEqualTo(song().getLine(0).getElement(Sel2.NOTE.index)),
-                () -> assertThat(score().getMode()).as("mode stays SELECT").isEqualTo(Mode.SELECT)
+                () -> assertThat(scoreView().getMode()).as("mode stays SELECT").isEqualTo(Mode.SELECT)
             );
         }
 
@@ -332,7 +332,7 @@ class SelectionTest extends E2ETest {
         void testAltClickInSelectModeSameAsClick() {
             enterSelectMode();
             altClickAt(noteScreenPosition(0, Sel2.STACCATO.index));
-            assertThat(score().getSingleSelectedElement())
+            assertThat(scoreView().getSingleSelectedElement())
                 .as("note selected via alt+click")
                 .isEqualTo(song().getLine(0).getElement(Sel2.STACCATO.index));
         }
@@ -342,10 +342,10 @@ class SelectionTest extends E2ETest {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.NOTE.index));
             assertAll(
-                () -> assertThat(score().getSingleSelectedElement())
+                () -> assertThat(scoreView().getSingleSelectedElement())
                     .as("note stays selected")
                     .isEqualTo(song().getLine(0).getElement(Sel2.NOTE.index)),
-                () -> assertThat(score().getMode()).as("mode stays SELECT").isEqualTo(Mode.SELECT)
+                () -> assertThat(scoreView().getMode()).as("mode stays SELECT").isEqualTo(Mode.SELECT)
             );
         }
     }
@@ -374,7 +374,7 @@ class SelectionTest extends E2ETest {
 
             var startPoint = noteScreenPosition(0, Sel2.TIED_1.index);
             var endPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
                 var endYPx = lc.staffPositionToYPx(targetSp);
                 var locationOnScreen = lc.getLocationOnScreen();
                 return new Point(startPoint.x, locationOnScreen.y + endYPx);
@@ -384,7 +384,7 @@ class SelectionTest extends E2ETest {
             performLayout(0);
 
             assertAll(
-                () -> assertThat(score().getMode()).as("mode is SELECT").isEqualTo(Mode.SELECT),
+                () -> assertThat(scoreView().getMode()).as("mode is SELECT").isEqualTo(Mode.SELECT),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> song().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
                 )).as("tied note source moved").isEqualTo(targetSp),
@@ -479,7 +479,7 @@ class SelectionTest extends E2ETest {
                 () -> assertThat(GuiActionRunner.execute(
                     () -> song().getLine(0).getElement(Sel2.DEMI_SEMIQUAVER_REST.index).getStaffPosition()
                 )).as("rest unchanged").isEqualTo(currentRestSp),
-                () -> assertThat(score().getSelectionSize())
+                () -> assertThat(scoreView().getSelectionSize())
                     .as("both remain selected").isEqualTo(2)
             );
         }

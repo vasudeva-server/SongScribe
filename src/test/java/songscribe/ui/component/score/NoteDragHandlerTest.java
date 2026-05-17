@@ -112,7 +112,7 @@ class NoteDragHandlerTest extends UnitTest {
         var mockSelectionHandler = mock(LineSelectionHandler.class);
         mockSelectionState = mock(LineSelectionState.class);
 
-        when(lc.getScore()).thenReturn(mockScore);
+        when(lc.getScoreView()).thenReturn(mockScore);
         when(lc.getSelectionHandler()).thenReturn(mockSelectionHandler);
         when(lc.getLineSelectionState()).thenReturn(mockSelectionState);
         when(lc.getSong()).thenReturn(mock(Song.class));

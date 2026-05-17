@@ -93,7 +93,7 @@ class PreviewElementManagerTupletTest extends UnitTest {
         editModeManager = mock(EditModeManager.class);
 
         when(lc.isEditMode()).thenReturn(true);
-        when(lc.getScore()).thenReturn(score);
+        when(lc.getScoreView()).thenReturn(score);
         when(lc.getLine()).thenReturn(line);
         when(score.getControl()).thenReturn(Control.MOUSE);
         when(score.getMode()).thenReturn(Mode.EDIT);

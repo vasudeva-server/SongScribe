@@ -56,8 +56,8 @@ public final class EditLyricAction extends UIAction {
     }
 
     @Override
-    protected boolean enableFromSelection(boolean activeSelection, ScoreView score) {
-        var activeLineState = score.getSelectionCoordinator().getActiveSelection();
+    protected boolean enableFromSelection(boolean activeSelection, ScoreView scoreView) {
+        var activeLineState = scoreView.getSelectionCoordinator().getActiveSelection();
 
         //noinspection SimplifiableIfStatement
         if (activeLineState == null || activeLineState.getSingleSelectedElement() == null) {
@@ -69,15 +69,15 @@ public final class EditLyricAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var score = requireScore();
-        var element = score.getSelectionCoordinator().getSingleSelectedElement();
+        var scoreView = requireScoreView();
+        var element = scoreView.getSelectionCoordinator().getSingleSelectedElement();
 
         if (element == null) {
             throw new IllegalStateException(
                 "EditLyricAction fired with no selected element — REQUIRES_SINGLE_SELECTION should have prevented this");
         }
 
-        score.deselect();
-        LyricEditor.openOn(score, element.getLine(), element);
+        scoreView.deselect();
+        LyricEditor.openOn(scoreView, element.getLine(), element);
     }
 }

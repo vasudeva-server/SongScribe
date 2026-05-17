@@ -37,7 +37,7 @@ public class PageLayoutData {
     public int bottomMarginPx = 0;
     public boolean mirrored = false;
     public int songsPerPage = 2;
-    public @Nullable ScoreView score = null;
+    public @Nullable ScoreView scoreView = null;
 
     /**
      * Sets all four margins to a default, then applies per-edge overrides.

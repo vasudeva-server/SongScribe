@@ -38,12 +38,12 @@ public final class ExportSVGAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var score = requireScore();
+        var scoreView = requireScoreView();
         var saveFile = PlatformFileDialog.showSaveDialog(
             getMainFrame(),
             NAME,
             "Portable Document Format",
-            score.getSuggestedFileName(),
+            scoreView.getSuggestedFileName(),
             "svg"
         );
 
@@ -51,6 +51,6 @@ public final class ExportSVGAction extends UIAction {
             return;
         }
 
-        score.createSVG(saveFile);
+        scoreView.createSVG(saveFile);
     }
 }

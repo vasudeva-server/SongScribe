@@ -58,7 +58,7 @@ public final class KeySignatureChangeAction extends UIAction {
     ) {
         if (updateEnabledState()) {
             // Key signature changes can only be made when a line is selected
-            setEnabled(message.getScore().getSelectedLine() != -1);
+            setEnabled(message.getScoreView().getSelectedLine() != -1);
         }
     }
 

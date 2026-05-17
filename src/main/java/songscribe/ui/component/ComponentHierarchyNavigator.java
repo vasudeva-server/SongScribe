@@ -123,14 +123,14 @@ public final class ComponentHierarchyNavigator {
     }
 
     /**
-     * Sets up the selection provider and score reference for all line components.
+     * Sets up the selection provider and scoreView reference for all line components.
      *
      * @param selectionProvider Function that checks if a note is selected
-     * @param score The score instance to set on line components
+     * @param scoreView The scoreView instance to set on line components
      */
     public void setupLineComponentState(
         LineComponent.SelectionProvider selectionProvider,
-        ScoreView score
+        ScoreView scoreView
     ) {
         var mainPanel = provider.getMainPanel();
 
@@ -143,7 +143,7 @@ public final class ComponentHierarchyNavigator {
         for (var linePanel : staffPanel.getLinePanels()) {
             var lineComponent = linePanel.getLineComponent();
             lineComponent.setSelectionProvider(selectionProvider);
-            lineComponent.setScore(score);
+            lineComponent.setScoreView(scoreView);
         }
     }
 

@@ -47,7 +47,7 @@ public final class PDFExporter {
         var resolution = 72f / GraphicUtils.getDpi();
         var paperWidth = data.paperWidthPx * resolution;
         var paperHeight = data.paperHeightPx * resolution;
-        var score = data.score;
+        var score = data.scoreView;
 
         if (score == null) {
             return;

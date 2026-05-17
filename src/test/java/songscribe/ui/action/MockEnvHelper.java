@@ -58,8 +58,8 @@ public final class MockEnvHelper {
 
         mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
         when(mockFrame.getRootPane()).thenReturn(mock(JRootPane.class, RETURNS_DEEP_STUBS));
-        when(mockFrame.getScore()).thenReturn(mockScore);
-        when(mockFrame.requireScore()).thenReturn(mockScore);
+        when(mockFrame.getScoreView()).thenReturn(mockScore);
+        when(mockFrame.requireScoreView()).thenReturn(mockScore);
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
         when(mockScore.getMode()).thenReturn(Mode.EDIT);
         when(mockScore.getSelectionSize()).thenReturn(0);

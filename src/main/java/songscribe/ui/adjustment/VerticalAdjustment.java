@@ -65,8 +65,8 @@ public class VerticalAdjustment extends Adjustment {
     // TODO: Hoist to superclass
     private final ArrayList<AdjustRect> adjustRects = new ArrayList<>();
 
-    public VerticalAdjustment(ScoreView score) {
-        super(score);
+    public VerticalAdjustment(ScoreView scoreView) {
+        super(scoreView);
     }
 
     @Override
@@ -93,14 +93,14 @@ public class VerticalAdjustment extends Adjustment {
         var downRight = new Point(dragRect.rect.x, Integer.MAX_VALUE);
 
         switch (dragRect.type) {
-            case ROW_HEIGHT -> upLeft.y = score.getNoteYPosPx(6, 0);
+            case ROW_HEIGHT -> upLeft.y = scoreView.getNoteYPosPx(6, 0);
             case TEMPO_CHANGE, FIRST_SECOND_ENDING, TRILL, BEAT_CHANGE -> {
-                upLeft.y = score.getNoteYPosPx(6, dragRect.line - 1);
-                downRight.y = score.getNoteYPosPx(-4, dragRect.line);
+                upLeft.y = scoreView.getNoteYPosPx(6, dragRect.line - 1);
+                downRight.y = scoreView.getNoteYPosPx(-4, dragRect.line);
             }
             case ANNOTATION, TUPLET, CRESCENDO_Y, DIMINUENDO_Y -> {
-                upLeft.y = score.getNoteYPosPx(6, dragRect.line - 1);
-                downRight.y = score.getNoteYPosPx(-6, dragRect.line + 1);
+                upLeft.y = scoreView.getNoteYPosPx(6, dragRect.line - 1);
+                downRight.y = scoreView.getNoteYPosPx(-6, dragRect.line + 1);
             }
         }
 
@@ -122,7 +122,7 @@ public class VerticalAdjustment extends Adjustment {
         var diffX = (endPoint.x - dragRect.rect.x) + midPoint.x;
         var diffY = (endPoint.y - dragRect.rect.y) + midPoint.y;
         dragRect.rect.y = endPoint.y - midPoint.y;
-        var line = score.getSong().getLine(dragRect.line);
+        var line = scoreView.getSong().getLine(dragRect.line);
 
         switch (dragRect.type) {
             case ATTRIBUTION -> adjustAttribution(diffY);
@@ -137,23 +137,23 @@ public class VerticalAdjustment extends Adjustment {
             case TUPLET -> adjustTuplet(line, diffY);
         }
 
-        score.viewChanged();
+        scoreView.viewChanged();
         revalidateRects();
-        score.repaint();
+        scoreView.repaint();
     }
 
     private void adjustAttribution(int diffY) {
-        var newY = score.getSong().getAttributionStartYSs() + diffY;
+        var newY = scoreView.getSong().getAttributionStartYSs() + diffY;
         MessageCenter.post(new LayoutDidChangeNotification(null, null, null, null, newY));
     }
 
     private void adjustTopSpace(int diffY) {
-        var newPadding = score.getSong().getTopPaddingSs() + diffY;
+        var newPadding = scoreView.getSong().getTopPaddingSs() + diffY;
         MessageCenter.post(new LayoutDidChangeNotification(newPadding, true, null, null, null));
     }
 
     private void adjustRowHeight(int diffY) {
-        var newAdjustment = score.getSong().getRowHeightAdjustmentSs() + diffY;
+        var newAdjustment = scoreView.getSong().getRowHeightAdjustmentSs() + diffY;
         MessageCenter.post(new LayoutDidChangeNotification(null, null, newAdjustment, null, null));
     }
 
@@ -271,7 +271,7 @@ public class VerticalAdjustment extends Adjustment {
         super.setEnabled(enabled);
 
         if (enabled) {
-            var c = score.getSong();
+            var c = scoreView.getSong();
 
             var attribution = c.getAttribution();
 
@@ -387,7 +387,7 @@ public class VerticalAdjustment extends Adjustment {
     }
 
     private void getAdjustRect(AdjustRect adjustRect) {
-        var line = score.getSong().getLine(adjustRect.line);
+        var line = scoreView.getSong().getLine(adjustRect.line);
         var note = line.getElement(adjustRect.xIndex);
 
         switch (adjustRect.type) {
@@ -533,13 +533,13 @@ public class VerticalAdjustment extends Adjustment {
     }
 
     private void getAttributionAdjustRect(AdjustRect adjustRect) {
-        adjustRect.rect.x = score.getSheetWidthPx() - HANDLE_SIZE_PX;
-        adjustRect.rect.y = (int) score.getSong().getAttributionStartYSs();
+        adjustRect.rect.x = scoreView.getSheetWidthPx() - HANDLE_SIZE_PX;
+        adjustRect.rect.y = (int) scoreView.getSong().getAttributionStartYSs();
     }
 
     private void getHeightAdjustRect(AdjustRect adjustRect) {
         adjustRect.rect.x = 0;
-        adjustRect.rect.y = score.getNoteYPosPx(0, adjustRect.line) - HANDLE_SIZE_PX / 2;
+        adjustRect.rect.y = scoreView.getNoteYPosPx(0, adjustRect.line) - HANDLE_SIZE_PX / 2;
     }
 
     private void revalidateRects() {
@@ -556,7 +556,7 @@ public class VerticalAdjustment extends Adjustment {
      * @throws IllegalStateException if layout result is not available
      */
     private LayoutResult getLayoutResultForLine(int lineIndex) {
-        var mainPanel = score.getMainPanel();
+        var mainPanel = scoreView.getMainPanel();
 
         if (mainPanel == null) {
             throw new IllegalStateException("MainPanel not available");

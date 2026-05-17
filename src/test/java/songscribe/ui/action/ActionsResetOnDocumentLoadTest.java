@@ -45,15 +45,15 @@ import songscribe.ui.selection.SelectionCoordinator;
  *
  * <p>{@code resetToDefaults()} calls {@code MODE_ACTION_GROUP.select(...)} and
  * {@code DURATION_ACTION_GROUP.select(...)}, which fire {@code perform()} on
- * the selected action; that path ends up in {@code UIAction.requireScore()}.
+ * the selected action; that path ends up in {@code UIAction.requireScoreView()}.
  * {@code UIAction} caches {@code MainFrame.getInstance()} in a final field at
  * construction, so whichever frame was in scope the first time {@code Actions}
  * was loaded is the frame these calls go through. Rather than fight that
  * cache, this test wires the real {@code MainFrame} singleton to a mock
  * {@code ScoreView} — if some earlier test cached a Mockito mock frame, that mock
- * already has {@code requireScore} stubbed by {@link MockEnvHelper}; if the
+ * already has {@code requireScoreView} stubbed by {@link MockEnvHelper}; if the
  * cached frame is the real singleton, the explicit {@code setScore} call here
- * supplies the score it needs.
+ * supplies the scoreView it needs.
  */
 class ActionsResetOnDocumentLoadTest extends UnitTest {
 
@@ -65,7 +65,7 @@ class ActionsResetOnDocumentLoadTest extends UnitTest {
         when(mockScore.getMode()).thenReturn(Mode.EDIT);
         when(mockCoordinator.getSelection()).thenReturn(null);
 
-        MainFrame.getInstance().setScore(mockScore);
+        MainFrame.getInstance().setScoreView(mockScore);
     }
 
     @Test

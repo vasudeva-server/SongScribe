@@ -690,7 +690,7 @@ public final class Song {
 
     /**
      * Do not call this directly unless you know what you are doing.
-     * Instead, use score.setLineWidth.
+     * Instead, use scoreView.setLineWidth.
      */
     public void setLineWidthSs(double lineWidth) {
         mutateLayout(LayoutField.LINE_WIDTH_SS, lineWidthSs, lineWidth, () -> lineWidthSs = lineWidth);

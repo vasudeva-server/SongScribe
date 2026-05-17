@@ -82,7 +82,7 @@ public class UIConverter extends MainFrame {
         setTitle(appName);
         setIconImage(GraphicUtils.getImage("songwriter-icon.png"));
         new MyQuitAction();
-        score = new ScoreView(null);
+        scoreView = new ScoreView(null);
 
         var chooseDirectoryAction = new ChooseDirectoryAction(this);
         chooseDirectoryAction.addPropertyChangeListener(

@@ -153,7 +153,7 @@ class ElementInsertionTest extends E2ETest {
             robot.pressMouse(insertPt, LEFT_BUTTON);
             Utils.sleep(GraceModeManager.MIN_DRAG_MILLIS);
             int cancelScreenX = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
                 return lc.getLocationOnScreen().x + GraceModeManager.getCancelThresholdPx();
             }));
             robot.moveMouse(new Point(cancelScreenX, insertPt.y));
@@ -212,14 +212,14 @@ class ElementInsertionTest extends E2ETest {
             // Click at midpoint between last pair host and standalone, at a different pitch
             var mid = midpoint(0, GraceElement.PAIR_C_HOST.index, GraceElement.STANDALONE.index);
             var insertPt = new Point(mid.x, Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
                 return lc.getLocationOnScreen().y + lc.staffPositionToYPx(-2);
             })));
 
             robot.pressMouse(insertPt, LEFT_BUTTON);
             Utils.sleep(GraceModeManager.MIN_DRAG_MILLIS);
             int connectScreenX = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
                 return lc.getLocationOnScreen().x + GraceModeManager.getConnectThresholdPx();
             }));
             robot.moveMouse(new Point(connectScreenX, insertPt.y));
@@ -266,7 +266,7 @@ class ElementInsertionTest extends E2ETest {
             // Click on pair A host at a different pitch
             var existingPos = noteScreenPosition(0, pairAHostIdx);
             var replacePoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
                 var loc = lc.getLocationOnScreen();
                 return new Point(existingPos.x, loc.y + lc.staffPositionToYPx(-4));
             }));
@@ -528,7 +528,7 @@ class ElementInsertionTest extends E2ETest {
 
             var existingPos = noteScreenPosition(0, baseIndex + 2);
             var replacePoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
                 var loc = lc.getLocationOnScreen();
                 return new Point(existingPos.x, loc.y + lc.staffPositionToYPx(targetSp));
             }));
@@ -544,7 +544,7 @@ class ElementInsertionTest extends E2ETest {
                     .as("pitch updated").isEqualTo(targetSp),
                 () -> assertThat(line.elementCount())
                     .as("count unchanged").isEqualTo(countBefore),
-                () -> assertThat(score().getMode())
+                () -> assertThat(scoreView().getMode())
                     .as("mode stays EDIT").isEqualTo(Mode.EDIT)
             );
         }
@@ -566,7 +566,7 @@ class ElementInsertionTest extends E2ETest {
                     .as("replaced with rest").isTrue(),
                 () -> assertThat(line.elementCount())
                     .as("count unchanged").isEqualTo(countBefore),
-                () -> assertThat(score().getMode())
+                () -> assertThat(scoreView().getMode())
                     .as("mode stays EDIT").isEqualTo(Mode.EDIT)
             );
 
@@ -594,7 +594,7 @@ class ElementInsertionTest extends E2ETest {
                 () -> assertThat(GuiActionRunner.execute(
                     () -> song().getLine(0).getElement(baseIndex + 1).hasArticulation(ArticulationType.STACCATO)
                 )).as("staccato copied to new note").isTrue(),
-                () -> assertThat(score().getMode())
+                () -> assertThat(scoreView().getMode())
                     .as("mode stays EDIT").isEqualTo(Mode.EDIT)
             );
         }

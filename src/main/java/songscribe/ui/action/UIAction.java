@@ -257,21 +257,21 @@ public class UIAction extends AbstractAction {
         return mainFrame;
     }
 
-    protected @Nullable ScoreView getScore() {
-        return mainFrame.getScore();
+    protected @Nullable ScoreView getScoreView() {
+        return mainFrame.getScoreView();
     }
 
     protected @Nullable ScoreViewController getScoreViewController() {
-        var score = getScore();
-        return score != null ? score.getController() : null;
+        var scoreView = getScoreView();
+        return scoreView != null ? scoreView.getController() : null;
     }
 
-    protected ScoreView requireScore() {
-        return mainFrame.requireScore();
+    protected ScoreView requireScoreView() {
+        return mainFrame.requireScoreView();
     }
 
     protected Song getSong() {
-        return mainFrame.requireScore().getSong();
+        return mainFrame.requireScoreView().getSong();
     }
 
     public void setFlags(Flag... flags) {
@@ -372,25 +372,25 @@ public class UIAction extends AbstractAction {
     public boolean updateEnabledState() {
         // If an action is going to be enabled based on a single flag,
         // we have to check the entire context to see if the action can in fact be enabled.
-        var score = getScore();
+        var scoreView = getScoreView();
 
-        if (score == null) {
+        if (scoreView == null) {
             setEnabled(false);
             return false;
         }
 
         var activeSelection = hasActiveSelection();
         var enable =
-            enableInAdjustmentMode(score) &&
-                enableInSelectMode(score) &&
+            enableInAdjustmentMode(scoreView) &&
+                enableInSelectMode(scoreView) &&
                 enableFromTextEditingState() &&
                 enableFromPlaybackState() &&
                 enableFromDialogVisibility() &&
                 enableFromGraceModeState() &&
                 enableInRestMode() &&
-                enableFromSelectionSize(score) &&
+                enableFromSelectionSize(scoreView) &&
                 enableFromBarSelection(activeSelection) &&
-                enableFromSelection(activeSelection, score) &&
+                enableFromSelection(activeSelection, scoreView) &&
                 enableFromDurationSelection(activeSelection) &&
                 enableFromSongState();
         setEnabled(enable);
@@ -464,7 +464,7 @@ public class UIAction extends AbstractAction {
             return true;
         }
 
-        return !Actions.REST_ACTION.isSelected() && !requireScore().getSelectionCoordinator().selectionHasRests();
+        return !Actions.REST_ACTION.isSelected() && !requireScoreView().getSelectionCoordinator().selectionHasRests();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
@@ -525,12 +525,12 @@ public class UIAction extends AbstractAction {
         );
     }
 
-    protected boolean enableFromSelection(boolean activeSelection, ScoreView score) {
+    protected boolean enableFromSelection(boolean activeSelection, ScoreView scoreView) {
         if (!activeSelection) {
             return true;
         }
 
-        var coordinator = score.getSelectionCoordinator();
+        var coordinator = scoreView.getSelectionCoordinator();
 
         if (this instanceof Reflectable reflectable) {
             return coordinator.isApplicableToSelection(reflectable);
@@ -587,7 +587,7 @@ public class UIAction extends AbstractAction {
             return false;
         }
 
-        var score = requireScore();
+        var score = requireScoreView();
         var coordinator = score.getSelectionCoordinator();
         var selection = coordinator.getSelection();
 
@@ -600,7 +600,7 @@ public class UIAction extends AbstractAction {
     }
 
     private boolean hasActiveSelection() {
-        return requireScore()
+        return requireScoreView()
             .getSelectionCoordinator()
             .hasActiveSelection();
     }
@@ -610,7 +610,7 @@ public class UIAction extends AbstractAction {
             return true;
         }
 
-        var score = getScore();
+        var score = getScoreView();
         return score != null && score.isInitialized() && !score.getSong().isEmpty();
     }
 }

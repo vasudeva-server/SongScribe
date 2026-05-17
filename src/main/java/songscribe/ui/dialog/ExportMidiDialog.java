@@ -66,7 +66,7 @@ public class ExportMidiDialog extends StandardDialog {
     @Override
     protected void setData() {
         try {
-            var score = requireScore();
+            var scoreView = requireScoreView();
             var savedSettings = PlaybackController.getPlaybackSettings();
 
             // Apply export-specific overrides
@@ -76,7 +76,7 @@ public class ExportMidiDialog extends StandardDialog {
             PlaybackController.setTempoChangePercent(100);
 
             try {
-                var sequence = PlaybackController.buildSequence(score.getSong());
+                var sequence = PlaybackController.buildSequence(scoreView.getSong());
                 MidiSystem.write(sequence, 1, saveFile);
                 ExportUtils.openExportedFile(saveFile);
             } finally {

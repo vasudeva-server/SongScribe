@@ -55,14 +55,14 @@ public final class DeleteAction extends PasteboardAction {
             return false;
         }
 
-        var score = requireScore();
-        var selection = score.getSelectionCoordinator();
-        var enabled =
+        var scoreView = requireScoreView();
+        var selection = scoreView.getSelectionCoordinator();
+        var isEnabled =
             selection.hasLyricSelection() ||
                 selection.hasActiveSelection() ||
                 selection.hasGlissandoSelection() ||
-                score.canDeleteLine();
-        setEnabled(enabled);
-        return enabled;
+                scoreView.canDeleteLine();
+        setEnabled(isEnabled);
+        return isEnabled;
     }
 }

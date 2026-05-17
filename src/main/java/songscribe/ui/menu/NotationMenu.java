@@ -94,8 +94,8 @@ public class NotationMenu extends JMenu {
         addMenuListener(new MenuListener() {
             @Override
             public void menuSelected(MenuEvent e) {
-                var score = MainFrame.getInstance().getScore();
-                var ctrl = score != null ? score.getController() : null;
+                var scoreView = MainFrame.getInstance().getScoreView();
+                var ctrl = scoreView != null ? scoreView.getController() : null;
 
                 if (ctrl != null) {
                     FirstSecondEndingAction.MAKE_ENDING_ACTION.validate(ctrl);

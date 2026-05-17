@@ -33,13 +33,13 @@ public class MusicSelectionDidChangeNotification extends Message {
     private final boolean hasGlissandoSelection;
     @Nullable
     private final LyricSelection lyricSelection;
-    private final ScoreView score;
+    private final ScoreView scoreView;
 
-    public MusicSelectionDidChangeNotification(ScoreView score) {
-        selectionSize = score.getSelectionSize();
-        hasGlissandoSelection = score.getSelectionCoordinator().hasGlissandoSelection();
-        lyricSelection = score.getSelectionCoordinator().getLyricSelection();
-        this.score = score;
+    public MusicSelectionDidChangeNotification(ScoreView scoreView) {
+        selectionSize = scoreView.getSelectionSize();
+        hasGlissandoSelection = scoreView.getSelectionCoordinator().hasGlissandoSelection();
+        lyricSelection = scoreView.getSelectionCoordinator().getLyricSelection();
+        this.scoreView = scoreView;
     }
 
     public int getSelectionSize() {
@@ -58,11 +58,11 @@ public class MusicSelectionDidChangeNotification extends Message {
         return lyricSelection;
     }
 
-    public ScoreView getScore() {
-        return score;
+    public ScoreView getScoreView() {
+        return scoreView;
     }
 
     public @Nullable ScoreViewController getScoreViewController() {
-        return score.getController();
+        return scoreView.getController();
     }
 }

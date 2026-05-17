@@ -27,21 +27,21 @@ public class FermataMenuItem
     extends JCheckBoxMenuItem
     implements ActionListener {
 
-    private final ScoreView score;
+    private final ScoreView scoreView;
 
-    public FermataMenuItem(ScoreView score) {
+    public FermataMenuItem(ScoreView scoreView) {
         super("Fermata");
-        this.score = score;
+        this.scoreView = scoreView;
         addActionListener(this);
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var insertionNote = score.getPreviewElement();
+        var insertionNote = scoreView.getPreviewElement();
 
         if (insertionNote != null) {
             insertionNote.setFermata(isSelected());
-            score.repaint();
+            scoreView.repaint();
         }
     }
 }

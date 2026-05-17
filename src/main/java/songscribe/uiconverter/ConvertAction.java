@@ -139,14 +139,14 @@ public class ConvertAction extends AbstractAction {
 
                 for (var songFile : songFiles) {
                     // load file
-                    var score = uiConverter.getScore();
+                    var scoreView = uiConverter.getScoreView();
 
-                    if (score == null) {
-                        throw RuntimeError.exit("score is null in ConvertAction");
+                    if (scoreView == null) {
+                        throw RuntimeError.exit("scoreView is null in ConvertAction");
                     }
 
-                    score.openFile(songFile, false);
-                    var song = score.getSong();
+                    scoreView.openFile(songFile, false);
+                    var song = scoreView.getSong();
 
                     // ensure we have the latest format by writing the mssw file again
                     var tempMsswSong = File.createTempFile(
@@ -158,7 +158,7 @@ public class ConvertAction extends AbstractAction {
                     );
                     SongIO.writeSong(
                         song,
-                        score,
+                        scoreView,
                         tempMsswSongPrintWriter
                     );
                     tempMsswSongPrintWriter.close();
@@ -188,8 +188,8 @@ public class ConvertAction extends AbstractAction {
                         var scale =
                             (double) (IMAGE_WIDTH[i] -
                                 (2 * LEFT_RIGHT_MARGIN[i])) /
-                                score.getSheetWidthPx();
-                        var image = score.createImageForExport(
+                                scoreView.getSheetWidthPx();
+                        var image = scoreView.createImageForExport(
                             Color.WHITE,
                             scale,
                             myBorders[i],
@@ -233,7 +233,7 @@ public class ConvertAction extends AbstractAction {
                     );
 
                     try {
-                        var sequence = PlaybackController.buildSequence(score.getSong());
+                        var sequence = PlaybackController.buildSequence(scoreView.getSong());
                         MidiSystem.write(sequence, 1, midiFile);
                     } catch (IOException | InvalidMidiDataException e) {
                         midiFile = null;

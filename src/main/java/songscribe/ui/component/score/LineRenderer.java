@@ -128,14 +128,14 @@ class LineRenderer {
         // Reuse the cached render context to avoid per-paint allocation. Recreate it
         // only when the song changes (the field is final on the context).
         if (ctx == null || ctx.getSong() != song) {
-            ctx = new ElementRenderContext(song, lc.getScore());
+            ctx = new ElementRenderContext(song, lc.getScoreView());
         }
 
         ctx.setCurrentLine(line);
         ctx.setLineIndex(lineIndex);
         ctx.setMiddleLineYSs(lc.getMiddleLineYSs());
         ctx.setLayoutResult(layoutResult);
-        var score = lc.getScore();
+        var score = lc.getScoreView();
         ctx.setSongLayoutMetrics(score.getSongLayoutMetrics());
         ctx.setLyricRenderMetrics(score.getLyricRenderMetrics());
         var activeEditor = score.getActiveLyricEditor();
@@ -570,7 +570,7 @@ class LineRenderer {
         }
 
         // Don't render preview element when in select mode
-        var score = lc.getScore();
+        var score = lc.getScoreView();
 
         if (score.getMode() == Mode.SELECT) {
             return;

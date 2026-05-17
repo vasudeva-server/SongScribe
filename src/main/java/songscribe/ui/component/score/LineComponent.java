@@ -120,7 +120,7 @@ public class LineComponent extends ScoreComponent
 
     /** Reference to the ScoreView for accessing song and services. */
     @Nullable
-    private ScoreView score;
+    private ScoreView scoreView;
 
     /** Index of the currently playing note (-1 if not playing). */
     private int playingNoteIndex = -1;
@@ -174,8 +174,8 @@ public class LineComponent extends ScoreComponent
         layoutResult = null;
 
         // Register with coordinator if score is available
-        if (score != null) {
-            var coordinator = score.getSelectionCoordinator();
+        if (scoreView != null) {
+            var coordinator = scoreView.getSelectionCoordinator();
             coordinator.registerLineState(lineIndex, lineSelectionState);
         }
 
@@ -259,14 +259,14 @@ public class LineComponent extends ScoreComponent
     /**
      * Sets the ScoreView reference for accessing song and services.
      *
-     * @param score The ScoreView component
+     * @param scoreView The ScoreView component
      */
-    public void setScore(ScoreView score) {
-        this.score = score;
+    public void setScoreView(ScoreView scoreView) {
+        this.scoreView = scoreView;
 
         // Register LineSelectionState with coordinator when score is set
         if (lineSelectionState != null) {
-            var coordinator = score.getSelectionCoordinator();
+            var coordinator = scoreView.getSelectionCoordinator();
             coordinator.registerLineState(lineIndex, lineSelectionState);
         }
     }
@@ -304,7 +304,7 @@ public class LineComponent extends ScoreComponent
      * as opposed to an adjustment mode.
      */
     public boolean isEditMode() {
-        return !getScore().getMode().isAdjustmentMode();
+        return !getScoreView().getMode().isAdjustmentMode();
     }
 
     /**
@@ -365,8 +365,8 @@ public class LineComponent extends ScoreComponent
 
         var staffRightMarginSs = song.getLineWidthSs();
         var isLastLine = lineIndex == song.lineCount() - 1;
-        var lyricRenderMetrics = getScore().getLyricRenderMetrics();
-        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, getScore());
+        var lyricRenderMetrics = getScoreView().getLyricRenderMetrics();
+        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, getScoreView());
         layoutResult = layoutEngine.layout(line, isLastLine, hasLeadingLyricContinuation);
 
         if (layoutResult == null) {
@@ -425,7 +425,7 @@ public class LineComponent extends ScoreComponent
         }
 
         var scale = ScaleContext.getInstance();
-        var metrics = getScore().getSongLayoutMetrics();
+        var metrics = getScoreView().getSongLayoutMetrics();
 
         return new Dimension(
             (int) Math.ceil(scale.ssToPx(result.getLineWidthSs())),
@@ -497,7 +497,7 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (getScore().getMode() == Mode.EDIT && isYInLyricBounds(e.getY())) {
+        if (getScoreView().getMode() == Mode.EDIT && isYInLyricBounds(e.getY())) {
             clearPreviewElement();
             setCursor(Cursor.getDefaultCursor());
             return;
@@ -536,12 +536,12 @@ public class LineComponent extends ScoreComponent
         var lyricHit = hitTestLyric(e.getPoint());
 
         if (lyricHit != null) {
-            if (e.getClickCount() == 2 && line != null && getScore().getActiveLyricEditor() == null) {
+            if (e.getClickCount() == 2 && line != null && getScoreView().getActiveLyricEditor() == null) {
                 var lyric = lyricHit.element().getLyricForVerse(lyricHit.verse());
 
                 if (lyric != null && !lyric.text().isBlank()) {
-                    getScore().deselect();
-                    LyricEditor.openOn(getScore(), line, lyricHit.element());
+                    getScoreView().deselect();
+                    LyricEditor.openOn(getScoreView(), line, lyricHit.element());
                 }
             }
 
@@ -564,15 +564,15 @@ public class LineComponent extends ScoreComponent
         }
 
         // Alt+click in EDIT mode: switch to SELECT, then fall through to normal handling
-        if (e.isAltDown() && score != null && score.getMode() == Mode.EDIT) {
+        if (e.isAltDown() && scoreView != null && scoreView.getMode() == Mode.EDIT) {
             Actions.SELECT_MODE_ACTION.perform(this);
         }
 
         var lyricHit = hitTestLyric(e.getPoint());
 
         if (lyricHit != null) {
-            getScore().getSelectionCoordinator().selectLyric(lyricHit.element(), lyricHit.verse());
-            getScore().selectionChanged();
+            getScoreView().getSelectionCoordinator().selectLyric(lyricHit.element(), lyricHit.verse());
+            getScoreView().selectionChanged();
             repaint();
             return;
         }
@@ -618,12 +618,12 @@ public class LineComponent extends ScoreComponent
     /**
      * Returns the ScoreView reference.
      */
-    ScoreView getScore() {
-        if (score == null) {
+    ScoreView getScoreView() {
+        if (scoreView == null) {
             throw RuntimeError.exit("ScoreView reference not set on LineComponent");
         }
 
-        return score;
+        return scoreView;
     }
 
     private GraceModeManager getGraceModeManager() {
@@ -702,14 +702,14 @@ public class LineComponent extends ScoreComponent
     private LayoutResult.@Nullable LyricHit hitTestLyric(Point pointPx) {
         var ready = readyLayout();
         return ready != null
-            ? ready.layoutResult().hitTestLyric(getScore().getLyricRenderMetrics(), ready.line(), pointPx)
+            ? ready.layoutResult().hitTestLyric(getScoreView().getLyricRenderMetrics(), ready.line(), pointPx)
             : null;
     }
 
     private boolean isYInLyricBounds(int pointYPx) {
         var ready = readyLayout();
         return ready != null
-            && ready.layoutResult().isYInLyricBounds(getScore().getLyricRenderMetrics(), pointYPx);
+            && ready.layoutResult().isYInLyricBounds(getScoreView().getLyricRenderMetrics(), pointYPx);
     }
 
     private record ReadyLayout(Line line, LayoutResult layoutResult) {}
