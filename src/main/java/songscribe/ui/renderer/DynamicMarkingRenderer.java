@@ -20,6 +20,8 @@
 
 package songscribe.ui.renderer;
 
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+
 import module java.desktop;
 
 import songscribe.model.StaffElement;
@@ -99,8 +101,10 @@ public final class DynamicMarkingRenderer extends BaseElementRenderer<StaffEleme
         var x = decorationLayout.xSs() - dynamicBBox.left();
         var y = glyphOriginYFromLayoutTop(dynamicTopYSs, glyph);
 
-        applyDecorationColor(g2, element, ctx);
-        drawBravuraGlyph(g2, glyph, x, y, true);
+        try (var ignored = GraphicsState.save(g2, COLOR)) {
+            applyDecorationColor(g2, element, ctx);
+            drawBravuraGlyph(g2, glyph, x, y, true);
+        }
     }
 
 }

@@ -41,6 +41,7 @@ import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.renderer.ElementRenderContext;
+import songscribe.ui.renderer.GraphicsState;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.error.RuntimeError;
 
@@ -393,14 +394,11 @@ public class LineComponent extends ScoreComponent
 
         // Apply staff-space to pixel scale transform at the render boundary.
         // All downstream drawing uses staff-space coordinates.
-        var savedTransform = g2.getTransform();
         var scale = ScaleContext.getPixelsPerStaffSpace();
-        g2.scale(scale, scale);
 
-        try {
+        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+            g2.scale(scale, scale);
             lineRenderer.render(g2);
-        } finally {
-            g2.setTransform(savedTransform);
         }
 
         // Drag rectangle is a pixel-space UI overlay — render after restoring the transform

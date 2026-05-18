@@ -150,14 +150,16 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
         var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
         var y = trillTopYSs + bbox.height();
 
-        g2.setColor(color);
-        drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, xSs, y, true);
+        try (var ignored = GraphicsState.save(g2, COLOR)) {
+            g2.setColor(color);
+            drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, xSs, y, true);
 
-        // Draw wavy line extension for multi-note trills
-        if (!Double.isNaN(endXSs)) {
-            var wavyStartX = xSs + TRILL_ADVANCE_WIDTH_SS;
-            var wavyEndX = endXSs;
-            drawWavyLine(g2, wavyStartX, y, wavyEndX, color);
+            // Draw wavy line extension for multi-note trills
+            if (!Double.isNaN(endXSs)) {
+                var wavyStartX = xSs + TRILL_ADVANCE_WIDTH_SS;
+                var wavyEndX = endXSs;
+                drawWavyLine(g2, wavyStartX, y, wavyEndX, color);
+            }
         }
     }
 

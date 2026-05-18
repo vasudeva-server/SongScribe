@@ -20,6 +20,9 @@
 
 package songscribe.ui.renderer;
 
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+
 import module java.desktop;
 
 import songscribe.model.StaffElement;
@@ -88,9 +91,11 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
             xSs = drawDurationEquals(g2, tempo.getTempoType(), xSs, setup.ySs(), setup.attrFont(), setup.color());
         }
 
-        g2.setFont(ScaleContext.scaleFont(setup.attrFont()));
-        g2.setColor(setup.color());
-        g2.drawString(tempoBuilder.toString(), (float) xSs, (float) textBaselineYSs);
+        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+            g2.setFont(ScaleContext.scaleFont(setup.attrFont()));
+            g2.setColor(setup.color());
+            g2.drawString(tempoBuilder.toString(), (float) xSs, (float) textBaselineYSs);
+        }
     }
 
 }

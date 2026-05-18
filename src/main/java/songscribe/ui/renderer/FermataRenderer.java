@@ -20,6 +20,8 @@
 
 package songscribe.ui.renderer;
 
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+
 import module java.desktop;
 
 import songscribe.model.StaffElement;
@@ -102,8 +104,10 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
 
         var y = glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
 
-        applyDecorationColor(g2, element, ctx);
-        drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);
+        try (var ignored = GraphicsState.save(g2, COLOR)) {
+            applyDecorationColor(g2, element, ctx);
+            drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);
+        }
     }
 
     /**

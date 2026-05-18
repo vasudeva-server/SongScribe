@@ -180,18 +180,20 @@ class LineRenderer {
             && selectionProvider != null
             && selectionProvider.isLineSelected(lineIndex);
 
-        g2.setColor(staffSelected ? ScoreView.getSelectionColor() : BaseElementRenderer.STAFF_LINE_COLOR);
+        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+            g2.setColor(staffSelected ? ScoreView.getSelectionColor() : BaseElementRenderer.STAFF_LINE_COLOR);
 
-        var lineWidth = lc.getSong().getLineWidthSs();
-        var middleLineYSs = lc.getMiddleLineYSs();
-        var staffLineThicknessSs = ctx.getLineThickness().staffLineSs();
+            var lineWidth = lc.getSong().getLineWidthSs();
+            var middleLineYSs = lc.getMiddleLineYSs();
+            var staffLineThicknessSs = ctx.getLineThickness().staffLineSs();
 
-        // Staff has 5 lines, middle line (B) is at index 2.
-        // Lines are at: middleLineYSs - 2, middleLineYSs - 1, middleLineYSs,
-        //               middleLineYSs + 1, middleLineYSs + 2
-        for (var i = -2; i <= 2; i++) {
-            var centerY = middleLineYSs + i;
-            GraphicUtils.fillHorizontalLine(g2, 0, lineWidth, centerY, staffLineThicknessSs);
+            // Staff has 5 lines, middle line (B) is at index 2.
+            // Lines are at: middleLineYSs - 2, middleLineYSs - 1, middleLineYSs,
+            //               middleLineYSs + 1, middleLineYSs + 2
+            for (var i = -2; i <= 2; i++) {
+                var centerY = middleLineYSs + i;
+                GraphicUtils.fillHorizontalLine(g2, 0, lineWidth, centerY, staffLineThicknessSs);
+            }
         }
     }
 
@@ -239,24 +241,23 @@ class LineRenderer {
         var shiftSs = hasShift ? ctx.getPreviewShiftSs() : 0.0;
         var layoutResult = ctx.getLayoutResult();
 
-        for (var i = 0; i < line.elementCount(); i++) {
-            var element = line.getElement(i);
+        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+            for (var i = 0; i < line.elementCount(); i++) {
+                var element = line.getElement(i);
 
-            // Apply color based on selection/playing state
-            var color = getElementColor(i, ctx);
-            g2.setColor(color);
+                // Apply color based on selection/playing state
+                var color = getElementColor(i, ctx);
+                g2.setColor(color);
 
-            if (hasShift && i >= shiftFromIndex && element.getType() != ElementType.FINAL_DOUBLE_BARLINE) {
-                ctx.setOverrideElementXSs(layoutResult.getElementXSs(element) + shiftSs);
-                noteRenderer.render(g2, element, ctx);
-                ctx.clearOverrideElementX();
-            } else {
-                noteRenderer.render(g2, element, ctx);
+                if (hasShift && i >= shiftFromIndex && element.getType() != ElementType.FINAL_DOUBLE_BARLINE) {
+                    ctx.setOverrideElementXSs(layoutResult.getElementXSs(element) + shiftSs);
+                    noteRenderer.render(g2, element, ctx);
+                    ctx.clearOverrideElementX();
+                } else {
+                    noteRenderer.render(g2, element, ctx);
+                }
             }
         }
-
-        // Restore default color
-        g2.setColor(Color.BLACK);
     }
 
     /**
@@ -488,8 +489,6 @@ class LineRenderer {
 
         var layoutResult = ctx.getLayoutResult();
 
-        g2.setColor(Color.BLACK);
-
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
             var attachmentShiftActive = false;
 
@@ -609,10 +608,12 @@ class LineRenderer {
                 return;  // Already has this glissando type — no preview needed
             }
 
-            g2.setColor(ScoreView.getPreviewElementColor());
-            GlissandoRenderer.getInstance().renderPreviewGlissando(
-                g2, sourceIndex, type, line, ctx
-            );
+            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+                g2.setColor(ScoreView.getPreviewElementColor());
+                GlissandoRenderer.getInstance().renderPreviewGlissando(
+                    g2, sourceIndex, type, line, ctx
+                );
+            }
             return;
         }
 
@@ -653,17 +654,20 @@ class LineRenderer {
         // preview rendering via hasOverrideElementX() and avoid looking up the
         // preview element in the layout (it isn't there).
         ctx.setOverrideElementXSs(x);
-        g2.setColor(ScoreView.getPreviewElementColor());
-        NoteRenderer.getInstance().render(g2, previewElement, ctx);
 
-        // Render articulations and fermata on the preview element.
-        // The override X remains set so decoration renderers use the precise position.
-        if (!previewElement.getArticulations().isEmpty()) {
-            ArticulationRenderer.getInstance().render(previewElement, g2, ctx);
-        }
+        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+            g2.setColor(ScoreView.getPreviewElementColor());
+            NoteRenderer.getInstance().render(g2, previewElement, ctx);
 
-        if (previewElement.isFermata()) {
-            FermataRenderer.getInstance().render(previewElement, g2, ctx);
+            // Render articulations and fermata on the preview element.
+            // The override X remains set so decoration renderers use the precise position.
+            if (!previewElement.getArticulations().isEmpty()) {
+                ArticulationRenderer.getInstance().render(previewElement, g2, ctx);
+            }
+
+            if (previewElement.isFermata()) {
+                FermataRenderer.getInstance().render(previewElement, g2, ctx);
+            }
         }
 
         ctx.clearOverrideElementX();
@@ -689,10 +693,10 @@ class LineRenderer {
                 dragRectangle.x, dragRectangle.y,
                 dragRectangle.width, dragRectangle.height,
                 SELECTION_RECT_ARC_PX, SELECTION_RECT_ARC_PX);
-        var originalStroke = g2.getStroke();
-        g2.setStroke(SELECTION_RECT_STROKE);
-        g2.setColor(ScoreView.getSelectionColor());
-        g2.draw(roundRect);
-        g2.setStroke(originalStroke);
+        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.STROKE, GraphicsState.Property.COLOR)) {
+            g2.setStroke(SELECTION_RECT_STROKE);
+            g2.setColor(ScoreView.getSelectionColor());
+            g2.draw(roundRect);
+        }
     }
 }

@@ -20,6 +20,7 @@
 
 package songscribe.ui.renderer;
 
+import static songscribe.ui.renderer.GraphicsState.Property.CLIP;
 import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 
 import module java.desktop;
@@ -364,29 +365,22 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         beam.lineTo(firstX, firstInnerY);
         beam.closePath();
 
-        Shape oldClip = null;
+        try (var ignored = GraphicsState.save(g2, CLIP, COLOR)) {
+            if (type != BeamType.FULL) {
+                var clip = beam.getBounds2D();
+                var x1 = (type == BeamType.ATTACH_LEFT)
+                    ? firstX - CLIP_SLOP_SS
+                    : lastX - BEAM_STUB_SS;
+                clip.setRect(
+                    x1,
+                    clip.getMinY() - CLIP_SLOP_SS,
+                    BEAM_STUB_SS + CLIP_SLOP_SS,
+                    clip.getHeight() + CLIP_SLOP_SS * 2);
+                g2.setClip(clip);
+            }
 
-        if (type != BeamType.FULL) {
-            var clip = beam.getBounds2D();
-            var x1 = (type == BeamType.ATTACH_LEFT)
-                ? firstX - CLIP_SLOP_SS
-                : lastX - BEAM_STUB_SS;
-            clip.setRect(
-                x1,
-                clip.getMinY() - CLIP_SLOP_SS,
-                BEAM_STUB_SS + CLIP_SLOP_SS,
-                clip.getHeight() + CLIP_SLOP_SS * 2);
-            oldClip = g2.getClip();
-            g2.setClip(clip);
-        }
-
-        try (var ignored = GraphicsState.save(g2, COLOR)) {
             g2.setColor(selected ? selectionColor : ELEMENT_COLOR);
             g2.fill(beam);
-        }
-
-        if (oldClip != null) {
-            g2.setClip(oldClip);
         }
     }
 

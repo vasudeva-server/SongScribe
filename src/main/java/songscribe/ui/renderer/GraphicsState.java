@@ -45,7 +45,8 @@ public final class GraphicsState implements AutoCloseable {
         FONT,
         TRANSFORM,
         ANTIALIASING,
-        STROKE_CONTROL
+        STROKE_CONTROL,
+        CLIP
     }
 
     private final Graphics2D g2;
@@ -56,6 +57,7 @@ public final class GraphicsState implements AutoCloseable {
     private @Nullable AffineTransform transform;
     private @Nullable Object antialiasing;
     private @Nullable Object strokeControl;
+    private @Nullable Shape clip;
 
     private GraphicsState(Graphics2D g2, int propertyMask) {
         this.g2 = g2;
@@ -105,11 +107,19 @@ public final class GraphicsState implements AutoCloseable {
             state.strokeControl = g2.getRenderingHint(RenderingHints.KEY_STROKE_CONTROL);
         }
 
+        if (state.has(Property.CLIP)) {
+            state.clip = g2.getClip();
+        }
+
         return state;
     }
 
     @Override
     public void close() {
+        if (has(Property.CLIP)) {
+            g2.setClip(clip);
+        }
+
         if (has(Property.STROKE_CONTROL) && strokeControl != null) {
             g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, strokeControl);
         }
