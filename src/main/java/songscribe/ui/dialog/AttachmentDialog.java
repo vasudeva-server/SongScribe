@@ -54,8 +54,13 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
                 elementIndex, getElementField(), () -> clearChange(element)));
             setVisible(false);
         });
+    }
+
+    @Override
+    protected Object modifyButtonPanel() {
         buttonPanel.add(removeButton, 0);
         removeButton.setVisible(false);
+        return BorderLayout.SOUTH;
     }
 
     protected abstract ElementField getElementField();

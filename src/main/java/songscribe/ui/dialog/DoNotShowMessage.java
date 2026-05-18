@@ -39,9 +39,13 @@ public class DoNotShowMessage extends StandardDialog {
         this.propName = propName;
         contentPanel.add(BorderLayout.NORTH, new JLabel(info));
         contentPanel.add(BorderLayout.CENTER, dontShowCheck);
+    }
+
+    @Override
+    protected Object modifyButtonPanel() {
         buttonPanel = new JPanel();
         buttonPanel.add(okButton);
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
+        return BorderLayout.SOUTH;
     }
 
     @Override

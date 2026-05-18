@@ -41,7 +41,6 @@ public class TempoChangeDialog extends AttachmentDialog<Tempo> {
     public TempoChangeDialog() {
         super(Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE));
         contentPanel.add(BorderLayout.CENTER, tempoSection);
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
     public static void showForElement(StaffElement element, Line line) {

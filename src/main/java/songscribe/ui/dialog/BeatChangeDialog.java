@@ -52,7 +52,6 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
         row.add(beatCombo);
 
         contentPanel.add(BorderLayout.CENTER, row);
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
     @Override

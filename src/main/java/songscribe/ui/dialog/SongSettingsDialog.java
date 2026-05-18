@@ -92,7 +92,6 @@ public class SongSettingsDialog extends StandardDialog {
         );
 
         contentPanel.add(BorderLayout.CENTER, tabbedPane);
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
     private final class TextTab extends BaseDialog.Tab {

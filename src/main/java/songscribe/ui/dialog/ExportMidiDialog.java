@@ -52,7 +52,6 @@ public class ExportMidiDialog extends StandardDialog {
         withRepeatCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
         center.add(withRepeatCheck);
         contentPanel.add(BorderLayout.CENTER, center);
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
     @Override

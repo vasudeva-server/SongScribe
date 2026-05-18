@@ -21,7 +21,7 @@ Category precedent (pick by analogy):
 
 Constructors: `(title)`, `(title, isModal)`, `(title, isModal, DialogCategory)`.
 
-Fields: `contentPanel` (BorderLayout — add content to CENTER, buttons to SOUTH).
+Fields: `contentPanel` (BorderLayout — add content to CENTER; `StandardDialog` attaches `buttonPanel` to SOUTH automatically).
 Accessors: `getMainFrame()`, `getScore()` (nullable), `requireScore()` (throws), `getSong()` (requires score).
 
 Static helpers:
@@ -46,7 +46,9 @@ OK click lifecycle: `isValidData()` → if true: `setData()` → `repaintScore()
 
 Override hooks: `isValidData()`, `setData()` — both iterate tabs by default; call `super` when adding dialog-level logic.
 
-Canonical small example: `FontDialog` — adds content + `buttonPanel` to `contentPanel`, overrides `getData()`/`setData()` with `super` calls, overrides `isResizable()`/`getExtraWidth()`/`getExtraHeight()`.
+`modifyButtonPanel()` — called once on first `setVisible(true)`. Mutate `buttonPanel` in place (add/remove buttons) or reassign the field entirely. Return the `BorderLayout` constraint for attaching it (default `SOUTH`). Do NOT call `contentPanel.add(buttonPanel, ...)` manually.
+
+Canonical small example: `FontDialog` — adds content to `contentPanel`, overrides `getData()`/`setData()` with `super` calls, overrides `isResizable()`/`getExtraWidth()`/`getExtraHeight()`/`modifyButtonPanel()`.
 
 ### Tab (BaseDialog inner class)
 

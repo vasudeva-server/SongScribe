@@ -105,7 +105,6 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         content.add(sectionRow);
 
         contentPanel.add(BorderLayout.CENTER, content);
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
     @Override

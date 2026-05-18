@@ -77,10 +77,14 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
         exportWithoutTitleCheckBox.addChangeListener(this);
         resolutionSpinner.setModel(new SpinnerNumberModel(300, 30, 1200, 1));
         contentPanel.add(BorderLayout.CENTER, mainPanel);
+    }
+
+    @Override
+    protected Object modifyButtonPanel() {
         buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 13, 0));
         buttonPanel.add(okButton);
         buttonPanel.add(cancelButton);
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
+        return BorderLayout.SOUTH;
     }
 
     @Override

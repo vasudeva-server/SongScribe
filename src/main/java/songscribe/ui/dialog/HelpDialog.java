@@ -59,9 +59,12 @@ public class HelpDialog
         splitPane.setRightComponent(editorScrollPane);
 
         contentPanel.add(splitPane);
+    }
 
+    @Override
+    protected Object modifyButtonPanel() {
         buttonPanel.remove(cancelButton);
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
+        return BorderLayout.SOUTH;
     }
 
     public void addToList(String name, String html) {

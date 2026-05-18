@@ -34,10 +34,6 @@ public class HTMLDialog extends StandardDialog {
 
     public HTMLDialog(String title) {
         super(title, false, DialogCategory.INFORMATIONAL);
-        buttonPanel = new JPanel();
-        buttonPanel.add(okButton);
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
-
         editorPane = new JEditorPane();
         editorPane.setEditable(false);
         editorPane.setBackground(contentPanel.getBackground());
@@ -52,6 +48,13 @@ public class HTMLDialog extends StandardDialog {
     public HTMLDialog(String dialogTitle, String htmlPage) {
         this(dialogTitle);
         setPage(htmlPage);
+    }
+
+    @Override
+    protected Object modifyButtonPanel() {
+        buttonPanel = new JPanel();
+        buttonPanel.add(okButton);
+        return BorderLayout.SOUTH;
     }
 
     protected void setPage(String htmlPage) {

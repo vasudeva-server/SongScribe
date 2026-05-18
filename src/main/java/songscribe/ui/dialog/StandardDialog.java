@@ -37,6 +37,7 @@ public abstract class StandardDialog extends BaseDialog {
     );
     protected final JButton okButton;
     protected final JButton cancelButton;
+    private boolean buttonPanelAttached = false;
 
     protected StandardDialog(String title) {
         this(title, true);
@@ -76,6 +77,25 @@ public abstract class StandardDialog extends BaseDialog {
     @Override
     protected boolean hasButtons() {
         return true;
+    }
+
+    /**
+     * Called once, on the first {@code setVisible(true)}, before the dialog is shown.
+     * Subclasses may mutate {@code buttonPanel} in place or reassign the field.
+     * The return value is the {@code BorderLayout} constraint used to attach the panel.
+     */
+    protected Object modifyButtonPanel() {
+        return BorderLayout.SOUTH;
+    }
+
+    @Override
+    public void setVisible(boolean visible) {
+        if (visible && !buttonPanelAttached) {
+            contentPanel.add(buttonPanel, modifyButtonPanel());
+            buttonPanelAttached = true;
+        }
+
+        super.setVisible(visible);
     }
 
     private void repaintScore() {

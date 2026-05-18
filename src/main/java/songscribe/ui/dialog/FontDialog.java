@@ -38,7 +38,11 @@ public class FontDialog extends StandardDialog {
         selectedFont = initialFont;
 
         contentPanel.add(chooser, BorderLayout.CENTER);
-        contentPanel.add(buttonPanel, BorderLayout.PAGE_END);
+    }
+
+    @Override
+    protected Object modifyButtonPanel() {
+        return BorderLayout.PAGE_END;
     }
 
     public static Font showDialog(Component component) {

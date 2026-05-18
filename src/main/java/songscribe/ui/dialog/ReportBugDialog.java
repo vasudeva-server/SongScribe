@@ -23,6 +23,7 @@ import module java.desktop;
 
 import java.io.File;
 
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.Version;
@@ -35,16 +36,16 @@ import songscribe.util.Utils;
 public class ReportBugDialog extends StandardDialog {
 
     public static final String BUG_EMAIL = "himadri81@zoho.com";
+    private @Nullable JButton sendBug = null;
 
     public ReportBugDialog() {
         super(Strings.get(Strings.DIALOG_BUG_REPORT_TITLE), true, DialogCategory.INFORMATIONAL);
         var logFile = new File(MainFrame.SONGSCRIBE_DIR, "log");
         var area = getjEditorPane(logFile);
         contentPanel.add(area);
-        buttonPanel.remove(cancelButton);
 
         if (DesktopUtils.isDesktopSupported()) {
-            var sendBug = new JButton(Strings.get(Strings.DIALOG_BUG_REPORT_SEND));
+            sendBug = new JButton(Strings.get(Strings.DIALOG_BUG_REPORT_SEND));
             sendBug.addActionListener(_ -> {
                 var bugReportIdx = 0;
                 var featureRequestIdx = 1;
@@ -100,10 +101,18 @@ public class ReportBugDialog extends StandardDialog {
                 }
             });
 
+        }
+    }
+
+    @Override
+    protected Object modifyButtonPanel() {
+        buttonPanel.remove(cancelButton);
+
+        if (sendBug != null) {
             buttonPanel.add(sendBug);
         }
 
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
+        return BorderLayout.SOUTH;
     }
 
     private JEditorPane getjEditorPane(File logFile) {
