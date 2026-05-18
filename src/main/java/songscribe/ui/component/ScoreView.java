@@ -237,7 +237,7 @@ public final class ScoreView
     public ScoreView(@Nullable Consumer<? super File> onFileOpened) {
         this.onFileOpened = onFileOpened;
         var headless = onFileOpened == null;
-        viewState = new ScoreViewState(Control.valueOf(Prefs.getInstance().getString(PrefsKey.CONTROL)));
+        viewState = new ScoreViewState(Control.valueOf(Prefs.getString(PrefsKey.CONTROL)));
 
         selectionCoordinator = new SelectionCoordinator(this::getSong);
         clipboardManager = new ClipboardManager();
@@ -520,15 +520,14 @@ public final class ScoreView
     }
 
     public void syncPlaybackPrefs() {
-        var prefs = Prefs.getInstance();
-        editModeManager.setPlayInsertedNote(prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
+        editModeManager.setPlayInsertedNote(Prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
         // If true, the score is played with repeats
-        var playWithRepeats = prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS);
+        var playWithRepeats = Prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS);
 
         // Delegate playback settings to PlaybackController
-        PlaybackController.setInstrument(prefs.getInt(PrefsKey.INSTRUMENT));
-        PlaybackController.setTempoChangePercent(prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT));
-        PlaybackController.setNoteDurationPercent(prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION));
+        PlaybackController.setInstrument(Prefs.getInt(PrefsKey.INSTRUMENT));
+        PlaybackController.setTempoChangePercent(Prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT));
+        PlaybackController.setNoteDurationPercent(Prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION));
         PlaybackController.setPlayWithRepeats(playWithRepeats);
         PlaybackController.applyVolumeFromPrefs();
         PlaybackController.applyPrefsDuringPlayback();

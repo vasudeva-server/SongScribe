@@ -52,7 +52,6 @@ class AppearanceManagerTest extends UnitTest {
 
     private MockedStatic<Prefs> prefsMock;
     private MockedStatic<OsThemeDetector> detectorMock;
-    private Prefs mockPrefs;
     private OsThemeDetector mockDetector;
     private LafOperations mockLafOps;
 
@@ -61,11 +60,9 @@ class AppearanceManagerTest extends UnitTest {
         prefsMock = mockStatic(Prefs.class);
         detectorMock = mockStatic(OsThemeDetector.class);
 
-        mockPrefs = mock(Prefs.class);
         mockDetector = mock(OsThemeDetector.class);
         mockLafOps = mock(LafOperations.class);
 
-        prefsMock.when(Prefs::getInstance).thenReturn(mockPrefs);
         detectorMock.when(OsThemeDetector::getDetector).thenReturn(mockDetector);
 
         AppearanceManager.setLafOperations(mockLafOps);
@@ -111,7 +108,7 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testInitInstallsLafFromPreference() throws Exception {
-            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
 
             AppearanceManager.init();
 
@@ -120,7 +117,7 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testInitRegistersOsListenerForSystemPreference() throws Exception {
-            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.SYSTEM.key());
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.SYSTEM.key());
             when(mockDetector.isDark()).thenReturn(false);
 
             AppearanceManager.init();
@@ -131,7 +128,7 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testInitSkipsOsListenerForNonSystemPreference() throws Exception {
-            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.DARK.key());
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.DARK.key());
 
             AppearanceManager.init();
 
@@ -179,7 +176,7 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testNoOpWhenPreferenceUnchanged() throws Exception {
-            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
 
             AppearanceManager.switchTheme(Appearance.LIGHT);
 
@@ -189,7 +186,7 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testSwitchCallsLafOpsInOrder() throws Exception {
-            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
 
             AppearanceManager.switchTheme(Appearance.DARK);
 
@@ -203,13 +200,13 @@ class AppearanceManagerTest extends UnitTest {
         @Test
         void testSwitchFromSystemUnregistersOsListener() {
             // First set up as system to register the listener
-            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
             when(mockDetector.isDark()).thenReturn(false);
             AppearanceManager.switchTheme(Appearance.SYSTEM);
             verify(mockDetector).registerListener(any());
 
             // Now switch away from system
-            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.SYSTEM.key());
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.SYSTEM.key());
             AppearanceManager.switchTheme(Appearance.DARK);
 
             verify(mockDetector).removeListener(any());
@@ -217,16 +214,16 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testSwitchSavesNewPreference() {
-            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
 
             AppearanceManager.switchTheme(Appearance.DARK);
 
-            verify(mockPrefs).put(PrefsKey.APPEARANCE, Appearance.DARK.key());
+            prefsMock.verify(() -> Prefs.put(PrefsKey.APPEARANCE, Appearance.DARK.key()));
         }
 
         @Test
         void testSwitchToSystemRegistersOsListener() {
-            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
             when(mockDetector.isDark()).thenReturn(false);
 
             AppearanceManager.switchTheme(Appearance.SYSTEM);

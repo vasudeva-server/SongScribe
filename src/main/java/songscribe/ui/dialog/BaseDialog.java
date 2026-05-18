@@ -351,7 +351,7 @@ public abstract class BaseDialog {
                 }
 
                 var simpleClassName = getClass().getSimpleName();
-                Prefs.getInstance().putMap(PrefsKey.DIALOG_GEOMETRY, Map.of(simpleClassName, valueMap));
+                Prefs.putMap(PrefsKey.DIALOG_GEOMETRY, Map.of(simpleClassName, valueMap));
             } finally {
                 if (category.isBlocking()) {
                     decrementBlockingCount();
@@ -364,7 +364,7 @@ public abstract class BaseDialog {
 
     private @Nullable DialogGeometry loadGeometryFromPrefs() {
         var simpleClassName = getClass().getSimpleName();
-        var allGeometry = Prefs.getInstance().getMap(PrefsKey.DIALOG_GEOMETRY);
+        var allGeometry = Prefs.getMap(PrefsKey.DIALOG_GEOMETRY);
         var entry = allGeometry.get(simpleClassName);
 
         if (!(entry instanceof Map<?, ?> map)) {

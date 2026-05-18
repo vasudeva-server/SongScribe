@@ -224,12 +224,10 @@ public class PreferencesDialog extends BaseDialog {
 
         @Override
         protected boolean getData() {
-            var prefs = Prefs.getInstance();
-
             (PageModel.getSize() == PageModel.Size.A4
                 ? a4Radio : letterRadio).setSelected(true);
 
-            (prefs.getBoolean(PrefsKey.METRIC)
+            (Prefs.getBoolean(PrefsKey.METRIC)
                 ? centimetersRadio : inchesRadio).setSelected(true);
 
             (switch (AppearanceManager.getPreference()) {
@@ -241,7 +239,7 @@ public class PreferencesDialog extends BaseDialog {
             var startupAction = StartupAction.DO_NOTHING;
 
             try {
-                startupAction = StartupAction.valueOf(prefs.getString(PrefsKey.STARTUP_ACTION));
+                startupAction = StartupAction.valueOf(Prefs.getString(PrefsKey.STARTUP_ACTION));
             } catch (IllegalArgumentException ignored) {}
 
             (switch (startupAction) {
@@ -257,7 +255,7 @@ public class PreferencesDialog extends BaseDialog {
             var pageSizeListener = new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    Prefs.getInstance().put(
+                    Prefs.put(
                         PrefsKey.PAGE_SIZE, a4Radio.isSelected() ? "a4" : "letter"
                     );
                 }
@@ -269,7 +267,7 @@ public class PreferencesDialog extends BaseDialog {
             var metricListener = new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    Prefs.getInstance().put(
+                    Prefs.put(
                         PrefsKey.METRIC, centimetersRadio.isSelected()
                     );
                 }
@@ -312,7 +310,7 @@ public class PreferencesDialog extends BaseDialog {
                         action = StartupAction.DO_NOTHING;
                     }
 
-                    Prefs.getInstance().put(PrefsKey.STARTUP_ACTION, action.name());
+                    Prefs.put(PrefsKey.STARTUP_ACTION, action.name());
                 }
             };
 
@@ -439,7 +437,7 @@ public class PreferencesDialog extends BaseDialog {
             new TickSlider(VALID_DURATION_STOPS, DURATION_LABELS) {
                 @Override
                 protected void tickDidChange(int tick) {
-                    Prefs.getInstance().put(PrefsKey.PLAYBACK_NOTE_DURATION, tick);
+                    Prefs.put(PrefsKey.PLAYBACK_NOTE_DURATION, tick);
                     syncPlaybackPrefs();
                 }
             };
@@ -449,7 +447,7 @@ public class PreferencesDialog extends BaseDialog {
                 @Override
                 protected void tickDidChange(int tick) {
                     var volume = VALID_VOLUME_STOPS[tick];
-                    Prefs.getInstance().put(PrefsKey.PLAYBACK_VOLUME, volume);
+                    Prefs.put(PrefsKey.PLAYBACK_VOLUME, volume);
                     MidiController.setPlaybackVolume(volume);
                 }
             };
@@ -458,7 +456,7 @@ public class PreferencesDialog extends BaseDialog {
             new TickSlider(VALID_TEMPO_STOPS, TEMPO_LABELS) {
                 @Override
                 protected void tickDidChange(int tick) {
-                    Prefs.getInstance().put(PrefsKey.TEMPO_CHANGE_PERCENT, tick);
+                    Prefs.put(PrefsKey.TEMPO_CHANGE_PERCENT, tick);
                     syncPlaybackPrefs();
                 }
             };
@@ -477,27 +475,25 @@ public class PreferencesDialog extends BaseDialog {
 
         @Override
         protected boolean getData() {
-            var prefs = Prefs.getInstance();
+            playInsertingNoteCheck.setSelected(Prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
+            playSelectedNoteCheck.setSelected(Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE));
 
-            playInsertingNoteCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
-            playSelectedNoteCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE));
-
-            durationSlider.setSnappedValue(prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION));
-            volumeSlider.setSnappedValue(volumeToSliderIndex(prefs.getInt(PrefsKey.PLAYBACK_VOLUME)));
-            tempoSlider.setSnappedValue(prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT));
+            durationSlider.setSnappedValue(Prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION));
+            volumeSlider.setSnappedValue(volumeToSliderIndex(Prefs.getInt(PrefsKey.PLAYBACK_VOLUME)));
+            tempoSlider.setSnappedValue(Prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT));
 
             return true;
         }
 
         private void addChangeListeners() {
             playInsertingNoteCheck.addActionListener(_ -> {
-                Prefs.getInstance().put(
+                Prefs.put(
                     PrefsKey.PLAY_INSERTED_NOTE, playInsertingNoteCheck.isSelected()
                 );
                 syncPlaybackPrefs();
             });
 
-            playSelectedNoteCheck.addActionListener(_ -> Prefs.getInstance().put(
+            playSelectedNoteCheck.addActionListener(_ -> Prefs.put(
                 PrefsKey.PLAY_SELECTED_NOTE, playSelectedNoteCheck.isSelected()
             ));
         }
@@ -621,7 +617,7 @@ public class PreferencesDialog extends BaseDialog {
             ensureInstrumentsLoaded();
 
             var instrumentIndex = programToIndex(
-                Prefs.getInstance().getInt(PrefsKey.INSTRUMENT)
+                Prefs.getInt(PrefsKey.INSTRUMENT)
             );
             instrumentList.setListData(instrumentStrings);
             instrumentList.setSelectedIndex(instrumentIndex);
@@ -640,7 +636,7 @@ public class PreferencesDialog extends BaseDialog {
                 }
 
                 var index = instrumentList.getSelectedIndex();
-                Prefs.getInstance().put(
+                Prefs.put(
                     PrefsKey.INSTRUMENT, index >= 0 ? instrumentPrograms[index] : 0
                 );
                 syncPlaybackPrefs();

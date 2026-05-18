@@ -47,7 +47,6 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 class BaseDialogPositionTest extends UnitTest {
 
@@ -57,7 +56,6 @@ class BaseDialogPositionTest extends UnitTest {
     private MockedStatic<MainFrame> mainFrameMock;
     private MockedStatic<UIUtils> uiUtilsMock;
     private MockedStatic<Prefs> prefsMock;
-    private Prefs mockPrefs;
 
     @BeforeEach
     void setUp() {
@@ -68,9 +66,7 @@ class BaseDialogPositionTest extends UnitTest {
         var mockFrame = mock(MainFrame.class);
         mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
 
-        mockPrefs = mock(Prefs.class);
-        prefsMock.when(Prefs::getInstance).thenReturn(mockPrefs);
-        when(mockPrefs.getMap(any())).thenReturn(Collections.emptyMap());
+        prefsMock.when(() -> Prefs.getMap(any())).thenReturn(Collections.emptyMap());
 
         BaseDialogTestHelper.configureMockFrame(mockFrame);
 
@@ -210,7 +206,7 @@ class BaseDialogPositionTest extends UnitTest {
                 dialog.setVisible(false);
 
                 var captor = ArgumentCaptor.forClass(Map.class);
-                verify(mockPrefs).putMap(eq(PrefsKey.DIALOG_GEOMETRY), captor.capture());
+                prefsMock.verify(() -> Prefs.putMap(eq(PrefsKey.DIALOG_GEOMETRY), captor.capture()));
                 var saved = (Map<String, Object>) captor.getValue().get("TestDialog");
                 assertThat(saved).containsKeys("x", "y");
                 assertThat(saved).doesNotContainKeys("width", "height");
@@ -226,7 +222,7 @@ class BaseDialogPositionTest extends UnitTest {
                 dialog.setVisible(false);
 
                 var captor = ArgumentCaptor.forClass(Map.class);
-                verify(mockPrefs).putMap(eq(PrefsKey.DIALOG_GEOMETRY), captor.capture());
+                prefsMock.verify(() -> Prefs.putMap(eq(PrefsKey.DIALOG_GEOMETRY), captor.capture()));
                 var saved = (Map<String, Object>) captor.getValue().get("TestResizableDialog");
                 assertThat(saved).containsKeys("x", "y", "width", "height");
             }
@@ -234,7 +230,7 @@ class BaseDialogPositionTest extends UnitTest {
 
         @Test
         void testRestoreFromPrefs() {
-            when(mockPrefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(
+            prefsMock.when(() -> Prefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(
                 Map.of("TestDialog", Map.of("x", 200.0, "y", 300.0))
             );
 
@@ -252,7 +248,7 @@ class BaseDialogPositionTest extends UnitTest {
 
         @Test
         void testMissingKeyFallsBackToDefaultPosition() {
-            when(mockPrefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(Collections.emptyMap());
+            prefsMock.when(() -> Prefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(Collections.emptyMap());
 
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
                 new TestDialog().setVisible(true);

@@ -260,7 +260,7 @@ class NoteDragHandler {
             return;
         }
 
-        var playSelected = Prefs.getInstance().getBoolean(PrefsKey.PLAY_SELECTED_NOTE);
+        var playSelected = Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE);
 
         // Send NOTE_OFF for the pitch we were playing
         var oldNote = dragLine.getElement(dragElementIndex);
@@ -306,7 +306,7 @@ class NoteDragHandler {
         }
 
         if (dragMoved) {
-            if (Prefs.getInstance().getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
+            if (Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
                 // The last drag noteOn is still sounding — schedule a noteOff after the standard duration
                 new PlayThread(dragLine.getElement(dragElementIndex).getPitch(), false).start();
             }

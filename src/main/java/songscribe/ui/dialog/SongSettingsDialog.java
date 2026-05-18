@@ -598,7 +598,7 @@ public class SongSettingsDialog extends StandardDialog {
             lineWidthField.addFocusListener(new FocusAdapter() {
                 @Override
                 public void focusLost(FocusEvent e) {
-                    var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
+                    var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
                     var text = lineWidthField.getText();
 
                     double value;
@@ -762,7 +762,7 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private void revertLineWidthField() {
-            var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
+            var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
             var lineWidthInches = ScaleContext.getInstance().ssToPx(
                 getSong().getLineWidthSs()
             ) / GraphicUtils.getDpi();
@@ -784,7 +784,7 @@ public class SongSettingsDialog extends StandardDialog {
          *         unparseable, or out of range
          */
         private double validateLineWidth() {
-            var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
+            var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
 
             double value;
 

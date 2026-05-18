@@ -59,24 +59,23 @@ class ViewIOTest extends UnitTest {
             reader.getSong();
 
             var fonts = reader.getDocumentFonts();
-            var prefs = Prefs.getInstance();
-            var expectedTitle = MyFontUtils.createFont(prefs.getString(PrefsKey.TITLE_FONT), prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+            var expectedTitle = MyFontUtils.createFont(Prefs.getString(PrefsKey.TITLE_FONT), Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
             assertThat(fonts.getFont(FontKey.TITLE).getPSName()).isEqualTo(expectedTitle.getPSName());
-            assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
 
-            var expectedLyrics = MyFontUtils.createFont(prefs.getString(PrefsKey.LYRICS_FONT), prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
+            var expectedLyrics = MyFontUtils.createFont(Prefs.getString(PrefsKey.LYRICS_FONT), Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
             assertThat(fonts.getFont(FontKey.LYRICS).getPSName()).isEqualTo(expectedLyrics.getPSName());
 
-            var expectedAnnotation = MyFontUtils.createFont(prefs.getString(PrefsKey.ANNOTATION_FONT), prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
+            var expectedAnnotation = MyFontUtils.createFont(Prefs.getString(PrefsKey.ANNOTATION_FONT), Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
             assertThat(fonts.getFont(FontKey.ANNOTATION).getPSName()).isEqualTo(expectedAnnotation.getPSName());
 
-            var expectedBangla = MyFontUtils.createFont(prefs.getString(PrefsKey.BANGLA_FONT), prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
+            var expectedBangla = MyFontUtils.createFont(Prefs.getString(PrefsKey.BANGLA_FONT), Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
             assertThat(fonts.getFont(FontKey.BANGLA).getPSName()).isEqualTo(expectedBangla.getPSName());
-            assertThat(fonts.getFont(FontKey.BANGLA).getSize()).isEqualTo(prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.BANGLA).getSize()).isEqualTo(Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
 
-            var expectedFootnote = MyFontUtils.createFont(prefs.getString(PrefsKey.FOOTNOTE_FONT), prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
+            var expectedFootnote = MyFontUtils.createFont(Prefs.getString(PrefsKey.FOOTNOTE_FONT), Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
             assertThat(fonts.getFont(FontKey.FOOTNOTE).getPSName()).isEqualTo(expectedFootnote.getPSName());
-            assertThat(fonts.getFont(FontKey.FOOTNOTE).getSize()).isEqualTo(prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.FOOTNOTE).getSize()).isEqualTo(Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
         }
     }
 
@@ -119,7 +118,6 @@ class ViewIOTest extends UnitTest {
         void testPartialBlockOverridesOnlyPresentRoles() throws Exception {
             var fonts = parseAndGetDocumentFonts(buildPartialViewXml());
 
-            var prefs = Prefs.getInstance();
             var expectedTitle = MyFontUtils.createFont(CUSTOM_TITLE_FONT, CUSTOM_TITLE_FONT_SIZE);
             assertThat(fonts.getFont(FontKey.TITLE).getPSName()).isEqualTo(expectedTitle.getPSName());
             assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(CUSTOM_TITLE_FONT_SIZE);
@@ -150,10 +148,9 @@ class ViewIOTest extends UnitTest {
         }
 
         private static void assertRoleMatchesPrefs(DocumentFonts fonts, FontKey key, PrefsKey nameKey, PrefsKey sizeKey) {
-            var prefs = Prefs.getInstance();
-            var expected = MyFontUtils.createFont(prefs.getString(nameKey), prefs.getInt(sizeKey));
+            var expected = MyFontUtils.createFont(Prefs.getString(nameKey), Prefs.getInt(sizeKey));
             assertThat(fonts.getFont(key).getPSName()).isEqualTo(expected.getPSName());
-            assertThat(fonts.getFont(key).getSize()).isEqualTo(prefs.getInt(sizeKey));
+            assertThat(fonts.getFont(key).getSize()).isEqualTo(Prefs.getInt(sizeKey));
         }
     }
 

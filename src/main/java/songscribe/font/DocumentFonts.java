@@ -73,14 +73,13 @@ public final class DocumentFonts implements DocumentFontsHolder {
      * {@link FontKey} to {@link PrefsKey}.
      */
     public static DocumentFonts defaultsFromPrefs() {
-        var prefs = Prefs.getInstance();
         var result = new DocumentFonts();
-        result.setFont(FontKey.TITLE,       prefs.getString(PrefsKey.TITLE_FONT),       prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
-        result.setFont(FontKey.LYRICS,      prefs.getString(PrefsKey.LYRICS_FONT),      prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
-        result.setFont(FontKey.ATTRIBUTION, prefs.getString(PrefsKey.ATTRIBUTION_FONT), prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
-        result.setFont(FontKey.ANNOTATION,  prefs.getString(PrefsKey.ANNOTATION_FONT),  prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
-        result.setFont(FontKey.FOOTNOTE,    prefs.getString(PrefsKey.FOOTNOTE_FONT),    prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
-        result.setFont(FontKey.BANGLA,      prefs.getString(PrefsKey.BANGLA_FONT),      prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
+        result.setFont(FontKey.TITLE,       Prefs.getString(PrefsKey.TITLE_FONT),       Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+        result.setFont(FontKey.LYRICS,      Prefs.getString(PrefsKey.LYRICS_FONT),      Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
+        result.setFont(FontKey.ATTRIBUTION, Prefs.getString(PrefsKey.ATTRIBUTION_FONT), Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
+        result.setFont(FontKey.ANNOTATION,  Prefs.getString(PrefsKey.ANNOTATION_FONT),  Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
+        result.setFont(FontKey.FOOTNOTE,    Prefs.getString(PrefsKey.FOOTNOTE_FONT),    Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
+        result.setFont(FontKey.BANGLA,      Prefs.getString(PrefsKey.BANGLA_FONT),      Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
         return result;
     }
 

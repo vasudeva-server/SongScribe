@@ -378,7 +378,7 @@ public final class PlaybackController {
     }
 
     public static void applyVolumeFromPrefs() {
-        MidiController.setPlaybackVolume(Prefs.getInstance().getInt(PrefsKey.PLAYBACK_VOLUME));
+        MidiController.setPlaybackVolume(Prefs.getInt(PrefsKey.PLAYBACK_VOLUME));
     }
 
     /**
@@ -434,7 +434,7 @@ public final class PlaybackController {
         var loopPlayback =
             ((noteSelection == null) ||
                 (noteSelection.begin() != noteSelection.end())) &&
-                Prefs.getInstance().getBoolean(PrefsKey.LOOP_PLAYBACK);
+                Prefs.getBoolean(PrefsKey.LOOP_PLAYBACK);
 
         // If a single note is selected, do not loop playback
 

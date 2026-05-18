@@ -99,32 +99,28 @@ public final class Prefs {
         migrate();
     }
 
-    public static Prefs getInstance() {
-        return INSTANCE;
+    public static String getString(PrefsKey key) {
+        var value = INSTANCE.store.get(key.key());
+        return value != null ? value.toString() : (String) INSTANCE.getDefault(key);
     }
 
-    public String getString(PrefsKey key) {
-        var value = store.get(key.key());
-        return value != null ? value.toString() : (String) getDefault(key);
+    public static int getInt(PrefsKey key) {
+        var value = INSTANCE.store.get(key.key());
+        return ((Number) (value != null ? value : INSTANCE.getDefault(key))).intValue();
     }
 
-    public int getInt(PrefsKey key) {
-        var value = store.get(key.key());
-        return ((Number) (value != null ? value : getDefault(key))).intValue();
+    public static long getLong(PrefsKey key) {
+        var value = INSTANCE.store.get(key.key());
+        return ((Number) (value != null ? value : INSTANCE.getDefault(key))).longValue();
     }
 
-    public long getLong(PrefsKey key) {
-        var value = store.get(key.key());
-        return ((Number) (value != null ? value : getDefault(key))).longValue();
+    public static boolean getBoolean(PrefsKey key) {
+        var value = INSTANCE.store.get(key.key());
+        return (Boolean) (value != null ? value : INSTANCE.getDefault(key));
     }
 
-    public boolean getBoolean(PrefsKey key) {
-        var value = store.get(key.key());
-        return (Boolean) (value != null ? value : getDefault(key));
-    }
-
-    public List<String> getStringList(PrefsKey key) {
-        var value = store.get(key.key());
+    public static List<String> getStringList(PrefsKey key) {
+        var value = INSTANCE.store.get(key.key());
 
         if (value instanceof List<?> list) {
             return list.stream()
@@ -135,9 +131,9 @@ public final class Prefs {
         return Collections.emptyList();
     }
 
-    public void putStringList(PrefsKey key, List<String> value) {
-        store.put(key.key(), new ArrayList<>(value));
-        save(key);
+    public static void putStringList(PrefsKey key, List<String> value) {
+        INSTANCE.store.put(key.key(), new ArrayList<>(value));
+        INSTANCE.save(key);
     }
 
     /**
@@ -148,14 +144,14 @@ public final class Prefs {
      * {@code ((Number) value).intValue()}) rather than assuming {@code Integer} or {@code Long}.
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> getMap(PrefsKey key) {
-        var value = store.get(key.key());
+    public static Map<String, Object> getMap(PrefsKey key) {
+        var value = INSTANCE.store.get(key.key());
 
         if (value instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
         }
 
-        var defaultValue = defaults.get(key.key());
+        var defaultValue = INSTANCE.defaults.get(key.key());
 
         if (defaultValue instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
@@ -164,43 +160,43 @@ public final class Prefs {
         return Collections.emptyMap();
     }
 
-    public void putMap(PrefsKey key, Map<String, ?> entries) {
+    public static void putMap(PrefsKey key, Map<String, ?> entries) {
         var current = new HashMap<>(getMap(key));
         current.putAll(entries);
-        store.put(key.key(), current);
-        save(key);
+        INSTANCE.store.put(key.key(), current);
+        INSTANCE.save(key);
     }
 
-    public void put(PrefsKey key, String value) {
-        store.put(key.key(), value);
-        save(key);
+    public static void put(PrefsKey key, String value) {
+        INSTANCE.store.put(key.key(), value);
+        INSTANCE.save(key);
     }
 
-    public void put(PrefsKey key, int value) {
+    public static void put(PrefsKey key, int value) {
         // Store as Long for consistency with JSON round-tripping
-        store.put(key.key(), (long) value);
-        save(key);
+        INSTANCE.store.put(key.key(), (long) value);
+        INSTANCE.save(key);
     }
 
-    public void put(PrefsKey key, long value) {
-        store.put(key.key(), value);
-        save(key);
+    public static void put(PrefsKey key, long value) {
+        INSTANCE.store.put(key.key(), value);
+        INSTANCE.save(key);
     }
 
-    public void put(PrefsKey key, boolean value) {
-        store.put(key.key(), value);
-        save(key);
+    public static void put(PrefsKey key, boolean value) {
+        INSTANCE.store.put(key.key(), value);
+        INSTANCE.save(key);
     }
 
 
-    public void reset(PrefsKey key) {
-        store.remove(key.key());
-        save(key);
+    public static void reset(PrefsKey key) {
+        INSTANCE.store.remove(key.key());
+        INSTANCE.save(key);
     }
 
-    public void resetAll() {
-        store.clear();
-        save(PrefsKey.ALL);
+    public static void resetAll() {
+        INSTANCE.store.clear();
+        INSTANCE.save(PrefsKey.ALL);
     }
 
     private void removeObsoleteKeys() {

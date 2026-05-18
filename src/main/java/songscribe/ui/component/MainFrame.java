@@ -140,11 +140,8 @@ public class MainFrame extends JFrame implements Printable {
 
         appName = Strings.get(Strings.APP_SONGWRITER);
 
-        // Trigger Prefs initialization (auto-migrates from old props file)
-        Prefs.getInstance();
-
         // There are some tasks we need to perform the first time the app is run
-        if (Prefs.getInstance().getBoolean(PrefsKey.FIRST_RUN)) {
+        if (Prefs.getBoolean(PrefsKey.FIRST_RUN)) {
             firstRun();
         }
 
@@ -173,17 +170,17 @@ public class MainFrame extends JFrame implements Printable {
             MessageLogger.init();
             MidiController.openMidi();
             var instance = getInstance();
-            var rawRecents = Prefs.getInstance().getStringList(PrefsKey.RECENT_FILES);
+            var rawRecents = Prefs.getStringList(PrefsKey.RECENT_FILES);
             var mostRecentPath = rawRecents.isEmpty() ? null : Path.of(rawRecents.getFirst());
             instance.initFrame();
 
             if (
                 !Version.PUBLIC_VERSION.equals(
-                    Prefs.getInstance().getString(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION)
+                    Prefs.getString(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION)
                 ) &&
                     new File(WhatsNewDialog.WHATS_NEW_FILE).exists()
             ) {
-                Prefs.getInstance().put(
+                Prefs.put(
                     PrefsKey.LAST_SEEN_WHATS_NEW_VERSION,
                     Version.PUBLIC_VERSION
                 );
@@ -209,7 +206,7 @@ public class MainFrame extends JFrame implements Printable {
 
         try {
             startupAction = StartupAction.valueOf(
-                Prefs.getInstance().getString(PrefsKey.STARTUP_ACTION)
+                Prefs.getString(PrefsKey.STARTUP_ACTION)
             );
         } catch (IllegalArgumentException ignored) {}
 
@@ -266,7 +263,7 @@ public class MainFrame extends JFrame implements Printable {
     // Reserve for future use, such as showing a welcome message
     // or tutorial on the first run
     private void firstRun() {
-        Prefs.getInstance().put(PrefsKey.FIRST_RUN, false);
+        Prefs.put(PrefsKey.FIRST_RUN, false);
     }
 
     public void initFrame() {
@@ -780,12 +777,12 @@ public class MainFrame extends JFrame implements Printable {
 
     @Handler
     public void handleToggleLoopPlayback(ToggleLoopPlaybackCommand message) {
-        Prefs.getInstance().put(PrefsKey.LOOP_PLAYBACK, message.isSelected());
+        Prefs.put(PrefsKey.LOOP_PLAYBACK, message.isSelected());
     }
 
     @Handler
     public void handleTogglePlayWithRepeats(TogglePlayWithRepeatsCommand message) {
-        Prefs.getInstance().put(PrefsKey.PLAY_WITH_REPEATS, message.isSelected());
+        Prefs.put(PrefsKey.PLAY_WITH_REPEATS, message.isSelected());
     }
 
     private static final class TitlePanel extends JPanel {

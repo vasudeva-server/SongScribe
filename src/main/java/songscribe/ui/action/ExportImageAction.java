@@ -60,7 +60,7 @@ public final class ExportImageAction extends UIAction {
             NAME,
             false,
             myFileFilters,
-            Prefs.getInstance().getInt(PrefsKey.IMAGE_EXPORT_FILTER)
+            Prefs.getInt(PrefsKey.IMAGE_EXPORT_FILTER)
         );
     }
 
@@ -77,7 +77,7 @@ public final class ExportImageAction extends UIAction {
                 return;
             }
 
-            Prefs.getInstance().put(
+            Prefs.put(
                 PrefsKey.IMAGE_EXPORT_FILTER,
                 Utils.arrayIndexOf(myFileFilters, filter)
             );

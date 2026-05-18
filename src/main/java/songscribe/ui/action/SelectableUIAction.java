@@ -73,7 +73,7 @@ public abstract class SelectableUIAction extends UIAction
         super(name, icon, size, actionCommand, tooltip, flags);
 
         if (prefsKey != null) {
-            setSelected(Prefs.getInstance().getBoolean(prefsKey));
+            setSelected(Prefs.getBoolean(prefsKey));
         }
     }
 

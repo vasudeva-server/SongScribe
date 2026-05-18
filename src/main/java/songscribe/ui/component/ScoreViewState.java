@@ -62,7 +62,7 @@ public class ScoreViewState {
 
     public void setControl(Control control) {
         this.control = control;
-        Prefs.getInstance().put(PrefsKey.CONTROL, control.name());
+        Prefs.put(PrefsKey.CONTROL, control.name());
     }
 
     public @Nullable HorizontalAdjustment getHorizontalAdjustment() {

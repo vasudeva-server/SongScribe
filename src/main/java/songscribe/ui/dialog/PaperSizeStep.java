@@ -192,7 +192,7 @@ public class PaperSizeStep extends Step {
 
     @Override
     public void start() {
-        var metric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
+        var metric = Prefs.getBoolean(PrefsKey.METRIC);
 
         for (var i = 0; i < templates.getSize(); i++) {
             if (templates.getElementAt(i).metric == metric) {
@@ -218,12 +218,12 @@ public class PaperSizeStep extends Step {
         pageLayoutData.mirrored = mirroredCheck.isSelected();
 
         if (unitsCombo.getSelectedItem() instanceof TemplateObject) {
-            Prefs.getInstance().put(
+            Prefs.put(
                 PrefsKey.METRIC,
                 ((TemplateObject) unitsCombo.getSelectedItem()).metric
             );
         } else {
-            Prefs.getInstance().put(PrefsKey.METRIC, unitsCombo.getSelectedIndex() != 0);
+            Prefs.put(PrefsKey.METRIC, unitsCombo.getSelectedIndex() != 0);
         }
     }
 
@@ -240,7 +240,7 @@ public class PaperSizeStep extends Step {
         int bottomMargin,
         boolean mirroredMargin
     ) {
-        var metric = GraphicUtils.Unit.create(Prefs.getInstance().getBoolean(PrefsKey.METRIC));
+        var metric = GraphicUtils.Unit.create(Prefs.getBoolean(PrefsKey.METRIC));
         unitsCombo.setSelectedIndex(metric.ordinal());
         widthSpinnerModel.setValue(
             GraphicUtils.convertFromPixels(pageWidth, metric)

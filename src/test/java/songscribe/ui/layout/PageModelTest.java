@@ -35,7 +35,7 @@ class PageModelTest extends UnitTest {
 
     @AfterEach
     void resetPageSize() {
-        Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "letter");
+        Prefs.put(PrefsKey.PAGE_SIZE, "letter");
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -66,19 +66,19 @@ class PageModelTest extends UnitTest {
 
         @Test
         void returnsA4WhenPrefSet() {
-            Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "a4");
+            Prefs.put(PrefsKey.PAGE_SIZE, "a4");
             assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.A4);
         }
 
         @Test
         void caseInsensitive() {
-            Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "A4");
+            Prefs.put(PrefsKey.PAGE_SIZE, "A4");
             assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.A4);
         }
 
         @Test
         void unknownValueDefaultsToLetter() {
-            Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "tabloid");
+            Prefs.put(PrefsKey.PAGE_SIZE, "tabloid");
             assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.LETTER);
         }
     }
@@ -101,14 +101,14 @@ class PageModelTest extends UnitTest {
 
         @Test
         void a4PageWidthPx() {
-            Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "a4");
+            Prefs.put(PrefsKey.PAGE_SIZE, "a4");
             var expected = GraphicUtils.Unit.INCH.convertToPixels(8.27);
             assertThat(PageModel.getPageWidthPx()).isEqualTo(expected);
         }
 
         @Test
         void a4PageHeightPx() {
-            Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "a4");
+            Prefs.put(PrefsKey.PAGE_SIZE, "a4");
             var expected = GraphicUtils.Unit.INCH.convertToPixels(11.69);
             assertThat(PageModel.getPageHeightPx()).isEqualTo(expected);
         }
@@ -199,10 +199,10 @@ class PageModelTest extends UnitTest {
         void pageSizeChangesWhenPrefChanges() {
             assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.LETTER);
 
-            Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "a4");
+            Prefs.put(PrefsKey.PAGE_SIZE, "a4");
             assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.A4);
 
-            Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "letter");
+            Prefs.put(PrefsKey.PAGE_SIZE, "letter");
             assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.LETTER);
         }
 
@@ -210,7 +210,7 @@ class PageModelTest extends UnitTest {
         void pageWidthChangesWithSize() {
             var letterWidth = PageModel.getPageWidthPx();
 
-            Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "a4");
+            Prefs.put(PrefsKey.PAGE_SIZE, "a4");
             var a4Width = PageModel.getPageWidthPx();
 
             assertThat(a4Width).isLessThan(letterWidth);

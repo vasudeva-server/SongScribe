@@ -72,7 +72,7 @@ public final class PageModel {
 
     /** Returns the active page size from preferences. */
     public static Size getSize() {
-        var value = Prefs.getInstance().getString(PrefsKey.PAGE_SIZE);
+        var value = Prefs.getString(PrefsKey.PAGE_SIZE);
         return "a4".equalsIgnoreCase(value) ? Size.A4 : Size.LETTER;
     }
 

@@ -650,9 +650,8 @@ public final class SongIO {
             // Layout calculation will recalculate this properly, but this provides
             // a reasonable default for any code that accesses topPadding before layout.
             if (topPaddingSs == 0) {
-                var prefs = Prefs.getInstance();
-                var titleSize = prefs.getInt(PrefsKey.TITLE_FONT_SIZE);
-                var attributionSize = prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE);
+                var titleSize = Prefs.getInt(PrefsKey.TITLE_FONT_SIZE);
+                var attributionSize = Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE);
                 topPaddingSs = ((2 * titleSize) +
                     (Utils.lineCount(attribution) * attributionSize)) -
                     ScaleContext.getInstance().ssToRoundedPx(2.0);

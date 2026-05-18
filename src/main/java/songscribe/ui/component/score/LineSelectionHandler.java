@@ -328,7 +328,7 @@ class LineSelectionHandler {
      * Plays the element at the given index if it is a pitched note (not a rest).
      */
     void playNoteIfPitched(int elementIndex) {
-        if (!Prefs.getInstance().getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
+        if (!Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
             return;
         }
 

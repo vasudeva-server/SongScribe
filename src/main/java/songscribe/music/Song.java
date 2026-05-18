@@ -1435,7 +1435,7 @@ public final class Song {
     }
 
     private String processText(String text) {
-        var strip = Prefs.getInstance().getBoolean(PrefsKey.STRIP_SHORT_A);
+        var strip = Prefs.getBoolean(PrefsKey.STRIP_SHORT_A);
 
         if (strip && SHORT_A_PATTERN.matcher(text).find()) {
             return text.replace("ă", "a").replace("Ă", "A");
@@ -1457,8 +1457,7 @@ public final class Song {
         // Uses prefs defaults since this is only called during Song construction, before any
         // document fonts are available on ScoreView.
         var lineCount = Utils.lineCount(title);
-        var prefs = Prefs.getInstance();
-        var titleFont = MyFontUtils.createFont(prefs.getString(PrefsKey.TITLE_FONT), prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+        var titleFont = MyFontUtils.createFont(Prefs.getString(PrefsKey.TITLE_FONT), Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
         var lineHeight = MyFontUtils.getFontMetrics(titleFont).getHeight();
         return (lineHeight * lineCount) + (lineHeight / 2.0);
     }

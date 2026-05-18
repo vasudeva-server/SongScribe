@@ -58,7 +58,7 @@ public class TipFrame extends JFrame {
                 }
             }
         );
-        index = Prefs.getInstance().getInt(PrefsKey.TIP_INDEX);
+        index = Prefs.getInt(PrefsKey.TIP_INDEX);
         initComponents();
         showTip();
         setLocationRelativeTo(null);
@@ -81,7 +81,7 @@ public class TipFrame extends JFrame {
         tipPane.putClientProperty("FlatLaf.styleClass", "large");
         tipScroll.setViewportView(tipPane);
 
-        showTip.setSelected(Prefs.getInstance().getBoolean(PrefsKey.SHOW_TIPS));
+        showTip.setSelected(Prefs.getBoolean(PrefsKey.SHOW_TIPS));
         showTip.setText(Strings.get(Strings.LABEL_TIP_SHOW_ON_STARTUP));
         showTip.setBorder(BorderFactory.createEmptyBorder());
         showTip.setMargin(new Insets(0, 0, 0, 0));
@@ -219,7 +219,7 @@ public class TipFrame extends JFrame {
     }
 
     private void closeWindow() {
-        Prefs.getInstance().put(PrefsKey.SHOW_TIPS, showTip.isSelected());
+        Prefs.put(PrefsKey.SHOW_TIPS, showTip.isSelected());
         setVisible(false);
         dispose();
     }
@@ -252,6 +252,6 @@ public class TipFrame extends JFrame {
         }
 
         tipPane.setText(tipBuffer.toString());
-        Prefs.getInstance().put(PrefsKey.TIP_INDEX, index);
+        Prefs.put(PrefsKey.TIP_INDEX, index);
     }
 }

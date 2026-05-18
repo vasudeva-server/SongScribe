@@ -86,7 +86,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     @Override
     protected boolean getData() {
         approved = false;
-        resolutionSpinner.setValue(Prefs.getInstance().getInt(PrefsKey.EXPORT_DPI));
+        resolutionSpinner.setValue(Prefs.getInt(PrefsKey.EXPORT_DPI));
         var score = requireScoreView();
         var song = score.getSong();
         sheetWidthPx = score.getSheetWidthPx();
@@ -123,7 +123,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     @Override
     protected void setData() {
         approved = true;
-        Prefs.getInstance().put(PrefsKey.EXPORT_DPI, (int) resolutionSpinner.getValue());
+        Prefs.put(PrefsKey.EXPORT_DPI, (int) resolutionSpinner.getValue());
     }
 
     public boolean isApproved() {

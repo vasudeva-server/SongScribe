@@ -81,15 +81,14 @@ class DocumentFontsTest extends UnitTest {
 
         @Test
         void testAllRolesPopulated() {
-            var prefs = Prefs.getInstance();
             var fonts = DocumentFonts.defaultsFromPrefs();
             assertAll(
-                () -> assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(prefs.getInt(PrefsKey.TITLE_FONT_SIZE)),
-                () -> assertThat(fonts.getFont(FontKey.LYRICS).getSize()).isEqualTo(prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)),
-                () -> assertThat(fonts.getFont(FontKey.ATTRIBUTION).getSize()).isEqualTo(prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)),
-                () -> assertThat(fonts.getFont(FontKey.ANNOTATION).getSize()).isEqualTo(prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)),
-                () -> assertThat(fonts.getFont(FontKey.FOOTNOTE).getSize()).isEqualTo(prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE)),
-                () -> assertThat(fonts.getFont(FontKey.BANGLA).getSize()).isEqualTo(prefs.getInt(PrefsKey.BANGLA_FONT_SIZE))
+                () -> assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(Prefs.getInt(PrefsKey.TITLE_FONT_SIZE)),
+                () -> assertThat(fonts.getFont(FontKey.LYRICS).getSize()).isEqualTo(Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)),
+                () -> assertThat(fonts.getFont(FontKey.ATTRIBUTION).getSize()).isEqualTo(Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)),
+                () -> assertThat(fonts.getFont(FontKey.ANNOTATION).getSize()).isEqualTo(Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)),
+                () -> assertThat(fonts.getFont(FontKey.FOOTNOTE).getSize()).isEqualTo(Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE)),
+                () -> assertThat(fonts.getFont(FontKey.BANGLA).getSize()).isEqualTo(Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE))
             );
         }
     }

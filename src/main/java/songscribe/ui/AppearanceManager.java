@@ -88,10 +88,10 @@ public final class AppearanceManager {
             return;
         }
 
-        Prefs.getInstance().put(PrefsKey.APPEARANCE, preference.key());
+        Prefs.put(PrefsKey.APPEARANCE, preference.key());
 
         if (!applyTheme(resolveIsDark(preference))) {
-            Prefs.getInstance().put(PrefsKey.APPEARANCE, currentPreference.key());
+            Prefs.put(PrefsKey.APPEARANCE, currentPreference.key());
             return;
         }
 
@@ -108,7 +108,7 @@ public final class AppearanceManager {
      * Returns the current appearance preference.
      */
     public static Appearance getPreference() {
-        return Appearance.fromKey(Prefs.getInstance().getString(PrefsKey.APPEARANCE));
+        return Appearance.fromKey(Prefs.getString(PrefsKey.APPEARANCE));
     }
 
     /**

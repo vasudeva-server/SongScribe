@@ -36,7 +36,6 @@ import songscribe.ui.playback.PlayWithRepeatsAction;
 import songscribe.ui.playback.RewindAction;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 
 /**
@@ -59,8 +58,6 @@ class LyricEditorActionAuditTest extends UnitTest {
         mainFrameMock = mockStatic(MainFrame.class);
         prefsMock = mockStatic(Prefs.class);
         MockEnvHelper.setupMockEnv(mainFrameMock);
-        var mockPrefs = mock(Prefs.class);
-        prefsMock.when(Prefs::getInstance).thenReturn(mockPrefs);
     }
 
     @AfterEach
