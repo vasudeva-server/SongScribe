@@ -8,11 +8,8 @@ New singleton classes use a **private static `INSTANCE` field with static public
 methods that reference `INSTANCE`**. Do not expose a public `getInstance()`
 method, and do not make the public API instance methods.
 
-Callers write `RenderResources.getTitleFont()`, not
-`RenderResources.getInstance().getTitleFont()`.
-
-See `src/main/java/songscribe/ui/render/RenderResources.java` for the canonical
-example.
+For example, callers will write `SomeSingleton.getSomething()`, not
+`SomeSingleton.getInstance().getSomething()`.
 
 ## Shape
 
