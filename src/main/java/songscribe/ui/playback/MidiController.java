@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
+import songscribe.lifecycle.Shutdown;
 import songscribe.ui.Constants;
 import songscribe.ui.OptionDialogs;
 @SuppressWarnings("StaticNonFinalField")
@@ -46,6 +47,7 @@ public final class MidiController {
     public static @Nullable Sequencer sequencer = null;
     public static @Nullable Receiver midiReceiver = null;
     public static @Nullable Synthesizer synthesizer = null;
+    private static boolean closed = false;
 
     private MidiController() {}
 
@@ -65,6 +67,7 @@ public final class MidiController {
             sequencer.getTransmitter().setReceiver(midiReceiver);
             sequencer.open();
             LOG.info("MIDI initialized");
+            Shutdown.registerJVMTask("midi", MidiController::closeMidi);
         } catch (Exception e) {
             LOG.warn("MIDI initialization failed", e);
             OptionDialogs.showWarningMessage(
@@ -280,7 +283,10 @@ public final class MidiController {
     }
 
     // Close MIDI resources so other applications can use them
-    public static void closeMidi() {
+    private static void closeMidi() {
+        if (closed) return;
+        closed = true;
+
         if (midiReceiver != null) {
             midiReceiver.close();
         }

@@ -86,3 +86,34 @@ https://www.w3.org/2021/06/musicxml40/tutorial/compressed-mxl-files/. The
 Other MusicXML consumers (MuseScore, Finale, Sibelius) open `.mxl` directly.
 
 **Depends on:** MusicXML export/import implementation (previous TODO).
+
+## Full EDT-quiesce between shutdown cleanup and `System.exit`
+
+**What:** Eliminate the window between the EDT cleanup phase running and
+`System.exit(0)` being called, during which pending EDT events (Swing timers,
+queued runnables, repaint requests) may still execute and touch resources that
+cleanup tasks just released.
+
+**Why:** The shutdown registry (`specs/shutdown-registry.md`) runs EDT cleanup
+on the EDT, then immediately calls `System.exit(0)`. Any work already in the
+EDT queue at that point — Swing timers firing one last time, a queued
+`SwingUtilities.invokeLater` runnable, a deferred repaint — can run between
+"cleanup ran" and "JVM exits." If that work touches MIDI (closed by the JVM
+cleanup phase), reads a now-disabled main frame, or otherwise depends on
+resources released during cleanup, the result is a silent error on the way out
+or, worse, a crash that shadows the user's clean-quit intent. The v1 partial
+mitigation is registering `mainFrame.setEnabled(false)` as the first EDT
+cleanup task (runs first via LIFO), which prevents new user-initiated events
+but does not stop timers or already-queued runnables.
+
+**Context:** Full quiesce would stop all `javax.swing.Timer` instances,
+drain the EDT event queue, and only then proceed to JVM cleanup. The hard
+parts: discovering all live timers (no global registry today), deciding what
+"drain" means (events scheduled by other in-flight cleanup tasks would loop),
+and bounding how long quiesce can take before just exiting anyway. Reasonable
+starting point: keep a weak registry of `javax.swing.Timer`s created by the
+app and stop them as the first JVM cleanup task, accept that event-queue
+events may still slip through, and revisit if any concrete crash-on-quit is
+observed.
+
+**Depends on:** Shutdown registry shipped (`specs/shutdown-registry.md`).

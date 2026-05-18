@@ -22,6 +22,8 @@ package songscribe.ui.component;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.adjustment.HorizontalAdjustment;
@@ -60,6 +62,7 @@ public class ScoreViewState {
 
     public void setControl(Control control) {
         this.control = control;
+        Prefs.getInstance().put(PrefsKey.CONTROL, control.name());
     }
 
     public @Nullable HorizontalAdjustment getHorizontalAdjustment() {

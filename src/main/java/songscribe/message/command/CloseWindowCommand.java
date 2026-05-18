@@ -21,5 +21,3 @@
 package songscribe.message.command;
 
 import songscribe.message.Message;
-
-public class CloseWindowCommand extends Message {}

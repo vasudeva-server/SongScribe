@@ -934,10 +934,6 @@ public final class ScoreView
         this.dragDisabled = dragDisabled;
     }
 
-    public void saveProperties() {
-        Prefs.getInstance().put(PrefsKey.CONTROL, viewState.getControl().name());
-    }
-
     public void updatePageLayout(int lineWidthPx) {
         getSong().setLineWidthSs(ScaleContext.getInstance().pxToSs(lineWidthPx));
 

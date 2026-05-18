@@ -21,6 +21,8 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.SaveCommand;
@@ -34,6 +36,12 @@ public final class SaveAction extends UIAction {
 
     private SaveAction() {
         super(Strings.get(Strings.ACTION_FILE_SAVE), "save", KeyEvent.VK_S, UIUtils.MENU_SHORTCUT_MASK);
+    }
+
+    // Bypasses the message bus so the result is available synchronously.
+    @Override
+    public boolean perform(@Nullable Object source) {
+        return getMainFrame().save();
     }
 
     @Override

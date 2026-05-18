@@ -25,6 +25,7 @@ import module java.desktop;
 import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.Strings;
+import songscribe.lifecycle.Shutdown;
 
 public class QuitAction extends UIAction {
 
@@ -42,5 +43,10 @@ public class QuitAction extends UIAction {
             SystemInfo.isMacOS ? 0 : KeyEvent.VK_F4,
             SystemInfo.isMacOS ? 0 : InputEvent.ALT_DOWN_MASK
         );
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        Shutdown.now();
     }
 }

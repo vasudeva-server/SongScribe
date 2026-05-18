@@ -43,6 +43,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.FlatLafProps;
 
 import songscribe.font.SourceSans3Font;
+import songscribe.lifecycle.Shutdown;
 import songscribe.ui.action.Actions;
 import songscribe.ui.renderer.BaseElementRenderer;
 import songscribe.ui.action.UIAction;
@@ -214,11 +215,8 @@ public final class UIUtils {
 
         if (desktop.isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
             desktop.setQuitHandler((_, response) -> {
-                if (mainFrame.handleQuit()) {
-                    response.performQuit();
-                } else {
-                    response.cancelQuit();
-                }
+                Shutdown.now();
+                response.cancelQuit();
             });
         }
     }

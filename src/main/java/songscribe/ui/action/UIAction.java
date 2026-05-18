@@ -353,7 +353,7 @@ public class UIAction extends AbstractAction {
         return (KeyStroke) getValue(ACCELERATOR_KEY);
     }
 
-    public void perform(@Nullable Object source) {
+    public boolean perform(@Nullable Object source) {
         actionPerformed(
             new ActionEvent(
                 (source != null) ? source : this,
@@ -361,6 +361,7 @@ public class UIAction extends AbstractAction {
                 getActionCommand()
             )
         );
+        return true;
     }
 
     @Override

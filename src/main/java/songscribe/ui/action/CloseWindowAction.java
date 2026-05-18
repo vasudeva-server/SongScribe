@@ -22,8 +22,7 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.message.MessageCenter;
-import songscribe.message.command.CloseWindowCommand;
+import songscribe.lifecycle.Shutdown;
 
 public final class CloseWindowAction extends UIAction {
 
@@ -37,6 +36,6 @@ public final class CloseWindowAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new CloseWindowCommand());
+        Shutdown.now();
     }
 }

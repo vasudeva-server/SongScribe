@@ -33,7 +33,6 @@ import com.intellij.uiDesigner.core.Spacer;
 import songscribe.Strings;
 import songscribe.FileExtensions;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.action.QuitAction;
 import songscribe.SongScribe;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyJTextField;
@@ -81,7 +80,6 @@ public class UIConverter extends MainFrame {
         appName = "Song Converter";
         setTitle(appName);
         setIconImage(GraphicUtils.getImage("songwriter-icon.png"));
-        new MyQuitAction();
         scoreView = new ScoreView(null);
 
         var chooseDirectoryAction = new ChooseDirectoryAction(this);
@@ -682,15 +680,6 @@ public class UIConverter extends MainFrame {
      */
     public JComponent $$$getRootComponent$$$() {
         return mainPanel;
-    }
-
-    private static class MyQuitAction extends QuitAction {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            MidiController.closeMidi();
-            System.exit(0);
-        }
     }
 
     private class DirectorySelectionChangeListener

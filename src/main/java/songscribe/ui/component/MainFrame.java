@@ -42,9 +42,9 @@ import songscribe.FileExtensions;
 import songscribe.util.FileUtils;
 import songscribe.util.ExtensionFileFilter;
 import songscribe.io.SongIO;
+import songscribe.lifecycle.Shutdown;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageLogger;
-import songscribe.message.command.CloseWindowCommand;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
 import songscribe.message.command.PrintCommand;
@@ -157,14 +157,13 @@ public class MainFrame extends JFrame implements Printable {
             new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent e) {
-                    if (handleQuit()) {
-                        System.exit(0);
-                    }
+                    Shutdown.now();
                 }
             }
         );
 
         MessageCenter.subscribe(this);
+        installShutdownTasks();
     }
 
     public static void main(String[] args) {
@@ -456,7 +455,6 @@ public class MainFrame extends JFrame implements Printable {
         var docName = getDisplayName();
         var saveIdx = 0;
         var dontSaveIdx = 1;
-        var cancelIdx = 2;
         var options = new Object[]{
             Strings.get(Strings.BUTTON_SAVE),
             Strings.get(Strings.BUTTON_DONT_SAVE),
@@ -474,10 +472,10 @@ public class MainFrame extends JFrame implements Printable {
         );
 
         if (answer == saveIdx) {
-            SaveAction.createAction().perform(this);
+            return SaveAction.createAction().perform(this);
         }
 
-        return answer == saveIdx || answer == dontSaveIdx;
+        return answer == dontSaveIdx;
     }
 
     private void updateTitle() {
@@ -596,27 +594,9 @@ public class MainFrame extends JFrame implements Printable {
         dialog.setVisible(true);
     }
 
-    public boolean handleQuit() {
-        var quit = showSaveDialog();
-
-        if (!quit) {
-            return false;
-        }
-
-        if (scoreView != null) {
-            scoreView.saveProperties();
-        }
-
-        MidiController.closeMidi();
-        LOG.info("Application shutting down");
-        return true;
-    }
-
-    @Handler
-    public void handleCloseWindow(CloseWindowCommand message) {
-        if (handleQuit()) {
-            System.exit(0);
-        }
+    private void installShutdownTasks() {
+        Shutdown.registerConfirmTask("save-dirty-doc", this::showSaveDialog);
+        Shutdown.registerEDTTask("disable-main-frame", () -> setEnabled(false));
     }
 
     @Handler
@@ -728,11 +708,7 @@ public class MainFrame extends JFrame implements Printable {
 
     @Handler
     public void handleSave(SaveCommand message) {
-        if (currentFile == null) {
-            saveAsNewFile();
-        } else {
-            saveCurrentFile();
-        }
+        save();
     }
 
     @Handler
@@ -740,9 +716,18 @@ public class MainFrame extends JFrame implements Printable {
         saveAsNewFile();
     }
 
-    private void saveCurrentFile() {
+    /** Returns true on success, false on write failure or user-cancelled file chooser. */
+    public boolean save() {
+        if (currentFile == null) {
+            return saveAsNewFile();
+        } else {
+            return saveCurrentFile();
+        }
+    }
+
+    private boolean saveCurrentFile() {
         if (currentFile == null || scoreView == null) {
-            return;
+            return false;
         }
 
         try {
@@ -755,18 +740,20 @@ public class MainFrame extends JFrame implements Printable {
             scoreView.getSong().setModified(false);
             LOG.info("Saved: {}", currentFile.getName());
             MessageCenter.post(new DocumentWasSavedNotification());
+            return true;
         } catch (IOException e1) {
             OptionDialogs.showErrorMessage(
                 this,
                 Strings.ALERT_TITLE_FILE_ERROR,
                 Strings.ERROR_FILE_SAVE
             );
+            return false;
         }
     }
 
-    private void saveAsNewFile() {
+    private boolean saveAsNewFile() {
         if (scoreView == null) {
-            return;
+            return false;
         }
 
         var suggestedFileName = currentFile == null ? scoreView.getSuggestedFileName() : "";
@@ -779,15 +766,17 @@ public class MainFrame extends JFrame implements Printable {
         );
 
         if (saveFile == null) {
-            return;
+            return false;
         }
 
         setCurrentFile(saveFile);
-        saveCurrentFile();
+        var saved = saveCurrentFile();
 
-        if (!scoreView.getSong().isModified()) {
+        if (saved) {
             RecentDocumentsManager.getInstance().add(saveFile.toPath().toAbsolutePath());
         }
+
+        return saved;
     }
 
     @Handler
