@@ -33,8 +33,6 @@ import songscribe.util.GraphicUtils;
 
 class PageModelTest extends UnitTest {
 
-    private final PageModel model = PageModel.getInstance();
-
     @AfterEach
     void resetPageSize() {
         Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "letter");
@@ -63,25 +61,25 @@ class PageModelTest extends UnitTest {
 
         @Test
         void defaultIsLetter() {
-            assertThat(model.getSize()).isEqualTo(PageModel.Size.LETTER);
+            assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.LETTER);
         }
 
         @Test
         void returnsA4WhenPrefSet() {
             Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "a4");
-            assertThat(model.getSize()).isEqualTo(PageModel.Size.A4);
+            assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.A4);
         }
 
         @Test
         void caseInsensitive() {
             Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "A4");
-            assertThat(model.getSize()).isEqualTo(PageModel.Size.A4);
+            assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.A4);
         }
 
         @Test
         void unknownValueDefaultsToLetter() {
             Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "tabloid");
-            assertThat(model.getSize()).isEqualTo(PageModel.Size.LETTER);
+            assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.LETTER);
         }
     }
 
@@ -92,27 +90,27 @@ class PageModelTest extends UnitTest {
         @Test
         void letterPageWidthPx() {
             var expected = GraphicUtils.Unit.INCH.convertToPixels(8.5);
-            assertThat(model.getPageWidthPx()).isEqualTo(expected);
+            assertThat(PageModel.getPageWidthPx()).isEqualTo(expected);
         }
 
         @Test
         void letterPageHeightPx() {
             var expected = GraphicUtils.Unit.INCH.convertToPixels(11.0);
-            assertThat(model.getPageHeightPx()).isEqualTo(expected);
+            assertThat(PageModel.getPageHeightPx()).isEqualTo(expected);
         }
 
         @Test
         void a4PageWidthPx() {
             Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "a4");
             var expected = GraphicUtils.Unit.INCH.convertToPixels(8.27);
-            assertThat(model.getPageWidthPx()).isEqualTo(expected);
+            assertThat(PageModel.getPageWidthPx()).isEqualTo(expected);
         }
 
         @Test
         void a4PageHeightPx() {
             Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "a4");
             var expected = GraphicUtils.Unit.INCH.convertToPixels(11.69);
-            assertThat(model.getPageHeightPx()).isEqualTo(expected);
+            assertThat(PageModel.getPageHeightPx()).isEqualTo(expected);
         }
     }
 
@@ -123,33 +121,33 @@ class PageModelTest extends UnitTest {
         @Test
         void topMarginIsHalfInch() {
             var expected = GraphicUtils.Unit.INCH.convertToPixels(0.5);
-            assertThat(model.getTopMarginPx()).isEqualTo(expected);
+            assertThat(PageModel.getTopMarginPx()).isEqualTo(expected);
         }
 
         @Test
         void bottomMarginIsHalfInch() {
             var expected = GraphicUtils.Unit.INCH.convertToPixels(0.5);
-            assertThat(model.getBottomMarginPx()).isEqualTo(expected);
+            assertThat(PageModel.getBottomMarginPx()).isEqualTo(expected);
         }
 
         @Test
         void horizontalMarginCentersContent() {
-            var pageWidthPx = model.getPageWidthPx();
+            var pageWidthPx = PageModel.getPageWidthPx();
             var lineWidthPx = 400;
             var expected = (pageWidthPx - lineWidthPx) / 2;
-            assertThat(model.getHorizontalMarginPx(lineWidthPx)).isEqualTo(expected);
+            assertThat(PageModel.getHorizontalMarginPx(lineWidthPx)).isEqualTo(expected);
         }
 
         @Test
         void horizontalMarginReturnsZeroWhenLineWidthExceedsPage() {
-            var lineWidthPx = model.getPageWidthPx() + 100;
-            assertThat(model.getHorizontalMarginPx(lineWidthPx)).isEqualTo(0);
+            var lineWidthPx = PageModel.getPageWidthPx() + 100;
+            assertThat(PageModel.getHorizontalMarginPx(lineWidthPx)).isEqualTo(0);
         }
 
         @Test
         void horizontalMarginReturnsZeroWhenLineWidthEqualsPage() {
-            var lineWidthPx = model.getPageWidthPx();
-            assertThat(model.getHorizontalMarginPx(lineWidthPx)).isEqualTo(0);
+            var lineWidthPx = PageModel.getPageWidthPx();
+            assertThat(PageModel.getHorizontalMarginPx(lineWidthPx)).isEqualTo(0);
         }
     }
 
@@ -162,8 +160,8 @@ class PageModelTest extends UnitTest {
             var defaultMarginPx = GraphicUtils.Unit.INCH.convertToPixels(
                 PageModel.DEFAULT_HORIZONTAL_MARGIN_INCHES
             );
-            var expected = model.getPageWidthPx() - 2 * defaultMarginPx;
-            assertThat(model.getContentAreaWidthPx()).isEqualTo(expected);
+            var expected = PageModel.getPageWidthPx() - 2 * defaultMarginPx;
+            assertThat(PageModel.getContentAreaWidthPx()).isEqualTo(expected);
         }
     }
 
@@ -173,12 +171,12 @@ class PageModelTest extends UnitTest {
 
         @Test
         void maxLineWidthInches() {
-            assertThat(model.getMaxLineWidthInches()).isEqualTo(7.77);
+            assertThat(PageModel.getMaxLineWidthInches()).isEqualTo(7.77);
         }
 
         @Test
         void minLineWidthInches() {
-            assertThat(model.getMinLineWidthInches()).isEqualTo(5.0);
+            assertThat(PageModel.getMinLineWidthInches()).isEqualTo(5.0);
         }
     }
 
@@ -188,8 +186,8 @@ class PageModelTest extends UnitTest {
 
         @Test
         void defaultLineWidthSsMatchesContentArea() {
-            var expected = ScaleContext.getInstance().pxToSs(model.getContentAreaWidthPx());
-            assertThat(model.getDefaultLineWidthSs()).isCloseTo(expected, within(0.001));
+            var expected = ScaleContext.getInstance().pxToSs(PageModel.getContentAreaWidthPx());
+            assertThat(PageModel.getDefaultLineWidthSs()).isCloseTo(expected, within(0.001));
         }
     }
 
@@ -199,21 +197,21 @@ class PageModelTest extends UnitTest {
 
         @Test
         void pageSizeChangesWhenPrefChanges() {
-            assertThat(model.getSize()).isEqualTo(PageModel.Size.LETTER);
+            assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.LETTER);
 
             Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "a4");
-            assertThat(model.getSize()).isEqualTo(PageModel.Size.A4);
+            assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.A4);
 
             Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "letter");
-            assertThat(model.getSize()).isEqualTo(PageModel.Size.LETTER);
+            assertThat(PageModel.getSize()).isEqualTo(PageModel.Size.LETTER);
         }
 
         @Test
         void pageWidthChangesWithSize() {
-            var letterWidth = model.getPageWidthPx();
+            var letterWidth = PageModel.getPageWidthPx();
 
             Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "a4");
-            var a4Width = model.getPageWidthPx();
+            var a4Width = PageModel.getPageWidthPx();
 
             assertThat(a4Width).isLessThan(letterWidth);
         }

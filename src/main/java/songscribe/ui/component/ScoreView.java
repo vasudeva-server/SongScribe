@@ -937,20 +937,19 @@ public final class ScoreView
     public void updatePageLayout(int lineWidthPx) {
         getSong().setLineWidthSs(ScaleContext.getInstance().pxToSs(lineWidthPx));
 
-        var pageModel = PageModel.getInstance();
-        var pageWidthPx = pageModel.getPageWidthPx();
+        var pageWidthPx = PageModel.getPageWidthPx();
         var contentHeight = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
-        var minPageHeight = contentHeight + pageModel.getTopMarginPx() + pageModel.getBottomMarginPx();
+        var minPageHeight = contentHeight + PageModel.getTopMarginPx() + PageModel.getBottomMarginPx();
 
         preferredSizePx.width = pageWidthPx;
-        preferredSizePx.height = Math.max(pageModel.getPageHeightPx(), minPageHeight);
+        preferredSizePx.height = Math.max(PageModel.getPageHeightPx(), minPageHeight);
         setPreferredSize(preferredSizePx);
 
-        var horizontalMarginPx = pageModel.getHorizontalMarginPx(lineWidthPx);
+        var horizontalMarginPx = PageModel.getHorizontalMarginPx(lineWidthPx);
         setBorder(BorderFactory.createEmptyBorder(
-            pageModel.getTopMarginPx(),
+            PageModel.getTopMarginPx(),
             horizontalMarginPx,
-            pageModel.getBottomMarginPx(),
+            PageModel.getBottomMarginPx(),
             horizontalMarginPx
         ));
         invalidate();

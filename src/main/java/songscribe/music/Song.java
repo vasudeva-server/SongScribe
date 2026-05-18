@@ -146,7 +146,7 @@ public final class Song {
     private double rowHeightAdjustmentSs = 0;
 
     // The width of a staff line in staff-space units
-    private double lineWidthSs = PageModel.getInstance().getDefaultLineWidthSs();
+    private double lineWidthSs = PageModel.getDefaultLineWidthSs();
 
     // The lines of the score
     private final ArrayList<Line> lines = new ArrayList<>();

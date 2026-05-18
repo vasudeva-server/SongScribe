@@ -266,7 +266,7 @@ public final class SongIO {
         private double topPaddingSs = 0;
         private double attributionStartYSs = 0;
         private double rowHeightAdjustmentSs = 0;
-        private double lineWidthSs = PageModel.getInstance().getDefaultLineWidthSs();
+        private double lineWidthSs = PageModel.getDefaultLineWidthSs();
         private boolean hasBeenDynamicallyLaidOut = false;
         private final List<Line> parsedLines = new ArrayList<>();
 

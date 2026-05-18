@@ -226,7 +226,7 @@ public class PreferencesDialog extends BaseDialog {
         protected boolean getData() {
             var prefs = Prefs.getInstance();
 
-            (PageModel.getInstance().getSize() == PageModel.Size.A4
+            (PageModel.getSize() == PageModel.Size.A4
                 ? a4Radio : letterRadio).setSelected(true);
 
             (prefs.getBoolean(PrefsKey.METRIC)

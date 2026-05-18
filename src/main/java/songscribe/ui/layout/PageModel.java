@@ -31,8 +31,6 @@ import songscribe.util.GraphicUtils;
 @SuppressWarnings("SameReturnValue")
 public final class PageModel {
 
-    private static final PageModel INSTANCE = new PageModel();
-
     /** Vertical margin (top and bottom) in inches. */
     private static final double VERTICAL_MARGIN_INCHES = 0.5;
 
@@ -72,33 +70,29 @@ public final class PageModel {
 
     private PageModel() {}
 
-    public static PageModel getInstance() {
-        return INSTANCE;
-    }
-
     /** Returns the active page size from preferences. */
-    public Size getSize() {
+    public static Size getSize() {
         var value = Prefs.getInstance().getString(PrefsKey.PAGE_SIZE);
         return "a4".equalsIgnoreCase(value) ? Size.A4 : Size.LETTER;
     }
 
     /** Full page width in pixels. */
-    public int getPageWidthPx() {
+    public static int getPageWidthPx() {
         return inchesToPx(getSize().widthInches());
     }
 
     /** Full page height in pixels. */
-    public int getPageHeightPx() {
+    public static int getPageHeightPx() {
         return inchesToPx(getSize().heightInches());
     }
 
     /** Top margin in pixels (fixed 0.5"). */
-    public int getTopMarginPx() {
+    public static int getTopMarginPx() {
         return inchesToPx(VERTICAL_MARGIN_INCHES);
     }
 
     /** Bottom margin in pixels (fixed 0.5"). */
-    public int getBottomMarginPx() {
+    public static int getBottomMarginPx() {
         return inchesToPx(VERTICAL_MARGIN_INCHES);
     }
 
@@ -106,28 +100,28 @@ public final class PageModel {
      * Horizontal margin per side in pixels, computed to center the content
      * within the page. Returns 0 if the line width equals or exceeds the page width.
      */
-    public int getHorizontalMarginPx(int lineWidthPx) {
+    public static int getHorizontalMarginPx(int lineWidthPx) {
         var pageWidthPx = getPageWidthPx();
         return Math.max(0, (pageWidthPx - lineWidthPx) / 2);
     }
 
     /** Content area width in pixels (page width minus default horizontal margins on each side). */
-    public int getContentAreaWidthPx() {
+    public static int getContentAreaWidthPx() {
         return getPageWidthPx() - 2 * inchesToPx(DEFAULT_HORIZONTAL_MARGIN_INCHES);
     }
 
     /** Maximum line width in inches (constant, derived from A4 constraint). */
-    public double getMaxLineWidthInches() {
+    public static double getMaxLineWidthInches() {
         return MAX_LINE_WIDTH_INCHES;
     }
 
     /** Minimum line width in inches. */
-    public double getMinLineWidthInches() {
+    public static double getMinLineWidthInches() {
         return MIN_LINE_WIDTH_INCHES;
     }
 
     /** Default line width in staff spaces, based on the content area width. */
-    public double getDefaultLineWidthSs() {
+    public static double getDefaultLineWidthSs() {
         return ScaleContext.getInstance().pxToSs(getContentAreaWidthPx());
     }
 
