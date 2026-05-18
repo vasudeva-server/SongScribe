@@ -264,14 +264,16 @@ public final class EditModeManager {
      * @return true if the element was modified, false if normal insertion should proceed
      */
     public static boolean elementWasModified(Line line, int elementIndex) {
-        if (instance().previewElement == null) {
+        var inst = instance();
+
+        if (inst.previewElement == null) {
             return false;
         }
 
-        instance().scoreActions.clearSelection();
+        inst.scoreActions.clearSelection();
 
         if (
-            (instance().previewElement.getType() == ElementType.REPEAT_LEFT) &&
+            (inst.previewElement.getType() == ElementType.REPEAT_LEFT) &&
                 ((elementIndex - 1) >= 0) &&
                 (line.getElement(elementIndex - 1).getType() == ElementType.REPEAT_RIGHT)
         ) {
@@ -282,7 +284,7 @@ public final class EditModeManager {
         }
 
         if (
-            (instance().previewElement.getType() == ElementType.REPEAT_RIGHT) &&
+            (inst.previewElement.getType() == ElementType.REPEAT_RIGHT) &&
                 (elementIndex < line.elementCount()) &&
                 (line.getElement(elementIndex).getType() == ElementType.REPEAT_LEFT)
         ) {
@@ -296,15 +298,17 @@ public final class EditModeManager {
     }
 
     public static void previewElementDidChange(Line line, int elementIndex) {
-        if (instance().previewElement == null) {
+        var inst = instance();
+
+        if (inst.previewElement == null) {
             return;
         }
 
         // Capture the inserted element before previewElement is updated for the next insertion.
         var insertedElement = line.getElement(elementIndex);
-        var shouldPlayNote = instance().playInsertedNote && insertedElement.getType().isNote();
+        var shouldPlayNote = inst.playInsertedNote && insertedElement.getType().isNote();
 
-        var nextElement = instance().previewElement.getType().newInstance();
+        var nextElement = inst.previewElement.getType().newInstance();
 
         // After inserting an element, turn off fermata and accidental parentheses
         Actions.FERMATA_ACTION.setSelected(false);
@@ -312,9 +316,9 @@ public final class EditModeManager {
 
         // Add any other element decorations
         decorateElement(nextElement);
-        instance().scoreActions.setPreviewElement(nextElement);
-        instance().scoreActions.drawWidthIfWiderLine(line, false);
-        instance().scoreActions.repaint();
+        inst.scoreActions.setPreviewElement(nextElement);
+        inst.scoreActions.drawWidthIfWiderLine(line, false);
+        inst.scoreActions.repaint();
 
         if (shouldPlayNote) {
             new PlayThread(insertedElement.getPitch()).start();

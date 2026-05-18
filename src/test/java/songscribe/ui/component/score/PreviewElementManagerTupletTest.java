@@ -21,30 +21,14 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
-import songscribe.message.MessageCenter;
-import songscribe.music.Song;
 import songscribe.music.ElementType;
-import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.TupletSpan;
-import songscribe.ui.Control;
-import songscribe.ui.Mode;
-import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.playback.PlaybackController;
 
 /**
  * Tests that tuplet spans are removed when elements within them are modified
@@ -58,68 +42,9 @@ import songscribe.ui.playback.PlaybackController;
  *       without a confirmation dialog.</li>
  * </ul>
  */
-class PreviewElementManagerTupletTest extends UnitTest {
+class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
     private static final int TRIPLET_SIZE = 3;
-
-    // Static mocks
-    private MockedStatic<MessageCenter> messageCenterMock;
-    private MockedStatic<EditModeManager> editModeMgrMock;
-    private MockedStatic<ScoreView> scoreMock;
-    private MockedStatic<PlaybackController> playbackMock;
-
-    // Instance mocks
-    private LineComponent lc;
-
-    // Real objects
-    private Song song;
-    private Line line;
-
-    @BeforeEach
-    void setUp() {
-        // Construct before mocking MessageCenter so constructor subscriptions
-        // reach the real bus.
-        song = new Song();
-        line = song.getLine(0);
-
-        messageCenterMock = mockStatic(MessageCenter.class);
-        editModeMgrMock = mockStatic(EditModeManager.class);
-        scoreMock = mockStatic(ScoreView.class);
-        playbackMock = mockStatic(PlaybackController.class);
-
-        lc = mock(LineComponent.class);
-        var score = mock(ScoreView.class);
-
-        when(lc.isEditMode()).thenReturn(true);
-        when(lc.getScoreView()).thenReturn(score);
-        when(lc.getLine()).thenReturn(line);
-        when(score.getControl()).thenReturn(Control.MOUSE);
-        when(score.getMode()).thenReturn(Mode.EDIT);
-
-        editModeMgrMock.when(EditModeManager::hasPreviewElement).thenReturn(true);
-        editModeMgrMock.when(() -> EditModeManager.elementWasModified(any(Line.class), anyInt())).thenReturn(false);
-
-        playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
-
-        // defaultUpperNote is called when the preview element's stem direction is auto
-        scoreMock.when(() -> ScoreView.defaultUpperNote(any())).thenReturn(true);
-
-        PreviewElementManager.setCurrentPreviewLine(lc);
-        PreviewElementManager.setCurrentStaffPosition(0);
-    }
-
-    @AfterEach
-    void tearDown() {
-        // Reset static cursor state to avoid cross-test contamination
-        PreviewElementManager.setCurrentPreviewLine(null);
-        PreviewElementManager.setCurrentXIndex(-1);
-        PreviewElementManager.setXPosSsMatchesElement(false);
-
-        playbackMock.close();
-        scoreMock.close();
-        editModeMgrMock.close();
-        messageCenterMock.close();
-    }
 
     // -----------------------------------------------------------------------
     // Helpers
@@ -138,7 +63,7 @@ class PreviewElementManagerTupletTest extends UnitTest {
     }
 
     private void setPreviewElement(StaffElement element) {
-        editModeMgrMock.when(EditModeManager::getPreviewElement).thenReturn(element);
+        editModeManagerMock.when(EditModeManager::getPreviewElement).thenReturn(element);
     }
 
     // -----------------------------------------------------------------------

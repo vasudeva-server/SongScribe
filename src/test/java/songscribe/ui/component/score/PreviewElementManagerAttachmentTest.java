@@ -21,97 +21,24 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
-import songscribe.message.MessageCenter;
 import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.Song;
 import songscribe.music.StaffElement;
-import songscribe.ui.Control;
-import songscribe.ui.Mode;
-import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
-import songscribe.ui.playback.PlaybackController;
 
 /**
  * Tests that decorations on an existing element (fermata, trill, articulations, dynamic
  * attachments) are carried over to the replacement element when
  * {@link PreviewElementManager#handleClick} triggers a modify-existing operation.
  */
-class PreviewElementManagerAttachmentTest extends UnitTest {
-
-    // Static mocks
-    private MockedStatic<MessageCenter> messageCenterMock;
-    private MockedStatic<EditModeManager> editModeManagerMock;
-    private MockedStatic<ScoreView> scoreMock;
-    private MockedStatic<PlaybackController> playbackMock;
-
-    // Instance mocks
-    private LineComponent lineComponent;
-
-    // Real objects
-    private Song song;
-    private Line line;
-
-    @BeforeEach
-    void setUp() {
-        // Construct before mocking MessageCenter so constructor subscriptions
-        // reach the real bus.
-        song = new Song();
-        line = song.getLine(0);
-
-        messageCenterMock = mockStatic(MessageCenter.class);
-        editModeManagerMock = mockStatic(EditModeManager.class);
-        scoreMock = mockStatic(ScoreView.class);
-        playbackMock = mockStatic(PlaybackController.class);
-
-        lineComponent = mock(LineComponent.class);
-        var score = mock(ScoreView.class);
-
-        when(lineComponent.isEditMode()).thenReturn(true);
-        when(lineComponent.getScoreView()).thenReturn(score);
-        when(lineComponent.getLine()).thenReturn(line);
-        when(score.getControl()).thenReturn(Control.MOUSE);
-        when(score.getMode()).thenReturn(Mode.EDIT);
-
-        editModeManagerMock.when(EditModeManager::hasPreviewElement).thenReturn(true);
-        editModeManagerMock.when(() -> EditModeManager.elementWasModified(any(Line.class), anyInt())).thenReturn(false);
-
-        playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
-
-        scoreMock.when(() -> ScoreView.defaultUpperNote(any())).thenReturn(true);
-
-        PreviewElementManager.setCurrentPreviewLine(lineComponent);
-        PreviewElementManager.setCurrentStaffPosition(0);
-    }
-
-    @AfterEach
-    void tearDown() {
-        PreviewElementManager.setCurrentPreviewLine(null);
-        PreviewElementManager.setCurrentXIndex(-1);
-        PreviewElementManager.setXPosSsMatchesElement(false);
-
-        playbackMock.close();
-        scoreMock.close();
-        editModeManagerMock.close();
-        messageCenterMock.close();
-    }
+class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase {
 
     // -----------------------------------------------------------------------
     // Helpers
@@ -121,7 +48,7 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
         editModeManagerMock.when(EditModeManager::getPreviewElement).thenReturn(preview);
         PreviewElementManager.setXPosSsMatchesElement(true);
         PreviewElementManager.setCurrentXIndex(index);
-        PreviewElementManager.handleClick(lineComponent);
+        PreviewElementManager.handleClick(lc);
     }
 
     // -----------------------------------------------------------------------

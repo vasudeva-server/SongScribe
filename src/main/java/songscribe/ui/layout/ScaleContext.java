@@ -43,7 +43,7 @@ public final class ScaleContext {
     /** Default pixels per staff space, matching the legacy 8px staff line spacing. */
     public static final double DEFAULT_PIXELS_PER_STAFF_SPACE = 8.0;
 
-    private double pixelsPerStaffSpace = DEFAULT_PIXELS_PER_STAFF_SPACE;
+    private volatile double pixelsPerStaffSpace = DEFAULT_PIXELS_PER_STAFF_SPACE;
 
     private ScaleContext() {}
 

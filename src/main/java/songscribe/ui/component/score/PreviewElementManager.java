@@ -663,7 +663,7 @@ public final class PreviewElementManager {
         if (xMatchesElement && xIndex == lastIdx) {
             // Mouse is directly on the terminal. Lift the block when the active preview
             // element can legally replace it; otherwise keep it blocked.
-            var previewElement = getActivePreviewElement();
+            var previewElement = EditModeManager.getPreviewElement();
             return previewElement == null
                 || !song.canReplaceTerminal(previewElement.getType());
         }
@@ -757,15 +757,6 @@ public final class PreviewElementManager {
     // ==========================================================================
 
     /**
-     * Returns the active preview element from {@link EditModeManager},
-     * or null if the manager or element is unavailable.
-     */
-    @Nullable
-    private static StaffElement getActivePreviewElement() {
-        return EditModeManager.getPreviewElement();
-    }
-
-    /**
      * Calculates the insertion result for adding an element to a line.
      * If the element would not fit within the line width, shows an error
      * message and returns null.
@@ -801,7 +792,7 @@ public final class PreviewElementManager {
      * @param line The line to add the element to
      */
     private static void addPreviewElement(LineComponent lc, Line line) {
-        var previewElement = getActivePreviewElement();
+        var previewElement = EditModeManager.getPreviewElement();
 
         if (previewElement == null) {
             return;
@@ -828,7 +819,7 @@ public final class PreviewElementManager {
 
     @Nullable
     private static StaffElement validateAndGetPreviewElement(Line line, int elementIndex) {
-        var previewElement = getActivePreviewElement();
+        var previewElement = EditModeManager.getPreviewElement();
 
         if (previewElement == null) {
             return null;

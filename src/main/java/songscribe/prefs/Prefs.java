@@ -99,24 +99,25 @@ public final class Prefs {
         migrate();
     }
 
-    public static String getString(PrefsKey key) {
+    private static Object getOrDefault(PrefsKey key) {
         var value = INSTANCE.store.get(key.key());
-        return value != null ? value.toString() : (String) INSTANCE.getDefault(key);
+        return value != null ? value : INSTANCE.getDefault(key);
+    }
+
+    public static String getString(PrefsKey key) {
+        return getOrDefault(key).toString();
     }
 
     public static int getInt(PrefsKey key) {
-        var value = INSTANCE.store.get(key.key());
-        return ((Number) (value != null ? value : INSTANCE.getDefault(key))).intValue();
+        return ((Number) getOrDefault(key)).intValue();
     }
 
     public static long getLong(PrefsKey key) {
-        var value = INSTANCE.store.get(key.key());
-        return ((Number) (value != null ? value : INSTANCE.getDefault(key))).longValue();
+        return ((Number) getOrDefault(key)).longValue();
     }
 
     public static boolean getBoolean(PrefsKey key) {
-        var value = INSTANCE.store.get(key.key());
-        return (Boolean) (value != null ? value : INSTANCE.getDefault(key));
+        return (Boolean) getOrDefault(key);
     }
 
     public static List<String> getStringList(PrefsKey key) {
