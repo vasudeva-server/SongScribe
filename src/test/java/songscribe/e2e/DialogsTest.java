@@ -141,7 +141,9 @@ class DialogsTest extends E2ETest {
 
             SwingUtilities.invokeLater(() -> {
                 result.set(OptionDialogs.showOptionDialog(
-                    MainFrame.getInstance(), "Test", "Choose one",
+                    MainFrame.getInstance(),
+                    Strings.CONFIRM_TITLE_SAVE_CHANGES,
+                    Strings.CONFIRM_TITLE_FIRST_SECOND_ENDING,
                     JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
                     null, options, options[0]
                 ));

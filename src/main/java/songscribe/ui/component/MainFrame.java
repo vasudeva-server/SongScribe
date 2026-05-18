@@ -459,13 +459,14 @@ public class MainFrame extends JFrame implements Printable {
         };
         var answer = OptionDialogs.showOptionDialog(
             this,
-            Strings.get(Strings.CONFIRM_TITLE_SAVE_CHANGES),
-            Strings.get(Strings.CONFIRM_SAVE_MODIFIED, docName),
+            Strings.CONFIRM_TITLE_SAVE_CHANGES,
+            Strings.CONFIRM_SAVE_MODIFIED,
             JOptionPane.YES_NO_CANCEL_OPTION,
             JOptionPane.QUESTION_MESSAGE,
             null,
             options,
-            options[saveIdx]
+            options[saveIdx],
+            docName
         );
 
         if (answer == saveIdx) {

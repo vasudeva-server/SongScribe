@@ -456,8 +456,8 @@ public final class ScoreView
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
                 OptionDialogs.showErrorMessage(
                     null,
-                    Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
-                    Strings.get(Strings.ERROR_LINE_WIDTH_TOO_LARGE)
+                    Strings.ALERT_TITLE_FILE_ERROR,
+                    Strings.ERROR_LINE_WIDTH_TOO_LARGE
                 );
                 LOG.error(
                     "Refused to open {}: line width {} inches exceeds maximum {}",

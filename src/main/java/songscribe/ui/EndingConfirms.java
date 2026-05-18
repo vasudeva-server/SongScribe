@@ -95,13 +95,14 @@ public final class EndingConfirms {
     private static boolean showEndingConfirm(String messageKey, Object... args) {
         var result = OptionDialogs.showOptionDialog(
             MainFrame.getInstance(),
-            Strings.get(Strings.CONFIRM_TITLE_FIRST_SECOND_ENDING),
-            Strings.get(messageKey, args),
+            Strings.CONFIRM_TITLE_FIRST_SECOND_ENDING,
+            messageKey,
             JOptionPane.DEFAULT_OPTION,
             JOptionPane.WARNING_MESSAGE,
             null,
             new Object[]{Strings.get(Strings.BUTTON_YES), Strings.get(Strings.BUTTON_NO)},
-            Strings.get(Strings.BUTTON_YES)
+            Strings.get(Strings.BUTTON_YES),
+            args
         );
         return result == 0;
     }

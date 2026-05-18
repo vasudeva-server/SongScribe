@@ -168,8 +168,8 @@ public class NonEmptyGuard {
 
         var result = OptionDialogs.showOptionDialog(
             parent,
-            Strings.get(dialogTitleKey),
-            Strings.get(messageKey),
+            dialogTitleKey,
+            messageKey,
             JOptionPane.YES_NO_OPTION,
             JOptionPane.WARNING_MESSAGE,
             null,

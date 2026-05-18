@@ -187,19 +187,22 @@ public final class OptionDialogs {
 
     public static int showOptionDialog(
         @Nullable Component parent,
-        String title,
-        Object message,
+        String titleKey,
+        String messageKey,
         int optionType,
         int messageType,
         @Nullable Icon icon,
         Object @Nullable [] options,
-        @Nullable Object initialValue
+        @Nullable Object initialValue,
+        Object... messageArgs
     ) {
-        LOG.trace("{}", message);
-
         if (isSuppressed()) {
             return JOptionPane.CLOSED_OPTION;
         }
+
+        var title = Strings.get(titleKey);
+        var message = resolveMessage(messageKey, messageArgs);
+        LOG.trace("{}", message);
 
         try {
             var pane = new JOptionPane(message, messageType, optionType, icon, options, initialValue);

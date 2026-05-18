@@ -169,7 +169,7 @@ class EndingConfirmsTest extends UnitTest {
     private MockedStatic<OptionDialogs> simulateYes() {
         var mock = mockStatic(OptionDialogs.class);
         mock.when(() -> OptionDialogs.showOptionDialog(
-            any(), any(), any(), anyInt(), anyInt(), any(), any(), any()
+            any(), any(), any(), anyInt(), anyInt(), any(), any(), any(), any()
         )).thenReturn(0);
         return mock;
     }
