@@ -215,7 +215,7 @@ public final class Song {
             initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
             initialLine.setKeyType(defaultKeyType);
             initialLine.setTempoChangeYPosPx(
-                ScaleContext.getInstance().ssToRoundedPx(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+                ScaleContext.ssToRoundedPx(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
             );
             initialLine.addElement(newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             lines.add(initialLine);
@@ -332,8 +332,8 @@ public final class Song {
         if (line.getTempoChangeYPosPx() == 0) {
             line.setTempoChangeYPosPx(
                 (lineIndex == 0)
-                    ? ScaleContext.getInstance().ssToRoundedPx(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
-                    : ScaleContext.getInstance().ssToRoundedPx(TEMPO_DEFAULT_Y_OTHER_LINES_SS)
+                    ? ScaleContext.ssToRoundedPx(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+                    : ScaleContext.ssToRoundedPx(TEMPO_DEFAULT_Y_OTHER_LINES_SS)
             );
         }
     }
@@ -547,7 +547,7 @@ public final class Song {
     }
 
     public int getLineWidthPx() {
-        return ScaleContext.getInstance().ssToRoundedPx(lineWidthSs);
+        return ScaleContext.ssToRoundedPx(lineWidthSs);
     }
 
     public boolean hasBeenDynamicallyLaidOut() {

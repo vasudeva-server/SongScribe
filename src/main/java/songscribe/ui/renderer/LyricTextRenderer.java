@@ -69,7 +69,6 @@ public final class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
 
         var metrics = ctx.getSongLayoutMetrics();
         var lyricRenderMetrics = ctx.getLyricRenderMetrics();
-        var scaleContext = ScaleContext.getInstance();
         var pxPerSs = ctx.getPixelsPerStaffSpace();
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT, TRANSFORM)) {
@@ -86,8 +85,8 @@ public final class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
                 g2.setColor(ctx.getLyricColor(ctx.getCurrentElementIndex(), element, box.verseIndex()));
 
                 var baselineYSs = metrics.verseYSsInLine(box.verseIndex());
-                var xPx = scaleContext.ssToRoundedPx(box.xSs());
-                var yPx = scaleContext.ssToRoundedPx(baselineYSs);
+                var xPx = ScaleContext.ssToRoundedPx(box.xSs());
+                var yPx = ScaleContext.ssToRoundedPx(baselineYSs);
                 g2.drawString(box.text(), xPx, yPx);
             }
         }

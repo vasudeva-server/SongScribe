@@ -234,7 +234,7 @@ public class LineComponent extends ScoreComponent
      * Will be removed when renderers and mouse code are converted.
      */
     public int getMiddleLineYPx() {
-        return (int) Math.round(ScaleContext.getInstance().ssToPx(getMiddleLineYSs()));
+        return (int) Math.round(ScaleContext.ssToPx(getMiddleLineYSs()));
     }
 
     /**
@@ -394,7 +394,7 @@ public class LineComponent extends ScoreComponent
         // Apply staff-space to pixel scale transform at the render boundary.
         // All downstream drawing uses staff-space coordinates.
         var savedTransform = g2.getTransform();
-        var scale = ScaleContext.getInstance().getPixelsPerStaffSpace();
+        var scale = ScaleContext.getPixelsPerStaffSpace();
         g2.scale(scale, scale);
 
         try {
@@ -424,12 +424,11 @@ public class LineComponent extends ScoreComponent
             throw RuntimeError.exit("layout result is null after layout for line " + lineIndex);
         }
 
-        var scale = ScaleContext.getInstance();
         var metrics = getScoreView().getSongLayoutMetrics();
 
         return new Dimension(
-            (int) Math.ceil(scale.ssToPx(result.getLineWidthSs())),
-            (int) Math.ceil(scale.ssToPx(metrics.totalLineHeightSs())));
+            (int) Math.ceil(ScaleContext.ssToPx(result.getLineWidthSs())),
+            (int) Math.ceil(ScaleContext.ssToPx(metrics.totalLineHeightSs())));
     }
 
     private double calculateMiddleLineYSs() {

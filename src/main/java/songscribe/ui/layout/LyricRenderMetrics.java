@@ -70,7 +70,7 @@ public record LyricRenderMetrics(
             return 0.0;
         }
 
-        return ScaleContext.getInstance().textWidthSs(lyricsFont, text);
+        return ScaleContext.textWidthSs(lyricsFont, text);
     }
 
     /**
@@ -102,12 +102,10 @@ public record LyricRenderMetrics(
 
         var layout = new TextLayout(text, lyricsFont, GraphicUtils.SCREEN_FRC);
         var bounds = layout.getBounds();
-        var scaleContext = ScaleContext.getInstance();
-
         return new LyricBoxMetrics(
-            scaleContext.pxToSs(layout.getAdvance()),
-            scaleContext.pxToSs(bounds.getX()),
-            scaleContext.pxToSs(bounds.getX() + bounds.getWidth())
+            ScaleContext.pxToSs(layout.getAdvance()),
+            ScaleContext.pxToSs(bounds.getX()),
+            ScaleContext.pxToSs(bounds.getX() + bounds.getWidth())
         );
     }
 
@@ -120,7 +118,6 @@ public record LyricRenderMetrics(
      * change height as characters with descenders are typed or deleted.
      */
     public double lyricBoxHeightSs() {
-        var scaleContext = ScaleContext.getInstance();
-        return scaleContext.fontAscentSs(lyricsFont) + scaleContext.fontDescentSs(lyricsFont);
+        return ScaleContext.fontAscentSs(lyricsFont) + ScaleContext.fontDescentSs(lyricsFont);
     }
 }

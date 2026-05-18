@@ -76,7 +76,7 @@ public class MainPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        scoreMarginTop = ScaleContext.getInstance().ssToRoundedPx(SCORE_MARGIN_TOP_SS);
+        scoreMarginTop = ScaleContext.ssToRoundedPx(SCORE_MARGIN_TOP_SS);
 
         titleComponent = new TitleComponent();
         titleComponent.setAlignmentX(LEFT_ALIGNMENT);

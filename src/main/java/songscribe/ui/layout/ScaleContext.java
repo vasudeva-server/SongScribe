@@ -47,57 +47,53 @@ public final class ScaleContext {
 
     private ScaleContext() {}
 
-    public static ScaleContext getInstance() {
-        return INSTANCE;
+    public static double getPixelsPerStaffSpace() {
+        return INSTANCE.pixelsPerStaffSpace;
     }
 
-    public double getPixelsPerStaffSpace() {
-        return pixelsPerStaffSpace;
-    }
-
-    public void setPixelsPerStaffSpace(double pxPerSs) {
+    public static void setPixelsPerStaffSpace(double pxPerSs) {
         if (pxPerSs <= 0) {
             throw new IllegalArgumentException(
                 "pixelsPerStaffSpace must be positive: " + pxPerSs
             );
         }
 
-        pixelsPerStaffSpace = pxPerSs;
+        INSTANCE.pixelsPerStaffSpace = pxPerSs;
     }
 
     /** Convert a value in staff-space units to pixels. */
-    public double ssToPx(double ss) {
-        return ss * pixelsPerStaffSpace;
+    public static double ssToPx(double ss) {
+        return INSTANCE.pixelsPerStaffSpace * ss;
     }
 
     /** Convert a value in staff-space units to pixels, rounded to the nearest integer. */
-    public int ssToRoundedPx(double ss) {
-        return (int) Math.round(ss * pixelsPerStaffSpace);
+    public static int ssToRoundedPx(double ss) {
+        return (int) Math.round(INSTANCE.pixelsPerStaffSpace * ss);
     }
 
     /** Convert a value in pixels to staff-space units. */
-    public double pxToSs(double px) {
-        return px / pixelsPerStaffSpace;
+    public static double pxToSs(double px) {
+        return px / INSTANCE.pixelsPerStaffSpace;
     }
 
     /** Returns {@code font} scaled from pixel units to staff-space units. */
-    public Font scaleFont(Font font) {
+    public static Font scaleFont(Font font) {
         return font.deriveFont((float) pxToSs(font.getSize()));
     }
 
     /** Returns the width of {@code text} in staff-space units for the given font. */
-    public double textWidthSs(Font font, String text) {
+    public static double textWidthSs(Font font, String text) {
         return pxToSs(new TextLayout(text, font, GraphicUtils.SCREEN_FRC).getAdvance());
     }
 
     /** Returns the text height (ascent + descent) in staff-space units for the given font. */
-    public double textHeightSs(Font font) {
+    public static double textHeightSs(Font font) {
         var lm = font.getLineMetrics("", GraphicUtils.SCREEN_FRC);
         return pxToSs(lm.getAscent() + lm.getDescent());
     }
 
     /** Returns the font ascent in staff-space units for the given font. */
-    public double fontAscentSs(Font font) {
+    public static double fontAscentSs(Font font) {
         return pxToSs(font.getLineMetrics("", GraphicUtils.SCREEN_FRC).getAscent());
     }
 
@@ -107,12 +103,12 @@ public final class ScaleContext {
      * accommodates accents, diacriticals, and tall caps regardless of which characters are
      * currently typed.
      */
-    public double fontMaxAscentSs(Font font) {
+    public static double fontMaxAscentSs(Font font) {
         return pxToSs(MyFontUtils.getFontMetrics(font).getMaxAscent());
     }
 
     /** Returns the font descent in staff-space units for the given font. */
-    public double fontDescentSs(Font font) {
+    public static double fontDescentSs(Font font) {
         return pxToSs(font.getLineMetrics("", GraphicUtils.SCREEN_FRC).getDescent());
     }
 
@@ -121,7 +117,7 @@ public final class ScaleContext {
      * coordinates to pixel coordinates. Apply this to a {@code Graphics2D}
      * before rendering in staff-space units.
      */
-    public AffineTransform getScaleTransform() {
-        return AffineTransform.getScaleInstance(pixelsPerStaffSpace, pixelsPerStaffSpace);
+    public static AffineTransform getScaleTransform() {
+        return AffineTransform.getScaleInstance(INSTANCE.pixelsPerStaffSpace, INSTANCE.pixelsPerStaffSpace);
     }
 }

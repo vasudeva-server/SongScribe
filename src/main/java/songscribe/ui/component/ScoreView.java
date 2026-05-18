@@ -113,7 +113,7 @@ public final class ScoreView
     private static final Logger LOG = LoggerFactory.getLogger(ScoreView.class);
 
     // The vertical distance between whole tones on the staff (e.g. A to B)
-    public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().ssToPx(StaffExtents.STAFF_POSITION_OFFSET_SS);
+    public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.ssToPx(StaffExtents.STAFF_POSITION_OFFSET_SS);
 
     private static final String DISABLED_KEY_BINDING = "none";
 
@@ -288,7 +288,7 @@ public final class ScoreView
         initMainPanel();
         applyDocumentFonts();
 
-        updatePageLayout(ScaleContext.getInstance().ssToRoundedPx(song.getLineWidthSs()));
+        updatePageLayout(ScaleContext.ssToRoundedPx(song.getLineWidthSs()));
         if (inputHandler != null) {
             addMouseMotionListener(inputHandler);
             addMouseListener(inputHandler);
@@ -450,7 +450,7 @@ public final class ScoreView
             saxParser.parse(file, reader);
             var newSong = reader.getSong();
             var lineWidthInches =
-                ScaleContext.getInstance().ssToPx(newSong.getLineWidthSs()) /
+                ScaleContext.ssToPx(newSong.getLineWidthSs()) /
                     GraphicUtils.getDpi();
 
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
@@ -713,7 +713,7 @@ public final class ScoreView
 
     public void setSong(Song song) {
         this.song = song;
-        var lineWidthPx = ScaleContext.getInstance().ssToRoundedPx(song.getLineWidthSs());
+        var lineWidthPx = ScaleContext.ssToRoundedPx(song.getLineWidthSs());
 
         // Core setup needed for both headless and interactive modes
         updatePageLayout(lineWidthPx);
@@ -787,7 +787,7 @@ public final class ScoreView
     }
 
     public int getSheetWidthPx() {
-        return ScaleContext.getInstance().ssToRoundedPx(getSong().getLineWidthSs());
+        return ScaleContext.ssToRoundedPx(getSong().getLineWidthSs());
     }
 
     public int getSheetHeightPx() {
@@ -823,7 +823,7 @@ public final class ScoreView
             if (revalidateOnly) {
                 idealSpace = (float) endNote.getContentWidthPx();
             } else {
-                idealSpace = (float) ScaleContext.getInstance().ssToPx(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS) + 20;
+                idealSpace = (float) ScaleContext.ssToPx(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS) + 20;
             }
 
             var lineWidthPx = getSong().getLineWidthPx();
@@ -921,7 +921,7 @@ public final class ScoreView
     }
 
     public void updatePageLayout(int lineWidthPx) {
-        getSong().setLineWidthSs(ScaleContext.getInstance().pxToSs(lineWidthPx));
+        getSong().setLineWidthSs(ScaleContext.pxToSs(lineWidthPx));
 
         var pageWidthPx = PageModel.getPageWidthPx();
         var contentHeight = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
@@ -1046,12 +1046,11 @@ public final class ScoreView
             return;
         }
 
-        var scale = ScaleContext.getInstance();
         lyricRenderMetrics = new LyricRenderMetrics(
             lyricsFont,
-            scale.scaleFont(lyricsFont),
-            scale.textWidthSs(lyricsFont, "-"),
-            scale.textWidthSs(lyricsFont, "  "));
+            ScaleContext.scaleFont(lyricsFont),
+            ScaleContext.textWidthSs(lyricsFont, "-"),
+            ScaleContext.textWidthSs(lyricsFont, "  "));
     }
 
     @Nullable

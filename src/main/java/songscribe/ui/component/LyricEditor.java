@@ -598,8 +598,6 @@ public final class LyricEditor extends MyJTextField {
 
         var lyricRenderMetrics = score.getLyricRenderMetrics();
         var songLayoutMetrics = score.getSongLayoutMetrics();
-        var scaleContext = ScaleContext.getInstance();
-
         var boxMetrics = lyricRenderMetrics.lyricBoxMetricsSs(getText());
         var advanceSs = Math.max(boxMetrics.advanceSs(), EMPTY_BOX_MIN_WIDTH_SS);
         var anchor = layoutResult.getLyricAnchor(element, songLayoutMetrics);
@@ -607,7 +605,7 @@ public final class LyricEditor extends MyJTextField {
         var advanceLeftSs = anchor.centerXSs() - advanceSs / 2.0;
         var heightSs = lyricRenderMetrics.lyricBoxHeightSs();
 
-        var advancePx = scaleContext.ssToPx(advanceSs);
+        var advancePx = ScaleContext.ssToPx(advanceSs);
         var roundedAdvancePx = (int) Math.ceil(advancePx);
         var trailingCaretRoomPx = getText().isEmpty()
             ? MIN_TRAILING_CARET_ROOM_PX
@@ -617,16 +615,16 @@ public final class LyricEditor extends MyJTextField {
         // getHeight() = ascent+descent+leading. Adding leading here makes fieldViewSlopPx
         // equal to SELECTION_MARGIN_PX*2, so the selection gets exactly SELECTION_MARGIN_PX
         // pixels of breathing room above and below.
-        var contentHeightPx = (int) Math.ceil(scaleContext.ssToPx(heightSs))
+        var contentHeightPx = (int) Math.ceil(ScaleContext.ssToPx(heightSs))
             + fontMetrics.getLeading();
 
         var insets = getInsets();
 
         // Snap content_left exactly to the advance-origin pixel: JTextField paints there,
         // and any rounding drift would visibly shift the painted text within the box.
-        var contentLeftPx = scaleContext.ssToRoundedPx(advanceLeftSs);
+        var contentLeftPx = ScaleContext.ssToRoundedPx(advanceLeftSs);
 
-        var baselineYPxInt = scaleContext.ssToRoundedPx(anchor.baselineYSs());
+        var baselineYPxInt = ScaleContext.ssToRoundedPx(anchor.baselineYSs());
         var fieldViewSlopPx = contentHeightPx - fontMetrics.getHeight();
         var contentTopPx = baselineYPxInt - fontMetrics.getAscent() - fieldViewSlopPx / 2;
 

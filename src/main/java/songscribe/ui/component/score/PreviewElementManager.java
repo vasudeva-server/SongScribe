@@ -379,8 +379,7 @@ public final class PreviewElementManager {
         }
 
         // Convert mouse pixel coordinates to staff-space units
-        var scale = ScaleContext.getInstance();
-        var mouseYss = scale.pxToSs(e.getY());
+        var mouseYss = ScaleContext.pxToSs(e.getY());
 
         // In grace mode, lock the x-position to the host note slot
         double mouseXss;
@@ -388,7 +387,7 @@ public final class PreviewElementManager {
         if (EditModeManager.getGraceModeManager().isInProgress()) {
             mouseXss = EditModeManager.getGraceModeManager().getLockedInsertionXSs();
         } else {
-            mouseXss = scale.pxToSs(e.getX());
+            mouseXss = ScaleContext.pxToSs(e.getX());
         }
 
         currentMouseXSs = mouseXss;
@@ -819,7 +818,7 @@ public final class PreviewElementManager {
             return;
         }
 
-        previewElement.setXOffsetPx(ScaleContext.getInstance().ssToRoundedPx(insertion.insertedElementXSs()));
+        previewElement.setXOffsetPx(ScaleContext.ssToRoundedPx(insertion.insertedElementXSs()));
         line.addElement(previewElement);
 
         applyAutomaticBeaming(line, line.elementCount() - 1);
@@ -865,7 +864,7 @@ public final class PreviewElementManager {
             return;
         }
 
-        previewElement.setXOffsetPx(ScaleContext.getInstance().ssToRoundedPx(insertion.insertedElementXSs()));
+        previewElement.setXOffsetPx(ScaleContext.ssToRoundedPx(insertion.insertedElementXSs()));
 
         if (line.hasEndingInvalidatedByInsertion(xIndex, previewElement.getType())) {
             if (!EndingConfirms.confirmInvalidation()) {
@@ -877,7 +876,7 @@ public final class PreviewElementManager {
         line.adjustExtendsForInsertion(xIndex);
         line.addElement(xIndex, previewElement);
         line.adjustSyllablesForSuccessorAfterInsertion(xIndex);
-        var shift = ScaleContext.getInstance().ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
+        var shift = ScaleContext.ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
 
         for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {
             line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);

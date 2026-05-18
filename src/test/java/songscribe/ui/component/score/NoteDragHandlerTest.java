@@ -76,7 +76,6 @@ class NoteDragHandlerTest extends UnitTest {
     // Instance mocks
     private LineComponent lc;
     private LineSelectionState mockSelectionState;
-    private ScaleContext mockScaleContext;
 
     // Subject under test
     private NoteDragHandler handler;
@@ -102,9 +101,6 @@ class NoteDragHandlerTest extends UnitTest {
         scaleContextMock = mockStatic(ScaleContext.class);
 
         midiControllerMock.when(MidiController::isPlaying).thenReturn(false);
-
-        mockScaleContext = mock(ScaleContext.class);
-        scaleContextMock.when(ScaleContext::getInstance).thenReturn(mockScaleContext);
 
         lc = mock(LineComponent.class);
         var mockScore = mock(ScoreView.class);
@@ -446,7 +442,7 @@ class NoteDragHandlerTest extends UnitTest {
     private void dragToPosition(int targetPositionSp) {
         var deltaSp = targetPositionSp - pressOriginalSp;
         var deltaYSs = deltaSp * StaffExtents.STAFF_POSITION_OFFSET_SS;
-        when(mockScaleContext.pxToSs(anyDouble())).thenReturn(deltaYSs);
+        scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble())).thenReturn(deltaYSs);
 
         var event = mouseEvent(lc, MouseEvent.MOUSE_DRAGGED, 100, DRAG_SCREEN_Y, MouseEvent.BUTTON1);
         handler.handleDrag(event);

@@ -67,7 +67,7 @@ public class StaffPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        lineMargin = ScaleContext.getInstance().ssToRoundedPx(LINE_MARGIN_BOTTOM_SS);
+        lineMargin = ScaleContext.ssToRoundedPx(LINE_MARGIN_BOTTOM_SS);
     }
 
     /**
@@ -213,7 +213,7 @@ public class StaffPanel extends JPanel {
         // leading stub on the next.
         var layouts = getLayoutResults();
         var lyricsFont = scoreView.getLyricsFont();
-        var lyricAscentSs = ScaleContext.getInstance().fontAscentSs(lyricsFont);
+        var lyricAscentSs = ScaleContext.fontAscentSs(lyricsFont);
         var metrics = SongLayoutMetricsBuilder.build(layouts, lyricAscentSs);
         scoreView.setSongLayoutMetrics(metrics);
     }

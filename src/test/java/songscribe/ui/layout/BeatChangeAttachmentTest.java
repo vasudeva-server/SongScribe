@@ -118,7 +118,7 @@ class BeatChangeAttachmentTest extends UnitTest {
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
 
-            var equalsDescentSs = ScaleContext.getInstance().pxToSs(
+            var equalsDescentSs = ScaleContext.pxToSs(
                 font.getLineMetrics("=", GraphicUtils.SCREEN_FRC).getDescent());
             var equalsBottom = equals.yOffsetSs() + equals.heightSs();
 

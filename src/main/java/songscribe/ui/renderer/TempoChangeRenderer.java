@@ -88,7 +88,7 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
             xSs = drawDurationEquals(g2, tempo.getTempoType(), xSs, setup.ySs(), setup.attrFont(), setup.color());
         }
 
-        g2.setFont(ScaleContext.getInstance().scaleFont(setup.attrFont()));
+        g2.setFont(ScaleContext.scaleFont(setup.attrFont()));
         g2.setColor(setup.color());
         g2.drawString(tempoBuilder.toString(), (float) xSs, (float) textBaselineYSs);
     }

@@ -91,7 +91,7 @@ public class Attribution extends LineElement {
      * @return width in staff-space units
      */
     public double computeContentWidthSs(Font font) {
-        return ScaleContext.getInstance().textWidthSs(font, text);
+        return ScaleContext.textWidthSs(font, text);
     }
 
     /**
@@ -101,7 +101,7 @@ public class Attribution extends LineElement {
      * @return height in staff-space units
      */
     public double computeContentHeightSs(Font font) {
-        return ScaleContext.getInstance().textHeightSs(font);
+        return ScaleContext.textHeightSs(font);
     }
 
     @Override

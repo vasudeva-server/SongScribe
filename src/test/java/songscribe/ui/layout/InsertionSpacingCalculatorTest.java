@@ -61,7 +61,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         for (var i = 0; i < count; i++) {
             var element = crotchet();
             var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, element, null);
-            element.setXOffsetPx(ScaleContext.getInstance().ssToRoundedPx(xSs));
+            element.setXOffsetPx(ScaleContext.ssToRoundedPx(xSs));
             line.addElement(element);
         }
 
@@ -84,7 +84,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         lineWithCrotchets(numCrotchetsBefore, line);
         var grace = ElementType.GRACE_QUAVER.newInstance();
         var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, grace, null);
-        grace.setXOffsetPx(ScaleContext.getInstance().ssToRoundedPx(xSs));
+        grace.setXOffsetPx(ScaleContext.ssToRoundedPx(xSs));
         line.addElement(grace);
         return line;
     }
@@ -99,7 +99,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         var column = new ElementColumn(
             last, Collections.emptyList(), leftExtentSs, rightExtentSs, 0, 0, null, 0, false
         );
-        column.setXSs(ScaleContext.getInstance().pxToSs(last.getXOffsetPx()));
+        column.setXSs(ScaleContext.pxToSs(last.getXOffsetPx()));
         return column.getRightEdgeXSs();
     }
 

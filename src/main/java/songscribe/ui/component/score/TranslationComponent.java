@@ -35,7 +35,7 @@ import songscribe.util.GraphicUtils;
 public class TranslationComponent extends ScoreComponent {
 
     /** Vertical spacing for translation block (2 staff lines). */
-    private static final int TRANSLATION_TOP_MARGIN = ScaleContext.getInstance().ssToRoundedPx(2.0);
+    private static final int TRANSLATION_TOP_MARGIN = ScaleContext.ssToRoundedPx(2.0);
 
     /** Translation header for official translations. */
     private static final String TRANSLATION_HEADER_OFFICIAL = "Sri Chinmoy's translation:";

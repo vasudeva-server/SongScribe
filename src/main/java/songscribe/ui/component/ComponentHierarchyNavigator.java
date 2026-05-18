@@ -180,7 +180,7 @@ public final class ComponentHierarchyNavigator {
         } else {
             var linePanel = linePanels.getFirst();
             rowHeightPx = linePanel.getLineComponent().getHeight()
-                + ScaleContext.getInstance().ssToRoundedPx(StaffPanel.LINE_MARGIN_BOTTOM_SS);
+                + ScaleContext.ssToRoundedPx(StaffPanel.LINE_MARGIN_BOTTOM_SS);
         }
 
         layoutUpdater.accept(new int[]{middleLineYPx, rowHeightPx});

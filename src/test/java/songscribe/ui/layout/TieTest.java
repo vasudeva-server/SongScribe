@@ -49,10 +49,8 @@ class TieTest extends UnitTest {
     @Test
     void testContentHeightPxIsToPixelsOfSs() {
         var tie = createTie();
-        var scale = ScaleContext.getInstance();
-
         assertThat(tie.getContentHeightPx())
-            .isCloseTo(scale.ssToPx(Tie.TIE_ARC_HEIGHT_SS),
+            .isCloseTo(ScaleContext.ssToPx(Tie.TIE_ARC_HEIGHT_SS),
                 within(EPSILON));
     }
 }

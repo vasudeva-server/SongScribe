@@ -613,11 +613,10 @@ public final class LayoutResult {
     }
 
     public @Nullable LyricHit hitTestLyric(LyricRenderMetrics lyricRenderMetrics, Line line, Point2D pointPx) {
-        var scaleContext = ScaleContext.getInstance();
         var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
         var baseYSs = lyricAreaBaseYSs();
-        var pointXSs = scaleContext.pxToSs(pointPx.getX());
-        var pointYSs = scaleContext.pxToSs(pointPx.getY());
+        var pointXSs = ScaleContext.pxToSs(pointPx.getX());
+        var pointYSs = ScaleContext.pxToSs(pointPx.getY());
 
         for (var element : line.getElements()) {
             for (var box : getLyricBoxes(element)) {
@@ -648,7 +647,7 @@ public final class LayoutResult {
 
         var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
         var baseYSs = lyricAreaBaseYSs();
-        var pointYSs = ScaleContext.getInstance().pxToSs(pointYPx);
+        var pointYSs = ScaleContext.pxToSs(pointYPx);
 
         return pointYSs >= baseYSs && pointYSs <= baseYSs + verseCount * rowHeightSs;
     }

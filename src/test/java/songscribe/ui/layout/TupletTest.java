@@ -49,10 +49,8 @@ class TupletTest extends UnitTest {
     @Test
     void testContentHeightPxIsToPixelsOfSs() {
         var tuplet = createTuplet();
-        var scale = ScaleContext.getInstance();
-
         assertThat(tuplet.getContentHeightPx())
-            .isCloseTo(scale.ssToPx(Tuplet.TUPLET_BRACKET_HEIGHT_SS),
+            .isCloseTo(ScaleContext.ssToPx(Tuplet.TUPLET_BRACKET_HEIGHT_SS),
                 within(EPSILON));
     }
 }

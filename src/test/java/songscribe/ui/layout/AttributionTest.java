@@ -38,7 +38,7 @@ class AttributionTest extends UnitTest {
         var font = new Font("Dialog", Font.PLAIN, 12);
 
         var attribution = new Attribution("Composer");
-        var expected = ScaleContext.getInstance().textWidthSs(font, "Composer");
+        var expected = ScaleContext.textWidthSs(font, "Composer");
 
         assertThat(attribution.computeContentWidthSs(font)).isCloseTo(expected, within(EPSILON));
     }
@@ -48,7 +48,7 @@ class AttributionTest extends UnitTest {
         var font = new Font("Dialog", Font.PLAIN, 12);
 
         var attribution = new Attribution("Composer");
-        var expected = ScaleContext.getInstance().textHeightSs(font);
+        var expected = ScaleContext.textHeightSs(font);
 
         assertThat(attribution.computeContentHeightSs(font)).isCloseTo(expected, within(EPSILON));
     }

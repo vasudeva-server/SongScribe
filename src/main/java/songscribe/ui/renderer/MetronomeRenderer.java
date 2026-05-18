@@ -159,11 +159,10 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
                 xSs += dotAdvanceSs;
             }
 
-            var scale = ScaleContext.getInstance();
-            g2.setFont(scale.scaleFont(attrFont));
+            g2.setFont(ScaleContext.scaleFont(attrFont));
             g2.drawString(MetronomeAttachment.EQUALS_STR, (float) xSs, (float) textBaselineYSs);
 
-            var equalsWidthSs = scale.pxToSs(
+            var equalsWidthSs = ScaleContext.pxToSs(
                 attrFont.getStringBounds(MetronomeAttachment.EQUALS_STR, g2.getFontRenderContext()).getWidth());
             xSs += equalsWidthSs;
         }

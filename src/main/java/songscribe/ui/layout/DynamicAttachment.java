@@ -171,11 +171,11 @@ public class DynamicAttachment extends Attachment {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.getInstance().ssToPx(getContentWidthSs());
+        return ScaleContext.ssToPx(getContentWidthSs());
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().ssToPx(getContentHeightSs());
+        return ScaleContext.ssToPx(getContentHeightSs());
     }
 }

@@ -122,7 +122,7 @@ public final class PageModel {
 
     /** Default line width in staff spaces, based on the content area width. */
     public static double getDefaultLineWidthSs() {
-        return ScaleContext.getInstance().pxToSs(getContentAreaWidthPx());
+        return ScaleContext.pxToSs(getContentAreaWidthPx());
     }
 
     private static int inchesToPx(double inches) {

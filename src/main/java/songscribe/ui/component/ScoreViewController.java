@@ -295,7 +295,7 @@ public final class ScoreViewController {
 
         if ((all || key == PrefsKey.PAGE_SIZE) && score.isInitialized()) {
             scoreActions.updatePageLayout(
-                ScaleContext.getInstance().ssToRoundedPx(score.getSong().getLineWidthSs())
+                ScaleContext.ssToRoundedPx(score.getSong().getLineWidthSs())
             );
         }
     }

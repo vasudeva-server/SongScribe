@@ -197,7 +197,7 @@ public class ElementRenderContext {
      * Convenience accessor for renderers that need pixel conversion.
      */
     public double getPixelsPerStaffSpace() {
-        return ScaleContext.getInstance().getPixelsPerStaffSpace();
+        return ScaleContext.getPixelsPerStaffSpace();
     }
 
     /**

@@ -45,7 +45,7 @@ public class FootnotesComponent extends ScoreComponent {
      * Creates a new FootnotesComponent.
      */
     public FootnotesComponent() {
-        setMarginTop(ScaleContext.getInstance().ssToRoundedPx(FOOTNOTES_MIN_MARGIN_TOP_SS));
+        setMarginTop(ScaleContext.ssToRoundedPx(FOOTNOTES_MIN_MARGIN_TOP_SS));
     }
 
     @Override

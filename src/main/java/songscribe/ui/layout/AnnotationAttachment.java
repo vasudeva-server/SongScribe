@@ -114,7 +114,7 @@ public class AnnotationAttachment extends Attachment {
      * @return width in staff-space units
      */
     public double computeContentWidthSs(Font font) {
-        return ScaleContext.getInstance().textWidthSs(font, annotation.getAnnotation());
+        return ScaleContext.textWidthSs(font, annotation.getAnnotation());
     }
 
     /**
@@ -124,7 +124,7 @@ public class AnnotationAttachment extends Attachment {
      * @return height in staff-space units
      */
     public double computeContentHeightSs(Font font) {
-        return ScaleContext.getInstance().textHeightSs(font);
+        return ScaleContext.textHeightSs(font);
     }
 
     @Override

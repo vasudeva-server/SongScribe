@@ -223,7 +223,7 @@ class SelectionTest extends E2ETest {
                 var loc = lc.getLocationOnScreen();
                 // Click at the midpoint of the clef — squarely inside the header region
                 var clefMidXPx = (int) Math.round(
-                    ScaleContext.getInstance().ssToPx(Engraving.G_CLEF_WIDTH_SS / 2.0));
+                    ScaleContext.ssToPx(Engraving.G_CLEF_WIDTH_SS / 2.0));
                 var yPx = lc.staffPositionToYPx(0);
                 return new Point(loc.x + clefMidXPx, loc.y + yPx);
             }));
@@ -240,7 +240,7 @@ class SelectionTest extends E2ETest {
                 var layoutResult = lc.getLayoutResult();
                 var lastElement = line.getElement(line.effectiveElementCount() - 1);
                 var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastElement) : 0.0;
-                var pastLastXPx = (int) Math.round(ScaleContext.getInstance().ssToPx(lastXSs)) + 40;
+                var pastLastXPx = (int) Math.round(ScaleContext.ssToPx(lastXSs)) + 40;
                 var loc = lc.getLocationOnScreen();
                 var yPx = lc.staffPositionToYPx(0);
                 return new Point(loc.x + pastLastXPx, loc.y + yPx);

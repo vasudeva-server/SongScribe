@@ -26,12 +26,11 @@ import java.awt.Insets;
 public record InsetsSs(double top, double left, double bottom, double right) {
 
     public Insets toInsetsPx() {
-        var scaleContext = ScaleContext.getInstance();
         return new Insets(
-            scaleContext.ssToRoundedPx(top),
-            scaleContext.ssToRoundedPx(left),
-            scaleContext.ssToRoundedPx(bottom),
-            scaleContext.ssToRoundedPx(right)
+            ScaleContext.ssToRoundedPx(top),
+            ScaleContext.ssToRoundedPx(left),
+            ScaleContext.ssToRoundedPx(bottom),
+            ScaleContext.ssToRoundedPx(right)
         );
     }
 }

@@ -33,7 +33,7 @@ import songscribe.ui.layout.ScaleContext;
 public class BanglaLyricsComponent extends LyricsComponent {
 
     /** Vertical spacing for Bangla lyrics (2 staff lines). */
-    private static final int BANGLA_LYRICS_TOP_MARGIN = ScaleContext.getInstance().ssToRoundedPx(2.0);
+    private static final int BANGLA_LYRICS_TOP_MARGIN = ScaleContext.ssToRoundedPx(2.0);
 
     /**
      * Creates a new BanglaLyricsComponent.

@@ -186,7 +186,7 @@ class PageModelTest extends UnitTest {
 
         @Test
         void defaultLineWidthSsMatchesContentArea() {
-            var expected = ScaleContext.getInstance().pxToSs(PageModel.getContentAreaWidthPx());
+            var expected = ScaleContext.pxToSs(PageModel.getContentAreaWidthPx());
             assertThat(PageModel.getDefaultLineWidthSs()).isCloseTo(expected, within(0.001));
         }
     }

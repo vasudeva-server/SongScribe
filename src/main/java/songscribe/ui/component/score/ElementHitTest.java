@@ -51,9 +51,8 @@ public final class ElementHitTest {
             return -1;
         }
 
-        var sc = ScaleContext.getInstance();
-        var pointXSs = sc.pxToSs(point.x);
-        var pointYSs = sc.pxToSs(point.y);
+        var pointXSs = ScaleContext.pxToSs(point.x);
+        var pointYSs = ScaleContext.pxToSs(point.y);
         var helper = new Rectangle2D.Double();
 
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
@@ -111,7 +110,7 @@ public final class ElementHitTest {
         var topOffsetSs = elementType.getNoteheadTopOffsetSs();
 
         if (expandToMinimum) {
-            var minHitSizeSs = ScaleContext.getInstance().pxToSs(MIN_HIT_SIZE_PX);
+            var minHitSizeSs = ScaleContext.pxToSs(MIN_HIT_SIZE_PX);
 
             // Expand symmetrically: distribute extra width/height evenly on both sides
             var xExpansionSs = Math.max(0, (minHitSizeSs - naturalWidthSs) / 2);

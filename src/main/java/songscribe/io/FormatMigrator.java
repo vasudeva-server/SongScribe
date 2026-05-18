@@ -235,7 +235,7 @@ public final class FormatMigrator {
 
         // Migrate beat change offset to per-instance
         var beatChangeOffset = line.getBeatChangeYPosPx();
-        var beatChangeDefaultPx = ScaleContext.getInstance().ssToRoundedPx(Line.BEAT_CHANGE_DEFAULT_Y_SS);
+        var beatChangeDefaultPx = ScaleContext.ssToRoundedPx(Line.BEAT_CHANGE_DEFAULT_Y_SS);
 
         // BeatChange has a default offset, only migrate if different
         if (beatChangeOffset != beatChangeDefaultPx) {
@@ -256,7 +256,7 @@ public final class FormatMigrator {
 
         // Migrate first/second ending offset to per-instance
         var endingOffset = line.getFirstSecondEndingYPosPx();
-        var endingDefaultPx = ScaleContext.getInstance().ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS);
+        var endingDefaultPx = ScaleContext.ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS);
 
         if (endingOffset != endingDefaultPx) {
             var delta = endingOffset - endingDefaultPx;
@@ -270,7 +270,7 @@ public final class FormatMigrator {
 
         // Migrate trill offset to per-instance
         var trillOffset = line.getTrillYPosPx();
-        var trillDefaultPx = ScaleContext.getInstance().ssToRoundedPx(Line.TRILL_DEFAULT_Y_SS);
+        var trillDefaultPx = ScaleContext.ssToRoundedPx(Line.TRILL_DEFAULT_Y_SS);
 
         if (trillOffset != trillDefaultPx) {
             var delta = trillOffset - trillDefaultPx;

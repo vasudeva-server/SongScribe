@@ -70,11 +70,11 @@ public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> 
         var annotationFont = ctx.getAnnotationFont();
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
-            g2.setFont(ScaleContext.getInstance().scaleFont(annotationFont));
+            g2.setFont(ScaleContext.scaleFont(annotationFont));
             applyDecorationColor(g2, element, ctx);
 
             var metrics = g2.getFontMetrics(annotationFont);
-            var ascentSs = ScaleContext.getInstance().pxToSs(metrics.getAscent());
+            var ascentSs = ScaleContext.pxToSs(metrics.getAscent());
             var xSs = decorationLayout.xSs();
             var baselineYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx) + ascentSs;
 

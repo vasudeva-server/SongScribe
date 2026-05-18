@@ -110,7 +110,7 @@ public class KeySignature extends LineElement {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.getInstance().ssToPx(getContentWidthSs());
+        return ScaleContext.ssToPx(getContentWidthSs());
     }
 
     /**
@@ -128,7 +128,7 @@ public class KeySignature extends LineElement {
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().ssToPx(getContentHeightSs());
+        return ScaleContext.ssToPx(getContentHeightSs());
     }
 
     private SMuFLGlyph accidentalGlyph() {

@@ -227,7 +227,7 @@ class NoteDragHandler {
         // a change to aboveStaffSs (which shifts the staff within the line component) nor
         // a reposition of the line component within its parent can perturb the mapping.
         var deltaYPx = e.getYOnScreen() - dragPressScreenYPx;
-        var deltaYSs = ScaleContext.getInstance().pxToSs(deltaYPx);
+        var deltaYSs = ScaleContext.pxToSs(deltaYPx);
         var deltaSp = StaffExtents.ssToSp(deltaYSs);
         var newPositionSp = originalDragStaffPositionSp + deltaSp;
 

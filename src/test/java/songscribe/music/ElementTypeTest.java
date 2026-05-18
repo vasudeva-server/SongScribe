@@ -176,24 +176,21 @@ class ElementTypeTest extends UnitTest {
         @Test
         void testElementGetContentCenterXReturnsPx() {
             var element = ElementType.QUAVER.newInstance();
-            var sc = ScaleContext.getInstance();
-            var expectedPx = sc.ssToPx(ElementType.QUAVER.getFullElementCenterXSs());
+            var expectedPx = ScaleContext.ssToPx(ElementType.QUAVER.getFullElementCenterXSs());
             assertThat(element.getContentCenterX()).isCloseTo(expectedPx, within(1e-9));
         }
 
         @Test
         void testElementGetContentHeightReturnsPx() {
             var element = ElementType.CROTCHET.newInstance();
-            var sc = ScaleContext.getInstance();
-            var expectedPx = sc.ssToPx(ElementType.CROTCHET.getElementHeightSs(element.isUpper()));
+            var expectedPx = ScaleContext.ssToPx(ElementType.CROTCHET.getElementHeightSs(element.isUpper()));
             assertThat(element.getContentHeightPx()).isCloseTo(expectedPx, within(1e-9));
         }
 
         @Test
         void testElementGetContentWidthReturnsPx() {
             var element = ElementType.CROTCHET.newInstance();
-            var sc = ScaleContext.getInstance();
-            var expectedPx = sc.ssToPx(ElementType.CROTCHET.getFullElementWidthSs());
+            var expectedPx = ScaleContext.ssToPx(ElementType.CROTCHET.getFullElementWidthSs());
             assertThat(element.getContentWidthPx()).isCloseTo(expectedPx, within(1e-9));
         }
     }

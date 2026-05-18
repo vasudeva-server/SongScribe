@@ -44,11 +44,10 @@ class LayoutEngineTest extends UnitTest {
 
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
-        var scale = ScaleContext.getInstance();
-        var hyphenWidthSs = scale.textWidthSs(lyricsFont, "-");
-        var spaceWidthSs = scale.textWidthSs(lyricsFont, " ");
+        var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-");
+        var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ");
         var metrics = new LyricRenderMetrics(
-            lyricsFont, scale.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
+            lyricsFont, ScaleContext.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
         return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultsFromPrefs());
     }
 
