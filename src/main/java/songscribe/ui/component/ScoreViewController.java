@@ -95,7 +95,6 @@ public final class ScoreViewController {
     private final ScoreView score;
     private final ScoreActions scoreActions;
     private final MusicEditOperations operations;
-    private final EditModeManager editModeManager;
     private final SelectionCoordinator selectionCoordinator;
     private final ClipboardManager clipboardManager;
 
@@ -110,14 +109,12 @@ public final class ScoreViewController {
     public ScoreViewController(
         ScoreView score,
         MusicEditOperations operations,
-        EditModeManager editModeManager,
         SelectionCoordinator selectionCoordinator,
         ClipboardManager clipboardManager
     ) {
         this.score = score;
         this.scoreActions = score;
         this.operations = operations;
-        this.editModeManager = editModeManager;
         this.selectionCoordinator = selectionCoordinator;
         this.clipboardManager = clipboardManager;
 
@@ -133,12 +130,12 @@ public final class ScoreViewController {
 
     @Handler
     public void elementTypeWasSelected(ElementTypeWasSelectedNotification message) {
-        score.setPreviewElement(editModeManager.makePreviewElement(message.getNoteType()));
+        score.setPreviewElement(EditModeManager.makePreviewElement(message.getNoteType()));
     }
 
     @Handler
     public void restModeDidChange(RestModeDidChangeNotification message) {
-        score.setPreviewElement(editModeManager.makePreviewElement());
+        score.setPreviewElement(EditModeManager.makePreviewElement());
     }
 
     @Handler
@@ -150,18 +147,18 @@ public final class ScoreViewController {
         var selected = Actions.DURATION_ACTION_GROUP.getSelected();
 
         if (selected != null) {
-            score.setPreviewElement(editModeManager.makePreviewElement(selected.getType()));
+            score.setPreviewElement(EditModeManager.makePreviewElement(selected.getType()));
         }
     }
 
     private void updatePreviewElement() {
-        var previewElement = editModeManager.getPreviewElement();
+        var previewElement = EditModeManager.getPreviewElement();
 
         if (previewElement != null) {
-            editModeManager.decorateElement(previewElement);
+            EditModeManager.decorateElement(previewElement);
             score.repaint();
         } else {
-            score.setPreviewElement(editModeManager.makePreviewElement());
+            score.setPreviewElement(EditModeManager.makePreviewElement());
         }
     }
 

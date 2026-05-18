@@ -627,31 +627,22 @@ public class LineComponent extends ScoreComponent
     }
 
     private GraceModeManager getGraceModeManager() {
-        var emm = EditModeManager.getInstance();
-
-        if (emm == null) {
-            throw RuntimeError.exit("EditModeManager not initialized");
-        }
-
-        return emm.getGraceModeManager();
+        return EditModeManager.getGraceModeManager();
     }
 
     /** Returns the preview element from edit mode, or null if unavailable. */
     @Nullable StaffElement getPreviewElement() {
-        var emm = EditModeManager.getInstance();
-        return emm != null ? emm.getPreviewElement() : null;
+        return EditModeManager.getPreviewElement();
     }
 
     /** Returns whether the preview element should be rendered as visible. */
     boolean isPreviewElementVisible() {
-        var emm = EditModeManager.getInstance();
-        return emm != null && emm.isPreviewElementVisible();
+        return EditModeManager.isPreviewElementVisible();
     }
 
     /** Returns whether grace note insert mode is currently in progress. */
     boolean isGraceModeInProgress() {
-        var emm = EditModeManager.getInstance();
-        return emm != null && emm.getGraceModeManager().isInProgress();
+        return EditModeManager.getGraceModeManager().isInProgress();
     }
 
     /**
@@ -672,13 +663,7 @@ public class LineComponent extends ScoreComponent
      * if this line is the active grace line.
      */
     void applyGracePreviewShift(ElementRenderContext ctx) {
-        var emm = EditModeManager.getInstance();
-
-        if (emm == null) {
-            return;
-        }
-
-        var graceModeManager = emm.getGraceModeManager();
+        var graceModeManager = EditModeManager.getGraceModeManager();
 
         if (graceModeManager.getGraceLineComponent() == this) {
             var preview = graceModeManager.getHostInsertionPreview();

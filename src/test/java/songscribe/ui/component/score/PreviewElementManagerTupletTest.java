@@ -70,7 +70,6 @@ class PreviewElementManagerTupletTest extends UnitTest {
 
     // Instance mocks
     private LineComponent lc;
-    private EditModeManager editModeManager;
 
     // Real objects
     private Song song;
@@ -90,7 +89,6 @@ class PreviewElementManagerTupletTest extends UnitTest {
 
         lc = mock(LineComponent.class);
         var score = mock(ScoreView.class);
-        editModeManager = mock(EditModeManager.class);
 
         when(lc.isEditMode()).thenReturn(true);
         when(lc.getScoreView()).thenReturn(score);
@@ -98,9 +96,8 @@ class PreviewElementManagerTupletTest extends UnitTest {
         when(score.getControl()).thenReturn(Control.MOUSE);
         when(score.getMode()).thenReturn(Mode.EDIT);
 
-        editModeMgrMock.when(EditModeManager::getInstance).thenReturn(editModeManager);
-        when(editModeManager.hasPreviewElement()).thenReturn(true);
-        when(editModeManager.elementWasModified(any(Line.class), anyInt())).thenReturn(false);
+        editModeMgrMock.when(EditModeManager::hasPreviewElement).thenReturn(true);
+        editModeMgrMock.when(() -> EditModeManager.elementWasModified(any(Line.class), anyInt())).thenReturn(false);
 
         playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
 
@@ -141,7 +138,7 @@ class PreviewElementManagerTupletTest extends UnitTest {
     }
 
     private void setPreviewElement(StaffElement element) {
-        when(editModeManager.getPreviewElement()).thenReturn(element);
+        editModeMgrMock.when(EditModeManager::getPreviewElement).thenReturn(element);
     }
 
     // -----------------------------------------------------------------------

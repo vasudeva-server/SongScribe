@@ -69,7 +69,6 @@ import songscribe.music.TupletSpan;
 import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.TupletAction;
 import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -139,7 +138,6 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         var operations = new MusicEditOperations(song, coordinator);
 
         var score = mock(ScoreView.class);
-        var editModeManager = mock(EditModeManager.class);
         var clipboardManager = mock(ClipboardManager.class);
 
         messageCenterMock = mockStatic(MessageCenter.class);
@@ -147,7 +145,6 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         var scoreMessageCoordinator = new ScoreViewController(
             score,
             operations,
-            editModeManager,
             coordinator,
             clipboardManager
         );

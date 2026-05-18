@@ -54,7 +54,7 @@ import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.LinePanel;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.StaffPanel;
-import songscribe.ui.edit.EditModeManager;
+
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -86,7 +86,6 @@ class ScoreViewControllerTest extends UnitTest {
             var coordinator = new ScoreViewController(
                 scoreMock,
                 mock(MusicEditOperations.class),
-                mock(EditModeManager.class),
                 selectionCoordinator,
                 mock(ClipboardManager.class)
             );
@@ -319,7 +318,6 @@ class ScoreViewControllerTest extends UnitTest {
             coordinator = new ScoreViewController(
                 scoreMock,
                 mock(MusicEditOperations.class),
-                mock(EditModeManager.class),
                 mock(SelectionCoordinator.class),
                 mock(ClipboardManager.class)
             );

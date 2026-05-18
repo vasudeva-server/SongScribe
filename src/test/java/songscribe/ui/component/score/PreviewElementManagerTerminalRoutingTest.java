@@ -58,7 +58,6 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
     private MockedStatic<PlaybackController> playbackMock;
 
     private LineComponent lc;
-    private EditModeManager editModeManager;
 
     private Line line;
 
@@ -76,7 +75,6 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
 
         lc = mock(LineComponent.class);
         var scoreView = mock(ScoreView.class);
-        editModeManager = mock(EditModeManager.class);
 
         when(lc.isEditMode()).thenReturn(true);
         when(lc.getScoreView()).thenReturn(scoreView);
@@ -84,9 +82,8 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
         when(scoreView.getControl()).thenReturn(Control.MOUSE);
         when(scoreView.getMode()).thenReturn(Mode.EDIT);
 
-        editModeMgrMock.when(EditModeManager::getInstance).thenReturn(editModeManager);
-        when(editModeManager.hasPreviewElement()).thenReturn(true);
-        when(editModeManager.elementWasModified(any(Line.class), anyInt())).thenReturn(false);
+        editModeMgrMock.when(EditModeManager::hasPreviewElement).thenReturn(true);
+        editModeMgrMock.when(() -> EditModeManager.elementWasModified(any(Line.class), anyInt())).thenReturn(false);
 
         playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
 
@@ -125,7 +122,7 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
          */
         @Test
         void testDirectClickReplacesTerminalWithRepeatRight() {
-            when(editModeManager.getPreviewElement())
+            editModeMgrMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.REPEAT_RIGHT.newInstance());
 
             var termIdx = terminalIndex();
@@ -149,7 +146,7 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
          */
         @Test
         void testDirectClickWithNonTerminalTypeIsBlocked() {
-            when(editModeManager.getPreviewElement())
+            editModeMgrMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.CROTCHET.newInstance());
 
             var termIdx = terminalIndex();
@@ -184,7 +181,7 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
          */
         @Test
         void testAlwaysBlockedAtAppendSlotPastTerminal() {
-            when(editModeManager.getPreviewElement())
+            editModeMgrMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.REPEAT_RIGHT.newInstance());
 
             // xIndex one past the last element

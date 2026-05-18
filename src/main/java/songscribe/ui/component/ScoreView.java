@@ -181,9 +181,6 @@ public final class ScoreView
     // Manages clipboard state for copy/paste operations
     private final ClipboardManager clipboardManager;
 
-    // Manages edit mode state (insertion note and position)
-    private final EditModeManager editModeManager;
-
     // New JComponent-based score panel (Phase 2 hierarchy)
     @Nullable
     private MainPanel mainPanel = null;
@@ -241,11 +238,7 @@ public final class ScoreView
 
         selectionCoordinator = new SelectionCoordinator(this::getSong);
         clipboardManager = new ClipboardManager();
-        editModeManager = new EditModeManager(
-            clipboardManager,
-            selectionCoordinator,
-            this
-        );
+        EditModeManager.init(clipboardManager, selectionCoordinator, this);
 
         try {
             saxParser = SAXParserFactory.newInstance().newSAXParser();
@@ -264,7 +257,7 @@ public final class ScoreView
             inputHandler = null;
         } else {
             hierarchyNavigator = new ComponentHierarchyNavigator(this);
-            var handler = new ScoreInputHandler(this, editModeManager);
+            var handler = new ScoreInputHandler(this);
             inputHandler = handler;
             setLayout(new BorderLayout());
             setFocusable(true);
@@ -306,7 +299,7 @@ public final class ScoreView
         initKeys();
 
         // Initialize insertion note with default type
-        setPreviewElement(editModeManager.makePreviewElement());
+        setPreviewElement(EditModeManager.makePreviewElement());
 
         MessageCenter.subscribe(this);
         syncPlaybackPrefs();
@@ -317,7 +310,6 @@ public final class ScoreView
         controller = new ScoreViewController(
             this,
             operations,
-            editModeManager,
             selectionCoordinator,
             clipboardManager
         );
@@ -414,10 +406,6 @@ public final class ScoreView
 
     void setPopup(JPopupMenu popup) {
         this.popup = popup;
-    }
-
-    EditModeManager getEditModeManager() {
-        return editModeManager;
     }
 
     public boolean isDragDisabled() {
@@ -520,7 +508,7 @@ public final class ScoreView
     }
 
     public void syncPlaybackPrefs() {
-        editModeManager.setPlayInsertedNote(Prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
+        EditModeManager.setPlayInsertedNote(Prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
         // If true, the score is played with repeats
         var playWithRepeats = Prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS);
 
@@ -644,25 +632,25 @@ public final class ScoreView
 
     @Nullable
     public StaffElement getPreviewElement() {
-        return editModeManager.getPreviewElement();
+        return EditModeManager.getPreviewElement();
     }
 
     @Override
     public void setPreviewElement(@Nullable StaffElement element) {
         if (element != null) {
-            var currentPreviewElement = editModeManager.getPreviewElement();
+            var currentPreviewElement = EditModeManager.getPreviewElement();
 
             if (currentPreviewElement != null) {
                 element.setStaffPosition(currentPreviewElement.getStaffPosition());
                 element.setXOffsetPx(currentPreviewElement.getXOffsetPx());
             } else {
-                editModeManager.setPreviewElement(element);
+                EditModeManager.setPreviewElement(element);
             }
 
             element.setUpper(defaultUpperNote(element));
         }
 
-        editModeManager.setPreviewElement(element);
+        EditModeManager.setPreviewElement(element);
         repaint();
     }
 
@@ -752,7 +740,6 @@ public final class ScoreView
             controller = new ScoreViewController(
                 this,
                 operations,
-                editModeManager,
                 selectionCoordinator,
                 clipboardManager
             );

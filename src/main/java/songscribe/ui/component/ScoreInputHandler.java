@@ -46,14 +46,9 @@ public final class ScoreInputHandler extends KeyAdapter
     implements MouseListener, MouseMotionListener {
 
     private final InputHandlerCallback callback;
-    private final EditModeManager editModeManager;
 
-    public ScoreInputHandler(
-        InputHandlerCallback callback,
-        EditModeManager editModeManager
-    ) {
+    public ScoreInputHandler(InputHandlerCallback callback) {
         this.callback = callback;
-        this.editModeManager = editModeManager;
     }
 
     //***************************
@@ -93,22 +88,22 @@ public final class ScoreInputHandler extends KeyAdapter
     @Override
     public void mouseEntered(MouseEvent e) {
         if (
-            !editModeManager.isPreviewElementVisible() &&
+            !EditModeManager.isPreviewElementVisible() &&
                 (callback.getControl() == Control.MOUSE) &&
                 (callback.getMode() == Mode.EDIT)
         ) {
-            editModeManager.setPreviewElementVisible(true);
+            EditModeManager.setPreviewElementVisible(true);
         }
     }
 
     @Override
     public void mouseExited(MouseEvent e) {
         if (
-            editModeManager.isPreviewElementVisible() &&
+            EditModeManager.isPreviewElementVisible() &&
                 (callback.getControl() == Control.MOUSE) &&
                 (callback.getMode() == Mode.EDIT)
         ) {
-            editModeManager.setPreviewElementVisible(false);
+            EditModeManager.setPreviewElementVisible(false);
             callback.repaint();
         }
     }
@@ -136,8 +131,8 @@ public final class ScoreInputHandler extends KeyAdapter
             LineComponent.setAltPressed(true);
             callback.repaint();
         } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-            if (editModeManager.getGraceModeManager().isInProgress()) {
-                editModeManager.getGraceModeManager().keyPressed(e);
+            if (EditModeManager.getGraceModeManager().isInProgress()) {
+                EditModeManager.getGraceModeManager().keyPressed(e);
             } else if (callback.getMode() == Mode.SELECT) {
                 var window = callback.getWindow();
 
@@ -183,7 +178,7 @@ public final class ScoreInputHandler extends KeyAdapter
             var keyStroke = KeyStroke.getKeyStroke(keyCode, 0);
             bindings.put(keyStroke, actionKey);
             inputMap.put(keyStroke, actionKey);
-            actionMap.put(actionKey, new KeyAction(callback, editModeManager, keyCode));
+            actionMap.put(actionKey, new KeyAction(callback, keyCode));
         }
 
         return bindings;
@@ -195,16 +190,10 @@ public final class ScoreInputHandler extends KeyAdapter
     private static class KeyAction extends AbstractAction {
 
         private final InputHandlerCallback callback;
-        private final EditModeManager editModeManager;
         private final int code;
 
-        KeyAction(
-            InputHandlerCallback callback,
-            EditModeManager editModeManager,
-            int code
-        ) {
+        KeyAction(InputHandlerCallback callback, int code) {
             this.callback = callback;
-            this.editModeManager = editModeManager;
             this.code = code;
         }
 
@@ -226,7 +215,7 @@ public final class ScoreInputHandler extends KeyAdapter
             // so the caret skips the auto-maintained terminal on the last line.
 
             // For now, keyboard mode is disabled. Only UP/DOWN for pitch adjustment remain functional.
-            var insertionNote = editModeManager.getPreviewElement();
+            var insertionNote = EditModeManager.getPreviewElement();
 
             if (insertionNote != null) {
                 if (code == KeyEvent.VK_UP) {

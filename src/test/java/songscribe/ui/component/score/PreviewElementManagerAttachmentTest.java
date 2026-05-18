@@ -64,7 +64,6 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
 
     // Instance mocks
     private LineComponent lineComponent;
-    private EditModeManager editModeManager;
 
     // Real objects
     private Song song;
@@ -84,7 +83,6 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
 
         lineComponent = mock(LineComponent.class);
         var score = mock(ScoreView.class);
-        editModeManager = mock(EditModeManager.class);
 
         when(lineComponent.isEditMode()).thenReturn(true);
         when(lineComponent.getScoreView()).thenReturn(score);
@@ -92,9 +90,8 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
         when(score.getControl()).thenReturn(Control.MOUSE);
         when(score.getMode()).thenReturn(Mode.EDIT);
 
-        editModeManagerMock.when(EditModeManager::getInstance).thenReturn(editModeManager);
-        when(editModeManager.hasPreviewElement()).thenReturn(true);
-        when(editModeManager.elementWasModified(any(Line.class), anyInt())).thenReturn(false);
+        editModeManagerMock.when(EditModeManager::hasPreviewElement).thenReturn(true);
+        editModeManagerMock.when(() -> EditModeManager.elementWasModified(any(Line.class), anyInt())).thenReturn(false);
 
         playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
 
@@ -121,7 +118,7 @@ class PreviewElementManagerAttachmentTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     private void replaceAt(int index, StaffElement preview) {
-        when(editModeManager.getPreviewElement()).thenReturn(preview);
+        editModeManagerMock.when(EditModeManager::getPreviewElement).thenReturn(preview);
         PreviewElementManager.setXPosSsMatchesElement(true);
         PreviewElementManager.setCurrentXIndex(index);
         PreviewElementManager.handleClick(lineComponent);

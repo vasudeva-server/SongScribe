@@ -101,7 +101,6 @@ class NoteDragHandlerTest extends UnitTest {
         playThreadConstruction = mockConstruction(PlayThread.class);
         scaleContextMock = mockStatic(ScaleContext.class);
 
-        editModeMgrMock.when(EditModeManager::getInstance).thenReturn(null);
         midiControllerMock.when(MidiController::isPlaying).thenReturn(false);
 
         mockScaleContext = mock(ScaleContext.class);

@@ -47,7 +47,6 @@ import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
-import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -124,7 +123,6 @@ class DeleteLyricTest extends UnitTest {
         return new ScoreViewController(
             mockScore,
             new MusicEditOperations(song, coordinator),
-            mock(EditModeManager.class),
             coordinator,
             mock(ClipboardManager.class)
         );

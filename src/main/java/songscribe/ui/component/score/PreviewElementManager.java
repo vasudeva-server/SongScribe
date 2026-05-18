@@ -113,11 +113,7 @@ public final class PreviewElementManager {
     public void modeDidChange(ModeDidChangeNotification message) {
         if (message.getMode() != Mode.EDIT) {
             clearPreviewElement();
-            var editModeManager = EditModeManager.getInstance();
-
-            if (editModeManager != null) {
-                editModeManager.setPreviewElement(null);
-            }
+            EditModeManager.setPreviewElement(null);
         } else {
             restorePreviewElement(currentMouseLine);
         }
@@ -147,11 +143,7 @@ public final class PreviewElementManager {
             clearPreviewElement();
         }
 
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null) {
-            editModeManager.setPreviewElementVisible(false);
-        }
+        EditModeManager.setPreviewElementVisible(false);
     }
 
     /**
@@ -391,11 +383,10 @@ public final class PreviewElementManager {
         var mouseYss = scale.pxToSs(e.getY());
 
         // In grace mode, lock the x-position to the host note slot
-        var editModeManager = EditModeManager.getInstance();
         double mouseXss;
 
-        if (editModeManager != null && editModeManager.getGraceModeManager().isInProgress()) {
-            mouseXss = editModeManager.getGraceModeManager().getLockedInsertionXSs();
+        if (EditModeManager.getGraceModeManager().isInProgress()) {
+            mouseXss = EditModeManager.getGraceModeManager().getLockedInsertionXSs();
         } else {
             mouseXss = scale.pxToSs(e.getX());
         }
@@ -431,8 +422,7 @@ public final class PreviewElementManager {
         // In grace mode the locked x coincides with an existing note that will be
         // shifted (not replaced), so suppress the element-at-x match to avoid
         // painting it red as if it were the replacement target.
-        var inGraceMode = editModeManager != null
-            && editModeManager.getGraceModeManager().isInProgress();
+        var inGraceMode = EditModeManager.getGraceModeManager().isInProgress();
         var elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXss, line);
 
         // Suppress preview over the song's auto-maintained terminal (unless the
@@ -444,7 +434,7 @@ public final class PreviewElementManager {
             return;
         }
 
-        var previewElement = editModeManager != null ? editModeManager.getPreviewElement() : null;
+        var previewElement = EditModeManager.getPreviewElement();
 
         // Hide the preview element when a grace note is selected and the mouse
         // is between an existing grace/host pair — insertion there is not allowed.
@@ -499,21 +489,19 @@ public final class PreviewElementManager {
         yPosSpMatchesElement = newYMatch;
         currentGlissandoZone = newGlissandoZone;
 
-        if (editModeManager != null) {
-            if (isGlissandoPlaceholder(previewElement)) {
-                // No note-head preview for glissando tool — renderPreviewElement draws the preview line.
-                lc.repaint();
-                return;
-            }
+        if (isGlissandoPlaceholder(previewElement)) {
+            // No note-head preview for glissando tool — renderPreviewElement draws the preview line.
+            lc.repaint();
+            return;
+        }
 
-            // Always show the ghost preview — even when hovering over an existing element head.
-            // The preview shows the user what pitch/type will replace the existing element.
-            editModeManager.setPreviewElementVisible(true);
+        // Always show the ghost preview — even when hovering over an existing element head.
+        // The preview shows the user what pitch/type will replace the existing element.
+        EditModeManager.setPreviewElementVisible(true);
 
-            // Rests snap to their default staff position; pitched notes follow the mouse Y
-            if (previewElement != null) {
-                applyStaffPosition(previewElement, staffPosition);
-            }
+        // Rests snap to their default staff position; pitched notes follow the mouse Y
+        if (previewElement != null) {
+            applyStaffPosition(previewElement, staffPosition);
         }
 
         // Repaint this line
@@ -546,29 +534,25 @@ public final class PreviewElementManager {
             return;
         }
 
-        var editModeManager = EditModeManager.getInstance();
+        var previewElement = EditModeManager.getPreviewElement();
 
-        if (editModeManager != null) {
-            var previewElement = editModeManager.getPreviewElement();
+        if (isGlissandoPlaceholder(previewElement)) {
+            var zoneType = currentGlissandoZone;
 
-            if (isGlissandoPlaceholder(previewElement)) {
-                var zoneType = currentGlissandoZone;
-
-                if (zoneType == null) {
-                    return;  // No valid zone = click is a no-op
-                }
-
-                var noteIndex = currentXIndex - 1;
-                var sourceNote = line.getElement(noteIndex);
-
-                line.withModification(() -> line.modifyElement(
-                    noteIndex,
-                    ElementField.GLISSANDO,
-                    () -> sourceNote.setGlissando(zoneType)
-                ));
-                lc.repaint();
-                return;  // Stay in glissando mode
+            if (zoneType == null) {
+                return;  // No valid zone = click is a no-op
             }
+
+            var noteIndex = currentXIndex - 1;
+            var sourceNote = line.getElement(noteIndex);
+
+            line.withModification(() -> line.modifyElement(
+                noteIndex,
+                ElementField.GLISSANDO,
+                () -> sourceNote.setGlissando(zoneType)
+            ));
+            lc.repaint();
+            return;  // Stay in glissando mode
         }
 
         // Belt-and-braces: block clicks that would try to insert past the auto-maintained
@@ -581,9 +565,7 @@ public final class PreviewElementManager {
 
         // Route a direct click on the terminal to replaceTerminal when the active preview
         // element can legally replace it. This bypasses the normal insertion path entirely.
-        if (xPosSsMatchesElement && editModeManager != null) {
-            var previewElement = editModeManager.getPreviewElement();
-
+        if (xPosSsMatchesElement) {
             if (previewElement != null
                     && isDirectClickOnTerminal(song, line, currentXIndex)
                     && song.canReplaceTerminal(previewElement.getType())) {
@@ -620,13 +602,11 @@ public final class PreviewElementManager {
     static void mouseEnteredLine(LineComponent lc) {
         currentMouseLine = lc;
 
-        var editModeManager = EditModeManager.getInstance();
-
-        if (shouldHandlePreviewElement(lc) && editModeManager != null) {
-            var previewElement = editModeManager.getPreviewElement();
+        if (shouldHandlePreviewElement(lc)) {
+            var previewElement = EditModeManager.getPreviewElement();
 
             if (!isGlissandoPlaceholder(previewElement)) {
-                editModeManager.setPreviewElementVisible(true);
+                EditModeManager.setPreviewElementVisible(true);
             }
         }
     }
@@ -643,11 +623,7 @@ public final class PreviewElementManager {
             clearPreviewElement();
         }
 
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null) {
-            editModeManager.setPreviewElementVisible(false);
-        }
+        EditModeManager.setPreviewElementVisible(false);
     }
 
     // ==========================================================================
@@ -703,9 +679,7 @@ public final class PreviewElementManager {
      * Requires: edit mode enabled, MOUSE control, NOTE_EDIT mode, and a preview element set.
      */
     private static boolean shouldHandlePreviewElement(LineComponent lc) {
-        var editModeManager = EditModeManager.getInstance();
-
-        if (!lc.isEditMode() || editModeManager == null || !editModeManager.hasPreviewElement()) {
+        if (!lc.isEditMode() || !EditModeManager.hasPreviewElement()) {
             return false;
         }
 
@@ -789,13 +763,7 @@ public final class PreviewElementManager {
      */
     @Nullable
     private static StaffElement getActivePreviewElement() {
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager == null) {
-            return null;
-        }
-
-        return editModeManager.getPreviewElement();
+        return EditModeManager.getPreviewElement();
     }
 
     /**
@@ -834,17 +802,14 @@ public final class PreviewElementManager {
      * @param line The line to add the element to
      */
     private static void addPreviewElement(LineComponent lc, Line line) {
-        var score = lc.getScoreView();
         var previewElement = getActivePreviewElement();
 
         if (previewElement == null) {
             return;
         }
 
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null && editModeManager.elementWasModified(line, line.elementCount())) {
-            editModeManager.previewElementDidChange(line, line.elementCount() - 1);
+        if (EditModeManager.elementWasModified(line, line.elementCount())) {
+            EditModeManager.previewElementDidChange(line, line.elementCount() - 1);
             return;
         }
 
@@ -859,9 +824,7 @@ public final class PreviewElementManager {
 
         applyAutomaticBeaming(line, line.elementCount() - 1);
 
-        if (editModeManager != null) {
-            editModeManager.previewElementDidChange(line, line.elementCount() - 1);
-        }
+        EditModeManager.previewElementDidChange(line, line.elementCount() - 1);
     }
 
     @Nullable
@@ -872,10 +835,8 @@ public final class PreviewElementManager {
             return null;
         }
 
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null && editModeManager.elementWasModified(line, elementIndex)) {
-            editModeManager.previewElementDidChange(line, elementIndex);
+        if (EditModeManager.elementWasModified(line, elementIndex)) {
+            EditModeManager.previewElementDidChange(line, elementIndex);
             return null;
         }
 
@@ -888,8 +849,6 @@ public final class PreviewElementManager {
         if (previewElement == null) {
             return;
         }
-
-        var editModeManager = EditModeManager.getInstance();
 
         // If inserting into a tuplet, remove it — the new element changes the rhythmic grouping.
         // The subsequent removeSpan call handles the remaining span sets (beamings, ties, etc.).
@@ -926,9 +885,7 @@ public final class PreviewElementManager {
 
         applyAutomaticBeaming(line, xIndex);
 
-        if (editModeManager != null) {
-            editModeManager.previewElementDidChange(line, xIndex);
-        }
+        EditModeManager.previewElementDidChange(line, xIndex);
     }
 
     /**
@@ -1003,8 +960,6 @@ public final class PreviewElementManager {
         if (previewElement == null) {
             return;
         }
-
-        var editModeManager = EditModeManager.getInstance();
 
         // Deep-copy the existing element under the new type to carry over all decorations
         // (fermata, trill, annotation, tempo/beat change, articulations, attachments, lyrics,
@@ -1095,8 +1050,6 @@ public final class PreviewElementManager {
             elementIndex--;
         }
 
-        if (editModeManager != null) {
-            editModeManager.previewElementDidChange(line, elementIndex);
-        }
+        EditModeManager.previewElementDidChange(line, elementIndex);
     }
 }

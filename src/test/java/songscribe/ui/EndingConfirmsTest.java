@@ -49,7 +49,7 @@ import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
-import songscribe.ui.edit.EditModeManager;
+
 import songscribe.ui.layout.Ending;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -156,7 +156,6 @@ class EndingConfirmsTest extends UnitTest {
         return new ScoreViewController(
             score,
             new MusicEditOperations(song, coordinator),
-            mock(EditModeManager.class),
             coordinator,
             mock(ClipboardManager.class)
         );

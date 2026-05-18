@@ -211,12 +211,7 @@ class NoteDragHandler {
         dragPressScreenYPx = e.getYOnScreen();
 
         PreviewElementManager.clearPreviewElement();
-
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null) {
-            editModeManager.setPreviewElementVisible(false);
-        }
+        EditModeManager.setPreviewElementVisible(false);
 
         dragActive = true;
         lc.repaint();

@@ -22,6 +22,7 @@ package songscribe.ui.edit;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.error.RuntimeError;
 import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -41,21 +42,32 @@ import songscribe.ui.selection.SelectionCoordinator;
  */
 public final class EditModeManager {
 
-    // Static instance for global access (temporary approach for Phase 2 refactoring)
     @Nullable
-    private static EditModeManager instance = null;
+    private static EditModeManager INSTANCE;
 
     /**
-     * Returns the current EditModeManager instance.
-     * <p>
-     * This static accessor allows components to access the edit mode state
-     * without requiring explicit wiring through the component hierarchy.
+     * Creates the singleton instance and wires it to the given dependencies.
+     * Must be called exactly once, during ScoreView construction.
      *
-     * @return The current instance, or null if not yet created
+     * @param clipboardManager The clipboard manager for paste operations
+     * @param selectionCoordinator The selection coordinator for selection operations
+     * @param scoreActions Callback interface for ScoreView actions
      */
-    @Nullable
-    public static EditModeManager getInstance() {
-        return instance;
+    public static void init(
+        ClipboardManager clipboardManager,
+        SelectionCoordinator selectionCoordinator,
+        ScoreActions scoreActions
+    ) {
+        INSTANCE = new EditModeManager(clipboardManager, selectionCoordinator, scoreActions);
+    }
+
+    /** Returns the initialized instance; throws if {@link #init} has not been called. */
+    private static EditModeManager instance() {
+        if (INSTANCE == null) {
+            throw RuntimeError.exit("EditModeManager not initialized — call init() first");
+        }
+
+        return INSTANCE;
     }
 
     private final ScoreActions scoreActions;
@@ -71,29 +83,20 @@ public final class EditModeManager {
     // Whether to play a note sound when inserting elements
     private boolean playInsertedNote = true;
 
-    /**
-     * Creates a new EditModeManager and registers it as the global instance.
-     *
-     * @param clipboardManager The clipboard manager for paste operations
-     * @param selectionCoordinator The selection coordinator for selection operations
-     * @param scoreActions Callback interface for ScoreView actions
-     */
-    public EditModeManager(
+    private EditModeManager(
         ClipboardManager clipboardManager,
         SelectionCoordinator selectionCoordinator,
         ScoreActions scoreActions
     ) {
-        // Dependencies
         this.scoreActions = scoreActions;
         graceModeManager = new GraceModeManager(this, selectionCoordinator);
-        instance = this;
     }
 
     /**
      * Returns the GraceModeManager that manages grace note pairing.
      */
-    public GraceModeManager getGraceModeManager() {
-        return graceModeManager;
+    public static GraceModeManager getGraceModeManager() {
+        return instance().graceModeManager;
     }
 
     // -------------------------------------------------------------------------
@@ -103,8 +106,8 @@ public final class EditModeManager {
     /**
      * Returns whether the preview element is currently visible.
      */
-    public boolean isPreviewElementVisible() {
-        return previewElementIsVisible;
+    public static boolean isPreviewElementVisible() {
+        return instance().previewElementIsVisible;
     }
 
     /**
@@ -112,16 +115,16 @@ public final class EditModeManager {
      *
      * @param visible true to show the preview element, false to hide it
      */
-    public void setPreviewElementVisible(boolean visible) {
-        previewElementIsVisible = visible;
+    public static void setPreviewElementVisible(boolean visible) {
+        instance().previewElementIsVisible = visible;
     }
 
     /**
      * Returns the current preview element, or null if no preview element is set.
      */
     @Nullable
-    public StaffElement getPreviewElement() {
-        return previewElement;
+    public static StaffElement getPreviewElement() {
+        return instance().previewElement;
     }
 
     /**
@@ -129,22 +132,22 @@ public final class EditModeManager {
      *
      * @param previewElement The element to set as the preview element, or null to clear it
      */
-    public void setPreviewElement(@Nullable StaffElement previewElement) {
-        this.previewElement = previewElement;
+    public static void setPreviewElement(@Nullable StaffElement previewElement) {
+        instance().previewElement = previewElement;
     }
 
     /**
      * Returns whether a preview element is currently set.
      */
-    public boolean hasPreviewElement() {
-        return previewElement != null;
+    public static boolean hasPreviewElement() {
+        return instance().previewElement != null;
     }
 
     /**
      * Returns whether to play inserted notes.
      */
-    public boolean isPlayInsertedNote() {
-        return playInsertedNote;
+    public static boolean isPlayInsertedNote() {
+        return instance().playInsertedNote;
     }
 
     /**
@@ -152,8 +155,8 @@ public final class EditModeManager {
      *
      * @param playInsertedNote true to play inserted notes, false otherwise
      */
-    public void setPlayInsertedNote(boolean playInsertedNote) {
-        this.playInsertedNote = playInsertedNote;
+    public static void setPlayInsertedNote(boolean playInsertedNote) {
+        instance().playInsertedNote = playInsertedNote;
     }
 
     // -------------------------------------------------------------------------
@@ -165,7 +168,7 @@ public final class EditModeManager {
      *
      * @return The newly created preview element
      */
-    public StaffElement makePreviewElement() {
+    public static StaffElement makePreviewElement() {
         var elementType = ElementType.CROTCHET;
         var durationAction = Actions.DURATION_ACTION_GROUP.getSelected();
 
@@ -188,7 +191,7 @@ public final class EditModeManager {
      * @param elementType The type of element to create
      * @return The newly created preview element
      */
-    public StaffElement makePreviewElement(ElementType elementType) {
+    public static StaffElement makePreviewElement(ElementType elementType) {
         // Make a new element or rest of the given type
         var type = elementType;
 
@@ -206,7 +209,7 @@ public final class EditModeManager {
      *
      * @param element The element to decorate
      */
-    public void decorateElement(StaffElement element) {
+    public static void decorateElement(StaffElement element) {
         var dotAction = Actions.DOT_ACTION_GROUP.getSelected();
         element.setDotCount(
             (dotAction != null) ? dotAction.getDotLevel().ordinal() + 1 : 0
@@ -260,15 +263,15 @@ public final class EditModeManager {
      * @param elementIndex The index at which to insert
      * @return true if the element was modified, false if normal insertion should proceed
      */
-    public boolean elementWasModified(Line line, int elementIndex) {
-        if (previewElement == null) {
+    public static boolean elementWasModified(Line line, int elementIndex) {
+        if (instance().previewElement == null) {
             return false;
         }
 
-        scoreActions.clearSelection();
+        instance().scoreActions.clearSelection();
 
         if (
-            (previewElement.getType() == ElementType.REPEAT_LEFT) &&
+            (instance().previewElement.getType() == ElementType.REPEAT_LEFT) &&
                 ((elementIndex - 1) >= 0) &&
                 (line.getElement(elementIndex - 1).getType() == ElementType.REPEAT_RIGHT)
         ) {
@@ -279,7 +282,7 @@ public final class EditModeManager {
         }
 
         if (
-            (previewElement.getType() == ElementType.REPEAT_RIGHT) &&
+            (instance().previewElement.getType() == ElementType.REPEAT_RIGHT) &&
                 (elementIndex < line.elementCount()) &&
                 (line.getElement(elementIndex).getType() == ElementType.REPEAT_LEFT)
         ) {
@@ -292,16 +295,16 @@ public final class EditModeManager {
         return false;
     }
 
-    public void previewElementDidChange(Line line, int elementIndex) {
-        if (previewElement == null) {
+    public static void previewElementDidChange(Line line, int elementIndex) {
+        if (instance().previewElement == null) {
             return;
         }
 
         // Capture the inserted element before previewElement is updated for the next insertion.
         var insertedElement = line.getElement(elementIndex);
-        var shouldPlayNote = playInsertedNote && insertedElement.getType().isNote();
+        var shouldPlayNote = instance().playInsertedNote && insertedElement.getType().isNote();
 
-        var nextElement = previewElement.getType().newInstance();
+        var nextElement = instance().previewElement.getType().newInstance();
 
         // After inserting an element, turn off fermata and accidental parentheses
         Actions.FERMATA_ACTION.setSelected(false);
@@ -309,9 +312,9 @@ public final class EditModeManager {
 
         // Add any other element decorations
         decorateElement(nextElement);
-        scoreActions.setPreviewElement(nextElement);
-        scoreActions.drawWidthIfWiderLine(line, false);
-        scoreActions.repaint();
+        instance().scoreActions.setPreviewElement(nextElement);
+        instance().scoreActions.drawWidthIfWiderLine(line, false);
+        instance().scoreActions.repaint();
 
         if (shouldPlayNote) {
             new PlayThread(insertedElement.getPitch()).start();
