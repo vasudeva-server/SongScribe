@@ -610,7 +610,7 @@ public class MainFrame extends JFrame implements Printable {
             true,
             new ExtensionFileFilter(
                 Strings.get(Strings.FILTER_SONGSCRIBE),
-                FileExtensions.SONGWRITER.substring(1)
+                FileExtensions.SONGWRITER
             )
         );
 
