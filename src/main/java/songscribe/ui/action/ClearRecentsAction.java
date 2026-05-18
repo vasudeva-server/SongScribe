@@ -41,6 +41,6 @@ public final class ClearRecentsAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        RecentDocumentsManager.getInstance().clear();
+        RecentDocumentsManager.clear();
     }
 }

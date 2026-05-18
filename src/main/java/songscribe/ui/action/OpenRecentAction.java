@@ -49,7 +49,7 @@ public class OpenRecentAction extends UIAction {
                 Strings.ERROR_FILE_NOT_FOUND,
                 path.getFileName()
             );
-            RecentDocumentsManager.getInstance().remove(path);
+            RecentDocumentsManager.remove(path);
             return;
         }
 

@@ -169,7 +169,7 @@ public class MenuController {
 
     private void rebuildOpenRecentMenu() {
         openRecentMenu.removeAll();
-        var recents = RecentDocumentsManager.getInstance().getRecents();
+        var recents = RecentDocumentsManager.getRecents();
 
         if (recents.isEmpty()) {
             var noRecentItem = new JMenuItem(Strings.get(Strings.MENU_FILE_NO_RECENT_DOCUMENTS));

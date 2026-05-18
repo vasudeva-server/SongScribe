@@ -626,14 +626,13 @@ public class MainFrame extends JFrame implements Printable {
             return;
         }
 
-        var recents = RecentDocumentsManager.getInstance();
         var path = file.toPath().toAbsolutePath();
         var opened = scoreView.openFile(file, true);
 
         if (opened) {
-            recents.add(path);
+            RecentDocumentsManager.add(path);
         } else {
-            recents.remove(path);
+            RecentDocumentsManager.remove(path);
         }
     }
 
@@ -773,7 +772,7 @@ public class MainFrame extends JFrame implements Printable {
         var saved = saveCurrentFile();
 
         if (saved) {
-            RecentDocumentsManager.getInstance().add(saveFile.toPath().toAbsolutePath());
+            RecentDocumentsManager.add(saveFile.toPath().toAbsolutePath());
         }
 
         return saved;

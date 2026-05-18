@@ -58,44 +58,40 @@ public final class RecentDocumentsManager {
         }
     }
 
-    public static RecentDocumentsManager getInstance() {
-        return INSTANCE;
+    public static List<Path> getRecents() {
+        return List.copyOf(INSTANCE.paths);
     }
 
-    public List<Path> getRecents() {
-        return List.copyOf(paths);
-    }
-
-    public void add(Path absolutePath) {
+    public static void add(Path absolutePath) {
         var normalized = absolutePath.normalize();
 
-        paths.remove(normalized);
-        paths.addFirst(normalized);
+        INSTANCE.paths.remove(normalized);
+        INSTANCE.paths.addFirst(normalized);
 
-        while (paths.size() > MAX_SIZE) {
-            paths.removeLast();
+        while (INSTANCE.paths.size() > MAX_SIZE) {
+            INSTANCE.paths.removeLast();
         }
 
         persist();
         MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
-    public void remove(Path absolutePath) {
+    public static void remove(Path absolutePath) {
         var normalized = absolutePath.normalize();
 
-        paths.remove(normalized);
+        INSTANCE.paths.remove(normalized);
         persist();
         MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
-    public void clear() {
-        paths.clear();
+    public static void clear() {
+        INSTANCE.paths.clear();
         persist();
         MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
-    private void persist() {
-        var strings = paths.stream().map(Path::toString).toList();
+    private static void persist() {
+        var strings = INSTANCE.paths.stream().map(Path::toString).toList();
         Prefs.getInstance().putStringList(PrefsKey.RECENT_FILES, strings);
     }
 }
