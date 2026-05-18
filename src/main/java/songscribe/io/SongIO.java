@@ -55,6 +55,12 @@ public final class SongIO {
     // be imported by LegacyLyricsImporter instead.
     private static final int PER_NOTE_LYRIC_VERSION = 6;
 
+    // Minimum linewidth value that can only be a pixel measurement, not staff spaces.
+    // Used to detect v2.1–2.2 files written by a buggy writer that stored linewidth
+    // as px floats instead of ss despite the format declaring ss storage from v2.1.
+    // Valid ss values are well below this; observed buggy px values are 700+.
+    private static final double LEGACY_LINE_WIDTH_PX_MIN = 400.0;
+
     // version 1.0
     private static final String XML_SONG = "song";
     private static final String XML_COMPOSITION_LEGACY = "composition";
@@ -644,6 +650,13 @@ public final class SongIO {
 
                 // Line-level pixel-to-ss conversion
                 FormatMigrator.migratePixelsToStaffSpace(parsedLines);
+            }
+
+            // Some v2.1–v2.2 files were written by a buggy writer that stored
+            // linewidth as a pixel float despite the format declaring ss from v2.1.
+            // Correct ss values are always below LEGACY_LINE_WIDTH_PX_MIN.
+            if (majorVersion == 2 && minorVersion < 3 && lineWidthSs >= LEGACY_LINE_WIDTH_PX_MIN) {
+                lineWidthSs /= ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
             }
 
             // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
