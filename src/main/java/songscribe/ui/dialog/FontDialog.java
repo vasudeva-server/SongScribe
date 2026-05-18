@@ -21,10 +21,13 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.dialog.fontchooser.FontChooser;
+import songscribe.util.UIUtils;
 
 public class FontDialog extends StandardDialog {
 
@@ -37,7 +40,15 @@ public class FontDialog extends StandardDialog {
         super(Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE));
         selectedFont = initialFont;
 
+        // Padding applied here rather than via getContentPaddingKey() so the button
+        // panel isn't indented by contentPanel's border insets, preventing extra side padding.
+        chooser.setBorder(UIUtils.spacingBorder(FlatLafKeys.DIALOG_STD_BUTTONS_PADDING));
         contentPanel.add(chooser, BorderLayout.CENTER);
+    }
+
+    @Override
+    protected @Nullable String getContentPaddingKey() {
+        return null;
     }
 
     @Override
