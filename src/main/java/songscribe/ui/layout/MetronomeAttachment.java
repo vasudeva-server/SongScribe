@@ -47,7 +47,7 @@ public abstract class MetronomeAttachment extends Attachment {
 
     /** Bounding box of the quarter note metronome glyph (the tallest common tempo note). */
     private static final BBox QUARTER_NOTE_BBOX =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.MET_NOTE_QUARTER_UP);
+        SMuFLMetadata.requireBBox(SMuFLGlyph.MET_NOTE_QUARTER_UP);
 
     /** " = " in tempo markings and beat changes. */
     public static final String EQUALS_STR = " = ";
@@ -95,25 +95,25 @@ public abstract class MetronomeAttachment extends Attachment {
      * Returns the advance width in staff spaces of one augmentation dot step (gap or dot itself).
      * The layout reserves two of these per dotted note: one gap before the dot, one for the dot.
      */
-    public static double dotAdvanceWidthSs(SMuFLMetadata metadata) {
-        return metadata.requireAdvanceWidth(SMuFLGlyph.MET_AUGMENTATION_DOT) * NOTE_SCALE;
+    public static double dotAdvanceWidthSs() {
+        return SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.MET_AUGMENTATION_DOT) * NOTE_SCALE;
     }
 
     /**
      * Returns the advance width in staff spaces for the given note glyph plus any augmentation dot.
      * Returns 0 if the note type has no metronome glyph.
      */
-    public static double noteWidthSs(StaffElement note, SMuFLMetadata metadata) {
+    public static double noteWidthSs(StaffElement note) {
         var glyph = metronomeGlyphFor(note.getType());
 
         if (glyph == null) {
             return 0;
         }
 
-        var widthSs = metadata.requireAdvanceWidth(glyph) * NOTE_SCALE;
+        var widthSs = SMuFLMetadata.requireAdvanceWidth(glyph) * NOTE_SCALE;
 
         if (note.getDotCount() > 0) {
-            widthSs += 2 * dotAdvanceWidthSs(metadata);
+            widthSs += 2 * dotAdvanceWidthSs();
         }
 
         return widthSs;

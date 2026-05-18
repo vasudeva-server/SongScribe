@@ -66,10 +66,10 @@ public class NoteAttachedStacker {
     public static final double TIE_DECORATION_MARGIN_SS = 0.25;  // 2px
     // Precomposed accent+staccato glyph dimensions (staff-space units)
     private static final double ACCENT_STACCATO_WIDTH_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).width();
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).width();
 
     private static final double ACCENT_STACCATO_HEIGHT_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).height();
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).height();
 
     // Minimum number of Bezier samples when seeding tie bounds into extents.
     // Ensures adequate curve resolution even for short ties.

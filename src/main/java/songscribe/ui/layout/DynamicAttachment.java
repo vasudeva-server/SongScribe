@@ -152,7 +152,7 @@ public class DynamicAttachment extends Attachment {
             return DEFAULT_WIDTH_SS;
         }
 
-        return SMuFLMetadata.getInstance().requireBBox(glyph).width();
+        return SMuFLMetadata.requireBBox(glyph).width();
     }
 
     /**
@@ -166,7 +166,7 @@ public class DynamicAttachment extends Attachment {
             return DEFAULT_HEIGHT_SS;
         }
 
-        return SMuFLMetadata.getInstance().requireBBox(glyph).height();
+        return SMuFLMetadata.requireBBox(glyph).height();
     }
 
     @Override

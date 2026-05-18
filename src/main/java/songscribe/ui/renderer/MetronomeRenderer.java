@@ -137,10 +137,9 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
         Font attrFont,
         Color color
     ) {
-        var metadata = SMuFLMetadata.getInstance();
         var note = duration.getNote();
         var metGlyph = requireMetronomeGlyph(note.getType());
-        var glyphOriginYSs = ySs - metadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
+        var glyphOriginYSs = ySs - SMuFLMetadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
         var textBaselineYSs = ySs + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
@@ -148,8 +147,8 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
 
             g2.setFont(TEMPO_NOTE_FONT);
             g2.drawString(metGlyph.asString(), (float) xSs, (float) glyphOriginYSs);
-            xSs += metadata.requireAdvanceWidth(metGlyph) * MetronomeAttachment.NOTE_SCALE;
-            var dotAdvanceSs = MetronomeAttachment.dotAdvanceWidthSs(metadata);
+            xSs += SMuFLMetadata.requireAdvanceWidth(metGlyph) * MetronomeAttachment.NOTE_SCALE;
+            var dotAdvanceSs = MetronomeAttachment.dotAdvanceWidthSs();
             xSs += dotAdvanceSs;
 
             if (note.getDotCount() > 0) {
@@ -188,10 +187,9 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
         double ySs,
         Color color
     ) {
-        var metadata = SMuFLMetadata.getInstance();
         var note = duration.getNote();
         var metGlyph = requireMetronomeGlyph(note.getType());
-        var glyphOriginYSs = ySs - metadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
+        var glyphOriginYSs = ySs - SMuFLMetadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(color);
@@ -199,8 +197,8 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
             g2.drawString(metGlyph.asString(), (float) xSs, (float) glyphOriginYSs);
 
             if (note.getDotCount() > 0) {
-                xSs += metadata.requireAdvanceWidth(metGlyph) * MetronomeAttachment.NOTE_SCALE;
-                xSs += MetronomeAttachment.dotAdvanceWidthSs(metadata);
+                xSs += SMuFLMetadata.requireAdvanceWidth(metGlyph) * MetronomeAttachment.NOTE_SCALE;
+                xSs += MetronomeAttachment.dotAdvanceWidthSs();
                 g2.drawString(
                     SMuFLGlyph.MET_AUGMENTATION_DOT.asString(),
                     (float) xSs,

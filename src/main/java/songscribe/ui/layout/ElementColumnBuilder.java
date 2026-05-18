@@ -69,11 +69,10 @@ public class ElementColumnBuilder {
      * Gap between an accidental and the notehead, in staff-space units.
      */
     public static final double ACCIDENTAL_GAP_SS = 0.25;
-    private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
 
     // Small note head width from SMuFL noteheadBlackSmall bounding box (ss)
     public static final double NOTE_HEAD_SMALL_WIDTH_SS =
-        METADATA.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL).width();
+        SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL).width();
 
     // Half note head width (for left/right extent calculation) (ss)
     static final double HALF_NOTE_HEAD_SS = Engraving.NOTE_HEAD_WIDTH_SS / 2.0;
@@ -259,7 +258,7 @@ public class ElementColumnBuilder {
     }
 
     private static double advanceWidthSs(SMuFLGlyph glyph) {
-        var width = METADATA.getAdvanceWidth(glyph);
+        var width = SMuFLMetadata.getAdvanceWidth(glyph);
         return width != null ? width : 0.0;
     }
 

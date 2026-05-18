@@ -27,7 +27,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.BeatChange;
 import songscribe.music.StaffElement;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -95,13 +94,12 @@ public class BeatChangeAttachment extends MetronomeAttachment {
      */
     @Override
     public ContentMetrics computeContentMetrics(Font attrFont) {
-        var metadata = SMuFLMetadata.getInstance();
         var scale = ScaleContext.getInstance();
         var regions = new ArrayList<CollisionRegion>(3);
 
-        var leftNoteWidthSs = noteWidthSs(beatChange.duration().getNote(), metadata);
+        var leftNoteWidthSs = noteWidthSs(beatChange.duration().getNote());
         var equalsWidthSs = scale.textWidthSs(attrFont, "=");
-        var rightNoteWidthSs = noteWidthSs(beatChange.beat().getNote(), metadata);
+        var rightNoteWidthSs = noteWidthSs(beatChange.beat().getNote());
 
         regions.add(new CollisionRegion(0, 0, leftNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));
 

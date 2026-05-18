@@ -46,13 +46,11 @@ public class Articulation extends LineElement {
     private static final double ACCENT_HEIGHT_SS;
 
     static {
-        var metadata = SMuFLMetadata.getInstance();
-
-        var staccatoBBox = metadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
+        var staccatoBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
         STACCATO_WIDTH_SS = staccatoBBox.width();
         STACCATO_HEIGHT_SS = staccatoBBox.height();
 
-        var accentBBox = metadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
+        var accentBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
         ACCENT_WIDTH_SS = accentBBox.width();
         ACCENT_HEIGHT_SS = accentBBox.height();
     }

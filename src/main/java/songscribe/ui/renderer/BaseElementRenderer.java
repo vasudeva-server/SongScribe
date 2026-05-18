@@ -374,7 +374,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @return the Y coordinate to pass to {@link #drawBravuraGlyph}
      */
     protected static double glyphOriginYFromLayoutTop(double layoutTopYSs, SMuFLGlyph glyph) {
-        var bbox = SMuFLMetadata.getInstance().requireBBox(glyph);
+        var bbox = SMuFLMetadata.requireBBox(glyph);
         return layoutTopYSs - bbox.top();
     }
 

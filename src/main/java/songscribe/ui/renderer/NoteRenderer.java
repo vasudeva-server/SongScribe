@@ -92,7 +92,6 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         NOTE_HEAD.put(ElementType.GRACE_QUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
     }
 
-    private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
 
     // Half the beam thickness in ss, used to tuck beamed stems inside the beam
     // so they don't peek past the outer edge when the beam is angled.
@@ -106,7 +105,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     static final float DOT_SPACING_SS;
 
     static {
-        var advanceWidth = METADATA.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
+        var advanceWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
         DOT_SPACING_SS = (advanceWidth != null) ? advanceWidth.floatValue() + 0.35f : 0.825f;
     }
 
@@ -660,7 +659,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
      */
     private float drawGlyph(Graphics2D g2, SMuFLGlyph glyph, float x) {
         g2.drawString(glyph.asString(), x, 0f);
-        var advanceWidth = METADATA.getAdvanceWidth(glyph);
+        var advanceWidth = SMuFLMetadata.getAdvanceWidth(glyph);
         return x + (advanceWidth != null ? advanceWidth.floatValue() : 0f);
     }
 
@@ -709,12 +708,12 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        baseAccidentalWidthsSs = computeComponentWidths(METADATA, ACCIDENTAL_COMPONENTS);
-        smallAccidentalWidthsSs = computeComponentWidths(METADATA, ACCIDENTAL_COMPONENTS_SMALL);
+        baseAccidentalWidthsSs = computeComponentWidths(ACCIDENTAL_COMPONENTS);
+        smallAccidentalWidthsSs = computeComponentWidths(ACCIDENTAL_COMPONENTS_SMALL);
 
         // Calculate parenthesis widths (advance widths are already in ss)
-        var parensLeftWidth = METADATA.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
-        var parensRightWidth = METADATA.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
+        var parensLeftWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+        var parensRightWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
         var beginParenthesisWidthSs = (parensLeftWidth != null) ? parensLeftWidth.floatValue() : 0f;
         var endParenthesisWidthSs = (parensRightWidth != null) ? parensRightWidth.floatValue() : 0f;
 
@@ -730,7 +729,6 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     }
 
     private static float[] computeComponentWidths(
-        SMuFLMetadata metadata,
         SMuFLGlyph[][] componentTable
     ) {
         var widths = new float[componentTable.length];
@@ -744,7 +742,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
                     width += SPACE_BETWEEN_TWO_ACCIDENTALS_SS;
                 }
 
-                var aw = metadata.getAdvanceWidth(components[c]);
+                var aw = SMuFLMetadata.getAdvanceWidth(components[c]);
                 width += (aw != null) ? aw.floatValue() : 0f;
             }
 
@@ -840,7 +838,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var glyph = note.getType().getSMuFLGlyph();
 
         if (glyph != null) {
-            var bbox = METADATA.getBBox(glyph);
+            var bbox = SMuFLMetadata.getBBox(glyph);
 
             if (bbox != null) {
                 return bbox.right();

@@ -514,20 +514,18 @@ public enum ElementType {
     // ========================================================================
 
     private static void computeElementBoundsSs() {
-        var metadata = SMuFLMetadata.getInstance();
-
-        computeNoteBoundsSs(metadata,
+        computeNoteBoundsSs(
             SEMIBREVE, MINIM, CROTCHET, QUAVER, SEMIQUAVER, DEMI_SEMIQUAVER);
 
-        computeGraceNoteBoundsSs(metadata, GRACE_QUAVER);
+        computeGraceNoteBoundsSs(GRACE_QUAVER);
 
-        computeGlyphBoundsSs(metadata,
+        computeGlyphBoundsSs(
             SEMIBREVE_REST, MINIM_REST, CROTCHET_REST,
             QUAVER_REST, SEMIQUAVER_REST, DEMI_SEMIQUAVER_REST,
             BREATH_MARK);
 
         computeBarlineBoundsSs();
-        computeRepeatBoundsSs(metadata);
+        computeRepeatBoundsSs();
 
         // Glissandos are rendered as lines between two notes — their actual visual
         // extent is context-dependent. These nominal bounds satisfy the non-zero
@@ -545,11 +543,11 @@ public enum ElementType {
         validateElementBounds();
     }
 
-    private static void computeNoteBoundsSs(SMuFLMetadata metadata, ElementType... types) {
+    private static void computeNoteBoundsSs(ElementType... types) {
         for (var type : types) {
             var glyph = SMUFL_GLYPHS.get(type);
-            var bbox = requireBBox(metadata, glyph, type);
-            var anchors = (glyph != null) ? metadata.getAnchors(glyph) : null;
+            var bbox = requireBBox(glyph, type);
+            var anchors = (glyph != null) ? SMuFLMetadata.getAnchors(glyph) : null;
 
             if (anchors != null && anchors.stemUpSE() != null && anchors.stemDownNW() != null) {
                 // Stemmed note
@@ -565,7 +563,7 @@ public enum ElementType {
                 var flagGlyph = getStemUpFlagGlyph(type);
 
                 if (flagGlyph != null) {
-                    var flagBBox = metadata.getBBox(flagGlyph);
+                    var flagBBox = SMuFLMetadata.getBBox(flagGlyph);
 
                     if (flagBBox != null) {
                         width = Math.max(width, stemUpX + flagBBox.right());
@@ -600,14 +598,14 @@ public enum ElementType {
         }
     }
 
-    private static void computeGraceNoteBoundsSs(SMuFLMetadata metadata, ElementType type) {
-        var headBBox = requireBBox(metadata, SMuFLGlyph.NOTEHEAD_BLACK, type);
+    private static void computeGraceNoteBoundsSs(ElementType type) {
+        var headBBox = requireBBox(SMuFLGlyph.NOTEHEAD_BLACK, type);
         double scale = BaseElementRenderer.GRACE_NOTE_SCALE;
 
         var headBottom = headBBox.bottom() * scale;
         var headRight = headBBox.right() * scale;
 
-        var anchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
+        var anchors = SMuFLMetadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
 
         if (anchors == null || anchors.stemUpSE() == null) {
             throw RuntimeError.exit("Missing stem anchors for NOTEHEAD_BLACK (needed for grace notes)");
@@ -619,7 +617,7 @@ public enum ElementType {
         var upTop = stemUpY - NoteRenderer.GRACE_NOTE_STEM_LENGTH_SS;
         var width = headRight;
 
-        var flagBBox = metadata.getBBox(SMuFLGlyph.FLAG_8TH_UP);
+        var flagBBox = SMuFLMetadata.getBBox(SMuFLGlyph.FLAG_8TH_UP);
 
         if (flagBBox != null) {
             width = Math.max(width, stemUpX + flagBBox.right() * scale);
@@ -662,10 +660,10 @@ public enum ElementType {
         topOffsetDownSs = source.topOffsetDownSs;
     }
 
-    private static void computeGlyphBoundsSs(SMuFLMetadata metadata, ElementType... types) {
+    private static void computeGlyphBoundsSs(ElementType... types) {
         for (var type : types) {
             var glyph = SMUFL_GLYPHS.get(type);
-            var bbox = requireBBox(metadata, glyph, type);
+            var bbox = requireBBox(glyph, type);
             type.setSymmetricBounds(bbox.width(), bbox.height(), bbox.top());
         }
     }
@@ -683,7 +681,7 @@ public enum ElementType {
         FINAL_DOUBLE_BARLINE.setSymmetricBounds(thin + thick + sep, staffHeight, topOffset);
     }
 
-    private static void computeRepeatBoundsSs(SMuFLMetadata metadata) {
+    private static void computeRepeatBoundsSs() {
         var lt = LineThickness.getInstance();
         var thin = lt.thinBarlineSs();
         var thick = lt.thickBarlineSs();
@@ -703,8 +701,8 @@ public enum ElementType {
         REPEAT_LEFT_RIGHT.setSymmetricBounds(leftRightWidth, staffHeight, topOffset);
     }
 
-    private static BBox requireBBox(SMuFLMetadata metadata, @Nullable SMuFLGlyph glyph, ElementType context) {
-        var bbox = (glyph != null) ? metadata.getBBox(glyph) : null;
+    private static BBox requireBBox(@Nullable SMuFLGlyph glyph, ElementType context) {
+        var bbox = (glyph != null) ? SMuFLMetadata.getBBox(glyph) : null;
 
         if (bbox == null) {
             throw RuntimeError.exit("Missing SMuFL bounding box for " + glyph + " (needed by " + context + ')');

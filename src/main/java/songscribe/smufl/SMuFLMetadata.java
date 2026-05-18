@@ -54,71 +54,70 @@ public final class SMuFLMetadata {
         advanceWidths = parseAdvanceWidths(root.getAsJsonObject("glyphAdvanceWidths"));
     }
 
-    /** Returns the singleton instance, loading metadata on first access. */
-    public static SMuFLMetadata getInstance() {
+    private static SMuFLMetadata instance() {
         return Holder.INSTANCE;
     }
 
     /** Width of the standard notehead (noteheadBlack) in staff spaces. */
-    public double noteHeadWidthSs() {
+    public static double noteHeadWidthSs() {
         return requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
     }
 
     /** Height of the standard notehead (noteheadBlack) in staff spaces. */
-    public double noteHeadHeightSs() {
+    public static double noteHeadHeightSs() {
         return requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).height();
     }
 
-    SMuFLData getEngravingDefaults() {
-        return engravingDefaults;
+    static SMuFLData getEngravingDefaults() {
+        return instance().engravingDefaults;
     }
 
     /**
      * Returns the bounding box for a glyph, or null if not present in metadata.
      */
     @Nullable
-    public BBox getBBox(SMuFLGlyph glyph) {
-        return bboxes.get(glyph);
+    public static BBox getBBox(SMuFLGlyph glyph) {
+        return instance().bboxes.get(glyph);
     }
 
     /**
      * Returns the anchor points for a glyph, or null if not present in metadata.
      */
     @Nullable
-    public GlyphAnchors getAnchors(SMuFLGlyph glyph) {
-        return anchors.get(glyph);
+    public static GlyphAnchors getAnchors(SMuFLGlyph glyph) {
+        return instance().anchors.get(glyph);
     }
 
     /**
      * Returns the advance width for a glyph, or null if not present in metadata.
      */
     @Nullable
-    public Double getAdvanceWidth(SMuFLGlyph glyph) {
-        return advanceWidths.get(glyph);
+    public static Double getAdvanceWidth(SMuFLGlyph glyph) {
+        return instance().advanceWidths.get(glyph);
     }
 
     /**
      * Returns the bounding box for a glyph, exiting fatally if not present.
      * Use for well-known glyphs whose metadata is guaranteed by the font.
      */
-    public BBox requireBBox(SMuFLGlyph glyph) {
-        return requireMapValue(bboxes, glyph, "bounding box");
+    public static BBox requireBBox(SMuFLGlyph glyph) {
+        return requireMapValue(instance().bboxes, glyph, "bounding box");
     }
 
     /**
      * Returns the anchor points for a glyph, exiting fatally if not present.
      * Use for well-known glyphs whose metadata is guaranteed by the font.
      */
-    public GlyphAnchors requireAnchors(SMuFLGlyph glyph) {
-        return requireMapValue(anchors, glyph, "anchors");
+    public static GlyphAnchors requireAnchors(SMuFLGlyph glyph) {
+        return requireMapValue(instance().anchors, glyph, "anchors");
     }
 
     /**
      * Returns the advance width for a glyph, exiting fatally if not present.
      * Use for well-known glyphs whose metadata is guaranteed by the font.
      */
-    public double requireAdvanceWidth(SMuFLGlyph glyph) {
-        return requireMapValue(advanceWidths, glyph, "advance width");
+    public static double requireAdvanceWidth(SMuFLGlyph glyph) {
+        return requireMapValue(instance().advanceWidths, glyph, "advance width");
     }
 
     private static <V> V requireMapValue(Map<SMuFLGlyph, V> map, SMuFLGlyph glyph, String description) {

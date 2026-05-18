@@ -57,7 +57,7 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
     private static final TrillRenderer INSTANCE = new TrillRenderer();
 
     static {
-        var advanceWidth = SMuFLMetadata.getInstance().getAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
+        var advanceWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
         TRILL_ADVANCE_WIDTH_SS = (advanceWidth != null) ? advanceWidth : DEFAULT_TRILL_ADVANCE_WIDTH_SS;
     }
 
@@ -147,7 +147,7 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
     ) {
         // SMuFL ornamentTrill glyph origin is at the baseline (bottom of glyph).
         // trillTopYSs is the top, so offset down by the glyph height.
-        var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
+        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
         var y = trillTopYSs + bbox.height();
 
         g2.setColor(color);

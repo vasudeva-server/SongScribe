@@ -39,7 +39,7 @@ import songscribe.ui.layout.StaffExtents;
 public final class StackingUtils {
 
     // Note head height from SMuFL noteheadBlack bounding box (staff-space units)
-    private static final double NOTE_HEAD_HEIGHT_SS = SMuFLMetadata.getInstance().noteHeadHeightSs();
+    private static final double NOTE_HEAD_HEIGHT_SS = SMuFLMetadata.noteHeadHeightSs();
 
     static final double NOTE_HEAD_RADIUS_SS = NOTE_HEAD_HEIGHT_SS / 2.0;
 

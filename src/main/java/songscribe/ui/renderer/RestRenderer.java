@@ -71,18 +71,16 @@ public final class RestRenderer extends BaseElementRenderer<StaffElement> {
     private static final float DOT_SPACING_SS;
 
     static {
-        var metadata = SMuFLMetadata.getInstance();
-
         // Compute first dot X for each rest type from its advance width (in ss)
         for (var entry : REST_GLYPHS.entrySet()) {
-            var advanceWidth = metadata.getAdvanceWidth(entry.getValue());
+            var advanceWidth = SMuFLMetadata.getAdvanceWidth(entry.getValue());
 
             if (advanceWidth != null) {
                 FIRST_DOT_X_SS.put(entry.getKey(), (float) (advanceWidth + DOT_GAP_SS));
             }
         }
 
-        var dotAdvanceWidth = metadata.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
+        var dotAdvanceWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
         DOT_SPACING_SS = (dotAdvanceWidth != null) ? dotAdvanceWidth.floatValue() + 0.35f : 0.825f;
     }
 

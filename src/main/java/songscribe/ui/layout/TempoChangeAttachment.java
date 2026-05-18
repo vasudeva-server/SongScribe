@@ -27,7 +27,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -96,7 +95,7 @@ public class TempoChangeAttachment extends MetronomeAttachment {
             return 0;
         }
 
-        return noteWidthSs(tempo.getTempoType().getNote(), SMuFLMetadata.getInstance());
+        return noteWidthSs(tempo.getTempoType().getNote());
     }
 
     private String tempoText() {

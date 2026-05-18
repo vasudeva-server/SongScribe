@@ -116,14 +116,14 @@ class DynamicAttachmentTest extends UnitTest {
         @Test
         void testContentHeightSsDelegatestoSmuflBBox() {
             var attachment = new DynamicAttachment(DynamicType.FORTE);
-            var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.DYNAMIC_FORTE);
+            var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.DYNAMIC_FORTE);
             assertThat(attachment.getContentHeightSs()).isEqualTo(bbox.height());
         }
 
         @Test
         void testContentWidthSsDelegatesToSmuflBBox() {
             var attachment = new DynamicAttachment(DynamicType.FORTE);
-            var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.DYNAMIC_FORTE);
+            var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.DYNAMIC_FORTE);
             assertThat(attachment.getContentWidthSs()).isEqualTo(bbox.width());
         }
 

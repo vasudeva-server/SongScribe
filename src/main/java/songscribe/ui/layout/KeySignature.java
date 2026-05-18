@@ -105,7 +105,7 @@ public class KeySignature extends LineElement {
             return 0;
         }
 
-        return accidentalCount * SMuFLMetadata.getInstance().requireBBox(accidentalGlyph()).width();
+        return accidentalCount * SMuFLMetadata.requireBBox(accidentalGlyph()).width();
     }
 
     @Override
@@ -123,7 +123,7 @@ public class KeySignature extends LineElement {
             return 0;
         }
 
-        return SMuFLMetadata.getInstance().requireBBox(accidentalGlyph()).height();
+        return SMuFLMetadata.requireBBox(accidentalGlyph()).height();
     }
 
     @Override

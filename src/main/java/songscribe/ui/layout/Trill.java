@@ -37,7 +37,7 @@ public class Trill extends RangeElement {
     private static final double TRILL_GLYPH_HEIGHT_SS;
 
     static {
-        var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
+        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
         TRILL_GLYPH_WIDTH_SS = bbox.width();
         TRILL_GLYPH_HEIGHT_SS = bbox.height();
     }

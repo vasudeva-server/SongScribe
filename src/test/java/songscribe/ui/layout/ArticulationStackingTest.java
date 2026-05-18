@@ -111,8 +111,7 @@ class ArticulationStackingTest extends UnitTest {
             .describedAs("accent DecorationLayout should be null in combo mode")
             .isNull();
 
-        var precomposedBBox = SMuFLMetadata.getInstance()
-            .requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE);
+        var precomposedBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE);
 
         assertThat(staccatoLayout.widthSs())
             .isCloseTo(precomposedBBox.width(), within(TOLERANCE));
@@ -250,8 +249,7 @@ class ArticulationStackingTest extends UnitTest {
                 result.getDecorationLayout(note.getArticulations().getFirst()),
                 "staccato DecorationLayout");
 
-            var individualBBox = SMuFLMetadata.getInstance()
-                .requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
+            var individualBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
 
             assertThat(staccatoLayout.widthSs())
                 .isCloseTo(individualBBox.width(), within(TOLERANCE));
@@ -267,8 +265,7 @@ class ArticulationStackingTest extends UnitTest {
                 result.getDecorationLayout(note.getArticulations().getFirst()),
                 "accent DecorationLayout");
 
-            var individualBBox = SMuFLMetadata.getInstance()
-                .requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
+            var individualBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
 
             assertThat(accentLayout.widthSs())
                 .isCloseTo(individualBBox.width(), within(TOLERANCE));

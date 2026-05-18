@@ -47,7 +47,6 @@ class NoteAreaBuilder {
     // Constants and Cached Shapes
     // ==========================================================================
 
-    private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
 
     /** Minimum gap between the note area exit point and the glissando endpoint, in staff spaces. */
     static final double MIN_GAP_SS = 0.3;
@@ -83,7 +82,7 @@ class NoteAreaBuilder {
         NOTEHEAD_WHOLE_SHAPE = GraphicUtils.glyphOutline(font, frc, SMuFLGlyph.NOTEHEAD_WHOLE);
         NOTEHEAD_GRACE_SHAPE = GraphicUtils.glyphOutline(graceFont, frc, SMuFLGlyph.NOTEHEAD_BLACK);
 
-        var accidentalBBox = METADATA.getBBox(SMuFLGlyph.ACCIDENTAL_SHARP);
+        var accidentalBBox = SMuFLMetadata.getBBox(SMuFLGlyph.ACCIDENTAL_SHARP);
         ACCIDENTAL_HEIGHT_SS = accidentalBBox != null ? accidentalBBox.height() : 2.5;
 
         var flagGlyphs = new SMuFLGlyph[]{
@@ -241,7 +240,7 @@ class NoteAreaBuilder {
         boolean beamed,
         boolean upper
     ) {
-        var dotBBox = METADATA.getBBox(SMuFLGlyph.AUGMENTATION_DOT);
+        var dotBBox = SMuFLMetadata.getBBox(SMuFLGlyph.AUGMENTATION_DOT);
 
         if (dotBBox == null) {
             return;

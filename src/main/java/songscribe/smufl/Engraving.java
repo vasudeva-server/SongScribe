@@ -46,8 +46,7 @@ public final class Engraving {
     public static final GlyphAnchors.Anchor NOTEHEAD_HALF_STEM_DOWN_NW;
 
     static {
-        var metadata = SMuFLMetadata.getInstance();
-        var defaults = metadata.getEngravingDefaults();
+        var defaults = SMuFLMetadata.getEngravingDefaults();
 
         BEAM_THICKNESS_SS = defaults.beamThickness();
         BEAM_SPACING_SS = defaults.beamSpacing();
@@ -56,12 +55,12 @@ public final class Engraving {
         LEDGER_LINE_EXTENSION_SS = defaults.legerLineExtension();
         TIE_MIDPOINT_THICKNESS_SS = defaults.tieMidpointThickness();
 
-        NOTE_HEAD_WIDTH_SS = metadata.noteHeadWidthSs();
-        G_CLEF_WIDTH_SS = metadata.requireAdvanceWidth(SMuFLGlyph.G_CLEF);
-        REPEAT_DOTS_ADVANCE_WIDTH_SS = metadata.requireAdvanceWidth(SMuFLGlyph.REPEAT_DOTS);
+        NOTE_HEAD_WIDTH_SS = SMuFLMetadata.noteHeadWidthSs();
+        G_CLEF_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.G_CLEF);
+        REPEAT_DOTS_ADVANCE_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.REPEAT_DOTS);
 
-        var blackAnchors = metadata.requireAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
-        var halfAnchors = metadata.requireAnchors(SMuFLGlyph.NOTEHEAD_HALF);
+        var blackAnchors = SMuFLMetadata.requireAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
+        var halfAnchors = SMuFLMetadata.requireAnchors(SMuFLGlyph.NOTEHEAD_HALF);
         NOTEHEAD_BLACK_STEM_UP_SE = blackAnchors.requireStemUpSE();
         NOTEHEAD_BLACK_STEM_DOWN_NW = blackAnchors.requireStemDownNW();
         NOTEHEAD_HALF_STEM_UP_SE = halfAnchors.requireStemUpSE();

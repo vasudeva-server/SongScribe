@@ -45,22 +45,22 @@ public final class ArticulationRenderer extends BaseElementRenderer<StaffElement
 
     // SMuFL bbox-derived widths in staff-space units
     private static final double ACCENT_BBOX_LEFT_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE).left();
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE).left();
 
     private static final double ACCENT_WIDTH_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE).width();
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE).width();
 
     private static final double STACCATO_BBOX_LEFT_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).left();
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).left();
 
     private static final double STACCATO_WIDTH_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).width();
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).width();
 
     private static final double ACCENT_STACCATO_BBOX_LEFT_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).left();
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).left();
 
     private static final double ACCENT_STACCATO_WIDTH_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).width();
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).width();
 
     // Singleton instance
     private static final ArticulationRenderer INSTANCE = new ArticulationRenderer();
