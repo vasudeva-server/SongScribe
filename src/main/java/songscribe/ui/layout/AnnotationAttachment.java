@@ -24,8 +24,8 @@ import java.awt.Font;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Annotation;
-import songscribe.music.StaffElement;
+import songscribe.model.Annotation;
+import songscribe.model.StaffElement;
 
 /**
  * Represents a text annotation attachment on a note.

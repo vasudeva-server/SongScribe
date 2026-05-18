@@ -27,9 +27,9 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Song;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Song;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
 

@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 
 /**
  * Mutation recording a single element deletion from a line.

@@ -31,9 +31,9 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.music.ArticulationType;
-import songscribe.music.ElementType;
-import songscribe.music.StaffElement;
+import songscribe.model.ArticulationType;
+import songscribe.model.ElementType;
+import songscribe.model.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;

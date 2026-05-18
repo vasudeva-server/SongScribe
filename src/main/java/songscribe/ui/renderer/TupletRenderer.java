@@ -25,8 +25,8 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import songscribe.music.Line;
-import songscribe.music.TupletSpan;
+import songscribe.model.Line;
+import songscribe.model.TupletSpan;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.Tuplet;
 import songscribe.util.GraphicUtils;

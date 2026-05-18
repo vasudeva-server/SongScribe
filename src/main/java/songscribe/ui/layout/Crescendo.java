@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 
 /**
  * A crescendo (gradually getting louder) hairpin marking.

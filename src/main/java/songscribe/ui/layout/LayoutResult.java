@@ -31,9 +31,9 @@ import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Span;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Span;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 
 /**
  * Immutable result of the layout engine containing all positioned elements for rendering.

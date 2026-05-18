@@ -30,10 +30,10 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.music.Song;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Song;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 
 /**
  * Pins {@link LayoutResult#getLineHeightSs()} for the cases called out in

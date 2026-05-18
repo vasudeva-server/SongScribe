@@ -30,9 +30,9 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.music.Song;
-import songscribe.music.ElementType;
-import songscribe.music.KeyType;
+import songscribe.model.Song;
+import songscribe.model.ElementType;
+import songscribe.model.KeyType;
 import songscribe.smufl.Engraving;
 
 @SuppressWarnings("DataFlowIssue")

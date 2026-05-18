@@ -33,8 +33,8 @@ import org.junit.jupiter.api.Test;
 import org.xml.sax.InputSource;
 
 import songscribe.UnitTest;
-import songscribe.music.Song;
-import songscribe.music.Lyric;
+import songscribe.model.Song;
+import songscribe.model.Lyric;
 
 @SuppressWarnings({ "SameReturnValue", "OverlyBroadThrowsClause" })
 class SongIOTest extends UnitTest {

@@ -32,8 +32,8 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
-import songscribe.music.Line;
-import songscribe.music.Song;
+import songscribe.model.Line;
+import songscribe.model.Song;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;

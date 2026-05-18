@@ -28,9 +28,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Annotation;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
+import songscribe.model.Annotation;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;

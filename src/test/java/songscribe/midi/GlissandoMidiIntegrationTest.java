@@ -31,10 +31,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
-import songscribe.music.Tempo;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
+import songscribe.model.Tempo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

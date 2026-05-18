@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.music.DynamicsSpan;
-import songscribe.music.Line;
+import songscribe.model.DynamicsSpan;
+import songscribe.model.Line;
 
 /**
  * Mutation recording the addition of a diminuendo span to a line.

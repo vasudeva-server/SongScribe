@@ -31,9 +31,9 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 
 class GlissandoRendererTest extends UnitTest {
 

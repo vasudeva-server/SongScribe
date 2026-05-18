@@ -26,8 +26,8 @@ import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;

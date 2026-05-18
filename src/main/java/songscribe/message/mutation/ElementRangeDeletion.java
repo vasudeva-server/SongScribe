@@ -22,8 +22,8 @@ package songscribe.message.mutation;
 
 import java.util.List;
 
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 
 /**
  * Mutation recording deletion of a contiguous range of elements from a line.

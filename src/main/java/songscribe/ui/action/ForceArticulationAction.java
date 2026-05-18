@@ -24,8 +24,8 @@ import java.util.EnumSet;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.music.ArticulationType;
-import songscribe.music.StaffElement;
+import songscribe.model.ArticulationType;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.Articulation;
 
 public final class ForceArticulationAction extends NoteOnlyAction {

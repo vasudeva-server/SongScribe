@@ -24,7 +24,7 @@ import java.text.AttributedString;
 import java.util.Map;
 
 import songscribe.Strings;
-import songscribe.music.KeyType;
+import songscribe.model.KeyType;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.renderer.BaseElementRenderer;
 import songscribe.util.MyFontUtils;

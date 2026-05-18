@@ -28,8 +28,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ElementType;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.StaffElement;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;

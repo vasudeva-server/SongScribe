@@ -23,7 +23,7 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Duration;
+import songscribe.model.Duration;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.renderer.BaseElementRenderer;
 

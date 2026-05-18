@@ -26,9 +26,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 
 /**
  * Tests for {@link LyricEditor#isLyricTargetEligible} and the package-private

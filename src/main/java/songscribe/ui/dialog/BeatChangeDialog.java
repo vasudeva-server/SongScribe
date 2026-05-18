@@ -25,9 +25,9 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.music.BeatChange;
-import songscribe.music.Duration;
-import songscribe.music.StaffElement;
+import songscribe.model.BeatChange;
+import songscribe.model.Duration;
+import songscribe.model.StaffElement;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.DurationListCellRenderer;

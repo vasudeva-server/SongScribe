@@ -61,8 +61,8 @@ import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.layout.ScaleContext;
-import songscribe.music.Line;
-import songscribe.music.Lyric;
+import songscribe.model.Line;
+import songscribe.model.Lyric;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
@@ -76,7 +76,7 @@ import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.SelectionCoordinator;
-import songscribe.music.EndingValidationResult;
+import songscribe.model.EndingValidationResult;
 import songscribe.ui.selection.TupletToggleInfo;
 
 /**

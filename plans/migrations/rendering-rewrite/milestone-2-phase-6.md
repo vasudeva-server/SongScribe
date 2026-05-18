@@ -151,7 +151,7 @@ Remove:
 
 Add:
 - `org.jetbrains.annotations.Nullable`
-- `songscribe.music.Note`
+- `songscribe.model.Note`
 - `songscribe.ui.layout2.LayoutResult`
 
 `GlyphAnchors`, `SMuFLGlyph`, `SMuFLMetadata` are no longer needed here (moved to base).

@@ -23,9 +23,9 @@ package songscribe.midi;
 import module java.desktop;
 
 
-import songscribe.music.Song;
-import songscribe.music.ElementType;
-import songscribe.music.Tempo;
+import songscribe.model.Song;
+import songscribe.model.ElementType;
+import songscribe.model.Tempo;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
 

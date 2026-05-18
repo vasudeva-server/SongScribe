@@ -24,7 +24,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 
 /**
  * Abstract base class for elements that span multiple elements.

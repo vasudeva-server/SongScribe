@@ -27,7 +27,7 @@ import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ElementType;
+import songscribe.model.ElementType;
 
 class ElementTypeActionTest extends UnitTest {
 

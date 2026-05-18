@@ -24,11 +24,11 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Span;
-import songscribe.music.SpanSet;
-import songscribe.music.TupletSpan;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Span;
+import songscribe.model.SpanSet;
+import songscribe.model.TupletSpan;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 
 /**
  * Per-line selection state and query methods.

@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import songscribe.UnitTest;
-import songscribe.music.StaffElement.Glissando;
+import songscribe.model.StaffElement.Glissando;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;

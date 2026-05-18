@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ElementType;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.StaffElement;
 import songscribe.smufl.Engraving;
 
 class ElementColumnBuilderTest extends UnitTest {

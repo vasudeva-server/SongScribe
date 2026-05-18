@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.FirstSecondEndingCommand;
-import songscribe.music.EndingValidationResult;
+import songscribe.model.EndingValidationResult;
 import songscribe.ui.component.ScoreViewController;
 
 public final class FirstSecondEndingAction extends UIAction {

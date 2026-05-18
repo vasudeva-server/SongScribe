@@ -19,10 +19,10 @@
 */
 package songscribe.ui.layout;
 
-import songscribe.music.Song;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Song;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 
 /**
  * Shared test fixture for the canonical 7-element ending line layouts used across

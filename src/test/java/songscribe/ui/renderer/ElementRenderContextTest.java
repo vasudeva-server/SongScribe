@@ -27,8 +27,8 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Song;
-import songscribe.music.TieSpan;
+import songscribe.model.Song;
+import songscribe.model.TieSpan;
 import songscribe.ui.component.ScoreView;
 
 class ElementRenderContextTest extends UnitTest {

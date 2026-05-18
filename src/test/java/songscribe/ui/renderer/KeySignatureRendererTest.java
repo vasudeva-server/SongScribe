@@ -28,8 +28,8 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Song;
-import songscribe.music.KeyType;
+import songscribe.model.Song;
+import songscribe.model.KeyType;
 import songscribe.ui.layout.KeySignature;
 
 class KeySignatureRendererTest extends UnitTest {

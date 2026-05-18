@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 
 /**
  * Represents a tie connecting two elements of the same pitch.

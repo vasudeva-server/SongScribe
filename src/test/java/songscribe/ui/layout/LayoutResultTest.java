@@ -32,10 +32,10 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.music.ElementType;
-import songscribe.music.KeyType;
-import songscribe.music.Song;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.KeyType;
+import songscribe.model.Song;
+import songscribe.model.StaffElement;
 import songscribe.smufl.Engraving;
 
 class LayoutResultTest extends UnitTest {

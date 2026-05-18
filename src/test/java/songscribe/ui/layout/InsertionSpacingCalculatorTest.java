@@ -23,7 +23,7 @@ package songscribe.ui.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static songscribe.music.StaffElementFactory.crotchet;
+import static songscribe.model.StaffElementFactory.crotchet;
 
 import java.util.Collections;
 
@@ -31,9 +31,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Song;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
+import songscribe.model.Song;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
 
 class InsertionSpacingCalculatorTest extends UnitTest {
 

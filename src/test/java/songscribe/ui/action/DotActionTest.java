@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ElementType;
+import songscribe.model.ElementType;
 
 class DotActionTest extends UnitTest {
     private final DotAction singleDotAction = DotAction.createDotAction();

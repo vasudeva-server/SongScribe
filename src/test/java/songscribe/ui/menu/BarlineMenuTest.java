@@ -35,8 +35,8 @@ import org.mockito.MockedStatic;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
-import songscribe.music.Song;
-import songscribe.music.ElementType;
+import songscribe.model.Song;
+import songscribe.model.ElementType;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.action.UIAction;

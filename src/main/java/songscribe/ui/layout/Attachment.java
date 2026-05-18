@@ -22,7 +22,7 @@ package songscribe.ui.layout;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 
 /**
  * Abstract base class for elements that attach to staff elements.

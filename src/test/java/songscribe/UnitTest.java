@@ -38,8 +38,8 @@ import org.xml.sax.InputSource;
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
 import songscribe.io.SongLoader;
-import songscribe.music.Line;
-import songscribe.music.Song;
+import songscribe.model.Line;
+import songscribe.model.Song;
 import songscribe.ui.OptionDialogs;
 
 import org.junit.jupiter.api.BeforeAll;

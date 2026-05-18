@@ -22,8 +22,8 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import songscribe.music.BeatChange;
-import songscribe.music.StaffElement;
+import songscribe.model.BeatChange;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.BeatChangeAttachment;
 
 /**

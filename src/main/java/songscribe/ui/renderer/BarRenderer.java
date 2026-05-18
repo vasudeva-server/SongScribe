@@ -25,8 +25,8 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
-import songscribe.music.ElementType;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 

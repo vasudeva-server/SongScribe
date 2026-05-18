@@ -22,7 +22,7 @@ package songscribe.ui.selection;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.TupletSpan;
+import songscribe.model.TupletSpan;
 
 /**
  * Result of {@link LineSelectionState#canToggleTuplet()}.

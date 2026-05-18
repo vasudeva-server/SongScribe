@@ -29,9 +29,9 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;

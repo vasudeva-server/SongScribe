@@ -29,9 +29,9 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.ui.renderer.BaseElementRenderer;
 import songscribe.ui.renderer.LineThickness;

@@ -48,8 +48,8 @@ import org.mockito.ArgumentCaptor;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
-import songscribe.music.Lyric;
-import songscribe.music.Song;
+import songscribe.model.Lyric;
+import songscribe.model.Song;
 import songscribe.ui.layout.LyricRenderMetrics;
 
 @SuppressWarnings({ "OverlyBroadThrowsClause", "DataFlowIssue" })

@@ -27,8 +27,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Song;
-import songscribe.music.ElementType;
+import songscribe.model.Song;
+import songscribe.model.ElementType;
 
 class ClipboardManagerTest extends UnitTest {
 

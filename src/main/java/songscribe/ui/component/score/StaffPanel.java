@@ -28,7 +28,7 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Song;
+import songscribe.model.Song;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.SongLayoutMetricsBuilder;
 import songscribe.ui.layout.LayoutResult;

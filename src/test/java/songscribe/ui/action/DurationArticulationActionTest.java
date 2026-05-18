@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ArticulationType;
-import songscribe.music.ElementType;
+import songscribe.model.ArticulationType;
+import songscribe.model.ElementType;
 import songscribe.ui.layout.Articulation;
 
 class DurationArticulationActionTest extends UnitTest {

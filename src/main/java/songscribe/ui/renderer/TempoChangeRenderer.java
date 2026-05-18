@@ -22,8 +22,8 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import songscribe.music.StaffElement;
-import songscribe.music.Tempo;
+import songscribe.model.StaffElement;
+import songscribe.model.Tempo;
 import songscribe.ui.layout.MetronomeAttachment;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.TempoChangeAttachment;

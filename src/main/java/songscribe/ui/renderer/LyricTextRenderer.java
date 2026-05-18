@@ -26,7 +26,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.SongLayoutMetrics;
 

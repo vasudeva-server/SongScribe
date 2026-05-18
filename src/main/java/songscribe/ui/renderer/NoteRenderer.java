@@ -31,8 +31,8 @@ import java.util.function.BiConsumer;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.ElementType;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.StaffElement;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.Engraving;

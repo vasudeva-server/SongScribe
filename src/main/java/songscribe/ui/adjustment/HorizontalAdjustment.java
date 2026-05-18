@@ -25,10 +25,10 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.DynamicsSpan;
-import songscribe.music.SpanSet;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.DynamicsSpan;
+import songscribe.model.SpanSet;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.renderer.GlissandoRenderer;

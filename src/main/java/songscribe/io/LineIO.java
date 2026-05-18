@@ -27,15 +27,15 @@ import org.jspecify.annotations.Nullable;
 
 import org.xml.sax.Attributes;
 
-import songscribe.music.BeamSpan;
-import songscribe.music.DynamicsSpan;
-import songscribe.music.Span;
-import songscribe.music.SpanSet;
-import songscribe.music.TieSpan;
-import songscribe.music.TupletSpan;
-import songscribe.music.KeyType;
-import songscribe.music.Line;
-import songscribe.music.Song;
+import songscribe.model.BeamSpan;
+import songscribe.model.DynamicsSpan;
+import songscribe.model.Span;
+import songscribe.model.SpanSet;
+import songscribe.model.TieSpan;
+import songscribe.model.TupletSpan;
+import songscribe.model.KeyType;
+import songscribe.model.Line;
+import songscribe.model.Song;
 import songscribe.ui.layout.Ending;
 
 public final class LineIO {

@@ -36,8 +36,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
-import songscribe.music.Song;
-import songscribe.music.ElementType;
+import songscribe.model.Song;
+import songscribe.model.ElementType;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout.SongLayoutMetrics;

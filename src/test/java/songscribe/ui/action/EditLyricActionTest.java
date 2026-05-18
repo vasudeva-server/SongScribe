@@ -28,8 +28,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;

@@ -28,8 +28,8 @@ import java.util.WeakHashMap;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.ElementType;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;

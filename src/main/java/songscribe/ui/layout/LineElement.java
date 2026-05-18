@@ -28,7 +28,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Line;
+import songscribe.model.Line;
 
 /**
  * Abstract base class for elements within a staff line.

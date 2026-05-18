@@ -22,7 +22,7 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.FermataAttachment;

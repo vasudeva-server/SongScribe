@@ -21,7 +21,7 @@
 package songscribe.ui.layout;
 
 
-import songscribe.music.KeyType;
+import songscribe.model.KeyType;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 

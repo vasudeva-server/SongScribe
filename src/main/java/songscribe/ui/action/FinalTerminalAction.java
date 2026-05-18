@@ -23,8 +23,8 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.music.ElementType;
-import songscribe.music.Song;
+import songscribe.model.ElementType;
+import songscribe.model.Song;
 
 /**
  * Action that sets the song's auto-maintained terminal to a specific valid

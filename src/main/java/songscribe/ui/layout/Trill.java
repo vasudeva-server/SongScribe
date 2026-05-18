@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 

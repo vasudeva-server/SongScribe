@@ -24,7 +24,7 @@ import java.util.EnumSet;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
 

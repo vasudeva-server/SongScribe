@@ -23,10 +23,10 @@ package songscribe.ui.layout.stacking;
 import java.util.List;
 
 import songscribe.font.DocumentFontsHolder;
-import songscribe.music.DynamicsSpan;
-import songscribe.music.Line;
+import songscribe.model.DynamicsSpan;
+import songscribe.model.Line;
 
-import songscribe.music.TupletSpan;
+import songscribe.model.TupletSpan;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.Ending;
@@ -152,7 +152,7 @@ public class VerticalStackingCalculator {
      *       base offsets for all decoration elements</li>
      *   <li>{@link Trill#getYPositionSs()}: additional Y offset for trills</li>
      *   <li>{@link Ending#getYPositionSs()}: additional Y offset for endings</li>
-     *   <li>{@link AnnotationAttachment} / {@link songscribe.music.Annotation#getUserYOffsetSs()}:
+     *   <li>{@link AnnotationAttachment} / {@link songscribe.model.Annotation#getUserYOffsetSs()}:
      *       legacy annotation Y offset</li>
      *   <li>{@link DynamicsSpan}: hairpin shifts in staff-space units</li>
      * </ul>

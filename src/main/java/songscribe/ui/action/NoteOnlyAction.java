@@ -22,7 +22,7 @@ package songscribe.ui.action;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 
 /**
  * Abstract base for actions whose attributes apply only to notes

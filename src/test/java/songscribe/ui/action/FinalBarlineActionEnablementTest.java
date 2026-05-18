@@ -34,8 +34,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.music.Song;
-import songscribe.music.ElementType;
+import songscribe.model.Song;
+import songscribe.model.ElementType;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 

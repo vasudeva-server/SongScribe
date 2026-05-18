@@ -19,7 +19,7 @@
  */
 package songscribe.midi;
 
-import songscribe.music.Tempo;
+import songscribe.model.Tempo;
 
 /**
  * The ending tick position and tempo after adding a line (or range) to a MIDI track.

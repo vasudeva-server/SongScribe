@@ -20,18 +20,18 @@
 package songscribe.io;
 
 
-import songscribe.music.Annotation;
-import songscribe.music.DynamicsSpan;
-import songscribe.music.ElementType;
-import songscribe.music.Span;
-import songscribe.music.SpanSet;
-import songscribe.music.TupletSpan;
+import songscribe.model.Annotation;
+import songscribe.model.DynamicsSpan;
+import songscribe.model.ElementType;
+import songscribe.model.Span;
+import songscribe.model.SpanSet;
+import songscribe.model.TupletSpan;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;

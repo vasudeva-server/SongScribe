@@ -20,8 +20,8 @@
 
 package songscribe.midi;
 
-import songscribe.music.ArticulationType;
-import songscribe.music.Song;
+import songscribe.model.ArticulationType;
+import songscribe.model.Song;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
 

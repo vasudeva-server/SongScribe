@@ -26,8 +26,8 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.util.UIUtils;
 import songscribe.message.mutation.ElementField;
-import songscribe.music.Annotation;
-import songscribe.music.StaffElement;
+import songscribe.model.Annotation;
+import songscribe.model.StaffElement;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 

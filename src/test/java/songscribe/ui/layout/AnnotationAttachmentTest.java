@@ -25,8 +25,8 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.music.ElementType;
-import songscribe.music.Song;
+import songscribe.model.ElementType;
+import songscribe.model.Song;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;

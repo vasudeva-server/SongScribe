@@ -25,12 +25,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-import songscribe.music.DynamicsSpan;
-import songscribe.music.Line;
-import songscribe.music.Span;
-import songscribe.music.SpanSet;
-import songscribe.music.StaffElement;
-import songscribe.music.TupletSpan;
+import songscribe.model.DynamicsSpan;
+import songscribe.model.Line;
+import songscribe.model.Span;
+import songscribe.model.SpanSet;
+import songscribe.model.StaffElement;
+import songscribe.model.TupletSpan;
 import songscribe.ui.layout.CollisionRegion;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;

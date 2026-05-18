@@ -23,7 +23,7 @@ package songscribe.ui.selection;
 import java.util.List;
 
 import songscribe.UnitTest;
-import songscribe.music.ElementType;
+import songscribe.model.ElementType;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 

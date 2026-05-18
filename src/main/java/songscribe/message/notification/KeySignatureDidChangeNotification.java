@@ -24,7 +24,7 @@ import songscribe.message.Message;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.KeyType;
+import songscribe.model.KeyType;
 
 public class KeySignatureDidChangeNotification extends Message {
 

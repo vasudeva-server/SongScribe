@@ -25,8 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.StaffExtents;

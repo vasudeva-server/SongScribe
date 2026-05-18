@@ -26,9 +26,9 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import module java.desktop;
 
 import songscribe.error.RuntimeError;
-import songscribe.music.Duration;
-import songscribe.music.ElementType;
-import songscribe.music.StaffElement;
+import songscribe.model.Duration;
+import songscribe.model.ElementType;
+import songscribe.model.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutResult;

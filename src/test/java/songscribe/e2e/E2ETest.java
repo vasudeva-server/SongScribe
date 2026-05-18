@@ -58,7 +58,7 @@ import songscribe.SongScribe;
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
-import songscribe.music.Song;
+import songscribe.model.Song;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;

@@ -29,11 +29,11 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.font.DocumentFontsHolder;
-import songscribe.music.ElementType;
-import songscribe.music.KeyType;
+import songscribe.model.ElementType;
+import songscribe.model.KeyType;
 import songscribe.smufl.Engraving;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 import songscribe.ui.renderer.NoteRenderer;
 

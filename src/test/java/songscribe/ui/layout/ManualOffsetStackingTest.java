@@ -22,7 +22,7 @@ package songscribe.ui.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
-import static songscribe.music.StaffElementFactory.createNote;
+import static songscribe.model.StaffElementFactory.createNote;
 
 import java.util.List;
 
@@ -33,13 +33,13 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.music.Annotation;
-import songscribe.music.Song;
-import songscribe.music.DynamicsSpan;
+import songscribe.model.Annotation;
+import songscribe.model.Song;
+import songscribe.model.DynamicsSpan;
 
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
-import songscribe.music.Tempo;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
+import songscribe.model.Tempo;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 /**

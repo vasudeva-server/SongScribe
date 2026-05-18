@@ -25,8 +25,8 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 
 /**
  * Base dialog for adding, editing, or removing an attachment on a staff element

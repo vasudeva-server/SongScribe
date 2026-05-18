@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.music.BeamSpan;
-import songscribe.music.Line;
+import songscribe.model.BeamSpan;
+import songscribe.model.Line;
 
 /**
  * Mutation recording the removal of a beam span from a line.

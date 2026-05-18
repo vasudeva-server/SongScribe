@@ -26,7 +26,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import module java.desktop;
 
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.ScaleContext;
 

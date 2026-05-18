@@ -35,15 +35,15 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.music.BeamSpan;
-import songscribe.music.DynamicsSpan;
-import songscribe.music.ElementType;
-import songscribe.music.KeyType;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
-import songscribe.music.Tempo;
-import songscribe.music.TieSpan;
-import songscribe.music.TupletSpan;
+import songscribe.model.BeamSpan;
+import songscribe.model.DynamicsSpan;
+import songscribe.model.ElementType;
+import songscribe.model.KeyType;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
+import songscribe.model.Tempo;
+import songscribe.model.TieSpan;
+import songscribe.model.TupletSpan;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.RangeElement;
 

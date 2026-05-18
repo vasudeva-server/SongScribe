@@ -31,8 +31,8 @@ import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.music.Lyric;
-import songscribe.music.StaffElement;
+import songscribe.model.Lyric;
+import songscribe.model.StaffElement;
 import songscribe.ui.component.LyricEditor;
 
 /**

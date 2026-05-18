@@ -29,13 +29,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 
-import songscribe.music.ArticulationType;
-import songscribe.music.BeatChange;
-import songscribe.music.Duration;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.Lyric;
-import songscribe.music.StaffElement;
+import songscribe.model.ArticulationType;
+import songscribe.model.BeatChange;
+import songscribe.model.Duration;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.Lyric;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.DynamicAttachment;
 

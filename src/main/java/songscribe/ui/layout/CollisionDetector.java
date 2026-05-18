@@ -22,7 +22,7 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import songscribe.music.Line;
+import songscribe.model.Line;
 
 /**
  * Detects collisions between layout elements and calculates extent bounds.

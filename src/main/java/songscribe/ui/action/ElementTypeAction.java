@@ -26,8 +26,8 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.music.ElementType;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.StaffElement;
 import songscribe.message.notification.BarWasSelectedNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
 

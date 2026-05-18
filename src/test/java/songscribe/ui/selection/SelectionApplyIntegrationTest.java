@@ -35,10 +35,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ArticulationType;
-import songscribe.music.Song;
-import songscribe.music.ElementType;
-import songscribe.music.StaffElement;
+import songscribe.model.ArticulationType;
+import songscribe.model.Song;
+import songscribe.model.ElementType;
+import songscribe.model.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;

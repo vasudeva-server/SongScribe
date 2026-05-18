@@ -26,7 +26,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.error.RuntimeError;
-import songscribe.music.ElementType;
+import songscribe.model.ElementType;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.AnnotationAttachment;

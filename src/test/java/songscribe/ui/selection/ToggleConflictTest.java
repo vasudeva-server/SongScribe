@@ -26,10 +26,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.BeamSpan;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.TieSpan;
+import songscribe.model.BeamSpan;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.TieSpan;
 
 /**
  * Tests the interplay between beaming and tie toggle availability.

@@ -25,7 +25,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import songscribe.music.Line;
+import songscribe.model.Line;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LineElement;
 import songscribe.util.GraphicUtils;

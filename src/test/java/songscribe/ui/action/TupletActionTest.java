@@ -37,7 +37,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.music.TupletSpan;
+import songscribe.model.TupletSpan;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.selection.TupletToggleInfo;
 

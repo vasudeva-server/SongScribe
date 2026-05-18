@@ -24,9 +24,9 @@ import java.util.Collections;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 
 /**
  * Spacing calculations for element insertion operations using layout2 algorithms.

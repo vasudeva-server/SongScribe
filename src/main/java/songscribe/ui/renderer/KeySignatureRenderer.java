@@ -27,8 +27,8 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.KeyType;
-import songscribe.music.Line;
+import songscribe.model.KeyType;
+import songscribe.model.Line;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.layout.KeySignature;
 import songscribe.ui.layout.StaffExtents;

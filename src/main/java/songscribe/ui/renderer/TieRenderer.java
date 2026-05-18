@@ -26,7 +26,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 import module java.desktop;
 
 
-import songscribe.music.Span;
+import songscribe.model.Span;
 import songscribe.ui.layout.LayoutResult;
 
 /**

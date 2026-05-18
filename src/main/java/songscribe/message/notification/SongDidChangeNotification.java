@@ -27,8 +27,8 @@ import org.jspecify.annotations.Nullable;
 import songscribe.message.Message;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.Mutation;
-import songscribe.music.Song;
-import songscribe.music.Line;
+import songscribe.model.Song;
+import songscribe.model.Line;
 
 /**
  * Posted when one or more mutations have been applied to the song.

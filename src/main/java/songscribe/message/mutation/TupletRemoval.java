@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.music.Line;
-import songscribe.music.TupletSpan;
+import songscribe.model.Line;
+import songscribe.model.TupletSpan;
 
 /**
  * Mutation recording the removal of a tuplet span from a line.

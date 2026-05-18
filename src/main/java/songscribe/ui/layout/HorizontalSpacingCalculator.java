@@ -25,7 +25,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Line;
+import songscribe.model.Line;
 import songscribe.smufl.Engraving;
 import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.NoteRenderer;

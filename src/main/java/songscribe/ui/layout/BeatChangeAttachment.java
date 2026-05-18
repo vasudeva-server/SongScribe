@@ -25,8 +25,8 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.BeatChange;
-import songscribe.music.StaffElement;
+import songscribe.model.BeatChange;
+import songscribe.model.StaffElement;
 import songscribe.util.GraphicUtils;
 
 /**

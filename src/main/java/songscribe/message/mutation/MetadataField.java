@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.music.KeyType;
-import songscribe.music.Tempo;
+import songscribe.model.KeyType;
+import songscribe.model.Tempo;
 
 /**
  * Identifies which metadata field changed in a {@link MetadataChange} mutation.

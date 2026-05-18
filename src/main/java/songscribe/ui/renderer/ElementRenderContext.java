@@ -30,11 +30,11 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
-import songscribe.music.Lyric;
-import songscribe.music.Song;
-import songscribe.music.Span;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Lyric;
+import songscribe.model.Song;
+import songscribe.model.Span;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;

@@ -28,8 +28,8 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.music.BeatChange;
-import songscribe.music.Duration;
+import songscribe.model.BeatChange;
+import songscribe.model.Duration;
 import songscribe.util.GraphicUtils;
 
 class BeatChangeAttachmentTest extends UnitTest {

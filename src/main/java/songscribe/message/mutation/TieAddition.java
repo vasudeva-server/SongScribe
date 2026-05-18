@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.music.Line;
-import songscribe.music.TieSpan;
+import songscribe.model.Line;
+import songscribe.model.TieSpan;
 
 /**
  * Mutation recording the addition of a tie span to a line.

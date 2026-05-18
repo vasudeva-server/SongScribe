@@ -22,7 +22,7 @@ package songscribe.ui.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
-import static songscribe.music.StaffElementFactory.createNote;
+import static songscribe.model.StaffElementFactory.createNote;
 
 import java.util.List;
 
@@ -32,10 +32,10 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.music.ArticulationType;
+import songscribe.model.ArticulationType;
 
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 @SuppressWarnings("DataFlowIssue")

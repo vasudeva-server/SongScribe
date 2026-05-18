@@ -27,8 +27,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ElementType;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.SelectableUIAction;
 

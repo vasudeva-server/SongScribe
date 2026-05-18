@@ -25,7 +25,7 @@ import module java.desktop;
 import java.awt.event.MouseEvent;
 
 import songscribe.Strings;
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;

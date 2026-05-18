@@ -24,7 +24,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 
 /**
  * The fundamental horizontal spacing unit in the engraving system.

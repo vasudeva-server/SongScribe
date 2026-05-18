@@ -28,7 +28,7 @@ import songscribe.Strings;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.message.mutation.ElementField;
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 
 public final class DotAction extends PreviewElementAction implements UIAction.ElementModifiable {
 

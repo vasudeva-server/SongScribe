@@ -56,7 +56,7 @@ import songscribe.message.command.TogglePlayWithRepeatsCommand;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
-import songscribe.music.Song;
+import songscribe.model.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.prefs.RecentDocumentsManager;

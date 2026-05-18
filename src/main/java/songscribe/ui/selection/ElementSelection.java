@@ -20,7 +20,7 @@
 
 package songscribe.ui.selection;
 
-import songscribe.music.Line;
+import songscribe.model.Line;
 
 /**
  * Represents a selection of elements within a staff line.

@@ -22,7 +22,7 @@ package songscribe.ui.layout.stacking;
 
 import java.util.List;
 
-import songscribe.music.StaffElement;
+import songscribe.model.StaffElement;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.CollisionRegion;
 import songscribe.ui.layout.LayoutResult;

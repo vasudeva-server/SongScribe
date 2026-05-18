@@ -27,7 +27,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.ElementType;
+import songscribe.model.ElementType;
 
 class DeselectTest extends UnitTest {
 

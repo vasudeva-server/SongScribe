@@ -23,10 +23,10 @@ package songscribe.ui.edit;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.error.RuntimeError;
-import songscribe.music.ArticulationType;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.model.ArticulationType;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.layout.Articulation;

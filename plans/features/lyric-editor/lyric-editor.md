@@ -112,7 +112,7 @@ Centralize verse-keyed lyric mutation on `StaffElement` so callers cannot accide
 ### Files
 
 **Modified:**
-- `songscribe.music.StaffElement`
+- `songscribe.model.StaffElement`
 
 ### Tests
 
@@ -397,7 +397,7 @@ This is the load-bearing safety phase. The editor's design has no `@Handler` def
 - `LyricEditorActionAuditTest` (or equivalent location)
 
 **Modified:**
-- `songscribe.music.StaffElement` — add `setLyricForVerse(int, SyllableRelation, String, Extend)`.
+- `songscribe.model.StaffElement` — add `setLyricForVerse(int, SyllableRelation, String, Extend)`.
 - `songscribe.ui.layout.LayoutResult` — add `getLyricAnchor`.
 - `songscribe.ui.layout.LyricRenderMetrics` — add `lyricBoxWidthSs`. (Or owner of `scaledLyricsFont`.)
 - `songscribe.ui.layout.LyricBoxLayout` — call `lyricBoxWidthSs` instead of inlining.

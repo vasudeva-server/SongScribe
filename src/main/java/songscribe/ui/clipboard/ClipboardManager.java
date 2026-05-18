@@ -24,9 +24,9 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.ElementType;
-import songscribe.music.SpanSet;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.SpanSet;
+import songscribe.model.StaffElement;
 
 /**
  * Manages clipboard state for copy/paste operations.

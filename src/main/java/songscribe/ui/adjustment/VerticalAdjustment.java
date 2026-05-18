@@ -25,11 +25,11 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.DynamicsSpan;
-import songscribe.music.SpanSet;
+import songscribe.model.DynamicsSpan;
+import songscribe.model.SpanSet;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.MessageCenter;
-import songscribe.music.Line;
+import songscribe.model.Line;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.layout.AnnotationAttachment;

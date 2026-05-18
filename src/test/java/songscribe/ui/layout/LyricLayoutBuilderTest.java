@@ -39,11 +39,11 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.music.Lyric;
-import songscribe.music.Song;
-import songscribe.music.StaffElement;
+import songscribe.model.ElementType;
+import songscribe.model.Line;
+import songscribe.model.Lyric;
+import songscribe.model.Song;
+import songscribe.model.StaffElement;
 import songscribe.smufl.Engraving;
 
 class LyricLayoutBuilderTest extends UnitTest {
