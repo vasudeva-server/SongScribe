@@ -158,15 +158,47 @@ public class SpanSet<T extends Span> {
     }
 
     public void shiftValues(int from, int shift) {
-        for (var iter = spans.listIterator(); iter.hasNext();) {
-            var span = iter.next();
+        if (shift >= 0) {
+            shiftValuesForInsertion(from, shift);
+        } else {
+            shiftValuesForDeletion(from, -shift);
+        }
+    }
 
+    private void shiftValuesForInsertion(int from, int shift) {
+        for (var span : spans) {
             if (span.start >= from) {
                 span.start += shift;
             }
 
             if (span.end >= from) {
                 span.end += shift;
+            }
+        }
+    }
+
+    // When notes in [from, from+count-1] are deleted, surviving indices >
+    // to shift down by count. A span endpoint that falls inside the deleted
+    // range cannot simply shift — its underlying note is gone, so the
+    // endpoint must clamp to the nearest surviving boundary (from for
+    // starts, from-1 for ends). Symmetric shifting would leak the span
+    // across the deletion gap into unrelated notes.
+    private void shiftValuesForDeletion(int from, int count) {
+        var to = (from + count) - 1;
+
+        for (var iter = spans.listIterator(); iter.hasNext();) {
+            var span = iter.next();
+
+            if (span.start > to) {
+                span.start -= count;
+            } else if (span.start >= from) {
+                span.start = from;
+            }
+
+            if (span.end > to) {
+                span.end -= count;
+            } else if (span.end >= from) {
+                span.end = from - 1;
             }
 
             if (span.start >= span.end) {
