@@ -34,6 +34,7 @@ import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.SongLayoutMetricsBuilder;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.Trill;
+import songscribe.ui.renderer.NoteRenderer;
 
 /**
  * Orchestrates the vertical layout pipeline for a staff line.
@@ -86,6 +87,10 @@ public class VerticalStackingCalculator {
         // Initialize structural layer from note-attached layer
         structuralExtents.copyTopFrom(noteAttachedExtents);
 
+        // Must run after copyTopFrom(noteAttachedExtents) so note-attached stackers
+        // (articulations/fermata/trills) ignore accidentals.
+        seedAccidentalsIntoStructural(columns, structuralExtents);
+
         // Tier 3: structural decorations (tuplets, hairpins, dynamics, endings)
         new StructuralStacker(context, structuralExtents).stack();
 
@@ -133,6 +138,47 @@ public class VerticalStackingCalculator {
         builder.setLineHeightSs(lineHeightSs);
         builder.setAboveStaffSs(aboveStaffSs);
         builder.setBelowContentSs(belowContentSs);
+    }
+
+
+    // ---- Accidental seeding ----
+
+    /**
+     * Seeds each note column's accidental bounding box into the structural extents layer.
+     * <p>
+     * Accidental bounds are relative to the notehead glyph origin ({@code column.getXSs()}).
+     * Both top and bottom extents are reserved so structural elements clear the accidental
+     * glyph in both directions (mirroring the symmetry of
+     * {@link NoteAttachedStacker#seedNoteBounds()}).
+     * <p>
+     * Grace notes and notes without accidentals are skipped — they return {@code null}
+     * from {@link NoteRenderer#getAccidentalBoundsSs}.
+     *
+     * @param columns          element columns with X positions already set
+     * @param structuralExtents the structural-layer extents to seed into
+     */
+    static void seedAccidentalsIntoStructural(
+        List<ElementColumn> columns,
+        StaffExtents structuralExtents) {
+
+        for (var column : columns) {
+            var element = column.getElement();
+            var bounds = NoteRenderer.getAccidentalBoundsSs(element);
+
+            if (bounds == null) {
+                continue;
+            }
+
+            // Translate from notehead-relative to absolute staff X.
+            // bounds.leftSs() is negative (accidental is left of the notehead).
+            var accXSs = column.getXSs() + bounds.leftSs();
+
+            // bounds Y values are relative to the note center; shift to staff coordinates.
+            var centerYSs = StaffExtents.spToSs(element.getStaffPosition());
+
+            structuralExtents.ySet(true, accXSs, bounds.widthSs(), bounds.topSs() + centerYSs);
+            structuralExtents.ySet(false, accXSs, bounds.widthSs(), bounds.botSs() + centerYSs);
+        }
     }
 
 

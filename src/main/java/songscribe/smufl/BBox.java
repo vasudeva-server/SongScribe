@@ -39,6 +39,24 @@ public record BBox(double left, double top, double right, double bottom) {
     }
 
     /**
+     * Returns a copy translated horizontally by {@code dx} (Y unchanged).
+     */
+    public BBox translateX(double dx) {
+        return new BBox(left + dx, top, right + dx, bottom);
+    }
+
+    /**
+     * Returns the smallest bounding box containing both {@code this} and {@code other}.
+     */
+    public BBox union(BBox other) {
+        return new BBox(
+            Math.min(left, other.left),
+            Math.min(top, other.top),
+            Math.max(right, other.right),
+            Math.max(bottom, other.bottom));
+    }
+
+    /**
      * Creates a BBox from SMuFL metadata bBoxSW/bBoxNE values, flipping Y
      * from SMuFL's Y-up convention to screen Y-down convention.
      *

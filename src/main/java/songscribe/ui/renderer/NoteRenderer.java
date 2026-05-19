@@ -33,6 +33,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.model.ElementType;
 import songscribe.model.StaffElement;
+import songscribe.smufl.BBox;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.Engraving;
@@ -159,6 +160,10 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     private static float @Nullable [] baseAccidentalWidthsSs = null;
     private static float @Nullable [] baseAccidentalParenthesisWidthsSs = null;
     private static float @Nullable [] smallAccidentalWidthsSs = null;
+    // Cached accidental bounding boxes, indexed by Accidental.ordinal().
+    // Bounds depend only on (ordinal, parenthesized) — see getAccidentalBoundsSs.
+    private static @Nullable AccidentalBounds @Nullable [] baseAccidentalBoundsSs = null;
+    private static @Nullable AccidentalBounds @Nullable [] baseAccidentalParenthesisBoundsSs = null;
 
     // Singleton instance
     private static final NoteRenderer INSTANCE = new NoteRenderer();
@@ -616,51 +621,62 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(MUSIC_FONT);
 
-            var accidentalWidth = getAccidentalWidthSs(note);
-            var x = -ACCIDENTAL_PADDING_SS - accidentalWidth;
-
-            if (note.isAccidentalInParentheses()) {
-                x = drawGlyph(g2, SMuFLGlyph.ACCIDENTAL_PARENS_LEFT, x);
-                x += PAREN_LEFT_KERNING.getOrDefault(components[0], 0f);
-            }
-
-            x = renderAccidentalComponents(g2, components, x);
-
-            if (note.isAccidentalInParentheses()) {
-                x += PAREN_RIGHT_KERNING.getOrDefault(components[components.length - 1], 0f);
-                drawGlyph(g2, SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT, x);
-            }
+            var startX = -ACCIDENTAL_PADDING_SS - getAccidentalWidthSs(note);
+            walkAccidentalGlyphs(
+                components,
+                note.isAccidentalInParentheses(),
+                startX,
+                (glyph, x) -> g2.drawString(glyph.asString(), x, 0f));
         }
     }
 
     /**
-     * Draws accidental component glyphs at the given X position, advancing X by each glyph's width.
-     * Returns the X position after the last glyph.
+     * Visitor for {@link #walkAccidentalGlyphs}: receives each glyph and the X
+     * coordinate at which it would be drawn.
      */
-    private float renderAccidentalComponents(
-        Graphics2D g2,
+    @FunctionalInterface
+    private interface AccidentalGlyphVisitor {
+        void visit(SMuFLGlyph glyph, float xSs);
+    }
+
+    /**
+     * Walks the glyph sequence that renders an accidental (optional left paren,
+     * components, optional right paren), invoking {@code visitor} with each glyph
+     * and its pen-position X. Centralizes the advance-width and kerning bookkeeping
+     * so the draw pass and bounds computation cannot drift apart.
+     */
+    private static void walkAccidentalGlyphs(
         SMuFLGlyph[] components,
-        float x
+        boolean parenthesized,
+        float startX,
+        AccidentalGlyphVisitor visitor
     ) {
+        var x = startX;
+
+        if (parenthesized) {
+            visitor.visit(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT, x);
+            x = advancePast(x, SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+            x += PAREN_LEFT_KERNING.getOrDefault(components[0], 0f);
+        }
+
         for (var i = 0; i < components.length; i++) {
             if (i > 0) {
                 x += SPACE_BETWEEN_TWO_ACCIDENTALS_SS;
             }
 
-            x = drawGlyph(g2, components[i], x);
+            visitor.visit(components[i], x);
+            x = advancePast(x, components[i]);
         }
 
-        return x;
+        if (parenthesized) {
+            x += PAREN_RIGHT_KERNING.getOrDefault(components[components.length - 1], 0f);
+            visitor.visit(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT, x);
+        }
     }
 
-    /**
-     * Draws a single SMuFL glyph at the given X position.
-     * Returns the X position advanced by the glyph's advance width.
-     */
-    private float drawGlyph(Graphics2D g2, SMuFLGlyph glyph, float x) {
-        g2.drawString(glyph.asString(), x, 0f);
-        var advanceWidth = SMuFLMetadata.getAdvanceWidth(glyph);
-        return x + (advanceWidth != null ? advanceWidth.floatValue() : 0f);
+    private static float advancePast(float x, SMuFLGlyph glyph) {
+        var advance = SMuFLMetadata.getAdvanceWidth(glyph);
+        return x + (advance != null ? advance.floatValue() : 0f);
     }
 
     /**
@@ -726,6 +742,51 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
             baseAccidentalParenthesisWidthsSs[i] += parenthesizedAccidentalKerningSs(i);
         }
+
+        // Precompute accidental bounding boxes so getAccidentalBoundsSs is an
+        // array lookup on the layout hot path instead of a SMuFL metadata walk.
+        baseAccidentalBoundsSs = new AccidentalBounds[ACCIDENTAL_COMPONENTS.length];
+        baseAccidentalParenthesisBoundsSs = new AccidentalBounds[ACCIDENTAL_COMPONENTS.length];
+
+        for (var i = 0; i < ACCIDENTAL_COMPONENTS.length; i++) {
+            baseAccidentalBoundsSs[i] = computeAccidentalBounds(
+                ACCIDENTAL_COMPONENTS[i], false, baseAccidentalWidthsSs[i]);
+            baseAccidentalParenthesisBoundsSs[i] = computeAccidentalBounds(
+                ACCIDENTAL_COMPONENTS[i], true, baseAccidentalParenthesisWidthsSs[i]);
+        }
+    }
+
+    /**
+     * Computes the bounding box of an accidental by walking its glyph sequence and
+     * unioning each component's SMuFL bbox at its rendered X position. Returns
+     * {@code null} if no glyph in the sequence has bbox metadata.
+     */
+    private static @Nullable AccidentalBounds computeAccidentalBounds(
+        SMuFLGlyph[] components,
+        boolean parenthesized,
+        float totalWidthSs
+    ) {
+        var startX = -ACCIDENTAL_PADDING_SS - totalWidthSs;
+        var accumulator = new BBox[]{null};
+
+        walkAccidentalGlyphs(components, parenthesized, startX, (glyph, xSs) -> {
+            var bbox = SMuFLMetadata.getBBox(glyph);
+
+            if (bbox == null) {
+                return;
+            }
+
+            var shifted = bbox.translateX(xSs);
+            accumulator[0] = (accumulator[0] == null) ? shifted : accumulator[0].union(shifted);
+        });
+
+        var box = accumulator[0];
+
+        if (box == null) {
+            return null;
+        }
+
+        return new AccidentalBounds(box.left(), box.width(), box.top(), box.bottom());
     }
 
     private static float[] computeComponentWidths(
@@ -785,6 +846,37 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         return note.isAccidentalInParentheses()
             ? parenWidths[ordinal]
             : baseWidths[ordinal];
+    }
+
+    /**
+     * Returns the bounding box of the accidental drawn for a note, in staff-space units.
+     *
+     * <p>Horizontal coordinates are relative to the notehead glyph origin (x = 0).
+     * Vertical coordinates are relative to the note center (y = 0), using Y-down convention.
+     *
+     * <p>Returns {@code null} when the note has no accidental or is a grace note
+     * (grace-note accidentals use a different scale and are handled separately).
+     */
+    public static @Nullable AccidentalBounds getAccidentalBoundsSs(StaffElement note) {
+        var accidental = note.getAccidental();
+
+        if (accidental == null) {
+            return null;
+        }
+
+        if (note.getType().isGraceNote()) {
+            return null;
+        }
+
+        var table = note.isAccidentalInParentheses()
+            ? baseAccidentalParenthesisBoundsSs
+            : baseAccidentalBoundsSs;
+
+        if (table == null) {
+            throw RuntimeError.exit("getAccidentalBoundsSs() called before initializeAccidentalWidths()");
+        }
+
+        return table[accidental.ordinal()];
     }
 
     /**
