@@ -41,7 +41,7 @@ public interface ElementRenderer<T extends LineElement> {
      *
      * @param element The element to render
      * @param g2      The graphics context
-     * @param ctx     Rendering context (fonts, debug mode, etc.)
+     * @param ctx     Rendering context (fonts, etc.)
      */
     void render(T element, Graphics2D g2, ElementRenderContext ctx);
 

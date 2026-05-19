@@ -31,11 +31,6 @@ import module java.desktop;
  */
 public class LayoutAccumulator {
 
-    // Debug flag for collision detection logging (can be enabled via reflection or configuration)
-    private static final boolean DEBUG_COLLISION = Boolean.parseBoolean(
-        System.getProperty("songscribe.debug.collision", "false")
-    );
-
     private final Area accumulatedArea;
 
     public LayoutAccumulator() {
@@ -50,11 +45,6 @@ public class LayoutAccumulator {
     public void add(Rectangle2D rect) {
         var area = new Area(rect);
         accumulatedArea.add(area);
-
-        if (DEBUG_COLLISION) {
-            System.err.printf("[Collision] Added rect: [%.1f, %.1f, %.1f×%.1f]%n",
-                rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
-        }
     }
 
     /**
@@ -64,12 +54,6 @@ public class LayoutAccumulator {
      */
     public void add(Area area) {
         accumulatedArea.add(area);
-
-        if (DEBUG_COLLISION) {
-            var bounds = area.getBounds2D();
-            System.err.printf("[Collision] Added area: [%.1f, %.1f, %.1f×%.1f]%n",
-                bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight());
-        }
     }
 
     /**
@@ -81,15 +65,7 @@ public class LayoutAccumulator {
     public boolean intersects(Area area) {
         var testArea = new Area(area);
         testArea.intersect(accumulatedArea);
-        var result = !testArea.isEmpty();
-
-        if (DEBUG_COLLISION) {
-            var bounds = area.getBounds2D();
-            System.err.printf("[Collision] intersects(area@[%.1f,%.1f]): %s%n",
-                bounds.getX(), bounds.getY(), result);
-        }
-
-        return result;
+        return !testArea.isEmpty();
     }
 
     /**

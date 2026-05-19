@@ -50,7 +50,6 @@ import songscribe.util.MyFontUtils;
  * <ul>
  *   <li>Font constants and glyph rendering methods</li>
  *   <li>Common drawing operations (ledger lines, staff lines, etc.)</li>
- *   <li>Debug rendering wrapper</li>
  * </ul>
  *
  * @param <T> The LineElement type this renderer handles
@@ -187,12 +186,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     // Rendering Template Method
     // ==========================================================================
 
-    /**
-     * Final render method with debug wrapper.
-     * <p>
-     * Calls {@link #renderElement(LineElement, Graphics2D, ElementRenderContext)} for actual rendering,
-     * then overlays debug visualization if enabled.
-     */
     @Override
     public void render(
         T element,

@@ -36,7 +36,6 @@ import songscribe.util.GraphicUtils;
  * <ul>
  *   <li>Antialiasing setup in {@link #paintComponent(Graphics)}</li>
  *   <li>Template method pattern via {@link #render(Graphics2D)}</li>
- *   <li>Debug visualization hooks</li>
  *   <li>Margin system integration via layout constants</li>
  * </ul>
  * <p>
