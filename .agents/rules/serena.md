@@ -1,4 +1,6 @@
-MANDATORY: Use `serena` `jet_brains_*` tools for all Java exploration and refactoring. Fall back to Grep/Read/Glob only when a `jet_brains_*` tool returns no results, the file is not Java, or the IDE connection is unavailable.
+MANDATORY: Use `serena` `jet_brains_*` tools for all Java exploration and refactoring. Fall back to Grep/Read/Glob only when a `jet_brains_*` tool returns no results, the file is not Java, or the IDE connection is unavailable. When spawning a fresh subagent (with `subagent_type`), add this at top of its prompt:
+
+> MANDATORY: Read .agents/rules/serena.md
 
 ## Name paths
 
