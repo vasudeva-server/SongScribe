@@ -72,7 +72,7 @@ public final class RecentDocumentsManager {
             INSTANCE.paths.removeLast();
         }
 
-        persist();
+        INSTANCE.persist();
         MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
@@ -80,18 +80,18 @@ public final class RecentDocumentsManager {
         var normalized = absolutePath.normalize();
 
         INSTANCE.paths.remove(normalized);
-        persist();
+        INSTANCE.persist();
         MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
     public static void clear() {
         INSTANCE.paths.clear();
-        persist();
+        INSTANCE.persist();
         MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
-    private static void persist() {
-        var strings = INSTANCE.paths.stream().map(Path::toString).toList();
+    private void persist() {
+        var strings = paths.stream().map(Path::toString).toList();
         Prefs.putStringList(PrefsKey.RECENT_FILES, strings);
     }
 }
