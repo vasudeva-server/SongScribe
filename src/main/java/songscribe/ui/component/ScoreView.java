@@ -473,8 +473,12 @@ public final class ScoreView
                 return false;
             }
 
-            setSong(newSong);
+            // Install the document's fonts before setSong so the initial layout
+            // pass uses them; otherwise the line is laid out with the previous
+            // defaults-from-prefs attribution font, and the first edit shifts
+            // attachments (tempo, etc.) once layout reruns with the doc font.
             installDocumentFonts(reader.getDocumentFonts());
+            setSong(newSong);
 
             if (updateCurrentFile && onFileOpened != null) {
                 onFileOpened.accept(file);
