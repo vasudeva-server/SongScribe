@@ -23,11 +23,10 @@ package songscribe.ui.component;
 import module java.desktop;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.LinkedHashMap;
+import songscribe.error.RuntimeError;
 import java.util.Map;
 import java.util.function.Consumer;
-import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
@@ -41,7 +40,8 @@ import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
 import songscribe.export.ImageExporter;
 import songscribe.export.SVGExporter;
-import songscribe.io.SongIO;
+import songscribe.io.SongLoadResult;
+import songscribe.io.SongLoader;
 import songscribe.message.MessageCenter;
 import songscribe.dom.Song;
 import songscribe.dom.Line;
@@ -52,7 +52,6 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.Constants;
 import songscribe.ui.Control;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
@@ -135,8 +134,6 @@ public final class ScoreView
     @Nullable
     private JPopupMenu popup = null;
 
-    @Nullable
-    private SAXParser saxParser;
     private final Dimension sheetSize = new Dimension();
 
     // Called when a file is successfully opened (e.g. to update the window title)
@@ -239,18 +236,6 @@ public final class ScoreView
         selectionCoordinator = new SelectionCoordinator(this::getSong);
         clipboardManager = new ClipboardManager();
         EditModeManager.init(clipboardManager, selectionCoordinator, this);
-
-        try {
-            saxParser = SAXParserFactory.newInstance().newSAXParser();
-        } catch (Exception e) {
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.ALERT_TITLE_INITIALIZATION_ERROR,
-                Strings.ERROR_INITIALIZATION,
-                Constants.PACKAGE_NAME
-            );
-            System.exit(0);
-        }
 
         if (headless) {
             hierarchyNavigator = null;
@@ -435,25 +420,50 @@ public final class ScoreView
     }
 
     public boolean openFile(File file, boolean updateCurrentFile) {
-        var previousModified = song != null && song.isModified();
+        SongLoadResult result = SongLoader.load(file);
 
-        if (song != null) {
-            song.setModified(false);
-        }
-
-        try {
-            var reader = new SongIO.DocumentReader();
-            if (saxParser == null) {
-                throw RuntimeError.exit("saxParser not initialized");
-            }
-
-            saxParser.parse(file, reader);
-            var newSong = reader.getSong();
+        if (result instanceof SongLoadResult.Success success) {
             var lineWidthInches =
-                ScaleContext.ssToPx(newSong.getLineWidthSs()) /
+                ScaleContext.ssToPx(success.song().getLineWidthSs()) /
                     GraphicUtils.getDpi();
 
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+                result = new SongLoadResult.LineWidthTooLarge(file, lineWidthInches, PageModel.MAX_LINE_WIDTH_INCHES);
+            }
+        }
+
+        return switch (result) {
+            case SongLoadResult.Success success -> {
+                // Install the document's fonts before setSong so the initial layout
+                // pass uses them; otherwise the line is laid out with the previous
+                // defaults-from-prefs attribution font, and the first edit shifts
+                // attachments (tempo, etc.) once layout reruns with the doc font.
+                installDocumentFonts(success.fonts());
+                setSong(success.song());
+
+                if (updateCurrentFile && onFileOpened != null) {
+                    onFileOpened.accept(file);
+                }
+
+                LOG.info("Song loaded: {}", file.getName());
+                yield true;
+            }
+            case SongLoadResult.NewerVersion e -> {
+                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_NEWER_VERSION);
+                LOG.error("Could not open '{}': document version is newer than the application supports", file.getName(), e.cause());
+                yield false;
+            }
+            case SongLoadResult.ParseError e -> {
+                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_DAMAGED, file.getName());
+                LOG.error("Could not open damaged file '{}'", file.getName(), e.cause());
+                yield false;
+            }
+            case SongLoadResult.IoError e -> {
+                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_NO_PERMISSION, file.getName());
+                LOG.error("Could not open file '{}': permission error", file.getName(), e.cause());
+                yield false;
+            }
+            case SongLoadResult.LineWidthTooLarge e -> {
                 OptionDialogs.showErrorMessage(
                     null,
                     Strings.ALERT_TITLE_FILE_ERROR,
@@ -462,53 +472,12 @@ public final class ScoreView
                 LOG.error(
                     "Refused to open {}: line width {} inches exceeds maximum {}",
                     file.getName(),
-                    lineWidthInches,
-                    PageModel.MAX_LINE_WIDTH_INCHES
+                    e.actualInches(),
+                    e.maxInches()
                 );
-
-                if (song != null) {
-                    song.setModified(previousModified);
-                }
-
-                return false;
+                yield false;
             }
-
-            // Install the document's fonts before setSong so the initial layout
-            // pass uses them; otherwise the line is laid out with the previous
-            // defaults-from-prefs attribution font, and the first edit shifts
-            // attachments (tempo, etc.) once layout reruns with the doc font.
-            installDocumentFonts(reader.getDocumentFonts());
-            setSong(newSong);
-
-            if (updateCurrentFile && onFileOpened != null) {
-                onFileOpened.accept(file);
-            }
-
-            LOG.info("Song loaded: {}", file.getName());
-            return true;
-        } catch (SongIO.NewerVersionException e) {
-            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_NEWER_VERSION);
-            LOG.error("Could not open '{}': document version is newer than the application supports", file.getName(), e);
-
-            if (song != null) {
-                song.setModified(previousModified);
-            }
-            return false;
-        } catch (SAXException e) {
-            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_DAMAGED, file.getName());
-            LOG.error("Could not open damaged file '{}'", file.getName(), e);
-            if (song != null) {
-                song.setModified(previousModified);
-            }
-            return false;
-        } catch (IOException e) {
-            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_NO_PERMISSION, file.getName());
-            LOG.error("Could not open file '{}': permission error", file.getName(), e);
-            if (song != null) {
-                song.setModified(previousModified);
-            }
-            return false;
-        }
+        };
     }
 
     public void syncPlaybackPrefs() {

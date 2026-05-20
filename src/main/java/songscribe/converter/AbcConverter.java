@@ -57,7 +57,7 @@ public class AbcConverter {
         }
 
         try {
-            var song = SongLoader.load(file);
+            var song = SongLoader.load(file).songOrThrow();
             ExportABCAction.writeABC(song, writer);
             writer.close();
             LOG.info("Converted {} to ABC", file.getName());

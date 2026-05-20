@@ -25,18 +25,14 @@ import java.io.IOException;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 
-
 import org.xml.sax.SAXException;
 
-import songscribe.dom.Song;
-import songscribe.ui.component.ScoreView;
-
 /**
- * Loads a {@link Song} from a file without requiring a {@link ScoreView}.
+ * Loads a {@link songscribe.dom.Song} from a file without requiring a {@code ScoreView}.
  * <p>
  * Use this for headless operations (ABC export, MIDI export) that only need
  * the song data. For operations that also need rendering (image, PDF,
- * SVG export), use {@link ScoreView#openFile} instead.
+ * SVG export), use {@code ScoreView.openFile} instead.
  */
 public final class SongLoader {
 
@@ -45,21 +41,26 @@ public final class SongLoader {
     private SongLoader() {}
 
     /**
-     * Parses a SongScribe file and returns the loaded song.
+     * Parses a SongScribe file and returns a {@link SongLoadResult}.
      *
      * @param file the .mssw file to load
-     * @return the loaded song
-     * @throws IOException if the file cannot be read
-     * @throws SAXException if the file is malformed
+     * @return a {@link SongLoadResult.Success} on success, or one of the
+     *         {@link SongLoadResult.Failure} variants on error
      */
-    public static Song load(File file) throws IOException, SAXException {
+    public static SongLoadResult load(File file) {
         try {
             var parser = PARSER_FACTORY.newSAXParser();
             var reader = new SongIO.DocumentReader();
             parser.parse(file, reader);
-            return reader.getSong();
+            return new SongLoadResult.Success(reader.getSong(), reader.getDocumentFonts());
+        } catch (SongIO.NewerVersionException e) {
+            return new SongLoadResult.NewerVersion(file, e);
+        } catch (SAXException e) {
+            return new SongLoadResult.ParseError(file, e);
+        } catch (IOException e) {
+            return new SongLoadResult.IoError(file, e);
         } catch (ParserConfigurationException e) {
-            throw new SAXException("Failed to create SAX parser", e);
+            return new SongLoadResult.ParseError(file, new SAXException("Failed to create SAX parser", e));
         }
     }
 }

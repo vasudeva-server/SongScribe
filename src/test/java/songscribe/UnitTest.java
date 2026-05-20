@@ -28,7 +28,6 @@ import java.io.StringWriter;
 import java.net.URISyntaxException;
 
 import javax.swing.UIManager;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 
 import com.formdev.flatlaf.FlatLaf;
@@ -37,6 +36,7 @@ import org.xml.sax.InputSource;
 
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
+import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -90,40 +90,39 @@ public abstract class UnitTest {
         flatLafInstalled = true;
     }
 
-    /** Carries both the parsed song and its document fonts from a fixture load. */
-    public record LoadResult(Song song, DocumentFonts fonts) {}
-
     /**
-     * Loads a fixture file and returns the parsed song.
+     * Resolves a fixture file on the classpath.
      * Fixture files live in {@code src/test/resources/fixtures/{name}.mssw}.
      */
-    public static Song loadFixture(String fixtureName) throws IllegalArgumentException, IOException, SAXException, URISyntaxException {
+    protected static File fixtureFile(String fixtureName) throws URISyntaxException {
         var url = UnitTest.class.getClassLoader().getResource("fixtures/" + fixtureName + ".mssw");
 
         if (url == null) {
             throw new IllegalArgumentException("Fixture not found: " + fixtureName);
         }
 
-        return SongLoader.load(new File(url.toURI()));
+        return new File(url.toURI());
+    }
+
+    /**
+     * Loads a fixture file and returns the parsed song.
+     */
+    public static Song loadFixture(String fixtureName) throws IllegalArgumentException, IOException, SAXException, URISyntaxException {
+        return SongLoader.load(fixtureFile(fixtureName)).songOrThrow();
     }
 
     /**
      * Like {@link #loadFixture} but also returns the document fonts parsed from the
      * fixture's {@code <view>} block (or prefs defaults for v1.0 files).
      */
-    public static LoadResult loadFixtureResult(String fixtureName)
-            throws IllegalArgumentException, IOException, SAXException, URISyntaxException, ParserConfigurationException {
-        var url = UnitTest.class.getClassLoader().getResource("fixtures/" + fixtureName + ".mssw");
+    public static SongLoadResult.Success loadFixtureResult(String fixtureName) throws URISyntaxException {
+        var result = SongLoader.load(fixtureFile(fixtureName));
 
-        if (url == null) {
-            throw new IllegalArgumentException("Fixture not found: " + fixtureName);
+        if (result instanceof SongLoadResult.Success success) {
+            return success;
         }
 
-        var factory = SAXParserFactory.newInstance();
-        var parser = factory.newSAXParser();
-        var reader = new SongIO.DocumentReader();
-        parser.parse(new File(url.toURI()), reader);
-        return new LoadResult(reader.getSong(), reader.getDocumentFonts());
+        throw new IllegalStateException("Fixture '" + fixtureName + "' failed to load: " + result);
     }
 
     /**

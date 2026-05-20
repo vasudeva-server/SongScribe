@@ -80,7 +80,7 @@ public class MidiConverter {
 
         for (var file : files) {
             try {
-                var song = SongLoader.load(file);
+                var song = SongLoader.load(file).songOrThrow();
                 var sequence = PlaybackController.buildSequence(song);
                 MidiSystem.write(
                     sequence,
