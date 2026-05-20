@@ -169,6 +169,10 @@ public class LayoutEngine {
     public @Nullable LayoutResult layout(Line line, boolean isLastLine, boolean hasLeadingLyricContinuation) {
         lastError = null;
 
+        // Accidental widths are a layout input. Initialise them here (idempotent and cheap)
+        // so layout never precedes initialisation, regardless of paint/layout ordering.
+        NoteGeometry.initializeAccidentalWidths();
+
         // Step 1: Build note columns
         var columns = columnBuilder.buildColumns(line);
 
