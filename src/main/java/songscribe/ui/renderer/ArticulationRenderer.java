@@ -86,9 +86,10 @@ public final class ArticulationRenderer extends BaseElementRenderer<StaffElement
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         StaffElement element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         if (element.getArticulations().isEmpty()) {
             return;
@@ -96,16 +97,16 @@ public final class ArticulationRenderer extends BaseElementRenderer<StaffElement
 
         LayoutResult layoutResult;
 
-        if (ctx.hasOverrideElementX()) {
+        if (frame.hasOverrideElementX()) {
             // Insertion note preview: compute layouts using the same stacking logic.
             layoutResult = NoteAttachedStacker.computePreviewDecorationLayouts(
-                element, ctx.getOverrideElementXSs());
+                element, frame.overrideElementXSs());
         } else {
-            layoutResult = ctx.getLayoutResult();
+            layoutResult = inv.getLayoutResult();
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            applyDecorationColor(g2, element, ctx);
+            applyDecorationColor(g2, element, inv, frame);
 
             var hasStaccato = false;
             var hasAccent = false;
@@ -128,7 +129,7 @@ public final class ArticulationRenderer extends BaseElementRenderer<StaffElement
                     continue;
                 }
 
-                var componentTopYSs = layoutYToComponentYSs(layout.ySs(), ctx);
+                var componentTopYSs = layoutYToComponentYSs(layout.ySs(), inv);
 
                 if (isCombo && articulation.isStaccato()) {
                     var x = centeredGlyphX(layout.xSs(), element,

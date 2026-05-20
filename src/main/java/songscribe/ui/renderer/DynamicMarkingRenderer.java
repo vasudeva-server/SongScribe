@@ -61,9 +61,10 @@ public final class DynamicMarkingRenderer extends BaseElementRenderer<StaffEleme
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         StaffElement element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         var attachment = element.findAttachment(DynamicAttachment.class);
 
@@ -80,12 +81,12 @@ public final class DynamicMarkingRenderer extends BaseElementRenderer<StaffEleme
 
         LayoutResult layoutResult;
 
-        if (ctx.hasOverrideElementX()) {
+        if (frame.hasOverrideElementX()) {
             // Insertion note preview: compute layouts using the same stacking logic.
             layoutResult = NoteAttachedStacker.computePreviewDecorationLayouts(
-                element, ctx.getOverrideElementXSs());
+                element, frame.overrideElementXSs());
         } else {
-            layoutResult = ctx.getLayoutResult();
+            layoutResult = inv.getLayoutResult();
         }
 
         var decorationLayout = layoutResult.findAttachmentDecorationLayout(
@@ -95,14 +96,14 @@ public final class DynamicMarkingRenderer extends BaseElementRenderer<StaffEleme
             return;
         }
 
-        var dynamicTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
+        var dynamicTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), inv);
         var dynamicBBox = SMuFLMetadata.requireBBox(glyph);
         // Layout xSs is already centered over the notehead by the stacking calculator
         var x = decorationLayout.xSs() - dynamicBBox.left();
         var y = glyphOriginYFromLayoutTop(dynamicTopYSs, glyph);
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            applyDecorationColor(g2, element, ctx);
+            applyDecorationColor(g2, element, inv, frame);
             drawBravuraGlyph(g2, glyph, x, y, true);
         }
     }

@@ -40,7 +40,7 @@ import songscribe.layout.LayoutResult;
 import songscribe.dom.ScaleContext;
 import songscribe.layout.SongLayoutMetrics;
 import songscribe.layout.StaffExtents;
-import songscribe.ui.renderer.ElementRenderContext;
+import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.GraphicsState;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.error.RuntimeError;
@@ -656,22 +656,25 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Applies the grace-mode host-insertion preview shift to the context,
-     * if this line is the active grace line.
+     * Returns the line-level {@link ElementFrame} for this paint, carrying the grace-mode
+     * host-insertion preview shift when this is the active grace line. {@code LineRenderer}
+     * threads the returned shift into every per-element frame it builds.
      */
-    void applyGracePreviewShift(ElementRenderContext ctx) {
+    ElementFrame gracePreviewLineFrame() {
         var graceModeManager = EditModeManager.getGraceModeManager();
 
         if (graceModeManager.getGraceLineComponent() == this) {
             var preview = graceModeManager.getHostInsertionPreview();
 
             if (preview != null) {
-                ctx.setPreviewShift(
+                return ElementFrame.lineLevelWithPreviewShift(
                     graceModeManager.getHostInsertionIndex(),
                     preview.shiftForSubsequentElementsSs()
                 );
             }
         }
+
+        return ElementFrame.LINE_LEVEL;
     }
 
     /**

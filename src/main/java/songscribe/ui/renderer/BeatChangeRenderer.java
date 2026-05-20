@@ -46,9 +46,10 @@ public final class BeatChangeRenderer extends MetronomeRenderer {
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         StaffElement element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         var attachment = element.findAttachment(BeatChangeAttachment.class);
 
@@ -56,7 +57,7 @@ public final class BeatChangeRenderer extends MetronomeRenderer {
             return;
         }
 
-        var setup = buildRenderSetup(element, BeatChangeAttachment.class, ctx);
+        var setup = buildRenderSetup(element, BeatChangeAttachment.class, inv, frame);
         var xSs = setup.decorationLayout().xSs();
 
         drawBeatChange(g2, attachment.getBeatChange(), xSs, setup.ySs(), setup.attrFont(), setup.color());

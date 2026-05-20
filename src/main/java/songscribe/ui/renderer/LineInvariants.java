@@ -24,8 +24,6 @@ import module java.desktop;
 
 import java.util.function.BooleanSupplier;
 
-import com.uber.nullaway.annotations.Initializer;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.font.DocumentFontsHolder;
@@ -44,16 +42,16 @@ import songscribe.layout.LyricRenderMetrics;
 import songscribe.dom.ScaleContext;
 
 /**
- * Context passed to element renderers containing shared rendering state.
+ * Immutable per-line rendering state, built once per {@code LineRenderer.render()} call.
  * <p>
- * Avoids passing many individual parameters to every render method.
- * Contains both immutable data (song, fonts) and mutable state
- * (current line being rendered, middleLineY).
+ * Carries the fields that depend only on the line (and song) being rendered, together
+ * with the color-resolution and playback-highlight logic that reads them. Per-element
+ * state (current element index, X override, preview shift) lives on {@link ElementFrame}.
  * <p>
- * Note: Named ElementRenderContext to avoid conflict with the existing
- * RenderContext interface used by the legacy renderer.
+ * Assembled through {@link Builder}; because every field is final, a renderer cannot
+ * observe a half-configured invariants object.
  */
-public class ElementRenderContext {
+public final class LineInvariants {
 
     // ==========================================================================
     // Constants
@@ -72,45 +70,61 @@ public class ElementRenderContext {
     private final Song song;
     private final DocumentFontsHolder fonts;
     @Nullable
-    private Line currentLine;
-    private double middleLineYSs;
-    private int lineIndex;
-    private LayoutResult layoutResult;
-    private SongLayoutMetrics songLayoutMetrics;
-    private LyricRenderMetrics lyricRenderMetrics;
+    private final Line currentLine;
+    private final double middleLineYSs;
+    private final int lineIndex;
+    private final LayoutResult layoutResult;
+    private final SongLayoutMetrics songLayoutMetrics;
+    private final LyricRenderMetrics lyricRenderMetrics;
     @Nullable
-    private StaffElement activelyEditedElement;
-    private LineComponent.@Nullable SelectionProvider selectionProvider;
-    private boolean editMode;
-    private Color selectionColor = ScoreView.getSelectionColor();
-    private int playingNoteIndex = -1;
-    private int playingGraceNoteIndex = -1;
-    private int currentElementIndex = -1;
-    private double overrideElementXSs = Double.NaN;
-    private int previewShiftFromIndex = -1;
-    private double previewShiftSs;
+    private final StaffElement activelyEditedElement;
+    private final LineComponent.@Nullable SelectionProvider selectionProvider;
+    private final boolean editMode;
+    private final Color selectionColor;
+    private final int playingNoteIndex;
+    private final int playingGraceNoteIndex;
+    private final double pixelsPerStaffSpace;
+    private final LineThickness lineThickness;
 
-    /**
-     * Creates a render context for the given song.
-     *
-     * @param song  the song being rendered
-     * @param fonts the document fonts holder used by font-reading renderers
-     */
-    public ElementRenderContext(Song song, DocumentFontsHolder fonts) {
-        this.song = song;
-        this.fonts = fonts;
+    private LineInvariants(
+        Builder b,
+        LayoutResult layoutResult,
+        SongLayoutMetrics songLayoutMetrics,
+        LyricRenderMetrics lyricRenderMetrics
+    ) {
+        song = b.song;
+        fonts = b.fonts;
+        currentLine = b.currentLine;
+        middleLineYSs = b.middleLineYSs;
+        lineIndex = b.lineIndex;
+        this.layoutResult = layoutResult;
+        this.songLayoutMetrics = songLayoutMetrics;
+        this.lyricRenderMetrics = lyricRenderMetrics;
+        activelyEditedElement = b.activelyEditedElement;
+        selectionProvider = b.selectionProvider;
+        editMode = b.editMode;
+        selectionColor = b.selectionColor;
+        playingNoteIndex = b.playingNoteIndex;
+        playingGraceNoteIndex = b.playingGraceNoteIndex;
+        pixelsPerStaffSpace = ScaleContext.getPixelsPerStaffSpace();
+        lineThickness = LineThickness.getInstance();
     }
 
-    /**
-     * Returns the song being rendered.
-     */
+    /** Returns a new builder for invariants describing the given song. */
+    public static Builder builder(Song song, DocumentFontsHolder fonts) {
+        return new Builder(song, fonts);
+    }
+
+    // ==========================================================================
+    // Accessors
+    // ==========================================================================
+
+    /** Returns the song being rendered. */
     public Song getSong() {
         return song;
     }
 
-    /**
-     * Returns the document fonts holder, providing per-role rendering fonts.
-     */
+    /** Returns the document fonts holder, providing per-role rendering fonts. */
     public DocumentFontsHolder getFonts() {
         return fonts;
     }
@@ -125,20 +139,9 @@ public class ElementRenderContext {
         return fonts.getFont(FontKey.ANNOTATION);
     }
 
-    /**
-     * Returns the current line being rendered.
-     */
+    /** Returns the current line being rendered. */
     public @Nullable Line getCurrentLine() {
         return currentLine;
-    }
-
-    /**
-     * Sets the current line being rendered.
-     *
-     * @param currentLine The line to render
-     */
-    public void setCurrentLine(@Nullable Line currentLine) {
-        this.currentLine = currentLine;
     }
 
     /**
@@ -149,47 +152,9 @@ public class ElementRenderContext {
         return middleLineYSs;
     }
 
-    /**
-     * Sets the Y coordinate of the middle staff line.
-     *
-     * @param middleLineYSs Y coordinate in staff-space units
-     */
-    public void setMiddleLineYSs(double middleLineYSs) {
-        this.middleLineYSs = middleLineYSs;
-    }
-
-    /**
-     * Returns the index of the current line within the song.
-     */
+    /** Returns the index of the current line within the song. */
     public int getLineIndex() {
         return lineIndex;
-    }
-
-    /**
-     * Sets the index of the current line.
-     *
-     * @param lineIndex Line index (0-based)
-     */
-    public void setLineIndex(int lineIndex) {
-        this.lineIndex = lineIndex;
-    }
-
-    /**
-     * Returns the index of the element currently being rendered within the line,
-     * or -1 if no element index is set (e.g. during line-level rendering passes).
-     */
-    public int getCurrentElementIndex() {
-        return currentElementIndex;
-    }
-
-    /**
-     * Sets the index of the element currently being rendered.
-     * Set to -1 to clear.
-     *
-     * @param currentElementIndex element index (0-based), or -1 to clear
-     */
-    public void setCurrentElementIndex(int currentElementIndex) {
-        this.currentElementIndex = currentElementIndex;
     }
 
     /**
@@ -197,7 +162,7 @@ public class ElementRenderContext {
      * Convenience accessor for renderers that need pixel conversion.
      */
     public double getPixelsPerStaffSpace() {
-        return ScaleContext.getPixelsPerStaffSpace();
+        return pixelsPerStaffSpace;
     }
 
     /**
@@ -212,30 +177,13 @@ public class ElementRenderContext {
     }
 
     /**
-     * Sets the layout result for the current line.
-     *
-     * @param layoutResult The layout result from LayoutEngine
-     */
-    @Initializer
-    public void setLayoutResult(LayoutResult layoutResult) {
-        this.layoutResult = layoutResult;
-    }
-
-    /**
      * Returns the song-wide layout metrics.
      * <p>
      * Used by lyric renderers to look up per-verse baseline Y positions that
-     * are uniform across every line in the song. Must be set via
-     * {@link #setSongLayoutMetrics} before any rendering pass runs.
+     * are uniform across every line in the song.
      */
     public SongLayoutMetrics getSongLayoutMetrics() {
         return songLayoutMetrics;
-    }
-
-    /** Sets the song-wide layout metrics. */
-    @Initializer
-    public void setSongLayoutMetrics(SongLayoutMetrics metrics) {
-        songLayoutMetrics = metrics;
     }
 
     /** Returns the song-wide lyric render metrics. */
@@ -243,21 +191,10 @@ public class ElementRenderContext {
         return lyricRenderMetrics;
     }
 
-    /** Sets the song-wide lyric render metrics. */
-    @Initializer
-    public void setLyricRenderMetrics(LyricRenderMetrics metrics) {
-        lyricRenderMetrics = metrics;
-    }
-
     /** Returns the element currently being edited in the lyric overlay, or null. */
     @Nullable
     public StaffElement getActivelyEditedElement() {
         return activelyEditedElement;
-    }
-
-    /** Sets the element being edited; pass null when no lyric editor is open. */
-    public void setActivelyEditedElement(@Nullable StaffElement element) {
-        activelyEditedElement = element;
     }
 
     /**
@@ -269,48 +206,23 @@ public class ElementRenderContext {
         return selectionProvider;
     }
 
-    /**
-     * Sets the selection provider for checking element selection state.
-     *
-     * @param selectionProvider The selection provider from LineComponent
-     */
-    public void setSelectionProvider(LineComponent.@Nullable SelectionProvider selectionProvider) {
-        this.selectionProvider = selectionProvider;
-    }
-
-    /**
-     * Returns whether the score is in edit mode.
-     */
+    /** Returns whether the score is in edit mode. */
     public boolean isEditMode() {
         return editMode;
     }
 
     /**
-     * Sets whether the score is in edit mode.
-     *
-     * @param editMode true if in edit mode
-     */
-    public void setEditMode(boolean editMode) {
-        this.editMode = editMode;
-    }
-
-    /**
      * Returns the color used to render selected elements and beams.
-     * Defaults to {@link ScoreView#getSelectionColor()}; override during an
+     * Defaults to {@link ScoreView#getSelectionColor()}; overridden during an
      * element pitch-drag to use {@code INSERTION_NOTE_COLOR} instead.
      */
     public Color getSelectionColor() {
         return selectionColor;
     }
 
-    /**
-     * Sets the color used to render selected elements and beams.
-     *
-     * @param selectionColor the color to use
-     */
-    public void setSelectionColor(Color selectionColor) {
-        this.selectionColor = selectionColor;
-    }
+    // ==========================================================================
+    // Color resolution
+    // ==========================================================================
 
     /**
      * Returns the rendering color for the element at the given index.
@@ -413,36 +325,14 @@ public class ElementRenderContext {
         return Color.BLACK;
     }
 
-    /**
-     * Returns the index of the currently playing note, or -1 if none.
-     */
+    /** Returns the index of the currently playing note, or -1 if none. */
     public int getPlayingNoteIndex() {
         return playingNoteIndex;
     }
 
-    /**
-     * Sets the index of the currently playing note.
-     *
-     * @param playingNoteIndex the playing note index, or -1 if none
-     */
-    public void setPlayingNoteIndex(int playingNoteIndex) {
-        this.playingNoteIndex = playingNoteIndex;
-    }
-
-    /**
-     * Returns the index of the currently playing grace note, or -1 if none.
-     */
+    /** Returns the index of the currently playing grace note, or -1 if none. */
     public int getPlayingGraceNoteIndex() {
         return playingGraceNoteIndex;
-    }
-
-    /**
-     * Sets the index of the currently playing grace note.
-     *
-     * @param playingGraceNoteIndex the playing grace note index, or -1 if none
-     */
-    public void setPlayingGraceNoteIndex(int playingGraceNoteIndex) {
-        this.playingGraceNoteIndex = playingGraceNoteIndex;
     }
 
     /**
@@ -528,79 +418,124 @@ public class ElementRenderContext {
         return playingNoteIndex < count;
     }
 
-    /**
-     * Sets a precise X coordinate for the next element render, bypassing layout lookup and
-     * {@code element.getXPos()}. Used by the preview element so that {@link NoteRenderer}
-     * applies device-pixel snapping to the raw computed double directly, matching the
-     * path used for laid-out song elements. Call {@link #clearOverrideElementX()} after
-     * rendering to reset.
-     *
-     * @param xSs the exact X coordinate in staff spaces
-     */
-    public void setOverrideElementXSs(double xSs) {
-        overrideElementXSs = xSs;
-    }
-
-    /**
-     * Returns whether an override element X is currently active.
-     */
-    public boolean hasOverrideElementX() {
-        return !Double.isNaN(overrideElementXSs);
-    }
-
-    /**
-     * Returns the override element X. Only valid when {@link #hasOverrideElementX()} is true.
-     */
-    public double getOverrideElementXSs() {
-        return overrideElementXSs;
-    }
-
-    /**
-     * Clears the override set by {@link #setOverrideElementXSs(double)}.
-     */
-    public void clearOverrideElementX() {
-        overrideElementXSs = Double.NaN;
-    }
-
-    /**
-     * Sets a preview shift to apply to all elements at {@code fromIndex} and beyond.
-     * Used during grace note insert mode to visually displace subsequent elements
-     * rightward to show where the host note will be inserted.
-     *
-     * @param fromIndex first element index to shift (inclusive)
-     * @param shiftSs   shift amount in staff spaces (must be &gt;= 0)
-     */
-    public void setPreviewShift(int fromIndex, double shiftSs) {
-        previewShiftFromIndex = fromIndex;
-        previewShiftSs = shiftSs;
-    }
-
-    /** Returns whether a preview shift is currently active. */
-    public boolean hasPreviewShift() {
-        return previewShiftFromIndex >= 0;
-    }
-
-    /** Returns the first element index to shift. Only valid when {@link #hasPreviewShift()} is true. */
-    public int getPreviewShiftFromIndex() {
-        return previewShiftFromIndex;
-    }
-
-    /** Returns the shift amount in staff spaces. Only valid when {@link #hasPreviewShift()} is true. */
-    public double getPreviewShiftSs() {
-        return previewShiftSs;
-    }
-
-    /** Clears the preview shift set by {@link #setPreviewShift(int, double)}. */
-    public void clearPreviewShift() {
-        previewShiftFromIndex = -1;
-        previewShiftSs = 0;
-    }
-
-    /**
-     * Returns the resolved line thicknesses (LilyPond multiplier-derived).
-     */
+    /** Returns the resolved line thicknesses (LilyPond multiplier-derived). */
     public LineThickness getLineThickness() {
-        return LineThickness.getInstance();
+        return lineThickness;
     }
 
+    // ==========================================================================
+    // Builder
+    // ==========================================================================
+
+    /**
+     * Accumulates the per-line fields and produces an immutable {@link LineInvariants}.
+     * The layout fields ({@code layoutResult}, {@code songLayoutMetrics},
+     * {@code lyricRenderMetrics}) are required and must be set before {@link #build()}.
+     */
+    public static final class Builder {
+
+        private final Song song;
+        private final DocumentFontsHolder fonts;
+        @Nullable
+        private Line currentLine;
+        private double middleLineYSs;
+        private int lineIndex;
+        @Nullable
+        private LayoutResult layoutResult;
+        @Nullable
+        private SongLayoutMetrics songLayoutMetrics;
+        @Nullable
+        private LyricRenderMetrics lyricRenderMetrics;
+        @Nullable
+        private StaffElement activelyEditedElement;
+        private LineComponent.@Nullable SelectionProvider selectionProvider;
+        private boolean editMode;
+        private Color selectionColor = ScoreView.getSelectionColor();
+        private int playingNoteIndex = -1;
+        private int playingGraceNoteIndex = -1;
+
+        private Builder(Song song, DocumentFontsHolder fonts) {
+            this.song = song;
+            this.fonts = fonts;
+        }
+
+        public Builder setCurrentLine(@Nullable Line currentLine) {
+            this.currentLine = currentLine;
+            return this;
+        }
+
+        public Builder setMiddleLineYSs(double middleLineYSs) {
+            this.middleLineYSs = middleLineYSs;
+            return this;
+        }
+
+        public Builder setLineIndex(int lineIndex) {
+            this.lineIndex = lineIndex;
+            return this;
+        }
+
+        public Builder setLayoutResult(LayoutResult layoutResult) {
+            this.layoutResult = layoutResult;
+            return this;
+        }
+
+        public Builder setSongLayoutMetrics(SongLayoutMetrics songLayoutMetrics) {
+            this.songLayoutMetrics = songLayoutMetrics;
+            return this;
+        }
+
+        public Builder setLyricRenderMetrics(LyricRenderMetrics lyricRenderMetrics) {
+            this.lyricRenderMetrics = lyricRenderMetrics;
+            return this;
+        }
+
+        public Builder setActivelyEditedElement(@Nullable StaffElement activelyEditedElement) {
+            this.activelyEditedElement = activelyEditedElement;
+            return this;
+        }
+
+        public Builder setSelectionProvider(LineComponent.@Nullable SelectionProvider selectionProvider) {
+            this.selectionProvider = selectionProvider;
+            return this;
+        }
+
+        public Builder setEditMode(boolean editMode) {
+            this.editMode = editMode;
+            return this;
+        }
+
+        public Builder setSelectionColor(Color selectionColor) {
+            this.selectionColor = selectionColor;
+            return this;
+        }
+
+        public Builder setPlayingNoteIndex(int playingNoteIndex) {
+            this.playingNoteIndex = playingNoteIndex;
+            return this;
+        }
+
+        public Builder setPlayingGraceNoteIndex(int playingGraceNoteIndex) {
+            this.playingGraceNoteIndex = playingGraceNoteIndex;
+            return this;
+        }
+
+        /**
+         * Builds the immutable invariants.
+         *
+         * @throws IllegalStateException if any required layout field is unset
+         */
+        public LineInvariants build() {
+            var resolvedLayout = layoutResult;
+            var resolvedSongMetrics = songLayoutMetrics;
+            var resolvedLyricMetrics = lyricRenderMetrics;
+
+            if (resolvedLayout == null || resolvedSongMetrics == null || resolvedLyricMetrics == null) {
+                throw new IllegalStateException(
+                    "LineInvariants requires layoutResult, songLayoutMetrics, and lyricRenderMetrics to be set"
+                );
+            }
+
+            return new LineInvariants(this, resolvedLayout, resolvedSongMetrics, resolvedLyricMetrics);
+        }
+    }
 }

@@ -49,9 +49,10 @@ public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> 
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         StaffElement element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         var attachment = element.findAttachment(AnnotationAttachment.class);
 
@@ -59,7 +60,7 @@ public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> 
             return;
         }
 
-        var decorationLayout = ctx.getLayoutResult().findAttachmentDecorationLayout(
+        var decorationLayout = inv.getLayoutResult().findAttachmentDecorationLayout(
             element, AnnotationAttachment.class);
 
         if (decorationLayout == null) {
@@ -67,16 +68,16 @@ public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> 
                 "No DecorationLayout found for AnnotationAttachment on note");
         }
 
-        var annotationFont = ctx.getAnnotationFont();
+        var annotationFont = inv.getAnnotationFont();
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
             g2.setFont(ScaleContext.scaleFont(annotationFont));
-            applyDecorationColor(g2, element, ctx);
+            applyDecorationColor(g2, element, inv, frame);
 
             var metrics = g2.getFontMetrics(annotationFont);
             var ascentSs = ScaleContext.pxToSs(metrics.getAscent());
             var xSs = decorationLayout.xSs();
-            var baselineYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx) + ascentSs;
+            var baselineYSs = layoutYToComponentYSs(decorationLayout.ySs(), inv) + ascentSs;
 
             g2.drawString(attachment.getAnnotation().getAnnotation(), (float) xSs, (float) baselineYSs);
         }

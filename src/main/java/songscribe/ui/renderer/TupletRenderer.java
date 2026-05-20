@@ -79,9 +79,10 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         Tuplet element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         // Tuplets are rendered via renderTupletsFromLine(), not through
         // the per-element interface
@@ -94,9 +95,10 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
     public void renderTupletsFromLine(
         Graphics2D g2,
         Line line,
-        ElementRenderContext ctx
+        LineInvariants inv,
+        ElementFrame frame
     ) {
-        var layoutResult = ctx.getLayoutResult();
+        var layoutResult = inv.getLayoutResult();
 
         for (var tuplet : line.findRangeElements(Tuplet.class)) {
             var decorLayout = layoutResult.getDecorationLayout(tuplet);
@@ -114,7 +116,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
             var anchorXSs = decorLayout.xSs();
             var endXSs = anchorXSs + decorLayout.widthSs();
             var isUpper = anchorNote.isUpper();
-            var stemSs = ctx.getLineThickness().stemSs();
+            var stemSs = inv.getLineThickness().stemSs();
             var leftXSs = anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS
                 - (isUpper ? stemSs : Engraving.NOTE_HEAD_WIDTH_SS)
                 - Tuplet.ARM_EXTENSION_SS;
@@ -127,7 +129,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
                 && line.findBeamAt(endIdx) != null;
             var numberOnly = allBeamed && isUpper;
 
-            renderTuplet(g2, ctx, leftXSs, rightXSs, decorLayout.ySs(), tuplet.getGrade(), numberOnly);
+            renderTuplet(g2, inv, leftXSs, rightXSs, decorLayout.ySs(), tuplet.getGrade(), numberOnly);
         }
     }
 
@@ -136,7 +138,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
      * pre-computed bracket coordinates in layout-relative staff spaces.
      *
      * @param g2         graphics context (scale transform already applied)
-     * @param ctx        render context
+     * @param inv        line invariants
      * @param leftXSs    left edge of the visual bracket
      * @param rightXSs   right edge of the visual bracket
      * @param ySs        Y position of the bracket in layout space
@@ -145,7 +147,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
      */
     private void renderTuplet(
         Graphics2D g2,
-        ElementRenderContext ctx,
+        LineInvariants inv,
         double leftXSs,
         double rightXSs,
         double ySs,
@@ -153,7 +155,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
         boolean numberOnly
     ) {
         // Convert layout Y to component Y
-        var bracketYSs = layoutYToComponentYSs(ySs, ctx);
+        var bracketYSs = layoutYToComponentYSs(ySs, inv);
         var centerXSs = (leftXSs + rightXSs) / 2.0;
 
         // Measure number width for gap calculation
@@ -165,7 +167,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
             ? centerXSs
             : centerXSs + TUPLET_GAP_ITALIC_CORRECTION_SS / 2.0;
 
-        var thicknessSs = ctx.getLineThickness().tupletBracketSs();
+        var thicknessSs = inv.getLineThickness().tupletBracketSs();
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(ELEMENT_COLOR);

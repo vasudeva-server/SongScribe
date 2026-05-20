@@ -27,9 +27,9 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.ui.component.ScoreView;
 
@@ -39,10 +39,9 @@ class BaseElementRendererTest extends UnitTest {
     @Test
     void testGetDecorationColorNullLineReturnsPreviewColor() {
         var element = new StaffElement(ElementType.CROTCHET);
-        var ctx = RenderContextTestHelper.newContext(new Song());
-        // currentLine is null by default
+        var inv = RenderContextTestHelper.newContext(new Song()).build();
 
-        var color = BaseElementRenderer.getDecorationColor(element, ctx);
+        var color = BaseElementRenderer.getDecorationColor(element, inv, ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getPreviewElementColor());
     }
@@ -54,27 +53,29 @@ class BaseElementRendererTest extends UnitTest {
         var line = mock(Line.class);
         when(line.getElementIndex(element)).thenReturn(-1);
 
-        var ctx = RenderContextTestHelper.newContext(new Song());
-        ctx.setCurrentLine(line);
+        var inv = RenderContextTestHelper.newContext(new Song())
+            .setCurrentLine(line)
+            .build();
 
-        var color = BaseElementRenderer.getDecorationColor(element, ctx);
+        var color = BaseElementRenderer.getDecorationColor(element, inv, ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getPreviewElementColor());
     }
 
-    // T3: element in line (index >= 0) → ctx.getElementColor(index) result
+    // T3: element in line (index >= 0) → inv.getElementColor(index) result
     @Test
     void testGetDecorationColorElementInLineReturnsCtxColor() {
         var element = new StaffElement(ElementType.CROTCHET);
         var line = mock(Line.class);
         when(line.getElementIndex(element)).thenReturn(0);
 
-        var ctx = RenderContextTestHelper.newContext(new Song());
-        ctx.setEditMode(true);
-        ctx.setCurrentLine(line);
-        ctx.setPlayingNoteIndex(0);  // element at index 0 is playing
+        var inv = RenderContextTestHelper.newContext(new Song())
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(0)
+            .build();
 
-        var color = BaseElementRenderer.getDecorationColor(element, ctx);
+        var color = BaseElementRenderer.getDecorationColor(element, inv, ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getPlayingNoteColor());
     }

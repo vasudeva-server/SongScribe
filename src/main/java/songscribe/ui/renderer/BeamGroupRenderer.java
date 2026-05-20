@@ -87,9 +87,10 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         LineElement element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
     }
 
@@ -101,14 +102,15 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     public void renderBeams(
         Graphics2D g2,
         Line line,
-        ElementRenderContext ctx,
+        LineInvariants inv,
+        ElementFrame frame,
         int beginIndex,
         int endIndex
     ) {
         var level = getBeamLevel(line, beginIndex, endIndex);
-        var highlightColor = getBeamHighlightColor(ctx, beginIndex, endIndex);
-        drawBeams(g2, level, line, ctx, beginIndex, endIndex, highlightColor != null,
-            highlightColor != null ? highlightColor : ctx.getSelectionColor());
+        var highlightColor = getBeamHighlightColor(inv, beginIndex, endIndex);
+        drawBeams(g2, level, line, inv, frame, beginIndex, endIndex, highlightColor != null,
+            highlightColor != null ? highlightColor : inv.getSelectionColor());
     }
 
     /**
@@ -119,22 +121,22 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
      */
     @Nullable
     private Color getBeamHighlightColor(
-        ElementRenderContext ctx,
+        LineInvariants inv,
         int beginIndex,
         int endIndex
     ) {
-        if (!ctx.isEditMode()) {
+        if (!inv.isEditMode()) {
             return null;
         }
 
-        var selectionProvider = ctx.getSelectionProvider();
-        var line = ctx.getCurrentLine();
+        var selectionProvider = inv.getSelectionProvider();
+        var line = inv.getCurrentLine();
 
         if (line == null) {
             return null;
         }
 
-        var lineIndex = ctx.getLineIndex();
+        var lineIndex = inv.getLineIndex();
         var matched = PreviewElementManager.getHoveredElementLocation();
         var anySelected = false;
         var anyHovered = false;
@@ -158,7 +160,7 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
 
         // Selection takes priority over hover
         if (anySelected) {
-            return ctx.getSelectionColor();
+            return inv.getSelectionColor();
         }
 
         if (anyHovered) {
@@ -193,7 +195,8 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         Graphics2D g2,
         int level,
         Line line,
-        ElementRenderContext ctx,
+        LineInvariants inv,
+        ElementFrame frame,
         int beginIndex,
         int endIndex,
         boolean selected,
@@ -202,8 +205,8 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var outerNotes = new Point(beginIndex, endIndex);
         var beam = line.findBeamAt(beginIndex);
         var beamLayout = (beam != null)
-            ? ctx.getLayoutResult().getBeamLayout(beam) : null;
-        doDrawBeams(g2, level, line, ctx, outerNotes,
+            ? inv.getLayoutResult().getBeamLayout(beam) : null;
+        doDrawBeams(g2, level, line, inv, frame, outerNotes,
             beginIndex, endIndex, beginIndex, endIndex, false, 0, selected, beamLayout, selectionColor);
     }
 
@@ -211,7 +214,8 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         Graphics2D g2,
         int level,
         Line line,
-        ElementRenderContext ctx,
+        LineInvariants inv,
+        ElementFrame frame,
         Point outerNotes,
         int beginIndex,
         int endIndex,
@@ -237,7 +241,7 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
                 return;
             }
 
-            var stubStemLayout = ctx.getLayoutResult().getStemLayout(beginNote);
+            var stubStemLayout = inv.getLayoutResult().getStemLayout(beginNote);
 
             if (stubStemLayout != null) {
                 leftOriented = !stubStemLayout.stubRight();
@@ -258,11 +262,11 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
             }
 
             var type = leftOriented ? BeamType.ATTACH_RIGHT : BeamType.ATTACH_LEFT;
-            drawBeam(g2, line, ctx, begin, end, isUpper, type, recursionLevel, selected, beamLayout, selectionColor);
+            drawBeam(g2, line, inv, begin, end, isUpper, type, recursionLevel, selected, beamLayout, selectionColor);
         }
         // Full beam
         else {
-            drawBeam(g2, line, ctx, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
+            drawBeam(g2, line, inv, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
         }
 
         // Sub-beams for inner levels.
@@ -276,7 +280,7 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
                 }
             } else {
                 if (startSubBeam != -1) {
-                    doDrawBeams(g2, beamLevel, line, ctx, outerNotes,
+                    doDrawBeams(g2, beamLevel, line, inv, frame, outerNotes,
                         startSubBeam, i - 1, beginIndex, endIndex,
                         leftOriented, recursionLevel + 1, selected, beamLayout, selectionColor);
                     startSubBeam = -1;
@@ -316,7 +320,7 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     private void drawBeam(
         Graphics2D g2,
         Line line,
-        ElementRenderContext ctx,
+        LineInvariants inv,
         int beginIndex,
         int endIndex,
         boolean isUpper,
@@ -328,8 +332,8 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     ) {
         var beginNote = line.getElement(beginIndex);
         var endNote = line.getElement(endIndex);
-        var layoutResult = ctx.getLayoutResult();
-        var middleLineYSs = ctx.getMiddleLineYSs();
+        var layoutResult = inv.getLayoutResult();
+        var middleLineYSs = inv.getMiddleLineYSs();
         var halfStemWidthSs = NoteGeometry.STEM_WIDTH_SS / 2.0;
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---

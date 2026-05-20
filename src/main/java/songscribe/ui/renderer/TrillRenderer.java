@@ -80,9 +80,10 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         Trill element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         var anchorNote = element.getAnchorElement();
 
@@ -90,19 +91,19 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
             return;
         }
 
-        var color = getDecorationColor(anchorNote, ctx);
-        var decorationLayout = ctx.getLayoutResult().getDecorationLayout(element);
+        var color = getDecorationColor(anchorNote, inv, frame);
+        var decorationLayout = inv.getLayoutResult().getDecorationLayout(element);
 
         if (decorationLayout == null) {
             return;
         }
 
-        var trillTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
+        var trillTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), inv);
         var layoutXSs = decorationLayout.xSs();
 
         renderTrillAtPosition(
             g2, anchorNote, element.getEndElement(),
-            layoutXSs, trillTopYSs, color, ctx.getLayoutResult());
+            layoutXSs, trillTopYSs, color, inv.getLayoutResult());
     }
 
     /**
@@ -168,9 +169,10 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
      */
     public void renderTrillsFromLine(
         Graphics2D g2,
-        ElementRenderContext ctx
+        LineInvariants inv,
+        ElementFrame frame
     ) {
-        var layoutResult = ctx.getLayoutResult();
+        var layoutResult = inv.getLayoutResult();
 
         for (var entry : layoutResult.getDecorationLayoutsByType(Trill.class)) {
             var trill = entry.getKey();
@@ -181,9 +183,9 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
                 continue;
             }
 
-            var color = getDecorationColor(anchor, ctx);
+            var color = getDecorationColor(anchor, inv, frame);
             var layoutXSs = layout.xSs();
-            var trillTopYSs = layoutYToComponentYSs(layout.ySs(), ctx);
+            var trillTopYSs = layoutYToComponentYSs(layout.ySs(), inv);
 
             renderTrillAtPosition(
                 g2, anchor, trill.getEndElement(),

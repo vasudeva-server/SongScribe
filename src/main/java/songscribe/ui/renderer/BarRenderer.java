@@ -84,9 +84,10 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         StaffElement element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         var noteType = element.getType();
 
@@ -94,11 +95,11 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        var noteX = resolveBarXSs(g2, element, ctx);
+        var noteX = resolveBarXSs(g2, element, inv, frame);
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
-            g2.translate(noteX, ctx.getMiddleLineYSs());
-            renderBarLineOrRepeat(g2, noteType, ctx);
+            g2.translate(noteX, inv.getMiddleLineYSs());
+            renderBarLineOrRepeat(g2, noteType, inv);
         }
     }
 
@@ -108,9 +109,9 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
     private void renderBarLineOrRepeat(
         Graphics2D g2,
         ElementType noteType,
-        ElementRenderContext ctx
+        LineInvariants inv
     ) {
-        var lt = ctx.getLineThickness();
+        var lt = inv.getLineThickness();
         var thin = lt.thinBarlineSs();
         var thick = lt.thickBarlineSs();
         var sep = lt.barlineSeparationSs();
@@ -229,14 +230,15 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
     private static double resolveBarXSs(
         Graphics2D g2,
         StaffElement note,
-        ElementRenderContext ctx
+        LineInvariants inv,
+        ElementFrame frame
     ) {
         double noteX;
 
-        if (ctx.hasOverrideElementX()) {
-            noteX = ctx.getOverrideElementXSs();
+        if (frame.hasOverrideElementX()) {
+            noteX = frame.overrideElementXSs();
         } else {
-            noteX = ctx.getLayoutResult().getElementXSs(note);
+            noteX = inv.getLayoutResult().getElementXSs(note);
         }
 
         return noteX;

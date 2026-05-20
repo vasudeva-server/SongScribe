@@ -94,9 +94,10 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         KeySignature element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         if (!element.hasAccidentals()) {
             return;
@@ -115,7 +116,7 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
 
             // Get the starting X position from the element
             var xPosSs = element.getXSs();
-            var middleLineYSs = ctx.getMiddleLineYSs();
+            var middleLineYSs = inv.getMiddleLineYSs();
 
             // Determine glyph and Y positions based on key type
             SMuFLGlyph glyph;
@@ -156,14 +157,14 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
      * @param line      The current line
      * @param nextLine  The next line (with different key)
      * @param lineWidth The width of the staff line (ss)
-     * @param ctx       Render context
+     * @param inv       Line invariants
      */
     public void renderKeyChange(
         Graphics2D g2,
         Line line,
         Line nextLine,
         double lineWidth,
-        ElementRenderContext ctx
+        LineInvariants inv
     ) {
         // If key signature is identical, nothing to draw
         if (nextLine.getKeyAccidentalCount() == line.getKeyAccidentalCount()
@@ -202,7 +203,7 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
             accidentalCounts[1] = nextLine.getKeyAccidentalCount();
         }
 
-        renderKeySignatureChange(g2, keyTypes, accidentalCounts, startingOffsets, isNaturals, lineWidth, ctx);
+        renderKeySignatureChange(g2, keyTypes, accidentalCounts, startingOffsets, isNaturals, lineWidth, inv);
     }
 
     /**
@@ -214,7 +215,7 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
      * @param startingOffsets  Starting offset in Y position array (for partial naturals)
      * @param isNaturals      Whether each key type should be rendered as naturals
      * @param lineWidth       Width of the staff line (ss)
-     * @param ctx             Render context
+     * @param inv             Line invariants
      */
     private void renderKeySignatureChange(
         Graphics2D g2,
@@ -223,13 +224,13 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
         int [] startingOffsets,
         boolean [] isNaturals,
         double lineWidth,
-        ElementRenderContext ctx
+        LineInvariants inv
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(MUSIC_FONT);
             g2.setColor(ELEMENT_COLOR);
 
-            var middleLineYSs = ctx.getMiddleLineYSs();
+            var middleLineYSs = inv.getMiddleLineYSs();
 
             // Calculate starting X position (right-aligned with margin)
             var xPosSs = lineWidth - KEY_CHANGE_RIGHT_MARGIN_SS;

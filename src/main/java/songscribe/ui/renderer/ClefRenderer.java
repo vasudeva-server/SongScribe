@@ -52,16 +52,17 @@ public final class ClefRenderer extends BaseElementRenderer<Clef> {
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         Clef element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         // The clef's position comes from the element
         var x = element.getXSs();
 
         // The SMuFL G clef origin is on the G line (second line from bottom,
         // one staff space below the middle line)
-        var baseline = ctx.getMiddleLineYSs() + 1.0;
+        var baseline = inv.getMiddleLineYSs() + 1.0;
 
         drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, x, baseline);
     }

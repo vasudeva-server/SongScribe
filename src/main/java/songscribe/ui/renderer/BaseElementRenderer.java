@@ -139,7 +139,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     /**
      * Returns the rendering color for a decoration attached to {@code element}.
      * <p>
-     * Uses {@link ElementRenderContext#getCurrentElementIndex()} when set (avoids
+     * Uses {@link ElementFrame#currentElementIndex()} when set (avoids
      * a linear scan), otherwise falls back to {@code line.getElementIndex(element)}.
      * <p>
      * Returns the preview element color when the element is not found in the current
@@ -148,15 +148,16 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      */
     protected static Color getDecorationColor(
         StaffElement element,
-        ElementRenderContext ctx
+        LineInvariants inv,
+        ElementFrame frame
     ) {
-        var index = ctx.getCurrentElementIndex();
+        var index = frame.currentElementIndex();
 
         if (index >= 0) {
-            return ctx.getElementColor(index);
+            return inv.getElementColor(index);
         }
 
-        var line = ctx.getCurrentLine();
+        var line = inv.getCurrentLine();
 
         if (line == null) {
             return ScoreView.getPreviewElementColor();
@@ -168,19 +169,20 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
             return ScoreView.getPreviewElementColor();
         }
 
-        return ctx.getElementColor(index);
+        return inv.getElementColor(index);
     }
 
     /**
      * Sets the graphics color for a decoration attached to {@code element}.
-     * Delegates to {@link #getDecorationColor(StaffElement, ElementRenderContext)}.
+     * Delegates to {@link #getDecorationColor(StaffElement, LineInvariants, ElementFrame)}.
      */
     protected static void applyDecorationColor(
         Graphics2D g2,
         StaffElement element,
-        ElementRenderContext ctx
+        LineInvariants inv,
+        ElementFrame frame
     ) {
-        g2.setColor(getDecorationColor(element, ctx));
+        g2.setColor(getDecorationColor(element, inv, frame));
     }
 
     // ==========================================================================
@@ -189,49 +191,32 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
     @Override
     public void render(
+        LineInvariants inv,
+        ElementFrame frame,
         T element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
-        renderElement(element, g2, ctx);
+        renderElement(inv, frame, element, g2);
     }
 
     /**
      * Renders the element. Subclasses implement element-specific drawing.
      *
+     * @param inv     The per-line invariants
+     * @param frame   The per-element frame
      * @param element The element to render
      * @param g2      The graphics context
-     * @param ctx     Rendering context
      */
     protected abstract void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         T element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     );
 
     // ==========================================================================
     // Coordinate Transformation Utilities
     // ==========================================================================
-
-    /**
-     * Converts a Y coordinate from layout space to component space.
-     * <p>
-     * Layout coordinates are relative to middleLineY=0 (positive below, negative above).
-     * Component coordinates are relative to the component's top edge.
-     * <p>
-     * This transformation is needed when using layout results for rendering,
-     * as layout positions must be converted to actual screen positions.
-     *
-     * @param bounds The layout bounds
-     * @param ctx    The rendering context containing middleLineY
-     * @return The Y coordinate in component space
-     */
-    protected static double layoutYToComponentYSs(
-        ElementBoundsSs bounds,
-        ElementRenderContext ctx
-    ) {
-        return ctx.getMiddleLineYSs() + bounds.getTopSs();
-    }
 
     /**
      * Converts a layout Y coordinate to component space.
@@ -240,11 +225,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * Component Y coordinates are relative to the component's top edge.
      *
      * @param layoutYSs the Y coordinate in layout space (from a DecorationLayout)
-     * @param ctx       the rendering context containing middleLineY
+     * @param inv       the per-line invariants containing middleLineY
      * @return the Y coordinate in component space
      */
-    protected static double layoutYToComponentYSs(double layoutYSs, ElementRenderContext ctx) {
-        return ctx.getMiddleLineYSs() + layoutYSs;
+    protected static double layoutYToComponentYSs(double layoutYSs, LineInvariants inv) {
+        return inv.getMiddleLineYSs() + layoutYSs;
     }
 
     /**
@@ -278,10 +263,10 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param ySs      Y position of the ledger line in staff spaces
      * @param widthSs  Width of the ledger line in staff spaces
      */
-    protected void drawLedgerLine(Graphics2D g2, double xSs, double ySs, double widthSs, ElementRenderContext ctx) {
+    protected void drawLedgerLine(Graphics2D g2, double xSs, double ySs, double widthSs, LineInvariants inv) {
         // Color is intentionally not set — inherited from caller so insertion notes
         // draw ledger lines in their own color.
-        var thicknessSs = ctx.getLineThickness().ledgerLineSs();
+        var thicknessSs = inv.getLineThickness().ledgerLineSs();
         var halfWidth = widthSs / 2.0;
         GraphicUtils.fillHorizontalLine(g2, xSs - halfWidth, xSs + halfWidth, ySs, thicknessSs);
     }

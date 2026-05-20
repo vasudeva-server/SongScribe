@@ -36,14 +36,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
-import songscribe.dom.Song;
 import songscribe.dom.ElementType;
-import songscribe.ui.component.ScoreView;
-import songscribe.ui.component.score.LineComponent;
-import songscribe.layout.SongLayoutMetrics;
+import songscribe.dom.Song;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricBoxLayout;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.layout.SongLayoutMetrics;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 class LyricTextRendererTest extends UnitTest {
 
@@ -74,14 +74,15 @@ class LyricTextRendererTest extends UnitTest {
         var box = new LyricBoxLayout(3.25, 2.0, 1, "do");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
 
-        var ctx = RenderContextTestHelper.newContext(new Song());
-        ctx.setLayoutResult(layoutResult);
-        ctx.setSongLayoutMetrics(metrics(1.0, 2.5, 1));
-        ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
+        var inv = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setSongLayoutMetrics(metrics(1.0, 2.5, 1))
+            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0))
+            .build();
 
         var g2 = mock(Graphics2D.class);
 
-        LyricTextRenderer.getInstance().render(element, g2, ctx);
+        LyricTextRenderer.getInstance().render(inv, ElementFrame.LINE_LEVEL, element, g2);
 
         var xCap = ArgumentCaptor.forClass(Integer.class);
         var yCap = ArgumentCaptor.forClass(Integer.class);
@@ -105,14 +106,15 @@ class LyricTextRendererTest extends UnitTest {
             .addLyricBox(element, verse2)
             .build();
 
-        var ctx = RenderContextTestHelper.newContext(new Song());
-        ctx.setLayoutResult(layoutResult);
-        ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 2));
-        ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
+        var inv = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setSongLayoutMetrics(metrics(1.0, 2.0, 2))
+            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0))
+            .build();
 
         var g2 = mock(Graphics2D.class);
 
-        LyricTextRenderer.getInstance().render(element, g2, ctx);
+        LyricTextRenderer.getInstance().render(inv, ElementFrame.LINE_LEVEL, element, g2);
 
         var textCap = ArgumentCaptor.forClass(String.class);
         var yCap = ArgumentCaptor.forClass(Integer.class);
@@ -130,13 +132,14 @@ class LyricTextRendererTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         var layoutResult = LayoutResult.builder().build();
 
-        var ctx = RenderContextTestHelper.newContext(new Song());
-        ctx.setLayoutResult(layoutResult);
-        ctx.setSongLayoutMetrics(metrics(0, 0, 0));
+        var inv = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setSongLayoutMetrics(metrics(0, 0, 0))
+            .build();
 
         var g2 = mock(Graphics2D.class);
 
-        LyricTextRenderer.getInstance().render(element, g2, ctx);
+        LyricTextRenderer.getInstance().render(inv, ElementFrame.LINE_LEVEL, element, g2);
 
         verifyNoInteractions(g2);
     }
@@ -148,14 +151,15 @@ class LyricTextRendererTest extends UnitTest {
         var box = new LyricBoxLayout(0.0, 1.0, 1, "re");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
 
-        var ctx = RenderContextTestHelper.newContext(new Song());
-        ctx.setLayoutResult(layoutResult);
-        ctx.setSongLayoutMetrics(metrics(0.5, 2.5, 1));
-        ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
+        var inv = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setSongLayoutMetrics(metrics(0.5, 2.5, 1))
+            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0))
+            .build();
 
         var g2 = mock(Graphics2D.class);
 
-        LyricTextRenderer.getInstance().render(element, g2, ctx);
+        LyricTextRenderer.getInstance().render(inv, ElementFrame.LINE_LEVEL, element, g2);
 
         verify(g2).setFont(any(Font.class));
         verify(g2).drawString(anyString(), anyInt(), anyInt());
@@ -177,24 +181,26 @@ class LyricTextRendererTest extends UnitTest {
 
         var lyricRenderMetrics = new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
 
-        var activeCtx = RenderContextTestHelper.newContext(new Song());
-        activeCtx.setLayoutResult(layoutResult);
-        activeCtx.setSongLayoutMetrics(metrics(1.0, 2.5, 1));
-        activeCtx.setLyricRenderMetrics(lyricRenderMetrics);
-        activeCtx.setActivelyEditedElement(activeElement);
+        var activeInv = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setSongLayoutMetrics(metrics(1.0, 2.5, 1))
+            .setLyricRenderMetrics(lyricRenderMetrics)
+            .setActivelyEditedElement(activeElement)
+            .build();
 
         var g2Active = mock(Graphics2D.class);
-        LyricTextRenderer.getInstance().render(activeElement, g2Active, activeCtx);
+        LyricTextRenderer.getInstance().render(activeInv, ElementFrame.LINE_LEVEL, activeElement, g2Active);
         verifyNoInteractions(g2Active);
 
-        var otherCtx = RenderContextTestHelper.newContext(new Song());
-        otherCtx.setLayoutResult(layoutResult);
-        otherCtx.setSongLayoutMetrics(metrics(1.0, 2.5, 1));
-        otherCtx.setLyricRenderMetrics(lyricRenderMetrics);
-        otherCtx.setActivelyEditedElement(activeElement);
+        var otherInv = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setSongLayoutMetrics(metrics(1.0, 2.5, 1))
+            .setLyricRenderMetrics(lyricRenderMetrics)
+            .setActivelyEditedElement(activeElement)
+            .build();
 
         var g2Other = mock(Graphics2D.class);
-        LyricTextRenderer.getInstance().render(otherElement, g2Other, otherCtx);
+        LyricTextRenderer.getInstance().render(otherInv, ElementFrame.LINE_LEVEL, otherElement, g2Other);
         verify(g2Other).drawString(anyString(), anyInt(), anyInt());
     }
 
@@ -204,17 +210,20 @@ class LyricTextRendererTest extends UnitTest {
         var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        var ctx = RenderContextTestHelper.newContext(new Song());
-        ctx.setLayoutResult(layoutResult);
-        ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 1));
-        ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
-        ctx.setEditMode(true);
-        ctx.setSelectionProvider(selectionProvider);
+
+        var inv = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setSongLayoutMetrics(metrics(1.0, 2.0, 1))
+            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0))
+            .setEditMode(true)
+            .setSelectionProvider(selectionProvider)
+            .build();
+
         when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(true);
 
         var g2 = mock(Graphics2D.class);
 
-        LyricTextRenderer.getInstance().render(element, g2, ctx);
+        LyricTextRenderer.getInstance().render(inv, ElementFrame.LINE_LEVEL, element, g2);
 
         verify(g2).setColor(ScoreView.getSelectionColor());
         verify(g2).drawString("v1", toPx(2.0), toPx(7.0));
@@ -225,16 +234,18 @@ class LyricTextRendererTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
-        var ctx = RenderContextTestHelper.newContext(new Song());
-        ctx.setLayoutResult(layoutResult);
-        ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 1));
-        ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
-        ctx.setCurrentElementIndex(0);
-        RenderContextTestHelper.enableSelection(ctx, 0);
+
+        var builder = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setSongLayoutMetrics(metrics(1.0, 2.0, 1))
+            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
+        RenderContextTestHelper.enableSelection(builder, 0);
+        var inv = builder.build();
+        var frame = new ElementFrame(0, Double.NaN, -1, 0.0);
 
         var g2 = mock(Graphics2D.class);
 
-        LyricTextRenderer.getInstance().render(element, g2, ctx);
+        LyricTextRenderer.getInstance().render(inv, frame, element, g2);
 
         verify(g2).setColor(ScoreView.getSelectionColor());
     }

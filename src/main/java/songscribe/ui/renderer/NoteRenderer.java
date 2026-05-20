@@ -138,14 +138,15 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     private static double resolveNoteXSs(
         Graphics2D g2,
         StaffElement note,
-        ElementRenderContext ctx
+        LineInvariants inv,
+        ElementFrame frame
     ) {
         double noteX;
 
-        if (ctx.hasOverrideElementX()) {
-            noteX = ctx.getOverrideElementXSs();
+        if (frame.hasOverrideElementX()) {
+            noteX = frame.overrideElementXSs();
         } else {
-            noteX = ctx.getLayoutResult().getElementXSs(note);
+            noteX = inv.getLayoutResult().getElementXSs(note);
         }
 
         return noteX;
@@ -187,25 +188,26 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         StaffElement element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         var noteType = element.getType();
 
         // Delegate to specialized renderers for non-note types
         if (noteType.isRest()) {
-            RestRenderer.getInstance().render(element, g2, ctx);
+            RestRenderer.getInstance().render(inv, frame, element, g2);
             return;
         }
 
         if (noteType.isBarLine() || noteType.isRepeat()) {
-            BarRenderer.getInstance().render(element, g2, ctx);
+            BarRenderer.getInstance().render(inv, frame, element, g2);
             return;
         }
 
         if (noteType == ElementType.BREATH_MARK) {
-            renderBreathMark(element, g2, ctx);
+            renderBreathMark(element, g2, inv, frame);
             return;
         }
 
@@ -213,28 +215,17 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         // Note: Don't set color here - respect the color set by the caller
         // (e.g., blue for insertion notes, black for song notes)
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
-            var noteX = resolveNoteXSs(g2, element, ctx);
-            var noteY = noteStaffPositionToCoordinateSs(element.getStaffPosition(), ctx.getMiddleLineYSs());
+            var noteX = resolveNoteXSs(g2, element, inv, frame);
+            var noteY = noteStaffPositionToCoordinateSs(element.getStaffPosition(), inv.getMiddleLineYSs());
 
             g2.translate(noteX, noteY);
             g2.setFont(BaseElementRenderer.MUSIC_FONT);
 
-            var isBeamed = isNoteBeamed(element, ctx);
-            renderNoteHead(g2, element, isBeamed, ctx);
-            renderLedgerLines(g2, element, ctx);
-            renderAccidental(g2, element, ctx);
+            var isBeamed = isNoteBeamed(element, inv);
+            renderNoteHead(g2, element, isBeamed, inv);
+            renderLedgerLines(g2, element, inv);
+            renderAccidental(g2, element);
         }
-    }
-
-    /**
-     * Renders with full render context.
-     */
-    public void render(
-        Graphics2D g2,
-        StaffElement note,
-        ElementRenderContext ctx
-    ) {
-        render(note, g2, ctx);
     }
 
     // ==========================================================================
@@ -244,12 +235,13 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     private void renderBreathMark(
         StaffElement element,
         Graphics2D g2,
-        ElementRenderContext ctx
+        LineInvariants inv,
+        ElementFrame frame
     ) {
-        var noteX = resolveNoteXSs(g2, element, ctx);
+        var noteX = resolveNoteXSs(g2, element, inv, frame);
 
         // Place half a staff space above the top staff line
-        var breathY = ctx.getMiddleLineYSs() - 2.5;
+        var breathY = inv.getMiddleLineYSs() - 2.5;
 
         drawBravuraGlyph(
             g2,
@@ -268,7 +260,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         Graphics2D g2,
         StaffElement note,
         boolean beamed,
-        ElementRenderContext ctx
+        LineInvariants inv
     ) {
         var noteType = note.getType();
         var glyph = NOTE_HEAD.get(noteType);
@@ -291,7 +283,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         // Draw stem (always for notes with stems - beamed notes need stems to connect to beams)
-        var stemTip = renderStem(g2, note, upper, beamed, noteType, ctx);
+        var stemTip = renderStem(g2, note, upper, beamed, noteType, inv);
 
         // Draw flags only for unbeamed notes (beamed notes get beams instead of flags)
         if (!beamed) {
@@ -315,14 +307,14 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         boolean upper,
         boolean beamed,
         ElementType noteType,
-        ElementRenderContext ctx
+        LineInvariants inv
     ) {
         if (!noteType.isNoteWithStem()) {
             return null;
         }
 
         var geom = computeBaseStemGeometry(noteType, upper);
-        var stemWidthSs = ctx.getLineThickness().stemSs();
+        var stemWidthSs = inv.getLineThickness().stemSs();
 
         // Snap stem left edge to device pixel boundary for crisp rendering.
         // We must work in absolute (device) coordinates because the graphics context
@@ -331,14 +323,14 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         //
         var stemLeftX = geom.stemLeftXSs();
 
-        var layoutResult = ctx.getLayoutResult();
+        var layoutResult = inv.getLayoutResult();
         var stemLayout = layoutResult.getStemLayout(note);
         var lengtheningSs = (stemLayout != null) ? stemLayout.lengtheningSs() : 0.0;
 
         var beamThickeningSs = 0.0;
 
         if (beamed) {
-            var line = ctx.getCurrentLine();
+            var line = inv.getCurrentLine();
 
             if (line != null) {
                 var beam = line.findBeamAt(line.getElementIndex(note));
@@ -493,7 +485,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // Ledger Line Rendering
     // ==========================================================================
 
-    private void renderLedgerLines(Graphics2D g2, StaffElement note, ElementRenderContext ctx) {
+    private void renderLedgerLines(Graphics2D g2, StaffElement note, LineInvariants inv) {
         var extensionSs = NoteGeometry.getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
@@ -504,7 +496,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var centerXSs = getLedgerLineCenterXSs(note);
 
         forEachLedgerLineYSs(note.getStaffPosition(),
-            y -> drawLedgerLine(g2, centerXSs, y, ledgerWidthSs, ctx));
+            y -> drawLedgerLine(g2, centerXSs, y, ledgerWidthSs, inv));
     }
 
     // ==========================================================================
@@ -513,8 +505,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
     private void renderAccidental(
         Graphics2D g2,
-        StaffElement note,
-        ElementRenderContext ctx
+        StaffElement note
     ) {
         var accidental = note.getAccidental();
 
@@ -540,8 +531,8 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // Utility Methods
     // ==========================================================================
 
-    private boolean isNoteBeamed(StaffElement note, ElementRenderContext ctx) {
-        var line = ctx.getCurrentLine();
+    private boolean isNoteBeamed(StaffElement note, LineInvariants inv) {
+        var line = inv.getCurrentLine();
 
         if (line == null) {
             return false;

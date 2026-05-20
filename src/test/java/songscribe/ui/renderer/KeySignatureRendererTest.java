@@ -28,9 +28,9 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Song;
-import songscribe.dom.KeyType;
 import songscribe.dom.KeySignature;
+import songscribe.dom.KeyType;
+import songscribe.dom.Song;
 
 class KeySignatureRendererTest extends UnitTest {
 
@@ -38,10 +38,10 @@ class KeySignatureRendererTest extends UnitTest {
     @Test
     void testRenderIsNoOpForCMajor() {
         var g2 = mock(Graphics2D.class);
-        var ctx = RenderContextTestHelper.newContext(new Song());
+        var inv = RenderContextTestHelper.newContext(new Song()).build();
         var keySig = new KeySignature(KeyType.NONE, 0);
 
-        KeySignatureRenderer.getInstance().render(keySig, g2, ctx);
+        KeySignatureRenderer.getInstance().render(inv, ElementFrame.LINE_LEVEL, keySig, g2);
 
         verifyNoInteractions(g2);
     }

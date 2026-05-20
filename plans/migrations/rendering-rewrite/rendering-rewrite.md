@@ -11,7 +11,7 @@
 | 5 | [Lyrics + Line Height + Tuplets](#-phase-5-lyrics--line-height--tuplets) | ✅ Done | — |
 | 6 | [Legacy Decoration Flag Migration](#-phase-6-legacy-decoration-flag-migration) | ✅ Done | [milestone-6-legacy-flag-migration.md](milestone-6-legacy-flag-migration.md) |
 | 7 | [Package Restructure (DOM / layout / ui)](#-phase-7-package-restructure-dom--layout--ui) | ⏳ Pending | — |
-| 8 | [Split `ElementRenderContext` by Lifetime](#-phase-8-split-elementrendercontext-by-lifetime) | ⏳ Pending | — |
+| 8 | [Split `ElementRenderContext` by Lifetime](#-phase-8-split-elementrendercontext-by-lifetime) | ✅ Done | [milestone-8-context-split.md](milestone-8-context-split.md) |
 | 9 | [Flatten `BaseElementRenderer` Hierarchy](#-phase-9-flatten-baseelementrenderer-hierarchy) | ⏳ Pending | — |
 | 10 | [Remove `StaffElement.Properties` Mutable State](#-phase-10-remove-staffelementproperties-mutable-state) | ⏳ Pending | — |
 | 11 | [Performance Profiling + Regression Testing](#-phase-11-performance-profiling--regression-testing) | ⏳ Pending | — |
@@ -142,7 +142,9 @@ songscribe.ui.*     ← renderers, components, dialogs
 
 ---
 
-## ⏳ Phase 8: Split `ElementRenderContext` by Lifetime
+## ✅ Phase 8: Split `ElementRenderContext` by Lifetime
+
+See [milestone-8-context-split.md](milestone-8-context-split.md) for the detailed implementation plan.
 
 Resolve [#369](https://github.com/vasudeva-server/SongScribe/issues/369). `ElementRenderContext` is a 19-field grab bag set through ~12 ordered setter calls in `LineRenderer.render()` — an undocumented protocol that's a source of stale-state bugs. Split by lifetime:
 

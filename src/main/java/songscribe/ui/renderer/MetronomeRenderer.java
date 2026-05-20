@@ -82,16 +82,17 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
     protected RenderSetup buildRenderSetup(
         StaffElement element,
         Class<? extends MetronomeAttachment> attachmentClass,
-        ElementRenderContext ctx
+        LineInvariants inv,
+        ElementFrame frame
     ) {
-        if (ctx.getCurrentLine() == null) {
+        if (inv.getCurrentLine() == null) {
             throw RuntimeError.exit("No current line for metronome decoration on " + element);
         }
 
-        var color = getDecorationColor(element, ctx);
-        var decorationLayout = requireDecorationLayout(element, attachmentClass, ctx);
-        var ySs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
-        var attrFont = ctx.getAnnotationFont();
+        var color = getDecorationColor(element, inv, frame);
+        var decorationLayout = requireDecorationLayout(element, attachmentClass, inv);
+        var ySs = layoutYToComponentYSs(decorationLayout.ySs(), inv);
+        var attrFont = inv.getAnnotationFont();
 
         return new RenderSetup(color, decorationLayout, ySs, attrFont);
     }
@@ -103,9 +104,9 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
     protected LayoutResult.DecorationLayout requireDecorationLayout(
         StaffElement note,
         Class<? extends MetronomeAttachment> attachmentClass,
-        ElementRenderContext ctx
+        LineInvariants inv
     ) {
-        var decorationLayout = ctx.getLayoutResult().findAttachmentDecorationLayout(
+        var decorationLayout = inv.getLayoutResult().findAttachmentDecorationLayout(
             note, attachmentClass);
 
         if (decorationLayout == null) {

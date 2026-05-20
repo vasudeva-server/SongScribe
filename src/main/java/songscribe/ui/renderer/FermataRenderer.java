@@ -72,9 +72,10 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
+        LineInvariants inv,
+        ElementFrame frame,
         StaffElement element,
-        Graphics2D g2,
-        ElementRenderContext ctx
+        Graphics2D g2
     ) {
         // Guard: only render if a fermata attachment is present
         if (element.findAttachment(FermataAttachment.class) == null) {
@@ -83,12 +84,12 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
 
         LayoutResult layoutResult;
 
-        if (ctx.hasOverrideElementX()) {
+        if (frame.hasOverrideElementX()) {
             // Insertion note preview: compute layouts using the same stacking logic.
             layoutResult = NoteAttachedStacker.computePreviewDecorationLayouts(
-                element, ctx.getOverrideElementXSs());
+                element, frame.overrideElementXSs());
         } else {
-            layoutResult = ctx.getLayoutResult();
+            layoutResult = inv.getLayoutResult();
         }
 
         var decorationLayout = layoutResult.findAttachmentDecorationLayout(
@@ -98,7 +99,7 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        var fermataTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
+        var fermataTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), inv);
 
         var x = centeredGlyphX(decorationLayout.xSs(), element,
             FERMATA_BBOX_LEFT_SS, FERMATA_WIDTH_SS);
@@ -106,7 +107,7 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
         var y = glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            applyDecorationColor(g2, element, ctx);
+            applyDecorationColor(g2, element, inv, frame);
             drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);
         }
     }
@@ -114,15 +115,17 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Renders a fermata for a note if it has one.
      *
-     * @param g2          Graphics context
-     * @param note        The note to check
-     * @param ctx         Render context
+     * @param g2    Graphics context
+     * @param note  The note to check
+     * @param inv   Line invariants
+     * @param frame Per-element frame
      */
     public void renderFermata(
         Graphics2D g2,
         StaffElement note,
-        ElementRenderContext ctx
+        LineInvariants inv,
+        ElementFrame frame
     ) {
-        render(note, g2, ctx);
+        render(inv, frame, note, g2);
     }
 }

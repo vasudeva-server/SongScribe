@@ -23,32 +23,45 @@ package songscribe.ui.renderer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import songscribe.font.DocumentFonts;
 import songscribe.dom.Song;
+import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricRenderMetrics;
+import songscribe.layout.SongLayoutMetrics;
 import songscribe.ui.component.score.LineComponent;
 
 /**
- * Shared setup for renderer tests that need an {@link ElementRenderContext}
+ * Shared setup for renderer tests that need a {@link LineInvariants}
  * configured for selection-aware coloring.
  */
 final class RenderContextTestHelper {
 
     private RenderContextTestHelper() {}
 
-    /** Builds a context for the given song with fonts seeded from prefs. */
-    static ElementRenderContext newContext(Song song) {
-        return new ElementRenderContext(song, DocumentFonts.defaultsFromPrefs());
+    /**
+     * Returns a builder seeded with placeholder layout fields so callers only need to
+     * configure the state they care about. Tests that exercise lyric layout should
+     * override the layout setters with real values.
+     */
+    static LineInvariants.Builder newContext(Song song) {
+        var fonts = DocumentFonts.defaultsFromPrefs();
+        var lyricFont = fonts.getFont(FontKey.LYRICS);
+        return LineInvariants.builder(song, fonts)
+            .setLayoutResult(LayoutResult.builder().build())
+            .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
+            .setLyricRenderMetrics(new LyricRenderMetrics(lyricFont, lyricFont, 0, 0));
     }
 
     /**
-     * Puts {@code ctx} into edit mode and installs a mock {@link LineComponent.SelectionProvider}
-     * that reports {@code selectedElementIndex} on line 0 as selected. Returns the mock so
-     * callers can stub additional behavior.
+     * Puts {@code builder} into edit mode and installs a mock
+     * {@link LineComponent.SelectionProvider} that reports {@code selectedElementIndex}
+     * on line 0 as selected.
      */
-    static void enableSelection(ElementRenderContext ctx, int selectedElementIndex) {
+    static void enableSelection(LineInvariants.Builder builder, int selectedElementIndex) {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isElementSelected(selectedElementIndex, 0)).thenReturn(true);
-        ctx.setEditMode(true);
-        ctx.setSelectionProvider(selectionProvider);
+        builder.setEditMode(true);
+        builder.setSelectionProvider(selectionProvider);
     }
 }
