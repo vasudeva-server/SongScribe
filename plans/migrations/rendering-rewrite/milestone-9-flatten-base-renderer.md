@@ -3,7 +3,7 @@
 **Type:** Sub-plan  <br>
 **Parent:** [rendering-rewrite.md](rendering-rewrite.md) → Phase 9  <br>
 **Created:** 2026-05-20  <br>
-**Status:** In Progress  <br>
+**Status:** ✅ Done  <br>
 **BlockedBy:** —
 
 **Spec:** [specs/rendering-rewrite.md](../../../docs/specs/rendering-rewrite.md) — read the spec before implementing tasks.
@@ -14,14 +14,14 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1a | [Audit + delete dead members](#-phase-1a-audit--delete-dead-members) | ⏳ Pending |
-| 1b | [Extract `RenderingUtils` + shim the base](#-phase-1b-extract-renderingutils--shim-the-base) | ⏳ Pending |
-| 1c | [Repoint non-subclass external callers](#-phase-1c-repoint-non-subclass-external-callers) | ⏳ Pending |
-| 2 | [Migrate note-family renderers](#-phase-2-migrate-note-family-renderers) | ⏳ Pending |
-| 3 | [Migrate line-beginning + span renderers](#-phase-3-migrate-line-beginning--span-renderers) | ⏳ Pending |
-| 4 | [Migrate glyph-decoration + lyric renderers](#-phase-4-migrate-glyph-decoration--lyric-renderers) | ⏳ Pending |
-| 5 | [Migrate the `MetronomeRenderer` subtree](#-phase-5-migrate-the-metronomerenderer-subtree) | ⏳ Pending |
-| 6 | [Delete `BaseElementRenderer`](#-phase-6-delete-baseelementrenderer) | ⏳ Pending |
+| 1a | [Audit + delete dead members](#-phase-1a-audit--delete-dead-members) | ✅ Done |
+| 1b | [Extract `RenderingUtils` + shim the base](#-phase-1b-extract-renderingutils--shim-the-base) | ✅ Done |
+| 1c | [Repoint non-subclass external callers](#-phase-1c-repoint-non-subclass-external-callers) | ✅ Done |
+| 2 | [Migrate note-family renderers](#-phase-2-migrate-note-family-renderers) | ✅ Done |
+| 3 | [Migrate line-beginning + span renderers](#-phase-3-migrate-line-beginning--span-renderers) | ✅ Done |
+| 4 | [Migrate glyph-decoration + lyric renderers](#-phase-4-migrate-glyph-decoration--lyric-renderers) | ✅ Done |
+| 5 | [Migrate the `MetronomeRenderer` subtree](#-phase-5-migrate-the-metronomerenderer-subtree) | ✅ Done |
+| 6 | [Delete `BaseElementRenderer`](#-phase-6-delete-baseelementrenderer) | ✅ Done |
 
 ## Purpose
 
@@ -111,9 +111,9 @@ Each renderer migration is transparent to call sites: `LineRenderer` already cal
 
 ---
 
-## ⏳ Phase 1a: Audit + delete dead members
+## ✅ Phase 1a: Audit + delete dead members
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** —  <br>
 **Recommended model/effort:** Opus 4.7, low-medium effort — verifying the dead set against the full codebase needs care (the `GLISSANDO`/`TRILL` names collide with live enum constants elsewhere), but the change itself is small and self-contained.
 
@@ -128,9 +128,9 @@ Self-contained and green: only members with zero callers are removed, so no surv
 
 ---
 
-## ⏳ Phase 1b: Extract `RenderingUtils` + shim the base
+## ✅ Phase 1b: Extract `RenderingUtils` + shim the base
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** 1a  <br>
 **Recommended model/effort:** Opus 4.7, medium effort — the constant re-homing (including the font static-initializer) and the shim design carry the judgment; load-bearing for every mechanical phase that follows.
 
@@ -146,9 +146,9 @@ Non-destructive to behavior: helper bodies move, but `BaseElementRenderer` keeps
 
 ---
 
-## ⏳ Phase 1c: Repoint non-subclass external callers
+## ✅ Phase 1c: Repoint non-subclass external callers
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** 1b  <br>
 **Recommended model/effort:** Sonnet 4.6, low effort — mechanical reference swap from `BaseElementRenderer.X` to `RenderingUtils.X`; compile + visual gate correctness.
 
@@ -163,9 +163,9 @@ These callers reference base statics by qualified name but do not inherit from t
 
 ---
 
-## ⏳ Phase 2: Migrate note-family renderers
+## ✅ Phase 2: Migrate note-family renderers
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** 1c  <br>
 **Recommended model/effort:** Sonnet 4.6, low effort — mechanical superclass→interface swap + helper qualification; compile + visual gate correctness. `NoteRenderer` is large, so the batch is small.
 
@@ -180,9 +180,9 @@ These callers reference base statics by qualified name but do not inherit from t
 
 ---
 
-## ⏳ Phase 3: Migrate line-beginning + span renderers
+## ✅ Phase 3: Migrate line-beginning + span renderers
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** 2  <br>
 **Recommended model/effort:** Sonnet 4.6, low effort — mechanical swaps; independent renderers.
 
@@ -198,9 +198,9 @@ These callers reference base statics by qualified name but do not inherit from t
 
 ---
 
-## ⏳ Phase 4: Migrate glyph-decoration + lyric renderers
+## ✅ Phase 4: Migrate glyph-decoration + lyric renderers
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** 3  <br>
 **Recommended model/effort:** Sonnet 4.6, low effort — mechanical swaps; independent renderers.
 
@@ -216,9 +216,9 @@ These callers reference base statics by qualified name but do not inherit from t
 
 ---
 
-## ⏳ Phase 5: Migrate the `MetronomeRenderer` subtree
+## ✅ Phase 5: Migrate the `MetronomeRenderer` subtree
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** 4  <br>
 **Recommended model/effort:** Sonnet 4.6, low effort — `MetronomeRenderer` is the only class that changes parent; `TempoChangeRenderer`/`BeatChangeRenderer` extend `MetronomeRenderer` (legitimate shared behavior) and are left intact, only verified.
 
@@ -232,9 +232,9 @@ The Metronome subtree is migrated as a unit because `MetronomeRenderer` is an ab
 
 ---
 
-## ⏳ Phase 6: Delete `BaseElementRenderer`
+## ✅ Phase 6: Delete `BaseElementRenderer`
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** 5  <br>
 **Recommended model/effort:** Sonnet 4.6, low effort — deletion plus residual-cruft cleanup; `safe_delete` reports any straggler usage and the test/visual gates confirm parity.
 

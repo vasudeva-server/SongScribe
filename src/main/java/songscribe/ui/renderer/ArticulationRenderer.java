@@ -39,7 +39,7 @@ import songscribe.layout.stacking.NoteAttachedStacker;
  *   <li>Accent - emphasized attack (> symbol)</li>
  * </ul>
  */
-public final class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
+public final class ArticulationRenderer implements ElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants
@@ -85,7 +85,7 @@ public final class ArticulationRenderer extends BaseElementRenderer<StaffElement
     // ==========================================================================
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
@@ -106,7 +106,7 @@ public final class ArticulationRenderer extends BaseElementRenderer<StaffElement
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            applyDecorationColor(g2, element, invariants, frame);
+            RenderingUtils.applyDecorationColor(g2, element, invariants, frame);
 
             var hasStaccato = false;
             var hasAccent = false;
@@ -129,24 +129,24 @@ public final class ArticulationRenderer extends BaseElementRenderer<StaffElement
                     continue;
                 }
 
-                var componentTopYSs = layoutYToComponentYSs(layout.ySs(), invariants);
+                var componentTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
 
                 if (isCombo && articulation.isStaccato()) {
-                    var x = centeredGlyphX(layout.xSs(), element,
+                    var x = RenderingUtils.centeredGlyphX(layout.xSs(), element,
                         ACCENT_STACCATO_BBOX_LEFT_SS, ACCENT_STACCATO_WIDTH_SS);
-                    var y = glyphOriginYFromLayoutTop(componentTopYSs,
+                    var y = RenderingUtils.glyphOriginYFromLayoutTop(componentTopYSs,
                         SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE);
-                    drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE, x, y, true);
+                    RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE, x, y, true);
                 } else if (articulation.isStaccato()) {
-                    var x = centeredGlyphX(layout.xSs(), element,
+                    var x = RenderingUtils.centeredGlyphX(layout.xSs(), element,
                         STACCATO_BBOX_LEFT_SS, STACCATO_WIDTH_SS);
-                    var y = glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_STACCATO_ABOVE);
-                    drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y, true);
+                    var y = RenderingUtils.glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_STACCATO_ABOVE);
+                    RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y, true);
                 } else if (articulation.isAccent()) {
-                    var x = centeredGlyphX(layout.xSs(), element,
+                    var x = RenderingUtils.centeredGlyphX(layout.xSs(), element,
                         ACCENT_BBOX_LEFT_SS, ACCENT_WIDTH_SS);
-                    var y = glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_ACCENT_ABOVE);
-                    drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_ABOVE, x, y, true);
+                    var y = RenderingUtils.glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_ACCENT_ABOVE);
+                    RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_ABOVE, x, y, true);
                 }
             }
         }

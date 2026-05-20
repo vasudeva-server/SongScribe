@@ -44,7 +44,7 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
     }
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,

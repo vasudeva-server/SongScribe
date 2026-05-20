@@ -43,7 +43,7 @@ import songscribe.layout.StaffExtents;
  * applied by LineComponent handles pixel conversion.
  * Rests don't have stems, flags, or accidentals.
  */
-public final class RestRenderer extends BaseElementRenderer<StaffElement> {
+public final class RestRenderer implements ElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Rest Glyphs (SMuFL/Bravura)
@@ -137,7 +137,7 @@ public final class RestRenderer extends BaseElementRenderer<StaffElement> {
     }
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
@@ -155,7 +155,7 @@ public final class RestRenderer extends BaseElementRenderer<StaffElement> {
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             g2.translate(noteX, noteY);
-            g2.setFont(MUSIC_FONT);
+            g2.setFont(RenderingUtils.MUSIC_FONT);
             // Note: Don't set color here - respect the color set by the caller
             // (e.g., blue for insertion notes, black for song notes)
 
@@ -209,7 +209,7 @@ public final class RestRenderer extends BaseElementRenderer<StaffElement> {
 
         // Draw augmentation dots using SMuFL glyph
         try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(MUSIC_FONT);
+            g2.setFont(RenderingUtils.MUSIC_FONT);
             float dotX = firstDotX;
 
             for (var i = 0; i < note.getDotCount(); i++) {

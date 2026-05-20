@@ -124,6 +124,6 @@ public final class TieRenderer {
             return endColor;
         }
 
-        return BaseElementRenderer.ELEMENT_COLOR;
+        return RenderingUtils.ELEMENT_COLOR;
     }
 }

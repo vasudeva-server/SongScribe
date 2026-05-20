@@ -392,7 +392,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
     /**
      * Returns the number of ledger lines required for this note's staff position.
-     * Consistent with {@link songscribe.ui.renderer.BaseElementRenderer#forEachLedgerLineYSs}.
+     * Consistent with {@link songscribe.ui.renderer.RenderingUtils#forEachLedgerLineYSs}.
      */
     public int getLedgerLineCount() {
         var a = Math.abs(staffPosition);

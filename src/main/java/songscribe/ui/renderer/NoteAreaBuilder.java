@@ -75,8 +75,8 @@ class NoteAreaBuilder {
 
     static {
         var frc = GraphicUtils.SCREEN_FRC;
-        var font = BaseElementRenderer.MUSIC_FONT;
-        var graceFont = BaseElementRenderer.GRACE_NOTE_FONT;
+        var font = RenderingUtils.MUSIC_FONT;
+        var graceFont = RenderingUtils.GRACE_NOTE_FONT;
 
         NOTEHEAD_BLACK_SHAPE = GraphicUtils.glyphOutline(font, frc, SMuFLGlyph.NOTEHEAD_BLACK);
         NOTEHEAD_HALF_SHAPE = GraphicUtils.glyphOutline(font, frc, SMuFLGlyph.NOTEHEAD_HALF);
@@ -302,7 +302,7 @@ class NoteAreaBuilder {
         var thicknessSs = Engraving.LEDGER_LINE_THICKNESS_SS;
         var halfThicknessSs = thicknessSs / 2.0;
 
-        BaseElementRenderer.forEachLedgerLineYSs(note.getStaffPosition(), y ->
+        RenderingUtils.forEachLedgerLineYSs(note.getStaffPosition(), y ->
             area.add(new Area(new Rectangle2D.Double(
                 centerXSs - ledgerWidthSs / 2.0,
                 y - halfThicknessSs,

@@ -54,7 +54,7 @@ import songscribe.layout.NoteGeometry;
  *   <li>Ledger lines (for notes above/below staff)</li>
  * </ul>
  */
-public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
+public final class NoteRenderer implements ElementRenderer<StaffElement> {
     // ==========================================================================
     // Constants
     // ==========================================================================
@@ -187,7 +187,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     }
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
@@ -216,10 +216,10 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         // (e.g., blue for insertion notes, black for song notes)
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             var noteX = resolveNoteXSs(g2, element, invariants, frame);
-            var noteY = noteStaffPositionToCoordinateSs(element.getStaffPosition(), invariants.getMiddleLineYSs());
+            var noteY = RenderingUtils.noteStaffPositionToCoordinateSs(element.getStaffPosition(), invariants.getMiddleLineYSs());
 
             g2.translate(noteX, noteY);
-            g2.setFont(BaseElementRenderer.MUSIC_FONT);
+            g2.setFont(RenderingUtils.MUSIC_FONT);
 
             var isBeamed = isNoteBeamed(element, invariants);
             renderNoteHead(g2, element, isBeamed, invariants);
@@ -243,7 +243,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         // Place half a staff space above the top staff line
         var breathY = invariants.getMiddleLineYSs() - 2.5;
 
-        drawBravuraGlyph(
+        RenderingUtils.drawBravuraGlyph(
             g2,
             SMuFLGlyph.BREATH_MARK_COMMA,
             noteX,
@@ -278,7 +278,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var noteHeadXPosSs = NoteGeometry.getNoteheadXOffsetSs(noteType, upper);
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(noteType.isGraceNote() ? GRACE_NOTE_FONT : MUSIC_FONT);
+            g2.setFont(noteType.isGraceNote() ? RenderingUtils.GRACE_NOTE_FONT : RenderingUtils.MUSIC_FONT);
             g2.drawString(glyph.asString(), noteHeadXPosSs, 0f);
         }
 
@@ -408,12 +408,12 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         Font flagFont;
 
         if (noteType.isGraceNote()) {
-            flagFont = GRACE_NOTE_FONT;
+            flagFont = RenderingUtils.GRACE_NOTE_FONT;
             // The scaled flag glyph's internal stem connection is 65% of the full stem width.
             // Shift right to visually center the flag on the actual stem.
-            flagX += (float) (NoteGeometry.STEM_WIDTH_SS * (1 - GRACE_NOTE_SCALE) / 2);
+            flagX += (float) (NoteGeometry.STEM_WIDTH_SS * (1 - RenderingUtils.GRACE_NOTE_SCALE) / 2);
         } else {
-            flagFont = MUSIC_FONT;
+            flagFont = RenderingUtils.MUSIC_FONT;
         }
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
@@ -437,7 +437,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(MUSIC_FONT);
+            g2.setFont(RenderingUtils.MUSIC_FONT);
             var dotStr = SMuFLGlyph.AUGMENTATION_DOT.asString();
             forEachDotPosition(note, beamed, upper, (dotX, yOffset) ->
                 g2.drawString(dotStr, dotX.floatValue(), yOffset.floatValue()));
@@ -495,8 +495,8 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var ledgerWidthSs = getLedgerLineWidthSs(note, extensionSs);
         var centerXSs = getLedgerLineCenterXSs(note);
 
-        forEachLedgerLineYSs(note.getStaffPosition(),
-            y -> drawLedgerLine(g2, centerXSs, y, ledgerWidthSs, invariants));
+        RenderingUtils.forEachLedgerLineYSs(note.getStaffPosition(),
+            y -> RenderingUtils.drawLedgerLine(g2, centerXSs, y, ledgerWidthSs, invariants));
     }
 
     // ==========================================================================
@@ -516,7 +516,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var components = NoteGeometry.getAccidentalComponents(accidental, note.getType().isGraceNote());
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(MUSIC_FONT);
+            g2.setFont(RenderingUtils.MUSIC_FONT);
 
             var startX = -NoteGeometry.ACCIDENTAL_PADDING_SS - NoteGeometry.getAccidentalWidthSs(note);
             NoteGeometry.walkAccidentalGlyphs(

@@ -45,7 +45,7 @@ public final class BeatChangeRenderer extends MetronomeRenderer {
     }
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,

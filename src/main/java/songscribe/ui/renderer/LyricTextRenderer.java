@@ -40,7 +40,7 @@ import songscribe.layout.SongLayoutMetrics;
  * baseline provided by the song-wide
  * {@link SongLayoutMetrics}. Stateless.
  */
-public final class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
+public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
 
     private static final LyricTextRenderer INSTANCE = new LyricTextRenderer();
 
@@ -52,7 +52,7 @@ public final class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
     }
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,

@@ -37,7 +37,7 @@ import songscribe.dom.FermataAttachment;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.ui.renderer.AnnotationRenderer;
 import songscribe.ui.renderer.ArticulationRenderer;
-import songscribe.ui.renderer.BaseElementRenderer;
+import songscribe.ui.renderer.RenderingUtils;
 import songscribe.ui.renderer.BeamGroupRenderer;
 import songscribe.ui.renderer.BeatChangeRenderer;
 import songscribe.ui.renderer.ClefRenderer;
@@ -177,7 +177,7 @@ class LineRenderer {
             && selectionProvider.isLineSelected(lineIndex);
 
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
-            g2.setColor(staffSelected ? ScoreView.getSelectionColor() : BaseElementRenderer.STAFF_LINE_COLOR);
+            g2.setColor(staffSelected ? ScoreView.getSelectionColor() : RenderingUtils.STAFF_LINE_COLOR);
 
             var lineWidth = invariants.getSong().getLineWidthSs();
             var middleLineYSs = invariants.getMiddleLineYSs();

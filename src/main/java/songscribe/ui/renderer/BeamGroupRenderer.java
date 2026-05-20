@@ -46,7 +46,7 @@ import songscribe.layout.StaffExtents;
  * Beams are drawn as filled parallelograms connecting the stems of beamed notes.
  * Multiple beam levels (8th, 16th, 32nd) are stacked vertically.
  */
-public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
+public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
 
     // ==========================================================================
     // Constants from Renderer
@@ -85,7 +85,7 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     // ==========================================================================
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         LineElement element,
@@ -344,7 +344,7 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var firstStemLayout = layoutResult.getStemLayout(beginNote);
         var firstNoteXSs = layoutResult.getElementXSs(beginNote);
         var firstStemCenterXSs = firstNoteXSs
-            + stemCenterXOffsetSs(beginNote.getType(), isUpper);
+            + RenderingUtils.stemCenterXOffsetSs(beginNote.getType(), isUpper);
         var firstX = firstStemCenterXSs - halfStemWidthSs;
         var firstTipYSs = stemTipYSsOffset(firstStemLayout, isUpper, beginNote);
         var firstOuterY = middleLineYSs + firstTipYSs + innerBeamOffsetSs;
@@ -354,7 +354,7 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var lastStemLayout = layoutResult.getStemLayout(endNote);
         var lastNoteXSs = layoutResult.getElementXSs(endNote);
         var lastStemCenterXSs = lastNoteXSs
-            + stemCenterXOffsetSs(endNote.getType(), isUpper);
+            + RenderingUtils.stemCenterXOffsetSs(endNote.getType(), isUpper);
         var lastX = lastStemCenterXSs + halfStemWidthSs;
         var lastTipYSs = stemTipYSsOffset(lastStemLayout, isUpper, endNote);
         var lastOuterY = middleLineYSs + lastTipYSs + innerBeamOffsetSs;
@@ -382,7 +382,7 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
                 g2.setClip(clip);
             }
 
-            g2.setColor(selected ? selectionColor : ELEMENT_COLOR);
+            g2.setColor(selected ? selectionColor : RenderingUtils.ELEMENT_COLOR);
             g2.fill(beam);
         }
     }

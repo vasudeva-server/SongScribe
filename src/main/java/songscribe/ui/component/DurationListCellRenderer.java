@@ -25,7 +25,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Duration;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.ui.renderer.BaseElementRenderer;
+import songscribe.ui.renderer.RenderingUtils;
 
 /**
  * A {@link ListCellRenderer} for {@link Duration} values that paints SMuFL music glyphs.
@@ -33,7 +33,7 @@ import songscribe.ui.renderer.BaseElementRenderer;
  */
 public final class DurationListCellRenderer implements ListCellRenderer<Object> {
 
-    private static final Font FONT = BaseElementRenderer.getMusicFont().deriveFont(24f);
+    private static final Font FONT = RenderingUtils.getMusicFont().deriveFont(24f);
     private static final int VERTICAL_PADDING_PX = 8;
     private static final Dimension CELL_SIZE;
     private static final int BASELINE_Y_PX;

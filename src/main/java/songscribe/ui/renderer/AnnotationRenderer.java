@@ -36,7 +36,7 @@ import songscribe.dom.ScaleContext;
  * Annotations are text labels that appear above or below notes,
  * typically used for performance instructions or other markings.
  */
-public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
+public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
 
     private static final AnnotationRenderer INSTANCE = new AnnotationRenderer();
 
@@ -48,7 +48,7 @@ public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> 
     }
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
@@ -72,12 +72,12 @@ public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> 
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
             g2.setFont(ScaleContext.scaleFont(annotationFont));
-            applyDecorationColor(g2, element, invariants, frame);
+            RenderingUtils.applyDecorationColor(g2, element, invariants, frame);
 
             var metrics = g2.getFontMetrics(annotationFont);
             var ascentSs = ScaleContext.pxToSs(metrics.getAscent());
             var xSs = decorationLayout.xSs();
-            var baselineYSs = layoutYToComponentYSs(decorationLayout.ySs(), invariants) + ascentSs;
+            var baselineYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants) + ascentSs;
 
             g2.drawString(attachment.getAnnotation().getAnnotation(), (float) xSs, (float) baselineYSs);
         }

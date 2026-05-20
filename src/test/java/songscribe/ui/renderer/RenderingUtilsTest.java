@@ -33,7 +33,7 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.ui.component.ScoreView;
 
-class BaseElementRendererTest extends UnitTest {
+class RenderingUtilsTest extends UnitTest {
 
     // T1: line == null → preview element color (treated as preview)
     @Test
@@ -41,7 +41,7 @@ class BaseElementRendererTest extends UnitTest {
         var element = new StaffElement(ElementType.CROTCHET);
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
 
-        var color = BaseElementRenderer.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
+        var color = RenderingUtils.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getPreviewElementColor());
     }
@@ -57,7 +57,7 @@ class BaseElementRendererTest extends UnitTest {
             .setCurrentLine(line)
             .build();
 
-        var color = BaseElementRenderer.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
+        var color = RenderingUtils.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getPreviewElementColor());
     }
@@ -75,7 +75,7 @@ class BaseElementRendererTest extends UnitTest {
             .setPlayingNoteIndex(0)
             .build();
 
-        var color = BaseElementRenderer.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
+        var color = RenderingUtils.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getPlayingNoteColor());
     }

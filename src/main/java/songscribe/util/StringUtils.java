@@ -134,13 +134,16 @@ public final class StringUtils {
             for (; end < wordCount; end++) {
                 var word = words.get(end);
                 var extraWidth = (end > start) ? spaceWidth : 0;
-                lineWidth += metrics.stringWidth(word) + extraWidth;
+                var newWidth = lineWidth + metrics.stringWidth(word) + extraWidth;
 
-                // If the line is too wide, stop adding words to the line
-                if (lineWidth > maxWidth) {
+                // Stop adding words once the line is too wide, but always keep at
+                // least one word per line so the loop makes progress even when a
+                // single word is wider than maxWidth (e.g. maxWidth == 0).
+                if (newWidth > maxWidth && end > start) {
                     break;
                 }
 
+                lineWidth = newWidth;
                 currentLine.add(word);
             }
 

@@ -39,7 +39,7 @@ import songscribe.util.MyFontUtils;
  * Bracket styling follows LilyPond conventions: round caps/joins,
  * vertical arms pointing toward notes, and an italic serif number.
  */
-public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
+public final class TupletRenderer implements ElementRenderer<Tuplet> {
 
     // ==========================================================================
     // Constants
@@ -78,7 +78,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
     // ==========================================================================
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         Tuplet element,
@@ -155,7 +155,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
         boolean numberOnly
     ) {
         // Convert layout Y to component Y
-        var bracketYSs = layoutYToComponentYSs(ySs, invariants);
+        var bracketYSs = RenderingUtils.layoutYToComponentYSs(ySs, invariants);
         var centerXSs = (leftXSs + rightXSs) / 2.0;
 
         // Measure number width for gap calculation
@@ -170,7 +170,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
         var thicknessSs = invariants.getLineThickness().tupletBracketSs();
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setColor(ELEMENT_COLOR);
+            g2.setColor(RenderingUtils.ELEMENT_COLOR);
 
             if (!numberOnly) {
                 var armHeightSs = TUPLET_BRACKET_OVERHANG_SS;

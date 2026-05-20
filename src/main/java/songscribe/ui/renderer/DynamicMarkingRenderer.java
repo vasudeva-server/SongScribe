@@ -37,7 +37,7 @@ import songscribe.layout.stacking.NoteAttachedStacker;
  * centered over the notehead. This renderer is separate from
  * {@link DynamicsRenderer}, which handles hairpin (crescendo/diminuendo) lines.
  */
-public final class DynamicMarkingRenderer extends BaseElementRenderer<StaffElement> {
+public final class DynamicMarkingRenderer implements ElementRenderer<StaffElement> {
 
     // Singleton instance
     private static final DynamicMarkingRenderer INSTANCE = new DynamicMarkingRenderer();
@@ -60,7 +60,7 @@ public final class DynamicMarkingRenderer extends BaseElementRenderer<StaffEleme
     // ==========================================================================
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
@@ -96,15 +96,15 @@ public final class DynamicMarkingRenderer extends BaseElementRenderer<StaffEleme
             return;
         }
 
-        var dynamicTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), invariants);
+        var dynamicTopYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
         var dynamicBBox = SMuFLMetadata.requireBBox(glyph);
         // Layout xSs is already centered over the notehead by the stacking calculator
         var x = decorationLayout.xSs() - dynamicBBox.left();
-        var y = glyphOriginYFromLayoutTop(dynamicTopYSs, glyph);
+        var y = RenderingUtils.glyphOriginYFromLayoutTop(dynamicTopYSs, glyph);
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            applyDecorationColor(g2, element, invariants, frame);
-            drawBravuraGlyph(g2, glyph, x, y, true);
+            RenderingUtils.applyDecorationColor(g2, element, invariants, frame);
+            RenderingUtils.drawBravuraGlyph(g2, glyph, x, y, true);
         }
     }
 

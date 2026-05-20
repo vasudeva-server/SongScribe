@@ -38,7 +38,7 @@ import songscribe.util.GraphicUtils;
  * different iterations of a repeat. First ending is played the first time,
  * second ending is played on the repeat.
  */
-public final class EndingRenderer extends BaseElementRenderer<LineElement> {
+public final class EndingRenderer implements ElementRenderer<LineElement> {
 
     // Singleton instance
     private static final EndingRenderer INSTANCE = new EndingRenderer();
@@ -61,7 +61,7 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
     // ==========================================================================
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         LineElement element,
@@ -114,7 +114,7 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
         var thicknessSs = invariants.getLineThickness().voltaBracketSs();
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setColor(ELEMENT_COLOR);
+            g2.setColor(RenderingUtils.ELEMENT_COLOR);
 
             // Horizontal top
             GraphicUtils.fillHorizontalLine(g2, x1, x2, yTopSs, thicknessSs);
@@ -158,7 +158,7 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
         var decorationLayout = invariants.getLayoutResult().getDecorationLayout(ending);
 
         if (decorationLayout != null) {
-            return layoutYToComponentYSs(decorationLayout.ySs(), invariants);
+            return RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
         }
 
         throw new IllegalStateException("No layout found for Ending element");

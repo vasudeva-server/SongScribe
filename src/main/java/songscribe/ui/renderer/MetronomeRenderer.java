@@ -41,10 +41,10 @@ import songscribe.dom.ScaleContext;
  * Provides the shared font constant, glyph drawing primitives, and decoration
  * layout lookup used by {@link TempoChangeRenderer} and {@link BeatChangeRenderer}.
  */
-public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement> {
+public abstract class MetronomeRenderer implements ElementRenderer<StaffElement> {
 
     /** Bravura font scaled for metronome glyph display. */
-    protected static final Font TEMPO_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * MetronomeAttachment.NOTE_SCALE);
+    protected static final Font TEMPO_NOTE_FONT = RenderingUtils.getMusicFont().deriveFont(RenderingUtils.FONT_SIZE * MetronomeAttachment.NOTE_SCALE);
 
     /**
      * Returns the SMuFL metronome glyph for the given element type,
@@ -89,9 +89,9 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
             throw RuntimeError.exit("No current line for metronome decoration on " + element);
         }
 
-        var color = getDecorationColor(element, invariants, frame);
+        var color = RenderingUtils.getDecorationColor(element, invariants, frame);
         var decorationLayout = requireDecorationLayout(element, attachmentClass, invariants);
-        var ySs = layoutYToComponentYSs(decorationLayout.ySs(), invariants);
+        var ySs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
         var attrFont = invariants.getAnnotationFont();
 
         return new RenderSetup(color, decorationLayout, ySs, attrFont);

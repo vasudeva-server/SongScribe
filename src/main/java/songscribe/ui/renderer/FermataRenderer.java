@@ -37,7 +37,7 @@ import songscribe.layout.stacking.NoteAttachedStacker;
  * A fermata indicates that a note should be held longer than its written duration.
  * The symbol consists of a dot under an arc (like an eyebrow over an eye).
  */
-public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
+public final class FermataRenderer implements ElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants
@@ -71,7 +71,7 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
@@ -99,16 +99,16 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        var fermataTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), invariants);
+        var fermataTopYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
 
-        var x = centeredGlyphX(decorationLayout.xSs(), element,
+        var x = RenderingUtils.centeredGlyphX(decorationLayout.xSs(), element,
             FERMATA_BBOX_LEFT_SS, FERMATA_WIDTH_SS);
 
-        var y = glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
+        var y = RenderingUtils.glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            applyDecorationColor(g2, element, invariants, frame);
-            drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);
+            RenderingUtils.applyDecorationColor(g2, element, invariants, frame);
+            RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);
         }
     }
 

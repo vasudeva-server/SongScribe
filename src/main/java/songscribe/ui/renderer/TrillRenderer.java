@@ -38,7 +38,7 @@ import songscribe.dom.Trill;
 /**
  * Renders trill markings (tr symbol + wavy line for extended trills).
  */
-public final class TrillRenderer extends BaseElementRenderer<Trill> {
+public final class TrillRenderer implements ElementRenderer<Trill> {
 
     // ==========================================================================
     // Constants
@@ -79,7 +79,7 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
     // ==========================================================================
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         Trill element,
@@ -91,14 +91,14 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
             return;
         }
 
-        var color = getDecorationColor(anchorNote, invariants, frame);
+        var color = RenderingUtils.getDecorationColor(anchorNote, invariants, frame);
         var decorationLayout = invariants.getLayoutResult().getDecorationLayout(element);
 
         if (decorationLayout == null) {
             return;
         }
 
-        var trillTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), invariants);
+        var trillTopYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
         var layoutXSs = decorationLayout.xSs();
 
         renderTrillAtPosition(
@@ -123,7 +123,7 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
             var endXSs = layoutResult.getElementXSs(endNote) + Engraving.NOTE_HEAD_WIDTH_SS;
             renderTrill(g2, layoutXSs, endXSs, trillTopYSs, color);
         } else {
-            var trillXSs = centeredGlyphX(layoutXSs,
+            var trillXSs = RenderingUtils.centeredGlyphX(layoutXSs,
                 anchor, 0, TRILL_ADVANCE_WIDTH_SS);
             renderTrill(g2, trillXSs, Double.NaN, trillTopYSs, color);
         }
@@ -153,7 +153,7 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
             g2.setColor(color);
-            drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, xSs, y, true);
+            RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, xSs, y, true);
 
             // Draw wavy line extension for multi-note trills
             if (!Double.isNaN(endXSs)) {
@@ -183,9 +183,9 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
                 continue;
             }
 
-            var color = getDecorationColor(anchor, invariants, frame);
+            var color = RenderingUtils.getDecorationColor(anchor, invariants, frame);
             var layoutXSs = layout.xSs();
-            var trillTopYSs = layoutYToComponentYSs(layout.ySs(), invariants);
+            var trillTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
 
             renderTrillAtPosition(
                 g2, anchor, trill.getEndElement(),
@@ -213,7 +213,7 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
         var segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH_SS));
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
-            g2.setFont(MUSIC_FONT);
+            g2.setFont(RenderingUtils.MUSIC_FONT);
             g2.setColor(color);
             g2.translate(x1, y);
 

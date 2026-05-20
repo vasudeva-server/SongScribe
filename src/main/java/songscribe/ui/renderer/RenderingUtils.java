@@ -34,9 +34,7 @@ import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.component.ScoreView;
-import songscribe.layout.ElementBoundsSs;
 import songscribe.layout.NoteGeometry;
-import songscribe.dom.LineElement;
 
 import org.jspecify.annotations.Nullable;
 
@@ -45,27 +43,15 @@ import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
 /**
- * Abstract base class for element renderers.
+ * Stateless rendering utilities shared by element renderers.
  * <p>
- * Provides shared utilities:
- * <ul>
- *   <li>Font constants and glyph rendering methods</li>
- *   <li>Common drawing operations (ledger lines, staff lines, etc.)</li>
- * </ul>
- *
- * @param <T> The LineElement type this renderer handles
+ * Holds the music-font constants and the common drawing/coordinate helpers
+ * that the renderers used to inherit from {@code BaseElementRenderer}.
  */
-public abstract class BaseElementRenderer<T extends LineElement> implements ElementRenderer<T> {
+public final class RenderingUtils {
 
-    // ==========================================================================
-    // Fughetta Font Glyph Constants
-    // Note: Fughetta uses Private Use Area Unicode codepoints (U+F0xx)
-    // Remaining Fughetta constants
-    // ==========================================================================
-
-    // Special markings
-    protected static final String GLISSANDO = "\uf07e";
-    protected static final String TRILL = "\uf0d9";
+    private RenderingUtils() {
+    }
 
     // ==========================================================================
     // Font Constants
@@ -77,16 +63,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * (4.0 ss * 8 px/ss = 32px).
      */
     public static final float FONT_SIZE = 4.0f;
-
-    /**
-     * Horizontal scale factor for tempo change note display.
-     */
-    public static final double TEMPO_CHANGE_ZOOM_X = 0.8;
-
-    /**
-     * Vertical scale factor for tempo change note display.
-     */
-    public static final double TEMPO_CHANGE_ZOOM_Y = 0.6;
 
     /**
      * The Bravura (SMuFL) music notation font at standard note size.
@@ -134,7 +110,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     // ==========================================================================
 
     public static final Color STAFF_LINE_COLOR = Color.BLACK;
-    protected static final Color ELEMENT_COLOR = Color.BLACK;
+    static final Color ELEMENT_COLOR = Color.BLACK;
 
     /**
      * Returns the rendering color for a decoration attached to {@code element}.
@@ -146,7 +122,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * line (index &lt; 0): the element is the insertion preview, so its decorations
      * must match the preview note's color.
      */
-    protected static Color getDecorationColor(
+    static Color getDecorationColor(
         StaffElement element,
         LineInvariants invariants,
         ElementFrame frame
@@ -176,7 +152,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * Sets the graphics color for a decoration attached to {@code element}.
      * Delegates to {@link #getDecorationColor(StaffElement, LineInvariants, ElementFrame)}.
      */
-    protected static void applyDecorationColor(
+    static void applyDecorationColor(
         Graphics2D g2,
         StaffElement element,
         LineInvariants invariants,
@@ -184,35 +160,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     ) {
         g2.setColor(getDecorationColor(element, invariants, frame));
     }
-
-    // ==========================================================================
-    // Rendering Template Method
-    // ==========================================================================
-
-    @Override
-    public void render(
-        LineInvariants invariants,
-        ElementFrame frame,
-        T element,
-        Graphics2D g2
-    ) {
-        renderElement(invariants, frame, element, g2);
-    }
-
-    /**
-     * Renders the element. Subclasses implement element-specific drawing.
-     *
-     * @param invariants     The per-line invariants
-     * @param frame   The per-element frame
-     * @param element The element to render
-     * @param g2      The graphics context
-     */
-    protected abstract void renderElement(
-        LineInvariants invariants,
-        ElementFrame frame,
-        T element,
-        Graphics2D g2
-    );
 
     // ==========================================================================
     // Coordinate Transformation Utilities
@@ -228,23 +175,9 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param invariants       the per-line invariants containing middleLineY
      * @return the Y coordinate in component space
      */
-    protected static double layoutYToComponentYSs(double layoutYSs, LineInvariants invariants) {
+    static double layoutYToComponentYSs(double layoutYSs, LineInvariants invariants) {
         return invariants.getMiddleLineYSs() + layoutYSs;
     }
-
-    /**
-     * Converts an X coordinate from layout space to component space.
-     * <p>
-     * Currently, X coordinates are the same in both spaces, but this method
-     * is provided for symmetry and future-proofing.
-     *
-     * @param bounds The layout bounds
-     * @return The X coordinate in component space
-     */
-    protected static double layoutXToComponentXSs(ElementBoundsSs bounds) {
-        return bounds.getLeftSs();
-    }
-
 
     // ==========================================================================
     // Shared Drawing Utilities
@@ -263,7 +196,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param ySs      Y position of the ledger line in staff spaces
      * @param widthSs  Width of the ledger line in staff spaces
      */
-    protected void drawLedgerLine(Graphics2D g2, double xSs, double ySs, double widthSs, LineInvariants invariants) {
+    static void drawLedgerLine(Graphics2D g2, double xSs, double ySs, double widthSs, LineInvariants invariants) {
         // Color is intentionally not set — inherited from caller so insertion notes
         // draw ledger lines in their own color.
         var thicknessSs = invariants.getLineThickness().ledgerLineSs();
@@ -279,7 +212,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param xSs   X position in staff spaces
      * @param ySs   Y position in staff spaces
      */
-    protected void drawBravuraGlyph(
+    static void drawBravuraGlyph(
         Graphics2D g2,
         SMuFLGlyph glyph,
         double xSs,
@@ -297,7 +230,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param ySs           Y position in staff spaces
      * @param preserveColor If true, preserves the current graphics color instead of setting ELEMENT_COLOR
      */
-    protected void drawBravuraGlyph(
+    static void drawBravuraGlyph(
         Graphics2D g2,
         SMuFLGlyph glyph,
         double xSs,
@@ -330,7 +263,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param glyphWidthSs  the width of the glyph to center (bBox right - left)
      * @return the X coordinate for drawing
      */
-    protected static double centeredGlyphX(
+    static double centeredGlyphX(
         double layoutXSs, StaffElement note,
         double glyphBBoxLeft, double glyphWidthSs) {
 
@@ -352,28 +285,9 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param glyph        the SMuFL glyph to draw
      * @return the Y coordinate to pass to {@link #drawBravuraGlyph}
      */
-    protected static double glyphOriginYFromLayoutTop(double layoutTopYSs, SMuFLGlyph glyph) {
+    static double glyphOriginYFromLayoutTop(double layoutTopYSs, SMuFLGlyph glyph) {
         var bbox = SMuFLMetadata.requireBBox(glyph);
         return layoutTopYSs - bbox.top();
-    }
-
-    /**
-     * Converts a staff line index to Y coordinate in staff-space units.
-     * <p>
-     * Staff lines are indexed 0-4 where:
-     * <ul>
-     *   <li>0 = top line (F5)</li>
-     *   <li>2 = middle line (B4)</li>
-     *   <li>4 = bottom line (E4)</li>
-     * </ul>
-     * Each staff line is 1.0 ss apart.
-     *
-     * @param lineIndex   Staff line index (0-4)
-     * @param middleLineYSs Y position of middle staff line in staff spaces
-     * @return Y coordinate in staff spaces
-     */
-    protected double staffLineToYSs(int lineIndex, double middleLineYSs) {
-        return middleLineYSs + (lineIndex - 2);
     }
 
     /**
@@ -425,7 +339,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param upper    true = stem goes up (stem-up SE anchor); false = stem goes down (stem-down NW anchor)
      * @return X offset from note reference point to stem center, in staff spaces
      */
-    protected static double stemCenterXOffsetSs(ElementType noteType, boolean upper) {
+    static double stemCenterXOffsetSs(ElementType noteType, boolean upper) {
         var isMinim = noteType == ElementType.MINIM;
         double anchorX;
 

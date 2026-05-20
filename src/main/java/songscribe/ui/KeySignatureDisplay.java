@@ -26,7 +26,7 @@ import java.util.Map;
 import songscribe.Strings;
 import songscribe.dom.KeyType;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.ui.renderer.BaseElementRenderer;
+import songscribe.ui.renderer.RenderingUtils;
 import songscribe.util.MyFontUtils;
 
 import static java.awt.font.TextAttribute.FONT;
@@ -67,7 +67,7 @@ public final class KeySignatureDisplay {
 
         if (tonicHasAccidental(keyType, count)) {
             var glyphIndex = tonic.length() - 1;
-            var glyphFont = BaseElementRenderer.getMusicFont().deriveFont(labelFont.getSize2D());
+            var glyphFont = RenderingUtils.getMusicFont().deriveFont(labelFont.getSize2D());
             var tracking = LETTER_GLYPH_GAP_PX / labelFont.getSize2D();
             var letterWithGapFont = labelFont.deriveFont(Map.of(TRACKING, tracking));
             attributed.addAttribute(FONT, glyphFont, glyphIndex, glyphIndex + 1);

@@ -37,7 +37,7 @@ import songscribe.dom.LineElement;
  * Crescendo: opens from left to right (gets louder)
  * Diminuendo: opens from right to left (gets softer)
  */
-public final class DynamicsRenderer extends BaseElementRenderer<LineElement> {
+public final class DynamicsRenderer implements ElementRenderer<LineElement> {
 
     // ==========================================================================
     // Constants
@@ -64,7 +64,7 @@ public final class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     // ==========================================================================
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         LineElement element,
@@ -95,12 +95,12 @@ public final class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     ) {
         var x1 = layout.xSs();
         var x2 = x1 + layout.widthSs();
-        var topYSs = layoutYToComponentYSs(layout.ySs(), invariants);
+        var topYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
         var bottomYSs = topYSs + layout.heightSs();
         var middleYSs = topYSs + layout.heightSs() / 2.0;
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
-            g2.setColor(ELEMENT_COLOR);
+            g2.setColor(RenderingUtils.ELEMENT_COLOR);
             g2.setStroke(new BasicStroke(
                 (float) invariants.getLineThickness().hairpinSs(),
                 BasicStroke.CAP_ROUND,

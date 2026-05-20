@@ -32,7 +32,7 @@ import songscribe.dom.Clef;
  * The treble clef is positioned so that its inner curve wraps around
  * the G line (second line from bottom, staff line index 3).
  */
-public final class ClefRenderer extends BaseElementRenderer<Clef> {
+public final class ClefRenderer implements ElementRenderer<Clef> {
 
     /** Singleton instance. */
     private static final ClefRenderer INSTANCE = new ClefRenderer();
@@ -51,7 +51,7 @@ public final class ClefRenderer extends BaseElementRenderer<Clef> {
     }
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         Clef element,
@@ -64,7 +64,7 @@ public final class ClefRenderer extends BaseElementRenderer<Clef> {
         // one staff space below the middle line)
         var baseline = invariants.getMiddleLineYSs() + 1.0;
 
-        drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, x, baseline);
+        RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, x, baseline);
     }
 
 }

@@ -47,7 +47,7 @@ import songscribe.smufl.SMuFLGlyph;
  *   <li>Left-right repeat</li>
  * </ul>
  */
-public final class BarRenderer extends BaseElementRenderer<StaffElement> {
+public final class BarRenderer implements ElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants
@@ -83,7 +83,7 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
@@ -211,7 +211,7 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
      */
     private static void drawRepeatDots(Graphics2D g2, double xSs) {
         try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(MUSIC_FONT);
+            g2.setFont(RenderingUtils.MUSIC_FONT);
             g2.drawString(
                 SMuFLGlyph.REPEAT_DOTS.asString(),
                 (float) xSs,

@@ -39,7 +39,7 @@ import songscribe.layout.StaffExtents;
  * The key signature follows the clef and shows the sharps or flats
  * in the order they appear (FCGDAEB for sharps, BEADGCF for flats).
  */
-public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
+public final class KeySignatureRenderer implements ElementRenderer<KeySignature> {
 
     // ==========================================================================
     // Accidental Glyphs
@@ -93,7 +93,7 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
     // ==========================================================================
 
     @Override
-    protected void renderElement(
+    public void render(
         LineInvariants invariants,
         ElementFrame frame,
         KeySignature element,
@@ -111,8 +111,8 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
         }
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
-            g2.setFont(MUSIC_FONT);
-            g2.setColor(ELEMENT_COLOR);
+            g2.setFont(RenderingUtils.MUSIC_FONT);
+            g2.setColor(RenderingUtils.ELEMENT_COLOR);
 
             // Get the starting X position from the element
             var xPosSs = element.getXSs();
@@ -227,8 +227,8 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
         LineInvariants invariants
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(MUSIC_FONT);
-            g2.setColor(ELEMENT_COLOR);
+            g2.setFont(RenderingUtils.MUSIC_FONT);
+            g2.setColor(RenderingUtils.ELEMENT_COLOR);
 
             var middleLineYSs = invariants.getMiddleLineYSs();
 
