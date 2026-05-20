@@ -9,8 +9,8 @@
       "description": "Rewrite rendering to use SMuFL glyph system and engraving defaults"
     },
     {
-      "path": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
-      "subdirectory": "migrations/rendering-rewrite",
+      "path": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
+      "subdirectory": "completed/migrations/rendering-rewrite",
       "active": false,
       "description": "Rewrite rendering and layout pipeline with staff-space coordinate system, abc2svg algorithms"
     },
@@ -95,47 +95,47 @@
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/rendering-rewrite/milestone-1-coordinate-system.md",
-      "parentPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "path": "plans/completed/migrations/rendering-rewrite/milestone-1-coordinate-system.md",
+      "parentPlan": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
       "parentPhase": 1,
       "parentStep": null,
-      "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "masterPlan": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
       "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/rendering-rewrite/milestone-2-beams-stems.md",
-      "parentPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "path": "plans/completed/migrations/rendering-rewrite/milestone-2-beams-stems.md",
+      "parentPlan": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
       "parentPhase": 2,
       "parentStep": null,
-      "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "masterPlan": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
       "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/rendering-rewrite/milestone-2-phase-6.md",
-      "parentPlan": "plans/migrations/rendering-rewrite/milestone-2-beams-stems.md",
+      "path": "plans/completed/migrations/rendering-rewrite/milestone-2-phase-6.md",
+      "parentPlan": "plans/completed/migrations/rendering-rewrite/milestone-2-beams-stems.md",
       "parentPhase": null,
       "parentStep": 6,
-      "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "masterPlan": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
       "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/rendering-rewrite/milestone-2-phase-7.md",
-      "parentPlan": "plans/migrations/rendering-rewrite/milestone-2-beams-stems.md",
+      "path": "plans/completed/migrations/rendering-rewrite/milestone-2-phase-7.md",
+      "parentPlan": "plans/completed/migrations/rendering-rewrite/milestone-2-beams-stems.md",
       "parentPhase": null,
       "parentStep": 7,
-      "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
-      "status": "pending",
+      "masterPlan": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
+      "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/rendering-rewrite/milestone-3-ties-glissandos.md",
-      "parentPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "path": "plans/completed/migrations/rendering-rewrite/milestone-3-ties-glissandos.md",
+      "parentPlan": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
       "parentPhase": 3,
       "parentStep": null,
-      "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "masterPlan": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
       "status": "completed",
       "type": "sub-plan"
     }

@@ -14,7 +14,7 @@
 | 8 | [Split `ElementRenderContext` by Lifetime](#-phase-8-split-elementrendercontext-by-lifetime) | ✅ Done | [milestone-8-context-split.md](milestone-8-context-split.md) |
 | 9 | [Flatten `BaseElementRenderer` Hierarchy](#-phase-9-flatten-baseelementrenderer-hierarchy) | ✅ Done | [milestone-9-flatten-base-renderer.md](milestone-9-flatten-base-renderer.md) |
 | 10 | [Remove `StaffElement.Properties` Wrapper](#-phase-10-remove-staffelementproperties-wrapper) | ✅ Done | — |
-| 11 | [Performance Profiling + Regression Testing](#-phase-11-performance-profiling--regression-testing) | ⏳ Pending | — |
+| 11 | [Performance Profiling + Regression Testing](#-phase-11-performance-profiling--regression-testing) | ✅ Done | — |
 
 ## Context
 
@@ -192,14 +192,14 @@ The sub-plan's audit finding: the base contributes **no genuine shared default b
 
 ---
 
-## ⏳ Phase 11: Performance Profiling + Regression Testing
+## ✅ Phase 11: Performance Profiling + Regression Testing
 
 Confirm no regression from Phases 7–10.
 
 ### Tasks
 
-- [ ] Profile layout + render time on representative songs; compare against the Phase 6 baseline.
-- [ ] Open a representative set of existing songs; compare renders against pre-rewrite output for visual regressions.
-- [ ] Triage and fix any regressions found.
+- [x] Profile layout + render time on representative songs; compare against the Phase 6 baseline.
+- [x] Open a representative set of existing songs; compare renders against pre-rewrite output for visual regressions.
+- [x] Triage and fix any regressions found.
 
 **Verification:** No visual regressions. Layout + render time within tolerance of the pre-Phase-7 baseline.
