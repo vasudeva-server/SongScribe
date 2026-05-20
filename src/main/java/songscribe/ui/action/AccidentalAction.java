@@ -25,8 +25,13 @@ import module java.desktop;
 import java.util.EnumSet;
 
 import songscribe.Strings;
+import songscribe.message.MessageCenter;
+import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.message.mutation.ElementField;
 import songscribe.model.StaffElement;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
+import songscribe.ui.playback.PlayThread;
 
 public final class AccidentalAction extends NoteOnlyAction {
 
@@ -132,5 +137,22 @@ public final class AccidentalAction extends NoteOnlyAction {
     @Override
     public EnumSet<ElementField> modifiedFields() {
         return MODIFIED_FIELDS;
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        toggleOnKeyboardShortcut(e);
+
+        if (!applyToSelectionIfActive()) {
+            MessageCenter.post(new UpdatePreviewElementCommand());
+            return;
+        }
+
+        if (Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
+            var element = requireScoreView().getSingleSelectedElement();
+            if (element != null && element.getType().isNote()) {
+                new PlayThread(element.getPitch()).start();
+            }
+        }
     }
 }
