@@ -235,13 +235,13 @@ class ScoreViewControllerTest extends UnitTest {
         void testDeleteNoteBreaksSyllableRelationWhenDeletedNoteIsTerminus() {
             var predecessor = crotchet();
             var terminus = crotchet();
-            predecessor.properties.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
-            terminus.properties.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+            predecessor.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            terminus.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
             var line = lineWith(predecessor, terminus);
 
             ScoreViewController.deleteNote(1, line);
 
-            assertThat(predecessor.properties.lyrics.getFirst().syllabic())
+            assertThat(predecessor.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -250,14 +250,14 @@ class ScoreViewControllerTest extends UnitTest {
             var first = crotchet();
             var middle = crotchet();
             var last = crotchet();
-            first.properties.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
-            middle.properties.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, false));
-            last.properties.lyrics.add(new Lyric(1, "mi", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+            first.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            middle.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, false));
+            last.lyrics.add(new Lyric(1, "mi", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
             var line = lineWith(first, middle, last);
 
             ScoreViewController.deleteNote(1, line);
 
-            assertThat(first.properties.lyrics.getFirst().syllabic())
+            assertThat(first.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.BEGIN);
         }
 

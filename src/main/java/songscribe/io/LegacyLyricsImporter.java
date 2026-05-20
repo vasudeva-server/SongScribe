@@ -202,7 +202,7 @@ public final class LegacyLyricsImporter {
             var syllabic = deriveSyllabic(inWord, hasDelimiter);
             inWord = hasDelimiter;
 
-            line.getElement(elementIdx).properties.lyrics.add(
+            line.getElement(elementIdx).lyrics.add(
                 new Lyric(1, word, extend, syllabic, compound));
             elementIdx++;
             elementIdx += continuations;

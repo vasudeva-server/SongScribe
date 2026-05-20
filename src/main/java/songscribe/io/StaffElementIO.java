@@ -269,7 +269,7 @@ public final class StaffElementIO {
         }
 
 
-        for (var lyric : element.properties.lyrics) {
+        for (var lyric : element.lyrics) {
             writer.println("            <" + XML_LYRIC + ' ' + XML_LYRIC_NUMBER + "=\"" + lyric.verse() + "\">");
 
             // STOP/CONTINUE carriers have no text and only emit the extender marker.
@@ -514,7 +514,7 @@ public final class StaffElementIO {
                         lyricText = lyricText.substring(
                             0, lyricText.length() - COMPOUND_WORD_MARKER.length());
                     }
-                    element.properties.lyrics.add(
+                    element.lyrics.add(
                         new Lyric(lyricNumber, lyricText, lyricExtend, syllabic, compound)
                     );
                     where = Where.ELEMENT;

@@ -10,10 +10,10 @@
 | 4 | [Vertical Stacking + All Decorations](#-phase-4-vertical-stacking--all-decorations) | ✅ Done | [milestone-4-vertical-stacking.md](milestone-4-vertical-stacking.md) |
 | 5 | [Lyrics + Line Height + Tuplets](#-phase-5-lyrics--line-height--tuplets) | ✅ Done | — |
 | 6 | [Legacy Decoration Flag Migration](#-phase-6-legacy-decoration-flag-migration) | ✅ Done | [milestone-6-legacy-flag-migration.md](milestone-6-legacy-flag-migration.md) |
-| 7 | [Package Restructure (DOM / layout / ui)](#-phase-7-package-restructure-dom--layout--ui) | ⏳ Pending | — |
+| 7 | [Package Restructure (DOM / layout / ui)](#-phase-7-package-restructure-dom--layout--ui) | ✅ Done | — |
 | 8 | [Split `ElementRenderContext` by Lifetime](#-phase-8-split-elementrendercontext-by-lifetime) | ✅ Done | [milestone-8-context-split.md](milestone-8-context-split.md) |
-| 9 | [Flatten `BaseElementRenderer` Hierarchy](#-phase-9-flatten-baseelementrenderer-hierarchy) | 📋 Sub-plan | [milestone-9-flatten-base-renderer.md](milestone-9-flatten-base-renderer.md) |
-| 10 | [Remove `StaffElement.Properties` Mutable State](#-phase-10-remove-staffelementproperties-mutable-state) | ⏳ Pending | — |
+| 9 | [Flatten `BaseElementRenderer` Hierarchy](#-phase-9-flatten-baseelementrenderer-hierarchy) | ✅ Done | [milestone-9-flatten-base-renderer.md](milestone-9-flatten-base-renderer.md) |
+| 10 | [Remove `StaffElement.Properties` Wrapper](#-phase-10-remove-staffelementproperties-wrapper) | ✅ Done | — |
 | 11 | [Performance Profiling + Regression Testing](#-phase-11-performance-profiling--regression-testing) | ⏳ Pending | — |
 
 ## Context
@@ -157,7 +157,7 @@ After this, renderers receive `(LineInvariants, ElementFrame, T element, Graphic
 
 ---
 
-## 📋 Phase 9: Flatten `BaseElementRenderer` Hierarchy
+## ✅ Phase 9: Flatten `BaseElementRenderer` Hierarchy
 
 See [milestone-9-flatten-base-renderer.md](milestone-9-flatten-base-renderer.md) for the detailed implementation plan.
 
@@ -169,18 +169,26 @@ The sub-plan's audit finding: the base contributes **no genuine shared default b
 
 ---
 
-## ⏳ Phase 10: Remove `StaffElement.Properties` Mutable State
+## ✅ Phase 10: Remove `StaffElement.Properties` Wrapper
 
-`StaffElement.Properties` holds `public final List<Lyric> lyrics` and `public final Line2D.Double stem`. The `stem` field is computed layout geometry hanging off the DOM; the `lyrics` list is genuine document state. The class is a residual grab bag of mutable state that should be split and deleted.
+`StaffElement.Properties` holds exactly two fields: `public final List<Lyric> lyrics` and `public final Line2D.Double stem`. The `lyrics` list is genuine document state; the `stem` field is dead. The wrapper adds no value and should be flattened away.
+
+### Findings (audit)
+
+- **`stem` is 100% dead** — zero reads, zero writes anywhere (`properties.stem` has no references). The rendering rewrite already relocated stem geometry to `LayoutResult.StemLayout` (`getStemLayout()`, consumed by `NoteRenderer`/`BeamGroupRenderer`). So the "move into `LayoutResult`" option is moot: delete it outright. Removing it may orphan the `java.awt.geom.Line2D` reference in `StaffElement.java`.
+- **`lyrics` is reached directly** as the public list `element.properties.lyrics` everywhere — **108 references across 14 files** (4 production, 10 test). Every access is the exact substring `.properties.lyrics`, so this is a single global find/replace → `.lyrics`, not a structural refactor. The existing public-mutable-list contract (and `getLyrics()`'s unmodifiable view) is preserved unchanged.
+  - Production: `StaffElement` (constructors + `getLyricForVerse` / `getLyrics` / `setLyricForVerse`), `Line` (~12 lyric-adjustment sites), `StaffElementIO`, `LegacyLyricsImporter`.
+  - Test: `StaffElementCopyConstructorTest`, `LineMutationTest`, `ScoreViewControllerTest`, `SyllabicDerivationTest`, `LyricLayoutBuilderTest`, `LyricLayoutBuilderGraceNoteTest`, `LyricRenderMetricsTest`, `LegacyLyricsImporterTest`, `SongIOTest`, `GraceNoteLyricRoundTripTest`.
 
 ### Tasks
 
-- [ ] Move `lyrics` onto `StaffElement` directly as a first-class field.
-- [ ] Move `stem` into `LayoutResult` (or delete if unused after the rendering rewrite).
-- [ ] Update `StaffElementIO`, `LegacyLyricsImporter`, `Line`, and `StaffElement` callers.
-- [ ] Delete `StaffElement.Properties`.
+- [ ] Add `public final List<Lyric> lyrics = new ArrayList<>()` directly on `StaffElement`.
+- [ ] Global-replace `.properties.lyrics` → `.lyrics` across `src/main` and `src/test`.
+- [ ] Delete the dead `stem` field; remove any orphaned `Line2D` import.
+- [ ] Delete `StaffElement.Properties` and the `properties` field.
+- [ ] Compile, then run unit tests (file-I/O round-trip + lyric-mutation suites cover the change).
 
-**Verification:** `StaffElement.Properties` deleted. File I/O round-trips lyrics correctly. Visual output unchanged.
+**Verification:** `StaffElement.Properties` deleted. File I/O round-trips lyrics correctly. Visual output unchanged. Low risk — no behavioral change.
 
 ---
 

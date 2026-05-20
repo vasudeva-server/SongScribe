@@ -65,7 +65,7 @@ class SyllabicDerivationTest extends UnitTest {
     void testStopCarrierHasNullSyllabic() {
         var element = StaffElementFactory.crotchet();
         addElementWithoutTracking(element);
-        element.properties.lyrics.add(new Lyric(VERSE, "", Lyric.Extend.STOP, null, false));
+        element.lyrics.add(new Lyric(VERSE, "", Lyric.Extend.STOP, null, false));
 
         assertThat(lyricForVerse(element, VERSE).syllabic()).isNull();
     }
@@ -75,7 +75,7 @@ class SyllabicDerivationTest extends UnitTest {
     void testContinueCarrierHasNullSyllabic() {
         var element = StaffElementFactory.crotchet();
         addElementWithoutTracking(element);
-        element.properties.lyrics.add(new Lyric(VERSE, "", Lyric.Extend.CONTINUE, null, false));
+        element.lyrics.add(new Lyric(VERSE, "", Lyric.Extend.CONTINUE, null, false));
 
         assertThat(lyricForVerse(element, VERSE).syllabic()).isNull();
     }

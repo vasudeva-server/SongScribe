@@ -101,7 +101,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
 
     private static void setLyric(
         StaffElement element, Lyric.Syllabic syllabic, String text) {
-        element.properties.lyrics.add(new Lyric(1, text, Lyric.Extend.NONE, syllabic, false));
+        element.lyrics.add(new Lyric(1, text, Lyric.Extend.NONE, syllabic, false));
     }
 
     private static List<LyricBoxLayout> boxesOf(LyricLayoutBuilder.Result result, StaffElement element) {

@@ -202,7 +202,7 @@ class LegacyLyricsImporterTest extends UnitTest {
         String expectedText,
         boolean expectedExtend
     ) {
-        assertThat(line.getElement(index).properties.lyrics)
+        assertThat(line.getElement(index).lyrics)
             .as("expected Lyric on element %d", index)
             .containsExactly(new Lyric(1, expectedText,
                 expectedExtend ? Lyric.Extend.START : Lyric.Extend.NONE,
@@ -210,7 +210,7 @@ class LegacyLyricsImporterTest extends UnitTest {
     }
 
     private static void assertNoLyric(Line line, int index) {
-        assertThat(line.getElement(index).properties.lyrics)
+        assertThat(line.getElement(index).lyrics)
             .as("expected no Lyric on element %d", index)
             .isEmpty();
     }

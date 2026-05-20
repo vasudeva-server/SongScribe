@@ -73,7 +73,7 @@ class LyricRenderMetricsTest extends UnitTest {
     void testLyricBoxWidthSsMatchesLayoutBoxWidth() {
         var text = "do";
         var element = ElementType.CROTCHET.newInstance();
-        element.properties.lyrics.add(new Lyric(2, text, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        element.lyrics.add(new Lyric(2, text, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
         song.withoutMutationTracking(() -> line.addElement(element));
         var column = columnAt(element, 5.0);
         var result = LyricLayoutBuilder.build(List.of(column), LYRIC_METRICS, false, 100.0);

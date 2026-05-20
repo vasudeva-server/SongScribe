@@ -20,8 +20,6 @@
 
 package songscribe.dom;
 
-import module java.desktop;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -65,7 +63,7 @@ public class StaffElement extends LineElement implements Cloneable {
         1.75f,
     };
 
-    public final Properties properties = new Properties();
+    public final List<Lyric> lyrics = new ArrayList<>();
 
     /**
      * User's manual horizontal offset from the layout-calculated position.
@@ -133,7 +131,7 @@ public class StaffElement extends LineElement implements Cloneable {
         xOffset = source.xOffset;
         dotCount = source.dotCount;
         line = source.line;
-        properties.lyrics.addAll(source.properties.lyrics);
+        lyrics.addAll(source.lyrics);
         setParentLine(source.getParentLine());
 
         // Deep-copy attachments
@@ -186,7 +184,7 @@ public class StaffElement extends LineElement implements Cloneable {
         }
 
         // Deep-copy lyrics
-        properties.lyrics.addAll(note.properties.lyrics);
+        lyrics.addAll(note.lyrics);
     }
 
     public ElementType getType() {
@@ -469,7 +467,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
     /** Returns the lyric for the given verse number, or null if none is set. */
     public @Nullable Lyric getLyricForVerse(int verse) {
-        for (var lyric : properties.lyrics) {
+        for (var lyric : lyrics) {
             if (lyric.verse() == verse) {
                 return lyric;
             }
@@ -493,7 +491,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
     /** Returns an unmodifiable view of all lyrics attached to this element. */
     public List<Lyric> getLyrics() {
-        return Collections.unmodifiableList(properties.lyrics);
+        return Collections.unmodifiableList(lyrics);
     }
 
     /**
@@ -552,12 +550,12 @@ public class StaffElement extends LineElement implements Cloneable {
                 "melisma START requires non-blank text");
         }
 
-        properties.lyrics.removeIf(lyric -> lyric.verse() == verse);
+        lyrics.removeIf(lyric -> lyric.verse() == verse);
 
         if (text != null && !text.isBlank()) {
-            properties.lyrics.add(new Lyric(verse, text, extend, syllabic, compound));
+            lyrics.add(new Lyric(verse, text, extend, syllabic, compound));
         } else if (isCarrier) {
-            properties.lyrics.add(new Lyric(verse, "", extend, null, false));
+            lyrics.add(new Lyric(verse, "", extend, null, false));
         }
         // blank + NONE: entry removed above, nothing to add
     }
@@ -727,10 +725,4 @@ public class StaffElement extends LineElement implements Cloneable {
 
     }
 
-    public static class Properties {
-
-        public final List<Lyric> lyrics = new ArrayList<>();
-
-        public final Line2D.Double stem = new Line2D.Double();
-    }
 }

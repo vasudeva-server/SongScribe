@@ -365,7 +365,7 @@ public class Line {
         }
 
         var prevElement = elements.get(prevIndex);
-        var lyrics = prevElement.properties.lyrics;
+        var lyrics = prevElement.lyrics;
         var indicesToClear = new ArrayList<Integer>();
 
         for (var j = 0; j < lyrics.size(); j++) {
@@ -379,7 +379,7 @@ public class Line {
             if (deletedElement == null) {
                 indicesToClear.add(j);
             } else {
-                var matchingDeletedLyric = deletedElement.properties.lyrics.stream()
+                var matchingDeletedLyric = deletedElement.lyrics.stream()
                     .filter(deletedLyric -> deletedLyric.verse() == lyric.verse())
                     .findFirst()
                     .orElse(null);
@@ -432,7 +432,7 @@ public class Line {
         }
 
         var successor = elements.get(successorIndex);
-        var lyrics = successor.properties.lyrics;
+        var lyrics = successor.lyrics;
         var indicesToAdjust = new ArrayList<Integer>();
 
         for (var j = 0; j < lyrics.size(); j++) {
@@ -481,7 +481,7 @@ public class Line {
         }
 
         var predecessorElement = elements.get(predecessorIndex);
-        var lyrics = predecessorElement.properties.lyrics;
+        var lyrics = predecessorElement.lyrics;
         var fixes = new ArrayList<ExtendFix>();
 
         for (var i = 0; i < lyrics.size(); i++) {
@@ -533,7 +533,7 @@ public class Line {
 
         var deletedElement = elements.get(deletedIndex);
 
-        for (var lyric : deletedElement.properties.lyrics) {
+        for (var lyric : deletedElement.lyrics) {
             switch (lyric.extend()) {
                 case START -> cascadeClearExtend(deletedIndex + 1, lyric.verse());
                 case STOP -> adjustPrecedingForStopDeletion(deletedIndex - 1, lyric.verse());
@@ -551,7 +551,7 @@ public class Line {
                 break;
             }
 
-            var lyric = element.properties.lyrics.get(lyricIndex);
+            var lyric = element.lyrics.get(lyricIndex);
 
             if (lyric.extend() == Lyric.Extend.NONE) {
                 break;
@@ -560,7 +560,7 @@ public class Line {
             var isStop = lyric.extend() == Lyric.Extend.STOP;
 
             modifyElement(i, ElementField.LYRIC, () ->
-                element.properties.lyrics.set(lyricIndex,
+                element.lyrics.set(lyricIndex,
                     new Lyric(lyric.verse(), lyric.text(), Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)));
 
             if (isStop) {
@@ -581,7 +581,7 @@ public class Line {
             return;
         }
 
-        var lyric = precedingElement.properties.lyrics.get(lyricIndex);
+        var lyric = precedingElement.lyrics.get(lyricIndex);
         var existingExtend = lyric.extend();
 
         if (existingExtend != Lyric.Extend.CONTINUE && existingExtend != Lyric.Extend.START) {
@@ -593,7 +593,7 @@ public class Line {
         var newExtend = existingExtend == Lyric.Extend.CONTINUE ? Lyric.Extend.STOP : Lyric.Extend.NONE;
 
         modifyElement(precedingIndex, ElementField.LYRIC, () ->
-            precedingElement.properties.lyrics.set(lyricIndex,
+            precedingElement.lyrics.set(lyricIndex,
                 new Lyric(lyric.verse(), lyric.text(), newExtend, lyric.syllabic(), lyric.compound())));
     }
 
@@ -605,7 +605,7 @@ public class Line {
      */
     public void backfillSyllabic() {
         for (var index = 0; index < elements.size(); index++) {
-            var lyrics = elements.get(index).properties.lyrics;
+            var lyrics = elements.get(index).lyrics;
 
             for (var lyric : lyrics) {
                 backfillSyllabicAt(index, lyric.verse());
@@ -622,7 +622,7 @@ public class Line {
      * responsible for any required modification bracket.
      */
     private void backfillSyllabicAt(int index, int verse) {
-        var lyrics = elements.get(index).properties.lyrics;
+        var lyrics = elements.get(index).lyrics;
         var lyricIndex = findLyricIndexForVerse(elements.get(index), verse);
 
         if (lyricIndex < 0) {
@@ -738,7 +738,7 @@ public class Line {
 
     private void replaceSyllabicAndCompound(int index, int verse,
             Lyric.@Nullable Syllabic syllabic, boolean compound) {
-        var lyrics = elements.get(index).properties.lyrics;
+        var lyrics = elements.get(index).lyrics;
         var lyricIndex = findLyricIndexForVerse(elements.get(index), verse);
         var lyric = lyrics.get(lyricIndex);
         lyrics.set(lyricIndex, new Lyric(
@@ -831,7 +831,7 @@ public class Line {
     }
 
     private static int findLyricIndexForVerse(StaffElement element, int verse) {
-        var lyrics = element.properties.lyrics;
+        var lyrics = element.lyrics;
 
         for (var i = 0; i < lyrics.size(); i++) {
             if (lyrics.get(i).verse() == verse) {

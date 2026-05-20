@@ -70,26 +70,26 @@ class SongIOTest extends UnitTest {
             var song = parseXml(threeNoteXml());
             var line = song.getLine(0);
 
-            line.getElement(0).properties.lyrics.add(
+            line.getElement(0).lyrics.add(
                 new Lyric(1, "heart", Lyric.Extend.START, Lyric.Syllabic.BEGIN, true)
             );
             // element 1 intentionally left without lyrics
-            line.getElement(2).properties.lyrics.add(
+            line.getElement(2).lyrics.add(
                 new Lyric(1, "garden", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)
             );
 
             var reloaded = roundTrip(song);
             var reloadedLine = reloaded.getLine(0);
 
-            assertThat(reloadedLine.getElement(0).properties.lyrics)
+            assertThat(reloadedLine.getElement(0).lyrics)
                 .as("note 0 lyrics round-trip")
                 .containsExactly(new Lyric(1, "heart", Lyric.Extend.START, Lyric.Syllabic.BEGIN, true));
 
-            assertThat(reloadedLine.getElement(1).properties.lyrics)
+            assertThat(reloadedLine.getElement(1).lyrics)
                 .as("note 1 has no lyrics")
                 .isEmpty();
 
-            assertThat(reloadedLine.getElement(2).properties.lyrics)
+            assertThat(reloadedLine.getElement(2).lyrics)
                 .as("note 2 lyrics round-trip")
                 .containsExactly(new Lyric(1, "garden", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
         }
@@ -101,11 +101,11 @@ class SongIOTest extends UnitTest {
             var song = parseXml(legacyLyricsXml("heart--garden", "2.5"));
             var line = song.getLine(0);
 
-            assertThat(line.getElement(0).properties.lyrics)
+            assertThat(line.getElement(0).lyrics)
                 .as("note 0: compound-word syllable")
                 .containsExactly(new Lyric(1, "heart", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, true));
 
-            assertThat(line.getElement(1).properties.lyrics)
+            assertThat(line.getElement(1).lyrics)
                 .as("note 1: word end syllable")
                 .containsExactly(new Lyric(1, "garden", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
         }
@@ -120,7 +120,7 @@ class SongIOTest extends UnitTest {
 
             // The per-note data says "hello"; the <lyrics> blob says "spurious".
             // If the guard works, we get exactly the per-note record.
-            assertThat(line.getElement(0).properties.lyrics)
+            assertThat(line.getElement(0).lyrics)
                 .as("per-note lyric wins over legacy blob in new-format file")
                 .containsExactly(new Lyric(1, "hello", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
         }
@@ -137,7 +137,7 @@ class SongIOTest extends UnitTest {
         @Test
         void testObsoleteNudgeFieldsLeaveNoLyricRecords() throws Exception {
             var song = parseXml(legacyNudgeFieldsXml());
-            assertThat(song.getLine(0).getElement(0).properties.lyrics)
+            assertThat(song.getLine(0).getElement(0).lyrics)
                 .as("nudge-field-only note has no per-note Lyric records")
                 .isEmpty();
         }
@@ -149,19 +149,19 @@ class SongIOTest extends UnitTest {
             var song = parseXml(threeNoteXml());
             var line = song.getLine(0);
 
-            line.getElement(0).properties.lyrics.add(
+            line.getElement(0).lyrics.add(
                 new Lyric(1, "ah", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false)
             );
-            line.getElement(1).properties.lyrics.add(
+            line.getElement(1).lyrics.add(
                 new Lyric(1, "", Lyric.Extend.STOP, null, false)
             );
 
             var reloaded = roundTrip(song);
             var reloadedLine = reloaded.getLine(0);
 
-            assertThat(reloadedLine.getElement(0).properties.lyrics)
+            assertThat(reloadedLine.getElement(0).lyrics)
                 .containsExactly(new Lyric(1, "ah", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
-            assertThat(reloadedLine.getElement(1).properties.lyrics)
+            assertThat(reloadedLine.getElement(1).lyrics)
                 .containsExactly(new Lyric(1, "", Lyric.Extend.STOP, null, false));
         }
 
@@ -172,7 +172,7 @@ class SongIOTest extends UnitTest {
             var song = parseXml(legacyExtendTagXml());
             var reloadedLine = song.getLine(0);
 
-            assertThat(reloadedLine.getElement(0).properties.lyrics)
+            assertThat(reloadedLine.getElement(0).lyrics)
                 .containsExactly(new Lyric(1, "ah", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
         }
 
@@ -183,9 +183,9 @@ class SongIOTest extends UnitTest {
             var song = parseXml(musicXmlStyleStopXml());
             var reloadedLine = song.getLine(0);
 
-            assertThat(reloadedLine.getElement(0).properties.lyrics)
+            assertThat(reloadedLine.getElement(0).lyrics)
                 .containsExactly(new Lyric(1, "ah", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
-            assertThat(reloadedLine.getElement(1).properties.lyrics)
+            assertThat(reloadedLine.getElement(1).lyrics)
                 .containsExactly(new Lyric(1, "", Lyric.Extend.STOP, null, false));
         }
 

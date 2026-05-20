@@ -106,13 +106,13 @@ class LyricLayoutBuilderTest extends UnitTest {
 
     private static void setLyric(
         StaffElement element, Lyric.@Nullable Syllabic syllabic, boolean compound, String text, boolean extend) {
-        element.properties.lyrics.add(new Lyric(1, text,
+        element.lyrics.add(new Lyric(1, text,
             extend ? Lyric.Extend.START : Lyric.Extend.NONE, syllabic, compound));
     }
 
     private static void setLyric(
         StaffElement element, Lyric.@Nullable Syllabic syllabic, boolean compound, String text, Lyric.Extend extend) {
-        element.properties.lyrics.add(new Lyric(1, text, extend, syllabic, compound));
+        element.lyrics.add(new Lyric(1, text, extend, syllabic, compound));
     }
 
     private static List<LyricBoxLayout> boxesOf(
@@ -509,10 +509,10 @@ class LyricLayoutBuilderTest extends UnitTest {
     void testMultiVerseProducesSeparateBoxesPerVerse() {
         var n1 = note();
         var n2 = note();
-        n1.properties.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
-        n1.properties.lyrics.add(new Lyric(2, "un", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
-        n2.properties.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
-        n2.properties.lyrics.add(new Lyric(2, "deux", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+        n1.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+        n1.lyrics.add(new Lyric(2, "un", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+        n2.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+        n2.lyrics.add(new Lyric(2, "deux", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
         addToLine(n1, n2);
 
         var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));

@@ -83,18 +83,18 @@ class GraceNoteLyricRoundTripTest extends UnitTest {
         var song = parseXml(graceHostXml());
         var line = song.getLine(0);
 
-        line.getElement(0).properties.lyrics.add(
+        line.getElement(0).lyrics.add(
             new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)
         );
 
         var reloaded = roundTrip(song);
         var reloadedLine = reloaded.getLine(0);
 
-        assertThat(reloadedLine.getElement(0).properties.lyrics)
+        assertThat(reloadedLine.getElement(0).lyrics)
             .as("lyric on grace note must survive the round-trip")
             .containsExactly(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
-        assertThat(reloadedLine.getElement(1).properties.lyrics)
+        assertThat(reloadedLine.getElement(1).lyrics)
             .as("host of paired grace must never carry a lyric after round-trip")
             .isEmpty();
     }
@@ -135,11 +135,11 @@ class GraceNoteLyricRoundTripTest extends UnitTest {
         var song = parseXml(xml);
         var line = song.getLine(0);
 
-        assertThat(line.getElement(0).properties.lyrics)
+        assertThat(line.getElement(0).lyrics)
             .as("lyric on grace note must load from XML")
             .containsExactly(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
-        assertThat(line.getElement(1).properties.lyrics)
+        assertThat(line.getElement(1).lyrics)
             .as("host of paired grace must have no lyric after load")
             .isEmpty();
     }
