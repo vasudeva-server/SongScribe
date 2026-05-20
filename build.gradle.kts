@@ -4,6 +4,7 @@ import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
     java
+    jacoco
     id("net.ltgt.errorprone") version "4.2.0"
 }
 
@@ -187,5 +188,40 @@ tasks.register("printClasspath") {
 tasks.register("printTestClasspath") {
     doLast {
         print(sourceSets["test"].runtimeClasspath.asPath)
+    }
+}
+
+// -- JaCoCo coverage --
+
+jacoco {
+    toolVersion = "0.8.14"
+}
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+    classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("classes/java/main")) {
+            exclude(
+                "songscribe/Strings.class",
+                "songscribe/**/*Test.class"
+            )
+        }
+    )
+}
+
+tasks.register("printJacocoAgentPath") {
+    doLast {
+        val wrapperJar = configurations["jacocoAgent"].singleFile
+        val extractDir = layout.buildDirectory.dir("jacoco").get().asFile
+        extractDir.mkdirs()
+        val agentJar = File(extractDir, "${wrapperJar.nameWithoutExtension}-agent.jar")
+        if (!agentJar.exists()) {
+            zipTree(wrapperJar).matching { include("jacocoagent.jar") }.singleFile.copyTo(agentJar)
+        }
+        print(agentJar.absolutePath)
     }
 }

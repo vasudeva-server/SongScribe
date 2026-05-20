@@ -62,6 +62,12 @@ JVM_ARGS+=(
   "--add-opens" "java.base/java.util=ALL-UNNAMED"
 )
 
+if [[ -n "${EXTRA_JVM_ARGS:-}" ]]; then
+  # Word-split intentional: EXTRA_JVM_ARGS is space-separated flags from coverage.sh
+  # shellcheck disable=SC2206
+  JVM_ARGS+=(${EXTRA_JVM_ARGS})
+fi
+
 echo "Compiling tests..."
 
 if ! "$SCRIPT_DIR/../gradlew" -q testClasses --project-dir "$PROJECT_DIR"; then

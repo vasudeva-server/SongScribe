@@ -4,6 +4,8 @@
 
 # Build output
 build/
+build/jacoco/
+build/reports/jacoco/
 target/
 **/Version.java
 out/
