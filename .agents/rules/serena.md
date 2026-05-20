@@ -18,6 +18,7 @@ Symbols are addressed by **name path** + **relative_path** (the file).
   - `depth=1` to list children (e.g. a class's methods) without bodies.
   - `include_body=true` only when you actually need the source — read symbol-by-symbol, not whole files.
   - `include_info=true` for signature/docstring without the body.
+  - **To find constructors:** use `name_path_pattern=ClassName` with `depth=1` (lists all constructors as `ClassName[0]`, `ClassName[1]`, etc.). Use `include_body=true` or `include_info=true` to get the constructor implementation or signature.
   - `max_matches=1` when expecting a unique symbol; raise it to refine a noisy search.
   - `search_deps=true` to inspect third-party/library code — prefer this over web search. Pass the returned `<ext...>` identifier as `relative_path` for follow-up queries.
 - **`jet_brains_find_declaration`** — jump from a usage to its declaration. Takes a `regex` with one capture group around the symbol; include surrounding context so the match is unambiguous.
