@@ -12,7 +12,7 @@
 | 6 | [Legacy Decoration Flag Migration](#-phase-6-legacy-decoration-flag-migration) | ✅ Done | [milestone-6-legacy-flag-migration.md](milestone-6-legacy-flag-migration.md) |
 | 7 | [Package Restructure (DOM / layout / ui)](#-phase-7-package-restructure-dom--layout--ui) | ⏳ Pending | — |
 | 8 | [Split `ElementRenderContext` by Lifetime](#-phase-8-split-elementrendercontext-by-lifetime) | ✅ Done | [milestone-8-context-split.md](milestone-8-context-split.md) |
-| 9 | [Flatten `BaseElementRenderer` Hierarchy](#-phase-9-flatten-baseelementrenderer-hierarchy) | ⏳ Pending | — |
+| 9 | [Flatten `BaseElementRenderer` Hierarchy](#-phase-9-flatten-baseelementrenderer-hierarchy) | 📋 Sub-plan | [milestone-9-flatten-base-renderer.md](milestone-9-flatten-base-renderer.md) |
 | 10 | [Remove `StaffElement.Properties` Mutable State](#-phase-10-remove-staffelementproperties-mutable-state) | ⏳ Pending | — |
 | 11 | [Performance Profiling + Regression Testing](#-phase-11-performance-profiling--regression-testing) | ⏳ Pending | — |
 
@@ -157,15 +157,13 @@ After this, renderers receive `(LineInvariants, ElementFrame, T element, Graphic
 
 ---
 
-## ⏳ Phase 9: Flatten `BaseElementRenderer` Hierarchy
+## 📋 Phase 9: Flatten `BaseElementRenderer` Hierarchy
+
+See [milestone-9-flatten-base-renderer.md](milestone-9-flatten-base-renderer.md) for the detailed implementation plan.
 
 With the Phase 8 context split, most of what `BaseElementRenderer` provides is either trivial accessors that forward to `LineInvariants` / `ElementFrame`, or drawing helpers that belong as static utilities. Keep the `ElementRenderer<T>` interface; delete the abstract base; renderers become effectively pure functions of `(LineInvariants, ElementFrame, T element, Graphics2D)`.
 
-### Tasks
-
-- [ ] Audit `BaseElementRenderer`'s protected helpers. Categorize each as (a) trivial accessor → inline, (b) drawing utility → extract to a static `RenderingUtils` (or similar), (c) genuinely needed default behavior → fold into the `ElementRenderer<T>` interface as a `default` method.
-- [ ] Migrate the ~17 concrete renderers off `BaseElementRenderer` one at a time.
-- [ ] Delete `BaseElementRenderer`.
+The sub-plan's audit finding: the base contributes **no genuine shared default behavior** (no polymorphic dispatch; every helper is static or stateless-instance), so all helpers/constants move to a new `RenderingUtils` and each renderer implements `ElementRenderer<T>` directly. It is sequenced as one Opus foundation phase (extract `RenderingUtils`, shim the base), four mechanical Sonnet migration batches, and a deletion phase.
 
 **Verification:** `BaseElementRenderer` deleted. All concrete renderers implement `ElementRenderer<T>` directly. Visual output unchanged.
 

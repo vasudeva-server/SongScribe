@@ -63,6 +63,18 @@ public record ElementFrame(
         );
     }
 
+    /**
+     * Returns a per-element frame for {@code elementIndex} with the given X override,
+     * inheriting this frame's preview-shift pair. Pass {@link Double#NaN} for
+     * {@code overrideXSs} when the element uses its laid-out position.
+     *
+     * @param elementIndex index of the element within the line, or {@code -1} for a line-level pass
+     * @param overrideXSs  exact X in staff spaces, or {@link Double#NaN} for no override
+     */
+    public ElementFrame withElement(int elementIndex, double overrideXSs) {
+        return new ElementFrame(elementIndex, overrideXSs, previewShiftFromIndex, previewShiftSs);
+    }
+
     /** Returns whether an override element X is active (i.e. {@link #overrideElementXSs} is not NaN). */
     public boolean hasOverrideElementX() {
         return !Double.isNaN(overrideElementXSs);

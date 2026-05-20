@@ -52,8 +52,8 @@ class GlissandoRendererTest extends UnitTest {
         // ty = (2-1) / (1/√2) = √2 ≈ 1.41
         // Expected: min = ty ≈ 1.41
         var bounds = new Rectangle2D.Double(0, 0, 4, 2);
-        var inv = 1.0 / Math.sqrt(2);
-        var t = GlissandoRenderer.computeFarBoundsT(bounds, 2, 1, inv, inv);
+        var invariants = 1.0 / Math.sqrt(2);
+        var t = GlissandoRenderer.computeFarBoundsT(bounds, 2, 1, invariants, invariants);
         assertThat(t).isCloseTo(Math.sqrt(2), within(STEP_SS));
     }
 

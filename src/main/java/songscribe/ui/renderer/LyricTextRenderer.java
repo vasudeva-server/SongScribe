@@ -53,26 +53,26 @@ public final class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
         Graphics2D g2
     ) {
         // While the editor is open, suppress the rendered box so the overlay is the
         // sole representation. Connectors are not suppressed (no connectors in 1a).
-        if (inv.getActivelyEditedElement() == element) {
+        if (invariants.getActivelyEditedElement() == element) {
             return;
         }
 
-        var boxes = inv.getLayoutResult().getLyricBoxes(element);
+        var boxes = invariants.getLayoutResult().getLyricBoxes(element);
 
         if (boxes.isEmpty()) {
             return;
         }
 
-        var metrics = inv.getSongLayoutMetrics();
-        var lyricRenderMetrics = inv.getLyricRenderMetrics();
-        var pxPerSs = inv.getPixelsPerStaffSpace();
+        var metrics = invariants.getSongLayoutMetrics();
+        var lyricRenderMetrics = invariants.getLyricRenderMetrics();
+        var pxPerSs = invariants.getPixelsPerStaffSpace();
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT, TRANSFORM)) {
             // Strip only the staff-space → pixel factor from the current transform,
@@ -85,7 +85,7 @@ public final class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
             g2.setFont(lyricRenderMetrics.lyricsFont());
 
             for (var box : boxes) {
-                g2.setColor(inv.getLyricColor(frame.currentElementIndex(), element, box.verseIndex()));
+                g2.setColor(invariants.getLyricColor(frame.currentElementIndex(), element, box.verseIndex()));
 
                 var baselineYSs = metrics.verseYSsInLine(box.verseIndex());
                 var xPx = ScaleContext.ssToRoundedPx(box.xSs());

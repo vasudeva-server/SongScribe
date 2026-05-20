@@ -148,16 +148,16 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      */
     protected static Color getDecorationColor(
         StaffElement element,
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame
     ) {
         var index = frame.currentElementIndex();
 
         if (index >= 0) {
-            return inv.getElementColor(index);
+            return invariants.getElementColor(index);
         }
 
-        var line = inv.getCurrentLine();
+        var line = invariants.getCurrentLine();
 
         if (line == null) {
             return ScoreView.getPreviewElementColor();
@@ -169,7 +169,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
             return ScoreView.getPreviewElementColor();
         }
 
-        return inv.getElementColor(index);
+        return invariants.getElementColor(index);
     }
 
     /**
@@ -179,10 +179,10 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     protected static void applyDecorationColor(
         Graphics2D g2,
         StaffElement element,
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame
     ) {
-        g2.setColor(getDecorationColor(element, inv, frame));
+        g2.setColor(getDecorationColor(element, invariants, frame));
     }
 
     // ==========================================================================
@@ -191,24 +191,24 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
     @Override
     public void render(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         T element,
         Graphics2D g2
     ) {
-        renderElement(inv, frame, element, g2);
+        renderElement(invariants, frame, element, g2);
     }
 
     /**
      * Renders the element. Subclasses implement element-specific drawing.
      *
-     * @param inv     The per-line invariants
+     * @param invariants     The per-line invariants
      * @param frame   The per-element frame
      * @param element The element to render
      * @param g2      The graphics context
      */
     protected abstract void renderElement(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         T element,
         Graphics2D g2
@@ -225,11 +225,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * Component Y coordinates are relative to the component's top edge.
      *
      * @param layoutYSs the Y coordinate in layout space (from a DecorationLayout)
-     * @param inv       the per-line invariants containing middleLineY
+     * @param invariants       the per-line invariants containing middleLineY
      * @return the Y coordinate in component space
      */
-    protected static double layoutYToComponentYSs(double layoutYSs, LineInvariants inv) {
-        return inv.getMiddleLineYSs() + layoutYSs;
+    protected static double layoutYToComponentYSs(double layoutYSs, LineInvariants invariants) {
+        return invariants.getMiddleLineYSs() + layoutYSs;
     }
 
     /**
@@ -263,10 +263,10 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param ySs      Y position of the ledger line in staff spaces
      * @param widthSs  Width of the ledger line in staff spaces
      */
-    protected void drawLedgerLine(Graphics2D g2, double xSs, double ySs, double widthSs, LineInvariants inv) {
+    protected void drawLedgerLine(Graphics2D g2, double xSs, double ySs, double widthSs, LineInvariants invariants) {
         // Color is intentionally not set — inherited from caller so insertion notes
         // draw ledger lines in their own color.
-        var thicknessSs = inv.getLineThickness().ledgerLineSs();
+        var thicknessSs = invariants.getLineThickness().ledgerLineSs();
         var halfWidth = widthSs / 2.0;
         GraphicUtils.fillHorizontalLine(g2, xSs - halfWidth, xSs + halfWidth, ySs, thicknessSs);
     }

@@ -45,7 +45,7 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
 
     @Override
     protected void renderElement(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
         Graphics2D g2
@@ -56,7 +56,7 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
             return;
         }
 
-        renderTempoChange(g2, attachment.getTempo(), element, inv, frame);
+        renderTempoChange(g2, attachment.getTempo(), element, invariants, frame);
     }
 
     /** Renders the song's initial tempo, stored separately from per-note tempo changes. */
@@ -64,20 +64,20 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
         Graphics2D g2,
         StaffElement note,
         Tempo tempo,
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame
     ) {
-        renderTempoChange(g2, tempo, note, inv, frame);
+        renderTempoChange(g2, tempo, note, invariants, frame);
     }
 
     private void renderTempoChange(
         Graphics2D g2,
         Tempo tempo,
         StaffElement note,
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame
     ) {
-        var setup = buildRenderSetup(note, TempoChangeAttachment.class, inv, frame);
+        var setup = buildRenderSetup(note, TempoChangeAttachment.class, invariants, frame);
         var xSs = setup.decorationLayout().xSs();
         var textBaselineYSs = setup.ySs() + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
         var tempoBuilder = new StringBuilder(25);

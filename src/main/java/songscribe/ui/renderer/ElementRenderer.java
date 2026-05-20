@@ -39,12 +39,12 @@ public interface ElementRenderer<T extends LineElement> {
     /**
      * Renders the element to the graphics context.
      *
-     * @param inv     The per-line invariants
+     * @param invariants     The per-line invariants
      * @param frame   The per-element frame
      * @param element The element to render
      * @param g2      The graphics context
      */
-    void render(LineInvariants inv, ElementFrame frame, T element, Graphics2D g2);
+    void render(LineInvariants invariants, ElementFrame frame, T element, Graphics2D g2);
 
 
 }

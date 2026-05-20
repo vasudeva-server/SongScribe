@@ -62,7 +62,7 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
 
     @Override
     protected void renderElement(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         LineElement element,
         Graphics2D g2
@@ -77,17 +77,17 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
      * @param g2        Graphics context
      * @param line      The line
      * @param lineIndex Line index
-     * @param inv       Line invariants
+     * @param invariants       Line invariants
      */
     public void renderEndings(
         Graphics2D g2,
         Line line,
         int lineIndex,
-        LineInvariants inv
+        LineInvariants invariants
     ) {
         for (var ending : LineEndingSupport.findEndings(line)) {
             for (var bracket : ending.getBracketRanges()) {
-                drawEnding(g2, inv, ending, bracket);
+                drawEnding(g2, invariants, ending, bracket);
             }
         }
     }
@@ -96,22 +96,22 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
      * Draws a single ending bracket.
      *
      * @param g2      Graphics context
-     * @param inv     Line invariants
+     * @param invariants     Line invariants
      * @param ending  The ending element
      * @param bracket The bracket range to draw
      */
     private void drawEnding(
         Graphics2D g2,
-        LineInvariants inv,
+        LineInvariants invariants,
         Ending ending,
         Ending.BracketRange bracket
     ) {
         var x1 = bracket.x1Ss();
         var x2 = bracket.x2Ss();
-        var yTopSs = getEffectiveEndingYSs(inv, ending);
+        var yTopSs = getEffectiveEndingYSs(invariants, ending);
         var yBottomSs = yTopSs + ending.getContentHeightSs();
 
-        var thicknessSs = inv.getLineThickness().voltaBracketSs();
+        var thicknessSs = invariants.getLineThickness().voltaBracketSs();
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(ELEMENT_COLOR);
@@ -154,11 +154,11 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
     /**
      * Returns the top Y coordinate for an ending bracket in component staff-space units.
      */
-    private double getEffectiveEndingYSs(LineInvariants inv, Ending ending) {
-        var decorationLayout = inv.getLayoutResult().getDecorationLayout(ending);
+    private double getEffectiveEndingYSs(LineInvariants invariants, Ending ending) {
+        var decorationLayout = invariants.getLayoutResult().getDecorationLayout(ending);
 
         if (decorationLayout != null) {
-            return layoutYToComponentYSs(decorationLayout.ySs(), inv);
+            return layoutYToComponentYSs(decorationLayout.ySs(), invariants);
         }
 
         throw new IllegalStateException("No layout found for Ending element");

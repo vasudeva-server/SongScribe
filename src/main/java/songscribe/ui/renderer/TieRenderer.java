@@ -70,18 +70,18 @@ public final class TieRenderer {
     public void renderTie(
         Graphics2D g2,
         Tie tie,
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame
     ) {
-        var layout = inv.getLayoutResult().getTieLayout(tie);
+        var layout = invariants.getLayoutResult().getTieLayout(tie);
 
         if (layout == null) {
             return;
         }
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
-            g2.translate(0, inv.getMiddleLineYSs());
-            g2.setColor(determineTieColor(tie, inv));
+            g2.translate(0, invariants.getMiddleLineYSs());
+            g2.setColor(determineTieColor(tie, invariants));
 
             var tiePath = new GeneralPath(Path2D.WIND_NON_ZERO, 4);
 
@@ -111,14 +111,14 @@ public final class TieRenderer {
      * <p>
      * A tie is colored if either its start or end note is playing or selected.
      */
-    private Color determineTieColor(Tie tie, LineInvariants inv) {
-        var startColor = inv.getElementColor(tie.getAnchorElementIndex());
+    private Color determineTieColor(Tie tie, LineInvariants invariants) {
+        var startColor = invariants.getElementColor(tie.getAnchorElementIndex());
 
         if (startColor != Color.BLACK) {
             return startColor;
         }
 
-        var endColor = inv.getElementColor(tie.getEndElementIndex());
+        var endColor = invariants.getElementColor(tie.getEndElementIndex());
 
         if (endColor != Color.BLACK) {
             return endColor;

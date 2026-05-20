@@ -32,6 +32,7 @@ import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Tie;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
@@ -61,7 +62,12 @@ public final class LineInvariants {
     private static final int REPLACED_ELEMENT_ALPHA = 90;
 
     /** Color for an existing element that will be replaced by the current preview element. */
-    private static final Color REPLACED_ELEMENT_COLOR = new Color(255, 0, 0, REPLACED_ELEMENT_ALPHA);
+    private static final Color REPLACED_ELEMENT_COLOR = new Color(
+        Color.RED.getRed(),
+        Color.RED.getGreen(),
+        Color.RED.getBlue(),
+        REPLACED_ELEMENT_ALPHA
+    );
 
     // ==========================================================================
     // Instance Fields
@@ -86,6 +92,10 @@ public final class LineInvariants {
     private final double pixelsPerStaffSpace;
     private final LineThickness lineThickness;
 
+    /** Tie span containing the playing note, resolved once; null when nothing is playing. */
+    @Nullable
+    private final Tie playingTieSpan;
+
     private LineInvariants(
         Builder b,
         LayoutResult layoutResult,
@@ -108,6 +118,9 @@ public final class LineInvariants {
         playingGraceNoteIndex = b.playingGraceNoteIndex;
         pixelsPerStaffSpace = ScaleContext.getPixelsPerStaffSpace();
         lineThickness = LineThickness.getInstance();
+        playingTieSpan = (b.playingNoteIndex >= 0 && b.currentLine != null)
+            ? b.currentLine.findTieAt(b.playingNoteIndex)
+            : null;
     }
 
     /** Returns a new builder for invariants describing the given song. */
@@ -294,15 +307,13 @@ public final class LineInvariants {
         );
     }
 
+    // Callers (getElementColor / getLyricColor / getLyricConnectorColor) gate on editMode
+    // before reaching here, so this method assumes edit mode is active.
     private Color colorFor(
         int elementIndex,
         BooleanSupplier playingCheck,
         BooleanSupplier extraSelectionCheck
     ) {
-        if (!editMode) {
-            return Color.BLACK;
-        }
-
         if (playingCheck.getAsBoolean()) {
             return ScoreView.getPlayingNoteColor();
         }
@@ -316,13 +327,20 @@ public final class LineInvariants {
             return selectionColor;
         }
 
-        var matched = PreviewElementManager.getHoveredElementLocation();
-
-        if (matched != null && matched.matches(lineIndex, elementIndex)) {
+        if (isElementHovered(elementIndex)) {
             return REPLACED_ELEMENT_COLOR;
         }
 
         return Color.BLACK;
+    }
+
+    /**
+     * Returns whether the element at {@code elementIndex} on this line is the one the
+     * user is currently hovering as a replacement target for the preview element.
+     */
+    public boolean isElementHovered(int elementIndex) {
+        var matched = PreviewElementManager.getHoveredElementLocation();
+        return matched != null && matched.matches(lineIndex, elementIndex);
     }
 
     /** Returns the index of the currently playing note, or -1 if none. */
@@ -355,14 +373,9 @@ public final class LineInvariants {
      * @return true if the element is in the same tie as the playing note
      */
     public boolean isElementInPlayingTie(int elementIndex) {
-        if (playingNoteIndex < 0 || currentLine == null) {
-            return false;
-        }
-
-        var tieSpan = currentLine.findTieAt(playingNoteIndex);
-        return tieSpan != null
-                && tieSpan.getAnchorElementIndex() <= elementIndex
-                && elementIndex <= tieSpan.getEndElementIndex();
+        return playingTieSpan != null
+                && playingTieSpan.getAnchorElementIndex() <= elementIndex
+                && elementIndex <= playingTieSpan.getEndElementIndex();
     }
 
     /**

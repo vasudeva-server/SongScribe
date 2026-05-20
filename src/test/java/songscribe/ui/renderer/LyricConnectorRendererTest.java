@@ -86,10 +86,10 @@ class LyricConnectorRendererTest extends UnitTest {
     @Test
     void testHyphenDrawnCenteredAtMidpoint() {
         var connector = new LyricConnectorLayout(10.0, 11.5, 1, Kind.HYPHEN, NO_SOURCE_ELEMENT_INDEX);
-        var inv = builderWith(List.of(connector), metrics(1.0, 2.5, 1)).build();
+        var invariants = builderWith(List.of(connector), metrics(1.0, 2.5, 1)).build();
         var g2 = mock(Graphics2D.class);
 
-        LyricConnectorRenderer.getInstance().render(g2, inv, ElementFrame.LINE_LEVEL);
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
 
         var xCap = ArgumentCaptor.forClass(Float.class);
         var yCap = ArgumentCaptor.forClass(Float.class);
@@ -106,10 +106,10 @@ class LyricConnectorRendererTest extends UnitTest {
     @Test
     void testDanglingHyphenDrawnCenteredInGap() {
         var connector = new LyricConnectorLayout(8.0, 12.0, 1, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
-        var inv = builderWith(List.of(connector), metrics(1.0, 2.5, 1)).build();
+        var invariants = builderWith(List.of(connector), metrics(1.0, 2.5, 1)).build();
         var g2 = mock(Graphics2D.class);
 
-        LyricConnectorRenderer.getInstance().render(g2, inv, ElementFrame.LINE_LEVEL);
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
 
         var xCap = ArgumentCaptor.forClass(Float.class);
         var yCap = ArgumentCaptor.forClass(Float.class);
@@ -124,10 +124,10 @@ class LyricConnectorRendererTest extends UnitTest {
     @Test
     void testExtenderDrawnFromStartToEnd() {
         var connector = new LyricConnectorLayout(5.0, 20.0, 1, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
-        var inv = builderWith(List.of(connector), metrics(0.5, 2.0, 1)).build();
+        var invariants = builderWith(List.of(connector), metrics(0.5, 2.0, 1)).build();
         var g2 = mock(Graphics2D.class);
 
-        LyricConnectorRenderer.getInstance().render(g2, inv, ElementFrame.LINE_LEVEL);
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
 
         var lineCap = ArgumentCaptor.forClass(Shape.class);
         verify(g2, times(1)).draw(lineCap.capture());
@@ -145,10 +145,10 @@ class LyricConnectorRendererTest extends UnitTest {
     @Test
     void testDanglingExtenderDrawnFromStartToEnd() {
         var connector = new LyricConnectorLayout(5.0, 15.0, 1, Kind.DANGLING_EXTENDER, NO_SOURCE_ELEMENT_INDEX);
-        var inv = builderWith(List.of(connector), metrics(0.5, 2.0, 1)).build();
+        var invariants = builderWith(List.of(connector), metrics(0.5, 2.0, 1)).build();
         var g2 = mock(Graphics2D.class);
 
-        LyricConnectorRenderer.getInstance().render(g2, inv, ElementFrame.LINE_LEVEL);
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
 
         var lineCap = ArgumentCaptor.forClass(Shape.class);
         verify(g2, times(1)).draw(lineCap.capture());
@@ -167,10 +167,10 @@ class LyricConnectorRendererTest extends UnitTest {
     void testDistinctVersesRenderAtDistinctY() {
         var verse1 = new LyricConnectorLayout(0.0, 10.0, 1, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
         var verse2 = new LyricConnectorLayout(0.0, 10.0, 2, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
-        var inv = builderWith(List.of(verse1, verse2), metrics(1.0, 2.0, 2)).build();
+        var invariants = builderWith(List.of(verse1, verse2), metrics(1.0, 2.0, 2)).build();
         var g2 = mock(Graphics2D.class);
 
-        LyricConnectorRenderer.getInstance().render(g2, inv, ElementFrame.LINE_LEVEL);
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
 
         var lineCap = ArgumentCaptor.forClass(Shape.class);
         verify(g2, times(2)).draw(lineCap.capture());
@@ -187,10 +187,10 @@ class LyricConnectorRendererTest extends UnitTest {
     void testExtenderUsesExtenderStroke() {
         var hyphen = new LyricConnectorLayout(0.0, 4.0, 1, Kind.HYPHEN, NO_SOURCE_ELEMENT_INDEX);
         var extender = new LyricConnectorLayout(0.0, 4.0, 1, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
-        var inv = builderWith(List.of(hyphen, extender), metrics(1.0, 2.0, 1)).build();
+        var invariants = builderWith(List.of(hyphen, extender), metrics(1.0, 2.0, 1)).build();
         var g2 = mock(Graphics2D.class);
 
-        LyricConnectorRenderer.getInstance().render(g2, inv, ElementFrame.LINE_LEVEL);
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
 
         var strokeCap = ArgumentCaptor.forClass(Stroke.class);
         verify(g2, atLeastOnce()).setStroke(strokeCap.capture());
@@ -210,20 +210,20 @@ class LyricConnectorRendererTest extends UnitTest {
         var connector = new LyricConnectorLayout(5.0, 20.0, 1, Kind.EXTENDER, 0);
         var builder = builderWith(List.of(connector), metrics(0.5, 2.0, 1));
         RenderContextTestHelper.enableSelection(builder, 0);
-        var inv = builder.build();
+        var invariants = builder.build();
         var g2 = mock(Graphics2D.class);
 
-        LyricConnectorRenderer.getInstance().render(g2, inv, ElementFrame.LINE_LEVEL);
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
 
         verify(g2).setColor(ScoreView.getSelectionColor());
     }
 
     @Test
     void testNoConnectorsIsNoOp() {
-        var inv = builderWith(List.of(), metrics(0, 0, 0)).build();
+        var invariants = builderWith(List.of(), metrics(0, 0, 0)).build();
         var g2 = mock(Graphics2D.class);
 
-        LyricConnectorRenderer.getInstance().render(g2, inv, ElementFrame.LINE_LEVEL);
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
 
         verifyNoInteractions(g2);
     }

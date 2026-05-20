@@ -125,7 +125,7 @@ class LineRenderer {
         var activeEditor = score.getActiveLyricEditor();
 
         // Build the immutable per-line invariants once.
-        var inv = LineInvariants.builder(song, score)
+        var invariants = LineInvariants.builder(song, score)
             .setCurrentLine(line)
             .setLineIndex(lineIndex)
             .setMiddleLineYSs(lc.getMiddleLineYSs())
@@ -148,18 +148,18 @@ class LineRenderer {
         NoteGeometry.initializeAccidentalWidths();
 
         // Render in proper order (back to front)
-        drawStaffLines(g2, inv);
-        renderLineBeginning(g2, inv, lineFrame);
-        renderElements(g2, inv, lineFrame);
-        renderGlissandos(g2, inv, lineFrame);
-        renderBeams(g2, inv, lineFrame);
-        renderTies(g2, inv, lineFrame);
-        renderTuplets(g2, inv, lineFrame);
-        renderKeyChanges(g2, inv);
-        renderDynamics(g2, inv);
-        renderEndings(g2, inv);
-        renderAttachments(g2, inv, lineFrame);
-        renderPreviewElement(g2, inv, lineFrame);
+        drawStaffLines(g2, invariants);
+        renderLineBeginning(g2, invariants, lineFrame);
+        renderElements(g2, invariants, lineFrame);
+        renderGlissandos(g2, invariants, lineFrame);
+        renderBeams(g2, invariants, lineFrame);
+        renderTies(g2, invariants, lineFrame);
+        renderTuplets(g2, invariants, lineFrame);
+        renderKeyChanges(g2, invariants);
+        renderDynamics(g2, invariants);
+        renderEndings(g2, invariants);
+        renderAttachments(g2, invariants, lineFrame);
+        renderPreviewElement(g2, invariants, lineFrame);
     }
 
     // ==========================================================================
@@ -169,19 +169,19 @@ class LineRenderer {
     /**
      * Draws the 5 staff lines as filled rounded rectangles snapped to device pixels.
      */
-    private void drawStaffLines(Graphics2D g2, LineInvariants inv) {
-        var selectionProvider = inv.getSelectionProvider();
-        var lineIndex = inv.getLineIndex();
-        var staffSelected = inv.isEditMode()
+    private void drawStaffLines(Graphics2D g2, LineInvariants invariants) {
+        var selectionProvider = invariants.getSelectionProvider();
+        var lineIndex = invariants.getLineIndex();
+        var staffSelected = invariants.isEditMode()
             && selectionProvider != null
             && selectionProvider.isLineSelected(lineIndex);
 
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
             g2.setColor(staffSelected ? ScoreView.getSelectionColor() : BaseElementRenderer.STAFF_LINE_COLOR);
 
-            var lineWidth = inv.getSong().getLineWidthSs();
-            var middleLineYSs = inv.getMiddleLineYSs();
-            var staffLineThicknessSs = inv.getLineThickness().staffLineSs();
+            var lineWidth = invariants.getSong().getLineWidthSs();
+            var middleLineYSs = invariants.getMiddleLineYSs();
+            var staffLineThicknessSs = invariants.getLineThickness().staffLineSs();
 
             // Staff has 5 lines, middle line (B) is at index 2.
             // Lines are at: middleLineYSs - 2, middleLineYSs - 1, middleLineYSs,
@@ -197,21 +197,21 @@ class LineRenderer {
      * Renders the line beginning (clef and key signature).
      *
      * @param g2    Graphics context
-     * @param inv   Line invariants
+     * @param invariants   Line invariants
      * @param frame Element frame
      */
-    private void renderLineBeginning(Graphics2D g2, LineInvariants inv, ElementFrame frame) {
-        var layoutResult = inv.getLayoutResult();
+    private void renderLineBeginning(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
+        var layoutResult = invariants.getLayoutResult();
         var clef = layoutResult.getClef();
 
         if (clef != null) {
-            ClefRenderer.getInstance().render(inv, frame, clef, g2);
+            ClefRenderer.getInstance().render(invariants, frame, clef, g2);
         }
 
         var keySig = layoutResult.getKeySignature();
 
         if (keySig != null) {
-            KeySignatureRenderer.getInstance().render(inv, frame, keySig, g2);
+            KeySignatureRenderer.getInstance().render(invariants, frame, keySig, g2);
         }
     }
 
@@ -223,25 +223,25 @@ class LineRenderer {
      * Renders notes using NoteRenderer.
      *
      * @param g2        Graphics context
-     * @param inv       Line invariants
+     * @param invariants       Line invariants
      * @param lineFrame Line-level frame (carries any active preview shift)
      */
-    private void renderElements(Graphics2D g2, LineInvariants inv, ElementFrame lineFrame) {
+    private void renderElements(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         var noteRenderer = NoteRenderer.getInstance();
-        var line = inv.getCurrentLine();
+        var line = invariants.getCurrentLine();
 
         if (line == null) {
             return;
         }
 
-        var layoutResult = inv.getLayoutResult();
+        var layoutResult = invariants.getLayoutResult();
 
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
             for (var i = 0; i < line.elementCount(); i++) {
                 var element = line.getElement(i);
 
                 // Apply color based on selection/playing state
-                var color = getElementColor(i, inv);
+                var color = getElementColor(i, invariants);
                 g2.setColor(color);
 
                 var overrideXSs = lineFrame.hasPreviewShift()
@@ -250,13 +250,8 @@ class LineRenderer {
                     ? layoutResult.getElementXSs(element) + lineFrame.previewShiftSs()
                     : Double.NaN;
 
-                var frame = new ElementFrame(
-                    i,
-                    overrideXSs,
-                    lineFrame.previewShiftFromIndex(),
-                    lineFrame.previewShiftSs()
-                );
-                noteRenderer.render(inv, frame, element, g2);
+                var frame = lineFrame.withElement(i, overrideXSs);
+                noteRenderer.render(invariants, frame, element, g2);
             }
         }
     }
@@ -268,11 +263,11 @@ class LineRenderer {
      * {@link LineInvariants#getElementColor}. Adds grace-cancel coloring on top.
      *
      * @param elementIndex The index of the element within this line
-     * @param inv          The per-line invariants
+     * @param invariants          The per-line invariants
      * @return The color to use for rendering
      */
-    private Color getElementColor(int elementIndex, LineInvariants inv) {
-        var color = inv.getElementColor(elementIndex);
+    private Color getElementColor(int elementIndex, LineInvariants invariants) {
+        var color = invariants.getElementColor(elementIndex);
 
         if (color != Color.BLACK) {
             return color;
@@ -295,29 +290,29 @@ class LineRenderer {
      * Renders glissandos (wavy ornament lines) for all notes in the line.
      *
      * @param g2    Graphics context
-     * @param inv   Line invariants
+     * @param invariants   Line invariants
      * @param frame Element frame
      */
-    private void renderGlissandos(Graphics2D g2, LineInvariants inv, ElementFrame frame) {
-        var line = inv.getCurrentLine();
+    private void renderGlissandos(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
+        var line = invariants.getCurrentLine();
 
         if (line == null) {
             return;
         }
 
-        GlissandoRenderer.getInstance().renderGlissandosFromLine(g2, line, inv, frame);
+        GlissandoRenderer.getInstance().renderGlissandosFromLine(g2, line, invariants, frame);
     }
 
     /**
      * Renders beam groups connecting beamed notes.
      *
      * @param g2    Graphics context
-     * @param inv   Line invariants
+     * @param invariants   Line invariants
      * @param frame Element frame
      */
-    private void renderBeams(Graphics2D g2, LineInvariants inv, ElementFrame frame) {
+    private void renderBeams(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var beamRenderer = BeamGroupRenderer.getInstance();
-        var line = inv.getCurrentLine();
+        var line = invariants.getCurrentLine();
 
         if (line == null) {
             return;
@@ -327,7 +322,7 @@ class LineRenderer {
             var anchorIdx = beam.getAnchorElementIndex();
             var endIdx = beam.getEndElementIndex();
             renderWithPreviewShiftIfNeeded(g2, frame, anchorIdx,
-                () -> beamRenderer.renderBeams(g2, line, inv, frame, anchorIdx, endIdx));
+                () -> beamRenderer.renderBeams(g2, line, invariants, frame, anchorIdx, endIdx));
         }
     }
 
@@ -335,12 +330,12 @@ class LineRenderer {
      * Renders ties between notes.
      *
      * @param g2    Graphics context
-     * @param inv   Line invariants
+     * @param invariants   Line invariants
      * @param frame Element frame
      */
-    private void renderTies(Graphics2D g2, LineInvariants inv, ElementFrame frame) {
+    private void renderTies(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var tieRenderer = TieRenderer.getInstance();
-        var line = inv.getCurrentLine();
+        var line = invariants.getCurrentLine();
 
         if (line == null) {
             return;
@@ -350,7 +345,7 @@ class LineRenderer {
 
         for (var span : ties) {
             renderWithPreviewShiftIfNeeded(g2, frame, span.getAnchorElementIndex(),
-                () -> tieRenderer.renderTie(g2, span, inv, frame));
+                () -> tieRenderer.renderTie(g2, span, invariants, frame));
         }
     }
 
@@ -379,17 +374,17 @@ class LineRenderer {
      * Renders tuplet brackets and numbers.
      *
      * @param g2    Graphics context
-     * @param inv   Line invariants
+     * @param invariants   Line invariants
      * @param frame Element frame
      */
-    private void renderTuplets(Graphics2D g2, LineInvariants inv, ElementFrame frame) {
-        var line = inv.getCurrentLine();
+    private void renderTuplets(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
+        var line = invariants.getCurrentLine();
 
         if (line == null) {
             return;
         }
 
-        TupletRenderer.getInstance().renderTupletsFromLine(g2, line, inv, frame);
+        TupletRenderer.getInstance().renderTupletsFromLine(g2, line, invariants, frame);
     }
 
     /**
@@ -400,12 +395,12 @@ class LineRenderer {
      * the current line as a warning to the performer.
      *
      * @param g2  Graphics context
-     * @param inv Line invariants
+     * @param invariants Line invariants
      */
-    private void renderKeyChanges(Graphics2D g2, LineInvariants inv) {
-        var song = inv.getSong();
-        var lineIndex = inv.getLineIndex();
-        var line = inv.getCurrentLine();
+    private void renderKeyChanges(Graphics2D g2, LineInvariants invariants) {
+        var song = invariants.getSong();
+        var lineIndex = invariants.getLineIndex();
+        var line = invariants.getCurrentLine();
 
         // Only render if there's a next line
         if (lineIndex + 1 >= song.lineCount()) {
@@ -424,7 +419,7 @@ class LineRenderer {
             line,
             nextLine,
             song.getLineWidthSs(),
-            inv
+            invariants
         );
     }
 
@@ -432,32 +427,32 @@ class LineRenderer {
      * Renders crescendo and diminuendo hairpins.
      *
      * @param g2  Graphics context
-     * @param inv Line invariants
+     * @param invariants Line invariants
      */
-    private void renderDynamics(Graphics2D g2, LineInvariants inv) {
-        var line = inv.getCurrentLine();
+    private void renderDynamics(Graphics2D g2, LineInvariants invariants) {
+        var line = invariants.getCurrentLine();
 
         if (line == null) {
             return;
         }
 
-        DynamicsRenderer.getInstance().renderHairpinsFromLine(g2, inv);
+        DynamicsRenderer.getInstance().renderHairpinsFromLine(g2, invariants);
     }
 
     /**
      * Renders first/second ending brackets.
      *
      * @param g2  Graphics context
-     * @param inv Line invariants
+     * @param invariants Line invariants
      */
-    private void renderEndings(Graphics2D g2, LineInvariants inv) {
-        var line = inv.getCurrentLine();
+    private void renderEndings(Graphics2D g2, LineInvariants invariants) {
+        var line = invariants.getCurrentLine();
 
         if (line == null) {
             return;
         }
 
-        EndingRenderer.getInstance().renderEndings(g2, line, inv.getLineIndex(), inv);
+        EndingRenderer.getInstance().renderEndings(g2, line, invariants.getLineIndex(), invariants);
     }
 
     // ==========================================================================
@@ -472,10 +467,10 @@ class LineRenderer {
      * (near-note first, system-level last).
      *
      * @param g2        Graphics context
-     * @param inv       Line invariants
+     * @param invariants       Line invariants
      * @param lineFrame Line-level frame (carries any active preview shift)
      */
-    private void renderAttachments(Graphics2D g2, LineInvariants inv, ElementFrame lineFrame) {
+    private void renderAttachments(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         var articulationRenderer = ArticulationRenderer.getInstance();
         var fermataRenderer = FermataRenderer.getInstance();
         var dynamicMarkingRenderer = DynamicMarkingRenderer.getInstance();
@@ -489,7 +484,7 @@ class LineRenderer {
             return;
         }
 
-        var layoutResult = inv.getLayoutResult();
+        var layoutResult = invariants.getLayoutResult();
 
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
             var attachmentShiftActive = false;
@@ -500,61 +495,58 @@ class LineRenderer {
                     attachmentShiftActive = true;
                 }
 
-                var frame = new ElementFrame(
-                    i,
-                    lineFrame.overrideElementXSs(),
-                    lineFrame.previewShiftFromIndex(),
-                    lineFrame.previewShiftSs()
-                );
+                // Attachments use the cumulative g2.translate above for the preview shift,
+                // not a per-element X override, so the override is always absent here.
+                var frame = lineFrame.withElement(i, Double.NaN);
                 var element = line.getElement(i);
 
                 // Tier 1: Articulations (near-note)
                 if (!element.getArticulations().isEmpty()) {
-                    articulationRenderer.render(inv, frame, element, g2);
+                    articulationRenderer.render(invariants, frame, element, g2);
                 }
 
                 // Tier 2: Fermata (note decoration)
                 if (layoutResult.findAttachmentDecorationLayout(
                         element, FermataAttachment.class) != null) {
-                    fermataRenderer.render(inv, frame, element, g2);
+                    fermataRenderer.render(invariants, frame, element, g2);
                 }
 
                 // Tier 3: Dynamic markings (below staff)
                 if (layoutResult.findAttachmentDecorationLayout(
                         element, DynamicAttachment.class) != null) {
-                    dynamicMarkingRenderer.render(inv, frame, element, g2);
+                    dynamicMarkingRenderer.render(invariants, frame, element, g2);
                 }
 
                 // Tier 4: Tempo (system)
                 if (layoutResult.findAttachmentDecorationLayout(
                         element, TempoChangeAttachment.class) != null) {
-                    tempoRenderer.render(inv, frame, element, g2);
+                    tempoRenderer.render(invariants, frame, element, g2);
                 }
 
                 // Tier 4: Beat change (system)
                 if (layoutResult.findAttachmentDecorationLayout(
                         element, BeatChangeAttachment.class) != null) {
-                    beatChangeRenderer.render(inv, frame, element, g2);
+                    beatChangeRenderer.render(invariants, frame, element, g2);
                 }
 
                 // Tier 4: Annotation (system)
                 if (layoutResult.findAttachmentDecorationLayout(
                         element, AnnotationAttachment.class) != null) {
-                    annotationRenderer.render(inv, frame, element, g2);
+                    annotationRenderer.render(invariants, frame, element, g2);
                 }
 
                 // Tier 5: Lyric syllable text (below staff)
                 if (!layoutResult.getLyricBoxes(element).isEmpty()) {
-                    lyricTextRenderer.render(inv, frame, element, g2);
+                    lyricTextRenderer.render(invariants, frame, element, g2);
                 }
             }
         }
 
         // Tier 2: Trills (rendered separately as they may span multiple notes)
-        TrillRenderer.getInstance().renderTrillsFromLine(g2, inv, lineFrame);
+        TrillRenderer.getInstance().renderTrillsFromLine(g2, invariants, lineFrame);
 
         // Tier 5: Lyric span connectors (hyphens, extenders) — line-level
-        LyricConnectorRenderer.getInstance().render(g2, inv, lineFrame);
+        LyricConnectorRenderer.getInstance().render(g2, invariants, lineFrame);
     }
 
     // ==========================================================================
@@ -565,10 +557,10 @@ class LineRenderer {
      * Renders the preview element if this line is the current preview line.
      *
      * @param g2        Graphics context
-     * @param inv       Line invariants
+     * @param invariants       Line invariants
      * @param lineFrame Line-level frame (carries any active preview shift)
      */
-    private void renderPreviewElement(Graphics2D g2, LineInvariants inv, ElementFrame lineFrame) {
+    private void renderPreviewElement(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         // Only render if this line is the current insertion line
         if (!PreviewElementManager.hasPreviewElement(lc)) {
             return;
@@ -616,7 +608,7 @@ class LineRenderer {
 
             try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
                 g2.setColor(ScoreView.getPreviewElementColor());
-                GlissandoRenderer.getInstance().renderPreviewGlissando(g2, sourceIndex, type, line, inv);
+                GlissandoRenderer.getInstance().renderPreviewGlissando(g2, sourceIndex, type, line, invariants);
             }
             return;
         }
@@ -644,7 +636,7 @@ class LineRenderer {
             var line = lc.getLine();
 
             if (line != null) {
-                x = inv.getLayoutResult().calculateInsertionXSs(currentXIndex, mouseX, previewElement, line);
+                x = invariants.getLayoutResult().calculateInsertionXSs(currentXIndex, mouseX, previewElement, line);
             }
         }
 
@@ -657,24 +649,19 @@ class LineRenderer {
         // device-pixel snapping to the raw double directly. Sub-renderers detect
         // preview rendering via hasOverrideElementX() and avoid looking up the
         // preview element in the layout (it isn't there).
-        var frame = new ElementFrame(
-            lineFrame.currentElementIndex(),
-            x,
-            lineFrame.previewShiftFromIndex(),
-            lineFrame.previewShiftSs()
-        );
+        var frame = lineFrame.withElement(lineFrame.currentElementIndex(), x);
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
             g2.setColor(ScoreView.getPreviewElementColor());
-            NoteRenderer.getInstance().render(inv, frame, previewElement, g2);
+            NoteRenderer.getInstance().render(invariants, frame, previewElement, g2);
 
             // Render articulations and fermata on the preview element.
             // The override X remains set so decoration renderers use the precise position.
             if (!previewElement.getArticulations().isEmpty()) {
-                ArticulationRenderer.getInstance().render(inv, frame, previewElement, g2);
+                ArticulationRenderer.getInstance().render(invariants, frame, previewElement, g2);
             }
 
             if (previewElement.findAttachment(FermataAttachment.class) != null) {
-                FermataRenderer.getInstance().render(inv, frame, previewElement, g2);
+                FermataRenderer.getInstance().render(invariants, frame, previewElement, g2);
             }
         }
     }

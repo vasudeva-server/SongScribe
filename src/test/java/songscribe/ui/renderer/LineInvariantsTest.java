@@ -68,64 +68,64 @@ class LineInvariantsTest extends UnitTest {
     // Edit mode, not playing, not selected → Color.BLACK
     @Test
     void testDefaultReturnsBlack() {
-        var inv = seededBuilder().setEditMode(true).build();
+        var invariants = seededBuilder().setEditMode(true).build();
 
-        assertThat(inv.getElementColor(0)).isEqualTo(Color.BLACK);
+        assertThat(invariants.getElementColor(0)).isEqualTo(Color.BLACK);
     }
 
     // Edit mode + element is in a tie with the playing note → playing color
     @Test
     void testElementInPlayingTieReturnsPlayingColor() {
-        var inv = seededBuilder()
+        var invariants = seededBuilder()
             .setEditMode(true)
             .setCurrentLine(tiedLine())
             .setPlayingNoteIndex(0)
             .build();
 
         // Index 2 is in the [0, 2] tie but is not the playing note itself
-        assertThat(inv.getElementColor(2)).isEqualTo(ScoreView.getPlayingNoteColor());
+        assertThat(invariants.getElementColor(2)).isEqualTo(ScoreView.getPlayingNoteColor());
     }
 
     // A playing grace note marks its element as playing
     @Test
     void testGraceNoteCountsAsPlaying() {
-        var inv = seededBuilder().setEditMode(true).setPlayingGraceNoteIndex(0).build();
+        var invariants = seededBuilder().setEditMode(true).setPlayingGraceNoteIndex(0).build();
 
-        assertThat(inv.isElementPlaying(0)).isTrue();
-        assertThat(inv.getElementColor(0)).isEqualTo(ScoreView.getPlayingNoteColor());
+        assertThat(invariants.isElementPlaying(0)).isTrue();
+        assertThat(invariants.getElementColor(0)).isEqualTo(ScoreView.getPlayingNoteColor());
     }
 
     // Without a playing note, no element is in a playing tie
     @Test
     void testIsElementInPlayingTieFalseWithoutPlayingNote() {
-        var inv = seededBuilder().setEditMode(true).setCurrentLine(tiedLine()).build();
+        var invariants = seededBuilder().setEditMode(true).setCurrentLine(tiedLine()).build();
 
-        assertThat(inv.isElementInPlayingTie(2)).isFalse();
+        assertThat(invariants.isElementInPlayingTie(2)).isFalse();
     }
 
     // An index that is neither the playing note nor grace note is not playing
     @Test
     void testIsElementPlayingFalseForUnrelatedIndex() {
-        var inv = seededBuilder().setEditMode(true).setPlayingNoteIndex(0).build();
+        var invariants = seededBuilder().setEditMode(true).setPlayingNoteIndex(0).build();
 
-        assertThat(inv.isElementPlaying(0)).isTrue();
-        assertThat(inv.isElementPlaying(1)).isFalse();
+        assertThat(invariants.isElementPlaying(0)).isTrue();
+        assertThat(invariants.isElementPlaying(1)).isFalse();
     }
 
     // Not in edit mode → Color.BLACK regardless of playing/selection state
     @Test
     void testNotEditModeReturnsBlack() {
-        var inv = seededBuilder().setPlayingNoteIndex(0).build();
+        var invariants = seededBuilder().setPlayingNoteIndex(0).build();
 
-        assertThat(inv.getElementColor(0)).isEqualTo(Color.BLACK);
+        assertThat(invariants.getElementColor(0)).isEqualTo(Color.BLACK);
     }
 
     // Edit mode + element is playing → playing color
     @Test
     void testPlayingElementReturnsPlayingColor() {
-        var inv = seededBuilder().setEditMode(true).setPlayingNoteIndex(0).build();
+        var invariants = seededBuilder().setEditMode(true).setPlayingNoteIndex(0).build();
 
-        assertThat(inv.getElementColor(0)).isEqualTo(ScoreView.getPlayingNoteColor());
+        assertThat(invariants.getElementColor(0)).isEqualTo(ScoreView.getPlayingNoteColor());
     }
 
     // Edit mode + element is selected → selectionColor
@@ -134,12 +134,12 @@ class LineInvariantsTest extends UnitTest {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isElementSelected(0, 0)).thenReturn(true);
 
-        var inv = seededBuilder()
+        var invariants = seededBuilder()
             .setEditMode(true)
             .setSelectionProvider(selectionProvider)
             .setSelectionColor(Color.RED)
             .build();
 
-        assertThat(inv.getElementColor(0)).isEqualTo(Color.RED);
+        assertThat(invariants.getElementColor(0)).isEqualTo(Color.RED);
     }
 }

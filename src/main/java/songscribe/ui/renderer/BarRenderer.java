@@ -84,7 +84,7 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
         Graphics2D g2
@@ -95,11 +95,11 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        var noteX = resolveBarXSs(g2, element, inv, frame);
+        var noteX = resolveBarXSs(g2, element, invariants, frame);
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
-            g2.translate(noteX, inv.getMiddleLineYSs());
-            renderBarLineOrRepeat(g2, noteType, inv);
+            g2.translate(noteX, invariants.getMiddleLineYSs());
+            renderBarLineOrRepeat(g2, noteType, invariants);
         }
     }
 
@@ -109,9 +109,9 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
     private void renderBarLineOrRepeat(
         Graphics2D g2,
         ElementType noteType,
-        LineInvariants inv
+        LineInvariants invariants
     ) {
-        var lt = inv.getLineThickness();
+        var lt = invariants.getLineThickness();
         var thin = lt.thinBarlineSs();
         var thick = lt.thickBarlineSs();
         var sep = lt.barlineSeparationSs();
@@ -230,7 +230,7 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
     private static double resolveBarXSs(
         Graphics2D g2,
         StaffElement note,
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame
     ) {
         double noteX;
@@ -238,7 +238,7 @@ public final class BarRenderer extends BaseElementRenderer<StaffElement> {
         if (frame.hasOverrideElementX()) {
             noteX = frame.overrideElementXSs();
         } else {
-            noteX = inv.getLayoutResult().getElementXSs(note);
+            noteX = invariants.getLayoutResult().getElementXSs(note);
         }
 
         return noteX;

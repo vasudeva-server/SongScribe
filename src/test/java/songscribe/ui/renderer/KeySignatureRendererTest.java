@@ -38,10 +38,10 @@ class KeySignatureRendererTest extends UnitTest {
     @Test
     void testRenderIsNoOpForCMajor() {
         var g2 = mock(Graphics2D.class);
-        var inv = RenderContextTestHelper.newContext(new Song()).build();
+        var invariants = RenderContextTestHelper.newContext(new Song()).build();
         var keySig = new KeySignature(KeyType.NONE, 0);
 
-        KeySignatureRenderer.getInstance().render(inv, ElementFrame.LINE_LEVEL, keySig, g2);
+        KeySignatureRenderer.getInstance().render(invariants, ElementFrame.LINE_LEVEL, keySig, g2);
 
         verifyNoInteractions(g2);
     }

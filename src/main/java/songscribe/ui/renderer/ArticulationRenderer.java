@@ -86,7 +86,7 @@ public final class ArticulationRenderer extends BaseElementRenderer<StaffElement
 
     @Override
     protected void renderElement(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
         Graphics2D g2
@@ -102,11 +102,11 @@ public final class ArticulationRenderer extends BaseElementRenderer<StaffElement
             layoutResult = NoteAttachedStacker.computePreviewDecorationLayouts(
                 element, frame.overrideElementXSs());
         } else {
-            layoutResult = inv.getLayoutResult();
+            layoutResult = invariants.getLayoutResult();
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            applyDecorationColor(g2, element, inv, frame);
+            applyDecorationColor(g2, element, invariants, frame);
 
             var hasStaccato = false;
             var hasAccent = false;
@@ -129,7 +129,7 @@ public final class ArticulationRenderer extends BaseElementRenderer<StaffElement
                     continue;
                 }
 
-                var componentTopYSs = layoutYToComponentYSs(layout.ySs(), inv);
+                var componentTopYSs = layoutYToComponentYSs(layout.ySs(), invariants);
 
                 if (isCombo && articulation.isStaccato()) {
                     var x = centeredGlyphX(layout.xSs(), element,

@@ -72,7 +72,7 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
         Graphics2D g2
@@ -89,7 +89,7 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
             layoutResult = NoteAttachedStacker.computePreviewDecorationLayouts(
                 element, frame.overrideElementXSs());
         } else {
-            layoutResult = inv.getLayoutResult();
+            layoutResult = invariants.getLayoutResult();
         }
 
         var decorationLayout = layoutResult.findAttachmentDecorationLayout(
@@ -99,7 +99,7 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        var fermataTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), inv);
+        var fermataTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), invariants);
 
         var x = centeredGlyphX(decorationLayout.xSs(), element,
             FERMATA_BBOX_LEFT_SS, FERMATA_WIDTH_SS);
@@ -107,7 +107,7 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
         var y = glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            applyDecorationColor(g2, element, inv, frame);
+            applyDecorationColor(g2, element, invariants, frame);
             drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);
         }
     }
@@ -117,15 +117,15 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
      *
      * @param g2    Graphics context
      * @param note  The note to check
-     * @param inv   Line invariants
+     * @param invariants   Line invariants
      * @param frame Per-element frame
      */
     public void renderFermata(
         Graphics2D g2,
         StaffElement note,
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame
     ) {
-        render(inv, frame, note, g2);
+        render(invariants, frame, note, g2);
     }
 }

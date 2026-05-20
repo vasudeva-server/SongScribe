@@ -39,9 +39,9 @@ class BaseElementRendererTest extends UnitTest {
     @Test
     void testGetDecorationColorNullLineReturnsPreviewColor() {
         var element = new StaffElement(ElementType.CROTCHET);
-        var inv = RenderContextTestHelper.newContext(new Song()).build();
+        var invariants = RenderContextTestHelper.newContext(new Song()).build();
 
-        var color = BaseElementRenderer.getDecorationColor(element, inv, ElementFrame.LINE_LEVEL);
+        var color = BaseElementRenderer.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getPreviewElementColor());
     }
@@ -53,29 +53,29 @@ class BaseElementRendererTest extends UnitTest {
         var line = mock(Line.class);
         when(line.getElementIndex(element)).thenReturn(-1);
 
-        var inv = RenderContextTestHelper.newContext(new Song())
+        var invariants = RenderContextTestHelper.newContext(new Song())
             .setCurrentLine(line)
             .build();
 
-        var color = BaseElementRenderer.getDecorationColor(element, inv, ElementFrame.LINE_LEVEL);
+        var color = BaseElementRenderer.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getPreviewElementColor());
     }
 
-    // T3: element in line (index >= 0) → inv.getElementColor(index) result
+    // T3: element in line (index >= 0) → invariants.getElementColor(index) result
     @Test
     void testGetDecorationColorElementInLineReturnsCtxColor() {
         var element = new StaffElement(ElementType.CROTCHET);
         var line = mock(Line.class);
         when(line.getElementIndex(element)).thenReturn(0);
 
-        var inv = RenderContextTestHelper.newContext(new Song())
+        var invariants = RenderContextTestHelper.newContext(new Song())
             .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(0)
             .build();
 
-        var color = BaseElementRenderer.getDecorationColor(element, inv, ElementFrame.LINE_LEVEL);
+        var color = BaseElementRenderer.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getPlayingNoteColor());
     }

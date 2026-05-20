@@ -182,20 +182,20 @@ public final class GlissandoRenderer {
      *
      * @param g2    Graphics context
      * @param line  The line containing notes
-     * @param inv   Line invariants
+     * @param invariants   Line invariants
      * @param frame Element frame (line-level)
      */
     public void renderGlissandosFromLine(
         Graphics2D g2,
         Line line,
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame
     ) {
         for (var i = 0; i < line.effectiveElementCount(); i++) {
             var note = line.getElement(i);
 
             if (note.getGlissando() != null) {
-                renderGlissando(g2, line, note, i, inv, frame);
+                renderGlissando(g2, line, note, i, invariants, frame);
             }
         }
     }
@@ -207,7 +207,7 @@ public final class GlissandoRenderer {
      * @param line      The line containing the note
      * @param note      The note with the glissando
      * @param noteIndex Index of the note in the line
-     * @param inv       Line invariants
+     * @param invariants       Line invariants
      * @param frame     Element frame (line-level)
      */
     public void renderGlissando(
@@ -215,7 +215,7 @@ public final class GlissandoRenderer {
         Line line,
         StaffElement note,
         int noteIndex,
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame
     ) {
         var glissando = note.getGlissando();
@@ -224,8 +224,8 @@ public final class GlissandoRenderer {
             return;
         }
 
-        var layoutResult = inv.getLayoutResult();
-        var middleLineYSs = inv.getMiddleLineYSs();
+        var layoutResult = invariants.getLayoutResult();
+        var middleLineYSs = invariants.getMiddleLineYSs();
         var src = resolveNoteContext(note, noteIndex, line, layoutResult, middleLineYSs);
         var tgt = resolveTargetContext(glissando.type, noteIndex, line, layoutResult, middleLineYSs);
 
@@ -248,7 +248,7 @@ public final class GlissandoRenderer {
             return;
         }
 
-        var color = determineGlissandoColor(noteIndex, glissando.type, inv);
+        var color = determineGlissandoColor(noteIndex, glissando.type, invariants);
 
         render(g2, src, tgt, glissando.x1Translate, glissando.type == StaffElement.Glissando.Type.CONNECTED ? glissando.x2Translate : 0, glissando, color);
     }
@@ -264,31 +264,31 @@ public final class GlissandoRenderer {
     private Color determineGlissandoColor(
         int noteIndex,
         StaffElement.Glissando.Type type,
-        LineInvariants inv
+        LineInvariants invariants
     ) {
-        var color = inv.getElementColor(noteIndex);
+        var color = invariants.getElementColor(noteIndex);
 
         if (color != Color.BLACK) {
             return color;
         }
 
-        var selectionProvider = inv.getSelectionProvider();
+        var selectionProvider = invariants.getSelectionProvider();
 
         if (selectionProvider == null) {
             return Color.BLACK;
         }
 
-        var lineIndex = inv.getLineIndex();
+        var lineIndex = invariants.getLineIndex();
 
         // Standalone glissando selection
         if (selectionProvider.isGlissandoSelected(noteIndex, lineIndex)) {
-            return inv.getSelectionColor();
+            return invariants.getSelectionColor();
         }
 
         // Implied by target note selection (CONNECTED only)
         if (type == StaffElement.Glissando.Type.CONNECTED
             && selectionProvider.isElementSelected(noteIndex + 1, lineIndex)) {
-            return inv.getSelectionColor();
+            return invariants.getSelectionColor();
         }
 
         return Color.BLACK;
@@ -304,22 +304,22 @@ public final class GlissandoRenderer {
      * @param sourceIndex Index of the source note in the line
      * @param type        Glissando type to preview (CONNECTED or SLIDE_OUT)
      * @param line        The line containing the notes
-     * @param inv         Line invariants
+     * @param invariants         Line invariants
      */
     public void renderPreviewGlissando(
         Graphics2D g2,
         int sourceIndex,
         StaffElement.Glissando.Type type,
         Line line,
-        LineInvariants inv
+        LineInvariants invariants
     ) {
         if (sourceIndex < 0 || sourceIndex >= line.elementCount()) {
             return;
         }
 
         var note = line.getElement(sourceIndex);
-        var layoutResult = inv.getLayoutResult();
-        var middleLineYSs = inv.getMiddleLineYSs();
+        var layoutResult = invariants.getLayoutResult();
+        var middleLineYSs = invariants.getMiddleLineYSs();
         var src = resolveNoteContext(note, sourceIndex, line, layoutResult, middleLineYSs);
         var tgt = resolveTargetContext(type, sourceIndex, line, layoutResult, middleLineYSs);
 

@@ -65,18 +65,18 @@ public final class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
     @Override
     protected void renderElement(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         LineElement element,
         Graphics2D g2
     ) {
-        var layout = inv.getLayoutResult().getDecorationLayout(element);
+        var layout = invariants.getLayoutResult().getDecorationLayout(element);
 
         if (layout == null) {
             return;
         }
 
-        renderSingleHairpin(layout, element instanceof Crescendo, g2, inv);
+        renderSingleHairpin(layout, element instanceof Crescendo, g2, invariants);
     }
 
     /**
@@ -91,18 +91,18 @@ public final class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         LayoutResult.DecorationLayout layout,
         boolean isCrescendo,
         Graphics2D g2,
-        LineInvariants inv
+        LineInvariants invariants
     ) {
         var x1 = layout.xSs();
         var x2 = x1 + layout.widthSs();
-        var topYSs = layoutYToComponentYSs(layout.ySs(), inv);
+        var topYSs = layoutYToComponentYSs(layout.ySs(), invariants);
         var bottomYSs = topYSs + layout.heightSs();
         var middleYSs = topYSs + layout.heightSs() / 2.0;
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
             g2.setColor(ELEMENT_COLOR);
             g2.setStroke(new BasicStroke(
-                (float) inv.getLineThickness().hairpinSs(),
+                (float) invariants.getLineThickness().hairpinSs(),
                 BasicStroke.CAP_ROUND,
                 BasicStroke.JOIN_ROUND
             ));
@@ -125,16 +125,16 @@ public final class DynamicsRenderer extends BaseElementRenderer<LineElement> {
      */
     public void renderHairpinsFromLine(
         Graphics2D g2,
-        LineInvariants inv
+        LineInvariants invariants
     ) {
-        var layoutResult = inv.getLayoutResult();
+        var layoutResult = invariants.getLayoutResult();
 
         for (var entry : layoutResult.getDecorationLayoutsByType(Crescendo.class)) {
-            renderSingleHairpin(entry.getValue(), true, g2, inv);
+            renderSingleHairpin(entry.getValue(), true, g2, invariants);
         }
 
         for (var entry : layoutResult.getDecorationLayoutsByType(Diminuendo.class)) {
-            renderSingleHairpin(entry.getValue(), false, g2, inv);
+            renderSingleHairpin(entry.getValue(), false, g2, invariants);
         }
     }
 }

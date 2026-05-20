@@ -122,7 +122,7 @@ public final class RestRenderer extends BaseElementRenderer<StaffElement> {
     private static double resolveRestXSs(
         Graphics2D g2,
         StaffElement note,
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame
     ) {
         double noteX;
@@ -130,7 +130,7 @@ public final class RestRenderer extends BaseElementRenderer<StaffElement> {
         if (frame.hasOverrideElementX()) {
             noteX = frame.overrideElementXSs();
         } else {
-            noteX = inv.getLayoutResult().getElementXSs(note);
+            noteX = invariants.getLayoutResult().getElementXSs(note);
         }
 
         return noteX;
@@ -138,7 +138,7 @@ public final class RestRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         StaffElement element,
         Graphics2D g2
@@ -150,8 +150,8 @@ public final class RestRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         // Get rest position in staff-space units
-        var noteX = resolveRestXSs(g2, element, inv, frame);
-        var noteY = calculateRestYSs(element, inv.getMiddleLineYSs());
+        var noteX = resolveRestXSs(g2, element, invariants, frame);
+        var noteY = calculateRestYSs(element, invariants.getMiddleLineYSs());
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             g2.translate(noteX, noteY);

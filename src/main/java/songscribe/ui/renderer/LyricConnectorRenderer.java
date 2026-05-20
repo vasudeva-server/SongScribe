@@ -88,15 +88,15 @@ public final class LyricConnectorRenderer {
      * @param g2  graphics context (in staff-space coordinates)
      * @param ctx render context with a populated layout result and song metrics
      */
-    public void render(Graphics2D g2, LineInvariants inv, ElementFrame frame) {
-        var connectors = inv.getLayoutResult().getLyricConnectors();
+    public void render(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
+        var connectors = invariants.getLayoutResult().getLyricConnectors();
 
         if (connectors.isEmpty()) {
             return;
         }
 
-        var metrics = inv.getSongLayoutMetrics();
-        var lyricRenderMetrics = inv.getLyricRenderMetrics();
+        var metrics = invariants.getSongLayoutMetrics();
+        var lyricRenderMetrics = invariants.getLyricRenderMetrics();
         var hyphenGv = getHyphenGlyphVector(lyricRenderMetrics.scaledLyricsFont());
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
@@ -105,7 +105,7 @@ public final class LyricConnectorRenderer {
 
             for (var connector : connectors) {
                 var ySs = metrics.verseYSsInLine(connector.verseIndex());
-                g2.setColor(inv.getLyricConnectorColor(connector.sourceElementIndex(), connector.verseIndex()));
+                g2.setColor(invariants.getLyricConnectorColor(connector.sourceElementIndex(), connector.verseIndex()));
 
                 switch (connector.kind()) {
                     case HYPHEN -> drawHyphen(g2, connector, ySs, lyricRenderMetrics, hyphenGv);

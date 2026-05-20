@@ -94,7 +94,7 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
 
     @Override
     protected void renderElement(
-        LineInvariants inv,
+        LineInvariants invariants,
         ElementFrame frame,
         KeySignature element,
         Graphics2D g2
@@ -116,7 +116,7 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
 
             // Get the starting X position from the element
             var xPosSs = element.getXSs();
-            var middleLineYSs = inv.getMiddleLineYSs();
+            var middleLineYSs = invariants.getMiddleLineYSs();
 
             // Determine glyph and Y positions based on key type
             SMuFLGlyph glyph;
@@ -157,14 +157,14 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
      * @param line      The current line
      * @param nextLine  The next line (with different key)
      * @param lineWidth The width of the staff line (ss)
-     * @param inv       Line invariants
+     * @param invariants       Line invariants
      */
     public void renderKeyChange(
         Graphics2D g2,
         Line line,
         Line nextLine,
         double lineWidth,
-        LineInvariants inv
+        LineInvariants invariants
     ) {
         // If key signature is identical, nothing to draw
         if (nextLine.getKeyAccidentalCount() == line.getKeyAccidentalCount()
@@ -203,7 +203,7 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
             accidentalCounts[1] = nextLine.getKeyAccidentalCount();
         }
 
-        renderKeySignatureChange(g2, keyTypes, accidentalCounts, startingOffsets, isNaturals, lineWidth, inv);
+        renderKeySignatureChange(g2, keyTypes, accidentalCounts, startingOffsets, isNaturals, lineWidth, invariants);
     }
 
     /**
@@ -215,7 +215,7 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
      * @param startingOffsets  Starting offset in Y position array (for partial naturals)
      * @param isNaturals      Whether each key type should be rendered as naturals
      * @param lineWidth       Width of the staff line (ss)
-     * @param inv             Line invariants
+     * @param invariants             Line invariants
      */
     private void renderKeySignatureChange(
         Graphics2D g2,
@@ -224,13 +224,13 @@ public final class KeySignatureRenderer extends BaseElementRenderer<KeySignature
         int [] startingOffsets,
         boolean [] isNaturals,
         double lineWidth,
-        LineInvariants inv
+        LineInvariants invariants
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(MUSIC_FONT);
             g2.setColor(ELEMENT_COLOR);
 
-            var middleLineYSs = inv.getMiddleLineYSs();
+            var middleLineYSs = invariants.getMiddleLineYSs();
 
             // Calculate starting X position (right-aligned with margin)
             var xPosSs = lineWidth - KEY_CHANGE_RIGHT_MARGIN_SS;
