@@ -18,7 +18,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.ui.renderer;
+package songscribe.ui.layout;
 
 /**
  * Vertical and horizontal extent of a note's accidental (including parentheses) in staff-space units.

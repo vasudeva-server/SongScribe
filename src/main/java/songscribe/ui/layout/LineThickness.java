@@ -1,4 +1,4 @@
-package songscribe.ui.renderer;
+package songscribe.ui.layout;
 
 import songscribe.smufl.Engraving;
 
