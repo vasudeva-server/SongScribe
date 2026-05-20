@@ -76,7 +76,8 @@ public final class FermataRenderer extends BaseElementRenderer<StaffElement> {
         Graphics2D g2,
         ElementRenderContext ctx
     ) {
-        if (!element.isFermata()) {
+        // Guard: only render if a fermata attachment is present
+        if (element.findAttachment(FermataAttachment.class) == null) {
             return;
         }
 

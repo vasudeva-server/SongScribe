@@ -20,13 +20,13 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.DynamicsSpan;
 import songscribe.model.Line;
+import songscribe.ui.layout.Crescendo;
 
 /**
- * Mutation recording the removal of a crescendo span from a line.
+ * Mutation recording the removal of a crescendo hairpin from a line.
  */
-public record CrescendoRemoval(Line line, DynamicsSpan span)
+public record CrescendoRemoval(Line line, Crescendo crescendo)
     implements Mutation, LineScopedMutation {
 
     @Override

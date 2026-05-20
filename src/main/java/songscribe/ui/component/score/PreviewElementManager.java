@@ -31,7 +31,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
-import songscribe.model.BeamSpan;
+import songscribe.ui.layout.Beam;
 import songscribe.model.Song;
 import songscribe.model.ElementLocation;
 import songscribe.model.ElementType;
@@ -841,14 +841,12 @@ public final class PreviewElementManager {
         }
 
         // If inserting into a tuplet, remove it — the new element changes the rhythmic grouping.
-        // The subsequent removeSpan call handles the remaining span sets (beamings, ties, etc.).
-        var tuplet = line.getTuplets().findSpan(xIndex - 1);
+        var tuplet = line.findTupletAt(xIndex - 1);
 
-        if ((tuplet != null) && ((xIndex - 1) < tuplet.getEnd())) {
+        if ((tuplet != null) && ((xIndex - 1) < tuplet.getEndElementIndex())) {
             line.removeTuplet(tuplet);
         }
 
-        line.removeSpan(xIndex - 1, xIndex);
         var insertion = calculateInsertionOrShowError(line, previewElement, xIndex, lc.getLayoutResult());
 
         if (insertion == null) {
@@ -892,7 +890,7 @@ public final class PreviewElementManager {
         if (
             !element.getType().isBeamable() ||
                 (elementIndex < 1) ||
-                (line.getTuplets().findSpan(elementIndex - 1) != null)
+                (line.findTupletAt(elementIndex - 1) != null)
         ) {
             return;
         }
@@ -911,9 +909,9 @@ public final class PreviewElementManager {
                 break;
             }
 
-            var span = line.getBeamings().findSpan(i);
+            var beam = line.findBeamAt(i);
 
-            if ((span != null) && (span.getStart() == i)) {
+            if ((beam != null) && (beam.getAnchorElementIndex() == i)) {
                 break;
             }
         }
@@ -928,9 +926,10 @@ public final class PreviewElementManager {
                     (sum > 0) &&
                     ((sum % 4) != 0))
         ) {
-            line
-                .getBeamings()
-                .addSpan(new BeamSpan(elementIndex - 1, elementIndex));
+            line.addBeaming(new Beam(
+                line.getElement(elementIndex - 1),
+                line.getElement(elementIndex)
+            ));
         }
     }
 
@@ -971,19 +970,19 @@ public final class PreviewElementManager {
         }
 
         // Remove all beam spans touching this element — the new element type may differ
-        var beam = line.getBeamings().findSpan(elementIndex);
+        var beam = line.findBeamAt(elementIndex);
 
         while (beam != null) {
-            line.getBeamings().removeSpan(beam);
-            beam = line.getBeamings().findSpan(elementIndex);
+            line.removeBeaming(beam);
+            beam = line.findBeamAt(elementIndex);
         }
 
-        // Remove all tie spans touching this element
-        var tie = line.getTies().findSpan(elementIndex);
+        // Remove all tie range elements touching this element
+        var tie = line.findTieAt(elementIndex);
 
         while (tie != null) {
-            line.getTies().removeSpan(tie);
-            tie = line.getTies().findSpan(elementIndex);
+            line.removeTie(tie);
+            tie = line.findTieAt(elementIndex);
         }
 
         // Remove any containing tuplet if the duration type or dot count changes —

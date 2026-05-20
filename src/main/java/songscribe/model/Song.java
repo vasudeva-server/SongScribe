@@ -55,6 +55,7 @@ import songscribe.prefs.PrefsKey;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.TempoChangeAttachment;
 import songscribe.util.MyFontUtils;
 import songscribe.util.StringUtils;
 import songscribe.util.Utils;
@@ -166,7 +167,7 @@ public final class Song {
      * Data format version for the song's internal representation.
      * <p>
      * <ul>
-     *   <li>Version 1: Legacy format (SpanSet ranges, inline Note attachments)</li>
+     *   <li>Version 1: Legacy format (inline range data, inline Note attachments)</li>
      *   <li>Version 2: LineElement format (RangeElement objects, Attachment objects)</li>
      * </ul>
      * <p>
@@ -374,10 +375,10 @@ public final class Song {
                 n >= 0;
                 n--
             ) {
-                var tc = currentLine.getElement(n).getTempoChange();
+                var attachment = currentLine.getElement(n).findAttachment(TempoChangeAttachment.class);
 
-                if (tc != null) {
-                    return tc;
+                if (attachment != null) {
+                    return attachment.getTempo();
                 }
             }
 
@@ -393,7 +394,7 @@ public final class Song {
     public boolean hasAnyTempoChange() {
         for (var line : lines) {
             for (var i = 0; i < line.elementCount(); i++) {
-                if (line.getElement(i).getTempoChange() != null) {
+                if (line.getElement(i).findAttachment(TempoChangeAttachment.class) != null) {
                     return true;
                 }
             }

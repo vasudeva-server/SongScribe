@@ -124,8 +124,9 @@ class DynamicsMarkingTest extends E2ETest {
             performLayout(0);
 
             assertThat(GuiActionRunner.execute(() ->
-                song().getLine(0).getCrescendos()
-                    .findSpan(Note.CRESCENDO_START.index) != null
+                song().getLine(0).getCrescendos().stream()
+                    .anyMatch(c -> c.getAnchorElementIndex() <= Note.CRESCENDO_START.index
+                        && c.getEndElementIndex() >= Note.CRESCENDO_START.index)
             )).as("crescendo span added").isTrue();
         }
 
@@ -140,8 +141,9 @@ class DynamicsMarkingTest extends E2ETest {
             performLayout(0);
 
             assertThat(GuiActionRunner.execute(() ->
-                song().getLine(0).getDiminuendos()
-                    .findSpan(Note.DIMINUENDO_START.index) != null
+                song().getLine(0).getDiminuendos().stream()
+                    .anyMatch(d -> d.getAnchorElementIndex() <= Note.DIMINUENDO_START.index
+                        && d.getEndElementIndex() >= Note.DIMINUENDO_START.index)
             )).as("diminuendo span added").isTrue();
         }
 

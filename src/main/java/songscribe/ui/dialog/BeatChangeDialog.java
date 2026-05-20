@@ -31,6 +31,7 @@ import songscribe.model.StaffElement;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.DurationListCellRenderer;
+import songscribe.ui.layout.BeatChangeAttachment;
 
 public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 
@@ -61,7 +62,8 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 
     @Override
     protected @Nullable BeatChange getExistingChange(StaffElement element) {
-        return element.getBeatChange();
+        var attachment = element.findAttachment(BeatChangeAttachment.class);
+        return attachment != null ? attachment.getBeatChange() : null;
     }
 
     @Override
@@ -84,11 +86,21 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
             return;
         }
 
-        element.setBeatChange(new BeatChange(duration, beat));
+        var existing = element.findAttachment(BeatChangeAttachment.class);
+
+        if (existing != null) {
+            existing.setBeatChange(new BeatChange(duration, beat));
+        } else {
+            element.addAttachment(new BeatChangeAttachment(element, new BeatChange(duration, beat)));
+        }
     }
 
     @Override
     protected void clearChange(StaffElement element) {
-        element.setBeatChange(null);
+        var attachment = element.findAttachment(BeatChangeAttachment.class);
+
+        if (attachment != null) {
+            element.removeAttachment(attachment);
+        }
     }
 }

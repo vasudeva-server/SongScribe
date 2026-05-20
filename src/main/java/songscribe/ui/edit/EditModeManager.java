@@ -30,6 +30,7 @@ import songscribe.model.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.layout.Articulation;
+import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -231,7 +232,17 @@ public final class EditModeManager {
             Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()
         );
 
-        element.setFermata(Actions.FERMATA_ACTION.isSelected());
+        if (Actions.FERMATA_ACTION.isSelected()) {
+            if (element.findAttachment(FermataAttachment.class) == null) {
+                element.addAttachment(new FermataAttachment(element));
+            }
+        } else {
+            var existingFermata = element.findAttachment(FermataAttachment.class);
+
+            if (existingFermata != null) {
+                element.removeAttachment(existingFermata);
+            }
+        }
 
         element.clearArticulations();
 

@@ -33,6 +33,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.Attachment;
+import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.ScaleContext;
 
@@ -100,15 +101,7 @@ public class StaffElement extends LineElement implements Cloneable {
     @Nullable
     protected Accidental accidental;
     protected boolean isAccidentalInParentheses = false;
-    @Nullable
-    protected Tempo tempoChange = null;
-    @Nullable
-    protected BeatChange beatChange = null;
-    @Nullable
-    protected Annotation annotation = null;
     protected boolean upper = false;
-    protected boolean trill = false;
-    protected boolean fermata = false;
     private boolean stemDirectionAuto = true;
 
     // The line which owns this note
@@ -145,10 +138,6 @@ public class StaffElement extends LineElement implements Cloneable {
         // Always copy
         xOffset = source.xOffset;
         dotCount = source.dotCount;
-        fermata = source.fermata;
-        tempoChange = source.tempoChange;
-        beatChange = source.beatChange;
-        annotation = source.annotation;
         line = source.line;
         properties.lyrics.addAll(source.properties.lyrics);
         setParentLine(source.getParentLine());
@@ -163,7 +152,6 @@ public class StaffElement extends LineElement implements Cloneable {
             accidental = source.accidental;
             isAccidentalInParentheses = source.isAccidentalInParentheses;
             glissando = source.glissando;
-            trill = source.trill;
             upper = source.upper;
             stemDirectionAuto = source.stemDirectionAuto;
             staffPosition = source.staffPosition;
@@ -186,13 +174,8 @@ public class StaffElement extends LineElement implements Cloneable {
         accidental = note.accidental;
         isAccidentalInParentheses = note.isAccidentalInParentheses;
         line = note.line;
-        tempoChange = note.tempoChange;
-        beatChange = note.beatChange;
         upper = note.upper;
         glissando = note.glissando;
-        annotation = note.annotation;
-        trill = note.trill;
-        fermata = note.fermata;
         stemDirectionAuto = note.stemDirectionAuto;
 
         // Copy LineElement hierarchy data
@@ -477,53 +460,12 @@ public class StaffElement extends LineElement implements Cloneable {
         glissando = null;
     }
 
-    public @Nullable Tempo getTempoChange() {
-        return tempoChange;
-    }
-
-    public void setTempoChange(@Nullable Tempo tempoChange) {
-        this.tempoChange = tempoChange;
-    }
-
-    public @Nullable BeatChange getBeatChange() {
-        return beatChange;
-    }
-
-    public void setBeatChange(@Nullable BeatChange beatChange) {
-        this.beatChange = beatChange;
-    }
-
     public boolean isUpper() {
         return upper;
     }
 
     public void setUpper(boolean upper) {
         this.upper = upper;
-    }
-
-    public @Nullable Annotation getAnnotation() {
-        return annotation;
-    }
-
-    public void setAnnotation(@Nullable Annotation annotation) {
-        this.annotation = annotation;
-    }
-
-
-    public boolean isTrill() {
-        return trill;
-    }
-
-    public void setTrill(boolean trill) {
-        this.trill = trill;
-    }
-
-    public boolean isFermata() {
-        return fermata;
-    }
-
-    public void setFermata(boolean fermata) {
-        this.fermata = fermata;
     }
 
     /** Returns the verse-1 lyric for this element, or null if none is set. */
@@ -673,7 +615,9 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public int getDuration() {
-        return (int) (getDefaultDurationWithDots() * (fermata ? 1.5f : 1.0f));
+        // Fermata extends the written duration by half again
+        var hasFermata = findAttachment(FermataAttachment.class) != null;
+        return (int) (getDefaultDurationWithDots() * (hasFermata ? 1.5f : 1.0f));
     }
 
     public Line getLine() {

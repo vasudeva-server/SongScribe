@@ -20,13 +20,13 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.DynamicsSpan;
 import songscribe.model.Line;
+import songscribe.ui.layout.Diminuendo;
 
 /**
- * Mutation recording the removal of a diminuendo span from a line.
+ * Mutation recording the removal of a diminuendo hairpin from a line.
  */
-public record DiminuendoRemoval(Line line, DynamicsSpan span)
+public record DiminuendoRemoval(Line line, Diminuendo diminuendo)
     implements Mutation, LineScopedMutation {
 
     @Override

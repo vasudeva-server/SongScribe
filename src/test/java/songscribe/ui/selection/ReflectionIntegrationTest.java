@@ -36,6 +36,7 @@ import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.layout.FermataAttachment;
 
 class ReflectionIntegrationTest extends UnitTest {
 
@@ -127,7 +128,7 @@ class ReflectionIntegrationTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
         note.setDotCount(1);
-        note.setFermata(true);
+        note.addAttachment(new FermataAttachment(note));
 
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(note), allActions()

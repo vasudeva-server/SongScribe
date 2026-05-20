@@ -43,6 +43,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.InsertionSpacingCalculator;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.TempoChangeAttachment;
 import songscribe.util.Utils;
 
 public final class SongIO {
@@ -459,11 +460,10 @@ public final class SongIO {
                                 tempoReader.getPos10() <
                                     (firstElementInLine + line.elementCount())
                             ) {
-                                line
-                                    .getElement(
+                                var element = line.getElement(
                                         tempoReader.getPos10() - firstElementInLine
-                                    )
-                                    .setTempoChange(tc);
+                                    );
+                                    element.addAttachment(new TempoChangeAttachment(element, tc));
                                 break;
                             }
 

@@ -35,17 +35,18 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.model.BeamSpan;
-import songscribe.model.DynamicsSpan;
+import songscribe.ui.layout.Beam;
 import songscribe.model.ElementType;
 import songscribe.model.KeyType;
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
 import songscribe.model.Tempo;
-import songscribe.model.TieSpan;
-import songscribe.model.TupletSpan;
+import songscribe.ui.layout.Crescendo;
+import songscribe.ui.layout.Tuplet;
+import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.RangeElement;
+import songscribe.ui.layout.Tie;
 
 class MutationRecordsTest extends UnitTest {
 
@@ -113,17 +114,23 @@ class MutationRecordsTest extends UnitTest {
 
         static Stream<Arguments> spanMutations() {
             var line = detachedLine();
+            var e0 = ElementType.CROTCHET.newInstance();
+            var e1 = ElementType.CROTCHET.newInstance();
+            line.addElement(e0);
+            line.addElement(e1);
+            var tie1 = new Tie(e0, e1);
+            var tie2 = new Tie(e0, e1);
             return Stream.of(
-                Arguments.of("BeamingAddition",    new BeamingAddition(line, new BeamSpan(1, 3)), line),
-                Arguments.of("BeamingRemoval",     new BeamingRemoval(line, new BeamSpan(2, 4)), line),
-                Arguments.of("TieAddition",        new TieAddition(line, new TieSpan(0, 1)), line),
-                Arguments.of("TieRemoval",         new TieRemoval(line, new TieSpan(3, 4)), line),
-                Arguments.of("TupletAddition",     new TupletAddition(line, new TupletSpan(0, 2, 3)), line),
-                Arguments.of("TupletRemoval",      new TupletRemoval(line, new TupletSpan(1, 3, 5)), line),
-                Arguments.of("CrescendoAddition",  new CrescendoAddition(line, new DynamicsSpan(0, 2)), line),
-                Arguments.of("CrescendoRemoval",   new CrescendoRemoval(line, new DynamicsSpan(1, 3)), line),
-                Arguments.of("DiminuendoAddition", new DiminuendoAddition(line, new DynamicsSpan(2, 4)), line),
-                Arguments.of("DiminuendoRemoval",  new DiminuendoRemoval(line, new DynamicsSpan(3, 5)), line)
+                Arguments.of("BeamingAddition",    new BeamingAddition(line, new Beam(e0, e1)), line),
+                Arguments.of("BeamingRemoval",     new BeamingRemoval(line, new Beam(e0, e1)), line),
+                Arguments.of("TieAddition",        new TieAddition(line, tie1), line),
+                Arguments.of("TieRemoval",         new TieRemoval(line, tie2), line),
+                Arguments.of("TupletAddition",     new TupletAddition(line, new Tuplet(e0, e1, 3)), line),
+                Arguments.of("TupletRemoval",      new TupletRemoval(line, new Tuplet(e0, e1, 5)), line),
+                Arguments.of("CrescendoAddition",  new CrescendoAddition(line, new Crescendo(e0, e1)), line),
+                Arguments.of("CrescendoRemoval",   new CrescendoRemoval(line, new Crescendo(e0, e1)), line),
+                Arguments.of("DiminuendoAddition", new DiminuendoAddition(line, new Diminuendo(e0, e1)), line),
+                Arguments.of("DiminuendoRemoval",  new DiminuendoRemoval(line, new Diminuendo(e0, e1)), line)
             );
         }
 

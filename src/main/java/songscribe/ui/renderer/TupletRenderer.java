@@ -26,7 +26,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import module java.desktop;
 
 import songscribe.model.Line;
-import songscribe.model.TupletSpan;
+import songscribe.smufl.Engraving;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.Tuplet;
 import songscribe.util.GraphicUtils;
@@ -34,7 +34,7 @@ import songscribe.util.MyFontUtils;
 
 /**
  * Renders tuplet brackets with numbers using staff-space coordinates
- * from {@link LayoutResult.SpanLayout}.
+ * from {@link LayoutResult.DecorationLayout}.
  * <p>
  * Bracket styling follows LilyPond conventions: round caps/joins,
  * vertical arms pointing toward notes, and an italic serif number.
@@ -88,8 +88,8 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
     }
 
     /**
-     * Renders all tuplets for a line by iterating legacy {@link TupletSpan}
-     * data and reading pre-computed positions from {@link LayoutResult.SpanLayout}.
+     * Renders all tuplets for a line by iterating {@link Tuplet} range elements
+     * and reading pre-computed positions from {@link LayoutResult.DecorationLayout}.
      */
     public void renderTupletsFromLine(
         Graphics2D g2,
@@ -98,49 +98,62 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
     ) {
         var layoutResult = ctx.getLayoutResult();
 
-        for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
-            var span = iter.next();
-            var spanLayout = layoutResult.getSpanLayout(span);
+        for (var tuplet : line.findRangeElements(Tuplet.class)) {
+            var decorLayout = layoutResult.getDecorationLayout(tuplet);
 
-            if (spanLayout == null) {
+            if (decorLayout == null) {
                 continue;
             }
 
-            var startNote = line.getElement(span.getStart());
-            var isUpper = startNote.isUpper();
+            var anchorNote = tuplet.getAnchorElement();
 
+            if (anchorNote == null) {
+                continue;
+            }
+
+            var anchorXSs = decorLayout.xSs();
+            var endXSs = anchorXSs + decorLayout.widthSs();
+            var isUpper = anchorNote.isUpper();
+            var stemSs = ctx.getLineThickness().stemSs();
+            var leftXSs = anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS
+                - (isUpper ? stemSs : Engraving.NOTE_HEAD_WIDTH_SS)
+                - Tuplet.ARM_EXTENSION_SS;
+            var rightXSs = endXSs + Engraving.NOTE_HEAD_WIDTH_SS + Tuplet.ARM_EXTENSION_SS;
+
+            var anchorIdx = tuplet.getAnchorElementIndex();
+            var endIdx = tuplet.getEndElementIndex();
             // Beamed + stems up: number only (beam already provides visual grouping)
-            var allBeamed = line.getBeamings().findSpan(span.getStart()) != null
-                && line.getBeamings().findSpan(span.getEnd()) != null;
+            var allBeamed = line.findBeamAt(anchorIdx) != null
+                && line.findBeamAt(endIdx) != null;
             var numberOnly = allBeamed && isUpper;
 
-            renderTuplet(g2, ctx, spanLayout, span.getGrade(), numberOnly);
+            renderTuplet(g2, ctx, leftXSs, rightXSs, decorLayout.ySs(), tuplet.getGrade(), numberOnly);
         }
     }
 
     /**
      * Renders a single tuplet bracket (or number-only for beamed groups) using
-     * pre-computed positions from the layout result.
+     * pre-computed bracket coordinates in layout-relative staff spaces.
      *
      * @param g2         graphics context (scale transform already applied)
      * @param ctx        render context
-     * @param spanLayout pre-computed bracket position in layout-relative staff spaces
+     * @param leftXSs    left edge of the visual bracket
+     * @param rightXSs   right edge of the visual bracket
+     * @param ySs        Y position of the bracket in layout space
      * @param grade      tuplet number (3 for triplet, 5 for quintuplet, etc.)
      * @param numberOnly true to draw only the number (no bracket)
      */
     private void renderTuplet(
         Graphics2D g2,
         ElementRenderContext ctx,
-        LayoutResult.SpanLayout spanLayout,
+        double leftXSs,
+        double rightXSs,
+        double ySs,
         int grade,
         boolean numberOnly
     ) {
         // Convert layout Y to component Y
-        var bracketYSs = layoutYToComponentYSs(spanLayout.ySs(), ctx);
-
-        // spanLayout stores the actual visual bracket bounds
-        var leftXSs = spanLayout.startXSs();
-        var rightXSs = spanLayout.endXSs();
+        var bracketYSs = layoutYToComponentYSs(ySs, ctx);
         var centerXSs = (leftXSs + rightXSs) / 2.0;
 
         // Measure number width for gap calculation

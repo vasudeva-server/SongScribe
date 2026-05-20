@@ -32,11 +32,12 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.model.DynamicsSpan;
+import songscribe.ui.layout.Crescendo;
+import songscribe.ui.layout.Diminuendo;
 
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
-import songscribe.model.TupletSpan;
+import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 class StructuralTierStackingTest extends UnitTest {
@@ -143,7 +144,7 @@ class StructuralTierStackingTest extends UnitTest {
         @Test
         void testHairpinPositionedAboveNoteDecorationsWhenPresent() {
             var note1 = createNote(-2, false);
-            note1.setFermata(true);
+            note1.addAttachment(new FermataAttachment(note1));
             var note2 = createNote(0, false);
             var line = detachedLine();
             line.addElement(note1);
@@ -205,47 +206,47 @@ class StructuralTierStackingTest extends UnitTest {
         }
 
         @Test
-        void testLegacyCrescendoSpanProducesSpanLayout() {
+        void testCrescendoRangeElementProducesDecorationLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
-            var span = new DynamicsSpan(0, 1);
-            line.getCrescendos().addSpan(span);
+            var crescendo = new Crescendo(note1, note2);
+            line.addRangeElement(crescendo);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
                 line);
 
-            var spanLayout = require(
-                result.getSpanLayout(span),
-                "legacy crescendo SpanLayout");
+            var layout = require(
+                result.getDecorationLayout(crescendo),
+                "crescendo DecorationLayout");
 
-            assertThat(spanLayout.ySs()).isLessThan(0.0);
+            assertThat(layout.ySs()).isLessThan(0.0);
         }
 
         @Test
-        void testLegacyDiminuendoSpanProducesSpanLayout() {
+        void testDiminuendoRangeElementProducesDecorationLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
-            var span = new DynamicsSpan(0, 1);
-            line.getDiminuendos().addSpan(span);
+            var diminuendo = new Diminuendo(note1, note2);
+            line.addRangeElement(diminuendo);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
                 line);
 
-            var spanLayout = require(
-                result.getSpanLayout(span),
-                "legacy diminuendo SpanLayout");
+            var layout = require(
+                result.getDecorationLayout(diminuendo),
+                "diminuendo DecorationLayout");
 
-            assertThat(spanLayout.ySs()).isLessThan(0.0);
+            assertThat(layout.ySs()).isLessThan(0.0);
         }
     }
 
@@ -301,7 +302,7 @@ class StructuralTierStackingTest extends UnitTest {
         @Test
         void testTupletPositionedAboveNoteDecorationsWhenPresent() {
             var note1 = createNote(-2, false);
-            note1.setFermata(true);
+            note1.addAttachment(new FermataAttachment(note1));
             var note2 = createNote(0, false);
             var line = detachedLine();
             line.addElement(note1);
@@ -325,27 +326,6 @@ class StructuralTierStackingTest extends UnitTest {
             assertThat(tupletLayout.ySs()).isLessThan(fermataLayout.ySs());
         }
 
-        @Test
-        void testLegacyTupletSpanProducesSpanLayout() {
-            var note1 = createNote(0, false);
-            var note2 = createNote(0, false);
-            var line = detachedLine();
-            line.addElement(note1);
-            line.addElement(note2);
-
-            var span = new TupletSpan(0, 1, 3);
-            line.getTuplets().addSpan(span);
-
-            var result = stackColumns(
-                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
-                line);
-
-            var spanLayout = require(
-                result.getSpanLayout(span),
-                "legacy tuplet SpanLayout");
-
-            assertThat(spanLayout.ySs()).isLessThan(0.0);
-        }
     }
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
@@ -532,7 +512,7 @@ class StructuralTierStackingTest extends UnitTest {
         @Test
         void testAllStructuralElementsAboveNoteAttachedLayer() {
             var note1 = createNote(-2, false);
-            note1.setFermata(true);
+            note1.addAttachment(new FermataAttachment(note1));
             var note2 = createNote(0, false);
             note2.addAttachment(new DynamicAttachment(note2,
                 DynamicAttachment.DynamicType.FORTE));

@@ -20,10 +20,10 @@
 package songscribe.model;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
@@ -50,10 +50,20 @@ import songscribe.message.mutation.RangeElementRemoval;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
+import songscribe.ui.layout.Tie;
 import songscribe.message.mutation.TupletRemoval;
+import songscribe.ui.layout.AnnotationAttachment;
+import songscribe.ui.layout.Beam;
+import songscribe.ui.layout.BeatChangeAttachment;
+import songscribe.ui.layout.Crescendo;
+import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.Ending;
+import songscribe.ui.layout.Hairpin;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.ui.layout.Trill;
+import songscribe.ui.layout.Tuplet;
 
 public class Line {
 
@@ -62,25 +72,7 @@ public class Line {
         new int[]{4, 1, 5, 2, 6, 3, 0},
     };
 
-    private final SpanSet<BeamSpan> beamings = new SpanSet<>();
-    private final SpanSet<TieSpan> ties = new SpanSet<>();
-    private final SpanSet<TupletSpan> tuplets = new SpanSet<>();
-    private final SpanSet<DynamicsSpan> crescendo = new SpanSet<>();
-    private final SpanSet<DynamicsSpan> diminuendo = new SpanSet<>();
-    private final SpanSet<?>[] spanSets = new SpanSet[]{
-        beamings,
-        ties,
-        tuplets,
-        crescendo,
-        diminuendo,
-    };
-
-    // =========================================================================
-    // New storage for Phase 4+ layout redesign
-    // These will replace SpanSets after Phase 7 (IO) migration
-    // =========================================================================
-
-    /** Range elements (ties, trills, crescendo, diminuendo, tuplets, endings). */
+    /** Range elements (beams, ties, trills, crescendo, diminuendo, tuplets, endings). */
     private final List<RangeElement> rangeElements = new ArrayList<>();
 
     private final Song song;
@@ -247,9 +239,6 @@ public class Line {
             new ElementInsertion(this, index, element),
             () -> {
                 elements.add(index, element);
-                if (insertBeforeFinal) {
-                    shiftSpans(spanSets, index, 1);
-                }
             }
         );
     }
@@ -275,9 +264,9 @@ public class Line {
 
         element.setLine(this);
         element.setParentLine(this);
-        var tuplet = tuplets.findSpan(index);
+        var tuplet = findTupletAt(index);
 
-        if (tuplet != null && index > tuplet.start) {
+        if (tuplet != null && index > tuplet.getAnchorElementIndex()) {
             removeTuplet(tuplet);
         }
 
@@ -293,17 +282,18 @@ public class Line {
             && song.indexOfLine(this) == 0)
             ? elements.getFirst()
             : null;
-        var displacedTempo = displacedFirstElement != null ? displacedFirstElement.getTempoChange() : null;
+        var displacedTempo = displacedFirstElement != null
+            ? displacedFirstElement.findAttachment(TempoChangeAttachment.class)
+            : null;
 
         applyChange(
             new ElementInsertion(this, index, element),
             () -> {
                 elements.add(index, element);
-                shiftSpans(spanSets, index, 1);
 
-                if (displacedFirstElement != null) {
-                    displacedFirstElement.setTempoChange(null);
-                    element.setTempoChange(displacedTempo);
+                if (displacedFirstElement != null && displacedTempo != null) {
+                    displacedFirstElement.removeAttachment(displacedTempo);
+                    element.addAttachment(displacedTempo.copy(element));
                 }
 
                 rangeElements.removeIf(endingsToRemove::contains);
@@ -335,17 +325,15 @@ public class Line {
                 elements.set(index, element);
                 rangeElements.removeIf(endingsToRemove::contains);
 
-                // Update stale anchor/end references in surviving endings so that
+                // Update stale anchor/end references in surviving range elements so that
                 // getAnchorElementIndex()/getEndElementIndex() remain valid after the swap.
                 for (var r : rangeElements) {
-                    if (r instanceof Ending ending) {
-                        if (ending.getAnchorElement() == oldElement) {
-                            ending.setAnchorElement(element);
-                        }
+                    if (r.getAnchorElement() == oldElement) {
+                        r.setAnchorElement(element);
+                    }
 
-                        if (ending.getEndElement() == oldElement) {
-                            ending.setEndElement(element);
-                        }
+                    if (r.getEndElement() == oldElement) {
+                        r.setEndElement(element);
                     }
                 }
             }
@@ -888,11 +876,11 @@ public class Line {
 
         var element = elements.getFirst();
 
-        if (element.getTempoChange() == null) {
+        if (element.findAttachment(TempoChangeAttachment.class) == null) {
             var initialTempo = song.getTempo();
 
             if (initialTempo != null) {
-                element.setTempoChange(initialTempo);
+                element.addAttachment(new TempoChangeAttachment(element, initialTempo));
             }
         }
     }
@@ -929,7 +917,6 @@ public class Line {
             new ElementDeletion(this, index, deleted),
             () -> {
                 elements.remove(index);
-                shiftSpans(spanSets, index, -1);
                 rangeElements.removeIf(r ->
                     r.isInvalidatedBy(deletedList) || endingsToRemove.contains(r));
             }
@@ -961,7 +948,6 @@ public class Line {
             new ElementRangeDeletion(this, from, to, deletedElements),
             () -> {
                 elements.subList(from, to + 1).clear();
-                shiftSpans(spanSets, from, -(to - from + 1));
                 rangeElements.removeIf(r ->
                     r.isInvalidatedBy(deletedElements) || endingsToRemove.contains(r));
             }
@@ -1143,102 +1129,445 @@ public class Line {
         return elementSpacingRatio;
     }
 
-    public SpanSet<BeamSpan> getBeamings() {
-        return beamings;
+    /**
+     * Returns all {@link Beam} range elements whose span overlaps [begin, end] inclusive.
+     */
+    public List<Beam> findBeamsOverlapping(int begin, int end) {
+        var result = new ArrayList<Beam>();
+
+        for (var re : rangeElements) {
+            if (re instanceof Beam b) {
+                var anchor = b.getAnchorElementIndex();
+                var endIdx = b.getEndElementIndex();
+
+                if (anchor <= end && endIdx >= begin) {
+                    result.add(b);
+                }
+            }
+        }
+
+        return result;
     }
 
-    public SpanSet<TieSpan> getTies() {
-        return ties;
+    /**
+     * Returns true if {@code elementIndex} is the anchor of any {@link Beam} range element.
+     */
+    public boolean isStartOfAnyBeam(int elementIndex) {
+        for (var re : rangeElements) {
+            if (re instanceof Beam b && b.getAnchorElementIndex() == elementIndex) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    public SpanSet<TupletSpan> getTuplets() {
-        return tuplets;
+    /**
+     * Returns true if {@code elementIndex} is the end of any {@link Beam} range element.
+     */
+    public boolean isEndOfAnyBeam(int elementIndex) {
+        for (var re : rangeElements) {
+            if (re instanceof Beam b && b.getEndElementIndex() == elementIndex) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    public SpanSet<DynamicsSpan> getCrescendos() {
-        return crescendo;
+    /**
+     * Returns the first {@link Tie} range element whose anchor-to-end range includes
+     * {@code elementIndex}, or {@code null} if the element is not part of any tie.
+     */
+    @Nullable
+    public Tie findTieAt(int elementIndex) {
+        for (var re : rangeElements) {
+            if (re instanceof Tie t) {
+                var anchor = t.getAnchorElementIndex();
+                var end = t.getEndElementIndex();
+
+                if (anchor >= 0 && end >= 0 && anchor <= elementIndex && elementIndex <= end) {
+                    return t;
+                }
+            }
+        }
+
+        return null;
     }
 
-    public SpanSet<DynamicsSpan> getDiminuendos() {
-        return diminuendo;
+    /**
+     * Adds a tie range element, merging with any existing ties that share endpoints.
+     * <p>
+     * If an existing tie ends at the new tie's start, or starts at the new tie's end,
+     * the spans are merged into a single wider tie. Any tie whose range is fully
+     * covered by the merged result is removed.
+     */
+    public void addTie(Tie tie) {
+        tie.setParentLine(this);
+        var anchorIdx = elements.indexOf(tie.getAnchorElement());
+        var endIdx = elements.indexOf(tie.getEndElement());
+
+        // Expand bounds to absorb adjacent/overlapping ties.
+        var mergedAnchorIdx = anchorIdx;
+        var mergedEndIdx = endIdx;
+
+        for (var re : rangeElements) {
+            if (re instanceof Tie existing) {
+                var existingAnchor = existing.getAnchorElementIndex();
+                var existingEnd = existing.getEndElementIndex();
+
+                if (existingAnchor <= anchorIdx && anchorIdx <= existingEnd) {
+                    mergedAnchorIdx = Math.min(mergedAnchorIdx, existingAnchor);
+                }
+
+                if (existingAnchor <= endIdx && endIdx <= existingEnd) {
+                    mergedEndIdx = Math.max(mergedEndIdx, existingEnd);
+                }
+            }
+        }
+
+        // Adjust tie anchor/end to the merged bounds when merging occurred.
+        if (mergedAnchorIdx != anchorIdx) {
+            tie.setAnchorElement(elements.get(mergedAnchorIdx));
+        }
+
+        if (mergedEndIdx != endIdx) {
+            tie.setEndElement(elements.get(mergedEndIdx));
+        }
+
+        // Remove all ties fully subsumed by the merged range.
+        final int finalMergedAnchor = mergedAnchorIdx;
+        final int finalMergedEnd = mergedEndIdx;
+        rangeElements.removeIf(re -> re instanceof Tie t
+            && t.getAnchorElementIndex() >= finalMergedAnchor
+            && t.getEndElementIndex() <= finalMergedEnd);
+
+        applyChange(new TieAddition(this, tie), () -> rangeElements.add(tie));
     }
 
-    public void addBeaming(BeamSpan span) {
-        applyChange(new BeamingAddition(this, span), () -> beamings.addSpan(span));
+    /**
+     * Removes a tie range element that was previously added via {@link #addTie(Tie)}.
+     */
+    public void removeTie(Tie tie) {
+        var index = rangeElements.indexOf(tie);
+
+        if (index < 0) {
+            return;
+        }
+
+        applyChange(
+            new TieRemoval(this, tie),
+            () -> {
+                rangeElements.remove(index);
+                tie.setParentLine(null);
+            }
+        );
     }
 
-    public void removeBeaming(BeamSpan span) {
-        applyChange(new BeamingRemoval(this, span), () -> beamings.removeSpan(span));
+    /**
+     * Returns an unmodifiable snapshot of all {@link Tie} range elements in this line.
+     */
+    public List<Tie> findTies() {
+        return findRangeElements(Tie.class);
     }
 
-    public void addTie(TieSpan span) {
-        applyChange(new TieAddition(this, span), () -> ties.addSpan(span));
+    /**
+     * Returns the first {@link Tuplet} range element whose anchor-to-end range includes
+     * {@code elementIndex}, or {@code null} if the element is not part of any tuplet.
+     */
+    @Nullable
+    public Tuplet findTupletAt(int elementIndex) {
+        for (var re : rangeElements) {
+            if (re instanceof Tuplet t) {
+                var anchor = t.getAnchorElementIndex();
+                var end = t.getEndElementIndex();
+
+                if (anchor >= 0 && end >= 0 && anchor <= elementIndex && elementIndex <= end) {
+                    return t;
+                }
+            }
+        }
+
+        return null;
     }
 
-    public void removeTie(TieSpan span) {
-        applyChange(new TieRemoval(this, span), () -> ties.removeSpan(span));
+    /**
+     * Returns all {@link Tuplet} range elements whose span overlaps [begin, end] inclusive.
+     */
+    public List<Tuplet> findTupletsOverlapping(int begin, int end) {
+        var result = new ArrayList<Tuplet>();
+
+        for (var re : rangeElements) {
+            if (re instanceof Tuplet t) {
+                var anchor = t.getAnchorElementIndex();
+                var endIdx = t.getEndElementIndex();
+
+                if (anchor <= end && endIdx >= begin) {
+                    result.add(t);
+                }
+            }
+        }
+
+        return result;
     }
 
-    public void addTuplet(TupletSpan span) {
-        applyChange(new TupletAddition(this, span), () -> tuplets.addSpan(span));
+    public List<Crescendo> getCrescendos() {
+        return findRangeElements(Crescendo.class);
     }
 
-    public void removeTuplet(TupletSpan span) {
-        applyChange(new TupletRemoval(this, span), () -> tuplets.removeSpan(span));
+    public List<Diminuendo> getDiminuendos() {
+        return findRangeElements(Diminuendo.class);
     }
 
-    public void addCrescendo(DynamicsSpan span) {
-        applyChange(new CrescendoAddition(this, span), () -> crescendo.addSpan(span));
+    /**
+     * Returns the first {@link Beam} range element whose anchor-to-end range includes
+     * {@code elementIndex}, or {@code null} if the element is not part of any beam.
+     */
+    @Nullable
+    public Beam findBeamAt(int elementIndex) {
+        for (var re : rangeElements) {
+            if (re instanceof Beam b) {
+                var anchor = b.getAnchorElementIndex();
+                var end = b.getEndElementIndex();
+
+                if (anchor >= 0 && end >= 0 && anchor <= elementIndex && elementIndex <= end) {
+                    return b;
+                }
+            }
+        }
+
+        return null;
     }
 
-    public void removeCrescendo(DynamicsSpan span) {
-        applyChange(new CrescendoRemoval(this, span), () -> crescendo.removeSpan(span));
+    /**
+     * Adds a beam range element, merging with any existing beams that share endpoints.
+     * <p>
+     * If an existing beam ends at the new beam's start, or starts at the new beam's end,
+     * the spans are merged into a single wider beam. Any beam whose range is fully
+     * covered by the merged result is removed.
+     */
+    public void addBeaming(Beam beam) {
+        beam.setParentLine(this);
+        var anchorIdx = elements.indexOf(beam.getAnchorElement());
+        var endIdx = elements.indexOf(beam.getEndElement());
+
+        // Expand bounds to absorb adjacent/overlapping beams.
+        var mergedAnchorIdx = anchorIdx;
+        var mergedEndIdx = endIdx;
+
+        for (var re : rangeElements) {
+            if (re instanceof Beam existing) {
+                var existingAnchor = existing.getAnchorElementIndex();
+                var existingEnd = existing.getEndElementIndex();
+
+                if (existingAnchor <= anchorIdx && anchorIdx <= existingEnd) {
+                    mergedAnchorIdx = Math.min(mergedAnchorIdx, existingAnchor);
+                }
+
+                if (existingAnchor <= endIdx && endIdx <= existingEnd) {
+                    mergedEndIdx = Math.max(mergedEndIdx, existingEnd);
+                }
+            }
+        }
+
+        if (mergedAnchorIdx != anchorIdx) {
+            beam.setAnchorElement(elements.get(mergedAnchorIdx));
+        }
+
+        if (mergedEndIdx != endIdx) {
+            beam.setEndElement(elements.get(mergedEndIdx));
+        }
+
+        // Remove all beams fully subsumed by the merged range.
+        final int finalMergedAnchor = mergedAnchorIdx;
+        final int finalMergedEnd = mergedEndIdx;
+        rangeElements.removeIf(re -> re instanceof Beam b
+            && b.getAnchorElementIndex() >= finalMergedAnchor
+            && b.getEndElementIndex() <= finalMergedEnd);
+
+        applyChange(new BeamingAddition(this, beam), () -> rangeElements.add(beam));
     }
 
-    public void addDiminuendo(DynamicsSpan span) {
-        applyChange(new DiminuendoAddition(this, span), () -> diminuendo.addSpan(span));
+    /**
+     * Removes a beam range element that was previously added via {@link #addBeaming(Beam)}.
+     */
+    public void removeBeaming(Beam beam) {
+        var index = rangeElements.indexOf(beam);
+
+        if (index < 0) {
+            return;
+        }
+
+        applyChange(
+            new BeamingRemoval(this, beam),
+            () -> {
+                rangeElements.remove(index);
+                beam.setParentLine(null);
+            }
+        );
     }
 
-    public void removeDiminuendo(DynamicsSpan span) {
-        applyChange(new DiminuendoRemoval(this, span), () -> diminuendo.removeSpan(span));
+    /**
+     * Adds a tuplet range element, replacing any existing tuplet that overlaps the new one.
+     * <p>
+     * Any existing tuplet whose range overlaps [anchor, end] is removed before the new tuplet
+     * is added.
+     */
+    public void addTuplet(Tuplet tuplet) {
+        tuplet.setParentLine(this);
+        var anchorIdx = elements.indexOf(tuplet.getAnchorElement());
+        var endIdx = elements.indexOf(tuplet.getEndElement());
+
+        // Remove any existing tuplets that overlap the new range.
+        final int finalAnchor = anchorIdx;
+        final int finalEnd = endIdx;
+        rangeElements.removeIf(re -> re instanceof Tuplet t
+            && t.getAnchorElementIndex() <= finalEnd
+            && t.getEndElementIndex() >= finalAnchor);
+
+        applyChange(new TupletAddition(this, tuplet), () -> rangeElements.add(tuplet));
+    }
+
+    /**
+     * Removes a tuplet range element that was previously added via {@link #addTuplet(Tuplet)}.
+     */
+    public void removeTuplet(Tuplet tuplet) {
+        var index = rangeElements.indexOf(tuplet);
+
+        if (index < 0) {
+            return;
+        }
+
+        applyChange(
+            new TupletRemoval(this, tuplet),
+            () -> {
+                rangeElements.remove(index);
+                tuplet.setParentLine(null);
+            }
+        );
+    }
+
+    /**
+     * Adds a crescendo hairpin range element.
+     * <p>
+     * Overlap-merge semantics mirror {@link #addTie(Tie)}: any existing crescendo whose
+     * range overlaps or is adjacent to the new one is absorbed into a single wider hairpin.
+     */
+    public void addCrescendo(Crescendo hairpin) {
+        addHairpin(hairpin, CrescendoAddition::new, Crescendo.class);
+    }
+
+    /**
+     * Removes a crescendo hairpin that was previously added via {@link #addCrescendo(Crescendo)}.
+     */
+    public void removeCrescendo(Crescendo hairpin) {
+        removeHairpin(hairpin, CrescendoRemoval::new);
+    }
+
+    /**
+     * Adds a diminuendo hairpin range element.
+     * <p>
+     * Overlap-merge semantics mirror {@link #addTie(Tie)}.
+     */
+    public void addDiminuendo(Diminuendo hairpin) {
+        addHairpin(hairpin, DiminuendoAddition::new, Diminuendo.class);
+    }
+
+    /**
+     * Removes a diminuendo hairpin that was previously added via {@link #addDiminuendo(Diminuendo)}.
+     */
+    public void removeDiminuendo(Diminuendo hairpin) {
+        removeHairpin(hairpin, DiminuendoRemoval::new);
+    }
+
+    /**
+     * Shared add logic for crescendo and diminuendo hairpins.
+     * Merges overlapping/adjacent hairpins of the same type into one.
+     */
+    @SuppressWarnings("unchecked")
+    private <H extends Hairpin> void addHairpin(
+        H hairpin,
+        BiFunction<Line, H, ? extends Mutation> mutationFactory,
+        Class<H> type
+    ) {
+        hairpin.setParentLine(this);
+        var anchorIdx = elements.indexOf(hairpin.getAnchorElement());
+        var endIdx = elements.indexOf(hairpin.getEndElement());
+
+        var mergedAnchorIdx = anchorIdx;
+        var mergedEndIdx = endIdx;
+
+        for (var re : rangeElements) {
+            if (type.isInstance(re)) {
+                var existing = (H) re;
+                var existingAnchor = existing.getAnchorElementIndex();
+                var existingEnd = existing.getEndElementIndex();
+
+                if (existingAnchor <= anchorIdx && anchorIdx <= existingEnd) {
+                    mergedAnchorIdx = Math.min(mergedAnchorIdx, existingAnchor);
+                }
+
+                if (existingAnchor <= endIdx && endIdx <= existingEnd) {
+                    mergedEndIdx = Math.max(mergedEndIdx, existingEnd);
+                }
+            }
+        }
+
+        if (mergedAnchorIdx != anchorIdx) {
+            hairpin.setAnchorElement(elements.get(mergedAnchorIdx));
+        }
+
+        if (mergedEndIdx != endIdx) {
+            hairpin.setEndElement(elements.get(mergedEndIdx));
+        }
+
+        final int finalMergedAnchor = mergedAnchorIdx;
+        final int finalMergedEnd = mergedEndIdx;
+        rangeElements.removeIf(re -> type.isInstance(re)
+            && ((H) re).getAnchorElementIndex() >= finalMergedAnchor
+            && ((H) re).getEndElementIndex() <= finalMergedEnd);
+
+        applyChange(mutationFactory.apply(this, hairpin), () -> rangeElements.add(hairpin));
+    }
+
+    /**
+     * Shared remove logic for crescendo and diminuendo hairpins.
+     */
+    private <H extends Hairpin> void removeHairpin(
+        H hairpin,
+        BiFunction<Line, H, ? extends Mutation> mutationFactory
+    ) {
+        var index = rangeElements.indexOf(hairpin);
+
+        if (index < 0) {
+            return;
+        }
+
+        applyChange(
+            mutationFactory.apply(this, hairpin),
+            () -> {
+                rangeElements.remove(index);
+                hairpin.setParentLine(null);
+            }
+        );
     }
 
     /**
      * Returns true if the given note index falls within any hairpin (crescendo or diminuendo) range.
      */
     public boolean isInHairpinRange(int noteIndex) {
-        return crescendo.isInsideAnySpan(noteIndex) ||
-            diminuendo.isInsideAnySpan(noteIndex);
-    }
+        for (var re : rangeElements) {
+            if (re instanceof Hairpin) {
+                var anchorIdx = re.getAnchorElementIndex();
+                var endIdx = re.getEndElementIndex();
 
-    public void removeSpan(int a, int b) {
-        for (var is : spanSets) {
-            is.removeSpan(a, b);
-        }
-    }
-
-    public SpanSet<?>[] copySpans(int a, int b) {
-        @SuppressWarnings("unchecked")
-        var retSpanSets = (SpanSet<?>[]) Arrays.stream(spanSets)
-            .map(spanSet -> spanSet.copySpan(a, b))
-            .toArray(SpanSet[]::new);
-
-        shiftSpans(retSpanSets, 0, -a);
-        return retSpanSets;
-    }
-
-    public void pasteSpans(SpanSet<?>[] copySpanSets, int xIndex) {
-        shiftSpans(copySpanSets, 0, xIndex);
-
-        for (var i = 0; i < spanSets.length; i++) {
-            @SuppressWarnings("unchecked")
-            var typedSet = (SpanSet<Span>) spanSets[i];
-            for (var li = copySpanSets[i].listIterator(); li.hasNext(); ) {
-                typedSet.addSpan((Span) li.next());
+                if (anchorIdx >= 0 && endIdx >= 0 && anchorIdx <= noteIndex && noteIndex <= endIdx) {
+                    return true;
+                }
             }
         }
 
-        shiftSpans(copySpanSets, 0, -xIndex);
+        return false;
     }
 
     /**
@@ -1251,18 +1580,11 @@ public class Line {
      * routed through {@code modifyElement}.
      */
     public void removeOverlappingTuplets(int begin, int end) {
-        for (var tuplet : tuplets.findOverlapping(begin, end)) {
+        for (var tuplet : findTupletsOverlapping(begin, end)) {
             removeTuplet(tuplet);
         }
     }
 
-    private void shiftSpans(SpanSet<?>[] spanSetArray, int from, int shift) {
-        for (var spanSet : spanSetArray) {
-            spanSet.shiftValues(from, shift);
-            spanSet.removeSpan(Integer.MIN_VALUE, 0);
-            spanSet.removeSpan(elements.size() - 1, Integer.MAX_VALUE);
-        }
-    }
 
     public int getFirstTempoChange() {
         if ((song.indexOfLine(this) == 0) && (elementCount() > 0)) {
@@ -1270,27 +1592,28 @@ public class Line {
         }
 
         return IntStream.range(0, elementCount())
-            .filter(n -> getElement(n).getTempoChange() != null)
+            .filter(n -> getElement(n).findAttachment(TempoChangeAttachment.class) != null)
             .findFirst()
             .orElse(-1);
     }
 
     public boolean isAnnotation() {
         return IntStream.range(0, elementCount()).anyMatch(
-            n -> getElement(n).getAnnotation() != null
+            n -> getElement(n).findAttachment(AnnotationAttachment.class) != null
         );
     }
 
     public int getFirstTrill() {
-        return IntStream.range(0, elementCount())
-            .filter(n -> getElement(n).isTrill())
-            .findFirst()
+        return findRangeElements(Trill.class).stream()
+            .mapToInt(Trill::getAnchorElementIndex)
+            .filter(i -> i >= 0)
+            .min()
             .orElse(-1);
     }
 
     public int getFirstBeatChange() {
         return IntStream.range(0, elementCount())
-            .filter(n -> getElement(n).getBeatChange() != null)
+            .filter(n -> getElement(n).findAttachment(BeatChangeAttachment.class) != null)
             .findFirst()
             .orElse(-1);
     }

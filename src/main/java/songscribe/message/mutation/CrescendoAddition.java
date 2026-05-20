@@ -20,13 +20,13 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.DynamicsSpan;
 import songscribe.model.Line;
+import songscribe.ui.layout.Crescendo;
 
 /**
- * Mutation recording the addition of a crescendo span to a line.
+ * Mutation recording the addition of a crescendo hairpin to a line.
  */
-public record CrescendoAddition(Line line, DynamicsSpan span)
+public record CrescendoAddition(Line line, Crescendo crescendo)
     implements Mutation, LineScopedMutation {
 
     @Override

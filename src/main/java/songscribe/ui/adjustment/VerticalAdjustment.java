@@ -25,8 +25,6 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.DynamicsSpan;
-import songscribe.model.SpanSet;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.model.Line;
@@ -37,6 +35,7 @@ import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.Ending;
+import songscribe.ui.layout.Hairpin;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.TempoChangeAttachment;
 import songscribe.ui.layout.Trill;
@@ -161,13 +160,10 @@ public class VerticalAdjustment extends Adjustment {
         // Update per-instance offset on all tempo attachments in this line
         for (var i = 0; i < line.effectiveElementCount(); i++) {
             var note = line.getElement(i);
+            var tempoAttachment = note.findAttachment(TempoChangeAttachment.class);
 
-            if (note.getTempoChange() != null) {
-                for (var attachment : note.getAttachments()) {
-                    if (attachment instanceof TempoChangeAttachment) {
-                        attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + diffY);
-                    }
-                }
+            if (tempoAttachment != null) {
+                tempoAttachment.setUserYOffsetSs(tempoAttachment.getUserYOffsetSs() + diffY);
             }
         }
     }
@@ -177,11 +173,9 @@ public class VerticalAdjustment extends Adjustment {
         for (var i = 0; i < line.effectiveElementCount(); i++) {
             var note = line.getElement(i);
 
-            if (note.getBeatChange() != null) {
-                for (var attachment : note.getAttachments()) {
-                    if (attachment instanceof BeatChangeAttachment) {
-                        attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + diffY);
-                    }
+            for (var attachment : note.getAttachments()) {
+                if (attachment instanceof BeatChangeAttachment) {
+                    attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + diffY);
                 }
             }
         }
@@ -198,12 +192,14 @@ public class VerticalAdjustment extends Adjustment {
 
     private void adjustAnnotation(Line line, int diffY) {
         if (dragRect != null) {
-            var annotation = line.getElement(dragRect.xIndex).getAnnotation();
+            var attachment = line.getElement(dragRect.xIndex)
+                .findAttachment(AnnotationAttachment.class);
 
-            if (annotation == null) {
+            if (attachment == null) {
                 return;
             }
 
+            var annotation = attachment.getAnnotation();
             // Update user offset (delta from calculated position)
             annotation.setUserYOffsetSs(annotation.getUserYOffsetSs() + diffY);
             // Also update legacy yPos for backward compatibility
@@ -225,12 +221,10 @@ public class VerticalAdjustment extends Adjustment {
             return;
         }
 
-        var span = getCresDecrSpanSet(line, dragRect.type).findSpan(
-            dragRect.xIndex
-        );
+        var hairpin = findHairpinByAnchor(line, dragRect);
 
-        if (span != null) {
-            span.setYShiftSs(span.getYShiftSs() + diffY);
+        if (hairpin != null) {
+            hairpin.setYShiftSs(hairpin.getYShiftSs() + diffY);
         }
     }
 
@@ -239,10 +233,10 @@ public class VerticalAdjustment extends Adjustment {
             return;
         }
 
-        var span = line.getTuplets().findSpan(dragRect.xIndex);
+        var tuplet = line.findTupletAt(dragRect.xIndex);
 
-        if (span != null) {
-            span.setVerticalPositionSs(span.getVerticalPositionSs() + diffY);
+        if (tuplet != null) {
+            tuplet.setVerticalPositionSs(tuplet.getVerticalPositionSs() + diffY);
         }
     }
 
@@ -303,7 +297,7 @@ public class VerticalAdjustment extends Adjustment {
                 }
 
                 for (var n = 0; n < line.effectiveElementCount(); n++) {
-                    if (line.getElement(n).getAnnotation() != null) {
+                    if (line.getElement(n).findAttachment(AnnotationAttachment.class) != null) {
                         adjustRects.add(
                             new AdjustRect(l, AdjustType.ANNOTATION, n)
                         );
@@ -342,41 +336,28 @@ public class VerticalAdjustment extends Adjustment {
                     );
                 }
 
-                for (
-                    var li = line.getCrescendos().listIterator();
-                    li.hasNext();
-                ) {
-                    var span = li.next();
-                    adjustRects.add(
-                        new AdjustRect(
-                            l,
-                            AdjustType.CRESCENDO_Y,
-                            span.getStart()
-                        )
-                    );
+                for (var crescendo : line.getCrescendos()) {
+                    adjustRects.add(new AdjustRect(
+                        l,
+                        AdjustType.CRESCENDO_Y,
+                        crescendo.getAnchorElementIndex()
+                    ));
                 }
 
-                for (
-                    var li = line.getDiminuendos().listIterator();
-                    li.hasNext();
-                ) {
-                    var span = li.next();
-                    adjustRects.add(
-                        new AdjustRect(
-                            l,
-                            AdjustType.DIMINUENDO_Y,
-                            span.getStart()
-                        )
-                    );
+                for (var diminuendo : line.getDiminuendos()) {
+                    adjustRects.add(new AdjustRect(
+                        l,
+                        AdjustType.DIMINUENDO_Y,
+                        diminuendo.getAnchorElementIndex()
+                    ));
                 }
 
-                for (var li = line.getTuplets().listIterator(); li.hasNext(); ) {
-                    var span = li.next();
+                for (var tuplet : line.findRangeElements(Tuplet.class)) {
                     adjustRects.add(
                         new AdjustRect(
                             l,
                             AdjustType.TUPLET,
-                            span.getStart()
+                            tuplet.getAnchorElementIndex()
                         )
                     );
                 }
@@ -452,15 +433,19 @@ public class VerticalAdjustment extends Adjustment {
                 }
             }
             case CRESCENDO_Y, DIMINUENDO_Y -> {
-                var span = getCresDecrSpanSet(line, adjustRect.type)
-                    .findSpan(adjustRect.xIndex);
+                var hairpin = findHairpinByAnchor(line, adjustRect);
 
-                if (span == null) {
+                if (hairpin == null) {
                     return;
                 }
 
-                var startNote = line.getElement(span.getStart());
-                var endNote = line.getElement(span.getEnd());
+                var startNote = hairpin.getAnchorElement();
+                var endNote = hairpin.getEndElement();
+
+                if (startNote == null || endNote == null) {
+                    return;
+                }
+
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
                 var rangeClass = adjustRect.type == AdjustType.CRESCENDO_Y
                     ? Crescendo.class
@@ -478,14 +463,19 @@ public class VerticalAdjustment extends Adjustment {
                 adjustRect.rect.y = (int) bounds.getTopSs();
             }
             case TUPLET -> {
-                var span = line.getTuplets().findSpan(adjustRect.xIndex);
+                var tuplet = line.findTupletAt(adjustRect.xIndex);
 
-                if (span == null) {
+                if (tuplet == null) {
                     return;
                 }
 
-                var startNote = line.getElement(span.getStart());
-                var endNote = line.getElement(span.getEnd());
+                var startNote = tuplet.getAnchorElement();
+                var endNote = tuplet.getEndElement();
+
+                if (startNote == null || endNote == null) {
+                    return;
+                }
+
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
                 var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Tuplet.class);
 
@@ -584,17 +574,18 @@ public class VerticalAdjustment extends Adjustment {
         return layoutResult;
     }
 
-    private static SpanSet<DynamicsSpan> getCresDecrSpanSet(
-        Line line,
-        AdjustType adjustType
-    ) {
-        return switch (adjustType) {
-            case CRESCENDO_Y -> line.getCrescendos();
-            case DIMINUENDO_Y -> line.getDiminuendos();
-            default -> throw new IllegalArgumentException(
-                String.valueOf(adjustType)
-            );
-        };
+    @Nullable
+    private static Hairpin findHairpinByAnchor(Line line, AdjustRect adjustRect) {
+        var isCrescendo = adjustRect.type == AdjustType.CRESCENDO_Y;
+        var type = isCrescendo ? Crescendo.class : Diminuendo.class;
+
+        for (var hairpin : line.findRangeElements(type)) {
+            if (hairpin.getAnchorElementIndex() == adjustRect.xIndex) {
+                return hairpin;
+            }
+        }
+
+        return null;
     }
 
     private enum AdjustType {

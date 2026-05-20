@@ -35,6 +35,7 @@ import songscribe.model.ElementType;
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
 import songscribe.model.Tempo;
+import songscribe.ui.layout.TempoChangeAttachment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -60,7 +61,9 @@ class GlissandoMidiIntegrationTest extends UnitTest {
     static void loadFixtureData() throws Exception {
         var song = loadFixture("connections");
         line = song.getLine(0);
-        tempo = Objects.requireNonNull(line.getElement(TEMPO_INDEX).getTempoChange());
+        var tempoAttachment = Objects.requireNonNull(
+            line.getElement(TEMPO_INDEX).findAttachment(TempoChangeAttachment.class));
+        tempo = tempoAttachment.getTempo();
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")

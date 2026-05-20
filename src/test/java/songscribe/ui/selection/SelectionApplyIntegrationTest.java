@@ -46,6 +46,7 @@ import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.layout.Articulation;
+import songscribe.ui.layout.FermataAttachment;
 
 /**
  * Integration tests for the selection-apply feature (Phase 11).
@@ -161,7 +162,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             var note = ElementType.QUAVER.newInstance();
             note.setAccidental(StaffElement.Accidental.SHARP);
             note.setDotCount(1);
-            note.setFermata(true);
+            note.addAttachment(new FermataAttachment(note));
             note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
 
             var coordinator = createCoordinator(List.of(note), List.of(QUARTER_ACTION));
@@ -174,7 +175,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             assertThat(replaced.getType()).isEqualTo(ElementType.CROTCHET);
             assertThat(replaced.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
             assertThat(replaced.getDotCount()).isEqualTo(1);
-            assertThat(replaced.isFermata()).isTrue();
+            assertThat(replaced.findAttachment(FermataAttachment.class)).isNotNull();
             assertThat(replaced.hasArticulation(ArticulationType.STACCATO)).isTrue();
         }
 
@@ -475,8 +476,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
                     .as("note %d type", i).isEqualTo(ElementType.CROTCHET);
                 assertThat(note.getAccidental())
                     .as("note %d accidental", i).isEqualTo(StaffElement.Accidental.SHARP);
-                assertThat(note.isFermata())
-                    .as("note %d fermata", i).isTrue();
+                assertThat(note.findAttachment(FermataAttachment.class))
+                    .as("note %d fermata", i).isNotNull();
                 assertThat(note.hasArticulation(ArticulationType.STACCATO))
                     .as("note %d staccato", i).isTrue();
             }
@@ -498,13 +499,13 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
             // Apply fermata
             coordinator.applyActionToSelection(FERMATA_ACTION, true);
-            assertThat(line.getElement(0).isFermata()).isTrue();
-            assertThat(line.getElement(1).isFermata()).isTrue();
+            assertThat(line.getElement(0).findAttachment(FermataAttachment.class)).isNotNull();
+            assertThat(line.getElement(1).findAttachment(FermataAttachment.class)).isNotNull();
 
             // Remove fermata
             coordinator.applyActionToSelection(FERMATA_ACTION, false);
-            assertThat(line.getElement(0).isFermata()).isFalse();
-            assertThat(line.getElement(1).isFermata()).isFalse();
+            assertThat(line.getElement(0).findAttachment(FermataAttachment.class)).isNull();
+            assertThat(line.getElement(1).findAttachment(FermataAttachment.class)).isNull();
         }
     }
 

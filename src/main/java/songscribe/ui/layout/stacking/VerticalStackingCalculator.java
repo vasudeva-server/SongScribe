@@ -23,17 +23,16 @@ package songscribe.ui.layout.stacking;
 import java.util.List;
 
 import songscribe.font.DocumentFontsHolder;
-import songscribe.model.DynamicsSpan;
 import songscribe.model.Line;
-
-import songscribe.model.TupletSpan;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.Ending;
+import songscribe.ui.layout.Hairpin;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.SongLayoutMetricsBuilder;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.Trill;
+import songscribe.ui.layout.Tuplet;
 import songscribe.ui.renderer.NoteRenderer;
 
 /**
@@ -185,7 +184,7 @@ public class VerticalStackingCalculator {
     // ---- Manual offset application ----
 
     /**
-     * Applies manual user offsets to all decoration and span layouts post-layout.
+     * Applies manual user offsets to all decoration layouts post-layout.
      * <p>
      * Per spec, offsets are applied after all collision detection is complete.
      * The user takes responsibility for any resulting overlaps — no collision
@@ -200,12 +199,12 @@ public class VerticalStackingCalculator {
      *   <li>{@link Ending#getYPositionSs()}: additional Y offset for endings</li>
      *   <li>{@link AnnotationAttachment} / {@link songscribe.model.Annotation#getUserYOffsetSs()}:
      *       legacy annotation Y offset</li>
-     *   <li>{@link DynamicsSpan}: hairpin shifts in staff-space units</li>
+     *   <li>{@link Tuplet#getVerticalPositionSs()}: tuplet bracket Y offset</li>
+     *   <li>{@link Hairpin}: crescendo / diminuendo shifts in staff-space units</li>
      * </ul>
      */
     private void applyManualOffsets(LayoutResult.Builder builder) {
         applyDecorationOffsets(builder);
-        applySpanOffsets(builder);
     }
 
     /**
@@ -223,19 +222,30 @@ public class VerticalStackingCalculator {
             var yOffsetSs = element.getUserYOffsetSs();
 
             // Element-specific additional offsets
+            var x1ExtraSs = 0.0;
+            var x2ExtraSs = 0.0;
+
             switch (element) {
                 case Trill trill -> yOffsetSs += trill.getYPositionSs();
                 case Ending ending -> yOffsetSs += ending.getYPositionSs();
                 case AnnotationAttachment annAttach -> yOffsetSs += annAttach.getAnnotation().getUserYOffsetSs();
+                case Tuplet tuplet -> yOffsetSs += tuplet.getVerticalPositionSs();
+                case Hairpin hairpin -> {
+                    x1ExtraSs = hairpin.getX1ShiftSs();
+                    x2ExtraSs = hairpin.getX2ShiftSs();
+                    yOffsetSs += hairpin.getYShiftSs();
+                }
                 default -> {
                 }
             }
 
-            if (xOffsetSs != 0 || yOffsetSs != 0) {
+            if (xOffsetSs != 0 || yOffsetSs != 0 || x1ExtraSs != 0 || x2ExtraSs != 0) {
+                // For hairpins, x1ExtraSs shifts the left edge and x2ExtraSs shifts the right edge
+                // independently. Translate that into (xSs + x1, widthSs + x2 - x1).
                 builder.putDecorationLayout(element, new LayoutResult.DecorationLayout(
-                    layout.xSs() + xOffsetSs,
+                    layout.xSs() + xOffsetSs + x1ExtraSs,
                     layout.ySs() + yOffsetSs,
-                    layout.widthSs(),
+                    layout.widthSs() + x2ExtraSs - x1ExtraSs,
                     layout.heightSs(),
                     layout.marginSs(),
                     layout.regions()));
@@ -243,42 +253,4 @@ public class VerticalStackingCalculator {
         }
     }
 
-    /**
-     * Applies manual offsets to all {@link LayoutResult.SpanLayout} entries.
-     * <p>
-     * Handles {@link DynamicsSpan} shifts and
-     * {@link TupletSpan} vertical position adjustments.
-     */
-    private void applySpanOffsets(LayoutResult.Builder builder) {
-        var entries = List.copyOf(builder.getSpanLayoutEntries());
-
-        for (var entry : entries) {
-            var span = entry.getKey();
-            var layout = entry.getValue();
-
-            if (span instanceof DynamicsSpan dynSpan) {
-                var x1ShiftSs = dynSpan.getX1ShiftSs();
-                var x2ShiftSs = dynSpan.getX2ShiftSs();
-                var yShiftSs = dynSpan.getYShiftSs();
-
-                if (x1ShiftSs != 0 || x2ShiftSs != 0 || yShiftSs != 0) {
-                    builder.putSpanLayout(span, new LayoutResult.SpanLayout(
-                        layout.startXSs() + x1ShiftSs,
-                        layout.endXSs() + x2ShiftSs,
-                        layout.ySs() + yShiftSs,
-                        layout.heightSs()));
-                }
-            } else if (span instanceof TupletSpan tupletSpan) {
-                var yShiftSs = tupletSpan.getVerticalPositionSs();
-
-                if (yShiftSs != 0) {
-                    builder.putSpanLayout(span, new LayoutResult.SpanLayout(
-                        layout.startXSs(),
-                        layout.endXSs(),
-                        layout.ySs() + yShiftSs,
-                        layout.heightSs()));
-                }
-            }
-        }
-    }
 }

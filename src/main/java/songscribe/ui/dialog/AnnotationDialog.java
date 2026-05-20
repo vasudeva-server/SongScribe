@@ -30,6 +30,7 @@ import songscribe.model.Annotation;
 import songscribe.model.StaffElement;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.layout.AnnotationAttachment;
 
 public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
@@ -114,7 +115,8 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
     @Override
     protected @Nullable Annotation getExistingChange(StaffElement element) {
-        return element.getAnnotation();
+        var attachment = element.findAttachment(AnnotationAttachment.class);
+        return attachment != null ? attachment.getAnnotation() : null;
     }
 
     @Override
@@ -145,7 +147,12 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         var annotationText = (String) annotationCombo.getSelectedItem();
 
         if (annotationText == null || annotationText.isEmpty()) {
-            element.setAnnotation(null);
+            var existing = element.findAttachment(AnnotationAttachment.class);
+
+            if (existing != null) {
+                element.removeAttachment(existing);
+            }
+
             return;
         }
 
@@ -161,11 +168,22 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
         var annotation = new Annotation(annotationText, alignment);
         annotation.setYPosPx(aboveRadio.isSelected() ? Annotation.ABOVE : Annotation.BELOW);
-        element.setAnnotation(annotation);
+
+        var existing = element.findAttachment(AnnotationAttachment.class);
+
+        if (existing != null) {
+            existing.setAnnotation(annotation);
+        } else {
+            element.addAttachment(new AnnotationAttachment(element, annotation));
+        }
     }
 
     @Override
     protected void clearChange(StaffElement element) {
-        element.setAnnotation(null);
+        var existing = element.findAttachment(AnnotationAttachment.class);
+
+        if (existing != null) {
+            element.removeAttachment(existing);
+        }
     }
 }

@@ -26,10 +26,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.BeamSpan;
+import songscribe.ui.layout.Beam;
 import songscribe.model.ElementType;
 import songscribe.model.Line;
-import songscribe.model.TieSpan;
+import songscribe.ui.layout.Tie;
 
 /**
  * Tests the interplay between beaming and tie toggle availability.
@@ -119,27 +119,31 @@ class ToggleConflictTest extends UnitTest {
     }
 
     private void toggleBeam() {
-        var beamings = line.getBeamings();
+        var begin = state.getSelectionBegin();
+        var end = state.getSelectionEnd();
+        var beginBeam = line.findBeamAt(begin);
+        var endBeam = line.findBeamAt(end);
 
-        if (state.shouldConnectSelection(beamings)) {
-            beamings.addSpan(
-                new BeamSpan(state.getSelectionBegin(), state.getSelectionEnd()));
+        //noinspection ObjectEquality
+        if (beginBeam != null && beginBeam == endBeam) {
+            line.removeBeaming(beginBeam);
         } else {
-            beamings.removeSpan(state.getSelectionBegin(), state.getSelectionEnd());
+            line.addBeaming(new Beam(line.getElement(begin), line.getElement(end)));
         }
     }
 
     private void toggleTie() {
-        // Ensure canToggleTie was evaluated so tieSpanSet is set
+        // Ensure canToggleTie was evaluated so existingTie is set
         state.canToggleTie();
 
-        var spanSet = state.getTieSpanSet();
+        var existingTie = state.getExistingTie();
 
-        if (spanSet != null) {
-            spanSet.removeSpan(state.getSelectionBegin(), state.getSelectionEnd());
+        if (existingTie != null) {
+            line.removeTie(existingTie);
         } else {
-            line.getTies().addSpan(
-                new TieSpan(state.getSelectionBegin(), state.getSelectionEnd()));
+            var anchorElement = line.getElement(state.getSelectionBegin());
+            var endElement = line.getElement(state.getSelectionEnd());
+            line.addTie(new Tie(anchorElement, endElement));
         }
 
         state.resetTieState();

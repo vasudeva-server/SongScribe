@@ -27,16 +27,17 @@ import org.jspecify.annotations.Nullable;
 
 import org.xml.sax.Attributes;
 
-import songscribe.model.BeamSpan;
-import songscribe.model.DynamicsSpan;
-import songscribe.model.Span;
-import songscribe.model.SpanSet;
-import songscribe.model.TieSpan;
-import songscribe.model.TupletSpan;
 import songscribe.model.KeyType;
 import songscribe.model.Line;
 import songscribe.model.Song;
+import songscribe.ui.layout.Beam;
+import songscribe.ui.layout.Crescendo;
+import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.Ending;
+import songscribe.ui.layout.Hairpin;
+import songscribe.ui.layout.Tie;
+import songscribe.ui.layout.Trill;
+import songscribe.ui.layout.Tuplet;
 
 public final class LineIO {
 
@@ -57,6 +58,7 @@ public final class LineIO {
     private static final String XML_NOTES = "notes";
     private static final String XML_CRESCENDO = "crescendo";
     private static final String XML_DIMINUENDO = "diminuendo";
+    private static final String XML_TRILLS = "trills";
 
     private LineIO() {
     }
@@ -103,16 +105,22 @@ public final class LineIO {
             Double.toString(line.getLyricsYPosSs())
         );
 
-        if (!line.getBeamings().isEmpty()) {
-            XML.writeValue(pw, XML_BEAMINGS, spanSetToString(line.getBeamings()));
+        var beams = line.findRangeElements(Beam.class);
+
+        if (!beams.isEmpty()) {
+            XML.writeValue(pw, XML_BEAMINGS, beamsToString(beams));
         }
 
-        if (!line.getTies().isEmpty()) {
-            XML.writeValue(pw, XML_TIES, spanSetToString(line.getTies()));
+        var ties = line.findTies();
+
+        if (!ties.isEmpty()) {
+            XML.writeValue(pw, XML_TIES, tiesToString(ties));
         }
 
-        if (!line.getTuplets().isEmpty()) {
-            XML.writeValue(pw, XML_TUPLETS, tupletSpanSetToString(line.getTuplets()));
+        var tuplets = line.findRangeElements(Tuplet.class);
+
+        if (!tuplets.isEmpty()) {
+            XML.writeValue(pw, XML_TUPLETS, tupletsToString(tuplets));
         }
 
         var endings = line.findEndings();
@@ -125,20 +133,22 @@ public final class LineIO {
             );
         }
 
-        if (!line.getCrescendos().isEmpty()) {
-            XML.writeValue(
-                pw,
-                XML_CRESCENDO,
-                dynamicsSpanSetToString(line.getCrescendos())
-            );
+        var crescendos = line.getCrescendos();
+
+        if (!crescendos.isEmpty()) {
+            XML.writeValue(pw, XML_CRESCENDO, hairpinsToString(crescendos));
         }
 
-        if (!line.getDiminuendos().isEmpty()) {
-            XML.writeValue(
-                pw,
-                XML_DIMINUENDO,
-                dynamicsSpanSetToString(line.getDiminuendos())
-            );
+        var diminuendos = line.getDiminuendos();
+
+        if (!diminuendos.isEmpty()) {
+            XML.writeValue(pw, XML_DIMINUENDO, hairpinsToString(diminuendos));
+        }
+
+        var trills = line.findRangeElements(Trill.class);
+
+        if (!trills.isEmpty()) {
+            XML.writeValue(pw, XML_TRILLS, trillsToString(trills));
         }
 
         pw.println("      <" + XML_NOTES + '>');
@@ -149,6 +159,38 @@ public final class LineIO {
 
         pw.println("      </" + XML_NOTES + '>');
         pw.println("    </" + XML_LINE + '>');
+    }
+
+    private static String tiesToString(List<? extends Tie> ties) {
+        var sb = new StringBuilder(27);
+
+        for (var tie : ties) {
+            sb.append(tie.getAnchorElementIndex());
+            sb.append(',');
+            sb.append(tie.getEndElementIndex());
+            sb.append(';');
+        }
+
+        return sb.toString();
+    }
+
+    private static String trillsToString(List<? extends Trill> trills) {
+        var sb = new StringBuilder(27);
+
+        for (var trill : trills) {
+            sb.append(trill.getAnchorElementIndex());
+            sb.append(',');
+            sb.append(trill.getEndElementIndex());
+
+            if (trill.getYPositionSs() != 0) {
+                sb.append(',');
+                sb.append(trill.getYPositionSs());
+            }
+
+            sb.append(';');
+        }
+
+        return sb.toString();
     }
 
     private static String endingsToString(List<? extends Ending> endings) {
@@ -164,18 +206,32 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String spanSetToString(SpanSet<? extends Span> spanSet) {
+    private static String beamsToString(List<? extends Beam> beams) {
         var sb = new StringBuilder(27);
 
-        for (var iterator = spanSet.listIterator(); iterator.hasNext(); ) {
-            var span = iterator.next();
-            sb.append(span.getStart());
+        for (var beam : beams) {
+            sb.append(beam.getAnchorElementIndex());
             sb.append(',');
-            sb.append(span.getEnd());
+            sb.append(beam.getEndElementIndex());
+            sb.append(';');
+        }
 
-            if (span.getData() != null) {
+        return sb.toString();
+    }
+
+    private static String tupletsToString(List<? extends Tuplet> tuplets) {
+        var sb = new StringBuilder(27);
+
+        for (var tuplet : tuplets) {
+            sb.append(tuplet.getAnchorElementIndex());
+            sb.append(',');
+            sb.append(tuplet.getEndElementIndex());
+            sb.append(',');
+            sb.append(tuplet.getGrade());
+
+            if (tuplet.getVerticalPositionSs() != 0) {
                 sb.append(',');
-                sb.append(span.getData());
+                sb.append(tuplet.getVerticalPositionSs());
             }
 
             sb.append(';');
@@ -184,44 +240,25 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String tupletSpanSetToString(SpanSet<? extends TupletSpan> spanSet) {
+    private static String hairpinsToString(List<? extends Hairpin> hairpins) {
         var sb = new StringBuilder(27);
 
-        for (var iterator = spanSet.listIterator(); iterator.hasNext(); ) {
-            var span = iterator.next();
-            sb.append(span.getStart());
+        for (var hairpin : hairpins) {
+            sb.append(hairpin.getAnchorElementIndex());
             sb.append(',');
-            sb.append(span.getEnd());
-            sb.append(',');
-            sb.append(span.getGrade());
+            sb.append(hairpin.getEndElementIndex());
 
-            if (span.isVerticallyAdjusted()) {
+            var x1 = hairpin.getX1ShiftSs();
+            var x2 = hairpin.getX2ShiftSs();
+            var y = hairpin.getYShiftSs();
+
+            if (x1 != 0 || x2 != 0 || y != 0) {
                 sb.append(',');
-                sb.append(span.getVerticalPositionSs());
-            }
-
-            sb.append(';');
-        }
-
-        return sb.toString();
-    }
-
-    private static String dynamicsSpanSetToString(SpanSet<? extends DynamicsSpan> spanSet) {
-        var sb = new StringBuilder(27);
-
-        for (var iterator = spanSet.listIterator(); iterator.hasNext(); ) {
-            var span = iterator.next();
-            sb.append(span.getStart());
-            sb.append(',');
-            sb.append(span.getEnd());
-
-            if (span.getX1ShiftSs() != 0 || span.getX2ShiftSs() != 0 || span.getYShiftSs() != 0) {
+                sb.append(x1);
                 sb.append(',');
-                sb.append(span.getX1ShiftSs());
+                sb.append(x2);
                 sb.append(',');
-                sb.append(span.getX2ShiftSs());
-                sb.append(',');
-                sb.append(span.getYShiftSs());
+                sb.append(y);
             }
 
             sb.append(';');
@@ -266,6 +303,26 @@ public final class LineIO {
         /** Temporarily holds parsed fsendings index pairs (start, end) until elements are loaded. */
         private final List<int[]> pendingEndingPairs = new ArrayList<>();
 
+        /**
+         * Temporarily holds parsed trill index pairs (anchorIndex, endIndex, yPositionSs) until
+         * elements are loaded. The third element is the optional Y offset (0 if absent).
+         * Used for both legacy trill flags (coalesced into runs) and new {@code <trills>} data.
+         */
+        private final List<int[]> pendingTrillPairs = new ArrayList<>();
+
+        /** Temporarily holds parsed tie index pairs (anchorIndex, endIndex) until elements are loaded. */
+        private final List<int[]> pendingTiePairs = new ArrayList<>();
+
+        /**
+         * Temporarily holds parsed crescendo data (anchorIndex, endIndex, x1ShiftSs * 1000 as int,
+         * x2ShiftSs * 1000 as int, yShiftSs * 1000 as int) until elements are loaded.
+         * Shifts are stored as raw double arrays; indices 0–1 are int, 2–4 are double.
+         */
+        private final List<double[]> pendingCrescendoPairs = new ArrayList<>();
+
+        /** Temporarily holds parsed diminuendo data (same format as crescendo). */
+        private final List<double[]> pendingDiminuendoPairs = new ArrayList<>();
+
         public LineReader(Song song) {
             this.song = song;
         }
@@ -287,33 +344,115 @@ public final class LineIO {
             return new SegmentParts(a, b, secondComma);
         }
 
-        private static void stringToBeamingSpanSet(SpanSet<Span> spanSet, String str) {
-            forEachSegment(str, (begin, end) -> {
-                var parts = parseSegmentAB(str, begin, end);
-                var data = (parts.secondComma() == -1) ? null : str.substring(parts.secondComma() + 1, end);
-                spanSet.addSpan(parts.a(), parts.b(), data);
-            });
-        }
+        /**
+         * Temporarily holds parsed beam index pairs (anchorIndex, endIndex) until
+         * elements are loaded.
+         */
+        private final List<int[]> pendingBeamPairs = new ArrayList<>();
 
-        private static void stringToBeamSpanSet(SpanSet<? super BeamSpan> spanSet, String str) {
-            forEachSegment(str, (begin, end) -> {
-                var firstComma = str.indexOf(',', begin);
-                var a = Integer.parseInt(str.substring(begin, firstComma));
-                var b = Integer.parseInt(str.substring(firstComma + 1, end));
-                spanSet.addSpan(new BeamSpan(a, b));
-            });
-        }
-
-        private static void stringToTieSpanSet(SpanSet<? super TieSpan> spanSet, String str) {
+        /**
+         * Parses the {@code <beamings>} line-scope data into pending pairs.
+         * Format: {@code anchor,end;...}
+         */
+        private void parseBeamPairs(String str) {
             forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var a = Integer.parseInt(str.substring(begin, firstComma));
                 var b = Integer.parseInt(str.substring(firstComma + 1, end));
-                spanSet.addSpan(new TieSpan(a, b));
+                pendingBeamPairs.add(new int[]{a, b});
             });
         }
 
-        private static void stringToTupletSpanSet(SpanSet<? super TupletSpan> spanSet, String str) {
+        /**
+         * Creates {@link Beam} range elements from the parsed beam index pairs.
+         * Called at end-of-line after all elements have been loaded.
+         */
+        private void createBeamsFromPending(Line line) {
+            for (var pair : pendingBeamPairs) {
+                if (pair[0] < 0 || pair[1] >= line.elementCount() || pair[0] > pair[1]) {
+                    continue;
+                }
+
+                var anchorElement = line.getElement(pair[0]);
+                var endElement = line.getElement(pair[1]);
+                line.addRangeElement(new Beam(anchorElement, endElement));
+            }
+
+            pendingBeamPairs.clear();
+        }
+
+        /**
+         * Creates {@link Tie} range elements from the parsed tie index pairs.
+         * Called at end-of-line after all elements have been loaded.
+         */
+        private void createTiesFromPendingPairs(Line line) {
+            for (var pair : pendingTiePairs) {
+                var anchorElement = line.getElement(pair[0]);
+                var endElement = line.getElement(pair[1]);
+                var tie = new Tie(anchorElement, endElement);
+                line.addRangeElement(tie);
+            }
+
+            pendingTiePairs.clear();
+        }
+
+        /**
+         * Creates {@link Crescendo} range elements from the parsed crescendo data.
+         * Called at end-of-line after all elements have been loaded.
+         */
+        private void createCrescendosFromPending(Line line) {
+            for (var data : pendingCrescendoPairs) {
+                var anchorElement = line.getElement((int) data[0]);
+                var endElement = line.getElement((int) data[1]);
+                var crescendo = new Crescendo(anchorElement, endElement);
+                crescendo.setX1ShiftSs(data[2]);
+                crescendo.setX2ShiftSs(data[3]);
+                crescendo.setYShiftSs(data[4]);
+                line.addRangeElement(crescendo);
+            }
+
+            pendingCrescendoPairs.clear();
+        }
+
+        /**
+         * Creates {@link Diminuendo} range elements from the parsed diminuendo data.
+         * Called at end-of-line after all elements have been loaded.
+         */
+        private void createDiminuendosFromPending(Line line) {
+            for (var data : pendingDiminuendoPairs) {
+                var anchorElement = line.getElement((int) data[0]);
+                var endElement = line.getElement((int) data[1]);
+                var diminuendo = new Diminuendo(anchorElement, endElement);
+                diminuendo.setX1ShiftSs(data[2]);
+                diminuendo.setX2ShiftSs(data[3]);
+                diminuendo.setYShiftSs(data[4]);
+                line.addRangeElement(diminuendo);
+            }
+
+            pendingDiminuendoPairs.clear();
+        }
+
+        /**
+         * Parses the {@code <ties>} line-scope data into pending pairs.
+         * Format: {@code anchor,end;...}
+         */
+        private void parseTiePairs(String str) {
+            forEachSegment(str, (begin, end) -> {
+                var firstComma = str.indexOf(',', begin);
+                var a = Integer.parseInt(str.substring(begin, firstComma));
+                var b = Integer.parseInt(str.substring(firstComma + 1, end));
+                pendingTiePairs.add(new int[]{a, b});
+            });
+        }
+
+        /**
+         * Stores parsed tuplet data until elements are loaded.
+         * Format per entry: [anchorIndex, endIndex, grade, verticalPositionSs * 1000 as int].
+         * verticalPositionSs is stored as-is (a double) in a wrapper; using a double[] for simplicity.
+         */
+        private final List<double[]> pendingTupletData = new ArrayList<>();
+
+        private void parseTupletData(String str) {
             forEachSegment(str, (begin, end) -> {
                 var segment = parseSegmentAB(str, begin, end);
                 var grade = 3; // default to triplet
@@ -338,16 +477,45 @@ public final class LineIO {
                     }
                 }
 
-                var tuplet = new TupletSpan(segment.a(), segment.b(), grade);
-                tuplet.setVerticalPositionSs(verticalPositionSs);
-                spanSet.addSpan(tuplet);
+                pendingTupletData.add(new double[]{segment.a(), segment.b(), grade, verticalPositionSs});
             });
         }
 
-        private static void stringToDynamicsSpanSet(SpanSet<? super DynamicsSpan> spanSet, String str) {
+        /**
+         * Creates {@link Tuplet} range elements from the pending tuplet data.
+         * Called at end-of-line after all elements have been loaded.
+         */
+        private void createTupletsFromPending(Line line) {
+            for (var data : pendingTupletData) {
+                var anchorIdx = (int) data[0];
+                var endIdx = (int) data[1];
+                var grade = (int) data[2];
+                var verticalPositionSs = (int) data[3];
+
+                if (anchorIdx < 0 || endIdx >= line.elementCount() || anchorIdx > endIdx) {
+                    continue;
+                }
+
+                var anchorElement = line.getElement(anchorIdx);
+                var endElement = line.getElement(endIdx);
+                var tuplet = new Tuplet(anchorElement, endElement, grade);
+                tuplet.setVerticalPositionSs(verticalPositionSs);
+                line.addRangeElement(tuplet);
+            }
+
+            pendingTupletData.clear();
+        }
+
+        /**
+         * Parses hairpin (crescendo or diminuendo) data into the given pending list.
+         * Format: {@code anchorIdx,endIdx[,x1ShiftSs,x2ShiftSs,yShiftSs];...}
+         */
+        private void parseHairpinPairs(List<double[]> pendingList, String str) {
             forEachSegment(str, (begin, end) -> {
                 var segment = parseSegmentAB(str, begin, end);
-                var dynamics = new DynamicsSpan(segment.a(), segment.b());
+                var x1 = 0.0;
+                var x2 = 0.0;
+                var y = 0.0;
 
                 if (segment.secondComma() != -1) {
                     // Has data portion: x1,x2,y
@@ -355,16 +523,16 @@ public final class LineIO {
 
                     if (parts.length >= 3) {
                         try {
-                            dynamics.setX1ShiftSs(Double.parseDouble(parts[0]));
-                            dynamics.setX2ShiftSs(Double.parseDouble(parts[1]));
-                            dynamics.setYShiftSs(Double.parseDouble(parts[2]));
+                            x1 = Double.parseDouble(parts[0]);
+                            x2 = Double.parseDouble(parts[1]);
+                            y = Double.parseDouble(parts[2]);
                         } catch (NumberFormatException ignored) {
                             // Leave shifts at 0
                         }
                     }
                 }
 
-                spanSet.addSpan(dynamics);
+                pendingList.add(new double[]{segment.a(), segment.b(), x1, x2, y});
             });
         }
 
@@ -411,12 +579,24 @@ public final class LineIO {
                 var n = noteReader.endElement11(qName);
 
                 if (n != null) {
+                    var elementIndex = line.elementCount();
+
+                    if (noteReader.isTrillFlagged()) {
+                        accumulateLegacyTrillFlag(elementIndex);
+                    }
+
                     line.addElement(n);
                 }
             } else if (where == Where.LINE) {
                 if (qName.equals(XML_LINE)) {
                     where = null;
+                    createTiesFromPendingPairs(line);
                     createEndingsFromPendingPairs(line);
+                    createTrillsFromPendingPairs(line);
+                    createCrescendosFromPending(line);
+                    createDiminuendosFromPending(line);
+                    createTupletsFromPending(line);
+                    createBeamsFromPending(line);
                     return line;
                 }
                 //noinspection PointlessNullCheck
@@ -448,30 +628,16 @@ public final class LineIO {
                         case XML_TRILL_YPOS -> line.setTrillYPosPx(
                             Integer.parseInt(str)
                         );
-                        case XML_BEAMINGS -> stringToBeamSpanSet(
-                            line.getBeamings(),
-                            str
-                        );
-                        case XML_TIES -> stringToTieSpanSet(
-                            line.getTies(),
-                            str
-                        );
+                        case XML_BEAMINGS -> parseBeamPairs(str);
+                        case XML_TIES -> parseTiePairs(str);
                         // Slurs no longer supported - ignore for backwards compatibility
                         case "slurs" -> {
                         }
-                        case XML_CRESCENDO -> stringToDynamicsSpanSet(
-                            line.getCrescendos(),
-                            str
-                        );
-                        case XML_DIMINUENDO -> stringToDynamicsSpanSet(
-                            line.getDiminuendos(),
-                            str
-                        );
-                        case XML_TUPLETS, XML_TRIPLETS -> stringToTupletSpanSet(
-                            line.getTuplets(),
-                            str
-                        );
+                        case XML_CRESCENDO -> parseHairpinPairs(pendingCrescendoPairs, str);
+                        case XML_DIMINUENDO -> parseHairpinPairs(pendingDiminuendoPairs, str);
+                        case XML_TUPLETS, XML_TRIPLETS -> parseTupletData(str);
                         case XML_FSENDINGS -> parseEndingPairs(str);
+                        case XML_TRILLS -> parseTrillPairs(str);
                     }
                 }
             }
@@ -502,6 +668,68 @@ public final class LineIO {
             }
 
             pendingEndingPairs.clear();
+        }
+
+        /**
+         * Creates Trill range elements from the pending trill index pairs.
+         * Called at end-of-line after all elements have been loaded.
+         * Handles both new {@code <trills>} data and legacy per-element trill flags (already
+         * coalesced into contiguous runs by {@link #accumulateLegacyTrillFlag}).
+         */
+        private void createTrillsFromPendingPairs(Line line) {
+            for (var pair : pendingTrillPairs) {
+                var anchorElement = line.getElement(pair[0]);
+                var endElement = line.getElement(pair[1]);
+                var trill = new Trill(anchorElement, endElement);
+                trill.setYPositionSs(pair[2]);
+                line.addRangeElement(trill);
+            }
+
+            pendingTrillPairs.clear();
+        }
+
+        /**
+         * Accumulates a legacy trill-flagged element index into contiguous runs.
+         * Each run (consecutive indices) becomes a single {@code [anchor, end, 0]} triple in
+         * {@link #pendingTrillPairs}. Called before the element is added to the line, so
+         * {@code elementIndex} is the index the element will occupy.
+         */
+        private void accumulateLegacyTrillFlag(int elementIndex) {
+            if (!pendingTrillPairs.isEmpty()) {
+                var last = pendingTrillPairs.getLast();
+
+                // Extend the current run if this element is contiguous
+                if (last[1] == elementIndex - 1) {
+                    last[1] = elementIndex;
+                    return;
+                }
+            }
+
+            // Start a new run: anchor == end == elementIndex, yPositionSs == 0
+            pendingTrillPairs.add(new int[]{elementIndex, elementIndex, 0});
+        }
+
+        /**
+         * Parses the new {@code <trills>} line-scope data into pending pairs.
+         * Format: {@code anchor,end[,yPositionSs];...}
+         */
+        private void parseTrillPairs(String str) {
+            forEachSegment(str, (begin, end) -> {
+                var firstComma = str.indexOf(',', begin);
+                var secondComma = str.indexOf(',', firstComma + 1);
+
+                if (secondComma > end) {
+                    secondComma = -1;
+                }
+
+                var anchor = Integer.parseInt(str.substring(begin, firstComma));
+                var endIdx = Integer.parseInt(
+                    str.substring(firstComma + 1, secondComma == -1 ? end : secondComma)
+                );
+                var yPositionSs = (secondComma == -1) ? 0
+                    : Integer.parseInt(str.substring(secondComma + 1, end));
+                pendingTrillPairs.add(new int[]{anchor, endIdx, yPositionSs});
+            });
         }
 
         private enum Where {

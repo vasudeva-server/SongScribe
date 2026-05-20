@@ -21,7 +21,6 @@
 package songscribe.ui.layout.stacking;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -153,8 +152,9 @@ public class NoteAttachedStacker {
             staffPosition, builder);
 
         // Tier 2: Fermata
-        if (note.isFermata()) {
-            var fermata = new FermataAttachment(note);
+        var fermata = note.findAttachment(FermataAttachment.class);
+
+        if (fermata != null) {
             stackAbove(extents, fermata, xSs,
                 fermata.getContentWidthSs(), fermata.getContentHeightSs(),
                 NOTE_DECORATION_MARGIN_SS, staffPosition, builder);
@@ -256,7 +256,7 @@ public class NoteAttachedStacker {
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
         var builder = context.getBuilder();
-        var ties = line.getTies();
+        var ties = line.findTies();
 
         if (ties.isEmpty()) {
             return Set.of();
@@ -264,16 +264,19 @@ public class NoteAttachedStacker {
 
         var upwardTieNotes = new HashSet<StaffElement>();
 
-        for (var it = ties.listIterator(); it.hasNext(); ) {
-            var span = it.next();
-            var startElement = line.getElement(span.getStart());
+        for (var span : ties) {
+            var startElement = span.getAnchorElement();
+            var endElement = span.getEndElement();
+
+            if (startElement == null || endElement == null) {
+                continue;
+            }
+
             var tieLayout = builder.getTieLayout(span);
 
             if (tieLayout == null) {
                 continue;
             }
-
-            var endElement = line.getElement(span.getEnd());
 
             // Sample the outer Bezier curve to reserve tie vertical extent
             var sx = tieLayout.startXSs();
@@ -476,24 +479,13 @@ public class NoteAttachedStacker {
 
     /**
      * Stacks fermata for the given column.
-     * <p>
-     * Checks the new attachment hierarchy first; falls back to the legacy
-     * {@code note.isFermata()} flag and bridges it to a temporary {@link FermataAttachment}
-     * so both paths write a {@link LayoutResult.DecorationLayout}.
      */
     private void stackFermata(
         ElementColumn column,
         LayoutResult.Builder builder) {
 
         var note = column.getElement();
-
-        // Check new attachment hierarchy first
         var fermata = note.findAttachment(FermataAttachment.class);
-
-        // Bridge legacy flag to a temporary FermataAttachment
-        if (fermata == null && note.isFermata()) {
-            fermata = new FermataAttachment(note);
-        }
 
         if (fermata == null) {
             return;
@@ -510,23 +502,17 @@ public class NoteAttachedStacker {
     /**
      * Stacks all trills for the line.
      * <p>
-     * Processes {@link Trill} objects from {@code line.findRangeElements(Trill.class)},
-     * then bridges any legacy {@code note.isTrill()} flags not already covered.
+     * Processes {@link Trill} range elements from {@code line.findRangeElements(Trill.class)}.
      * Multi-note trills reserve the full horizontal span so subsequent layers clear them.
      */
     private void stackTrills(LayoutResult.Builder builder) {
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
-
-        // Process new Trill range elements
         var trills = line.findRangeElements(Trill.class);
 
         for (var trill : trills) {
             stackSingleTrill(trill, columnsByElement, builder);
         }
-
-        // Bridge legacy isTrill() flags not covered by Trill range elements
-        bridgeLegacyTrillFlags(line, columnsByElement, trills, builder);
     }
 
     /**
@@ -570,51 +556,6 @@ public class NoteAttachedStacker {
         stackAbove(noteAttachedExtents, trill, anchorXSs, widthSs,
             trill.getContentHeightSs(), NOTE_DECORATION_MARGIN_SS,
             staffPosition, builder);
-    }
-
-    /**
-     * Bridges legacy {@code isTrill()} flags to temporary {@link Trill} objects.
-     * <p>
-     * Finds consecutive trill-flagged notes that aren't already covered by a
-     * {@link Trill} range element, creates temporary Trill objects, and stacks them.
-     */
-    private void bridgeLegacyTrillFlags(
-        Line line,
-        Map<StaffElement, ElementColumn> columnsByElement,
-        List<? extends Trill> existingTrills,
-        LayoutResult.Builder builder) {
-
-        for (var i = 0; i < line.effectiveElementCount(); i++) {
-            var element = line.getElement(i);
-
-            if (!element.isTrill()) {
-                continue;
-            }
-
-            // Skip if this is not the start of a trill sequence
-            if (i > 0 && line.getElement(i - 1).isTrill()) {
-                continue;
-            }
-
-            // Find the end of the consecutive trill sequence
-            var trillEnd = i;
-
-            while (trillEnd + 1 < line.effectiveElementCount()
-                    && line.getElement(trillEnd + 1).isTrill()) {
-                trillEnd++;
-            }
-
-            var endElement = line.getElement(trillEnd);
-
-            // Check if already covered by an existing Trill range element
-            if (StackingUtils.isRangeCovered(element, endElement, existingTrills)) {
-                continue;
-            }
-
-            // Bridge: create temporary Trill and stack it
-            var trill = new Trill(element, endElement);
-            stackSingleTrill(trill, columnsByElement, builder);
-        }
     }
 
 }

@@ -21,32 +21,22 @@
 package songscribe.ui.layout.stacking;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 
-import songscribe.model.DynamicsSpan;
 import songscribe.model.Line;
-import songscribe.model.Span;
-import songscribe.model.SpanSet;
 import songscribe.model.StaffElement;
-import songscribe.model.TupletSpan;
 import songscribe.ui.layout.CollisionRegion;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.Ending;
-import songscribe.ui.layout.Hairpin;
 import songscribe.ui.layout.LayoutResult;
-import songscribe.smufl.Engraving;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.Tuplet;
-import songscribe.ui.renderer.LineThickness;
+import songscribe.ui.layout.LineThickness;
 import songscribe.ui.renderer.NoteRenderer;
-
-import org.jspecify.annotations.Nullable;
 
 import static songscribe.ui.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.ui.layout.stacking.StackingUtils.stackAboveWithRegions;
@@ -107,146 +97,35 @@ public class StructuralStacker {
 
     /**
      * Stacks all tuplet brackets for the line.
-     * <p>
-     * Processes {@link Tuplet} range elements first, then bridges legacy
-     * {@link TupletSpan} data not already covered
-     * by range elements.
      */
     private void stackTuplets(
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
-        // Process new Tuplet range elements
-        var existingTuplets = line.findRangeElements(Tuplet.class);
-
-        for (var tuplet : existingTuplets) {
+        for (var tuplet : line.findRangeElements(Tuplet.class)) {
             stackSpanElement(tuplet, TUPLET_MARGIN_SS,
                 columnsByElement, builder);
-        }
-
-        // Bridge legacy tuplet spans
-        bridgeLegacyTupletSpans(line, existingTuplets, columnsByElement, builder);
-    }
-
-    /**
-     * Bridges legacy {@link TupletSpan} data to temporary
-     * {@link Tuplet} range elements and stacks them.
-     */
-    private void bridgeLegacyTupletSpans(
-        Line line,
-        List<? extends Tuplet> existingTuplets,
-        Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResult.Builder builder) {
-
-        for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
-            var span = iter.next();
-            var resolved = resolveSpan(line, span, existingTuplets, columnsByElement);
-
-            if (resolved == null) {
-                continue;
-            }
-
-            var startNote = resolved.startNote();
-            var bridged = new Tuplet(startNote, resolved.endNote(), span.getGrade());
-
-            // Compute actual visual bracket bounds
-            var noteheadRightXSs = resolved.startColumn().getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
-            var endNoteheadRightXSs = resolved.endColumn().getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
-            var isUpper = startNote.isUpper();
-            var stemSs = LineThickness.getInstance().stemSs();
-            var leftXSs = noteheadRightXSs - (isUpper ? stemSs : Engraving.NOTE_HEAD_WIDTH_SS) - Tuplet.ARM_EXTENSION_SS;
-            var rightXSs = endNoteheadRightXSs + Tuplet.ARM_EXTENSION_SS;
-
-            var staffPosition = startNote.getStaffPosition();
-            var widthSs = rightXSs - leftXSs;
-            var contentHeightSs = bridged.getContentHeightSs();
-
-            var ySs = stackAbove(structuralExtents, bridged, leftXSs, widthSs,
-                contentHeightSs, TUPLET_MARGIN_SS,
-                staffPosition, builder);
-
-            // Write SpanLayout with actual bracket bounds for renderer access
-            builder.putSpanLayout(span,
-                new LayoutResult.SpanLayout(leftXSs, rightXSs, ySs, contentHeightSs));
         }
     }
 
     /**
      * Stacks all hairpins (crescendo/diminuendo) for the line.
-     * <p>
-     * Processes {@link Crescendo} and {@link Diminuendo} range elements first,
-     * then bridges legacy {@link DynamicsSpan} data not
-     * already covered by range elements.
      */
     private void stackHairpins(
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
-        // Process new Crescendo range elements
-        var existingCrescendos = line.findRangeElements(Crescendo.class);
-
-        for (var crescendo : existingCrescendos) {
-            stackSpanElement(crescendo, HAIRPIN_MARGIN_SS,
-                columnsByElement, builder);
+        for (var crescendo : line.findRangeElements(Crescendo.class)) {
+            stackSpanElement(crescendo, HAIRPIN_MARGIN_SS, columnsByElement, builder);
         }
 
-        // Process new Diminuendo range elements
-        var existingDiminuendos = line.findRangeElements(Diminuendo.class);
-
-        for (var diminuendo : existingDiminuendos) {
-            stackSpanElement(diminuendo, HAIRPIN_MARGIN_SS,
-                columnsByElement, builder);
-        }
-
-        // Bridge legacy crescendo spans
-        bridgeLegacyHairpinSpans(line, line.getCrescendos(),
-            existingCrescendos, Crescendo::new, columnsByElement, builder);
-
-        // Bridge legacy diminuendo spans
-        bridgeLegacyHairpinSpans(line, line.getDiminuendos(),
-            existingDiminuendos, Diminuendo::new, columnsByElement, builder);
-    }
-
-    /**
-     * Bridges legacy {@link DynamicsSpan} data to temporary
-     * hairpin range elements and stacks them.
-     */
-    private void bridgeLegacyHairpinSpans(
-        Line line,
-        SpanSet<DynamicsSpan> spanSet,
-        List<? extends RangeElement> existingRangeElements,
-        BiFunction<? super StaffElement, ? super StaffElement, ? extends RangeElement> factory,
-        Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResult.Builder builder) {
-
-        for (var iter = spanSet.listIterator(); iter.hasNext(); ) {
-            var span = iter.next();
-            var resolved = resolveSpan(line, span, existingRangeElements, columnsByElement);
-
-            if (resolved == null) {
-                continue;
-            }
-
-            // Bridge to temporary range element for dimension calculations
-            var startNote = resolved.startNote();
-            var anchorXSs = resolved.startColumn().getXSs();
-            var endXSs = resolved.endColumn().getXSs();
-            var bridged = factory.apply(startNote, resolved.endNote());
-
-            var staffPosition = startNote.getStaffPosition();
-            var widthSs = endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS;
-            var ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
-                Hairpin.HAIRPIN_OPENING_HEIGHT_SS, HAIRPIN_MARGIN_SS,
-                staffPosition, builder);
-
-            // Write SpanLayout keyed by the legacy span for renderer access
-            builder.putSpanLayout(span,
-                new LayoutResult.SpanLayout(anchorXSs, endXSs,
-                    ySs, Hairpin.HAIRPIN_OPENING_HEIGHT_SS));
+        for (var diminuendo : line.findRangeElements(Diminuendo.class)) {
+            stackSpanElement(diminuendo, HAIRPIN_MARGIN_SS, columnsByElement, builder);
         }
     }
+
 
     /**
      * Stacks text dynamics (DynamicAttachment) for the given column.
@@ -378,34 +257,4 @@ public class StructuralStacker {
             staffPosition, builder);
     }
 
-    private record ResolvedSpan(
-        StaffElement startNote,
-        StaffElement endNote,
-        ElementColumn startColumn,
-        ElementColumn endColumn
-    ) {}
-
-    @Nullable
-    private ResolvedSpan resolveSpan(
-        Line line,
-        Span span,
-        List<? extends RangeElement> existingRangeElements,
-        Map<StaffElement, ElementColumn> columnsByElement) {
-
-        var startNote = line.getElement(span.getStart());
-        var endNote = line.getElement(span.getEnd());
-
-        if (StackingUtils.isRangeCovered(startNote, endNote, existingRangeElements)) {
-            return null;
-        }
-
-        var startColumn = columnsByElement.get(startNote);
-        var endColumn = columnsByElement.get(endNote);
-
-        if (startColumn == null || endColumn == null) {
-            return null;
-        }
-
-        return new ResolvedSpan(startNote, endNote, startColumn, endColumn);
-    }
 }

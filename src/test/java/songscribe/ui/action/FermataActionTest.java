@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.model.ElementType;
+import songscribe.ui.layout.FermataAttachment;
 
 class FermataActionTest extends UnitTest {
 
@@ -35,15 +36,15 @@ class FermataActionTest extends UnitTest {
     void testApplyToNoteAppliesFermata() {
         var note = ElementType.CROTCHET.newInstance();
         action.applyToElement(note, true);
-        assertThat(note.isFermata()).isTrue();
+        assertThat(note.findAttachment(FermataAttachment.class)).isNotNull();
     }
 
     @Test
     void testApplyToNoteRemovesFermata() {
         var note = ElementType.CROTCHET.newInstance();
-        note.setFermata(true);
+        note.addAttachment(new FermataAttachment(note));
         action.applyToElement(note, false);
-        assertThat(note.isFermata()).isFalse();
+        assertThat(note.findAttachment(FermataAttachment.class)).isNull();
     }
 
     @Test
@@ -55,7 +56,7 @@ class FermataActionTest extends UnitTest {
     @Test
     void testMatchesWhenFermataTrue() {
         var note = ElementType.CROTCHET.newInstance();
-        note.setFermata(true);
+        note.addAttachment(new FermataAttachment(note));
         assertThat(action.matchesElement(note)).isTrue();
     }
 }

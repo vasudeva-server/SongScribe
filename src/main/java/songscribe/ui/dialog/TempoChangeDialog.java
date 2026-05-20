@@ -29,8 +29,9 @@ import songscribe.model.Duration;
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
 import songscribe.model.Tempo;
+import songscribe.ui.layout.TempoChangeAttachment;
 
-public class TempoChangeDialog extends AttachmentDialog<Tempo> {
+public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
 
     private final TempoSection tempoSection = new TempoSection(
         Duration.values(),
@@ -56,32 +57,44 @@ public class TempoChangeDialog extends AttachmentDialog<Tempo> {
     }
 
     @Override
-    protected @Nullable Tempo getExistingChange(StaffElement element) {
-        return element.getTempoChange();
+    protected @Nullable TempoChangeAttachment getExistingChange(StaffElement element) {
+        return element.findAttachment(TempoChangeAttachment.class);
     }
 
     @Override
-    protected void populateControls(@Nullable Tempo change) {
+    protected void populateControls(@Nullable TempoChangeAttachment change) {
         tempoSection.setTempo(
             change != null
-                ? change
+                ? change.getTempo()
                 : new Tempo(120, Duration.CROTCHET, "Moderate", true)
         );
     }
 
     @Override
     protected void applyChange(StaffElement element) {
-        element.setTempoChange(new Tempo(
+        var tempo = new Tempo(
             tempoSection.getVisibleTempo(),
             tempoSection.getTempoType(),
             tempoSection.getTempoDescription(),
             !tempoSection.isShowOnlyDescription()
-        ));
+        );
+        var existing = element.findAttachment(TempoChangeAttachment.class);
+
+        if (existing != null) {
+            existing.setTempo(tempo);
+        } else {
+            element.addAttachment(new TempoChangeAttachment(element, tempo));
+        }
     }
 
     @Override
     protected void clearChange(StaffElement element) {
-        element.setTempoChange(null);
+        var attachment = element.findAttachment(TempoChangeAttachment.class);
+
+        if (attachment != null) {
+            element.removeAttachment(attachment);
+        }
+
         element.getLine().getSong().clearTempoIfOrphaned(element);
     }
 }

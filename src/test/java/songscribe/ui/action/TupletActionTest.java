@@ -37,8 +37,9 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.model.TupletSpan;
+import songscribe.model.ElementType;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.layout.Tuplet;
 import songscribe.ui.selection.TupletToggleInfo;
 
 /**
@@ -99,7 +100,7 @@ class TupletActionTest extends UnitTest {
 
     @Test
     void testFullCoverageOfQuintupletDisablesQuintupletEnablesOthersAndRemove() {
-        fireAll(new TupletToggleInfo(true, new TupletSpan(0, 2, TupletAction.Tuplet.QUINTUPLET.getSize()), true));
+        fireAll(new TupletToggleInfo(true, makeTuplet(TupletAction.Tuplet.QUINTUPLET.getSize()), true));
 
         assertThat(removeAction.isEnabled()).isTrue();
         assertThat(dupletAction.isEnabled()).isTrue();
@@ -112,7 +113,7 @@ class TupletActionTest extends UnitTest {
 
     @Test
     void testFullCoverageOfTripletDisablesTripletEnablesOthersAndRemove() {
-        fireAll(new TupletToggleInfo(true, new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()), true));
+        fireAll(new TupletToggleInfo(true, makeTuplet(TupletAction.Tuplet.TRIPLET.getSize()), true));
 
         assertThat(removeAction.isEnabled()).isTrue();
         assertThat(dupletAction.isEnabled()).isTrue();
@@ -136,7 +137,7 @@ class TupletActionTest extends UnitTest {
 
     @Test
     void testPartialCoverageOfTripletEnablesRemoveDisablesAllAddActions() {
-        fireAll(new TupletToggleInfo(true, new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()), false));
+        fireAll(new TupletToggleInfo(true, makeTuplet(TupletAction.Tuplet.TRIPLET.getSize()), false));
 
         assertThat(removeAction.isEnabled()).isTrue();
 
@@ -179,5 +180,11 @@ class TupletActionTest extends UnitTest {
             dupletAction, tripletAction, quadrupletAction,
             quintupletAction, sextupletAction, septupletAction
         );
+    }
+
+    private static Tuplet makeTuplet(int grade) {
+        var anchor = ElementType.CROTCHET.newInstance();
+        var end = ElementType.CROTCHET.newInstance();
+        return new Tuplet(anchor, end, grade);
     }
 }

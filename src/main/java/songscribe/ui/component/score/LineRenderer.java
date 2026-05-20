@@ -30,6 +30,7 @@ import songscribe.model.ElementType;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.layout.AnnotationAttachment;
+import songscribe.ui.layout.Beam;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.FermataAttachment;
@@ -320,12 +321,11 @@ class LineRenderer {
             return;
         }
 
-        var beamings = line.getBeamings();
-
-        for (var iter = beamings.listIterator(); iter.hasNext(); ) {
-            var span = iter.next();
-            renderWithPreviewShiftIfNeeded(g2, ctx, span.getStart(),
-                () -> beamRenderer.renderBeams(g2, line, ctx, span.getStart(), span.getEnd()));
+        for (var beam : line.findRangeElements(Beam.class)) {
+            var anchorIdx = beam.getAnchorElementIndex();
+            var endIdx = beam.getEndElementIndex();
+            renderWithPreviewShiftIfNeeded(g2, ctx, anchorIdx,
+                () -> beamRenderer.renderBeams(g2, line, ctx, anchorIdx, endIdx));
         }
     }
 
@@ -343,11 +343,10 @@ class LineRenderer {
             return;
         }
 
-        var ties = line.getTies();
+        var ties = line.findTies();
 
-        for (var iter = ties.listIterator(); iter.hasNext(); ) {
-            var span = iter.next();
-            renderWithPreviewShiftIfNeeded(g2, ctx, span.getStart(),
+        for (var span : ties) {
+            renderWithPreviewShiftIfNeeded(g2, ctx, span.getAnchorElementIndex(),
                 () -> tieRenderer.renderTie(g2, span, ctx));
         }
     }
@@ -665,7 +664,7 @@ class LineRenderer {
                 ArticulationRenderer.getInstance().render(previewElement, g2, ctx);
             }
 
-            if (previewElement.isFermata()) {
+            if (previewElement.findAttachment(FermataAttachment.class) != null) {
                 FermataRenderer.getInstance().render(previewElement, g2, ctx);
             }
         }

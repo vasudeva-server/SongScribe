@@ -34,7 +34,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.model.DynamicsSpan;
+import songscribe.model.StaffElementFactory;
+import songscribe.ui.layout.Crescendo;
+import songscribe.ui.layout.Diminuendo;
 import songscribe.model.ElementType;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.layout.DynamicAttachment;
@@ -180,7 +182,12 @@ class DynamicMarkingActionTest extends UnitTest {
             try (var mainFrameMock = mockStatic(MainFrame.class)) {
                 var env = setupFullMockEnv(mainFrameMock);
                 var line = detachedLine();
-                line.getCrescendos().addSpan(new DynamicsSpan(0, 3));
+
+                for (var i = 0; i < 4; i++) {
+                    line.addElement(StaffElementFactory.crotchet());
+                }
+
+                line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(3)));
                 var selection = new ElementSelection(line, 1, 1);
 
                 when(env.score().getSelectionSize()).thenReturn(1);
@@ -199,7 +206,12 @@ class DynamicMarkingActionTest extends UnitTest {
             try (var mainFrameMock = mockStatic(MainFrame.class)) {
                 var env = setupFullMockEnv(mainFrameMock);
                 var line = detachedLine();
-                line.getDiminuendos().addSpan(new DynamicsSpan(0, 3));
+
+                for (var i = 0; i < 4; i++) {
+                    line.addElement(StaffElementFactory.crotchet());
+                }
+
+                line.addRangeElement(new Diminuendo(line.getElement(0), line.getElement(3)));
                 var selection = new ElementSelection(line, 1, 1);
 
                 when(env.score().getSelectionSize()).thenReturn(1);

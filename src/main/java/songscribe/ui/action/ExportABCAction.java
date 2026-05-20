@@ -46,6 +46,11 @@ import songscribe.model.StaffElement;
 import songscribe.model.Tempo;
 import songscribe.ui.Constants;
 import songscribe.ui.dialog.PlatformFileDialog;
+import songscribe.ui.layout.AnnotationAttachment;
+import songscribe.ui.layout.FermataAttachment;
+import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.ui.layout.Trill;
+import songscribe.ui.layout.Tuplet;
 import songscribe.midi.MidiSequenceBuilder;
 
 /**
@@ -315,12 +320,27 @@ public final class ExportABCAction extends UIAction {
             sb.append('.');
         }
 
-        if (note.isFermata()) {
+        if (note.findAttachment(FermataAttachment.class) != null) {
             sb.append("!fermata!");
         }
 
-        if (note.isTrill()) {
-            sb.append("!trill!");
+        var noteLine = note.getLine();
+
+        if (noteLine != null) {
+            var noteIndex = noteLine.getElementIndex(note);
+
+            if (noteIndex >= 0) {
+                var hasTrill = noteLine.findRangeElements(Trill.class).stream()
+                    .anyMatch(t -> {
+                        var a = t.getAnchorElementIndex();
+                        var e = t.getEndElementIndex();
+                        return noteIndex >= a && noteIndex <= e;
+                    });
+
+                if (hasTrill) {
+                    sb.append("!trill!");
+                }
+            }
         }
 
         return sb.toString();
@@ -344,14 +364,18 @@ public final class ExportABCAction extends UIAction {
     static String translateNote(StaffElement note, int songUnitLength) {
         var sb = new StringBuilder(27);
 
-        if (note.getTempoChange() != null) {
+        var tempoAttachment = note.findAttachment(TempoChangeAttachment.class);
+
+        if (tempoAttachment != null) {
             sb
                 .append("[Q:")
-                .append(translateTempo(note.getTempoChange()))
+                .append(translateTempo(tempoAttachment.getTempo()))
                 .append(']');
         }
 
-        sb.append(translateAnnotation(note.getAnnotation()));
+        var annotationAttachment = note.findAttachment(AnnotationAttachment.class);
+        sb.append(translateAnnotation(
+            annotationAttachment != null ? annotationAttachment.getAnnotation() : null));
         var noteType = note.getType();
 
         if (noteType.isNote()) {
@@ -405,7 +429,7 @@ public final class ExportABCAction extends UIAction {
         var sb = new StringBuilder(27);
 
         for (var i = 0; i < line.effectiveElementCount(); i++) {
-            if (line.getBeamings().isStartOfAnySpan(i)) {
+            if (line.isStartOfAnyBeam(i)) {
                 sb.append(' ');
             }
 
@@ -413,18 +437,16 @@ public final class ExportABCAction extends UIAction {
                 sb.append("[1 ");
             }
 
-            if (line.getTuplets().isStartOfAnySpan(i)) {
-                var span = line.getTuplets().findSpan(i);
+            var tuplet = line.findTupletAt(i);
 
-                if (span != null) {
-                    var numberOfNotes =
-                        (span.getEnd() - span.getStart()) + 1;
-                    sb
-                        .append('(')
-                        .append(span.getGrade())
-                        .append("::")
-                        .append(numberOfNotes);
-                }
+            if (tuplet != null && tuplet.getAnchorElementIndex() == i) {
+                var numberOfNotes =
+                    (tuplet.getEndElementIndex() - tuplet.getAnchorElementIndex()) + 1;
+                sb
+                    .append('(')
+                    .append(tuplet.getGrade())
+                    .append("::")
+                    .append(numberOfNotes);
             }
 
             if (isGlissandoBegin(line, i)) {
@@ -440,7 +462,7 @@ public final class ExportABCAction extends UIAction {
                 sb.append("[2 ");
             }
 
-            if (line.getBeamings().isEndOfAnySpan(i)) {
+            if (line.isEndOfAnyBeam(i)) {
                 sb.append(' ');
             }
 
@@ -448,9 +470,9 @@ public final class ExportABCAction extends UIAction {
                 sb.append("|] ");
             }
 
-            var tieSpan = line.getTies().findSpan(i);
+            var tieSpan = line.findTieAt(i);
 
-            if ((tieSpan != null) && (i < tieSpan.getEnd())) {
+            if ((tieSpan != null) && (i < tieSpan.getEndElementIndex())) {
                 sb.append('-');
             }
 

@@ -199,9 +199,9 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         Color selectionColor
     ) {
         var outerNotes = new Point(beginIndex, endIndex);
-        var beamSpan = line.getBeamings().findSpan(beginIndex);
-        var beamLayout = (beamSpan != null)
-            ? ctx.getLayoutResult().getBeamLayout(beamSpan) : null;
+        var beam = line.findBeamAt(beginIndex);
+        var beamLayout = (beam != null)
+            ? ctx.getLayoutResult().getBeamLayout(beam) : null;
         doDrawBeams(g2, level, line, ctx, outerNotes,
             beginIndex, endIndex, beginIndex, endIndex, false, 0, selected, beamLayout, selectionColor);
     }

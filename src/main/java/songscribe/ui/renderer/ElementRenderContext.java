@@ -32,12 +32,12 @@ import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
 import songscribe.model.Lyric;
 import songscribe.model.Song;
-import songscribe.model.Span;
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
+import songscribe.ui.layout.LineThickness;
 import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LyricRenderMetrics;
@@ -469,10 +469,10 @@ public class ElementRenderContext {
             return false;
         }
 
-        var tieSpan = currentLine.getTies().findSpan(playingNoteIndex);
+        var tieSpan = currentLine.findTieAt(playingNoteIndex);
         return tieSpan != null
-                && tieSpan.getStart() <= elementIndex
-                && elementIndex <= tieSpan.getEnd();
+                && tieSpan.getAnchorElementIndex() <= elementIndex
+                && elementIndex <= tieSpan.getEndElementIndex();
     }
 
     /**
@@ -526,20 +526,6 @@ public class ElementRenderContext {
 
         // No further lyric on this line: span runs to the end of the line.
         return playingNoteIndex < count;
-    }
-
-    /**
-     * Returns whether the playing note falls within the given span.
-     * Used by tie rendering to determine whether a specific tie arc should
-     * be highlighted during playback.
-     *
-     * @param span the span to test
-     * @return true if the playing note index is within [span.start, span.end]
-     */
-    public boolean isPlayingNoteInSpan(Span span) {
-        return playingNoteIndex >= 0
-                && playingNoteIndex >= span.getStart()
-                && playingNoteIndex <= span.getEnd();
     }
 
     /**

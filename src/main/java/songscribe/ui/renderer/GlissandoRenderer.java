@@ -418,7 +418,7 @@ public final class GlissandoRenderer {
         StaffElement note, int noteIndex, Line line,
         LayoutResult layoutResult, double middleLineYSs
     ) {
-        var beamed = line.getBeamings().findSpan(noteIndex) != null;
+        var beamed = line.findBeamAt(noteIndex) != null;
         var cx = noteheadCenterXSs(note, layoutResult);
         var cy = BaseElementRenderer.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
         var entry = noteAreaBuilder.getOrBuildArea(note, beamed);

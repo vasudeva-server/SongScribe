@@ -36,8 +36,12 @@ import songscribe.model.ElementType;
 import songscribe.model.Line;
 import songscribe.model.Lyric;
 import songscribe.model.StaffElement;
+import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.Articulation;
+import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.DynamicAttachment;
+import songscribe.ui.layout.FermataAttachment;
+import songscribe.ui.layout.TempoChangeAttachment;
 
 public final class StaffElementIO {
 
@@ -227,19 +231,19 @@ public final class StaffElementIO {
             XML.writeEmptyTag(writer, XML_UPPER);
         }
 
-        if (element.getTempoChange() != null) {
-            TempoIO.writeTempo(element.getTempoChange(), writer, 12);
+        var tempoAttachment = element.findAttachment(TempoChangeAttachment.class);
+
+        if (tempoAttachment != null) {
+            TempoIO.writeTempo(tempoAttachment.getTempo(), writer, 12);
         }
 
-        if (element.getAnnotation() != null) {
-            AnnotationIO.writeAnnotation(element.getAnnotation(), writer, 12);
+        var annotationAttachment = element.findAttachment(AnnotationAttachment.class);
+
+        if (annotationAttachment != null) {
+            AnnotationIO.writeAnnotation(annotationAttachment.getAnnotation(), writer, 12);
         }
 
-        if (element.isTrill()) {
-            XML.writeEmptyTag(writer, XML_TRILL);
-        }
-
-        if (element.isFermata()) {
+        if (element.findAttachment(FermataAttachment.class) != null) {
             XML.writeEmptyTag(writer, XML_FERMATA);
         }
 
@@ -252,9 +256,10 @@ public final class StaffElementIO {
             );
         }
 
-        var beatChange = element.getBeatChange();
+        var beatChangeAttachment = element.findAttachment(BeatChangeAttachment.class);
 
-        if (beatChange != null) {
+        if (beatChangeAttachment != null) {
+            var beatChange = beatChangeAttachment.getBeatChange();
             XML.writeEmptyTag(
                 writer,
                 XML_BEAT_CHANGE + ' ' + XML_BEAT_CHANGE_DURATION + "=\"" +
@@ -323,16 +328,29 @@ public final class StaffElementIO {
         @Nullable
         private Where where;
 
+        // True when the current element had a legacy <trill> tag.
+        // LineIO.LineReader reads this after each note and coalesces runs into Trill range elements.
+        private boolean trillFlagged = false;
+
         // State for the lyric currently being parsed (valid while where == LYRIC)
         private int lyricNumber;
         private String lyricSyllabic = "";
         private String lyricText = "";
         private Lyric.Extend lyricExtend = Lyric.Extend.NONE;
 
+        /**
+         * Returns true if the most recently completed element had a legacy {@code <trill>} tag.
+         * Valid only after {@code endElement11} returns a non-null element.
+         */
+        public boolean isTrillFlagged() {
+            return trillFlagged;
+        }
+
         public boolean startElement10(String qName, Attributes attributes) {
             if (qName.equals(XML_NOTE)) {
                 lastTag = null;
                 where = Where.ELEMENT;
+                trillFlagged = false;
                 var type = attributes.getValue(XML_TYPE);
 
                 if (type.equals("NEWLINE")) {
@@ -373,6 +391,7 @@ public final class StaffElementIO {
             } else if (qName.equals(XML_NOTE)) {
                 lastTag = null;
                 where = Where.ELEMENT;
+                trillFlagged = false;
 
                 var type = attributes.getValue(XML_TYPE);
 
@@ -425,9 +444,10 @@ public final class StaffElementIO {
 
                         if (duration != null && beat != null && element != null) {
                             // New two-attribute format (v2.5+)
-                            element.setBeatChange(
+                            element.addAttachment(new BeatChangeAttachment(
+                                element,
                                 new BeatChange(Duration.valueOf(duration), Duration.valueOf(beat))
-                            );
+                            ));
                         } else {
                             // Legacy text-content format — defer to endElement11
                             lastTag = qName;
@@ -464,7 +484,7 @@ public final class StaffElementIO {
                 var t = tempoReader.endElement11(qName);
 
                 if (t != null) {
-                    element.setTempoChange(t);
+                    element.addAttachment(new TempoChangeAttachment(element, t));
                     where = Where.ELEMENT;
                 }
             } else if (where == Where.ANNOTATION) {
@@ -475,7 +495,7 @@ public final class StaffElementIO {
                 var a = annotationReader.endElement11(qName);
 
                 if (a != null) {
-                    element.setAnnotation(a);
+                    element.addAttachment(new AnnotationAttachment(element, a));
                     where = Where.ELEMENT;
                 }
             } else if (where == Where.LYRIC) {
@@ -581,15 +601,17 @@ public final class StaffElementIO {
                         || lastTag.equals(XML_FORCE_SYLLABLE)) {
                         // Obsolete per-element nudge fields — silently discarded.
                     } else if (lastTag.equals(XML_TRILL)) {
-                        element.setTrill(true);
+                        // Legacy per-element trill tag — record the flag; LineIO coalesces into Trill range elements.
+                        trillFlagged = true;
                     } else if (lastTag.equals(XML_FERMATA)) {
-                        element.setFermata(true);
+                        element.addAttachment(new FermataAttachment(element));
                     } else if (lastTag.equals(XML_STEM_DIRECTION_AUTO)) {
                         element.setStemDirectionAuto(false);
                     } else if (lastTag.equals(XML_INVERT_FRACTION_BEAM_ORIENTATION)) {
                         // Silently ignored — partial beam stub direction is now automatic.
                     } else if (lastTag.equals(XML_BEAT_CHANGE)) {
-                        element.setBeatChange(BeatChange.fromLegacyName(str));
+                        element.addAttachment(new BeatChangeAttachment(
+                            element, BeatChange.fromLegacyName(str)));
                     }
                 }
             }

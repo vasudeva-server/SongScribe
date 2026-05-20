@@ -31,7 +31,7 @@ import songscribe.smufl.SMuFLGlyph;
 
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
-import songscribe.ui.renderer.LineThickness;
+import songscribe.ui.layout.LineThickness;
 
 class ElementTypeTest extends UnitTest {
 

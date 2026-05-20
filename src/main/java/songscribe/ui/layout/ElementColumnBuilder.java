@@ -122,7 +122,7 @@ public class ElementColumnBuilder {
     public ElementColumn buildColumn(StaffElement element, Line line) {
         // Determine beam membership first — needed for right extent calculation
         var elementIndex = line.getElementIndex(element);
-        var beamed = line.getBeamings().findSpan(elementIndex) != null;
+        var beamed = line.findBeamAt(elementIndex) != null;
 
         // Calculate horizontal extents
         var leftExtentSs = calculateLeftExtentSs(element);

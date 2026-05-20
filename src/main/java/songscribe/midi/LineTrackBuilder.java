@@ -27,6 +27,8 @@ import songscribe.model.ArticulationType;
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
 import songscribe.model.Tempo;
+import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.ui.layout.Tuplet;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
 
@@ -60,15 +62,15 @@ public class LineTrackBuilder {
      * @return Scaling factor (1.0 if not in a tuplet)
      */
     private float getTupletFactor(int elementIndex, Tempo referenceTempo) {
-        var tupletInt = line.getTuplets().findSpan(elementIndex);
+        var tuplet = line.findTupletAt(elementIndex);
 
-        if (tupletInt == null) {
+        if (tuplet == null) {
             return 1;
         }
 
         var tupletDuration = 0f;
 
-        for (var i = tupletInt.getStart(); i <= tupletInt.getEnd(); i++) {
+        for (var i = tuplet.getAnchorElementIndex(); i <= tuplet.getEndElementIndex(); i++) {
             tupletDuration += line.getElement(i).getDuration();
         }
 
@@ -239,8 +241,10 @@ public class LineTrackBuilder {
             var element = line.getElement(i);
 
             // Add tempo change if present
-            if (element.getTempoChange() != null) {
-                currentTempo = element.getTempoChange();
+            var tempoAttachment = element.findAttachment(TempoChangeAttachment.class);
+
+            if (tempoAttachment != null) {
+                currentTempo = tempoAttachment.getTempo();
                 MidiEventFactory.addTempoEvent(track, ticks, currentTempo, settings.tempoChangePercent());
             }
 
@@ -303,10 +307,10 @@ public class LineTrackBuilder {
             var duration = getElementDurationWithTuplet(elementIndex, currentTempo);
 
             if (type.isNote()) {
-                var tieSpan = line.getTies().findSpan(elementIndex);
+                var tieSpan = line.findTieAt(elementIndex);
                 var velocity = noteVelocity(element, velocityMap, lineIndex, elementIndex);
 
-                if ((tieSpan == null) || (tieSpan.getStart() == elementIndex)) {
+                if ((tieSpan == null) || (tieSpan.getAnchorElementIndex() == elementIndex)) {
                     glissandoHelper.createPendingResets(track, trackTicks, 0);
 
                     if (glissandoHelper.hasPendingGracePitch()) {
@@ -318,7 +322,7 @@ public class LineTrackBuilder {
                     }
                 }
 
-                if ((tieSpan == null) || (tieSpan.getEnd() == elementIndex)) {
+                if ((tieSpan == null) || (tieSpan.getEndElementIndex() == elementIndex)) {
                     var glissando = element.getGlissando();
 
                     if (glissando != null) {

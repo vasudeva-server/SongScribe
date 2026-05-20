@@ -182,10 +182,10 @@ class NoteDragHandler {
                 continue;
             }
 
-            var tie = line.getTies().findSpan(i);
+            var tie = line.findTieAt(i);
 
             if (tie != null) {
-                for (var j = tie.getStart(); j <= tie.getEnd(); j++) {
+                for (var j = tie.getAnchorElementIndex(); j <= tie.getEndElementIndex(); j++) {
                     groupIndices.add(j);
                 }
             } else {

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.ui.layout.Articulation;
+import songscribe.ui.layout.FermataAttachment;
 
 class StaffElementCopyConstructorTest extends UnitTest {
 
@@ -36,8 +37,7 @@ class StaffElementCopyConstructorTest extends UnitTest {
         element.setDotCount(1);
         element.setAccidental(StaffElement.Accidental.SHARP);
         element.setAccidentalInParentheses(true);
-        element.setFermata(true);
-        element.setTrill(true);
+        element.addAttachment(new FermataAttachment(element));
         element.setUpper(true);
         element.setStemDirectionAuto(false);
         element.setStaffPosition(-3);
@@ -57,12 +57,11 @@ class StaffElementCopyConstructorTest extends UnitTest {
 
         // Always-copied attributes
         assertThat(copy.getDotCount()).isEqualTo(1);
-        assertThat(copy.isFermata()).isTrue();
+        assertThat(copy.findAttachment(FermataAttachment.class)).isNotNull();
 
         // Note-only attributes (copied because target is a note)
         assertThat(copy.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
         assertThat(copy.isAccidentalInParentheses()).isTrue();
-        assertThat(copy.isTrill()).isTrue();
         assertThat(copy.isUpper()).isTrue();
         assertThat(copy.isStemDirectionAuto()).isFalse();
         assertThat(copy.getStaffPosition()).isEqualTo(-3);
@@ -83,12 +82,11 @@ class StaffElementCopyConstructorTest extends UnitTest {
 
         // Always-copied attributes
         assertThat(copy.getDotCount()).isEqualTo(1);
-        assertThat(copy.isFermata()).isTrue();
+        assertThat(copy.findAttachment(FermataAttachment.class)).isNotNull();
 
         // Note-only attributes should be at defaults
         assertThat(copy.getAccidental()).isNull();
         assertThat(copy.isAccidentalInParentheses()).isFalse();
-        assertThat(copy.isTrill()).isFalse();
         assertThat(copy.isUpper()).isFalse();
         assertThat(copy.isStemDirectionAuto()).isTrue();
         assertThat(copy.getArticulations()).isEmpty();
@@ -101,13 +99,13 @@ class StaffElementCopyConstructorTest extends UnitTest {
     void testRestToNoteCopiesApplicableAttributes() {
         var source = new StaffElement(ElementType.QUAVER_REST);
         source.setDotCount(2);
-        source.setFermata(true);
+        source.addAttachment(new FermataAttachment(source));
 
         var copy = new StaffElement(ElementType.QUAVER, source);
 
         assertThat(copy.getType()).isEqualTo(ElementType.QUAVER);
         assertThat(copy.getDotCount()).isEqualTo(2);
-        assertThat(copy.isFermata()).isTrue();
+        assertThat(copy.findAttachment(FermataAttachment.class)).isNotNull();
 
         // Note-only attributes copied from rest source (all at defaults)
         assertThat(copy.getAccidental()).isNull();
@@ -118,13 +116,13 @@ class StaffElementCopyConstructorTest extends UnitTest {
     void testRestToRestCopiesAllAttributes() {
         var source = new StaffElement(ElementType.MINIM_REST);
         source.setDotCount(1);
-        source.setFermata(true);
+        source.addAttachment(new FermataAttachment(source));
 
         var copy = new StaffElement(ElementType.SEMIBREVE_REST, source);
 
         assertThat(copy.getType()).isEqualTo(ElementType.SEMIBREVE_REST);
         assertThat(copy.getDotCount()).isEqualTo(1);
-        assertThat(copy.isFermata()).isTrue();
+        assertThat(copy.findAttachment(FermataAttachment.class)).isNotNull();
         assertThat(copy.getStaffPosition()).isEqualTo(ElementType.SEMIBREVE_REST.getDefaultStaffPosition());
     }
 

@@ -165,9 +165,6 @@ public final class TrillRenderer extends BaseElementRenderer<Trill> {
 
     /**
      * Renders all trills for a line using layout results.
-     * <p>
-     * Iterates all {@link Trill} entries in the layout (both new range elements
-     * and those bridged from legacy {@code isTrill()} flags during layout).
      */
     public void renderTrillsFromLine(
         Graphics2D g2,

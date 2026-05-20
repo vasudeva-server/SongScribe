@@ -34,7 +34,7 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.renderer.BaseElementRenderer;
-import songscribe.ui.renderer.LineThickness;
+import songscribe.ui.layout.LineThickness;
 import songscribe.error.RuntimeError;
 import songscribe.ui.renderer.NoteRenderer;
 import songscribe.util.UIUtils;

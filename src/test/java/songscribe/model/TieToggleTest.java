@@ -23,8 +23,6 @@ package songscribe.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import java.util.Objects;
-
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -81,43 +79,43 @@ class TieToggleTest extends UnitTest {
     void testTieCreationAndRemoval() {
         selectRange(EIGHTH_1, EIGHTH_2);
 
-        assertThat(line.getTies().findSpan(EIGHTH_1))
+        assertThat(line.findTieAt(EIGHTH_1))
             .as("no tie before toggle").isNull();
 
         operations.toggleTie();
 
         assertAll(
-            () -> assertThat(line.getTies().findSpan(EIGHTH_1))
+            () -> assertThat(line.findTieAt(EIGHTH_1))
                 .as("note 1 tied").isNotNull(),
-            () -> assertThat(line.getTies().findSpan(EIGHTH_2))
+            () -> assertThat(line.findTieAt(EIGHTH_2))
                 .as("note 2 tied").isNotNull()
         );
 
         operations.toggleTie();
 
         assertAll(
-            () -> assertThat(line.getTies().findSpan(EIGHTH_1))
+            () -> assertThat(line.findTieAt(EIGHTH_1))
                 .as("note 1 untied").isNull(),
-            () -> assertThat(line.getTies().findSpan(EIGHTH_2))
+            () -> assertThat(line.findTieAt(EIGHTH_2))
                 .as("note 2 untied").isNull()
         );
     }
 
     @Test
     void testTiePersistsThroughSaveLoad() throws Exception {
-        var tie = line.getTies().findSpan(TIED_1);
+        var tie = line.findTieAt(TIED_1);
         assertThat(tie).as("pre-tied pair exists").isNotNull();
 
         var reloaded = roundTrip(song);
         var reloadedLine = reloaded.getLine(0);
-        var reloadedTie = reloadedLine.getTies().findSpan(TIED_1);
+        var reloadedTie = reloadedLine.findTieAt(TIED_1);
 
         assertAll(
             () -> assertThat(reloadedTie)
                 .as("save/load: tie preserved").isNotNull(),
-            () -> assertThat(Objects.requireNonNull(reloadedTie).getStart())
+            () -> assertThat(java.util.Objects.requireNonNull(reloadedTie).getAnchorElementIndex())
                 .as("tie start").isEqualTo(TIED_1),
-            () -> assertThat(Objects.requireNonNull(reloadedTie).getEnd())
+            () -> assertThat(java.util.Objects.requireNonNull(reloadedTie).getEndElementIndex())
                 .as("tie end").isEqualTo(TIED_2)
         );
     }

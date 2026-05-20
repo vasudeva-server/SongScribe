@@ -85,24 +85,13 @@ public class SystemStacker {
 
     /**
      * Stacks tempo marking for the given column.
-     * <p>
-     * Checks the new attachment hierarchy first; falls back to the legacy
-     * {@code note.getTempoChange()} property and bridges it to a temporary
-     * {@link TempoChangeAttachment} so both paths write a {@link LayoutResult.DecorationLayout}.
      */
     private void stackTempo(
         ElementColumn column,
         LayoutResult.Builder builder) {
 
         var note = column.getElement();
-
-        // Check new attachment hierarchy first
         var tempo = note.findAttachment(TempoChangeAttachment.class);
-
-        // Bridge legacy flag to a temporary TempoChangeAttachment
-        if (tempo == null && note.getTempoChange() != null) {
-            tempo = new TempoChangeAttachment(note, note.getTempoChange());
-        }
 
         if (tempo == null) {
             return;
@@ -113,24 +102,13 @@ public class SystemStacker {
 
     /**
      * Stacks beat change for the given column.
-     * <p>
-     * Checks the new attachment hierarchy first; falls back to the legacy
-     * {@code note.getBeatChange()} property and bridges it to a temporary
-     * {@link BeatChangeAttachment} so both paths write a {@link LayoutResult.DecorationLayout}.
      */
     private void stackBeatChange(
         ElementColumn column,
         LayoutResult.Builder builder) {
 
         var note = column.getElement();
-
-        // Check new attachment hierarchy first
         var beatChange = note.findAttachment(BeatChangeAttachment.class);
-
-        // Bridge legacy flag to a temporary BeatChangeAttachment
-        if (beatChange == null && note.getBeatChange() != null) {
-            beatChange = new BeatChangeAttachment(note, note.getBeatChange());
-        }
 
         if (beatChange == null) {
             return;
@@ -140,25 +118,14 @@ public class SystemStacker {
     }
 
     /**
-     * Stacks annotation for the given column.
-     * <p>
-     * Checks the new attachment hierarchy first; falls back to the legacy
-     * {@code note.getAnnotation()} property and bridges it to a temporary
-     * {@link AnnotationAttachment} so both paths write a {@link LayoutResult.DecorationLayout}.
+     * Stacks the annotation attachment for the given column, if present.
      */
     private void stackAnnotations(
         ElementColumn column,
         LayoutResult.Builder builder) {
 
         var note = column.getElement();
-
-        // Check new attachment hierarchy first
         var annotation = note.findAttachment(AnnotationAttachment.class);
-
-        // Bridge legacy flag to a temporary AnnotationAttachment
-        if (annotation == null && note.getAnnotation() != null) {
-            annotation = new AnnotationAttachment(note, note.getAnnotation());
-        }
 
         if (annotation == null) {
             return;

@@ -31,16 +31,19 @@ import java.util.TreeSet;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.model.BeamSpan;
+import songscribe.ui.layout.Beam;
 import songscribe.model.Song;
-import songscribe.model.DynamicsSpan;
+import songscribe.ui.layout.Beam;
 import songscribe.model.ElementType;
 import songscribe.model.EndingValidationResult;
-import songscribe.model.Span;
 import songscribe.model.Line;
-import songscribe.model.TieSpan;
-import songscribe.model.TupletSpan;
+import songscribe.ui.layout.Crescendo;
+import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.Ending;
+import songscribe.ui.layout.Hairpin;
+import songscribe.ui.layout.Tie;
+import songscribe.ui.layout.Trill;
+import songscribe.ui.layout.Tuplet;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -85,22 +88,18 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
-        var beamings = line.getBeamings();
 
         line.withModification(() -> {
-            if (state.shouldConnectSelection(beamings)) {
-                line.addBeaming(new BeamSpan(state.getSelectionBegin(), state.getSelectionEnd()));
+            var beginBeam = line.findBeamAt(state.getSelectionBegin());
+            var endBeam = line.findBeamAt(state.getSelectionEnd());
+
+            //noinspection ObjectEquality
+            if (beginBeam == null || beginBeam != endBeam) {
+                var anchorElement = line.getElement(state.getSelectionBegin());
+                var endElement = line.getElement(state.getSelectionEnd());
+                line.addBeaming(new Beam(anchorElement, endElement));
             } else {
-                var existing = beamings.findSpan(state.getSelectionBegin());
-
-                if (existing == null) {
-                    throw new IllegalStateException(
-                        "toggleBeaming remove branch entered with no beam span at "
-                            + state.getSelectionBegin()
-                    );
-                }
-
-                line.removeBeaming(existing);
+                line.removeBeaming(beginBeam);
             }
         });
     }
@@ -120,15 +119,16 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
-        var ties = line.getTies();
 
         line.withModification(() -> {
-            var existing = ties.findSpan(state.getSelectionBegin());
+            var existing = line.findTieAt(state.getSelectionBegin());
 
             if (existing != null) {
                 line.removeTie(existing);
             } else {
-                line.addTie(new TieSpan(state.getSelectionBegin(), state.getSelectionEnd()));
+                var anchorElement = line.getElement(state.getSelectionBegin());
+                var endElement = line.getElement(state.getSelectionEnd());
+                line.addTie(new Tie(anchorElement, endElement));
             }
         });
 
@@ -182,8 +182,10 @@ public final class MusicEditOperations {
         }
 
         if (existing == null) {
-            line.withModification(() -> line.addTuplet(new TupletSpan(
-                state.getSelectionBegin(), state.getSelectionEnd(), tupletSize)));
+            line.withModification(() -> line.addTuplet(new Tuplet(
+                line.getElement(state.getSelectionBegin()),
+                line.getElement(state.getSelectionEnd()),
+                tupletSize)));
             return;
         }
 
@@ -196,8 +198,10 @@ public final class MusicEditOperations {
             line.removeTuplet(existing);
 
             if (existing.getGrade() != tupletSize) {
-                line.addTuplet(new TupletSpan(
-                    state.getSelectionBegin(), state.getSelectionEnd(), tupletSize));
+                line.addTuplet(new Tuplet(
+                    line.getElement(state.getSelectionBegin()),
+                    line.getElement(state.getSelectionEnd()),
+                    tupletSize));
             }
         });
     }
@@ -212,14 +216,14 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
+        var anchorElement = line.getElement(state.getSelectionBegin());
+        var endElement = line.getElement(state.getSelectionEnd());
 
         line.withModification(() -> {
-            var span = new DynamicsSpan(state.getSelectionBegin(), state.getSelectionEnd());
-
             if (crescendo) {
-                line.addCrescendo(span);
+                line.addCrescendo(new Crescendo(anchorElement, endElement));
             } else {
-                line.addDiminuendo(span);
+                line.addDiminuendo(new Diminuendo(anchorElement, endElement));
             }
         });
     }
@@ -231,9 +235,9 @@ public final class MusicEditOperations {
             return false;
         }
 
-        var dynamicsSpans = getDynamicsSpansFromSelection(state);
+        var hairpins = getDynamicsFromSelection(state);
 
-        return !dynamicsSpans.crescendos().isEmpty() || !dynamicsSpans.diminuendos().isEmpty();
+        return !hairpins.crescendos().isEmpty() || !hairpins.diminuendos().isEmpty();
     }
 
     public void removeDynamicsFromSelection() {
@@ -244,54 +248,50 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
-        var dynamicsSpans = getDynamicsSpansFromSelection(state);
+        var hairpins = getDynamicsFromSelection(state);
 
         line.withModification(() -> {
-            for (var span : dynamicsSpans.crescendos()) {
-                line.removeCrescendo(span);
+            for (var hairpin : hairpins.crescendos()) {
+                line.removeCrescendo(hairpin);
             }
 
-            for (var span : dynamicsSpans.diminuendos()) {
-                line.removeDiminuendo(span);
+            for (var hairpin : hairpins.diminuendos()) {
+                line.removeDiminuendo(hairpin);
             }
         });
     }
 
-    private record DynamicsSpans(
-        List<DynamicsSpan> crescendos,
-        List<DynamicsSpan> diminuendos
+    private record DynamicsSelection(
+        List<Crescendo> crescendos,
+        List<Diminuendo> diminuendos
     ) {}
 
-    private DynamicsSpans getDynamicsSpansFromSelection(LineSelectionState state) {
+    private DynamicsSelection getDynamicsFromSelection(LineSelectionState state) {
         var line = state.getLine();
-        var crescendos = line.getCrescendos();
-        var diminuendos = line.getDiminuendos();
-        var crescendoSpans = new ArrayList<DynamicsSpan>();
-        var diminuendoSpans = new ArrayList<DynamicsSpan>();
-        var end = state.getSelectionEnd();
-        var i = state.getSelectionBegin();
+        var selectionBegin = state.getSelectionBegin();
+        var selectionEnd = state.getSelectionEnd();
+        var crescendoList = new ArrayList<Crescendo>();
+        var diminuendoList = new ArrayList<Diminuendo>();
 
-        while (i <= end) {
-            var cres = crescendos.findSpan(i);
+        for (var re : line.getRangeElements()) {
+            if (re instanceof Crescendo cres) {
+                var anchor = cres.getAnchorElementIndex();
+                var end = cres.getEndElementIndex();
 
-            if (cres != null) {
-                crescendoSpans.add(cres);
-                i = cres.end + 1;
-                continue;
+                if (anchor <= selectionEnd && end >= selectionBegin) {
+                    crescendoList.add(cres);
+                }
+            } else if (re instanceof Diminuendo dim) {
+                var anchor = dim.getAnchorElementIndex();
+                var end = dim.getEndElementIndex();
+
+                if (anchor <= selectionEnd && end >= selectionBegin) {
+                    diminuendoList.add(dim);
+                }
             }
-
-            var dim = diminuendos.findSpan(i);
-
-            if (dim != null) {
-                diminuendoSpans.add(dim);
-                i = dim.end + 1;
-                continue;
-            }
-
-            i++;
         }
 
-        return new DynamicsSpans(crescendoSpans, diminuendoSpans);
+        return new DynamicsSelection(crescendoList, diminuendoList);
     }
 
     // ========== First-Second Ending Operations ==========
@@ -607,18 +607,29 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
+        var begin = state.getSelectionBegin();
+        var end = state.getSelectionEnd();
 
         line.withModification(() -> {
-            for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
-                var index = i;
-                line.modifyElement(
-                    index,
-                    ElementField.TRILL,
-                    () -> {
-                        var note = line.getElement(index);
-                        note.setTrill(!note.isTrill());
-                    }
-                );
+            // Collect all Trill range elements that overlap the selection
+            var overlapping = line.findRangeElements(Trill.class).stream()
+                .filter(t -> {
+                    var a = t.getAnchorElementIndex();
+                    var e = t.getEndElementIndex();
+                    return a <= end && e >= begin;
+                })
+                .toList();
+
+            if (overlapping.isEmpty()) {
+                // No trills in selection — add a single Trill spanning the selection
+                var anchorNote = line.getElement(begin);
+                var endNote = line.getElement(end);
+                line.addRangeElement(new Trill(anchorNote, endNote));
+            } else {
+                // Trills exist in the selection — remove them all
+                for (var trill : overlapping) {
+                    line.removeRangeElement(trill);
+                }
             }
         });
     }
@@ -647,7 +658,7 @@ public final class MusicEditOperations {
 
         line.withModification(() -> {
             // Track which beam groups have already been processed to avoid double-flipping.
-            var processedBeamSpans = new HashSet<Span>();
+            var processedBeams = new HashSet<Beam>();
 
             for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
                 var note = line.getElement(i);
@@ -656,15 +667,15 @@ public final class MusicEditOperations {
                     continue;
                 }
 
-                var beamSpan = line.getBeamings().findSpan(i);
+                var beam = line.findBeamAt(i);
 
-                if (beamSpan != null) {
+                if (beam != null) {
                     // Flip the whole beam group together, once per group.
-                    if (processedBeamSpans.add(beamSpan)) {
-                        var firstElement = line.getElement(beamSpan.getStart());
+                    if (processedBeams.add(beam)) {
+                        var firstElement = line.getElement(beam.getAnchorElementIndex());
                         var newUpper = !firstElement.isUpper();
 
-                        for (var j = beamSpan.getStart(); j <= beamSpan.getEnd(); j++) {
+                        for (var j = beam.getAnchorElementIndex(); j <= beam.getEndElementIndex(); j++) {
                             var beamIndex = j;
                             line.modifyElement(beamIndex, stemFields, () -> {
                                 var beamElement = line.getElement(beamIndex);
@@ -684,19 +695,22 @@ public final class MusicEditOperations {
                 }
             }
 
-            // Flip tie partners that fall outside the selection. SpanSet merges
-            // adjacent ties, so the span may cover more than two notes; all notes
-            // in the span that weren't already covered by the selection must flip.
+            // Flip tie partners that fall outside the selection. Ties may span more than
+            // two notes via the overlap-merge; all notes in the tie that weren't already
+            // covered by the selection must flip.
             var tiePartnersToFlip = new TreeSet<Integer>();
 
             for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
-                var tieSpan = line.getTies().findSpan(i);
+                var tieSpan = line.findTieAt(i);
 
                 if (tieSpan == null) {
                     continue;
                 }
 
-                for (var j = tieSpan.start; j <= tieSpan.end; j++) {
+                var tieStart = tieSpan.getAnchorElementIndex();
+                var tieEnd = tieSpan.getEndElementIndex();
+
+                for (var j = tieStart; j <= tieEnd; j++) {
                     if ((j < state.getSelectionBegin()) || (j > state.getSelectionEnd())) {
                         tiePartnersToFlip.add(j);
                     }

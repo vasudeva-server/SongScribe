@@ -462,10 +462,6 @@ public final class ScoreViewController {
                 clipboardManager.addElement(line.getElement(i).clone());
             }
 
-            clipboardManager.setSpanSetsCopyBuffer(line.copySpans(
-                state.getSelectionBegin(),
-                state.getSelectionEnd()
-            ));
         }
     }
 

@@ -25,11 +25,12 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.DynamicsSpan;
-import songscribe.model.SpanSet;
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.layout.Crescendo;
+import songscribe.ui.layout.Diminuendo;
+import songscribe.ui.layout.Hairpin;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.GraphicsState;
@@ -276,13 +277,10 @@ public class HorizontalAdjustment extends Adjustment {
                 (draggingRect.horizontalAdjustmentType ==
                     HorizontalAdjustmentType.DIMINUENDO_START)
         ) {
-            var span = getDynamicSpanSet(
-                line,
-                draggingRect.horizontalAdjustmentType
-            ).findSpan(draggingRect.xIndex);
+            var hairpin = findHairpinByAnchor(line, draggingRect);
 
-            if (span != null) {
-                span.setX1ShiftSs((span.getX1ShiftSs() + endPoint.x) - diffX);
+            if (hairpin != null) {
+                hairpin.setX1ShiftSs((hairpin.getX1ShiftSs() + endPoint.x) - diffX);
             }
         } else if (
             (draggingRect.horizontalAdjustmentType ==
@@ -290,13 +288,10 @@ public class HorizontalAdjustment extends Adjustment {
                 (draggingRect.horizontalAdjustmentType ==
                     HorizontalAdjustmentType.DIMINUENDO_END)
         ) {
-            var span = getDynamicSpanSet(
-                line,
-                draggingRect.horizontalAdjustmentType
-            ).findSpan(draggingRect.xIndex);
+            var hairpin = findHairpinByEnd(line, draggingRect);
 
-            if (span != null) {
-                span.setX2ShiftSs((span.getX2ShiftSs() + endPoint.x) - diffX);
+            if (hairpin != null) {
+                hairpin.setX2ShiftSs((hairpin.getX2ShiftSs() + endPoint.x) - diffX);
             }
         }
 
@@ -399,47 +394,31 @@ public class HorizontalAdjustment extends Adjustment {
                 }
 
                 // Add CRESCENDO
-                for (
-                    var iter = line.getCrescendos().listIterator();
-                    iter.hasNext();
-                ) {
-                    var span = iter.next();
-                    adjustRects.add(
-                        new AdjustRect(
-                            lineIndex,
-                            span.getStart(),
-                            HorizontalAdjustmentType.CRESCENDO_START
-                        )
-                    );
-                    adjustRects.add(
-                        new AdjustRect(
-                            lineIndex,
-                            span.getEnd(),
-                            HorizontalAdjustmentType.CRESCENDO_END
-                        )
-                    );
+                for (var crescendo : line.getCrescendos()) {
+                    adjustRects.add(new AdjustRect(
+                        lineIndex,
+                        crescendo.getAnchorElementIndex(),
+                        HorizontalAdjustmentType.CRESCENDO_START
+                    ));
+                    adjustRects.add(new AdjustRect(
+                        lineIndex,
+                        crescendo.getEndElementIndex(),
+                        HorizontalAdjustmentType.CRESCENDO_END
+                    ));
                 }
 
                 // Add DIMINUENDO
-                for (
-                    var iter = line.getDiminuendos().listIterator();
-                    iter.hasNext();
-                ) {
-                    var span = iter.next();
-                    adjustRects.add(
-                        new AdjustRect(
-                            lineIndex,
-                            span.getStart(),
-                            HorizontalAdjustmentType.DIMINUENDO_START
-                        )
-                    );
-                    adjustRects.add(
-                        new AdjustRect(
-                            lineIndex,
-                            span.getEnd(),
-                            HorizontalAdjustmentType.DIMINUENDO_END
-                        )
-                    );
+                for (var diminuendo : line.getDiminuendos()) {
+                    adjustRects.add(new AdjustRect(
+                        lineIndex,
+                        diminuendo.getAnchorElementIndex(),
+                        HorizontalAdjustmentType.DIMINUENDO_START
+                    ));
+                    adjustRects.add(new AdjustRect(
+                        lineIndex,
+                        diminuendo.getEndElementIndex(),
+                        HorizontalAdjustmentType.DIMINUENDO_END
+                    ));
                 }
             }
 
@@ -509,30 +488,24 @@ public class HorizontalAdjustment extends Adjustment {
                 }
             }
             case CRESCENDO_START, DIMINUENDO_START -> {
-                var x1Span = getDynamicSpanSet(
-                    line,
-                    rect.horizontalAdjustmentType
-                ).findSpan(rect.xIndex);
+                var hairpin = findHairpinByAnchor(line, rect);
 
-                if (x1Span != null) {
+                if (hairpin != null) {
                     rect.rect.x = (int) ((line.getElement(rect.xIndex).getXOffsetPx() - 12) +
-                        x1Span.getX1ShiftSs());
+                        hairpin.getX1ShiftSs());
                     rect.rect.y = (int) ((scoreView.getNoteYPosPx(6, rect.line) - 4) +
-                        x1Span.getYShiftSs());
+                        hairpin.getYShiftSs());
                 }
             }
             case CRESCENDO_END, DIMINUENDO_END -> {
-                var x2Span = getDynamicSpanSet(
-                    line,
-                    rect.horizontalAdjustmentType
-                ).findSpan(rect.xIndex);
+                var hairpin = findHairpinByEnd(line, rect);
 
-                if (x2Span != null) {
+                if (hairpin != null) {
                     rect.rect.x = (int) (line.getElement(rect.xIndex).getXOffsetPx() +
                         16 +
-                        x2Span.getX2ShiftSs());
+                        hairpin.getX2ShiftSs());
                     rect.rect.y = (int) ((scoreView.getNoteYPosPx(6, rect.line) - 4) +
-                        x2Span.getYShiftSs());
+                        hairpin.getYShiftSs());
                 }
             }
             default -> rect.rect.x = note.getXOffsetPx() + 1;
@@ -548,17 +521,32 @@ public class HorizontalAdjustment extends Adjustment {
         }
     }
 
-    private static SpanSet<DynamicsSpan> getDynamicSpanSet(
-        Line line,
-        HorizontalAdjustmentType horizontalAdjustmentType
-    ) {
-        return switch (horizontalAdjustmentType) {
-            case CRESCENDO_START, CRESCENDO_END -> line.getCrescendos();
-            case DIMINUENDO_START, DIMINUENDO_END -> line.getDiminuendos();
-            default -> throw new IllegalArgumentException(
-                String.valueOf(horizontalAdjustmentType)
-            );
-        };
+    @Nullable
+    private static Hairpin findHairpinByAnchor(Line line, AdjustRect rect) {
+        var isCrescendo = rect.horizontalAdjustmentType == HorizontalAdjustmentType.CRESCENDO_START;
+        var type = isCrescendo ? Crescendo.class : Diminuendo.class;
+
+        for (var hairpin : line.findRangeElements(type)) {
+            if (hairpin.getAnchorElementIndex() == rect.xIndex) {
+                return hairpin;
+            }
+        }
+
+        return null;
+    }
+
+    @Nullable
+    private static Hairpin findHairpinByEnd(Line line, AdjustRect rect) {
+        var isCrescendo = rect.horizontalAdjustmentType == HorizontalAdjustmentType.CRESCENDO_END;
+        var type = isCrescendo ? Crescendo.class : Diminuendo.class;
+
+        for (var hairpin : line.findRangeElements(type)) {
+            if (hairpin.getEndElementIndex() == rect.xIndex) {
+                return hairpin;
+            }
+        }
+
+        return null;
     }
 
     private enum HorizontalAdjustmentType {

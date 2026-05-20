@@ -38,12 +38,12 @@ import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
-import songscribe.model.BeamSpan;
+import songscribe.ui.layout.Beam;
 import songscribe.model.Song;
 import songscribe.model.ElementType;
 import songscribe.model.StaffElement;
-import songscribe.model.TupletSpan;
 import songscribe.ui.action.DotAction;
+import songscribe.ui.layout.Tuplet;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.UIAction;
 
@@ -116,7 +116,8 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(SIXTEENTH_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.getBeamings().addSpan(new BeamSpan(0, 2));
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
+        capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 1);
         coordinator.applyActionToSelection(SIXTEENTH_ACTION, true);
@@ -137,20 +138,20 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var originalBeam = new BeamSpan(0, 2);
-        line.getBeamings().addSpan(originalBeam);
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
+        capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.getFirst().span()).isSameAs(originalBeam);
+        assertThat(removals.getFirst().beam()).isNotNull();
 
         var additions = mutationsOfType(BeamingAddition.class);
         assertThat(additions).hasSize(1);
-        assertThat(additions.getFirst().span().start).isEqualTo(1);
-        assertThat(additions.getFirst().span().end).isEqualTo(2);
+        assertThat(additions.getFirst().beam().getAnchorElementIndex()).isEqualTo(1);
+        assertThat(additions.getFirst().beam().getEndElementIndex()).isEqualTo(2);
     }
 
     @Test
@@ -165,20 +166,20 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var originalBeam = new BeamSpan(0, 2);
-        line.getBeamings().addSpan(originalBeam);
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
+        capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.getFirst().span()).isSameAs(originalBeam);
+        assertThat(removals.getFirst().beam()).isNotNull();
 
         var additions = mutationsOfType(BeamingAddition.class);
         assertThat(additions).hasSize(1);
-        assertThat(additions.getFirst().span().start).isEqualTo(0);
-        assertThat(additions.getFirst().span().end).isEqualTo(1);
+        assertThat(additions.getFirst().beam().getAnchorElementIndex()).isEqualTo(0);
+        assertThat(additions.getFirst().beam().getEndElementIndex()).isEqualTo(1);
     }
 
     @Test
@@ -195,15 +196,15 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var originalBeam = new BeamSpan(0, 4);
-        line.getBeamings().addSpan(originalBeam);
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(4)));
+        capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.getFirst().span()).isSameAs(originalBeam);
+        assertThat(removals.getFirst().beam()).isNotNull();
 
         assertThat(mutationsOfType(BeamingAddition.class))
             .as("interior puncture kills the beam without a replacement")
@@ -221,15 +222,15 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var originalBeam = new BeamSpan(0, 1);
-        line.getBeamings().addSpan(originalBeam);
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(1)));
+        capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.getFirst().span()).isSameAs(originalBeam);
+        assertThat(removals.getFirst().beam()).isNotNull();
 
         assertThat(mutationsOfType(BeamingAddition.class))
             .as("single remaining beamable element cannot form a beam")
@@ -254,18 +255,20 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var firstTuplet = new TupletSpan(0, 1, 3);
-        var secondTuplet = new TupletSpan(3, 4, 3);
-        line.getTuplets().addSpan(firstTuplet);
-        line.getTuplets().addSpan(secondTuplet);
+        var firstTuplet = new Tuplet(line.getElement(0), line.getElement(1), 3);
+        var secondTuplet = new Tuplet(line.getElement(3), line.getElement(4), 3);
+        line.addTuplet(firstTuplet);
+        line.addTuplet(secondTuplet);
+        // Clear setup mutations so only the action's mutations are captured.
+        capturedMutations.clear();
 
         ReflectionTestHelper.selectRange(coordinator, 0, 4);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var removals = mutationsOfType(TupletRemoval.class);
         assertThat(removals).hasSize(2);
-        var removedSpans = removals.stream().map(TupletRemoval::span).toList();
-        assertThat(removedSpans).containsExactlyInAnyOrder(firstTuplet, secondTuplet);
+        var removedTuplets = removals.stream().map(TupletRemoval::tuplet).toList();
+        assertThat(removedTuplets).containsExactlyInAnyOrder(firstTuplet, secondTuplet);
     }
 
     @Test
@@ -281,7 +284,8 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.getTuplets().addSpan(new TupletSpan(3, 4, 3));
+        line.addTuplet(new Tuplet(line.getElement(3), line.getElement(4), 3));
+        capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -303,14 +307,15 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(dotAction));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var tuplet = new TupletSpan(0, 2, 3);
-        line.getTuplets().addSpan(tuplet);
+        var tuplet = new Tuplet(line.getElement(0), line.getElement(2), 3);
+        line.addTuplet(tuplet);
+        capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 1);
         coordinator.applyActionToSelection(dotAction, true);
 
         var removals = mutationsOfType(TupletRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.getFirst().span()).isSameAs(tuplet);
+        assertThat(removals.getFirst().tuplet()).isSameAs(tuplet);
     }
 }

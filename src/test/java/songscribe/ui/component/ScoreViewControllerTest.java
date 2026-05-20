@@ -40,14 +40,14 @@ import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.model.BeamSpan;
 import songscribe.model.Song;
 import songscribe.model.ElementType;
 import songscribe.model.Line;
 import songscribe.model.Lyric;
 import songscribe.model.StaffElement;
-import songscribe.model.TieSpan;
-import songscribe.model.TupletSpan;
+import songscribe.ui.layout.Beam;
+import songscribe.ui.layout.Tie;
+import songscribe.ui.layout.Tuplet;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.LineComponent;
@@ -300,6 +300,8 @@ class ScoreViewControllerTest extends UnitTest {
         @BeforeEach
         void setUp() {
             line = detachedLine();
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
             lineComponentMock = mock(LineComponent.class);
 
             var linePanelMock = mock(LinePanel.class);
@@ -331,37 +333,41 @@ class ScoreViewControllerTest extends UnitTest {
 
         @Test
         void testBeamingAdditionInvalidatesLayout() {
-            fireNotification(new BeamingAddition(line, new BeamSpan(0, 2)));
+            fireNotification(new BeamingAddition(line, new Beam(line.getElement(0), line.getElement(1))));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testBeamingRemovalInvalidatesLayout() {
-            fireNotification(new BeamingRemoval(line, new BeamSpan(0, 2)));
+            fireNotification(new BeamingRemoval(line, new Beam(line.getElement(0), line.getElement(1))));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testTieAdditionInvalidatesLayout() {
-            fireNotification(new TieAddition(line, new TieSpan(0, 1)));
+            var tie = new Tie(line.getElement(0), line.getElement(1));
+            fireNotification(new TieAddition(line, tie));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testTieRemovalInvalidatesLayout() {
-            fireNotification(new TieRemoval(line, new TieSpan(0, 1)));
+            var tie = new Tie(line.getElement(0), line.getElement(1));
+            fireNotification(new TieRemoval(line, tie));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testTupletAdditionInvalidatesLayout() {
-            fireNotification(new TupletAddition(line, new TupletSpan(0, 2, 3)));
+            var tuplet = new Tuplet(line.getElement(0), line.getElement(1), 3);
+            fireNotification(new TupletAddition(line, tuplet));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testTupletRemovalInvalidatesLayout() {
-            fireNotification(new TupletRemoval(line, new TupletSpan(0, 2, 3)));
+            var tuplet = new Tuplet(line.getElement(0), line.getElement(1), 3);
+            fireNotification(new TupletRemoval(line, tuplet));
             verify(lineComponentMock).invalidateLayout();
         }
     }

@@ -32,6 +32,8 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
+import songscribe.ui.layout.FermataAttachment;
+import songscribe.ui.layout.Trill;
 
 /**
  * Tests that decorations on an existing element (fermata, trill, articulations, dynamic
@@ -97,26 +99,32 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
         void testFermataPreserved() {
             song.withoutMutationTracking(() -> {
                 var note = ElementType.CROTCHET.newInstance();
-                note.setFermata(true);
+                note.addAttachment(new FermataAttachment(note));
                 line.addElement(note);
             });
 
             replaceAt(0, ElementType.QUAVER.newInstance());
 
-            assertThat(line.getElement(0).isFermata()).as("fermata preserved").isTrue();
+            assertThat(line.getElement(0).findAttachment(FermataAttachment.class))
+                .as("fermata preserved").isNotNull();
         }
 
         @Test
         void testTrillPreserved() {
             song.withoutMutationTracking(() -> {
                 var note = ElementType.CROTCHET.newInstance();
-                note.setTrill(true);
                 line.addElement(note);
+                line.addRangeElement(new Trill(note));
             });
 
             replaceAt(0, ElementType.CROTCHET.newInstance());
 
-            assertThat(line.getElement(0).isTrill()).as("trill preserved").isTrue();
+            // Trill range element should remain attached to the replacement note at index 0
+            var replacedNote = line.getElement(0);
+            var trills = line.findRangeElements(Trill.class);
+            assertThat(trills).as("trill range element preserved").hasSize(1);
+            assertThat(trills.getFirst().getAnchorElement())
+                .as("trill anchor points to replaced element").isEqualTo(replacedNote);
         }
 
         @Test
@@ -144,8 +152,9 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
             var element = line.getElement(0);
             assertThat(element.findAttachment(DynamicAttachment.class))
                 .as("no spurious dynamic attachment").isNull();
-            assertThat(element.isFermata()).as("no spurious fermata").isFalse();
-            assertThat(element.isTrill()).as("no spurious trill").isFalse();
+            assertThat(element.findAttachment(FermataAttachment.class))
+                .as("no spurious fermata").isNull();
+            assertThat(line.findRangeElements(Trill.class)).as("no spurious trill").isEmpty();
             assertThat(element.getArticulations()).as("no spurious articulations").isEmpty();
         }
     }

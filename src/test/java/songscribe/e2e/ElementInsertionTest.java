@@ -469,12 +469,12 @@ class ElementInsertionTest extends E2ETest {
             var note2Beamed = isBeamed(0, baseIndex + 2);
             var note3Beamed = isBeamed(0, baseIndex + 3);
             var beamSpanStart = GuiActionRunner.execute(() -> {
-                var span = song().getLine(0).getBeamings().findSpan(baseIndex + 2);
-                return span != null ? span.getStart() : -1;
+                var beam = song().getLine(0).findBeamAt(baseIndex + 2);
+                return beam != null ? beam.getAnchorElementIndex() : -1;
             });
             var beamSpanEnd = GuiActionRunner.execute(() -> {
-                var span = song().getLine(0).getBeamings().findSpan(baseIndex + 2);
-                return span != null ? span.getEnd() : -1;
+                var beam = song().getLine(0).findBeamAt(baseIndex + 2);
+                return beam != null ? beam.getEndElementIndex() : -1;
             });
 
             assertAll(

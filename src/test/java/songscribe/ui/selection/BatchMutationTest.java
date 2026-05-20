@@ -33,9 +33,9 @@ import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.BeamSpan;
-import songscribe.model.TieSpan;
-import songscribe.model.TupletSpan;
+import songscribe.ui.layout.Beam;
+import songscribe.ui.layout.Tie;
+import songscribe.ui.layout.Tuplet;
 import songscribe.model.Song;
 import songscribe.model.ElementType;
 import songscribe.model.Line;
@@ -44,6 +44,7 @@ import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.layout.FermataAttachment;
 
 class BatchMutationTest extends UnitTest {
 
@@ -126,9 +127,9 @@ class BatchMutationTest extends UnitTest {
         var line = getLine(coordinator);
 
         for (var i = 0; i <= 2; i++) {
-            assertThat(line.getElement(i).isFermata())
+            assertThat(line.getElement(i).findAttachment(FermataAttachment.class))
                 .as("note %d should have fermata", i)
-                .isTrue();
+                .isNotNull();
         }
     }
 
@@ -143,12 +144,12 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addSpan(new BeamSpan(0, 2));
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        assertThat(line.getBeamings().isEmpty()).isTrue();
+        assertThat(line.findRangeElements(Beam.class).isEmpty()).isTrue();
     }
 
     @Test
@@ -159,13 +160,13 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addSpan(new BeamSpan(0, 1));
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(1)));
 
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        assertThat(line.getBeamings().findSpan(0)).isNull();
-        assertThat(line.getBeamings().findSpan(1)).isNull();
+        assertThat(line.findBeamAt(0)).isNull();
+        assertThat(line.findBeamAt(1)).isNull();
     }
 
     @Test
@@ -178,15 +179,15 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addSpan(new BeamSpan(0, 3));
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(3)));
 
         ReflectionTestHelper.selectNote(coordinator, 3);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var beam = Objects.requireNonNull(line.getBeamings().findSpan(0));
-        assertThat(beam.start).isEqualTo(0);
-        assertThat(beam.end).isEqualTo(2);
-        assertThat(line.getBeamings().findSpan(3)).isNull();
+        var beam = Objects.requireNonNull(line.findBeamAt(0));
+        assertThat(beam.getAnchorElementIndex()).isEqualTo(0);
+        assertThat(beam.getEndElementIndex()).isEqualTo(2);
+        assertThat(line.findBeamAt(3)).isNull();
     }
 
     @Test
@@ -199,15 +200,15 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addSpan(new BeamSpan(0, 3));
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(3)));
 
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var beam = Objects.requireNonNull(line.getBeamings().findSpan(1));
-        assertThat(beam.start).isEqualTo(1);
-        assertThat(beam.end).isEqualTo(3);
-        assertThat(line.getBeamings().findSpan(0)).isNull();
+        var beam = Objects.requireNonNull(line.findBeamAt(1));
+        assertThat(beam.getAnchorElementIndex()).isEqualTo(1);
+        assertThat(beam.getEndElementIndex()).isEqualTo(3);
+        assertThat(line.findBeamAt(0)).isNull();
     }
 
     @Test
@@ -221,13 +222,13 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addSpan(new BeamSpan(0, 4));
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(4)));
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
-        assertThat(line.getBeamings().isEmpty()).isTrue();
+        assertThat(line.findRangeElements(Beam.class).isEmpty()).isTrue();
     }
 
     // -- Song mutation bracket is opened --
@@ -249,7 +250,7 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testDurationChangePreservesAttributes() {
         var note = ElementType.QUAVER.newInstance();
-        note.setFermata(true);
+        note.addAttachment(new FermataAttachment(note));
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         var coordinator = createCoordinator(List.of(note), List.of(QUARTER_ACTION));
@@ -259,7 +260,7 @@ class BatchMutationTest extends UnitTest {
 
         var replaced = getLine(coordinator).getElement(0);
         assertThat(replaced.getType()).isEqualTo(ElementType.CROTCHET);
-        assertThat(replaced.isFermata()).isTrue();
+        assertThat(replaced.findAttachment(FermataAttachment.class)).isNotNull();
         assertThat(replaced.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
     }
 
@@ -345,7 +346,7 @@ class BatchMutationTest extends UnitTest {
         // No selection set -- should not throw
         coordinator.applyActionToSelection(FERMATA_ACTION, true);
 
-        assertThat(getLine(coordinator).getElement(0).isFermata()).isFalse();
+        assertThat(getLine(coordinator).getElement(0).findAttachment(FermataAttachment.class)).isNull();
     }
 
     @Test
@@ -357,7 +358,7 @@ class BatchMutationTest extends UnitTest {
         );
 
         for (var note : notes) {
-            note.setFermata(true);
+            note.addAttachment(new FermataAttachment(note));
         }
 
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
@@ -368,9 +369,9 @@ class BatchMutationTest extends UnitTest {
         var line = getLine(coordinator);
 
         for (var i = 0; i <= 2; i++) {
-            assertThat(line.getElement(i).isFermata())
+            assertThat(line.getElement(i).findAttachment(FermataAttachment.class))
                 .as("note %d should not have fermata", i)
-                .isFalse();
+                .isNull();
         }
     }
 
@@ -409,15 +410,15 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        var tie = new TieSpan(0, 1);
-        line.getTies().addSpan(tie);
+        var tie = new Tie(line.getElement(0), line.getElement(1));
+        line.addRangeElement(tie);
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var preserved = Objects.requireNonNull(line.getTies().findSpan(0));
-        assertThat(preserved.start).isEqualTo(0);
-        assertThat(preserved.end).isEqualTo(1);
+        var preserved = Objects.requireNonNull(line.findTieAt(0));
+        assertThat(preserved.getAnchorElementIndex()).isEqualTo(0);
+        assertThat(preserved.getEndElementIndex()).isEqualTo(1);
     }
 
     // -- Tuplet span validation --
@@ -435,12 +436,12 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getTuplets().addSpan(new TupletSpan(0, 2, 3));
+        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), 3));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        assertThat(line.getTuplets().isEmpty()).isTrue();
+        assertThat(line.findRangeElements(Tuplet.class)).isEmpty();
     }
 
     @Test
@@ -454,12 +455,12 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getTuplets().addSpan(new TupletSpan(0, 4, 3));
+        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(4), 3));
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        assertThat(line.getTuplets().isEmpty()).isTrue();
+        assertThat(line.findRangeElements(Tuplet.class)).isEmpty();
     }
 
     @Test
@@ -473,13 +474,13 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getTuplets().addSpan(new TupletSpan(0, 1, 3));
+        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(1), 3));
 
         ReflectionTestHelper.selectRange(coordinator, 3, 4);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var preserved = Objects.requireNonNull(line.getTuplets().findSpan(0));
-        assertThat(preserved.start).isEqualTo(0);
-        assertThat(preserved.end).isEqualTo(1);
+        var preserved = Objects.requireNonNull(line.findTupletAt(0));
+        assertThat(preserved.getAnchorElementIndex()).isEqualTo(0);
+        assertThat(preserved.getEndElementIndex()).isEqualTo(1);
     }
 }

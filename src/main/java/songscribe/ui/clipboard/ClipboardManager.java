@@ -22,25 +22,16 @@ package songscribe.ui.clipboard;
 
 import java.util.ArrayList;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.model.ElementType;
-import songscribe.model.SpanSet;
 import songscribe.model.StaffElement;
 
 /**
  * Manages clipboard state for copy/paste operations.
- * <p>
- * ClipboardManager stores copied elements and their associated span sets
- * (ties, beaming) for paste operations.
  */
 public final class ClipboardManager {
 
     // Copied elements waiting to be pasted
     private final ArrayList<StaffElement> pasteboard = new ArrayList<>();
-
-    // Associated span sets (ties, etc.) for the copied elements
-    private SpanSet<?> @Nullable [] spanSetsCopyBuffer = null;
 
     // -------------------------------------------------------------------------
     // Pasteboard accessors
@@ -89,19 +80,6 @@ public final class ClipboardManager {
     }
 
     // -------------------------------------------------------------------------
-    // Span buffer accessors
-    // -------------------------------------------------------------------------
-
-    /**
-     * Returns the span sets copy buffer.
-     *
-     * @return The span sets array, or null if none
-     */
-    public SpanSet<?> @Nullable [] getSpanSetsCopyBuffer() {
-        return spanSetsCopyBuffer;
-    }
-
-    // -------------------------------------------------------------------------
     // Pasteboard mutators
     // -------------------------------------------------------------------------
 
@@ -110,7 +88,6 @@ public final class ClipboardManager {
      */
     public void clear() {
         pasteboard.clear();
-        spanSetsCopyBuffer = null;
     }
 
     /**
@@ -126,14 +103,5 @@ public final class ClipboardManager {
         }
 
         pasteboard.add(element);
-    }
-
-    /**
-     * Sets the span sets copy buffer.
-     *
-     * @param spanSets The span sets array
-     */
-    public void setSpanSetsCopyBuffer(SpanSet<?>[] spanSets) {
-        spanSetsCopyBuffer = spanSets;
     }
 }

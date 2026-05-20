@@ -59,13 +59,14 @@ import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.model.Song;
-import songscribe.model.DynamicsSpan;
+import songscribe.ui.layout.Crescendo;
+import songscribe.ui.layout.Diminuendo;
 
 import songscribe.model.EndingValidationResult;
 import songscribe.model.Line;
 import songscribe.ui.MusicEditOperations;
 import songscribe.model.StaffElement;
-import songscribe.model.TupletSpan;
+import songscribe.ui.layout.Tuplet;
 import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.TupletAction;
 import songscribe.ui.clipboard.ClipboardManager;
@@ -223,7 +224,7 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
         var addition = (TupletAddition) notification.getMutations().getFirst();
-        assertThat(addition.span().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
+        assertThat(addition.tuplet().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
     }
 
     @Test
@@ -232,7 +233,8 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         // quintuplet — emits [TupletRemoval, TupletAddition] inside one modification bracket
         // so the grade change replays atomically under undo.
         var env = setupTest(crotchet(), crotchet(), crotchet());
-        env.line().getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
+        song.withoutMutationTracking(() -> env.line().addTuplet(new Tuplet(
+            env.line().getElement(0), env.line().getElement(2), TupletAction.Tuplet.TRIPLET.getSize())));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
 
         env.scoreMessageCoordinator().handleToggleTuplet(tupletCommand(TupletAction.Tuplet.QUINTUPLET));
@@ -242,7 +244,7 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         assertThat(mutations).hasSize(2);
         assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
         assertThat(mutations.get(1)).isInstanceOf(TupletAddition.class);
-        assertThat(((TupletAddition) mutations.get(1)).span().getGrade()).isEqualTo(TupletAction.Tuplet.QUINTUPLET.getSize());
+        assertThat(((TupletAddition) mutations.get(1)).tuplet().getGrade()).isEqualTo(TupletAction.Tuplet.QUINTUPLET.getSize());
     }
 
     /**
@@ -283,8 +285,11 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         // One crescendo, one diminuendo — the handler must coalesce both removals
         // into a single notification.
         var env = setupTest(crotchet(), crotchet(), crotchet(), crotchet());
-        env.line().getCrescendos().addSpan(new DynamicsSpan(0, 1));
-        env.line().getDiminuendos().addSpan(new DynamicsSpan(2, 3));
+        var line = env.line();
+        song.withoutMutationTracking(() -> {
+            line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(1)));
+            line.addRangeElement(new Diminuendo(line.getElement(2), line.getElement(3)));
+        });
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 3);
 
         env.scoreMessageCoordinator().handleRemoveDynamics(new RemoveDynamicsCommand());
@@ -298,19 +303,15 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @Test
-    void testHandleToggleTrillEmitsOneNotificationWithModificationsPerNote() {
+    void testHandleToggleTrillEmitsOneNotificationWithSingleRangeElementAddition() {
         var env = setupTest(crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
 
         env.scoreMessageCoordinator().handleToggleTrill(new ToggleTrillCommand());
 
         var notification = captureSingleDidChange();
-        assertThat(notification.getMutations()).hasSize(3);
-
-        for (var mutation : notification.getMutations()) {
-            assertThat(mutation).isInstanceOf(ElementModification.class);
-            assertThat(((ElementModification) mutation).fields()).contains(ElementField.TRILL);
-        }
+        assertThat(notification.getMutations()).hasSize(1);
+        assertThat(notification.getMutations().getFirst()).isInstanceOf(RangeElementAddition.class);
     }
 
     // -----------------------------------------------------------------------

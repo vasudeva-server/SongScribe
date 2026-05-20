@@ -301,7 +301,7 @@ public class LayoutEngine {
         Line line,
         List<ElementColumn> columns,
         LayoutResult.Builder builder) {
-        var beamings = line.getBeamings();
+        var beams = line.findRangeElements(Beam.class);
 
         // Build an element→column map for fast X lookups inside the loop.
         var elementToColumn = new HashMap<StaffElement, ElementColumn>(columns.size() * 2);
@@ -310,10 +310,9 @@ public class LayoutEngine {
             elementToColumn.put(column.getElement(), column);
         }
 
-        var it = beamings.listIterator();
-
-        while (it.hasNext()) {
-            var span = it.next();
+        for (var beam : beams) {
+            var beamStart = beam.getAnchorElementIndex();
+            var beamEnd = beam.getEndElementIndex();
 
             // Determine stem direction from the pitch contour of the group.
             // Staff position 0 = middle line; positive = below midpoint (Y-down) → stems up.
@@ -321,7 +320,7 @@ public class LayoutEngine {
             var minStaffPos = Integer.MAX_VALUE;
             var maxStaffPos = Integer.MIN_VALUE;
 
-            for (var i = span.getStart(); i <= span.getEnd(); i++) {
+            for (var i = beamStart; i <= beamEnd; i++) {
                 var pos = line.getElement(i).getStaffPosition();
 
                 if (pos < minStaffPos) {
@@ -336,7 +335,7 @@ public class LayoutEngine {
             // Scan for any manual override in the group; first one wins.
             Boolean manualDirection = null;
 
-            for (var i = span.getStart(); i <= span.getEnd(); i++) {
+            for (var i = beamStart; i <= beamEnd; i++) {
                 var n = line.getElement(i);
 
                 if (!n.isStemDirectionAuto()) {
@@ -351,7 +350,7 @@ public class LayoutEngine {
 
             // Normalize auto-direction notes to the group stem direction.
             // Manual overrides are left untouched.
-            for (var i = span.getStart(); i <= span.getEnd(); i++) {
+            for (var i = beamStart; i <= beamEnd; i++) {
                 var n = line.getElement(i);
 
                 if (n.isStemDirectionAuto()) {
@@ -361,8 +360,8 @@ public class LayoutEngine {
 
             // Compute beam slope (abc2svg algorithm with hyperbolic dampening).
             // Staff positions are in half-staff-spaces; ×0.5 converts to staff-space units.
-            var firstElement = line.getElement(span.getStart());
-            var lastElement = line.getElement(span.getEnd());
+            var firstElement = line.getElement(beamStart);
+            var lastElement = line.getElement(beamEnd);
             var firstColumn = elementToColumn.get(firstElement);
             var lastColumn = elementToColumn.get(lastElement);
 
@@ -390,10 +389,10 @@ public class LayoutEngine {
             if (firstColumn != null) {
                 var firstXSs = firstColumn.getXSs();
 
-                var anchorIdx = span.getStart();
+                var anchorIdx = beamStart;
                 var anchorStaffPos = firstElement.getStaffPosition();
 
-                for (var i = span.getStart() + 1; i <= span.getEnd(); i++) {
+                for (var i = beamStart + 1; i <= beamEnd; i++) {
                     var pos = line.getElement(i).getStaffPosition();
 
                     if (stemsUp ? pos < anchorStaffPos : pos > anchorStaffPos) {
@@ -420,7 +419,7 @@ public class LayoutEngine {
                 for (var iter = 0; iter < 20; iter++) {
                     var allOk = true;
 
-                    for (var i = span.getStart(); i <= span.getEnd(); i++) {
+                    for (var i = beamStart; i <= beamEnd; i++) {
                         var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemsUp, slope, firstXSs, startYSs);
 
                         if (geometry == null) {
@@ -445,7 +444,7 @@ public class LayoutEngine {
                 // After slope reduction, shift beam vertically to cover any remaining deficit.
                 var maxDeficitSs = 0.0;
 
-                for (var i = span.getStart(); i <= span.getEnd(); i++) {
+                for (var i = beamStart; i <= beamEnd; i++) {
                     var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemsUp, slope, firstXSs, startYSs);
 
                     if (geometry == null) {
@@ -489,7 +488,7 @@ public class LayoutEngine {
             if (firstColumn != null) {
                 var firstXSs = firstColumn.getXSs();
 
-                for (var i = span.getStart(); i <= span.getEnd(); i++) {
+                for (var i = beamStart; i <= beamEnd; i++) {
                     var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemsUp, slope, firstXSs, startYSs);
 
                     if (geometry == null) {
@@ -508,8 +507,8 @@ public class LayoutEngine {
                     // Determine stub direction for partial-beam elements.
                     // A stub is needed at beam level L when neither neighbour shares level L.
                     var myBeams = beamCount(element);
-                    var leftBeams = i > span.getStart() ? beamCount(line.getElement(i - 1)) : 0;
-                    var rightBeams = i < span.getEnd() ? beamCount(line.getElement(i + 1)) : 0;
+                    var leftBeams = i > beamStart ? beamCount(line.getElement(i - 1)) : 0;
+                    var rightBeams = i < beamEnd ? beamCount(line.getElement(i + 1)) : 0;
 
                     var hasStub = false;
 
@@ -523,9 +522,9 @@ public class LayoutEngine {
                     var stubRight = false;
 
                     if (hasStub) {
-                        if (i == span.getStart()) {
+                        if (i == beamStart) {
                             stubRight = true;                   // first element → stub right
-                        } else if (i == span.getEnd() || rightBeams < myBeams) {
+                        } else if (i == beamEnd || rightBeams < myBeams) {
                             // last element → stub left || element after a beam break → left
                         } else if (leftBeams < myBeams) {
                             stubRight = true;                   // element at a beam break → right
@@ -539,7 +538,7 @@ public class LayoutEngine {
             }
 
             var beamLayout = new LayoutResult.BeamLayout(slope, startYSs, stemsUp, thickeningSs, stemLayouts);
-            builder.putBeamLayout(span, beamLayout);
+            builder.putBeamLayout(beam, beamLayout);
         }
     }
 
@@ -609,7 +608,7 @@ public class LayoutEngine {
         List<ElementColumn> columns,
         LayoutResult.Builder builder) {
 
-        var ties = line.getTies();
+        var ties = line.findTies();
 
         if (ties.isEmpty()) {
             return;
@@ -622,13 +621,14 @@ public class LayoutEngine {
             elementToColumn.put(column.getElement(), column);
         }
 
-        var it = ties.listIterator();
+        for (var span : ties) {
+            var startElement = span.getAnchorElement();
+            var endElement = span.getEndElement();
 
-        while (it.hasNext()) {
-            var span = it.next();
+            if (startElement == null || endElement == null) {
+                continue;
+            }
 
-            var startElement = line.getElement(span.getStart());
-            var endElement = line.getElement(span.getEnd());
             var startColumn = elementToColumn.get(startElement);
             var endColumn = elementToColumn.get(endElement);
 
@@ -670,10 +670,13 @@ public class LayoutEngine {
             var innerCpYSs = shoulderYSs - direction * TIE_MID_THICKNESS_SS;
 
             // Interior note collision avoidance: only for ties spanning 3+ notes.
-            if (span.getEnd() - span.getStart() >= 2) {
+            var spanAnchorIdx = span.getAnchorElementIndex();
+            var spanEndIdx = span.getEndElementIndex();
+
+            if (spanEndIdx - spanAnchorIdx >= 2) {
                 var maxDeflection = 0.0;
 
-                for (var i = span.getStart() + 1; i < span.getEnd(); i++) {
+                for (var i = spanAnchorIdx + 1; i < spanEndIdx; i++) {
                     var interiorElement = line.getElement(i);
                     var interiorColumn = elementToColumn.get(interiorElement);
 

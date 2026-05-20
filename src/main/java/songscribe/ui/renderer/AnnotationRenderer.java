@@ -53,9 +53,9 @@ public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> 
         Graphics2D g2,
         ElementRenderContext ctx
     ) {
-        var annotation = element.getAnnotation();
+        var attachment = element.findAttachment(AnnotationAttachment.class);
 
-        if (annotation == null) {
+        if (attachment == null) {
             return;
         }
 
@@ -78,7 +78,7 @@ public final class AnnotationRenderer extends BaseElementRenderer<StaffElement> 
             var xSs = decorationLayout.xSs();
             var baselineYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx) + ascentSs;
 
-            g2.drawString(annotation.getAnnotation(), (float) xSs, (float) baselineYSs);
+            g2.drawString(attachment.getAnnotation().getAnnotation(), (float) xSs, (float) baselineYSs);
         }
     }
 }

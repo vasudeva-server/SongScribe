@@ -38,6 +38,15 @@ public abstract sealed class Hairpin extends RangeElement
      */
     public static final double HAIRPIN_OPENING_HEIGHT_SS = 1.25;  // 10px
 
+    /** User-controlled left-endpoint horizontal shift in staff-space units. */
+    private double x1ShiftSs;
+
+    /** User-controlled right-endpoint horizontal shift in staff-space units. */
+    private double x2ShiftSs;
+
+    /** User-controlled vertical shift in staff-space units. */
+    private double yShiftSs;
+
     /**
      * Creates a hairpin spanning from anchor to end element.
      *
@@ -46,6 +55,30 @@ public abstract sealed class Hairpin extends RangeElement
      */
     protected Hairpin(StaffElement anchorElement, StaffElement endElement) {
         super(anchorElement, endElement);
+    }
+
+    public double getX1ShiftSs() {
+        return x1ShiftSs;
+    }
+
+    public void setX1ShiftSs(double x1ShiftSs) {
+        this.x1ShiftSs = x1ShiftSs;
+    }
+
+    public double getX2ShiftSs() {
+        return x2ShiftSs;
+    }
+
+    public void setX2ShiftSs(double x2ShiftSs) {
+        this.x2ShiftSs = x2ShiftSs;
+    }
+
+    public double getYShiftSs() {
+        return yShiftSs;
+    }
+
+    public void setYShiftSs(double yShiftSs) {
+        this.yShiftSs = yShiftSs;
     }
 
     /**

@@ -20,13 +20,13 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.BeamSpan;
 import songscribe.model.Line;
+import songscribe.ui.layout.Beam;
 
 /**
- * Mutation recording the addition of a beam span to a line.
+ * Mutation recording the addition of a beam range element to a line.
  */
-public record BeamingAddition(Line line, BeamSpan span)
+public record BeamingAddition(Line line, Beam beam)
     implements Mutation, LineScopedMutation {
 
     @Override

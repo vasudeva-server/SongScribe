@@ -34,7 +34,6 @@ import songscribe.model.Line;
 import songscribe.model.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.ui.renderer.BaseElementRenderer;
-import songscribe.ui.renderer.LineThickness;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 

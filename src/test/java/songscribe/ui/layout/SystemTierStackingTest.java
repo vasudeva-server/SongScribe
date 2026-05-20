@@ -174,21 +174,21 @@ class SystemTierStackingTest extends UnitTest {
         }
 
         @Test
-        void testLegacyTempoChangeProducesLayout() {
+        void testTempoAttachmentProducesLayout() {
             var note = createNote(0, false);
-            note.setTempoChange(new Tempo(140, Duration.CROTCHET, "Allegro", true));
+            note.addAttachment(new TempoChangeAttachment(
+                note, new Tempo(140, Duration.CROTCHET, "Allegro", true)));
 
             var line = newLine();
-            populate(line,note);
+            populate(line, note);
 
             var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
 
-            // The legacy bridge should produce a DecorationLayout for a TempoChangeAttachment
             var layout = result.findAttachmentDecorationLayout(
                 note, TempoChangeAttachment.class);
 
             assertThat(layout)
-                .describedAs("legacy tempo change should produce DecorationLayout")
+                .describedAs("tempo attachment should produce DecorationLayout")
                 .isNotNull();
         }
     }
@@ -267,23 +267,6 @@ class SystemTierStackingTest extends UnitTest {
                 .isLessThan(hairpinLayout.ySs());
         }
 
-        @Test
-        void testLegacyBeatChangeProducesLayout() {
-            var note = createNote(0, false);
-            note.setBeatChange(new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
-
-            var line = newLine();
-            populate(line, note);
-
-            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
-
-            // The legacy bridge should produce a DecorationLayout for a BeatChangeAttachment
-            var layout = result.findAttachmentDecorationLayout(note, BeatChangeAttachment.class);
-
-            assertThat(layout)
-                .describedAs("legacy beat change should produce DecorationLayout")
-                .isNotNull();
-        }
     }
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
@@ -360,22 +343,5 @@ class SystemTierStackingTest extends UnitTest {
                 .isLessThan(hairpinLayout.ySs());
         }
 
-        @Test
-        void testLegacyAnnotationProducesLayout() {
-            var note = createNote(0, false);
-            note.setAnnotation(new Annotation("Andante"));
-
-            var line = newLine();
-            populate(line, note);
-
-            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
-
-            // The legacy bridge should produce a DecorationLayout for an AnnotationAttachment
-            var layout = result.findAttachmentDecorationLayout(note, AnnotationAttachment.class);
-
-            assertThat(layout)
-                .describedAs("legacy annotation should produce DecorationLayout")
-                .isNotNull();
-        }
     }
 }

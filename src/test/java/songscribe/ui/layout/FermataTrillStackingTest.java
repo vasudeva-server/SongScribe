@@ -82,7 +82,7 @@ class FermataTrillStackingTest extends UnitTest {
         @Test
         void testFermataPositionedAboveNoteExtents() {
             var note = createNote(-2, false);
-            note.setFermata(true);
+            note.addAttachment(new FermataAttachment(note));
             var result = stackColumns(List.of(columnFor(note)));
 
             var layout = require(
@@ -97,7 +97,7 @@ class FermataTrillStackingTest extends UnitTest {
         @Test
         void testFermataHasPositiveDimensions() {
             var note = createNote(0, false);
-            note.setFermata(true);
+            note.addAttachment(new FermataAttachment(note));
             var result = stackColumns(List.of(columnFor(note)));
 
             var layout = require(
@@ -111,7 +111,7 @@ class FermataTrillStackingTest extends UnitTest {
         @Test
         void testFermataPositionedAboveArticulations() {
             var note = createNote(-2, false);
-            note.setFermata(true);
+            note.addAttachment(new FermataAttachment(note));
             note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
             var result = stackColumns(List.of(columnFor(note)));
 
@@ -130,9 +130,9 @@ class FermataTrillStackingTest extends UnitTest {
         void testFermataReservesSpaceInExtents() {
             // Two notes at same X, both with fermata
             var note1 = createNote(-2, false);
-            note1.setFermata(true);
+            note1.addAttachment(new FermataAttachment(note1));
             var note2 = createNote(-2, false);
-            note2.setFermata(true);
+            note2.addAttachment(new FermataAttachment(note2));
 
             var col1 = columnFor(note1);
             var col2 = columnFor(note2);
@@ -155,8 +155,6 @@ class FermataTrillStackingTest extends UnitTest {
         void testFermataFromAttachmentProducesLayout() {
             var note = createNote(0, false);
             note.addAttachment(new FermataAttachment(note));
-            // Also set legacy flag so LineRenderer dispatch works
-            note.setFermata(true);
 
             var result = stackColumns(List.of(columnFor(note)));
 
@@ -253,38 +251,6 @@ class FermataTrillStackingTest extends UnitTest {
             assertThat(layout.widthSs()).isGreaterThan(NOTE2_X_SS - NOTE_X_SS);
         }
 
-        @Test
-        void testLegacyTrillFlagProducesLayout() {
-            var note = createNote(-2, false);
-            note.setTrill(true);
-            var line = detachedLine();
-            line.addElement(note);
-
-            var result = stackColumns(List.of(columnFor(note)), line);
-
-            // Legacy flag should be bridged to a DecorationLayout
-            var layout = result.findRangeElementDecorationLayout(note, Trill.class);
-            assertThat(layout).describedAs("bridged legacy trill DecorationLayout").isNotNull();
-        }
-
-        @Test
-        void testLegacyMultiNoteTrillProducesLayout() {
-            var note1 = createNote(-2, false);
-            note1.setTrill(true);
-            var note2 = createNote(0, false);
-            note2.setTrill(true);
-            var line = detachedLine();
-            line.addElement(note1);
-            line.addElement(note2);
-
-            var col1 = columnFor(note1, NOTE_X_SS);
-            var col2 = columnFor(note2, NOTE2_X_SS);
-            var result = stackColumns(List.of(col1, col2), line);
-
-            // Legacy consecutive trill flags should produce a single bridged layout
-            var layout = result.findRangeElementDecorationLayout(note1, Trill.class);
-            assertThat(layout).describedAs("bridged legacy multi-note trill DecorationLayout").isNotNull();
-        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -294,7 +260,7 @@ class FermataTrillStackingTest extends UnitTest {
         @Test
         void testFermataAndTrillDoNotOverlap() {
             var note = createNote(-2, false);
-            note.setFermata(true);
+            note.addAttachment(new FermataAttachment(note));
             var line = detachedLine();
             line.addElement(note);
             var trill = new Trill(note);

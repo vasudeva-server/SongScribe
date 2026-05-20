@@ -27,8 +27,8 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.model.ElementType;
 import songscribe.model.StaffElement;
-import songscribe.model.TupletSpan;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.layout.Tuplet;
 
 /**
  * Tests that tuplet spans are removed when elements within them are modified
@@ -59,7 +59,10 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
     }
 
     private void addTriplet(int start, int end) {
-        line.getTuplets().addSpan(new TupletSpan(start, end, TRIPLET_SIZE));
+        // Add directly to rangeElements via song.withoutMutationTracking to bypass
+        // the modification bracket requirement.
+        song.withoutMutationTracking(() -> line.addTuplet(
+            new Tuplet(line.getElement(start), line.getElement(end), TRIPLET_SIZE)));
     }
 
     private void setPreviewElement(StaffElement element) {
@@ -90,7 +93,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.getTuplets().isEmpty()).isTrue();
+            assertThat(line.findRangeElements(Tuplet.class)).isEmpty();
         }
 
         /**
@@ -111,7 +114,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.getTuplets().isEmpty()).isTrue();
+            assertThat(line.findRangeElements(Tuplet.class)).isEmpty();
         }
 
         /**
@@ -128,8 +131,8 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.getTuplets().isEmpty()).isFalse();
-            assertThat(line.getTuplets().findSpan(0)).isNotNull();
+            assertThat(line.findRangeElements(Tuplet.class)).isNotEmpty();
+            assertThat(line.findTupletAt(0)).isNotNull();
         }
     }
 
@@ -157,7 +160,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.getTuplets().isEmpty()).isTrue();
+            assertThat(line.findRangeElements(Tuplet.class)).isEmpty();
         }
 
         /**
@@ -176,8 +179,8 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.getTuplets().isEmpty()).isFalse();
-            assertThat(line.getTuplets().findSpan(0)).isNotNull();
+            assertThat(line.findRangeElements(Tuplet.class)).isNotEmpty();
+            assertThat(line.findTupletAt(0)).isNotNull();
         }
     }
 }

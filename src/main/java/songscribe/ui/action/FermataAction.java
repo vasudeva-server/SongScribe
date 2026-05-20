@@ -25,6 +25,7 @@ import java.util.EnumSet;
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.model.StaffElement;
+import songscribe.ui.layout.FermataAttachment;
 
 public final class FermataAction extends NoteOnlyAction {
 
@@ -47,12 +48,22 @@ public final class FermataAction extends NoteOnlyAction {
 
     @Override
     public boolean matchesElement(StaffElement element) {
-        return element.isFermata();
+        return element.findAttachment(FermataAttachment.class) != null;
     }
 
     @Override
     public void applyToElement(StaffElement element, boolean selected) {
-        element.setFermata(selected);
+        if (selected) {
+            if (element.findAttachment(FermataAttachment.class) == null) {
+                element.addAttachment(new FermataAttachment(element));
+            }
+        } else {
+            var existing = element.findAttachment(FermataAttachment.class);
+
+            if (existing != null) {
+                element.removeAttachment(existing);
+            }
+        }
     }
 
     @Override

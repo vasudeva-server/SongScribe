@@ -83,7 +83,7 @@ class FormatMigratorTest extends UnitTest {
 
             var note = line.getElement(0);
             assertThat(note.findAttachment(DynamicAttachment.class)).isNull();
-            assertThat(note.getAnnotation()).isNotNull();
+            assertThat(note.findAttachment(AnnotationAttachment.class)).isNotNull();
         }
 
         // T48: Note with annotation "F" (wrong case) → not converted, annotation kept
@@ -94,7 +94,7 @@ class FormatMigratorTest extends UnitTest {
 
             var note = line.getElement(0);
             assertThat(note.findAttachment(DynamicAttachment.class)).isNull();
-            assertThat(note.getAnnotation()).isNotNull();
+            assertThat(note.findAttachment(AnnotationAttachment.class)).isNotNull();
         }
 
         // T49: Note with annotation "f" and existing DynamicAttachment →
@@ -108,7 +108,6 @@ class FormatMigratorTest extends UnitTest {
 
             FormatMigrator.migrateAnnotationDynamics(List.of(line));
 
-            assertThat(note.getAnnotation()).isNull();
             assertThat(note.findAttachment(AnnotationAttachment.class)).isNull();
 
             var dynamic = note.findAttachment(DynamicAttachment.class);
@@ -121,29 +120,11 @@ class FormatMigratorTest extends UnitTest {
             assertThat(dynamic.getType()).isEqualTo(DynamicType.MEZZO_FORTE);
         }
 
-        // Verify that a matching annotation is removed from the legacy field
-        @Test
-        void testMatchingAnnotationClearedFromLegacyField() {
-            var line = lineWithAnnotation("mp");
-            FormatMigrator.migrateAnnotationDynamics(List.of(line));
-
-            assertThat(line.getElement(0).getAnnotation()).isNull();
-        }
-
-        // Verify that a matching AnnotationAttachment is also removed
+        // Verify that a matching AnnotationAttachment is removed after conversion
         @Test
         void testMatchingAnnotationAttachmentRemoved() {
             var line = lineWithAnnotation("mf");
             var note = line.getElement(0);
-            var annotation = note.getAnnotation();
-            assertThat(annotation).isNotNull();
-
-            //noinspection ConstantValue -- need for NullAway
-            if (annotation == null) {
-                return;
-            }
-
-            note.addAttachment(new AnnotationAttachment(note, annotation));
 
             FormatMigrator.migrateAnnotationDynamics(List.of(line));
 
@@ -321,7 +302,7 @@ class FormatMigratorTest extends UnitTest {
         var line = detachedLine();
         var note = ElementType.CROTCHET.newInstance();
         line.addElement(note);
-        note.setAnnotation(new Annotation(text));
+        note.addAttachment(new AnnotationAttachment(note, new Annotation(text)));
         return line;
     }
 }

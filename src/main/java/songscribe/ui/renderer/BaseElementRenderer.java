@@ -238,7 +238,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * Layout Y coordinates are relative to middleLineY=0.
      * Component Y coordinates are relative to the component's top edge.
      *
-     * @param layoutYSs the Y coordinate in layout space (from a DecorationLayout or SpanLayout)
+     * @param layoutYSs the Y coordinate in layout space (from a DecorationLayout)
      * @param ctx       the rendering context containing middleLineY
      * @return the Y coordinate in component space
      */

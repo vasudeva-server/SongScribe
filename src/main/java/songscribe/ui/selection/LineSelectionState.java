@@ -24,11 +24,10 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Span;
-import songscribe.model.SpanSet;
-import songscribe.model.TupletSpan;
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
+import songscribe.ui.layout.Tie;
+import songscribe.ui.layout.Tuplet;
 
 /**
  * Per-line selection state and query methods.
@@ -50,8 +49,9 @@ public final class LineSelectionState {
     @Nullable
     private Boolean canTie = null;
 
+    /** The existing {@link Tie} for the current selection, or {@code null} if none (add mode). */
     @Nullable
-    private SpanSet<?> tieSpanSet = null;
+    private Tie existingTie = null;
 
     public LineSelectionState(Line line) {
         this.line = line;
@@ -122,14 +122,20 @@ public final class LineSelectionState {
         return canTie;
     }
 
+    /**
+     * Returns the existing {@link Tie} covering the current selection when the tie
+     * should be removed (toggle-off), or {@code null} when a new tie should be added.
+     * <p>
+     * Only valid after a call to {@link #canToggleTie()} that returned {@code true}.
+     */
     @Nullable
-    public SpanSet<?> getTieSpanSet() {
-        return tieSpanSet;
+    public Tie getExistingTie() {
+        return existingTie;
     }
 
     public void resetTieState() {
         canTie = null;
-        tieSpanSet = null;
+        existingTie = null;
     }
 
     public Line getLine() {
@@ -314,12 +320,13 @@ public final class LineSelectionState {
             return false;
         }
 
-        return !selectionWouldConflict(line.getBeamings(), line.getTies());
+        // Conflict: beaming would connect what a tie already connects.
+        return !(shouldConnectBeamSelection() && !shouldConnectTieSelection());
     }
 
     /**
      * Returns whether the current selection can toggle a tie.
-     * Also sets the canTie and tieSpanSet fields.
+     * Also sets the {@code canTie} and {@code existingTie} fields.
      */
     public boolean canToggleTie() {
         if (getSelectionSize() != 2) {
@@ -327,8 +334,7 @@ public final class LineSelectionState {
             return false;
         }
 
-        var ties = line.getTies();
-        Span firstTieSpan = null;
+        Tie firstTie = null;
         Integer firstPitch = null;
 
         for (var i = selectionBegin; i <= selectionEnd; i++) {
@@ -347,23 +353,24 @@ public final class LineSelectionState {
             }
 
             if (i == selectionBegin) {
-                firstTieSpan = ties.findSpan(i);
+                firstTie = line.findTieAt(i);
             } else {
                 //noinspection ObjectEquality
-                if (ties.findSpan(i) != firstTieSpan) {
+                if (line.findTieAt(i) != firstTie) {
                     canTie = false;
                     return false;
                 }
             }
         }
 
-        if (selectionWouldConflict(ties, line.getBeamings())) {
+        // Conflict: tying would connect what a beam already connects.
+        if (shouldConnectTieSelection() && !shouldConnectBeamSelection()) {
             canTie = false;
             return false;
         }
 
         canTie = true;
-        tieSpanSet = firstTieSpan != null ? ties : null;
+        existingTie = firstTie;
         return true;
     }
 
@@ -378,28 +385,27 @@ public final class LineSelectionState {
             return new TupletToggleInfo(false, null, false);
         }
 
-        var tuplets = line.getTuplets();
-        TupletSpan firstSpan = null;
+        Tuplet firstTuplet = null;
 
         for (var i = selectionBegin; i <= selectionEnd; i++) {
             if (!line.getElement(i).getType().isPitchedNote()) {
                 return new TupletToggleInfo(false, null, false);
             }
 
-            var currentSpan = tuplets.findSpan(i);
+            var currentTuplet = line.findTupletAt(i);
 
             if (i == selectionBegin) {
-                firstSpan = currentSpan;
-            } else if (currentSpan != firstSpan) {
+                firstTuplet = currentTuplet;
+            } else if (currentTuplet != firstTuplet) {
                 return new TupletToggleInfo(false, null, false);
             }
         }
 
-        var coversExisting = (firstSpan != null)
-            && (selectionBegin == firstSpan.start)
-            && (selectionEnd == firstSpan.end);
+        var coversExisting = (firstTuplet != null)
+            && (selectionBegin == firstTuplet.getAnchorElementIndex())
+            && (selectionEnd == firstTuplet.getEndElementIndex());
 
-        return new TupletToggleInfo(true, firstSpan, coversExisting);
+        return new TupletToggleInfo(true, firstTuplet, coversExisting);
     }
 
     /**
@@ -423,23 +429,26 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns whether adding {@code target} to the selection would conflict with an existing
-     * span of the opposing type ({@code conflicting}). A conflict exists when the selection
-     * endpoints would be newly connected by {@code target} but are already connected by
-     * {@code conflicting}.
+     * Returns whether a new beam should connect the selection endpoints (add mode), as opposed
+     * to the selection already being covered by an existing beam (remove mode).
      */
-    private boolean selectionWouldConflict(SpanSet<?> target, SpanSet<?> conflicting) {
-        return shouldConnectSelection(target) && !shouldConnectSelection(conflicting);
+    private boolean shouldConnectBeamSelection() {
+        var beginBeam = line.findBeamAt(selectionBegin);
+        var endBeam = line.findBeamAt(selectionEnd);
+
+        //noinspection ObjectEquality
+        return (beginBeam == null) || (beginBeam != endBeam);
     }
 
     /**
-     * Returns whether the selection should connect (add) or disconnect (remove) a span.
+     * Returns whether a new tie should connect the selection endpoints (add mode), as opposed
+     * to the selection already being covered by an existing tie (remove mode).
      */
-    public boolean shouldConnectSelection(SpanSet<?> spanSet) {
-        var beginSpan = spanSet.findSpan(selectionBegin);
-        var endSpan = spanSet.findSpan(selectionEnd);
+    private boolean shouldConnectTieSelection() {
+        var beginTie = line.findTieAt(selectionBegin);
+        var endTie = line.findTieAt(selectionEnd);
 
         //noinspection ObjectEquality
-        return (beginSpan == null) || (beginSpan != endSpan);
+        return (beginTie == null) || (beginTie != endTie);
     }
 }

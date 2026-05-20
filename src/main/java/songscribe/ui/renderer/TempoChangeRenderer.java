@@ -49,13 +49,13 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
         Graphics2D g2,
         ElementRenderContext ctx
     ) {
-        var tempo = element.getTempoChange();
+        var attachment = element.findAttachment(TempoChangeAttachment.class);
 
-        if (tempo == null) {
+        if (attachment == null) {
             return;
         }
 
-        renderTempoChange(g2, tempo, element, ctx);
+        renderTempoChange(g2, attachment.getTempo(), element, ctx);
     }
 
     /** Renders the song's initial tempo, stored separately from per-note tempo changes. */

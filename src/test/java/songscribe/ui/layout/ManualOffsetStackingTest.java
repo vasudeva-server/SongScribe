@@ -33,9 +33,8 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.model.Annotation;
 import songscribe.model.Song;
-import songscribe.model.DynamicsSpan;
+import songscribe.ui.layout.Crescendo;
 
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
@@ -168,37 +167,6 @@ class ManualOffsetStackingTest extends UnitTest {
                 .isCloseTo(NOTE1_X_SS + xOffsetSs, within(TOLERANCE));
         }
 
-        @Test
-        void testLegacyAnnotationYOffsetApplied() {
-            var note = createNote(0, false);
-            var annotation = new Annotation("test");
-            var yOffsetSs = -2.0;
-            annotation.setUserYOffsetSs(yOffsetSs);
-            note.setAnnotation(annotation);
-
-            var line = newLine();
-            populate(line,note);
-
-            var resultWithOffset = stackColumns(List.of(columnFor(note)), line);
-            var layoutWithOffset = require(
-                resultWithOffset.findAttachmentDecorationLayout(note, AnnotationAttachment.class),
-                "legacy annotation DecorationLayout with offset");
-
-            // Create a baseline without offset
-            var note2 = createNote(0, false);
-            note2.setAnnotation(new Annotation("test"));
-
-            var line2 = newLine();
-            populate(line2,note2);
-
-            var resultBaseline = stackColumns(List.of(columnFor(note2)), line2);
-            var layoutBaseline = require(
-                resultBaseline.findAttachmentDecorationLayout(note2, AnnotationAttachment.class),
-                "legacy annotation DecorationLayout baseline");
-
-            assertThat(layoutWithOffset.ySs())
-                .isCloseTo(layoutBaseline.ySs() + yOffsetSs, within(TOLERANCE));
-        }
     }
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
@@ -243,93 +211,94 @@ class ManualOffsetStackingTest extends UnitTest {
     class HairpinOffsets {
 
         @Test
-        void testLegacyDynamicsSpanYShiftApplied() {
+        void testHairpinYShiftApplied() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = newLine();
-            populate(line,note1);
-            populate(line,note2);
+            populate(line, note1);
+            populate(line, note2);
 
             var yShiftSs = -1.5;
-            var span = new DynamicsSpan(0, 1);
-            span.setYShiftSs(yShiftSs);
-            line.getCrescendos().addSpan(span);
+            var crescendo = new Crescendo(note1, note2);
+            crescendo.setYShiftSs(yShiftSs);
+            setupTest(() -> line.addRangeElement(crescendo));
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
                 line);
 
-            var spanLayout = require(
-                result.getSpanLayout(span),
-                "crescendo SpanLayout with y shift");
+            var layout = require(
+                result.getDecorationLayout(crescendo),
+                "crescendo DecorationLayout with y shift");
 
             // Create baseline without shift
             var note3 = createNote(0, false);
             var note4 = createNote(0, false);
             var line2 = newLine();
-            populate(line2,note3);
-            populate(line2,note4);
+            populate(line2, note3);
+            populate(line2, note4);
 
-            var baselineSpan = new DynamicsSpan(0, 1);
-            line2.getCrescendos().addSpan(baselineSpan);
+            var baselineCrescendo = new Crescendo(note3, note4);
+            setupTest(() -> line2.addRangeElement(baselineCrescendo));
 
             var baselineResult = stackColumns(
                 List.of(columnFor(note3, NOTE1_X_SS), columnFor(note4, NOTE2_X_SS)),
                 line2);
 
-            var baselineSpanLayout = require(
-                baselineResult.getSpanLayout(baselineSpan),
-                "crescendo SpanLayout baseline");
+            var baselineLayout = require(
+                baselineResult.getDecorationLayout(baselineCrescendo),
+                "crescendo DecorationLayout baseline");
 
-            assertThat(spanLayout.ySs())
-                .isCloseTo(baselineSpanLayout.ySs() + yShiftSs, within(TOLERANCE));
+            assertThat(layout.ySs())
+                .isCloseTo(baselineLayout.ySs() + yShiftSs, within(TOLERANCE));
         }
 
         @Test
-        void testLegacyDynamicsSpanXShiftsApplied() {
+        void testHairpinXShiftsApplied() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = newLine();
-            populate(line,note1);
-            populate(line,note2);
+            populate(line, note1);
+            populate(line, note2);
 
             var x1ShiftSs = 0.5;
             var x2ShiftSs = -0.5;
-            var span = new DynamicsSpan(0, 1);
-            span.setX1ShiftSs(x1ShiftSs);
-            span.setX2ShiftSs(x2ShiftSs);
-            line.getCrescendos().addSpan(span);
+            var crescendo = new Crescendo(note1, note2);
+            crescendo.setX1ShiftSs(x1ShiftSs);
+            crescendo.setX2ShiftSs(x2ShiftSs);
+            setupTest(() -> line.addRangeElement(crescendo));
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
                 line);
 
-            var spanLayout = require(
-                result.getSpanLayout(span),
-                "crescendo SpanLayout with x shifts");
+            var layout = require(
+                result.getDecorationLayout(crescendo),
+                "crescendo DecorationLayout with x shifts");
 
             // Create baseline without shift
             var note3 = createNote(0, false);
             var note4 = createNote(0, false);
             var line2 = newLine();
-            populate(line2,note3);
-            populate(line2,note4);
+            populate(line2, note3);
+            populate(line2, note4);
 
-            var baselineSpan = new DynamicsSpan(0, 1);
-            line2.getCrescendos().addSpan(baselineSpan);
+            var baselineCrescendo = new Crescendo(note3, note4);
+            setupTest(() -> line2.addRangeElement(baselineCrescendo));
 
             var baselineResult = stackColumns(
                 List.of(columnFor(note3, NOTE1_X_SS), columnFor(note4, NOTE2_X_SS)),
                 line2);
 
-            var baselineSpanLayout = require(
-                baselineResult.getSpanLayout(baselineSpan),
-                "crescendo SpanLayout baseline");
+            var baselineLayout = require(
+                baselineResult.getDecorationLayout(baselineCrescendo),
+                "crescendo DecorationLayout baseline");
 
-            assertThat(spanLayout.startXSs())
-                .isCloseTo(baselineSpanLayout.startXSs() + x1ShiftSs, within(TOLERANCE));
-            assertThat(spanLayout.endXSs())
-                .isCloseTo(baselineSpanLayout.endXSs() + x2ShiftSs, within(TOLERANCE));
+            // x1 shifts the left edge; x2 shifts the right edge independently
+            assertThat(layout.xSs())
+                .isCloseTo(baselineLayout.xSs() + x1ShiftSs, within(TOLERANCE));
+            assertThat(layout.xSs() + layout.widthSs())
+                .isCloseTo(baselineLayout.xSs() + baselineLayout.widthSs() + x2ShiftSs, within(TOLERANCE));
         }
     }
 

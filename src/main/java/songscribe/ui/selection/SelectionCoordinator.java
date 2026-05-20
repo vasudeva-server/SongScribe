@@ -47,6 +47,7 @@ import songscribe.ui.EndingConfirms;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.layout.Beam;
 import songscribe.ui.layout.Ending;
 
 /**
@@ -710,17 +711,18 @@ public final class SelectionCoordinator {
     // element in the middle is now killed entirely instead of being split into
     // sub-beams.
     private void repairBeamings(Line line, int begin, int end) {
-        var beamings = line.getBeamings();
-        var overlapping = beamings.findOverlapping(begin, end);
+        var overlapping = line.findBeamsOverlapping(begin, end);
 
         for (var beam : overlapping) {
-            var newStart = beam.start;
+            var anchorIdx = beam.getAnchorElementIndex();
+            var endIdx = beam.getEndElementIndex();
+            var newStart = anchorIdx;
 
-            while (newStart <= beam.end && !line.getElement(newStart).getType().isBeamable()) {
+            while (newStart <= endIdx && !line.getElement(newStart).getType().isBeamable()) {
                 newStart++;
             }
 
-            var newEnd = beam.end;
+            var newEnd = endIdx;
 
             while (newEnd >= newStart && !line.getElement(newEnd).getType().isBeamable()) {
                 newEnd--;
@@ -748,7 +750,7 @@ public final class SelectionCoordinator {
             }
 
             // Trimmed span is identical to the original — no-op.
-            if (newStart == beam.start && newEnd == beam.end) {
+            if (newStart == anchorIdx && newEnd == endIdx) {
                 continue;
             }
 
@@ -760,7 +762,7 @@ public final class SelectionCoordinator {
 
             // Trimmed span shrank but is all valid — replace with the truncated beam.
             line.removeBeaming(beam);
-            line.addBeaming(beam.copyRange(newStart, newEnd));
+            line.addBeaming(new Beam(line.getElement(newStart), line.getElement(newEnd)));
         }
     }
 

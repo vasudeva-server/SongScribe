@@ -28,8 +28,8 @@ import songscribe.UnitTest;
 import songscribe.model.Song;
 import songscribe.model.ElementType;
 import songscribe.model.Line;
-import songscribe.model.TupletSpan;
 import songscribe.ui.action.TupletAction;
+import songscribe.ui.layout.Tuplet;
 
 class LineSelectionStateTest extends UnitTest {
 
@@ -71,7 +71,7 @@ class LineSelectionStateTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        line.getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
+        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), TupletAction.Tuplet.TRIPLET.getSize()));
         var state = new LineSelectionState(line);
         state.setSelectionFromClick(0);
         state.extendSelectionTo(2);
@@ -81,7 +81,7 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(info.canToggle()).isTrue();
         assertThat(info.existing())
             .isNotNull()
-            .extracting(tupletSpan -> tupletSpan != null ? tupletSpan.getGrade() : 0)
+            .extracting(tuplet -> tuplet != null ? tuplet.getGrade() : 0)
             .isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
         assertThat(info.coversExisting()).isTrue();
     }
@@ -92,7 +92,7 @@ class LineSelectionStateTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        line.getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
+        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), TupletAction.Tuplet.TRIPLET.getSize()));
         var state = new LineSelectionState(line);
         state.setSelectionFromClick(0);
         state.extendSelectionTo(1);
@@ -102,7 +102,7 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(info.canToggle()).isTrue();
         assertThat(info.existing())
             .isNotNull()
-            .extracting(tupletSpan -> tupletSpan != null ? tupletSpan.getGrade() : 0)
+            .extracting(tuplet -> tuplet != null ? tuplet.getGrade() : 0)
             .isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
         assertThat(info.coversExisting()).isFalse();
     }
@@ -114,8 +114,8 @@ class LineSelectionStateTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        line.getTuplets().addSpan(new TupletSpan(0, 1, TupletAction.Tuplet.DUPLET.getSize()));
-        line.getTuplets().addSpan(new TupletSpan(2, 3, TupletAction.Tuplet.TRIPLET.getSize()));
+        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(1), TupletAction.Tuplet.DUPLET.getSize()));
+        line.addTuplet(new Tuplet(line.getElement(2), line.getElement(3), TupletAction.Tuplet.TRIPLET.getSize()));
         var state = new LineSelectionState(line);
         state.setSelectionFromClick(0);
         state.extendSelectionTo(3);

@@ -22,7 +22,7 @@ package songscribe.ui.selection;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.TupletSpan;
+import songscribe.ui.layout.Tuplet;
 
 /**
  * Result of {@link LineSelectionState#canToggleTuplet()}.
@@ -30,12 +30,12 @@ import songscribe.model.TupletSpan;
  * @param canToggle      true if the selection is uniform (all pitched, all in the same tuplet or none)
  * @param existing       the tuplet at the selection start, or {@code null} if there is none
  * @param coversExisting true iff {@code existing != null} and the selection exactly spans
- *                       {@code [existing.start, existing.end]}. Always {@code false} when
+ *                       {@code [existing.anchorIndex, existing.endIndex]}. Always {@code false} when
  *                       {@code existing} is {@code null}.
  */
 public record TupletToggleInfo(
     boolean canToggle,
-    @Nullable TupletSpan existing,
+    @Nullable Tuplet existing,
     boolean coversExisting
 ) {
     public TupletToggleInfo {

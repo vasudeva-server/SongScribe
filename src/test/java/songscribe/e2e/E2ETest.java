@@ -690,14 +690,14 @@ public abstract class E2ETest {
     protected boolean isBeamed(int lineIndex, int noteIndex) {
         return Boolean.TRUE.equals(GuiActionRunner.execute(() -> {
             var line = song().getLine(lineIndex);
-            return line.getBeamings().findSpan(noteIndex) != null;
+            return line.findBeamAt(noteIndex) != null;
         }));
     }
 
     protected boolean isTied(int lineIndex, int noteIndex) {
         return Boolean.TRUE.equals(GuiActionRunner.execute(() -> {
             var line = song().getLine(lineIndex);
-            return line.getTies().findSpan(noteIndex) != null;
+            return line.findTieAt(noteIndex) != null;
         }));
     }
 

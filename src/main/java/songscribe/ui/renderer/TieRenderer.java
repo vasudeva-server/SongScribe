@@ -26,8 +26,8 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 import module java.desktop;
 
 
-import songscribe.model.Span;
 import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.Tie;
 
 /**
  * Renders tie arcs between two notes of the same pitch.
@@ -58,21 +58,21 @@ public final class TieRenderer {
     // ==========================================================================
 
     /**
-     * Renders a tie for the given span.
+     * Renders a tie for the given {@link Tie} range element.
      * <p>
      * Reads pre-computed geometry from {@link LayoutResult.TieLayout}. If no
-     * layout was computed for this span, the method returns without rendering.
+     * layout was computed for this tie, the method returns without rendering.
      *
-     * @param g2   Graphics context (staff-space coordinate system)
-     * @param span The tie span
-     * @param ctx  Render context
+     * @param g2  Graphics context (staff-space coordinate system)
+     * @param tie The tie range element
+     * @param ctx Render context
      */
     public void renderTie(
         Graphics2D g2,
-        Span span,
+        Tie tie,
         ElementRenderContext ctx
     ) {
-        var layout = ctx.getLayoutResult().getTieLayout(span);
+        var layout = ctx.getLayoutResult().getTieLayout(tie);
 
         if (layout == null) {
             return;
@@ -80,13 +80,13 @@ public final class TieRenderer {
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
             g2.translate(0, ctx.getMiddleLineYSs());
-            g2.setColor(determineTieColor(span, ctx));
+            g2.setColor(determineTieColor(tie, ctx));
 
-            var tie = new GeneralPath(Path2D.WIND_NON_ZERO, 4);
+            var tiePath = new GeneralPath(Path2D.WIND_NON_ZERO, 4);
 
             // Outer cubic Bezier: start → end
-            tie.moveTo(layout.startXSs(), layout.startYSs());
-            tie.curveTo(
+            tiePath.moveTo(layout.startXSs(), layout.startYSs());
+            tiePath.curveTo(
                 layout.cp1XSs(), layout.cp1YSs(),
                 layout.cp2XSs(), layout.cp2YSs(),
                 layout.endXSs(), layout.endYSs()
@@ -94,14 +94,14 @@ public final class TieRenderer {
 
             // Inner cubic Bezier (reversed): end → start, forming the lens shape.
             // Both curves share start/end points, creating natural tapering.
-            tie.curveTo(
+            tiePath.curveTo(
                 layout.innerCp2XSs(), layout.innerCp2YSs(),
                 layout.innerCp1XSs(), layout.innerCp1YSs(),
                 layout.startXSs(), layout.startYSs()
             );
 
-            tie.closePath();
-            g2.fill(tie);
+            tiePath.closePath();
+            g2.fill(tiePath);
         }
     }
 
@@ -110,14 +110,14 @@ public final class TieRenderer {
      * <p>
      * A tie is colored if either its start or end note is playing or selected.
      */
-    private Color determineTieColor(Span span, ElementRenderContext ctx) {
-        var startColor = ctx.getElementColor(span.getStart());
+    private Color determineTieColor(Tie tie, ElementRenderContext ctx) {
+        var startColor = ctx.getElementColor(tie.getAnchorElementIndex());
 
         if (startColor != Color.BLACK) {
             return startColor;
         }
 
-        var endColor = ctx.getElementColor(span.getEnd());
+        var endColor = ctx.getElementColor(tie.getEndElementIndex());
 
         if (endColor != Color.BLACK) {
             return endColor;

@@ -21,12 +21,12 @@
 package songscribe.message.mutation;
 
 import songscribe.model.Line;
-import songscribe.model.TupletSpan;
+import songscribe.ui.layout.Tuplet;
 
 /**
- * Mutation recording the removal of a tuplet span from a line.
+ * Mutation recording the removal of a tuplet range element from a line.
  */
-public record TupletRemoval(Line line, TupletSpan span)
+public record TupletRemoval(Line line, Tuplet tuplet)
     implements Mutation, LineScopedMutation {
 
     @Override

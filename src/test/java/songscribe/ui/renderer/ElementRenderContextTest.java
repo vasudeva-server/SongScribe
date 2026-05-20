@@ -27,9 +27,10 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.model.ElementType;
 import songscribe.model.Song;
-import songscribe.model.TieSpan;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.layout.Tie;
 
 class ElementRenderContextTest extends UnitTest {
 
@@ -56,7 +57,10 @@ class ElementRenderContextTest extends UnitTest {
     @Test
     void testElementInPlayingTieReturnsPlayingColor() {
         var line = detachedLine();
-        line.getTies().addSpan(new TieSpan(0, 2));
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addRangeElement(new Tie(line.getElement(0), line.getElement(2)));
 
         var ctx = RenderContextTestHelper.newContext(new Song());
         ctx.setEditMode(true);

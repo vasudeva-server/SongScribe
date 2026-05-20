@@ -31,7 +31,6 @@ import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Span;
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
 
@@ -60,7 +59,7 @@ public final class LayoutResult {
 
     private final Map<StaffElement, ElementColumn> elementColumns;
     private final Map<LineElement, ElementBoundsSs> elementBounds;
-    private final Map<Span, BeamLayout> beamLayouts;
+    private final Map<Beam, BeamLayout> beamLayouts;
     /**
      * Flat lookup keyed by element for every stem in the line — beamed stems
      * (extracted from {@link BeamLayout#stems()}) and unbeamed stems alike.
@@ -68,9 +67,8 @@ public final class LayoutResult {
      * of O(beam-count).
      */
     private final Map<StaffElement, StemLayout> allStemLayouts;
-    private final Map<Span, TieLayout> tieLayouts;
+    private final Map<Tie, TieLayout> tieLayouts;
     private final Map<LineElement, DecorationLayout> decorationLayouts;
-    private final Map<Span, SpanLayout> spanLayouts;
     @Nullable
     private final Clef clef;
     @Nullable
@@ -102,11 +100,10 @@ public final class LayoutResult {
     private LayoutResult(
         Map<StaffElement, ElementColumn> elementColumns,
         Map<LineElement, ElementBoundsSs> elementBounds,
-        Map<Span, BeamLayout> beamLayouts,
+        Map<Beam, BeamLayout> beamLayouts,
         Map<StaffElement, StemLayout> stemLayouts,
-        Map<Span, TieLayout> tieLayouts,
+        Map<Tie, TieLayout> tieLayouts,
         Map<LineElement, DecorationLayout> decorationLayouts,
-        Map<Span, SpanLayout> spanLayouts,
         @Nullable Clef clef,
         @Nullable KeySignature keySignature,
         double lineHeightSs,
@@ -130,7 +127,6 @@ public final class LayoutResult {
         allStemLayouts = Map.copyOf(mergedStems);
         this.tieLayouts = Map.copyOf(tieLayouts);
         this.decorationLayouts = Map.copyOf(decorationLayouts);
-        this.spanLayouts = Map.copyOf(spanLayouts);
         this.clef = clef;
         this.keySignature = keySignature;
         this.lineHeightSs = lineHeightSs;
@@ -202,8 +198,8 @@ public final class LayoutResult {
      * @param span The beam span to look up
      * @return The beam layout, or null if not computed
      */
-    public @Nullable BeamLayout getBeamLayout(Span span) {
-        return beamLayouts.get(span);
+    public @Nullable BeamLayout getBeamLayout(Beam beam) {
+        return beamLayouts.get(beam);
     }
 
     /**
@@ -234,8 +230,8 @@ public final class LayoutResult {
      * @return the tie layout, or null if not computed
      */
     @Nullable
-    public TieLayout getTieLayout(Span span) {
-        return tieLayouts.get(span);
+    public TieLayout getTieLayout(Tie tie) {
+        return tieLayouts.get(tie);
     }
 
     // ==========================================================================
@@ -329,25 +325,6 @@ public final class LayoutResult {
         }
 
         return null;
-    }
-
-    /**
-     * Returns the span layout for a span element (hairpin, ending, tuplet).
-     *
-     * @param span The span to look up
-     * @return The span layout, or null if not computed
-     */
-    public @Nullable SpanLayout getSpanLayout(Span span) {
-        return spanLayouts.get(span);
-    }
-
-    /**
-     * Returns an unmodifiable view of all span layouts.
-     *
-     * @return Map of spans to their span layouts
-     */
-    public Map<Span, SpanLayout> getSpanLayouts() {
-        return spanLayouts;
     }
 
     // ==========================================================================
@@ -992,11 +969,10 @@ public final class LayoutResult {
 
         private final Map<StaffElement, ElementColumn> elementColumns;
         private final Map<LineElement, ElementBoundsSs> elementBounds;
-        private final Map<Span, BeamLayout> beamLayouts;
+        private final Map<Beam, BeamLayout> beamLayouts;
         private final Map<StaffElement, StemLayout> stemLayouts;
-        private final Map<Span, TieLayout> tieLayouts;
+        private final Map<Tie, TieLayout> tieLayouts;
         private final Map<LineElement, DecorationLayout> decorationLayouts;
-        private final Map<Span, SpanLayout> spanLayouts;
         @Nullable
         private Clef clef;
         @Nullable
@@ -1016,7 +992,6 @@ public final class LayoutResult {
             stemLayouts = new HashMap<>();
             tieLayouts = new HashMap<>();
             decorationLayouts = new HashMap<>();
-            spanLayouts = new HashMap<>();
             lyricBoxes = new HashMap<>();
             lyricConnectors = new ArrayList<>();
         }
@@ -1155,8 +1130,8 @@ public final class LayoutResult {
          * @param beamLayout The computed beam geometry
          * @return This builder for chaining
          */
-        public Builder putBeamLayout(Span span, BeamLayout beamLayout) {
-            beamLayouts.put(span, beamLayout);
+        public Builder putBeamLayout(Beam beam, BeamLayout beamLayout) {
+            beamLayouts.put(beam, beamLayout);
             return this;
         }
 
@@ -1179,8 +1154,8 @@ public final class LayoutResult {
          * @param tieLayout The computed tie geometry
          * @return This builder for chaining
          */
-        public Builder putTieLayout(Span span, TieLayout tieLayout) {
-            tieLayouts.put(span, tieLayout);
+        public Builder putTieLayout(Tie tie, TieLayout tieLayout) {
+            tieLayouts.put(tie, tieLayout);
             return this;
         }
 
@@ -1193,18 +1168,6 @@ public final class LayoutResult {
          */
         public Builder putDecorationLayout(LineElement element, DecorationLayout decorationLayout) {
             decorationLayouts.put(element, decorationLayout);
-            return this;
-        }
-
-        /**
-         * Adds computed span layout for a span element (hairpin, ending, tuplet).
-         *
-         * @param span       The span
-         * @param spanLayout The computed span geometry
-         * @return This builder for chaining
-         */
-        public Builder putSpanLayout(Span span, SpanLayout spanLayout) {
-            spanLayouts.put(span, spanLayout);
             return this;
         }
 
@@ -1222,26 +1185,13 @@ public final class LayoutResult {
         }
 
         /**
-         * Returns the span layout entries for iteration.
-         * <p>
-         * Used by the post-layout offset application pass to read and update
-         * span positions with manual user offsets.
-         *
-         * @return The span layout entry set (mutable — callers may update via
-         *         {@link #putSpanLayout})
-         */
-        public Set<Map.Entry<Span, SpanLayout>> getSpanLayoutEntries() {
-            return spanLayouts.entrySet();
-        }
-
-        /**
          * Returns the tie layout for a tie span from the builder's accumulated data.
          *
          * @param span The tie span to look up
          * @return The tie layout, or null if not yet computed
          */
-        public @Nullable TieLayout getTieLayout(Span span) {
-            return tieLayouts.get(span);
+        public @Nullable TieLayout getTieLayout(Tie tie) {
+            return tieLayouts.get(tie);
         }
 
         /**
@@ -1278,7 +1228,6 @@ public final class LayoutResult {
                 stemLayouts,
                 tieLayouts,
                 decorationLayouts,
-                spanLayouts,
                 clef,
                 keySignature,
                 lineHeightSs,
@@ -1304,11 +1253,10 @@ public final class LayoutResult {
     @Override
     public String toString() {
         return String.format(
-            "LayoutResult{columns=%d, elements=%d, decorations=%d, spans=%d, height=%.1f, aboveStaff=%.1f}",
+            "LayoutResult{columns=%d, elements=%d, decorations=%d, height=%.1f, aboveStaff=%.1f}",
             elementColumns.size(),
             elementBounds.size(),
             decorationLayouts.size(),
-            spanLayouts.size(),
             lineHeightSs,
             aboveStaffSs
         );
@@ -1413,22 +1361,6 @@ public final class LayoutResult {
             this(xSs, ySs, widthSs, heightSs, marginSs, List.of());
         }
     }
-
-    /**
-     * Immutable positioned bounds of a span element (hairpin, ending, tuplet), computed during layout.
-     * <p>
-     * All values are in staff-space units.
-     *
-     * @param startXSs X position of the span start
-     * @param endXSs   X position of the span end
-     * @param ySs      Y position (top edge) of the span
-     * @param heightSs Height of the span
-     */
-    public record SpanLayout(
-        double startXSs,
-        double endXSs,
-        double ySs,
-        double heightSs) {}
 
     /**
      * Center-X and baseline-Y anchor returned by {@link #getLyricAnchor}.

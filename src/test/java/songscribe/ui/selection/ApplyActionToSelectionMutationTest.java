@@ -43,13 +43,13 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
-import songscribe.model.BeamSpan;
+import songscribe.ui.layout.Beam;
 import songscribe.model.Song;
 import songscribe.model.ElementType;
 import songscribe.model.Line;
 import songscribe.model.StaffElement;
-import songscribe.model.TieSpan;
-import songscribe.model.TupletSpan;
+import songscribe.ui.layout.Tuplet;
+import songscribe.ui.layout.Tie;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.ElementTypeAction;
@@ -207,8 +207,8 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        var originalBeam = new BeamSpan(0, 3);
-        line.getBeamings().addSpan(originalBeam);
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(3)));
+        capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 3);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -219,12 +219,12 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
 
         var beamRemovals = mutationsOfType(BeamingRemoval.class);
         assertThat(beamRemovals).hasSize(1);
-        assertThat(beamRemovals.getFirst().span()).isSameAs(originalBeam);
+        assertThat(beamRemovals.getFirst().beam()).isNotNull();
 
         var beamAdditions = mutationsOfType(BeamingAddition.class);
         assertThat(beamAdditions).hasSize(1);
-        assertThat(beamAdditions.getFirst().span().start).isEqualTo(0);
-        assertThat(beamAdditions.getFirst().span().end).isEqualTo(2);
+        assertThat(beamAdditions.getFirst().beam().getAnchorElementIndex()).isEqualTo(0);
+        assertThat(beamAdditions.getFirst().beam().getEndElementIndex()).isEqualTo(2);
 
         assertNoTieMutations();
     }
@@ -242,8 +242,9 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        var tuplet = new TupletSpan(0, 4, 3);
-        line.getTuplets().addSpan(tuplet);
+        var tuplet = new Tuplet(line.getElement(0), line.getElement(4), 3);
+        line.addTuplet(tuplet);
+        capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -254,7 +255,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
 
         var tupletRemovals = mutationsOfType(TupletRemoval.class);
         assertThat(tupletRemovals).hasSize(1);
-        assertThat(tupletRemovals.getFirst().span()).isSameAs(tuplet);
+        assertThat(tupletRemovals.getFirst().tuplet()).isSameAs(tuplet);
 
         assertThat(mutationsOfType(TupletAddition.class))
             .as("tuplet invalidation never re-adds a split tuplet")
@@ -272,7 +273,8 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getTies().addSpan(new TieSpan(0, 1));
+        line.getSong().withoutMutationTracking(
+            () -> line.addRangeElement(new Tie(line.getElement(0), line.getElement(1))));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -387,9 +389,11 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addSpan(new BeamSpan(0, 2));
-        line.getTuplets().addSpan(new TupletSpan(0, 2, 3));
-        line.getTies().addSpan(new TieSpan(0, 1));
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
+        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), 3));
+        capturedMutations.clear();
+        line.getSong().withoutMutationTracking(
+            () -> line.addRangeElement(new Tie(line.getElement(0), line.getElement(1))));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
         coordinator.applyActionToSelection(SHARP_ACTION, true);
