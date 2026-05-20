@@ -433,8 +433,10 @@ public final class MusicEditOperations {
 
     // Returns true if any element in the selection range overlaps an existing ending span.
     private boolean hasOverlap(Line line, int begin, int end) {
+        var endings = LineEndingSupport.findEndings(line);
+
         for (var i = begin; i <= end; i++) {
-            if (LineEndingSupport.isInsideAnyEnding(line, i)) {
+            if (LineEndingSupport.isInsideAnyEnding(endings, i)) {
                 return true;
             }
         }

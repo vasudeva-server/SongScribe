@@ -112,7 +112,9 @@ public class Ending extends RangeElement {
                 EndingEffect.CompensateEnd, EndingEffect.CompensateSplit {
 
         /** No ending is affected. */
-        record None() implements EndingEffect {}
+        record None() implements EndingEffect {
+            public static final None INSTANCE = new None();
+        }
 
         /** The ending would be invalidated and removed. UI shows Confirm-I. */
         record Invalidate(Ending ending) implements EndingEffect {}
@@ -493,7 +495,7 @@ public class Ending extends RangeElement {
         // Condition 1 — anchor replaced
         if (oldElement == getAnchorElement()) {
             return (newType == ElementType.SINGLE_BARLINE || newType == ElementType.REPEAT_LEFT)
-                ? new EndingEffect.None()
+                ? EndingEffect.None.INSTANCE
                 : new EndingEffect.Invalidate(this);
         }
 
@@ -505,7 +507,7 @@ public class Ending extends RangeElement {
             if (newType == ElementType.REPEAT_RIGHT) {
                 // REPEAT_RIGHT → REPEAT_RIGHT: no change needed
                 if (splitEl.getType() == ElementType.REPEAT_RIGHT) {
-                    return new EndingEffect.None();
+                    return EndingEffect.None.INSTANCE;
                 }
                 // REPEAT_LEFT_RIGHT → REPEAT_RIGHT: end must become SINGLE_BARLINE
                 return new EndingEffect.CompensateEnd(this, ElementType.SINGLE_BARLINE);
@@ -514,7 +516,7 @@ public class Ending extends RangeElement {
             if (newType == ElementType.REPEAT_LEFT_RIGHT) {
                 // REPEAT_LEFT_RIGHT → REPEAT_LEFT_RIGHT: no change needed
                 if (splitEl.getType() == ElementType.REPEAT_LEFT_RIGHT) {
-                    return new EndingEffect.None();
+                    return EndingEffect.None.INSTANCE;
                 }
                 // REPEAT_RIGHT → REPEAT_LEFT_RIGHT: end must become REPEAT_RIGHT
                 return new EndingEffect.CompensateEnd(this, ElementType.REPEAT_RIGHT);
@@ -533,17 +535,17 @@ public class Ending extends RangeElement {
             if (splitEl != null && splitEl.getType() == ElementType.REPEAT_LEFT_RIGHT) {
                 // Split is REPEAT_LEFT_RIGHT: end must remain REPEAT_RIGHT or REPEAT_LEFT_RIGHT
                 return (newType == ElementType.REPEAT_RIGHT || newType == ElementType.REPEAT_LEFT_RIGHT)
-                    ? new EndingEffect.None()
+                    ? EndingEffect.None.INSTANCE
                     : new EndingEffect.CompensateSplit(this, ElementType.REPEAT_RIGHT);
             }
 
             // Split is REPEAT_RIGHT: end must be isTerminal()
             return newType.isTerminal()
-                ? new EndingEffect.None()
+                ? EndingEffect.None.INSTANCE
                 : new EndingEffect.CompensateSplit(this, ElementType.REPEAT_LEFT_RIGHT);
         }
 
-        return new EndingEffect.None();
+        return EndingEffect.None.INSTANCE;
     }
 
     /**

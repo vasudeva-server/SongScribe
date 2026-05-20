@@ -804,16 +804,12 @@ public final class LyricEditor extends MyJTextField {
         return type.isPitchedNote() || type.isRest() || type.isGraceNote();
     }
 
-    public static boolean isEligibleForLyric(StaffElement candidate, int verse) {
-        return candidate.isEligibleForLyric(verse);
-    }
-
     /** Package-private for testing. */
     static int findNextEligibleIndex(Line searchLine, int currentIndex, int verse) {
         var count = searchLine.effectiveElementCount();
 
         for (var i = currentIndex + 1; i < count; i++) {
-            if (isLyricTargetEligible(searchLine, i) && isEligibleForLyric(searchLine.getElement(i), verse)) {
+            if (isLyricTargetEligible(searchLine, i) && searchLine.getElement(i).isEligibleForLyric(verse)) {
                 return i;
             }
         }
@@ -824,7 +820,7 @@ public final class LyricEditor extends MyJTextField {
     /** Package-private for testing. */
     static int findPreviousEligibleIndex(Line searchLine, int currentIndex, int verse) {
         for (var i = currentIndex - 1; i >= 0; i--) {
-            if (isLyricTargetEligible(searchLine, i) && isEligibleForLyric(searchLine.getElement(i), verse)) {
+            if (isLyricTargetEligible(searchLine, i) && searchLine.getElement(i).isEligibleForLyric(verse)) {
                 return i;
             }
         }

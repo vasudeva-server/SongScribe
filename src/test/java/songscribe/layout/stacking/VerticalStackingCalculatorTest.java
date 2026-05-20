@@ -35,15 +35,15 @@ import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
 import songscribe.layout.ElementColumn;
+import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
 import songscribe.layout.stacking.VerticalStackingCalculator;
-import songscribe.ui.renderer.NoteRenderer;
 
 class VerticalStackingCalculatorTest extends UnitTest {
 
     @BeforeAll
     static void initializeAccidentalWidths() {
-        NoteRenderer.initializeAccidentalWidths();
+        NoteGeometry.initializeAccidentalWidths();
     }
 
     private static final double LINE_WIDTH_SS = 100.0;
@@ -113,7 +113,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(Accidental.SHARP);
 
-        var bounds = require(NoteRenderer.getAccidentalBoundsSs(note), "sharp bounds");
+        var bounds = require(NoteGeometry.getAccidentalBoundsSs(note), "sharp bounds");
 
         var structural = new StaffExtents(LINE_WIDTH_SS);
 
@@ -140,7 +140,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         note.setStaffPosition(TOP_STAFF_POSITION);
         note.setAccidental(Accidental.FLAT);
 
-        var bounds = require(NoteRenderer.getAccidentalBoundsSs(note), "flat bounds");
+        var bounds = require(NoteGeometry.getAccidentalBoundsSs(note), "flat bounds");
         var centerYSs = StaffExtents.spToSs(TOP_STAFF_POSITION);
         var expectedTopAbsoluteYSs = centerYSs + bounds.topSs();
 

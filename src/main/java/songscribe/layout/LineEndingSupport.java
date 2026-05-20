@@ -38,8 +38,8 @@ public final class LineEndingSupport {
     }
 
     /** Returns the {@link Ending} that spans {@code elementIndex}, or null if none. */
-    public static @Nullable Ending findEndingAt(Line line, int elementIndex) {
-        for (var ending : findEndings(line)) {
+    public static @Nullable Ending findEndingAt(List<Ending> endings, int elementIndex) {
+        for (var ending : endings) {
             var start = ending.getAnchorElementIndex();
             var end = ending.getEndElementIndex();
 
@@ -51,15 +51,41 @@ public final class LineEndingSupport {
         return null;
     }
 
+    /** Returns the {@link Ending} that spans {@code elementIndex}, or null if none. */
+    public static @Nullable Ending findEndingAt(Line line, int elementIndex) {
+        return findEndingAt(findEndings(line), elementIndex);
+    }
+
+    /** Returns true if {@code elementIndex} falls inside any ending. */
+    public static boolean isInsideAnyEnding(List<Ending> endings, int elementIndex) {
+        return findEndingAt(endings, elementIndex) != null;
+    }
+
     /** Returns true if {@code elementIndex} falls inside any ending on {@code line}. */
     public static boolean isInsideAnyEnding(Line line, int elementIndex) {
-        return findEndingAt(line, elementIndex) != null;
+        return isInsideAnyEnding(findEndings(line), elementIndex);
+    }
+
+    /** Returns true if {@code elementIndex} is the anchor of any ending. */
+    public static boolean isStartOfAnyEnding(List<Ending> endings, int elementIndex) {
+        for (var ending : endings) {
+            if (ending.getAnchorElementIndex() == elementIndex) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Returns true if {@code elementIndex} is the anchor of any ending on {@code line}. */
     public static boolean isStartOfAnyEnding(Line line, int elementIndex) {
-        for (var ending : findEndings(line)) {
-            if (ending.getAnchorElementIndex() == elementIndex) {
+        return isStartOfAnyEnding(findEndings(line), elementIndex);
+    }
+
+    /** Returns true if {@code elementIndex} is the end of any ending. */
+    public static boolean isEndOfAnyEnding(List<Ending> endings, int elementIndex) {
+        for (var ending : endings) {
+            if (ending.getEndElementIndex() == elementIndex) {
                 return true;
             }
         }
@@ -69,13 +95,7 @@ public final class LineEndingSupport {
 
     /** Returns true if {@code elementIndex} is the end of any ending on {@code line}. */
     public static boolean isEndOfAnyEnding(Line line, int elementIndex) {
-        for (var ending : findEndings(line)) {
-            if (ending.getEndElementIndex() == elementIndex) {
-                return true;
-            }
-        }
-
-        return false;
+        return isEndOfAnyEnding(findEndings(line), elementIndex);
     }
 
     /**
@@ -94,6 +114,6 @@ public final class LineEndingSupport {
             .map(e -> e.checkReplacement(oldElement, newElement, line))
             .filter(e -> !(e instanceof Ending.EndingEffect.None))
             .findFirst()
-            .orElseGet(Ending.EndingEffect.None::new);
+            .orElseGet(() -> Ending.EndingEffect.None.INSTANCE);
     }
 }

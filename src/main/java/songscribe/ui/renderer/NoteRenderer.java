@@ -55,15 +55,6 @@ import songscribe.layout.NoteGeometry;
  * </ul>
  */
 public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
-    /** @see NoteGeometry#STEM_LENGTH_SS */
-    public static final double STEM_LENGTH_SS = NoteGeometry.STEM_LENGTH_SS;
-    /** @see NoteGeometry#GRACE_NOTE_STEM_LENGTH_SS */
-    public static final double GRACE_NOTE_STEM_LENGTH_SS = NoteGeometry.GRACE_NOTE_STEM_LENGTH_SS;
-    /** @see NoteGeometry#STEM_WIDTH_SS */
-    public static final double STEM_WIDTH_SS = NoteGeometry.STEM_WIDTH_SS;
-    /** @see NoteGeometry#STEM_UP_SE_BLACK_SMALL */
-    public static final GlyphAnchors.Anchor STEM_UP_SE_BLACK_SMALL = NoteGeometry.STEM_UP_SE_BLACK_SMALL;
-
     // ==========================================================================
     // Constants
     // ==========================================================================
@@ -97,9 +88,6 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var advanceWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
         DOT_SPACING_SS = (advanceWidth != null) ? advanceWidth.floatValue() + 0.35f : 0.825f;
     }
-
-    /** @see NoteGeometry#ACCIDENTAL_PADDING_SS */
-    static final float ACCIDENTAL_PADDING_SS = NoteGeometry.ACCIDENTAL_PADDING_SS;
 
     // Singleton instance
     private static final NoteRenderer INSTANCE = new NoteRenderer();
@@ -164,17 +152,6 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     }
 
     /**
-     * Returns the ledger line overhang for a note, or 0 if the note has no ledger lines.
-     * This is the distance the ledger lines extend beyond the notehead on each side.
-     *
-     * @param note The note to check
-     * @return The overhang in staff-space units, or 0 if no ledger lines are needed
-     */
-    public static double getLedgerLineOverhangSs(StaffElement note) {
-        return NoteGeometry.getLedgerLineOverhangSs(note);
-    }
-
-    /**
      * Computes the base stem geometry for a note type and direction.
      * This is the shared anchor selection and positioning logic used by both
      * {@code NoteRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
@@ -190,7 +167,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         GlyphAnchors.Anchor anchor;
 
         if (isGrace) {
-            anchor = STEM_UP_SE_BLACK_SMALL;
+            anchor = NoteGeometry.STEM_UP_SE_BLACK_SMALL;
         } else if (upper) {
             anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE : Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
         } else {
@@ -202,8 +179,8 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         // Stem left edge: for up-stems, the anchor marks the RIGHT edge of the stem;
         // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
         // left by STEM_WIDTH_SS/2, so we compensate.
-        var stemLeftX = anchorX - (upper ? STEM_WIDTH_SS : STEM_WIDTH_SS / 2);
-        var stemLength = isGrace ? GRACE_NOTE_STEM_LENGTH_SS : STEM_LENGTH_SS;
+        var stemLeftX = anchorX - (upper ? NoteGeometry.STEM_WIDTH_SS : NoteGeometry.STEM_WIDTH_SS / 2);
+        var stemLength = isGrace ? NoteGeometry.GRACE_NOTE_STEM_LENGTH_SS : NoteGeometry.STEM_LENGTH_SS;
 
         return new StemGeometry(stemLeftX, anchor.y(), stemLength);
     }
@@ -306,7 +283,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
         // Note: Don't set color here - respect the color set by the caller
 
         // Adjust x position for lower stem notes
-        var noteHeadXPosSs = getNoteheadXOffsetSs(noteType, upper);
+        var noteHeadXPosSs = NoteGeometry.getNoteheadXOffsetSs(noteType, upper);
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(noteType.isGraceNote() ? GRACE_NOTE_FONT : MUSIC_FONT);
@@ -442,7 +419,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
             flagFont = GRACE_NOTE_FONT;
             // The scaled flag glyph's internal stem connection is 65% of the full stem width.
             // Shift right to visually center the flag on the actual stem.
-            flagX += (float) (STEM_WIDTH_SS * (1 - GRACE_NOTE_SCALE) / 2);
+            flagX += (float) (NoteGeometry.STEM_WIDTH_SS * (1 - GRACE_NOTE_SCALE) / 2);
         } else {
             flagFont = MUSIC_FONT;
         }
@@ -517,7 +494,7 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     private void renderLedgerLines(Graphics2D g2, StaffElement note, ElementRenderContext ctx) {
-        var extensionSs = getLedgerLineOverhangSs(note);
+        var extensionSs = NoteGeometry.getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
             return;
@@ -545,15 +522,12 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        var isGrace = note.getType().isGraceNote();
-        var components = isGrace
-            ? NoteGeometry.ACCIDENTAL_COMPONENTS_SMALL[accidental.ordinal()]
-            : NoteGeometry.ACCIDENTAL_COMPONENTS[accidental.ordinal()];
+        var components = NoteGeometry.getAccidentalComponents(accidental, note.getType().isGraceNote());
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(MUSIC_FONT);
 
-            var startX = -NoteGeometry.ACCIDENTAL_PADDING_SS - getAccidentalWidthSs(note);
+            var startX = -NoteGeometry.ACCIDENTAL_PADDING_SS - NoteGeometry.getAccidentalWidthSs(note);
             NoteGeometry.walkAccidentalGlyphs(
                 components,
                 note.isAccidentalInParentheses(),
@@ -578,26 +552,6 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
             note.getType() != ElementType.GRACE_QUAVER;
     }
 
-    // ==========================================================================
-    // Accidental Width Calculation
-    // ==========================================================================
-
-    public static void initializeAccidentalWidths() {
-        NoteGeometry.initializeAccidentalWidths();
-    }
-
-    public static float getAccidentalWidthSs(StaffElement note) {
-        return NoteGeometry.getAccidentalWidthSs(note);
-    }
-
-    public static @Nullable AccidentalBounds getAccidentalBoundsSs(StaffElement note) {
-        return NoteGeometry.getAccidentalBoundsSs(note);
-    }
-
-    public static float getAccidentalComponentWidthSs(StaffElement note, int component) {
-        return NoteGeometry.getAccidentalComponentWidthSs(note, component);
-    }
-
     /**
      * Returns the X offset applied to the notehead glyph for stem-down notes.
      * <p>
@@ -609,20 +563,12 @@ public final class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * @param upper    Whether the stem points up
      * @return The X offset in staff spaces (negative for stem-down, 0 otherwise)
      */
-    public static float getNoteheadXOffsetSs(ElementType noteType, boolean upper) {
-        return NoteGeometry.getNoteheadXOffsetSs(noteType, upper);
-    }
-
-    public static double getNoteheadRightEdgeSs(StaffElement note) {
-        return NoteGeometry.getNoteheadRightEdgeSs(note);
-    }
-
     static double getLedgerLineCenterXSs(StaffElement note) {
-        return getNoteheadRightEdgeSs(note) / 2.0;
+        return NoteGeometry.getNoteheadRightEdgeSs(note) / 2.0;
     }
 
     static double getLedgerLineWidthSs(StaffElement note, double extensionSs) {
-        return getNoteheadRightEdgeSs(note) + 2 * extensionSs;
+        return NoteGeometry.getNoteheadRightEdgeSs(note) + 2 * extensionSs;
     }
 
     /**

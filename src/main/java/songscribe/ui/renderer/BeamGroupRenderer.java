@@ -38,6 +38,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.dom.LineElement;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
 
 /**
@@ -329,7 +330,7 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var endNote = line.getElement(endIndex);
         var layoutResult = ctx.getLayoutResult();
         var middleLineYSs = ctx.getMiddleLineYSs();
-        var halfStemWidthSs = NoteRenderer.STEM_WIDTH_SS / 2.0;
+        var halfStemWidthSs = NoteGeometry.STEM_WIDTH_SS / 2.0;
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---
         var thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
@@ -406,8 +407,8 @@ public final class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         // Fallback: approximate from staff position + standard stem length
         var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
         return isUpper
-            ? elementYSs - NoteRenderer.STEM_LENGTH_SS
-            : elementYSs + NoteRenderer.STEM_LENGTH_SS;
+            ? elementYSs - NoteGeometry.STEM_LENGTH_SS
+            : elementYSs + NoteGeometry.STEM_LENGTH_SS;
     }
 
     /**

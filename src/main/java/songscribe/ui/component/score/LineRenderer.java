@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.error.RuntimeError;
 import songscribe.dom.ElementType;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.NoteGeometry;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.dom.AnnotationAttachment;
@@ -146,8 +147,8 @@ class LineRenderer {
         ctx.setEditMode(lc.isEditMode());
         ctx.setPlayingNoteIndex(lc.getPlayingNoteIndex());
         ctx.setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex());
-        // Ensure NoteRenderer metrics are initialized
-        NoteRenderer.initializeAccidentalWidths();
+        // Ensure accidental metrics are initialized
+        NoteGeometry.initializeAccidentalWidths();
 
         // When in grace-note insert mode for this line, shift subsequent elements
         // rightward to show where the host note will land before the user clicks.

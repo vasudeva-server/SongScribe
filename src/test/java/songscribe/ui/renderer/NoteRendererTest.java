@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.layout.NoteGeometry;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
 
@@ -35,7 +36,7 @@ class NoteRendererTest extends UnitTest {
 
     @BeforeAll
     static void initializeAccidentalWidths() {
-        NoteRenderer.initializeAccidentalWidths();
+        NoteGeometry.initializeAccidentalWidths();
     }
 
     @SuppressWarnings("NullAway")
@@ -55,20 +56,20 @@ class NoteRendererTest extends UnitTest {
         var graceNote = ElementType.GRACE_QUAVER.newInstance();
         graceNote.setAccidental(Accidental.SHARP);
 
-        assertThat(NoteRenderer.getAccidentalBoundsSs(graceNote)).isNull();
+        assertThat(NoteGeometry.getAccidentalBoundsSs(graceNote)).isNull();
     }
 
     @Test
     void testGetAccidentalBoundsReturnsNullForNoAccidental() {
         var note = ElementType.CROTCHET.newInstance();
 
-        assertThat(NoteRenderer.getAccidentalBoundsSs(note)).isNull();
+        assertThat(NoteGeometry.getAccidentalBoundsSs(note)).isNull();
     }
 
     @Test
     void testGetAccidentalBoundsReturnsSensibleExtentsForDoubleFlat() {
         var bounds = require(
-            NoteRenderer.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.DOUBLE_FLAT)),
+            NoteGeometry.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.DOUBLE_FLAT)),
             "double-flat bounds");
 
         assertThat(bounds.topSs()).isNegative();
@@ -80,7 +81,7 @@ class NoteRendererTest extends UnitTest {
     @Test
     void testGetAccidentalBoundsReturnsSensibleExtentsForFlat() {
         var bounds = require(
-            NoteRenderer.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.FLAT)),
+            NoteGeometry.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.FLAT)),
             "flat bounds");
 
         assertThat(bounds.topSs()).isNegative();
@@ -92,7 +93,7 @@ class NoteRendererTest extends UnitTest {
     @Test
     void testGetAccidentalBoundsReturnsSensibleExtentsForNatural() {
         var bounds = require(
-            NoteRenderer.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.NATURAL)),
+            NoteGeometry.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.NATURAL)),
             "natural bounds");
 
         assertThat(bounds.topSs()).isNegative();
@@ -104,7 +105,7 @@ class NoteRendererTest extends UnitTest {
     @Test
     void testGetAccidentalBoundsReturnsSensibleExtentsForSharp() {
         var bounds = require(
-            NoteRenderer.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.SHARP)),
+            NoteGeometry.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.SHARP)),
             "sharp bounds");
 
         assertThat(bounds.topSs()).isNegative();
@@ -116,13 +117,13 @@ class NoteRendererTest extends UnitTest {
     @Test
     void testGetAccidentalBoundsWidensWhenParenthesized() {
         var bareSharp = require(
-            NoteRenderer.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.SHARP)),
+            NoteGeometry.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.SHARP)),
             "bare-sharp bounds");
 
         var parenthesizedNote = newCrotchetWithAccidental(Accidental.SHARP);
         parenthesizedNote.setAccidentalInParentheses(true);
         var parenSharp = require(
-            NoteRenderer.getAccidentalBoundsSs(parenthesizedNote),
+            NoteGeometry.getAccidentalBoundsSs(parenthesizedNote),
             "parenthesized-sharp bounds");
 
         // Parentheses extend the drawing on both sides, so the union widens

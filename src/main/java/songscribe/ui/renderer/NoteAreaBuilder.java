@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
+import songscribe.layout.NoteGeometry;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -221,7 +222,7 @@ class NoteAreaBuilder {
             shape = NOTEHEAD_BLACK_SHAPE;
         }
 
-        var offsetX = NoteRenderer.getNoteheadXOffsetSs(noteType, upper);
+        var offsetX = NoteGeometry.getNoteheadXOffsetSs(noteType, upper);
 
         if (offsetX != 0f) {
             shape = AffineTransform.getTranslateInstance(offsetX, 0).createTransformedShape(shape);
@@ -264,7 +265,7 @@ class NoteAreaBuilder {
             return;
         }
 
-        var accWidth = NoteRenderer.getAccidentalWidthSs(note);
+        var accWidth = NoteGeometry.getAccidentalWidthSs(note);
 
         if (accWidth <= 0) {
             return;
@@ -272,7 +273,7 @@ class NoteAreaBuilder {
 
         // Accidental X position mirrors NoteRenderer: -(padding + width)
         // For grace notes, accWidth already reflects the small glyph size.
-        double xSs = -NoteRenderer.ACCIDENTAL_PADDING_SS - accWidth;
+        double xSs = -NoteGeometry.ACCIDENTAL_PADDING_SS - accWidth;
 
         // Use the tallest accidental bbox height as a reasonable approximation.
         // The actual accidental may be shorter, but this gives a safe bounding area.
@@ -290,7 +291,7 @@ class NoteAreaBuilder {
      * Mirrors the positioning logic in {@link NoteRenderer#renderLedgerLines}.
      */
     private void addLedgerLinesToArea(Area area, StaffElement note) {
-        var extensionSs = NoteRenderer.getLedgerLineOverhangSs(note);
+        var extensionSs = NoteGeometry.getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
             return;
@@ -327,10 +328,10 @@ class NoteAreaBuilder {
 
         if (upper) {
             area.add(new Area(new Rectangle2D.Double(
-                stemLeftXSs, stemTipYSs, NoteRenderer.STEM_WIDTH_SS, geom.lengthSs())));
+                stemLeftXSs, stemTipYSs, NoteGeometry.STEM_WIDTH_SS, geom.lengthSs())));
         } else {
             area.add(new Area(new Rectangle2D.Double(
-                stemLeftXSs, geom.anchorYSs(), NoteRenderer.STEM_WIDTH_SS, geom.lengthSs())));
+                stemLeftXSs, geom.anchorYSs(), NoteGeometry.STEM_WIDTH_SS, geom.lengthSs())));
         }
 
         return new Point2D.Double(stemLeftXSs, stemTipYSs);

@@ -216,7 +216,7 @@ public class ElementColumnBuilder {
         var flagRightExtent = 0.0;
 
         if (!beamed && flagGlyph != null) {
-            var flagAdvanceWidthSs = advanceWidthSs(flagGlyph);
+            var flagAdvanceWidthSs = SMuFLMetadata.getAdvanceWidthOrZero(flagGlyph);
 
             // Grace notes always stem up, use the small notehead anchor.
             // Use explicit if/else instead of a nested ternary for clarity.
@@ -255,11 +255,6 @@ public class ElementColumnBuilder {
         }
 
         return noteheadRightExtent;
-    }
-
-    private static double advanceWidthSs(SMuFLGlyph glyph) {
-        var width = SMuFLMetadata.getAdvanceWidth(glyph);
-        return width != null ? width : 0.0;
     }
 
     // ==========================================================================

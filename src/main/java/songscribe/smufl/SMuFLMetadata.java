@@ -96,6 +96,12 @@ public final class SMuFLMetadata {
         return instance().advanceWidths.get(glyph);
     }
 
+    /** Returns the glyph's advance width in staff spaces, or 0 if the font has no metadata for it. */
+    public static double getAdvanceWidthOrZero(SMuFLGlyph glyph) {
+        var width = getAdvanceWidth(glyph);
+        return width != null ? width : 0.0;
+    }
+
     /**
      * Returns the bounding box for a glyph, exiting fatally if not present.
      * Use for well-known glyphs whose metadata is guaranteed by the font.

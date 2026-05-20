@@ -35,6 +35,7 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.component.ScoreView;
 import songscribe.layout.ElementBoundsSs;
+import songscribe.layout.NoteGeometry;
 import songscribe.dom.LineElement;
 
 import org.jspecify.annotations.Nullable;
@@ -350,7 +351,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
         var type = note.getType();
         var noteheadCenterXSs = type.getElementCenterXSs()
-            + NoteRenderer.getNoteheadXOffsetSs(type, note.isUpper());
+            + NoteGeometry.getNoteheadXOffsetSs(type, note.isUpper());
         return layoutXSs + noteheadCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
     }
 
@@ -451,6 +452,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
         // upper: SE anchor is the stem's right edge; center = anchorX - half stem width
         // lower: NW anchor is the stem's left edge (after notehead shift); center = anchorX
-        return upper ? anchorX - NoteRenderer.STEM_WIDTH_SS / 2.0 : anchorX;
+        return upper ? anchorX - NoteGeometry.STEM_WIDTH_SS / 2.0 : anchorX;
     }
 }

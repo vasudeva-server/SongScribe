@@ -428,12 +428,14 @@ public final class ExportABCAction extends UIAction {
     static String translateLine(Line line, int songUnitLength) {
         var sb = new StringBuilder(27);
 
+        var endings = LineEndingSupport.findEndings(line);
+
         for (var i = 0; i < line.effectiveElementCount(); i++) {
             if (line.isStartOfAnyBeam(i)) {
                 sb.append(' ');
             }
 
-            if (LineEndingSupport.isStartOfAnyEnding(line, i)) {
+            if (LineEndingSupport.isStartOfAnyEnding(endings, i)) {
                 sb.append("[1 ");
             }
 
@@ -457,7 +459,7 @@ public final class ExportABCAction extends UIAction {
 
             if (
                 (line.getElement(i).getType() == ElementType.REPEAT_RIGHT) &&
-                    LineEndingSupport.isInsideAnyEnding(line, i)
+                    LineEndingSupport.isInsideAnyEnding(endings, i)
             ) {
                 sb.append("[2 ");
             }
@@ -466,7 +468,7 @@ public final class ExportABCAction extends UIAction {
                 sb.append(' ');
             }
 
-            if (LineEndingSupport.isEndOfAnyEnding(line, i)) {
+            if (LineEndingSupport.isEndOfAnyEnding(endings, i)) {
                 sb.append("|] ");
             }
 

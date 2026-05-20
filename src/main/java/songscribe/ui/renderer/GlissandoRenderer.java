@@ -31,6 +31,7 @@ import songscribe.dom.Song;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.NoteGeometry;
 import songscribe.dom.ScaleContext;
 
 /**
@@ -364,7 +365,7 @@ public final class GlissandoRenderer {
         StaffElement note,
         LayoutResult layoutResult
     ) {
-        return layoutResult.getElementXSs(note) + NoteRenderer.getNoteheadRightEdgeSs(note) / 2.0;
+        return layoutResult.getElementXSs(note) + NoteGeometry.getNoteheadRightEdgeSs(note) / 2.0;
     }
 
     /**
@@ -495,7 +496,7 @@ public final class GlissandoRenderer {
         // Exit points found in local space are translated to layout space by adding the offset.
 
         // Source: find entry point on offset area in local space
-        var localCx1 = NoteRenderer.getNoteheadRightEdgeSs(src.note) / 2.0;
+        var localCx1 = NoteGeometry.getNoteheadRightEdgeSs(src.note) / 2.0;
         var offset1X = src.cxSs - localCx1;
         var offset1Y = src.cySs;
 
@@ -519,7 +520,7 @@ public final class GlissandoRenderer {
                 throw new IllegalStateException("tgt must be non-null when not a slide-out");
             }
 
-            var localCx2 = NoteRenderer.getNoteheadRightEdgeSs(tgt.note) / 2.0;
+            var localCx2 = NoteGeometry.getNoteheadRightEdgeSs(tgt.note) / 2.0;
             var offset2X = tgt.cxSs - localCx2;
             var offset2Y = tgt.cySs;
 

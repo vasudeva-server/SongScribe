@@ -6,6 +6,7 @@ import java.util.function.BiConsumer;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.AccidentalBounds;
+import songscribe.dom.StaffElement.Accidental;
 import songscribe.error.RuntimeError;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
@@ -85,7 +86,7 @@ public final class NoteGeometry {
     private static final float SPACE_BETWEEN_TWO_ACCIDENTALS_SS = 0.1625f; // 1.3px / 8 px/ss
 
     /** Accidental glyph components indexed by {@code Accidental.ordinal()}. */
-    public static final SMuFLGlyph[][] ACCIDENTAL_COMPONENTS = {
+    private static final SMuFLGlyph[][] ACCIDENTAL_COMPONENTS = {
         {SMuFLGlyph.ACCIDENTAL_NATURAL},                                // NATURAL
         {SMuFLGlyph.ACCIDENTAL_FLAT},                                   // FLAT
         {SMuFLGlyph.ACCIDENTAL_SHARP},                                  // SHARP
@@ -97,7 +98,7 @@ public final class NoteGeometry {
     };
 
     /** Small accidental glyph components for grace notes (pre-sized, no scaling needed). */
-    public static final SMuFLGlyph[][] ACCIDENTAL_COMPONENTS_SMALL = {
+    private static final SMuFLGlyph[][] ACCIDENTAL_COMPONENTS_SMALL = {
         {SMuFLGlyph.ACCIDENTAL_NATURAL_SMALL},                                           // NATURAL
         {SMuFLGlyph.ACCIDENTAL_FLAT_SMALL},                                              // FLAT
         {SMuFLGlyph.ACCIDENTAL_SHARP_SMALL},                                             // SHARP
@@ -107,6 +108,11 @@ public final class NoteGeometry {
         {SMuFLGlyph.ACCIDENTAL_NATURAL_SMALL, SMuFLGlyph.ACCIDENTAL_FLAT_SMALL},         // NATURAL_FLAT
         {SMuFLGlyph.ACCIDENTAL_NATURAL_SMALL, SMuFLGlyph.ACCIDENTAL_SHARP_SMALL},        // NATURAL_SHARP
     };
+
+    /** Returns the glyph components for an accidental; small variants for grace notes. */
+    public static SMuFLGlyph[] getAccidentalComponents(Accidental accidental, boolean small) {
+        return (small ? ACCIDENTAL_COMPONENTS_SMALL : ACCIDENTAL_COMPONENTS)[accidental.ordinal()];
+    }
 
     // Kerning adjustments for parenthesized accidentals (in staff-space units).
     // Positive = more space, negative = less space.
@@ -152,10 +158,8 @@ public final class NoteGeometry {
         baseAccidentalWidthsSs = computeComponentWidths(ACCIDENTAL_COMPONENTS);
         smallAccidentalWidthsSs = computeComponentWidths(ACCIDENTAL_COMPONENTS_SMALL);
 
-        var parensLeftWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
-        var parensRightWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
-        var beginParenthesisWidthSs = (parensLeftWidth != null) ? parensLeftWidth.floatValue() : 0f;
-        var endParenthesisWidthSs = (parensRightWidth != null) ? parensRightWidth.floatValue() : 0f;
+        var beginParenthesisWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+        var endParenthesisWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
 
         baseAccidentalParenthesisWidthsSs = new float[ACCIDENTAL_COMPONENTS.length];
 
@@ -246,23 +250,6 @@ public final class NoteGeometry {
         return table[accidental.ordinal()];
     }
 
-    /** Returns the width of a specific accidental component. */
-    public static float getAccidentalComponentWidthSs(StaffElement note, int component) {
-        var widths = baseAccidentalWidthsSs;
-
-        if (widths == null) {
-            throw RuntimeError.exit("getAccidentalComponentWidthSs() called before initializeAccidentalWidths()");
-        }
-
-        var accidental = note.getAccidental();
-
-        if (accidental == null) {
-            return 0;
-        }
-
-        return widths[accidental.getComponent(component) + 1];
-    }
-
     // ==========================================================================
     // Notehead / Ledger Line Geometry
     // ==========================================================================
@@ -347,9 +334,8 @@ public final class NoteGeometry {
         }
     }
 
-    public static float advancePast(float x, SMuFLGlyph glyph) {
-        var advance = SMuFLMetadata.getAdvanceWidth(glyph);
-        return x + (advance != null ? advance.floatValue() : 0f);
+    private static float advancePast(float x, SMuFLGlyph glyph) {
+        return x + (float) SMuFLMetadata.getAdvanceWidthOrZero(glyph);
     }
 
     // ==========================================================================
@@ -407,8 +393,7 @@ public final class NoteGeometry {
                     width += SPACE_BETWEEN_TWO_ACCIDENTALS_SS;
                 }
 
-                var aw = SMuFLMetadata.getAdvanceWidth(components[c]);
-                width += (aw != null) ? aw.floatValue() : 0f;
+                width += (float) SMuFLMetadata.getAdvanceWidthOrZero(components[c]);
             }
 
             widths[i] = width;

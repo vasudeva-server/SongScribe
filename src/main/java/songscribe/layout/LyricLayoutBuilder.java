@@ -264,7 +264,7 @@ public final class LyricLayoutBuilder {
      * Do not "fix" this to use the normal-note centring helper.
      * <p>
      * No notehead-offset correction is applied for graces: graces are always rendered
-     * stem-up (see {@code NoteRenderer}), so {@code NoteRenderer.getNoteheadXOffsetSs}
+     * stem-up (see {@code NoteRenderer}), so {@code NoteGeometry.getNoteheadXOffsetSs}
      * would always return zero for them.
      */
     private static double computeLyricBoxLeftXSs(

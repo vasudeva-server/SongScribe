@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.layout.NoteGeometry;
 import songscribe.dom.StaffElement;
 
 class NoteAreaBuilderTest extends UnitTest {
@@ -42,7 +43,7 @@ class NoteAreaBuilderTest extends UnitTest {
     void testAreaCacheRebuildsWhenAccidentalChanges() {
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
-        NoteRenderer.initializeAccidentalWidths();
+        NoteGeometry.initializeAccidentalWidths();
 
         var entry1 = BUILDER.getOrBuildArea(note, false);
         note.setAccidental(StaffElement.Accidental.SHARP);
@@ -175,7 +176,7 @@ class NoteAreaBuilderTest extends UnitTest {
         noteWithAcc.setUpper(true);
         noteWithAcc.setAccidental(StaffElement.Accidental.SHARP);
         // Accidental widths must be initialized before use
-        NoteRenderer.initializeAccidentalWidths();
+        NoteGeometry.initializeAccidentalWidths();
         var areaWithAcc = BUILDER.buildNoteArea(noteWithAcc, false);
 
         assertThat(areaWithAcc.getBounds2D().getMinX())
