@@ -25,11 +25,11 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import songscribe.model.StaffElement;
-import songscribe.model.Tempo;
-import songscribe.ui.layout.MetronomeAttachment;
-import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.dom.StaffElement;
+import songscribe.dom.Tempo;
+import songscribe.dom.MetronomeAttachment;
+import songscribe.dom.ScaleContext;
+import songscribe.dom.TempoChangeAttachment;
 
 /** Renders tempo change indicators (note = number format, e.g. "♩ = 120"). */
 public final class TempoChangeRenderer extends MetronomeRenderer {

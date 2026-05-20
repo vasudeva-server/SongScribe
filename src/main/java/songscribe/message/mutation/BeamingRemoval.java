@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.Line;
-import songscribe.ui.layout.Beam;
+import songscribe.dom.Line;
+import songscribe.dom.Beam;
 
 /**
  * Mutation recording the removal of a beam range element from a line.

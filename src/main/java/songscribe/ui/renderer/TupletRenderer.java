@@ -25,10 +25,10 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import songscribe.model.Line;
+import songscribe.dom.Line;
 import songscribe.smufl.Engraving;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.Tuplet;
+import songscribe.layout.LayoutResult;
+import songscribe.dom.Tuplet;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 

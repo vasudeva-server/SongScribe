@@ -30,18 +30,18 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
-import songscribe.model.Lyric;
-import songscribe.model.Song;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Lyric;
+import songscribe.dom.Song;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
-import songscribe.ui.layout.LineThickness;
-import songscribe.ui.layout.SongLayoutMetrics;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.LyricRenderMetrics;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.layout.LineThickness;
+import songscribe.layout.SongLayoutMetrics;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricRenderMetrics;
+import songscribe.dom.ScaleContext;
 
 /**
  * Context passed to element renderers containing shared rendering state.

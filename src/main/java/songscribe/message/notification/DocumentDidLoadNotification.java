@@ -21,7 +21,7 @@
 package songscribe.message.notification;
 
 import songscribe.message.Message;
-import songscribe.model.Song;
+import songscribe.dom.Song;
 
 /**
  * Posted when a document is loaded (File &gt; Open, File &gt; New).

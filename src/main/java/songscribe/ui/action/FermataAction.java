@@ -24,8 +24,8 @@ import java.util.EnumSet;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.FermataAttachment;
+import songscribe.dom.StaffElement;
+import songscribe.dom.FermataAttachment;
 
 public final class FermataAction extends NoteOnlyAction {
 

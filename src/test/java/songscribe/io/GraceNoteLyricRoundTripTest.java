@@ -30,8 +30,8 @@ import org.junit.jupiter.api.Test;
 import org.xml.sax.InputSource;
 
 import songscribe.UnitTest;
-import songscribe.model.Lyric;
-import songscribe.model.Song;
+import songscribe.dom.Lyric;
+import songscribe.dom.Song;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
 class GraceNoteLyricRoundTripTest extends UnitTest {

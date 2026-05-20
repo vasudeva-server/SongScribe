@@ -24,9 +24,9 @@ import java.util.EnumSet;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.DynamicAttachment;
-import songscribe.ui.layout.DynamicAttachment.DynamicType;
+import songscribe.dom.StaffElement;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.DynamicAttachment.DynamicType;
 
 public final class DynamicMarkingAction extends NoteOnlyAction {
 

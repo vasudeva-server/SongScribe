@@ -40,15 +40,16 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.model.Song;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Song;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
+import songscribe.layout.Ending;
+import songscribe.layout.LineEndingSupport;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.layout.Beam;
-import songscribe.ui.layout.Ending;
+import songscribe.dom.Beam;
 
 /**
  * Lightweight score-level coordinator that tracks which line (if any) has
@@ -635,7 +636,7 @@ public final class SelectionCoordinator {
                     }
 
                     var replacement = replaceable.createReplacement(element, true);
-                    var effect = line.findEndingReplacementEffect(i, replacement);
+                    var effect = LineEndingSupport.findEndingReplacementEffect(line, i, replacement);
 
                     switch (effect) {
                         case Ending.EndingEffect.Invalidate _ -> {

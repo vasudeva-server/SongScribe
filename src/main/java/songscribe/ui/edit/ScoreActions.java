@@ -22,8 +22,8 @@ package songscribe.ui.edit;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 
 /**
  * Callback interface for ScoreView actions needed by EditModeManager.

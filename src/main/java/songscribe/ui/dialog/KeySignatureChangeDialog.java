@@ -24,7 +24,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
-import songscribe.model.KeyType;
+import songscribe.dom.KeyType;
 
 public class KeySignatureChangeDialog extends StandardDialog {
 

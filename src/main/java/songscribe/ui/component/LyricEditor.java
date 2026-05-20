@@ -36,15 +36,15 @@ import songscribe.error.RuntimeError;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.message.mutation.ElementField;
-import songscribe.model.Line;
-import songscribe.model.Lyric;
-import songscribe.model.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.Lyric;
+import songscribe.dom.StaffElement;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.action.EditLyricAction;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.layout.InsetsSs;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.layout.InsetsSs;
+import songscribe.dom.ScaleContext;
 import songscribe.util.UIUtils;
 
 /**
@@ -804,17 +804,8 @@ public final class LyricEditor extends MyJTextField {
         return type.isPitchedNote() || type.isRest() || type.isGraceNote();
     }
 
-    /**
-     * An element is eligible to carry a lyric in {@code verse} if it is a non-rest, or a
-     * rest that already carries a non-blank lyric in that verse.
-     */
     public static boolean isEligibleForLyric(StaffElement candidate, int verse) {
-        if (!candidate.getType().isRest()) {
-            return true;
-        }
-
-        var lyric = candidate.getLyricForVerse(verse);
-        return lyric != null && !lyric.text().isBlank();
+        return candidate.isEligibleForLyric(verse);
     }
 
     /** Package-private for testing. */

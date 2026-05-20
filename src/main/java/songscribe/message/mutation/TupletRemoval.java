@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.Line;
-import songscribe.ui.layout.Tuplet;
+import songscribe.dom.Line;
+import songscribe.dom.Tuplet;
 
 /**
  * Mutation recording the removal of a tuplet range element from a line.

@@ -22,9 +22,9 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import songscribe.model.BeatChange;
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.BeatChangeAttachment;
+import songscribe.dom.BeatChange;
+import songscribe.dom.StaffElement;
+import songscribe.dom.BeatChangeAttachment;
 
 /**
  * Renders beat change indicators (note = note format).

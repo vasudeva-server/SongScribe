@@ -22,7 +22,7 @@ package songscribe.ui.component;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Song;
+import songscribe.dom.Song;
 import songscribe.ui.component.score.MainPanel;
 
 public interface ComponentHierarchyProvider {

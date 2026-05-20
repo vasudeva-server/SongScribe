@@ -24,10 +24,10 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.Tie;
-import songscribe.ui.layout.Tuplet;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
+import songscribe.dom.Tie;
+import songscribe.dom.Tuplet;
 
 /**
  * Per-line selection state and query methods.

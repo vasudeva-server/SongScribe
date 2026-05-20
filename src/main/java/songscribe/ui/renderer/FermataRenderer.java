@@ -24,12 +24,12 @@ import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 
 import module java.desktop;
 
-import songscribe.model.StaffElement;
+import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.FermataAttachment;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.stacking.NoteAttachedStacker;
+import songscribe.dom.FermataAttachment;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.stacking.NoteAttachedStacker;
 
 /**
  * Renders fermata symbols above or below notes.

@@ -20,7 +20,7 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.Line;
+import songscribe.dom.Line;
 
 /**
  * Marker interface for mutations scoped to a specific line.

@@ -20,25 +20,23 @@
 package songscribe.io;
 
 
-import songscribe.model.Annotation;
-import songscribe.model.ElementType;
+import songscribe.dom.Annotation;
+import songscribe.dom.ElementType;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.AnnotationAttachment;
-import songscribe.ui.layout.DynamicAttachment;
-import songscribe.ui.layout.BeatChangeAttachment;
-import songscribe.ui.layout.Crescendo;
-import songscribe.ui.layout.Diminuendo;
-import songscribe.ui.layout.Ending;
-import songscribe.ui.layout.Hairpin;
-import songscribe.ui.layout.TempoChangeAttachment;
-import songscribe.ui.layout.Trill;
-import songscribe.ui.layout.Tuplet;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.BeatChangeAttachment;
+import songscribe.layout.Ending;
+import songscribe.dom.Hairpin;
+import songscribe.dom.TempoChangeAttachment;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
+import songscribe.dom.ScaleContext;
 
 /**
  * Migrates song data from legacy format (version 1) to new format (version 2).

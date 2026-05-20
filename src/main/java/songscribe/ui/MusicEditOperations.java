@@ -31,19 +31,18 @@ import java.util.TreeSet;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.ui.layout.Beam;
-import songscribe.model.Song;
-import songscribe.ui.layout.Beam;
-import songscribe.model.ElementType;
-import songscribe.model.EndingValidationResult;
-import songscribe.model.Line;
-import songscribe.ui.layout.Crescendo;
-import songscribe.ui.layout.Diminuendo;
-import songscribe.ui.layout.Ending;
-import songscribe.ui.layout.Hairpin;
-import songscribe.ui.layout.Tie;
-import songscribe.ui.layout.Trill;
-import songscribe.ui.layout.Tuplet;
+import songscribe.dom.Beam;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.EndingValidationResult;
+import songscribe.dom.Line;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
+import songscribe.layout.Ending;
+import songscribe.layout.LineEndingSupport;
+import songscribe.dom.Tie;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -435,7 +434,7 @@ public final class MusicEditOperations {
     // Returns true if any element in the selection range overlaps an existing ending span.
     private boolean hasOverlap(Line line, int begin, int end) {
         for (var i = begin; i <= end; i++) {
-            if (line.isInsideAnyEnding(i)) {
+            if (LineEndingSupport.isInsideAnyEnding(line, i)) {
                 return true;
             }
         }

@@ -28,12 +28,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.Annotation;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.ui.layout.AnnotationAttachment;
-import songscribe.ui.layout.DynamicAttachment;
-import songscribe.ui.layout.DynamicAttachment.DynamicType;
+import songscribe.dom.Annotation;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.DynamicAttachment.DynamicType;
 
 class FormatMigratorTest extends UnitTest {
 

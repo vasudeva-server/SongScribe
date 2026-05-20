@@ -21,7 +21,7 @@
 package songscribe.ui.renderer;
 
 
-import songscribe.model.Song;
+import songscribe.dom.Song;
 
 /**
  * Interface providing render-time data for the Renderer.

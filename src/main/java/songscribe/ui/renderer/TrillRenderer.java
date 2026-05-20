@@ -28,12 +28,12 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.StaffElement;
+import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.LayoutResult;
+import songscribe.layout.LayoutResult;
 import songscribe.smufl.Engraving;
-import songscribe.ui.layout.Trill;
+import songscribe.dom.Trill;
 
 /**
  * Renders trill markings (tr symbol + wavy line for extended trills).

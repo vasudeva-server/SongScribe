@@ -23,9 +23,9 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.layout.StaffExtents;
+import songscribe.dom.StaffElement;
+import songscribe.dom.ScaleContext;
+import songscribe.layout.StaffExtents;
 
 /**
  * Static hit-testing utilities for note heads in a {@link LineComponent}.

@@ -36,14 +36,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.layout.SongLayoutMetrics;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.LyricBoxLayout;
-import songscribe.ui.layout.LyricRenderMetrics;
+import songscribe.layout.SongLayoutMetrics;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricBoxLayout;
+import songscribe.layout.LyricRenderMetrics;
 
 class LyricTextRendererTest extends UnitTest {
 

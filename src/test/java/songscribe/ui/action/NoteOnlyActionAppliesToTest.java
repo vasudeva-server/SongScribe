@@ -21,7 +21,7 @@
 package songscribe.ui.action;
 
 import songscribe.UnitTest;
-import songscribe.model.ElementType;
+import songscribe.dom.ElementType;
 
 import org.junit.jupiter.api.Test;
 

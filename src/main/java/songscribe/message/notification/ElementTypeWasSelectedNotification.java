@@ -22,7 +22,7 @@ package songscribe.message.notification;
 
 
 import songscribe.message.Message;
-import songscribe.model.ElementType;
+import songscribe.dom.ElementType;
 
 public class ElementTypeWasSelectedNotification extends Message {
 

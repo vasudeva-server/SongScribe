@@ -35,22 +35,22 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Version;
 import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
-import songscribe.model.Annotation;
-import songscribe.model.ArticulationType;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.KeyType;
-import songscribe.model.Line;
-import songscribe.model.Lyric;
-import songscribe.model.StaffElement;
-import songscribe.model.Tempo;
+import songscribe.dom.Annotation;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.KeyType;
+import songscribe.dom.Line;
+import songscribe.dom.Lyric;
+import songscribe.dom.StaffElement;
+import songscribe.dom.Tempo;
 import songscribe.ui.Constants;
 import songscribe.ui.dialog.PlatformFileDialog;
-import songscribe.ui.layout.AnnotationAttachment;
-import songscribe.ui.layout.FermataAttachment;
-import songscribe.ui.layout.TempoChangeAttachment;
-import songscribe.ui.layout.Trill;
-import songscribe.ui.layout.Tuplet;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.FermataAttachment;
+import songscribe.dom.TempoChangeAttachment;
+import songscribe.dom.Trill;
+import songscribe.layout.LineEndingSupport;
 import songscribe.midi.MidiSequenceBuilder;
 
 /**
@@ -433,7 +433,7 @@ public final class ExportABCAction extends UIAction {
                 sb.append(' ');
             }
 
-            if (line.isStartOfAnyEnding(i)) {
+            if (LineEndingSupport.isStartOfAnyEnding(line, i)) {
                 sb.append("[1 ");
             }
 
@@ -457,7 +457,7 @@ public final class ExportABCAction extends UIAction {
 
             if (
                 (line.getElement(i).getType() == ElementType.REPEAT_RIGHT) &&
-                    line.isInsideAnyEnding(i)
+                    LineEndingSupport.isInsideAnyEnding(line, i)
             ) {
                 sb.append("[2 ");
             }
@@ -466,7 +466,7 @@ public final class ExportABCAction extends UIAction {
                 sb.append(' ');
             }
 
-            if (line.isEndOfAnyEnding(i)) {
+            if (LineEndingSupport.isEndOfAnyEnding(line, i)) {
                 sb.append("|] ");
             }
 

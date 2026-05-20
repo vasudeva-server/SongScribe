@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.Song;
+import songscribe.dom.Song;
 
 class DocumentDidLoadNotificationTest extends UnitTest {
 

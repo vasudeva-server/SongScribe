@@ -38,12 +38,12 @@ import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
-import songscribe.ui.layout.Beam;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.StaffElement;
+import songscribe.dom.Beam;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.ui.action.DotAction;
-import songscribe.ui.layout.Tuplet;
+import songscribe.dom.Tuplet;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.UIAction;
 

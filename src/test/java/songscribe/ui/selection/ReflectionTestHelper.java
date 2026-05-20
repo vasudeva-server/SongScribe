@@ -25,9 +25,9 @@ import java.util.List;
 import java.util.Objects;
 
 import songscribe.UnitTest;
-import songscribe.model.Line;
-import songscribe.model.Song;
-import songscribe.model.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 import songscribe.ui.action.UIAction;
 
 /**

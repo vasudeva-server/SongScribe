@@ -28,12 +28,12 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Song;
+import songscribe.dom.Song;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.layout.SongLayoutMetricsBuilder;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.layout.SongLayoutMetrics;
+import songscribe.layout.SongLayoutMetricsBuilder;
+import songscribe.layout.LayoutResult;
+import songscribe.dom.ScaleContext;
+import songscribe.layout.SongLayoutMetrics;
 
 /**
  * Panel containing all staff lines of a song.

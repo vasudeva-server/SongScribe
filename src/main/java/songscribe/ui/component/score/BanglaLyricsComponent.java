@@ -22,7 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.ui.layout.ScaleContext;
+import songscribe.dom.ScaleContext;
 
 /**
  * Component that renders Bengali (Bangla) lyrics.

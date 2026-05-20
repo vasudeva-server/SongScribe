@@ -35,14 +35,14 @@ import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.layout.StaffExtents;
+import songscribe.dom.ScaleContext;
+import songscribe.layout.StaffExtents;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 

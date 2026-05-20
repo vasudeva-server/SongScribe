@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 
 /**
  * Mutation recording an element insertion at a specific index on a line.

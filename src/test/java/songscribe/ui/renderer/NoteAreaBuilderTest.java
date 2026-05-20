@@ -27,8 +27,8 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.ElementType;
-import songscribe.model.StaffElement;
+import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 
 class NoteAreaBuilderTest extends UnitTest {
 

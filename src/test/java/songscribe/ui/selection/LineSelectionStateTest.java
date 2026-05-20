@@ -25,11 +25,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.ui.action.TupletAction;
-import songscribe.ui.layout.Tuplet;
+import songscribe.dom.Tuplet;
 
 class LineSelectionStateTest extends UnitTest {
 

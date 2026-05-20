@@ -34,7 +34,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.model.Line;
+import songscribe.dom.Line;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.selection.ElementSelection;
 

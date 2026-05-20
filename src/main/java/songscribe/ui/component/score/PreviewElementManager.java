@@ -31,12 +31,12 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
-import songscribe.ui.layout.Beam;
-import songscribe.model.Song;
-import songscribe.model.ElementLocation;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Beam;
+import songscribe.dom.Song;
+import songscribe.dom.ElementLocation;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.dialog.TempoChangeDialog;
@@ -46,13 +46,14 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.Ending;
-import songscribe.ui.layout.InsertionSpacingCalculator;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.layout.Ending;
+import songscribe.layout.LineEndingSupport;
+import songscribe.layout.InsertionSpacingCalculator;
+import songscribe.layout.LayoutResult;
+import songscribe.dom.ScaleContext;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
-import songscribe.ui.layout.StaffExtents;
+import songscribe.layout.StaffExtents;
 import songscribe.ui.playback.PlaybackController;
 
 /**
@@ -994,7 +995,7 @@ public final class PreviewElementManager {
 
         // Check whether replacing this element would affect a first-second ending,
         // and show the appropriate confirmation dialog if so.
-        var endingEffect = line.findEndingReplacementEffect(elementIndex, replacement);
+        var endingEffect = LineEndingSupport.findEndingReplacementEffect(line, elementIndex, replacement);
 
         switch (endingEffect) {
             case Ending.EndingEffect.Invalidate _ -> {

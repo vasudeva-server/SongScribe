@@ -27,11 +27,11 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Song;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.dom.Song;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
+import songscribe.layout.LayoutResult;
+import songscribe.dom.ScaleContext;
 
 /**
  * Renders glissando lines connecting notes as filled rectangles.

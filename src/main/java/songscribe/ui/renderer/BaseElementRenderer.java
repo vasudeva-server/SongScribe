@@ -28,18 +28,18 @@ import module java.desktop;
 import java.util.function.DoubleConsumer;
 
 
-import songscribe.model.ElementType;
-import songscribe.model.StaffElement;
+import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.layout.ElementBoundsSs;
-import songscribe.ui.layout.LineElement;
+import songscribe.layout.ElementBoundsSs;
+import songscribe.dom.LineElement;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.ui.layout.StaffExtents;
+import songscribe.layout.StaffExtents;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 

@@ -38,10 +38,10 @@ import org.mockito.MockedStatic;
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.PasteboardOpCommand;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.ui.layout.EndingLineFixture;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.layout.EndingLineFixture;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.PasteboardAction;
 import songscribe.ui.action.UIAction;
@@ -50,7 +50,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 
-import songscribe.ui.layout.Ending;
+import songscribe.layout.Ending;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 

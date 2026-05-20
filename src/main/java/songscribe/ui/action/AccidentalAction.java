@@ -28,7 +28,7 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.message.mutation.ElementField;
-import songscribe.model.StaffElement;
+import songscribe.dom.StaffElement;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.playback.PlayThread;

@@ -24,7 +24,7 @@ import songscribe.message.Message;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Duration;
+import songscribe.dom.Duration;
 
 public class TempoDidChangeNotification extends Message {
 

@@ -24,7 +24,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.model.StaffElement;
+import songscribe.dom.StaffElement;
 import songscribe.message.notification.RestModeDidChangeNotification;
 
 public final class RestModeAction extends SelectableUIAction implements UIAction.Reflectable {

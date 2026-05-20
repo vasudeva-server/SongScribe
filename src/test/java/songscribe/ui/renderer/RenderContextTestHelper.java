@@ -24,7 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import songscribe.font.DocumentFonts;
-import songscribe.model.Song;
+import songscribe.dom.Song;
 import songscribe.ui.component.score.LineComponent;
 
 /**

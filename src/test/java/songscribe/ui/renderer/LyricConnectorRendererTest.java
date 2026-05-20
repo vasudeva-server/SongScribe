@@ -28,7 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static songscribe.ui.layout.LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
+import static songscribe.layout.LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
 
 import java.util.List;
 
@@ -38,13 +38,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
-import songscribe.model.Song;
+import songscribe.dom.Song;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.layout.SongLayoutMetrics;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.LyricConnectorLayout;
-import songscribe.ui.layout.LyricConnectorLayout.Kind;
-import songscribe.ui.layout.LyricRenderMetrics;
+import songscribe.layout.SongLayoutMetrics;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricConnectorLayout;
+import songscribe.layout.LyricConnectorLayout.Kind;
+import songscribe.layout.LyricRenderMetrics;
 
 class LyricConnectorRendererTest extends UnitTest {
 

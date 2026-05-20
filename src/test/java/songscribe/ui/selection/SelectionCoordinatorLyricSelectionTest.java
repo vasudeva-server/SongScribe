@@ -27,7 +27,7 @@ import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.ElementType;
+import songscribe.dom.ElementType;
 
 class SelectionCoordinatorLyricSelectionTest extends UnitTest {
 

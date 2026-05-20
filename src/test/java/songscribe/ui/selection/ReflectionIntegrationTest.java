@@ -28,15 +28,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.ElementType;
-import songscribe.model.StaffElement;
+import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.layout.FermataAttachment;
+import songscribe.dom.FermataAttachment;
 
 class ReflectionIntegrationTest extends UnitTest {
 

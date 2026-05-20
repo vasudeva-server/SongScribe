@@ -25,13 +25,13 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.model.BeatChange;
-import songscribe.model.Duration;
-import songscribe.model.StaffElement;
+import songscribe.dom.BeatChange;
+import songscribe.dom.Duration;
+import songscribe.dom.StaffElement;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.DurationListCellRenderer;
-import songscribe.ui.layout.BeatChangeAttachment;
+import songscribe.dom.BeatChangeAttachment;
 
 public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 

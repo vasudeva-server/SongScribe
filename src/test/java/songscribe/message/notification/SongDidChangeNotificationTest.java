@@ -39,8 +39,8 @@ import songscribe.message.mutation.LyricsField;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
 
 class SongDidChangeNotificationTest extends UnitTest {
 

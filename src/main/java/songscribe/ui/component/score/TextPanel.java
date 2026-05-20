@@ -26,7 +26,7 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Song;
+import songscribe.dom.Song;
 
 /**
  * Container panel for under-lyrics text sections.

@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
-import songscribe.model.Song;
+import songscribe.dom.Song;
 import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;

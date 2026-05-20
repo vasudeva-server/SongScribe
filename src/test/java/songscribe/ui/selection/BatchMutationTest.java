@@ -33,18 +33,18 @@ import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.ui.layout.Beam;
-import songscribe.ui.layout.Tie;
-import songscribe.ui.layout.Tuplet;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Beam;
+import songscribe.dom.Tie;
+import songscribe.dom.Tuplet;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.layout.FermataAttachment;
+import songscribe.dom.FermataAttachment;
 
 class BatchMutationTest extends UnitTest {
 

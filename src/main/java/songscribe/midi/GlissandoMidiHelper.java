@@ -22,7 +22,7 @@ package songscribe.midi;
 
 import module java.desktop;
 
-import songscribe.model.StaffElement.Glissando;
+import songscribe.dom.StaffElement.Glissando;
 
 /**
  * Calculation and MIDI message generation methods for glissando playback.

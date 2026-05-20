@@ -43,12 +43,12 @@ import org.xml.sax.SAXException;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.Song;
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.DynamicAttachment;
-import songscribe.ui.layout.DynamicAttachment.DynamicType;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.DynamicAttachment.DynamicType;
 
 @SuppressWarnings({ "SameReturnValue", "OverlyBroadThrowsClause" })
 class StaffElementIOTest extends UnitTest {

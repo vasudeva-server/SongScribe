@@ -26,8 +26,8 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Song;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.dom.Song;
+import songscribe.dom.ScaleContext;
 
 /**
  * Top-level panel for the score component hierarchy.

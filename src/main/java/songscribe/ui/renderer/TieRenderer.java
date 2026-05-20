@@ -26,8 +26,8 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 import module java.desktop;
 
 
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.Tie;
+import songscribe.layout.LayoutResult;
+import songscribe.dom.Tie;
 
 /**
  * Renders tie arcs between two notes of the same pitch.

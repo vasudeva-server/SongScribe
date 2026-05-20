@@ -44,7 +44,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.smufl.Engraving;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.dom.ScaleContext;
 
 /**
  * Consolidated E2E test for selection mechanics, toolbar reflection,

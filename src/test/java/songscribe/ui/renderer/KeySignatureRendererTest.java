@@ -28,9 +28,9 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.Song;
-import songscribe.model.KeyType;
-import songscribe.ui.layout.KeySignature;
+import songscribe.dom.Song;
+import songscribe.dom.KeyType;
+import songscribe.dom.KeySignature;
 
 class KeySignatureRendererTest extends UnitTest {
 

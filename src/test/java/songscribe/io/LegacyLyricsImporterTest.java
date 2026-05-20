@@ -28,10 +28,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.Lyric;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 
 class LegacyLyricsImporterTest extends UnitTest {
 

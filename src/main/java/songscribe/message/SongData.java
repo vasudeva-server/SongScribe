@@ -24,10 +24,10 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.KeyType;
-import songscribe.model.Line;
-import songscribe.model.Song;
-import songscribe.model.Tempo;
+import songscribe.dom.KeyType;
+import songscribe.dom.Line;
+import songscribe.dom.Song;
+import songscribe.dom.Tempo;
 import songscribe.ui.component.ScoreView;
 
 /**

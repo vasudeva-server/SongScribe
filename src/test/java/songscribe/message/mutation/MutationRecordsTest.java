@@ -35,18 +35,18 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
-import songscribe.ui.layout.Beam;
-import songscribe.model.ElementType;
-import songscribe.model.KeyType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
-import songscribe.model.Tempo;
-import songscribe.ui.layout.Crescendo;
-import songscribe.ui.layout.Tuplet;
-import songscribe.ui.layout.Diminuendo;
-import songscribe.ui.layout.Ending;
-import songscribe.ui.layout.RangeElement;
-import songscribe.ui.layout.Tie;
+import songscribe.dom.Beam;
+import songscribe.dom.ElementType;
+import songscribe.dom.KeyType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
+import songscribe.dom.Tempo;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Tuplet;
+import songscribe.dom.Diminuendo;
+import songscribe.layout.Ending;
+import songscribe.dom.RangeElement;
+import songscribe.dom.Tie;
 
 class MutationRecordsTest extends UnitTest {
 

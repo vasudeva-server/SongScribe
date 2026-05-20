@@ -23,7 +23,7 @@ package songscribe.ui.action;
 import java.util.EnumSet;
 
 import songscribe.message.mutation.ElementField;
-import songscribe.model.StaffElement;
+import songscribe.dom.StaffElement;
 
 public final class AccidentalInParensAction extends NoteOnlyAction {
 

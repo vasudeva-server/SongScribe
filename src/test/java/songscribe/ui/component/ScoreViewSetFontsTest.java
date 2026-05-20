@@ -38,7 +38,7 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.model.Song;
+import songscribe.dom.Song;
 
 /**
  * Verifies that {@link ScoreView#setFonts(DocumentFonts)} is the single, undo-bracketed

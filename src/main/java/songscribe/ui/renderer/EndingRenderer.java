@@ -25,9 +25,10 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import songscribe.model.Line;
-import songscribe.ui.layout.Ending;
-import songscribe.ui.layout.LineElement;
+import songscribe.dom.Line;
+import songscribe.layout.Ending;
+import songscribe.layout.LineEndingSupport;
+import songscribe.dom.LineElement;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -83,7 +84,7 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
         int lineIndex,
         ElementRenderContext ctx
     ) {
-        for (var ending : line.findEndings()) {
+        for (var ending : LineEndingSupport.findEndings(line)) {
             for (var bracket : ending.getBracketRanges()) {
                 drawEnding(g2, ctx, ending, bracket);
             }

@@ -27,20 +27,21 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.MessageCenter;
-import songscribe.model.Line;
+import songscribe.dom.Line;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.MainPanel;
-import songscribe.ui.layout.AnnotationAttachment;
-import songscribe.ui.layout.BeatChangeAttachment;
-import songscribe.ui.layout.Crescendo;
-import songscribe.ui.layout.Diminuendo;
-import songscribe.ui.layout.Ending;
-import songscribe.ui.layout.Hairpin;
-import songscribe.ui.layout.RangeElement;
-import songscribe.ui.layout.TempoChangeAttachment;
-import songscribe.ui.layout.Trill;
-import songscribe.ui.layout.Tuplet;
-import songscribe.ui.layout.LayoutResult;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
+import songscribe.layout.Ending;
+import songscribe.layout.LineEndingSupport;
+import songscribe.dom.Hairpin;
+import songscribe.dom.RangeElement;
+import songscribe.dom.TempoChangeAttachment;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
+import songscribe.layout.LayoutResult;
 import songscribe.ui.renderer.GraphicsState;
 
 public class VerticalAdjustment extends Adjustment {
@@ -304,7 +305,7 @@ public class VerticalAdjustment extends Adjustment {
                     }
                 }
 
-                var endings = line.findEndings();
+                var endings = LineEndingSupport.findEndings(line);
 
                 if (!endings.isEmpty()) {
                     adjustRects.add(
@@ -397,7 +398,7 @@ public class VerticalAdjustment extends Adjustment {
                 adjustRect.rect.y = (int) bounds.getTopSs() - HANDLE_SIZE_PX;
             }
             case FIRST_SECOND_ENDING -> {
-                var ending = line.findEndingAt(adjustRect.xIndex);
+                var ending = LineEndingSupport.findEndingAt(line, adjustRect.xIndex);
 
                 if (!getRangeElementAdjustRect(adjustRect, ending, Ending.class, HANDLE_SIZE_PX)) {
                     return;

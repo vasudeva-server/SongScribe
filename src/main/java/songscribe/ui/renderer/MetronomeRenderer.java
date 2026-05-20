@@ -26,14 +26,14 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import module java.desktop;
 
 import songscribe.error.RuntimeError;
-import songscribe.model.Duration;
-import songscribe.model.ElementType;
-import songscribe.model.StaffElement;
+import songscribe.dom.Duration;
+import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.MetronomeAttachment;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.layout.LayoutResult;
+import songscribe.dom.MetronomeAttachment;
+import songscribe.dom.ScaleContext;
 
 /**
  * Abstract base renderer for metronome-style markings (tempo and beat change).

@@ -27,17 +27,18 @@ import org.jspecify.annotations.Nullable;
 
 import org.xml.sax.Attributes;
 
-import songscribe.model.KeyType;
-import songscribe.model.Line;
-import songscribe.model.Song;
-import songscribe.ui.layout.Beam;
-import songscribe.ui.layout.Crescendo;
-import songscribe.ui.layout.Diminuendo;
-import songscribe.ui.layout.Ending;
-import songscribe.ui.layout.Hairpin;
-import songscribe.ui.layout.Tie;
-import songscribe.ui.layout.Trill;
-import songscribe.ui.layout.Tuplet;
+import songscribe.dom.KeyType;
+import songscribe.dom.Line;
+import songscribe.dom.Song;
+import songscribe.dom.Beam;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
+import songscribe.layout.Ending;
+import songscribe.layout.LineEndingSupport;
+import songscribe.dom.Hairpin;
+import songscribe.dom.Tie;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
 
 public final class LineIO {
 
@@ -123,7 +124,7 @@ public final class LineIO {
             XML.writeValue(pw, XML_TUPLETS, tupletsToString(tuplets));
         }
 
-        var endings = line.findEndings();
+        var endings = LineEndingSupport.findEndings(line);
 
         if (!endings.isEmpty()) {
             XML.writeValue(

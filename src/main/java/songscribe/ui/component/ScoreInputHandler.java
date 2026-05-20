@@ -31,7 +31,7 @@ import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.StaffExtents;
+import songscribe.layout.StaffExtents;
 import songscribe.message.command.DeselectCommand;
 import songscribe.util.UIUtils;
 

@@ -25,7 +25,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
-import static songscribe.model.StaffElementFactory.*;
+import static songscribe.dom.StaffElementFactory.*;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,19 +58,19 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.model.Song;
-import songscribe.ui.layout.Crescendo;
-import songscribe.ui.layout.Diminuendo;
+import songscribe.dom.Song;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
 
-import songscribe.model.EndingValidationResult;
-import songscribe.model.Line;
+import songscribe.dom.EndingValidationResult;
+import songscribe.dom.Line;
 import songscribe.ui.MusicEditOperations;
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.Tuplet;
+import songscribe.dom.StaffElement;
+import songscribe.dom.Tuplet;
 import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.TupletAction;
 import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.ui.layout.Ending;
+import songscribe.layout.Ending;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 

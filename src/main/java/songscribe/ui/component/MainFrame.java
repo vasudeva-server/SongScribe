@@ -56,7 +56,8 @@ import songscribe.message.command.TogglePlayWithRepeatsCommand;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
-import songscribe.model.Song;
+import songscribe.dom.Song;
+import songscribe.layout.PageModel;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.prefs.RecentDocumentsManager;
@@ -169,6 +170,7 @@ public class MainFrame extends JFrame implements Printable {
 
             MessageLogger.init();
             MidiController.openMidi();
+            Song.setDefaultLineWidthProvider(PageModel::getDefaultLineWidthSs);
             var instance = getInstance();
             var rawRecents = Prefs.getStringList(PrefsKey.RECENT_FILES);
             var mostRecentPath = rawRecents.isEmpty() ? null : Path.of(rawRecents.getFirst());

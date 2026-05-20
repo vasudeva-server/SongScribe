@@ -26,15 +26,16 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.error.RuntimeError;
-import songscribe.model.ElementType;
+import songscribe.dom.ElementType;
+import songscribe.layout.LayoutResult;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.layout.AnnotationAttachment;
-import songscribe.ui.layout.Beam;
-import songscribe.ui.layout.BeatChangeAttachment;
-import songscribe.ui.layout.DynamicAttachment;
-import songscribe.ui.layout.FermataAttachment;
-import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.Beam;
+import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.FermataAttachment;
+import songscribe.dom.TempoChangeAttachment;
 import songscribe.ui.renderer.AnnotationRenderer;
 import songscribe.ui.renderer.ArticulationRenderer;
 import songscribe.ui.renderer.BaseElementRenderer;
@@ -463,9 +464,9 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Renders note attachments using pre-computed positions from {@link songscribe.ui.layout.LayoutResult}.
+     * Renders note attachments using pre-computed positions from {@link LayoutResult}.
      * <p>
-     * Dispatch is driven by {@link songscribe.ui.layout.LayoutResult.DecorationLayout} presence
+     * Dispatch is driven by {@link LayoutResult.DecorationLayout} presence
      * rather than legacy model flags. Rendering order follows the stacking tier order
      * (near-note first, system-level last).
      *

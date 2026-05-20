@@ -24,8 +24,8 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Duration;
-import songscribe.model.Tempo;
+import songscribe.dom.Duration;
+import songscribe.dom.Tempo;
 
 public final class TempoIO {
 

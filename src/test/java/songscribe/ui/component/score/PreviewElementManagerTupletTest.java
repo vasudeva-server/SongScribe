@@ -25,10 +25,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.model.ElementType;
-import songscribe.model.StaffElement;
+import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.Tuplet;
+import songscribe.dom.Tuplet;
 
 /**
  * Tests that tuplet spans are removed when elements within them are modified

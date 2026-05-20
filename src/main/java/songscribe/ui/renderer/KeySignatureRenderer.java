@@ -27,11 +27,11 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.KeyType;
-import songscribe.model.Line;
+import songscribe.dom.KeyType;
+import songscribe.dom.Line;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.ui.layout.KeySignature;
-import songscribe.ui.layout.StaffExtents;
+import songscribe.dom.KeySignature;
+import songscribe.layout.StaffExtents;
 
 /**
  * Renders key signatures (sharps or flats) at the start of a staff line.

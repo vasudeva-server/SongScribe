@@ -28,7 +28,7 @@ import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.SAXException;
 
-import songscribe.model.Song;
+import songscribe.dom.Song;
 import songscribe.ui.component.ScoreView;
 
 /**

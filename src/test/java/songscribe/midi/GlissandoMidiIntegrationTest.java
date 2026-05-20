@@ -31,11 +31,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
-import songscribe.model.Tempo;
-import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
+import songscribe.dom.Tempo;
+import songscribe.dom.TempoChangeAttachment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

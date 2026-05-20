@@ -24,7 +24,7 @@ import module java.desktop;
 
 
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.ui.layout.Clef;
+import songscribe.dom.Clef;
 
 /**
  * Renders the treble clef at the start of a staff line.

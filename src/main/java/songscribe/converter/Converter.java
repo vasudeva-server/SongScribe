@@ -22,7 +22,7 @@ package songscribe.converter;
 
 import java.io.File;
 
-import songscribe.model.Song;
+import songscribe.dom.Song;
 import songscribe.ui.component.ScoreView;
 
 public final class Converter {

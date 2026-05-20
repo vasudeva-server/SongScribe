@@ -49,9 +49,9 @@ import org.mockito.ArgumentCaptor;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
-import songscribe.model.Lyric;
-import songscribe.model.Song;
-import songscribe.ui.layout.LyricRenderMetrics;
+import songscribe.dom.Lyric;
+import songscribe.dom.Song;
+import songscribe.layout.LyricRenderMetrics;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
 class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {

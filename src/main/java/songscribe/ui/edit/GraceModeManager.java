@@ -29,18 +29,18 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.layout.ElementColumnBuilder;
-import songscribe.ui.layout.HorizontalSpacingCalculator;
-import songscribe.ui.layout.InsertionSpacingCalculator;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.layout.ElementColumnBuilder;
+import songscribe.layout.HorizontalSpacingCalculator;
+import songscribe.layout.InsertionSpacingCalculator;
+import songscribe.dom.ScaleContext;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.ui.selection.SelectionCoordinator;
 

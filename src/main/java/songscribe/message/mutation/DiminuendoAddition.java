@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.Line;
-import songscribe.ui.layout.Diminuendo;
+import songscribe.dom.Line;
+import songscribe.dom.Diminuendo;
 
 /**
  * Mutation recording the addition of a diminuendo hairpin to a line.

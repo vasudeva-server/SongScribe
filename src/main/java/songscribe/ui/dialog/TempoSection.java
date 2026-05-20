@@ -22,8 +22,8 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import songscribe.util.UIUtils;
-import songscribe.model.Duration;
-import songscribe.model.Tempo;
+import songscribe.dom.Duration;
+import songscribe.dom.Tempo;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.DurationListCellRenderer;

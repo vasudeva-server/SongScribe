@@ -20,7 +20,7 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.KeyType;
+import songscribe.dom.KeyType;
 
 /**
  * Identifies which key-signature field changed in a {@link LineKeyChange} mutation.

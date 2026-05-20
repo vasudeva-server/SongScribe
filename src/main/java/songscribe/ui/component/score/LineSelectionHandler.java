@@ -25,13 +25,13 @@ import module java.desktop;
 import java.awt.event.MouseEvent;
 
 import songscribe.Strings;
-import songscribe.model.StaffElement;
+import songscribe.dom.StaffElement;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
-import songscribe.ui.layout.HorizontalSpacingCalculator;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.layout.HorizontalSpacingCalculator;
+import songscribe.dom.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.renderer.GlissandoRenderer;

@@ -23,14 +23,14 @@ package songscribe.ui.edit;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.error.RuntimeError;
-import songscribe.model.ArticulationType;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.ui.layout.Articulation;
-import songscribe.ui.layout.FermataAttachment;
+import songscribe.dom.Articulation;
+import songscribe.dom.FermataAttachment;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 

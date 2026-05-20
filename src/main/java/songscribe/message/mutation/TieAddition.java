@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.Line;
-import songscribe.ui.layout.Tie;
+import songscribe.dom.Line;
+import songscribe.dom.Tie;
 
 /**
  * Mutation recording the addition of a tie range element to a line.

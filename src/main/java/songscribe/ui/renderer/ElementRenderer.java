@@ -23,7 +23,7 @@ package songscribe.ui.renderer;
 import module java.desktop;
 
 
-import songscribe.ui.layout.LineElement;
+import songscribe.dom.LineElement;
 
 /**
  * Strategy interface for rendering LineElement instances.

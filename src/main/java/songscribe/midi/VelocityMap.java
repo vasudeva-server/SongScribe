@@ -20,10 +20,10 @@
 
 package songscribe.midi;
 
-import songscribe.model.ArticulationType;
-import songscribe.model.Song;
-import songscribe.ui.layout.DynamicAttachment;
-import songscribe.ui.layout.DynamicAttachment.DynamicType;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.Song;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.DynamicAttachment.DynamicType;
 
 /**
  * Pre-computed MIDI velocity map for a song. Velocities are derived

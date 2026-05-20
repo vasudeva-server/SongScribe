@@ -22,7 +22,7 @@ package songscribe.ui.menu;
 import module java.desktop;
 
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.layout.FermataAttachment;
+import songscribe.dom.FermataAttachment;
 
 public class FermataMenuItem
     extends JCheckBoxMenuItem

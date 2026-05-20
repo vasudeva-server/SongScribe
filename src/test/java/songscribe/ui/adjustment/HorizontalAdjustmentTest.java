@@ -31,9 +31,9 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 
 /**
  * Tests that the drag snap-to-end skip in {@link HorizontalAdjustment#drag()} is

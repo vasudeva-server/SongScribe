@@ -29,19 +29,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 
-import songscribe.model.ArticulationType;
-import songscribe.model.BeatChange;
-import songscribe.model.Duration;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.Lyric;
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.AnnotationAttachment;
-import songscribe.ui.layout.Articulation;
-import songscribe.ui.layout.BeatChangeAttachment;
-import songscribe.ui.layout.DynamicAttachment;
-import songscribe.ui.layout.FermataAttachment;
-import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.BeatChange;
+import songscribe.dom.Duration;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.Lyric;
+import songscribe.dom.StaffElement;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.Articulation;
+import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.FermataAttachment;
+import songscribe.dom.TempoChangeAttachment;
 
 public final class StaffElementIO {
 

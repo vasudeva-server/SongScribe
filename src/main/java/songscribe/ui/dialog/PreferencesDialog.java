@@ -39,7 +39,7 @@ import songscribe.ui.AppearanceManager;
 import songscribe.midi.MidiEventFactory;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.layout.PageModel;
+import songscribe.layout.PageModel;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;

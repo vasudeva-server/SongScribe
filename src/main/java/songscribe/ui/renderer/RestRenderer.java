@@ -29,11 +29,11 @@ import java.util.EnumMap;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.ElementType;
-import songscribe.model.StaffElement;
+import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.StaffExtents;
+import songscribe.layout.StaffExtents;
 
 /**
  * Renders rest glyphs (whole, half, quarter, eighth, sixteenth, thirty-second rests).

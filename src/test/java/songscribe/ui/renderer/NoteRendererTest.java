@@ -27,9 +27,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.ElementType;
-import songscribe.model.StaffElement;
-import songscribe.model.StaffElement.Accidental;
+import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElement.Accidental;
 
 class NoteRendererTest extends UnitTest {
 

@@ -23,8 +23,8 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 
-import songscribe.model.Song;
-import songscribe.model.Line;
+import songscribe.dom.Song;
+import songscribe.dom.Line;
 
 /**
  * Thin wrapper panel that hosts a single {@link LineComponent}.

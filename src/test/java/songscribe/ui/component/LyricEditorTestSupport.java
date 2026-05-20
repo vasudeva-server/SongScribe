@@ -38,10 +38,10 @@ import songscribe.UnitTest;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.Lyric;
-import songscribe.model.StaffElement;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.Lyric;
+import songscribe.dom.StaffElement;
 
 @SuppressWarnings("resource")
 abstract class LyricEditorTestSupport extends UnitTest {

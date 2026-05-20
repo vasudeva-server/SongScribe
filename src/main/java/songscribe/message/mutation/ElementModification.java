@@ -22,8 +22,8 @@ package songscribe.message.mutation;
 
 import java.util.EnumSet;
 
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 
 /**
  * Mutation recording field changes on an existing element.

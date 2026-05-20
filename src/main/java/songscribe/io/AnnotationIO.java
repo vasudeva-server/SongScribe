@@ -23,7 +23,7 @@ import java.io.PrintWriter;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Annotation;
+import songscribe.dom.Annotation;
 
 public final class AnnotationIO {
 

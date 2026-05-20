@@ -26,10 +26,10 @@ import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 import module java.desktop;
 
 
-import songscribe.ui.layout.Crescendo;
-import songscribe.ui.layout.Diminuendo;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.LineElement;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
+import songscribe.layout.LayoutResult;
+import songscribe.dom.LineElement;
 
 /**
  * Renders crescendo and diminuendo hairpins.

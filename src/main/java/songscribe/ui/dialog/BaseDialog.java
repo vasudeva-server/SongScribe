@@ -35,7 +35,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
-import songscribe.model.Song;
+import songscribe.dom.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKeys;

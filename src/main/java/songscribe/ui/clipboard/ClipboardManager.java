@@ -22,8 +22,8 @@ package songscribe.ui.clipboard;
 
 import java.util.ArrayList;
 
-import songscribe.model.ElementType;
-import songscribe.model.StaffElement;
+import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 
 /**
  * Manages clipboard state for copy/paste operations.

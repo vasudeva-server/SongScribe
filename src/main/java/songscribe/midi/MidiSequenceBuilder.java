@@ -23,9 +23,10 @@ package songscribe.midi;
 import module java.desktop;
 
 
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.Tempo;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.Tempo;
+import songscribe.layout.LineEndingSupport;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
 
@@ -237,7 +238,7 @@ public class MidiSequenceBuilder {
                 }
 
                 // Handle first-second endings
-                var ending = line.findEndingAt(noteIndex);
+                var ending = LineEndingSupport.findEndingAt(line, noteIndex);
 
                 if (repeating && ending != null) {
                     // During repeat: skip first ending, play only on second pass

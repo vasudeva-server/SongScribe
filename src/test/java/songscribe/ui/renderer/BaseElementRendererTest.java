@@ -27,10 +27,10 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.ui.component.ScoreView;
 
 class BaseElementRendererTest extends UnitTest {

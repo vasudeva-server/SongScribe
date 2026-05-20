@@ -20,8 +20,8 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.Line;
-import songscribe.ui.layout.RangeElement;
+import songscribe.dom.Line;
+import songscribe.dom.RangeElement;
 
 /**
  * Mutation recording the addition of a range element to a line.

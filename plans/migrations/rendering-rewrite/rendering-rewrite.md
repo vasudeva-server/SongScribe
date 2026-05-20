@@ -114,7 +114,7 @@ See [milestone-6-legacy-flag-migration.md](milestone-6-legacy-flag-migration.md)
 
 ---
 
-## ⏳ Phase 7: Package Restructure (DOM / layout / ui)
+## ✅ Phase 7: Package Restructure (DOM / layout / ui)
 
 Today `ui.layout/` mixes three responsibilities: domain elements (`LineElement`, `Attachment*`, `RangeElement*`, `Beam`, `Tie`, `Tuplet`, `Trill`, `Hairpin`, `Ending`, `Articulation`, `Crescendo`, `Diminuendo`, `Clef`, `KeySignature`, `Attribution`), layout machinery (`LayoutEngine`, `*Calculator`, `*Builder`, `LayoutResult` + `*Layout` records, `StaffExtents`, `CollisionDetector`), and units (`ScaleContext`, `InsetsSs`, `Margin`, `Size`, `ElementBoundsSs`, `LineThickness`, `SongLayoutMetrics`). `model/` and `ui.layout/` form an import cycle: `Line.java` imports 14 classes from `ui.layout`, `StaffElement` imports 5, `Song` imports 3.
 

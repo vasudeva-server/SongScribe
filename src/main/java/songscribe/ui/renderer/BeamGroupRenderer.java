@@ -30,15 +30,15 @@ import org.slf4j.LoggerFactory;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.PreviewElementManager;
-import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.StaffExtents;
+import songscribe.dom.LineElement;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.StaffExtents;
 
 /**
  * Renders beam bars connecting beamed notes.

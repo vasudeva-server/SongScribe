@@ -25,13 +25,13 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.layout.Crescendo;
-import songscribe.ui.layout.Diminuendo;
-import songscribe.ui.layout.Hairpin;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
+import songscribe.dom.Hairpin;
+import songscribe.dom.ScaleContext;
 import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.GraphicsState;
 

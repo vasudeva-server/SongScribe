@@ -26,8 +26,8 @@ import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;
@@ -35,11 +35,11 @@ import songscribe.ui.component.LyricEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.layout.LayoutEngine;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.layout.SongLayoutMetrics;
-import songscribe.ui.layout.StaffExtents;
+import songscribe.layout.LayoutEngine;
+import songscribe.layout.LayoutResult;
+import songscribe.dom.ScaleContext;
+import songscribe.layout.SongLayoutMetrics;
+import songscribe.layout.StaffExtents;
 import songscribe.ui.renderer.ElementRenderContext;
 import songscribe.ui.renderer.GraphicsState;
 import songscribe.ui.selection.LineSelectionState;

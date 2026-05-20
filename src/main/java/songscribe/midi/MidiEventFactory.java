@@ -21,7 +21,7 @@ package songscribe.midi;
 
 import module java.desktop;
 
-import songscribe.model.Tempo;
+import songscribe.dom.Tempo;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
 /**

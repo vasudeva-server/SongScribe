@@ -31,7 +31,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.model.ElementType;
+import songscribe.dom.ElementType;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.SelectionCoordinator;

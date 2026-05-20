@@ -23,12 +23,11 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.ArticulationType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
-import songscribe.model.Tempo;
-import songscribe.ui.layout.TempoChangeAttachment;
-import songscribe.ui.layout.Tuplet;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
+import songscribe.dom.Tempo;
+import songscribe.dom.TempoChangeAttachment;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
 

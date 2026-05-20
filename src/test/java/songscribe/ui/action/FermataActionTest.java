@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.ElementType;
-import songscribe.ui.layout.FermataAttachment;
+import songscribe.dom.ElementType;
+import songscribe.dom.FermataAttachment;
 
 class FermataActionTest extends UnitTest {
 

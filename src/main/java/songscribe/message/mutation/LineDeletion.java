@@ -20,7 +20,7 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.Line;
+import songscribe.dom.Line;
 
 /**
  * Mutation recording a line deletion from the song.

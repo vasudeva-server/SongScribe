@@ -26,9 +26,9 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import module java.desktop;
 
 
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.AnnotationAttachment;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.dom.StaffElement;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.ScaleContext;
 
 /**
  * Renders text annotations attached to notes.

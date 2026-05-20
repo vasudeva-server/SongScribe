@@ -25,11 +25,11 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.layout.Ending;
+import songscribe.layout.Ending;
 
 /**
  * Utility class for showing confirmation dialogs before ending-invalidating mutations,

@@ -24,17 +24,17 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.ArticulationType;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
-import songscribe.ui.layout.Articulation;
-import songscribe.ui.layout.DynamicAttachment;
-import songscribe.ui.layout.DynamicAttachment.DynamicType;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
+import songscribe.dom.Articulation;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.DynamicAttachment.DynamicType;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.model.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 class VelocityMapTest extends UnitTest {
 

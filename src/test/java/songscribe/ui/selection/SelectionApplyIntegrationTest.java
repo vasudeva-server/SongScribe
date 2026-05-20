@@ -35,18 +35,18 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.ArticulationType;
-import songscribe.model.Song;
-import songscribe.model.ElementType;
-import songscribe.model.StaffElement;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.layout.Articulation;
-import songscribe.ui.layout.FermataAttachment;
+import songscribe.dom.Articulation;
+import songscribe.dom.FermataAttachment;
 
 /**
  * Integration tests for the selection-apply feature (Phase 11).

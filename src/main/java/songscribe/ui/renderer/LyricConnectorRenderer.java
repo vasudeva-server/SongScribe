@@ -29,16 +29,17 @@ import module java.desktop;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import songscribe.ui.layout.LyricConnectorLayout;
-import songscribe.ui.layout.LyricRenderMetrics;
-import songscribe.ui.layout.SongLayoutMetrics;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricConnectorLayout;
+import songscribe.layout.LyricRenderMetrics;
+import songscribe.layout.SongLayoutMetrics;
 import songscribe.util.GraphicUtils;
 
 /**
  * Renders line-level lyric connectors (syllable hyphens and melisma extenders).
  * <p>
  * Iterates the {@link LyricConnectorLayout} entries on the current
- * {@link songscribe.ui.layout.LayoutResult}, reading each connector's verse baseline
+ * {@link LayoutResult}, reading each connector's verse baseline
  * Y from the song-wide
  * {@link SongLayoutMetrics}. Stateless.
  * <p>

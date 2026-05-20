@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.model.ElementType;
-import songscribe.model.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.Song;
 import songscribe.ui.edit.EditModeManager;
 
 /**

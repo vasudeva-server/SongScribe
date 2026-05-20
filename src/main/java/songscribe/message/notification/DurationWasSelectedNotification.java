@@ -20,7 +20,7 @@
 
 package songscribe.message.notification;
 
-import songscribe.model.ElementType;
+import songscribe.dom.ElementType;
 
 public class DurationWasSelectedNotification extends ElementTypeWasSelectedNotification {
 

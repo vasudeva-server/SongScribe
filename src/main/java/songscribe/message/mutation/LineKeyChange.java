@@ -22,7 +22,7 @@ package songscribe.message.mutation;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.model.Line;
+import songscribe.dom.Line;
 
 /**
  * Mutation recording a key-signature change on a specific line.

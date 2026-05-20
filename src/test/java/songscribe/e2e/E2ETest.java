@@ -58,14 +58,14 @@ import songscribe.SongScribe;
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
-import songscribe.model.Song;
+import songscribe.dom.Song;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.score.ElementHitTest;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.dom.ScaleContext;
 import songscribe.util.UIUtils;
 
 /**

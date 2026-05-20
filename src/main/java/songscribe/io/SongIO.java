@@ -33,17 +33,17 @@ import songscribe.Strings;
 import songscribe.message.SongData;
 import songscribe.font.DocumentFonts;
 import songscribe.font.DocumentFontsHolder;
-import songscribe.model.Song;
-import songscribe.model.KeyType;
-import songscribe.model.Line;
-import songscribe.model.Tempo;
+import songscribe.dom.Song;
+import songscribe.dom.KeyType;
+import songscribe.dom.Line;
+import songscribe.dom.Tempo;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.layout.InsertionSpacingCalculator;
-import songscribe.ui.layout.PageModel;
-import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.layout.InsertionSpacingCalculator;
+import songscribe.layout.PageModel;
+import songscribe.dom.ScaleContext;
+import songscribe.dom.TempoChangeAttachment;
 import songscribe.util.Utils;
 
 public final class SongIO {

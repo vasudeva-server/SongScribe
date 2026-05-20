@@ -25,11 +25,11 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.model.Duration;
-import songscribe.model.Line;
-import songscribe.model.StaffElement;
-import songscribe.model.Tempo;
-import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.dom.Duration;
+import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
+import songscribe.dom.Tempo;
+import songscribe.dom.TempoChangeAttachment;
 
 public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
 

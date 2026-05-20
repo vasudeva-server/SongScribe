@@ -26,11 +26,11 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.util.UIUtils;
 import songscribe.message.mutation.ElementField;
-import songscribe.model.Annotation;
-import songscribe.model.StaffElement;
+import songscribe.dom.Annotation;
+import songscribe.dom.StaffElement;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.layout.AnnotationAttachment;
+import songscribe.dom.AnnotationAttachment;
 
 public class AnnotationDialog extends AttachmentDialog<Annotation> {
 

@@ -34,13 +34,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.model.StaffElementFactory;
-import songscribe.ui.layout.Crescendo;
-import songscribe.ui.layout.Diminuendo;
-import songscribe.model.ElementType;
+import songscribe.dom.StaffElementFactory;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
+import songscribe.dom.ElementType;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.layout.DynamicAttachment;
-import songscribe.ui.layout.DynamicAttachment.DynamicType;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.ui.selection.ElementSelection;
 
 class DynamicMarkingActionTest extends UnitTest {

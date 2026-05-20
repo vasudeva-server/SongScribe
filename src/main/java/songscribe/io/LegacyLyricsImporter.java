@@ -22,8 +22,8 @@ package songscribe.io;
 
 import java.util.List;
 
-import songscribe.model.Line;
-import songscribe.model.Lyric;
+import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 
 /**
  * Populates per-note {@code Properties.lyrics} records from a legacy

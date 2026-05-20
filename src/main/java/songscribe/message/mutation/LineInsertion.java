@@ -20,7 +20,7 @@
 
 package songscribe.message.mutation;
 
-import songscribe.model.Line;
+import songscribe.dom.Line;
 
 /**
  * Mutation recording a line insertion at a specific index in the song.

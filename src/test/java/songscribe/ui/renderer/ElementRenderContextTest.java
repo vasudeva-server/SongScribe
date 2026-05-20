@@ -27,10 +27,10 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.model.ElementType;
-import songscribe.model.Song;
+import songscribe.dom.ElementType;
+import songscribe.dom.Song;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.layout.Tie;
+import songscribe.dom.Tie;
 
 class ElementRenderContextTest extends UnitTest {
 
