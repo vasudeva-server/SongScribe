@@ -43,11 +43,8 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.FlatLafProps;
 
 import songscribe.font.SourceSans3Font;
-import songscribe.lifecycle.Shutdown;
-import songscribe.ui.action.Actions;
 import songscribe.ui.renderer.RenderingUtils;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.MainFrame;
 
 @SuppressWarnings("ParameterNameDiffersFromOverriddenParameter")
 public final class UIUtils {
@@ -187,38 +184,6 @@ public final class UIUtils {
         rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
             .put(keyStroke, actionCommand);
         rootPane.getActionMap().put(actionCommand, action);
-    }
-
-    public static void setupDesktopHandlers(MainFrame mainFrame, boolean hasPrefs) {
-        var desktop = Desktop.getDesktop();
-
-        if (desktop.isSupported(Desktop.Action.APP_ABOUT)) {
-            desktop.setAboutHandler(_ -> Actions.ABOUT_ACTION.perform(mainFrame));
-        }
-
-        if (hasPrefs && desktop.isSupported(Desktop.Action.APP_PREFERENCES)) {
-            desktop.setPreferencesHandler(_ -> MainFrame.handlePrefs());
-        }
-
-        if (desktop.isSupported(Desktop.Action.APP_OPEN_FILE)) {
-            desktop.setOpenFileHandler(event -> mainFrame.handleOpenFile(event.getFiles()
-                .getFirst()));
-        }
-
-        if (desktop.isSupported(Desktop.Action.APP_PRINT_FILE)) {
-            desktop.setPrintFileHandler(event -> {
-                mainFrame.handleOpenFile(event.getFiles()
-                    .getFirst());
-                mainFrame.handlePrint();
-            });
-        }
-
-        if (desktop.isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
-            desktop.setQuitHandler((_, response) -> {
-                Shutdown.now();
-                response.cancelQuit();
-            });
-        }
     }
 
     //

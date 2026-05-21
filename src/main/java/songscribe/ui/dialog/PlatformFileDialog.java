@@ -25,13 +25,14 @@ import com.formdev.flatlaf.util.SystemFileChooser;
 
 import org.jspecify.annotations.Nullable;
 
+import java.awt.Window;
+
 import songscribe.util.ExtensionFileFilter;
-import songscribe.ui.component.MainFrame;
 
 public class PlatformFileDialog {
 
     private final SystemFileChooser chooser;
-    private final MainFrame mainFrame;
+    private final Window mainFrame;
     private final boolean isOpenDialog;
     private ExtensionFileFilter @Nullable [] originalFilters = null;
     private SystemFileChooser.FileNameExtensionFilter @Nullable [] convertedFilters = null;
@@ -54,7 +55,7 @@ public class PlatformFileDialog {
     }
 
     public PlatformFileDialog(
-        MainFrame mainFrame,
+        Window mainFrame,
         String title,
         boolean isOpenDialog,
         ExtensionFileFilter filter
@@ -64,7 +65,7 @@ public class PlatformFileDialog {
     }
 
     public PlatformFileDialog(
-        MainFrame mainFrame,
+        Window mainFrame,
         String title,
         boolean isOpenDialog,
         ExtensionFileFilter filter,
@@ -75,7 +76,7 @@ public class PlatformFileDialog {
     }
 
     public PlatformFileDialog(
-        MainFrame mainFrame,
+        Window mainFrame,
         String title,
         boolean isOpenDialog,
         ExtensionFileFilter[] filters,
@@ -95,7 +96,7 @@ public class PlatformFileDialog {
     }
 
     private PlatformFileDialog(
-        MainFrame mainFrame,
+        Window mainFrame,
         String title,
         boolean isOpenDialog,
         boolean directoriesOnly
@@ -181,7 +182,7 @@ public class PlatformFileDialog {
     }
 
     public static @Nullable File showSaveDialog(
-        MainFrame mainFrame,
+        Window mainFrame,
         String title,
         String filterDescription,
         String suggestedFileName,

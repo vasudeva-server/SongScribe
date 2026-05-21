@@ -19,8 +19,6 @@
  */
 package songscribe.uiconverter;
 
-import static songscribe.util.UIUtils.setupDesktopHandlers;
-
 import module java.desktop;
 
 import java.io.File;
@@ -34,7 +32,7 @@ import songscribe.Strings;
 import songscribe.FileExtensions;
 import songscribe.ui.OptionDialogs;
 import songscribe.SongScribe;
-import songscribe.ui.component.MainFrame;
+import songscribe.ui.action.Actions;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.playback.MidiController;
@@ -43,7 +41,7 @@ import songscribe.util.GraphicUtils;
 import org.jspecify.annotations.Nullable;
 
 @SuppressWarnings("NonStaticInitializer")
-public class UIConverter extends MainFrame {
+public class UIConverter extends JFrame {
 
     @SuppressWarnings("NullAway.Init")
     private JPanel mainPanel;
@@ -76,9 +74,15 @@ public class UIConverter extends MainFrame {
     @Nullable
     private File currentDir = null;
 
+    @Nullable
+    private ScoreView scoreView;
+
+    public @Nullable ScoreView getScoreView() {
+        return scoreView;
+    }
+
     public UIConverter() {
-        appName = "Song Converter";
-        setTitle(appName);
+        setTitle("Song Converter");
         setIconImage(GraphicUtils.getImage("songwriter-icon.png"));
         scoreView = new ScoreView(null);
 
@@ -100,13 +104,20 @@ public class UIConverter extends MainFrame {
         rejectList.setModel(rejectListModel);
         numberSongButton.addActionListener(new NumberSongAction());
         getContentPane().add(mainPanel);
-        setupDesktopHandlers(this, false);
+
+        if (Desktop.isDesktopSupported()) {
+            var desktop = Desktop.getDesktop();
+
+            if (desktop.isSupported(Desktop.Action.APP_ABOUT)) {
+                desktop.setAboutHandler(_ -> Actions.ABOUT_ACTION.perform(this));
+            }
+        }
+
         pack();
         setLocationRelativeTo(null);
         setVisible(true);
     }
 
-    @SuppressWarnings("MethodOverridesStaticMethodOfSuperclass")
     public static void main(String[] args) {
         SongScribe.configureLogging();
         MidiController.openMidi();

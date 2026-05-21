@@ -282,6 +282,7 @@ public class MainFrame extends JFrame implements Printable {
         updateTitle();
 
         MenuController.init(this);
+        installDesktopHandlers();
 
         Actions.CONTROL_ACTION_GROUP.selectNext();
 
@@ -339,6 +340,40 @@ public class MainFrame extends JFrame implements Printable {
 
     private void hidePreviewNote() {
         PreviewElementManager.hidePreviewElement(true);
+    }
+
+    private void installDesktopHandlers() {
+        if (!Desktop.isDesktopSupported()) {
+            return;
+        }
+
+        var desktop = Desktop.getDesktop();
+
+        if (desktop.isSupported(Desktop.Action.APP_ABOUT)) {
+            desktop.setAboutHandler(_ -> Actions.ABOUT_ACTION.perform(this));
+        }
+
+        if (desktop.isSupported(Desktop.Action.APP_PREFERENCES)) {
+            desktop.setPreferencesHandler(_ -> handlePrefs());
+        }
+
+        if (desktop.isSupported(Desktop.Action.APP_OPEN_FILE)) {
+            desktop.setOpenFileHandler(event -> handleOpenFile(event.getFiles().getFirst()));
+        }
+
+        if (desktop.isSupported(Desktop.Action.APP_PRINT_FILE)) {
+            desktop.setPrintFileHandler(event -> {
+                handleOpenFile(event.getFiles().getFirst());
+                handlePrint();
+            });
+        }
+
+        if (desktop.isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
+            desktop.setQuitHandler((_, response) -> {
+                Shutdown.now();
+                response.cancelQuit();
+            });
+        }
     }
 
     private void setAppIcon() {
@@ -584,7 +619,7 @@ public class MainFrame extends JFrame implements Printable {
         LOG.info("New song");
     }
 
-    public static void handlePrefs() throws IllegalStateException {
+    public void handlePrefs() throws IllegalStateException {
         var dialog = Actions.PREFERENCES_ACTION.getDialog();
 
         if (dialog == null) {

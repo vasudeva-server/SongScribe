@@ -21,7 +21,6 @@
 package songscribe.ui.menu;
 
 import module java.desktop;
-import static songscribe.util.UIUtils.setupDesktopHandlers;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -113,9 +112,6 @@ public class MenuController {
             // apple.laf.useScreenMenuBar (set in SongScribe.main).
             mainFrame.setJMenuBar(menuBar);
         }
-
-        // Set up the standard OS menu item handlers
-        setupDesktopHandlers(mainFrame, true);
 
         if (SystemInfo.isMacOS) {
             try {
