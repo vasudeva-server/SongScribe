@@ -31,6 +31,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.dom.StaffElement;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.PlayThread;
 
 public final class AccidentalAction extends NoteOnlyAction {
@@ -39,16 +40,18 @@ public final class AccidentalAction extends NoteOnlyAction {
 
     private final StaffElement.Accidental accidental;
 
-    public static AccidentalAction createFlatAction() {
+    public static AccidentalAction createFlatAction(MainFrame mainFrame) {
         return new AccidentalAction(
+            mainFrame,
             StaffElement.Accidental.FLAT,
             Strings.get(Strings.ACTION_ACCIDENTAL_FLAT), "@\uF388", 18,
             "flat", Strings.get(Strings.ACTION_ACCIDENTAL_FLAT_TOOLTIP), 0, 0
         );
     }
 
-    public static AccidentalAction createDoubleFlatAction() {
+    public static AccidentalAction createDoubleFlatAction(MainFrame mainFrame) {
         return new AccidentalAction(
+            mainFrame,
             StaffElement.Accidental.DOUBLE_FLAT,
             Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_FLAT), "@\uF389", 18,
             "double-flat", Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_FLAT_TOOLTIP),
@@ -56,16 +59,18 @@ public final class AccidentalAction extends NoteOnlyAction {
         );
     }
 
-    public static AccidentalAction createNaturalFlatAction() {
+    public static AccidentalAction createNaturalFlatAction(MainFrame mainFrame) {
         return new AccidentalAction(
+            mainFrame,
             StaffElement.Accidental.NATURAL_FLAT,
             Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT), "#\uE267", 32,
             "natural-flat", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT_TOOLTIP), 0, 0
         );
     }
 
-    public static AccidentalAction createNaturalAction() {
+    public static AccidentalAction createNaturalAction(MainFrame mainFrame) {
         return new AccidentalAction(
+            mainFrame,
             StaffElement.Accidental.NATURAL,
             Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL), "@\uF387", 18,
             "natural", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_TOOLTIP),
@@ -73,24 +78,27 @@ public final class AccidentalAction extends NoteOnlyAction {
         );
     }
 
-    public static AccidentalAction createSharpAction() {
+    public static AccidentalAction createSharpAction(MainFrame mainFrame) {
         return new AccidentalAction(
+            mainFrame,
             StaffElement.Accidental.SHARP,
             Strings.get(Strings.ACTION_ACCIDENTAL_SHARP), "@\uF386", 18,
             "sharp", Strings.get(Strings.ACTION_ACCIDENTAL_SHARP_TOOLTIP), 0, 0
         );
     }
 
-    public static AccidentalAction createDoubleSharpAction() {
+    public static AccidentalAction createDoubleSharpAction(MainFrame mainFrame) {
         return new AccidentalAction(
+            mainFrame,
             StaffElement.Accidental.DOUBLE_SHARP,
             Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP), "@\uF38A", 18,
             "double-sharp", Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP_TOOLTIP), 0, 0
         );
     }
 
-    public static AccidentalAction createNaturalSharpAction() {
+    public static AccidentalAction createNaturalSharpAction(MainFrame mainFrame) {
         return new AccidentalAction(
+            mainFrame,
             StaffElement.Accidental.NATURAL_SHARP,
             Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP), "#\uE268", 32,
             "natural-sharp", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP_TOOLTIP), 0, 0
@@ -98,6 +106,7 @@ public final class AccidentalAction extends NoteOnlyAction {
     }
 
     private AccidentalAction(
+        MainFrame mainFrame,
         StaffElement.Accidental accidental,
         String name,
         String icon,
@@ -108,6 +117,7 @@ public final class AccidentalAction extends NoteOnlyAction {
         int modifiers
     ) {
         super(
+            mainFrame,
             name,
             icon,
             size,

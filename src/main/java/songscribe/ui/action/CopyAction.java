@@ -23,16 +23,18 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class CopyAction extends PasteboardAction {
 
-    public static CopyAction createAction() {
-        return new CopyAction();
+    public static CopyAction createAction(MainFrame mainFrame) {
+        return new CopyAction(mainFrame);
     }
 
-    private CopyAction() {
+    private CopyAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Operation.COPY,
             Strings.get(Strings.ACTION_EDIT_COPY),
             "edit-copy",

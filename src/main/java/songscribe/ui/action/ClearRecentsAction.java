@@ -23,15 +23,17 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.prefs.RecentDocumentsManager;
+import songscribe.ui.component.MainFrame;
 
 public final class ClearRecentsAction extends UIAction {
 
-    public static ClearRecentsAction createAction() {
-        return new ClearRecentsAction();
+    public static ClearRecentsAction createAction(MainFrame mainFrame) {
+        return new ClearRecentsAction(mainFrame);
     }
 
-    private ClearRecentsAction() {
+    private ClearRecentsAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_EDIT_CLEAR_RECENTS),
             "clear-recents",
             Flag.DISABLE_WHEN_PLAYING,

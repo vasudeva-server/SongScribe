@@ -22,16 +22,18 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.AnnotationDialog;
 
 public final class AnnotationAction extends UIAction {
 
-    public static AnnotationAction createAction() {
-        return new AnnotationAction();
+    public static AnnotationAction createAction(MainFrame mainFrame) {
+        return new AnnotationAction(mainFrame);
     }
 
-    private AnnotationAction() {
+    private AnnotationAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_ANNOTATION),
             null,
             0,

@@ -65,7 +65,7 @@ class DeleteActionTest extends UnitTest {
         when(env.coordinator().getLyricSelection()).thenReturn(
             new SelectionCoordinator.LyricSelection(element, 1));
 
-        var action = DeleteAction.createAction();
+        var action = DeleteAction.createAction(MainFrame.getInstance());
         action.setEnabled(false);
 
         action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(env.score()));

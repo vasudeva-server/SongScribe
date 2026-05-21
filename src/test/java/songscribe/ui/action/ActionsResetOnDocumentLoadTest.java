@@ -46,7 +46,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * <p>{@code resetToDefaults()} calls {@code MODE_ACTION_GROUP.select(...)} and
  * {@code DURATION_ACTION_GROUP.select(...)}, which fire {@code perform()} on
  * the selected action; that path ends up in {@code UIAction.requireScoreView()}.
- * {@code UIAction} caches {@code MainFrame.getInstance()} in a final field at
+ * {@code UIAction} stores the injected {@code MainFrame} in a final field at
  * construction, so whichever frame was in scope the first time {@code Actions}
  * was loaded is the frame these calls go through. Rather than fight that
  * cache, this test wires the real {@code MainFrame} singleton to a mock

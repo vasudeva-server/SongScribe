@@ -24,16 +24,18 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.SaveAsCommand;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class SaveAsAction extends UIAction {
 
-    public static SaveAsAction createAction() {
-        return new SaveAsAction();
+    public static SaveAsAction createAction(MainFrame mainFrame) {
+        return new SaveAsAction(mainFrame);
     }
 
-    private SaveAsAction() {
+    private SaveAsAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_FILE_SAVE_AS),
             "save-as",
             KeyEvent.VK_S,

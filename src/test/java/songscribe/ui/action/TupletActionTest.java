@@ -80,13 +80,14 @@ class TupletActionTest extends UnitTest {
         when(env.coordinator().hasActiveSelection()).thenReturn(true);
         when(env.coordinator().selectionHasDurations()).thenReturn(true);
 
-        removeAction = TupletAction.createRemoveAction();
-        dupletAction = TupletAction.createDupletAction();
-        tripletAction = TupletAction.createTripletAction();
-        quadrupletAction = TupletAction.createQuadrupletAction();
-        quintupletAction = TupletAction.createQuintupletAction();
-        sextupletAction = TupletAction.createSextupletAction();
-        septupletAction = TupletAction.createSeptupletAction();
+        var mainFrame = MainFrame.getInstance();
+        removeAction = TupletAction.createRemoveAction(mainFrame);
+        dupletAction = TupletAction.createDupletAction(mainFrame);
+        tripletAction = TupletAction.createTripletAction(mainFrame);
+        quadrupletAction = TupletAction.createQuadrupletAction(mainFrame);
+        quintupletAction = TupletAction.createQuintupletAction(mainFrame);
+        sextupletAction = TupletAction.createSextupletAction(mainFrame);
+        septupletAction = TupletAction.createSeptupletAction(mainFrame);
     }
 
     @AfterEach

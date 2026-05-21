@@ -22,10 +22,12 @@ package songscribe.ui.playback;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.MainFrame;
 
 class SequencerAction extends UIAction {
 
     protected SequencerAction(
+        MainFrame mainFrame,
         String name,
         String icon,
         int size,
@@ -36,6 +38,7 @@ class SequencerAction extends UIAction {
         Flag... flags
     ) {
         super(
+            mainFrame,
             name,
             icon,
             size,

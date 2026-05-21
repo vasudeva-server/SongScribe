@@ -21,6 +21,7 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import org.junit.jupiter.api.Test;
 
@@ -28,11 +29,14 @@ import songscribe.UnitTest;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
 import songscribe.dom.Articulation;
+import songscribe.ui.component.MainFrame;
 
 class DurationArticulationActionTest extends UnitTest {
 
+    private static final MainFrame MOCK_FRAME = mock(MainFrame.class);
+
     private final DurationArticulationAction action =
-        DurationArticulationAction.createStaccatoAction();
+        DurationArticulationAction.createStaccatoAction(MOCK_FRAME);
 
     @Test
     void testApplyToNoteAppliesArticulation() {

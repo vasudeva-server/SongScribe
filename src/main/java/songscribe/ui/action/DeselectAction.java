@@ -25,16 +25,18 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.DeselectCommand;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class DeselectAction extends UIAction {
 
-    public static DeselectAction createAction() {
-        return new DeselectAction();
+    public static DeselectAction createAction(MainFrame mainFrame) {
+        return new DeselectAction(mainFrame);
     }
 
-    private DeselectAction() {
+    private DeselectAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_EDIT_DESELECT),
             "deselect",
             KeyEvent.VK_D,

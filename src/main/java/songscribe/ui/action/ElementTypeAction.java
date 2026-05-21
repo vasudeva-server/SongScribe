@@ -25,6 +25,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.message.MessageCenter;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
@@ -53,8 +54,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
     private final Kind kind;
     private final StaffElement.Glissando.@Nullable Type glissandoType;
 
-    public static ElementTypeAction createGraceEighthNoteAction() {
+    public static ElementTypeAction createGraceEighthNoteAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.DURATION, ElementType.GRACE_QUAVER,
             Strings.get(Strings.ACTION_DURATION_GRACE), "grace.svg", 26,
             "duration-grace-eighth", Strings.get(Strings.ACTION_DURATION_GRACE_TOOLTIP),
@@ -63,8 +65,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createThirtySecondNoteAction() {
+    public static ElementTypeAction createThirtySecondNoteAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.DURATION, ElementType.DEMI_SEMIQUAVER,
             Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND), "@\uF36B", 18,
             "duration-thirty-second", Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND_TOOLTIP),
@@ -73,8 +76,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createSixteenthNoteAction() {
+    public static ElementTypeAction createSixteenthNoteAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.DURATION, ElementType.SEMIQUAVER,
             Strings.get(Strings.ACTION_DURATION_SIXTEENTH), "@\uF36A", 18,
             "duration-sixteenth", Strings.get(Strings.ACTION_DURATION_SIXTEENTH_TOOLTIP),
@@ -83,8 +87,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createEighthNoteAction() {
+    public static ElementTypeAction createEighthNoteAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.DURATION, ElementType.QUAVER,
             Strings.get(Strings.ACTION_DURATION_EIGHTH), "@\uF369", 18,
             "duration-eighth", Strings.get(Strings.ACTION_DURATION_EIGHTH_TOOLTIP),
@@ -93,8 +98,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createQuarterNoteAction() {
+    public static ElementTypeAction createQuarterNoteAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.DURATION, ElementType.CROTCHET,
             Strings.get(Strings.ACTION_DURATION_QUARTER), "@\uF368", 18,
             "duration-quarter", Strings.get(Strings.ACTION_DURATION_QUARTER_TOOLTIP),
@@ -103,8 +109,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createHalfNoteAction() {
+    public static ElementTypeAction createHalfNoteAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.DURATION, ElementType.MINIM,
             Strings.get(Strings.ACTION_DURATION_HALF), "@\uF367", 18,
             "duration-half", Strings.get(Strings.ACTION_DURATION_HALF_TOOLTIP),
@@ -113,8 +120,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createWholeNoteAction() {
+    public static ElementTypeAction createWholeNoteAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.DURATION, ElementType.SEMIBREVE,
             Strings.get(Strings.ACTION_DURATION_WHOLE), "@\uF366", 18,
             "duration-whole", Strings.get(Strings.ACTION_DURATION_WHOLE_TOOLTIP),
@@ -123,8 +131,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createGlissandoAction() {
+    public static ElementTypeAction createGlissandoAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.DURATION, ElementType.GLISSANDO, StaffElement.Glissando.Type.CONNECTED,
             Strings.get(Strings.ACTION_DURATION_GLISSANDO), "connecting-glissando.svg", 26,
             "glissando", Strings.get(Strings.ACTION_DURATION_GLISSANDO_TOOLTIP),
@@ -133,8 +142,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createSlideOutAction() {
+    public static ElementTypeAction createSlideOutAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.DURATION, ElementType.GLISSANDO, StaffElement.Glissando.Type.SLIDE_OUT,
             Strings.get(Strings.ACTION_DURATION_SLIDE_OUT), "slide-out.svg", 26,
             "slide-out", Strings.get(Strings.ACTION_DURATION_SLIDE_OUT_TOOLTIP),
@@ -143,8 +153,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createLeftRepeatAction() {
+    public static ElementTypeAction createLeftRepeatAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.NON_DURATION, ElementType.REPEAT_LEFT,
             Strings.get(Strings.ACTION_REPEAT_LEFT), "@\uEF68", 24,
             "left-repeat", Strings.get(Strings.ACTION_REPEAT_LEFT_TOOLTIP),
@@ -153,8 +164,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createRightRepeatAction() {
+    public static ElementTypeAction createRightRepeatAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.NON_DURATION, ElementType.REPEAT_RIGHT,
             Strings.get(Strings.ACTION_REPEAT_RIGHT), "@\uF345", 24,
             "right-repeat", Strings.get(Strings.ACTION_REPEAT_RIGHT_TOOLTIP),
@@ -163,8 +175,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createLeftRightRepeatAction() {
+    public static ElementTypeAction createLeftRightRepeatAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.NON_DURATION, ElementType.REPEAT_LEFT_RIGHT,
             Strings.get(Strings.ACTION_REPEAT_LEFT_RIGHT), "@\uF34B", 24,
             "left-right-repeat", Strings.get(Strings.ACTION_REPEAT_LEFT_RIGHT_TOOLTIP),
@@ -173,8 +186,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createDoubleBarlineAction() {
+    public static ElementTypeAction createDoubleBarlineAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.NON_DURATION, ElementType.DOUBLE_BARLINE,
             Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE), "@\uF347", 24,
             "double-barline", Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE_TOOLTIP),
@@ -183,8 +197,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createSingleBarlineAction() {
+    public static ElementTypeAction createSingleBarlineAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.NON_DURATION, ElementType.SINGLE_BARLINE,
             Strings.get(Strings.ACTION_BARLINE_SINGLE), "@\uF346", 24,
             "single-barline", Strings.get(Strings.ACTION_BARLINE_SINGLE_TOOLTIP),
@@ -193,8 +208,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createBreathMarkAction() {
+    public static ElementTypeAction createBreathMarkAction(MainFrame mainFrame) {
         return new ElementTypeAction(
+            mainFrame,
             Kind.NON_DURATION, ElementType.BREATH_MARK,
             Strings.get(Strings.ACTION_BREATH_MARK), null, 0,
             "breath-mark", Strings.get(Strings.ACTION_BREATH_MARK_TOOLTIP),
@@ -204,6 +220,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
     }
 
     private ElementTypeAction(
+        MainFrame mainFrame,
         Kind kind,
         ElementType type,
         String name,
@@ -215,10 +232,11 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         int modifiers,
         Flag... flags
     ) {
-        this(kind, type, null, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
+        this(mainFrame, kind, type, null, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
     }
 
     protected ElementTypeAction(
+        MainFrame mainFrame,
         Kind kind,
         ElementType type,
         StaffElement.Glissando.@Nullable Type glissandoType,
@@ -231,7 +249,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         int modifiers,
         Flag... flags
     ) {
-        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
+        super(mainFrame, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
         this.kind = kind;
         this.type = type;
         this.glissandoType = glissandoType;

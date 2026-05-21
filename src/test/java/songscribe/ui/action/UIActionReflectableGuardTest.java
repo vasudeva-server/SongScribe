@@ -55,7 +55,7 @@ class UIActionReflectableGuardTest extends UnitTest {
             when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(2);
 
-            var nonReflectable = new UIAction("Test", null, 0, "test", "Test");
+            var nonReflectable = new UIAction(MainFrame.getInstance(), "Test", null, 0, "test", "Test");
             nonReflectable.setFlags(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE);
             nonReflectable.setEnabled(true);
 
@@ -84,7 +84,7 @@ class UIActionReflectableGuardTest extends UnitTest {
             when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(0);
 
-            var action = FermataAction.createAction();
+            var action = FermataAction.createAction(MainFrame.getInstance());
             action.setEnabled(true);
 
             var result = action.updateEnabledState();
@@ -112,7 +112,7 @@ class UIActionReflectableGuardTest extends UnitTest {
             when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(2);
 
-            var action = FermataAction.createAction();
+            var action = FermataAction.createAction(MainFrame.getInstance());
             action.setEnabled(true);
 
             var result = action.updateEnabledState();

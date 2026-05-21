@@ -24,13 +24,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Objects;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
@@ -43,18 +47,32 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
+import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.MainFrame;
 import songscribe.dom.FermataAttachment;
 
 class BatchMutationTest extends UnitTest {
 
-    private static final FermataAction FERMATA_ACTION = FermataAction.createAction();
+    private MockedStatic<MainFrame> mainFrameMock;
+    private FermataAction FERMATA_ACTION;
+    private AccidentalAction SHARP_ACTION;
+    private ElementTypeAction QUARTER_ACTION;
 
-    private static final AccidentalAction SHARP_ACTION =
-        AccidentalAction.createSharpAction();
+    @BeforeEach
+    void setUp() {
+        mainFrameMock = mockStatic(MainFrame.class);
+        MockEnvHelper.setupMockEnv(mainFrameMock);
+        var mainFrame = MainFrame.getInstance();
+        FERMATA_ACTION = FermataAction.createAction(mainFrame);
+        SHARP_ACTION = AccidentalAction.createSharpAction(mainFrame);
+        QUARTER_ACTION = ElementTypeAction.createQuarterNoteAction(mainFrame);
+    }
 
-    private static final ElementTypeAction QUARTER_ACTION =
-        ElementTypeAction.createQuarterNoteAction();
+    @AfterEach
+    void tearDown() {
+        mainFrameMock.close();
+    }
 
     /**
      * Creates a coordinator with a song mock on the line. The mock is

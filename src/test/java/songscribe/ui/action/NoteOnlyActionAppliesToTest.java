@@ -22,15 +22,19 @@ package songscribe.ui.action;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.ui.component.MainFrame;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class NoteOnlyActionAppliesToTest extends UnitTest {
 
+    private static final MainFrame MOCK_FRAME = Mockito.mock(MainFrame.class);
+
     // Use FermataAction as the simplest concrete NoteOnlyAction subclass
-    private final FermataAction action = FermataAction.createAction();
+    private final FermataAction action = FermataAction.createAction(MOCK_FRAME);
 
     // A7: appliesTo returns true for notes
     @Test

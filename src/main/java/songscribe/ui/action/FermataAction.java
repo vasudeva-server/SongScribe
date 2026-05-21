@@ -26,17 +26,19 @@ import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.StaffElement;
 import songscribe.dom.FermataAttachment;
+import songscribe.ui.component.MainFrame;
 
 public final class FermataAction extends NoteOnlyAction {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.FERMATA);
 
-    public static FermataAction createAction() {
-        return new FermataAction();
+    public static FermataAction createAction(MainFrame mainFrame) {
+        return new FermataAction(mainFrame);
     }
 
-    private FermataAction() {
+    private FermataAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_FERMATA),
             null,
             0,

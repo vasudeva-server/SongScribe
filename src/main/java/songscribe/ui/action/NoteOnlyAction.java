@@ -23,6 +23,7 @@ package songscribe.ui.action;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.StaffElement;
+import songscribe.ui.component.MainFrame;
 
 /**
  * Abstract base for actions whose attributes apply only to notes
@@ -41,6 +42,7 @@ public abstract class NoteOnlyAction extends PreviewElementAction
     };
 
     protected NoteOnlyAction(
+        MainFrame mainFrame,
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -48,10 +50,11 @@ public abstract class NoteOnlyAction extends PreviewElementAction
         @Nullable String tooltip,
         Flag... flags
     ) {
-        super(name, icon, size, actionCommand, tooltip, flags);
+        super(mainFrame, name, icon, size, actionCommand, tooltip, flags);
     }
 
     protected NoteOnlyAction(
+        MainFrame mainFrame,
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -61,7 +64,7 @@ public abstract class NoteOnlyAction extends PreviewElementAction
         int modifiers,
         Flag... flags
     ) {
-        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
+        super(mainFrame, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
     }
 
     @Override

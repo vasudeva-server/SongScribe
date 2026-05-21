@@ -24,6 +24,7 @@ import module java.desktop;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.message.Message;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 
@@ -39,12 +40,13 @@ public final class PlayPauseAction extends SequencerAction {
 
     private static final int ICON_SIZE = 20;
 
-    public static PlayPauseAction createAction() {
-        return new PlayPauseAction();
+    public static PlayPauseAction createAction(MainFrame mainFrame) {
+        return new PlayPauseAction(mainFrame);
     }
 
-    private PlayPauseAction() {
+    private PlayPauseAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             PLAY_NAME,
             PLAY_ICON,
             ICON_SIZE,

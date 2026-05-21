@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.BaseDialog;
 
 /**
@@ -39,18 +40,19 @@ public class DialogOpenAction<T extends BaseDialog> extends UIAction {
     private @Nullable T dialog = null;
     private final Class<? extends T> dialogClass;
 
-    public DialogOpenAction(String name, Class<? extends T> dialogClass, Flag... flags) {
-        this(name, 0, 0, dialogClass, flags);
+    public DialogOpenAction(MainFrame mainFrame, String name, Class<? extends T> dialogClass, Flag... flags) {
+        this(mainFrame, name, 0, 0, dialogClass, flags);
     }
 
     public DialogOpenAction(
+        MainFrame mainFrame,
         String name,
         int virtualKey,
         int modifiers,
         Class<? extends T> dialogClass,
         Flag... flags
     ) {
-        super(name, toKebabCase(name), virtualKey, modifiers, flags);
+        super(mainFrame, name, toKebabCase(name), virtualKey, modifiers, flags);
         this.dialogClass = dialogClass;
         setFlags(Flag.OPENS_DIALOG);
     }

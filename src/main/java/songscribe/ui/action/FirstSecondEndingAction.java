@@ -28,16 +28,16 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.dom.EndingValidationResult;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
 
 public final class FirstSecondEndingAction extends UIAction {
 
-    public static final FirstSecondEndingAction MAKE_ENDING_ACTION = new FirstSecondEndingAction();
-
     private @Nullable EndingValidationResult cachedResult;
 
-    private FirstSecondEndingAction() {
+    FirstSecondEndingAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_ENDING_MAKE),
             "first-second-ending",
             Flag.DISABLE_WHEN_PLAYING,

@@ -22,16 +22,18 @@ package songscribe.ui.playback;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class RewindAction extends SequencerAction {
 
-    public static RewindAction createAction() {
-        return new RewindAction();
+    public static RewindAction createAction(MainFrame mainFrame) {
+        return new RewindAction(mainFrame);
     }
 
-    private RewindAction() {
+    private RewindAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_PLAY_REWIND),
             "@\uF448",
             20,

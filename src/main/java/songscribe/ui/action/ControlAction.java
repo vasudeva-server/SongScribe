@@ -23,22 +23,24 @@ import module java.desktop;
 
 import songscribe.message.MessageCenter;
 import songscribe.ui.Control;
+import songscribe.ui.component.MainFrame;
 import songscribe.message.notification.ControlDidChangeNotification;
 
 public final class ControlAction extends SelectableUIAction {
 
     public final Control control;
 
-    public static ControlAction createMouseControlAction() {
-        return new ControlAction(Control.MOUSE);
+    public static ControlAction createMouseControlAction(MainFrame mainFrame) {
+        return new ControlAction(mainFrame, Control.MOUSE);
     }
 
-    public static ControlAction createKeyboardControlAction() {
-        return new ControlAction(Control.KEYBOARD);
+    public static ControlAction createKeyboardControlAction(MainFrame mainFrame) {
+        return new ControlAction(mainFrame, Control.KEYBOARD);
     }
 
-    private ControlAction(Control control) {
+    private ControlAction(MainFrame mainFrame, Control control) {
         super(
+            mainFrame,
             control.getDescription(),
             null,
             0,

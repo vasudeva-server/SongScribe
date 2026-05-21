@@ -50,7 +50,7 @@ class EditLyricActionTest extends UnitTest {
     void setUp() {
         mainFrameMock = mockStatic(MainFrame.class);
         mockEnv = MockEnvHelper.setupMockEnv(mainFrameMock);
-        action = EditLyricAction.createAction();
+        action = EditLyricAction.createAction(MainFrame.getInstance());
     }
 
     @AfterEach

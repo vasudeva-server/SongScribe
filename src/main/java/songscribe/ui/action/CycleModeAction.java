@@ -26,6 +26,7 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.Message;
 import songscribe.message.notification.ModeDidChangeNotification;
+import songscribe.ui.component.MainFrame;
 
 /**
  * An action that cycles between Edit Mode and Select Mode on each invocation.
@@ -41,12 +42,12 @@ public final class CycleModeAction extends UIAction {
 
     private int currentIndex;
 
-    public static CycleModeAction createAction() {
-        return new CycleModeAction();
+    public static CycleModeAction createAction(MainFrame mainFrame) {
+        return new CycleModeAction(mainFrame);
     }
 
-    private CycleModeAction() {
-        super(null, "cycle-mode", KeyEvent.VK_M, 0, Flag.DISABLE_WHEN_EDITING_TEXT, Flag.DISABLE_IN_GRACE_MODE);
+    private CycleModeAction(MainFrame mainFrame) {
+        super(mainFrame, null, "cycle-mode", KeyEvent.VK_M, 0, Flag.DISABLE_WHEN_EDITING_TEXT, Flag.DISABLE_IN_GRACE_MODE);
         currentIndex = 0;
     }
 

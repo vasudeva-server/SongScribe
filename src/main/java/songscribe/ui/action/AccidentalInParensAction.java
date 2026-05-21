@@ -24,18 +24,20 @@ import java.util.EnumSet;
 
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.StaffElement;
+import songscribe.ui.component.MainFrame;
 
 public final class AccidentalInParensAction extends NoteOnlyAction {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS =
         EnumSet.of(ElementField.ACCIDENTAL_IN_PARENS);
 
-    public static AccidentalInParensAction createAction() {
-        return new AccidentalInParensAction();
+    public static AccidentalInParensAction createAction(MainFrame mainFrame) {
+        return new AccidentalInParensAction(mainFrame);
     }
 
-    private AccidentalInParensAction() {
+    private AccidentalInParensAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             "In Parentheses",
             null,
             0,

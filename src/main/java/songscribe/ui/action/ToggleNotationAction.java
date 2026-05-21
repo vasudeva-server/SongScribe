@@ -35,6 +35,7 @@ import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
 
 public final class ToggleNotationAction extends UIAction {
@@ -42,8 +43,9 @@ public final class ToggleNotationAction extends UIAction {
     private final Predicate<? super ScoreViewController> canToggle;
     private final Supplier<? extends Message> commandFactory;
 
-    public static ToggleNotationAction createBeamAction() {
+    public static ToggleNotationAction createBeamAction(MainFrame mainFrame) {
         return new ToggleNotationAction(
+            mainFrame,
             Strings.get(Strings.ACTION_BEAM_TOGGLE),
             "beam.svg",
             28,
@@ -55,8 +57,9 @@ public final class ToggleNotationAction extends UIAction {
         );
     }
 
-    public static ToggleNotationAction createTieAction() {
+    public static ToggleNotationAction createTieAction(MainFrame mainFrame) {
         return new ToggleNotationAction(
+            mainFrame,
             Strings.get(Strings.ACTION_TIE_TOGGLE),
             "@\uF373",
             20,
@@ -69,6 +72,7 @@ public final class ToggleNotationAction extends UIAction {
     }
 
     private ToggleNotationAction(
+        MainFrame mainFrame,
         String name,
         String icon,
         int size,
@@ -79,6 +83,7 @@ public final class ToggleNotationAction extends UIAction {
         Supplier<? extends Message> commandFactory
     ) {
         super(
+            mainFrame,
             name,
             icon,
             size,

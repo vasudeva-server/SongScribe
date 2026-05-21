@@ -26,15 +26,17 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleLoopPlaybackCommand;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.action.SelectableUIAction;
+import songscribe.ui.component.MainFrame;
 
 public final class LoopPlaybackAction extends SelectableUIAction {
 
-    public static LoopPlaybackAction createAction() {
-        return new LoopPlaybackAction();
+    public static LoopPlaybackAction createAction(MainFrame mainFrame) {
+        return new LoopPlaybackAction(mainFrame);
     }
 
-    private LoopPlaybackAction() {
+    private LoopPlaybackAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_PLAY_LOOP),
             "@\uF358",
             20,

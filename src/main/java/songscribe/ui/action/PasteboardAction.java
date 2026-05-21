@@ -28,6 +28,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.command.PasteboardOpCommand;
+import songscribe.ui.component.MainFrame;
 
 public class PasteboardAction extends UIAction {
 
@@ -41,6 +42,7 @@ public class PasteboardAction extends UIAction {
     private final Operation op;
 
     public PasteboardAction(
+        MainFrame mainFrame,
         Operation op,
         String name,
         String actionCommand,
@@ -48,7 +50,7 @@ public class PasteboardAction extends UIAction {
         int modifiers,
         Flag... flags
     ) {
-        super(name, actionCommand, virtualKey, modifiers, flags);
+        super(mainFrame, name, actionCommand, virtualKey, modifiers, flags);
         this.op = op;
     }
 

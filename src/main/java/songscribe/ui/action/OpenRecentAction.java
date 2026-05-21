@@ -29,14 +29,15 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.OpenFileCommand;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.component.MainFrame;
 
 public class OpenRecentAction extends UIAction {
 
     private final Path path;
 
     @SuppressWarnings("ParameterNameDiffersFromOverriddenParameter")
-    public OpenRecentAction(String label, Path path) {
-        super(label, label, Flag.DISABLE_WHEN_PLAYING, Flag.DISABLE_IN_GRACE_MODE);
+    public OpenRecentAction(MainFrame mainFrame, String label, Path path) {
+        super(mainFrame, label, label, Flag.DISABLE_WHEN_PLAYING, Flag.DISABLE_IN_GRACE_MODE);
         this.path = path;
     }
 

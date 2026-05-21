@@ -46,7 +46,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
     void testNonReflectableReturnsFalse() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var env = setupMockEnv(mainFrameMock);
-            var action = new UIAction("Test", null, 0, "test", "Test");
+            var action = new UIAction(MainFrame.getInstance(), "Test", null, 0, "test", "Test");
             assertThat(action.applyToSelectionIfActive()).isFalse();
         }
     }
@@ -59,7 +59,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
             var env = setupMockEnv(mainFrameMock);
             when(env.coordinator().getSelection()).thenReturn(null);
 
-            var action = FermataAction.createAction();
+            var action = FermataAction.createAction(MainFrame.getInstance());
 
             assertThat(action.applyToSelectionIfActive()).isFalse();
             verify(env.coordinator(), never()).applyActionToSelection(
@@ -78,7 +78,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
             var selection = new ElementSelection(mock(Line.class), 0, 2);
             when(env.coordinator().getSelection()).thenReturn(selection);
 
-            var action = FermataAction.createAction();
+            var action = FermataAction.createAction(MainFrame.getInstance());
             action.setSelected(false);
 
             assertThat(action.applyToSelectionIfActive()).isTrue();
@@ -93,7 +93,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
             var selection = new ElementSelection(mock(Line.class), 0, 2);
             when(env.coordinator().getSelection()).thenReturn(selection);
 
-            var action = FermataAction.createAction();
+            var action = FermataAction.createAction(MainFrame.getInstance());
             action.setSelected(true);
 
             assertThat(action.applyToSelectionIfActive()).isTrue();

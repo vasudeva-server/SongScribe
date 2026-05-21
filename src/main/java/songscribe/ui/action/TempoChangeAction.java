@@ -26,16 +26,18 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.TempoChangeDialog;
 
 public final class TempoChangeAction extends UIAction {
 
-    public static TempoChangeAction createAction() {
-        return new TempoChangeAction();
+    public static TempoChangeAction createAction(MainFrame mainFrame) {
+        return new TempoChangeAction(mainFrame);
     }
 
-    private TempoChangeAction() {
+    private TempoChangeAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_TEMPO_CHANGE),
             null,
             0,

@@ -23,6 +23,7 @@ package songscribe.ui.action;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -45,11 +46,13 @@ import songscribe.ui.selection.ElementSelection;
 
 class DynamicMarkingActionTest extends UnitTest {
 
+    private static final MainFrame MOCK_FRAME = mock(MainFrame.class, RETURNS_DEEP_STUBS);
+
     private static final DynamicMarkingAction FORTE_ACTION =
-        DynamicMarkingAction.createForteAction();
+        DynamicMarkingAction.createForteAction(MOCK_FRAME);
 
     private static final DynamicMarkingAction PIANO_ACTION =
-        DynamicMarkingAction.createPianoAction();
+        DynamicMarkingAction.createPianoAction(MOCK_FRAME);
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
@@ -140,7 +143,7 @@ class DynamicMarkingActionTest extends UnitTest {
                 var env = setupFullMockEnv(mainFrameMock);
                 when(env.score().getSelectionSize()).thenReturn(0);
 
-                var action = DynamicMarkingAction.createForteAction();
+                var action = DynamicMarkingAction.createForteAction(MainFrame.getInstance());
                 action.updateEnabledState();
                 assertThat(action.isEnabled()).isFalse();
             }
@@ -153,7 +156,7 @@ class DynamicMarkingActionTest extends UnitTest {
                 when(env.score().getSelectionSize()).thenReturn(2);
                 when(env.coordinator().hasActiveSelection()).thenReturn(true);
 
-                var action = DynamicMarkingAction.createForteAction();
+                var action = DynamicMarkingAction.createForteAction(MainFrame.getInstance());
                 action.updateEnabledState();
                 assertThat(action.isEnabled()).isFalse();
             }
@@ -171,7 +174,7 @@ class DynamicMarkingActionTest extends UnitTest {
                 when(env.coordinator().isApplicableToSelection(any())).thenReturn(true);
                 when(env.coordinator().getSelection()).thenReturn(selection);
 
-                var action = DynamicMarkingAction.createForteAction();
+                var action = DynamicMarkingAction.createForteAction(MainFrame.getInstance());
                 action.updateEnabledState();
                 assertThat(action.isEnabled()).isTrue();
             }
@@ -195,7 +198,7 @@ class DynamicMarkingActionTest extends UnitTest {
                 when(env.coordinator().isApplicableToSelection(any())).thenReturn(true);
                 when(env.coordinator().getSelection()).thenReturn(selection);
 
-                var action = DynamicMarkingAction.createForteAction();
+                var action = DynamicMarkingAction.createForteAction(MainFrame.getInstance());
                 action.updateEnabledState();
                 assertThat(action.isEnabled()).isFalse();
             }
@@ -219,7 +222,7 @@ class DynamicMarkingActionTest extends UnitTest {
                 when(env.coordinator().isApplicableToSelection(any())).thenReturn(true);
                 when(env.coordinator().getSelection()).thenReturn(selection);
 
-                var action = DynamicMarkingAction.createForteAction();
+                var action = DynamicMarkingAction.createForteAction(MainFrame.getInstance());
                 action.updateEnabledState();
                 assertThat(action.isEnabled()).isFalse();
             }

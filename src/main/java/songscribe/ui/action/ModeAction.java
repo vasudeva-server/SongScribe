@@ -25,38 +25,43 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.ui.Mode;
+import songscribe.ui.component.MainFrame;
 import songscribe.message.notification.ModeDidChangeNotification;
 
 public final class ModeAction extends SelectableUIAction {
 
     private final Mode mode;
 
-    public static ModeAction createSelectModeAction() {
+    public static ModeAction createSelectModeAction(MainFrame mainFrame) {
         return new ModeAction(
+            mainFrame,
             Mode.SELECT,
             Strings.get(Strings.ACTION_MODE_SELECT), "@\uF3D2", 22,
             "select-mode", Strings.get(Strings.ACTION_MODE_SELECT_TOOLTIP)
         );
     }
 
-    public static ModeAction createEditModeAction() {
+    public static ModeAction createEditModeAction(MainFrame mainFrame) {
         return new ModeAction(
+            mainFrame,
             Mode.EDIT,
             Strings.get(Strings.ACTION_MODE_EDIT), "@\uEF63", 22,
             "edit-mode", Strings.get(Strings.ACTION_MODE_EDIT_TOOLTIP)
         );
     }
 
-    public static ModeAction createAdjustMusicModeAction() {
+    public static ModeAction createAdjustMusicModeAction(MainFrame mainFrame) {
         return new ModeAction(
+            mainFrame,
             Mode.ADJUSTMENT,
             Strings.get(Strings.ACTION_MODE_MUSIC_ADJUST), "mode-note-adjustment.svg", 26,
             "adjust-note-mode", Strings.get(Strings.ACTION_MODE_MUSIC_ADJUST_TOOLTIP)
         );
     }
 
-    public static ModeAction createAdjustVerticalModeAction() {
+    public static ModeAction createAdjustVerticalModeAction(MainFrame mainFrame) {
         return new ModeAction(
+            mainFrame,
             Mode.VERTICAL_ADJUSTMENT,
             Strings.get(Strings.ACTION_MODE_VERTICAL_ADJUST), "mode-vertical-adjustment.svg", 26,
             "adjust-vertical-mode", Strings.get(Strings.ACTION_MODE_VERTICAL_ADJUST_TOOLTIP)
@@ -64,6 +69,7 @@ public final class ModeAction extends SelectableUIAction {
     }
 
     private ModeAction(
+        MainFrame mainFrame,
         Mode mode,
         String name,
         String icon,
@@ -71,10 +77,11 @@ public final class ModeAction extends SelectableUIAction {
         String actionCommand,
         String tooltip
     ) {
-        this(mode, name, icon, size, actionCommand, tooltip, 0, 0);
+        this(mainFrame, mode, name, icon, size, actionCommand, tooltip, 0, 0);
     }
 
     private ModeAction(
+        MainFrame mainFrame,
         Mode mode,
         String name,
         String icon,
@@ -85,6 +92,7 @@ public final class ModeAction extends SelectableUIAction {
         int modifiers
     ) {
         super(
+            mainFrame,
             name,
             icon,
             size,

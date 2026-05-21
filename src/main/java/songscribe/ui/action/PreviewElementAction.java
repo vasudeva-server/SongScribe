@@ -26,27 +26,30 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.message.MessageCenter;
 import songscribe.message.command.UpdatePreviewElementCommand;
+import songscribe.ui.component.MainFrame;
 
 /**
  * This class is the superclass for all actions that change the preview element.
  */
 public class PreviewElementAction extends SelectableUIAction {
 
-    public PreviewElementAction(String name, String actionCommand, Flag... flags) {
-        super(name, actionCommand, flags);
+    public PreviewElementAction(MainFrame mainFrame, String name, String actionCommand, Flag... flags) {
+        super(mainFrame, name, actionCommand, flags);
     }
 
     public PreviewElementAction(
+        MainFrame mainFrame,
         String name,
         String actionCommand,
         int virtualKey,
         int modifiers,
         Flag... flags
     ) {
-        super(name, actionCommand, virtualKey, modifiers, flags);
+        super(mainFrame, name, actionCommand, virtualKey, modifiers, flags);
     }
 
     public PreviewElementAction(
+        MainFrame mainFrame,
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -54,10 +57,11 @@ public class PreviewElementAction extends SelectableUIAction {
         @Nullable String tooltip,
         Flag... flags
     ) {
-        super(name, icon, size, actionCommand, tooltip, flags);
+        super(mainFrame, name, icon, size, actionCommand, tooltip, flags);
     }
 
     public PreviewElementAction(
+        MainFrame mainFrame,
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -68,6 +72,7 @@ public class PreviewElementAction extends SelectableUIAction {
         Flag... flags
     ) {
         super(
+            mainFrame,
             name,
             icon,
             size,

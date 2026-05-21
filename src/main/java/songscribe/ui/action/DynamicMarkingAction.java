@@ -27,6 +27,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.dom.StaffElement;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
+import songscribe.ui.component.MainFrame;
 
 public final class DynamicMarkingAction extends NoteOnlyAction {
 
@@ -35,38 +36,44 @@ public final class DynamicMarkingAction extends NoteOnlyAction {
 
     private final DynamicType dynamicType;
 
-    public static DynamicMarkingAction createPianissimoAction() {
-        return new DynamicMarkingAction(DynamicType.PIANISSIMO,
+    public static DynamicMarkingAction createPianissimoAction(MainFrame mainFrame) {
+        return new DynamicMarkingAction(mainFrame, DynamicType.PIANISSIMO,
             Strings.ACTION_DYNAMIC_PP, "dynamic-pp");
     }
 
-    public static DynamicMarkingAction createPianoAction() {
-        return new DynamicMarkingAction(DynamicType.PIANO,
+    public static DynamicMarkingAction createPianoAction(MainFrame mainFrame) {
+        return new DynamicMarkingAction(mainFrame, DynamicType.PIANO,
             Strings.ACTION_DYNAMIC_P, "dynamic-p");
     }
 
-    public static DynamicMarkingAction createMezzoPianoAction() {
-        return new DynamicMarkingAction(DynamicType.MEZZO_PIANO,
+    public static DynamicMarkingAction createMezzoPianoAction(MainFrame mainFrame) {
+        return new DynamicMarkingAction(mainFrame, DynamicType.MEZZO_PIANO,
             Strings.ACTION_DYNAMIC_MP, "dynamic-mp");
     }
 
-    public static DynamicMarkingAction createMezzoForteAction() {
-        return new DynamicMarkingAction(DynamicType.MEZZO_FORTE,
+    public static DynamicMarkingAction createMezzoForteAction(MainFrame mainFrame) {
+        return new DynamicMarkingAction(mainFrame, DynamicType.MEZZO_FORTE,
             Strings.ACTION_DYNAMIC_MF, "dynamic-mf");
     }
 
-    public static DynamicMarkingAction createForteAction() {
-        return new DynamicMarkingAction(DynamicType.FORTE,
+    public static DynamicMarkingAction createForteAction(MainFrame mainFrame) {
+        return new DynamicMarkingAction(mainFrame, DynamicType.FORTE,
             Strings.ACTION_DYNAMIC_F, "dynamic-f");
     }
 
-    public static DynamicMarkingAction createFortissimoAction() {
-        return new DynamicMarkingAction(DynamicType.FORTISSIMO,
+    public static DynamicMarkingAction createFortissimoAction(MainFrame mainFrame) {
+        return new DynamicMarkingAction(mainFrame, DynamicType.FORTISSIMO,
             Strings.ACTION_DYNAMIC_FF, "dynamic-ff");
     }
 
-    private DynamicMarkingAction(DynamicType dynamicType, String stringsKey, String actionCommand) {
+    private DynamicMarkingAction(
+        MainFrame mainFrame,
+        DynamicType dynamicType,
+        String stringsKey,
+        String actionCommand
+    ) {
         super(
+            mainFrame,
             Strings.get(stringsKey),
             null,
             0,

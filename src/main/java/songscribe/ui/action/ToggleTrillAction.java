@@ -29,15 +29,17 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.command.ToggleTrillCommand;
+import songscribe.ui.component.MainFrame;
 
 public final class ToggleTrillAction extends UIAction {
 
-    public static ToggleTrillAction createAction() {
-        return new ToggleTrillAction();
+    public static ToggleTrillAction createAction(MainFrame mainFrame) {
+        return new ToggleTrillAction(mainFrame);
     }
 
-    private ToggleTrillAction() {
+    private ToggleTrillAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_TRILL_TOGGLE),
             "toggle-trill",
             Flag.REQUIRES_SELECTION,

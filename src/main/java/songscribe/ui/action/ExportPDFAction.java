@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.export.PageLayoutData;
 import songscribe.export.PDFExporter;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.ExportPDFDialog;
 import songscribe.ui.dialog.PlatformFileDialog;
 
@@ -35,12 +36,12 @@ public final class ExportPDFAction extends UIAction {
 
     private @Nullable ExportPDFDialog exportPDFDialog = null;
 
-    public static ExportPDFAction createAction() {
-        return new ExportPDFAction();
+    public static ExportPDFAction createAction(MainFrame mainFrame) {
+        return new ExportPDFAction(mainFrame);
     }
 
-    private ExportPDFAction() {
-        super(Strings.get(Strings.ACTION_EXPORT_PDF), "export-pdf");
+    private ExportPDFAction(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.ACTION_EXPORT_PDF), "export-pdf");
         setFlags(Flag.OPENS_DIALOG);
     }
 

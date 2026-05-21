@@ -21,16 +21,20 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
+import songscribe.ui.component.MainFrame;
 
 class AccidentalInParensActionTest extends UnitTest {
 
-    private final AccidentalInParensAction action = AccidentalInParensAction.createAction();
+    private static final MainFrame MOCK_FRAME = mock(MainFrame.class);
+
+    private final AccidentalInParensAction action = AccidentalInParensAction.createAction(MOCK_FRAME);
 
     @Test
     void testApplyToNoteAppliesParentheses() {

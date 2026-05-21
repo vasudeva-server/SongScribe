@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
+import songscribe.ui.component.MainFrame;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.midi.PlaybackSettings;
@@ -53,6 +54,7 @@ public final class PlaybackController {
     public static final int NOTE_VELOCITY = 100;
     public static final int ACCENTED_NOTE_VELOCITY = 127;
 
+    private static final MainFrame MAIN_FRAME = MainFrame.getInstance();
     private static final Logger LOG = LoggerFactory.getLogger(PlaybackController.class);
 
     @Nullable
@@ -71,15 +73,15 @@ public final class PlaybackController {
     private static ElementSelection activeSelection = null;
 
     public static final PlayPauseAction PLAY_PAUSE_ACTION =
-        PlayPauseAction.createAction();
+        PlayPauseAction.createAction(MAIN_FRAME);
 
-    public static final RewindAction REWIND_ACTION = RewindAction.createAction();
+    public static final RewindAction REWIND_ACTION = RewindAction.createAction(MAIN_FRAME);
 
     public static final PlayWithRepeatsAction PLAY_WITH_REPEATS_ACTION =
-        PlayWithRepeatsAction.createAction();
+        PlayWithRepeatsAction.createAction(MAIN_FRAME);
 
     public static final LoopPlaybackAction LOOP_PLAYBACK_ACTION =
-        LoopPlaybackAction.createAction();
+        LoopPlaybackAction.createAction(MAIN_FRAME);
 
     private PlaybackController() {
     }

@@ -24,16 +24,18 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.ShowOpenDialogCommand;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class OpenAction extends UIAction {
 
-    public static OpenAction createAction() {
-        return new OpenAction();
+    public static OpenAction createAction(MainFrame mainFrame) {
+        return new OpenAction(mainFrame);
     }
 
-    private OpenAction() {
+    private OpenAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_FILE_OPEN),
             "open-document",
             KeyEvent.VK_O,

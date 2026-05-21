@@ -26,16 +26,17 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.SaveCommand;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class SaveAction extends UIAction {
 
-    public static SaveAction createAction() {
-        return new SaveAction();
+    public static SaveAction createAction(MainFrame mainFrame) {
+        return new SaveAction(mainFrame);
     }
 
-    private SaveAction() {
-        super(Strings.get(Strings.ACTION_FILE_SAVE), "save", KeyEvent.VK_S, UIUtils.MENU_SHORTCUT_MASK);
+    private SaveAction(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.ACTION_FILE_SAVE), "save", KeyEvent.VK_S, UIUtils.MENU_SHORTCUT_MASK);
     }
 
     // Bypasses the message bus so the result is available synchronously.

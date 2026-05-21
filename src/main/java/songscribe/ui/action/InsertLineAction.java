@@ -24,6 +24,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.InsertLineCommand;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class InsertLineAction extends UIAction {
@@ -33,20 +34,21 @@ public final class InsertLineAction extends UIAction {
 
     private final int shift;
 
-    public static InsertLineAction createAddLineAction() {
-        return new InsertLineAction(Strings.get(Strings.MENU_SONG_LINE_AT_END), ADD);
+    public static InsertLineAction createAddLineAction(MainFrame mainFrame) {
+        return new InsertLineAction(mainFrame, Strings.get(Strings.MENU_SONG_LINE_AT_END), ADD);
     }
 
-    public static InsertLineAction createInsertLineBeforeAction() {
-        return new InsertLineAction(Strings.get(Strings.MENU_SONG_LINE_BEFORE), 0);
+    public static InsertLineAction createInsertLineBeforeAction(MainFrame mainFrame) {
+        return new InsertLineAction(mainFrame, Strings.get(Strings.MENU_SONG_LINE_BEFORE), 0);
     }
 
-    public static InsertLineAction createInsertLineAfterAction() {
-        return new InsertLineAction(Strings.get(Strings.MENU_SONG_LINE_AFTER), 1);
+    public static InsertLineAction createInsertLineAfterAction(MainFrame mainFrame) {
+        return new InsertLineAction(mainFrame, Strings.get(Strings.MENU_SONG_LINE_AFTER), 1);
     }
 
-    private InsertLineAction(String name, int shift) {
+    private InsertLineAction(MainFrame mainFrame, String name, int shift) {
         super(
+            mainFrame,
             name,
             getActionCommand(shift),
             (shift == ADD) ? KeyEvent.VK_ENTER : 0,

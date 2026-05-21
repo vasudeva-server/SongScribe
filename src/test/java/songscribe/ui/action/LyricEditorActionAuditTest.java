@@ -70,56 +70,57 @@ class LyricEditorActionAuditTest extends UnitTest {
 
     @Test
     void testAllToolbarActionsCarryDisableWhenEditingTextFlag() {
+        var mainFrame = MainFrame.getInstance();
         var toolbarActions = List.of(
             // DurationToolbar
-            ElementTypeAction.createGraceEighthNoteAction(),
-            ElementTypeAction.createThirtySecondNoteAction(),
-            ElementTypeAction.createSixteenthNoteAction(),
-            ElementTypeAction.createEighthNoteAction(),
-            ElementTypeAction.createQuarterNoteAction(),
-            ElementTypeAction.createHalfNoteAction(),
-            ElementTypeAction.createWholeNoteAction(),
-            ElementTypeAction.createGlissandoAction(),
-            ElementTypeAction.createSlideOutAction(),
+            ElementTypeAction.createGraceEighthNoteAction(mainFrame),
+            ElementTypeAction.createThirtySecondNoteAction(mainFrame),
+            ElementTypeAction.createSixteenthNoteAction(mainFrame),
+            ElementTypeAction.createEighthNoteAction(mainFrame),
+            ElementTypeAction.createQuarterNoteAction(mainFrame),
+            ElementTypeAction.createHalfNoteAction(mainFrame),
+            ElementTypeAction.createWholeNoteAction(mainFrame),
+            ElementTypeAction.createGlissandoAction(mainFrame),
+            ElementTypeAction.createSlideOutAction(mainFrame),
             // DotRestToolbar
-            DotAction.createDotAction(),
-            DotAction.createDoubleDotAction(),
-            RestModeAction.createAction(),
+            DotAction.createDotAction(mainFrame),
+            DotAction.createDoubleDotAction(mainFrame),
+            RestModeAction.createAction(mainFrame),
             // AccidentalToolbar
-            AccidentalAction.createDoubleFlatAction(),
-            AccidentalAction.createFlatAction(),
-            AccidentalAction.createNaturalFlatAction(),
-            AccidentalAction.createNaturalAction(),
-            AccidentalAction.createSharpAction(),
-            AccidentalAction.createDoubleSharpAction(),
-            AccidentalAction.createNaturalSharpAction(),
+            AccidentalAction.createDoubleFlatAction(mainFrame),
+            AccidentalAction.createFlatAction(mainFrame),
+            AccidentalAction.createNaturalFlatAction(mainFrame),
+            AccidentalAction.createNaturalAction(mainFrame),
+            AccidentalAction.createSharpAction(mainFrame),
+            AccidentalAction.createDoubleSharpAction(mainFrame),
+            AccidentalAction.createNaturalSharpAction(mainFrame),
             // ArticulationToolbar
-            ForceArticulationAction.createAccentAction(),
-            DurationArticulationAction.createStaccatoAction(),
+            ForceArticulationAction.createAccentAction(mainFrame),
+            DurationArticulationAction.createStaccatoAction(mainFrame),
             // BarToolbar
-            ElementTypeAction.createLeftRepeatAction(),
-            ElementTypeAction.createRightRepeatAction(),
-            ElementTypeAction.createLeftRightRepeatAction(),
-            ElementTypeAction.createDoubleBarlineAction(),
-            ElementTypeAction.createSingleBarlineAction(),
+            ElementTypeAction.createLeftRepeatAction(mainFrame),
+            ElementTypeAction.createRightRepeatAction(mainFrame),
+            ElementTypeAction.createLeftRightRepeatAction(mainFrame),
+            ElementTypeAction.createDoubleBarlineAction(mainFrame),
+            ElementTypeAction.createSingleBarlineAction(mainFrame),
             // ModifyNoteToolbar
-            ToggleNotationAction.createBeamAction(),
-            ToggleNotationAction.createTieAction(),
-            TupletAction.createTripletAction(),
-            FlipStemDirectionAction.createAction(),
-            EditLyricAction.createAction(),
+            ToggleNotationAction.createBeamAction(mainFrame),
+            ToggleNotationAction.createTieAction(mainFrame),
+            TupletAction.createTripletAction(mainFrame),
+            FlipStemDirectionAction.createAction(mainFrame),
+            EditLyricAction.createAction(mainFrame),
             // StaffAnnotationPopupButton
-            AnnotationAction.createAction(),
-            BeatChangeAction.createAction(),
-            KeySignatureChangeAction.createAction(),
-            TempoChangeAction.createAction(),
+            AnnotationAction.createAction(mainFrame),
+            BeatChangeAction.createAction(mainFrame),
+            KeySignatureChangeAction.createAction(mainFrame),
+            TempoChangeAction.createAction(mainFrame),
             // PlaybackToolbar
-            LoopPlaybackAction.createAction(),
-            PlayPauseAction.createAction(),
-            PlayWithRepeatsAction.createAction(),
-            RewindAction.createAction(),
+            LoopPlaybackAction.createAction(mainFrame),
+            PlayPauseAction.createAction(mainFrame),
+            PlayWithRepeatsAction.createAction(mainFrame),
+            RewindAction.createAction(mainFrame),
             // Mode toolbar
-            CycleModeAction.createAction()
+            CycleModeAction.createAction(mainFrame)
         );
 
         for (var action : toolbarActions) {

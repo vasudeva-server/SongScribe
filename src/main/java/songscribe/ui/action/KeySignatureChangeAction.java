@@ -26,17 +26,19 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.Message;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.KeySignatureChangeDialog;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 
 public final class KeySignatureChangeAction extends UIAction {
 
-    public static KeySignatureChangeAction createAction() {
-        return new KeySignatureChangeAction();
+    public static KeySignatureChangeAction createAction(MainFrame mainFrame) {
+        return new KeySignatureChangeAction(mainFrame);
     }
 
-    private KeySignatureChangeAction() {
+    private KeySignatureChangeAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_KEY_SIGNATURE_CHANGE),
             null,
             0,

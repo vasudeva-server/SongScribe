@@ -26,6 +26,7 @@ import static songscribe.ui.action.Actions.BREATH_MARK_ACTION;
 import static songscribe.ui.action.Actions.DYNAMIC_MARKING_ACTION_GROUP;
 import static songscribe.ui.action.Actions.FERMATA_ACTION;
 import static songscribe.ui.action.Actions.FLIP_STEM_DIRECTION_ACTION;
+import static songscribe.ui.action.Actions.MAKE_ENDING_ACTION;
 import static songscribe.ui.action.Actions.REMOVE_DYNAMICS_ACTION;
 import static songscribe.ui.action.Actions.REMOVE_TUPLET_ACTION;
 import static songscribe.ui.action.Actions.REST_ACTION;
@@ -38,15 +39,18 @@ import static songscribe.ui.action.Actions.TOGGLE_TUPLET_ACTIONS;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.component.MainFrame;
 
 public class NotationMenu extends JMenu {
 
     public static final String NAME = Strings.get(Strings.MENU_NOTATION);
 
-    public NotationMenu() {
+    private final MainFrame mainFrame;
+
+    public NotationMenu(MainFrame mainFrame) {
         super(NAME);
+
+        this.mainFrame = mainFrame;
 
         // Group 1: Pitch & Rhythm
         add(new DurationMenu());
@@ -59,7 +63,7 @@ public class NotationMenu extends JMenu {
         // Group 2: Spans & Barlines
         add(new GlissandoMenu());
         add(new RepeatsMenu());
-        add(new BarlineMenu());
+        add(new BarlineMenu(mainFrame));
 
         addSeparator();
 
@@ -89,18 +93,18 @@ public class NotationMenu extends JMenu {
         addSeparator();
 
         // Group 6: Passage
-        add(new JMenuItem(FirstSecondEndingAction.MAKE_ENDING_ACTION));
+        add(new JMenuItem(MAKE_ENDING_ACTION));
 
         addMenuListener(new MenuListener() {
             @Override
             public void menuSelected(MenuEvent e) {
-                var scoreView = MainFrame.getInstance().getScoreView();
+                var scoreView = mainFrame.getScoreView();
                 var ctrl = scoreView != null ? scoreView.getController() : null;
 
                 if (ctrl != null) {
-                    FirstSecondEndingAction.MAKE_ENDING_ACTION.validate(ctrl);
+                    MAKE_ENDING_ACTION.validate(ctrl);
                 } else {
-                    FirstSecondEndingAction.MAKE_ENDING_ACTION.setEnabled(false);
+                    MAKE_ENDING_ACTION.setEnabled(false);
                 }
             }
 

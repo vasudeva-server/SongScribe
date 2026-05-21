@@ -24,16 +24,18 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.PrintCommand;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class PrintAction extends UIAction {
 
-    public static PrintAction createAction() {
-        return new PrintAction();
+    public static PrintAction createAction(MainFrame mainFrame) {
+        return new PrintAction(mainFrame);
     }
 
-    private PrintAction() {
+    private PrintAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_FILE_PRINT),
             "print-document",
             KeyEvent.VK_P,

@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.StaffElement;
+import songscribe.ui.component.MainFrame;
 
 public final class DotAction extends PreviewElementAction implements UIAction.ElementModifiable {
 
@@ -36,8 +37,9 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
 
     private final DotLevel dotLevel;
 
-    public static DotAction createDotAction() {
+    public static DotAction createDotAction(MainFrame mainFrame) {
         return new DotAction(
+            mainFrame,
             DotLevel.SINGLE,
             Strings.get(Strings.ACTION_DOT_SINGLE), "@\uF372", 18,
             "add-dot", Strings.get(Strings.ACTION_DOT_SINGLE_TOOLTIP),
@@ -45,8 +47,9 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
         );
     }
 
-    public static DotAction createDoubleDotAction() {
+    public static DotAction createDoubleDotAction(MainFrame mainFrame) {
         return new DotAction(
+            mainFrame,
             DotLevel.DOUBLE,
             Strings.get(Strings.ACTION_DOT_DOUBLE), "@\uF395", 18,
             "add-double-dot", Strings.get(Strings.ACTION_DOT_DOUBLE_TOOLTIP),
@@ -55,6 +58,7 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
     }
 
     private DotAction(
+        MainFrame mainFrame,
         DotLevel dotLevel,
         @Nullable String name,
         @Nullable String icon,
@@ -65,6 +69,7 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
         int modifiers
     ) {
         super(
+            mainFrame,
             name,
             icon,
             size,

@@ -21,15 +21,21 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.ui.component.MainFrame;
 
 class DotActionTest extends UnitTest {
-    private final DotAction singleDotAction = DotAction.createDotAction();
-    private final DotAction doubleDotAction = DotAction.createDoubleDotAction();
+
+    private static final MainFrame MOCK_FRAME = mock(MainFrame.class, RETURNS_DEEP_STUBS);
+
+    private final DotAction singleDotAction = DotAction.createDotAction(MOCK_FRAME);
+    private final DotAction doubleDotAction = DotAction.createDoubleDotAction(MOCK_FRAME);
 
     @Test
     void testApplyToNoteDoubleDotApplies() {

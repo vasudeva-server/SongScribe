@@ -35,6 +35,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Version;
 import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.component.MainFrame;
 import songscribe.dom.Annotation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Song;
@@ -92,12 +93,12 @@ public final class ExportABCAction extends UIAction {
         "Cb",
     };
 
-    public static ExportABCAction createAction() {
-        return new ExportABCAction();
+    public static ExportABCAction createAction(MainFrame mainFrame) {
+        return new ExportABCAction(mainFrame);
     }
 
-    private ExportABCAction() {
-        super(Strings.get(Strings.ACTION_EXPORT_ABC), "export-abc");
+    private ExportABCAction(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.ACTION_EXPORT_ABC), "export-abc");
         setFlags(Flag.OPENS_DIALOG);
     }
 

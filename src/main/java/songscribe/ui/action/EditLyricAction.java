@@ -26,6 +26,7 @@ import static java.awt.event.KeyEvent.*;
 
 import songscribe.Strings;
 import songscribe.ui.component.LyricEditor;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 
 public final class EditLyricAction extends UIAction {
@@ -40,12 +41,13 @@ public final class EditLyricAction extends UIAction {
         Flag.DISABLE_IN_GRACE_MODE,
     };
 
-    public static EditLyricAction createAction() {
-        return new EditLyricAction();
+    public static EditLyricAction createAction(MainFrame mainFrame) {
+        return new EditLyricAction(mainFrame);
     }
 
-    private EditLyricAction() {
+    private EditLyricAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_EDIT_LYRIC),
             "@\uEF6E", 22,
             "edit-lyric",

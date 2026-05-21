@@ -23,16 +23,18 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class CutAction extends PasteboardAction {
 
-    public static CutAction createAction() {
-        return new CutAction();
+    public static CutAction createAction(MainFrame mainFrame) {
+        return new CutAction(mainFrame);
     }
 
-    private CutAction() {
+    private CutAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Operation.CUT,
             Strings.get(Strings.ACTION_EDIT_CUT),
             "edit-cut",

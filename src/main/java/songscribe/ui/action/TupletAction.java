@@ -31,6 +31,7 @@ import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.util.StringUtils;
 
@@ -58,36 +59,37 @@ public final class TupletAction extends UIAction {
 
     private final Tuplet tuplet;
 
-    public static TupletAction createDupletAction() {
-        return new TupletAction(Tuplet.DUPLET);
+    public static TupletAction createDupletAction(MainFrame mainFrame) {
+        return new TupletAction(mainFrame, Tuplet.DUPLET);
     }
 
-    public static TupletAction createTripletAction() {
-        return new TupletAction(Tuplet.TRIPLET);
+    public static TupletAction createTripletAction(MainFrame mainFrame) {
+        return new TupletAction(mainFrame, Tuplet.TRIPLET);
     }
 
-    public static TupletAction createQuadrupletAction() {
-        return new TupletAction(Tuplet.QUADRUPLET);
+    public static TupletAction createQuadrupletAction(MainFrame mainFrame) {
+        return new TupletAction(mainFrame, Tuplet.QUADRUPLET);
     }
 
-    public static TupletAction createQuintupletAction() {
-        return new TupletAction(Tuplet.QUINTUPLET);
+    public static TupletAction createQuintupletAction(MainFrame mainFrame) {
+        return new TupletAction(mainFrame, Tuplet.QUINTUPLET);
     }
 
-    public static TupletAction createSextupletAction() {
-        return new TupletAction(Tuplet.SEXTUPLET);
+    public static TupletAction createSextupletAction(MainFrame mainFrame) {
+        return new TupletAction(mainFrame, Tuplet.SEXTUPLET);
     }
 
-    public static TupletAction createSeptupletAction() {
-        return new TupletAction(Tuplet.SEPTUPLET);
+    public static TupletAction createSeptupletAction(MainFrame mainFrame) {
+        return new TupletAction(mainFrame, Tuplet.SEPTUPLET);
     }
 
-    public static TupletAction createRemoveAction() {
-        return new TupletAction(Tuplet.REMOVE);
+    public static TupletAction createRemoveAction(MainFrame mainFrame) {
+        return new TupletAction(mainFrame, Tuplet.REMOVE);
     }
 
-    private TupletAction(Tuplet tuplet) {
+    private TupletAction(MainFrame mainFrame, Tuplet tuplet) {
         super(
+            mainFrame,
             getName(tuplet),
             "@\uF376",
             18,

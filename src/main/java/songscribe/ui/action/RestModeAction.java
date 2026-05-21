@@ -25,16 +25,18 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.dom.StaffElement;
+import songscribe.ui.component.MainFrame;
 import songscribe.message.notification.RestModeDidChangeNotification;
 
 public final class RestModeAction extends SelectableUIAction implements UIAction.Reflectable {
 
-    public static RestModeAction createAction() {
-        return new RestModeAction();
+    public static RestModeAction createAction(MainFrame mainFrame) {
+        return new RestModeAction(mainFrame);
     }
 
-    private RestModeAction() {
+    private RestModeAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_REST_MODE),
             "@\uF371",
             22,

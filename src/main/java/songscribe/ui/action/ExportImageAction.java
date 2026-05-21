@@ -31,6 +31,7 @@ import songscribe.export.ExportOptions;
 import songscribe.ui.OptionDialogs;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.ResolutionDialog;
 import songscribe.export.ExportUtils;
@@ -48,15 +49,15 @@ public final class ExportImageAction extends UIAction {
         new ExtensionFileFilter(Strings.get(Strings.FILTER_PNG), "png"),
     };
 
-    public static ExportImageAction createAction() {
-        return new ExportImageAction();
+    public static ExportImageAction createAction(MainFrame mainFrame) {
+        return new ExportImageAction(mainFrame);
     }
 
-    private ExportImageAction() {
-        super(Strings.get(Strings.ACTION_EXPORT_IMAGE), "export-image");
+    private ExportImageAction(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.ACTION_EXPORT_IMAGE), "export-image");
         setFlags(Flag.OPENS_DIALOG);
         fileDialog = new PlatformFileDialog(
-            getMainFrame(),
+            mainFrame,
             NAME,
             false,
             myFileFilters,

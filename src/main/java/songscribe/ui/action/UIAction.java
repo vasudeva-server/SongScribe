@@ -193,21 +193,23 @@ public class UIAction extends AbstractAction {
 
     private int flags = 0;
 
-    public UIAction(@Nullable String name, @Nullable String actionCommand, Flag... flags) {
-        this(name, null, 0, actionCommand, null, 0, 0, flags);
+    public UIAction(MainFrame mainFrame, @Nullable String name, @Nullable String actionCommand, Flag... flags) {
+        this(mainFrame, name, null, 0, actionCommand, null, 0, 0, flags);
     }
 
     public UIAction(
+        MainFrame mainFrame,
         @Nullable String name,
         @Nullable String actionCommand,
         int virtualKey,
         int modifiers,
         Flag... flags
     ) {
-        this(name, null, 0, actionCommand, null, virtualKey, modifiers, flags);
+        this(mainFrame, name, null, 0, actionCommand, null, virtualKey, modifiers, flags);
     }
 
     public UIAction(
+        MainFrame mainFrame,
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -215,10 +217,11 @@ public class UIAction extends AbstractAction {
         @Nullable String tooltip,
         Flag... flags
     ) {
-        this(name, icon, size, actionCommand, tooltip, 0, 0, flags);
+        this(mainFrame, name, icon, size, actionCommand, tooltip, 0, 0, flags);
     }
 
     public UIAction(
+        MainFrame mainFrame,
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -229,7 +232,8 @@ public class UIAction extends AbstractAction {
         Flag... flags
     ) {
         super(name);
-        mainFrame = MainFrame.getInstance();
+        if (mainFrame == null) throw new IllegalArgumentException("mainFrame");
+        this.mainFrame = mainFrame;
         putValue(ACTION_COMMAND_KEY, actionCommand);
         putValue(SHORT_DESCRIPTION, tooltip);
         setIcon(icon, size);
@@ -240,7 +244,7 @@ public class UIAction extends AbstractAction {
                 KeyStroke.getKeyStroke(virtualKey, modifiers)
             );
 
-            UIUtils.addAction(getMainFrame().getRootPane(), this);
+            UIUtils.addAction(mainFrame.getRootPane(), this);
         }
 
         MessageCenter.subscribe(this);

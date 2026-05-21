@@ -23,15 +23,16 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.lifecycle.Shutdown;
+import songscribe.ui.component.MainFrame;
 
 public final class CloseWindowAction extends UIAction {
 
-    public static CloseWindowAction createAction() {
-        return new CloseWindowAction();
+    public static CloseWindowAction createAction(MainFrame mainFrame) {
+        return new CloseWindowAction(mainFrame);
     }
 
-    private CloseWindowAction() {
-        super(Strings.get(Strings.ACTION_FILE_CLOSE), null);
+    private CloseWindowAction(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.ACTION_FILE_CLOSE), null);
     }
 
     @Override

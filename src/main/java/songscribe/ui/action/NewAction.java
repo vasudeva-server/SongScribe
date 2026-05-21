@@ -24,16 +24,18 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.NewFileCommand;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class NewAction extends UIAction {
 
-    public static NewAction createAction() {
-        return new NewAction();
+    public static NewAction createAction(MainFrame mainFrame) {
+        return new NewAction(mainFrame);
     }
 
-    private NewAction() {
+    private NewAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_FILE_NEW),
             "new-document",
             KeyEvent.VK_N,

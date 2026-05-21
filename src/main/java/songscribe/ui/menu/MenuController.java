@@ -99,7 +99,7 @@ public class MenuController {
 
         menuBar.add(initFileMenu());
         menuBar.add(initEditMenu());
-        menuBar.add(new NotationMenu());
+        menuBar.add(new NotationMenu(mainFrame));
         menuBar.add(initSongMenu());
         menuBar.add(initModeMenu());
         //        menuBar.add(launchMenu);
@@ -129,25 +129,25 @@ public class MenuController {
     @Initializer
     private JMenu initFileMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_FILE));
-        menu.add(NewAction.createAction());
-        menu.add(OpenAction.createAction());
+        menu.add(NewAction.createAction(mainFrame));
+        menu.add(OpenAction.createAction(mainFrame));
         openRecentMenu = new JMenu(Strings.get(Strings.MENU_FILE_OPEN_RECENT));
         rebuildOpenRecentMenu();
         menu.add(openRecentMenu);
-        menu.add(CloseWindowAction.createAction());
+        menu.add(CloseWindowAction.createAction(mainFrame));
 
         menu.addSeparator();
 
-        menu.add(SaveAction.createAction());
-        menu.add(SaveAsAction.createAction());
+        menu.add(SaveAction.createAction(mainFrame));
+        menu.add(SaveAsAction.createAction(mainFrame));
 
         menu.addSeparator();
 
-        menu.add(ExportMidiAction.createAction());
-        menu.add(ExportImageAction.createAction());
-        menu.add(ExportPDFAction.createAction());
-        menu.add(ExportSVGAction.createAction());
-        menu.add(ExportABCAction.createAction());
+        menu.add(ExportMidiAction.createAction(mainFrame));
+        menu.add(ExportImageAction.createAction(mainFrame));
+        menu.add(ExportPDFAction.createAction(mainFrame));
+        menu.add(ExportSVGAction.createAction(mainFrame));
+        menu.add(ExportABCAction.createAction(mainFrame));
 
         menu.addSeparator();
 
@@ -175,11 +175,11 @@ public class MenuController {
             var labels = buildLabels(recents);
 
             for (var i = 0; i < recents.size(); i++) {
-                openRecentMenu.add(new OpenRecentAction(labels.get(i), recents.get(i)));
+                openRecentMenu.add(new OpenRecentAction(mainFrame, labels.get(i), recents.get(i)));
             }
 
             openRecentMenu.addSeparator();
-            openRecentMenu.add(ClearRecentsAction.createAction());
+            openRecentMenu.add(ClearRecentsAction.createAction(mainFrame));
         }
     }
 
@@ -311,13 +311,13 @@ public class MenuController {
         return menu;
     }
 
-    private static JMenu initSongMenu() {
+    private JMenu initSongMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_SONG));
 
         var lineMenu = new JMenu(Strings.get(Strings.MENU_SONG_LINE));
-        lineMenu.add(InsertLineAction.createAddLineAction());
-        lineMenu.add(InsertLineAction.createInsertLineBeforeAction());
-        lineMenu.add(InsertLineAction.createInsertLineAfterAction());
+        lineMenu.add(InsertLineAction.createAddLineAction(mainFrame));
+        lineMenu.add(InsertLineAction.createInsertLineBeforeAction(mainFrame));
+        lineMenu.add(InsertLineAction.createInsertLineAfterAction(mainFrame));
         menu.add(lineMenu);
         menu.addSeparator();
 
@@ -329,10 +329,10 @@ public class MenuController {
         // TODO: Help needs updating for the new app
         var menu = new JMenu(Strings.get(Strings.MENU_HELP));
         menu.add(
-            new DialogOpenAction<>(Strings.get(Strings.ACTION_HELP_TUTORIAL), TutorialDialog.class)
+            new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_TUTORIAL), TutorialDialog.class)
         );
         menu.add(new TipAction(mainFrame));
-        menu.add(new DialogOpenAction<>(Strings.get(Strings.ACTION_HELP_KEYMAP), KeyMapDialog.class));
+        menu.add(new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_KEYMAP), KeyMapDialog.class));
 
         menu.addSeparator();
 
@@ -341,11 +341,12 @@ public class MenuController {
     }
 
     protected void addCommonHelpItems(JMenu menu) {
-        menu.add(new DialogOpenAction<>(Strings.get(Strings.ACTION_HELP_REPORT_BUG), ReportBugDialog.class));
+        menu.add(new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_REPORT_BUG), ReportBugDialog.class));
 
         if (new File(WhatsNewDialog.WHATS_NEW_FILE).exists()) {
             menu.add(
                 new DialogOpenAction<>(
+                    mainFrame,
                     Strings.get(Strings.ACTION_HELP_WHATS_NEW, Version.PUBLIC_VERSION),
                     WhatsNewDialog.class
                 )

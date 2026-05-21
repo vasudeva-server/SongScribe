@@ -29,15 +29,17 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.ui.component.MainFrame;
 
 public final class FlipStemDirectionAction extends UIAction {
 
-    public static FlipStemDirectionAction createAction() {
-        return new FlipStemDirectionAction();
+    public static FlipStemDirectionAction createAction(MainFrame mainFrame) {
+        return new FlipStemDirectionAction(mainFrame);
     }
 
-    private FlipStemDirectionAction() {
+    private FlipStemDirectionAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_STEM_FLIP),
             "@\uF374",
             18,

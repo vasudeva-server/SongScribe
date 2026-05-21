@@ -21,6 +21,7 @@
 package songscribe.ui.action;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.AboutDialog;
 
 public class AboutOpenAction
@@ -29,8 +30,8 @@ public class AboutOpenAction
 
     private static final String NATIVE_MENU_TITLE = "About";
 
-    public AboutOpenAction() {
-        super(Strings.get(Strings.ACTION_ABOUT), AboutDialog.class);
+    public AboutOpenAction(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.ACTION_ABOUT), AboutDialog.class);
     }
 
     @Override

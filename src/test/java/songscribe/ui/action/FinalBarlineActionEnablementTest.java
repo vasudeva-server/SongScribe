@@ -68,7 +68,7 @@ class FinalBarlineActionEnablementTest extends UnitTest {
 
     @Test
     void testActionSelectedWhenTerminalIsFinalDoubleBarline() {
-        var action = FinalTerminalAction.createFinalDoubleBarline();
+        var action = FinalTerminalAction.createFinalDoubleBarline(MainFrame.getInstance());
         action.updateEnabledState();
 
         assertThat(action.isSelected()).isTrue();
@@ -78,7 +78,7 @@ class FinalBarlineActionEnablementTest extends UnitTest {
     void testActionNotSelectedWhenTerminalIsRightRepeat() {
         song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
-        var action = FinalTerminalAction.createFinalDoubleBarline();
+        var action = FinalTerminalAction.createFinalDoubleBarline(MainFrame.getInstance());
         action.updateEnabledState();
 
         assertThat(action.isSelected()).isFalse();
@@ -89,7 +89,7 @@ class FinalBarlineActionEnablementTest extends UnitTest {
         song.replaceTerminal(ElementType.REPEAT_RIGHT);
         song.replaceTerminal(ElementType.FINAL_DOUBLE_BARLINE);
 
-        var action = FinalTerminalAction.createFinalDoubleBarline();
+        var action = FinalTerminalAction.createFinalDoubleBarline(MainFrame.getInstance());
         action.updateEnabledState();
 
         assertThat(action.isSelected()).isTrue();
@@ -100,7 +100,7 @@ class FinalBarlineActionEnablementTest extends UnitTest {
         song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
         try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
-            var action = FinalTerminalAction.createFinalDoubleBarline();
+            var action = FinalTerminalAction.createFinalDoubleBarline(MainFrame.getInstance());
             action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "final-double-barline"));
 
             optionDialogsMock.verifyNoInteractions();

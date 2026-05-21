@@ -24,13 +24,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.message.mutation.BeamingAddition;
@@ -54,7 +58,9 @@ import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
+import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.MainFrame;
 
 /**
  * Mutation-emission tests for {@link SelectionCoordinator#applyActionToSelection}.
@@ -65,15 +71,27 @@ import songscribe.ui.action.UIAction;
  */
 class ApplyActionToSelectionMutationTest extends UnitTest {
 
-    private static final ElementTypeAction QUARTER_ACTION =
-        ElementTypeAction.createQuarterNoteAction();
+    private MockedStatic<MainFrame> mainFrameMock;
+    private ElementTypeAction QUARTER_ACTION;
+    private AccidentalAction SHARP_ACTION;
+    private FermataAction FERMATA_ACTION;
+    private DotAction DOT_ACTION;
 
-    private static final AccidentalAction SHARP_ACTION =
-        AccidentalAction.createSharpAction();
+    @BeforeEach
+    void setUp() {
+        mainFrameMock = mockStatic(MainFrame.class);
+        MockEnvHelper.setupMockEnv(mainFrameMock);
+        var mainFrame = MainFrame.getInstance();
+        QUARTER_ACTION = ElementTypeAction.createQuarterNoteAction(mainFrame);
+        SHARP_ACTION = AccidentalAction.createSharpAction(mainFrame);
+        FERMATA_ACTION = FermataAction.createAction(mainFrame);
+        DOT_ACTION = DotAction.createDotAction(mainFrame);
+    }
 
-    private static final FermataAction FERMATA_ACTION = FermataAction.createAction();
-
-    private static final DotAction DOT_ACTION = DotAction.createDotAction();
+    @AfterEach
+    void tearDown() {
+        mainFrameMock.close();
+    }
 
     private final List<Mutation> capturedMutations = new ArrayList<>();
 

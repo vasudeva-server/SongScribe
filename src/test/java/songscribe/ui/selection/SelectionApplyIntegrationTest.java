@@ -25,14 +25,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.dom.ArticulationType;
@@ -44,7 +48,9 @@ import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
+import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.MainFrame;
 import songscribe.dom.Articulation;
 import songscribe.dom.FermataAttachment;
 
@@ -57,30 +63,37 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
     // -- Shared action instances --
 
-    private static final ElementTypeAction QUARTER_ACTION =
-        ElementTypeAction.createQuarterNoteAction();
+    private MockedStatic<MainFrame> mainFrameMock;
+    private ElementTypeAction QUARTER_ACTION;
+    private ElementTypeAction HALF_ACTION;
+    private ElementTypeAction BARLINE_ACTION;
+    private ElementTypeAction DOUBLE_BARLINE_ACTION;
+    private AccidentalAction SHARP_ACTION;
+    private AccidentalAction FLAT_ACTION;
+    private DotAction DOT_ACTION;
+    private FermataAction FERMATA_ACTION;
+    private DurationArticulationAction STACCATO_ACTION;
 
-    private static final ElementTypeAction HALF_ACTION =
-        ElementTypeAction.createHalfNoteAction();
+    @BeforeEach
+    void setUp() {
+        mainFrameMock = mockStatic(MainFrame.class);
+        MockEnvHelper.setupMockEnv(mainFrameMock);
+        var mainFrame = MainFrame.getInstance();
+        QUARTER_ACTION = ElementTypeAction.createQuarterNoteAction(mainFrame);
+        HALF_ACTION = ElementTypeAction.createHalfNoteAction(mainFrame);
+        BARLINE_ACTION = ElementTypeAction.createSingleBarlineAction(mainFrame);
+        DOUBLE_BARLINE_ACTION = ElementTypeAction.createDoubleBarlineAction(mainFrame);
+        SHARP_ACTION = AccidentalAction.createSharpAction(mainFrame);
+        FLAT_ACTION = AccidentalAction.createFlatAction(mainFrame);
+        DOT_ACTION = DotAction.createDotAction(mainFrame);
+        FERMATA_ACTION = FermataAction.createAction(mainFrame);
+        STACCATO_ACTION = DurationArticulationAction.createStaccatoAction(mainFrame);
+    }
 
-    private static final ElementTypeAction BARLINE_ACTION =
-        ElementTypeAction.createSingleBarlineAction();
-
-    private static final ElementTypeAction DOUBLE_BARLINE_ACTION =
-        ElementTypeAction.createDoubleBarlineAction();
-
-    private static final AccidentalAction SHARP_ACTION =
-        AccidentalAction.createSharpAction();
-
-    private static final AccidentalAction FLAT_ACTION =
-        AccidentalAction.createFlatAction();
-
-    private static final DotAction DOT_ACTION = DotAction.createDotAction();
-
-    private static final FermataAction FERMATA_ACTION = FermataAction.createAction();
-
-    private static final DurationArticulationAction STACCATO_ACTION =
-        DurationArticulationAction.createStaccatoAction();
+    @AfterEach
+    void tearDown() {
+        mainFrameMock.close();
+    }
 
     private SelectionCoordinator createCoordinator(
         List<? extends StaffElement> notes,
@@ -519,8 +532,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
         void testManagedActionsIncludeNonReflectableWithFlag() {
             var note = ElementType.CROTCHET.newInstance();
 
-            var fermataAction = FermataAction.createAction();
-            var flaggedAction = new UIAction("Beam", null, 0, "beam", "Toggle beam");
+            var fermataAction = FermataAction.createAction(MainFrame.getInstance());
+            var flaggedAction = new UIAction(MainFrame.getInstance(), "Beam", null, 0, "beam", "Toggle beam");
             flaggedAction.setFlags(UIAction.Flag.DISABLE_WHEN_BAR_SELECTED);
 
             var reflectableActions = List.<UIAction.Reflectable>of(fermataAction);
@@ -560,8 +573,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
             var note = ElementType.CROTCHET.newInstance();
             note.setAccidental(StaffElement.Accidental.FLAT);
 
-            var sharpAction = AccidentalAction.createSharpAction();
-            var flatAction = AccidentalAction.createFlatAction();
+            var sharpAction = AccidentalAction.createSharpAction(MainFrame.getInstance());
+            var flatAction = AccidentalAction.createFlatAction(MainFrame.getInstance());
             // Pre-selection state
             sharpAction.setSelected(false);
             sharpAction.setEnabled(true);

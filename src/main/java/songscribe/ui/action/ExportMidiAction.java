@@ -23,17 +23,18 @@ import module java.desktop;
 
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.ExportMidiDialog;
 import songscribe.ui.dialog.PlatformFileDialog;
 
 public final class ExportMidiAction extends UIAction {
 
-    public static ExportMidiAction createAction() {
-        return new ExportMidiAction();
+    public static ExportMidiAction createAction(MainFrame mainFrame) {
+        return new ExportMidiAction(mainFrame);
     }
 
-    private ExportMidiAction() {
-        super(Strings.get(Strings.ACTION_EXPORT_MIDI), "export-midi");
+    private ExportMidiAction(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.ACTION_EXPORT_MIDI), "export-midi");
         setFlags(Flag.OPENS_DIALOG);
     }
 

@@ -23,16 +23,18 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class PasteAction extends PasteboardAction {
 
-    public static PasteAction createAction() {
-        return new PasteAction();
+    public static PasteAction createAction(MainFrame mainFrame) {
+        return new PasteAction(mainFrame);
     }
 
-    private PasteAction() {
+    private PasteAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Operation.PASTE,
             Strings.get(Strings.ACTION_EDIT_PASTE),
             "edit-paste",

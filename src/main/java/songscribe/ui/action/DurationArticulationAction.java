@@ -27,6 +27,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Articulation;
+import songscribe.ui.component.MainFrame;
 
 public final class DurationArticulationAction extends NoteOnlyAction {
 
@@ -34,8 +35,9 @@ public final class DurationArticulationAction extends NoteOnlyAction {
 
     private final ArticulationType articulationType;
 
-    public static DurationArticulationAction createStaccatoAction() {
+    public static DurationArticulationAction createStaccatoAction(MainFrame mainFrame) {
         return new DurationArticulationAction(
+            mainFrame,
             ArticulationType.STACCATO,
             Strings.get(Strings.ACTION_STACCATO), "@\uF38E", 22,
             "staccato", Strings.get(Strings.ACTION_STACCATO_TOOLTIP)
@@ -43,6 +45,7 @@ public final class DurationArticulationAction extends NoteOnlyAction {
     }
 
     private DurationArticulationAction(
+        MainFrame mainFrame,
         ArticulationType articulationType,
         String name,
         String icon,
@@ -50,7 +53,7 @@ public final class DurationArticulationAction extends NoteOnlyAction {
         String actionCommand,
         String tooltip
     ) {
-        super(name, icon, size, actionCommand, tooltip, NoteOnlyAction.FLAGS);
+        super(mainFrame, name, icon, size, actionCommand, tooltip, NoteOnlyAction.FLAGS);
         this.articulationType = articulationType;
     }
 

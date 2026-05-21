@@ -23,16 +23,17 @@ import module java.desktop;
 
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.PlatformFileDialog;
 
 public final class ExportSVGAction extends UIAction {
 
-    public static ExportSVGAction createAction() {
-        return new ExportSVGAction();
+    public static ExportSVGAction createAction(MainFrame mainFrame) {
+        return new ExportSVGAction(mainFrame);
     }
 
-    private ExportSVGAction() {
-        super(Strings.get(Strings.ACTION_EXPORT_SVG), "export-svg");
+    private ExportSVGAction(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.ACTION_EXPORT_SVG), "export-svg");
         setFlags(Flag.OPENS_DIALOG);
     }
 

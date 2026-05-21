@@ -25,16 +25,18 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.SelectLineCommand;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class SelectLineAction extends UIAction {
 
-    public static SelectLineAction createAction() {
-        return new SelectLineAction();
+    public static SelectLineAction createAction(MainFrame mainFrame) {
+        return new SelectLineAction(mainFrame);
     }
 
-    private SelectLineAction() {
+    private SelectLineAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_EDIT_SELECT_LINE),
             "select-line",
             KeyEvent.VK_L,

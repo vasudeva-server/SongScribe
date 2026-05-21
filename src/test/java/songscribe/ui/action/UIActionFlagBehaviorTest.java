@@ -108,7 +108,7 @@ class UIActionFlagBehaviorTest extends UnitTest {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             MockEnvHelper.setupMockEnv(mainFrameMock);
 
-            var action = new DialogOpenAction<>("Test Dialog", BaseDialog.class);
+            var action = new DialogOpenAction<>(MainFrame.getInstance(), "Test Dialog", BaseDialog.class);
 
             assertThat(action.hasFlag(UIAction.Flag.OPENS_DIALOG)).isTrue();
         }
@@ -117,6 +117,6 @@ class UIActionFlagBehaviorTest extends UnitTest {
     // -- helpers --
 
     private UIAction createActionWithFlag(UIAction.Flag... flags) {
-        return new UIAction("Test", "test-cmd", flags);
+        return new UIAction(MainFrame.getInstance(), "Test", "test-cmd", flags);
     }
 }

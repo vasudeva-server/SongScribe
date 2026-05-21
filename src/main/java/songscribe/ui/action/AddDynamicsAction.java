@@ -25,21 +25,23 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.AddDynamicsCommand;
+import songscribe.ui.component.MainFrame;
 
 public final class AddDynamicsAction extends UIAction {
 
     private final boolean isCrescendo;
 
-    public static AddDynamicsAction createCrescendoAction() {
-        return new AddDynamicsAction(true);
+    public static AddDynamicsAction createCrescendoAction(MainFrame mainFrame) {
+        return new AddDynamicsAction(mainFrame, true);
     }
 
-    public static AddDynamicsAction createDiminuendoAction() {
-        return new AddDynamicsAction(false);
+    public static AddDynamicsAction createDiminuendoAction(MainFrame mainFrame) {
+        return new AddDynamicsAction(mainFrame, false);
     }
 
-    private AddDynamicsAction(boolean isCrescendo) {
+    private AddDynamicsAction(MainFrame mainFrame, boolean isCrescendo) {
         super(
+            mainFrame,
             Strings.get(isCrescendo ? Strings.ACTION_DYNAMICS_CRESCENDO : Strings.ACTION_DYNAMICS_DIMINUENDO),
             null,
             0,

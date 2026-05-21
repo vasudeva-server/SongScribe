@@ -21,6 +21,7 @@
 package songscribe.ui.action;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.PreferencesDialog;
 
 public class PreferencesOpenAction
@@ -29,8 +30,8 @@ public class PreferencesOpenAction
 
     private static final String NATIVE_MENU_TITLE = "Settings";
 
-    public PreferencesOpenAction() {
-        super(Strings.get(Strings.ACTION_SETTINGS), PreferencesDialog.class);
+    public PreferencesOpenAction(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.ACTION_SETTINGS), PreferencesDialog.class);
     }
 
     @Override

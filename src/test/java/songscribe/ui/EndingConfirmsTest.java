@@ -22,6 +22,7 @@ package songscribe.ui;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -78,19 +79,21 @@ class EndingConfirmsTest extends UnitTest {
     private static final int SPLIT_INDEX = 3;
     private static final int END_INDEX = 6;
 
+    private static final MainFrame MOCK_FRAME = mock(MainFrame.class, RETURNS_DEEP_STUBS);
+
     // Actions used to trigger element replacements via SelectionCoordinator
-    private static final ElementTypeAction DOUBLE_BARLINE_ACTION = ElementTypeAction.createDoubleBarlineAction();
-    private static final ElementTypeAction LEFT_REPEAT_ACTION = ElementTypeAction.createLeftRepeatAction();
-    private static final ElementTypeAction RIGHT_REPEAT_ACTION = ElementTypeAction.createRightRepeatAction();
-    private static final ElementTypeAction LEFT_RIGHT_REPEAT_ACTION = ElementTypeAction.createLeftRightRepeatAction();
-    private static final ElementTypeAction SINGLE_BARLINE_ACTION = ElementTypeAction.createSingleBarlineAction();
+    private static final ElementTypeAction DOUBLE_BARLINE_ACTION = ElementTypeAction.createDoubleBarlineAction(MOCK_FRAME);
+    private static final ElementTypeAction LEFT_REPEAT_ACTION = ElementTypeAction.createLeftRepeatAction(MOCK_FRAME);
+    private static final ElementTypeAction RIGHT_REPEAT_ACTION = ElementTypeAction.createRightRepeatAction(MOCK_FRAME);
+    private static final ElementTypeAction LEFT_RIGHT_REPEAT_ACTION = ElementTypeAction.createLeftRightRepeatAction(MOCK_FRAME);
+    private static final ElementTypeAction SINGLE_BARLINE_ACTION = ElementTypeAction.createSingleBarlineAction(MOCK_FRAME);
 
     @Nullable private MockedStatic<MainFrame> mainFrameMock;
 
     @BeforeEach
     void setUp() {
         mainFrameMock = mockStatic(MainFrame.class);
-        mainFrameMock.when(MainFrame::getInstance).thenReturn(mock(MainFrame.class));
+        mainFrameMock.when(MainFrame::getInstance).thenReturn(mock(MainFrame.class, RETURNS_DEEP_STUBS));
     }
 
     @AfterEach

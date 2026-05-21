@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
+import songscribe.ui.component.MainFrame;
 
 /**
  * Base class for actions that have a toggle selected state
@@ -36,21 +37,23 @@ public abstract class SelectableUIAction extends UIAction
 
     { putValue(SELECTED_KEY, false); }
 
-    protected SelectableUIAction(String name, String actionCommand, Flag... flags) {
-        super(name, actionCommand, flags);
+    protected SelectableUIAction(MainFrame mainFrame, String name, String actionCommand, Flag... flags) {
+        super(mainFrame, name, actionCommand, flags);
     }
 
     protected SelectableUIAction(
+        MainFrame mainFrame,
         String name,
         String actionCommand,
         int virtualKey,
         int modifiers,
         Flag... flags
     ) {
-        super(name, actionCommand, virtualKey, modifiers, flags);
+        super(mainFrame, name, actionCommand, virtualKey, modifiers, flags);
     }
 
     protected SelectableUIAction(
+        MainFrame mainFrame,
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -58,10 +61,11 @@ public abstract class SelectableUIAction extends UIAction
         @Nullable String tooltip,
         Flag... flags
     ) {
-        this(name, icon, size, actionCommand, tooltip, null, flags);
+        this(mainFrame, name, icon, size, actionCommand, tooltip, null, flags);
     }
 
     protected SelectableUIAction(
+        MainFrame mainFrame,
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -70,7 +74,7 @@ public abstract class SelectableUIAction extends UIAction
         @Nullable PrefsKey prefsKey,
         Flag... flags
     ) {
-        super(name, icon, size, actionCommand, tooltip, flags);
+        super(mainFrame, name, icon, size, actionCommand, tooltip, flags);
 
         if (prefsKey != null) {
             setSelected(Prefs.getBoolean(prefsKey));
@@ -78,6 +82,7 @@ public abstract class SelectableUIAction extends UIAction
     }
 
     protected SelectableUIAction(
+        MainFrame mainFrame,
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -87,7 +92,7 @@ public abstract class SelectableUIAction extends UIAction
         int modifiers,
         Flag... flags
     ) {
-        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
+        super(mainFrame, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
     }
 
     @Override

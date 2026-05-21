@@ -68,7 +68,6 @@ import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
-import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.edit.EditModeManager;
@@ -216,7 +215,7 @@ public final class ScoreViewController {
 
     @Handler
     public void handleFirstSecondEnding(FirstSecondEndingCommand message) {
-        var result = FirstSecondEndingAction.MAKE_ENDING_ACTION.getCachedResult();
+        var result = Actions.MAKE_ENDING_ACTION.getCachedResult();
 
         if (result != null && result.isValid()) {
             operations.makeFirstSecondEnding(result);

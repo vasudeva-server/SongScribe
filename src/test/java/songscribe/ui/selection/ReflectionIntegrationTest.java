@@ -21,6 +21,8 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
 
 import java.util.List;
 
@@ -37,8 +39,11 @@ import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
 import songscribe.dom.FermataAttachment;
+import songscribe.ui.component.MainFrame;
 
 class ReflectionIntegrationTest extends UnitTest {
+
+    private static final MainFrame MOCK_FRAME = mock(MainFrame.class, RETURNS_DEEP_STUBS);
 
     private ElementTypeAction crotchetAction;
     private ElementTypeAction minimAction;
@@ -52,15 +57,15 @@ class ReflectionIntegrationTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        crotchetAction = ElementTypeAction.createQuarterNoteAction();
-        minimAction = ElementTypeAction.createHalfNoteAction();
-        barlineAction = ElementTypeAction.createSingleBarlineAction();
-        sharpAction = AccidentalAction.createSharpAction();
-        flatAction = AccidentalAction.createFlatAction();
-        dotAction = DotAction.createDotAction();
-        doubleDotAction = DotAction.createDoubleDotAction();
-        fermataAction = FermataAction.createAction();
-        staccatoAction = DurationArticulationAction.createStaccatoAction();
+        crotchetAction = ElementTypeAction.createQuarterNoteAction(MOCK_FRAME);
+        minimAction = ElementTypeAction.createHalfNoteAction(MOCK_FRAME);
+        barlineAction = ElementTypeAction.createSingleBarlineAction(MOCK_FRAME);
+        sharpAction = AccidentalAction.createSharpAction(MOCK_FRAME);
+        flatAction = AccidentalAction.createFlatAction(MOCK_FRAME);
+        dotAction = DotAction.createDotAction(MOCK_FRAME);
+        doubleDotAction = DotAction.createDoubleDotAction(MOCK_FRAME);
+        fermataAction = FermataAction.createAction(MOCK_FRAME);
+        staccatoAction = DurationArticulationAction.createStaccatoAction(MOCK_FRAME);
     }
 
     private List<UIAction.Reflectable> allActions() {

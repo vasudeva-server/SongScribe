@@ -24,6 +24,8 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.ui.component.MainFrame;
+
 /**
  * An abstract UIAction that does not toggle its selected state off if triggered
  * by a keysroke. Subclasses should call super.doActionPerformed() in their
@@ -32,6 +34,7 @@ import org.jspecify.annotations.Nullable;
 public class StickyUIAction extends SelectableUIAction {
 
     protected StickyUIAction(
+        MainFrame mainFrame,
         String name,
         @Nullable String icon,
         int size,
@@ -42,6 +45,7 @@ public class StickyUIAction extends SelectableUIAction {
         Flag... flags
     ) {
         super(
+            mainFrame,
             name,
             icon,
             size,

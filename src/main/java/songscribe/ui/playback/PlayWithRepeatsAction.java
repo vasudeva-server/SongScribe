@@ -26,15 +26,17 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.TogglePlayWithRepeatsCommand;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.action.SelectableUIAction;
+import songscribe.ui.component.MainFrame;
 
 public final class PlayWithRepeatsAction extends SelectableUIAction {
 
-    public static PlayWithRepeatsAction createAction() {
-        return new PlayWithRepeatsAction();
+    public static PlayWithRepeatsAction createAction(MainFrame mainFrame) {
+        return new PlayWithRepeatsAction(mainFrame);
     }
 
-    private PlayWithRepeatsAction() {
+    private PlayWithRepeatsAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_PLAY_REPEATS),
             "@\uF345",
             20,

@@ -45,17 +45,19 @@ import songscribe.ui.component.MainFrame;
 class BarlineMenuTest extends UnitTest {
 
     private MockedStatic<MainFrame> mainFrameMock;
+    private MainFrame mainFrame;
     private Song song;
 
     @BeforeEach
     void setUp() {
         mainFrameMock = mockStatic(MainFrame.class);
         var env = MockEnvHelper.setupMockEnv(mainFrameMock);
+        mainFrame = env.frame();
 
         var mockRootPane = mock(JRootPane.class);
         when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
         when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-        when(env.frame().getRootPane()).thenReturn(mockRootPane);
+        when(mainFrame.getRootPane()).thenReturn(mockRootPane);
 
         song = new Song();
         when(env.score().isInitialized()).thenReturn(true);
@@ -69,7 +71,7 @@ class BarlineMenuTest extends UnitTest {
 
     @Test
     void testFinalDoubleBarlineItemReplacesTerminalWithoutConfirm() {
-        var menu = new BarlineMenu();
+        var menu = new BarlineMenu(mainFrame);
         song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
         var finalBarlineItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE));
@@ -87,7 +89,7 @@ class BarlineMenuTest extends UnitTest {
 
     @Test
     void testFinalRightRepeatItemReplacesTerminalWithoutConfirm() {
-        var menu = new BarlineMenu();
+        var menu = new BarlineMenu(mainFrame);
         var rightRepeatItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT));
 
         try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
@@ -103,7 +105,7 @@ class BarlineMenuTest extends UnitTest {
 
     @Test
     void testRadioSelectionReflectsCurrentTerminalForFinalBarline() {
-        var menu = new BarlineMenu();
+        var menu = new BarlineMenu(mainFrame);
         var finalBarlineItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE));
         var rightRepeatItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT));
 
@@ -116,7 +118,7 @@ class BarlineMenuTest extends UnitTest {
 
     @Test
     void testRadioSelectionReflectsCurrentTerminalForRightRepeat() {
-        var menu = new BarlineMenu();
+        var menu = new BarlineMenu(mainFrame);
         var finalBarlineItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE));
         var rightRepeatItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT));
 

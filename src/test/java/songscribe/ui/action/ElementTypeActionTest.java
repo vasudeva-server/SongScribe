@@ -21,6 +21,8 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
 
 import java.util.Objects;
 
@@ -28,14 +30,17 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.ui.component.MainFrame;
 
 class ElementTypeActionTest extends UnitTest {
 
+    private static final MainFrame MOCK_FRAME = mock(MainFrame.class, RETURNS_DEEP_STUBS);
+
     private final ElementTypeAction durationAction =
-        ElementTypeAction.createQuarterNoteAction();
+        ElementTypeAction.createQuarterNoteAction(MOCK_FRAME);
 
     private final ElementTypeAction nonDurationAction =
-        ElementTypeAction.createSingleBarlineAction();
+        ElementTypeAction.createSingleBarlineAction(MOCK_FRAME);
 
     // CR2: createReplacement preserves note kind (note stays note)
     @Test
@@ -56,7 +61,7 @@ class ElementTypeActionTest extends UnitTest {
     // CR4: createReplacement with grace note (toNote/toRest returns this)
     @Test
     void testCreateReplacementWithGraceNote() {
-        var graceAction = ElementTypeAction.createGraceEighthNoteAction();
+        var graceAction = ElementTypeAction.createGraceEighthNoteAction(MOCK_FRAME);
         var element = ElementType.CROTCHET.newInstance();
         var replacement = Objects.requireNonNull(graceAction.createReplacement(element, true));
         assertThat(replacement.getType()).isEqualTo(ElementType.GRACE_QUAVER);

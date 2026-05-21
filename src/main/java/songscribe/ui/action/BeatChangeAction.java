@@ -22,17 +22,18 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
-
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.BeatChangeDialog;
 
 public final class BeatChangeAction extends UIAction {
 
-    public static BeatChangeAction createAction() {
-        return new BeatChangeAction();
+    public static BeatChangeAction createAction(MainFrame mainFrame) {
+        return new BeatChangeAction(mainFrame);
     }
 
-    private BeatChangeAction() {
+    private BeatChangeAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_BEAT_CHANGE),
             "beat-change",
             Flag.REQUIRES_SINGLE_SELECTION,

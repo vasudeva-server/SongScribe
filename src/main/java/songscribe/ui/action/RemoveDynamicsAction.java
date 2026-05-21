@@ -29,15 +29,17 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.command.RemoveDynamicsCommand;
+import songscribe.ui.component.MainFrame;
 
 public final class RemoveDynamicsAction extends UIAction {
 
-    public static RemoveDynamicsAction createAction() {
-        return new RemoveDynamicsAction();
+    public static RemoveDynamicsAction createAction(MainFrame mainFrame) {
+        return new RemoveDynamicsAction(mainFrame);
     }
 
-    private RemoveDynamicsAction() {
+    private RemoveDynamicsAction(MainFrame mainFrame) {
         super(
+            mainFrame,
             Strings.get(Strings.ACTION_DYNAMICS_REMOVE),
             null,
             0,

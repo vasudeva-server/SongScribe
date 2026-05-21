@@ -26,18 +26,20 @@ import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.Strings;
 import songscribe.lifecycle.Shutdown;
+import songscribe.ui.component.MainFrame;
 
 public class QuitAction extends UIAction {
 
     public static final String NAME = SystemInfo.isMacOS ? Strings.get(Strings.ACTION_FILE_QUIT) : Strings.get(Strings.ACTION_FILE_EXIT);
 
-    public static QuitAction createAction() {
-        return new QuitAction();
+    public static QuitAction createAction(MainFrame mainFrame) {
+        return new QuitAction(mainFrame);
     }
 
-    protected QuitAction() {
+    protected QuitAction(MainFrame mainFrame) {
         // On macOS, the system sets the accelerator for the Quit menu item
         super(
+            mainFrame,
             NAME,
             "quit",
             SystemInfo.isMacOS ? 0 : KeyEvent.VK_F4,

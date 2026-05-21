@@ -25,6 +25,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
+import songscribe.ui.component.MainFrame;
 
 /**
  * Action that sets the song's auto-maintained terminal to a specific valid
@@ -34,16 +35,18 @@ import songscribe.dom.Song;
  */
 public final class FinalTerminalAction extends ElementTypeAction {
 
-    public static FinalTerminalAction createFinalDoubleBarline() {
+    public static FinalTerminalAction createFinalDoubleBarline(MainFrame mainFrame) {
         return new FinalTerminalAction(
+            mainFrame,
             ElementType.FINAL_DOUBLE_BARLINE,
             Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE), "@\uF34A",
             "final-double-barline", Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE_TOOLTIP)
         );
     }
 
-    public static FinalTerminalAction createFinalRightRepeat() {
+    public static FinalTerminalAction createFinalRightRepeat(MainFrame mainFrame) {
         return new FinalTerminalAction(
+            mainFrame,
             ElementType.REPEAT_RIGHT,
             Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT), "@\uF345",
             "final-right-repeat", Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT_TOOLTIP)
@@ -51,13 +54,14 @@ public final class FinalTerminalAction extends ElementTypeAction {
     }
 
     private FinalTerminalAction(
+        MainFrame mainFrame,
         ElementType type,
         String name,
         String icon,
         String actionCommand,
         String tooltip
     ) {
-        super(Kind.NON_DURATION, type, null, name, icon, 24, actionCommand, tooltip, 0, 0, NON_DURATION_FLAGS);
+        super(mainFrame, Kind.NON_DURATION, type, null, name, icon, 24, actionCommand, tooltip, 0, 0, NON_DURATION_FLAGS);
     }
 
     @Override

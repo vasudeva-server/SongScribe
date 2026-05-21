@@ -49,6 +49,7 @@ import songscribe.ui.KeySignatureDisplay;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.BaseLabel;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.InputUtils;
 import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
@@ -221,7 +222,7 @@ public class SongSettingsDialog extends StandardDialog {
             var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-            var action = new TakeFirstLyricsWordAction();
+            var action = new TakeFirstLyricsWordAction(SongSettingsDialog.this.getMainFrame());
             var takeButton = new JButton(action);
             action.setEnabled(
                 !getSong().getLyricsText().isEmpty()
@@ -447,8 +448,9 @@ public class SongSettingsDialog extends StandardDialog {
 
         private final class TakeFirstLyricsWordAction extends UIAction {
 
-            private TakeFirstLyricsWordAction() {
+            private TakeFirstLyricsWordAction(MainFrame mainFrame) {
                 super(
+                    mainFrame,
                     Strings.get(Strings.DIALOG_SONG_SETTINGS_TAKE),
                     "take-lyrics"
                 );
@@ -875,12 +877,14 @@ public class SongSettingsDialog extends StandardDialog {
 
         @Override
         protected void initContents() {
+            var mainFrame = SongSettingsDialog.this.getMainFrame();
             var tabbedPane = createTabbedPane();
             tabbedPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
             tabbedPane.addTab(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_TITLE),
                 createFontSection(
+                    mainFrame,
                     "Title",
                     titleFontLabel,
                     titleFontPreview,
@@ -890,6 +894,7 @@ public class SongSettingsDialog extends StandardDialog {
             tabbedPane.addTab(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_LYRICS),
                 createFontSection(
+                    mainFrame,
                     "Lyrics",
                     lyricsFontLabel,
                     lyricsFontPreview,
@@ -899,6 +904,7 @@ public class SongSettingsDialog extends StandardDialog {
             tabbedPane.addTab(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_ATTRIBUTION),
                 createFontSection(
+                    mainFrame,
                     "Attribution (tempo, beat change, attribution)",
                     attributionFontLabel,
                     attributionFontPreview,
@@ -908,6 +914,7 @@ public class SongSettingsDialog extends StandardDialog {
             tabbedPane.addTab(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_ANNOTATION),
                 createFontSection(
+                    mainFrame,
                     "Annotation",
                     annotationFontLabel,
                     annotationFontPreview,
@@ -918,10 +925,11 @@ public class SongSettingsDialog extends StandardDialog {
             addSeparator();
 
             constraints.fill = GridBagConstraints.NONE;
-            add(new JButton(new ResetFontsAction()));
+            add(new JButton(new ResetFontsAction(mainFrame)));
         }
 
         private static JPanel createFontSection(
+            MainFrame mainFrame,
             String title,
             JLabel fontLabel,
             JComponent preview,
@@ -996,7 +1004,7 @@ public class SongSettingsDialog extends StandardDialog {
             gbc.weightx = 0.0;
             gbc.insets = new Insets(0, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP), 0, 0);
             contents.add(
-                new JButton(new ChooseFontAction(fontLabel, preview)),
+                new JButton(new ChooseFontAction(mainFrame, fontLabel, preview)),
                 gbc
             );
 
@@ -1020,10 +1028,12 @@ public class SongSettingsDialog extends StandardDialog {
             private final JComponent preview;
 
             private ChooseFontAction(
+                MainFrame mainFrame,
                 JLabel fontDescription,
                 JComponent preview
             ) {
                 super(
+                    mainFrame,
                     Strings.get(Strings.DIALOG_SONG_SETTINGS_CHOOSE),
                     "choose-font"
                 );
@@ -1045,8 +1055,9 @@ public class SongSettingsDialog extends StandardDialog {
 
         private final class ResetFontsAction extends UIAction {
 
-            private ResetFontsAction() {
+            private ResetFontsAction(MainFrame mainFrame) {
                 super(
+                    mainFrame,
                     Strings.get(Strings.DIALOG_SONG_SETTINGS_RESET_TO_DEFAULTS),
                     "reset-fonts"
                 );

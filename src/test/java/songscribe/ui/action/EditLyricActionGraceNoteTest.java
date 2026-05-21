@@ -22,26 +22,34 @@ package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
 
 class EditLyricActionGraceNoteTest extends UnitTest {
 
+    private MockedStatic<MainFrame> mainFrameMock;
     private ScoreView mockScore;
     private LineSelectionState mockLineState;
     private EditLyricAction action;
 
     @BeforeEach
     void setUp() {
+        mainFrameMock = mockStatic(MainFrame.class);
+        MockEnvHelper.setupMockEnv(mainFrameMock);
+
         mockScore = mock(ScoreView.class);
         var mockCoordinator = mock(SelectionCoordinator.class);
         mockLineState = mock(LineSelectionState.class);
@@ -49,7 +57,12 @@ class EditLyricActionGraceNoteTest extends UnitTest {
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
         when(mockCoordinator.getActiveSelection()).thenReturn(mockLineState);
 
-        action = EditLyricAction.createAction();
+        action = EditLyricAction.createAction(MainFrame.getInstance());
+    }
+
+    @AfterEach
+    void tearDown() {
+        mainFrameMock.close();
     }
 
     private void pairedGraceAt(int graceIndex) {

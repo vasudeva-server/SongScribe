@@ -23,16 +23,17 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 public final class DeleteAction extends PasteboardAction {
 
-    public static DeleteAction createAction() {
-        return new DeleteAction();
+    public static DeleteAction createAction(MainFrame mainFrame) {
+        return new DeleteAction(mainFrame);
     }
 
-    private DeleteAction() {
-        super(Operation.DELETE, Strings.get(Strings.ACTION_EDIT_DELETE), "edit-delete", 0, 0, Flag.DISABLE_WHEN_PLAYING);
+    private DeleteAction(MainFrame mainFrame) {
+        super(mainFrame, Operation.DELETE, Strings.get(Strings.ACTION_EDIT_DELETE), "edit-delete", 0, 0, Flag.DISABLE_WHEN_PLAYING);
         var keystrokes = new KeyStroke[] {
             KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0),
             KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0),

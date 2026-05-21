@@ -67,6 +67,7 @@ import songscribe.dom.Line;
 import songscribe.ui.MusicEditOperations;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tuplet;
+import songscribe.ui.action.Actions;
 import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.TupletAction;
 import songscribe.ui.clipboard.ClipboardManager;
@@ -370,8 +371,8 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
     {
         var field = FirstSecondEndingAction.class.getDeclaredField("cachedResult");
         field.setAccessible(true);
-        var previous = (EndingValidationResult) field.get(FirstSecondEndingAction.MAKE_ENDING_ACTION);
-        field.set(FirstSecondEndingAction.MAKE_ENDING_ACTION, value);
+        var previous = (EndingValidationResult) field.get(Actions.MAKE_ENDING_ACTION);
+        field.set(Actions.MAKE_ENDING_ACTION, value);
         return previous;
     }
 
