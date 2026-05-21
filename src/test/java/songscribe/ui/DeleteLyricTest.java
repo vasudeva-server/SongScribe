@@ -26,14 +26,11 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 
-import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.PasteboardOpCommand;
 import songscribe.dom.ElementType;
@@ -44,7 +41,6 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.action.PasteboardAction;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.selection.ReflectionTestHelper;
@@ -61,12 +57,10 @@ import songscribe.ui.selection.SelectionCoordinator;
  *       (lyric)
  * </pre>
  */
-class DeleteLyricTest extends UnitTest {
+class DeleteLyricTest extends MainFrameMockTest {
 
     private static final int VERSE = 1;
     private static final int LYRIC_NOTE_INDEX = 0;
-
-    @Nullable private MockedStatic<MainFrame> mainFrameMock;
 
     private Song song;
     private StaffElement lyricNote;
@@ -75,9 +69,6 @@ class DeleteLyricTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        mainFrameMock.when(MainFrame::getInstance).thenReturn(mock(MainFrame.class));
-
         song = new Song();
         var line = song.getLine(0);
         lyricNote = new StaffElement(ElementType.CROTCHET);
@@ -90,16 +81,6 @@ class DeleteLyricTest extends UnitTest {
         });
 
         coordinator = createCoordinator(line);
-    }
-
-    @AfterEach
-    void tearDown() {
-        var mock = mainFrameMock;
-
-        if (mock != null) {
-            mock.close();
-            mainFrameMock = null;
-        }
     }
 
     private SelectionCoordinator createCoordinator(Line line) {

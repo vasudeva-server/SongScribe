@@ -24,23 +24,21 @@ import module java.desktop;
 
 import org.junit.jupiter.api.Test;
 
-import songscribe.UnitTest;
-import songscribe.ui.component.MainFrame;
+import songscribe.MainFrameMockTest;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mockStatic;
 
-class UIActionFlagBehaviorTest extends UnitTest {
+class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
     // -- OPENS_DIALOG flag enables/disables based on dialog visibility --
 
     @Test
     void testOpensDialogFlagDisablesActionWhenAnyDialogIsVisible() {
-        try (var mainFrameMock = mockStatic(MainFrame.class);
-             var ignored = mockStatic(BaseDialog.class)) {
-            MockEnvHelper.setupMockEnv(mainFrameMock);
+        try (var ignored = mockStatic(BaseDialog.class)) {
             ignored.when(BaseDialog::isAnyBlockingDialogVisible).thenReturn(true);
 
             var action = createActionWithFlag(UIAction.Flag.OPENS_DIALOG);
@@ -52,9 +50,7 @@ class UIActionFlagBehaviorTest extends UnitTest {
 
     @Test
     void testOpensDialogFlagReenablesActionWhenAllDialogsClose() {
-        try (var mainFrameMock = mockStatic(MainFrame.class);
-             var ignored = mockStatic(BaseDialog.class)) {
-            MockEnvHelper.setupMockEnv(mainFrameMock);
+        try (var ignored = mockStatic(BaseDialog.class)) {
             ignored.when(BaseDialog::isAnyBlockingDialogVisible).thenReturn(false);
 
             var action = createActionWithFlag(UIAction.Flag.OPENS_DIALOG);
@@ -68,9 +64,7 @@ class UIActionFlagBehaviorTest extends UnitTest {
 
     @Test
     void testActionWithoutOpensDialogFlagUnaffectedByDialogVisibility() {
-        try (var mainFrameMock = mockStatic(MainFrame.class);
-             var ignored = mockStatic(BaseDialog.class)) {
-            MockEnvHelper.setupMockEnv(mainFrameMock);
+        try (var ignored = mockStatic(BaseDialog.class)) {
             ignored.when(BaseDialog::isAnyBlockingDialogVisible).thenReturn(true);
 
             var action = createActionWithFlag();
@@ -84,10 +78,8 @@ class UIActionFlagBehaviorTest extends UnitTest {
 
     @Test
     void testOpensDialogWithOtherDisablingFlagRemainsDisabledAfterDialogCloses() {
-        try (var mainFrameMock = mockStatic(MainFrame.class);
-             var baseDialogMock = mockStatic(BaseDialog.class);
+        try (var baseDialogMock = mockStatic(BaseDialog.class);
              var graceMock = mockStatic(GraceModeManager.class)) {
-            MockEnvHelper.setupMockEnv(mainFrameMock);
             baseDialogMock.when(BaseDialog::isAnyBlockingDialogVisible).thenReturn(false);
             graceMock.when(GraceModeManager::isActive).thenReturn(true);
 
@@ -105,18 +97,25 @@ class UIActionFlagBehaviorTest extends UnitTest {
 
     @Test
     void testDialogOpenActionAutoSetsOpensDialogFlag() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            MockEnvHelper.setupMockEnv(mainFrameMock);
+        var action = new DialogOpenAction<>(mainFrame(), "Test Dialog", BaseDialog.class);
 
-            var action = new DialogOpenAction<>(MainFrame.getInstance(), "Test Dialog", BaseDialog.class);
+        assertThat(action.hasFlag(UIAction.Flag.OPENS_DIALOG)).isTrue();
+    }
 
-            assertThat(action.hasFlag(UIAction.Flag.OPENS_DIALOG)).isTrue();
-        }
+    // -- null mainFrame is rejected --
+
+    @Test
+    @SuppressWarnings("NullAway")
+    void testConstructorRejectsNullMainFrame() {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new UIAction(null, "Test", null, 0, "test", "Test")
+        );
     }
 
     // -- helpers --
 
     private UIAction createActionWithFlag(UIAction.Flag... flags) {
-        return new UIAction(MainFrame.getInstance(), "Test", "test-cmd", flags);
+        return new UIAction(mainFrame(), "Test", "test-cmd", flags);
     }
 }

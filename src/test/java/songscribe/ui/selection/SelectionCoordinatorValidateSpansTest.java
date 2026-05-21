@@ -24,19 +24,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.Mutation;
@@ -49,9 +46,7 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.action.DotAction;
 import songscribe.dom.Tuplet;
 import songscribe.ui.action.ElementTypeAction;
-import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.MainFrame;
 
 /**
  * Coverage for the beam-repair and tuplet-invalidation behavior of
@@ -60,24 +55,16 @@ import songscribe.ui.component.MainFrame;
  * {@code ElementReplaceable} action and asserts on the exact mutation records
  * emitted into the open modification bracket.
  */
-class SelectionCoordinatorValidateSpansTest extends UnitTest {
+class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
 
-    private MockedStatic<MainFrame> mainFrameMock;
     private ElementTypeAction QUARTER_ACTION;
     private ElementTypeAction SIXTEENTH_ACTION;
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        MockEnvHelper.setupMockEnv(mainFrameMock);
-        var mainFrame = MainFrame.getInstance();
+        var mainFrame = mainFrame();
         QUARTER_ACTION = ElementTypeAction.createQuarterNoteAction(mainFrame);
         SIXTEENTH_ACTION = ElementTypeAction.createSixteenthNoteAction(mainFrame);
-    }
-
-    @AfterEach
-    void tearDown() {
-        mainFrameMock.close();
     }
 
     private final List<Mutation> capturedMutations = new ArrayList<>();
@@ -317,7 +304,7 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
         // middle element changes its duration, which invalidates the tuplet.
         // Line.modifyElement detects DOT_COUNT in the modified fields and emits
         // a TupletRemoval directly — independent of validateSpans.
-        var dotAction = DotAction.createDotAction(MainFrame.getInstance());
+        var dotAction = DotAction.createDotAction(mainFrame());
         var notes = List.<StaffElement>of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),

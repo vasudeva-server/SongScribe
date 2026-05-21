@@ -232,7 +232,7 @@ public class UIAction extends AbstractAction {
         Flag... flags
     ) {
         super(name);
-        if (mainFrame == null) throw new IllegalArgumentException("mainFrame");
+        if (mainFrame == null) throw new IllegalArgumentException("mainFrame must not be null");
         this.mainFrame = mainFrame;
         putValue(ACTION_COMMAND_KEY, actionCommand);
         putValue(SHORT_DESCRIPTION, tooltip);

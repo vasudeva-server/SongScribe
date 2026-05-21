@@ -20,44 +20,14 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.ui.action.UIAction.AppMenuAction;
-import songscribe.ui.component.MainFrame;
 
-class ActionsAppMenuTest extends UnitTest {
-
-    private MockedStatic<MainFrame> mainFrameMock;
-
-    @BeforeEach
-    void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        var env = MockEnvHelper.setupMockEnv(mainFrameMock);
-
-        // Actions class initialization registers keystrokes via UIUtils,
-        // which needs getRootPane() on the MainFrame mock.
-        var mockRootPane = mock(JRootPane.class);
-        when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
-        when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-        when(env.frame().getRootPane()).thenReturn(mockRootPane);
-    }
-
-    @AfterEach
-    void tearDown() {
-        mainFrameMock.close();
-    }
+class ActionsAppMenuTest extends MainFrameMockTest {
 
     @Test
     void testGetAppMenuActionsReturnsExpectedActions() {

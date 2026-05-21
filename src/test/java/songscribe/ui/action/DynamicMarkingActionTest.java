@@ -23,36 +23,34 @@ package songscribe.ui.action;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import module java.desktop;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.StaffElementFactory;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
-import songscribe.ui.component.MainFrame;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.ui.selection.ElementSelection;
 
-class DynamicMarkingActionTest extends UnitTest {
+class DynamicMarkingActionTest extends MainFrameMockTest {
 
-    private static final MainFrame MOCK_FRAME = mock(MainFrame.class, RETURNS_DEEP_STUBS);
+    private DynamicMarkingAction FORTE_ACTION;
+    private DynamicMarkingAction PIANO_ACTION;
 
-    private static final DynamicMarkingAction FORTE_ACTION =
-        DynamicMarkingAction.createForteAction(MOCK_FRAME);
-
-    private static final DynamicMarkingAction PIANO_ACTION =
-        DynamicMarkingAction.createPianoAction(MOCK_FRAME);
+    @BeforeEach
+    void createActions() {
+        FORTE_ACTION = DynamicMarkingAction.createForteAction(mainFrame());
+        PIANO_ACTION = DynamicMarkingAction.createPianoAction(mainFrame());
+    }
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
@@ -126,106 +124,92 @@ class DynamicMarkingActionTest extends UnitTest {
     @Nested
     class EnabledState {
 
-        private MockEnvHelper.MockEnv setupFullMockEnv(MockedStatic<MainFrame> mainFrameMock) {
-            var env = MockEnvHelper.setupMockEnv(mainFrameMock);
-
+        private void setupRootPaneStub() {
             var mockRootPane = mock(JRootPane.class);
             when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
             when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-            when(env.frame().getRootPane()).thenReturn(mockRootPane);
-
-            return env;
+            when(mockEnv().frame().getRootPane()).thenReturn(mockRootPane);
         }
 
         @Test
         void testDisabledWhenNoSelection() {
-            try (var mainFrameMock = mockStatic(MainFrame.class)) {
-                var env = setupFullMockEnv(mainFrameMock);
-                when(env.score().getSelectionSize()).thenReturn(0);
+            setupRootPaneStub();
+            when(mockEnv().score().getSelectionSize()).thenReturn(0);
 
-                var action = DynamicMarkingAction.createForteAction(MainFrame.getInstance());
-                action.updateEnabledState();
-                assertThat(action.isEnabled()).isFalse();
-            }
+            var action = DynamicMarkingAction.createForteAction(mainFrame());
+            action.updateEnabledState();
+            assertThat(action.isEnabled()).isFalse();
         }
 
         @Test
         void testDisabledWhenMultipleNotesSelected() {
-            try (var mainFrameMock = mockStatic(MainFrame.class)) {
-                var env = setupFullMockEnv(mainFrameMock);
-                when(env.score().getSelectionSize()).thenReturn(2);
-                when(env.coordinator().hasActiveSelection()).thenReturn(true);
+            setupRootPaneStub();
+            when(mockEnv().score().getSelectionSize()).thenReturn(2);
+            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
 
-                var action = DynamicMarkingAction.createForteAction(MainFrame.getInstance());
-                action.updateEnabledState();
-                assertThat(action.isEnabled()).isFalse();
-            }
+            var action = DynamicMarkingAction.createForteAction(mainFrame());
+            action.updateEnabledState();
+            assertThat(action.isEnabled()).isFalse();
         }
 
         @Test
         void testEnabledWhenSingleNoteNotInHairpin() {
-            try (var mainFrameMock = mockStatic(MainFrame.class)) {
-                var env = setupFullMockEnv(mainFrameMock);
-                var line = detachedLine();
-                var selection = new ElementSelection(line, 0, 0);
+            setupRootPaneStub();
+            var line = detachedLine();
+            var selection = new ElementSelection(line, 0, 0);
 
-                when(env.score().getSelectionSize()).thenReturn(1);
-                when(env.coordinator().hasActiveSelection()).thenReturn(true);
-                when(env.coordinator().isApplicableToSelection(any())).thenReturn(true);
-                when(env.coordinator().getSelection()).thenReturn(selection);
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
+            when(mockEnv().coordinator().isApplicableToSelection(any())).thenReturn(true);
+            when(mockEnv().coordinator().getSelection()).thenReturn(selection);
 
-                var action = DynamicMarkingAction.createForteAction(MainFrame.getInstance());
-                action.updateEnabledState();
-                assertThat(action.isEnabled()).isTrue();
-            }
+            var action = DynamicMarkingAction.createForteAction(mainFrame());
+            action.updateEnabledState();
+            assertThat(action.isEnabled()).isTrue();
         }
 
         @Test
         void testDisabledWhenNoteInsideCrescendoRange() {
-            try (var mainFrameMock = mockStatic(MainFrame.class)) {
-                var env = setupFullMockEnv(mainFrameMock);
-                var line = detachedLine();
+            setupRootPaneStub();
+            var line = detachedLine();
 
-                for (var i = 0; i < 4; i++) {
-                    line.addElement(StaffElementFactory.crotchet());
-                }
-
-                line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(3)));
-                var selection = new ElementSelection(line, 1, 1);
-
-                when(env.score().getSelectionSize()).thenReturn(1);
-                when(env.coordinator().hasActiveSelection()).thenReturn(true);
-                when(env.coordinator().isApplicableToSelection(any())).thenReturn(true);
-                when(env.coordinator().getSelection()).thenReturn(selection);
-
-                var action = DynamicMarkingAction.createForteAction(MainFrame.getInstance());
-                action.updateEnabledState();
-                assertThat(action.isEnabled()).isFalse();
+            for (var i = 0; i < 4; i++) {
+                line.addElement(StaffElementFactory.crotchet());
             }
+
+            line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(3)));
+            var selection = new ElementSelection(line, 1, 1);
+
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
+            when(mockEnv().coordinator().isApplicableToSelection(any())).thenReturn(true);
+            when(mockEnv().coordinator().getSelection()).thenReturn(selection);
+
+            var action = DynamicMarkingAction.createForteAction(mainFrame());
+            action.updateEnabledState();
+            assertThat(action.isEnabled()).isFalse();
         }
 
         @Test
         void testDisabledWhenNoteInsideDiminuendoRange() {
-            try (var mainFrameMock = mockStatic(MainFrame.class)) {
-                var env = setupFullMockEnv(mainFrameMock);
-                var line = detachedLine();
+            setupRootPaneStub();
+            var line = detachedLine();
 
-                for (var i = 0; i < 4; i++) {
-                    line.addElement(StaffElementFactory.crotchet());
-                }
-
-                line.addRangeElement(new Diminuendo(line.getElement(0), line.getElement(3)));
-                var selection = new ElementSelection(line, 1, 1);
-
-                when(env.score().getSelectionSize()).thenReturn(1);
-                when(env.coordinator().hasActiveSelection()).thenReturn(true);
-                when(env.coordinator().isApplicableToSelection(any())).thenReturn(true);
-                when(env.coordinator().getSelection()).thenReturn(selection);
-
-                var action = DynamicMarkingAction.createForteAction(MainFrame.getInstance());
-                action.updateEnabledState();
-                assertThat(action.isEnabled()).isFalse();
+            for (var i = 0; i < 4; i++) {
+                line.addElement(StaffElementFactory.crotchet());
             }
+
+            line.addRangeElement(new Diminuendo(line.getElement(0), line.getElement(3)));
+            var selection = new ElementSelection(line, 1, 1);
+
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
+            when(mockEnv().coordinator().isApplicableToSelection(any())).thenReturn(true);
+            when(mockEnv().coordinator().getSelection()).thenReturn(selection);
+
+            var action = DynamicMarkingAction.createForteAction(mainFrame());
+            action.updateEnabledState();
+            assertThat(action.isEnabled()).isFalse();
         }
     }
 

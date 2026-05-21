@@ -27,9 +27,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.prefs.Prefs;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.LoopPlaybackAction;
 import songscribe.ui.playback.PlayPauseAction;
 import songscribe.ui.playback.PlayWithRepeatsAction;
@@ -48,21 +47,17 @@ import static org.mockito.Mockito.mockStatic;
  * and add Flag.DISABLE_WHEN_EDITING_TEXT to the action's flags.
  * To remove an action from enforcement: remove it from the list below and leave a comment explaining why.
  */
-class LyricEditorActionAuditTest extends UnitTest {
+class LyricEditorActionAuditTest extends MainFrameMockTest {
 
-    private MockedStatic<MainFrame> mainFrameMock;
     private MockedStatic<Prefs> prefsMock;
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
         prefsMock = mockStatic(Prefs.class);
-        MockEnvHelper.setupMockEnv(mainFrameMock);
     }
 
     @AfterEach
     void tearDown() {
-        mainFrameMock.close();
         prefsMock.close();
     }
 
@@ -70,7 +65,7 @@ class LyricEditorActionAuditTest extends UnitTest {
 
     @Test
     void testAllToolbarActionsCarryDisableWhenEditingTextFlag() {
-        var mainFrame = MainFrame.getInstance();
+        var mainFrame = mainFrame();
         var toolbarActions = List.of(
             // DurationToolbar
             ElementTypeAction.createGraceEighthNoteAction(mainFrame),

@@ -21,22 +21,23 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
 import songscribe.dom.Articulation;
-import songscribe.ui.component.MainFrame;
 
-class DurationArticulationActionTest extends UnitTest {
+class DurationArticulationActionTest extends MainFrameMockTest {
 
-    private static final MainFrame MOCK_FRAME = mock(MainFrame.class);
+    private DurationArticulationAction action;
 
-    private final DurationArticulationAction action =
-        DurationArticulationAction.createStaccatoAction(MOCK_FRAME);
+    @BeforeEach
+    void createAction() {
+        action = DurationArticulationAction.createStaccatoAction(mainFrame());
+    }
 
     @Test
     void testApplyToNoteAppliesArticulation() {

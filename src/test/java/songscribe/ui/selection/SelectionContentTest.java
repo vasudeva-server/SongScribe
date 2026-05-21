@@ -21,43 +21,24 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mockStatic;
 
 import java.util.List;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
-import songscribe.ui.action.MockEnvHelper;
-import songscribe.ui.component.MainFrame;
 
-class SelectionContentTest extends UnitTest {
-
-    private MockedStatic<MainFrame> mainFrameMock;
-
-    @BeforeEach
-    void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        MockEnvHelper.setupMockEnv(mainFrameMock);
-    }
-
-    @AfterEach
-    void tearDown() {
-        mainFrameMock.close();
-    }
+class SelectionContentTest extends MainFrameMockTest {
 
     // -- isApplicableToSelection --
 
     @Test
     void testActionNotApplicableToBarlines() {
         // AccidentalAction does not apply to barlines
-        var action = AccidentalAction.createSharpAction(MainFrame.getInstance());
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(ElementType.SINGLE_BARLINE.newInstance()),
             List.of(action)
@@ -70,7 +51,7 @@ class SelectionContentTest extends UnitTest {
 
     @Test
     void testApplicableActionWithApplicableNotesReturnsTrue() {
-        var action = AccidentalAction.createSharpAction(MainFrame.getInstance());
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(ElementType.CROTCHET.newInstance()),
             List.of(action)
@@ -84,7 +65,7 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testApplicableActionWithMixedNotesReturnsTrue() {
         // AccidentalAction applies to the note but not the rest
-        var action = AccidentalAction.createSharpAction(MainFrame.getInstance());
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET_REST.newInstance()),
             List.of(action)
@@ -98,7 +79,7 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testApplicableActionWithNoApplicableNotesReturnsFalse() {
         // AccidentalAction applies only to notes, not rests
-        var action = AccidentalAction.createSharpAction(MainFrame.getInstance());
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(ElementType.CROTCHET_REST.newInstance()),
             List.of(action)
@@ -112,7 +93,7 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testDotActionAppliesToDurations() {
         // DotAction applies to both notes and rests (durations)
-        var action = DotAction.createDotAction(MainFrame.getInstance());
+        var action = DotAction.createDotAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(ElementType.CROTCHET_REST.newInstance()),
             List.of(action)
@@ -125,7 +106,7 @@ class SelectionContentTest extends UnitTest {
 
     @Test
     void testNoSelectionIsNotApplicable() {
-        var action = AccidentalAction.createSharpAction(MainFrame.getInstance());
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(ElementType.CROTCHET.newInstance()),
             List.of(action)

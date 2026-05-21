@@ -50,6 +50,9 @@ import songscribe.ui.dialog.SongSettingsDialog;
  */
 public final class Actions {
 
+    // Resolved once at class load and injected into every action below, so individual
+    // actions no longer call MainFrame.getInstance() themselves. Assumes the MainFrame
+    // singleton is already constructed before this holder class is first referenced.
     private static final MainFrame MAIN_FRAME = MainFrame.getInstance();
 
     private static final Logger LOG = LoggerFactory.getLogger(Actions.class);

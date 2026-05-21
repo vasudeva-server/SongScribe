@@ -22,7 +22,6 @@ package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,81 +30,59 @@ import module java.desktop;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.Line;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.selection.ElementSelection;
 
-class ApplyToSelectionInterceptTest extends UnitTest {
+class ApplyToSelectionInterceptTest extends MainFrameMockTest {
 
     // -- applyToSelectionIfActive: non-reflectable --
 
     @Test
     void testNonReflectableReturnsFalse() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            var action = new UIAction(MainFrame.getInstance(), "Test", null, 0, "test", "Test");
-            assertThat(action.applyToSelectionIfActive()).isFalse();
-        }
+        var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
+        assertThat(action.applyToSelectionIfActive()).isFalse();
     }
 
     // -- applyToSelectionIfActive: no selection --
 
     @Test
     void testReflectableWithNoSelectionReturnsFalse() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            when(env.coordinator().getSelection()).thenReturn(null);
+        when(mockEnv().coordinator().getSelection()).thenReturn(null);
 
-            var action = FermataAction.createAction(MainFrame.getInstance());
+        var action = FermataAction.createAction(mainFrame());
 
-            assertThat(action.applyToSelectionIfActive()).isFalse();
-            verify(env.coordinator(), never()).applyActionToSelection(
-                ArgumentMatchers.any(),
-                ArgumentMatchers.anyBoolean()
-            );
-        }
+        assertThat(action.applyToSelectionIfActive()).isFalse();
+        verify(mockEnv().coordinator(), never()).applyActionToSelection(
+            ArgumentMatchers.any(),
+            ArgumentMatchers.anyBoolean()
+        );
     }
 
     // -- applyToSelectionIfActive: reflectable with active selection --
 
     @Test
     void testReflectableWithSelectionPassesSelectedFalse() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            var selection = new ElementSelection(mock(Line.class), 0, 2);
-            when(env.coordinator().getSelection()).thenReturn(selection);
+        var selection = new ElementSelection(mock(Line.class), 0, 2);
+        when(mockEnv().coordinator().getSelection()).thenReturn(selection);
 
-            var action = FermataAction.createAction(MainFrame.getInstance());
-            action.setSelected(false);
+        var action = FermataAction.createAction(mainFrame());
+        action.setSelected(false);
 
-            assertThat(action.applyToSelectionIfActive()).isTrue();
-            verify(env.coordinator()).applyActionToSelection(action, false);
-        }
+        assertThat(action.applyToSelectionIfActive()).isTrue();
+        verify(mockEnv().coordinator()).applyActionToSelection(action, false);
     }
 
     @Test
     void testReflectableWithSelectionReturnsTrue() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            var selection = new ElementSelection(mock(Line.class), 0, 2);
-            when(env.coordinator().getSelection()).thenReturn(selection);
+        var selection = new ElementSelection(mock(Line.class), 0, 2);
+        when(mockEnv().coordinator().getSelection()).thenReturn(selection);
 
-            var action = FermataAction.createAction(MainFrame.getInstance());
-            action.setSelected(true);
+        var action = FermataAction.createAction(mainFrame());
+        action.setSelected(true);
 
-            assertThat(action.applyToSelectionIfActive()).isTrue();
-            verify(env.coordinator()).applyActionToSelection(action, true);
-        }
-    }
-
-    // -- helpers --
-
-    private MockEnvHelper.MockEnv setupMockEnv(
-        MockedStatic<MainFrame> mainFrameMock
-    ) {
-        return MockEnvHelper.setupMockEnv(mainFrameMock);
+        assertThat(action.applyToSelectionIfActive()).isTrue();
+        verify(mockEnv().coordinator()).applyActionToSelection(action, true);
     }
 }

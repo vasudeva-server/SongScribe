@@ -21,20 +21,22 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
-import songscribe.ui.component.MainFrame;
 
-class FermataActionTest extends UnitTest {
+class FermataActionTest extends MainFrameMockTest {
 
-    private static final MainFrame MOCK_FRAME = mock(MainFrame.class);
+    private FermataAction action;
 
-    private final FermataAction action = FermataAction.createAction(MOCK_FRAME);
+    @BeforeEach
+    void createAction() {
+        action = FermataAction.createAction(mainFrame());
+    }
 
     @Test
     void testApplyToNoteAppliesFermata() {

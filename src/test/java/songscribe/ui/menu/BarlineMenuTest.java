@@ -28,50 +28,35 @@ import static org.mockito.Mockito.when;
 
 import module java.desktop;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
+import songscribe.MainFrameMockTest;
 import songscribe.Strings;
-import songscribe.UnitTest;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.MainFrame;
 
-class BarlineMenuTest extends UnitTest {
+class BarlineMenuTest extends MainFrameMockTest {
 
-    private MockedStatic<MainFrame> mainFrameMock;
-    private MainFrame mainFrame;
     private Song song;
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        var env = MockEnvHelper.setupMockEnv(mainFrameMock);
-        mainFrame = env.frame();
-
         var mockRootPane = mock(JRootPane.class);
         when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
         when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-        when(mainFrame.getRootPane()).thenReturn(mockRootPane);
+        when(mockEnv().frame().getRootPane()).thenReturn(mockRootPane);
 
         song = new Song();
-        when(env.score().isInitialized()).thenReturn(true);
-        when(env.score().getSong()).thenReturn(song);
-    }
-
-    @AfterEach
-    void tearDown() {
-        mainFrameMock.close();
+        when(mockEnv().score().isInitialized()).thenReturn(true);
+        when(mockEnv().score().getSong()).thenReturn(song);
     }
 
     @Test
     void testFinalDoubleBarlineItemReplacesTerminalWithoutConfirm() {
-        var menu = new BarlineMenu(mainFrame);
+        var menu = new BarlineMenu(mainFrame());
         song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
         var finalBarlineItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE));
@@ -89,7 +74,7 @@ class BarlineMenuTest extends UnitTest {
 
     @Test
     void testFinalRightRepeatItemReplacesTerminalWithoutConfirm() {
-        var menu = new BarlineMenu(mainFrame);
+        var menu = new BarlineMenu(mainFrame());
         var rightRepeatItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT));
 
         try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
@@ -105,7 +90,7 @@ class BarlineMenuTest extends UnitTest {
 
     @Test
     void testRadioSelectionReflectsCurrentTerminalForFinalBarline() {
-        var menu = new BarlineMenu(mainFrame);
+        var menu = new BarlineMenu(mainFrame());
         var finalBarlineItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE));
         var rightRepeatItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT));
 
@@ -118,7 +103,7 @@ class BarlineMenuTest extends UnitTest {
 
     @Test
     void testRadioSelectionReflectsCurrentTerminalForRightRepeat() {
-        var menu = new BarlineMenu(mainFrame);
+        var menu = new BarlineMenu(mainFrame());
         var finalBarlineItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE));
         var rightRepeatItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT));
 

@@ -21,22 +21,18 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.SelectableUIAction;
-import songscribe.ui.component.MainFrame;
 
-class ReflectionHandlerTest extends UnitTest {
-
-    private static final MainFrame MOCK_FRAME = mock(MainFrame.class);
+class ReflectionHandlerTest extends MainFrameMockTest {
 
     // -- Section B: Core Logic --
 
@@ -48,7 +44,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -70,7 +66,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -92,7 +88,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setAccidental(StaffElement.Accidental.FLAT);
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -111,7 +107,7 @@ class ReflectionHandlerTest extends UnitTest {
         var rest1 = ElementType.CROTCHET_REST.newInstance();
         var rest2 = ElementType.CROTCHET_REST.newInstance();
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -133,7 +129,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setAccidental(StaffElement.Accidental.FLAT);
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
@@ -165,7 +161,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -194,7 +190,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.FLAT);
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(true);
 
@@ -219,7 +215,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
@@ -239,7 +235,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
@@ -260,7 +256,7 @@ class ReflectionHandlerTest extends UnitTest {
 
         var rest = ElementType.CROTCHET_REST.newInstance();
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -281,7 +277,7 @@ class ReflectionHandlerTest extends UnitTest {
 
         var rest = ElementType.CROTCHET_REST.newInstance();
 
-        var action = AccidentalAction.createSharpAction(MOCK_FRAME);
+        var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -300,8 +296,8 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action1 = AccidentalAction.createSharpAction(MOCK_FRAME);
-        var action2 = AccidentalAction.createFlatAction(MOCK_FRAME);
+        var action1 = AccidentalAction.createSharpAction(mainFrame());
+        var action2 = AccidentalAction.createFlatAction(mainFrame());
         var uiAction1 = (SelectableUIAction) action1;
         var uiAction2 = (SelectableUIAction) action2;
         uiAction1.setEnabled(false);
@@ -326,8 +322,8 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action1 = AccidentalAction.createSharpAction(MOCK_FRAME);
-        var action2 = AccidentalAction.createFlatAction(MOCK_FRAME);
+        var action1 = AccidentalAction.createSharpAction(mainFrame());
+        var action2 = AccidentalAction.createFlatAction(mainFrame());
         var uiAction1 = (SelectableUIAction) action1;
         var uiAction2 = (SelectableUIAction) action2;
 

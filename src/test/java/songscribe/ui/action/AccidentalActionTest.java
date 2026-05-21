@@ -21,20 +21,22 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.ui.component.MainFrame;
 
-class AccidentalActionTest extends UnitTest {
+class AccidentalActionTest extends MainFrameMockTest {
 
-    private static final MainFrame MOCK_FRAME = mock(MainFrame.class);
+    private AccidentalAction action;
 
-    private final AccidentalAction action = AccidentalAction.createSharpAction(MOCK_FRAME);
+    @BeforeEach
+    void createAction() {
+        action = AccidentalAction.createSharpAction(mainFrame());
+    }
 
     @Test
     void testApplyToNoteAppliesAccidental() {

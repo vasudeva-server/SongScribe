@@ -25,20 +25,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
@@ -48,9 +45,7 @@ import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
-import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.MainFrame;
 import songscribe.dom.Articulation;
 import songscribe.dom.FermataAttachment;
 
@@ -59,11 +54,10 @@ import songscribe.dom.FermataAttachment;
  * These tests exercise the full flow: select → reflect → apply → verify,
  * combining multiple subsystems (coordinator, actions, content queries).
  */
-class SelectionApplyIntegrationTest extends UnitTest {
+class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
     // -- Shared action instances --
 
-    private MockedStatic<MainFrame> mainFrameMock;
     private ElementTypeAction QUARTER_ACTION;
     private ElementTypeAction HALF_ACTION;
     private ElementTypeAction BARLINE_ACTION;
@@ -76,9 +70,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        MockEnvHelper.setupMockEnv(mainFrameMock);
-        var mainFrame = MainFrame.getInstance();
+        var mainFrame = mainFrame();
         QUARTER_ACTION = ElementTypeAction.createQuarterNoteAction(mainFrame);
         HALF_ACTION = ElementTypeAction.createHalfNoteAction(mainFrame);
         BARLINE_ACTION = ElementTypeAction.createSingleBarlineAction(mainFrame);
@@ -88,11 +80,6 @@ class SelectionApplyIntegrationTest extends UnitTest {
         DOT_ACTION = DotAction.createDotAction(mainFrame);
         FERMATA_ACTION = FermataAction.createAction(mainFrame);
         STACCATO_ACTION = DurationArticulationAction.createStaccatoAction(mainFrame);
-    }
-
-    @AfterEach
-    void tearDown() {
-        mainFrameMock.close();
     }
 
     private SelectionCoordinator createCoordinator(
@@ -532,8 +519,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
         void testManagedActionsIncludeNonReflectableWithFlag() {
             var note = ElementType.CROTCHET.newInstance();
 
-            var fermataAction = FermataAction.createAction(MainFrame.getInstance());
-            var flaggedAction = new UIAction(MainFrame.getInstance(), "Beam", null, 0, "beam", "Toggle beam");
+            var fermataAction = FermataAction.createAction(mainFrame());
+            var flaggedAction = new UIAction(mainFrame(), "Beam", null, 0, "beam", "Toggle beam");
             flaggedAction.setFlags(UIAction.Flag.DISABLE_WHEN_BAR_SELECTED);
 
             var reflectableActions = List.<UIAction.Reflectable>of(fermataAction);
@@ -573,8 +560,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
             var note = ElementType.CROTCHET.newInstance();
             note.setAccidental(StaffElement.Accidental.FLAT);
 
-            var sharpAction = AccidentalAction.createSharpAction(MainFrame.getInstance());
-            var flatAction = AccidentalAction.createFlatAction(MainFrame.getInstance());
+            var sharpAction = AccidentalAction.createSharpAction(mainFrame());
+            var flatAction = AccidentalAction.createFlatAction(mainFrame());
             // Pre-selection state
             sharpAction.setSelected(false);
             sharpAction.setEnabled(true);

@@ -21,20 +21,22 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.ui.component.MainFrame;
 
-class AccidentalInParensActionTest extends UnitTest {
+class AccidentalInParensActionTest extends MainFrameMockTest {
 
-    private static final MainFrame MOCK_FRAME = mock(MainFrame.class);
+    private AccidentalInParensAction action;
 
-    private final AccidentalInParensAction action = AccidentalInParensAction.createAction(MOCK_FRAME);
+    @BeforeEach
+    void createAction() {
+        action = AccidentalInParensAction.createAction(mainFrame());
+    }
 
     @Test
     void testApplyToNoteAppliesParentheses() {

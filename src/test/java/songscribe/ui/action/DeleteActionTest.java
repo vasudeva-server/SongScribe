@@ -29,23 +29,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.dom.ElementType;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.SelectionCoordinator;
 
-class DeleteActionTest extends UnitTest {
+class DeleteActionTest extends MainFrameMockTest {
 
-    private MockedStatic<MainFrame> mainFrameMock;
     private MockedStatic<PlaybackController> playbackControllerMock;
-    private MockEnvHelper.MockEnv env;
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        env = MockEnvHelper.setupMockEnv(mainFrameMock);
         // Must follow MainFrame setup: PlaybackController's static initializer creates
         // playback actions that call MainFrame.getInstance().getRootPane().
         playbackControllerMock = mockStatic(PlaybackController.class);
@@ -55,20 +50,19 @@ class DeleteActionTest extends UnitTest {
     @AfterEach
     void tearDown() {
         playbackControllerMock.close();
-        mainFrameMock.close();
     }
 
     @Test
     void testDeleteEnabledForLyricSelection() {
         var element = ElementType.CROTCHET.newInstance();
-        when(env.coordinator().hasLyricSelection()).thenReturn(true);
-        when(env.coordinator().getLyricSelection()).thenReturn(
+        when(mockEnv().coordinator().hasLyricSelection()).thenReturn(true);
+        when(mockEnv().coordinator().getLyricSelection()).thenReturn(
             new SelectionCoordinator.LyricSelection(element, 1));
 
-        var action = DeleteAction.createAction(MainFrame.getInstance());
+        var action = DeleteAction.createAction(mainFrame());
         action.setEnabled(false);
 
-        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(env.score()));
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
 
         assertThat(action.isEnabled()).isTrue();
     }

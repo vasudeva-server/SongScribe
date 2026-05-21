@@ -22,103 +22,89 @@ package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import module java.desktop;
 
 import org.junit.jupiter.api.Test;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.ui.Mode;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.SelectionCoordinator;
 
-class UIActionReflectableGuardTest extends UnitTest {
+class UIActionReflectableGuardTest extends MainFrameMockTest {
 
     @Test
     void testNonReflectableWithSelectionRunsNormalLogic() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var mockFrame = mock(MainFrame.class);
-            var mockScore = mock(ScoreView.class);
-            var mockCoordinator = mock(SelectionCoordinator.class);
+        var mockScore = mock(ScoreView.class);
+        var mockCoordinator = mock(SelectionCoordinator.class);
 
-            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-            when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockFrame.requireScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
-            when(mockCoordinator.getSelectionSize()).thenReturn(2);
+        when(mainFrame().getScoreView()).thenReturn(mockScore);
+        when(mainFrame().requireScoreView()).thenReturn(mockScore);
+        when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
+        when(mockCoordinator.getSelectionSize()).thenReturn(2);
 
-            // Make enableInAdjustmentMode return false so the flag chain
-            // short-circuits to false, proving normal logic ran despite selection > 0.
-            when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
-            when(mockScore.getSelectionSize()).thenReturn(2);
+        // Make enableInAdjustmentMode return false so the flag chain
+        // short-circuits to false, proving normal logic ran despite selection > 0.
+        when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
+        when(mockScore.getSelectionSize()).thenReturn(2);
 
-            var nonReflectable = new UIAction(MainFrame.getInstance(), "Test", null, 0, "test", "Test");
-            nonReflectable.setFlags(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE);
-            nonReflectable.setEnabled(true);
+        var nonReflectable = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
+        nonReflectable.setFlags(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE);
+        nonReflectable.setEnabled(true);
 
-            var result = nonReflectable.updateEnabledState();
+        var result = nonReflectable.updateEnabledState();
 
-            assertThat(result).isFalse();
-            assertThat(nonReflectable.isEnabled()).isFalse();
-        }
+        assertThat(result).isFalse();
+        assertThat(nonReflectable.isEnabled()).isFalse();
     }
 
     @Test
     void testReflectableWithNoSelectionRunsNormalLogic() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var mockFrame = mock(MainFrame.class);
-            var mockScore = mock(ScoreView.class);
-            var mockCoordinator = mock(SelectionCoordinator.class);
+        var mockScore = mock(ScoreView.class);
+        var mockCoordinator = mock(SelectionCoordinator.class);
 
-            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-            when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockFrame.requireScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
-            when(mockCoordinator.getSelectionSize()).thenReturn(0);
+        when(mainFrame().getScoreView()).thenReturn(mockScore);
+        when(mainFrame().requireScoreView()).thenReturn(mockScore);
+        when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
+        when(mockCoordinator.getSelectionSize()).thenReturn(0);
 
-            // Make enableInAdjustmentMode return false so the flag chain
-            // short-circuits to false, proving normal logic ran.
-            when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
-            when(mockScore.getSelectionSize()).thenReturn(0);
+        // Make enableInAdjustmentMode return false so the flag chain
+        // short-circuits to false, proving normal logic ran.
+        when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
+        when(mockScore.getSelectionSize()).thenReturn(0);
 
-            var action = FermataAction.createAction(MainFrame.getInstance());
-            action.setEnabled(true);
+        var action = FermataAction.createAction(mainFrame());
+        action.setEnabled(true);
 
-            var result = action.updateEnabledState();
+        var result = action.updateEnabledState();
 
-            assertThat(result).isFalse();
-            assertThat(action.isEnabled()).isFalse();
-        }
+        assertThat(result).isFalse();
+        assertThat(action.isEnabled()).isFalse();
     }
 
     @Test
     void testReflectableWithSelectionStillRunsFlagLogic() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var mockFrame = mock(MainFrame.class);
-            var mockScore = mock(ScoreView.class);
-            var mockCoordinator = mock(SelectionCoordinator.class);
+        var mockScore = mock(ScoreView.class);
+        var mockCoordinator = mock(SelectionCoordinator.class);
 
-            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-            when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockFrame.requireScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
-            when(mockCoordinator.getSelectionSize()).thenReturn(2);
+        when(mainFrame().getScoreView()).thenReturn(mockScore);
+        when(mainFrame().requireScoreView()).thenReturn(mockScore);
+        when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
+        when(mockCoordinator.getSelectionSize()).thenReturn(2);
 
-            // FermataAction has DISABLE_IN_ADJUSTMENT_MODE, so adjustment mode
-            // should disable it even when a selection is active.
-            when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
-            when(mockScore.getSelectionSize()).thenReturn(2);
+        // FermataAction has DISABLE_IN_ADJUSTMENT_MODE, so adjustment mode
+        // should disable it even when a selection is active.
+        when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
+        when(mockScore.getSelectionSize()).thenReturn(2);
 
-            var action = FermataAction.createAction(MainFrame.getInstance());
-            action.setEnabled(true);
+        var action = FermataAction.createAction(mainFrame());
+        action.setEnabled(true);
 
-            var result = action.updateEnabledState();
+        var result = action.updateEnabledState();
 
-            assertThat(result).isFalse();
-            assertThat(action.isEnabled()).isFalse();
-        }
+        assertThat(result).isFalse();
+        assertThat(action.isEnabled()).isFalse();
     }
 }

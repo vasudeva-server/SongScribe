@@ -33,42 +33,35 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-class BaseDialogPositionTest extends UnitTest {
+class BaseDialogPositionTest extends MainFrameMockTest {
 
     private static final Point DIALOG_POSITION = new Point(200, 300);
     private static final Point DIALOG2_POSITION = new Point(400, 500);
 
-    private MockedStatic<MainFrame> mainFrameMock;
     private MockedStatic<UIUtils> uiUtilsMock;
     private MockedStatic<Prefs> prefsMock;
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
         uiUtilsMock = mockStatic(UIUtils.class);
         prefsMock = mockStatic(Prefs.class);
 
-        var mockFrame = mock(MainFrame.class);
-        mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-
         prefsMock.when(() -> Prefs.getMap(any())).thenReturn(Collections.emptyMap());
 
-        BaseDialogTestHelper.configureMockFrame(mockFrame);
+        BaseDialogTestHelper.configureMockFrame(mainFrame());
 
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedGeometry();
@@ -80,7 +73,6 @@ class BaseDialogPositionTest extends UnitTest {
         BaseDialog.resetSavedGeometry();
         prefsMock.close();
         uiUtilsMock.close();
-        mainFrameMock.close();
     }
 
     @Test

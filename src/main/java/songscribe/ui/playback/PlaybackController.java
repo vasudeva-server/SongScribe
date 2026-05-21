@@ -54,6 +54,9 @@ public final class PlaybackController {
     public static final int NOTE_VELOCITY = 100;
     public static final int ACCENTED_NOTE_VELOCITY = 127;
 
+    // Resolved once at class load and injected into every action below, so individual
+    // actions no longer call MainFrame.getInstance() themselves. Assumes the MainFrame
+    // singleton is already constructed before this holder class is first referenced.
     private static final MainFrame MAIN_FRAME = MainFrame.getInstance();
     private static final Logger LOG = LoggerFactory.getLogger(PlaybackController.class);
 

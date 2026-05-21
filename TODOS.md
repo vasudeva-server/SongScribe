@@ -117,3 +117,26 @@ events may still slip through, and revisit if any concrete crash-on-quit is
 observed.
 
 **Depends on:** Shutdown registry shipped (`specs/shutdown-registry.md`).
+
+## Finish decoupling actions from the MainFrame singleton
+
+**What:** Thread `MainFrame` (or narrower collaborators) through the call sites that
+still reach `MainFrame.getInstance()` *transitively* from action code paths, so
+action-level unit tests no longer need `mockStatic(MainFrame.class)`.
+
+**Why:** Commit f59f21f3 (#375) injected `MainFrame` into `UIAction` constructors,
+but `getInstance()` is still reached indirectly (e.g. via `doActionPerformed`
+touching the score view / selection coordinator). Evidence: 18 of 26 migrated test
+files still require `mockStatic(MainFrame.class)`. The constructor injection is
+therefore only a partial decoupling — construction is clean, behavior paths are not.
+
+**Context:** Start by tracing which collaborators action `doActionPerformed`
+implementations pull from `MainFrame.getInstance()` (score view, selection
+coordinator, controller). These are the same objects `MockEnvHelper.setupMockEnv`
+stubs, so that helper is a map of the transitive surface. Inject those collaborators
+rather than fetching the singleton. Once a code path no longer calls `getInstance()`,
+its test can drop to a plain injected mock (no static mock).
+
+**Depends on / blocked by:** Easiest after the centralized `MainFrameMockTest` lands
+(Phase 2 of plans/issue-375-review-followups.md), so per-test cleanup happens in one
+place. Larger effort; do incrementally, one action family at a time.

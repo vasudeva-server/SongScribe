@@ -28,36 +28,28 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
-import songscribe.ui.component.MainFrame;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
-class BaseDialogCounterTest extends UnitTest {
-
-    private MockedStatic<MainFrame> mainFrameMock;
+class BaseDialogCounterTest extends MainFrameMockTest {
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        var mockFrame = mock(MainFrame.class);
-        mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-        BaseDialogTestHelper.configureMockFrame(mockFrame);
+        BaseDialogTestHelper.configureMockFrame(mainFrame());
         BaseDialog.resetVisibleBlockingDialogCount();
     }
 
     @AfterEach
     void tearDown() {
         BaseDialog.resetVisibleBlockingDialogCount();
-        mainFrameMock.close();
     }
 
     // -- isAnyBlockingDialogVisible: open/close state --

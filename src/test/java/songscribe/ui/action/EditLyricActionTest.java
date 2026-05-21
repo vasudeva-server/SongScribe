@@ -22,16 +22,13 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.ui.component.LyricEditor;
-import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,22 +37,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-class EditLyricActionTest extends UnitTest {
+class EditLyricActionTest extends MainFrameMockTest {
 
-    private MockedStatic<MainFrame> mainFrameMock;
-    private MockEnvHelper.MockEnv mockEnv;
     private EditLyricAction action;
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        mockEnv = MockEnvHelper.setupMockEnv(mainFrameMock);
-        action = EditLyricAction.createAction(MainFrame.getInstance());
-    }
-
-    @AfterEach
-    void tearDown() {
-        mainFrameMock.close();
+        action = EditLyricAction.createAction(mainFrame());
     }
 
     // T27
@@ -65,11 +53,11 @@ class EditLyricActionTest extends UnitTest {
         var mockElement = mock(StaffElement.class);
         var mockLine = mock(Line.class);
         when(mockElement.getLine()).thenReturn(mockLine);
-        when(mockEnv.coordinator().getSingleSelectedElement()).thenReturn(mockElement);
+        when(mockEnv().coordinator().getSingleSelectedElement()).thenReturn(mockElement);
 
         try (var lyricEditorMock = mockStatic(LyricEditor.class)) {
             action.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "edit-lyric"));
-            var score = mockEnv.score();
+            var score = mockEnv().score();
             lyricEditorMock.verify(() -> LyricEditor.openOn(score, mockLine, mockElement));
         }
     }

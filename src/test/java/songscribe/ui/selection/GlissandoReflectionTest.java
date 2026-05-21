@@ -21,17 +21,14 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mockStatic;
 
 import java.util.List;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
@@ -39,13 +36,10 @@ import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
-import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.MainFrame;
 
-class GlissandoReflectionTest extends UnitTest {
+class GlissandoReflectionTest extends MainFrameMockTest {
 
-    private MockedStatic<MainFrame> mainFrameMock;
     private ElementTypeAction crotchetAction;
     private ElementTypeAction minimAction;
     private ElementTypeAction glissandoAction;
@@ -57,9 +51,7 @@ class GlissandoReflectionTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        MockEnvHelper.setupMockEnv(mainFrameMock);
-        var mainFrame = MainFrame.getInstance();
+        var mainFrame = mainFrame();
         crotchetAction = ElementTypeAction.createQuarterNoteAction(mainFrame);
         minimAction = ElementTypeAction.createHalfNoteAction(mainFrame);
         glissandoAction = ElementTypeAction.createGlissandoAction(mainFrame);
@@ -68,11 +60,6 @@ class GlissandoReflectionTest extends UnitTest {
         dotAction = DotAction.createDotAction(mainFrame);
         fermataAction = FermataAction.createAction(mainFrame);
         staccatoAction = DurationArticulationAction.createStaccatoAction(mainFrame);
-    }
-
-    @AfterEach
-    void tearDown() {
-        mainFrameMock.close();
     }
 
     private List<UIAction.Reflectable> allActions() {

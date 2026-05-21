@@ -23,22 +23,18 @@ package songscribe.ui.action;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 
 import module java.desktop;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.dom.ElementType;
-import songscribe.ui.component.MainFrame;
 import songscribe.dom.Tuplet;
 import songscribe.ui.selection.TupletToggleInfo;
 
@@ -46,13 +42,10 @@ import songscribe.ui.selection.TupletToggleInfo;
  * Verifies the enable/disable rules in {@link TupletAction#musicSelectionDidChange}
  * for each row of the Phase 2 table in {@code plans/tuplet-action-enable-disable.md}.
  */
-class TupletActionTest extends UnitTest {
+class TupletActionTest extends MainFrameMockTest {
 
     // > 1 so REQUIRES_MULTIPLE_SELECTION passes, letting updateEnabledState() return true.
     private static final int SELECTION_SIZE = 3;
-
-    private MockedStatic<MainFrame> mainFrameMock;
-    private MockEnvHelper.MockEnv env;
 
     private TupletAction removeAction;
     private TupletAction dupletAction;
@@ -64,23 +57,20 @@ class TupletActionTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        env = MockEnvHelper.setupMockEnv(mainFrameMock);
-
         // PlaybackController's static initializer creates UIAction instances with keyboard
         // shortcuts that call mainFrame.getRootPane(), so we need a JRootPane mock.
         var mockRootPane = mock(JRootPane.class);
         when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
         when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-        when(env.frame().getRootPane()).thenReturn(mockRootPane);
+        when(mockEnv().frame().getRootPane()).thenReturn(mockRootPane);
 
         // Override defaults so that the general updateEnabledState() checks pass,
         // leaving the tuplet-specific logic in charge of the final enabled state.
-        when(env.score().getSelectionSize()).thenReturn(SELECTION_SIZE);
-        when(env.coordinator().hasActiveSelection()).thenReturn(true);
-        when(env.coordinator().selectionHasDurations()).thenReturn(true);
+        when(mockEnv().score().getSelectionSize()).thenReturn(SELECTION_SIZE);
+        when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
+        when(mockEnv().coordinator().selectionHasDurations()).thenReturn(true);
 
-        var mainFrame = MainFrame.getInstance();
+        var mainFrame = mainFrame();
         removeAction = TupletAction.createRemoveAction(mainFrame);
         dupletAction = TupletAction.createDupletAction(mainFrame);
         tripletAction = TupletAction.createTripletAction(mainFrame);
@@ -88,11 +78,6 @@ class TupletActionTest extends UnitTest {
         quintupletAction = TupletAction.createQuintupletAction(mainFrame);
         sextupletAction = TupletAction.createSextupletAction(mainFrame);
         septupletAction = TupletAction.createSeptupletAction(mainFrame);
-    }
-
-    @AfterEach
-    void tearDown() {
-        mainFrameMock.close();
     }
 
     // -----------------------------------------------------------------------
@@ -164,8 +149,8 @@ class TupletActionTest extends UnitTest {
 
     /** Fires {@code musicSelectionDidChange} on all seven actions with the given tuplet state. */
     private void fireAll(TupletToggleInfo info) {
-        when(env.ctrl().canToggleTuplet()).thenReturn(info);
-        var notification = new MusicSelectionDidChangeNotification(env.score());
+        when(mockEnv().ctrl().canToggleTuplet()).thenReturn(info);
+        var notification = new MusicSelectionDidChangeNotification(mockEnv().score());
 
         removeAction.musicSelectionDidChange(notification);
         dupletAction.musicSelectionDidChange(notification);

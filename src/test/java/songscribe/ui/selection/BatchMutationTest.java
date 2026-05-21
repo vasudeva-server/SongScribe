@@ -24,19 +24,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Objects;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.Beam;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
@@ -47,31 +44,21 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
-import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.MainFrame;
 import songscribe.dom.FermataAttachment;
 
-class BatchMutationTest extends UnitTest {
+class BatchMutationTest extends MainFrameMockTest {
 
-    private MockedStatic<MainFrame> mainFrameMock;
     private FermataAction FERMATA_ACTION;
     private AccidentalAction SHARP_ACTION;
     private ElementTypeAction QUARTER_ACTION;
 
     @BeforeEach
     void setUp() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        MockEnvHelper.setupMockEnv(mainFrameMock);
-        var mainFrame = MainFrame.getInstance();
+        var mainFrame = mainFrame();
         FERMATA_ACTION = FermataAction.createAction(mainFrame);
         SHARP_ACTION = AccidentalAction.createSharpAction(mainFrame);
         QUARTER_ACTION = ElementTypeAction.createQuarterNoteAction(mainFrame);
-    }
-
-    @AfterEach
-    void tearDown() {
-        mainFrameMock.close();
     }
 
     /**
