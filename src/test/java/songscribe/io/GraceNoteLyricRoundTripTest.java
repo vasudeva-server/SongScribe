@@ -22,28 +22,13 @@ package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.StringReader;
-
-import javax.xml.parsers.SAXParserFactory;
-
 import org.junit.jupiter.api.Test;
-import org.xml.sax.InputSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.Lyric;
-import songscribe.dom.Song;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
 class GraceNoteLyricRoundTripTest extends UnitTest {
-
-    private static final SAXParserFactory PARSER_FACTORY = SAXParserFactory.newInstance();
-
-    private static Song parseXml(String xml) throws Exception {
-        var parser = PARSER_FACTORY.newSAXParser();
-        var reader = new SongIO.DocumentReader();
-        parser.parse(new InputSource(new StringReader(xml)), reader);
-        return reader.getSong();
-    }
 
     /**
      * Minimal XML with a paired grace+host pair (grace has CONNECTED glissando)

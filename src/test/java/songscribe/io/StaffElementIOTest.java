@@ -26,10 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
 
 import java.io.PrintWriter;
-import java.io.StringReader;
 import java.io.StringWriter;
-
-import javax.xml.parsers.SAXParserFactory;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +35,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
-import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import songscribe.UnitTest;
@@ -52,8 +48,6 @@ import songscribe.dom.DynamicAttachment.DynamicType;
 
 @SuppressWarnings({ "SameReturnValue", "OverlyBroadThrowsClause" })
 class StaffElementIOTest extends UnitTest {
-
-    private static final SAXParserFactory PARSER_FACTORY = SAXParserFactory.newInstance();
 
     private Line line;
     private MockedStatic<MessageCenter> messageCenterMock;
@@ -114,7 +108,7 @@ class StaffElementIOTest extends UnitTest {
         // T31: Read <dynamic type="FORTE"/> → note has DynamicAttachment(FORTE)
         @Test
         void testReadsDynamicElement() throws Exception {
-            var song = parseXmlToSong(buildXmlWithDynamic("FORTE"));
+            var song = parseXml(buildXmlWithDynamic("FORTE"));
             var dynamic = song.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNotNull();
@@ -131,7 +125,7 @@ class StaffElementIOTest extends UnitTest {
         @ParameterizedTest
         @EnumSource(value = DynamicType.class, names = {"PIANISSIMO", "PIANO", "MEZZO_PIANO", "MEZZO_FORTE", "FORTE", "FORTISSIMO"})
         void testRoundTripPreservesDynamicType(DynamicType dynamicType) throws Exception {
-            var comp1 = parseXmlToSong(buildXmlWithDynamic(dynamicType.name()));
+            var comp1 = parseXml(buildXmlWithDynamic(dynamicType.name()));
             var comp2 = roundTrip(comp1);
             var dynamic = comp2.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
@@ -148,7 +142,7 @@ class StaffElementIOTest extends UnitTest {
         // T33: Read file without dynamics → no DynamicAttachment
         @Test
         void testNoDynamicWhenElementAbsent() throws Exception {
-            var song = parseXmlToSong(buildXmlWithoutDynamic());
+            var song = parseXml(buildXmlWithoutDynamic());
             var dynamic = song.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNull();
@@ -159,12 +153,12 @@ class StaffElementIOTest extends UnitTest {
         void testUnknownDynamicTypeIsSkipped() {
             var xml = buildXmlWithDynamic("UNKNOWN_DYNAMIC");
 
-            assertThatCode(() -> parseXmlToSong(xml)).doesNotThrowAnyException();
+            assertThatCode(() -> parseXml(xml)).doesNotThrowAnyException();
         }
 
         @Test
         void testUnknownDynamicTypeProducesNoAttachment() throws Exception {
-            var song = parseXmlToSong(buildXmlWithDynamic("UNKNOWN_DYNAMIC"));
+            var song = parseXml(buildXmlWithDynamic("UNKNOWN_DYNAMIC"));
             var dynamic = song.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNull();
@@ -177,13 +171,6 @@ class StaffElementIOTest extends UnitTest {
         var sw = new StringWriter();
         StaffElementIO.writeElement(note, new PrintWriter(sw), line, 0);
         return sw.toString();
-    }
-
-    private static Song parseXmlToSong(String xml) throws Exception {
-        var parser = PARSER_FACTORY.newSAXParser();
-        var reader = new SongIO.DocumentReader();
-        parser.parse(new InputSource(new StringReader(xml)), reader);
-        return reader.getSong();
     }
 
     private static String buildXmlWithDynamic(String dynamicType) {
@@ -247,12 +234,6 @@ class StaffElementIOTest extends UnitTest {
               <view/>
             </composition>
             """;
-    }
-
-    private static void parseXml(String xml) throws Exception {
-        var parser = PARSER_FACTORY.newSAXParser();
-        var reader = new SongIO.DocumentReader();
-        parser.parse(new InputSource(new StringReader(xml)), reader);
     }
 
     private static String buildXmlWithAccidental(String accidentalValue) {

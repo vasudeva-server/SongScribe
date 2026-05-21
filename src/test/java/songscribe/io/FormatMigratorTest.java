@@ -28,9 +28,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Annotation;
 import songscribe.dom.ElementType;
-import songscribe.dom.Line;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
@@ -282,27 +280,5 @@ class FormatMigratorTest extends UnitTest {
             assertThat(last.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
             assertThat(last.getElement(1).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
         }
-    }
-
-    // -- Helpers --
-
-    /** Creates a line containing elements of the given types (in order), unattached to a song. */
-    private static Line lineWith(ElementType... types) {
-        var line = detachedLine();
-
-        for (var type : types) {
-            line.addElement(type.newInstance());
-        }
-
-        return line;
-    }
-
-    /** Creates a line containing a single crotchet with the given annotation text. */
-    private static Line lineWithAnnotation(String text) {
-        var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
-        line.addElement(note);
-        note.addAttachment(new AnnotationAttachment(note, new Annotation(text)));
-        return line;
     }
 }

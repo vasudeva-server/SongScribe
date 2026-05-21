@@ -37,30 +37,16 @@ import songscribe.dom.Song;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.ScoreView;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.util.Utils;
 
 public final class SongIO {
 
     public static final int IO_MAJOR_VERSION = 2;
     public static final int IO_MINOR_VERSION = 7;
-
-    // Minor version at which per-note <lyric> serialization was introduced.
-    // Files saved before this version carry a legacy <lyrics> blob that must
-    // be imported by LegacyLyricsImporter instead.
-    private static final int PER_NOTE_LYRIC_VERSION = 6;
-
-    // Minimum linewidth value that can only be a pixel measurement, not staff spaces.
-    // Used to detect v2.1–2.2 files written by a buggy writer that stored linewidth
-    // as px floats instead of ss despite the format declaring ss storage from v2.1.
-    // Valid ss values are well below this; observed buggy px values are 700+.
-    private static final double LEGACY_LINE_WIDTH_PX_MIN = 400.0;
 
     // version 1.0
     private static final String XML_SONG = "song";
@@ -616,60 +602,26 @@ public final class SongIO {
         }
 
         public Song getSong() {
-            // Determine format version for migration
-            var formatVersion = majorVersion >= 2 ? 2 : 1;
+            // Run the ordered pre-assembly migrations over the parsed lines and
+            // song-level scalars. The pipeline owns all version-gated dispatch;
+            // see MigrationPipeline for the stage list and ordering invariant.
+            var ctx = new MigrationContext();
+            ctx.lines = parsedLines;
+            ctx.topPaddingSs = topPaddingSs;
+            ctx.lineWidthSs = lineWidthSs;
+            ctx.rowHeightAdjustmentSs = rowHeightAdjustmentSs;
+            ctx.attributionStartYSs = attributionStartYSs;
+            ctx.majorVersion = majorVersion;
+            ctx.minorVersion = minorVersion;
+            ctx.attribution = attribution;
+            ctx.lyrics = lyrics;
 
-            // Migrate from legacy format (IntervalSets, inline Note attachments)
-            // to new format (RangeElements, Attachment objects).
-            FormatMigrator.migrate(parsedLines, formatVersion);
+            MigrationPipeline.runPreAssembly(ctx);
 
-            // After migration, format version is always 2
-            formatVersion = 2;
+            // After migration, format version is always 2.
+            var formatVersion = 2;
 
-            // Migrate pre-2.3 annotation-based dynamics to DynamicAttachment.
-            // Runs for all files saved before v2.3 introduced native serialization.
-            if (majorVersion < 2 || (majorVersion == 2 && minorVersion < 3)) {
-                FormatMigrator.migrateAnnotationDynamics(parsedLines);
-            }
-
-            // Enforce the terminal invariant for all pre-v2.4 files.
-            if (majorVersion < 2 || (majorVersion == 2 && minorVersion < 4)) {
-                FormatMigrator.migrateFinalTerminal(parsedLines);
-            }
-
-            // For pre-v2.1 files, convert pixel-based positions to staff-space units.
-            // v2.1+ files already store values in staff-space units.
-            if (majorVersion < 2 || (majorVersion == 2 && minorVersion < 1)) {
-                var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
-
-                // Song-level pixel-to-ss conversion
-                topPaddingSs /= pps;
-                lineWidthSs /= pps;
-                rowHeightAdjustmentSs /= pps;
-                attributionStartYSs /= pps;
-
-                // Line-level pixel-to-ss conversion
-                FormatMigrator.migratePixelsToStaffSpace(parsedLines);
-            }
-
-            // Some v2.1–v2.2 files were written by a buggy writer that stored
-            // linewidth as a pixel float despite the format declaring ss from v2.1.
-            // Correct ss values are always below LEGACY_LINE_WIDTH_PX_MIN.
-            if (majorVersion == 2 && minorVersion < 3 && lineWidthSs >= LEGACY_LINE_WIDTH_PX_MIN) {
-                lineWidthSs /= ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
-            }
-
-            // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
-            // Layout calculation will recalculate this properly, but this provides
-            // a reasonable default for any code that accesses topPadding before layout.
-            if (topPaddingSs == 0) {
-                var titleSize = Prefs.getInt(PrefsKey.TITLE_FONT_SIZE);
-                var attributionSize = Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE);
-                topPaddingSs = ((2 * titleSize) +
-                    (Utils.lineCount(attribution) * attributionSize)) -
-                    ScaleContext.ssToRoundedPx(2.0);
-            }
-
+            // Read the migrated scalars and lines back from the context.
             var data = new SongData(
                 tempo,
                 number,
@@ -686,11 +638,11 @@ public final class SongIO {
                 unofficialTranslation,
                 defaultKeyAccidentalCount,
                 defaultKeyType,
-                topPaddingSs,
-                attributionStartYSs,
-                rowHeightAdjustmentSs,
-                lineWidthSs,
-                parsedLines,
+                ctx.topPaddingSs,
+                ctx.attributionStartYSs,
+                ctx.rowHeightAdjustmentSs,
+                ctx.lineWidthSs,
+                ctx.lines,
                 hasBeenDynamicallyLaidOut,
                 formatVersion
             );
@@ -712,20 +664,10 @@ public final class SongIO {
                 song.endSuspendMutationTracking();
             }
 
-            // Populate per-note Lyric records from the captured legacy `<lyrics>` blob.
-            // Only fires for files saved before per-note <lyric> serialization was
-            // introduced; new-format files carry per-note data directly on each element.
-            if (!lyrics.isBlank() &&
-                (majorVersion < 2 || (majorVersion == 2 && minorVersion < PER_NOTE_LYRIC_VERSION))) {
-                LegacyLyricsImporter.importLegacyLyrics(song.getLines(), lyrics);
-            }
-
-            // Normalize stored syllabic values to match relation-chain derivation. Required
-            // for legacy files that may carry only locally-consistent values from the read
-            // path or no <syllabic> at all (LegacyLyricsImporter / pre-syllabic XML).
-            for (var line : song.getLines()) {
-                line.backfillSyllabic();
-            }
+            // Run the post-assembly migrations against the assembled song
+            // (legacy lyric import + syllabic backfill).
+            ctx.song = song;
+            MigrationPipeline.runPostAssembly(ctx);
 
             return song;
         }

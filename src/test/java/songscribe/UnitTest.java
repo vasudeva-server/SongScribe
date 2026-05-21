@@ -38,6 +38,9 @@ import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
+import songscribe.dom.Annotation;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.ui.OptionDialogs;
@@ -162,5 +165,33 @@ public abstract class UnitTest {
     /** Creates a Line backed by a minimal Song mock. */
     protected static Line detachedLine() {
         return new Line(minimalSongMock());
+    }
+
+    /** Creates a line containing elements of the given types (in order), unattached to a song. */
+    protected static Line lineWith(ElementType... types) {
+        var line = detachedLine();
+
+        for (var type : types) {
+            line.addElement(type.newInstance());
+        }
+
+        return line;
+    }
+
+    /** Creates a line containing a single crotchet with the given annotation text. */
+    protected static Line lineWithAnnotation(String text) {
+        var line = detachedLine();
+        var note = ElementType.CROTCHET.newInstance();
+        line.addElement(note);
+        note.addAttachment(new AnnotationAttachment(note, new Annotation(text)));
+        return line;
+    }
+
+    /** Parses a composition XML string into a Song via the SAX document reader. */
+    public static Song parseXml(String xml) throws Exception {
+        var parser = SAXParserFactory.newInstance().newSAXParser();
+        var reader = new SongIO.DocumentReader();
+        parser.parse(new InputSource(new StringReader(xml)), reader);
+        return reader.getSong();
     }
 }
