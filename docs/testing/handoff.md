@@ -263,13 +263,46 @@ comfortable across 50 classes; `ui/action` (62) will likely want 3+ waves.
   `KeySignatureRenderer.renderKeyChange` comment/code contradiction;
   `DynamicsRenderer.renderSingleHairpin` non-extractable endpoint logic;
   `BeamGroupRenderer` unused `LOG` field.
-- **Next: Session 10 — `ui/dialog` (53 classes).** Per the rubric, pure
-  display/layout wiring with no branching logic (most dialogs) is `none` — so
-  focus the audit on the **validation / commit lifecycle** (`BaseDialog` /
-  `StandardDialog` tabs, field validation, OK/Cancel commit, derived/computed
-  state) and on any dialog that transforms or validates user input. **Read
-  `.agents/guides/dialogs.md` and `.agents/guides/option-dialogs.md` first.**
-  Likely 2 waves of ~3 sub-audits given the class count.
+- **Session 10 (`ui/dialog`, 48 prod classes + 5 `package-info`): DONE** — two
+  waves of parallel sub-audits (Wave 1: 10A infrastructure & lifecycle; 10B input
+  & validation dialogs; 10C settings/export/informational — Wave 2: 10D
+  font-chooser core & model; 10E font-chooser panes & listeners); full findings
+  appended to `matrix.md` §10 (tables 10A–10E + §10 summary + production
+  observations), progress row flipped to `done`. **164 behavior rows: 131 unit /
+  1 e2e / 32 none; of 132 testable, 14 adequate · 117 missing · 1 inadequate · 0
+  wrong-level (~89% dark).** Inverse of `message` (§8): one well-covered island
+  (`BaseDialog` blocking-counter + geometry persistence = all 14 adequate) in an
+  otherwise dark package. Defining gap: **the validate-then-commit lifecycle is
+  universally untested** — `StandardDialog` OK/Cancel/`isValidData`/`setData`/
+  `modifyButtonPanel`-once, `BaseDialog.getData()→false` cancellation, the
+  `tabWillShow`/`tabWillHide` dispatch, and every concrete dialog's `getData`/
+  `setData`/`applyChange`/`clearChange` model-mutation commit. Richest pure-logic
+  targets: `ResolutionDialog.handleResolutionChange` (dpi/scale pixel math),
+  `PaperSizeStep` (unit conversion + template parsing), `PlatformFileDialog`
+  filter/extension disambiguation, `SongSettingsDialog.TextTab` (date/line-width/
+  change-detection), `PreferencesDialog.programToIndex` /
+  `PlayTab.volumeToSliderIndex`, `DefaultFontSelectionModel` fire-vs-no-op,
+  `FamilyListModel.findFirst` + sort, `FontFamiliesFactory` dot-filter,
+  `FontNameComparator`. fontchooser is mostly view/model wiring → `none` with a
+  thin real-logic layer; only genuine e2e is `FontChooser.setSelectedFont`
+  listener re-attach. `inadequate`: `DialogCategory.isBlocking` (EXCLUSIVE never
+  instantiated). **No dead classes.** Dedup: `FamilyListModel.findFirst` kept under
+  10D (not 10E). Seven production observations filed as a tracked GitHub issue
+  (#415): two real crash bugs (`SongSettingsDialog.TextTab` `charAt` on empty
+  buffer/attribution), `StyleEntry` equals/hashCode contract violation,
+  `DoNotShowMessage` bypasses `Prefs` + hardcoded label, `KeySignatureChangeDialog`
+  bypasses `modifyButtonPanel()`, `PaperSizeStep` magic-number insets, and a
+  `FontFamilies`/`FamilyListModel` testability gap.
+- **Next: Session 11 — `ui/menu` + `ui/playback` + `ui/platform` + top-level `ui`
+  (~38 classes).** Mixed bag: menu construction is largely declarative wiring
+  (`none`), but `ui/playback` (transport / playback-controller state) and
+  `ui/platform` (OS-conditional branching — macOS handlers, file association,
+  native integration) carry real logic and conditional paths. The top-level `ui`
+  package holds cross-cutting helpers; first enumerate which remain unaudited
+  after Sessions 4/7 (e.g. `OptionDialogs`, `Strings`, `UIUtils`). Triage the
+  menu (`none`-heavy) quickly and concentrate on playback + platform branching.
+  Check both unit and e2e (`ShutdownTest`, `DialogsTest`) for existing coverage.
+  Likely 2 waves given the class count.
 
 ## Session order (risk-ordered)
 
