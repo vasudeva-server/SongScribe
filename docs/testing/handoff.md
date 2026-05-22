@@ -48,6 +48,17 @@ testing matrix that later drives a rewrite.
    for the package, and flip that package's row in the progress table to `done`.
 5. Stop and report. One package per session unless a package is small.
 
+**Context-management pattern (proven in Session 4, ~50 classes across 8
+packages).** For any large scope, run the sub-audits in **waves of ~3 parallel
+subagents** and checkpoint between waves. Have each subagent write its
+**authoritative findings table to a temp file** (`/tmp/session<N>_<pkg>.md`,
+with the exact `### ` heading + table + notes paragraph it should occupy in
+`matrix.md`) **and** return the same table in its final message. The main
+session sanity-checks from the returned message but assembles via a cheap
+`cat /tmp/session<N>_*.md >> matrix.md` in heading order — so full table text is
+never re-emitted as model output, only read once. This kept main-session context
+comfortable across 50 classes; `ui/action` (62) will likely want 3+ waves.
+
 ## Status
 
 - **Session 0 (charter): DONE** — committed `ce2faf4b`. Rubric written, matrix
@@ -82,8 +93,28 @@ testing matrix that later drives a rewrite.
   **Dead code found** (verified zero refs): `AttachmentLayout`, `CollisionDetector`,
   `RangeLayout` → delete in remediation. Production observations filed as a
   tracked GitHub issue (#408; CSS unit-suffix bug, stale comment, unused params).
-- **Next: Session 4 — `midi` + `converter` + `util` + `smufl` + `prefs` +
-  `font` + `export` + `uiconverter` (~58 production classes).**
+- **Session 4 (`midi`+`converter`+`util`+`smufl`+`prefs`+`font`+`export`+
+  `uiconverter`, ~50 classes): DONE** — run in two waves of three parallel
+  sub-audits each; full findings appended to `matrix.md` §4 (tables 4A–4H +
+  a §4 summary), progress row flipped to `done`. Key gaps: **`converter` has
+  zero tests of any kind**; `prefs.RecentDocumentsManager` (full MRU logic) and
+  most of `Prefs` are dark; the riskiest **pure computation** is untested
+  (`LineTrackBuilder.getTupletFactor` log2 timing, `MidiSequenceBuilder.buildSequenceWithRepeats`,
+  `MidiEventFactory.addTempoEvent` byte encoding, `smufl.BBox` geometry,
+  `StringUtils.wrapText`, `GraphicUtils` px↔unit conversions,
+  `PageLayoutData`/`PDFExporter` margin math, `UIConverter.isLegalFileName`);
+  weak-but-green/self-referential tests persist (`EngravingTest` self-referential,
+  midi `isNotEmpty()`/`>=4` bend asserts, `MyFontUtilsTest` `isNotNull`,
+  `UIUtils.positionDialog` mocked-out-and-hollow, `Prefs` map tests
+  `containsKey`-only + name-mismatch, `DocumentFonts.defaultsFromPrefs` size-only).
+  **Dead code found** (verified zero refs): `StringUtils.removeSyllabifyMarkings`,
+  `MyFontUtils.getXHeight` → delete in remediation. Production observations
+  filed as a tracked GitHub issue (#409; dead code, `SVGConverter.main`
+  package-private latent bug, `Prefs.parseJsonValue` drops JSON arrays to null,
+  `Prefs.getStringList` ignores defaults). Only one genuine e2e escalation:
+  `ConvertAction.ConvertThread.run`.
+- **Next: Session 5 — `ui/action` (62 production classes). Larger than any
+  prior package; plan to split into multiple waves of parallel sub-audits.**
 
 ## Session order (risk-ordered)
 
