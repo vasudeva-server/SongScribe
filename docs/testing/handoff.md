@@ -113,8 +113,36 @@ comfortable across 50 classes; `ui/action` (62) will likely want 3+ waves.
   package-private latent bug, `Prefs.parseJsonValue` drops JSON arrays to null,
   `Prefs.getStringList` ignores defaults). Only one genuine e2e escalation:
   `ConvertAction.ConvertThread.run`.
-- **Next: Session 5 — `ui/action` (62 production classes). Larger than any
-  prior package; plan to split into multiple waves of parallel sub-audits.**
+- **Session 5 (`ui/action`, 62 classes): DONE** — run in two waves of three
+  parallel sub-audits each (5A base/infrastructure; 5B note/element insertion +
+  duration/articulation; 5C markings; 5D clipboard/selection/line; 5E file/app
+  lifecycle; 5F export + misc dialog-open); full findings appended to
+  `matrix.md` §5 (tables 5A–5F + a §5 summary), progress row flipped to `done`.
+  **Defining shape: actions are thin dispatchers and the dispatch is untested** —
+  the cross-cutting `wrong-level`/`missing` gap (action `actionPerformed` posts a
+  `Command`, only the downstream handler is tested, never the action body) recurs
+  across 5B/5C/5D/5E. Richest pure-logic gaps: `UIAction.enableFromSelectionSize`
+  (all six selection-size predicates dark), `ExportABCAction` (~20 untested static
+  ABC-serializer methods — the single largest untested-computation block),
+  `DurationActionGroup`/`NonDurationActionGroup` mutual-exclusion handlers,
+  `StickyUIAction.doActionPerformed`. Genuine e2e limited to shutdown/window-close
+  (`QuitAction` adequate; `CloseWindowAction` missing). **Scope corrections during
+  assembly:** 5D and 5E over-reached into collaborators — `ScoreViewController.*`
+  (5D) and `MainFrame.save*/showSaveDialog/handle*`+`Shutdown` (5E); those rows
+  were trimmed and folded into forward-pointers for Session 7 (`ui/component`) and
+  Session 12 (`lifecycle`) to avoid double-counting (key carry-forward: the
+  save/confirm data-loss guard in `MainFrame.showSaveDialog()` + save paths is
+  untested). **Dead code:** `ScoreViewController.handlePaste()` is a TODO-only stub
+  → `PasteAction` is a silent no-op (Session 7 scope). Eight production
+  observations filed as a tracked GitHub issue (#410; incl. `LaunchAction`
+  silent `IOException` swallow, `KeySignatureChangeAction` un-guarded
+  `getScoreView()` NPE risk, `MainFrame.saveAsNewFile` empty Save-As filename,
+  `ExportSVGAction` wrong filter label, `ExportABCAction.translateTempo` mismatched
+  quote delimiters).
+- **Next: Session 6 — `ui/selection` + `ui/edit` + `ui/adjustment` +
+  `ui/clipboard` (15 production classes).** Smaller scope; likely one wave of
+  ~3–4 parallel sub-audits. Note the Session-7 carry-forwards above
+  (`ScoreViewController`/`MainFrame`) are NOT part of Session 6.
 
 ## Session order (risk-ordered)
 
