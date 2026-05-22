@@ -10,4 +10,9 @@
       <excludeFolder url="file://$MODULE_DIR$/lib" />
     </content>
   </component>
+  <component name="FacetManager">
+    <facet type="Python" name="Python">
+      <configuration sdkName="Python 3.14 (claude-code)" />
+    </facet>
+  </component>
 </module>
