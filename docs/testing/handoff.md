@@ -68,7 +68,22 @@ testing matrix that later drives a rewrite.
   paths dark; migration **per-line** conversions tested only on empty lists.
   Production observations filed as a tracked GitHub issue (incl. `LineIO`
   `Ending.Type` round-trip data loss).
-- **Next: Session 3 — `layout` (39 production classes).**
+- **Session 3 (`layout`, 37 classes excl. 2 `package-info`): DONE** — six
+  parallel sub-audits (orchestration & accumulation; horizontal spacing &
+  columns; geometry primitives & metrics; lyric layout; ranges/endings/collision;
+  stacking subsystem); full findings appended to `matrix.md` §3, progress row
+  flipped to `done`. Key gaps: the riskiest math in the app is dark —
+  `LayoutEngine` beam/stem/tie geometry has **zero** tests, `ElementBoundsSs` box
+  model untested, `LineJustificationCalculator` zero tests; **weak-but-green
+  assertions are systemic** (entire stacking-test family asserts only `ySs<0`/`>0`;
+  pervasive `>=`/`isNotNull`/fixture-only); four self-referential oracles
+  (`HorizontalSpacingCalculatorTest` entirely tautological, `PageModel`,
+  `SongLayoutMetrics.verseBaselineY`, `LyricRenderMetrics.lyricBoxWidth`).
+  **Dead code found** (verified zero refs): `AttachmentLayout`, `CollisionDetector`,
+  `RangeLayout` → delete in remediation. Production observations filed as a
+  tracked GitHub issue (#408; CSS unit-suffix bug, stale comment, unused params).
+- **Next: Session 4 — `midi` + `converter` + `util` + `smufl` + `prefs` +
+  `font` + `export` + `uiconverter` (~58 production classes).**
 
 ## Session order (risk-ordered)
 
