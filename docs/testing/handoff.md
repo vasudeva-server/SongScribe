@@ -163,12 +163,45 @@ comfortable across 50 classes; `ui/action` (62) will likely want 3+ waves.
   production observation filed as a tracked GitHub issue (#411): `VerticalAdjustment`
   adds the pixel-derived `diffY` to `…Ss` staff-space fields without `pxToSs`
   conversion (off by ~8× at the default scale).
-- **Next: Session 7 — `ui/component` (65 classes).** Largest single package;
-  will need multiple waves (3+). Carry forward the Session-5/6 forward-pointers
-  that were trimmed into `ui/component` scope: `ScoreViewController.*` — including
-  the `handlePaste()` TODO-only stub that makes `PasteAction` a silent no-op — and
-  `MainFrame.save*`/`showSaveDialog`/`handle*` (the sole guard against silent
-  data loss, untested except indirectly via `ShutdownTest`).
+- **Session 7 (`ui/component`, 62 production classes + 3 `package-info`): DONE** —
+  three waves of three parallel sub-audits (7A control plane; 7B `ScoreView`; 7C
+  hit-test/drag/selection/preview; 7D `MainFrame`; 7E line/score rendering geometry;
+  7F score panels & text components; 7G toolbars; 7H input & text widgets; 7I
+  buttons/borders/frames & navigation helpers); full findings appended to
+  `matrix.md` §7 (tables 7A–7I + a §7 summary), progress row flipped to `done`.
+  **387 behavior rows: 319 unit / 15 e2e / 53 none; of 334 testable, 231 missing ·
+  88 adequate · 8 wrong-level · 7 inadequate** (~69% dark). Confirmed highest-risk
+  gaps: **(1)** the data-loss guard is untested — `MainFrame.showSaveDialog()` +
+  the whole `save`/`saveCurrentFile`/`saveAsNewFile` chain have zero direct tests
+  (`ShutdownTest` only covers wiring + the forced CLOSED_OPTION answer; the
+  Don't-Save / Save-propagate branches are `wrong-level`); **(2)** `ScoreViewController.handlePaste()`
+  is a body-only TODO — paste is a confirmed silent no-op (root cause of the
+  Session-5/6 `PasteAction` finding, a real production defect); **(3)** the
+  px↔staff-space coordinate chain in `LineComponent` (`staffPositionToYPx`/
+  `getMiddleLineYPx`/`calculateMiddleLineYSs`) is dark — issue-#411 territory;
+  **(4)** `ElementHitTest` + `LineSelectionHandler` geometry have no unit tests
+  (and `SelectionTest.testDragSelect` uses weak `>=3`); **(5)** score-panel layout
+  invariants (`TextPanel` centering, `StaffPanel` lyric-continuation threading,
+  `MainPanel` gap, `ScorePanel` viewport-loop guard) untested; **(6)** widget
+  pure-logic dark (`TextFocusDelegate` first-Tab guard, `NonEmptyGuard` modes,
+  `InputUtils` filters, `MyBorder`, `TickSlider` snap, `ComponentHierarchyNavigator`,
+  `DurationListCellRenderer` glyph map). **Bright spots (adequate):** `LyricEditor`
+  (dense exact-value matrix), `NoteDragHandler` + `PreviewElementManager*` family,
+  `ScoreView.setFonts`, `ScoreViewController` command-handlers. **Two scope
+  corrections during assembly:** `ScoreComponent` (audited by both 7E and 7F) kept
+  under 7E only; `ActionGroup`/`DurationActionGroup`/`LyricEditorActionAuditTest`
+  rows raised by 7G belong to `ui/action` and were trimmed (already in §5A).
+  **No dead classes found**; one dead *branch* (`DurationToolbar`'s unreachable
+  `defaultButton != null` guard). Production observations (handlePaste stub;
+  `DurationToolbar` guard; `LineComponent` #411-adjacent coordinate chain) recorded
+  in the §7 summary and filed as a tracked GitHub issue (#412).
+- **Next: Session 8 — `message` (mutation/command/notification + core, 86
+  classes).** Large; will need multiple waves. Per the rubric most `message.mutation`
+  / `message.command` / `message.notification` records are pure data holders →
+  `none`, **unless they carry derivation logic** — focus the audit on records with
+  computed/derived state and on the core message-bus plumbing, not the trivial
+  carriers. Read `.agents/guides/messages.md` and `.agents/guides/mutations.md`
+  before starting.
 
 ## Session order (risk-ordered)
 
