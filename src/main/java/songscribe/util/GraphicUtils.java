@@ -26,6 +26,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -106,6 +109,12 @@ public final class GraphicUtils {
 
     public static final double CM_PER_INCH = 2.54;
 
+    // Oshi display enumeration can hang in headless/sandboxed JVMs (e.g. PIT minions)
+    private static final int DPI_QUERY_TIMEOUT_SECONDS = 3;
+
+    // Standard non-HiDPI resolution; used in headless environments where the screen device is unavailable
+    private static final int HEADLESS_DPI = 96;
+
     // Since querying for Retina displays happens a lot, cache the result
     private static final boolean isRetina;
 
@@ -114,27 +123,39 @@ public final class GraphicUtils {
     private static MediaTracker mediaTracker = new MediaTracker(new JLabel());
 
     static {
-        var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        var gd = ge.getDefaultScreenDevice();
-        var config = gd.getDefaultConfiguration();
-        isRetina = config.getDefaultTransform().getScaleX() > 1;
-        dpi = computePhysicalDpi(gd);
+        if (GraphicsEnvironment.isHeadless()) {
+            isRetina = false;
+            dpi = HEADLESS_DPI;
+            var g2d = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
+            setRenderingHints(g2d);
+            SCREEN_FRC = g2d.getFontRenderContext();
+            g2d.dispose();
+        } else {
+            var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            var gd = ge.getDefaultScreenDevice();
+            var config = gd.getDefaultConfiguration();
+            isRetina = config.getDefaultTransform().getScaleX() > 1;
+            dpi = computePhysicalDpi(gd);
 
-        var image = config.createCompatibleImage(1, 1);
-        var g2d = image.createGraphics();
-        setRenderingHints(g2d);
-        SCREEN_FRC = g2d.getFontRenderContext();
-        g2d.dispose();
-        image.flush();
+            var image = config.createCompatibleImage(1, 1);
+            var g2d = image.createGraphics();
+            setRenderingHints(g2d);
+            SCREEN_FRC = g2d.getFontRenderContext();
+            g2d.dispose();
+            image.flush();
+        }
     }
 
     /**
      * Computes the physical DPI of the default screen using EDID data.
-     * Falls back to {@link Toolkit#getScreenResolution()} if EDID is unavailable.
+     * Falls back to {@link Toolkit#getScreenResolution()} if EDID is unavailable
+     * or the oshi query exceeds {@link #DPI_QUERY_TIMEOUT_SECONDS} (e.g. in headless/sandboxed JVMs).
      */
     private static int computePhysicalDpi(GraphicsDevice gd) {
         try {
-            var displays = new SystemInfo().getHardware().getDisplays();
+            var displays = CompletableFuture
+                .supplyAsync(() -> new SystemInfo().getHardware().getDisplays())
+                .get(DPI_QUERY_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             if (!displays.isEmpty()) {
                 var edid = displays.getFirst().getEdid();
@@ -146,6 +167,8 @@ public final class GraphicUtils {
                     return (int) Math.round(logicalPixelWidth / widthInches);
                 }
             }
+        } catch (TimeoutException e) {
+            LOG.warn("EDID display query timed out after {} s, using system default DPI", DPI_QUERY_TIMEOUT_SECONDS);
         } catch (Exception e) {
             LOG.warn("Could not determine physical DPI from EDID, using system default", e);
         }

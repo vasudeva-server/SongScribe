@@ -50,7 +50,7 @@ public final class ReflectionTestHelper {
         var state = new LineSelectionState(line);
         coordinator.registerLineState(0, state);
         coordinator.activateLine(0);
-        return coordinator;
+        return createCoordinator(coordinator, List.of(), List.of());
     }
 
     /**

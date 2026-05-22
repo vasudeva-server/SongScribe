@@ -6,6 +6,7 @@ plugins {
     java
     jacoco
     id("net.ltgt.errorprone") version "4.2.0"
+    id("info.solidsoft.pitest") version "1.19.0"
 }
 
 group = "SongScribe"
@@ -170,11 +171,112 @@ val addOpensArgs = listOf(
     "--add-opens", "java.base/java.util=ALL-UNNAMED",
 )
 
-tasks.named<Test>("test") {
+fun Test.applyCommonTestConfig() {
     useJUnitPlatform()
+    // Always re-run when invoked — test.sh is interactive, stale-output skipping is not useful here.
+    outputs.upToDateWhen { false }
     jvmArgs(addOpensArgs)
     jvmArgs("--enable-native-access=ALL-UNNAMED", "-XX:+EnableDynamicAgentLoading", "-Xshare:off")
+    if (System.getProperty("os.name", "").startsWith("Mac")) {
+        jvmArgs(
+            "-Dapple.laf.useScreenMenuBar=true",
+            "-Dapple.awt.application.appearance=system",
+            "-Djna.library.path=$projectDir/build/native",
+        )
+    }
+    systemProperty("e2e.failFast", if (project.hasProperty("noFailFast")) "false" else "true")
+    if (project.hasProperty("e2eDebug")) systemProperty("e2e.debug", "true")
+    System.getenv("EXTRA_JVM_ARGS")?.takeIf { it.isNotBlank() }?.split(" ")?.let { jvmArgs(it) }
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showExceptions = true
+        showCauses = true
+        showStackTraces = false
+    }
+    addTestListener(object : TestListener {
+        override fun beforeSuite(suite: TestDescriptor) {}
+        override fun afterSuite(suite: TestDescriptor, result: TestResult) {
+            if (suite.parent == null) {
+                val summary = buildString {
+                    append("Results: ${result.successfulTestCount} passed")
+                    if (result.failedTestCount > 0) append(", ${result.failedTestCount} FAILED")
+                    if (result.skippedTestCount > 0) append(", ${result.skippedTestCount} skipped")
+                }
+                System.err.println(summary)
+            }
+        }
+        override fun beforeTest(testDescriptor: TestDescriptor) {}
+        override fun afterTest(testDescriptor: TestDescriptor, result: TestResult) {}
+    })
+}
+
+tasks.named<Test>("test") {
+    applyCommonTestConfig()
     exclude("**/e2e/**")
+}
+
+val e2eTest by tasks.registering(Test::class) {
+    description = "Runs e2e tests"
+    group = "verification"
+    applyCommonTestConfig()
+    include("**/e2e/**")
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+}
+
+// -- PIT mutation testing --
+
+val defaultPitestTargets = listOf(
+    "songscribe.converter.*",
+    "songscribe.dom.*",
+    "songscribe.export.*",
+    "songscribe.font.*",
+    "songscribe.io.*",
+    "songscribe.layout.*",
+    "songscribe.midi.*",
+    "songscribe.prefs.*",
+    "songscribe.smufl.*",
+    "songscribe.util.*",
+)
+
+// Allow mutation-test.sh to narrow targets at runtime:
+//   ./gradlew pitest -PpitestTarget=songscribe.util.* -PpitestTargetTests=songscribe.util.*
+val pitestTarget: String? by project
+val pitestTargetTests: String? by project
+
+pitest {
+    pitestVersion.set("1.24.0")
+    junit5PluginVersion.set("1.2.3")
+    targetClasses.set(pitestTarget?.split(",") ?: defaultPitestTargets)
+    targetTests.set(pitestTargetTests?.split(",") ?: listOf("songscribe.*"))
+    excludedClasses.set(listOf("songscribe.Strings", "songscribe.Version", "songscribe.ui.FlatLafKeys"))
+    // e2e tests are excluded because they require a live UI.
+    // GraphicUtilsClampTest: clampToScreen queries live screen devices even in headless mode.
+    excludedTestClasses.set(listOf(
+        "songscribe.e2e.*",
+        "songscribe.util.GraphicUtilsClampTest",
+    ))
+    outputFormats.set(setOf("HTML", "XML"))
+    timestampedReports.set(false)
+    threads.set(Runtime.getRuntime().availableProcessors())
+    // Child minion JVMs that run the tests need the same flags as the test task.
+    // PIT requires single-token form (--add-opens=m/p=ALL-UNNAMED) for its --jvmArgs list.
+    jvmArgs.addAll(listOf(
+        "-Djava.awt.headless=true",
+        "--add-opens=java.desktop/javax.swing=ALL-UNNAMED",
+        "--add-opens=java.desktop/javax.swing.plaf.basic=ALL-UNNAMED",
+        "--add-opens=java.desktop/java.awt=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.util=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+        "-XX:+EnableDynamicAgentLoading",
+        "-Xshare:off",
+        // rococoa native library — same path that test.sh sets via -Djna.library.path
+        "-Djna.library.path=${projectDir.absolutePath}/build/native",
+        "-Dapple.laf.useScreenMenuBar=true",
+        "-Dapple.awt.application.appearance=system",
+    ))
 }
 
 // -- Classpath printing for scripts --
@@ -182,12 +284,6 @@ tasks.named<Test>("test") {
 tasks.register("printClasspath") {
     doLast {
         print(sourceSets["main"].runtimeClasspath.asPath)
-    }
-}
-
-tasks.register("printTestClasspath") {
-    doLast {
-        print(sourceSets["test"].runtimeClasspath.asPath)
     }
 }
 

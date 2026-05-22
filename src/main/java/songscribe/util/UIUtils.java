@@ -52,8 +52,9 @@ public final class UIUtils {
     private static final Logger LOG = LoggerFactory.getLogger(UIUtils.class);
 
     // Constants
-    public static final int MENU_SHORTCUT_MASK = Toolkit.getDefaultToolkit()
-        .getMenuShortcutKeyMaskEx();
+    public static final int MENU_SHORTCUT_MASK = GraphicsEnvironment.isHeadless()
+        ? InputEvent.CTRL_DOWN_MASK
+        : Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
 
     private static final Dimension LABEL_SPACER = new Dimension(5, 5);
 

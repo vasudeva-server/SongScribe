@@ -29,6 +29,7 @@ import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,16 @@ class GraphicUtilsClampTest extends UnitTest {
     private static final int SCREEN_HEIGHT = 1080;
 
     private MockedStatic<GraphicsEnvironment> geMock;
+
+    @BeforeAll
+    static void loadGraphicUtils() {
+        // Force GraphicUtils static initialization here, after UnitTest's @BeforeAll has
+        // installed FlatLaf (which initializes the AWT toolkit). If the class loads for
+        // the first time inside @BeforeEach — while the GraphicsEnvironment mock is
+        // active — the static initializer runs against the mock's incomplete setup and
+        // throws NPE in createCompatibleImage → createGraphics.
+        var _ = GraphicUtils.getDpi();
+    }
 
     @BeforeEach
     void setUp() {
