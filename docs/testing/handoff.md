@@ -293,16 +293,53 @@ comfortable across 50 classes; `ui/action` (62) will likely want 3+ waves.
   `DoNotShowMessage` bypasses `Prefs` + hardcoded label, `KeySignatureChangeDialog`
   bypasses `modifyButtonPanel()`, `PaperSizeStep` magic-number insets, and a
   `FontFamilies`/`FamilyListModel` testability gap.
-- **Next: Session 11 — `ui/menu` + `ui/playback` + `ui/platform` + top-level `ui`
-  (~38 classes).** Mixed bag: menu construction is largely declarative wiring
-  (`none`), but `ui/playback` (transport / playback-controller state) and
-  `ui/platform` (OS-conditional branching — macOS handlers, file association,
-  native integration) carry real logic and conditional paths. The top-level `ui`
-  package holds cross-cutting helpers; first enumerate which remain unaudited
-  after Sessions 4/7 (e.g. `OptionDialogs`, `Strings`, `UIUtils`). Triage the
-  menu (`none`-heavy) quickly and concentrate on playback + platform branching.
-  Check both unit and e2e (`ShutdownTest`, `DialogsTest`) for existing coverage.
-  Likely 2 waves given the class count.
+- **Session 11 (`ui/menu` + `ui/playback` + `ui/platform/mac` + top-level `ui`,
+  31 prod classes + 5 `package-info`): DONE** — two waves of three parallel
+  sub-audits (Wave 1: 11A `ui/menu`; 11B `ui/playback`; 11C `ui/platform/mac` —
+  Wave 2: 11D `MusicEditOperations`; 11E appearance/dialog helpers
+  `OptionDialogs`/`EndingConfirms`/`AppearanceManager`/`Appearance`/`LafOperations`;
+  11F display/constants `KeySignatureDisplay`/`Constants`/`Control`/`Mode`/`FlatLafProps`);
+  full findings appended to `matrix.md` §11 (tables 11A–11F + §11 summary +
+  production observations), progress row flipped to `done`. **228 behavior rows:
+  194 testable / 34 none; of 194 testable, 63 adequate · 126 missing · 5 inadequate
+  · 0 wrong-level · 0 redundant (~68% dark).** None of the top-level `ui` classes
+  had its own audit row before — prior sessions referenced them only as
+  collaborators. **Note:** every sub-agent's prose `**Tally:**` line was unreliable
+  (mis-split missing-vs-none, off-by-one+ row counts); the matrix tallies were
+  recomputed directly from the table required-level/verdict columns via awk and are
+  authoritative — re-derive the same way if amending. Key shape: **two well-covered
+  islands** — §11E (`OptionDialogs` return-mapping via `DialogsTest` unit+e2e;
+  `AppearanceManager` LAF/theme via `AppearanceManagerTest`, 26/40 adequate) and the
+  §11D mutation core (`MusicEditOperationsMutationTest` asserts mutation fields
+  precisely, 28/69) — in an otherwise dark periphery. **Defining gap recurs from
+  Sessions 5/6:** null-state guards (all six `MusicEditOperations` ops) and
+  thin-dispatcher action bodies (all four `ui/playback` `*Action.actionPerformed`)
+  untested. **Riskiest dark computation:** `PlaybackController` transport state
+  machine (6 transitions + binary meta-message decode, only 4 `selectionDidChange`
+  tests); `MusicEditOperations.checkPrecedingElement` ending-validation branches
+  (asserted only via pre-built results, never the predicate); `MenuController`
+  Open-Recent label disambiguation; `KeySignatureDisplay` tonic tables + accidental
+  thresholds + `AttributedString` ranges; `MidiController.setPlaybackVolume`
+  scaling/clamps. Menu/platform are mostly wiring (`none`) as predicted (11A 15/37,
+  11C 7/15 — NS* classes are pure Rococoa native pass-throughs). **inadequate (5):**
+  `PlayPauseAction` DISABLE_WHEN_PLAYING; `MusicEditOperations` ×3 (`toggleTuplet`
+  size==0 branch, `removeDynamics` `isNotEmpty()`-not-count ×2, INSERT_BARLINE never
+  directly asserted); a test-side `Strings.*` literal violation in `DialogsTest`.
+  **Dead code (verified zero refs):** `FermataMenuItem` (superseded by `FermataAction`)
+  + 3 commented-out `MenuController` methods; NS* speculative scaffolding
+  (`_Class.alloc()`/`CLASS`/`title()`/`itemWithTitle()`/`isEnabled()`);
+  `Constants.ACCELERATOR_KEYS`/`SONG_SCRIBE_JAR`. **Production observations** filed as a
+  tracked GitHub issue (#416): the standout is a real latent bug —
+  `Constants.NON_BREAKING_HYPHEN` is U+00AD SOFT HYPHEN, not U+2011, so
+  `ExportABCAction` hyphen escaping is likely wrong.
+- **Next: Session 12 — `lifecycle` + `error` + top-level (`SongScribe`,
+  `FileExtensions`), 5 classes.** Small but high-stakes: application boot/shutdown
+  lifecycle (genuine e2e territory — coordinate with `ShutdownTest`, already
+  partially covers shutdown wiring), the global error/exit path (`RuntimeError.exit`
+  is referenced throughout — verify its own contract is tested), `SongScribe.main`
+  bootstrap, and `FileExtensions`. Carry forward the still-open data-loss guard
+  thread from Sessions 5/7 (`MainFrame.showSaveDialog()` + save/confirm paths) if it
+  intersects lifecycle. Likely a single wave.
 
 ## Session order (risk-ordered)
 
