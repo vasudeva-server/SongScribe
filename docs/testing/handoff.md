@@ -59,7 +59,16 @@ testing matrix that later drives a rewrite.
   `getPitch`, `>=`/`>0` where exact values matter, self-referential oracles,
   tautologies), and untested branch/error paths (`Song` `@Handler` methods,
   `Line` merge logic, `BeatChange.fromLegacyName` happy paths).
-- **Next: Session 2 — `io` (16 production classes).**
+- **Session 2 (`io`, 15 classes): DONE** — four parallel sub-audits
+  (orchestration & XML; element & annotation serialization; line & view
+  serialization; migration & legacy import); full findings appended to
+  `matrix.md` §2, progress row flipped to `done`. Key gaps: serialization
+  **write** paths almost entirely untested (conditional emission + `XML.escapeXML`);
+  `LineIO` (largest IO class) has no dedicated test file; v1.0/legacy decode
+  paths dark; migration **per-line** conversions tested only on empty lists.
+  Production observations filed as a tracked GitHub issue (incl. `LineIO`
+  `Ending.Type` round-trip data loss).
+- **Next: Session 3 — `layout` (39 production classes).**
 
 ## Session order (risk-ordered)
 
