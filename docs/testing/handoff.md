@@ -26,6 +26,11 @@ testing matrix that later drives a rewrite.
   Usefulness → Coverage first; unit/e2e/none second. (See rubric in `matrix.md`.)
 - **E2E assessed by reading source only.** Never run the e2e suite during the
   audit (it needs approval and isn't necessary for planning).
+- **PIT confirms verdicts during remediation, not during the audit.** Audit
+  `inadequate` verdicts are reading-based hypotheses (predicted surviving
+  mutants). PIT (`./scripts/mutation-test.sh`, pure-logic + unit only) is run
+  when a class's tests are rewritten — to prove the weakness and prove the
+  rewrite kills the mutant. Audit sessions remain read-only.
 - **Both levels checked per behavior.** When auditing a package, look for
   existing coverage in unit *and* e2e tests — not just the mirrored unit file.
 
@@ -47,7 +52,14 @@ testing matrix that later drives a rewrite.
 
 - **Session 0 (charter): DONE** — committed `ce2faf4b`. Rubric written, matrix
   scaffolded, `testing-common.md` reordered to lead with Quality Principles.
-- **Next: Session 1 — `dom` (39 production classes).**
+- **Session 1 (`dom`, 38 classes): DONE** — six parallel sub-audits; full
+  findings appended to `matrix.md` §1, progress row flipped to `done`. Key
+  cross-cutting gaps: untested pure conversion/geometry math (`ScaleContext`,
+  `getSpanWidthSs`/`get*Px` clamps), weak-but-green tests (relative-only
+  `getPitch`, `>=`/`>0` where exact values matter, self-referential oracles,
+  tautologies), and untested branch/error paths (`Song` `@Handler` methods,
+  `Line` merge logic, `BeatChange.fromLegacyName` happy paths).
+- **Next: Session 2 — `io` (16 production classes).**
 
 ## Session order (risk-ordered)
 
