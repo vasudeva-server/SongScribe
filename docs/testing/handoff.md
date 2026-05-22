@@ -332,14 +332,52 @@ comfortable across 50 classes; `ui/action` (62) will likely want 3+ waves.
   tracked GitHub issue (#416): the standout is a real latent bug —
   `Constants.NON_BREAKING_HYPHEN` is U+00AD SOFT HYPHEN, not U+2011, so
   `ExportABCAction` hyphen escaping is likely wrong.
-- **Next: Session 12 — `lifecycle` + `error` + top-level (`SongScribe`,
-  `FileExtensions`), 5 classes.** Small but high-stakes: application boot/shutdown
-  lifecycle (genuine e2e territory — coordinate with `ShutdownTest`, already
-  partially covers shutdown wiring), the global error/exit path (`RuntimeError.exit`
-  is referenced throughout — verify its own contract is tested), `SongScribe.main`
-  bootstrap, and `FileExtensions`. Carry forward the still-open data-loss guard
-  thread from Sessions 5/7 (`MainFrame.showSaveDialog()` + save/confirm paths) if it
-  intersects lifecycle. Likely a single wave.
+- **Session 12 (`lifecycle` + `error` + top-level `SongScribe`/`FileExtensions`,
+  4 prod classes): DONE** — one wave of two parallel sub-audits (12A
+  `lifecycle.Shutdown` + `error.RuntimeError`; 12B `SongScribe.main` bootstrap +
+  `FileExtensions`); full findings appended to `matrix.md` §12 (tables 12A–12B +
+  §12 summary + production observations), progress row flipped to `done`. **61
+  behavior rows: 49 unit / 6 e2e / 6 none; of 55 testable, 22 adequate · 32
+  missing · 1 inadequate · 0 wrong-level · 0 redundant (~60% dark).** As in
+  Session 11, sub-agent prose tallies were unreliable — §12 counts were recomputed
+  directly from the table columns via awk (authoritative). Defining shape: **two
+  opposite halves** — `Shutdown` is the **best-covered class in the whole audit**
+  (mirrored `lifecycle/ShutdownTest` exhaustively asserts confirm→EDT→JVM phase
+  order, all veto branches, cleanup exception-vs-error propagation, re-entrancy
+  guards, per-phase tag namespaces, `CleanupTask` at-most-once serial + 8-thread
+  race, JVM-hook cross-path invariant; 22/24 testable adequate) — while everything
+  else in scope is dark. **Highest-risk gap: `RuntimeError` is 100% untested** —
+  the universal fatal-exit point (~35 call sites), including its re-entrant
+  `ALERT_SHOWN` CAS guard and the `ExitInProgressError extends Error`
+  (stackless/suppressed) contract that `SongScribe.main`'s uncaught-exception
+  handler keys on; the bare `System.exit(-1)` in `showDialogAndExit` blocks unit
+  testing → project needs a one-time exit-seam decision. Also dark: boot-time
+  logging setup (`configureLogging`/`resolveLogDir`/`truncateLogIfRequested` —
+  three-way platform path, `APPDATA` fallback, `mkdirs`-fail, `LOG_LEVEL`
+  upper-casing — runs on every launcher) and `main`'s app-selection dispatch
+  (`args[0]` vs `songscribe` property vs default `"sw"`, only the GUI-boot branch is
+  genuine e2e). **inadequate (1):** `logBanner` is invoked assertion-free as a setup
+  side-effect in `UnitTest.suppressDialogs` + `E2ETest.initMainFrame` (cannot fail).
+  **Missing e2e (1):** `CloseWindowAction` quit-entry-point wiring (distinct from the
+  covered `QuitAction`). **Dead code (verified zero refs via serena):**
+  `FileExtensions.SONGSHOW`/`SONGBOOK`/`SBPORTABLE` (only `SONGWRITER`=`"mssw"` is
+  live) → delete in remediation. **Carry-forward now closing out:** the Sessions-5/7
+  data-loss guard (`MainFrame.showSaveDialog()` + save/confirm paths) intersects
+  `Shutdown` only via `e2e/ShutdownTest`'s dirty-doc `windowClosing`-veto case; its
+  Don't-Save / Save-propagate branches stay dark and `MainFrame` remains Session 7
+  scope — no remaining audit session owns this thread, so it must be picked up
+  during the rewrite. Production observations filed as a tracked GitHub issue
+  (#417): `RuntimeError` `System.exit`
+  test-seam, the three dead `FileExtensions` constants, the assertion-free
+  `logBanner` invocations.
+- **Next: Session 13 — e2e reconciliation (whole-suite redundancy / orphans).**
+  The final audit session: with all production packages audited (§1–§12), reconcile
+  the 79 e2e methods across the 7 `songscribe/e2e/` files against the matrix — find
+  e2e tests that duplicate now-adequate unit coverage (candidates to drop), e2e
+  cases asserting what should be unit (wrong-level), and orphaned/over-broad e2e.
+  Then the audit is complete and the remediation phase (rewrite + PIT verification)
+  begins; promote the rubric into `.agents/guides/testing-common.md` and
+  archive/delete this scaffolding.
 
 ## Session order (risk-ordered)
 
