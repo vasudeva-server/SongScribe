@@ -226,12 +226,50 @@ comfortable across 50 classes; `ui/action` (62) will likely want 3+ waves.
   dispatch; `FieldTypeValidator` primitive-type latent risk; `ElementRangeDeletion`
   no defensive copy; `CloseWindowCommand` orphan; `MusicSelectionDidChangeNotification`
   captures live UI state in its ctor) — filed as a tracked GitHub issue (#413).
-- **Next: Session 9 — `ui/renderer` (30 classes).** Per the rubric, pure
-  rendering to a `Graphics2D` with no computed geometry is `none` (the geometry, if
-  any, is unit-tested upstream in `layout`) — so focus the audit on renderers that
-  *compute* geometry/positioning rather than merely paint, and check for the
-  recurring weak-assertion / self-referential-oracle patterns seen in `layout`
-  (Session 3). Likely one wave of ~3 sub-audits.
+- **Session 9 (`ui/renderer`, 29 prod classes + 1 `package-info`): DONE** — one
+  wave of three parallel sub-audits (9A infra + note-area geometry; 9B span /
+  connector renderers; 9C glyph / element painters); full findings appended to
+  `matrix.md` §9 (tables 9A–9C + §9 summary + production observations), progress
+  row flipped to `done`. **115 behavior rows: 87 testable / 28 `none`; of 87
+  testable, 34 adequate · 48 missing · 4 inadequate · 1 redundant · 0 wrong-level
+  (~60% dark).** Zero genuine e2e in the package — all testable behavior is
+  `unit` (integration risk lives upstream in `layout`/`ui/component`). Key shape:
+  the rubric's "pure paint → `none`" held (28 `none`, concentrated in 9C) but the
+  defining finding is **computed logic hiding inside painter-named classes** —
+  glyph-selection maps, staff-position arrays, barline-type switches, duration
+  advance math — almost entirely untested. Darkest zone is **9C glyph painters
+  (1/23 testable adequate)**: `NoteRenderer` stem/dot/ledger geometry,
+  `KeySignatureRenderer` accidental arrays + 4-branch `renderKeyChange`,
+  `BarRenderer` 6-way barline switch, `MetronomeRenderer`/`TempoChangeRenderer`
+  advance + tempo-string. 9B: every cross-element geometry helper dark
+  (`BeamGroupRenderer`, `TupletRenderer` bracket-X, `EndingRenderer`,
+  `TieRenderer` color, `AnnotationRenderer` baseline); bright spots are the two
+  lyric renderers + `GlissandoRenderer` geometry primitives. 9A is the
+  best-covered area; single riskiest dark path is
+  `LineInvariants.isLyricSpanPlaying` (5 exit points, feeds two other untested
+  color methods). **inadequate (4):** `GlissandoRenderer` unison tests assert on
+  model pitch and never invoke the renderer; two `NoteAreaBuilder.buildNoteArea`
+  tests assert only `isEmpty()==false`; **`NoteRendererTest` is a name mismatch**
+  — its 6 tests exercise `NoteGeometry` (→ relocate to `layout`, Session 3), not
+  `NoteRenderer`. **redundant (1):** `NoteAreaBuilder` `getLedgerLineCount` trio
+  tests `StaffElement.getLedgerLineCount()` (→ relocate to `StaffElementTest`,
+  Session 1). **No dead classes**; one unused `LOG` field in `BeamGroupRenderer`.
+  Seven production observations recorded in the §9 production-observations block
+  (filed as a tracked GitHub issue, #414): `GraphicsState.close()` asymmetric
+  CLIP guard; `NoteAreaBuilder` uniform accidental height understating
+  double-flats; `EndingRenderer.getEffectiveEndingYSs` hard-fails
+  (`IllegalStateException`) where peers skip null layouts;
+  `GlissandoRenderer.computeEndpoints` ConstantValue smell;
+  `KeySignatureRenderer.renderKeyChange` comment/code contradiction;
+  `DynamicsRenderer.renderSingleHairpin` non-extractable endpoint logic;
+  `BeamGroupRenderer` unused `LOG` field.
+- **Next: Session 10 — `ui/dialog` (53 classes).** Per the rubric, pure
+  display/layout wiring with no branching logic (most dialogs) is `none` — so
+  focus the audit on the **validation / commit lifecycle** (`BaseDialog` /
+  `StandardDialog` tabs, field validation, OK/Cancel commit, derived/computed
+  state) and on any dialog that transforms or validates user input. **Read
+  `.agents/guides/dialogs.md` and `.agents/guides/option-dialogs.md` first.**
+  Likely 2 waves of ~3 sub-audits given the class count.
 
 ## Session order (risk-ordered)
 
