@@ -139,10 +139,36 @@ comfortable across 50 classes; `ui/action` (62) will likely want 3+ waves.
   `getScoreView()` NPE risk, `MainFrame.saveAsNewFile` empty Save-As filename,
   `ExportSVGAction` wrong filter label, `ExportABCAction.translateTempo` mismatched
   quote delimiters).
-- **Next: Session 6 — `ui/selection` + `ui/edit` + `ui/adjustment` +
-  `ui/clipboard` (15 production classes).** Smaller scope; likely one wave of
-  ~3–4 parallel sub-audits. Note the Session-7 carry-forwards above
-  (`ScoreViewController`/`MainFrame`) are NOT part of Session 6.
+- **Session 6 (`ui/selection` + `ui/edit` + `ui/adjustment` + `ui/clipboard`,
+  11 production classes): DONE** — one wave of four parallel sub-audits (6A
+  `SelectionCoordinator`; 6B selection data holders + `ClipboardManager`; 6C
+  `ui/edit`; 6D `ui/adjustment`); full findings appended to `matrix.md` §6
+  (tables 6A–6D + a §6 summary), progress row flipped to `done`. 259 behavior
+  rows: 78 adequate, 154 missing, 10 inadequate, 7 wrong-level, 10 none. ("15" in
+  the progress table counts 4 `package-info.java` files.) Key gaps:
+  **`ui/adjustment` is the largest dark zone** — `VerticalAdjustment` and the
+  `Adjustment` base have zero tests, and the two existing `HorizontalAdjustmentTest`
+  tests are *inadequate* (named `…SnapToEndSkipped` but never call `drag()`;
+  assert only model preconditions, not the snap arithmetic); **`ui/edit` has no
+  mirrored test file** (`GraceModeManager`/`EditModeManager` state machines
+  covered only by e2e happy-path robot tests + assertion-free fixture mocks);
+  `SelectionCoordinator` is well-covered (47/93 adequate) but its flag-gating
+  predicates are dark (`selectionHasRests`, `canDeleteLine`, `canChangeTempo`,
+  `restoreActionStatesWithFlag`, the `triggerReflection` dedup guard). Two
+  systemic gaps recur across 6A/6B: cross-line selection guards and the
+  reversed-drag branch of `extendSelectionTo`. **No production dead code found.**
+  Two classifications resolved during assembly: `Adjustment` ctor `missing→none`
+  (pure listener registration); `SelectionCoordinator.globalMouseReleasedListener`
+  `e2e/inadequate→unit/missing` (cleanup body is directly invokable). One
+  production observation filed as a tracked GitHub issue (#411): `VerticalAdjustment`
+  adds the pixel-derived `diffY` to `…Ss` staff-space fields without `pxToSs`
+  conversion (off by ~8× at the default scale).
+- **Next: Session 7 — `ui/component` (65 classes).** Largest single package;
+  will need multiple waves (3+). Carry forward the Session-5/6 forward-pointers
+  that were trimmed into `ui/component` scope: `ScoreViewController.*` — including
+  the `handlePaste()` TODO-only stub that makes `PasteAction` a silent no-op — and
+  `MainFrame.save*`/`showSaveDialog`/`handle*` (the sole guard against silent
+  data loss, untested except indirectly via `ShutdownTest`).
 
 ## Session order (risk-ordered)
 
