@@ -454,7 +454,7 @@ Audited via six parallel production-first sub-audits: **Song**; **Line**; **elem
 
 ### dom — production observations (out of test-audit scope)
 
-- **`FermataAttachment(@Nullable StaffElement)`** calls `setOwnerElement(parent)` twice (lines 59 and 63): once unconditionally, then again inside the `if (parent != null)` block. The second call is a redundant no-op (idempotent for the same owner) — harmless, not behavior-affecting, so no regression test is warranted. Worth a one-line cleanup during remediation, not a matrix row.
+- **`FermataAttachment(@Nullable StaffElement)`** calls `setOwnerElement(parent)` twice (lines 59 and 63): once unconditionally, then again inside the `if (parent != null)` block. The second call is a redundant no-op (idempotent for the same owner) — harmless, not behavior-affecting, so no regression test is warranted. **RESOLVED 2026-05-22:** redundant call removed.
 
 ### dom — summary
 

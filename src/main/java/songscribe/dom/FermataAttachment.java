@@ -60,7 +60,6 @@ public class FermataAttachment extends Attachment {
         setAlignment(Alignment.CENTER);
 
         if (parent != null) {
-            setOwnerElement(parent);
             setParentLine(parent.getParentLine());
         }
     }
