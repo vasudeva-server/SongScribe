@@ -195,13 +195,43 @@ comfortable across 50 classes; `ui/action` (62) will likely want 3+ waves.
   `defaultButton != null` guard). Production observations (handlePaste stub;
   `DurationToolbar` guard; `LineComponent` #411-adjacent coordinate chain) recorded
   in the §7 summary and filed as a tracked GitHub issue (#412).
-- **Next: Session 8 — `message` (mutation/command/notification + core, 86
-  classes).** Large; will need multiple waves. Per the rubric most `message.mutation`
-  / `message.command` / `message.notification` records are pure data holders →
-  `none`, **unless they carry derivation logic** — focus the audit on records with
-  computed/derived state and on the core message-bus plumbing, not the trivial
-  carriers. Read `.agents/guides/messages.md` and `.agents/guides/mutations.md`
-  before starting.
+- **Session 8 (`message` — mutation/command/notification + core, 82 prod
+  classes + 4 `package-info`): DONE** — two waves of parallel sub-audits (Wave 1:
+  8A core message bus; 8B mutation infrastructure & field-enum validation; 8C
+  structural mutation records — Wave 2: 8D `command`; 8E `notification`); full
+  findings appended to `matrix.md` §8 (tables 8A–8E + §8 summary + production
+  observations), progress row flipped to `done`. **79 behavior rows: 53 unit / 0
+  e2e / 26 none; of 53 testable, 30 missing · 22 adequate · 1 inadequate · 0
+  wrong-level (~57% dark).** As predicted at triage, the package is a small
+  well-covered logic core inside a large trivial-holder mass; **zero e2e in the
+  whole package** (no integration risk intrinsic to message classes). Key shape:
+  **(1) bright spot** — `SongDidChangeNotification` is fully covered (all four
+  `getLine()` branches, lazy cache, `hasMutationOf`, unmodifiable list), the model
+  for the rest; **(2) highest-concentration gap** — `FieldTypeValidator`'s
+  type-mismatch throw is untested across all four validated records
+  (`LineKeyChange`/`LineLayoutChange`/`MetadataChange`/`LayoutChange`) and the
+  field-enum `getExpectedType()` mappings (~20 constants) have zero assertions, so
+  an `int.class` slip would silently disable validation; **(3) core bus dark** —
+  `MessageCenter` dispatch / `@Handler` priority order / `handlePublicationError`
+  entirely untested (used everywhere only as a static conduit); **(4) trivial mass,
+  three holdouts** — `command` + structural `mutation` records are pure holders,
+  only `ToggleTupletCommand.getTupletSize()`, `ModeDidChangeNotification.isAdjustmentMode()`,
+  `MusicSelectionDidChangeNotification.hasLyricSelection()` need tests. `inadequate`:
+  `FieldTypeValidator` null-bypass (never explicitly asserted) + the parameterized
+  `SpanMutations` test (asserts `getLine()` identity but never the span payload
+  accessor). **No dead classes**, but `CloseWindowCommand.java` declares no type
+  (orphan: license + `package` + unused import, zero usages — verified). Six
+  production observations recorded in the §8 production-observations block (no EDT
+  assertion on `MessageCenter.post()`; `MessageLogger` double-`init()` duplicate
+  dispatch; `FieldTypeValidator` primitive-type latent risk; `ElementRangeDeletion`
+  no defensive copy; `CloseWindowCommand` orphan; `MusicSelectionDidChangeNotification`
+  captures live UI state in its ctor) — filed as a tracked GitHub issue (#413).
+- **Next: Session 9 — `ui/renderer` (30 classes).** Per the rubric, pure
+  rendering to a `Graphics2D` with no computed geometry is `none` (the geometry, if
+  any, is unit-tested upstream in `layout`) — so focus the audit on renderers that
+  *compute* geometry/positioning rather than merely paint, and check for the
+  recurring weak-assertion / self-referential-oracle patterns seen in `layout`
+  (Session 3). Likely one wave of ~3 sub-audits.
 
 ## Session order (risk-ordered)
 
