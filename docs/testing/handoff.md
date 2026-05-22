@@ -370,14 +370,42 @@ comfortable across 50 classes; `ui/action` (62) will likely want 3+ waves.
   (#417): `RuntimeError` `System.exit`
   test-seam, the three dead `FileExtensions` constants, the assertion-free
   `logBanner` invocations.
-- **Next: Session 13 — e2e reconciliation (whole-suite redundancy / orphans).**
-  The final audit session: with all production packages audited (§1–§12), reconcile
-  the 79 e2e methods across the 7 `songscribe/e2e/` files against the matrix — find
-  e2e tests that duplicate now-adequate unit coverage (candidates to drop), e2e
-  cases asserting what should be unit (wrong-level), and orphaned/over-broad e2e.
-  Then the audit is complete and the remediation phase (rewrite + PIT verification)
-  begins; promote the rubric into `.agents/guides/testing-common.md` and
-  archive/delete this scaffolding.
+- **Session 13 (e2e reconciliation, 51 e2e methods across 7 files): DONE** — one
+  wave of four parallel sub-audits (13A `ElementInsertionTest`; 13B `SelectionTest`;
+  13C `NoteConnectionTest` + `DynamicsMarkingTest`; 13D `DialogsTest` + `ShutdownTest`),
+  run in reconcile + spot-verify mode; full findings appended to `matrix.md` §13
+  (tables 13A–13D + §13 summary), progress row flipped to `done`. **51 e2e `@Test`
+  methods reconciled: 38 keep · 8 wrong-level · 4 redundant · 1 orphan/over-broad**
+  (recomputed from the verdict columns via awk — sub-agent prose tallies were
+  unreliable, as in Sessions 11/12). **Baseline correction:** the prior "79" was a
+  loose-grep artifact (counted `@TestClassOrder`/`@TestInstance`/`@TestMethodOrder`);
+  real count is **51** — fixed in the matrix inventory + Baseline counts below.
+  Defining shape: **the suite is overwhelmingly genuine integration (38/51)** that
+  must stay e2e; the reconciliation surfaced a small, sharp set of remediation actions
+  rather than a big dark zone. **Drop as redundant (4):** three `DialogsTest`
+  CLOSED_OPTION/input tests (covered by unit `songscribe/ui/DialogsTest.WhenNotSuppressed`)
+  + `ElementInsertionTest.testSameTypeClickKeepsDecorations` (articulation carry-over
+  adequate in `PreviewElementManagerAttachmentTest`). **Relocate to unit (8 wrong-level):**
+  `DialogsTest.testClickYesReturnsYesOption` (pure framework return); the
+  `NoteConnectionTest` `GlissandoSelection` trio (`LineSelectionState` logic, §7C
+  1993/1997, two with vacuous unmodified-fixture assertions); the `ElementInsertionTest`
+  `PreviewElementManager.modifyExistingElement` group of four (pure model-state asserts →
+  one parametrized unit test). **Orphan (1):** `testBuildSong` is a no-assertion `@Test`
+  (+ a class-level orphan: `DynamicsMarkingTest`'s stale "E6 serialization" javadoc,
+  no-op `@Order(5)`/`@TestClassOrder`, never-called `roundTrip`). **Fix in place:**
+  `SelectionTest.testDragSelect` stays e2e but `>=3` must become `==3` (§6A 1979 / §7C
+  2368). **Seven provisional keeps** are sole coverage of a matrix-`missing` unit path
+  (re-evaluate for downgrade once those unit tests exist). **No production observations**
+  (audits test code, not production; findings ARE the remediation actions — no new
+  issue). Carry-forward still open for remediation: §12A `CloseWindowAction` has no e2e;
+  the Sessions-5/7 data-loss guard (`MainFrame.showSaveDialog()` + Save/Don't-Save) stays
+  dark.
+- **AUDIT COMPLETE.** All production packages (§1–§12) plus the e2e suite (§13) are
+  audited. **Next: remediation phase** — rewrite tests in a remediation order (driven by
+  the §1–§13 findings), with scoped PIT (`./scripts/mutation-test.sh`) confirming each
+  flagged weakness and its fix. At the end, promote the rubric (`matrix.md` lines 29–91)
+  into `.agents/guides/testing-common.md`, then archive/delete this scaffolding
+  (`matrix.md`, `handoff.md`).
 
 ## Session order (risk-ordered)
 
@@ -390,5 +418,6 @@ top-level) → e2e reconciliation.
 
 ## Baseline counts
 
-Unit: 1267 `@Test` methods (~132 files). E2E: 79 methods (7 files). Production:
-~507 classes. These are gap-finders, not grades.
+Unit: 1267 `@Test` methods (~132 files). E2E: 51 methods (7 files; the earlier
+"79" miscounted class/instance/method-order annotations). Production: ~507 classes.
+These are gap-finders, not grades.
