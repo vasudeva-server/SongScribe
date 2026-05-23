@@ -131,16 +131,16 @@ Risk-ordered. Data-loss / core-logic packages first; cosmetic rendering last.
 
 | # | Package scope | File |
 |---|---|---|
-| 1 | `dom` | [matrix-dom.md](matrix-dom.md) |
-| 2 | `io` | [matrix-io.md](matrix-io.md) |
-| 3 | `layout` | [matrix-layout.md](matrix-layout.md) |
-| 4 | `midi` + `converter` + `util` + `smufl` + `prefs` + `font` + `export` + `uiconverter` | [matrix-util.md](matrix-util.md) |
-| 5 | `ui/action` | [matrix-action.md](matrix-action.md) |
-| 6 | `ui/selection` + `ui/edit` + `ui/adjustment` + `ui/clipboard` | [matrix-selection.md](matrix-selection.md) |
-| 7 | `ui/component` | [matrix-component.md](matrix-component.md) |
-| 8 | `message` | [matrix-message.md](matrix-message.md) |
-| 9 | `ui/renderer` | [matrix-renderer.md](matrix-renderer.md) |
-| 10 | `ui/dialog` | [matrix-dialog.md](matrix-dialog.md) |
-| 11 | `ui/menu` + `ui/playback` + `ui/platform` + top-level `ui` | [matrix-menu.md](matrix-menu.md) |
-| 12 | `lifecycle` + `error` + top-level (`SongScribe`, `FileExtensions`) | [matrix-lifecycle.md](matrix-lifecycle.md) |
-| 13 | e2e reconciliation | [matrix-e2e.md](matrix-e2e.md) |
+| 1 | `dom` | [matrix-dom.md](matrix-dom/matrix-dom.md) |
+| 2 | `io` | [matrix-io.md](matrix-io/matrix-io.md) |
+| 3 | `layout` | [matrix-layout.md](matrix-layout/matrix-layout.md) |
+| 4 | `midi` + `converter` + `util` + `smufl` + `prefs` + `font` + `export` + `uiconverter` | [matrix-util.md](matrix-util/matrix-util.md) |
+| 5 | `ui/action` | [matrix-action.md](matrix-action/matrix-action.md) |
+| 6 | `ui/selection` + `ui/edit` + `ui/adjustment` + `ui/clipboard` | [matrix-selection.md](matrix-selection/matrix-selection.md) |
+| 7 | `ui/component` | [matrix-component.md](matrix-component/matrix-component.md) |
+| 8 | `message` | [matrix-message.md](matrix-message/matrix-message.md) |
+| 9 | `ui/renderer` | [matrix-renderer.md](matrix-renderer/matrix-renderer.md) |
+| 10 | `ui/dialog` | [matrix-dialog.md](matrix-dialog/matrix-dialog.md) |
+| 11 | `ui/menu` + `ui/playback` + `ui/platform` + top-level `ui` | [matrix-menu.md](matrix-menu/matrix-menu.md) |
+| 12 | `lifecycle` + `error` + top-level (`SongScribe`, `FileExtensions`) | [matrix-lifecycle.md](matrix-lifecycle/matrix-lifecycle.md) |
+| 13 | e2e reconciliation | [matrix-e2e.md](matrix-e2e/matrix-e2e.md) |

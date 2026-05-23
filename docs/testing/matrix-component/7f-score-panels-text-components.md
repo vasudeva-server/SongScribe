@@ -1,0 +1,44 @@
+### 7F. Score panels & text components
+
+| class | behavior | required level | existing test | verdict | action |
+|---|---|---|---|---|---|
+| `TitleComponent` | `getPreferredSize`: with song null or empty title returns `(0, 0)` | unit | none | missing | Cover null-song and empty-title early-returns |
+| `TitleComponent` | `getPreferredSize`: wraps title at 75 % of line width, height = `lineHeight * wrappedLineCount + marginBottom` | unit | none | missing | Title long enough to wrap: assert height grows with wrapped line count |
+| `TitleComponent` | `render` prepends number + ". " when `song.getNumber()` is non-empty before wrapping | unit | none | missing | Verify number prefix is included in the text handed to `wrapText`; a missing prefix would silently drop the song number |
+| `TitleComponent` | `render` centers each wrapped line individually within the max-width block | none | — | — | Pure Swing `drawString` with no assertable geometry outside the render pass; `none` |
+| `FootnotesComponent` | `getPreferredSize`: null/empty footnotes returns `(0, 0)`; non-empty returns `marginTop + lineHeight * lineCount` | unit | none | missing | Cover both branches; multi-line footnotes (newline-split count) |
+| `FootnotesComponent` | width cap: `actualWidth = min(textWidth, lineWidth * 2/3)` only applies to the render X position, not `getPreferredSize` (which always returns full `lineWidthPx`) — potential centering inconsistency | unit | none | missing | Assert that for very wide footnotes `x` is non-negative and stays within bounds |
+| `TranslationComponent` | `getTextWidth`: returns max of official/unofficial header width and translation text width; early-return on null song or empty translation | unit | none | missing | Test with unofficial flag, official flag, and empty translation |
+| `TranslationComponent` | `getPreferredSize`: height = `marginTop + headerMetrics.height + fontSize/4 + textMetrics.height * lineCount` | unit | none | missing | Assert height formula for one-line and multi-line translations; `fontSize/4` inter-header gap is a non-obvious computed value |
+| `TranslationComponent` | `render` selects `TRANSLATION_HEADER_UNOFFICIAL` vs. `TRANSLATION_HEADER_OFFICIAL` based on `song.isUnofficialTranslation()` | unit | none | missing | Both branches (the wrong header string is invisible in CI without a test) |
+| `LyricsComponent` | `getTextWidth`: returns 0 when song null or lyrics empty; otherwise delegates to `GraphicUtils.getTextBlockWidth` | unit | none | missing | Null-song and empty-lyrics guards |
+| `LyricsComponent` | `getPreferredSize`: height = `lineHeight * splitByNewline.length + marginTop`; width = `song.getLineWidthPx()` | unit | none | missing | Single-line and multi-line lyrics; assert height scales with line count |
+| `LyricsComponent` | `render` splits on `\n` and draws each line advancing by `lineHeight` | none | — | — | Pure paint loop; no geometry assertable outside the Swing render pass |
+| `BanglaLyricsComponent` | `getLyrics` delegates to `song.getBanglaLyrics()`; `getLyricsFont` delegates to `getFont()` | none | — | — | Trivial one-liner delegations; no test warranted |
+| `BanglaLyricsComponent` | `BANGLA_LYRICS_TOP_MARGIN` applied via `setMarginTop` in constructor | none | — | — | Wiring-only; no test warranted |
+| `UnderLyricsComponent` | `getLyrics` delegates to `song.getUnderLyrics()`; `getLyricsFont` delegates to `getFont()` | none | — | — | Trivial one-liner delegations; no test warranted |
+| `TextPanel` | `calculateUnionWidth`: returns max across all three child `getTextWidth` calls | unit | none | missing | Mock children or use real instances with a mock song; assert the maximum wins |
+| `TextPanel` | `paintComponent`: when `unionWidth > 0`, sets identical `contentX` on all three children; when 0 resets to -1 | unit | none | missing | Both branches; this is the central alignment invariant for all text sections |
+| `TextPanel` | `getPreferredSize`: sums heights of all three child preferred sizes; width = max of three | unit | none | missing | Cover null-song early-return and non-empty case |
+| `TextPanel` | `getSong` throws when song not initialized | none | — | — | Trivial guard; no test warranted |
+| `StaffPanel` | `rebuildLayout`: creates one `LinePanel` per song line, adds spacing strut between all but the last | unit | none | missing | Zero lines, one line (no strut), three lines (two struts): assert `linePanels.size()` and component count |
+| `StaffPanel` | `getLinePanel(index)`: returns null for out-of-bounds (both negative and >= size) | unit | none | missing | Boundary conditions at -1, 0, size-1, size |
+| `StaffPanel` | `getLinePanelAt(point)`: returns the `LinePanel` whose bounds contain the point, null otherwise | unit | none | missing | Point inside first panel, last panel, gap between panels (should return null) |
+| `StaffPanel` | `getPreferredSize`: aggregates line heights + inter-line margins (n-1 margins); returns `(0,0)` when empty | unit | none | missing | Zero lines, one line, multiple lines; assert margin count |
+| `StaffPanel` | `getLayoutResults` threads `hasLeadingLyricContinuation` across line boundaries | unit | none | missing | Multi-line scenario where one line's `hasTrailingLyricContinuation()` feeds the next; null layout result resets flag to false |
+| `StaffPanel` | `updateSongMetrics` side-effect: calls `rebuildLyricRenderMetrics()` then `setSongLayoutMetrics()` on `ScoreView` | unit | none | missing | Verify the call order (lyric metrics rebuilt before layout runs); mock `ScoreView` and verify |
+| `LinePanel` | `getPreferredSize` delegates to `lineComponent.getPreferredSize()` | none | — | — | One-liner delegation; no test warranted |
+| `LinePanel` | `setLine` propagates both `line` and `lineIndex` to `lineComponent` | none | — | — | Trivial setter; no test warranted |
+| `MainPanel` | `getPreferredSize`: conditional `scoreMarginTop` added only when both title and score heights > 0 | unit | none | missing | Three cases: title empty (no gap), score empty (no gap), both non-empty (gap added) |
+| `MainPanel` | `getLinePanelAt(point)`: transforms point to `staffPanel`-local coords, delegates to `StaffPanel.getLinePanelAt`; returns null when point outside `staffPanel` bounds | unit | none | missing | Point inside staffPanel vs. outside (title region, below score) |
+| `MainPanel` | `rebuildLayout` delegates to `staffPanel.rebuildLayout()` then revalidates | none | — | — | Pure wiring delegation; no test warranted |
+| `ScorePanel` | `getPreferredSize`: width = max(contentWidth, parentWidth) — prevents horizontal shrink below parent | unit | none | missing | Content wider than parent (content width wins), content narrower (parent width wins) |
+| `ScorePanel` | `getPreferredScrollableViewportSize` returns `content.getPreferredSize()` (not `getPreferredSize()`) to break viewport-feedback loop | unit | none | missing | Assert returns content size, not panel size (the distinction is the documented bug guard) |
+| `ScorePanel` | `getScrollableBlockIncrement`: vertical = `visibleRect.height - 10`; horizontal = `visibleRect.width - 20` | unit | none | missing | Both orientations; the asymmetric constants must not regress |
+| `ScorePanel` | `getScrollableUnitIncrement` always returns 30 | none | — | — | Magic number but constant; no branch or computation to test |
+| `ScorePanel` | `updateUI`: sets background from `FlatLafProps` before fields initialized — early-exit safety | none | — | — | Framework bootstrap; no test warranted |
+
+**7F notes (quality concerns):**
+
+The entire `songscribe.ui.component.score` package has zero dedicated unit tests. The classes contain substantial non-trivial logic — conditional height and width computations in `getPreferredSize`, a two-branch centering system (`resolveContentX` / `calculateUnionWidth` / `paintComponent` of `TextPanel`), a line-boundary lyric-continuation threading algorithm in `StaffPanel.getLayoutResults`, and a viewport-feedback-loop guard in `ScorePanel.getPreferredScrollableViewportSize` — none of which are exercised by any test. The most fragile behaviors are: (1) `TextPanel.calculateUnionWidth` + `paintComponent` reset/set of `contentX`, whose failure produces silently wrong centering; (2) `StaffPanel.getLayoutResults` threading `hasLeadingLyricContinuation`, where off-by-one or reset-on-null mistakes propagate across the entire song rendering; (3) `MainPanel.getPreferredSize` conditional gap insertion, whose bug would cause layout drift only in specific title/score combinations. The helper method `StringUtils.wrapText` (consumed by `TitleComponent`) has its own non-trivial word-rebalancing pass and is also completely untested — a gap that predates this package but is surfaced here as a direct dependency. All warranted tests are classifiable as unit (no Swing pipeline required; `Song` and collaborators can be mocked or constructed lightweight).
+
