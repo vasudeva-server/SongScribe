@@ -41,6 +41,36 @@ class SongLoadingTest extends UnitTest {
         song.setModified(false);
     }
 
+    @Test
+    void testLoadingCtorUsesDataLinesWithNoExtraDefaultLine() {
+        // Song(SongData) must not add a default line — only the lines supplied by SongData.
+        var stub = Song.newParsingStub();
+        var dataLine = new Line(stub);
+        stub.withoutMutationTracking(() -> {
+            // Pre-set defaults so applyLineDefaults finds them already applied and is a no-op.
+            // If these were left at 0/null, applyLineDefaults would call setKeyAccidentalCount
+            // and setTempoChangeYPosPx which require a bracket or suspension.
+            dataLine.setKeyAccidentalCount(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
+            dataLine.setKeyType(Song.DEFAULT_KEY_TYPE);
+            dataLine.setTempoChangeYPosPx(1);
+            dataLine.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+        });
+
+        var data = new SongData(
+            null, "", "", "", 0, 0, "", "", "", "", "", "", false,
+            Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
+            0.0, 0.0, 0.0, 0.0,
+            List.of(dataLine), false, 1
+        );
+
+        var loaded = new Song(data);
+
+        assertThat(loaded.lineCount())
+            .as("Song(SongData) must contain exactly the lines from SongData, not an extra default line")
+            .isEqualTo(1);
+        assertThat(loaded.getLine(0)).isSameAs(dataLine);
+    }
+
     // T63: Loading a pre-2.4 file runs migrateFinalTerminal inside withoutMutationTracking,
     //      so the document is clean even though migration mutated elements.
     @Test

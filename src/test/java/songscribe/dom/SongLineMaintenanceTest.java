@@ -22,6 +22,7 @@ package songscribe.dom;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
 
 import org.junit.jupiter.api.AfterEach;
@@ -464,6 +465,45 @@ class SongLineMaintenanceTest extends UnitTest {
 
             assertThat(initialLine.elementCount()).isEqualTo(1);
             assertThat(initialLine.getElement(0).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // canReplaceTerminal, replaceTerminal, newTerminalElement predicates
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TerminalPredicates {
+
+        @Test
+        void testCanReplaceTerminalFalseForInvalidType() {
+            // CROTCHET is not a valid terminal; canReplaceTerminal must return false.
+            assertThat(song.canReplaceTerminal(ElementType.CROTCHET)).isFalse();
+        }
+
+        @Test
+        void testCanReplaceTerminalFalseWhenSameAsCurrent() {
+            // Default terminal is FINAL_DOUBLE_BARLINE; passing the same type returns false.
+            assertThat(song.canReplaceTerminal(ElementType.FINAL_DOUBLE_BARLINE)).isFalse();
+        }
+
+        @Test
+        void testCanReplaceTerminalTrueForValidDifferentType() {
+            // REPEAT_RIGHT is a valid terminal distinct from the current FINAL_DOUBLE_BARLINE.
+            assertThat(song.canReplaceTerminal(ElementType.REPEAT_RIGHT)).isTrue();
+        }
+
+        @Test
+        void testNewTerminalElementThrowsIAEForNonTerminalType() {
+            assertThatThrownBy(() -> Song.newTerminalElement(ElementType.CROTCHET))
+                .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void testReplaceTerminalThrowsIAEForNonTerminalType() {
+            assertThatThrownBy(() -> song.replaceTerminal(ElementType.CROTCHET))
+                .isInstanceOf(IllegalArgumentException.class);
         }
     }
 

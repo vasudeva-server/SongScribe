@@ -37,6 +37,7 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
+import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 
 class SongBracketTest extends UnitTest {
@@ -159,6 +160,19 @@ class SongBracketTest extends UnitTest {
     }
 
     @Test
+    void testDocumentWasSavedSetsModifiedFalse() {
+        song.setModified(true);
+        song.documentWasSaved(new DocumentWasSavedNotification());
+        assertThat(song.isModified()).isFalse();
+    }
+
+    @Test
+    void testEndSuspendMutationTrackingWithoutBeginThrowsISE() {
+        assertThatThrownBy(() -> song.endSuspendMutationTracking())
+            .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void testNotificationCarriesThisSong() {
         song.withModification(() ->
             song.applyChange(new MetadataChange(MetadataField.TITLE, "a", "b"), () -> {})
@@ -166,6 +180,25 @@ class SongBracketTest extends UnitTest {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getSong()).isSameAs(song);
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SuspensionTracking {
+
+        @Test
+        void testNestedWithoutMutationTrackingResumesAfterBothComplete() {
+            song.withoutMutationTracking(() -> {
+                assertThat(song.isMutationTrackingSuspended()).isTrue();
+                song.withoutMutationTracking(() ->
+                    assertThat(song.isMutationTrackingSuspended()).isTrue()
+                );
+                // Inner scope ended but outer is still active.
+                assertThat(song.isMutationTrackingSuspended()).isTrue();
+            });
+            // Both scopes ended; tracking is fully resumed.
+            assertThat(song.isMutationTrackingSuspended()).isFalse();
+        }
     }
 
     private SongDidChangeNotification captureSingleDidChange() {
