@@ -1,0 +1,9 @@
+# Disposition: keep — built incrementally during remediation (NOT script-generated).
+# One entry per test method. Format:  Class.method <TAB> section <TAB> note
+#   keep      existing test is adequate, retained as-is
+#   modify    existing test rewritten/strengthened in place (was 'inadequate')
+#   add       new test method written (was 'missing')
+#   remove    existing test deleted (was 'redundant'/orphan/fails quality bar)
+#   relocate  test moved to correct level; note records 'OLD -> NEW' (was 'wrong-level')
+# Final sweep: every @Test in the suite NOT in keep/modify/add/relocate-target is a
+# delete candidate, then judged via /check-tests before removal.

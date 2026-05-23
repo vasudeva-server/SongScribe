@@ -1,68 +1,68 @@
 ### 6B. selection data holders + `ClipboardManager`
 
-| class | behavior | required level | existing test | verdict | action |
-|---|---|---|---|---|---|
-| `ElementSelection` | pure data record (line, begin, end) — no logic | none | — | none | no test needed; pure carrier |
-| `TupletToggleInfo` | compact-record guard: throws when `coversExisting=true` and `existing=null` | unit | none | missing | add unit test asserting the `IllegalArgumentException` |
-| `TupletToggleInfo` | `canToggle`, `existing`, `coversExisting` fields accessible as record components | none | — | none | pure data accessors; no logic |
-| `LineSelectionState` | `clearSelection()` resets all five fields and fires callback | unit | none | missing | add unit test with callback capture and field assertions |
-| `LineSelectionState` | `setLineSelected(true)` clears `selectedGlissandoElementIndex` and fires callback | unit | none | missing | add unit test asserting glissando index reset |
-| `LineSelectionState` | `setLineSelected(false)` sets `lineSelected=false` and fires callback | unit | none | missing | add unit test |
-| `LineSelectionState` | `selectGlissando()` clears element + line selection, sets glissando index, fires callback | unit | `NoteConnectionTest.GlissandoSelection.testClickSelectGlissando` (e2e) | wrong-level | add unit test; e2e is also acceptable as an integration check but the logic can be exercised unit |
-| `LineSelectionState` | `isGlissandoSelected(index)` returns true iff index matches stored glissando index | unit | none | missing | add unit test |
-| `LineSelectionState` | `hasGlissandoSelection()` returns true iff `selectedGlissandoElementIndex != -1` | unit | `NoteConnectionTest` (e2e, asserts against real LSS) | wrong-level | add unit test |
-| `LineSelectionState` | `hasElementSelection()` returns false when no selection, true after click-select | unit | `LineSelectionStateTest.testSelectAllOnLineWithOnlyFinalBarlineSelectsNothing` (indirect) | adequate | — |
-| `LineSelectionState` | `isElementSelected(index)` correctly bounds-checks with inclusive range | unit | `NoteConnectionTest.testSelectSourceNote` / `testSelectTargetNote` (e2e) | wrong-level | add unit test; selection range logic is pure state |
-| `LineSelectionState` | `getSelectionSize()` returns 0 when no selection, N=(end-begin+1) otherwise | unit | none (only mocked indirectly in other tests) | missing | add unit test |
-| `LineSelectionState` | `getSelection()` returns `null` when no element and no line selection | unit | none | missing | add unit test |
-| `LineSelectionState` | `getSelection()` returns `ElementSelection` spanning full line when `lineSelected=true` | unit | none | missing | add unit test |
-| `LineSelectionState` | `getSelection()` returns `ElementSelection` from element range when element-selected | unit | used via mock in `ApplyToSelectionInterceptTest` / `DynamicMarkingActionTest` | inadequate | tests only stub the return on a mock coordinator; add unit test on LSS directly |
-| `LineSelectionState` | `getSingleSelectedElement()` returns null when >1 selected, element when exactly 1 | unit | `SelectionCoordinatorLyricSelectionTest.testElementSelectionClearsLyricSelection` (indirect, asserts coordinator wrapper) | adequate | — |
-| `LineSelectionState` | `setSelectionFromClick()` sets begin=end=anchor=index, clears glissando, fires callback | unit | used as setup in `LineSelectionStateTest` and `ToggleConflictTest` but never directly asserted | inadequate | add unit test asserting all five side effects |
-| `LineSelectionState` | `extendSelectionTo()` with anchor < index: sets begin=anchor, end=index | unit | used as setup in `LineSelectionStateTest` but never directly asserted on its own | inadequate | add unit test asserting correct [begin,end] ordering in both directions |
-| `LineSelectionState` | `extendSelectionTo()` with anchor > index (reversed drag): begin=index, end=anchor | unit | none | missing | add unit test |
-| `LineSelectionState` | `extendSelectionTo()` no-op when anchor is -1 | unit | none | missing | add unit test |
-| `LineSelectionState` | `extendSelection()` starts new selection when begin=-1 | unit | none | missing | add unit test |
-| `LineSelectionState` | `extendSelection()` extends end when selection exists (begin unchanged) | unit | none | missing | add unit test |
-| `LineSelectionState` | `resetElementSelection()` sets begin=end=-1 (does not touch lineSelected/glissando), fires callback | unit | none | missing | add unit test |
-| `LineSelectionState` | `setSelectionAnchor()` / `getSelectionAnchor()` round-trip | unit | none | missing | add unit test |
-| `LineSelectionState` | `selectAll()` excludes auto-maintained terminal (FINAL_DOUBLE_BARLINE) | unit | `LineSelectionStateTest.testSelectAllExcludesAutoMaintainedFinalBarlineOnLastLine` | adequate | — |
-| `LineSelectionState` | `selectAll()` excludes REPEAT_RIGHT terminal on last line | unit | `LineSelectionStateTest.testSelectAllExcludesAutoMaintainedRightRepeatTerminalOnLastLine` | adequate | — |
-| `LineSelectionState` | `selectAll()` on empty line (only terminal) selects nothing | unit | `LineSelectionStateTest.testSelectAllOnLineWithOnlyFinalBarlineSelectsNothing` | adequate | — |
-| `LineSelectionState` | `selectAll()` on non-last line includes all elements | unit | `LineSelectionStateTest.testSelectAllOnNonLastLineIncludesAllElements` | adequate | — |
-| `LineSelectionState` | `selectionChangeCallback` fires on every state-mutating call | unit | none | missing | add unit test with a counter callback |
-| `LineSelectionState` | `canToggleBeaming()` — size < 2 returns false | unit | `ToggleConflictTest.testQuarterNotesBeamingDisabledTieEnabled` (indirectly; quarter notes are not beamable so size check and beamable check overlap) | adequate | — |
-| `LineSelectionState` | `canToggleBeaming()` — non-beamable element in range returns false | unit | `ToggleConflictTest.testChangeDurationToQuarterDisablesBeam` | adequate | — |
-| `LineSelectionState` | `canToggleBeaming()` — all beamable, no existing beam (add mode) | unit | `ToggleConflictTest.testChangeDurationToEighthBothEnabled` | adequate | — |
-| `LineSelectionState` | `canToggleBeaming()` — existing beam covering selection (remove mode) | unit | `ToggleConflictTest.testToggleTieOnDisablesBeam` / `testToggleTieOffReenablesBeam` | adequate | — |
-| `LineSelectionState` | `canToggleBeaming()` — blocked when would connect same span as existing tie | unit | `ToggleConflictTest.testToggleTieOnDisablesBeam` | adequate | — |
-| `LineSelectionState` | `canToggleTie()` — size != 2 returns false and sets canTie=false | unit | `ToggleConflictTest.testQuarterNotesBeamingDisabledTieEnabled` (size=2 path) + lacks explicit size!=2 assertion | inadequate | add explicit test for size < 2 and size > 2 setting canTie=false |
-| `LineSelectionState` | `canToggleTie()` — non-pitched element in range returns false | unit | none | missing | add unit test |
-| `LineSelectionState` | `canToggleTie()` — pitch mismatch returns false | unit | none | missing | add unit test |
-| `LineSelectionState` | `canToggleTie()` — elements in different ties returns false | unit | none | missing | add unit test |
-| `LineSelectionState` | `canToggleTie()` — two same-pitch notes with no tie (add mode): canTie=true, existingTie=null | unit | `ToggleConflictTest.testQuarterNotesBeamingDisabledTieEnabled` + `testToggleTieOnDisablesBeam` | adequate | — |
-| `LineSelectionState` | `canToggleTie()` — two notes sharing existing tie (remove mode): canTie=true, existingTie set | unit | `ToggleConflictTest.testToggleTieOffReenablesBeam` (uses getExistingTie) | adequate | — |
-| `LineSelectionState` | `canToggleTie()` — blocked when would connect same span as existing beam | unit | `ToggleConflictTest.testToggleBeamOnDisablesTie` | adequate | — |
-| `LineSelectionState` | `resetTieState()` clears canTie and existingTie | unit | `ToggleConflictTest.toggleTie()` calls resetTieState but doesn't assert fields directly | inadequate | add unit test asserting `getCanTie()` and `getExistingTie()` return null after reset |
-| `LineSelectionState` | `canToggleTuplet()` — size < 2 returns (false, null, false) | unit | `LineSelectionStateTest.testEmptySelectionCannotToggleTuplet` | adequate | — |
-| `LineSelectionState` | `canToggleTuplet()` — non-pitched element returns (false, null, false) | unit | `LineSelectionStateTest.testSelectionContainingNonPitchedElementCannotToggle` | adequate | — |
-| `LineSelectionState` | `canToggleTuplet()` — two pitched notes, no tuplet: (true, null, false) | unit | `LineSelectionStateTest.testTwoPitchedNotesNoTupletCanToggle` | adequate | — |
-| `LineSelectionState` | `canToggleTuplet()` — selection spans two different tuplets: (false, null, false) | unit | `LineSelectionStateTest.testSelectionSpanningTwoDifferentTupletsCannotToggle` | adequate | — |
-| `LineSelectionState` | `canToggleTuplet()` — full coverage of existing triplet: (true, tuplet, true) | unit | `LineSelectionStateTest.testFullCoverageOfTripletReportsCoversExisting` | adequate | — |
-| `LineSelectionState` | `canToggleTuplet()` — partial coverage of existing tuplet: (true, tuplet, false) | unit | `LineSelectionStateTest.testPartialCoverageOfTripletDoesNotCoverExisting` | adequate | — |
-| `LineSelectionState` | `canToggleTrill()` — returns false when no selection | unit | none | missing | add unit test |
-| `LineSelectionState` | `canToggleTrill()` — returns true when at least one pitched note in range | unit | none | missing | add unit test |
-| `LineSelectionState` | `canToggleTrill()` — returns false when selection contains only rests | unit | none | missing | add unit test |
-| `LineSelectionState` | `canFlipStemDirection()` — returns false when nothing selected | unit | none | missing | add unit test |
-| `LineSelectionState` | `canFlipStemDirection()` — returns true when at least one non-rest in range | unit | none | missing | add unit test |
-| `LineSelectionState` | `canFlipStemDirection()` — returns false when selection is all rests | unit | none | missing | add unit test |
-| `ClipboardManager` | `addElement()` normalizes FINAL_DOUBLE_BARLINE → DOUBLE_BARLINE | unit | `ClipboardManagerTest.AddElement.testFinalDoubleBarlineNormalizedToDoubleBarline` | adequate | — |
-| `ClipboardManager` | `addElement()` passes non-FINAL_DOUBLE_BARLINE through unchanged | unit | `ClipboardManagerTest.AddElement.testDoubleBarlinePassedThrough` + `testNotePassedThrough` | adequate | — |
-| `ClipboardManager` | `addElement()` does not mutate original song element | unit | `ClipboardManagerTest.testSongFinalBarlineUntouched` + `testSongRightRepeatTerminalUntouched` | adequate | — |
-| `ClipboardManager` | `getSize()` returns correct count after adds | unit | none (only used via `getElement(0)` by index in tests) | missing | add unit test |
-| `ClipboardManager` | `isEmpty()` returns true initially, false after add | unit | none | missing | add unit test |
-| `ClipboardManager` | `getFirstElement()` / `getLastElement()` return correct elements from multi-element pasteboard | unit | none | missing | add unit test |
-| `ClipboardManager` | `clear()` empties pasteboard and isEmpty() returns true | unit | none | missing | add unit test |
+| class | behavior | required level | existing test | verdict | action | done |
+|---|---|---|---|---|---|---|
+| `ElementSelection` | pure data record (line, begin, end) — no logic | none | — | none | no test needed; pure carrier | — |
+| `TupletToggleInfo` | compact-record guard: throws when `coversExisting=true` and `existing=null` | unit | none | missing | add unit test asserting the `IllegalArgumentException` | ⬜ |
+| `TupletToggleInfo` | `canToggle`, `existing`, `coversExisting` fields accessible as record components | none | — | none | pure data accessors; no logic | — |
+| `LineSelectionState` | `clearSelection()` resets all five fields and fires callback | unit | none | missing | add unit test with callback capture and field assertions | ⬜ |
+| `LineSelectionState` | `setLineSelected(true)` clears `selectedGlissandoElementIndex` and fires callback | unit | none | missing | add unit test asserting glissando index reset | ⬜ |
+| `LineSelectionState` | `setLineSelected(false)` sets `lineSelected=false` and fires callback | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `selectGlissando()` clears element + line selection, sets glissando index, fires callback | unit | `NoteConnectionTest.GlissandoSelection.testClickSelectGlissando` (e2e) | wrong-level | add unit test; e2e is also acceptable as an integration check but the logic can be exercised unit | ⬜ |
+| `LineSelectionState` | `isGlissandoSelected(index)` returns true iff index matches stored glissando index | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `hasGlissandoSelection()` returns true iff `selectedGlissandoElementIndex != -1` | unit | `NoteConnectionTest` (e2e, asserts against real LSS) | wrong-level | add unit test | ⬜ |
+| `LineSelectionState` | `hasElementSelection()` returns false when no selection, true after click-select | unit | `LineSelectionStateTest.testSelectAllOnLineWithOnlyFinalBarlineSelectsNothing` (indirect) | adequate | — | — |
+| `LineSelectionState` | `isElementSelected(index)` correctly bounds-checks with inclusive range | unit | `NoteConnectionTest.testSelectSourceNote` / `testSelectTargetNote` (e2e) | wrong-level | add unit test; selection range logic is pure state | ⬜ |
+| `LineSelectionState` | `getSelectionSize()` returns 0 when no selection, N=(end-begin+1) otherwise | unit | none (only mocked indirectly in other tests) | missing | add unit test | ⬜ |
+| `LineSelectionState` | `getSelection()` returns `null` when no element and no line selection | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `getSelection()` returns `ElementSelection` spanning full line when `lineSelected=true` | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `getSelection()` returns `ElementSelection` from element range when element-selected | unit | used via mock in `ApplyToSelectionInterceptTest` / `DynamicMarkingActionTest` | inadequate | tests only stub the return on a mock coordinator; add unit test on LSS directly | ⬜ |
+| `LineSelectionState` | `getSingleSelectedElement()` returns null when >1 selected, element when exactly 1 | unit | `SelectionCoordinatorLyricSelectionTest.testElementSelectionClearsLyricSelection` (indirect, asserts coordinator wrapper) | adequate | — | — |
+| `LineSelectionState` | `setSelectionFromClick()` sets begin=end=anchor=index, clears glissando, fires callback | unit | used as setup in `LineSelectionStateTest` and `ToggleConflictTest` but never directly asserted | inadequate | add unit test asserting all five side effects | ⬜ |
+| `LineSelectionState` | `extendSelectionTo()` with anchor < index: sets begin=anchor, end=index | unit | used as setup in `LineSelectionStateTest` but never directly asserted on its own | inadequate | add unit test asserting correct [begin,end] ordering in both directions | ⬜ |
+| `LineSelectionState` | `extendSelectionTo()` with anchor > index (reversed drag): begin=index, end=anchor | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `extendSelectionTo()` no-op when anchor is -1 | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `extendSelection()` starts new selection when begin=-1 | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `extendSelection()` extends end when selection exists (begin unchanged) | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `resetElementSelection()` sets begin=end=-1 (does not touch lineSelected/glissando), fires callback | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `setSelectionAnchor()` / `getSelectionAnchor()` round-trip | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `selectAll()` excludes auto-maintained terminal (FINAL_DOUBLE_BARLINE) | unit | `LineSelectionStateTest.testSelectAllExcludesAutoMaintainedFinalBarlineOnLastLine` | adequate | — | — |
+| `LineSelectionState` | `selectAll()` excludes REPEAT_RIGHT terminal on last line | unit | `LineSelectionStateTest.testSelectAllExcludesAutoMaintainedRightRepeatTerminalOnLastLine` | adequate | — | — |
+| `LineSelectionState` | `selectAll()` on empty line (only terminal) selects nothing | unit | `LineSelectionStateTest.testSelectAllOnLineWithOnlyFinalBarlineSelectsNothing` | adequate | — | — |
+| `LineSelectionState` | `selectAll()` on non-last line includes all elements | unit | `LineSelectionStateTest.testSelectAllOnNonLastLineIncludesAllElements` | adequate | — | — |
+| `LineSelectionState` | `selectionChangeCallback` fires on every state-mutating call | unit | none | missing | add unit test with a counter callback | ⬜ |
+| `LineSelectionState` | `canToggleBeaming()` — size < 2 returns false | unit | `ToggleConflictTest.testQuarterNotesBeamingDisabledTieEnabled` (indirectly; quarter notes are not beamable so size check and beamable check overlap) | adequate | — | — |
+| `LineSelectionState` | `canToggleBeaming()` — non-beamable element in range returns false | unit | `ToggleConflictTest.testChangeDurationToQuarterDisablesBeam` | adequate | — | — |
+| `LineSelectionState` | `canToggleBeaming()` — all beamable, no existing beam (add mode) | unit | `ToggleConflictTest.testChangeDurationToEighthBothEnabled` | adequate | — | — |
+| `LineSelectionState` | `canToggleBeaming()` — existing beam covering selection (remove mode) | unit | `ToggleConflictTest.testToggleTieOnDisablesBeam` / `testToggleTieOffReenablesBeam` | adequate | — | — |
+| `LineSelectionState` | `canToggleBeaming()` — blocked when would connect same span as existing tie | unit | `ToggleConflictTest.testToggleTieOnDisablesBeam` | adequate | — | — |
+| `LineSelectionState` | `canToggleTie()` — size != 2 returns false and sets canTie=false | unit | `ToggleConflictTest.testQuarterNotesBeamingDisabledTieEnabled` (size=2 path) + lacks explicit size!=2 assertion | inadequate | add explicit test for size < 2 and size > 2 setting canTie=false | ⬜ |
+| `LineSelectionState` | `canToggleTie()` — non-pitched element in range returns false | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canToggleTie()` — pitch mismatch returns false | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canToggleTie()` — elements in different ties returns false | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canToggleTie()` — two same-pitch notes with no tie (add mode): canTie=true, existingTie=null | unit | `ToggleConflictTest.testQuarterNotesBeamingDisabledTieEnabled` + `testToggleTieOnDisablesBeam` | adequate | — | — |
+| `LineSelectionState` | `canToggleTie()` — two notes sharing existing tie (remove mode): canTie=true, existingTie set | unit | `ToggleConflictTest.testToggleTieOffReenablesBeam` (uses getExistingTie) | adequate | — | — |
+| `LineSelectionState` | `canToggleTie()` — blocked when would connect same span as existing beam | unit | `ToggleConflictTest.testToggleBeamOnDisablesTie` | adequate | — | — |
+| `LineSelectionState` | `resetTieState()` clears canTie and existingTie | unit | `ToggleConflictTest.toggleTie()` calls resetTieState but doesn't assert fields directly | inadequate | add unit test asserting `getCanTie()` and `getExistingTie()` return null after reset | ⬜ |
+| `LineSelectionState` | `canToggleTuplet()` — size < 2 returns (false, null, false) | unit | `LineSelectionStateTest.testEmptySelectionCannotToggleTuplet` | adequate | — | — |
+| `LineSelectionState` | `canToggleTuplet()` — non-pitched element returns (false, null, false) | unit | `LineSelectionStateTest.testSelectionContainingNonPitchedElementCannotToggle` | adequate | — | — |
+| `LineSelectionState` | `canToggleTuplet()` — two pitched notes, no tuplet: (true, null, false) | unit | `LineSelectionStateTest.testTwoPitchedNotesNoTupletCanToggle` | adequate | — | — |
+| `LineSelectionState` | `canToggleTuplet()` — selection spans two different tuplets: (false, null, false) | unit | `LineSelectionStateTest.testSelectionSpanningTwoDifferentTupletsCannotToggle` | adequate | — | — |
+| `LineSelectionState` | `canToggleTuplet()` — full coverage of existing triplet: (true, tuplet, true) | unit | `LineSelectionStateTest.testFullCoverageOfTripletReportsCoversExisting` | adequate | — | — |
+| `LineSelectionState` | `canToggleTuplet()` — partial coverage of existing tuplet: (true, tuplet, false) | unit | `LineSelectionStateTest.testPartialCoverageOfTripletDoesNotCoverExisting` | adequate | — | — |
+| `LineSelectionState` | `canToggleTrill()` — returns false when no selection | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canToggleTrill()` — returns true when at least one pitched note in range | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canToggleTrill()` — returns false when selection contains only rests | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canFlipStemDirection()` — returns false when nothing selected | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canFlipStemDirection()` — returns true when at least one non-rest in range | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canFlipStemDirection()` — returns false when selection is all rests | unit | none | missing | add unit test | ⬜ |
+| `ClipboardManager` | `addElement()` normalizes FINAL_DOUBLE_BARLINE → DOUBLE_BARLINE | unit | `ClipboardManagerTest.AddElement.testFinalDoubleBarlineNormalizedToDoubleBarline` | adequate | — | — |
+| `ClipboardManager` | `addElement()` passes non-FINAL_DOUBLE_BARLINE through unchanged | unit | `ClipboardManagerTest.AddElement.testDoubleBarlinePassedThrough` + `testNotePassedThrough` | adequate | — | — |
+| `ClipboardManager` | `addElement()` does not mutate original song element | unit | `ClipboardManagerTest.testSongFinalBarlineUntouched` + `testSongRightRepeatTerminalUntouched` | adequate | — | — |
+| `ClipboardManager` | `getSize()` returns correct count after adds | unit | none (only used via `getElement(0)` by index in tests) | missing | add unit test | ⬜ |
+| `ClipboardManager` | `isEmpty()` returns true initially, false after add | unit | none | missing | add unit test | ⬜ |
+| `ClipboardManager` | `getFirstElement()` / `getLastElement()` return correct elements from multi-element pasteboard | unit | none | missing | add unit test | ⬜ |
+| `ClipboardManager` | `clear()` empties pasteboard and isEmpty() returns true | unit | none | missing | add unit test | ⬜ |
 
 **6B notes (quality concerns):**
 

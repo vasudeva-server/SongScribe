@@ -1,42 +1,42 @@
 ### 8B. mutation infrastructure & field-enum validation — `Mutation`, `LineScopedMutation`, `FieldTypeValidator`, field enums, validated-value records
 
-| class | behavior | required level | existing test | verdict | action |
-|---|---|---|---|---|---|
-| `Mutation` (sealed interface) | `permits` list is the exhaustive inventory of all subtypes | unit | — | missing | Add a test that compiles against each permitted subtype (or reflectively verifies every concrete subtype is `instanceof Mutation`) to ensure `permits` stays in sync |
-| `LineScopedMutation` | `getLine()` contract (default method shape — every implementor must return its `line` component) | unit | `MutationRecordsTest.testElementMutationsAreLineScoped` / `testSongScopedMutationsAreNotLineScoped` | adequate | — |
-| `LineScopedMutation` | `FontChange` is song-scoped (must NOT implement `LineScopedMutation`) | unit | — (omitted from `testSongScopedMutationsAreNotLineScoped`) | missing | Add `FontChange` to the existing `isNotInstanceOf(LineScopedMutation.class)` assertion block |
-| `FieldTypeValidator` | null values bypass the check (both old and new) → accepted silently | unit | `testLayoutChangeAcceptsNullValues`, `testMetadataChangeAcceptsNullValues` (construct only, don't explicitly assert null path through validator) | inadequate | Add a dedicated test that passes `(null, null)` to `validate` directly — or via a record constructor — and asserts no exception; this makes the null-pass-through contract explicit and can fail if the logic changes |
-| `FieldTypeValidator` | type mismatch on `oldValue` → `IllegalArgumentException` with message identifying record, field, parameter, and both type names | unit | — | missing | Add unit test constructing e.g. `new MetadataChange(MetadataField.TITLE, 42, "x")` and asserting `IllegalArgumentException` with message content |
-| `FieldTypeValidator` | type mismatch on `newValue` → `IllegalArgumentException` | unit | — | missing | Same as above but flip which value is wrong |
-| `FieldTypeValidator` | correct type on both values → no exception | unit | Covered implicitly by every happy-path construction test in `MutationRecordsTest` | adequate | — |
-| `KeyField` | `ACCIDENTAL_COUNT.getExpectedType()` returns `Integer.class` | unit | — | missing | Add parameterized test asserting each constant's `getExpectedType()` return value |
-| `KeyField` | `KEY_TYPE.getExpectedType()` returns `KeyType.class` | unit | — | missing | (covered by same parameterized test above) |
-| `LayoutField` | all four constants return `Double.class` from `getExpectedType()` | unit | — | missing | Add parameterized test for `LayoutField` constants |
-| `LineLayoutField` | `TEMPO_CHANGE_Y_POS_PX`, `BEAT_CHANGE_Y_POS_PX`, `FIRST_SECOND_ENDING_Y_POS_PX`, `TRILL_Y_POS_PX` return `Integer.class` | unit | — | missing | Add parameterized test for `LineLayoutField` constants |
-| `LineLayoutField` | `LYRICS_Y_POS_SS` returns `Double.class` | unit | — | missing | (covered by same parameterized test) |
-| `LineLayoutField` | `ELEMENT_SPACING_RATIO` returns `Float.class` | unit | — | missing | (covered by same parameterized test) |
-| `MetadataField` | each constant returns the correct boxed type from `getExpectedType()` (12 constants, varied types) | unit | — | missing | Add parameterized test for all `MetadataField` constants |
-| `LyricsField` | pure enum — no `getExpectedType()`, no logic beyond identity | none | — | — | No test warranted |
-| `ElementField` | `DURATION_AFFECTING` constant contains exactly `{DOT_COUNT}` | unit | — | missing | Add a test asserting `ElementField.DURATION_AFFECTING.equals(EnumSet.of(DOT_COUNT))`; this guards against accidental additions that would silently change tuplet-removal policy |
-| `ElementField` | other constants are pure labels (no logic) | none | — | — | No test warranted |
-| `LineKeyChange` | valid construction: accessors return provided values and `getLine()` delegates to `line` component | unit | `testLineKeyChangeExposesFields` | adequate | — |
-| `LineKeyChange` | validation fires on type mismatch (e.g. passing `String` for `ACCIDENTAL_COUNT`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LineKeyChange(line, KeyField.ACCIDENTAL_COUNT, "bad", 1))` |
-| `LineKeyChange` | null/null accepted (unset key signature) | unit | — | missing | Add construction with `(null, null)` and assert no exception |
-| `LineKeyChange` | implements both `Mutation` and `LineScopedMutation` | unit | `testElementMutationsAreLineScoped` covers element mutations; key-change line-scoped membership is only incidentally covered via `getLine()` accessor check | adequate | — |
-| `LineLayoutChange` | valid construction: accessors return values, `getLine()` delegates | unit | `testLineLayoutChangeExposesFields` | adequate | — |
-| `LineLayoutChange` | validation fires on type mismatch (e.g. passing `Integer` for `LYRICS_Y_POS_SS` which expects `Double`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LineLayoutChange(line, LineLayoutField.LYRICS_Y_POS_SS, 1, 2))` |
-| `LineLayoutChange` | null/null accepted | unit | — | missing | Add construction with `(null, null)` and assert no exception |
-| `MetadataChange` | valid construction: accessors return values | unit | `testMetadataChangeExposesFields` | adequate | — |
-| `MetadataChange` | null old value accepted (string field going from unset) | unit | `testMetadataChangeAcceptsNullValues` | adequate | — |
-| `MetadataChange` | validation fires on type mismatch (e.g. passing `Integer` for `TITLE` which expects `String`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new MetadataChange(MetadataField.TITLE, 42, "x"))` |
-| `LayoutChange` | valid construction: accessors return values | unit | `testLayoutChangeExposesFields` | adequate | — |
-| `LayoutChange` | null old value accepted | unit | `testLayoutChangeAcceptsNullValues` | adequate | — |
-| `LayoutChange` | validation fires on type mismatch (e.g. passing `Integer` for `LINE_WIDTH_SS` which expects `Double`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LayoutChange(LayoutField.LINE_WIDTH_SS, 1, 2))` |
-| `FontChange` | pure data holder — no validation, no derived methods, accessors only | none | `testFontChangeExposesFields` (accessor check) | adequate | Accessor test is fine; no extra tests needed since no logic present |
-| `LyricsChange` | pure typed-value record — no validation, accessors only | none | `testLyricsChangeExposesFields` | adequate | — |
-| `ElementModification` | valid construction: all four components accessible via record accessors | unit | `testElementModificationExposesFields` | adequate | — |
-| `ElementModification` | `getLine()` returns `line` component (satisfies `LineScopedMutation`) | unit | `testElementModificationExposesFields` (explicitly asserts `getLine()`) | adequate | — |
-| `ElementModification` | `fields` EnumSet is the caller-supplied set (no defensive copy, mutable aliasing risk) | unit | `testElementModificationExposesFields` asserts referential equality | adequate | — |
+| class | behavior | required level | existing test | verdict | action | done |
+|---|---|---|---|---|---|---|
+| `Mutation` (sealed interface) | `permits` list is the exhaustive inventory of all subtypes | unit | — | missing | Add a test that compiles against each permitted subtype (or reflectively verifies every concrete subtype is `instanceof Mutation`) to ensure `permits` stays in sync | ⬜ |
+| `LineScopedMutation` | `getLine()` contract (default method shape — every implementor must return its `line` component) | unit | `MutationRecordsTest.testElementMutationsAreLineScoped` / `testSongScopedMutationsAreNotLineScoped` | adequate | — | — |
+| `LineScopedMutation` | `FontChange` is song-scoped (must NOT implement `LineScopedMutation`) | unit | — (omitted from `testSongScopedMutationsAreNotLineScoped`) | missing | Add `FontChange` to the existing `isNotInstanceOf(LineScopedMutation.class)` assertion block | ⬜ |
+| `FieldTypeValidator` | null values bypass the check (both old and new) → accepted silently | unit | `testLayoutChangeAcceptsNullValues`, `testMetadataChangeAcceptsNullValues` (construct only, don't explicitly assert null path through validator) | inadequate | Add a dedicated test that passes `(null, null)` to `validate` directly — or via a record constructor — and asserts no exception; this makes the null-pass-through contract explicit and can fail if the logic changes | ⬜ |
+| `FieldTypeValidator` | type mismatch on `oldValue` → `IllegalArgumentException` with message identifying record, field, parameter, and both type names | unit | — | missing | Add unit test constructing e.g. `new MetadataChange(MetadataField.TITLE, 42, "x")` and asserting `IllegalArgumentException` with message content | ⬜ |
+| `FieldTypeValidator` | type mismatch on `newValue` → `IllegalArgumentException` | unit | — | missing | Same as above but flip which value is wrong | ⬜ |
+| `FieldTypeValidator` | correct type on both values → no exception | unit | Covered implicitly by every happy-path construction test in `MutationRecordsTest` | adequate | — | — |
+| `KeyField` | `ACCIDENTAL_COUNT.getExpectedType()` returns `Integer.class` | unit | — | missing | Add parameterized test asserting each constant's `getExpectedType()` return value | ⬜ |
+| `KeyField` | `KEY_TYPE.getExpectedType()` returns `KeyType.class` | unit | — | missing | (covered by same parameterized test above) | ⬜ |
+| `LayoutField` | all four constants return `Double.class` from `getExpectedType()` | unit | — | missing | Add parameterized test for `LayoutField` constants | ⬜ |
+| `LineLayoutField` | `TEMPO_CHANGE_Y_POS_PX`, `BEAT_CHANGE_Y_POS_PX`, `FIRST_SECOND_ENDING_Y_POS_PX`, `TRILL_Y_POS_PX` return `Integer.class` | unit | — | missing | Add parameterized test for `LineLayoutField` constants | ⬜ |
+| `LineLayoutField` | `LYRICS_Y_POS_SS` returns `Double.class` | unit | — | missing | (covered by same parameterized test) | ⬜ |
+| `LineLayoutField` | `ELEMENT_SPACING_RATIO` returns `Float.class` | unit | — | missing | (covered by same parameterized test) | ⬜ |
+| `MetadataField` | each constant returns the correct boxed type from `getExpectedType()` (12 constants, varied types) | unit | — | missing | Add parameterized test for all `MetadataField` constants | ⬜ |
+| `LyricsField` | pure enum — no `getExpectedType()`, no logic beyond identity | none | — | — | No test warranted | — |
+| `ElementField` | `DURATION_AFFECTING` constant contains exactly `{DOT_COUNT}` | unit | — | missing | Add a test asserting `ElementField.DURATION_AFFECTING.equals(EnumSet.of(DOT_COUNT))`; this guards against accidental additions that would silently change tuplet-removal policy | ⬜ |
+| `ElementField` | other constants are pure labels (no logic) | none | — | — | No test warranted | — |
+| `LineKeyChange` | valid construction: accessors return provided values and `getLine()` delegates to `line` component | unit | `testLineKeyChangeExposesFields` | adequate | — | — |
+| `LineKeyChange` | validation fires on type mismatch (e.g. passing `String` for `ACCIDENTAL_COUNT`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LineKeyChange(line, KeyField.ACCIDENTAL_COUNT, "bad", 1))` | ⬜ |
+| `LineKeyChange` | null/null accepted (unset key signature) | unit | — | missing | Add construction with `(null, null)` and assert no exception | ⬜ |
+| `LineKeyChange` | implements both `Mutation` and `LineScopedMutation` | unit | `testElementMutationsAreLineScoped` covers element mutations; key-change line-scoped membership is only incidentally covered via `getLine()` accessor check | adequate | — | — |
+| `LineLayoutChange` | valid construction: accessors return values, `getLine()` delegates | unit | `testLineLayoutChangeExposesFields` | adequate | — | — |
+| `LineLayoutChange` | validation fires on type mismatch (e.g. passing `Integer` for `LYRICS_Y_POS_SS` which expects `Double`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LineLayoutChange(line, LineLayoutField.LYRICS_Y_POS_SS, 1, 2))` | ⬜ |
+| `LineLayoutChange` | null/null accepted | unit | — | missing | Add construction with `(null, null)` and assert no exception | ⬜ |
+| `MetadataChange` | valid construction: accessors return values | unit | `testMetadataChangeExposesFields` | adequate | — | — |
+| `MetadataChange` | null old value accepted (string field going from unset) | unit | `testMetadataChangeAcceptsNullValues` | adequate | — | — |
+| `MetadataChange` | validation fires on type mismatch (e.g. passing `Integer` for `TITLE` which expects `String`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new MetadataChange(MetadataField.TITLE, 42, "x"))` | ⬜ |
+| `LayoutChange` | valid construction: accessors return values | unit | `testLayoutChangeExposesFields` | adequate | — | — |
+| `LayoutChange` | null old value accepted | unit | `testLayoutChangeAcceptsNullValues` | adequate | — | — |
+| `LayoutChange` | validation fires on type mismatch (e.g. passing `Integer` for `LINE_WIDTH_SS` which expects `Double`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LayoutChange(LayoutField.LINE_WIDTH_SS, 1, 2))` | ⬜ |
+| `FontChange` | pure data holder — no validation, no derived methods, accessors only | none | `testFontChangeExposesFields` (accessor check) | adequate | Accessor test is fine; no extra tests needed since no logic present | — |
+| `LyricsChange` | pure typed-value record — no validation, accessors only | none | `testLyricsChangeExposesFields` | adequate | — | — |
+| `ElementModification` | valid construction: all four components accessible via record accessors | unit | `testElementModificationExposesFields` | adequate | — | — |
+| `ElementModification` | `getLine()` returns `line` component (satisfies `LineScopedMutation`) | unit | `testElementModificationExposesFields` (explicitly asserts `getLine()`) | adequate | — | — |
+| `ElementModification` | `fields` EnumSet is the caller-supplied set (no defensive copy, mutable aliasing risk) | unit | `testElementModificationExposesFields` asserts referential equality | adequate | — | — |
 
 **Notes.** The most critical gap is that `FieldTypeValidator`'s core contract — throwing `IllegalArgumentException` on a type mismatch — is entirely untested; every validated record (`LineKeyChange`, `LineLayoutChange`, `MetadataChange`, `LayoutChange`) is missing a test for the mismatch path. The field-enum `getExpectedType()` methods carry real logic (they map each constant to a boxed type used at runtime for validation) yet no test asserts a single return value, meaning a copy-paste error on a new constant (e.g. using `int.class` instead of `Integer.class`) would silently break all validation for that field without any test failure. A latent production risk exists in `FieldTypeValidator` itself: `Class.isInstance` never matches primitive types, so if any field enum constant were ever changed to return `int.class` or `double.class`, the validator would silently accept any value rather than throwing — this is documented in the Javadoc ("boxed reference types") but there is no test that guards the contract. `FontChange` is also absent from the `testSongScopedMutationsAreNotLineScoped` assertion block, leaving an unverified assumption that it does not implement `LineScopedMutation`.
 

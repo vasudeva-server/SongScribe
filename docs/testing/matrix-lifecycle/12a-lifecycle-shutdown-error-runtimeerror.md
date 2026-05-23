@@ -2,39 +2,39 @@
 
 Audited by reading each class body symbol-by-symbol via serena, then verifying existing tests via `find_referencing_symbols` and direct reads of `src/test/java/songscribe/lifecycle/ShutdownTest.java` and `src/test/java/songscribe/e2e/ShutdownTest.java`; confirmed zero test files reference `RuntimeError`.
 
-| class | behavior | required level | existing test | verdict | action |
-|---|---|---|---|---|---|
-| `Shutdown` | `now()` throws `IllegalStateException` when called off the EDT | unit | none | missing | Add unit test calling `Shutdown.now()` from a non-EDT thread and asserting `IllegalStateException` |
-| `Shutdown` | `now()` calls `System.exit(0)` after successful `shutdown()` | e2e | `e2e/ShutdownTest` — sentinel veto prevents actual exit but all three e2e tests confirm `now()` path is wired and triggers the registry | adequate | — |
-| `Shutdown` | empty registry → `shutdown()` returns true | unit | `lifecycle/ShutdownTest.emptyRegistryReturnsTrue` | adequate | — |
-| `Shutdown` | all confirms pass → EDT tasks LIFO → JVM tasks LIFO (confirm→EDT→JVM phase order) | unit | `lifecycle/ShutdownTest.confirmThenEdtThenJvmAllRunInOrderWithLifoPerPhase` | adequate | — |
-| `Shutdown` | first confirm veto: aborts, no further tasks run, `inProgress` cleared (registry re-armed) | unit | `lifecycle/ShutdownTest.firstConfirmVetoAbortsAndReArms` | adequate | — |
-| `Shutdown` | middle confirm veto: prior confirms ran, no cleanup, subsequent confirm skipped | unit | `lifecycle/ShutdownTest.middleConfirmVetoRunsPriorConfirmsButNoCleanup` | adequate | — |
-| `Shutdown` | cleanup `RuntimeException` swallowed: subsequent tasks in same phase still run | unit | `lifecycle/ShutdownTest.cleanupRuntimeExceptionDoesNotStopSubsequent` | adequate | — |
-| `Shutdown` | cleanup `Error` propagates out of `shutdown()`, halts subsequent tasks in that phase | unit | `lifecycle/ShutdownTest.cleanupErrorPropagatesAndStopsCleanup` | adequate | — |
-| `Shutdown` | confirm throws: exception propagates, `completed` NOT set, registry re-armed for retry | unit | `lifecycle/ShutdownTest.confirmExceptionPropagatesAndRegistryRemainsArmed` | adequate | — |
-| `Shutdown` | re-entrant `shutdown()` from inside a confirm task returns false | unit | `lifecycle/ShutdownTest.reentrantShutdownFromConfirmReturnsFalse` | adequate | — |
-| `Shutdown` | re-entrant `shutdown()` from inside a cleanup task returns false | unit | `lifecycle/ShutdownTest.reentrantShutdownFromCleanupReturnsFalse` | adequate | — |
-| `Shutdown` | second `shutdown()` after successful first returns false, tasks not re-run | unit | `lifecycle/ShutdownTest.secondShutdownAfterSuccessReturnsFalse` | adequate | — |
-| `Shutdown` | duplicate confirm tag throws `IllegalArgumentException` with tag in message | unit | `lifecycle/ShutdownTest.duplicateConfirmTagThrows` | adequate | — |
-| `Shutdown` | duplicate EDT-task tag throws `IllegalArgumentException` | unit | `lifecycle/ShutdownTest.duplicateEdtTagThrows` | adequate | — |
-| `Shutdown` | duplicate JVM-task tag throws `IllegalArgumentException` | unit | `lifecycle/ShutdownTest.duplicateJvmTagThrows` | adequate | — |
-| `Shutdown` | same tag string across all three phases is allowed (per-phase namespaces) | unit | `lifecycle/ShutdownTest.sameTagAcrossPhasesIsAllowed` | adequate | — |
-| `Shutdown` | `CleanupTask.run()` is idempotent: body executes exactly once on repeated serial calls | unit | `lifecycle/ShutdownTest.cleanupTaskRunsAtMostOnceOnRepeatedInvocation` | adequate | — |
-| `Shutdown` | `CleanupTask.run()` is at-most-once under concurrent access (8-thread race) | unit | `lifecycle/ShutdownTest.cleanupTaskRunsAtMostOnceUnderRace` | adequate | — |
-| `Shutdown` | `runJVMTasksFromHook()` runs registered JVM tasks; cross-path at-most-once: `shutdown()` then hook does not re-run | unit | `lifecycle/ShutdownTest.jvmHookEntryPointRunsTasksOnceAcrossPaths` | adequate | — |
-| `Shutdown` | EDT tasks are NOT invoked from the JVM hook entry point | unit | `lifecycle/ShutdownTest.edtTasksNotInvokedFromJvmHook` | adequate | — |
-| `Shutdown` | `runJVMTasksFromHook()` outer `Throwable` catch swallows any escaping error (boundary catch) | unit | none | missing | Add unit test registering a JVM task that throws `Error`; call `runJVMTasksFromHook()` and assert it does not throw |
-| `Shutdown` | e2e: `QuitAction.actionPerformed` → `Shutdown.now()` → registry triggered | e2e | `e2e/ShutdownTest.quitActionTriggersShutdown` | adequate | — |
-| `Shutdown` | e2e: `windowClosing` on dirty doc + suppressed save dialog vetoes shutdown, frame stays alive | e2e | `e2e/ShutdownTest.windowCloseOnDirtyDocCancelKeepsAppAlive` | adequate | — |
-| `Shutdown` | e2e: `windowClosing` on clean doc passes save-check, proceeds to sentinel | e2e | `e2e/ShutdownTest.windowCloseOnCleanDocProgressesPastSaveCheck` | adequate | — |
-| `Shutdown` | e2e: `CloseWindowAction.actionPerformed` → `Shutdown.now()` (quit entry point wiring) | e2e | none | missing | Add e2e test dispatching `CloseWindowAction` and asserting sentinel fires |
-| `Shutdown` | e2e: macOS Desktop `setQuitHandler` → `Shutdown.now()` | none | — | — | Platform-specific integration; untestable in CI without macOS runtime hook |
-| `RuntimeError` | `exit(String)` logs the message at ERROR level before showing dialog | unit | none | missing | Use `LogCaptor` or similar to assert the message appears in the log at ERROR; mock/stub `System.exit` |
-| `RuntimeError` | `exit(String, Throwable)` logs message+cause at ERROR level | unit | none | missing | Same approach as above with a cause throwable |
-| `RuntimeError` | first call to `showDialogAndExit`: `ALERT_SHOWN` CAS succeeds, dialog shown, `System.exit(-1)` invoked | unit | none | missing | Needs `System.exit` stubbing (SecurityManager or `System.setOut` style); verify CAS transition and dialog call |
-| `RuntimeError` | re-entrant call while alert showing: CAS fails, throws `ExitInProgressError` (not `RuntimeException`) | unit | none | missing | Call `showDialogAndExit` (via `exit`) twice (first call blocked before exit via stub); assert second call throws `ExitInProgressError` |
-| `RuntimeError` | `ExitInProgressError` extends `Error` with suppressed stack traces disabled | unit | none | missing | Assert `new ExitInProgressError()` is an `Error`, `getSuppressed().length == 0`, `getStackTrace().length == 0` |
-| `RuntimeError` | private constructor prevents direct instantiation | none | — | — | Framework-enforced; not testable in a meaningful way |
+| class | behavior | required level | existing test | verdict | action | done |
+|---|---|---|---|---|---|---|
+| `Shutdown` | `now()` throws `IllegalStateException` when called off the EDT | unit | none | missing | Add unit test calling `Shutdown.now()` from a non-EDT thread and asserting `IllegalStateException` | ⬜ |
+| `Shutdown` | `now()` calls `System.exit(0)` after successful `shutdown()` | e2e | `e2e/ShutdownTest` — sentinel veto prevents actual exit but all three e2e tests confirm `now()` path is wired and triggers the registry | adequate | — | — |
+| `Shutdown` | empty registry → `shutdown()` returns true | unit | `lifecycle/ShutdownTest.emptyRegistryReturnsTrue` | adequate | — | — |
+| `Shutdown` | all confirms pass → EDT tasks LIFO → JVM tasks LIFO (confirm→EDT→JVM phase order) | unit | `lifecycle/ShutdownTest.confirmThenEdtThenJvmAllRunInOrderWithLifoPerPhase` | adequate | — | — |
+| `Shutdown` | first confirm veto: aborts, no further tasks run, `inProgress` cleared (registry re-armed) | unit | `lifecycle/ShutdownTest.firstConfirmVetoAbortsAndReArms` | adequate | — | — |
+| `Shutdown` | middle confirm veto: prior confirms ran, no cleanup, subsequent confirm skipped | unit | `lifecycle/ShutdownTest.middleConfirmVetoRunsPriorConfirmsButNoCleanup` | adequate | — | — |
+| `Shutdown` | cleanup `RuntimeException` swallowed: subsequent tasks in same phase still run | unit | `lifecycle/ShutdownTest.cleanupRuntimeExceptionDoesNotStopSubsequent` | adequate | — | — |
+| `Shutdown` | cleanup `Error` propagates out of `shutdown()`, halts subsequent tasks in that phase | unit | `lifecycle/ShutdownTest.cleanupErrorPropagatesAndStopsCleanup` | adequate | — | — |
+| `Shutdown` | confirm throws: exception propagates, `completed` NOT set, registry re-armed for retry | unit | `lifecycle/ShutdownTest.confirmExceptionPropagatesAndRegistryRemainsArmed` | adequate | — | — |
+| `Shutdown` | re-entrant `shutdown()` from inside a confirm task returns false | unit | `lifecycle/ShutdownTest.reentrantShutdownFromConfirmReturnsFalse` | adequate | — | — |
+| `Shutdown` | re-entrant `shutdown()` from inside a cleanup task returns false | unit | `lifecycle/ShutdownTest.reentrantShutdownFromCleanupReturnsFalse` | adequate | — | — |
+| `Shutdown` | second `shutdown()` after successful first returns false, tasks not re-run | unit | `lifecycle/ShutdownTest.secondShutdownAfterSuccessReturnsFalse` | adequate | — | — |
+| `Shutdown` | duplicate confirm tag throws `IllegalArgumentException` with tag in message | unit | `lifecycle/ShutdownTest.duplicateConfirmTagThrows` | adequate | — | — |
+| `Shutdown` | duplicate EDT-task tag throws `IllegalArgumentException` | unit | `lifecycle/ShutdownTest.duplicateEdtTagThrows` | adequate | — | — |
+| `Shutdown` | duplicate JVM-task tag throws `IllegalArgumentException` | unit | `lifecycle/ShutdownTest.duplicateJvmTagThrows` | adequate | — | — |
+| `Shutdown` | same tag string across all three phases is allowed (per-phase namespaces) | unit | `lifecycle/ShutdownTest.sameTagAcrossPhasesIsAllowed` | adequate | — | — |
+| `Shutdown` | `CleanupTask.run()` is idempotent: body executes exactly once on repeated serial calls | unit | `lifecycle/ShutdownTest.cleanupTaskRunsAtMostOnceOnRepeatedInvocation` | adequate | — | — |
+| `Shutdown` | `CleanupTask.run()` is at-most-once under concurrent access (8-thread race) | unit | `lifecycle/ShutdownTest.cleanupTaskRunsAtMostOnceUnderRace` | adequate | — | — |
+| `Shutdown` | `runJVMTasksFromHook()` runs registered JVM tasks; cross-path at-most-once: `shutdown()` then hook does not re-run | unit | `lifecycle/ShutdownTest.jvmHookEntryPointRunsTasksOnceAcrossPaths` | adequate | — | — |
+| `Shutdown` | EDT tasks are NOT invoked from the JVM hook entry point | unit | `lifecycle/ShutdownTest.edtTasksNotInvokedFromJvmHook` | adequate | — | — |
+| `Shutdown` | `runJVMTasksFromHook()` outer `Throwable` catch swallows any escaping error (boundary catch) | unit | none | missing | Add unit test registering a JVM task that throws `Error`; call `runJVMTasksFromHook()` and assert it does not throw | ⬜ |
+| `Shutdown` | e2e: `QuitAction.actionPerformed` → `Shutdown.now()` → registry triggered | e2e | `e2e/ShutdownTest.quitActionTriggersShutdown` | adequate | — | — |
+| `Shutdown` | e2e: `windowClosing` on dirty doc + suppressed save dialog vetoes shutdown, frame stays alive | e2e | `e2e/ShutdownTest.windowCloseOnDirtyDocCancelKeepsAppAlive` | adequate | — | — |
+| `Shutdown` | e2e: `windowClosing` on clean doc passes save-check, proceeds to sentinel | e2e | `e2e/ShutdownTest.windowCloseOnCleanDocProgressesPastSaveCheck` | adequate | — | — |
+| `Shutdown` | e2e: `CloseWindowAction.actionPerformed` → `Shutdown.now()` (quit entry point wiring) | e2e | none | missing | Add e2e test dispatching `CloseWindowAction` and asserting sentinel fires | ⬜ |
+| `Shutdown` | e2e: macOS Desktop `setQuitHandler` → `Shutdown.now()` | none | — | — | Platform-specific integration; untestable in CI without macOS runtime hook | — |
+| `RuntimeError` | `exit(String)` logs the message at ERROR level before showing dialog | unit | none | missing | Use `LogCaptor` or similar to assert the message appears in the log at ERROR; mock/stub `System.exit` | ⬜ |
+| `RuntimeError` | `exit(String, Throwable)` logs message+cause at ERROR level | unit | none | missing | Same approach as above with a cause throwable | ⬜ |
+| `RuntimeError` | first call to `showDialogAndExit`: `ALERT_SHOWN` CAS succeeds, dialog shown, `System.exit(-1)` invoked | unit | none | missing | Needs `System.exit` stubbing (SecurityManager or `System.setOut` style); verify CAS transition and dialog call | ⬜ |
+| `RuntimeError` | re-entrant call while alert showing: CAS fails, throws `ExitInProgressError` (not `RuntimeException`) | unit | none | missing | Call `showDialogAndExit` (via `exit`) twice (first call blocked before exit via stub); assert second call throws `ExitInProgressError` | ⬜ |
+| `RuntimeError` | `ExitInProgressError` extends `Error` with suppressed stack traces disabled | unit | none | missing | Assert `new ExitInProgressError()` is an `Error`, `getSuppressed().length == 0`, `getStackTrace().length == 0` | ⬜ |
+| `RuntimeError` | private constructor prevents direct instantiation | none | — | — | Framework-enforced; not testable in a meaningful way | — |
 
 **12A notes (quality concerns):** The most critical gap is that `RuntimeError` — the application's universal fatal-error escalation point, called from roughly 35 production sites — has zero tests of any kind. Its two highest-risk contracts (re-entrant guard via `ALERT_SHOWN` CAS and `ExitInProgressError` throwing `Error` rather than `RuntimeException`) are relied upon by the uncaught-exception handler in `SongScribe.main` to keep the EDT alive during a fatal dialog; a regression there would cause silent double-exit or a raw stack trace on shutdown, and nothing would catch it in CI. The `System.exit(-1)` call inside `showDialogAndExit` makes direct unit testing require exit-stubbing infrastructure (e.g., a `SecurityManager` shim or a `System.exit` interceptor) — the project should decide once how to handle this and apply it consistently, rather than leaving `RuntimeError` permanently dark. On the `Shutdown` side, the unit suite is thorough and genuinely failsafe; the two missing unit behaviors (`now()` off-EDT guard and `runJVMTasksFromHook()` outer `Throwable` catch) are low-risk but simple to add. The missing e2e case for `CloseWindowAction` is worth filing: it is a distinct quit entry point, and the existing e2e suite only directly covers `QuitAction` and `windowClosing`; a regression in `CloseWindowAction`'s wiring would go undetected.
