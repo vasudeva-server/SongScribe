@@ -302,6 +302,20 @@ class SongSetterMutationTest extends UnitTest {
             assertThat(mutation.newText()).isEqualTo("under text");
         }
 
+        // setUnderLyrics delegates to processText before storing. STRIP_SHORT_A
+        // defaults to true, so a string containing ă is stored with ă→a substitution.
+        @Test
+        void testSetUnderLyricsAppliesProcessTextTransformation() {
+            song.setUnderLyrics("ă text");
+
+            // processText replaces ă with a (STRIP_SHORT_A=true by default).
+            assertThat(song.getUnderLyrics()).isEqualTo("a text");
+
+            // The mutation record carries the processed value, not the raw input.
+            var mutation = captureSingleLyricsChange();
+            assertThat(mutation.newText()).isEqualTo("a text");
+        }
+
         @Test
         void testSetUnderLyricsSameValuePostsNothing() {
             song.setUnderLyrics(song.getUnderLyrics());
@@ -377,6 +391,19 @@ class SongSetterMutationTest extends UnitTest {
             assertThat(mutation.field()).isEqualTo(LayoutField.TOP_PADDING_SS);
             assertThat(mutation.oldValue()).isEqualTo(oldPadding);
             assertThat(mutation.newValue()).isEqualTo(oldPadding + 2.0);
+        }
+
+        // The userSetTopPadding flag OR-accumulates: once set to true by a
+        // setByUser=true call, a subsequent setByUser=false call must not clear it.
+        @Test
+        void testSetTopPaddingSsStickyFlagRemainsAfterFalseCall() {
+            var padding = song.getTopPaddingSs() + 1.0;
+            song.setTopPaddingSs(padding, true);
+            assertThat(song.userSetTopPadding()).isTrue();
+
+            // Same padding value, but setByUser=false — flag must stay true.
+            song.setTopPaddingSs(padding, false);
+            assertThat(song.userSetTopPadding()).isTrue();
         }
 
         @Test

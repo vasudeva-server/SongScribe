@@ -7,3 +7,16 @@
 #   relocate  test moved to correct level; note records 'OLD -> NEW' (was 'wrong-level')
 # Final sweep: every @Test in the suite NOT in keep/modify/add/relocate-target is a
 # delete candidate, then judged via /check-tests before removal.
+SongDefaultsTest.testGetTempoAtReturnsMostRecentTempoChangeWalkingBackward	1a-song	getTempoAt backward walk
+SongDefaultsTest.testGetTempoAtFallsBackToEffectiveTempoWhenNoChangeFound	1a-song	getTempoAt fallback
+SongDefaultsTest.testHasAnyTempoChangeFalseOnFreshSong	1a-song	hasAnyTempoChange false
+SongDefaultsTest.testHasAnyTempoChangeTrueAfterAttachingTempoChange	1a-song	hasAnyTempoChange true
+SongDefaultsTest.ClearTempoIfOrphaned.testClearsSongTempoWhenElementIsFirstOfFirstLine	1a-song	clearTempoIfOrphaned branch 1
+SongDefaultsTest.ClearTempoIfOrphaned.testClearsSongTempoWhenNoPerNoteChangesRemain	1a-song	clearTempoIfOrphaned branch 2
+SongDefaultsTest.ClearTempoIfOrphaned.testKeepsSongTempoWhenOtherPerNoteChangesRemain	1a-song	clearTempoIfOrphaned branch 3
+SongTextProcessingTest.testNormalizeTitleStripsLinefeedsCollapsesSpacesAndReplacesShortA	1a-song	normalizeTitle 3 transforms
+SongTextProcessingTest.testProcessTextReplacesShortAWhenPrefIsTrue	1a-song	processText strip branch
+SongTextProcessingTest.testProcessTextTrimsWhenPrefIsFalse	1a-song	processText trim branch
+SongTextProcessingTest.testProcessTextTrimsWhenStripPrefTrueButNoShortA	1a-song	processText trim variant
+SongSetterMutationTest.LyricsSetters.testSetUnderLyricsAppliesProcessTextTransformation	1a-song	setUnderLyrics processText (strengthen via new sibling)
+SongSetterMutationTest.LayoutSetters.testSetTopPaddingSsStickyFlagRemainsAfterFalseCall	1a-song	setTopPaddingSs sticky flag

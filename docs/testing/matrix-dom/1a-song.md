@@ -5,18 +5,18 @@
 | Song | Default ctor: one line w/ FINAL_DOUBLE_BARLINE, not modified, defaults (attribution, key, tempo) | unit | `SongDefaultsTest` (6 methods) | adequate | keep | — |
 | Song | `getEffectiveTempo()` returns `new Tempo(120, CROTCHET)` when tempo null | unit | `SongDefaultsTest.testEffectiveTempoFallbackWhenTempoIsNull` | adequate | keep | — |
 | Song | `getTempo()` `@Nullable` — can be null after `setTempo(null)` | unit | `SongDefaultsTest.testEffectiveTempoFallbackWhenTempoIsNull` | adequate | keep | — |
-| Song | `getTempoAt(line, note)` walks backward to most-recent tempo change | unit | — | missing | write unit test: multi-line per-note `TempoChangeAttachment`; assert result + fallback to getEffectiveTempo | ⬜ |
-| Song | `hasAnyTempoChange()` true iff any element carries a `TempoChangeAttachment` | unit | — | missing | write unit test (false empty, true after attach) | ⬜ |
-| Song | `clearTempoIfOrphaned` — clears song tempo when element is first-of-first-line or no per-note changes remain | unit | — | missing | write unit tests for all 3 branches | ⬜ |
-| Song | `normalizeTitle` — strip LF, collapse spaces, short-ă replacement | unit | — | missing | write unit test asserting all 3 transformations | ⬜ |
-| Song | `processText` — conditional short-ă strip + always trim | unit | — | missing | write unit test w/ prefs mock, both branches | ⬜ |
+| Song | `getTempoAt(line, note)` walks backward to most-recent tempo change | unit | — | missing | write unit test: multi-line per-note `TempoChangeAttachment`; assert result + fallback to getEffectiveTempo | ✅ |
+| Song | `hasAnyTempoChange()` true iff any element carries a `TempoChangeAttachment` | unit | — | missing | write unit test (false empty, true after attach) | ✅ |
+| Song | `clearTempoIfOrphaned` — clears song tempo when element is first-of-first-line or no per-note changes remain | unit | — | missing | write unit tests for all 3 branches | ✅ |
+| Song | `normalizeTitle` — strip LF, collapse spaces, short-ă replacement | unit | — | missing | write unit test asserting all 3 transformations | ✅ |
+| Song | `processText` — conditional short-ă strip + always trim | unit | — | missing | write unit test w/ prefs mock, both branches | ✅ |
 | Song | `setTitle` normalizes before mutating (no-op if normalized==stored) | unit | `SongSetterMutationTest.testSetTitle*` | adequate | keep (normalized-equals-stored no-op branch still untested — optional case) | — |
 | Song | `setPlace/Year/Attribution/Number/Footnotes/BanglaLyrics/TranslatedLyrics` — trim then compare/store | unit | `SongSetterMutationTest` (all pairs) | adequate | keep | — |
-| Song | `setUnderLyrics` delegates to `processText` | unit | `SongSetterMutationTest.testSetUnderLyricsPostsMutation` | inadequate | asserts only the mutation record, not the processText transformation; strengthen or add processText test | ⬜ |
+| Song | `setUnderLyrics` delegates to `processText` | unit | `SongSetterMutationTest.testSetUnderLyricsPostsMutation` | inadequate | asserts only the mutation record, not the processText transformation; strengthen or add processText test | ✅ |
 | Song | `setMonth/Day` — primitive idempotence | unit | `SongSetterMutationTest` | adequate | keep | — |
 | Song | `setTempo/DefaultKeyAccidentalCount/DefaultKeyType/UnofficialTranslation` — mutation + no-op idempotence | unit | `SongSetterMutationTest` | adequate | keep | — |
 | Song | `mutateMetadata` early-return uses `Objects.equals` (null/null) | unit | `SongSetterMutationTest.testSetTempoSameValuePostsNothing` | adequate | keep | — |
-| Song | `setTopPaddingSs(_, true)` — sticky `userSetTopPadding` flag (OR-accumulate) | unit | `SongSetterMutationTest.testSetTopPaddingSsPostsMutation` (only `false`) | missing | write test: `(x,true)` then `(x,false)` → flag stays true | ⬜ |
+| Song | `setTopPaddingSs(_, true)` — sticky `userSetTopPadding` flag (OR-accumulate) | unit | `SongSetterMutationTest.testSetTopPaddingSsPostsMutation` (only `false`) | missing | write test: `(x,true)` then `(x,false)` → flag stays true | ✅ |
 | Song | `setTopPaddingSs` always runs apply block (posts even when value unchanged if setByUser differs) | unit | — | missing | write test: `(same,false)` then `(same,true)` → mutation posted, flag true | ⬜ |
 | Song | `setAttributionStartYSs/RowHeightAdjustmentSs/LineWidthSs` — no-op idempotence | unit | `SongSetterMutationTest` | adequate | keep | — |
 | Song | `getLyricsText` — assemble syllabified text (extend `_`, compound `--`, BEGIN/MIDDLE `-`, SINGLE/END space, line `\n`) | unit | — | missing | write unit test asserting each branch | ⬜ |
