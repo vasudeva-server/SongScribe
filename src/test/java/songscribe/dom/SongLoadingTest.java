@@ -22,10 +22,13 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.message.SongData;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
 class SongLoadingTest extends UnitTest {
@@ -44,6 +47,159 @@ class SongLoadingTest extends UnitTest {
     void testLoadingLegacySongDoesNotDirtyDocument() throws Exception {
         var loaded = loadFixture("full-line");
         assertThat(loaded.isModified()).isFalse();
+    }
+
+    @Test
+    void testLoadFromAppliesAllScalarFields() {
+        var tempo = new Tempo();
+        tempo.setVisibleTempo(180);
+
+        var line = new Line(song);
+        var lineWithTempo = new Line(song);
+        song.withoutMutationTracking(() -> {
+            lineWithTempo.addElement(new StaffElement(ElementType.CROTCHET));
+            lineWithTempo.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+        });
+
+        var data = new SongData(
+            tempo,
+            "42",
+            "Test Title",
+            "Paris",
+            3,
+            15,
+            "2024",
+            "under text",
+            "bangla text",
+            "translated text",
+            "Composed by Someone",
+            "See note 1",
+            true,
+            2,
+            KeyType.SHARPS,
+            7.5,
+            10.0,
+            1.5,
+            50.0,
+            List.of(lineWithTempo),
+            true,
+            2
+        );
+
+        song.withoutMutationTracking(() -> song.loadFrom(data));
+
+        assertThat(song.getTempo()).isSameAs(tempo);
+        assertThat(song.getNumber()).isEqualTo("42");
+        assertThat(song.getTitle()).isEqualTo("Test Title");
+        assertThat(song.getPlace()).isEqualTo("Paris");
+        assertThat(song.getMonth()).isEqualTo(3);
+        assertThat(song.getDay()).isEqualTo(15);
+        assertThat(song.getYear()).isEqualTo("2024");
+        assertThat(song.getUnderLyrics()).isEqualTo("under text");
+        assertThat(song.getBanglaLyrics()).isEqualTo("bangla text");
+        assertThat(song.getTranslatedLyrics()).isEqualTo("translated text");
+        assertThat(song.getAttribution()).isEqualTo("Composed by Someone");
+        assertThat(song.getFootnotes()).isEqualTo("See note 1");
+        assertThat(song.isUnofficialTranslation()).isTrue();
+        assertThat(song.getDefaultKeyAccidentalCount()).isEqualTo(2);
+        assertThat(song.getDefaultKeyType()).isEqualTo(KeyType.SHARPS);
+        assertThat(song.getTopPaddingSs()).isEqualTo(7.5);
+        assertThat(song.getAttributionStartYSs()).isEqualTo(10.0);
+        assertThat(song.getRowHeightAdjustmentSs()).isEqualTo(1.5);
+        assertThat(song.getLineWidthSs()).isEqualTo(50.0);
+        assertThat(song.lineCount()).isEqualTo(1);
+        assertThat(song.isModified()).isFalse();
+    }
+
+    @Test
+    void testLoadFromClearsPreviousLinesAndReplacesThem() {
+        var extraLine = new Line(song);
+        song.withoutMutationTracking(() -> {
+            extraLine.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+            song.addLine(1, extraLine);
+        });
+        assertThat(song.lineCount()).isEqualTo(2);
+
+        var newLine = new Line(song);
+        song.withoutMutationTracking(() -> {
+            newLine.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+        });
+
+        var data = new SongData(
+            null,
+            "",
+            "",
+            "",
+            0,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            Song.DEFAULT_KEY_ACCIDENTAL_COUNT,
+            Song.DEFAULT_KEY_TYPE,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            List.of(newLine),
+            false,
+            1
+        );
+
+        song.withoutMutationTracking(() -> song.loadFrom(data));
+
+        assertThat(song.lineCount()).isEqualTo(1);
+        assertThat(song.getLine(0)).isSameAs(newLine);
+        assertThat(song.isModified()).isFalse();
+    }
+
+    @Test
+    @SuppressWarnings("NullAway")
+    void testLoadFromAttachesInitialTempoToFirstLineElement() {
+        var tempo = new Tempo();
+        tempo.setVisibleTempo(120);
+
+        var lineWithNote = new Line(song);
+        var note = new StaffElement(ElementType.CROTCHET);
+        song.withoutMutationTracking(() -> {
+            lineWithNote.addElement(note);
+            lineWithNote.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+        });
+
+        var data = new SongData(
+            tempo,
+            "",
+            "",
+            "",
+            0,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            Song.DEFAULT_KEY_ACCIDENTAL_COUNT,
+            Song.DEFAULT_KEY_TYPE,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            List.of(lineWithNote),
+            false,
+            1
+        );
+
+        song.withoutMutationTracking(() -> song.loadFrom(data));
+
+        var attachment = note.findAttachment(TempoChangeAttachment.class);
+        assertThat(attachment).isNotNull();
+        assertThat(attachment.getTempo()).isSameAs(tempo);
     }
 
     // selection2.mssw has no dynamics — regression guard for older files without them.

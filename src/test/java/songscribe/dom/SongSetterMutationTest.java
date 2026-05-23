@@ -396,6 +396,20 @@ class SongSetterMutationTest extends UnitTest {
         // The userSetTopPadding flag OR-accumulates: once set to true by a
         // setByUser=true call, a subsequent setByUser=false call must not clear it.
         @Test
+        void testSetTopPaddingSsAlwaysPostsMutationEvenWhenValueUnchanged() {
+            var padding = song.getTopPaddingSs();
+            song.setTopPaddingSs(padding, false);
+            captureSingleLayoutChange();
+
+            messageCenterMock.reset();
+
+            song.setTopPaddingSs(padding, true);
+            var mutation = captureSingleLayoutChange();
+            assertThat(mutation.field()).isEqualTo(LayoutField.TOP_PADDING_SS);
+            assertThat(song.userSetTopPadding()).isTrue();
+        }
+
+        @Test
         void testSetTopPaddingSsStickyFlagRemainsAfterFalseCall() {
             var padding = song.getTopPaddingSs() + 1.0;
             song.setTopPaddingSs(padding, true);

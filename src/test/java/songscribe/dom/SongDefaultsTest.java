@@ -114,6 +114,65 @@ class SongDefaultsTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // applyLineDefaults
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ApplyLineDefaults {
+
+        @Test
+        void testDefaultKeyAppliedWhenCountZeroAndTypeNull() {
+            var song = new Song();
+            var line = new Line(song);
+            song.withoutMutationTracking(() -> {
+                line.setKeyAccidentalCount(0);
+                line.setKeyType(null);
+                song.addLine(line);
+            });
+
+            assertThat(line.getKeyAccidentalCount()).isEqualTo(song.getDefaultKeyAccidentalCount());
+            assertThat(line.getKeyType()).isEqualTo(song.getDefaultKeyType());
+        }
+
+        @Test
+        void testDefaultKeyNotAppliedWhenCountNonZero() {
+            var song = new Song();
+            var line = new Line(song);
+            song.withoutMutationTracking(() -> {
+                line.setKeyAccidentalCount(2);
+                line.setKeyType(KeyType.SHARPS);
+                song.addLine(line);
+            });
+
+            assertThat(line.getKeyAccidentalCount()).isEqualTo(2);
+            assertThat(line.getKeyType()).isEqualTo(KeyType.SHARPS);
+        }
+
+        @Test
+        void testTempoYSetToFirstLineDefaultWhenZeroAndLineIsFirst() {
+            var song = new Song();
+            var firstLine = song.getLine(0);
+
+            assertThat(firstLine.getTempoChangeYPosPx())
+                .isEqualTo(ScaleContext.ssToRoundedPx(Song.TEMPO_DEFAULT_Y_FIRST_LINE_SS));
+        }
+
+        @Test
+        void testTempoYSetToOtherLineDefaultWhenZeroAndLineIsNotFirst() {
+            var song = new Song();
+            var otherLine = new Line(song);
+            song.withoutMutationTracking(() -> {
+                otherLine.setTempoChangeYPosPx(0);
+                song.addLine(otherLine);
+            });
+
+            assertThat(otherLine.getTempoChangeYPosPx())
+                .isEqualTo(ScaleContext.ssToRoundedPx(Song.TEMPO_DEFAULT_Y_OTHER_LINES_SS));
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Standard defaults
     // -----------------------------------------------------------------------
 

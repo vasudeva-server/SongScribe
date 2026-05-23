@@ -17,16 +17,16 @@
 | Song | `setTempo/DefaultKeyAccidentalCount/DefaultKeyType/UnofficialTranslation` — mutation + no-op idempotence | unit | `SongSetterMutationTest` | adequate | keep | — |
 | Song | `mutateMetadata` early-return uses `Objects.equals` (null/null) | unit | `SongSetterMutationTest.testSetTempoSameValuePostsNothing` | adequate | keep | — |
 | Song | `setTopPaddingSs(_, true)` — sticky `userSetTopPadding` flag (OR-accumulate) | unit | `SongSetterMutationTest.testSetTopPaddingSsPostsMutation` (only `false`) | missing | write test: `(x,true)` then `(x,false)` → flag stays true | ✅ |
-| Song | `setTopPaddingSs` always runs apply block (posts even when value unchanged if setByUser differs) | unit | — | missing | write test: `(same,false)` then `(same,true)` → mutation posted, flag true | ⬜ |
+| Song | `setTopPaddingSs` always runs apply block (posts even when value unchanged if setByUser differs) | unit | — | missing | write test: `(same,false)` then `(same,true)` → mutation posted, flag true | ✅ |
 | Song | `setAttributionStartYSs/RowHeightAdjustmentSs/LineWidthSs` — no-op idempotence | unit | `SongSetterMutationTest` | adequate | keep | — |
-| Song | `getLyricsText` — assemble syllabified text (extend `_`, compound `--`, BEGIN/MIDDLE `-`, SINGLE/END space, line `\n`) | unit | — | missing | write unit test asserting each branch | ⬜ |
-| Song | `loadFrom(SongData)` — apply all scalars atomically, clear lines, mark not-modified, attach initial tempo | unit | `SongLoadingTest.testLoadingLegacySongDoesNotDirtyDocument` | inadequate | only checks isModified; write test asserting each field mapping from a crafted SongData | ⬜ |
-| Song | `applyLineDefaults` — default key when count=0/type null; tempo-change Y per first-vs-other line | unit | — | missing | write unit tests for all 4 cases | ⬜ |
-| Song | `isEmpty()` — no lines→false; all empty→true; any non-empty→false | unit | — | missing | write unit test per variant | ⬜ |
+| Song | `getLyricsText` — assemble syllabified text (extend `_`, compound `--`, BEGIN/MIDDLE `-`, SINGLE/END space, line `\n`) | unit | — | missing | write unit test asserting each branch | ✅ |
+| Song | `loadFrom(SongData)` — apply all scalars atomically, clear lines, mark not-modified, attach initial tempo | unit | `SongLoadingTest.testLoadingLegacySongDoesNotDirtyDocument` | inadequate | only checks isModified; write test asserting each field mapping from a crafted SongData | ✅ |
+| Song | `applyLineDefaults` — default key when count=0/type null; tempo-change Y per first-vs-other line | unit | — | missing | write unit tests for all 4 cases | ✅ |
+| Song | `isEmpty()` — no lines→false; all empty→true; any non-empty→false | unit | — | missing | write unit test per variant | ✅ |
 | Song | `getLineWidthPx()` delegates to `ScaleContext.ssToRoundedPx` | none | — | none | trivial delegation | — |
-| Song | `addLine(i, line)` validates `line.getSong()==this`, throws IAE for foreign line | unit | — | missing | write test asserting IAE for foreign line | ⬜ |
+| Song | `addLine(i, line)` validates `line.getSong()==this`, throws IAE for foreign line | unit | — | missing | write test asserting IAE for foreign line | ✅ |
 | Song | `addLine/removeLine` terminal-invariant maintenance (4 FINAL branches) | unit | `SongLineMaintenanceTest` | adequate (FINAL) | REPEAT_RIGHT carry-over untested → see next row | — |
-| Song | `terminalTypeToInstall` — carry outgoing REPEAT_RIGHT to new last line; promote interior REPEAT_RIGHT | unit | — | missing | write unit tests for both REPEAT_RIGHT paths | ⬜ |
+| Song | `terminalTypeToInstall` — carry outgoing REPEAT_RIGHT to new last line; promote interior REPEAT_RIGHT | unit | — | missing | write unit tests for both REPEAT_RIGHT paths | ✅ |
 | Song | `maintainTerminalOnLastLineChange` coalesces element mutations into one bracket | unit | `SongLineMaintenanceTest` | adequate | keep | — |
 | Song | `isAutoMaintainedTerminal` — true only last-of-last-line + valid terminal | unit | `LineMutationTest.SelectabilityPredicate` | adequate | keep | — |
 | Song | `isInteractable` — false for auto-maintained terminal | unit | `LineMutationTest.SelectabilityPredicate`, `HorizontalAdjustmentTest.SnapToEndSkipped` | adequate | keep | — |

@@ -20,6 +20,7 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mockStatic;
 
@@ -395,6 +396,74 @@ class SongLineMaintenanceTest extends UnitTest {
 
             song.removeLine(1);
             assertThat(song.isModified()).isTrue();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // addLine — validates that line was constructed with this Song
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ForeignLineRejection {
+
+        @Test
+        void testAddLineThrowsForForeignLine() {
+            var otherSong = new Song();
+            var foreignLine = new Line(otherSong);
+
+            assertThatIllegalArgumentException()
+                .isThrownBy(() -> song.addLine(0, foreignLine));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // terminalTypeToInstall — REPEAT_RIGHT carry and promotion paths
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TerminalTypeToInstall {
+
+        @Test
+        void testOutgoingRepeatRightIsCarriedToNewLastLine() {
+            // Place a REPEAT_RIGHT terminal on the initial line so it becomes
+            // the outgoing terminal type when a new line is appended.
+            song.withoutMutationTracking(() -> {
+                initialLine.removeElement(initialLine.elementCount() - 1);
+                initialLine.addElement(Song.newTerminalElement(ElementType.REPEAT_RIGHT));
+            });
+            messageCenterMock.reset();
+
+            var newLast = new Line(song);
+            song.addLine(1, newLast);
+
+            // The new last line should receive a REPEAT_RIGHT, not FINAL_DOUBLE_BARLINE.
+            assertThat(newLast.elementCount()).isEqualTo(1);
+            assertThat(newLast.getElement(0).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
+        }
+
+        @Test
+        void testInteriorRepeatRightOnPenultimateLineIsPromotedOnRemoval() {
+            // Arrange: initialLine ends in REPEAT_RIGHT (interior user-placed right-repeat).
+            // A second line with a FINAL_DOUBLE_BARLINE is appended as the actual last line.
+            // When the second line is removed, terminalTypeToInstall sees outgoingTerminalType=null
+            // (removeLine passes null as previousLastLine) and promotes the REPEAT_RIGHT on
+            // the now-last line (initialLine) in place.
+            song.withoutMutationTracking(() -> {
+                initialLine.removeElement(initialLine.elementCount() - 1);
+                initialLine.addElement(new StaffElement(ElementType.REPEAT_RIGHT));
+
+                var secondLine = new Line(song);
+                secondLine.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+                song.addLine(1, secondLine);
+            });
+            messageCenterMock.reset();
+
+            song.removeLine(1);
+
+            assertThat(initialLine.elementCount()).isEqualTo(1);
+            assertThat(initialLine.getElement(0).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
         }
     }
 

@@ -20,3 +20,16 @@ SongTextProcessingTest.testProcessTextTrimsWhenPrefIsFalse	1a-song	processText t
 SongTextProcessingTest.testProcessTextTrimsWhenStripPrefTrueButNoShortA	1a-song	processText trim variant
 SongSetterMutationTest.LyricsSetters.testSetUnderLyricsAppliesProcessTextTransformation	1a-song	setUnderLyrics processText (strengthen via new sibling)
 SongSetterMutationTest.LayoutSetters.testSetTopPaddingSsStickyFlagRemainsAfterFalseCall	1a-song	setTopPaddingSs sticky flag
+SongSetterMutationTest.LayoutSetters.testSetTopPaddingSsAlwaysPostsMutationEvenWhenValueUnchanged	1a-song	setTopPaddingSs always-runs apply block
+SongLyricsTextTest.*	1a-song	getLyricsText — 8 methods: no-lyrics, extend, compound, BEGIN, MIDDLE, SINGLE, END, multi-line, notes-without-lyrics
+SongLoadingTest.testLoadFromAppliesAllScalarFields	1a-song	loadFrom scalar field mapping
+SongLoadingTest.testLoadFromClearsPreviousLinesAndReplacesThem	1a-song	loadFrom clears and replaces lines
+SongLoadingTest.testLoadFromAttachesInitialTempoToFirstLineElement	1a-song	loadFrom attaches initial tempo
+SongDefaultsTest.ApplyLineDefaults.testDefaultKeyAppliedWhenCountZeroAndTypeNull	1a-song	applyLineDefaults default key branch (count=0, type null)
+SongDefaultsTest.ApplyLineDefaults.testDefaultKeyNotAppliedWhenCountNonZero	1a-song	applyLineDefaults no default key when count nonzero
+SongDefaultsTest.ApplyLineDefaults.testTempoYSetToFirstLineDefaultWhenZeroAndLineIsFirst	1a-song	applyLineDefaults tempo Y first-line
+SongDefaultsTest.ApplyLineDefaults.testTempoYSetToOtherLineDefaultWhenZeroAndLineIsNotFirst	1a-song	applyLineDefaults tempo Y other-line
+SongIsEmptyTest.*	1a-song	isEmpty() — 3 methods: no lines, all empty, any non-empty
+SongLineMaintenanceTest.ForeignLineRejection.testAddLineThrowsForForeignLine	1a-song	addLine IAE for foreign line
+SongLineMaintenanceTest.TerminalTypeToInstall.testOutgoingRepeatRightIsCarriedToNewLastLine	1a-song	terminalTypeToInstall carry outgoing REPEAT_RIGHT
+SongLineMaintenanceTest.TerminalTypeToInstall.testInteriorRepeatRightOnPenultimateLineIsPromotedOnRemoval	1a-song	terminalTypeToInstall promote interior REPEAT_RIGHT
