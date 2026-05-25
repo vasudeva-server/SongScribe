@@ -38,14 +38,14 @@
 | NoteBounds | `getOppositeFromStemBounds` stem-down → upper half | unit | — | missing | write test | ✅ |
 | NoteBounds | `translate(dx,dy)` — new instance shifted, stemUp preserved | unit | — | missing | write test | ✅ |
 | NoteBounds | `getCenterX`/`getCenterY` — from head bounds (not full) | unit | — | missing | write test (distinct head vs full) | ✅ |
-| NoteBounds | `getTop`/`getBottom`/`getAttachmentTopY`/`getAttachmentBottomY` — from articulations bounds | unit | — | missing | write test | ⬜ |
+| NoteBounds | `getTop`/`getBottom`/`getAttachmentTopY`/`getAttachmentBottomY` — from articulations bounds | unit | — | missing | write test | ✅ |
 | AccidentalBounds | pure data record | none | — | none | trivial record | — |
-| Beam | `getSpanWidthSs` — `max(1.0, end−anchor)` clamp | unit | — | missing | write test (3 branches) | ⬜ |
+| Beam | `getSpanWidthSs` — `max(1.0, end−anchor)` clamp | unit | — | missing | write test (3 branches) | ✅ |
 | Beam | `getContentHeightSs`/`getContentWidthPx`/`getContentHeightPx` → 0 sentinels | none | — | none | trivial constants | — |
 | Tie | `getContentHeightSs` → `TIE_ARC_HEIGHT_SS` | unit | `TieTest.testContentHeightSsMatchesStylesheetConstant` | adequate | keep | — |
 | Tie | `getContentHeightPx` → ssToPx of constant | unit | `TieTest.testContentHeightPxIsToPixelsOfSs` | adequate | keep | — |
-| Tie | `getSpanWidthSs` — `max(1.0, end−anchor)` clamp | unit | — | missing | write test (3 branches) | ⬜ |
-| Tie | `isAbove` — anchor `isUpper()`→true; stem-up→false; null anchor→false | unit | — | missing | write test (3 cases) | ⬜ |
+| Tie | `getSpanWidthSs` — `max(1.0, end−anchor)` clamp | unit | — | missing | write test (3 branches) | ✅ |
+| Tie | `isAbove` — anchor `isUpper()`→true; stem-up→false; null anchor→false | unit | — | missing | write test (3 cases) | ✅ |
 | Tie | creation/removal/persistence round-trip | unit | `TieToggleTest` (2) | adequate | keep | — |
 
 **1C notes (quality concerns):** `getPitch`/`calculatePitch` tested only with **relative** equality (`GlissandoRendererTest`) — a systematic octave/pitch-table offset would pass; absolute MIDI assertions needed. `getLedgerLineCount` adequately tested but the test lives in `ui/renderer` though the logic is pure `dom`. `NoteBounds` stem-side/opposite geometry and `Beam`/`Tie` `getSpanWidthSs` clamp are entirely unasserted. `TieTest` (despite the name) covers only the height constant, not `getSpanWidthSs`/`isAbove`. `StaffElementCopyConstructorTest.testGetMainLyricReturnsFirstLyric` is a mild name-mismatch (contract is "verse-1", test data only has verse-1).

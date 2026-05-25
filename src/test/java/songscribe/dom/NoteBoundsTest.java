@@ -231,6 +231,49 @@ class NoteBoundsTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // Row 41 — getTop / getBottom / getAttachmentTopY / getAttachmentBottomY
+    //          all read from noteWithArticulationsBounds
+    // -----------------------------------------------------------------------
+
+    /**
+     * Each of the four geometry getters must read from noteWithArticulationsBounds, not from
+     * noteHeadBounds or noteWithStemBounds.  The three rectangles are deliberately distinct so
+     * any wrong-rect regression produces a different value and fails.
+     *
+     * <p>artRect: y=5, height=22 → maxY=27
+     * headRect:  y=20 → different top; stemRect: maxY=23 → different bottom.
+     */
+    @Test
+    void testGetTopReadsArticulationsBoundsY() {
+        var nb = new NoteBounds(headRect(), stemRect(), artRect(), true);
+
+        assertThat(nb.getTop()).isCloseTo(ART_Y, within(DELTA));
+    }
+
+    @Test
+    void testGetBottomReadsArticulationsBoundsMaxY() {
+        var nb = new NoteBounds(headRect(), stemRect(), artRect(), true);
+        double expectedMaxY = ART_Y + ART_HEIGHT;
+
+        assertThat(nb.getBottom()).isCloseTo(expectedMaxY, within(DELTA));
+    }
+
+    @Test
+    void testGetAttachmentTopYReadsArticulationsBoundsY() {
+        var nb = new NoteBounds(headRect(), stemRect(), artRect(), true);
+
+        assertThat(nb.getAttachmentTopY()).isCloseTo(ART_Y, within(DELTA));
+    }
+
+    @Test
+    void testGetAttachmentBottomYReadsArticulationsBoundsMaxY() {
+        var nb = new NoteBounds(headRect(), stemRect(), artRect(), true);
+        double expectedMaxY = ART_Y + ART_HEIGHT;
+
+        assertThat(nb.getAttachmentBottomY()).isCloseTo(expectedMaxY, within(DELTA));
+    }
+
+    // -----------------------------------------------------------------------
     // Rows 35–36 — getStemSideBounds
     // -----------------------------------------------------------------------
 
