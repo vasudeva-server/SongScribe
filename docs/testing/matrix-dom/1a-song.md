@@ -41,9 +41,9 @@
 | Song | `withoutMutationTracking` — nested suspend/resume via depth counter | unit | `SongBracketTest.SuspensionTracking` | missing | write nested-call test | ✅ |
 | Song | `endSuspendMutationTracking` — throws ISE without matching begin | unit | `SongBracketTest` | missing | write test asserting ISE | ✅ |
 | Song | `documentWasSaved(@Handler)` — sets modified=false | unit | `SongBracketTest` | missing | write handler test | ✅ |
-| Song | `tempoDidChange(@Handler)` — skip all-null; init when null; clone-before-mutate; emit `MetadataChange(TEMPO)` | unit | — | missing | write 4 handler tests | ⬜ |
-| Song | `keySignatureDidChange(@Handler)` — song-level propagates to matching lines only; per-line changes one line | unit | — | missing | write both-branch tests | ⬜ |
-| Song | `layoutDidChange(@Handler)` — dispatch to setters for non-null fields; setByUser from `topPaddingSetByUser` | unit | — | missing | write dispatch test | ⬜ |
+| Song | `tempoDidChange(@Handler)` — skip all-null; init when null; clone-before-mutate; emit `MetadataChange(TEMPO)` | unit | — | missing | write 4 handler tests | ✅ |
+| Song | `keySignatureDidChange(@Handler)` — song-level propagates to matching lines only; per-line changes one line | unit | — | missing | write both-branch tests | ✅ |
+| Song | `layoutDidChange(@Handler)` — dispatch to setters for non-null fields; setByUser from `topPaddingSetByUser` | unit | — | missing | write dispatch test | ✅ |
 | Song | `metadataDidChange(@Handler)` — coalesce field mutations into one notification | unit | `SongMetadataDialogFlowTest` | adequate | keep | — |
 | Song | modified flag true after first real mutation | unit | `SongLineMaintenanceTest.ModifiedFlag` | adequate | keep | — |
 | Song | `postWithModification` ≡ `withModification(post(message))` | none | — | none | trivial delegation | — |
