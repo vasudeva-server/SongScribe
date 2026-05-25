@@ -59,10 +59,10 @@
 | Line | `hasEndingInvalidatedByDeletion`/`...ByInsertion` pre-flight checks | unit | `LineMutationTest.HasEndingInvalidatedByDeletion` (5), `LineMutationTest.HasEndingInvalidatedByInsertion` (4) | adequate | keep | ✅ |
 | Line | `findRangeElementsAt(i)` | unit | `LineMutationTest.FindRangeElementsAt` (3) | adequate | keep | ✅ |
 | Line | `findRangeElements(Class)` | unit | `BatchMutationTest` | adequate | keep | — |
-| Line | `getFirstTempoChange()` — 0 for line 0; first index otherwise | unit | — | missing | write test | ⬜ |
-| Line | `getFirstBeatChange()`/`getFirstTrill()`/`isAnnotation()` | unit | — | missing | write test each | ⬜ |
+| Line | `getFirstTempoChange()` — 0 for line 0; first index otherwise | unit | — | missing | write test | ✅ |
+| Line | `getFirstBeatChange()`/`getFirstTrill()`/`isAnnotation()` | unit | — | missing | write test each | ✅ |
 | Line | parentLine propagation on add (`setLine`/`setParentLine`) | unit | `ParentLinePropagationTest` (3) | adequate | keep | — |
-| Line | `addElement[0]` fires `ElementInsertion` | unit | — | missing | write test | ⬜ |
+| Line | `addElement[0]` fires `ElementInsertion` | unit | — | missing | write test | ✅ |
 
 **1B notes (quality concerns):** Beam/tie **merge logic** — the most complex code in `addBeaming`/`addTie` — is entirely untested (`BeamToggleTest`/`TieToggleTest` only build non-overlapping 2-element spans and test through `MusicEditOperations`). `SyllabicDerivationTest` is a **name-mismatch**: it tests `StaffElement.getLyricForVerse`/`Lyric` field storage, not `Line` derivation; harmless but misnamed and arguably misfiled. `LineGraceNotePairingTest` covers only `isHostOfPairedGraceNote`; its three companion predicates are untested. `addCrescendo`/`addDiminuendo` merge is covered only by a non-overlapping e2e smoke (`DynamicsMarkingTest`) — wrong level for the merge logic.
 

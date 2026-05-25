@@ -43,6 +43,7 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.ElementReplacement;
@@ -341,6 +342,31 @@ class LineMutationTest extends UnitTest {
             song.withModification(() -> line.removeRange(5, 8));
 
             assertThat(line.getRangeElements()).contains(ending);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // addElement(e) fires ElementInsertion
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddElementFiresElementInsertion {
+
+        @Test
+        void testAddElementFiresElementInsertionMutation() {
+            // The single-arg addElement(StaffElement) must record an ElementInsertion
+            // mutation carrying the inserted element and its resolved index.
+            var newElement = new StaffElement(ElementType.QUAVER);
+            var expectedIndex = line.elementCount() - 1; // inserts before auto-maintained terminal
+
+            song.withModification(() -> line.addElement(newElement));
+
+            var notification = captureSingleDidChange();
+            var insertion = findSingleMutationOfType(notification, ElementInsertion.class);
+            assertThat(insertion.line()).isSameAs(line);
+            assertThat(insertion.index()).isEqualTo(expectedIndex);
+            assertThat(insertion.element()).isSameAs(newElement);
         }
     }
 
