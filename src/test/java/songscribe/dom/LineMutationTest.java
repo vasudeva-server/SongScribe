@@ -41,10 +41,14 @@ import songscribe.layout.Ending;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementDeletion;
+import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.ElementRangeDeletion;
+import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.layout.EndingLineFixture;
 
@@ -99,6 +103,108 @@ class LineMutationTest extends UnitTest {
             var deletion = (LineDeletion) notification.getMutations().getFirst();
             assertThat(deletion.lineIndex()).isEqualTo(0);
             assertThat(deletion.deletedLine()).isSameAs(line);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // modifyElement clones before mutation
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ModifyElementCloneBeforeMutation {
+
+        @Test
+        void testBeforeElementIsPreMutationSnapshot() {
+            // Set up an element with a known dot count, then modify it. The beforeElement
+            // in the resulting ElementModification must reflect the pre-mutation state.
+            var element = new StaffElement(ElementType.QUAVER);
+            var preMutationDotCount = 0;
+            var postMutationDotCount = 1;
+            song.withoutMutationTracking(() -> line.addElement(element));
+
+            song.withModification(() ->
+                line.modifyElement(0, ElementField.DOT_COUNT,
+                    () -> element.setDotCount(postMutationDotCount)));
+
+            var notification = captureSingleDidChange();
+            var modification = findSingleMutationOfType(notification, ElementModification.class);
+
+            // beforeElement is the clone captured before the mutator ran.
+            assertThat(modification.beforeElement().getDotCount())
+                .as("beforeElement.dotCount should reflect pre-mutation state")
+                .isEqualTo(preMutationDotCount);
+
+            // The live element on the line now holds the post-mutation value.
+            assertThat(line.getElement(0).getDotCount())
+                .as("element on line should reflect post-mutation state")
+                .isEqualTo(postMutationDotCount);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // modifyElement with DURATION_AFFECTING field removes overlapping tuplets
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ModifyElementDurationAffectingRemovesTuplet {
+
+        @Test
+        void testModifyDurationAffectingFieldRemovesOverlappingTuplet() {
+            // DOT_COUNT is in ElementField.DURATION_AFFECTING. Modifying it must trigger
+            // removeOverlappingTuplets, which removes any tuplet whose span covers the
+            // modified element's index.
+            var e0 = new StaffElement(ElementType.QUAVER);
+            var e1 = new StaffElement(ElementType.QUAVER);
+            var e2 = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(e0);
+                line.addElement(e1);
+                line.addElement(e2);
+            });
+
+            var tripletGrade = 3;
+            var tuplet = new Tuplet(e0, e2, tripletGrade);
+            song.withoutMutationTracking(() -> line.addTuplet(tuplet));
+
+            // Modify e1 (index 1) using a DURATION_AFFECTING field (DOT_COUNT).
+            song.withModification(() ->
+                line.modifyElement(1, ElementField.DOT_COUNT, () -> e1.setDotCount(1)));
+
+            var notification = captureSingleDidChange();
+
+            // The TupletRemoval mutation must be present alongside the ElementModification.
+            var removal = findSingleMutationOfType(notification, TupletRemoval.class);
+            assertThat(removal.tuplet()).isSameAs(tuplet);
+
+            // The tuplet must no longer be on the line.
+            assertThat(line.findTupletAt(1)).isNull();
+        }
+
+        @Test
+        void testModifyNonDurationAffectingFieldPreservesTuplet() {
+            // ARTICULATION is not in DURATION_AFFECTING, so modifying it must NOT remove
+            // any tuplet covering the modified element.
+            var e0 = new StaffElement(ElementType.QUAVER);
+            var e1 = new StaffElement(ElementType.QUAVER);
+            var e2 = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(e0);
+                line.addElement(e1);
+                line.addElement(e2);
+            });
+
+            var tripletGrade = 3;
+            var tuplet = new Tuplet(e0, e2, tripletGrade);
+            song.withoutMutationTracking(() -> line.addTuplet(tuplet));
+
+            // Modify e1 using a non-DURATION_AFFECTING field (UPPER is a simple boolean flip).
+            song.withModification(() ->
+                line.modifyElement(1, ElementField.UPPER, () -> e1.setUpper(true)));
+
+            // The tuplet must still be present.
+            assertThat(line.findTupletAt(1)).isSameAs(tuplet);
         }
     }
 
@@ -231,6 +337,145 @@ class LineMutationTest extends UnitTest {
             song.withModification(() -> line.removeRange(5, 8));
 
             assertThat(line.getRangeElements()).contains(ending);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // addElement(e) insertion position
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddElementInsertionPosition {
+
+        @Test
+        void testAddElementInsertsBeforeAutoMaintainedTerminal() {
+            // A fresh Song's last line already has an auto-maintained FINAL_DOUBLE_BARLINE.
+            // addElement(e) should insert before it, so the new element lands at count-1.
+            var elementCountBefore = line.elementCount();
+            var newElement = new StaffElement(ElementType.QUAVER);
+            song.withModification(() -> line.addElement(newElement));
+
+            // The terminal is still the last element; new element is second-to-last.
+            var expectedIndex = elementCountBefore - 1;
+            assertThat(line.getElement(expectedIndex)).isSameAs(newElement);
+            // The element that was previously the terminal is now at count-1 (last slot).
+            assertThat(line.getElement(line.elementCount() - 1).getType())
+                .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        @Test
+        void testAddElementAppendsWhenNoAutoMaintainedTerminal() {
+            // Add a second line so line is no longer the last line — the terminal on
+            // line is no longer the auto-maintained one and acts as an ordinary element.
+            var secondLine = new Line(song);
+            song.addLine(1, secondLine);
+
+            var elementCountBefore = line.elementCount();
+            var newElement = new StaffElement(ElementType.QUAVER);
+            song.withModification(() -> line.addElement(newElement));
+
+            // With no auto-maintained terminal on this line, the element appends at the end.
+            assertThat(line.getElement(elementCountBefore)).isSameAs(newElement);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // addElement(0, e) tempo migration on line 0
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddElementTempoMigration {
+
+        @Test
+        void testInsertAtIndexZeroOnFirstLineMigratesTempoAttachment() {
+            // Manually attach a tempo to the current first element (index 0) to simulate
+            // the state that exists after a real song is loaded (loadFrom calls
+            // attachInitialTempoIfNeeded). We use withoutMutationTracking so the setup
+            // itself emits no notification.
+            // new Song() always initializes a non-null Tempo; the explicit guard narrows
+            // the type so NullAway allows passing it to TempoChangeAttachment's constructor.
+            var tempo = song.getTempo();
+            if (tempo == null) {
+                throw new AssertionError("fresh Song should always have a non-null tempo");
+            }
+            var originalFirst = line.getElement(0);
+            song.withoutMutationTracking(() ->
+                originalFirst.addAttachment(new TempoChangeAttachment(tempo)));
+
+            var newFirst = new StaffElement(ElementType.QUAVER);
+            song.withModification(() -> line.addElement(0, newFirst));
+
+            // The tempo attachment must have moved to the new first element.
+            assertThat(newFirst.findAttachment(TempoChangeAttachment.class))
+                .as("new first element should carry the migrated TempoChangeAttachment")
+                .isNotNull();
+            // The original first element must no longer hold the tempo attachment.
+            assertThat(originalFirst.findAttachment(TempoChangeAttachment.class))
+                .as("original first element should no longer carry the TempoChangeAttachment")
+                .isNull();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // addElement(i, e) removes spanning tuplet
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddElementTupletRemoval {
+
+        @Test
+        void testInsertAtIndexInsideTupletSpanRemovesTuplet() {
+            // Build: e0 — e1 — e2 — terminal; tuplet spans e0..e2 (indices 0..2).
+            var e0 = new StaffElement(ElementType.QUAVER);
+            var e1 = new StaffElement(ElementType.QUAVER);
+            var e2 = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(e0);
+                line.addElement(e1);
+                line.addElement(e2);
+            });
+
+            // Grade 3 = triplet.
+            var tripletGrade = 3;
+            var tuplet = new Tuplet(e0, e2, tripletGrade);
+            song.withoutMutationTracking(() -> line.addTuplet(tuplet));
+
+            // Insert at index 1 — inside the tuplet's span (anchor=0, end=2).
+            var inserted = new StaffElement(ElementType.QUAVER);
+            song.withModification(() -> line.addElement(1, inserted));
+
+            // The notification must include a TupletRemoval.
+            var notification = captureSingleDidChange();
+            var removal = findSingleMutationOfType(notification, TupletRemoval.class);
+            assertThat(removal.tuplet()).isSameAs(tuplet);
+
+            // The tuplet must be gone from the line.
+            assertThat(line.findTupletAt(0)).isNull();
+        }
+
+        @Test
+        void testInsertAtTupletAnchorIndexDoesNotRemoveTuplet() {
+            // Inserting at the anchor index itself (index == anchor) is not strictly
+            // inside the span (the guard is index > anchorIndex), so the tuplet survives.
+            var e0 = new StaffElement(ElementType.QUAVER);
+            var e1 = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(e0);
+                line.addElement(e1);
+            });
+
+            var dupletGrade = 2;
+            var tuplet = new Tuplet(e0, e1, dupletGrade);
+            song.withoutMutationTracking(() -> line.addTuplet(tuplet));
+
+            var inserted = new StaffElement(ElementType.QUAVER);
+            // Insert at the anchor index (0) — not strictly inside, so tuplet is preserved.
+            song.withModification(() -> line.addElement(0, inserted));
+
+            assertThat(line.findTupletAt(1)).isSameAs(tuplet);
         }
     }
 
@@ -616,6 +861,87 @@ class LineMutationTest extends UnitTest {
             assertThatNoException().isThrownBy(() ->
                 song.withoutMutationTracking(() ->
                     line.addElement(0, Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // setElement fires ElementReplacement mutation
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SetElementFiresReplacement {
+
+        @Test
+        void testSetElementFiresSingleElementReplacementWithCorrectOldAndNew() {
+            var oldElement = new StaffElement(ElementType.QUAVER);
+            var newElement = new StaffElement(ElementType.CROTCHET);
+            song.withoutMutationTracking(() -> line.addElement(oldElement));
+
+            song.withModification(() -> line.setElement(0, newElement));
+
+            var notification = captureSingleDidChange();
+            var replacement = findSingleMutationOfType(notification, ElementReplacement.class);
+            assertThat(replacement.line()).isSameAs(line);
+            assertThat(replacement.index()).isEqualTo(0);
+            assertThat(replacement.oldElement()).isSameAs(oldElement);
+            assertThat(replacement.newElement()).isSameAs(newElement);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // setElement updates surviving range element anchor/end references
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SetElementUpdatesRangeRefs {
+
+        @Test
+        void testSetElementUpdatesAnchorReferenceInSurvivingTie() {
+            // A tie anchored at index 0; setElement(0, newElement) must update the tie's
+            // anchor to newElement so getAnchorElementIndex() remains valid.
+            var originalFirst = new StaffElement(ElementType.QUAVER);
+            var second = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(originalFirst);
+                line.addElement(second);
+            });
+
+            var tie = new Tie(originalFirst, second);
+            song.withoutMutationTracking(() -> line.addRangeElement(tie));
+
+            var newFirst = new StaffElement(ElementType.CROTCHET);
+            song.withModification(() -> line.setElement(0, newFirst));
+
+            // The tie survives (anchor swap does not invalidate it) and its anchor
+            // reference is updated to newFirst.
+            assertThat(line.getRangeElements()).contains(tie);
+            assertThat(tie.getAnchorElement())
+                .as("tie anchor should be updated to the replacement element")
+                .isSameAs(newFirst);
+        }
+
+        @Test
+        void testSetElementUpdatesEndReferenceInSurvivingTie() {
+            // A tie whose end element is replaced; the end reference must be updated.
+            var first = new StaffElement(ElementType.QUAVER);
+            var originalEnd = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(first);
+                line.addElement(originalEnd);
+            });
+
+            var tie = new Tie(first, originalEnd);
+            song.withoutMutationTracking(() -> line.addRangeElement(tie));
+
+            var newEnd = new StaffElement(ElementType.CROTCHET);
+            song.withModification(() -> line.setElement(1, newEnd));
+
+            assertThat(line.getRangeElements()).contains(tie);
+            assertThat(tie.getEndElement())
+                .as("tie end reference should be updated to the replacement element")
+                .isSameAs(newEnd);
         }
     }
 

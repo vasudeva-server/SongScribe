@@ -2,10 +2,10 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| Line | `addElement(e)` inserts before auto-maintained terminal when present, else appends | unit | — | missing | write test: lands at `count-1` w/ terminal, `count` otherwise | ⬜ |
-| Line | `addElement(0, e)` migrates initial TempoChangeAttachment to new first element (line 0) | unit | — | missing | write test asserting migration | ⬜ |
+| Line | `addElement(e)` inserts before auto-maintained terminal when present, else appends | unit | — | missing | write test: lands at `count-1` w/ terminal, `count` otherwise | ✅ |
+| Line | `addElement(0, e)` migrates initial TempoChangeAttachment to new first element (line 0) | unit | — | missing | write test asserting migration | ✅ |
 | Line | `addElement(i, e)` rejects FINAL_DOUBLE_BARLINE on non-last line / non-end index | unit | `LineMutationTest.TerminalGuards` (3) | adequate | keep | — |
-| Line | `addElement(i, e)` removes tuplet spanning insertion index | unit | — | missing | write test | ⬜ |
+| Line | `addElement(i, e)` removes tuplet spanning insertion index | unit | — | missing | write test | ✅ |
 | Line | `addElement(i, e)` removes Endings invalidated by insertion | unit | `LineMutationTest.EndingInvalidationConditions` | adequate | keep | — |
 | Line | `removeElement(i)` fires `ElementDeletion`, shrinks list | unit | `LineMutationTest.RemoveElement.testFiresSingleElementDeletion` | adequate | keep | — |
 | Line | `removeElement(i)` removes range elements invalidated by anchor/end deletion | unit | `LineMutationTest.RemoveElement` (2) | adequate | keep | — |
@@ -13,12 +13,12 @@
 | Line | `removeRange(a,b)` fires `ElementRangeDeletion` w/ correct indices/list | unit | `LineMutationTest.RemoveRange` (2) | adequate | keep | — |
 | Line | `removeRange(a,b)` removes range elements invalidated by range deletion | unit | `LineMutationTest.RemoveRange` (2) | adequate | keep | — |
 | Line | `removeRange(a,b)` rejects range including auto-maintained terminal | unit | `LineMutationTest.TerminalGuards.testRemoveRangeIncluding...` | adequate | keep | — |
-| Line | `setElement(i, e)` fires `ElementReplacement` | unit | — | missing | write test asserting single replacement w/ correct old/new | ⬜ |
-| Line | `setElement` updates surviving range elements' anchor/end refs after swap | unit | — | missing | write test: tie anchored at 0; `setElement(0,new)`; assert `tie.anchor==new` | ⬜ |
+| Line | `setElement(i, e)` fires `ElementReplacement` | unit | — | missing | write test asserting single replacement w/ correct old/new | ✅ |
+| Line | `setElement` updates surviving range elements' anchor/end refs after swap | unit | — | missing | write test: tie anchored at 0; `setElement(0,new)`; assert `tie.anchor==new` | ✅ |
 | Line | `setElement` guard: FINAL_DOUBLE_BARLINE on non-last line/position | unit | `LineMutationTest.TerminalGuards` (2) | adequate | keep | — |
 | Line | `setElement` removes Endings invalidated by replacement | unit | `LineMutationTest.EndingInvalidationConditions.*SetElement*` (6) | adequate | keep | — |
-| Line | `modifyElement` clones before mutation (pre-snapshot for `ElementModification.beforeElement`) | unit | — | missing | write test asserting pre-mutation snapshot | ⬜ |
-| Line | `modifyElement` w/ DURATION_AFFECTING field removes overlapping tuplets | unit | — | missing | write test | ⬜ |
+| Line | `modifyElement` clones before mutation (pre-snapshot for `ElementModification.beforeElement`) | unit | — | missing | write test asserting pre-mutation snapshot | ✅ |
+| Line | `modifyElement` w/ DURATION_AFFECTING field removes overlapping tuplets | unit | — | missing | write test | ✅ |
 | Line | `effectiveElementCount()` excludes trailing auto-maintained terminal | unit | (only e2e helper, never asserted) | missing | write unit test comparing `elementCount` vs `effectiveElementCount` | ⬜ |
 | Line | `isInHairpinRange(i)` — inside/outside/boundary of cresc/dim | unit | `LineIsInHairpinRangeTest` (5) | adequate | keep | — |
 | Line | `addBeaming` — no overlap: added as-is | unit | `BeamToggleTest.ToggleBeam.testToggleBeamOn` (via MusicEditOperations) | adequate | keep | — |
