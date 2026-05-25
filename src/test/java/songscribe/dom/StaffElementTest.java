@@ -303,6 +303,142 @@ class StaffElementTest extends UnitTest {
     }
 
     // ------------------------------------------------------------------
+    // T7 (Row 7): isEligibleForLyric — non-rests are always eligible; rests only
+    //             if they already carry a non-blank lyric for the given verse
+    // ------------------------------------------------------------------
+
+    // (a) A non-rest note is always eligible regardless of lyric state
+    @Test
+    void testIsEligibleForLyricNonRestIsAlwaysEligible() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        assertThat(element.isEligibleForLyric(1)).isTrue();
+    }
+
+    // (b) A rest with no lyric for the verse is not eligible
+    @Test
+    void testIsEligibleForLyricRestWithNoLyricIsNotEligible() {
+        var element = new StaffElement(ElementType.CROTCHET_REST);
+
+        assertThat(element.isEligibleForLyric(1)).isFalse();
+    }
+
+    // (c) A rest that already carries a non-blank lyric for the verse is eligible
+    @Test
+    void testIsEligibleForLyricRestWithNonBlankLyricIsEligible() {
+        var element = new StaffElement(ElementType.CROTCHET_REST);
+        element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "la", Lyric.Extend.NONE);
+
+        assertThat(element.isEligibleForLyric(1)).isTrue();
+    }
+
+    // ------------------------------------------------------------------
+    // T9 (Row 9): hasLedgerLines — delegates to getLedgerLineCount() > 0
+    // ------------------------------------------------------------------
+
+    // Staff position within the 5-line staff (sp=0, middle) → no ledger lines
+    @Test
+    void testHasLedgerLinesReturnsFalseWhenCountIsZero() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        element.setStaffPosition(0);
+
+        assertThat(element.hasLedgerLines()).isFalse();
+    }
+
+    // Staff position sp=-6 is beyond the top staff line → 1 ledger line → true
+    @Test
+    void testHasLedgerLinesReturnsTrueWhenCountIsPositive() {
+        // sp=-6: abs=6, even, (6-4)/2=1 ledger line
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        // Staff position 6 half-steps above the staff requires one ledger line
+        var staffPositionRequiringOneLedgerLine = -6;
+        element.setStaffPosition(staffPositionRequiringOneLedgerLine);
+
+        assertThat(element.hasLedgerLines()).isTrue();
+    }
+
+    // ------------------------------------------------------------------
+    // T12 (Row 12): findLastAccidental — inherits from same-position predecessor,
+    //               or falls back to the key signature if none exists
+    // ------------------------------------------------------------------
+
+    // (a) Same-position predecessor with an explicit accidental → that accidental
+    //     is returned for the successor (which has no accidental of its own)
+    @Test
+    void testFindLastAccidentalInheritsPredecessorAccidental() {
+        // Build a minimal two-note line: both notes at sp=-4 (F5 position).
+        // The first note carries an explicit SHARP; the second has none.
+        // findLastAccidental() on the second note must return SHARP (inherited).
+        var song = new Song();
+        var line = song.getLine(0);
+        var predecessor = new StaffElement(ElementType.CROTCHET);
+        predecessor.setStaffPosition(-4);
+        predecessor.setAccidental(StaffElement.Accidental.SHARP);
+        var successor = new StaffElement(ElementType.CROTCHET);
+        successor.setStaffPosition(-4);
+        song.withoutMutationTracking(() -> {
+            line.addElement(predecessor);
+            line.addElement(successor);
+        });
+
+        assertThat(successor.findLastAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+    }
+
+    // (b) No predecessor at the same position → falls back to key signature.
+    //     Line is set to 1 sharp (F#); note is at sp=-4 (pitchIndex=4=F).
+    //     keyExists(4) is true, so the fallback must return SHARP.
+    @Test
+    void testFindLastAccidentalFallsBackToKeySignature() {
+        // 1 sharp in key sig covers pitchIndex 4 (F); note at sp=-4 has pitchIndex 4.
+        // With no predecessor at the same staff position, the key-signature accidental
+        // (SHARP) must be returned.
+        var song = new Song();
+        var line = song.getLine(0);
+        var note = new StaffElement(ElementType.CROTCHET);
+        note.setStaffPosition(-4);
+        song.withoutMutationTracking(() -> {
+            line.setKeyType(KeyType.SHARPS);
+            line.setKeyAccidentalCount(1);
+            line.addElement(note);
+        });
+
+        assertThat(note.findLastAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+    }
+
+    // ------------------------------------------------------------------
+    // T16 (Row 16): setAccidental(null) clears isAccidentalInParentheses
+    // ------------------------------------------------------------------
+
+    @Test
+    void testSetAccidentalNullClearsIsAccidentalInParentheses() {
+        // Set an accidental and mark it as being in parentheses, then clear the accidental.
+        // The parentheses flag must be false afterwards, because it has no accidental to annotate.
+        var element = new StaffElement(ElementType.CROTCHET);
+        element.setAccidental(StaffElement.Accidental.SHARP);
+        element.setAccidentalInParentheses(true);
+
+        element.setAccidental(null);
+
+        assertThat(element.isAccidentalInParentheses()).isFalse();
+    }
+
+    // ------------------------------------------------------------------
+    // T17 (Row 17): setAccidentalInParentheses no-ops when accidental is null
+    // ------------------------------------------------------------------
+
+    @Test
+    void testSetAccidentalInParenthesesNoOpsWhenAccidentalIsNull() {
+        // With no accidental set, calling setAccidentalInParentheses(true) must not
+        // activate the flag — there is nothing to parenthesize.
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        element.setAccidentalInParentheses(true);
+
+        assertThat(element.isAccidentalInParentheses()).isFalse();
+    }
+
+    // ------------------------------------------------------------------
     // T7: setLyricForVerse(1, ...) replaces existing verse-1 entry
     @Test
     void testSetLyricForVerseReplacesExisting() {

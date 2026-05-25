@@ -2,13 +2,13 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 65 / 1619 actionable rows done (4%).**
+**Overall: 70 / 1619 actionable rows done (4%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
 | 1 · dom | [1a-song](matrix-dom/1a-song.md) | 24 | 24 | ✅ complete |
 |  | [1b-line](matrix-dom/1b-line.md) | 36 | 36 | ✅ complete |
-|  | [1c-element-note-core](matrix-dom/1c-element-note-core.md) | 5 | 35 | in progress |
+|  | [1c-element-note-core](matrix-dom/1c-element-note-core.md) | 10 | 35 | in progress |
 |  | [1d-element-typing-pitch-system](matrix-dom/1d-element-typing-pitch-system.md) | 0 | 35 | not started |
 |  | [1e-attachment-family](matrix-dom/1e-attachment-family.md) | 0 | 20 | not started |
 |  | [1f-ornaments-dynamics-misc](matrix-dom/1f-ornaments-dynamics-misc.md) | 0 | 18 | not started |
