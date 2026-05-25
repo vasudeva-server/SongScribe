@@ -77,4 +77,103 @@ class LineGraceNotePairingTest extends UnitTest {
         var line = pairedGraceLine();
         assertThat(line.isHostOfPairedGraceNote(0)).isFalse();
     }
+
+    // -----------------------------------------------------------------------
+    // isInsideGraceHostPair (Row 39)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testIsInsideGraceHostPairAtPairedGraceIndexReturnsTrue() {
+        // Index 0 is the paired grace note itself — clicking on it is inside the pair.
+        var line = pairedGraceLine();
+        assertThat(line.isInsideGraceHostPair(0)).isTrue();
+    }
+
+    @Test
+    void testIsInsideGraceHostPairAtHostIndexReturnsTrue() {
+        // Index 1 is the host — index-1 (the grace at 0) is a paired grace,
+        // so inserting between the grace and the host is blocked.
+        var line = pairedGraceLine();
+        assertThat(line.isInsideGraceHostPair(1)).isTrue();
+    }
+
+    @Test
+    void testIsInsideGraceHostPairAtIndexTwoReturnsFalse() {
+        // Build: [grace+CONNECTED, host, crotchet]. Index 2 is past the pair.
+        var line = pairedGraceLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        assertThat(line.isInsideGraceHostPair(2)).isFalse();
+    }
+
+    @Test
+    void testIsInsideGraceHostPairWithUnpairedGraceReturnsFalse() {
+        // An unpaired grace (no CONNECTED glissando) does not block insertion.
+        var line = unpairedGraceLine();
+        assertThat(line.isInsideGraceHostPair(0)).isFalse();
+        assertThat(line.isInsideGraceHostPair(1)).isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // isPairedGraceNote (Row 40)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testIsPairedGraceNoteWithConnectedGlissandoReturnsTrue() {
+        // Direct test: a grace note carrying a CONNECTED glissando is a paired grace.
+        var line = pairedGraceLine();
+        assertThat(line.isPairedGraceNote(0)).isTrue();
+    }
+
+    @Test
+    void testIsPairedGraceNoteWithoutGlissandoReturnsFalse() {
+        // A grace note without any glissando is not paired.
+        var line = unpairedGraceLine();
+        assertThat(line.isPairedGraceNote(0)).isFalse();
+    }
+
+    @Test
+    void testIsPairedGraceNoteOnNonGraceReturnsFalse() {
+        // A normal note (not a grace note) is never a paired grace.
+        var line = pairedGraceLine();
+        assertThat(line.isPairedGraceNote(1)).isFalse();
+    }
+
+    @Test
+    void testIsPairedGraceNoteAtNegativeIndexReturnsFalse() {
+        var line = pairedGraceLine();
+        assertThat(line.isPairedGraceNote(-1)).isFalse();
+    }
+
+    @Test
+    void testIsPairedGraceNoteAtOutOfBoundsIndexReturnsFalse() {
+        var line = pairedGraceLine();
+        assertThat(line.isPairedGraceNote(line.elementCount())).isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // precedingGraceNoteIndex (Row 41)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testPrecedingGraceNoteIndexWhenPrecedingIsGraceReturnsIndex() {
+        // Index 1 has a grace note at 0 immediately before it.
+        var line = pairedGraceLine();
+        assertThat(line.precedingGraceNoteIndex(1)).isEqualTo(0);
+    }
+
+    @Test
+    void testPrecedingGraceNoteIndexWhenPrecedingIsNoteReturnsMinusOne() {
+        // Build: [crotchet, crotchet]. Index 1 has a non-grace preceding it.
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        assertThat(line.precedingGraceNoteIndex(1)).isEqualTo(-1);
+    }
+
+    @Test
+    void testPrecedingGraceNoteIndexAtIndexZeroReturnsMinusOne() {
+        // No element precedes index 0.
+        var line = pairedGraceLine();
+        assertThat(line.precedingGraceNoteIndex(0)).isEqualTo(-1);
+    }
 }

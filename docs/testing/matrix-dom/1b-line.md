@@ -36,14 +36,14 @@
 | Line | `findTupletsOverlapping(a,b)` | unit | — | missing | write test | ✅ |
 | Line | `removeOverlappingTuplets(a,b)` — one `TupletRemoval` per tuplet | unit | — | missing | write test | ✅ |
 | Line | `addCrescendo`/`addDiminuendo` — same-type hairpin merge | unit | `DynamicsMarkingTest` (e2e, non-merging) | wrong-level | write unit test for merge; e2e smoke fine to keep | ✅ |
-| Line | `isInsideGraceHostPair(i)` | unit | — | missing | write test | ⬜ |
-| Line | `isPairedGraceNote(i)` — grace w/ CONNECTED glissando | unit | (indirect via isHostOfPairedGraceNote) | missing | write direct test | ⬜ |
-| Line | `precedingGraceNoteIndex(i)` | unit | — | missing | write test | ⬜ |
+| Line | `isInsideGraceHostPair(i)` | unit | — | missing | write test | ✅ |
+| Line | `isPairedGraceNote(i)` — grace w/ CONNECTED glissando | unit | (indirect via isHostOfPairedGraceNote) | missing | write direct test | ✅ |
+| Line | `precedingGraceNoteIndex(i)` | unit | — | missing | write test | ✅ |
 | Line | `isHostOfPairedGraceNote(i)` | unit | `LineGraceNotePairingTest` (5) | adequate | keep | — |
-| Line | `keyExists(pitchType)` | unit | — | missing | write test (flats/sharps, various counts) | ⬜ |
-| Line | `setKeyAccidentalCount` fires `LineKeyChange`; no-op when unchanged | unit | — | missing | write test | ⬜ |
-| Line | `setKeyType` fires `LineKeyChange` | unit | `LayoutEngineTest` (setup only) | inadequate | write test asserting mutation | ⬜ |
-| Line | `attachInitialTempoIfNeeded()` | unit | — | missing | write test | ⬜ |
+| Line | `keyExists(pitchType)` | unit | — | missing | write test (flats/sharps, various counts) | ✅ |
+| Line | `setKeyAccidentalCount` fires `LineKeyChange`; no-op when unchanged | unit | — | missing | write test | ✅ |
+| Line | `setKeyType` fires `LineKeyChange` | unit | `LayoutEngineTest` (setup only) | inadequate | write test asserting mutation | ✅ |
+| Line | `attachInitialTempoIfNeeded()` | unit | — | missing | write test | ✅ |
 | Line | `changeElementSpacingRatio(f)` fires `LineLayoutChange` w/ accumulated ratio | unit | — | missing | write test | ⬜ |
 | Line | legacy Y-pos setters (`setTempoChangeYPosPx`/`setBeatChangeYPosPx`/`setLyricsYPosSs`/`setFirstSecondEndingYPosPx`/`setTrillYPosPx`) | none | — | none | trivial setters | — |
 | Line | `adjustSyllablesForNeighborChange` — insertion breaks BEGIN/MIDDLE chain; deletion preserves | unit | `LineMutationTest.SyllableAdjustment` (8) | adequate | keep | — |

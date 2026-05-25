@@ -45,8 +45,10 @@ import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.ElementReplacement;
+import songscribe.message.mutation.KeyField;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
+import songscribe.message.mutation.LineKeyChange;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -1492,6 +1494,278 @@ class LineMutationTest extends UnitTest {
             line.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
         });
     }
+
+    // -----------------------------------------------------------------------
+    // keyExists (Row 43)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class KeyExists {
+
+        // FLAT_SHARP_ORDINAL[FLATS][0] = 0 (B flat)
+        private static final int FLAT_PITCH_B = 0;
+        // FLAT_SHARP_ORDINAL[FLATS][1] = 3 (E flat)
+        private static final int FLAT_PITCH_E = 3;
+        // FLAT_SHARP_ORDINAL[SHARPS][0] = 4 (F sharp)
+        private static final int SHARP_PITCH_F = 4;
+        // FLAT_SHARP_ORDINAL[SHARPS][1] = 1 (C sharp)
+        private static final int SHARP_PITCH_C = 1;
+        // A pitch that is never in any 1-accidental key
+        private static final int UNACCIDENTALIZED_PITCH_D = 2;
+
+        @BeforeEach
+        void resetKeySignature() {
+            // A fresh Song initializes line 0 with 5 flats. Reset to no key so each
+            // test starts from a known null/0 state without firing tracked mutations.
+            song.withoutMutationTracking(() -> {
+                line.setKeyType(null);
+                line.setKeyAccidentalCount(0);
+            });
+        }
+
+        @Test
+        void testKeyExistsReturnsFalseWhenKeyTypeIsNull() {
+            // keyType is null after reset — no accidental matches any pitch.
+            assertThat(line.keyExists(FLAT_PITCH_B)).isFalse();
+        }
+
+        @Test
+        void testKeyExistsForFlatPitchInFlatKey() {
+            // 1-flat key adds a B-flat; pitch 0 (B) must be found.
+            song.withoutMutationTracking(() -> {
+                line.setKeyType(KeyType.FLATS);
+                line.setKeyAccidentalCount(1);
+            });
+            assertThat(line.keyExists(FLAT_PITCH_B)).isTrue();
+        }
+
+        @Test
+        void testKeyExistsForAbsentFlatPitchInOneFlatKey() {
+            // 1-flat key only contains B-flat; E-flat (ordinal 3) must not be found.
+            song.withoutMutationTracking(() -> {
+                line.setKeyType(KeyType.FLATS);
+                line.setKeyAccidentalCount(1);
+            });
+            assertThat(line.keyExists(FLAT_PITCH_E)).isFalse();
+        }
+
+        @Test
+        void testKeyExistsForFlatPitchInTwoFlatKey() {
+            // 2-flat key adds B-flat and E-flat; both pitches must be found.
+            var twoFlats = 2;
+            song.withoutMutationTracking(() -> {
+                line.setKeyType(KeyType.FLATS);
+                line.setKeyAccidentalCount(twoFlats);
+            });
+            assertThat(line.keyExists(FLAT_PITCH_B)).isTrue();
+            assertThat(line.keyExists(FLAT_PITCH_E)).isTrue();
+        }
+
+        @Test
+        void testKeyExistsForSharpPitchInSharpKey() {
+            // 1-sharp key adds an F-sharp; pitch 4 (F) must be found.
+            song.withoutMutationTracking(() -> {
+                line.setKeyType(KeyType.SHARPS);
+                line.setKeyAccidentalCount(1);
+            });
+            assertThat(line.keyExists(SHARP_PITCH_F)).isTrue();
+        }
+
+        @Test
+        void testKeyExistsForAbsentSharpPitchInOneSharpKey() {
+            // 1-sharp key only contains F-sharp; C-sharp (ordinal 1) must not be found.
+            song.withoutMutationTracking(() -> {
+                line.setKeyType(KeyType.SHARPS);
+                line.setKeyAccidentalCount(1);
+            });
+            assertThat(line.keyExists(SHARP_PITCH_C)).isFalse();
+        }
+
+        @Test
+        void testKeyExistsForSharpPitchInTwoSharpKey() {
+            // 2-sharp key adds F-sharp and C-sharp; both pitches must be found.
+            var twoSharps = 2;
+            song.withoutMutationTracking(() -> {
+                line.setKeyType(KeyType.SHARPS);
+                line.setKeyAccidentalCount(twoSharps);
+            });
+            assertThat(line.keyExists(SHARP_PITCH_F)).isTrue();
+            assertThat(line.keyExists(SHARP_PITCH_C)).isTrue();
+        }
+
+        @Test
+        void testKeyExistsReturnsFalseForUnaccidentalizedPitch() {
+            // Pitch D (ordinal 2) does not appear in a 1-sharp or 1-flat key.
+            song.withoutMutationTracking(() -> {
+                line.setKeyType(KeyType.SHARPS);
+                line.setKeyAccidentalCount(1);
+            });
+            assertThat(line.keyExists(UNACCIDENTALIZED_PITCH_D)).isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // setKeyAccidentalCount — fires LineKeyChange; no-op when unchanged (Row 44)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SetKeyAccidentalCount {
+
+        @BeforeEach
+        void resetKeySignature() {
+            // Reset to a known 0/null state so tests are independent of Song's defaults.
+            song.withoutMutationTracking(() -> {
+                line.setKeyType(null);
+                line.setKeyAccidentalCount(0);
+            });
+        }
+
+        @Test
+        void testSetKeyAccidentalCountFiresLineKeyChange() {
+            var initialCount = 0;
+            var newCount = 2;
+            song.withModification(() -> line.setKeyAccidentalCount(newCount));
+
+            var notification = captureSingleDidChange();
+            var keyChange = findSingleMutationOfType(notification, LineKeyChange.class);
+            assertThat(keyChange.line()).isSameAs(line);
+            assertThat(keyChange.field()).isEqualTo(KeyField.ACCIDENTAL_COUNT);
+            assertThat(keyChange.oldValue()).isEqualTo(initialCount);
+            assertThat(keyChange.newValue()).isEqualTo(newCount);
+        }
+
+        @Test
+        void testSetKeyAccidentalCountIsNoOpWhenUnchanged() {
+            // Setting the count to the current value (0) must post no notification.
+            var unchanged = 0;
+            song.withModification(() -> line.setKeyAccidentalCount(unchanged));
+
+            // No SongDidChangeNotification should have been posted.
+            messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
+        }
+
+        @Test
+        void testSetKeyAccidentalCountUpdatesCount() {
+            var newCount = 3;
+            song.withModification(() -> line.setKeyAccidentalCount(newCount));
+            assertThat(line.getKeyAccidentalCount()).isEqualTo(newCount);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // setKeyType — fires LineKeyChange (Row 45)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SetKeyType {
+
+        @BeforeEach
+        void resetKeySignature() {
+            // Reset to null so tests are independent of Song's 5-flat default.
+            song.withoutMutationTracking(() -> line.setKeyType(null));
+        }
+
+        @Test
+        void testSetKeyTypeFiresLineKeyChange() {
+            // Initial keyType is null (after reset); setting to FLATS must fire a LineKeyChange.
+            song.withModification(() -> line.setKeyType(KeyType.FLATS));
+
+            var notification = captureSingleDidChange();
+            var keyChange = findSingleMutationOfType(notification, LineKeyChange.class);
+            assertThat(keyChange.line()).isSameAs(line);
+            assertThat(keyChange.field()).isEqualTo(KeyField.KEY_TYPE);
+            assertThat(keyChange.oldValue()).isNull();
+            assertThat(keyChange.newValue()).isEqualTo(KeyType.FLATS);
+        }
+
+        @Test
+        void testSetKeyTypeIsNoOpWhenUnchanged() {
+            // keyType is null after reset; setting it to null again must post nothing.
+            song.withModification(() -> line.setKeyType(null));
+
+            messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
+        }
+
+        @Test
+        void testSetKeyTypeUpdatesKeyType() {
+            song.withModification(() -> line.setKeyType(KeyType.SHARPS));
+            assertThat(line.getKeyType()).isEqualTo(KeyType.SHARPS);
+        }
+
+        @Test
+        void testSetKeyTypeRecordsOldValue() {
+            // Set to FLATS without tracking, then change to SHARPS — old value must be FLATS.
+            song.withoutMutationTracking(() -> line.setKeyType(KeyType.FLATS));
+            song.withModification(() -> line.setKeyType(KeyType.SHARPS));
+
+            var notification = captureSingleDidChange();
+            var keyChange = findSingleMutationOfType(notification, LineKeyChange.class);
+            assertThat(keyChange.oldValue()).isEqualTo(KeyType.FLATS);
+            assertThat(keyChange.newValue()).isEqualTo(KeyType.SHARPS);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // attachInitialTempoIfNeeded (Row 46)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AttachInitialTempoIfNeeded {
+
+        @Test
+        void testAttachInitialTempoAddsTempoToFirstElement() {
+            // A line with at least one element and no existing tempo attachment must gain one.
+            var element = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> line.addElement(element));
+
+            line.attachInitialTempoIfNeeded();
+
+            assertThat(element.findAttachment(TempoChangeAttachment.class))
+                .as("first element should have a TempoChangeAttachment after call")
+                .isNotNull();
+        }
+
+        @Test
+        void testAttachInitialTempoIsNoOpWhenAlreadyAttached() {
+            // If the first element already has a TempoChangeAttachment, calling again
+            // must not add a second one.
+            var tempo = song.getTempo();
+            if (tempo == null) {
+                throw new AssertionError("fresh Song should always have a non-null tempo");
+            }
+
+            var element = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> line.addElement(element));
+            element.addAttachment(new TempoChangeAttachment(element, tempo));
+
+            line.attachInitialTempoIfNeeded();
+
+            // Exactly one TempoChangeAttachment must be present — not two.
+            var attachments = element.getAttachments().stream()
+                .filter(a -> a instanceof TempoChangeAttachment)
+                .toList();
+            assertThat(attachments)
+                .as("must not add a second TempoChangeAttachment when one already exists")
+                .hasSize(1);
+        }
+
+        @Test
+        void testAttachInitialTempoIsNoOpWhenLineIsEmpty() {
+            // An empty line must not throw; the early-return guard must fire.
+            // A fresh Line has no elements by default (before any addElement call).
+            var emptyLine = new Line(song);
+            org.assertj.core.api.Assertions.assertThatNoException()
+                .isThrownBy(emptyLine::attachInitialTempoIfNeeded);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // LineConstructorInvariants
+    // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
