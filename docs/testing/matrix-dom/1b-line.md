@@ -19,15 +19,15 @@
 | Line | `setElement` removes Endings invalidated by replacement | unit | `LineMutationTest.EndingInvalidationConditions.*SetElement*` (6) | adequate | keep | — |
 | Line | `modifyElement` clones before mutation (pre-snapshot for `ElementModification.beforeElement`) | unit | — | missing | write test asserting pre-mutation snapshot | ✅ |
 | Line | `modifyElement` w/ DURATION_AFFECTING field removes overlapping tuplets | unit | — | missing | write test | ✅ |
-| Line | `effectiveElementCount()` excludes trailing auto-maintained terminal | unit | (only e2e helper, never asserted) | missing | write unit test comparing `elementCount` vs `effectiveElementCount` | ⬜ |
+| Line | `effectiveElementCount()` excludes trailing auto-maintained terminal | unit | (only e2e helper, never asserted) | missing | write unit test comparing `elementCount` vs `effectiveElementCount` | ✅ |
 | Line | `isInHairpinRange(i)` — inside/outside/boundary of cresc/dim | unit | `LineIsInHairpinRangeTest` (5) | adequate | keep | — |
 | Line | `addBeaming` — no overlap: added as-is | unit | `BeamToggleTest.ToggleBeam.testToggleBeamOn` (via MusicEditOperations) | adequate | keep | — |
-| Line | `addBeaming` — adjacent/overlapping merge (absorb shared endpoint) | unit | — | missing | write test: [0,2]+[2,4]→[0,4] | ⬜ |
-| Line | `addBeaming` — subsumed beam removed when new span covers it | unit | — | missing | write test: [1,3]+[0,4]→[0,4] | ⬜ |
-| Line | `removeBeaming` — absent beam is no-op | unit | — | missing | write test | ⬜ |
-| Line | `isStartOfAnyBeam`/`isEndOfAnyBeam` | unit | — | missing | write tests | ⬜ |
+| Line | `addBeaming` — adjacent/overlapping merge (absorb shared endpoint) | unit | — | missing | write test: [0,2]+[2,4]→[0,4] | ✅ |
+| Line | `addBeaming` — subsumed beam removed when new span covers it | unit | — | missing | write test: [1,3]+[0,4]→[0,4] | ✅ |
+| Line | `removeBeaming` — absent beam is no-op | unit | — | missing | write test | ✅ |
+| Line | `isStartOfAnyBeam`/`isEndOfAnyBeam` | unit | — | missing | write tests | ✅ |
 | Line | `findBeamAt(i)` — beam in range else null | unit | `BeamToggleTest`/`BatchMutationTest` | adequate | keep | — |
-| Line | `findBeamsOverlapping(a,b)` | unit | — | missing | write test | ⬜ |
+| Line | `findBeamsOverlapping(a,b)` | unit | — | missing | write test | ✅ |
 | Line | `addTie` merge: adjacent/overlapping ties merge | unit | — | missing | write test: [0,1]+[1,2]→[0,2] | ⬜ |
 | Line | `findTieAt(i)` | unit | `TieToggleTest.testTieCreationAndRemoval` | adequate | keep | — |
 | Line | `findTies()` | unit | — | missing | write test | ⬜ |

@@ -553,6 +553,56 @@ class LineMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // effectiveElementCount excludes trailing auto-maintained terminal
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EffectiveElementCount {
+
+        @Test
+        void testEffectiveElementCountExcludesAutoMaintainedTerminal() {
+            // A fresh Song's last line carries an auto-maintained FINAL_DOUBLE_BARLINE
+            // as its last element.  effectiveElementCount() must return elementCount()-1
+            // for that line, because the terminal must not be treated as a content element.
+            var terminalCount = 1;
+            assertThat(line.effectiveElementCount())
+                .as("effectiveElementCount excludes the auto-maintained terminal")
+                .isEqualTo(line.elementCount() - terminalCount);
+        }
+
+        @Test
+        void testEffectiveElementCountEqualsElementCountWhenNoAutoMaintainedTerminal() {
+            // Adding a second line makes line 0 no longer the last line, so its
+            // FINAL_DOUBLE_BARLINE is no longer the auto-maintained terminal.
+            // effectiveElementCount() must equal elementCount() in that case.
+            var secondLine = new Line(song);
+            song.addLine(1, secondLine);
+
+            assertThat(line.effectiveElementCount())
+                .as("effectiveElementCount equals elementCount when no auto-maintained terminal")
+                .isEqualTo(line.elementCount());
+        }
+
+        @Test
+        void testEffectiveElementCountWithContentElementsBeforeTerminal() {
+            // Adding content elements before the terminal must shift both counts up by the
+            // same amount — the difference must remain exactly 1 (the terminal).
+            var noteCount = 3;
+            song.withoutMutationTracking(() -> {
+                for (var i = 0; i < noteCount; i++) {
+                    line.addElement(new StaffElement(ElementType.QUAVER));
+                }
+            });
+
+            var terminalCount = 1;
+            assertThat(line.effectiveElementCount())
+                .as("effectiveElementCount excludes only the terminal regardless of note count")
+                .isEqualTo(line.elementCount() - terminalCount);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Ending invalidation wiring
     // -----------------------------------------------------------------------
 
