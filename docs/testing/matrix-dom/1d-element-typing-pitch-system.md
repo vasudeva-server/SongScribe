@@ -52,14 +52,14 @@
 | StructuralElement | `getAccidental()` always null | unit | `StaffElementCopyConstructorTest` | adequate | keep | — |
 | StructuralElement | `clone()` returns `StructuralElement` w/ state copied | unit | `StaffElementCopyConstructorTest` (via copy ctor, not clone) | missing | write clone test asserting type + dot count | ✅ |
 | Clef | `getContentWidthPx`/`HeightPx` from G_CLEF bbox via ssToPx | unit | — | missing | write test vs bbox | ⬜ |
-| Duration | `getNote()` returns a clone (not shared instance) | unit | — | missing | write identity-≠ test | ⬜ |
-| Duration | dotted variants → dotCount=1, staffPosition=1 | unit | — | missing | write test (3 dotted constants) | ⬜ |
-| Duration | non-dotted variants → dotCount=0 | unit | — | missing | write test | ⬜ |
-| Duration | each constant's note has expected ElementType | unit | — | missing | write test (all 7) | ⬜ |
+| Duration | `getNote()` returns a clone (not shared instance) | unit | — | missing | write identity-≠ test | ✅ |
+| Duration | dotted variants → dotCount=1, staffPosition=1 | unit | — | missing | write test (3 dotted constants) | ✅ |
+| Duration | non-dotted variants → dotCount=0 | unit | — | missing | write test | ✅ |
+| Duration | each constant's note has expected ElementType | unit | — | missing | write test (all 7) | ✅ |
 | KeyType | pure enum, no methods | none | — | none | no test warranted | — |
-| ElementLocation | ctor rejects negative line/element index | unit | — | missing | write test (IAE both) | ⬜ |
-| ElementLocation | `matches(l,e)` iff both equal | unit | — | missing | write test (3 cases) | ⬜ |
-| ElementLocation | zero indices valid (boundary) | unit | — | missing | write test | ⬜ |
+| ElementLocation | ctor rejects negative line/element index | unit | — | missing | write test (IAE both) | ✅ |
+| ElementLocation | `matches(l,e)` iff both equal | unit | — | missing | write test (3 cases) | ✅ |
+| ElementLocation | zero indices valid (boundary) | unit | — | missing | write test | ✅ |
 
 **1D notes (quality concerns):** **`ScaleContext` is the highest-leverage gap** — every pixel dimension in the app flows through `ssToPx`/`ssToRoundedPx`/`pxToSs`, yet it is used everywhere as a collaborator and unit-tested nowhere; a bug shifts all geometry silently. Three concrete test defects: `testStemmedNoteHeightIsDirectionDependent` asserts only `>0` (can't catch up/down swap); `testStemmedNoteWidthIncludesFlagExtent` uses `>=` where the contract is strictly `>`; `LayoutEngineTest` uses `terminalFlushRightXSs` as both expected value and code-under-test (self-referential). `ElementType`'s many predicate-membership methods (`isBeamable`, `isTerminal` family, `isPitchedNote` family) are used in production but never directly asserted. `ElementLocation` has no tests anywhere. (Note: `RangeElementInvalidationTest`, `KeySignatureTest` correctly test `dom` classes but live under `layout/`.)
 
