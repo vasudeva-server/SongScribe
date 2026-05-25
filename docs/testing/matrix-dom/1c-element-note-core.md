@@ -7,12 +7,12 @@
 | StaffElement | `isEligibleForLyric` — non-rest always; rest only if non-blank lyric for verse | unit | — | missing | write test (3 cases) | ⬜ |
 | StaffElement | `getLedgerLineCount` boundary math | unit | `NoteAreaBuilderTest` (3, in ui/renderer) | adequate | keep (correct level, misfiled package) | — |
 | StaffElement | `hasLedgerLines` delegates to count>0 | unit | — | missing | write test | ⬜ |
-| StaffElement | `getPitch`/`calculatePitch` — MIDI pitch from staff pos + accidental + octave | unit | `GlissandoRendererTest` (3, relative only) | inadequate | add absolute MIDI-value assertions for known notes + accidental table | ⬜ |
-| StaffElement | `getPitchIndex` — staff pos → 0–6 w/ octave wrap | unit | — | missing | write test for sp=0…±8 | ⬜ |
+| StaffElement | `getPitch`/`calculatePitch` — MIDI pitch from staff pos + accidental + octave | unit | `GlissandoRendererTest` (3, relative only) | inadequate | add absolute MIDI-value assertions for known notes + accidental table | ✅ |
+| StaffElement | `getPitchIndex` — staff pos → 0–6 w/ octave wrap | unit | — | missing | write test for sp=0…±8 | ✅ |
 | StaffElement | `findLastAccidental` — inherit from same-position predecessor, else key sig | unit | `TiePitchValidationTest` (fixture, via canToggleTie) | wrong-level | add direct unit test on a 2-note line | ⬜ |
-| StaffElement | `getDefaultDurationWithDots` — `DOTTED_DURATION[dotCount]` for 0/1/2 | unit | — | missing | write test (base, 1.5×, 1.75×) | ⬜ |
-| StaffElement | `getDuration` — fermata extends 1.5× | unit | — | missing | write test w/ and w/o FermataAttachment | ⬜ |
-| StaffElement | `findMidiDurationOverride` — first articulation's % override else -1 | unit | — | missing | write test (none→-1, staccato→%) | ⬜ |
+| StaffElement | `getDefaultDurationWithDots` — `DOTTED_DURATION[dotCount]` for 0/1/2 | unit | — | missing | write test (base, 1.5×, 1.75×) | ✅ |
+| StaffElement | `getDuration` — fermata extends 1.5× | unit | — | missing | write test w/ and w/o FermataAttachment | ✅ |
+| StaffElement | `findMidiDurationOverride` — first articulation's % override else -1 | unit | — | missing | write test (none→-1, staccato→%) | ✅ |
 | StaffElement | `setAccidental(null)` clears `isAccidentalInParentheses` | unit | `AccidentalInParensActionTest`, `StaffElementCopyConstructorTest` | inadequate | add: set accidental+parens, `setAccidental(null)`, assert parens false | ⬜ |
 | StaffElement | `setAccidentalInParentheses` no-ops when accidental null | unit | `AccidentalInParensActionTest` (indirect) | inadequate | add direct null-accidental test | ⬜ |
 | StaffElement | copy ctor `(ElementType, StaffElement)` — 4 note/rest combos + deep-copy isolation | unit | `StaffElementCopyConstructorTest` (6) | adequate | keep | — |
