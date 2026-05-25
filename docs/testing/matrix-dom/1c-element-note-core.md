@@ -30,10 +30,10 @@
 | LineElement | `clearChildren` — clear each parentElement; empty list | unit | — | missing | write test | ✅ |
 | LineElement | `setMarginSs(d)` — uniform all four | unit | — | missing | write test | ✅ |
 | LineElement | `setMarginSs(t,r,b,l)` — CSS shorthand | unit | — | missing | write test | ✅ |
-| NoteBounds | `headOnly` factory — all three bounds equal head bounds | unit | — | missing | write test | ⬜ |
-| NoteBounds | `withStem` factory — articulations bounds == stem bounds | unit | — | missing | write test | ⬜ |
-| NoteBounds | `getStemSideBounds` stem-up → upper half | unit | — | missing | write test (known geometry) | ⬜ |
-| NoteBounds | `getStemSideBounds` stem-down → lower half | unit | — | missing | write test | ⬜ |
+| NoteBounds | `headOnly` factory — all three bounds equal head bounds | unit | — | missing | write test | ✅ |
+| NoteBounds | `withStem` factory — articulations bounds == stem bounds | unit | — | missing | write test | ✅ |
+| NoteBounds | `getStemSideBounds` stem-up → upper half | unit | — | missing | write test (known geometry) | ✅ |
+| NoteBounds | `getStemSideBounds` stem-down → lower half | unit | — | missing | write test | ✅ |
 | NoteBounds | `getOppositeFromStemBounds` stem-up → lower half | unit | — | missing | write test | ⬜ |
 | NoteBounds | `getOppositeFromStemBounds` stem-down → upper half | unit | — | missing | write test | ⬜ |
 | NoteBounds | `translate(dx,dy)` — new instance shifted, stemUp preserved | unit | — | missing | write test | ⬜ |
