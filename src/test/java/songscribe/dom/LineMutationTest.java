@@ -38,6 +38,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.layout.Ending;
+import songscribe.layout.EndingLineFixture;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementDeletion;
@@ -49,10 +50,11 @@ import songscribe.message.mutation.KeyField;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineKeyChange;
+import songscribe.message.mutation.LineLayoutChange;
+import songscribe.message.mutation.LineLayoutField;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.layout.EndingLineFixture;
 
 class LineMutationTest extends UnitTest {
 
@@ -1437,6 +1439,478 @@ class LineMutationTest extends UnitTest {
             // Forward chain for both verses cascade-cleared
             assertThat(follower.lyrics.get(0).extend()).isEqualTo(Lyric.Extend.NONE);
             assertThat(follower.lyrics.get(1).extend()).isEqualTo(Lyric.Extend.NONE);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // adjustNeighborsForLyricDeletion (Row 55)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AdjustNeighborsForLyricDeletion {
+
+        // Two helper elements: predecessor at index 0, target at index 1.
+        private StaffElement predecessor;
+        private StaffElement target;
+
+        @BeforeEach
+        void addElements() {
+            predecessor = new StaffElement(ElementType.QUAVER);
+            target = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(predecessor);
+                line.addElement(target);
+            });
+        }
+
+        private void addLyric(StaffElement element, Lyric.Syllabic syllabic, Lyric.Extend extend) {
+            var text = (syllabic != null && syllabic != Lyric.Syllabic.END
+                        && syllabic != Lyric.Syllabic.MIDDLE) ? "x" : "";
+            element.lyrics.add(new Lyric(VERSE, text, extend, syllabic, false));
+        }
+
+        @Test
+        void testPredecessorWordContinuingBecomesEndWhenNoFollowingTextBearing() {
+            // predecessor has BEGIN (word-continuing) and target (at index 1) will have lyric cleared.
+            // With no following text-bearing lyric, predecessor must become SINGLE.
+            addLyric(predecessor, Lyric.Syllabic.BEGIN, Lyric.Extend.NONE);
+            // target gets a lyric that we'll clear before calling adjustNeighbors
+            addLyric(target, Lyric.Syllabic.END, Lyric.Extend.NONE);
+            // Clear target's lyric (simulate post-deletion state)
+            target.lyrics.clear();
+
+            song.withModification(() -> line.adjustNeighborsForLyricDeletion(1, VERSE));
+
+            assertThat(predecessor.lyrics.getFirst().syllabic())
+                .as("BEGIN predecessor with no following text-bearing lyric should become SINGLE")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        @Test
+        void testNoPredecessorFixesSuccessorWhenLacksContinuingPredecessor() {
+            // No predecessor (deleted index 0). The successor at index 1 has MIDDLE;
+            // with no continuing predecessor it should become BEGIN.
+            addLyric(target, Lyric.Syllabic.MIDDLE, Lyric.Extend.NONE);
+
+            song.withModification(() -> line.adjustNeighborsForLyricDeletion(0, VERSE));
+
+            assertThat(target.lyrics.getFirst().syllabic())
+                .as("successor MIDDLE without a continuing predecessor should become BEGIN")
+                .isEqualTo(Lyric.Syllabic.BEGIN);
+        }
+
+        @Test
+        void testPredecessorContinueExtendBecomesStop() {
+            // When predecessor's lyric has extend=CONTINUE, it is a carrier whose chain is
+            // broken by the deletion; adjustNeighbors must change its extend to STOP.
+            predecessor.lyrics.add(new Lyric(VERSE, "", Lyric.Extend.CONTINUE, null, false));
+            target.lyrics.add(new Lyric(VERSE, "", Lyric.Extend.STOP, null, false));
+            // Clear target lyric to simulate deletion
+            target.lyrics.clear();
+
+            song.withModification(() -> line.adjustNeighborsForLyricDeletion(1, VERSE));
+
+            assertThat(predecessor.lyrics.getFirst().extend())
+                .as("predecessor CONTINUE should become STOP when the deleted element was its stop")
+                .isEqualTo(Lyric.Extend.STOP);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // applyChange runs mutator directly when tracking suspended (Row 58)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ApplyChangeSuspended {
+
+        @Test
+        void testApplyChangeRunsMutatorWhenTrackingSuspended() {
+            // When withoutMutationTracking is active, applyChange must run the mutator
+            // directly without requiring or opening a modification bracket, and must
+            // post no SongDidChangeNotification.
+            var element = new StaffElement(ElementType.QUAVER);
+            var modifiedDotCount = 2;
+            song.withoutMutationTracking(() -> line.addElement(element));
+
+            song.withoutMutationTracking(() ->
+                line.applyChange(
+                    new LineDeletion(0, line),   // mutation record is irrelevant — never recorded
+                    () -> element.setDotCount(modifiedDotCount)));
+
+            // The mutator ran: dot count must reflect the change.
+            assertThat(element.getDotCount())
+                .as("mutator should have run even though tracking is suspended")
+                .isEqualTo(modifiedDotCount);
+
+            // No notification must have been posted.
+            messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // backfillSyllabic (Row 53)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BackfillSyllabic {
+
+        @Test
+        void testBackfillCorrectsStaleSingleToEnd() {
+            // Legacy load assigned SINGLE to a mid-word syllable whose predecessor has BEGIN.
+            // backfillSyllabic must correct it to END (prevContinues=true, thisContinues=false).
+            var first = new StaffElement(ElementType.QUAVER);
+            var second = new StaffElement(ElementType.QUAVER);
+            first.lyrics.add(new Lyric(VERSE, "hel", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            // stale: was SINGLE but the chain says this is the end of a word
+            second.lyrics.add(new Lyric(VERSE, "lo", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+            song.withoutMutationTracking(() -> {
+                line.addElement(first);
+                line.addElement(second);
+            });
+
+            line.backfillSyllabic();
+
+            assertThat(second.lyrics.getFirst().syllabic())
+                .as("stale SINGLE after a BEGIN predecessor should be corrected to END")
+                .isEqualTo(Lyric.Syllabic.END);
+        }
+
+        @Test
+        void testBackfillIdempotentWhenAlreadyConsistent() {
+            // A correctly-tagged two-syllable word: BEGIN + END. backfillSyllabic should leave
+            // them unchanged (no mutation).
+            var first = new StaffElement(ElementType.QUAVER);
+            var second = new StaffElement(ElementType.QUAVER);
+            first.lyrics.add(new Lyric(VERSE, "hel", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            second.lyrics.add(new Lyric(VERSE, "lo", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+            song.withoutMutationTracking(() -> {
+                line.addElement(first);
+                line.addElement(second);
+            });
+
+            line.backfillSyllabic();
+
+            assertThat(first.lyrics.getFirst().syllabic()).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(second.lyrics.getFirst().syllabic()).isEqualTo(Lyric.Syllabic.END);
+        }
+
+        @Test
+        void testBackfillCorrectsStaleSingleToMiddle() {
+            // Three-syllable word: BEGIN — BEGIN (stale) — END. The middle element should
+            // be MIDDLE (prevContinues=true, thisContinues=true).
+            var first = new StaffElement(ElementType.QUAVER);
+            var middle = new StaffElement(ElementType.QUAVER);
+            var last = new StaffElement(ElementType.QUAVER);
+            first.lyrics.add(new Lyric(VERSE, "a", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            // stale: BEGIN was a best-guess load marker for "continues"
+            middle.lyrics.add(new Lyric(VERSE, "b", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            last.lyrics.add(new Lyric(VERSE, "c", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+            song.withoutMutationTracking(() -> {
+                line.addElement(first);
+                line.addElement(middle);
+                line.addElement(last);
+            });
+
+            line.backfillSyllabic();
+
+            assertThat(middle.lyrics.getFirst().syllabic())
+                .as("stale BEGIN in the interior of a word should be corrected to MIDDLE")
+                .isEqualTo(Lyric.Syllabic.MIDDLE);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // changeElementSpacingRatio fires LineLayoutChange (Row 47)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ChangeElementSpacingRatio {
+
+        private static final float EXPAND_RATIO = 1.5f;
+
+        @Test
+        void testChangeElementSpacingRatioFiresLineLayoutChange() {
+            var initialRatio = line.getElementSpacingRatio();
+            var expectedNewRatio = initialRatio * EXPAND_RATIO;
+
+            song.withModification(() -> line.changeElementSpacingRatio(EXPAND_RATIO));
+
+            var notification = captureSingleDidChange();
+            var layoutChange = findSingleMutationOfType(notification, LineLayoutChange.class);
+            assertThat(layoutChange.line()).isSameAs(line);
+            assertThat(layoutChange.field()).isEqualTo(LineLayoutField.ELEMENT_SPACING_RATIO);
+            assertThat((Float) layoutChange.oldValue()).isEqualTo(initialRatio);
+            assertThat((Float) layoutChange.newValue()).isEqualTo(expectedNewRatio);
+        }
+
+        @Test
+        void testChangeElementSpacingRatioAccumulatesWithInitialRatio() {
+            // Calling twice: new ratio = initial * EXPAND_RATIO * EXPAND_RATIO
+            var initialRatio = line.getElementSpacingRatio();
+            var afterFirstChange = initialRatio * EXPAND_RATIO;
+            var afterSecondChange = afterFirstChange * EXPAND_RATIO;
+
+            song.withModification(() -> line.changeElementSpacingRatio(EXPAND_RATIO));
+            // Reset mock capture so second call's notification is isolated
+            messageCenterMock.reset();
+            song.withModification(() -> line.changeElementSpacingRatio(EXPAND_RATIO));
+
+            var notification = captureSingleDidChange();
+            var layoutChange = findSingleMutationOfType(notification, LineLayoutChange.class);
+            assertThat((Float) layoutChange.oldValue()).isEqualTo(afterFirstChange);
+            assertThat((Float) layoutChange.newValue()).isEqualTo(afterSecondChange);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // findRangeElementsAt (Row 60)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class FindRangeElementsAt {
+
+        @Test
+        void testFindRangeElementsAtReturnsElementsCoveringIndex() {
+            // Build a line with two notes and a tie spanning them.
+            var e0 = new StaffElement(ElementType.QUAVER);
+            var e1 = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(e0);
+                line.addElement(e1);
+            });
+            var tie = new Tie(e0, e1);
+            song.withoutMutationTracking(() -> line.addRangeElement(tie));
+
+            // Index 0 is covered by the tie (anchor).
+            assertThat(line.findRangeElementsAt(0)).containsExactly(tie);
+        }
+
+        @Test
+        void testFindRangeElementsAtReturnsEmptyForUncoveredIndex() {
+            var e0 = new StaffElement(ElementType.QUAVER);
+            var e1 = new StaffElement(ElementType.QUAVER);
+            var e2 = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(e0);
+                line.addElement(e1);
+                line.addElement(e2);
+            });
+            // Tie only spans e0–e1 (indices 0–1); index 2 is outside the span.
+            var tie = new Tie(e0, e1);
+            song.withoutMutationTracking(() -> line.addRangeElement(tie));
+
+            assertThat(line.findRangeElementsAt(2)).isEmpty();
+        }
+
+        @Test
+        void testFindRangeElementsAtReturnsMultipleOverlappingElements() {
+            // Two ties that both cover index 1: tie1 spans 0–2, tie2 spans 1–2.
+            var e0 = new StaffElement(ElementType.QUAVER);
+            var e1 = new StaffElement(ElementType.QUAVER);
+            var e2 = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(e0);
+                line.addElement(e1);
+                line.addElement(e2);
+            });
+            var tie1 = new Tie(e0, e2);
+            var tie2 = new Tie(e1, e2);
+            song.withoutMutationTracking(() -> {
+                line.addRangeElement(tie1);
+                line.addRangeElement(tie2);
+            });
+
+            assertThat(line.findRangeElementsAt(1))
+                .as("index 1 should be covered by both tie1 (0–2) and tie2 (1–2)")
+                .containsExactlyInAnyOrder(tie1, tie2);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // hasEndingInvalidatedByDeletion pre-flight check (Row 59)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HasEndingInvalidatedByDeletion {
+
+        @Test
+        void testReturnsTrueWhenAnchorIsDeleted() {
+            var fixture = EndingLineFixture.primary(song);
+            var anchor = fixture.anchor();
+            var ending = fixture.ending();
+
+            // Deleting the anchor element must trigger invalidation.
+            assertThat(line.hasEndingInvalidatedByDeletion(List.of(anchor)))
+                .as("deleting the anchor element should invalidate the ending")
+                .isTrue();
+        }
+
+        @Test
+        void testReturnsTrueWhenEndIsDeleted() {
+            var fixture = EndingLineFixture.primary(song);
+            var end = fixture.end();
+
+            assertThat(line.hasEndingInvalidatedByDeletion(List.of(end)))
+                .as("deleting the end element should invalidate the ending")
+                .isTrue();
+        }
+
+        @Test
+        void testReturnsFalseWhenNonBoundaryNoteIsDeleted() {
+            var fixture = EndingLineFixture.primary(song);
+            var note1 = fixture.note1();
+
+            // Deleting a note inside the first sub-span (not all content) must not invalidate.
+            assertThat(line.hasEndingInvalidatedByDeletion(List.of(note1)))
+                .as("deleting one interior note should not invalidate the ending")
+                .isFalse();
+        }
+
+        @Test
+        void testReturnsTrueWhenAllFirstSubSpanContentIsDeleted() {
+            var fixture = EndingLineFixture.primary(song);
+            var note1 = fixture.note1();
+            var note2 = fixture.note2();
+
+            // Deleting both content notes in the first sub-span empties it — invalidation.
+            assertThat(line.hasEndingInvalidatedByDeletion(List.of(note1, note2)))
+                .as("deleting all content in the first sub-span should invalidate the ending")
+                .isTrue();
+        }
+
+        @Test
+        void testReturnsFalseForEmptyDeletionList() {
+            EndingLineFixture.primary(song);
+
+            assertThat(line.hasEndingInvalidatedByDeletion(List.of()))
+                .as("an empty deletion list must not invalidate any ending")
+                .isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // hasEndingInvalidatedByInsertion pre-flight check (Row 59)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HasEndingInvalidatedByInsertion {
+
+        @Test
+        void testReturnsTrueWhenBarlineInsertedInInterior() {
+            EndingLineFixture.primary(song);
+            // Inserting a barline at index 2 (interior of first sub-span) must invalidate.
+            assertThat(line.hasEndingInvalidatedByInsertion(2, ElementType.SINGLE_BARLINE))
+                .as("inserting a barline inside the first sub-span should invalidate the ending")
+                .isTrue();
+        }
+
+        @Test
+        void testReturnsFalseWhenNoteInsertedInInterior() {
+            EndingLineFixture.primary(song);
+            // Non-barline insertions never invalidate an ending.
+            assertThat(line.hasEndingInvalidatedByInsertion(2, ElementType.CROTCHET))
+                .as("inserting a note inside the span should not invalidate the ending")
+                .isFalse();
+        }
+
+        @Test
+        void testReturnsFalseWhenBarlineInsertedOutsideSpan() {
+            EndingLineFixture.primary(song);
+            // Anchor is at index 0; inserting before it (index 0) is not inside.
+            assertThat(line.hasEndingInvalidatedByInsertion(0, ElementType.SINGLE_BARLINE))
+                .as("inserting before the anchor should not invalidate the ending")
+                .isFalse();
+        }
+
+        @Test
+        void testReturnsFalseWhenNoEndingsPresent() {
+            // A fresh line with no range elements: insertion of any type is fine.
+            assertThat(line.hasEndingInvalidatedByInsertion(0, ElementType.SINGLE_BARLINE))
+                .as("no endings registered means no invalidation possible")
+                .isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // setSyllableBoundary (Row 54)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SetSyllableBoundary {
+
+        private StaffElement first;
+        private StaffElement second;
+
+        @BeforeEach
+        void addElements() {
+            first = new StaffElement(ElementType.QUAVER);
+            second = new StaffElement(ElementType.QUAVER);
+            // first is a word-start; second will be the target element
+            first.lyrics.add(new Lyric(VERSE, "hel", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            second.lyrics.add(new Lyric(VERSE, "lo", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+            song.withoutMutationTracking(() -> {
+                line.addElement(first);
+                line.addElement(second);
+            });
+        }
+
+        @Test
+        void testWordEndOnPredecessorContinuingProducesEnd() {
+            // first=BEGIN (continues), isWordEnd=true → second should become END.
+            // The setup already has second=END from the predecessor BEGIN context, so
+            // no-op path: verify it is still END after the call.
+            song.withModification(() -> line.setSyllableBoundary(1, VERSE, true, false));
+
+            assertThat(second.lyrics.getFirst().syllabic())
+                .as("isWordEnd=true with continuing predecessor should yield END")
+                .isEqualTo(Lyric.Syllabic.END);
+        }
+
+        @Test
+        void testNotWordEndOnPredecessorContinuingProducesMiddle() {
+            // first=BEGIN (continues), isWordEnd=false → second should become MIDDLE.
+            // Change second to have SINGLE (stale) before the call so the mutation fires.
+            song.withoutMutationTracking(() ->
+                second.lyrics.set(0, new Lyric(VERSE, "lo", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)));
+
+            song.withModification(() -> line.setSyllableBoundary(1, VERSE, false, false));
+
+            assertThat(second.lyrics.getFirst().syllabic())
+                .as("isWordEnd=false with continuing predecessor should yield MIDDLE")
+                .isEqualTo(Lyric.Syllabic.MIDDLE);
+        }
+
+        @Test
+        void testSuccessorSyllabicAdjustedAfterBoundaryChange() {
+            // Arrange a three-element word: first=BEGIN, second=MIDDLE, third=END.
+            // Mark index 1 (second) as isWordEnd=true, closing the word there.
+            // second becomes END (prevContinues=true, isWordEnd=true).
+            // fixSuccessorSyllabic then receives predecessorContinues=false, so
+            // third (which was END) → deriveSyllabic(false, false) = SINGLE.
+            var third = new StaffElement(ElementType.QUAVER);
+            third.lyrics.add(new Lyric(VERSE, "c", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+            song.withoutMutationTracking(() -> line.addElement(third));
+
+            // Set second to MIDDLE (continues), so marking it as word-end fires a real change.
+            song.withoutMutationTracking(() ->
+                second.lyrics.set(0, new Lyric(VERSE, "lo", Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, false)));
+
+            song.withModification(() -> line.setSyllableBoundary(1, VERSE, true, false));
+
+            assertThat(second.lyrics.getFirst().syllabic())
+                .as("index 1 with isWordEnd=true should become END")
+                .isEqualTo(Lyric.Syllabic.END);
+            assertThat(third.lyrics.getFirst().syllabic())
+                .as("successor END whose predecessor is now non-continuing should become SINGLE")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
         }
     }
 

@@ -44,20 +44,20 @@
 | Line | `setKeyAccidentalCount` fires `LineKeyChange`; no-op when unchanged | unit | — | missing | write test | ✅ |
 | Line | `setKeyType` fires `LineKeyChange` | unit | `LayoutEngineTest` (setup only) | inadequate | write test asserting mutation | ✅ |
 | Line | `attachInitialTempoIfNeeded()` | unit | — | missing | write test | ✅ |
-| Line | `changeElementSpacingRatio(f)` fires `LineLayoutChange` w/ accumulated ratio | unit | — | missing | write test | ⬜ |
+| Line | `changeElementSpacingRatio(f)` fires `LineLayoutChange` w/ accumulated ratio | unit | `LineMutationTest.ChangeElementSpacingRatio` (2) | adequate | keep | ✅ |
 | Line | legacy Y-pos setters (`setTempoChangeYPosPx`/`setBeatChangeYPosPx`/`setLyricsYPosSs`/`setFirstSecondEndingYPosPx`/`setTrillYPosPx`) | none | — | none | trivial setters | — |
 | Line | `adjustSyllablesForNeighborChange` — insertion breaks BEGIN/MIDDLE chain; deletion preserves | unit | `LineMutationTest.SyllableAdjustment` (8) | adequate | keep | — |
 | Line | `adjustSyllablesForSuccessorAfterInsertion` — MIDDLE→BEGIN, END→SINGLE | unit | `LineMutationTest.SyllableAdjustmentOnInsertion` (6) | adequate | keep | — |
 | Line | `adjustExtendsForDeletion` — START cascade-clear, CONTINUE heal, STOP promote | unit | `LineMutationTest.ExtendAdjustment` (9) | adequate | keep | — |
 | Line | `adjustExtendsForInsertion` — START→NONE, CONTINUE→STOP, STOP/NONE no-op | unit | `LineMutationTest.ExtendAdjustmentOnInsertion` (6) | adequate | keep | — |
-| Line | `backfillSyllabic()` — normalize chain after legacy load (idempotent) | unit | — | missing | write test on stale markers | ⬜ |
-| Line | `setSyllableBoundary(...)` — derive syllabic + propagate to next | unit | — | missing | write test | ⬜ |
-| Line | `adjustNeighborsForLyricDeletion(...)` | unit | — | missing | write test | ⬜ |
+| Line | `backfillSyllabic()` — normalize chain after legacy load (idempotent) | unit | `LineMutationTest.BackfillSyllabic` (3) | adequate | keep | ✅ |
+| Line | `setSyllableBoundary(...)` — derive syllabic + propagate to next | unit | `LineMutationTest.SetSyllableBoundary` (3) | adequate | keep | ✅ |
+| Line | `adjustNeighborsForLyricDeletion(...)` | unit | `LineMutationTest.AdjustNeighborsForLyricDeletion` (3) | adequate | keep | ✅ |
 | Line | `deriveSyllabic(prev, this)` — pure 4-quadrant truth table | unit | `SyllabicDerivationTest` (implicit via callers) + `LineMutationTest.SyllableAdjustment` | adequate | keep (4-case fn well-exercised by callers) | — |
 | Line | `applyChange` — throws ISE outside bracket when tracking active | unit | `LineMutationTest.LineConstructorInvariants.testApplyChangeThrowsWhenNotInBracket` | adequate | keep | — |
-| Line | `applyChange` — runs mutator directly when tracking suspended | unit | — | missing | write test via `withoutMutationTracking` | ⬜ |
-| Line | `hasEndingInvalidatedByDeletion`/`...ByInsertion` pre-flight checks | unit | — | missing | write tests | ⬜ |
-| Line | `findRangeElementsAt(i)` | unit | — | missing | write test | ⬜ |
+| Line | `applyChange` — runs mutator directly when tracking suspended | unit | `LineMutationTest.ApplyChangeSuspended` (1) | adequate | keep | ✅ |
+| Line | `hasEndingInvalidatedByDeletion`/`...ByInsertion` pre-flight checks | unit | `LineMutationTest.HasEndingInvalidatedByDeletion` (5), `LineMutationTest.HasEndingInvalidatedByInsertion` (4) | adequate | keep | ✅ |
+| Line | `findRangeElementsAt(i)` | unit | `LineMutationTest.FindRangeElementsAt` (3) | adequate | keep | ✅ |
 | Line | `findRangeElements(Class)` | unit | `BatchMutationTest` | adequate | keep | — |
 | Line | `getFirstTempoChange()` — 0 for line 0; first index otherwise | unit | — | missing | write test | ⬜ |
 | Line | `getFirstBeatChange()`/`getFirstTrill()`/`isAnnotation()` | unit | — | missing | write test each | ⬜ |
