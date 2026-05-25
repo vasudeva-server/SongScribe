@@ -37,6 +37,53 @@ class KeySignatureTest extends UnitTest {
 
     private static final double EPSILON = 1e-10;
 
+    // Clamp bounds for accidentalCount — mirror the production contract
+    private static final int MIN_ACCIDENTAL_COUNT = 0;
+    private static final int MAX_ACCIDENTAL_COUNT = 7;
+
+    // Sentinel values that lie one step outside the legal range
+    private static final int BELOW_MIN_ACCIDENTAL_COUNT = -1;
+    private static final int ABOVE_MAX_ACCIDENTAL_COUNT = 8;
+
+    // -----------------------------------------------------------------------
+    // Row 37 + Row 42: constructor and setAccidentalCount clamp to 0–7
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AccidentalCountClamping {
+
+        @Test
+        void testConstructorClampsBelowMinToMin() {
+            var keySig = new KeySignature(KeyType.SHARPS, BELOW_MIN_ACCIDENTAL_COUNT);
+
+            assertThat(keySig.getAccidentalCount()).isEqualTo(MIN_ACCIDENTAL_COUNT);
+        }
+
+        @Test
+        void testConstructorClampsAboveMaxToMax() {
+            var keySig = new KeySignature(KeyType.SHARPS, ABOVE_MAX_ACCIDENTAL_COUNT);
+
+            assertThat(keySig.getAccidentalCount()).isEqualTo(MAX_ACCIDENTAL_COUNT);
+        }
+
+        @Test
+        void testSetAccidentalCountClampsBelowMinToMin() {
+            var keySig = new KeySignature(KeyType.SHARPS, MIN_ACCIDENTAL_COUNT);
+            keySig.setAccidentalCount(BELOW_MIN_ACCIDENTAL_COUNT);
+
+            assertThat(keySig.getAccidentalCount()).isEqualTo(MIN_ACCIDENTAL_COUNT);
+        }
+
+        @Test
+        void testSetAccidentalCountClampsAboveMaxToMax() {
+            var keySig = new KeySignature(KeyType.SHARPS, MIN_ACCIDENTAL_COUNT);
+            keySig.setAccidentalCount(ABOVE_MAX_ACCIDENTAL_COUNT);
+
+            assertThat(keySig.getAccidentalCount()).isEqualTo(MAX_ACCIDENTAL_COUNT);
+        }
+    }
+
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class EmptySignature {
@@ -57,6 +104,39 @@ class KeySignatureTest extends UnitTest {
 
             assertThat(keySig.getContentWidthSs()).isZero();
             assertThat(keySig.getContentHeightSs()).isZero();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 38: hasAccidentals() — direct assertions for all three conditions
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HasAccidentals {
+
+        // count == 0 → false regardless of type
+        @Test
+        void testHasAccidentalsReturnsFalseWhenCountIsZero() {
+            var keySig = new KeySignature(KeyType.SHARPS, MIN_ACCIDENTAL_COUNT);
+
+            assertThat(keySig.hasAccidentals()).isFalse();
+        }
+
+        // type NONE → false regardless of count
+        @Test
+        void testHasAccidentalsReturnsFalseWhenTypeIsNone() {
+            var keySig = new KeySignature(KeyType.NONE, MAX_ACCIDENTAL_COUNT);
+
+            assertThat(keySig.hasAccidentals()).isFalse();
+        }
+
+        // count > 0 and type != NONE → true
+        @Test
+        void testHasAccidentalsReturnsTrueWhenCountPositiveAndTypeNotNone() {
+            var keySig = new KeySignature(KeyType.SHARPS, MAX_ACCIDENTAL_COUNT);
+
+            assertThat(keySig.hasAccidentals()).isTrue();
         }
     }
 
