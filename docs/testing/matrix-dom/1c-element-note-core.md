@@ -22,14 +22,14 @@
 | StaffElement | `clearAttachments` — unset owner each, remove children | unit | — | missing | write test | ✅ |
 | StaffElement | `hasArticulation(type)` | unit | — | missing | write test | ✅ |
 | StaffElement | `setLine` propagates to all attachments + articulations | unit | — | missing | write test | ✅ |
-| LineElement | `getMarginBounds` — origin−margins, size+margins | unit | — | missing | write test | ⬜ |
-| LineElement | `collapsedVerticalMarginWith` — CSS max-collapse | unit | — | missing | write test (a>b, a<b, a==b) | ⬜ |
-| LineElement | `collapsedHorizontalMarginWith` — CSS max-collapse | unit | — | missing | write test (3 cases) | ⬜ |
+| LineElement | `getMarginBounds` — origin−margins, size+margins | unit | — | missing | write test | ✅ |
+| LineElement | `collapsedVerticalMarginWith` — CSS max-collapse | unit | — | missing | write test (a>b, a<b, a==b) | ✅ |
+| LineElement | `collapsedHorizontalMarginWith` — CSS max-collapse | unit | — | missing | write test (3 cases) | ✅ |
 | LineElement | `addChild` — set parentElement + parentLine | unit | `ParentLinePropagationTest` (indirect) | adequate | keep | — |
-| LineElement | `removeChild` — clear parentElement; ignore non-child | unit | `ParentLinePropagationTest` (indirect) | inadequate | ignore-non-child path untested; add test | ⬜ |
-| LineElement | `clearChildren` — clear each parentElement; empty list | unit | — | missing | write test | ⬜ |
-| LineElement | `setMarginSs(d)` — uniform all four | unit | — | missing | write test | ⬜ |
-| LineElement | `setMarginSs(t,r,b,l)` — CSS shorthand | unit | — | missing | write test | ⬜ |
+| LineElement | `removeChild` — clear parentElement; ignore non-child | unit | `ParentLinePropagationTest` (indirect) | inadequate | ignore-non-child path untested; add test | ✅ |
+| LineElement | `clearChildren` — clear each parentElement; empty list | unit | — | missing | write test | ✅ |
+| LineElement | `setMarginSs(d)` — uniform all four | unit | — | missing | write test | ✅ |
+| LineElement | `setMarginSs(t,r,b,l)` — CSS shorthand | unit | — | missing | write test | ✅ |
 | NoteBounds | `headOnly` factory — all three bounds equal head bounds | unit | — | missing | write test | ⬜ |
 | NoteBounds | `withStem` factory — articulations bounds == stem bounds | unit | — | missing | write test | ⬜ |
 | NoteBounds | `getStemSideBounds` stem-up → upper half | unit | — | missing | write test (known geometry) | ⬜ |
