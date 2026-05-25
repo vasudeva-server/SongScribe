@@ -125,6 +125,48 @@ class StaffElementCopyConstructorTest extends UnitTest {
     }
 
     @Test
+    void testCloneCopyConstructorDeepCopiesArticulations() {
+        var source = createFullyPopulatedElement();
+        var clone = source.clone();
+
+        // Articulation lists are equal in content
+        assertThat(clone.getArticulations()).hasSize(source.getArticulations().size());
+
+        // Instances are distinct objects — clone has its own copies
+        assertThat(clone.getArticulations().get(0)).isNotSameAs(source.getArticulations().get(0));
+
+        // Mutating clone's articulations does not affect the source
+        clone.clearArticulations();
+        assertThat(source.getArticulations()).hasSize(2);
+
+        // Mutating source's articulations does not affect the clone
+        var freshClone = source.clone();
+        source.clearArticulations();
+        assertThat(freshClone.getArticulations()).hasSize(2);
+    }
+
+    @Test
+    void testCloneCopyConstructorDeepCopiesAttachments() {
+        var source = createFullyPopulatedElement();
+        var clone = source.clone();
+
+        // Attachment lists are equal in content (same type)
+        assertThat(clone.getAttachments()).hasSize(source.getAttachments().size());
+
+        // Instances are distinct objects — clone has its own copies
+        assertThat(clone.getAttachments().get(0)).isNotSameAs(source.getAttachments().get(0));
+
+        // Mutating clone's attachments does not affect the source
+        clone.clearAttachments();
+        assertThat(source.getAttachments()).hasSize(1);
+
+        // Mutating source's attachments does not affect the clone
+        var freshClone = source.clone();
+        source.clearAttachments();
+        assertThat(freshClone.getAttachments()).hasSize(1);
+    }
+
+    @Test
     void testCloneCopyConstructorDeepCopiesLyrics() {
         var source = new StaffElement(ElementType.CROTCHET);
         source.lyrics.add(new Lyric(1, "heart", Lyric.Extend.START, Lyric.Syllabic.BEGIN, false));

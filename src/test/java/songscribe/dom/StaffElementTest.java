@@ -572,4 +572,115 @@ class StaffElementTest extends UnitTest {
             .extracting("text", "extend", "syllabic", "compound")
             .containsExactly("", Lyric.Extend.STOP, null, false);
     }
+
+    // ------------------------------------------------------------------
+    // Row 21: clearArticulations — unsets owner + removes from children
+    // ------------------------------------------------------------------
+
+    @Test
+    void testClearArticulationsUnsetsOwnerAndRemovesChildren() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        var staccato = new Articulation(element, ArticulationType.STACCATO);
+        var accent = new Articulation(element, ArticulationType.ACCENT);
+        element.addArticulation(staccato);
+        element.addArticulation(accent);
+
+        element.clearArticulations();
+
+        assertThat(element.getArticulations()).isEmpty();
+        // Each articulation must have had its owner cleared
+        assertThat(staccato.getOwnerElement()).isNull();
+        assertThat(accent.getOwnerElement()).isNull();
+        // The element must no longer list them as children
+        assertThat(element.getChildren()).doesNotContain(staccato, accent);
+    }
+
+    // ------------------------------------------------------------------
+    // Row 22: clearAttachments — unsets owner + removes from children
+    // ------------------------------------------------------------------
+
+    @Test
+    void testClearAttachmentsUnsetsOwnerAndRemovesChildren() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        var fermata = new FermataAttachment(element);
+        var annotation = new AnnotationAttachment("note");
+        element.addAttachment(fermata);
+        element.addAttachment(annotation);
+
+        element.clearAttachments();
+
+        assertThat(element.getAttachments()).isEmpty();
+        // Each attachment must have had its owner cleared
+        assertThat(fermata.getOwnerElement()).isNull();
+        assertThat(annotation.getOwnerElement()).isNull();
+        // The element must no longer list them as children
+        assertThat(element.getChildren()).doesNotContain(fermata, annotation);
+    }
+
+    // ------------------------------------------------------------------
+    // Row 23: hasArticulation(type) — present → true, absent → false
+    // ------------------------------------------------------------------
+
+    @Test
+    void testHasArticulationReturnsFalseWhenAbsent() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        assertThat(element.hasArticulation(ArticulationType.STACCATO)).isFalse();
+    }
+
+    @Test
+    void testHasArticulationReturnsTrueWhenPresent() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        element.addArticulation(new Articulation(element, ArticulationType.STACCATO));
+
+        assertThat(element.hasArticulation(ArticulationType.STACCATO)).isTrue();
+        // A different type that was not added must still report absent
+        assertThat(element.hasArticulation(ArticulationType.ACCENT)).isFalse();
+    }
+
+    // ------------------------------------------------------------------
+    // Row 20: removeArticulation — unsets owner + removes from children
+    // ------------------------------------------------------------------
+
+    @Test
+    void testRemoveArticulationUnsetsOwnerAndRemovesChild() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        var staccato = new Articulation(element, ArticulationType.STACCATO);
+        element.addArticulation(staccato);
+
+        element.removeArticulation(staccato);
+
+        assertThat(element.getArticulations()).doesNotContain(staccato);
+        // Owner must be cleared after removal
+        assertThat(staccato.getOwnerElement()).isNull();
+        // The articulation must no longer appear in the element's child list
+        assertThat(element.getChildren()).doesNotContain(staccato);
+    }
+
+    // ------------------------------------------------------------------
+    // Row 24: setLine — propagates to all attachments + articulations
+    // ------------------------------------------------------------------
+
+    @Test
+    void testSetLinePropagatesLineToAllAttachmentsAndArticulations() {
+        // Build an element with both an attachment and an articulation before
+        // it is placed in a line, so their parentLine starts null.
+        var element = new StaffElement(ElementType.CROTCHET);
+        var fermata = new FermataAttachment(element);
+        var staccato = new Articulation(element, ArticulationType.STACCATO);
+        element.addAttachment(fermata);
+        element.addArticulation(staccato);
+
+        assertThat(fermata.getParentLine()).isNull();
+        assertThat(staccato.getParentLine()).isNull();
+
+        var song = new Song();
+        var targetLine = song.getLine(0);
+        // setLine is the internal propagation hook — call it directly to isolate
+        // the propagation behaviour from Line.addElement()
+        element.setLine(targetLine);
+
+        assertThat(fermata.getParentLine()).isSameAs(targetLine);
+        assertThat(staccato.getParentLine()).isSameAs(targetLine);
+    }
 }

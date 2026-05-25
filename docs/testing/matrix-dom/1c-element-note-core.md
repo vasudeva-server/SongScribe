@@ -16,12 +16,12 @@
 | StaffElement | `setAccidental(null)` clears `isAccidentalInParentheses` | unit | `AccidentalInParensActionTest`, `StaffElementCopyConstructorTest` | inadequate | add: set accidental+parens, `setAccidental(null)`, assert parens false | ✅ |
 | StaffElement | `setAccidentalInParentheses` no-ops when accidental null | unit | `AccidentalInParensActionTest` (indirect) | inadequate | add direct null-accidental test | ✅ |
 | StaffElement | copy ctor `(ElementType, StaffElement)` — 4 note/rest combos + deep-copy isolation | unit | `StaffElementCopyConstructorTest` (6) | adequate | keep | — |
-| StaffElement | clone ctor `(StaffElement)` — full-field deep copy | unit | `StaffElementCopyConstructorTest.testCloneCopyConstructorDeepCopiesLyrics` | inadequate | only lyrics isolation checked; add articulation + attachment isolation tests | ⬜ |
-| StaffElement | `addArticulation`/`removeArticulation` — wire owner/parent/line, maintain children | unit | `ParentLinePropagationTest` (attachments only) | inadequate | add `removeArticulation` owner-unset + child-removal test | ⬜ |
-| StaffElement | `clearArticulations` — unset owner each, remove children | unit | — | missing | write test | ⬜ |
-| StaffElement | `clearAttachments` — unset owner each, remove children | unit | — | missing | write test | ⬜ |
-| StaffElement | `hasArticulation(type)` | unit | — | missing | write test | ⬜ |
-| StaffElement | `setLine` propagates to all attachments + articulations | unit | — | missing | write test | ⬜ |
+| StaffElement | clone ctor `(StaffElement)` — full-field deep copy | unit | `StaffElementCopyConstructorTest.testCloneCopyConstructorDeepCopiesLyrics` | inadequate | only lyrics isolation checked; add articulation + attachment isolation tests | ✅ |
+| StaffElement | `addArticulation`/`removeArticulation` — wire owner/parent/line, maintain children | unit | `ParentLinePropagationTest` (attachments only) | inadequate | add `removeArticulation` owner-unset + child-removal test | ✅ |
+| StaffElement | `clearArticulations` — unset owner each, remove children | unit | — | missing | write test | ✅ |
+| StaffElement | `clearAttachments` — unset owner each, remove children | unit | — | missing | write test | ✅ |
+| StaffElement | `hasArticulation(type)` | unit | — | missing | write test | ✅ |
+| StaffElement | `setLine` propagates to all attachments + articulations | unit | — | missing | write test | ✅ |
 | LineElement | `getMarginBounds` — origin−margins, size+margins | unit | — | missing | write test | ⬜ |
 | LineElement | `collapsedVerticalMarginWith` — CSS max-collapse | unit | — | missing | write test (a>b, a<b, a==b) | ⬜ |
 | LineElement | `collapsedHorizontalMarginWith` — CSS max-collapse | unit | — | missing | write test (3 cases) | ⬜ |
