@@ -9,7 +9,7 @@ repo, so this works from any session — derive everything from files, not memor
 **First, read `docs/testing/REMEDIATION.md`** (the settled procedure, decisions,
 chunking caps, model policy) and skim `docs/testing/remediation-ledger.md`.
 
-Then run the loop once:
+Then perform these steps once:
 
 1. **Select the chunk.** If `$ARGUMENTS` names a class/section, use it. Otherwise
    pick the next package with ⬜ rows in risk-order (`dom → io → layout → util →
@@ -40,4 +40,6 @@ Then run the loop once:
    failed and is unresolved, STOP and report instead of committing. Otherwise
    commit to `develop` via the `/commit-commands:commit` skill (message scope:
    the class/section just remediated). Then STOP and report: rows done this chunk,
-   updated ledger total, and the next chunk that `/remediate` will pick up.
+   updated ledger total, and the next chunk that `/remediate` will pick up. Do NOT
+   schedule a wakeup or otherwise continue; a future manual `/remediate` invocation
+   handles the next chunk.
