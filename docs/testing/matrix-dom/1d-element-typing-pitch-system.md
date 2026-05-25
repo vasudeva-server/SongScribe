@@ -51,7 +51,7 @@
 | StructuralElement | `getDotCount()` — rests delegate to super; non-rests always 0 | unit | — | missing | write test (barline→0 even after setDotCount; rest preserves) | ✅ |
 | StructuralElement | `getAccidental()` always null | unit | `StaffElementCopyConstructorTest` | adequate | keep | — |
 | StructuralElement | `clone()` returns `StructuralElement` w/ state copied | unit | `StaffElementCopyConstructorTest` (via copy ctor, not clone) | missing | write clone test asserting type + dot count | ✅ |
-| Clef | `getContentWidthPx`/`HeightPx` from G_CLEF bbox via ssToPx | unit | — | missing | write test vs bbox | ⬜ |
+| Clef | `getContentWidthPx`/`HeightPx` from G_CLEF bbox via ssToPx | unit | — | missing | write test vs bbox | ✅ |
 | Duration | `getNote()` returns a clone (not shared instance) | unit | — | missing | write identity-≠ test | ✅ |
 | Duration | dotted variants → dotCount=1, staffPosition=1 | unit | — | missing | write test (3 dotted constants) | ✅ |
 | Duration | non-dotted variants → dotCount=0 | unit | — | missing | write test | ✅ |
