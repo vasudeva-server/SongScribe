@@ -94,6 +94,70 @@ class ElementTypeTest extends UnitTest {
     }
 
     @Test
+    void testEndingAnchorXOffsetPerBranch() {
+        // Branch 1: REPEAT_LEFT — anchor on the thin barline that follows thick | sep | thin
+        var expectedRepeatLeft = ElementType.THICK_BARLINE_SS
+            + ElementType.BARLINE_SEP_SS
+            + ElementType.THIN_BARLINE_SS / 2;
+        assertThat(ElementType.REPEAT_LEFT.endingAnchorXOffsetSs())
+            .isCloseTo(expectedRepeatLeft, within(1e-9));
+
+        // Branch 2: generic barline/repeat — center of rightmost thin barline
+        for (var type : new ElementType[]{
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE,
+            ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT
+        }) {
+            var expected = type.getFullElementWidthSs() - ElementType.THIN_BARLINE_SS / 2;
+            assertThat(type.endingAnchorXOffsetSs())
+                .as("endingAnchorXOffsetSs() of %s", type)
+                .isCloseTo(expected, within(1e-9));
+        }
+
+        // Branch 3: all non-barline, non-repeat types — offset is zero
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK
+        }) {
+            assertThat(type.endingAnchorXOffsetSs())
+                .as("endingAnchorXOffsetSs() of %s", type)
+                .isZero();
+        }
+    }
+
+    @Test
+    void testGetSMuFLGlyphMapping() {
+        // Each note type maps to the expected glyph
+        assertThat(ElementType.SEMIBREVE.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.NOTEHEAD_WHOLE);
+        assertThat(ElementType.MINIM.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.NOTEHEAD_HALF);
+        assertThat(ElementType.CROTCHET.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.NOTEHEAD_BLACK);
+        assertThat(ElementType.QUAVER.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.NOTEHEAD_BLACK);
+        assertThat(ElementType.SEMIQUAVER.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.NOTEHEAD_BLACK);
+        assertThat(ElementType.DEMI_SEMIQUAVER.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.NOTEHEAD_BLACK);
+        assertThat(ElementType.GRACE_QUAVER.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.NOTEHEAD_BLACK);
+        assertThat(ElementType.SEMIBREVE_REST.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.REST_WHOLE);
+        assertThat(ElementType.MINIM_REST.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.REST_HALF);
+        assertThat(ElementType.CROTCHET_REST.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.REST_QUARTER);
+        assertThat(ElementType.QUAVER_REST.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.REST_8TH);
+        assertThat(ElementType.SEMIQUAVER_REST.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.REST_16TH);
+        assertThat(ElementType.DEMI_SEMIQUAVER_REST.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.REST_32ND);
+        assertThat(ElementType.BREATH_MARK.getSMuFLGlyph()).isEqualTo(SMuFLGlyph.BREATH_MARK_COMMA);
+
+        // Barline, repeat, and other non-glyph types must return null
+        for (var type : new ElementType[]{
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.GLISSANDO
+        }) {
+            assertThat(type.getSMuFLGlyph())
+                .as("getSMuFLGlyph() of %s should be null", type)
+                .isNull();
+        }
+    }
+
+    @Test
     void testDrawStaveLongitudeIsTrueForAllExceptBreathMark() {
         // Only BREATH_MARK returns false; every other canonical type returns true
         assertThat(ElementType.BREATH_MARK.drawStaveLongitude()).isFalse();
@@ -198,6 +262,94 @@ class ElementTypeTest extends UnitTest {
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
             assertThat(type.isContentElement()).as("%s.isContentElement()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsGraceNoteMembership() {
+        // True set: only GRACE_QUAVER
+        assertThat(ElementType.GRACE_QUAVER.isGraceNote()).isTrue();
+
+        // False set: everything else
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.isGraceNote()).as("%s.isGraceNote()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsNoteMembership() {
+        // True set: all pitched notes and grace notes
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.GRACE_QUAVER
+        }) {
+            assertThat(type.isNote()).as("%s.isNote()", type).isTrue();
+        }
+
+        // False set: rests, non-duration types
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.isNote()).as("%s.isNote()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsNoteWithStemMembership() {
+        // True set: all pitched notes and GRACE_QUAVER except SEMIBREVE (whole note has no stem)
+        for (var type : new ElementType[]{
+            ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.GRACE_QUAVER
+        }) {
+            assertThat(type.isNoteWithStem()).as("%s.isNoteWithStem()", type).isTrue();
+        }
+
+        // False set: SEMIBREVE, rests, non-duration types
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.isNoteWithStem()).as("%s.isNoteWithStem()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsPitchedNoteMembership() {
+        // True set: SEMIBREVE through DEMI_SEMIQUAVER (the 6 pitched note types)
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER
+        }) {
+            assertThat(type.isPitchedNote()).as("%s.isPitchedNote()", type).isTrue();
+        }
+
+        // False set: rests, grace notes, non-duration types
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.isPitchedNote()).as("%s.isPitchedNote()", type).isFalse();
         }
     }
 
@@ -371,6 +523,26 @@ class ElementTypeTest extends UnitTest {
     }
 
     @Test
+    void testTerminalFlushRightXIsLineWidthMinusBaseWidth() {
+        // terminalFlushRightXSs = lineWidthSs − terminalType.baseWidthSs
+        // Expected values are derived from the barline thickness constants, not from the
+        // production method, so a bug in the formula cannot make the test pass falsely.
+        final double lineWidthSs = 40.0;
+
+        // FINAL_DOUBLE_BARLINE: baseWidthSs = thin + thick + sep
+        var finalBarBaseWidth = ElementType.THIN_BARLINE_SS
+            + ElementType.THICK_BARLINE_SS
+            + ElementType.BARLINE_SEP_SS;
+        assertThat(ElementType.terminalFlushRightXSs(lineWidthSs, ElementType.FINAL_DOUBLE_BARLINE))
+            .isCloseTo(lineWidthSs - finalBarBaseWidth, within(1e-9));
+
+        // REPEAT_RIGHT: base width read independently via the width accessor
+        var repeatRightBaseWidth = ElementType.REPEAT_RIGHT.getElementWidthSs();
+        assertThat(ElementType.terminalFlushRightXSs(lineWidthSs, ElementType.REPEAT_RIGHT))
+            .isCloseTo(lineWidthSs - repeatRightBaseWidth, within(1e-9));
+    }
+
+    @Test
     void testIsDurationExcludesGraceNotes() {
         // Grace notes are not durations — they are tied to the following note
         assertThat(ElementType.GRACE_QUAVER.isDuration()).isFalse();
@@ -507,12 +679,15 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testStemmedNoteHeightIsDirectionDependent() {
-            // Up and down heights differ for stemmed notes
+            // NOTEHEAD_BLACK is symmetric so heightUp == heightDown for CROTCHET — but the
+            // top Y offset IS direction-dependent: stem-up top is the stem tip, stem-down top
+            // is the notehead top.  Asserting != here catches an up/down swap that would still
+            // pass a ">0" or equality check on the height alone.
             var type = ElementType.CROTCHET;
             assertThat(type.getElementHeightSs(true)).isGreaterThan(0);
             assertThat(type.getElementHeightSs(false)).isGreaterThan(0);
-            // Both should include stem length, so they should be similar but not necessarily equal
-            // (stem anchor positions differ between up and down)
+            assertThat(type.getTopYOffsetSs(true))
+                .isNotEqualTo(type.getTopYOffsetSs(false));
         }
     }
 
@@ -606,7 +781,7 @@ class ElementTypeTest extends UnitTest {
 
             // 16th flag extends further than 8th
             assertThat(ElementType.SEMIQUAVER.getFullElementWidthSs())
-                .isGreaterThanOrEqualTo(ElementType.QUAVER.getFullElementWidthSs());
+                .isGreaterThan(ElementType.QUAVER.getFullElementWidthSs());
         }
     }
 
