@@ -9,12 +9,12 @@
 | ElementType | `getFlagGlyph` null for non-flagged types | unit | `ElementTypeTest.testGetFlagGlyphReturnsNullForNonFlaggedTypes` | adequate | keep | — |
 | ElementType | `isDuration()` — notes/rests true; grace/barline/breath/glissando false | unit | `ElementTypeTest.testIsDuration*` (3) | adequate | keep | — |
 | ElementType | `toNote()`/`toRest()` — 6-pair bidirectional + identity | unit | `ElementTypeTest.testToNote*`/`testToRest*` (6) | adequate | keep | — |
-| ElementType | stemmed `getElementHeightSs(true)` ≠ `(false)` | unit | `ElementTypeTest.testStemmedNoteHeightIsDirectionDependent` | inadequate | asserts only `>0`; add directional `!=` assertion for CROTCHET | ⬜ |
+| ElementType | stemmed `getElementHeightSs(true)` ≠ `(false)` | unit | `ElementTypeTest.testStemmedNoteHeightIsDirectionDependent` | inadequate | asserts only `>0`; add directional `!=` assertion for CROTCHET | ✅ |
 | ElementType | barline/repeat heights == STAFF_HEIGHT_SS | unit | `ElementTypeTest.ElementHeightTests` (2) | adequate | keep | — |
 | ElementType | SEMIBREVE height same both directions | unit | `ElementTypeTest.ElementHeightTests.testSemibreveHeightIsSameBothDirections` | adequate | keep | — |
 | ElementType | barline width arithmetic (single/double/final/repeat) | unit | `ElementTypeTest.ElementWidthTests` (4) | adequate | keep | — |
 | ElementType | grace `fullWidthSs` < regular QUAVER | unit | `ElementTypeTest.ElementWidthTests.testGraceNoteWidthIsScaled` | adequate | keep | — |
-| ElementType | stemmed flagged width > unflagged; notehead width consistent | unit | `ElementTypeTest.ElementWidthTests` (2) | inadequate | `testStemmedNoteWidthIncludesFlagExtent` uses `>=` (allows equality); should be `>` | ⬜ |
+| ElementType | stemmed flagged width > unflagged; notehead width consistent | unit | `ElementTypeTest.ElementWidthTests` (2) | inadequate | `testStemmedNoteWidthIncludesFlagExtent` uses `>=` (allows equality); should be `>` | ✅ |
 | ElementType | SEMIBREVE width == full width (no flag) | unit | `ElementTypeTest.ElementWidthTests.testSemibreveWidthFromBBox` | adequate | keep | — |
 | ElementType | `isBeamable()` | unit | — | missing | write membership test | ✅ |
 | ElementType | `isRepeat()`/`isBarLine()` | unit | — | missing | write membership tests | ✅ |
@@ -23,10 +23,10 @@
 | ElementType | `isTerminal()`/`isValidTerminal()`/`isReplaceableByTerminal()` (REPEAT_LEFT exclusion) | unit | — | missing | write membership tests (non-obvious exclusion) | ✅ |
 | ElementType | `snapToEnd()` membership | unit | `HorizontalAdjustmentTest` (integration only) | wrong-level | add dedicated membership unit test | ✅ |
 | ElementType | `drawStaveLongitude()` — false only BREATH_MARK | unit | — | missing | write test | ✅ |
-| ElementType | `endingAnchorXOffsetSs()` — 3-branch formula | unit | — | missing | write test per branch | ⬜ |
-| ElementType | `terminalFlushRightXSs(lineWidth, type)` = lineWidth − baseWidth | unit | `LayoutEngineTest` (self-referential) | inadequate | write direct arithmetic test (LayoutEngineTest uses it as its own oracle) | ⬜ |
-| ElementType | `getSMuFLGlyph()` mapping (barlines null) | unit | — | missing | write map-contents test | ⬜ |
-| ElementType | `isPitchedNote()`/`isNote()`/`isNoteWithStem()`/`isGraceNote()` | unit | (used as loop predicate, not asserted) | missing | write predicate test across full type set | ⬜ |
+| ElementType | `endingAnchorXOffsetSs()` — 3-branch formula | unit | — | missing | write test per branch | ✅ |
+| ElementType | `terminalFlushRightXSs(lineWidth, type)` = lineWidth − baseWidth | unit | `LayoutEngineTest` (self-referential) | inadequate | write direct arithmetic test (LayoutEngineTest uses it as its own oracle) | ✅ |
+| ElementType | `getSMuFLGlyph()` mapping (barlines null) | unit | — | missing | write map-contents test | ✅ |
+| ElementType | `isPitchedNote()`/`isNote()`/`isNoteWithStem()`/`isGraceNote()` | unit | (used as loop predicate, not asserted) | missing | write predicate test across full type set | ✅ |
 | ElementType | alias types share bounds/instance with canonical | unit | `testAllVisualTypesHaveNonZeroBounds` (partial) | adequate (partial) | optional: add alias==canonical width equality | — |
 | RangeElement | `isInvalidatedBy(deleted)` — anchor/end/both/middle/external | unit | `RangeElementInvalidationTest` (5 params × 6 subtypes, in layout/) | adequate | keep | — |
 | RangeElement | `getElementCount()` — `end−start+1`; 0 when null/not-in-line | unit | — | missing | write test | ⬜ |

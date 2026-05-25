@@ -7,3 +7,5 @@
 #   relocate  test moved to correct level; note records 'OLD -> NEW' (was 'wrong-level')
 # Final sweep: every @Test in the suite NOT in keep/modify/add/relocate-target is a
 # delete candidate, then judged via /check-tests before removal.
+ElementType.testStemmedNoteHeightIsDirectionDependent
+ElementType.testStemmedNoteWidthIncludesFlagExtent
