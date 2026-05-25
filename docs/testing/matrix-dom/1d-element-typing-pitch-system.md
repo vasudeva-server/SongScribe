@@ -16,13 +16,13 @@
 | ElementType | grace `fullWidthSs` < regular QUAVER | unit | `ElementTypeTest.ElementWidthTests.testGraceNoteWidthIsScaled` | adequate | keep | — |
 | ElementType | stemmed flagged width > unflagged; notehead width consistent | unit | `ElementTypeTest.ElementWidthTests` (2) | inadequate | `testStemmedNoteWidthIncludesFlagExtent` uses `>=` (allows equality); should be `>` | ⬜ |
 | ElementType | SEMIBREVE width == full width (no flag) | unit | `ElementTypeTest.ElementWidthTests.testSemibreveWidthFromBBox` | adequate | keep | — |
-| ElementType | `isBeamable()` | unit | — | missing | write membership test | ⬜ |
-| ElementType | `isRepeat()`/`isBarLine()` | unit | — | missing | write membership tests | ⬜ |
-| ElementType | `isNonDuration()` (excludes GLISSANDO) | unit | — | missing | write membership test | ⬜ |
-| ElementType | `isContentElement()`/`isNonContentElement()` | unit | — | missing | write membership tests | ⬜ |
-| ElementType | `isTerminal()`/`isValidTerminal()`/`isReplaceableByTerminal()` (REPEAT_LEFT exclusion) | unit | — | missing | write membership tests (non-obvious exclusion) | ⬜ |
-| ElementType | `snapToEnd()` membership | unit | `HorizontalAdjustmentTest` (integration only) | wrong-level | add dedicated membership unit test | ⬜ |
-| ElementType | `drawStaveLongitude()` — false only BREATH_MARK | unit | — | missing | write test | ⬜ |
+| ElementType | `isBeamable()` | unit | — | missing | write membership test | ✅ |
+| ElementType | `isRepeat()`/`isBarLine()` | unit | — | missing | write membership tests | ✅ |
+| ElementType | `isNonDuration()` (excludes GLISSANDO) | unit | — | missing | write membership test | ✅ |
+| ElementType | `isContentElement()`/`isNonContentElement()` | unit | — | missing | write membership tests | ✅ |
+| ElementType | `isTerminal()`/`isValidTerminal()`/`isReplaceableByTerminal()` (REPEAT_LEFT exclusion) | unit | — | missing | write membership tests (non-obvious exclusion) | ✅ |
+| ElementType | `snapToEnd()` membership | unit | `HorizontalAdjustmentTest` (integration only) | wrong-level | add dedicated membership unit test | ✅ |
+| ElementType | `drawStaveLongitude()` — false only BREATH_MARK | unit | — | missing | write test | ✅ |
 | ElementType | `endingAnchorXOffsetSs()` — 3-branch formula | unit | — | missing | write test per branch | ⬜ |
 | ElementType | `terminalFlushRightXSs(lineWidth, type)` = lineWidth − baseWidth | unit | `LayoutEngineTest` (self-referential) | inadequate | write direct arithmetic test (LayoutEngineTest uses it as its own oracle) | ⬜ |
 | ElementType | `getSMuFLGlyph()` mapping (barlines null) | unit | — | missing | write map-contents test | ⬜ |

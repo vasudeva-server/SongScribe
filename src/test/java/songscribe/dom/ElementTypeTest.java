@@ -94,6 +94,283 @@ class ElementTypeTest extends UnitTest {
     }
 
     @Test
+    void testDrawStaveLongitudeIsTrueForAllExceptBreathMark() {
+        // Only BREATH_MARK returns false; every other canonical type returns true
+        assertThat(ElementType.BREATH_MARK.drawStaveLongitude()).isFalse();
+
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.drawStaveLongitude())
+                .as("drawStaveLongitude() of %s", type)
+                .isTrue();
+        }
+    }
+
+    @Test
+    void testIsBarLineMembership() {
+        // True set: single, double, final double
+        for (var type : new ElementType[]{
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.isBarLine()).as("%s.isBarLine()", type).isTrue();
+        }
+
+        // False set: everything else
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.BREATH_MARK
+        }) {
+            assertThat(type.isBarLine()).as("%s.isBarLine()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsBeamableMembership() {
+        // True set: quaver, semiquaver, demi-semiquaver
+        for (var type : new ElementType[]{
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER
+        }) {
+            assertThat(type.isBeamable()).as("%s.isBeamable()", type).isTrue();
+        }
+
+        // False set: everything else (notes without flags, rests, grace notes, non-duration types)
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.BREATH_MARK,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.isBeamable()).as("%s.isBeamable()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsContentElementAndIsNonContentElementAreNeverBothTrue() {
+        // No type may simultaneously be a content element AND a non-content element
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.BREATH_MARK,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.isContentElement() && type.isNonContentElement())
+                .as("isContentElement() AND isNonContentElement() for %s should never both be true", type)
+                .isFalse();
+        }
+    }
+
+    @Test
+    void testIsContentElementMembership() {
+        // True set: pitched notes, rests, breath mark
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.BREATH_MARK
+        }) {
+            assertThat(type.isContentElement()).as("%s.isContentElement()", type).isTrue();
+        }
+
+        // False set: grace notes, glissando, repeats, barlines
+        for (var type : new ElementType[]{
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.isContentElement()).as("%s.isContentElement()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsNonContentElementMembership() {
+        // True set: grace notes and glissando
+        assertThat(ElementType.GRACE_QUAVER.isNonContentElement()).isTrue();
+        assertThat(ElementType.GLISSANDO.isNonContentElement()).isTrue();
+
+        // False set: all other types
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.BREATH_MARK,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.isNonContentElement()).as("%s.isNonContentElement()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsNonDurationMembership() {
+        // True set: barlines, repeats, breath mark
+        for (var type : new ElementType[]{
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.BREATH_MARK
+        }) {
+            assertThat(type.isNonDuration()).as("%s.isNonDuration()", type).isTrue();
+        }
+
+        // False set: notes, rests, grace notes; GLISSANDO is explicitly NOT a non-duration
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER,
+            ElementType.GLISSANDO
+        }) {
+            assertThat(type.isNonDuration()).as("%s.isNonDuration()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsNonDurationExcludesGlissando() {
+        // GLISSANDO is neither a duration nor a non-duration — it belongs to neither group
+        assertThat(ElementType.GLISSANDO.isNonDuration()).isFalse();
+        assertThat(ElementType.GLISSANDO.isDuration()).isFalse();
+    }
+
+    @Test
+    void testIsRepeatMembership() {
+        // True set: repeat left, repeat right, repeat left/right
+        for (var type : new ElementType[]{
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT
+        }) {
+            assertThat(type.isRepeat()).as("%s.isRepeat()", type).isTrue();
+        }
+
+        // False set: everything else
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.isRepeat()).as("%s.isRepeat()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsReplaceableByTerminalMembership() {
+        // True set: single barline, double barline, repeat right, repeat left/right
+        for (var type : new ElementType[]{
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE,
+            ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT
+        }) {
+            assertThat(type.isReplaceableByTerminal()).as("%s.isReplaceableByTerminal()", type).isTrue();
+        }
+
+        // False set: everything else; REPEAT_LEFT is explicitly excluded
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.FINAL_DOUBLE_BARLINE,
+            ElementType.REPEAT_LEFT
+        }) {
+            assertThat(type.isReplaceableByTerminal()).as("%s.isReplaceableByTerminal()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsReplaceableByTerminalExcludesRepeatLeft() {
+        // REPEAT_LEFT is explicitly excluded — a left-facing repeat does not terminate a line
+        assertThat(ElementType.REPEAT_LEFT.isReplaceableByTerminal()).isFalse();
+    }
+
+    @Test
+    void testIsTerminalMembership() {
+        // True set: barlines and REPEAT_LEFT
+        for (var type : new ElementType[]{
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE,
+            ElementType.REPEAT_LEFT
+        }) {
+            assertThat(type.isTerminal()).as("%s.isTerminal()", type).isTrue();
+        }
+
+        // False set: everything else; REPEAT_RIGHT and REPEAT_LEFT_RIGHT are NOT terminals
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT
+        }) {
+            assertThat(type.isTerminal()).as("%s.isTerminal()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testIsValidTerminalMembership() {
+        // True set: only FINAL_DOUBLE_BARLINE and REPEAT_RIGHT
+        assertThat(ElementType.FINAL_DOUBLE_BARLINE.isValidTerminal()).isTrue();
+        assertThat(ElementType.REPEAT_RIGHT.isValidTerminal()).isTrue();
+
+        // False set: everything else
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_LEFT_RIGHT,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE
+        }) {
+            assertThat(type.isValidTerminal()).as("%s.isValidTerminal()", type).isFalse();
+        }
+    }
+
+    @Test
+    void testSnapToEndMembership() {
+        // True set: repeat right, single barline, double barline, final double barline
+        for (var type : new ElementType[]{
+            ElementType.REPEAT_RIGHT,
+            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
+        }) {
+            assertThat(type.snapToEnd()).as("%s.snapToEnd()", type).isTrue();
+        }
+
+        // False set: everything else
+        for (var type : new ElementType[]{
+            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
+            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
+            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.REPEAT_LEFT, ElementType.REPEAT_LEFT_RIGHT
+        }) {
+            assertThat(type.snapToEnd()).as("%s.snapToEnd()", type).isFalse();
+        }
+    }
+
+    @Test
     void testIsDurationExcludesGraceNotes() {
         // Grace notes are not durations — they are tied to the following note
         assertThat(ElementType.GRACE_QUAVER.isDuration()).isFalse();
