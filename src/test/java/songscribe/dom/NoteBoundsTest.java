@@ -49,6 +49,17 @@ class NoteBoundsTest extends UnitTest {
     private static final double ART_WIDTH = 4.0;
     private static final double ART_HEIGHT = 22.0;   // extends below head for articulations
 
+    // --- Separate "full" rectangle for row 40 — deliberately different from head so a
+    //     getCenterX/Y regression that reads the wrong rect will fail. ---
+    private static final double FULL_X = 2.0;
+    private static final double FULL_Y = 1.0;
+    private static final double FULL_WIDTH = 30.0;
+    private static final double FULL_HEIGHT = 50.0;
+
+    // --- Translation offsets ---
+    private static final double TRANSLATE_DX = 7.5;
+    private static final double TRANSLATE_DY = -3.0;
+
     private static final double DELTA = 1e-9;
 
     private static Rectangle2D headRect() {
@@ -61,6 +72,10 @@ class NoteBoundsTest extends UnitTest {
 
     private static Rectangle2D artRect() {
         return new Rectangle2D.Double(ART_X, ART_Y, ART_WIDTH, ART_HEIGHT);
+    }
+
+    private static Rectangle2D fullRect() {
+        return new Rectangle2D.Double(FULL_X, FULL_Y, FULL_WIDTH, FULL_HEIGHT);
     }
 
     // -----------------------------------------------------------------------
@@ -78,6 +93,43 @@ class NoteBoundsTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // Row 39 — translate
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testTranslateShiftsBoundsAndPreservesStemUp() {
+        var head = headRect();
+        var stem = stemRect();
+        var art  = artRect();
+        var original = new NoteBounds(head, stem, art, true);
+
+        var translated = original.translate(TRANSLATE_DX, TRANSLATE_DY);
+
+        // All three rectangles must be shifted by (TRANSLATE_DX, TRANSLATE_DY).
+        assertThat(translated.noteHeadBounds().getX()).isCloseTo(HEAD_X + TRANSLATE_DX, within(DELTA));
+        assertThat(translated.noteHeadBounds().getY()).isCloseTo(HEAD_Y + TRANSLATE_DY, within(DELTA));
+        assertThat(translated.noteHeadBounds().getWidth()).isCloseTo(HEAD_WIDTH, within(DELTA));
+        assertThat(translated.noteHeadBounds().getHeight()).isCloseTo(HEAD_HEIGHT, within(DELTA));
+
+        assertThat(translated.noteWithStemBounds().getX()).isCloseTo(STEM_X + TRANSLATE_DX, within(DELTA));
+        assertThat(translated.noteWithStemBounds().getY()).isCloseTo(STEM_Y + TRANSLATE_DY, within(DELTA));
+        assertThat(translated.noteWithStemBounds().getWidth()).isCloseTo(STEM_WIDTH, within(DELTA));
+        assertThat(translated.noteWithStemBounds().getHeight()).isCloseTo(STEM_HEIGHT, within(DELTA));
+
+        assertThat(translated.noteWithArticulationsBounds().getX()).isCloseTo(ART_X + TRANSLATE_DX, within(DELTA));
+        assertThat(translated.noteWithArticulationsBounds().getY()).isCloseTo(ART_Y + TRANSLATE_DY, within(DELTA));
+        assertThat(translated.noteWithArticulationsBounds().getWidth()).isCloseTo(ART_WIDTH, within(DELTA));
+        assertThat(translated.noteWithArticulationsBounds().getHeight()).isCloseTo(ART_HEIGHT, within(DELTA));
+
+        // stemUp flag must survive translation.
+        assertThat(translated.stemUp()).isTrue();
+
+        // Original must be unmodified (records are immutable, but confirm the constructor did not alias).
+        assertThat(original.noteHeadBounds().getX()).isCloseTo(HEAD_X, within(DELTA));
+        assertThat(original.noteHeadBounds().getY()).isCloseTo(HEAD_Y, within(DELTA));
+    }
+
+    // -----------------------------------------------------------------------
     // Row 34 — withStem factory
     // -----------------------------------------------------------------------
 
@@ -90,6 +142,92 @@ class NoteBoundsTest extends UnitTest {
         assertThat(nb.noteHeadBounds()).isEqualTo(head);
         assertThat(nb.noteWithStemBounds()).isEqualTo(stem);
         assertThat(nb.noteWithArticulationsBounds()).isEqualTo(stem);
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 40 — getCenterX / getCenterY read from noteHeadBounds
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class GetCenterXAndCenterY {
+
+        /**
+         * Row 40 — centers are computed from noteHeadBounds, not from the full/articulations bounds.
+         *
+         * <p>fullRect is deliberately offset and sized differently from headRect, so a regression
+         * that reads either the stem or articulations rectangle instead of the head will produce
+         * a wrong value and fail.
+         */
+        @Test
+        void testCentersComputedFromHeadBoundsNotFullBounds() {
+            var head = headRect();
+            var full = fullRect();
+            // Use full as both noteWithStemBounds and noteWithArticulationsBounds.
+            var nb = new NoteBounds(head, full, full, true);
+
+            double expectedCenterX = head.getCenterX(); // HEAD_X + HEAD_WIDTH / 2
+            double expectedCenterY = head.getCenterY(); // HEAD_Y + HEAD_HEIGHT / 2
+
+            assertThat(nb.getCenterX()).isCloseTo(expectedCenterX, within(DELTA));
+            assertThat(nb.getCenterY()).isCloseTo(expectedCenterY, within(DELTA));
+
+            // Confirm the full rect's centers differ so the assertions above are non-trivial.
+            assertThat(full.getCenterX()).isNotCloseTo(expectedCenterX, within(DELTA));
+            assertThat(full.getCenterY()).isNotCloseTo(expectedCenterY, within(DELTA));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Rows 37–38 — getOppositeFromStemBounds
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class GetOppositeFromStemBounds {
+
+        /**
+         * Row 37 — stem up: returns the LOWER half (from headCenterY to artBounds.maxY).
+         *
+         * <p>Expected: x=ART_X, y=headCenterY, w=ART_WIDTH, h=(artBounds.maxY - headCenterY)
+         */
+        @Test
+        void testStemUpReturnsLowerHalf() {
+            var head = headRect();
+            var art  = artRect();
+            var nb = new NoteBounds(head, art, art, true);
+
+            var result = nb.getOppositeFromStemBounds();
+
+            double headCenterY    = head.getCenterY();
+            double artMaxY        = art.getMaxY();
+            double expectedHeight = artMaxY - headCenterY;
+
+            assertThat(result.getX()).isCloseTo(ART_X, within(DELTA));
+            assertThat(result.getY()).isCloseTo(headCenterY, within(DELTA));
+            assertThat(result.getWidth()).isCloseTo(ART_WIDTH, within(DELTA));
+            assertThat(result.getHeight()).isCloseTo(expectedHeight, within(DELTA));
+        }
+
+        /**
+         * Row 38 — stem down: returns the UPPER half (from artBounds.y to headCenterY).
+         *
+         * <p>Expected: x=ART_X, y=ART_Y, w=ART_WIDTH, h=(headCenterY - ART_Y)
+         */
+        @Test
+        void testStemDownReturnsUpperHalf() {
+            var head = headRect();
+            var art  = artRect();
+            var nb = new NoteBounds(head, art, art, false);
+
+            var result = nb.getOppositeFromStemBounds();
+
+            double headCenterY    = head.getCenterY();
+            double expectedHeight = headCenterY - ART_Y;
+
+            assertThat(result.getX()).isCloseTo(ART_X, within(DELTA));
+            assertThat(result.getY()).isCloseTo(ART_Y, within(DELTA));
+            assertThat(result.getWidth()).isCloseTo(ART_WIDTH, within(DELTA));
+            assertThat(result.getHeight()).isCloseTo(expectedHeight, within(DELTA));
+        }
     }
 
     // -----------------------------------------------------------------------

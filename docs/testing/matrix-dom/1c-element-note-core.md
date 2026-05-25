@@ -34,10 +34,10 @@
 | NoteBounds | `withStem` factory — articulations bounds == stem bounds | unit | — | missing | write test | ✅ |
 | NoteBounds | `getStemSideBounds` stem-up → upper half | unit | — | missing | write test (known geometry) | ✅ |
 | NoteBounds | `getStemSideBounds` stem-down → lower half | unit | — | missing | write test | ✅ |
-| NoteBounds | `getOppositeFromStemBounds` stem-up → lower half | unit | — | missing | write test | ⬜ |
-| NoteBounds | `getOppositeFromStemBounds` stem-down → upper half | unit | — | missing | write test | ⬜ |
-| NoteBounds | `translate(dx,dy)` — new instance shifted, stemUp preserved | unit | — | missing | write test | ⬜ |
-| NoteBounds | `getCenterX`/`getCenterY` — from head bounds (not full) | unit | — | missing | write test (distinct head vs full) | ⬜ |
+| NoteBounds | `getOppositeFromStemBounds` stem-up → lower half | unit | — | missing | write test | ✅ |
+| NoteBounds | `getOppositeFromStemBounds` stem-down → upper half | unit | — | missing | write test | ✅ |
+| NoteBounds | `translate(dx,dy)` — new instance shifted, stemUp preserved | unit | — | missing | write test | ✅ |
+| NoteBounds | `getCenterX`/`getCenterY` — from head bounds (not full) | unit | — | missing | write test (distinct head vs full) | ✅ |
 | NoteBounds | `getTop`/`getBottom`/`getAttachmentTopY`/`getAttachmentBottomY` — from articulations bounds | unit | — | missing | write test | ⬜ |
 | AccidentalBounds | pure data record | none | — | none | trivial record | — |
 | Beam | `getSpanWidthSs` — `max(1.0, end−anchor)` clamp | unit | — | missing | write test (3 branches) | ⬜ |
