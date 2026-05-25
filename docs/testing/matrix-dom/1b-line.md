@@ -28,14 +28,14 @@
 | Line | `isStartOfAnyBeam`/`isEndOfAnyBeam` | unit | — | missing | write tests | ✅ |
 | Line | `findBeamAt(i)` — beam in range else null | unit | `BeamToggleTest`/`BatchMutationTest` | adequate | keep | — |
 | Line | `findBeamsOverlapping(a,b)` | unit | — | missing | write test | ✅ |
-| Line | `addTie` merge: adjacent/overlapping ties merge | unit | — | missing | write test: [0,1]+[1,2]→[0,2] | ⬜ |
+| Line | `addTie` merge: adjacent/overlapping ties merge | unit | — | missing | write test: [0,1]+[1,2]→[0,2] | ✅ |
 | Line | `findTieAt(i)` | unit | `TieToggleTest.testTieCreationAndRemoval` | adequate | keep | — |
-| Line | `findTies()` | unit | — | missing | write test | ⬜ |
+| Line | `findTies()` | unit | — | missing | write test | ✅ |
 | Line | `addTuplet`/`removeTuplet` fire `TupletAddition`/`TupletRemoval` | unit | `MusicEditOperationsMutationTest.testToggleTuplet*` | adequate | keep | — |
-| Line | `findTupletAt(i)` | unit | `SelectionCoordinatorValidateSpansTest` (setup only) | inadequate | write dedicated return-value test | ⬜ |
-| Line | `findTupletsOverlapping(a,b)` | unit | — | missing | write test | ⬜ |
-| Line | `removeOverlappingTuplets(a,b)` — one `TupletRemoval` per tuplet | unit | — | missing | write test | ⬜ |
-| Line | `addCrescendo`/`addDiminuendo` — same-type hairpin merge | unit | `DynamicsMarkingTest` (e2e, non-merging) | wrong-level | write unit test for merge; e2e smoke fine to keep | ⬜ |
+| Line | `findTupletAt(i)` | unit | `SelectionCoordinatorValidateSpansTest` (setup only) | inadequate | write dedicated return-value test | ✅ |
+| Line | `findTupletsOverlapping(a,b)` | unit | — | missing | write test | ✅ |
+| Line | `removeOverlappingTuplets(a,b)` — one `TupletRemoval` per tuplet | unit | — | missing | write test | ✅ |
+| Line | `addCrescendo`/`addDiminuendo` — same-type hairpin merge | unit | `DynamicsMarkingTest` (e2e, non-merging) | wrong-level | write unit test for merge; e2e smoke fine to keep | ✅ |
 | Line | `isInsideGraceHostPair(i)` | unit | — | missing | write test | ⬜ |
 | Line | `isPairedGraceNote(i)` — grace w/ CONNECTED glissando | unit | (indirect via isHostOfPairedGraceNote) | missing | write direct test | ⬜ |
 | Line | `precedingGraceNoteIndex(i)` | unit | — | missing | write test | ⬜ |
