@@ -40,10 +40,10 @@
 | KeySignature | `getContentHeightSs()` — glyph bbox height; 0 when none | unit | `KeySignatureTest.Sharps`/`Flats` | adequate | keep | — |
 | KeySignature | px methods delegate to ssToPx | unit | `KeySignatureTest.testPxDerivesFromSs` | adequate | keep | — |
 | KeySignature | `setAccidentalCount` clamps (same guard) | unit | — | missing | write test (−1→0, 8→7) | ✅ |
-| ScaleContext | `ssToPx(ss)` = pps × ss | unit | (used as collaborator only) | inadequate | write direct test w/ known pps | ⬜ |
-| ScaleContext | `ssToRoundedPx(ss)` rounds to nearest int | unit | — | missing | write test (round down/up) | ⬜ |
-| ScaleContext | `pxToSs(px)` = px / pps | unit | — | missing | write direct test | ⬜ |
-| ScaleContext | `setPixelsPerStaffSpace` throws IAE for ≤0 | unit | — | missing | write test (0 and negative) | ⬜ |
+| ScaleContext | `ssToPx(ss)` = pps × ss | unit | (used as collaborator only) | inadequate | write direct test w/ known pps | ✅ |
+| ScaleContext | `ssToRoundedPx(ss)` rounds to nearest int | unit | — | missing | write test (round down/up) | ✅ |
+| ScaleContext | `pxToSs(px)` = px / pps | unit | — | missing | write direct test | ✅ |
+| ScaleContext | `setPixelsPerStaffSpace` throws IAE for ≤0 | unit | — | missing | write test (0 and negative) | ✅ |
 | ScaleContext | `getScaleTransform()` correct scale factor | unit | — | missing | write test | ⬜ |
 | ScaleContext | `scaleFont(font)` — size in ss units | unit | (test setup only) | inadequate | write direct test | ⬜ |
 | ScaleContext | `textWidthSs`/`textHeightSs`/`fontAscentSs`/`fontDescentSs`/`fontMaxAscentSs` wrap pxToSs(metric) | unit | (helpers only, never tested directly) | missing | write a test each vs `pxToSs` of the pixel metric | ⬜ |
