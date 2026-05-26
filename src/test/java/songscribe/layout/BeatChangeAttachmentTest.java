@@ -27,12 +27,13 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.Duration;
+import songscribe.dom.ElementType;
+import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.font.DocumentFonts;
-import songscribe.dom.BeatChange;
-import songscribe.dom.Duration;
-import songscribe.dom.MetronomeAttachment;
 import songscribe.util.GraphicUtils;
 
 class BeatChangeAttachmentTest extends UnitTest {
@@ -45,6 +46,26 @@ class BeatChangeAttachmentTest extends UnitTest {
      */
     private static BeatChangeAttachment crotchetToCrotchet() {
         return new BeatChangeAttachment(new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class Copy {
+
+        @Test
+        void testCopyReturnsDistinctInstanceWithNewOwnerAndPreservesBeatChange() {
+            var beatChange = new BeatChange(Duration.QUAVER, Duration.QUAVER);
+            var originalOwner = ElementType.CROTCHET.newInstance();
+            var newOwner = ElementType.QUAVER.newInstance();
+            var original = new BeatChangeAttachment(originalOwner, beatChange);
+
+            var copy = original.copy(newOwner);
+
+            assertThat(copy).isNotSameAs(original);
+            assertThat(copy).isExactlyInstanceOf(BeatChangeAttachment.class);
+            assertThat(copy.getOwnerElement()).isSameAs(newOwner);
+            assertThat(((BeatChangeAttachment) copy).getBeatChange()).isSameAs(beatChange);
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")

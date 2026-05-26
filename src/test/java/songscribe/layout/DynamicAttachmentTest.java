@@ -27,11 +27,31 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.DynamicAttachment;
+import songscribe.dom.DynamicAttachment.DynamicType;
+import songscribe.dom.ElementType;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.dom.DynamicAttachment.DynamicType;
 
 class DynamicAttachmentTest extends UnitTest {
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class Copy {
+
+        @Test
+        void testCopyReturnsDistinctInstanceWithNewOwnerAndPreservesType() {
+            var originalOwner = ElementType.CROTCHET.newInstance();
+            var newOwner = ElementType.QUAVER.newInstance();
+            var original = new DynamicAttachment(originalOwner, DynamicType.FORTE);
+
+            var copy = original.copy(newOwner);
+
+            assertThat(copy).isNotSameAs(original);
+            assertThat(copy).isExactlyInstanceOf(DynamicAttachment.class);
+            assertThat(copy.getOwnerElement()).isSameAs(newOwner);
+            assertThat(((DynamicAttachment) copy).getType()).isEqualTo(DynamicType.FORTE);
+        }
+    }
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested

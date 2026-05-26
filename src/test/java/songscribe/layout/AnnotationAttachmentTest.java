@@ -24,11 +24,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.ScaleContext;
-import songscribe.font.DocumentFonts;
 import songscribe.dom.ElementType;
+import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.font.DocumentFonts;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -36,6 +37,26 @@ import static org.assertj.core.api.Assertions.within;
 class AnnotationAttachmentTest extends UnitTest {
 
     private static final double EPSILON = 1e-10;
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class Copy {
+
+        @Test
+        void testCopyReturnsDistinctInstanceWithNewOwnerAndPreservesAnnotation() {
+            var originalOwner = ElementType.CROTCHET.newInstance();
+            var newOwner = ElementType.QUAVER.newInstance();
+            var annotation = new Annotation("dolce");
+            var original = new AnnotationAttachment(originalOwner, annotation);
+
+            var copy = original.copy(newOwner);
+
+            assertThat(copy).isNotSameAs(original);
+            assertThat(copy).isExactlyInstanceOf(AnnotationAttachment.class);
+            assertThat(copy.getOwnerElement()).isSameAs(newOwner);
+            assertThat(((AnnotationAttachment) copy).getAnnotation()).isSameAs(annotation);
+        }
+    }
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
