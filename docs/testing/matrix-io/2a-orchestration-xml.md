@@ -39,8 +39,8 @@
 | SongLoader | `load` — corrupt XML → `ParseError` w/ `SAXException` cause | unit | `SongLoaderTest.testLoadDamagedFileReturnsParseError` | adequate | keep | — |
 | SongLoader | `load` — newer version → `NewerVersion` w/ cause | unit | `SongLoaderTest.testLoadNewerVersionFileReturnsNewerVersion` | adequate | keep | — |
 | SongLoader | `load` — valid file → `Success` w/ non-null song+fonts | unit | `SongLoaderTest.testLoadValidFileReturnsSuccess` | adequate | keep (isNotNull substantive: null ⇒ broken read path) | — |
-| SongLoader | `load` — `ParserConfigurationException` → `ParseError` | unit | — | missing | branch exists; may not be unit-testable without env manipulation — note if so | ⬜ |
-| SongLoader | `load` — `Success.song()` fully assembled (fields preserved) | unit | `SongLoaderTest.testLoadValidFileReturnsSuccess` (isNotNull only) | inadequate | add field-level assertions (≥ line count, line-0 element count) vs fixture | ⬜ |
+| SongLoader | `load` — `ParserConfigurationException` → `ParseError` | unit | — | missing | `PARSER_FACTORY` is private static final; triggering `newSAXParser()` to throw requires env manipulation — not unit-testable; noted | ✅ |
+| SongLoader | `load` — `Success.song()` fully assembled (fields preserved) | unit | `SongLoaderTest.testLoadValidFileReturnsSuccess` | adequate | added `lineCount() >= 1` and `line(0).elementCount() >= 22` assertions vs `full-line` fixture | ✅ |
 | SongLoader | `load` — `Success.fonts()` non-null w/ expected roles from `<view>` | unit | same (isNotNull only) | inadequate | assert a known `FontKey` resolves from the fixture's `<view>` block | ⬜ |
 
 #### SongLoadResult
@@ -48,11 +48,11 @@
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
 | SongLoadResult | `Success`/`IoError`/`ParseError`/`NewerVersion`/`LineWidthTooLarge` records — carry their components | none | — | none | pure data records | — |
-| SongLoadResult | `songOrThrow()` — `Success` branch returns the song | unit | `UnitTest.loadFixture` (implicit, no assert) | inadequate | direct: `new Success(song,fonts).songOrThrow()` returns same instance | ⬜ |
-| SongLoadResult | `songOrThrow()` — `IoError` branch throws wrapped `IOException` | unit | — | missing | write test | ⬜ |
-| SongLoadResult | `songOrThrow()` — `ParseError` branch throws wrapped `SAXException` | unit | — | missing | write test | ⬜ |
-| SongLoadResult | `songOrThrow()` — `NewerVersion` branch throws `NewerVersionException` | unit | — | missing | write test | ⬜ |
-| SongLoadResult | `songOrThrow()` — `LineWidthTooLarge` branch throws `IOException` w/ both inch values in message | unit | — | missing | assert message includes `actualInches` and `maxInches` | ⬜ |
+| SongLoadResult | `songOrThrow()` — `Success` branch returns the song | unit | `SongLoadResultTest.testSongOrThrowOnSuccessReturnsSong` | adequate | `new Success(song,fonts).songOrThrow()` returns same instance | ✅ |
+| SongLoadResult | `songOrThrow()` — `IoError` branch throws wrapped `IOException` | unit | `SongLoadResultTest.testSongOrThrowOnIoErrorThrowsIOException` | adequate | write test | ✅ |
+| SongLoadResult | `songOrThrow()` — `ParseError` branch throws wrapped `SAXException` | unit | `SongLoadResultTest.testSongOrThrowOnParseErrorThrowsSAXException` | adequate | write test | ✅ |
+| SongLoadResult | `songOrThrow()` — `NewerVersion` branch throws `NewerVersionException` | unit | `SongLoadResultTest.testSongOrThrowOnNewerVersionThrowsNewerVersionException` | adequate | write test | ✅ |
+| SongLoadResult | `songOrThrow()` — `LineWidthTooLarge` branch throws `IOException` w/ both inch values in message | unit | `SongLoadResultTest.testSongOrThrowOnLineWidthTooLargeThrowsIOExceptionWithBothInchValues` | adequate | assert message includes `actualInches` and `maxInches` | ✅ |
 | SongLoadResult | `Failure` sealed `file()` accessor on all variants | none | — | none | compiler-enforced | — |
 
 #### XML

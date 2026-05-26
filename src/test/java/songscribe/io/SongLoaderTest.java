@@ -30,6 +30,10 @@ import songscribe.UnitTest;
 
 class SongLoaderTest extends UnitTest {
 
+    // The full-line fixture has exactly 1 line containing 22 notes.
+    private static final int FULL_LINE_FIXTURE_LINE_COUNT = 1;
+    private static final int FULL_LINE_FIXTURE_LINE_0_ELEMENT_COUNT = 22;
+
     @Test
     void testLoadDamagedFileReturnsParseError() throws Exception {
         var result = SongLoader.load(fixtureFile("damaged"));
@@ -49,12 +53,23 @@ class SongLoaderTest extends UnitTest {
         assertThat(result).isInstanceOf(SongLoadResult.IoError.class);
     }
 
+    // row 42: ParserConfigurationException → ParseError
+    // Not directly unit-testable: PARSER_FACTORY is private static final, so
+    // triggering newSAXParser() to throw ParserConfigurationException requires
+    // environment manipulation (e.g., broken JAXP provider). The branch is
+    // covered by code review; no automated test is feasible without reflection
+    // or a custom factory hook.
+
+    // row 43: Success.song() fully assembled — line count and line-0 element count
     @Test
     void testLoadValidFileReturnsSuccess() throws Exception {
         var result = SongLoader.load(fixtureFile("full-line"));
         assertThat(result).isInstanceOf(SongLoadResult.Success.class);
         var success = (SongLoadResult.Success) result;
-        assertThat(success.song()).isNotNull();
+        var song = success.song();
+        assertThat(song).isNotNull();
         assertThat(success.fonts()).isNotNull();
+        assertThat(song.lineCount()).isGreaterThanOrEqualTo(FULL_LINE_FIXTURE_LINE_COUNT);
+        assertThat(song.getLine(0).elementCount()).isGreaterThanOrEqualTo(FULL_LINE_FIXTURE_LINE_0_ELEMENT_COUNT);
     }
 }
