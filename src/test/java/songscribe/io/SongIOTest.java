@@ -25,6 +25,9 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +39,8 @@ import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.Lyric;
+import songscribe.dom.Tempo;
+import songscribe.font.DocumentFonts;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 
@@ -57,6 +62,156 @@ class SongIOTest extends UnitTest {
                 .as("every parsed line must reference the song that owns it")
                 .isSameAs(song);
         }
+    }
+
+    // row 9: empty string fields → tags absent; non-empty → present, XML-escaped.
+    // Tests: title, place, year, attribution, underlyrics, banglaLyrics, translatedLyrics.
+    @Test
+    void testWriteSongOptionalStringFieldsOmittedWhenEmpty() {
+        var song = new Song();
+        // Song() sets non-empty defaults for some fields — clear them explicitly.
+        song.setTitle("");
+        song.setPlace("");
+        song.setYear("");
+        song.setAttribution("");
+        song.setUnderLyrics("");
+        song.setBanglaLyrics("");
+        song.setTranslatedLyrics("");
+        var xml = writeSongToString(song);
+
+        assertThat(xml).doesNotContain("<songtitle>");
+        assertThat(xml).doesNotContain("<place>");
+        assertThat(xml).doesNotContain("<year>");
+        assertThat(xml).doesNotContain("<rightinfo>");
+        assertThat(xml).doesNotContain("<underlyrics>");
+        assertThat(xml).doesNotContain("<banglalyrics>");
+        assertThat(xml).doesNotContain("<translatedlyrics>");
+    }
+
+    // row 9 (presence + escaping): non-empty values appear and are XML-escaped.
+    @Test
+    void testWriteSongOptionalStringFieldsEmittedAndEscaped() {
+        var song = new Song();
+        song.setTitle("Heart & Soul");
+        song.setPlace("New York");
+        song.setYear("2024");
+        song.setAttribution("Composer <Name>");
+        song.setUnderLyrics("under");
+        song.setBanglaLyrics("bangla");
+        song.setTranslatedLyrics("translated");
+
+        var xml = writeSongToString(song);
+
+        assertThat(xml).contains("<songtitle>Heart &amp; Soul</songtitle>");
+        assertThat(xml).contains("<place>New York</place>");
+        assertThat(xml).contains("<year>2024</year>");
+        assertThat(xml).contains("<rightinfo>Composer &lt;Name&gt;</rightinfo>");
+        assertThat(xml).contains("<underlyrics>under</underlyrics>");
+        assertThat(xml).contains("<banglalyrics>bangla</banglalyrics>");
+        assertThat(xml).contains("<translatedlyrics>translated</translatedlyrics>");
+    }
+
+    // row 10: month/day omitted when ≤ 0; emitted when > 0.
+    @Test
+    void testWriteSongMonthDayOmittedWhenNotPositive() {
+        var song = new Song();
+        song.setMonth(0);
+        song.setDay(0);
+        var xml = writeSongToString(song);
+
+        assertThat(xml).doesNotContain("<month>");
+        assertThat(xml).doesNotContain("<day>");
+    }
+
+    @Test
+    void testWriteSongMonthDayEmittedWhenPositive() {
+        var song = new Song();
+        song.setMonth(3);
+        song.setDay(15);
+        var xml = writeSongToString(song);
+
+        assertThat(xml).contains("<month>3</month>");
+        assertThat(xml).contains("<day>15</day>");
+    }
+
+    // row 8: null tempo → no <tempo>; non-null tempo → present.
+    @Test
+    void testWriteSongTempoAbsentWhenNull() {
+        var song = new Song();
+        song.setTempo(null);
+        var xml = writeSongToString(song);
+
+        assertThat(xml).doesNotContain("<tempo>");
+    }
+
+    @Test
+    void testWriteSongTempoPresentWhenSet() {
+        var song = new Song();
+        song.setTempo(new Tempo());
+        var xml = writeSongToString(song);
+
+        assertThat(xml).contains("<tempo>");
+    }
+
+    // row 11: unofficialTranslation=false → absent; =true → present.
+    @Test
+    void testWriteSongUnofficialTranslationAbsentWhenFalse() {
+        var song = new Song();
+        song.setUnofficialTranslation(false);
+        var xml = writeSongToString(song);
+
+        assertThat(xml).doesNotContain("<unofficialTranslation>");
+    }
+
+    @Test
+    void testWriteSongUnofficialTranslationPresentWhenTrue() {
+        var song = new Song();
+        song.setUnofficialTranslation(true);
+        var xml = writeSongToString(song);
+
+        assertThat(xml).contains("<unofficialTranslation>true</unofficialTranslation>");
+    }
+
+    // row 7: XML header and <song> root carry the correct version attribute.
+    @Test
+    void testWriteSongVersionAttribute() {
+        var song = new Song();
+        var xml = writeSongToString(song);
+        var expectedVersion = SongIO.IO_MAJOR_VERSION + "." + SongIO.IO_MINOR_VERSION;
+
+        assertThat(xml).contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+        assertThat(xml).contains("<song version=\"" + expectedVersion + "\">");
+    }
+
+    // row 12: userSetTopPadding=false → no <topspace>; =true → present.
+    @Test
+    void testWriteSongTopSpaceAbsentWhenNotUserSet() {
+        var song = new Song();
+        // Default: userSetTopPadding() is false.
+        var xml = writeSongToString(song);
+
+        assertThat(xml).doesNotContain("<topspace>");
+    }
+
+    @Test
+    void testWriteSongTopSpacePresentWhenUserSet() {
+        var song = new Song();
+        // setByUser=true sets the userSetTopPadding flag.
+        song.setTopPaddingSs(5.0, true);
+        var xml = writeSongToString(song);
+
+        assertThat(xml).contains("<topspace>");
+    }
+
+    // -- helpers --
+
+    private static String writeSongToString(Song song) {
+        var fonts = DocumentFonts.defaultsFromPrefs();
+        var sw = new StringWriter();
+        var pw = new PrintWriter(sw);
+        SongIO.writeSong(song, fonts, pw);
+        pw.flush();
+        return sw.toString();
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")

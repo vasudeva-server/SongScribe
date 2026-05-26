@@ -4,12 +4,12 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| SongIO | `writeSong` — emits XML header and `<song>` root with version attribute (`IO_MAJOR_VERSION.IO_MINOR_VERSION`) | unit | `SongIOTest` (round-trip, indirect) | inadequate | literal version value never asserted; add direct serialized-string assertion that version attribute equals current `IO_MAJOR.IO_MINOR` | ⬜ |
-| SongIO | `writeSong` — tempo block emitted only when song tempo non-null | unit | — | missing | null tempo → no `<tempo>`; with tempo → present | ⬜ |
-| SongIO | `writeSong` — title/place/year/attribution/underlyrics/banglaLyrics/translatedLyrics omitted when empty | unit | — | missing | parametrized: empty → tag absent; non-empty → present, XML-escaped | ⬜ |
-| SongIO | `writeSong` — month/day omitted when ≤ 0; emitted when > 0 | unit | — | missing | month=0 → absent; month=3 → `<month>3</month>` | ⬜ |
-| SongIO | `writeSong` — `unofficialTranslation` emitted only when true | unit | — | missing | false → absent; true → present | ⬜ |
-| SongIO | `writeSong` — `topspace` emitted only when `userSetTopPadding()` | unit | — | missing | false → absent; true → present | ⬜ |
+| SongIO | `writeSong` — emits XML header and `<song>` root with version attribute (`IO_MAJOR_VERSION.IO_MINOR_VERSION`) | unit | `SongIOTest` (round-trip, indirect) | inadequate | literal version value never asserted; add direct serialized-string assertion that version attribute equals current `IO_MAJOR.IO_MINOR` | ✅ |
+| SongIO | `writeSong` — tempo block emitted only when song tempo non-null | unit | — | missing | null tempo → no `<tempo>`; with tempo → present | ✅ |
+| SongIO | `writeSong` — title/place/year/attribution/underlyrics/banglaLyrics/translatedLyrics omitted when empty | unit | — | missing | parametrized: empty → tag absent; non-empty → present, XML-escaped | ✅ |
+| SongIO | `writeSong` — month/day omitted when ≤ 0; emitted when > 0 | unit | — | missing | month=0 → absent; month=3 → `<month>3</month>` | ✅ |
+| SongIO | `writeSong` — `unofficialTranslation` emitted only when true | unit | — | missing | false → absent; true → present | ✅ |
+| SongIO | `writeSong` — `topspace` emitted only when `userSetTopPadding()` | unit | — | missing | false → absent; true → present | ✅ |
 | SongIO | `writeSong` — `rowheight` omitted when exactly 0 | unit | — | missing | 0 → absent; non-zero → present | ⬜ |
 | SongIO | `writeSong` — `dynamicLayout=true` always written | unit | — | missing | output always contains `<dynamicLayout>true</dynamicLayout>` | ⬜ |
 | SongIO | `writeSong` — `linewidth` always written | unit | `SongIOTest.LegacyMigrationWiring.*` (round-trip) | adequate | round-trip recovers value; direct serialized-string assertion optional | — |
@@ -41,7 +41,7 @@
 | SongLoader | `load` — valid file → `Success` w/ non-null song+fonts | unit | `SongLoaderTest.testLoadValidFileReturnsSuccess` | adequate | keep (isNotNull substantive: null ⇒ broken read path) | — |
 | SongLoader | `load` — `ParserConfigurationException` → `ParseError` | unit | — | missing | `PARSER_FACTORY` is private static final; triggering `newSAXParser()` to throw requires env manipulation — not unit-testable; noted | ✅ |
 | SongLoader | `load` — `Success.song()` fully assembled (fields preserved) | unit | `SongLoaderTest.testLoadValidFileReturnsSuccess` | adequate | added `lineCount() >= 1` and `line(0).elementCount() >= 22` assertions vs `full-line` fixture | ✅ |
-| SongLoader | `load` — `Success.fonts()` non-null w/ expected roles from `<view>` | unit | same (isNotNull only) | inadequate | assert a known `FontKey` resolves from the fixture's `<view>` block | ⬜ |
+| SongLoader | `load` — `Success.fonts()` non-null w/ expected roles from `<view>` | unit | same (isNotNull only) | inadequate | assert a known `FontKey` resolves from the fixture's `<view>` block | ✅ |
 
 #### SongLoadResult
 

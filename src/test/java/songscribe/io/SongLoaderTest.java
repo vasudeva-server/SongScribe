@@ -27,6 +27,7 @@ import java.io.File;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.font.FontKey;
 
 class SongLoaderTest extends UnitTest {
 
@@ -71,5 +72,18 @@ class SongLoaderTest extends UnitTest {
         assertThat(success.fonts()).isNotNull();
         assertThat(song.lineCount()).isGreaterThanOrEqualTo(FULL_LINE_FIXTURE_LINE_COUNT);
         assertThat(song.getLine(0).elementCount()).isGreaterThanOrEqualTo(FULL_LINE_FIXTURE_LINE_0_ELEMENT_COUNT);
+    }
+
+    // row 44: Success.fonts() non-null with expected roles from <view>
+    // The full-line fixture's <view> block declares titlefontsize=30, proving the
+    // <view> block was parsed and applied to FontKey.TITLE. The PS name is not
+    // asserted because the font may be substituted in environments without the font.
+    @Test
+    void testLoadSuccessFontsHaveExpectedTitleRole() throws Exception {
+        var success = loadFixtureResult("full-line");
+        var titleFont = success.fonts().getFont(FontKey.TITLE);
+        assertThat(titleFont.getSize())
+            .as("title font size from <view> block")
+            .isEqualTo(30);
     }
 }

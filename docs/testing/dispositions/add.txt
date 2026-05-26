@@ -389,3 +389,15 @@ SongLoadResultTest.testSongOrThrowOnIoErrorThrowsIOException	2a	row 52: IoError 
 SongLoadResultTest.testSongOrThrowOnParseErrorThrowsSAXException	2a	row 53: ParseError branch throws wrapped SAXException
 SongLoadResultTest.testSongOrThrowOnNewerVersionThrowsNewerVersionException	2a	row 54: NewerVersion branch throws NewerVersionException
 SongLoadResultTest.testSongOrThrowOnLineWidthTooLargeThrowsIOExceptionWithBothInchValues	2a	row 55: LineWidthTooLarge throws IOException with actualInches and maxInches in message
+SongIOTest.testWriteSongVersionAttribute	2a	row 7: version attribute equals IO_MAJOR.IO_MINOR
+SongIOTest.testWriteSongTempoAbsentWhenNull	2a	row 8: null tempo → no <tempo>
+SongIOTest.testWriteSongTempoPresentWhenSet	2a	row 8: non-null tempo → <tempo> present
+SongIOTest.testWriteSongOptionalStringFieldsOmittedWhenEmpty	2a	row 9: empty fields → tags absent
+SongIOTest.testWriteSongOptionalStringFieldsEmittedAndEscaped	2a	row 9: non-empty values → present and XML-escaped
+SongIOTest.testWriteSongMonthDayOmittedWhenNotPositive	2a	row 10: month/day ≤ 0 → absent
+SongIOTest.testWriteSongMonthDayEmittedWhenPositive	2a	row 10: month/day > 0 → emitted
+SongIOTest.testWriteSongUnofficialTranslationAbsentWhenFalse	2a	row 11: false → absent
+SongIOTest.testWriteSongUnofficialTranslationPresentWhenTrue	2a	row 11: true → present
+SongIOTest.testWriteSongTopSpaceAbsentWhenNotUserSet	2a	row 12: userSetTopPadding=false → absent
+SongIOTest.testWriteSongTopSpacePresentWhenUserSet	2a	row 12: userSetTopPadding=true → present
+SongLoaderTest.testLoadSuccessFontsHaveExpectedTitleRole	2a	row 44: titleFont.size==30 confirms <view> was parsed
