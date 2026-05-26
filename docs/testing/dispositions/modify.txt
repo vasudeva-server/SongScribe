@@ -16,3 +16,5 @@ SongLoaderTest.testLoadValidFileReturnsSuccess	2a	row 43: strengthened with fiel
 StaffElementIOTest.DynamicSerialization.testRoundTripPreservesDynamicType
 LineIOTest.EndElement11LyricsYPos.testLyricsyposTagSetsLyricsYPosSs	2c	row 20 — strengthened to assert getLyricsYPosSs()==5.0
 LayoutEngineTest.testFinalBarlineNotFlushRightOnNonLastLine	3a	row 9 — strengthened to assert exact spacing-calculator X (was isNotCloseTo)
+ViewIOTest.LegacyFontStyleElements.testDocumentWithFontStyleElementsLoadsWithoutError	2c	row 46 — strengthened: assert ignored legacy tag does not corrupt adjacent font values
+ViewIOTest.DocumentFontsLoad.testDefaultsFromPrefsIsDeterministic	2c	row 49 — renamed from testNewDocumentInstallsPrefsDefaults; tautology replaced with two independent defaultsFromPrefs() calls

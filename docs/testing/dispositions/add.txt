@@ -561,3 +561,7 @@ LineIOTest.LineReaderNullGuard.testEndElementBeforeStartElementReturnsNull	2c	ro
 LayoutEngineTest.testEmptyLineResultContainsHeaderElements	3a	row 11 — empty-line result contains clef + key signature
 LayoutEngineTest.testOverstuffedLineReturnsNullWithError	3a	row 12 — un-justifiable line → null + getLastError
 LayoutEngineTest.testLeadingLyricContinuationEmitsExtenderFromLineStart	3a	row 13 — 3-arg layout threads hasLeadingLyricContinuation
+ViewIOTest.WriteView.testWriteViewSerializesAllSixFontRoles	2c	row 42 — writeView serializes all 6 font roles (name+size)
+ViewIOTest.WriteView.testWriteViewUsesPostScriptNameNotFamilyName	2c	row 43 — writeView uses PS name not display name
+ViewIOTest.RoundTrip.testWriteViewAndViewReaderPreserveAllSixRoles	2c	row 51 — writeView+ViewReader full round-trip, all 6 roles
+ViewIOTest.StringFontSizeAsInt.testNonNumericSizePropagatesNumberFormatException	2c	row 52 — sizeAsInt non-numeric size → NFE propagates

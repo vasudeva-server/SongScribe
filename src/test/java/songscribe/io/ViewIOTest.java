@@ -21,8 +21,11 @@
 package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.PrintWriter;
 import java.io.StringReader;
+import java.io.StringWriter;
 
 import javax.xml.parsers.SAXParserFactory;
 
@@ -79,13 +82,74 @@ class ViewIOTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class WriteView {
+
+        // The number of font roles serialized by writeView (one per FontKey value).
+        private static final int FONT_ROLE_COUNT = 6;
+
+        @Test
+        void testWriteViewSerializesAllSixFontRoles() {
+            // Ensure every role's name and size survive the write path.
+            var fonts = DocumentFonts.defaultsFromPrefs();
+            var output = captureWriteView(fonts);
+
+            // Every FontKey must contribute exactly one name tag and one size tag.
+            var rolePairs = 0;
+            for (var key : FontKey.values()) {
+                var font = fonts.getFont(key);
+                var psName = font.getPSName();
+                var size = Integer.toString(font.getSize());
+                if (output.contains(">" + psName + "<") && output.contains(">" + size + "<")) {
+                    rolePairs++;
+                }
+            }
+
+            assertThat(rolePairs).isEqualTo(FONT_ROLE_COUNT);
+        }
+
+        @Test
+        void testWriteViewUsesPostScriptNameNotFamilyName() {
+            // LatoPlus-Bold has PSName "LatoPlus-Bold" but family name "LatoPlus".
+            // writeView must emit the PSName so round-trip parsing resolves the exact face.
+            var fonts = new DocumentFonts();
+            fonts.setFont(FontKey.TITLE, "LatoPlus-Bold", Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+            // Populate the remaining roles with defaults so writeView iterates all 6 cleanly.
+            var defaults = DocumentFonts.defaultsFromPrefs();
+            for (var key : FontKey.values()) {
+                if (key != FontKey.TITLE) {
+                    fonts.setFont(key, defaults.getFont(key));
+                }
+            }
+
+            var output = captureWriteView(fonts);
+
+            var titleFont = fonts.getFont(FontKey.TITLE);
+            // The PSName should appear in the output; the bare family name without the
+            // style suffix must NOT stand alone as a token (it would lose face identity).
+            assertThat(output).contains(">" + titleFont.getPSName() + "<");
+            assertThat(output).doesNotContain(">" + titleFont.getFamily() + "<");
+        }
+
+        private static String captureWriteView(DocumentFonts fonts) {
+            var sw = new StringWriter();
+            try (var pw = new PrintWriter(sw)) {
+                ViewIO.writeView(fonts, pw);
+            }
+            return sw.toString();
+        }
+    }
+
     @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class LegacyFontStyleElements {
 
         @Test
         void testDocumentWithFontStyleElementsLoadsWithoutError() throws Exception {
-            // Build XML that includes the old <titlefontstyle> and <lyricsfontstyle> elements
+            // Build XML that includes the old <titlefontstyle> and <lyricsfontstyle> elements.
+            // The legacy style tags must be silently dropped — they must NOT overwrite
+            // or corrupt the adjacent font-name and font-size values.
             var xml = buildXmlWithFontStyleElements();
 
             var factory = SAXParserFactory.newInstance();
@@ -94,9 +158,18 @@ class ViewIOTest extends UnitTest {
             parser.parse(new InputSource(new StringReader(xml)), reader);
             reader.getSong();
 
-            // Should load without error and have valid fonts
-            assertThat(reader.getDocumentFonts().getFont(FontKey.TITLE)).isNotNull();
-            assertThat(reader.getDocumentFonts().getFont(FontKey.LYRICS)).isNotNull();
+            var fonts = reader.getDocumentFonts();
+
+            // The XML fixture sets title=LatoPlus-Bold/30 and lyrics=LatoPlus-Regular/17.
+            // If the ignored <titlefontstyle> or <lyricsfontstyle> tags corrupt parsing,
+            // these values would be wrong.
+            var expectedTitle = MyFontUtils.createFont("LatoPlus-Bold", FIXTURE_TITLE_FONT_SIZE);
+            assertThat(fonts.getFont(FontKey.TITLE).getPSName()).isEqualTo(expectedTitle.getPSName());
+            assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(FIXTURE_TITLE_FONT_SIZE);
+
+            var expectedLyrics = MyFontUtils.createFont("LatoPlus-Regular", FIXTURE_LYRICS_FONT_SIZE);
+            assertThat(fonts.getFont(FontKey.LYRICS).getPSName()).isEqualTo(expectedLyrics.getPSName());
+            assertThat(fonts.getFont(FontKey.LYRICS).getSize()).isEqualTo(FIXTURE_LYRICS_FONT_SIZE);
         }
     }
 
@@ -131,11 +204,13 @@ class ViewIOTest extends UnitTest {
         }
 
         @Test
-        void testNewDocumentInstallsPrefsDefaults() {
-            assertThat(DocumentFonts.defaultsFromPrefs())
-                .isEqualTo(DocumentFonts.defaultsFromPrefs());
-            // New-document creation in ScoreView.init() installs exactly this object;
-            // the bootstrap source is the single home for the role -> PrefsKey mapping.
+        void testDefaultsFromPrefsIsDeterministic() {
+            // Two independent calls must return equal results so that new-document creation
+            // is idempotent — if defaultsFromPrefs() were stateful or random, every new
+            // document would silently start with different fonts.
+            var first = DocumentFonts.defaultsFromPrefs();
+            var second = DocumentFonts.defaultsFromPrefs();
+            assertThat(first).isEqualTo(second);
         }
 
         private static DocumentFonts parseAndGetDocumentFonts(String xml) throws Exception {
@@ -153,6 +228,110 @@ class ViewIOTest extends UnitTest {
             assertThat(fonts.getFont(key).getSize()).isEqualTo(Prefs.getInt(sizeKey));
         }
     }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RoundTrip {
+
+        @Test
+        void testWriteViewAndViewReaderPreserveAllSixRoles() {
+            // This is the primary correctness guarantee for the write path: every font
+            // role written by writeView must survive a ViewReader parse unchanged.
+            var original = buildAllRolesFonts();
+            var output = captureWriteView(original);
+            var restored = parseWithViewReader(output);
+
+            for (var key : FontKey.values()) {
+                var before = original.getFont(key);
+                var after = restored.getFont(key);
+                assertThat(after.getPSName())
+                    .as("PSName for role %s", key)
+                    .isEqualTo(before.getPSName());
+                assertThat(after.getSize())
+                    .as("size for role %s", key)
+                    .isEqualTo(before.getSize());
+            }
+        }
+
+        private static DocumentFonts buildAllRolesFonts() {
+            var fonts = new DocumentFonts();
+            fonts.setFont(FontKey.TITLE,       "LatoPlus-Bold",    ROUND_TRIP_TITLE_SIZE);
+            fonts.setFont(FontKey.LYRICS,      "LatoPlus-Regular", ROUND_TRIP_LYRICS_SIZE);
+            fonts.setFont(FontKey.ATTRIBUTION, "LatoPlus-Regular", ROUND_TRIP_ATTRIBUTION_SIZE);
+            fonts.setFont(FontKey.ANNOTATION,  "LatoPlus-Regular", ROUND_TRIP_ANNOTATION_SIZE);
+            fonts.setFont(FontKey.BANGLA,      "TiroBangla",       ROUND_TRIP_BANGLA_SIZE);
+            fonts.setFont(FontKey.FOOTNOTE,    "LatoPlus-Regular", ROUND_TRIP_FOOTNOTE_SIZE);
+            return fonts;
+        }
+
+        private static DocumentFonts parseWithViewReader(String xml) {
+            var viewReader = new ViewIO.ViewReader();
+            for (var line : xml.split("\n")) {
+                var trimmed = line.trim();
+                // Extract tag name and value from lines like "    <titlefont>value</titlefont>"
+                if (trimmed.startsWith("<") && !trimmed.startsWith("</")) {
+                    var tagEnd = trimmed.indexOf('>');
+                    if (tagEnd > 0) {
+                        var tag = trimmed.substring(1, tagEnd);
+                        var closeTag = "</" + tag + ">";
+                        var closeIdx = trimmed.indexOf(closeTag);
+                        if (closeIdx > tagEnd) {
+                            var value = trimmed.substring(tagEnd + 1, closeIdx);
+                            viewReader.startElement11(tag);
+                            viewReader.characters(value.toCharArray(), 0, value.length());
+                            viewReader.endElement11(tag);
+                        }
+                    }
+                }
+            }
+            return viewReader.getDocumentFonts();
+        }
+
+        private static String captureWriteView(DocumentFonts fonts) {
+            var sw = new StringWriter();
+            try (var pw = new PrintWriter(sw)) {
+                ViewIO.writeView(fonts, pw);
+            }
+            return sw.toString();
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class StringFontSizeAsInt {
+
+        @Test
+        void testNonNumericSizePropagatesNumberFormatException() {
+            // sizeAsInt() calls Integer.parseInt(size) with no catch clause — a
+            // non-numeric size string therefore propagates NFE to the caller.
+            // This documents the contract: corrupt size data fails loudly at
+            // getDocumentFonts() rather than silently producing a wrong size.
+            var viewReader = new ViewIO.ViewReader();
+
+            // Inject "abc" as the title-font size via the public SAX-delegate API.
+            viewReader.startElement11("titlefontsize");
+            viewReader.characters("abc".toCharArray(), 0, "abc".length());
+            viewReader.endElement11("titlefontsize");
+
+            assertThatThrownBy(viewReader::getDocumentFonts)
+                .isInstanceOf(NumberFormatException.class);
+        }
+    }
+
+    // -- Shared fixture size constants --
+
+    // Sizes used in buildXmlWithFontStyleElements() to verify the ignored legacy tags
+    // do not corrupt adjacent name/size values.
+    private static final int FIXTURE_TITLE_FONT_SIZE = 30;
+    private static final int FIXTURE_LYRICS_FONT_SIZE = 17;
+
+    // Distinct sizes used for round-trip testing so each role is individually verifiable.
+    private static final int ROUND_TRIP_TITLE_SIZE = 32;
+    private static final int ROUND_TRIP_LYRICS_SIZE = 18;
+    private static final int ROUND_TRIP_ATTRIBUTION_SIZE = 16;
+    private static final int ROUND_TRIP_ANNOTATION_SIZE = 14;
+    private static final int ROUND_TRIP_BANGLA_SIZE = 20;
+    private static final int ROUND_TRIP_FOOTNOTE_SIZE = 12;
 
     // -- Helpers --
 

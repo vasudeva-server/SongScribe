@@ -39,17 +39,17 @@
 | LineIO | `accumulateLegacyTrillFlag` — coalesces contiguous indices into one run; new run for non-contiguous | unit | — | missing | 2,3,4 → `[2,4,0]`; 2,4 → two pairs | ✅ |
 | LineIO | `endElement11` returns completed `Line` on `</line>` (all create-methods invoked first) | unit | — | missing | full start/chars/end sequence → correct counts + range elements | ✅ |
 | LineIO | `LineReader` `line==null`/`noteReader==null` guard → `endElement11` returns null | unit | — | missing | endElement before any startElement → null | ✅ |
-| ViewIO | `writeView` — serializes all 6 font roles (name+size) | unit | — | missing | capture output, verify 6 name+size pairs | ⬜ |
-| ViewIO | `writeView` — uses PS name (not display name) | unit | — | missing | PSName ≠ family name → PSName in output | ⬜ |
+| ViewIO | `writeView` — serializes all 6 font roles (name+size) | unit | — | missing | capture output, verify 6 name+size pairs | ✅ |
+| ViewIO | `writeView` — uses PS name (not display name) | unit | — | missing | PSName ≠ family name → PSName in output | ✅ |
 | ViewIO | `ViewReader` default ctor — all 6 roles from `Prefs` defaults | unit | `ViewIOTest.DocumentFontsLoad.testV10FallbackUsesDefaultsForAllRoles` | adequate | keep | — |
 | ViewIO | `endElement11`+`getDocumentFonts()` — known tag updates name/size of role | unit | `ViewIOTest.DocumentFontsLoad.testPartialBlockOverridesOnlyPresentRoles` | adequate | keep | — |
-| ViewIO | `ViewReader` ignores unknown tags (legacy `titlefontstyle`) silently | unit | `ViewIOTest.LegacyFontStyleElements.testDocumentWithFontStyleElementsLoadsWithoutError` | inadequate | `isNotNull()` trivially true; assert ignored tag didn't corrupt any font value | ⬜ |
+| ViewIO | `ViewReader` ignores unknown tags (legacy `titlefontstyle`) silently | unit | `ViewIOTest.LegacyFontStyleElements.testDocumentWithFontStyleElementsLoadsWithoutError` | inadequate | `isNotNull()` trivially true; assert ignored tag didn't corrupt any font value | ✅ |
 | ViewIO | `getDocumentFonts()` — defaults for roles absent from partial block | unit | `ViewIOTest.DocumentFontsLoad.testPartialBlockOverridesOnlyPresentRoles` | adequate | keep | — |
 | ViewIO | `getDocumentFonts()` zero roles == `defaultsFromPrefs()` | unit | `ViewIOTest.DocumentFontsLoad.testV10FallbackUsesDefaultsForAllRoles` | adequate | keep | — |
-| ViewIO | `DocumentFonts.defaultsFromPrefs()` idempotent | unit | `ViewIOTest.DocumentFontsLoad.testNewDocumentInstallsPrefsDefaults` | inadequate | tautology (`x.equals(x)`); rewrite to compare two independent calls | ⬜ |
+| ViewIO | `DocumentFonts.defaultsFromPrefs()` idempotent | unit | `ViewIOTest.DocumentFontsLoad.testNewDocumentInstallsPrefsDefaults` | inadequate | tautology (`x.equals(x)`); rewrite to compare two independent calls | ✅ |
 | ViewIO | `endElement11` legacy self-closing `<view/>` → all roles at defaults | unit | `ViewIOTest.FontXmlParsing.testLegacyDocumentWithoutFontXmlUsesPrefsDefaults` | adequate | keep | — |
-| ViewIO | `writeView`+`ViewReader` full round-trip — all 6 roles preserved | unit | — | missing | primary correctness guarantee for the write path | ⬜ |
-| ViewIO | `ViewReader.StringFont.sizeAsInt()` on non-integer size string | unit | — | missing | size="abc" → verify NFE propagates or is swallowed (document) | ⬜ |
+| ViewIO | `writeView`+`ViewReader` full round-trip — all 6 roles preserved | unit | — | missing | primary correctness guarantee for the write path | ✅ |
+| ViewIO | `ViewReader.StringFont.sizeAsInt()` on non-integer size string | unit | — | missing | size="abc" → verify NFE propagates or is swallowed (document) | ✅ |
 
 **2C notes (quality concerns):** **`LineIO` — the largest IO class (~741 lines, 18-field serializer + ~450-line reader) — has no dedicated test file.** No test in `src/test/` references `LineIO`, its tag constants, or any internal parse method. The only coverage is incidental (`TieToggleTest` ties through `SongIO`; `BeamToggleTest` does not round-trip beams; `GraceNoteLyricRoundTripTest` parses `lyricsypos` without asserting it). Six of seven range-element serializers (beams, tuplets, endings, crescendos, diminuendos, trills) have zero coverage at any level, and the shared `forEachSegment` parser is untested. `ViewIO` is better served by a genuine `ViewIOTest`, but `writeView` is never called by any test (write path entirely untested), one test is an outright tautology, and the legacy-tolerance test asserts only `isNotNull()`.
 
