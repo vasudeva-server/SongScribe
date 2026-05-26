@@ -22,13 +22,32 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 class SelectableUIActionTest extends MainFrameMockTest {
+
+    private MockedStatic<Prefs> prefsMock;
+
+    @BeforeEach
+    void setUpPrefs() {
+        prefsMock = mockStatic(Prefs.class);
+    }
+
+    @AfterEach
+    void tearDownPrefs() {
+        prefsMock.close();
+    }
 
     // -- isSelected() defaults false on construction --
 
@@ -40,5 +59,34 @@ class SelectableUIActionTest extends MainFrameMockTest {
         };
 
         assertThat(action.isSelected()).isFalse();
+    }
+
+    // Row 43: reset() sets selected to false
+
+    @Test
+    void testResetSetsSelectedToFalse() {
+        var action = new SelectableUIAction(mainFrame(), "Test", "test-cmd") {
+            @Override
+            public void actionPerformed(ActionEvent e) {}
+        };
+
+        action.setSelected(true);
+        action.reset();
+
+        assertThat(action.isSelected()).isFalse();
+    }
+
+    // Row 44: prefsKey ctor calls setSelected(Prefs.getBoolean(prefsKey)) when key non-null
+
+    @Test
+    void testPrefsKeyCtorSetsSelectedFromPrefs() {
+        prefsMock.when(() -> Prefs.getBoolean(PrefsKey.CONTROL)).thenReturn(true);
+
+        var action = new SelectableUIAction(mainFrame(), "Test", null, 0, "test-cmd", null, PrefsKey.CONTROL) {
+            @Override
+            public void actionPerformed(ActionEvent e) {}
+        };
+
+        assertThat(action.isSelected()).isTrue();
     }
 }
