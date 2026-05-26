@@ -21,16 +21,16 @@
 | StaffElementIO | `writeElement` — syllabic→single/begin/middle/end; null→"single" | unit | `StaffElementIOTest.LyricSyllabicSerialization` (SINGLE/BEGIN/MIDDLE/END); null non-carrier enforced by `Lyric` compact constructor (dead write path) | adequate | keep | ✅ |
 | StaffElementIO | `writeElement` — compound=true appends `COMPOUND_WORD_MARKER` to `<text>` | unit | `SongIOTest.testRoundTripPerNoteLyrics` | adequate | keep | — |
 | StaffElementIO | `writeElement` — Extend.START emits `<extend type="start"/>` inside lyric | unit | `SongIOTest.testRoundTripPerNoteLyrics`, `testRoundTripMelismaWithStopCarrier` | adequate | keep | — |
-| StaffElementIO | `writeElement` — multi-verse lyric (verse 2) round-trips w/ `number` attribute | unit | — | missing | two Lyric entries at verse 1 and 2 | ⬜ |
-| StaffElementIO | `extendTypeAttr(NONE)` throws `IllegalArgumentException` | unit | — | missing | assert IAE (unguarded caller crash today) | ⬜ |
+| StaffElementIO | `writeElement` — multi-verse lyric (verse 2) round-trips w/ `number` attribute | unit | — | missing | two Lyric entries at verse 1 and 2 | ✅ |
+| StaffElementIO | `extendTypeAttr(NONE)` throws `IllegalArgumentException` | unit | — | missing | assert IAE (unguarded caller crash today) | ✅ |
 | StaffElementIO | `parseExtendType(null)` → START (legacy bare `<extend/>`) | unit | `SongIOTest.testLegacyExtendTagWithoutTypeLoadsAsStart` | adequate | keep | — |
 | StaffElementIO | `parseExtendType("stop")` → STOP | unit | `SongIOTest.testMusicXmlStopExtendLoadsAsStopCarrier` | adequate | keep | — |
-| StaffElementIO | `parseExtendType("continue")` → CONTINUE | unit | — | missing | `<extend type="continue"/>` mid-melisma → CONTINUE carrier | ⬜ |
-| StaffElementIO | `parseExtendType(unknown)` → START (default) | unit | — | missing | `<extend type="bogus"/>` → START | ⬜ |
-| StaffElementIO | `ACCIDENTAL_MAP` includes `DOUBLE_SHARP` and `DOUBLESHARP` (no-underscore alias) | unit | — | missing | round-trip each Accidental incl. compound legacy names | ⬜ |
+| StaffElementIO | `parseExtendType("continue")` → CONTINUE | unit | — | missing | `<extend type="continue"/>` mid-melisma → CONTINUE carrier | ✅ |
+| StaffElementIO | `parseExtendType(unknown)` → START (default) | unit | — | missing | `<extend type="bogus"/>` → START | ✅ |
+| StaffElementIO | `ACCIDENTAL_MAP` includes `DOUBLE_SHARP` and `DOUBLESHARP` (no-underscore alias) | unit | — | missing | round-trip each Accidental incl. compound legacy names | ✅ |
 | StaffElementIO | `ACCIDENTAL_MAP` unknown name → IAE wrapped in `SAXException` | unit | `StaffElementIOTest.InvalidMapLookups.testUnknownAccidentalThrowsMeaningfulError` | adequate | keep | — |
-| StaffElementIO | `startElement10` — `NEWLINE`→`where=null` (ignored); `LINE`→SINGLE_BARLINE; `GRACESEMIQUAVER*`→GRACE_QUAVER | unit | — | missing | v1.0 type-alias tests | ⬜ |
-| StaffElementIO | `startElement11` — `VERTICALLINE`→SINGLE_BARLINE; `GRACE_SEMIQUAVER*`→GRACE_QUAVER | unit | — | missing | v1.1 type-alias tests | ⬜ |
+| StaffElementIO | `startElement10` — `NEWLINE`→`where=null` (ignored); `LINE`→SINGLE_BARLINE; `GRACESEMIQUAVER*`→GRACE_QUAVER | unit | — | missing | v1.0 type-alias tests | ✅ |
+| StaffElementIO | `startElement11` — `VERTICALLINE`→SINGLE_BARLINE; `GRACE_SEMIQUAVER*`→GRACE_QUAVER | unit | — | missing | v1.1 type-alias tests | ✅ |
 | StaffElementIO | `endElement11` — legacy `<ypos>` and `<staffposition>` both → `setStaffPosition` | unit | — | missing | v1.0 `<ypos>` yields correct staffPosition | ⬜ |
 | StaffElementIO | `endElement11` — legacy `<volume>LOUDER</volume>` → ACCENT articulation | unit | — | missing | write test | ⬜ |
 | StaffElementIO | `endElement11` — `<glissando>` numeric content (legacy) → CONNECTED | unit | — | missing | `<glissando>5</glissando>` → CONNECTED | ⬜ |
