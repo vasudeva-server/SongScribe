@@ -48,9 +48,8 @@ Then perform these steps once:
    d. State which section file + rows the chunk covers.
 
 2. **Delegate to ONE fresh worker** (model: Sonnet by default; **Opus** for heavy
-   pure-logic and for `inadequate` weak-but-green rewrites). **Do NOT use a
-   worktree** (`isolation: "worktree"` is forbidden); the worker operates directly
-   on `develop`. Its prompt MUST begin with `MANDATORY: Read .agents/rules/serena.md`.
+   pure-logic and for `inadequate` weak-but-green rewrites). Its prompt MUST begin
+   with `MANDATORY: Read .agents/rules/serena.md`.
    Give it the exact ⬜ rows, the
    target test file, and instruct it to: read the production class + existing test
    + the testing guides; implement each row's `action` (write `missing`,
