@@ -362,3 +362,9 @@ TupletTest.testGetElementCountReturnsTripletGrade	1f-ornaments-dynamics-misc	get
 TupletTest.testGetElementCountReturnsQuintupletGrade	1f-ornaments-dynamics-misc	getElementCount grade=5
 TupletTest.GetSpanWidthSs.testGetSpanWidthSsClampedToMinimumWhenGeometryIsTooNarrow	1f-ornaments-dynamics-misc	getSpanWidthSs clamp branch
 TupletTest.GetSpanWidthSs.testGetSpanWidthSsReturnsGeometryWhenLargerThanMinimum	1f-ornaments-dynamics-misc	getSpanWidthSs geometry branch
+LyricTest.testInvariantRejectsCompoundOnContinueCarrier	1f-ornaments-dynamics-misc	ctor rejects compound=true on CONTINUE carrier
+AttributionTest.testCtorSetsAttributionMarginBottomSs	1f-ornaments-dynamics-misc	ctor sets ATTRIBUTION_MARGIN_BOTTOM_SS
+AttributionTest.testGetContentDimensionsThrowUnsupportedOperationException	1f-ornaments-dynamics-misc	getContentWidth/HeightSs/Px() all throw UnsupportedOperationException
+AttributionTest.testIsRightAlignedDefaultTrueAndRoundTrip	1f-ornaments-dynamics-misc	isRightAligned default true + round-trip
+EndingValidationResultTest.testInvalidReturnsIsValidFalse	1f-ornaments-dynamics-misc	invalid() → isValid false
+EndingValidationResultTest.testValidReturnsIsValidTrueAndAccessorsMatchInputs	1f-ornaments-dynamics-misc	valid(action, start, end) → isValid true + all 3 accessors
