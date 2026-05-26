@@ -384,3 +384,8 @@ XMLTest.testWriteEndTagProducesCloseTag	2a-orchestration-xml	writeEndTag → </t
 XMLTest.testWriteTagsRespectIndent	2a-orchestration-xml	writeEmptyTag/Begin/EndTag indented
 XMLTest.testSetIndentFourProducesFourSpacePrefix	2a-orchestration-xml	setIndent(4) → 4-space prefix
 XMLTest.testWriteValueRoundTripViaXMLParser	2a-orchestration-xml	writeValue round-trip SAX parse with specials
+SongLoadResultTest.testSongOrThrowOnSuccessReturnsSong	2a	row 51: Success branch returns same instance
+SongLoadResultTest.testSongOrThrowOnIoErrorThrowsIOException	2a	row 52: IoError branch throws wrapped IOException
+SongLoadResultTest.testSongOrThrowOnParseErrorThrowsSAXException	2a	row 53: ParseError branch throws wrapped SAXException
+SongLoadResultTest.testSongOrThrowOnNewerVersionThrowsNewerVersionException	2a	row 54: NewerVersion branch throws NewerVersionException
+SongLoadResultTest.testSongOrThrowOnLineWidthTooLargeThrowsIOExceptionWithBothInchValues	2a	row 55: LineWidthTooLarge throws IOException with actualInches and maxInches in message
