@@ -51,9 +51,9 @@ public final class LineIO {
     static final String XML_TEMPO_CHANGE_YPOS = "tempochangeypos";
     static final String XML_BEAT_CHANGE_YPOS = "beatchangeypos";
     static final String XML_TRILL_YPOS = "trillypos";
-    private static final String XML_BEAMINGS = "beamings";
-    private static final String XML_TIES = "ties";
-    private static final String XML_TRIPLETS = "triplets"; // the old version of triplets
+    static final String XML_BEAMINGS = "beamings";
+    static final String XML_TIES = "ties";
+    static final String XML_TRIPLETS = "triplets"; // the old version of triplets
     private static final String XML_TUPLETS = "tuplets";
     static final String XML_FSENDINGS = "fsendings";
     private static final String XML_NOTES = "notes";

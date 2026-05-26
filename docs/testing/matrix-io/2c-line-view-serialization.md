@@ -17,14 +17,14 @@
 | LineIO | `endElement11` — `<keys>` → `setKeyAccidentalCount` | unit | `SongIOTest.LegacyMigrationWiring` (incidental, not asserted at line level) | inadequate | `<keys>5</keys>` → `getKeyAccidentalCount()==5` | ✅ |
 | LineIO | `endElement11` — `<keytype>` → `setKeyType` | unit | — | missing | `<keytype>FLATS</keytype>` → `KeyType.FLATS` | ✅ |
 | LineIO | `endElement11` — `<notedistchange>` → `changeElementSpacingRatio` | unit | — | missing | known float → `getElementSpacingRatio()` | ✅ |
-| LineIO | `endElement11` — `<lyricsypos>` → `setLyricsYPosSs` | unit | `GraceNoteLyricRoundTripTest` (parsed, never asserted) | inadequate | assert `getLyricsYPosSs()==5.0` | ⬜ |
-| LineIO | `endElement11` — legacy Y-pos tags → correct setters (backward compat) | unit | — | missing | one test per legacy tag | ⬜ |
-| LineIO | `endElement11` — silently ignores `<slurs>` | unit | — | missing | no exception, line unaffected | ⬜ |
-| LineIO | beam round-trip (`parseBeamPairs`+`createBeamsFromPending`) | unit | `BeamToggleTest` (does not round-trip beams) | missing | round-trip → `findBeamAt(0)` correct anchor/end | ⬜ |
-| LineIO | `createBeamsFromPending` skips out-of-range pairs (anchor<0, end≥count, anchor>end) | unit | — | missing | malformed pairs → zero beams, no exception | ⬜ |
+| LineIO | `endElement11` — `<lyricsypos>` → `setLyricsYPosSs` | unit | `GraceNoteLyricRoundTripTest` (parsed, never asserted) | inadequate | assert `getLyricsYPosSs()==5.0` | ✅ |
+| LineIO | `endElement11` — legacy Y-pos tags → correct setters (backward compat) | unit | — | missing | one test per legacy tag | ✅ |
+| LineIO | `endElement11` — silently ignores `<slurs>` | unit | — | missing | no exception, line unaffected | ✅ |
+| LineIO | beam round-trip (`parseBeamPairs`+`createBeamsFromPending`) | unit | `BeamToggleTest` (does not round-trip beams) | missing | round-trip → `findBeamAt(0)` correct anchor/end | ✅ |
+| LineIO | `createBeamsFromPending` skips out-of-range pairs (anchor<0, end≥count, anchor>end) | unit | — | missing | malformed pairs → zero beams, no exception | ✅ |
 | LineIO | tie round-trip (`parseTiePairs`+`createTiesFromPendingPairs`) | unit | `TieToggleTest.testTiePersistsThroughSaveLoad` | adequate | keep | — |
-| LineIO | `createTiesFromPendingPairs` — no bounds guard (unlike beams) → AIOOBE on out-of-range | unit | — | missing | malformed tie pair → verify throws/skips; see production observation | ⬜ |
-| LineIO | tuplet — grade defaults to 3 when absent (legacy `<triplets>`) | unit | — | missing | `<triplets>0,2;</triplets>` → grade=3 | ⬜ |
+| LineIO | `createTiesFromPendingPairs` — no bounds guard (unlike beams) → AIOOBE on out-of-range | unit | — | missing | malformed tie pair → verify throws/skips; see production observation | ✅ |
+| LineIO | tuplet — grade defaults to 3 when absent (legacy `<triplets>`) | unit | — | missing | `<triplets>0,2;</triplets>` → grade=3 | ✅ |
 | LineIO | tuplet — explicit non-3 grade round-trip | unit | — | missing | `<tuplets>0,4,5;</tuplets>` → grade=5 | ⬜ |
 | LineIO | tuplet — `verticalPositionSs` round-trip (non-zero) | unit | — | missing | `<tuplets>0,2,3,7;</tuplets>` → vertPos=7 | ⬜ |
 | LineIO | `createTupletsFromPending` skips out-of-range pairs | unit | — | missing | analogous to beam bounds test | ⬜ |

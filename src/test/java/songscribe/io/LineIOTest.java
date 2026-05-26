@@ -21,6 +21,7 @@
 package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
 
 import java.io.PrintWriter;
@@ -45,6 +46,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.layout.Ending;
@@ -516,5 +518,227 @@ class LineIOTest extends UnitTest {
             if (parsedLine == null) return;
             assertThat(parsedLine.getElementSpacingRatio()).isEqualTo(SPACING_RATIO);
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndElement11LyricsYPos — row 20
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndElement11LyricsYPos {
+
+        private static final double LYRICS_YPOS = 5.0;
+
+        @Test
+        void testLyricsyposTagSetsLyricsYPosSs() {
+            var parsedLine = parseLineTag(LineIO.XML_LYRICS_YPOS, String.valueOf(LYRICS_YPOS));
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.getLyricsYPosSs()).isEqualTo(LYRICS_YPOS);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndElement11LegacyYPosTags — row 21
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndElement11LegacyYPosTags {
+
+        private static final int YPOS_PX = 42;
+
+        @Test
+        void testBeatchangeyposTagSetsBeatChangeYPosPx() {
+            var parsedLine = parseLineTag(LineIO.XML_BEAT_CHANGE_YPOS, String.valueOf(YPOS_PX));
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.getBeatChangeYPosPx()).isEqualTo(YPOS_PX);
+        }
+
+        @Test
+        void testFsendingyposTagSetsFirstSecondEndingYPosPx() {
+            var parsedLine = parseLineTag(LineIO.XML_FSENDING_YPOS, String.valueOf(YPOS_PX));
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.getFirstSecondEndingYPosPx()).isEqualTo(YPOS_PX);
+        }
+
+        @Test
+        void testTempochangeyposTagSetsTempoChangeYPosPx() {
+            var parsedLine = parseLineTag(LineIO.XML_TEMPO_CHANGE_YPOS, String.valueOf(YPOS_PX));
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.getTempoChangeYPosPx()).isEqualTo(YPOS_PX);
+        }
+
+        @Test
+        void testTrillyposTagSetsTrillYPosPx() {
+            var parsedLine = parseLineTag(LineIO.XML_TRILL_YPOS, String.valueOf(YPOS_PX));
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.getTrillYPosPx()).isEqualTo(YPOS_PX);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndElement11SlursIgnored — row 22
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndElement11SlursIgnored {
+
+        @Test
+        void testSlursTagSilentlyIgnored() {
+            // <slurs> is a removed feature; the parser must silently ignore it
+            var parsedLine = parseLineTag("slurs", "0,1;");
+
+            // No exception thrown and line was returned normally
+            assertThat(parsedLine).isNotNull();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // BeamRoundTrip — row 23
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class BeamRoundTrip {
+
+        @Test
+        void testBeamRoundTripPreservesAnchorAndEnd() {
+            var elements = lineWith(ElementType.QUAVER, ElementType.QUAVER, ElementType.QUAVER);
+            var beam = new Beam(elements.getElement(0), elements.getElement(2));
+            elements.addRangeElement(beam);
+
+            var serialized = LineIO.beamsToString(elements.findRangeElements(Beam.class));
+
+            // Feed into a reader with matching notes to reconstruct
+            var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER, ElementType.QUAVER);
+            feedTag(reader, LineIO.XML_BEAMINGS, serialized);
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var foundBeam = parsedLine.findBeamAt(0);
+            assertThat(foundBeam).isNotNull();
+            if (foundBeam == null) return;
+            assertThat(foundBeam.getAnchorElementIndex()).isEqualTo(0);
+            assertThat(foundBeam.getEndElementIndex()).isEqualTo(2);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // CreateBeamsFromPendingOutOfRange — row 24
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class CreateBeamsFromPendingOutOfRange {
+
+        @Test
+        void testOutOfRangePairsProduceZeroBeams() {
+            // Line has 2 elements (indices 0-1); supply three malformed pairs:
+            //   anchor < 0, end >= count, anchor > end
+            var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER);
+
+            // anchor=-1 (anchor<0), end=5 (>=count), anchor=1 end=0 (anchor>end)
+            feedTag(reader, LineIO.XML_BEAMINGS, "-1,1;0,5;1,0;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.findRangeElements(Beam.class)).isEmpty();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // CreateTiesFromPendingPairsOutOfRange — row 26
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class CreateTiesFromPendingPairsOutOfRange {
+
+        @Test
+        void testOutOfRangeTiePairThrowsIndexOutOfBoundsException() {
+            // createTiesFromPendingPairs has no bounds guard — IndexOutOfBoundsException
+            // is expected when a pair references an index beyond the element count.
+            // Line.getElement() uses ArrayList.get() which throws IndexOutOfBoundsException.
+            var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER);
+            feedTag(reader, LineIO.XML_TIES, "0,5;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(IndexOutOfBoundsException.class);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // TupletLegacyTripletsDefaultGrade — row 27
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class TupletLegacyTripletsDefaultGrade {
+
+        private static final int EXPECTED_GRADE = 3;
+
+        @Test
+        void testLegacyTripletsTagDefaultsGradeToThree() {
+            // <triplets> format omits grade; parseTupletData defaults to 3
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_TRIPLETS, "0,2;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var tuplets = parsedLine.findRangeElements(Tuplet.class);
+            assertThat(tuplets).hasSize(1);
+            assertThat(tuplets.getFirst().getGrade()).isEqualTo(EXPECTED_GRADE);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers for reader-based tests
+    // -------------------------------------------------------------------------
+
+    /**
+     * Creates a LineReader with the given note types already fed in (in a
+     * {@code <notes>} block). The reader is left open at WHERE.LINE,
+     * ready to accept additional tags before {@code endElement11("line")}.
+     */
+    private static LineIO.LineReader buildReaderWithNotes(ElementType... types) {
+        var emptyAttrs = new AttributesImpl();
+        var reader = new LineIO.LineReader(minimalSongMock());
+        reader.startElement11("line", emptyAttrs);
+        reader.startElement11("notes", emptyAttrs);
+
+        for (var type : types) {
+            var noteAttrs = new AttributesImpl();
+            noteAttrs.addAttribute("", "type", "type", "CDATA", type.name());
+            reader.startElement11("note", noteAttrs);
+            reader.startElement11("staffposition", emptyAttrs);
+            reader.characters("0".toCharArray(), 0, 1);
+            reader.endElement11("staffposition");
+            reader.endElement11("note");
+        }
+
+        reader.endElement11("notes");
+        return reader;
+    }
+
+    /**
+     * Feeds a single tag with text content to an open LineReader (WHERE.LINE state).
+     */
+    private static void feedTag(LineIO.LineReader reader, String tagName, String content) {
+        var emptyAttrs = new AttributesImpl();
+        reader.startElement11(tagName, emptyAttrs);
+        reader.characters(content.toCharArray(), 0, content.length());
+        reader.endElement11(tagName);
     }
 }
