@@ -518,3 +518,16 @@ LineIOTest.TrillsToString.testZeroYPosOmitsYPos	2c	row 6 — trillsToString zero
 LineIOTest.TrillsToString.testNonZeroYPosIncludesYPos	2c	row 6 — trillsToString non-zero yPos branch
 LineIOTest.TupletsToString.testZeroVertPosOmitsVertPos	2c	row 7 — tupletsToString zero vertPos branch
 LineIOTest.TupletsToString.testNonZeroVertPosIncludesVertPos	2c	row 7 — tupletsToString non-zero vertPos branch
+LineIOTest.HairpinsToString.testAllShiftsZeroOmitsShifts	2c	row 8 — hairpinsToString all-zero shifts branch
+LineIOTest.HairpinsToString.testAnyNonZeroShiftIncludesAllShifts	2c	row 8 — hairpinsToString non-zero shift branch
+LineIOTest.EndingsToString.testProducesAnchorEndPairWithoutType	2c	row 9 — endingsToString exact pair format
+LineIOTest.EndingsToString.testTypeAlwaysDeserializesAsFirstDueToBug	2c	row 9 — documents type-loss bug (always FIRST)
+LineIOTest.ForEachSegment.testEmptyStringYieldsZeroIterations	2c	row 10 — forEachSegment empty case
+LineIOTest.ForEachSegment.testSingleSegmentYieldsOneIteration	2c	row 10 — forEachSegment single case
+LineIOTest.ForEachSegment.testMultipleSegmentsYieldsOneIterationEach	2c	row 10 — forEachSegment multiple case
+LineIOTest.LineReaderStateMachine.testLineTagCreatesLineAndSetsWhereLine	2c	row 11 — LineReader state: <line> transition
+LineIOTest.LineReaderStateMachine.testNotesTagTransitionsToWhereNotes	2c	row 11 — LineReader state: <notes> transition
+LineIOTest.LineReaderStateMachine.testUnknownTagSetsLastTag	2c	row 11 — LineReader state: unknown tag sets lastTag
+LineIOTest.EndElement11Keys.testKeysTagSetsKeyAccidentalCount	2c	row 12 — <keys> → setKeyAccidentalCount
+LineIOTest.EndElement11Keytype.testKeytypeTagSetsKeyType	2c	row 13 — <keytype> → setKeyType
+LineIOTest.EndElement11NoteDist.testNotedistchangeTagSetsElementSpacingRatio	2c	row 14 — <notedistchange> → changeElementSpacingRatio
