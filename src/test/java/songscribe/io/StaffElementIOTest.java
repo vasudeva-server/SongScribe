@@ -186,6 +186,116 @@ class StaffElementIOTest extends UnitTest {
                 .contains("duration=\"CROTCHET\"")
                 .contains("beat=\"QUAVER\"");
         }
+
+        // Row 42: legacy text-content format — each valid legacy name round-trips
+        @Test
+        void testLegacyQuaverEqualsQuaverCanonicalRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithBeatChange("QUAVER_EQUALS_QUAVER"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.QUAVER, Duration.QUAVER));
+        }
+
+        @Test
+        void testLegacyQuaverEqualsQuaverNoUnderscoreRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithBeatChange("QUAVEREQUALSQUAVER"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.QUAVER, Duration.QUAVER));
+        }
+
+        @Test
+        void testLegacyDottedCrotchetEqualsMinimCanonicalRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithBeatChange("DOTTED_CROCHET_EQUALS_MINIM"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM));
+        }
+
+        @Test
+        void testLegacyDottedCrotchetEqualsMinimNoUnderscoreRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithBeatChange("DOTTEDCROCHETEQUALSMINIM"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM));
+        }
+
+        @Test
+        void testLegacyMinimEqualsDottedCrotchetCanonicalRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithBeatChange("MINIM_EQUALS_DOTTED_CROCHET"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.MINIM, Duration.CROTCHET_DOTTED));
+        }
+
+        @Test
+        void testLegacyMinimEqualsDottedCrotchetNoUnderscoreRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithBeatChange("MINIMEQUALSDOTTEDCROCHET"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.MINIM, Duration.CROTCHET_DOTTED));
+        }
+
+        @Test
+        void testLegacyCrotchetEqualsDottedCrotchetCanonicalRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithBeatChange("CROTCHET_EQUALS_DOTTED_CROCHET"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET, Duration.CROTCHET_DOTTED));
+        }
+
+        @Test
+        void testLegacyCrotchetEqualsDottedCrotchetNoUnderscoreRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithBeatChange("CROTCHETQUALSDOTTEDCROCHET"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET, Duration.CROTCHET_DOTTED));
+        }
+
+        @Test
+        void testLegacyDottedCrotchetEqualsCrotchetCanonicalRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithBeatChange("DOTTED_CROCHET_EQUALS_CROCHET"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET));
+        }
+
+        @Test
+        void testLegacyDottedCrotchetEqualsCrotchetNoUnderscoreRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithBeatChange("DOTTEDCROCHETQUALSCROCHET"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET));
+        }
+
+        // Row 43: new 2-attribute format (v2.5+) → BeatChangeAttachment created at startElement11
+        @Test
+        void testNewFormatTwoAttributesYieldsBeatChangeAttachment() throws Exception {
+            var song = parseXml(buildXmlWithBeatChangeAttributes("CROTCHET", "QUAVER"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET, Duration.QUAVER));
+        }
+
+        @Test
+        void testNewFormatDottedDurationYieldsBeatChangeAttachment() throws Exception {
+            var song = parseXml(buildXmlWithBeatChangeAttributes("CROTCHET_DOTTED", "MINIM"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+            if (attachment == null) return;
+            assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM));
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -254,9 +364,9 @@ class StaffElementIOTest extends UnitTest {
             assertThat(dynamic.getType()).isEqualTo(DynamicType.FORTE);
         }
 
-        // T32: Round-trip preserves dynamic type for all 6 UI types
+        // T32: Round-trip preserves dynamic type for all UI types, including SFORZANDO
         @ParameterizedTest
-        @EnumSource(value = DynamicType.class, names = {"PIANISSIMO", "PIANO", "MEZZO_PIANO", "MEZZO_FORTE", "FORTE", "FORTISSIMO"})
+        @EnumSource(value = DynamicType.class, names = {"PIANISSIMO", "PIANO", "MEZZO_PIANO", "MEZZO_FORTE", "FORTE", "FORTISSIMO", "SFORZANDO", "FORTEPIANO"})
         void testRoundTripPreservesDynamicType(DynamicType dynamicType) throws Exception {
             var comp1 = parseXml(buildXmlWithDynamic(dynamicType.name()));
             var comp2 = roundTrip(comp1);
@@ -478,6 +588,27 @@ class StaffElementIOTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    class InvertFractionBeamOrientationSerialization {
+
+        // Row 41: <invertfractionbeamorientation> silently ignored — no throw, no side-effect
+        @Test
+        void testInvertFractionBeamOrientationDoesNotThrow() {
+            assertThatCode(() -> parseXml(buildXmlWithNoteContent("<invertfractionbeamorientation/>")))
+                .doesNotThrowAnyException();
+        }
+
+        @Test
+        void testInvertFractionBeamOrientationProducesNoFermataAttachment() throws Exception {
+            // Verify the tag is truly ignored: it should not add a FermataAttachment
+            // (or any other recognisable attachment type that could be confused with it).
+            var song = parseXml(buildXmlWithNoteContent("<invertfractionbeamorientation/>"));
+            var note = song.getLine(0).getElement(0);
+            assertThat(note.findAttachment(FermataAttachment.class)).isNull();
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
     class LyricSyllabicSerialization {
 
         @Test
@@ -520,6 +651,57 @@ class StaffElementIOTest extends UnitTest {
             assertThat(output).contains("<syllabic>end</syllabic>");
         }
 
+        // Row 46: middle syllabic parses to MIDDLE before backfill
+        @Test
+        void testSyllabicMiddleParsesToMiddle() {
+            var attrs = new AttributesImpl();
+            attrs.addAttribute("", "type", "type", "CDATA", "CROTCHET");
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement11("note", attrs);
+
+            var lyricAttrs = new AttributesImpl();
+            lyricAttrs.addAttribute("", "number", "number", "CDATA", "1");
+            reader.startElement11("lyric", lyricAttrs);
+            reader.startElement11("syllabic", new AttributesImpl());
+            reader.characters(new char[]{'m', 'i', 'd', 'd', 'l', 'e'}, 0, "middle".length());
+            reader.endElement11("syllabic");
+            reader.startElement11("text", new AttributesImpl());
+            reader.characters(new char[]{'l', 'a'}, 0, 2);
+            reader.endElement11("text");
+            var element = reader.endElement11("lyric");
+            assertThat(element).isNull(); // not yet closed <note>
+            var note = reader.endElement11("note");
+
+            assertThat(note).isNotNull();
+            if (note == null) return;
+            assertThat(note.lyrics).hasSize(1);
+            assertThat(note.lyrics.get(0).syllabic()).isEqualTo(Lyric.Syllabic.MIDDLE);
+        }
+
+        // Row 46: absent <syllabic> defaults to SINGLE (empty lyricSyllabic hits the default branch)
+        @Test
+        void testAbsentSyllabicDefaultsToSingle() {
+            var attrs = new AttributesImpl();
+            attrs.addAttribute("", "type", "type", "CDATA", "CROTCHET");
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement11("note", attrs);
+
+            var lyricAttrs = new AttributesImpl();
+            lyricAttrs.addAttribute("", "number", "number", "CDATA", "1");
+            reader.startElement11("lyric", lyricAttrs);
+            // No <syllabic> child — lyricSyllabic stays ""
+            reader.startElement11("text", new AttributesImpl());
+            reader.characters(new char[]{'l', 'a'}, 0, 2);
+            reader.endElement11("text");
+            reader.endElement11("lyric");
+            var note = reader.endElement11("note");
+
+            assertThat(note).isNotNull();
+            if (note == null) return;
+            assertThat(note.lyrics).hasSize(1);
+            assertThat(note.lyrics.get(0).syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -557,6 +739,47 @@ class StaffElementIOTest extends UnitTest {
             assertThat(parsed.lyrics).hasSize(VERSE_TWO);
             assertThat(parsed.lyrics.get(VERSE_TWO - 1).verse()).isEqualTo(VERSE_TWO);
             assertThat(parsed.lyrics.get(VERSE_TWO - 1).text()).isEqualTo("mi");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class NewlineNullGuard {
+
+        private static AttributesImpl attrs(String type) {
+            var a = new AttributesImpl();
+            a.addAttribute("", "type", "type", "CDATA", type);
+            return a;
+        }
+
+        // Row 47: NEWLINE sets where=null; subsequent elements still parse without NPE
+        @Test
+        void testElementAfterNewlineDoesNotThrow() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement10("note", attrs("NEWLINE"));
+            // where is now null; subsequent child tags must not NPE
+            assertThatCode(() -> {
+                reader.startElement10("staffposition", new AttributesImpl());
+                reader.characters(new char[]{'0'}, 0, 1);
+                reader.endElement10("staffposition");
+            }).doesNotThrowAnyException();
+        }
+
+        @Test
+        void testEndElementAfterNewlineReturnsNull() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement10("note", attrs("NEWLINE"));
+            // endElement10 on the NEWLINE note tag returns null (no element created)
+            var result = reader.endElement10("note");
+            assertThat(result).isNull();
+        }
+
+        @Test
+        void testCharactersAfterNewlineDoesNotThrow() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement10("note", attrs("NEWLINE"));
+            assertThatCode(() -> reader.characters(new char[]{'x'}, 0, 1))
+                .doesNotThrowAnyException();
         }
     }
 
@@ -1033,6 +1256,105 @@ class StaffElementIOTest extends UnitTest {
               <view/>
             </composition>
             """.formatted(beatChangeValue);
+    }
+
+    private static String buildXmlWithBeatChangeAttributes(String duration, String beat) {
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="1.1">
+              <keys>0</keys>
+              <keytype>SHARPS</keytype>
+              <tempo>
+                <visibletempo>120</visibletempo>
+                <tempotype>CROTCHET</tempotype>
+                <tempodescription></tempodescription>
+                <showtempo>true</showtempo>
+              </tempo>
+              <songtitle>Test</songtitle>
+              <lines>
+                <line>
+                  <keyCount>0</keyCount>
+                  <keyType>SHARPS</keyType>
+                  <tempoChangeYPos>-28</tempoChangeYPos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <yPos>0</yPos>
+                      <xPos>80</xPos>
+                      <beatchange duration="%s" beat="%s" />
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """.formatted(duration, beat);
+    }
+
+    private static String buildXmlWithSyllabic(String syllabicValue) {
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="1.1">
+              <keys>0</keys>
+              <keytype>SHARPS</keytype>
+              <tempo>
+                <visibletempo>120</visibletempo>
+                <tempotype>CROTCHET</tempotype>
+                <tempodescription></tempodescription>
+                <showtempo>true</showtempo>
+              </tempo>
+              <songtitle>Test</songtitle>
+              <lines>
+                <line>
+                  <keyCount>0</keyCount>
+                  <keyType>SHARPS</keyType>
+                  <tempoChangeYPos>-28</tempoChangeYPos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                      <lyric number="1">
+                        <syllabic>%s</syllabic>
+                        <text>la</text>
+                      </lyric>
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """.formatted(syllabicValue);
+    }
+
+    private static String buildXmlWithNoSyllabic() {
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="1.1">
+              <keys>0</keys>
+              <keytype>SHARPS</keytype>
+              <tempo>
+                <visibletempo>120</visibletempo>
+                <tempotype>CROTCHET</tempotype>
+                <tempodescription></tempodescription>
+                <showtempo>true</showtempo>
+              </tempo>
+              <songtitle>Test</songtitle>
+              <lines>
+                <line>
+                  <keyCount>0</keyCount>
+                  <keyType>SHARPS</keyType>
+                  <tempoChangeYPos>-28</tempoChangeYPos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                      <lyric number="1">
+                        <text>la</text>
+                      </lyric>
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """;
     }
 
     private static String buildXmlWithExtend(String extendType) {

@@ -38,13 +38,13 @@
 | StaffElementIO | `endElement11` — `<trill>` sets `trillFlagged=true` | unit | — | missing | `isTrillFlagged()` true | ✅ |
 | StaffElementIO | `endElement11` — `<fermata>` → `FermataAttachment` | unit | — | missing | round-trip test | ✅ |
 | StaffElementIO | `endElement11` — `<stemDirectionAuto>` → `setStemDirectionAuto(false)` (inverted) | unit | — | missing | tag → `isStemDirectionAuto()==false` | ✅ |
-| StaffElementIO | `endElement11` — `<invertfractionbeamorientation>` silently ignored | unit | — | missing | no-throw + no-side-effect | ⬜ |
-| StaffElementIO | `endElement11` — legacy `<beatchange>` text-content → `fromLegacyName` | unit | `StaffElementIOTest.InvalidMapLookups.testUnknownBeatChangeThrowsMeaningfulError` (error only) | inadequate | happy paths untested; test each valid legacy name | ⬜ |
-| StaffElementIO | `startElement11` — `<beatchange>` new 2-attribute format → `BeatChangeAttachment` directly | unit | — | missing | v2.5+ duration/beat attributes | ⬜ |
+| StaffElementIO | `endElement11` — `<invertfractionbeamorientation>` silently ignored | unit | — | missing | no-throw + no-side-effect | ✅ |
+| StaffElementIO | `endElement11` — legacy `<beatchange>` text-content → `fromLegacyName` | unit | `StaffElementIOTest.InvalidMapLookups.testUnknownBeatChangeThrowsMeaningfulError` (error only) | inadequate | happy paths untested; test each valid legacy name | ✅ |
+| StaffElementIO | `startElement11` — `<beatchange>` new 2-attribute format → `BeatChangeAttachment` directly | unit | — | missing | v2.5+ duration/beat attributes | ✅ |
 | StaffElementIO | `startElement11` — `<dynamic>` unknown type → warn + skip, no attachment | unit | `StaffElementIOTest.DynamicSerialization.testUnknownDynamicType*` (2) | adequate | keep | — |
-| StaffElementIO | `startElement11` — `<dynamic>` valid types → correct `DynamicType` | unit | `StaffElementIOTest.DynamicSerialization.testRoundTripPreservesDynamicType` (6 of 8) | inadequate | `SFORZANDO`/`SFORZATO` excluded — confirm valid and add | ⬜ |
-| StaffElementIO | `getSyllabic()` — carrier→null; SINGLE/BEGIN/MIDDLE/END mappings | unit | `SongIOTest.PerNoteLyricSerialization` (partial) | inadequate | `middle` and absent-syllabic-defaulting-to-SINGLE uncovered | ⬜ |
-| StaffElementIO | `where==null` (NEWLINE) null-guard paths in endElement/characters | unit | — | missing | NEWLINE element absent; subsequent elements still parse | ⬜ |
+| StaffElementIO | `startElement11` — `<dynamic>` valid types → correct `DynamicType` | unit | `StaffElementIOTest.DynamicSerialization.testRoundTripPreservesDynamicType` (6 of 8) | inadequate | `SFORZANDO`/`SFORZATO` excluded — confirm valid and add | ✅ |
+| StaffElementIO | `getSyllabic()` — carrier→null; SINGLE/BEGIN/MIDDLE/END mappings | unit | `SongIOTest.PerNoteLyricSerialization` (partial) | inadequate | `middle` and absent-syllabic-defaulting-to-SINGLE uncovered | ✅ |
+| StaffElementIO | `where==null` (NEWLINE) null-guard paths in endElement/characters | unit | — | missing | NEWLINE element absent; subsequent elements still parse | ✅ |
 | StaffElementIO | grace-note lyric round-trip + direct-load persistence | unit | `GraceNoteLyricRoundTripTest` (2) | adequate | keep | — |
 | StaffElementIO | dynamic round-trip (6 types); no attachment when `<dynamic>` absent | unit | `StaffElementIOTest.DynamicSerialization` (2) | adequate | keep | — |
 | AnnotationIO | `writeAnnotation` — emits `<name>`/`<alignment>`/`<ypos>` | unit | `SongIOTest.testPre23ConvertsAnnotationToDynamic` (parses then migrates away) | inadequate | no text/alignment/yPosPx round-trip; write direct test | ⬜ |
