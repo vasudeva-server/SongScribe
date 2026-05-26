@@ -5,20 +5,36 @@ argument-hint: "[optional: class name or section to target instead of auto-selec
 
 Execute **exactly one** test-remediation chunk, then stop. All state is in the
 repo, so this works from any session — derive everything from files, not memory.
+**This command is safe to run in parallel across multiple sessions** — claim files
+under `docs/testing/.claims/` coordinate which chunks are in-flight.
 
 **First, read `docs/testing/REMEDIATION.md`** (the settled procedure, decisions,
 chunking caps, model policy) and skim `docs/testing/remediation-ledger.md`.
 
 Then perform these steps once:
 
-1. **Select the chunk.** If `$ARGUMENTS` names a class/section, use it. Otherwise
-   pick the next package with ⬜ rows in risk-order (`dom → io → layout → util →
-   action → selection → component → message → renderer → dialog → menu →
-   lifecycle → e2e`), and within it the next class (or a group of tiny
-   same-source-dir classes) sized to the caps: **7 rows ordinary, 4 rows heavy
-   pure-logic** (geometry/MIDI/serialization math), 130K-token worker budget.
-   **Skip e2e-level rows** — they are deferred to the final batch; leave them ⬜.
-   State which section file + rows the chunk covers.
+1. **Select the chunk and claim it.**
+
+   a. Scan `docs/testing/.claims/` (create the directory if absent). Each `.lock`
+      file is named after the class(es) it reserves — skip any class that already
+      has a claim file. This prevents two parallel sessions from picking the same
+      chunk.
+
+   b. If `$ARGUMENTS` names a class/section, use it (verify it has no claim file
+      first). Otherwise pick the next package with ⬜ rows in risk-order
+      (`dom → io → layout → util → action → selection → component → message →
+      renderer → dialog → menu → lifecycle → e2e`), and within it the next
+      unclaimed class (or a group of tiny same-source-dir classes) sized to the
+      caps: **7 rows ordinary, 4 rows heavy pure-logic** (geometry/MIDI/
+      serialization math), 130K-token worker budget.
+      **Skip e2e-level rows** — they are deferred to the final batch; leave them ⬜.
+
+   c. **Immediately write the claim file** before doing any other work:
+      `docs/testing/.claims/<ClassName>.lock` (or `<ClassA>+<ClassB>.lock` for a
+      batch). Content: section file path, row numbers, and ISO-8601 timestamp.
+      Writing this file is the reservation — do it before spawning the worker.
+
+   d. State which section file + rows the chunk covers.
 
 2. **Delegate to ONE fresh worker** (model: Sonnet by default; **Opus** for heavy
    pure-logic and for `inadequate` weak-but-green rewrites). **Do NOT use a
@@ -39,9 +55,13 @@ Then perform these steps once:
    `python3 docs/testing/gen_ledger.py`.
 
 4. **Commit & stop.** Verify the worker's tests compiled and passed; if anything
-   failed and is unresolved, STOP and report instead of committing. Otherwise
-   commit to `develop` via the `/commit-commands:commit` skill (message scope:
-   the class/section just remediated). Then STOP and report: rows done this chunk,
-   updated ledger total, and the next chunk that `/remediate` will pick up. Do NOT
-   schedule a wakeup or otherwise continue; a future manual `/remediate` invocation
-   handles the next chunk.
+   failed and is unresolved, delete the claim file and STOP and report instead of
+   committing. Otherwise commit to `develop` via the `/commit-commands:commit`
+   skill (message scope: the class/section just remediated). After a successful
+   commit, **delete the claim file** created in step 1c. Then STOP and report:
+   rows done this chunk, updated ledger total, and the next chunk that
+   `/remediate` will pick up. Do NOT schedule a wakeup or otherwise continue; a
+   future manual `/remediate` invocation handles the next chunk.
+
+> **Stale claims:** if a `.lock` file exists but its session is no longer running
+> (e.g., it crashed), delete the file manually before running `/remediate` again.
