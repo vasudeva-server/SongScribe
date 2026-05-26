@@ -48,16 +48,16 @@
 | ControlAction | `actionPerformed` — posts `ControlDidChangeNotification` with correct control | unit | — | missing | write test: subscribe handler, call `actionPerformed`; assert correct notification posted | ✅ |
 | ControlAction | Factory methods bind correct `Control` enum value | unit | — | missing | write test asserting `createMouseControlAction().control == Control.MOUSE` etc. | ✅ |
 | ActionGroup | `setSelected(action, true)` deselects previous, updates `selected` | unit | `DynamicMarkingActionTest.ActionGroupBehavior.testSelectingOneActionDeselectsPrevious` | adequate | keep | — |
-| ActionGroup | `setSelected(action, false)` on currently-selected clears `selected` | unit | — | missing | write test: `group.setSelected(a, true); group.setSelected(a, false); assertThat(group.getSelected()).isNull()` | ⬜ |
-| ActionGroup | `setSelected(action, true)` captures `previousSelected` | unit | — | missing | write test: select A; select B; assert `getPreviousSelected() == A` | ⬜ |
+| ActionGroup | `setSelected(action, false)` on currently-selected clears `selected` | unit | `ActionGroupTest.testSetSelectedFalseOnCurrentSelectionClearsSelected` | adequate | add | ✅ |
+| ActionGroup | `setSelected(action, true)` captures `previousSelected` | unit | `ActionGroupTest.testSetSelectedCapturesPreviousSelected` | adequate | add | ✅ |
 | ActionGroup | `clearSelection` sets `selected` to null, deselects action | unit | `DynamicMarkingActionTest.ActionGroupBehavior.testClearSelectionClearsAll` | adequate | keep | — |
 | ActionGroup | `reset` with default action → selects default | unit | `ActionsResetOnDocumentLoadTest` (via `DURATION_ACTION_GROUP.reset` → quarter note) | adequate (indirect) | keep | — |
 | ActionGroup | `reset` without default → clears selection | unit | `ActionsResetOnDocumentLoadTest` (e.g. ACCIDENTAL_ACTION_GROUP.reset clears) | adequate (indirect) | keep | — |
-| ActionGroup | `add` is idempotent (adding same action twice doesn't duplicate) | unit | — | missing | write test: add same action twice; assert `getActions().size() == 1` | ⬜ |
-| ActionGroup | `insert(index, action)` inserts at correct index; idempotent | unit | — | missing | write test | ⬜ |
-| ActionGroup | `remove(action)` removes from list and detaches property listener | unit | — | missing | write test: add action, remove it; select it; assert `getSelected() == null` (listener detached) | ⬜ |
-| ActionGroup | `contains(action)` true after add, false otherwise | unit | — | missing | write test | ⬜ |
-| ActionGroup | `anySelected` — true when at least one action selected | unit | — | missing | write test: group with two Selectable actions; select one; assert true; clear; assert false | ⬜ |
+| ActionGroup | `add` is idempotent (adding same action twice doesn't duplicate) | unit | `ActionGroupTest.AddAndInsert.testAddIdempotentDoesNotDuplicateAction` | adequate | add | ✅ |
+| ActionGroup | `insert(index, action)` inserts at correct index; idempotent | unit | `ActionGroupTest.AddAndInsert.testInsertAtIndexPlacesActionCorrectly`, `testInsertIdempotentDoesNotDuplicateAction` | adequate | add | ✅ |
+| ActionGroup | `remove(action)` removes from list and detaches property listener | unit | `ActionGroupTest.RemoveAndContains.testRemoveDetachesPropertyListenerSoSelectIsIgnored` | adequate | add | ✅ |
+| ActionGroup | `contains(action)` true after add, false otherwise | unit | `ActionGroupTest.RemoveAndContains.testContainsTrueAfterAdd`, `testContainsFalseForActionNotAdded` | adequate | add | ✅ |
+| ActionGroup | `anySelected` — true when at least one action selected | unit | `ActionGroupTest.AnySelected.testAnySelectedTrueWhenOneActionSelected`, `testAnySelectedFalseWhenNoActionSelected`, `testAnySelectedFalseAfterClearSelection` | adequate | add | ✅ |
 | ActionGroup | `selectNext` — wraps from last to first | unit | — | missing | write test | ⬜ |
 | ActionGroup | `selectNext` — advances to next when selected is not last | unit | — | missing | write test | ⬜ |
 | ActionGroup | `selectNext` — when selected is null → selects first | unit | — | missing | write test | ⬜ |
