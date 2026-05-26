@@ -15,10 +15,10 @@
 | LayoutEngine | unbeamed note above middle line (sp≤0) → stem down | unit | — | missing | crotchet at sp=-2 → stem-down | ✅ |
 | LayoutEngine | unbeamed grace note always stem up | unit | — | missing | grace at sp=-4 still stem-up, length `GRACE_NOTE_STEM_LENGTH_SS` | ✅ |
 | LayoutEngine | manual stem override not auto-corrected | unit | — | missing | `upper=false`,`stemDirectionAuto=false` at sp=4 → stays down | ✅ |
-| LayoutEngine | beamed group auto-direction (above→down, below→up) | unit | — | missing | two tests on `BeamLayout.stemsUp()` | ⬜ |
-| LayoutEngine | beamed group manual override: first explicit direction wins for whole group | unit | — | missing | first note `upper=true` → `stemsUp=true` | ⬜ |
-| LayoutEngine | beam slope hyperbolic dampening clamps below `BEAM_SLOPE_MAX` | unit | — | missing | large pitch diff → `abs(slope) < BEAM_SLOPE_MAX` | ⬜ |
-| LayoutEngine | beam slope-reduction loop: all stems ≥ `MIN_STEM_SS` | unit | — | missing | large contour → every stem ≥ MIN_STEM_SS | ⬜ |
+| LayoutEngine | beamed group auto-direction (above→down, below→up) | unit | — | missing | two tests on `BeamLayout.stemsUp()` | ✅ |
+| LayoutEngine | beamed group manual override: first explicit direction wins for whole group | unit | — | missing | first note `upper=true` → `stemsUp=true` | ✅ |
+| LayoutEngine | beam slope hyperbolic dampening clamps below `BEAM_SLOPE_MAX` | unit | — | missing | large pitch diff → `abs(slope) < BEAM_SLOPE_MAX` | ✅ |
+| LayoutEngine | beam slope-reduction loop: all stems ≥ `MIN_STEM_SS` | unit | — | missing | large contour → every stem ≥ MIN_STEM_SS | ✅ |
 | LayoutEngine | flat-beam snapping: slope<0.05 snaps `startYSs` to 0.5 grid | unit | — | missing | equal-position quavers → startYSs multiple of 0.5 | ⬜ |
 | LayoutEngine | beam thickening: non-zero slope → `thickeningSs` in `(0, BEAM_DEPTH_SS*0.088]` | unit | — | missing | sloped group → bounded thickening | ⬜ |
 | LayoutEngine | stub direction: isolated semiquaver gets stub-right | unit | — | missing | quaver+semiquaver beam → `stubRight=true` | ⬜ |

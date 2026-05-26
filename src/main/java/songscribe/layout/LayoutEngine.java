@@ -76,7 +76,7 @@ public class LayoutEngine {
     // Beam geometry constants (staff-space units unless noted)
     private static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
     private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
-    private static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
+    static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
     private static final double MIN_STEM_SS = NoteGeometry.STEM_LENGTH_SS;
 
     // Tie geometry constants (MuseScore port, staff-space units unless noted)

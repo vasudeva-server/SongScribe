@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Beam;
 import songscribe.dom.Clef;
 import songscribe.dom.ScaleContext;
 import songscribe.font.DocumentFonts;
@@ -61,6 +62,29 @@ class LayoutEngineTest extends UnitTest {
 
     /** Staff position below the middle line, used for the manual-override test. */
     private static final int SP_BELOW_MIDDLE_MANUAL = 4;
+
+    // Row 18 — beam auto-direction constants
+    /** Staff position above the middle line; pair makes min+max < 0 → stemsDown. */
+    private static final int SP_BEAM_ABOVE_1 = -2;
+    /** Staff position above the middle line; pair makes min+max < 0 → stemsDown. */
+    private static final int SP_BEAM_ABOVE_2 = -4;
+
+    /** Staff position below the middle line; pair makes min+max > 0 → stemsUp. */
+    private static final int SP_BEAM_BELOW_1 = 2;
+    /** Staff position below the middle line; pair makes min+max > 0 → stemsUp. */
+    private static final int SP_BEAM_BELOW_2 = 4;
+
+    // Row 20 — slope dampening constant
+    /** Extreme below-midline sp; creates a large raw slope that the hyperbolic dampener saturates. */
+    private static final int SP_SLOPE_EXTREME_LOW = 16;
+
+    // Row 21 — stem-reduction invariant constants
+    /** First note of the non-linear beam contour; also the anchor (min sp → highest pitch). */
+    private static final int SP_CONTOUR_FIRST = 2;
+    /** Middle note of the non-linear beam contour; positioned below the linear interpolation. */
+    private static final int SP_CONTOUR_MIDDLE = 8;
+    /** Last note of the non-linear beam contour. */
+    private static final int SP_CONTOUR_LAST = 4;
 
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
@@ -255,5 +279,111 @@ class LayoutEngineTest extends UnitTest {
         var elementYSs = StaffExtents.spToSs(SP_BELOW_MIDDLE_MANUAL);
         assertThat(stem.topYSs()).describedAs("manual stem-down top Y").isCloseTo(elementYSs, within(TOLERANCE));
         assertThat(stem.bottomYSs()).describedAs("manual stem-down bottom Y").isCloseTo(elementYSs + NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
+    }
+
+    // T12a: Beamed group with all notes above the middle line → auto stem direction is down (stemsUp=false)
+    @Test
+    void testBeamedGroupAutoDirectionAboveMidlineGetsStemsDown() {
+        var line = detachedLine();
+        var note1 = ElementType.QUAVER.newInstance();
+        note1.setStaffPosition(SP_BEAM_ABOVE_1);
+        var note2 = ElementType.QUAVER.newInstance();
+        note2.setStaffPosition(SP_BEAM_ABOVE_2);
+        line.addElement(note1);
+        line.addElement(note2);
+        line.addBeaming(new Beam(note1, note2));
+
+        var beam = require(line.findBeamAt(0), "Beam at index 0");
+        var result = require(engine().layout(line), "LayoutResult");
+        var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
+
+        assertThat(beamLayout.stemsUp()).describedAs("stemsUp for group with all sp<0").isFalse();
+    }
+
+    // T12b: Beamed group with all notes below the middle line → auto stem direction is up (stemsUp=true)
+    @Test
+    void testBeamedGroupAutoDirectionBelowMidlineGetsStemsUp() {
+        var line = detachedLine();
+        var note1 = ElementType.QUAVER.newInstance();
+        note1.setStaffPosition(SP_BEAM_BELOW_1);
+        var note2 = ElementType.QUAVER.newInstance();
+        note2.setStaffPosition(SP_BEAM_BELOW_2);
+        line.addElement(note1);
+        line.addElement(note2);
+        line.addBeaming(new Beam(note1, note2));
+
+        var beam = require(line.findBeamAt(0), "Beam at index 0");
+        var result = require(engine().layout(line), "LayoutResult");
+        var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
+
+        assertThat(beamLayout.stemsUp()).describedAs("stemsUp for group with all sp>0").isTrue();
+    }
+
+    // T13: First note with manual stem override (upper=true) wins over auto stemsDown for the whole group
+    @Test
+    void testBeamedGroupFirstNoteManualOverrideWinsForStemsUp() {
+        var line = detachedLine();
+        var note1 = ElementType.QUAVER.newInstance();
+        note1.setStaffPosition(SP_BEAM_ABOVE_1);
+        note1.setStemDirectionAuto(false);
+        note1.setUpper(true);           // manual: force stems up
+        var note2 = ElementType.QUAVER.newInstance();
+        note2.setStaffPosition(SP_BEAM_ABOVE_2); // auto would contribute to stemsDown
+        line.addElement(note1);
+        line.addElement(note2);
+        line.addBeaming(new Beam(note1, note2));
+
+        var beam = require(line.findBeamAt(0), "Beam at index 0");
+        var result = require(engine().layout(line), "LayoutResult");
+        var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
+
+        assertThat(beamLayout.stemsUp()).describedAs("manual upper=true on first note overrides auto stemsDown").isTrue();
+    }
+
+    // T14: Beam slope with a very large pitch difference is dampened below BEAM_SLOPE_MAX
+    @Test
+    void testBeamSlopeWithLargePitchDifferenceIsDampened() {
+        var line = detachedLine();
+        var note1 = ElementType.QUAVER.newInstance();
+        note1.setStaffPosition(SP_SLOPE_EXTREME_LOW); // very low (far below middle line)
+        var note2 = ElementType.QUAVER.newInstance();
+        note2.setStaffPosition(0);                    // middle line (sp=0)
+        line.addElement(note1);
+        line.addElement(note2);
+        line.addBeaming(new Beam(note1, note2));
+
+        var beam = require(line.findBeamAt(0), "Beam at index 0");
+        var result = require(engine().layout(line), "LayoutResult");
+        var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
+
+        assertThat(Math.abs(beamLayout.slope()))
+            .describedAs("dampened slope absolute value must be strictly below the saturation limit")
+            .isLessThan(LayoutEngine.BEAM_SLOPE_MAX);
+    }
+
+    // T15: Every stem in a beamed group is at least the minimum stem length after slope reduction
+    @Test
+    void testBeamedGroupAllStemsAtLeastMinimumStemLength() {
+        var line = detachedLine();
+        var note1 = ElementType.QUAVER.newInstance();
+        note1.setStaffPosition(SP_CONTOUR_FIRST);
+        var note2 = ElementType.QUAVER.newInstance();
+        note2.setStaffPosition(SP_CONTOUR_MIDDLE);
+        var note3 = ElementType.QUAVER.newInstance();
+        note3.setStaffPosition(SP_CONTOUR_LAST);
+        line.addElement(note1);
+        line.addElement(note2);
+        line.addElement(note3);
+        line.addBeaming(new Beam(note1, note3));
+
+        var result = require(engine().layout(line), "LayoutResult");
+
+        for (var sp : new int[]{SP_CONTOUR_FIRST, SP_CONTOUR_MIDDLE, SP_CONTOUR_LAST}) {
+            var note = (sp == SP_CONTOUR_FIRST) ? note1 : (sp == SP_CONTOUR_MIDDLE) ? note2 : note3;
+            var stem = require(result.getStemLayout(note), "StemLayout at sp=" + sp);
+            assertThat(stem.bottomYSs() - stem.topYSs())
+                .describedAs("stem length at sp=%d must be ≥ minimum stem length".formatted(sp))
+                .isGreaterThanOrEqualTo(NoteGeometry.STEM_LENGTH_SS - TOLERANCE);
+        }
     }
 }
