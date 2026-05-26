@@ -1,6 +1,6 @@
 ---
 description: Run one test-remediation chunk (auto-commit, then stop)
-argument-hint: "[optional: class name or section to target instead of auto-select]"
+argument-hint: "[optional: package number (e.g. 3), class name, or section to target]"
 ---
 
 Execute **exactly one** test-remediation chunk, then stop. All state is in the
@@ -20,14 +20,25 @@ Then perform these steps once:
       has a claim file. This prevents two parallel sessions from picking the same
       chunk.
 
-   b. If `$ARGUMENTS` names a class/section, use it (verify it has no claim file
-      first). Otherwise pick the next package with ⬜ rows in risk-order
-      (`dom → io → layout → util → action → selection → component → message →
-      renderer → dialog → menu → lifecycle → e2e`), and within it the next
-      unclaimed class (or a group of tiny same-source-dir classes) sized to the
-      caps: **7 rows ordinary, 4 rows heavy pure-logic** (geometry/MIDI/
-      serialization math), 130K-token worker budget.
-      **Skip e2e-level rows** — they are deferred to the final batch; leave them ⬜.
+   b. Interpret `$ARGUMENTS` as follows, then pick the next unclaimed class
+      (or group of tiny same-source-dir classes) sized to the caps: **7 rows
+      ordinary, 4 rows heavy pure-logic** (geometry/MIDI/serialization math),
+      130K-token worker budget. **Skip e2e-level rows** — they are deferred to
+      the final batch; leave them ⬜.
+
+      - **Bare integer (e.g. `3`):** treat as a package number. Read
+        `docs/testing/remediation-ledger.md`, find all sections whose row
+        begins with `| N ·` or has a blank first cell (continuation rows of
+        that package), where N matches the argument. Restrict chunk selection
+        to those sections: pick the first section that is "in progress" or
+        "not started" (in ledger order), open its section file, and find the
+        first ⬜ row not already claimed.
+      - **Class name (e.g. `LineIO`):** use that class directly (verify it
+        has no claim file first).
+      - **No argument:** pick the next package with ⬜ rows in risk-order
+        (`dom → io → layout → util → action → selection → component → message
+        → renderer → dialog → menu → lifecycle → e2e`), and within it the
+        next unclaimed class.
 
    c. **Immediately write the claim file** before doing any other work:
       `docs/testing/.claims/<ClassName>.lock` (or `<ClassA>+<ClassB>.lock` for a
