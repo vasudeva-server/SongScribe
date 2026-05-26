@@ -111,18 +111,18 @@ must not re-declare it. See [E2E Test Guide](./testing-e2e.md).
 - `@Nested` classes: name for the condition they group, without a `test*`
   prefix (e.g., `WhenSelectionEmpty`). Use a `@Nested` class only when there are
   multiple related tests to group — never wrap a single test method.
-- Alphabetize top-level test methods and `@Nested` class declarations within a
-  test class, and test methods within each `@Nested` class.
 
 ## Fixture Ordering
 
-The alphabetization rule is overridden when a test class loads a fixture file
-once (in `@BeforeAll`) and its tests mutate that shared fixture cumulatively —
-each test builds on the state the previous one left behind. Such a class pins
+Test methods run in name order by default, but that order is an artifact of
+config, not a contract (see [Test Independence](#test-independence)). A test
+class that loads a fixture file once (in `@BeforeAll`) and whose tests mutate
+that shared fixture cumulatively — each test building on the state the previous
+one left behind — must not depend on that default order. Such a class pins
 execution order explicitly with `@TestClassOrder` / `@Order` (plus
-`@TestInstance(PER_CLASS)` so a non-static `@BeforeAll` can run once per class)
-instead of relying on name order. `ElementInsertionTest.java` is the canonical
-example; its class header documents why each block runs where it does.
+`@TestInstance(PER_CLASS)` so a non-static `@BeforeAll` can run once per class).
+`ElementInsertionTest.java` is the canonical example; its class header documents
+why each block runs where it does.
 
 ## Testability Over Encapsulation
 

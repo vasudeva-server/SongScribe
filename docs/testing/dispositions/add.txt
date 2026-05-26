@@ -549,3 +549,12 @@ LineIOTest.CrescendoRoundTripAllZeroShifts.testAllZeroShiftsRoundTrip	2c	row 32 
 LineIOTest.CrescendoRoundTripExplicitShifts.testExplicitShiftsPreservedInRoundTrip	2c	row 33 — crescendo round-trip explicit x1/x2/y shifts
 LineIOTest.DiminuendoRoundTrip.testAllZeroShiftsRoundTrip	2c	row 34 — diminuendo round-trip all-zero shifts
 LineIOTest.DiminuendoRoundTrip.testExplicitShiftsPreservedInRoundTrip	2c	row 34 — diminuendo round-trip explicit shifts
+LineIOTest.ParseHairpinPairsPartialShift.testPartialShiftDataKeepsAllShiftsZero	2c	row 35 — parseHairpinPairs swallows partial shift data
+LineIOTest.EndingRoundTrip.testSecondTypeDeserializesAsFirstDueToBug	2c	row 36 — ending round-trip type-loss bug (always FIRST)
+LineIOTest.ParseEndingPairsClearsFirst.testSecondCallReplacesFirstBatch	2c	row 37 — parseEndingPairs clears before accumulating
+LineIOTest.TrillRoundTrip.testZeroYPositionRoundTrip	2c	row 38 — trill round-trip yPos=0
+LineIOTest.TrillRoundTrip.testNonZeroYPositionRoundTrip	2c	row 38 — trill round-trip yPos non-zero
+LineIOTest.AccumulateLegacyTrillFlag.testContiguousIndicesCoalesceIntoOneTrill	2c	row 39 — accumulateLegacyTrillFlag contiguous coalesce
+LineIOTest.AccumulateLegacyTrillFlag.testNonContiguousIndicesProduceTwoTrillPairs	2c	row 39 — accumulateLegacyTrillFlag non-contiguous → two pairs
+LineIOTest.EndElement11FullLineParse.testAllCreateMethodsInvokedOnLineClose	2c	row 40 — endElement11 returns completed Line on </line>
+LineIOTest.LineReaderNullGuard.testEndElementBeforeStartElementReturnsNull	2c	row 41 — LineReader null guard → endElement11 returns null
