@@ -18,3 +18,5 @@ LineIOTest.EndElement11LyricsYPos.testLyricsyposTagSetsLyricsYPosSs	2c	row 20 �
 LayoutEngineTest.testFinalBarlineNotFlushRightOnNonLastLine	3a	row 9 — strengthened to assert exact spacing-calculator X (was isNotCloseTo)
 ViewIOTest.LegacyFontStyleElements.testDocumentWithFontStyleElementsLoadsWithoutError	2c	row 46 — strengthened: assert ignored legacy tag does not corrupt adjacent font values
 ViewIOTest.DocumentFontsLoad.testDefaultsFromPrefsIsDeterministic	2c	row 49 — renamed from testNewDocumentInstallsPrefsDefaults; tautology replaced with two independent defaultsFromPrefs() calls
+GlissandoMidiHelperTest.CreatePitchBendMessages.testUpwardSlideExactBendValuesAtKeyTicks	4a	row 13 — added exact bend values at t=0/0.5/1.0 for upward slide
+GlissandoMidiHelperTest.CreatePitchBendMessages.testDownwardSlideExactBendValuesAtKeyTicks	4a	row 13 — added exact bend values at t=0/0.5/1.0 for downward slide

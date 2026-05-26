@@ -33,15 +33,21 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.midi.GlissandoMidiHelper.EXPRESSION_CC;
+import static songscribe.midi.GlissandoMidiHelper.EXPRESSION_MAX;
+import static songscribe.midi.GlissandoMidiHelper.GRACE_SLIDE_IN_START_RATIO;
 import static songscribe.midi.GlissandoMidiHelper.PITCH_BEND_CENTER;
 import static songscribe.midi.GlissandoMidiHelper.PITCH_BEND_MAX;
 import static songscribe.midi.GlissandoMidiHelper.calculateBendValue;
 import static songscribe.midi.GlissandoMidiHelper.calculateSensitivity;
+import static songscribe.midi.GlissandoMidiHelper.calculateSlideInBendValue;
 import static songscribe.midi.GlissandoMidiHelper.calculateSlideTicks;
 import static songscribe.midi.GlissandoMidiHelper.calculateSustainTicks;
 import static songscribe.midi.GlissandoMidiHelper.createPitchBendMessages;
 import static songscribe.midi.GlissandoMidiHelper.createPitchBendReset;
 import static songscribe.midi.GlissandoMidiHelper.createRpnMessages;
+import static songscribe.midi.GlissandoMidiHelper.createSlideInExpressionMessages;
+import static songscribe.midi.GlissandoMidiHelper.createSlideInPitchBendMessages;
 import static songscribe.midi.GlissandoMidiHelper.resolveTargetPitch;
 
 class GlissandoMidiHelperTest extends UnitTest {
@@ -167,6 +173,34 @@ class GlissandoMidiHelperTest extends UnitTest {
             for (var i = 1; i < bendValues.size(); i++) {
                 assertThat(bendValues.get(i)).isGreaterThanOrEqualTo(bendValues.get(i - 1));
             }
+        }
+
+        @Test
+        void testUpwardSlideExactBendValuesAtKeyTicks() throws InvalidMidiDataException {
+            // linear=true, source=60, target=72, sensitivity=12, duration=12
+            // t=0 (elapsed=0): bend = CENTER
+            // t=0.5 (elapsed=6): effectiveT=0.5, offset=6, fraction=0.5, bend = 8192 + 4096 = 12288
+            // t=1.0 (elapsed=12): effectiveT=1.0, offset=12, fraction=1.0, bend clamped to PITCH_BEND_MAX
+            createPitchBendMessages(track, 0, 12, 0, 60, 72, 12, true);
+            var events = getPitchBendEvents(track);
+            // elapsed=0,2,4,6,8,10,12 => 7 events; indices 0,3,6 correspond to t=0, t=0.5, t=1.0
+            assertThat(getBendValue(events.get(0))).isEqualTo(PITCH_BEND_CENTER);
+            assertThat(getBendValue(events.get(3))).isEqualTo(12288);
+            assertThat(getBendValue(events.get(6))).isEqualTo(PITCH_BEND_MAX);
+        }
+
+        @Test
+        void testDownwardSlideExactBendValuesAtKeyTicks() throws InvalidMidiDataException {
+            // linear=true, source=72, target=60, sensitivity=12, duration=12
+            // t=0: bend = CENTER
+            // t=0.5: effectiveT=0.5, offset=-6, fraction=-0.5, bend = 8192 - 4096 = 4096
+            // t=1.0: effectiveT=1.0, offset=-12, fraction=-1.0, bend = 8192 - 8192 = 0
+            createPitchBendMessages(track, 0, 12, 0, 72, 60, 12, true);
+            var events = getPitchBendEvents(track);
+            // elapsed=0,2,4,6,8,10,12 => 7 events; indices 0,3,6 correspond to t=0, t=0.5, t=1.0
+            assertThat(getBendValue(events.get(0))).isEqualTo(PITCH_BEND_CENTER);
+            assertThat(getBendValue(events.get(3))).isEqualTo(4096);
+            assertThat(getBendValue(events.get(6))).isEqualTo(0);
         }
     }
 
@@ -381,6 +415,167 @@ class GlissandoMidiHelperTest extends UnitTest {
         void testSlideOutIgnoresNextNotePitch() {
             assertThat(resolveTargetPitch(72, Glissando.Type.SLIDE_OUT, 80))
                     .isEqualTo(68);
+        }
+    }
+
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
+    @Nested
+    class CreatePendingResets {
+
+        private Track track;
+        private GlissandoMidiHelper helper;
+
+        @BeforeEach
+        void setUp() throws Exception {
+            var sequence = new Sequence(Sequence.PPQ, 480);
+            track = sequence.createTrack();
+            helper = new GlissandoMidiHelper();
+        }
+
+        @Test
+        void testEmitsPitchBendResetWhenFlagSet() throws InvalidMidiDataException {
+            helper.setNeedsPitchBendReset();
+            helper.createPendingResets(track, 50, 0);
+            var events = getPitchBendEvents(track);
+            assertThat(events).hasSize(1);
+            assertThat(getBendValue(events.getFirst())).isEqualTo(PITCH_BEND_CENTER);
+        }
+
+        @Test
+        void testEmitsExpressionResetWhenFlagSet() throws InvalidMidiDataException {
+            helper.setNeedsExpressionReset();
+            helper.createPendingResets(track, 50, 0);
+            var ccEvents = getControlChangeEvents(track);
+            assertThat(ccEvents).hasSize(1);
+            assertThat(((ShortMessage) ccEvents.getFirst().getMessage()).getData1()).isEqualTo(EXPRESSION_CC);
+            assertThat(((ShortMessage) ccEvents.getFirst().getMessage()).getData2()).isEqualTo(EXPRESSION_MAX);
+        }
+
+        @Test
+        void testEmitsBothResetsWhenBothFlagsSet() throws InvalidMidiDataException {
+            helper.setNeedsPitchBendReset();
+            helper.setNeedsExpressionReset();
+            helper.createPendingResets(track, 50, 0);
+            assertThat(getPitchBendEvents(track)).hasSize(1);
+            assertThat(getControlChangeEvents(track)).hasSize(1);
+        }
+
+        @Test
+        void testSecondCallProducesNoEventsAfterFlagsCleared() throws InvalidMidiDataException {
+            helper.setNeedsPitchBendReset();
+            helper.setNeedsExpressionReset();
+            helper.createPendingResets(track, 50, 0);
+            // Flags are cleared; second call should emit nothing more
+            helper.createPendingResets(track, 100, 0);
+            assertThat(getPitchBendEvents(track)).hasSize(1);
+            assertThat(getControlChangeEvents(track)).hasSize(1);
+        }
+
+        @Test
+        void testEmitsNothingWhenNoFlagsSet() throws InvalidMidiDataException {
+            helper.createPendingResets(track, 50, 0);
+            assertThat(getPitchBendEvents(track)).isEmpty();
+            assertThat(getControlChangeEvents(track)).isEmpty();
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class CalculateSlideInBendValue {
+
+        @Test
+        void testAtStartReturnsFullOffset() {
+            // t=0.0, GRACE_NOTE_CURVE_EXPONENT=1.0 (linear): curvedT=0, offset=(1-0)*(64-60)=4
+            // bendFraction=4/4=1.0, bend = 8192 + 8192 = 16384 => clamped to PITCH_BEND_MAX
+            var bend = calculateSlideInBendValue(0.0, 64, 60, 4);
+            assertThat(bend).isEqualTo(PITCH_BEND_MAX);
+        }
+
+        @Test
+        void testAtEndReturnsCenter() {
+            // t=1.0: curvedT=1, offset=0 => bend = PITCH_BEND_CENTER
+            var bend = calculateSlideInBendValue(1.0, 64, 60, 4);
+            assertThat(bend).isEqualTo(PITCH_BEND_CENTER);
+        }
+
+        @Test
+        void testAtMidpointReturnsHalfOffset() {
+            // t=0.5, GRACE_NOTE_CURVE_EXPONENT=1.0: curvedT=0.5, offset=0.5*(64-60)=2
+            // bendFraction=2/4=0.5, bend = 8192 + 0.5*8192 = 12288
+            var bend = calculateSlideInBendValue(0.5, 64, 60, 4);
+            assertThat(bend).isEqualTo(12288);
+        }
+
+        @Test
+        void testDownwardGraceNoteAtStart() {
+            // gracePitch < notePitch: t=0.0, offset=(1-0)*(56-60)=-4, fraction=-1.0
+            // bend = 8192 - 8192 = 0
+            var bend = calculateSlideInBendValue(0.0, 56, 60, 4);
+            assertThat(bend).isEqualTo(0);
+        }
+
+        @Test
+        void testDownwardGraceNoteAtEnd() {
+            // t=1.0: offset=0 => center regardless of direction
+            var bend = calculateSlideInBendValue(1.0, 56, 60, 4);
+            assertThat(bend).isEqualTo(PITCH_BEND_CENTER);
+        }
+    }
+
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
+    @Nested
+    class CreateSlideInPitchBendMessages {
+
+        private Track track;
+
+        @BeforeEach
+        void setUp() throws Exception {
+            var sequence = new Sequence(Sequence.PPQ, 480);
+            track = sequence.createTrack();
+        }
+
+        @Test
+        void testEventCountForSmallSlide() throws InvalidMidiDataException {
+            // duration=8, BEND_STEP_TICKS=2: elapsed 0,2,4,6,8 => 5 events
+            createSlideInPitchBendMessages(track, 0, 8, 0, 64, 60, 4);
+            assertThat(getPitchBendEvents(track)).hasSize(5);
+        }
+
+        @Test
+        void testFirstBendValueIsFullOffset() throws InvalidMidiDataException {
+            // t=0: full offset grace->note => PITCH_BEND_MAX (grace above note)
+            createSlideInPitchBendMessages(track, 0, 8, 0, 64, 60, 4);
+            var events = getPitchBendEvents(track);
+            assertThat(getBendValue(events.getFirst())).isEqualTo(PITCH_BEND_MAX);
+        }
+
+        @Test
+        void testLastBendValueIsCenter() throws InvalidMidiDataException {
+            // t=1.0: eased to center (no bend)
+            createSlideInPitchBendMessages(track, 0, 8, 0, 64, 60, 4);
+            var events = getPitchBendEvents(track);
+            assertThat(getBendValue(events.getLast())).isEqualTo(PITCH_BEND_CENTER);
+        }
+
+        @Test
+        void testNoEventsForZeroDuration() throws InvalidMidiDataException {
+            createSlideInPitchBendMessages(track, 0, 0, 0, 64, 60, 4);
+            assertThat(getPitchBendEvents(track)).isEmpty();
+        }
+
+        @Test
+        void testExpressionRampsFromStartRatioToMax() throws InvalidMidiDataException {
+            // startExpression = round(0.25 * 127) = 32; last event = 127
+            createSlideInExpressionMessages(track, 0, 8, 0);
+            var ccEvents = getControlChangeEvents(track);
+            // All events are CC11 (EXPRESSION_CC)
+            assertThat(ccEvents).allSatisfy(e ->
+                    assertThat(((ShortMessage) e.getMessage()).getData1()).isEqualTo(EXPRESSION_CC));
+            var firstValue = ((ShortMessage) ccEvents.getFirst().getMessage()).getData2();
+            var lastValue = ((ShortMessage) ccEvents.getLast().getMessage()).getData2();
+            // First value ≈ GRACE_SLIDE_IN_START_RATIO * EXPRESSION_MAX
+            assertThat(firstValue).isEqualTo((int) Math.round(GRACE_SLIDE_IN_START_RATIO * EXPRESSION_MAX));
+            assertThat(lastValue).isEqualTo(EXPRESSION_MAX);
         }
     }
 

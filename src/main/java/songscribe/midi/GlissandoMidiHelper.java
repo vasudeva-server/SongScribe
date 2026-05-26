@@ -63,10 +63,10 @@ public final class GlissandoMidiHelper {
     public static final double GRACE_SLIDE_IN_START_RATIO = 0.25;
 
     /** MIDI CC number for Expression (per-note volume shaping). */
-    private static final int EXPRESSION_CC = 11;
+    static final int EXPRESSION_CC = 11;
 
     /** Maximum Expression CC value. */
-    private static final int EXPRESSION_MAX = 127;
+    static final int EXPRESSION_MAX = 127;
 
     /** Number of semitones to slide down for SLIDE_OUT glissandos. */
     public static final int SLIDE_OUT_SEMITONES = 4;
