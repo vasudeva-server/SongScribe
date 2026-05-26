@@ -221,15 +221,15 @@ class SongDefaultsTest extends UnitTest {
     void testGetTempoAtReturnsMostRecentTempoChangeWalkingBackward() {
         var song = new Song();
 
-        // Build a 2-line song with per-note tempo changes.
-        // Line 0: [noteA(tempo=80), barline_terminal-stripped-by-second-line-add]
-        // Line 1: [noteB(tempo=100), noteC(no attachment), terminal]
+        // Build a 2-line song, each line carrying one per-note tempo change.
+        // Line 0: [noteA(tempo=80)]  (its terminal barline migrates to line 1 on add)
+        // Line 1: [noteB(tempo=100), plainNote, terminal]
         //
-        // getTempoAt(1, 2) walks backward from (line=1, note=2): noteC has none,
-        // noteB has tempo 100 → returns 100.
-        // getTempoAt(1, 0) walks line 1 from note 0: noteB has 100 → returns 100.
-        // getTempoAt(0, 0) walks line 0 from note 0: noteA has 80 → returns 80.
-        // getTempoAt(1, 3) where note 3 has no attachment → walks back to noteB → 100.
+        // Each assertion below walks backward *within a single line* to the most
+        // recent change: the line-1 query skips the trailing plainNote/terminal and
+        // lands on noteB (100); the line-0 query lands on noteA (80). The
+        // walk-back-to-an-earlier-line path is covered separately by
+        // testGetTempoAtWalksBackToEarlierLineWhenLineHasNoChange.
         //
         // We use withoutMutationTracking so setup doesn't fire global notifications.
         final int LINE_0_TEMPO_BPM = 80;
@@ -268,6 +268,52 @@ class SongDefaultsTest extends UnitTest {
 
         // Verify identity: the returned object IS the effective tempo.
         assertThat(song.getTempoAt(0, 0)).isSameAs(song.getEffectiveTempo());
+    }
+
+    // Exercises the cross-line continuation: when the queried line carries no tempo
+    // change, the search resets lastLine and walks into the previous line. Line 1
+    // has only a plain note, so getTempoAt(1, 0) must walk back to line 0's noteA.
+    @Test
+    void testGetTempoAtWalksBackToEarlierLineWhenLineHasNoChange() {
+        var song = new Song();
+        final int LINE_0_TEMPO_BPM = 80;
+
+        song.withoutMutationTracking(() -> {
+            var line0 = song.getLine(0);
+            addNoteWithTempo(song, line0, LINE_0_TEMPO_BPM); // tempo change on line 0
+
+            // Second line carries no tempo change anywhere.
+            var line1 = new Line(song);
+            song.addLine(line1);
+            line1.addElement(ElementType.CROTCHET.newInstance());
+        });
+
+        // Walk from (line=1, note=0): plain note has none → cross to line 0 → noteA (80).
+        assertThat(song.getTempoAt(1, 0))
+            .extracting(Tempo::getVisibleTempo)
+            .isEqualTo(LINE_0_TEMPO_BPM);
+    }
+
+    // getTempoAt reports the tempo in effect AT the queried position: the backward
+    // walk starts at noteIndex, so a tempo change at a LATER index on the same line
+    // must be ignored. Without this, querying note 0 would wrongly pick up note 1's
+    // change.
+    @Test
+    void testGetTempoAtIgnoresLaterChangeOnSameLine() {
+        var song = new Song();
+        final int EARLY_TEMPO_BPM = 80;
+        final int LATER_TEMPO_BPM = 100;
+
+        song.withoutMutationTracking(() -> {
+            var line0 = song.getLine(0);
+            addNoteWithTempo(song, line0, EARLY_TEMPO_BPM); // index 0
+            addNoteWithTempo(song, line0, LATER_TEMPO_BPM); // index 1 (later position)
+        });
+
+        // Querying index 0 must see the early change, never the later one at index 1.
+        assertThat(song.getTempoAt(0, 0))
+            .extracting(Tempo::getVisibleTempo)
+            .isEqualTo(EARLY_TEMPO_BPM);
     }
 
     // -----------------------------------------------------------------------

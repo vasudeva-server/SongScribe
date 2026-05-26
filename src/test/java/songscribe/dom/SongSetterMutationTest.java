@@ -393,8 +393,9 @@ class SongSetterMutationTest extends UnitTest {
             assertThat(mutation.newValue()).isEqualTo(oldPadding + 2.0);
         }
 
-        // The userSetTopPadding flag OR-accumulates: once set to true by a
-        // setByUser=true call, a subsequent setByUser=false call must not clear it.
+        // setTopPaddingSs always runs its apply block — posting a mutation even when
+        // the padding value is unchanged — because setByUser must still flow into the
+        // sticky userSetTopPadding flag.
         @Test
         void testSetTopPaddingSsAlwaysPostsMutationEvenWhenValueUnchanged() {
             var padding = song.getTopPaddingSs();
@@ -409,6 +410,8 @@ class SongSetterMutationTest extends UnitTest {
             assertThat(song.userSetTopPadding()).isTrue();
         }
 
+        // The userSetTopPadding flag OR-accumulates: once set to true by a
+        // setByUser=true call, a subsequent setByUser=false call must not clear it.
         @Test
         void testSetTopPaddingSsStickyFlagRemainsAfterFalseCall() {
             var padding = song.getTopPaddingSs() + 1.0;
