@@ -3,13 +3,13 @@
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
 | StaffElementIO | `writeElement` — `type` attribute = `ElementType` name | unit | `StaffElementIOTest.DynamicSerialization.testWritesDynamicElement` (round-trip) | adequate | keep | — |
-| StaffElementIO | `writeElement` — omit `<xpos>` when `xOffsetPx==0`; emit when non-zero | unit | — | missing | assert absent/present around zero | ⬜ |
-| StaffElementIO | `writeElement` — always emit `<staffposition>` | unit | — | missing | value preserved | ⬜ |
-| StaffElementIO | `writeElement` — omit `<dotted>` when `dotCount==0`; emit for 1/2 | unit | — | missing | test dotCount 0/1/2 | ⬜ |
-| StaffElementIO | `writeElement` — omit `<prefix>` when accidental null; emit `name()` otherwise | unit | — | missing | null→absent; SHARP→`<prefix>SHARP</prefix>` | ⬜ |
-| StaffElementIO | `writeElement` — emit `<prefixinparenthesis>` only when `isAccidentalInParentheses()` | unit | — | missing | false→absent; true→present | ⬜ |
-| StaffElementIO | `writeElement` — ACCENT→`<forcearticulation>`, STACCATO→`<durationarticulation>` | unit | — | missing | one tag per articulation type | ⬜ |
-| StaffElementIO | `writeElement` — glissando type serialized; x1/x2 translates omit when 0, emit non-zero | unit | `GraceNoteLyricRoundTripTest` (type only) | inadequate | add translate omit/emit test (zero-translate regression undetectable today) | ⬜ |
+| StaffElementIO | `writeElement` — omit `<xpos>` when `xOffsetPx==0`; emit when non-zero | unit | — | missing | assert absent/present around zero | ✅ |
+| StaffElementIO | `writeElement` — always emit `<staffposition>` | unit | — | missing | value preserved | ✅ |
+| StaffElementIO | `writeElement` — omit `<dotted>` when `dotCount==0`; emit for 1/2 | unit | — | missing | test dotCount 0/1/2 | ✅ |
+| StaffElementIO | `writeElement` — omit `<prefix>` when accidental null; emit `name()` otherwise | unit | — | missing | null→absent; SHARP→`<prefix>SHARP</prefix>` | ✅ |
+| StaffElementIO | `writeElement` — emit `<prefixinparenthesis>` only when `isAccidentalInParentheses()` | unit | — | missing | false→absent; true→present | ✅ |
+| StaffElementIO | `writeElement` — ACCENT→`<forcearticulation>`, STACCATO→`<durationarticulation>` | unit | — | missing | one tag per articulation type | ✅ |
+| StaffElementIO | `writeElement` — glissando type serialized; x1/x2 translates omit when 0, emit non-zero | unit | `GraceNoteLyricRoundTripTest` (type only) | inadequate | add translate omit/emit test (zero-translate regression undetectable today) | ✅ |
 | StaffElementIO | `writeElement` — `<stemDirectionAuto>` emitted when `!isStemDirectionAuto()` (inverted) | unit | — | missing | auto=true→absent; auto=false→present | ⬜ |
 | StaffElementIO | `writeElement` — `<upper>` emitted when `isUpper()` | unit | — | missing | false→absent; true→present | ⬜ |
 | StaffElementIO | `writeElement` — delegates to `TempoIO.writeTempo` when `TempoChangeAttachment` present | unit | — | missing | assert `<tempo>` block in element XML | ⬜ |

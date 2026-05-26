@@ -39,12 +39,16 @@ import org.xml.sax.SAXException;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
+import songscribe.dom.Articulation;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.dom.DynamicAttachment;
-import songscribe.dom.DynamicAttachment.DynamicType;
+import songscribe.dom.StaffElement.Accidental;
+import songscribe.dom.StaffElement.Glissando;
 
 @SuppressWarnings({ "SameReturnValue", "OverlyBroadThrowsClause" })
 class StaffElementIOTest extends UnitTest {
@@ -65,28 +69,61 @@ class StaffElementIOTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class InvalidMapLookups {
+    class ArticulationSerialization {
 
         @Test
-        void testUnknownAccidentalThrowsMeaningfulError() {
-            var xml = buildXmlWithAccidental("BOGUS_ACCIDENTAL");
+        void testAccentEmitsForceArticulationTag() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.addArticulation(new Articulation(ArticulationType.ACCENT));
 
-            assertThatThrownBy(() -> parseXml(xml))
-                .isInstanceOf(SAXException.class)
-                .hasMessageContaining("Unknown accidental: BOGUS_ACCIDENTAL")
-                .cause()
-                .isInstanceOf(IllegalArgumentException.class);
+            var output = writeNote(note);
+
+            assertThat(output).contains("<forcearticulation>ACCENT</forcearticulation>");
         }
 
         @Test
-        void testUnknownBeatChangeThrowsMeaningfulError() {
-            var xml = buildXmlWithBeatChange("BOGUS_BEAT_CHANGE");
+        void testStaccatoEmitsDurationArticulationTag() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.addArticulation(new Articulation(ArticulationType.STACCATO));
 
-            assertThatThrownBy(() -> parseXml(xml))
-                .isInstanceOf(SAXException.class)
-                .hasMessageContaining("unknown legacy beat change: BOGUS_BEAT_CHANGE")
-                .cause()
-                .isInstanceOf(IllegalArgumentException.class);
+            var output = writeNote(note);
+
+            assertThat(output).contains("<durationarticulation>STACCATO</durationarticulation>");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class DotCountSerialization {
+
+        @Test
+        void testDottedAbsentWhenZeroDots() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setDotCount(0);
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<dotted>");
+        }
+
+        @Test
+        void testDottedPresentForOneDot() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setDotCount(1);
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<dotted>1</dotted>");
+        }
+
+        @Test
+        void testDottedPresentForTwoDots() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setDotCount(2);
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<dotted>2</dotted>");
         }
     }
 
@@ -162,6 +199,190 @@ class StaffElementIOTest extends UnitTest {
             var dynamic = song.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNull();
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class GlissandoSerialization {
+
+        @Test
+        void testGlissandoTypeIsEmitted() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setGlissando(Glissando.Type.CONNECTED);
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<glissando>CONNECTED</glissando>");
+        }
+
+        @Test
+        void testX1TranslateAbsentWhenZero() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setGlissando(Glissando.Type.CONNECTED);
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<glissandox1translate>");
+        }
+
+        @Test
+        void testX1TranslatePresentWhenNonZero() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setGlissando(Glissando.Type.CONNECTED);
+            var glissando = note.getGlissando();
+            assertThat(glissando).isNotNull();
+            if (glissando != null) {
+                glissando.x1Translate = 5.0;
+            }
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<glissandox1translate>5.0</glissandox1translate>");
+        }
+
+        @Test
+        void testX2TranslateAbsentWhenZero() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setGlissando(Glissando.Type.CONNECTED);
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<glissandox2translate>");
+        }
+
+        @Test
+        void testX2TranslatePresentWhenNonZero() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setGlissando(Glissando.Type.CONNECTED);
+            var glissando = note.getGlissando();
+            assertThat(glissando).isNotNull();
+            if (glissando != null) {
+                glissando.x2Translate = 3.5;
+            }
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<glissandox2translate>3.5</glissandox2translate>");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class InvalidMapLookups {
+
+        @Test
+        void testUnknownAccidentalThrowsMeaningfulError() {
+            var xml = buildXmlWithAccidental("BOGUS_ACCIDENTAL");
+
+            assertThatThrownBy(() -> parseXml(xml))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("Unknown accidental: BOGUS_ACCIDENTAL")
+                .cause()
+                .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void testUnknownBeatChangeThrowsMeaningfulError() {
+            var xml = buildXmlWithBeatChange("BOGUS_BEAT_CHANGE");
+
+            assertThatThrownBy(() -> parseXml(xml))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("unknown legacy beat change: BOGUS_BEAT_CHANGE")
+                .cause()
+                .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class PrefixInParenthesisSerialization {
+
+        @Test
+        void testPrefixInParenthesisAbsentWhenFalse() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setAccidental(Accidental.SHARP);
+            note.setAccidentalInParentheses(false);
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<prefixinparenthesis");
+        }
+
+        @Test
+        void testPrefixInParenthesisPresentWhenTrue() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setAccidental(Accidental.SHARP);
+            note.setAccidentalInParentheses(true);
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<prefixinparenthesis");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class PrefixSerialization {
+
+        @Test
+        void testPrefixAbsentWhenAccidentalNull() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setAccidental(null);
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<prefix>");
+        }
+
+        @Test
+        void testPrefixContainsAccidentalName() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setAccidental(Accidental.SHARP);
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<prefix>SHARP</prefix>");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class StaffPositionSerialization {
+
+        @Test
+        void testStaffPositionAlwaysEmitted() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(4);
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<staffposition>4</staffposition>");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class XPosSerialization {
+
+        @Test
+        void testXPosAbsentWhenZero() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setXOffsetPx(0);
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<xpos>");
+        }
+
+        @Test
+        void testXPosPresentWhenNonZero() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setXOffsetPx(10);
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<xpos>10</xpos>");
         }
     }
 
