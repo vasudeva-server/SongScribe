@@ -60,7 +60,7 @@ public class LineTrackBuilder {
      * @param referenceTempo The tempo providing the reference note duration
      * @return Scaling factor (1.0 if not in a tuplet)
      */
-    private float getTupletFactor(int elementIndex, Tempo referenceTempo) {
+    float getTupletFactor(int elementIndex, Tempo referenceTempo) {
         var tuplet = line.findTupletAt(elementIndex);
 
         if (tuplet == null) {
@@ -479,7 +479,7 @@ public class LineTrackBuilder {
     /**
      * Returns the sounding duration in ticks, applying staccato/articulation overrides.
      */
-    private int calculateSoundingDuration(
+    int calculateSoundingDuration(
         int duration,
         StaffElement element,
         PlaybackSettings settings
@@ -491,7 +491,7 @@ public class LineTrackBuilder {
      * Returns the sounding duration percentage for a note, considering articulation
      * overrides and the global noteDurationPercent setting.
      */
-    private static int calculateSoundingPercent(StaffElement element, PlaybackSettings settings) {
+    static int calculateSoundingPercent(StaffElement element, PlaybackSettings settings) {
         var midiOverride = element.findMidiDurationOverride();
         return (midiOverride < 0) ? settings.noteDurationPercent() : midiOverride;
     }
@@ -501,7 +501,7 @@ public class LineTrackBuilder {
      * (during normal playback), the pre-computed dynamic-aware velocity is used.
      * Otherwise falls back to the legacy binary logic (accented or not).
      */
-    private static int noteVelocity(
+    static int noteVelocity(
         StaffElement note,
         @Nullable VelocityMap velocityMap,
         int lineIndex,
