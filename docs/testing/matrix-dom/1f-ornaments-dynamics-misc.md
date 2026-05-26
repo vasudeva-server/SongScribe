@@ -9,16 +9,16 @@
 | ArticulationType | `hasMidiDurationOverride()` (STACCATO true, ACCENT false) | unit | `ArticulationTypeTest.HasMidiDurationOverride` | adequate | written | ✅ |
 | ArticulationType | `getDrawingOrder(false)` ascending order | unit | `ArticulationTypeTest.GetDrawingOrderStemDown` | adequate | written | ✅ |
 | ArticulationType | `getDrawingOrder(true)` reversed order | unit | `ArticulationTypeTest.GetDrawingOrderStemUp` | adequate | written | ✅ |
-| Hairpin | `getContentHeightSs()` → HAIRPIN_OPENING_HEIGHT_SS | unit | — | missing | write test | ⬜ |
-| Hairpin | `getSpanWidthSs()` — `max(opening, endX−anchorX+NOTE_HEAD_WIDTH)` | unit | `ManualOffsetStackingTest.HairpinOffsets` (offsets, not formula) | inadequate | write both-branch test | ⬜ |
+| Hairpin | `getContentHeightSs()` → HAIRPIN_OPENING_HEIGHT_SS | unit | `HairpinTest.testGetContentHeightSsEqualsHairpinOpeningHeightSs` | adequate | written | ✅ |
+| Hairpin | `getSpanWidthSs()` — `max(opening, endX−anchorX+NOTE_HEAD_WIDTH)` | unit | `HairpinTest.GetSpanWidthSs` | adequate | written | ✅ |
 | Hairpin | `x1ShiftSs`/`x2ShiftSs`/`yShiftSs` stored/retrieved | unit | `ManualOffsetStackingTest.HairpinOffsets` (2) | adequate | keep | — |
-| Trill | `getSpanWidthSs()` — `max(glyphWidth, endX−anchorX+glyphWidth)` | unit | `FermataTrillStackingTest` (`>span`, not formula) | inadequate | write both-branch exact-value test | ⬜ |
-| Trill | `getContentWidth/HeightSs()` SMuFL bbox for ORNAMENT_TRILL | unit | `FermataTrillStackingTest.testTrillHasPositiveDimensions` (`>0`) | inadequate | write exact-bbox test | ⬜ |
-| Trill | `getContentWidth/HeightPx()` via ssToPx | unit | — | missing | write test | ⬜ |
+| Trill | `getSpanWidthSs()` — `max(glyphWidth, endX−anchorX+glyphWidth)` | unit | `TrillTest.GetSpanWidthSs` | adequate | written | ✅ |
+| Trill | `getContentWidth/HeightSs()` SMuFL bbox for ORNAMENT_TRILL | unit | `TrillTest.testGetContentWidth/HeightSsEqualsOrnamentTrillBbox*` | adequate | written | ✅ |
+| Trill | `getContentWidth/HeightPx()` via ssToPx | unit | `TrillTest.GetContentPx` | adequate | written | ✅ |
 | Trill | single-note ctor sets anchor==end | unit | `FermataTrillStackingTest.testSingleNoteTrillPositionedAboveNote` | adequate | keep | — |
 | Trill | `yPositionSs` stored + applied | unit | `ManualOffsetStackingTest.TrillOffsets.testTrillYPositionApplied` | adequate | keep | — |
-| Tuplet | `getElementCount()` returns `grade` | unit | (tests assert `getGrade()`, never `getElementCount()`) | missing | write test (grade 3 and 5) | ⬜ |
-| Tuplet | `getSpanWidthSs()` — `max(1.0, endX−anchorX)` | unit | — | missing | write both-branch test | ⬜ |
+| Tuplet | `getElementCount()` returns `grade` | unit | `TupletTest.testGetElementCountReturnsTripletGrade` + `testGetElementCountReturnsQuintupletGrade` | adequate | written | ✅ |
+| Tuplet | `getSpanWidthSs()` — `max(1.0, endX−anchorX)` | unit | `TupletTest.GetSpanWidthSs` | adequate | written | ✅ |
 | Tuplet | `getContentHeightSs()` → TUPLET_BRACKET_HEIGHT_SS | unit | `TupletTest.testContentHeightSsMatchesStylesheetConstant` | adequate | keep | — |
 | Tuplet | `getContentHeightPx()` via ssToPx | unit | `TupletTest.testContentHeightPxIsToPixelsOfSs` | adequate | keep | — |
 | Crescendo | pass-through ctor to Hairpin | none | — | none | trivial delegation | — |
