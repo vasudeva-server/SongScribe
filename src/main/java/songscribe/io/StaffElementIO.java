@@ -125,7 +125,7 @@ public final class StaffElementIO {
      * A null or unrecognized value (including the legacy self-closed {@code <extend/>}
      * written by pre-enum versions) defaults to {@link Lyric.Extend#START}.
      */
-    private static Lyric.Extend parseExtendType(@Nullable String typeAttr) {
+    static Lyric.Extend parseExtendType(@Nullable String typeAttr) {
         if (typeAttr == null) {
             return Lyric.Extend.START;
         }
@@ -138,7 +138,7 @@ public final class StaffElementIO {
     }
 
     /** Returns the MusicXML {@code type} attribute string for the given extend state. */
-    private static String extendTypeAttr(Lyric.Extend extend) {
+    static String extendTypeAttr(Lyric.Extend extend) {
         return switch (extend) {
             case START -> "start";
             case STOP -> "stop";

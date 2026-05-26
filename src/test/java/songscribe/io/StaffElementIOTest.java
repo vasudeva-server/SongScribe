@@ -36,6 +36,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.AttributesImpl;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
@@ -74,6 +75,30 @@ class StaffElementIOTest extends UnitTest {
     @AfterEach
     void tearDown() {
         messageCenterMock.close();
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AccidentalMapSerialization {
+
+        @Test
+        void testDoubleSharpRoundTrips() throws Exception {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setAccidental(Accidental.DOUBLE_SHARP);
+            var output = writeNote(note);
+            assertThat(output).contains("<prefix>DOUBLE_SHARP</prefix>");
+
+            var song = parseXml(buildXmlWithAccidental("DOUBLE_SHARP"));
+            var roundTripped = song.getLine(0).getElement(0).getAccidental();
+            assertThat(roundTripped).isEqualTo(Accidental.DOUBLE_SHARP);
+        }
+
+        @Test
+        void testDoubleSharpNoUnderscoreAliasRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithAccidental("DOUBLESHARP"));
+            var accidental = song.getLine(0).getElement(0).getAccidental();
+            assertThat(accidental).isEqualTo(Accidental.DOUBLE_SHARP);
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -266,6 +291,31 @@ class StaffElementIOTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    class ExtendTypeSerialization {
+
+        @Test
+        void testExtendTypeAttrNoneThrowsIllegalArgumentException() {
+            assertThatThrownBy(() -> StaffElementIO.extendTypeAttr(Lyric.Extend.NONE))
+                .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void testParseExtendTypeContinueReturnsContinue() throws Exception {
+            var song = parseXml(buildXmlWithExtend("continue"));
+            var lyric = song.getLine(0).getElement(0).lyrics.get(0);
+            assertThat(lyric.extend()).isEqualTo(Lyric.Extend.CONTINUE);
+        }
+
+        @Test
+        void testParseExtendTypeUnknownReturnsStart() throws Exception {
+            var song = parseXml(buildXmlWithExtend("bogus"));
+            var lyric = song.getLine(0).getElement(0).lyrics.get(0);
+            assertThat(lyric.extend()).isEqualTo(Lyric.Extend.START);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
     class FermataSerialization {
 
         @Test
@@ -428,6 +478,44 @@ class StaffElementIOTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    class LyricVerseSerialization {
+
+        private static final int VERSE_ONE = 1;
+        private static final int VERSE_TWO = 2;
+
+        @Test
+        void testVerseOneEmitsNumberAttributeOne() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.lyrics.add(new Lyric(VERSE_ONE, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("number=\"" + VERSE_ONE + "\"");
+        }
+
+        @Test
+        void testVerseTwoEmitsNumberAttributeTwo() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.lyrics.add(new Lyric(VERSE_ONE, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+            note.lyrics.add(new Lyric(VERSE_TWO, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("number=\"" + VERSE_TWO + "\"");
+        }
+
+        @Test
+        void testVerseTwoRoundTrips() throws Exception {
+            var song = parseXml(buildXmlWithLyrics(VERSE_ONE, "la", VERSE_TWO, "mi"));
+            var parsed = song.getLine(0).getElement(0);
+            assertThat(parsed.lyrics).hasSize(VERSE_TWO);
+            assertThat(parsed.lyrics.get(VERSE_TWO - 1).verse()).isEqualTo(VERSE_TWO);
+            assertThat(parsed.lyrics.get(VERSE_TWO - 1).text()).isEqualTo("mi");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
     class PrefixInParenthesisSerialization {
 
         @Test
@@ -539,6 +627,112 @@ class StaffElementIOTest extends UnitTest {
             var output = writeNote(note);
 
             assertThat(output).contains("<tempo>");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TypeAlias10Serialization {
+
+        private static AttributesImpl noteAttrs(String type) {
+            var attrs = new AttributesImpl();
+            attrs.addAttribute("", "type", "type", "CDATA", type);
+            return attrs;
+        }
+
+        @Test
+        void testNewlineTypeIgnoredAndReturnsTrue() {
+            var reader = new StaffElementIO.StaffElementReader();
+            var ignored = reader.startElement10("note", noteAttrs("NEWLINE"));
+            assertThat(ignored).isTrue();
+        }
+
+        @Test
+        void testLineTypeYieldsSingleBarline() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement10("note", noteAttrs("LINE"));
+            var element = reader.endElement10("note");
+            assertThat(element).isNotNull();
+            if (element != null) {
+                assertThat(element.getType()).isEqualTo(ElementType.SINGLE_BARLINE);
+            }
+        }
+
+        @Test
+        void testGraceSemiquaverTypeYieldsGraceQuaver() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement10("note", noteAttrs("GRACESEMIQUAVER"));
+            var element = reader.endElement10("note");
+            assertThat(element).isNotNull();
+            if (element != null) {
+                assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
+            }
+        }
+
+        @Test
+        void testGraceSemiquaverWithUnderscoreYieldsGraceQuaver() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement10("note", noteAttrs("GRACE_SEMIQUAVER"));
+            var element = reader.endElement10("note");
+            assertThat(element).isNotNull();
+            if (element != null) {
+                assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
+            }
+        }
+
+        @Test
+        void testGraceSemiquaverEditStep1YieldsGraceQuaver() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement10("note", noteAttrs("GRACE_SEMIQUAVER_EDIT_STEP1"));
+            var element = reader.endElement10("note");
+            assertThat(element).isNotNull();
+            if (element != null) {
+                assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
+            }
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TypeAlias11Serialization {
+
+        private static AttributesImpl noteAttrs(String type) {
+            var attrs = new AttributesImpl();
+            attrs.addAttribute("", "type", "type", "CDATA", type);
+            return attrs;
+        }
+
+        @Test
+        void testVerticalLineTypeYieldsSingleBarline() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement11("note", noteAttrs("VERTICALLINE"));
+            var element = reader.endElement11("note");
+            assertThat(element).isNotNull();
+            if (element != null) {
+                assertThat(element.getType()).isEqualTo(ElementType.SINGLE_BARLINE);
+            }
+        }
+
+        @Test
+        void testGraceSemiquaverWithUnderscoreYieldsGraceQuaver() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement11("note", noteAttrs("GRACE_SEMIQUAVER"));
+            var element = reader.endElement11("note");
+            assertThat(element).isNotNull();
+            if (element != null) {
+                assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
+            }
+        }
+
+        @Test
+        void testGraceSemiquaverEditStep1YieldsGraceQuaver() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement11("note", noteAttrs("GRACE_SEMIQUAVER_EDIT_STEP1"));
+            var element = reader.endElement11("note");
+            assertThat(element).isNotNull();
+            if (element != null) {
+                assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
+            }
         }
     }
 
@@ -725,5 +919,76 @@ class StaffElementIOTest extends UnitTest {
               <view/>
             </composition>
             """.formatted(beatChangeValue);
+    }
+
+    private static String buildXmlWithExtend(String extendType) {
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="1.1">
+              <keys>0</keys>
+              <keytype>SHARPS</keytype>
+              <tempo>
+                <visibletempo>120</visibletempo>
+                <tempotype>CROTCHET</tempotype>
+                <tempodescription></tempodescription>
+                <showtempo>true</showtempo>
+              </tempo>
+              <songtitle>Test</songtitle>
+              <lines>
+                <line>
+                  <keyCount>0</keyCount>
+                  <keyType>SHARPS</keyType>
+                  <tempoChangeYPos>-28</tempoChangeYPos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                      <lyric number="1">
+                        <extend type="%s"/>
+                      </lyric>
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """.formatted(extendType);
+    }
+
+    private static String buildXmlWithLyrics(int verse1, String text1, int verse2, String text2) {
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="1.1">
+              <keys>0</keys>
+              <keytype>SHARPS</keytype>
+              <tempo>
+                <visibletempo>120</visibletempo>
+                <tempotype>CROTCHET</tempotype>
+                <tempodescription></tempodescription>
+                <showtempo>true</showtempo>
+              </tempo>
+              <songtitle>Test</songtitle>
+              <lines>
+                <line>
+                  <keyCount>0</keyCount>
+                  <keyType>SHARPS</keyType>
+                  <tempoChangeYPos>-28</tempoChangeYPos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                      <lyric number="%d">
+                        <syllabic>single</syllabic>
+                        <text>%s</text>
+                      </lyric>
+                      <lyric number="%d">
+                        <syllabic>single</syllabic>
+                        <text>%s</text>
+                      </lyric>
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """.formatted(verse1, text1, verse2, text2);
     }
 }
