@@ -47,7 +47,8 @@ Then perform these steps once:
 
    c. **Immediately write the claim file** before doing any other work:
       `docs/testing/.claims/<ClassName>.lock` (or `<ClassA>+<ClassB>.lock` for a
-      batch). Content: section file path, row numbers, and ISO-8601 timestamp.
+      batch). Content: section file path, row numbers, and ISO-8601 date-time
+      **including the time component** (e.g. `2026-05-26T14:30:00Z`).
       Writing this file is the reservation — do it before spawning the worker.
 
    d. State which section file + rows the chunk covers.
@@ -78,7 +79,7 @@ Then perform these steps once:
       - If it exists and its timestamp is **5 minutes old or older**: treat as
         stale and overwrite it.
       - Otherwise: create the file with your claim file name and an ISO-8601
-        timestamp.
+        date-time **including the time component** (e.g. `2026-05-26T14:30:00Z`).
 
    b. With the lock held: flip ⬜→✅ on completed rows in the section file;
       append dispositions to `docs/testing/dispositions/*.txt`; run
