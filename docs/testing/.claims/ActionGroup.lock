@@ -1,3 +1,0 @@
-section: docs/testing/matrix-action/5a-base-infrastructure.md
-rows: 51, 52, 56, 57, 58, 59, 60 (ActionGroup setSelected-false/previousSelected, add-idempotent, insert, remove, contains, anySelected)
-timestamp: 2026-05-26T15:03:36-07:00
