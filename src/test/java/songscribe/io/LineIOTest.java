@@ -947,6 +947,274 @@ class LineIOTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // ParseHairpinPairsPartialShift — row 35
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class ParseHairpinPairsPartialShift {
+
+        @Test
+        void testPartialShiftDataKeepsAllShiftsZero() {
+            // <crescendo>0,2,1.5;</crescendo> has only 1 shift part instead of 3
+            // → parts.length < 3, so all shifts remain 0
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_CRESCENDO, "0,2,1.5;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var crescendos = parsedLine.findRangeElements(Crescendo.class);
+            assertThat(crescendos).hasSize(1);
+            var c = crescendos.getFirst();
+            assertThat(c.getX1ShiftSs()).isEqualTo(0.0);
+            assertThat(c.getX2ShiftSs()).isEqualTo(0.0);
+            assertThat(c.getYShiftSs()).isEqualTo(0.0);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndingRoundTrip — row 36
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndingRoundTrip {
+
+        @Test
+        void testSecondTypeDeserializesAsFirstDueToBug() {
+            // Write a line with an Ending.Type.SECOND, then parse the serialized output.
+            // Known bug: Ending.Type is not serialized, so deserialization always produces FIRST.
+            var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
+            var ending = new Ending(elements.getElement(0), elements.getElement(1), Ending.Type.SECOND);
+            elements.addRangeElement(ending);
+
+            // Serialize and round-trip
+            var serialized = LineIO.endingsToString(elements.findRangeElements(Ending.class));
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_FSENDINGS, serialized);
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var endings = parsedLine.findRangeElements(Ending.class);
+            assertThat(endings).hasSize(1);
+            // Bug: type is not serialized, so SECOND becomes FIRST after round-trip
+            assertThat(endings.getFirst().getType()).isEqualTo(Ending.Type.FIRST);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // ParseEndingPairsClearsFirst — row 37
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class ParseEndingPairsClearsFirst {
+
+        @Test
+        void testSecondCallReplacesFirstBatch() {
+            // parseEndingPairs clears pendingEndingPairs before accumulating (unlike other parsers).
+            // Calling it twice (two XML_FSENDINGS tags) → only the second batch survives.
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            // First batch: ending at 0–1
+            feedTag(reader, LineIO.XML_FSENDINGS, "0,1;");
+            // Second batch: ending at 1–2 only — should replace the first
+            feedTag(reader, LineIO.XML_FSENDINGS, "1,2;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var endings = parsedLine.findRangeElements(Ending.class);
+            // Only the second batch (1 ending) survives
+            assertThat(endings).hasSize(1);
+            assertThat(endings.getFirst().getAnchorElementIndex()).isEqualTo(1);
+            assertThat(endings.getFirst().getEndElementIndex()).isEqualTo(2);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // TrillRoundTrip — row 38
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class TrillRoundTrip {
+
+        @Test
+        void testZeroYPositionRoundTrip() {
+            // <trills>0,2;</trills> → yPositionSs == 0
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_TRILLS, "0,2;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var trills = parsedLine.findRangeElements(Trill.class);
+            assertThat(trills).hasSize(1);
+            assertThat(trills.getFirst().getAnchorElementIndex()).isEqualTo(0);
+            assertThat(trills.getFirst().getEndElementIndex()).isEqualTo(2);
+            assertThat(trills.getFirst().getYPositionSs()).isEqualTo(0);
+        }
+
+        @Test
+        void testNonZeroYPositionRoundTrip() {
+            // <trills>0,2,5;</trills> → yPositionSs == 5
+            final int Y_POS = 5;
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_TRILLS, "0,2," + Y_POS + ";");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var trills = parsedLine.findRangeElements(Trill.class);
+            assertThat(trills).hasSize(1);
+            assertThat(trills.getFirst().getYPositionSs()).isEqualTo(Y_POS);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // AccumulateLegacyTrillFlag — row 39
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class AccumulateLegacyTrillFlag {
+
+        /**
+         * Builds a reader with {@code count} notes, marking notes at the given indices
+         * with a legacy {@code <trill>} tag. Notes not in {@code trillIndices} get no trill flag.
+         */
+        private static LineIO.LineReader buildReaderWithTrillNotes(int count, int... trillIndices) {
+            var emptyAttrs = new AttributesImpl();
+            var trillSet = new java.util.HashSet<Integer>();
+            for (var idx : trillIndices) {
+                trillSet.add(idx);
+            }
+            var reader = new LineIO.LineReader(minimalSongMock());
+            reader.startElement11("line", emptyAttrs);
+            reader.startElement11("notes", emptyAttrs);
+            for (var i = 0; i < count; i++) {
+                var noteAttrs = new AttributesImpl();
+                noteAttrs.addAttribute("", "type", "type", "CDATA", ElementType.CROTCHET.name());
+                reader.startElement11("note", noteAttrs);
+                reader.startElement11("staffposition", emptyAttrs);
+                reader.characters("0".toCharArray(), 0, 1);
+                reader.endElement11("staffposition");
+                if (trillSet.contains(i)) {
+                    reader.startElement11("trill", emptyAttrs);
+                    reader.endElement11("trill");
+                }
+                reader.endElement11("note");
+            }
+            reader.endElement11("notes");
+            return reader;
+        }
+
+        @Test
+        void testContiguousIndicesCoalesceIntoOneTrill() {
+            // Notes at indices 2,3,4 are trill-flagged → single Trill covering [2,4]
+            final int NOTE_COUNT = 5;
+            var reader = buildReaderWithTrillNotes(NOTE_COUNT, 2, 3, 4);
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var trills = parsedLine.findRangeElements(Trill.class);
+            assertThat(trills).hasSize(1);
+            assertThat(trills.getFirst().getAnchorElementIndex()).isEqualTo(2);
+            assertThat(trills.getFirst().getEndElementIndex()).isEqualTo(4);
+        }
+
+        @Test
+        void testNonContiguousIndicesProduceTwoTrillPairs() {
+            // Notes at indices 2 and 4 (non-contiguous) → two Trills: [2,2] and [4,4]
+            final int NOTE_COUNT = 5;
+            var reader = buildReaderWithTrillNotes(NOTE_COUNT, 2, 4);
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var trills = parsedLine.findRangeElements(Trill.class);
+            assertThat(trills).hasSize(2);
+            assertThat(trills.get(0).getAnchorElementIndex()).isEqualTo(2);
+            assertThat(trills.get(0).getEndElementIndex()).isEqualTo(2);
+            assertThat(trills.get(1).getAnchorElementIndex()).isEqualTo(4);
+            assertThat(trills.get(1).getEndElementIndex()).isEqualTo(4);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndElement11FullLineParse — row 40
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndElement11FullLineParse {
+
+        @Test
+        void testAllCreateMethodsInvokedOnLineClose() {
+            // Full start/chars/end sequence with all range element types:
+            // beam, tie, tuplet, crescendo, diminuendo, trill, ending.
+            // Uses 5 notes (indices 0-4) with valid ranges for all types.
+            final int NOTE_COUNT = 5;
+            var reader = buildReaderWithNotes(
+                ElementType.QUAVER,
+                ElementType.QUAVER,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_BEAMINGS, "0,1;");
+            feedTag(reader, LineIO.XML_TIES, "0,1;");
+            feedTag(reader, LineIO.XML_TUPLETS, "2,4,3;");
+            feedTag(reader, LineIO.XML_CRESCENDO, "0,1;");
+            feedTag(reader, LineIO.XML_DIMINUENDO, "2,3;");
+            feedTag(reader, LineIO.XML_TRILLS, "3,4;");
+            feedTag(reader, LineIO.XML_FSENDINGS, "0,1;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.elementCount()).isEqualTo(NOTE_COUNT);
+            assertThat(parsedLine.findRangeElements(Beam.class)).hasSize(1);
+            assertThat(parsedLine.findRangeElements(Tie.class)).hasSize(1);
+            assertThat(parsedLine.findRangeElements(Tuplet.class)).hasSize(1);
+            assertThat(parsedLine.findRangeElements(Crescendo.class)).hasSize(1);
+            assertThat(parsedLine.findRangeElements(Diminuendo.class)).hasSize(1);
+            assertThat(parsedLine.findRangeElements(Trill.class)).hasSize(1);
+            assertThat(parsedLine.findRangeElements(Ending.class)).hasSize(1);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // LineReaderNullGuard — row 41
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class LineReaderNullGuard {
+
+        @Test
+        void testEndElementBeforeStartElementReturnsNull() {
+            // endElement11 before any startElement → line == null → returns null
+            var reader = new LineIO.LineReader(minimalSongMock());
+            var result = reader.endElement11("line");
+
+            assertThat(result).isNull();
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers for reader-based tests
     // -------------------------------------------------------------------------
 

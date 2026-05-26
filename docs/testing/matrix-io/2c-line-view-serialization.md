@@ -32,13 +32,13 @@
 | LineIO | crescendo round-trip — all-zero shifts | unit | — | missing | `<crescendo>0,2;</crescendo>` → shifts 0 | ✅ |
 | LineIO | crescendo round-trip — explicit x1/x2/y shifts | unit | — | missing | `<crescendo>0,2,1.5,-0.5,0.25;</crescendo>` preserved | ✅ |
 | LineIO | diminuendo round-trip (same as crescendo) | unit | — | missing | analogous | ✅ |
-| LineIO | `parseHairpinPairs` swallows partial shift data (<3 parts → all 0) | unit | — | missing | `<crescendo>0,2,1.5;</crescendo>` → shifts 0 | ⬜ |
-| LineIO | ending round-trip — always rebuilds as `Ending.Type.FIRST` regardless of actual type | unit | — | missing | write test; exposes type-loss bug (production observation) | ⬜ |
-| LineIO | `parseEndingPairs` clears `pendingEndingPairs` before accumulating (unlike others) | unit | — | missing | call twice → only second batch survives | ⬜ |
-| LineIO | trill round-trip — yPositionSs 0 and non-zero | unit | — | missing | `<trills>0,2;</trills>` and `<trills>0,2,5;</trills>` | ⬜ |
-| LineIO | `accumulateLegacyTrillFlag` — coalesces contiguous indices into one run; new run for non-contiguous | unit | — | missing | 2,3,4 → `[2,4,0]`; 2,4 → two pairs | ⬜ |
-| LineIO | `endElement11` returns completed `Line` on `</line>` (all create-methods invoked first) | unit | — | missing | full start/chars/end sequence → correct counts + range elements | ⬜ |
-| LineIO | `LineReader` `line==null`/`noteReader==null` guard → `endElement11` returns null | unit | — | missing | endElement before any startElement → null | ⬜ |
+| LineIO | `parseHairpinPairs` swallows partial shift data (<3 parts → all 0) | unit | — | missing | `<crescendo>0,2,1.5;</crescendo>` → shifts 0 | ✅ |
+| LineIO | ending round-trip — always rebuilds as `Ending.Type.FIRST` regardless of actual type | unit | — | missing | write test; exposes type-loss bug (production observation) | ✅ |
+| LineIO | `parseEndingPairs` clears `pendingEndingPairs` before accumulating (unlike others) | unit | — | missing | call twice → only second batch survives | ✅ |
+| LineIO | trill round-trip — yPositionSs 0 and non-zero | unit | — | missing | `<trills>0,2;</trills>` and `<trills>0,2,5;</trills>` | ✅ |
+| LineIO | `accumulateLegacyTrillFlag` — coalesces contiguous indices into one run; new run for non-contiguous | unit | — | missing | 2,3,4 → `[2,4,0]`; 2,4 → two pairs | ✅ |
+| LineIO | `endElement11` returns completed `Line` on `</line>` (all create-methods invoked first) | unit | — | missing | full start/chars/end sequence → correct counts + range elements | ✅ |
+| LineIO | `LineReader` `line==null`/`noteReader==null` guard → `endElement11` returns null | unit | — | missing | endElement before any startElement → null | ✅ |
 | ViewIO | `writeView` — serializes all 6 font roles (name+size) | unit | — | missing | capture output, verify 6 name+size pairs | ⬜ |
 | ViewIO | `writeView` — uses PS name (not display name) | unit | — | missing | PSName ≠ family name → PSName in output | ⬜ |
 | ViewIO | `ViewReader` default ctor — all 6 roles from `Prefs` defaults | unit | `ViewIOTest.DocumentFontsLoad.testV10FallbackUsesDefaultsForAllRoles` | adequate | keep | — |

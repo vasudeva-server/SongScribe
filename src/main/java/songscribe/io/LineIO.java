@@ -59,7 +59,7 @@ public final class LineIO {
     private static final String XML_NOTES = "notes";
     static final String XML_CRESCENDO = "crescendo";
     static final String XML_DIMINUENDO = "diminuendo";
-    private static final String XML_TRILLS = "trills";
+    static final String XML_TRILLS = "trills";
 
     private LineIO() {
     }
