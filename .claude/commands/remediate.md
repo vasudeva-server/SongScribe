@@ -16,6 +16,10 @@ chunk and stop.
 **First, read `docs/testing/REMEDIATION.md`** (the settled procedure, decisions,
 chunking caps, model policy) and skim `docs/testing/remediation-ledger.md`.
 
+**Determine your model** from the system context (e.g. `claude-sonnet-4-6` →
+Sonnet; `claude-opus-*` → Opus). This governs which chunks you are eligible to
+handle — see step 1b.
+
 Then perform these steps once:
 
 1. **Select the chunk and claim it.**
@@ -28,8 +32,17 @@ Then perform these steps once:
    b. Interpret `$ARGUMENTS` as follows, then pick the next unclaimed class
       (or group of tiny same-source-dir classes) sized to the caps: **7 rows
       ordinary, 4 rows heavy pure-logic** (geometry/MIDI/serialization math),
-      130K-token worker budget. **Skip e2e-level rows** — they are deferred to
+      130K-token budget. **Skip e2e-level rows** — they are deferred to
       the final batch; leave them ⬜.
+
+      **Model eligibility** — apply before selecting any row:
+      - **Sonnet:** ordinary rows only. Skip heavy pure-logic rows and any class
+        whose ⬜ rows are all `inadequate` weak-but-green rewrites. If no
+        Sonnet-eligible chunk exists, STOP and report that all remaining chunks
+        require Opus.
+      - **Opus:** heavy pure-logic rows and `inadequate` weak-but-green rewrites
+        only. If no such chunk exists, STOP and report that no Opus-eligible
+        chunks remain.
 
       - **Bare integer (e.g. `3`):** treat as a package number. Read
         `docs/testing/remediation-ledger.md`, find all sections whose row
@@ -37,40 +50,32 @@ Then perform these steps once:
         that package), where N matches the argument. Restrict chunk selection
         to those sections: pick the first section that is "in progress" or
         "not started" (in ledger order), open its section file, and find the
-        first ⬜ row not already claimed.
+        first ⬜ row not already claimed that is eligible for the current model.
       - **Class name (e.g. `LineIO`):** use that class directly (verify it
-        has no claim file first).
+        has no claim file first, and that it is eligible for the current model).
       - **No argument:** pick the next package with ⬜ rows in risk-order
         (`dom → io → layout → util → action → selection → component → message
         → renderer → dialog → menu → lifecycle → e2e`), and within it the
-        next unclaimed class.
+        next unclaimed class eligible for the current model.
 
    c. **Immediately write the claim file** before doing any other work:
       `docs/testing/.claims/<ClassName>.lock` (or `<ClassA>+<ClassB>.lock` for a
       batch). Content: section file path, row numbers, and an ISO-8601 date-time
       **including the time component**. Obtain the timestamp by running
       `date -Iseconds` — never hand-write or guess it.
-      Writing this file is the reservation — do it before spawning the worker.
+      Writing this file is the reservation — do it before proceeding.
 
    d. State which section file + rows the chunk covers.
 
-2. **Delegate to ONE fresh worker** (model: Sonnet by default; **Opus** for heavy
-   pure-logic and for `inadequate` weak-but-green rewrites). Do **not** pass
-   `isolation` when spawning — omitting it lets `bgIsolation: "none"` in
-   settings.json take effect, so the worker shares the main working tree (no
-   worktree). Its prompt MUST begin with `MANDATORY: Read .agents/rules/serena.md`.
-   Give it the exact ⬜ rows, the
-   target test file, and instruct it to: read the production class + existing test
-   + the testing guides; implement each row's `action` (write `missing`,
-   strengthen `inadequate`, relocate `wrong-level`, delete `redundant`). **Explicitly
-   tell the worker that both the test file and the production class under test are
-   fully in scope — the global "don't touch unrelated code" rule does not restrict
-   modifications to either of those files for this task.** Then instruct it to: run
-   `./scripts/compile.sh` then `./scripts/test.sh <ClassName>` (unit only, never
-   e2e); fix failures; return per-row dispositions (`Class.method` →
-   keep/modify/add/relocate/remove) and which rows are complete.
-   For an oversized single class, continue the SAME worker via SendMessage rather
-   than re-spawning.
+2. **Perform the work inline.** Read the production class, the existing test file,
+   and the testing guides. Both the test file and the production class under test
+   are fully in scope — the global "don't touch unrelated code" rule does not
+   restrict modifications to either of those files for this task. Implement each
+   ⬜ row's `action` (write `missing`, strengthen `inadequate`, relocate
+   `wrong-level`, delete `redundant`). Run `./scripts/compile.sh` then
+   `./scripts/test.sh <ClassName>` (unit only, never e2e); fix any failures.
+   Produce per-row dispositions (`Class.method` →
+   keep/modify/add/relocate/remove) and note which rows are complete.
 
 3. **Integrate** (main session): The dispositions files and ledger are shared
    across parallel sessions — acquire the integration lock before writing to them.
@@ -92,7 +97,7 @@ Then perform these steps once:
    c. **Release the integration lock** immediately after `gen_ledger.py`
       completes: delete `docs/testing/.claims/.integration.lock`.
 
-4. **Commit & stop.** Verify the worker's tests compiled and passed; if anything
+4. **Commit & stop.** Verify the tests compiled and passed; if anything
    failed and is unresolved, delete the claim file and STOP and report instead of
    committing. Otherwise commit to `develop` via the `/commit-commands:commit`
    skill (message scope: the class/section just remediated). After a successful
