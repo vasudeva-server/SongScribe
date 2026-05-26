@@ -13,11 +13,11 @@
 | AnnotationAttachment | `setText`/`getText` via inner Annotation | none | — | none | trivial delegation | — |
 | DynamicAttachment | `DynamicType` — symbol/glyph/velocityFraction for all 8 | unit | `DynamicAttachmentTest.DynamicTypeFields` | adequate | keep (but see defect note) | — |
 | DynamicAttachment | `getContentWidth/HeightSs()` — bbox path + fallback path | unit | `DynamicAttachmentTest.Dimensions` (4) | adequate | keep | — |
-| DynamicAttachment | `getContentWidth/HeightPx()` via ssToPx | unit | — | missing | write px=ss×scale tests | ⬜ |
+| DynamicAttachment | `getContentWidth/HeightPx()` via ssToPx | unit | — | missing | write px=ss×scale tests | ✅ |
 | DynamicAttachment | serialization round-trip preserves DynamicType | unit | `DynamicAttachmentPersistenceTest`, `StaffElementIOTest.DynamicSerialization` | adequate | keep | — |
 | DynamicAttachment | `copy()` — new instance, same type + newOwner | unit | `StaffElementCopyConstructorTest` (presence only) | inadequate | add type + owner assertions | ✅ |
-| FermataAttachment | `getContentWidth/HeightSs()` SMuFL constants | unit | `FermataTrillStackingTest.testFermataHasPositiveDimensions` (`>0`) | inadequate | write direct test vs exact bbox values | ⬜ |
-| FermataAttachment | `getContentWidth/HeightPx()` via ssToPx | unit | — | missing | write px-matches-ssToPx test | ⬜ |
+| FermataAttachment | `getContentWidth/HeightSs()` SMuFL constants | unit | `FermataTrillStackingTest.testFermataHasPositiveDimensions` (`>0`) | inadequate | write direct test vs exact bbox values | ✅ |
+| FermataAttachment | `getContentWidth/HeightPx()` via ssToPx | unit | — | missing | write px-matches-ssToPx test | ✅ |
 | FermataAttachment | `copy()` — new instance, owner preserved | unit | `StaffElementCopyConstructorTest` (presence only) | inadequate | add owner assertion | ✅ |
 | MetronomeAttachment | `metronomeGlyphFor(ElementType)` — 6 notes + default null | unit | — | missing | write parametrized test | ⬜ |
 | MetronomeAttachment | `dotAdvanceWidthSs()` — bbox advance × NOTE_SCALE | unit | — | missing | write test | ⬜ |

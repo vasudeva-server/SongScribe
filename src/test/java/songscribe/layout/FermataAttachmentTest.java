@@ -21,15 +21,80 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.ScaleContext;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 class FermataAttachmentTest extends UnitTest {
+
+    // Non-default scale — distinct from ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE (8.0)
+    // so a forgotten tearDown surfaces immediately rather than silently passing.
+    private static final double TEST_PPS = 12.5;
+
+    // Tolerance for floating-point comparisons.
+    private static final double DOUBLE_EPSILON = 1e-9;
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ContentDimensionsPx {
+
+        @BeforeEach
+        void setUp() {
+            ScaleContext.setPixelsPerStaffSpace(TEST_PPS);
+        }
+
+        @AfterEach
+        void tearDown() {
+            ScaleContext.setPixelsPerStaffSpace(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
+        }
+
+        @Test
+        void testGetContentHeightPxEqualsHeightSsTimesScale() {
+            var attachment = new FermataAttachment();
+            double expectedPx = attachment.getContentHeightSs() * TEST_PPS;
+            assertThat(attachment.getContentHeightPx()).isCloseTo(expectedPx, within(DOUBLE_EPSILON));
+        }
+
+        @Test
+        void testGetContentWidthPxEqualsWidthSsTimesScale() {
+            var attachment = new FermataAttachment();
+            double expectedPx = attachment.getContentWidthSs() * TEST_PPS;
+            assertThat(attachment.getContentWidthPx()).isCloseTo(expectedPx, within(DOUBLE_EPSILON));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Row 19 — getContentWidthSs/HeightSs return exact SMuFL bbox dimensions
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ContentDimensionsSs {
+
+        @Test
+        void testGetContentHeightSsMatchesFermataAboveBboxHeight() {
+            var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.FERMATA_ABOVE);
+            var attachment = new FermataAttachment();
+            assertThat(attachment.getContentHeightSs()).isEqualTo(bbox.height());
+        }
+
+        @Test
+        void testGetContentWidthSsMatchesFermataAboveBboxWidth() {
+            var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.FERMATA_ABOVE);
+            var attachment = new FermataAttachment();
+            assertThat(attachment.getContentWidthSs()).isEqualTo(bbox.width());
+        }
+    }
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
