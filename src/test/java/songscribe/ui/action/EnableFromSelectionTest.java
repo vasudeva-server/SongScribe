@@ -80,6 +80,59 @@ class EnableFromSelectionTest extends MainFrameMockTest {
             mockEnv().coordinator().hasActiveSelection())).isTrue();
     }
 
+    // -- enableFromDurationSelection: ENABLE_WHEN_DURATION_SELECTED + no selection + excluded durations → false --
+
+    @Test
+    void testEnableFromDurationSelectionReturnsFalseWhenGraceEighthNoteSelected() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.GRACE_EIGHTH_NOTE_ACTION, true);
+        try {
+            var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
+            action.setFlags(UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED);
+
+            assertThat(action.enableFromDurationSelection(false)).isFalse();
+        } finally {
+            Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+        }
+    }
+
+    @Test
+    void testEnableFromDurationSelectionReturnsFalseWhenGlissandoSelected() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.GLISSANDO_ACTION, true);
+        try {
+            var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
+            action.setFlags(UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED);
+
+            assertThat(action.enableFromDurationSelection(false)).isFalse();
+        } finally {
+            Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+        }
+    }
+
+    @Test
+    void testEnableFromDurationSelectionReturnsFalseWhenSlideOutSelected() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.SLIDE_OUT_ACTION, true);
+        try {
+            var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
+            action.setFlags(UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED);
+
+            assertThat(action.enableFromDurationSelection(false)).isFalse();
+        } finally {
+            Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+        }
+    }
+
+    // -- enableFromDurationSelection: ENABLE_WHEN_DURATION_SELECTED + no selection + normal duration → true --
+
+    @Test
+    void testEnableFromDurationSelectionReturnsTrueWhenQuarterNoteSelected() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+
+        var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
+        action.setFlags(UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED);
+
+        assertThat(action.enableFromDurationSelection(false)).isTrue();
+    }
+
     // -- enableFromSelection: no active selection --
 
     @Test

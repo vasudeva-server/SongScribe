@@ -370,6 +370,90 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
         }
     }
 
+    // -- enableFromSongState: DISABLE_WHEN_SONG_EMPTY flag --
+
+    @Test
+    void testDisableWhenSongEmptyFlagReturnsFalseWhenSongIsEmpty() {
+        var mockSong = mock(songscribe.dom.Song.class);
+        when(mockEnv().score().isInitialized()).thenReturn(true);
+        when(mockEnv().score().getSong()).thenReturn(mockSong);
+        when(mockSong.isEmpty()).thenReturn(true);
+
+        var action = createActionWithFlag(UIAction.Flag.DISABLE_WHEN_SONG_EMPTY);
+        assertThat(action.enableFromSongState()).isFalse();
+    }
+
+    @Test
+    void testDisableWhenSongEmptyFlagReturnsTrueWhenSongIsNotEmpty() {
+        var mockSong = mock(songscribe.dom.Song.class);
+        when(mockEnv().score().isInitialized()).thenReturn(true);
+        when(mockEnv().score().getSong()).thenReturn(mockSong);
+        when(mockSong.isEmpty()).thenReturn(false);
+
+        var action = createActionWithFlag(UIAction.Flag.DISABLE_WHEN_SONG_EMPTY);
+        assertThat(action.enableFromSongState()).isTrue();
+    }
+
+    @Test
+    void testEnableFromSongStateReturnsTrueWithoutFlag() {
+        // No DISABLE_WHEN_SONG_EMPTY flag: always true regardless of song state.
+        var action = createActionWithFlag();
+        assertThat(action.enableFromSongState()).isTrue();
+    }
+
+    // -- perform: delegates to actionPerformed with correct ActionEvent source --
+
+    @Test
+    void testPerformDelegatesToActionPerformedWithCorrectSource() {
+        var source = new Object();
+        var capturedSource = new Object[1];
+
+        var action = new UIAction(mainFrame(), "Test", "test-cmd") {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                capturedSource[0] = e.getSource();
+            }
+        };
+
+        action.perform(source);
+
+        assertThat(capturedSource[0]).isSameAs(source);
+    }
+
+    @Test
+    void testPerformUsesActionItselfAsSourceWhenNullPassed() {
+        var capturedSource = new Object[1];
+
+        var action = new UIAction(mainFrame(), "Test", "test-cmd") {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                capturedSource[0] = e.getSource();
+            }
+        };
+
+        action.perform(null);
+
+        assertThat(capturedSource[0]).isSameAs(action);
+    }
+
+    // -- dialogVisibilityDidChange: only calls updateEnabledState when OPENS_DIALOG flag present --
+
+    @Test
+    void testDialogVisibilityDidChangeDoesNotUpdateEnabledStateWithoutFlag() {
+        // An action without OPENS_DIALOG starts enabled; calling dialogVisibilityDidChange
+        // must not trigger updateEnabledState (which would disable it if scoreView is null).
+        when(mainFrame().getScoreView()).thenReturn(null);
+
+        var action = createActionWithFlag();
+        action.setEnabled(true);
+
+        action.dialogVisibilityDidChange(
+            new songscribe.message.notification.DialogVisibilityDidChangeNotification(true));
+
+        // enabled state must remain true since updateEnabledState was not invoked
+        assertThat(action.isEnabled()).isTrue();
+    }
+
     // -- helpers --
 
     private UIAction createActionWithFlag(UIAction.Flag... flags) {

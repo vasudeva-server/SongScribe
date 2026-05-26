@@ -20,7 +20,16 @@
 
 package songscribe.midi;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Stream;
+
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MetaMessage;
+import javax.sound.midi.MidiEvent;
+import javax.sound.midi.Sequence;
+import javax.sound.midi.ShortMessage;
+import javax.sound.midi.Track;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -35,7 +44,10 @@ import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
+import songscribe.dom.TempoChangeAttachment;
+import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
+import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,10 +55,67 @@ import static org.assertj.core.api.Assertions.offset;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.midi.MidiSequenceBuilder.PPQ;
 
+@SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized" })
 class LineTrackBuilderTest extends UnitTest {
 
     // Quarter-note tempo — reference note duration == PPQ
     private static final Tempo CROTCHET_TEMPO = new Tempo(120, Duration.CROTCHET, "", false);
+
+    private static final PlaybackSettings DEFAULT_SETTINGS = new PlaybackSettings(
+        0, 100, 100, false
+    );
+
+    // Note-off tick for a CONNECTED glissando is duration − 1
+    private static final int CONNECTED_NOTE_OFF_OFFSET = 1;
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    private static Track newTrack() throws InvalidMidiDataException {
+        var sequence = new Sequence(Sequence.PPQ, MidiSequenceBuilder.PPQ);
+        return sequence.createTrack();
+    }
+
+    private static Track buildTrack(
+        songscribe.dom.Line line,
+        Tempo tempo
+    ) throws Exception {
+        var track = newTrack();
+        new LineTrackBuilder(line).addToTrack(track, 0, 0, tempo, DEFAULT_SETTINGS);
+        return track;
+    }
+
+    private static List<MidiEvent> eventsByCommand(Track track, int command) {
+        var list = new ArrayList<MidiEvent>();
+
+        for (var i = 0; i < track.size(); i++) {
+            var ev = track.get(i);
+
+            if (ev.getMessage() instanceof ShortMessage sm && sm.getCommand() == command) {
+                list.add(ev);
+            }
+        }
+
+        return list;
+    }
+
+    private static List<MidiEvent> metaEventsByType(Track track, int metaType) {
+        var list = new ArrayList<MidiEvent>();
+
+        for (var i = 0; i < track.size(); i++) {
+            var ev = track.get(i);
+
+            if (ev.getMessage() instanceof MetaMessage mm && mm.getType() == metaType) {
+                list.add(ev);
+            }
+        }
+
+        return list;
+    }
+
+    private static int bendValue(MidiEvent event) {
+        var sm = (ShortMessage) event.getMessage();
+        return sm.getData1() | (sm.getData2() << 7);
+    }
 
     // -------------------------------------------------------------------------
     // Row 23 — getElementDurationWithTuplet
@@ -296,6 +365,469 @@ class LineTrackBuilderTest extends UnitTest {
             var result = LineTrackBuilder.noteVelocity(note, map, LINE_INDEX, NOTE_INDEX);
 
             assertThat(result).isEqualTo(map.getVelocity(LINE_INDEX, NOTE_INDEX));
+        }
+    }
+
+    // ── Row 27: addNoteMessages dispatch branches ─────────────────────────────
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddNoteMessages {
+
+        @Test
+        void testGraceNoteEmitsNoNoteOn() throws Exception {
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var host = ElementType.CROTCHET.newInstance();
+            host.setStaffPosition(-2);
+            var line = detachedLine();
+            line.addElement(grace);
+            line.addElement(host);
+
+            var track = buildTrack(line, new Tempo());
+            var noteOns = eventsByCommand(track, ShortMessage.NOTE_ON);
+
+            // Only the host note should produce a NOTE_ON; the grace note does not
+            assertThat(noteOns).as("only host NOTE_ON, no grace NOTE_ON").hasSize(1);
+            assertThat(noteOns.getFirst().getTick()).as("host NOTE_ON at tick 0").isEqualTo(0);
+        }
+
+        @Test
+        void testGraceNoteStoresPitchForSlideIn() throws Exception {
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setStaffPosition(1);
+            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var host = ElementType.CROTCHET.newInstance();
+            host.setStaffPosition(-2);
+            var line = detachedLine();
+            line.addElement(grace);
+            line.addElement(host);
+
+            var track = buildTrack(line, new Tempo());
+            var bendEvents = eventsByCommand(track, ShortMessage.PITCH_BEND);
+
+            // A slide-in bend proves that the grace pitch was stored and consumed
+            assertThat(bendEvents).as("slide-in pitch bend generated from stored grace pitch").isNotEmpty();
+            // First bend value must not be center (i.e. there is a real offset)
+            assertThat(bendValue(bendEvents.getFirst()))
+                .as("initial bend is not center — grace pitch offset applied")
+                .isNotEqualTo(GlissandoMidiHelper.PITCH_BEND_CENTER);
+        }
+
+        @Test
+        void testRestAdvancesTicksNoNoteMessages() throws Exception {
+            var line = lineWith(ElementType.CROTCHET_REST, ElementType.CROTCHET);
+            line.getElement(1).setStaffPosition(-2);
+
+            var track = buildTrack(line, new Tempo());
+            var noteOns = eventsByCommand(track, ShortMessage.NOTE_ON);
+            var noteOffs = eventsByCommand(track, ShortMessage.NOTE_OFF);
+
+            // The rest should generate no NOTE_ON; the note after it must land at PPQ
+            assertThat(noteOns).as("no NOTE_ON for rest").hasSize(1);
+            assertThat(noteOns.getFirst().getTick())
+                .as("note after rest starts at one quarter-note tick offset")
+                .isEqualTo(MidiSequenceBuilder.PPQ);
+
+            assertThat(noteOffs).as("only note-off for the pitched note, none for rest").hasSize(1);
+        }
+
+        @Test
+        void testTieAnchorEmitsNoteOnNoteTieEndDoesNot() throws Exception {
+            var line = detachedLine();
+            var note0 = ElementType.CROTCHET.newInstance();
+            note0.setStaffPosition(-2);
+            var note1 = ElementType.CROTCHET.newInstance();
+            note1.setStaffPosition(-2);
+            var note2 = ElementType.CROTCHET.newInstance();
+            note2.setStaffPosition(-2);
+            line.addElement(note0);
+            line.addElement(note1);
+            line.addElement(note2);
+
+            // Tie note0 → note1: note0 is anchor, note1 is tie-end; note2 is standalone
+            line.addTie(new Tie(note0, note1));
+
+            var track = buildTrack(line, new Tempo());
+            var noteOns = eventsByCommand(track, ShortMessage.NOTE_ON);
+
+            // note0 (anchor) + note2 (standalone) → 2 NOTE_ONs; note1 (tie-end) → none
+            assertThat(noteOns).as("anchor and standalone each get NOTE_ON, tie-end does not").hasSize(2);
+            assertThat(noteOns.getFirst().getTick()).as("anchor NOTE_ON at tick 0").isEqualTo(0);
+            assertThat(noteOns.getLast().getTick())
+                .as("standalone NOTE_ON after two quarter durations")
+                .isEqualTo(2 * MidiSequenceBuilder.PPQ);
+        }
+
+        @Test
+        void testTieEndEmitsNoteOffAnchorDoesNot() throws Exception {
+            var line = detachedLine();
+            var note0 = ElementType.CROTCHET.newInstance();
+            note0.setStaffPosition(-2);
+            var note1 = ElementType.CROTCHET.newInstance();
+            note1.setStaffPosition(-2);
+            line.addElement(note0);
+            line.addElement(note1);
+            line.addTie(new Tie(note0, note1));
+
+            var track = buildTrack(line, new Tempo());
+            var noteOffs = eventsByCommand(track, ShortMessage.NOTE_OFF);
+
+            // The note-off for a tied pair lands at the end of note1's duration
+            assertThat(noteOffs).as("single note-off for the tie span").hasSize(1);
+            // Default sounding-percent=100 → note-off at tick 2*PPQ (end of note1)
+            assertThat(noteOffs.getFirst().getTick())
+                .as("note-off at end of tie-end duration")
+                .isEqualTo(2 * MidiSequenceBuilder.PPQ);
+        }
+
+        @Test
+        void testNonPitchedNextElementFallsBackToNormalNoteOff() throws Exception {
+            // A note with CONNECTED glissando followed by a rest must use normal note-off
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(-2);
+            note.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var rest = ElementType.CROTCHET_REST.newInstance();
+            line.addElement(note);
+            line.addElement(rest);
+
+            var track = buildTrack(line, new Tempo());
+            var noteOffs = eventsByCommand(track, ShortMessage.NOTE_OFF);
+            var bendEvents = eventsByCommand(track, ShortMessage.PITCH_BEND);
+
+            // Normal note-off: no glissando bend emitted
+            assertThat(bendEvents).as("no pitch bend when fallback to normal note-off").isEmpty();
+            // Note-off lands at sounding duration (100% of PPQ by default)
+            assertThat(noteOffs).as("one note-off").hasSize(1);
+            assertThat(noteOffs.getFirst().getTick())
+                .as("normal note-off tick at full duration")
+                .isEqualTo(MidiSequenceBuilder.PPQ);
+        }
+    }
+
+    // ── Row 28: addGlissandoMessages ──────────────────────────────────────────
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddGlissandoMessages {
+
+        @Test
+        void testConnectedNoteOffAtDurationMinusOne() throws Exception {
+            // CONNECTED glissando: note-off must be at duration − 1 to avoid pitch-reset race
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(-2);
+            note.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var nextNote = ElementType.CROTCHET.newInstance();
+            nextNote.setStaffPosition(-4);
+            line.addElement(note);
+            line.addElement(nextNote);
+
+            var track = buildTrack(line, new Tempo());
+            var noteOffs = eventsByCommand(track, ShortMessage.NOTE_OFF);
+
+            assertThat(noteOffs).as("at least one note-off").isNotEmpty();
+            // The first note-off belongs to the glissando source note
+            var glissNoteOffTick = noteOffs.getFirst().getTick();
+            assertThat(glissNoteOffTick)
+                .as("CONNECTED note-off at duration − 1")
+                .isEqualTo(MidiSequenceBuilder.PPQ - CONNECTED_NOTE_OFF_OFFSET);
+        }
+
+        @Test
+        void testConnectedFallbackWhenLastElement() throws Exception {
+            // CONNECTED with no next element → normal note-off, no pitch bend
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(-2);
+            note.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            line.addElement(note);
+
+            var track = buildTrack(line, new Tempo());
+            var bendEvents = eventsByCommand(track, ShortMessage.PITCH_BEND);
+            var noteOffs = eventsByCommand(track, ShortMessage.NOTE_OFF);
+
+            assertThat(bendEvents).as("no pitch bend when next element absent").isEmpty();
+            assertThat(noteOffs).as("normal note-off emitted").hasSize(1);
+            assertThat(noteOffs.getFirst().getTick())
+                .as("fallback note-off at full sounding duration")
+                .isEqualTo(MidiSequenceBuilder.PPQ);
+        }
+
+        @Test
+        void testConnectedFallbackWhenNextIsRest() throws Exception {
+            // CONNECTED with rest as next element → normal note-off, no pitch bend
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(-2);
+            note.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            line.addElement(note);
+            line.addElement(ElementType.CROTCHET_REST.newInstance());
+
+            var track = buildTrack(line, new Tempo());
+            var bendEvents = eventsByCommand(track, ShortMessage.PITCH_BEND);
+            var noteOffs = eventsByCommand(track, ShortMessage.NOTE_OFF);
+
+            assertThat(bendEvents).as("no pitch bend when next element is rest").isEmpty();
+            assertThat(noteOffs).as("normal note-off emitted").hasSize(1);
+            assertThat(noteOffs.getFirst().getTick())
+                .as("fallback note-off at full sounding duration")
+                .isEqualTo(MidiSequenceBuilder.PPQ);
+        }
+
+        @Test
+        void testSlideOutEmitsExpressionCcEvents() throws Exception {
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(-2);
+            note.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            line.addElement(note);
+
+            var track = buildTrack(line, new Tempo());
+            var ccEvents = eventsByCommand(track, ShortMessage.CONTROL_CHANGE);
+
+            // Slide starts at sustainTicks into the note (halfway through full duration).
+            // Events at the note-off tick (PPQ) are the deferred reset, not the fade.
+            var noteOffTick = (long) MidiSequenceBuilder.PPQ;
+            var slideStartTick = GlissandoMidiHelper.calculateSustainTicks(MidiSequenceBuilder.PPQ);
+
+            // Expression fade events are CC 11, emitted strictly before note-off tick
+            var slideExpressionEvents = ccEvents.stream()
+                .filter(e -> ((ShortMessage) e.getMessage()).getData1() == 11)
+                .filter(e -> e.getTick() >= slideStartTick && e.getTick() < noteOffTick)
+                .toList();
+
+            assertThat(slideExpressionEvents).as("SLIDE_OUT emits Expression CC fade events").isNotEmpty();
+
+            // The fade starts at 127 and must reach a value below 127 by the slide end
+            var firstExprValue = ((ShortMessage) slideExpressionEvents.getFirst().getMessage()).getData2();
+            var lastExprValue = ((ShortMessage) slideExpressionEvents.getLast().getMessage()).getData2();
+
+            assertThat(firstExprValue).as("expression fade starts at maximum").isEqualTo(127);
+            assertThat(lastExprValue).as("expression fades to below starting value").isLessThan(firstExprValue);
+        }
+
+        @Test
+        void testSlideOutShortenedByStaccato() throws Exception {
+            // With staccato (33% duration) the note-off must be earlier than full duration
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(-2);
+            note.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            note.addArticulation(new Articulation(ArticulationType.STACCATO));
+            line.addElement(note);
+
+            var trackStaccato = buildTrack(line, new Tempo());
+            var noteOffsStaccato = eventsByCommand(trackStaccato, ShortMessage.NOTE_OFF);
+
+            // Without staccato for comparison
+            var lineNormal = detachedLine();
+            var noteNormal = ElementType.CROTCHET.newInstance();
+            noteNormal.setStaffPosition(-2);
+            noteNormal.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            lineNormal.addElement(noteNormal);
+
+            var trackNormal = buildTrack(lineNormal, new Tempo());
+            var noteOffsNormal = eventsByCommand(trackNormal, ShortMessage.NOTE_OFF);
+
+            assertThat(noteOffsStaccato).as("staccato slide-out has a note-off").hasSize(1);
+            assertThat(noteOffsNormal).as("normal slide-out has a note-off").hasSize(1);
+            assertThat(noteOffsStaccato.getFirst().getTick())
+                .as("staccato shortens note-off tick compared to full duration")
+                .isLessThan(noteOffsNormal.getFirst().getTick());
+        }
+    }
+
+    // ── Row 29: addGraceGlissandoSlideIn ─────────────────────────────────────
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddGraceGlissandoSlideIn {
+
+        @Test
+        void testNoteOnVelocityIsReducedByGraceRatio() throws Exception {
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setStaffPosition(1);
+            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var host = ElementType.CROTCHET.newInstance();
+            host.setStaffPosition(-2);
+            var line = detachedLine();
+            line.addElement(grace);
+            line.addElement(host);
+
+            var track = buildTrack(line, new Tempo());
+            var noteOns = eventsByCommand(track, ShortMessage.NOTE_ON);
+
+            assertThat(noteOns).as("one NOTE_ON for the host").hasSize(1);
+
+            var velocity = ((ShortMessage) noteOns.getFirst().getMessage()).getData2();
+            var expectedVelocity = (int) (PlaybackController.NOTE_VELOCITY * 0.85);
+
+            assertThat(velocity)
+                .as("host NOTE_ON velocity reduced to 85% of default")
+                .isEqualTo(expectedVelocity);
+        }
+
+        @Test
+        void testPitchBendResetAtEndOfSlide() throws Exception {
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setStaffPosition(1);
+            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var host = ElementType.CROTCHET.newInstance();
+            host.setStaffPosition(-2);
+            var line = detachedLine();
+            line.addElement(grace);
+            line.addElement(host);
+
+            var track = buildTrack(line, new Tempo());
+            var bendEvents = eventsByCommand(track, ShortMessage.PITCH_BEND);
+
+            // The last pitch bend event within the slide window must be center (reset)
+            var slideDuration = Math.min(GlissandoMidiHelper.GRACE_SLIDE_TICKS, MidiSequenceBuilder.PPQ);
+            var resetTick = (long) slideDuration;
+
+            var resetEvent = bendEvents.stream()
+                .filter(e -> e.getTick() == resetTick)
+                .filter(e -> bendValue(e) == GlissandoMidiHelper.PITCH_BEND_CENTER)
+                .findFirst();
+
+            assertThat(resetEvent)
+                .as("pitch bend reset (center) emitted at tick " + resetTick)
+                .isPresent();
+        }
+
+        @Test
+        void testExpressionResetAtEndOfSlide() throws Exception {
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setStaffPosition(1);
+            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var host = ElementType.CROTCHET.newInstance();
+            host.setStaffPosition(-2);
+            var line = detachedLine();
+            line.addElement(grace);
+            line.addElement(host);
+
+            var track = buildTrack(line, new Tempo());
+            var ccEvents = eventsByCommand(track, ShortMessage.CONTROL_CHANGE);
+
+            var slideDuration = Math.min(GlissandoMidiHelper.GRACE_SLIDE_TICKS, MidiSequenceBuilder.PPQ);
+            var resetTick = (long) slideDuration;
+
+            // Expression reset = CC 11 = 127 at the slide-end tick
+            var expressionReset = ccEvents.stream()
+                .filter(e -> e.getTick() == resetTick)
+                .filter(e -> ((ShortMessage) e.getMessage()).getData1() == 11)
+                .filter(e -> ((ShortMessage) e.getMessage()).getData2() == 127)
+                .findFirst();
+
+            assertThat(expressionReset)
+                .as("expression reset (CC 11 = 127) emitted at tick " + resetTick)
+                .isPresent();
+        }
+    }
+
+    // ── Row 30: addToTrack overloads ──────────────────────────────────────────
+
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
+    @Nested
+    class AddToTrack {
+
+        @Test
+        void testTempoChangeElementEmitsSetTempoMetaEvent() throws Exception {
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(-2);
+            var fastTempo = new Tempo(180, Duration.CROTCHET, "Fast", true);
+            note.addAttachment(new TempoChangeAttachment(fastTempo));
+            line.addElement(note);
+
+            var track = buildTrack(line, new Tempo());
+            var tempoEvents = metaEventsByType(track, MidiMetaMessageTypes.SET_TEMPO);
+
+            assertThat(tempoEvents).as("SET_TEMPO meta event emitted").hasSize(1);
+            assertThat(tempoEvents.getFirst().getTick())
+                .as("tempo event at tick 0 (start of element)")
+                .isEqualTo(0);
+        }
+
+        @Test
+        void testRangeBoundariesRespected() throws Exception {
+            // Three notes; only the middle note should produce a NOTE_ON/NOTE_OFF
+            var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET, ElementType.CROTCHET);
+            line.getElement(0).setStaffPosition(-2);
+            line.getElement(1).setStaffPosition(-4);
+            line.getElement(2).setStaffPosition(-6);
+
+            var track = newTrack();
+            new LineTrackBuilder(line).addToTrack(track, 0, 0, new Tempo(), DEFAULT_SETTINGS, 1, 1);
+
+            var noteOns = eventsByCommand(track, ShortMessage.NOTE_ON);
+            var noteOffs = eventsByCommand(track, ShortMessage.NOTE_OFF);
+
+            assertThat(noteOns).as("only middle element NOTE_ON").hasSize(1);
+            assertThat(noteOffs).as("only middle element NOTE_OFF").hasSize(1);
+            // Middle element starts at tick 0 within the range call (startTicks=0)
+            assertThat(noteOns.getFirst().getTick()).as("NOTE_ON at start of range").isEqualTo(0);
+        }
+
+        @Test
+        void testOverload3FlushesGlissandoPendingResets() throws Exception {
+            // A SLIDE_OUT note leaves pending resets. Overload[3] must flush them.
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(-2);
+            note.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            line.addElement(note);
+
+            var track = newTrack();
+            // Overload[3]: takes startElement, endElement, velocityMap — flushes internally
+            new LineTrackBuilder(line).addToTrack(track, 0, 0, new Tempo(), DEFAULT_SETTINGS,
+                0, 0, (VelocityMap) null);
+
+            var ccEvents = eventsByCommand(track, ShortMessage.CONTROL_CHANGE);
+            var endTick = (long) MidiSequenceBuilder.PPQ;
+
+            // After a SLIDE_OUT the pending expression reset (CC 11=127) must land at the end tick
+            var expressionReset = ccEvents.stream()
+                .filter(e -> e.getTick() == endTick)
+                .filter(e -> ((ShortMessage) e.getMessage()).getData1() == 11)
+                .filter(e -> ((ShortMessage) e.getMessage()).getData2() == 127)
+                .findFirst();
+
+            assertThat(expressionReset)
+                .as("overload[3] flushes pending expression reset at end tick")
+                .isPresent();
+        }
+
+        @Test
+        void testOverload4DoesNotFlushGlissandoPendingResets() throws Exception {
+            // Overload[4] takes an external GlissandoMidiHelper; flushing is the caller's job.
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(-2);
+            note.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            line.addElement(note);
+
+            var track = newTrack();
+            var helper = new GlissandoMidiHelper();
+            // Overload[4]: takes startElement, endElement, glissandoHelper — no auto-flush
+            new LineTrackBuilder(line).addToTrack(track, 0, 0, new Tempo(), DEFAULT_SETTINGS,
+                0, 0, helper);
+
+            var ccEvents = eventsByCommand(track, ShortMessage.CONTROL_CHANGE);
+            var endTick = (long) MidiSequenceBuilder.PPQ;
+
+            // Without explicit flush, no expression reset at end tick
+            var expressionResetAtEnd = ccEvents.stream()
+                .filter(e -> e.getTick() == endTick)
+                .filter(e -> ((ShortMessage) e.getMessage()).getData1() == 11)
+                .filter(e -> ((ShortMessage) e.getMessage()).getData2() == 127)
+                .findFirst();
+
+            assertThat(expressionResetAtEnd)
+                .as("overload[4] does not auto-flush: no expression reset at end tick")
+                .isEmpty();
         }
     }
 
