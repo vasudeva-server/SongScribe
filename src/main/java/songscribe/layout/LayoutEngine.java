@@ -81,14 +81,14 @@ public class LayoutEngine {
 
     // Tie geometry constants (MuseScore port, staff-space units unless noted)
     private static final double TIE_SHOULDER_W = 0.6;                // shoulder width fraction of tie span
-    private static final double TIE_MIN_SHOULDER_HEIGHT_SS = 0.3;   // minimum arc height
-    private static final double TIE_MAX_SHOULDER_HEIGHT_SS = 2.0;   // maximum arc height
+    static final double TIE_MIN_SHOULDER_HEIGHT_SS = 0.3;            // minimum arc height
+    static final double TIE_MAX_SHOULDER_HEIGHT_SS = 2.0;            // maximum arc height
     private static final double TIE_SHOULDER_HEIGHT_SCALE = 0.3;    // sqrt scaling factor for arc height
-    private static final double TIE_MID_THICKNESS_SS = Engraving.TIE_MIDPOINT_THICKNESS_SS; // midpoint half-thickness (midWidth - endWidth)
-    private static final double TIE_COLLISION_FACTOR = 0.65;        // interior deflection scaling
-    private static final double TIE_COLLISION_PUSH = 0.45;          // midpoint push-up ratio on collision
-    static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;   // visual half-width of notehead
-    private static final double TIE_ENDPOINT_Y_OFFSET_SS = 0.7;    // y offset from note center (noteHeight/2 + 0.2)
+    static final double TIE_MID_THICKNESS_SS = Engraving.TIE_MIDPOINT_THICKNESS_SS; // midpoint half-thickness (midWidth - endWidth)
+    static final double TIE_COLLISION_FACTOR = 0.65;                 // interior deflection scaling
+    static final double TIE_COLLISION_PUSH = 0.45;                   // midpoint push-up ratio on collision
+    static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;            // visual half-width of notehead
+    static final double TIE_ENDPOINT_Y_OFFSET_SS = 0.7;             // y offset from note center (noteHeight/2 + 0.2)
 
     private final LyricRenderMetrics lyricRenderMetrics;
     private final double staffRightMarginSs;

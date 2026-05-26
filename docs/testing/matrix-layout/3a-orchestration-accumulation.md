@@ -23,10 +23,10 @@
 | LayoutEngine | beam thickening: non-zero slope → `thickeningSs` in `(0, BEAM_DEPTH_SS*0.088]` | unit | — | missing | sloped group → bounded thickening | ✅ |
 | LayoutEngine | stub direction: isolated semiquaver gets stub-right | unit | — | missing | quaver+semiquaver beam → `stubRight=true` | ✅ |
 | LayoutEngine | tie geometry: `startXSs = noteX + TIE_NOTEHEAD_HALF_WIDTH_SS` | unit | — | missing | adjacent-note tie offset | ✅ |
-| LayoutEngine | tie shoulder height clamped to `[TIE_MIN, TIE_MAX]` | unit | — | missing | narrow→min, wide→max | ⬜ |
-| LayoutEngine | tie collision: interior note deflects arc outward | unit | — | missing | 3-note tie over intersecting note → larger outer control Y | ⬜ |
-| LayoutEngine | tie direction: stem-up note ties below (+1) | unit | — | missing | stem-up note → arc bulges down | ⬜ |
-| LayoutEngine | `createHeaderElements` null `keyType` → `KeyType.NONE` | unit | `LayoutEngineTest.testLayoutStoresKeySignatureAfterClef` (non-null only) | missing | null keyType → keySig type NONE | ⬜ |
+| LayoutEngine | tie shoulder height clamped to `[TIE_MIN, TIE_MAX]` | unit | — | missing | narrow→min, wide→max | ✅ |
+| LayoutEngine | tie collision: interior note deflects arc outward | unit | — | missing | 3-note tie over intersecting note → larger outer control Y | ✅ |
+| LayoutEngine | tie direction: stem-up note ties below (+1) | unit | — | missing | stem-up note → arc bulges down | ✅ |
+| LayoutEngine | `createHeaderElements` null `keyType` → `KeyType.NONE` | unit | `LayoutEngineTest.testLayoutStoresKeySignatureAfterClef` (non-null only) | missing | null keyType → keySig type NONE | ✅ |
 | LayoutEngine | `beamCount` → 1/2/3 for QUAVER/SEMIQUAVER/DEMI_SEMIQUAVER | unit | — | missing | widen to package-private; assert each | ⬜ |
 | LayoutResult | `Builder.setClef`/`setKeySignature` round-trip; default null | unit | `LayoutResultTest.testBuilderClefRoundTrip`, `…KeySignatureRoundTrip`, `…DefaultsToNullHeaderElements` | adequate | keep | — |
 | LayoutResult | `getLyricAnchor` box-anchored centerX+baselineY; column fallback; Y==`verseYSsInLine(1)`; throws ISE w/ neither | unit | `LayoutResultTest.testGetLyricAnchor*` (4) | adequate | keep | — |

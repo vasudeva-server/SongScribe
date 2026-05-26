@@ -99,6 +99,31 @@ class LayoutEngineTest extends UnitTest {
     /** Staff position shared by both tied notes. */
     private static final int SP_TIE_NOTE = 2;
 
+    // Rows 26–28 — tie geometry clamping / collision / direction constants
+    /**
+     * Staff position for tied notes in the wide-tie max-clamp test.
+     * sp < 0 → stem down → direction=-1 (arc up). Arc peak is far above the staff.
+     */
+    private static final int SP_TIE_WIDE = -4;
+
+    /**
+     * Staff position for interior notes in the wide-tie max-clamp test.
+     * sp very negative → elementYSs < arc-peak Y → deflection < 0 → no collision avoidance.
+     */
+    private static final int SP_TIE_WIDE_INTERIOR = -10;
+
+    /**
+     * Staff position for the interior note that protrudes INTO the downward arc.
+     * For direction=+1 (arc down), tieYAtElement (≈2.76) > elementYSs (2.0) → deflection > 0.
+     */
+    private static final int SP_TIE_COLLISION_INTERIOR = 4;
+
+    /**
+     * Staff position for the interior note that sits BELOW the downward arc peak.
+     * tieYAtElement (≈2.76) < elementYSs (5.0) → deflection < 0 → no collision avoidance.
+     */
+    private static final int SP_TIE_NO_COLLISION_INTERIOR = 10;
+
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
         var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-");
@@ -485,5 +510,149 @@ class LayoutEngineTest extends UnitTest {
         assertThat(tieLayout.startXSs())
             .describedAs("tie startXSs must equal anchorNote X + TIE_NOTEHEAD_HALF_WIDTH_SS")
             .isCloseTo(noteXSs + LayoutEngine.TIE_NOTEHEAD_HALF_WIDTH_SS, within(TOLERANCE));
+    }
+
+    // T20: Tie shoulder height floor: even for adjacent notes (smallest real tie span),
+    //      the outer control-point Y is at least TIE_MIN_SHOULDER_HEIGHT_SS from the endpoint.
+    @Test
+    void testTieShoulderHeightFloorRespected() {
+        var line = detachedLine();
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setStaffPosition(SP_TIE_NOTE);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setStaffPosition(SP_TIE_NOTE);
+        line.addElement(note1);
+        line.addElement(note2);
+        var tie = new Tie(note1, note2);
+        line.addRangeElement(tie);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var tieLayout = require(result.getTieLayout(tie), "TieLayout");
+
+        // For direction=+1 (stem up, arc down): cp1YSs > startYSs.
+        // The shoulder offset from the endpoint must be at least TIE_MIN + TIE_MID_THICKNESS.
+        var outerCpDelta = tieLayout.cp1YSs() - tieLayout.startYSs();
+        assertThat(outerCpDelta)
+            .describedAs("outer control-point Y delta must be at least TIE_MIN + TIE_MID_THICKNESS")
+            .isGreaterThanOrEqualTo(
+                LayoutEngine.TIE_MIN_SHOULDER_HEIGHT_SS + LayoutEngine.TIE_MID_THICKNESS_SS - TOLERANCE);
+    }
+
+    // T21: Tie shoulder height ceiling: a very wide tie is clamped to TIE_MAX_SHOULDER_HEIGHT_SS.
+    //      Uses SP_TIE_WIDE (sp=-4, stem-down, direction=-1) with SP_TIE_WIDE_INTERIOR (-10)
+    //      interior notes chosen so their elementYSs < arc-peak Y → deflection < 0 → no collision push.
+    @Test
+    void testTieShoulderHeightClampedToMaxForWideTie() {
+        var line = detachedLine();
+
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setStaffPosition(SP_TIE_WIDE);
+        line.addElement(note1);
+
+        // Ten interior notes push note2 far to the right, giving a wide tie span.
+        // Their staff position is chosen so they fall outside the upward arc (no deflection).
+        for (var i = 0; i < 10; i++) {
+            var interior = ElementType.CROTCHET.newInstance();
+            interior.setStaffPosition(SP_TIE_WIDE_INTERIOR);
+            line.addElement(interior);
+        }
+
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setStaffPosition(SP_TIE_WIDE);
+        line.addElement(note2);
+
+        var tie = new Tie(note1, note2);
+        line.addRangeElement(tie);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var tieLayout = require(result.getTieLayout(tie), "TieLayout");
+
+        // For direction=-1 (stem down, arc up): cp1YSs < startYSs.
+        // When shoulder is clamped to TIE_MAX, the offset from endpoint equals TIE_MAX + TIE_MID_THICKNESS.
+        var outerCpDelta = tieLayout.startYSs() - tieLayout.cp1YSs();
+        assertThat(outerCpDelta)
+            .describedAs("shoulder height must be clamped to TIE_MAX for a wide tie")
+            .isCloseTo(
+                LayoutEngine.TIE_MAX_SHOULDER_HEIGHT_SS + LayoutEngine.TIE_MID_THICKNESS_SS, within(TOLERANCE));
+    }
+
+    // T22: Tie collision avoidance: an interior note that protrudes into the arc is deflected outward.
+    //      Compare: same 3-note line, interior at SP_TIE_COLLISION_INTERIOR (inside arc, deflects)
+    //      vs SP_TIE_NO_COLLISION_INTERIOR (below arc, no deflection). Deflecting case has larger cp1YSs.
+    @Test
+    void testTieCollisionDeflectsArcOutwardWhenInteriorNoteIntersectsArc() {
+        var line1 = detachedLine();
+        var anchor1 = ElementType.CROTCHET.newInstance();
+        anchor1.setStaffPosition(SP_TIE_NOTE);
+        var interior1 = ElementType.CROTCHET.newInstance();
+        interior1.setStaffPosition(SP_TIE_COLLISION_INTERIOR);  // inside the downward arc
+        var end1 = ElementType.CROTCHET.newInstance();
+        end1.setStaffPosition(SP_TIE_NOTE);
+        line1.addElement(anchor1);
+        line1.addElement(interior1);
+        line1.addElement(end1);
+        var tie1 = new Tie(anchor1, end1);
+        line1.addRangeElement(tie1);
+
+        var result1 = require(engine().layout(line1), "LayoutResult with collision");
+        var tieLayout1 = require(result1.getTieLayout(tie1), "TieLayout with collision");
+
+        var line2 = detachedLine();
+        var anchor2 = ElementType.CROTCHET.newInstance();
+        anchor2.setStaffPosition(SP_TIE_NOTE);
+        var interior2 = ElementType.CROTCHET.newInstance();
+        interior2.setStaffPosition(SP_TIE_NO_COLLISION_INTERIOR);  // below the arc, no deflection
+        var end2 = ElementType.CROTCHET.newInstance();
+        end2.setStaffPosition(SP_TIE_NOTE);
+        line2.addElement(anchor2);
+        line2.addElement(interior2);
+        line2.addElement(end2);
+        var tie2 = new Tie(anchor2, end2);
+        line2.addRangeElement(tie2);
+
+        var result2 = require(engine().layout(line2), "LayoutResult without collision");
+        var tieLayout2 = require(result2.getTieLayout(tie2), "TieLayout without collision");
+
+        // For direction=+1 (arc down): outward = larger Y. The interior note at SP_TIE_COLLISION_INTERIOR
+        // protrudes into the arc → collision push → cp1YSs is larger than in the no-collision case.
+        assertThat(tieLayout1.cp1YSs())
+            .describedAs("arc deflected by interior note must have larger cp1YSs than non-deflected arc")
+            .isGreaterThan(tieLayout2.cp1YSs());
+    }
+
+    // T23: Tie direction: stem-up note (isUpper=true, direction=+1) has arc bulging downward.
+    //      For Y-increases-down coordinates: cp1YSs > startYSs confirms the arc goes below the note.
+    @Test
+    void testTieDirectionStemUpNoteArcBulgesDown() {
+        var line = detachedLine();
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setStaffPosition(SP_TIE_NOTE);  // sp > 0 → stem up → direction=+1
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setStaffPosition(SP_TIE_NOTE);
+        line.addElement(note1);
+        line.addElement(note2);
+        var tie = new Tie(note1, note2);
+        line.addRangeElement(tie);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var tieLayout = require(result.getTieLayout(tie), "TieLayout");
+
+        assertThat(tieLayout.cp1YSs())
+            .describedAs("stem-up tie outer control point must be below (larger Y than) start endpoint")
+            .isGreaterThan(tieLayout.startYSs());
+    }
+
+    // T24: createHeaderElements null keyType → key signature stored with KeyType.NONE
+    @Test
+    void testCreateHeaderElementsNullKeyTypeDefaultsToNone() {
+        // detachedLine() returns a Line with null keyType (no key set).
+        var line = detachedLine();
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var keySig = require(result.getKeySignature(), "KeySignature");
+
+        assertThat(keySig.getKeyType())
+            .describedAs("null keyType in line must produce KeyType.NONE in key signature")
+            .isEqualTo(KeyType.NONE);
     }
 }
