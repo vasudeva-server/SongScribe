@@ -401,3 +401,11 @@ SongIOTest.testWriteSongUnofficialTranslationPresentWhenTrue	2a	row 11: true →
 SongIOTest.testWriteSongTopSpaceAbsentWhenNotUserSet	2a	row 12: userSetTopPadding=false → absent
 SongIOTest.testWriteSongTopSpacePresentWhenUserSet	2a	row 12: userSetTopPadding=true → present
 SongLoaderTest.testLoadSuccessFontsHaveExpectedTitleRole	2a	row 44: titleFont.size==30 confirms <view> was parsed
+SongIOTest.testWriteSongRowHeightAbsentWhenZero	2a	row 13: rowheight=0 → absent
+SongIOTest.testWriteSongRowHeightPresentWhenNonZero	2a	row 13: rowheight≠0 → present
+SongIOTest.testWriteSongDynamicLayoutAlwaysWritten	2a	row 14: dynamicLayout=true always emitted
+SongIOTest.testWriteSongLinesSerializedInOrder	2a	row 16: 2-line round-trip asserting per-line element counts
+SongIOTest.testWriteSongViewBlockAlwaysWritten	2a	row 17: output always contains <view>…</view>
+SongIOTest.testDocumentReaderNonNumericVersionThrowsSAXException	2a	row 21: version="1.abc" → SAXException wrapping NumberFormatException
+SongIOTest.testDocumentReaderGetSongThrowsIllegalStateWhenNotParsed	2a	row 29: getSong() before parse → IllegalStateException
+SongIOTest.testGetDocumentFontsReturnsDefaultsForV10Document	2a	row 31: v1.0 doc (no <view>) → DocumentFonts.defaultsFromPrefs()

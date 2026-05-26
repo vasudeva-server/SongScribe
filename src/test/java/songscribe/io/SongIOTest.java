@@ -26,10 +26,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
 
 import java.io.PrintWriter;
+import java.io.StringReader;
 import java.io.StringWriter;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.SAXParserFactory;
 
 import songscribe.UnitTest;
 import songscribe.dom.AnnotationAttachment;
@@ -47,6 +52,56 @@ import songscribe.prefs.PrefsKey;
 @SuppressWarnings({ "SameReturnValue", "OverlyBroadThrowsClause" })
 class SongIOTest extends UnitTest {
 
+    // row 29: getSong() before any parse → IllegalStateException.
+    @Test
+    void testDocumentReaderGetSongThrowsIllegalStateWhenNotParsed() {
+        var reader = new SongIO.DocumentReader();
+
+        assertThatThrownBy(reader::getSong)
+            .isInstanceOf(IllegalStateException.class);
+    }
+
+    // row 21: non-numeric version attribute → SAXException wrapping NumberFormatException.
+    @Test
+    void testDocumentReaderNonNumericVersionThrowsSAXException() {
+        // "1.abc" has a dot so the split succeeds, but parseInt on "abc" throws NFE,
+        // which the catch block wraps in SAXException.
+        var xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <song version="1.abc">
+              <keys>0</keys>
+            </song>
+            """;
+
+        assertThatThrownBy(() -> {
+            var parser = SAXParserFactory.newInstance().newSAXParser();
+            var reader = new SongIO.DocumentReader();
+            parser.parse(new InputSource(new StringReader(xml)), reader);
+        })
+            .isInstanceOf(SAXException.class)
+            .hasCauseInstanceOf(NumberFormatException.class);
+    }
+
+    // row 31: v1.0 document (no <view> block) → getDocumentFonts() returns defaultsFromPrefs().
+    @Test
+    void testGetDocumentFontsReturnsDefaultsForV10Document() throws Exception {
+        var xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <song version="1.0">
+              <keys>0</keys>
+              <notes></notes>
+            </song>
+            """;
+
+        var parser = SAXParserFactory.newInstance().newSAXParser();
+        var reader = new SongIO.DocumentReader();
+        parser.parse(new InputSource(new StringReader(xml)), reader);
+
+        assertThat(reader.getDocumentFonts())
+            .as("v1.0 doc has no <view> block; must return defaultsFromPrefs()")
+            .isEqualTo(DocumentFonts.defaultsFromPrefs());
+    }
+
     @Test
     void testOpeningNewerVersionFileThrowsNewerVersionException() {
         assertThatThrownBy(() -> loadFixture("newer-version"))
@@ -62,6 +117,36 @@ class SongIOTest extends UnitTest {
                 .as("every parsed line must reference the song that owns it")
                 .isSameAs(song);
         }
+    }
+
+    // row 14: dynamicLayout=true is always written.
+    @Test
+    void testWriteSongDynamicLayoutAlwaysWritten() {
+        var song = new Song();
+        var xml = writeSongToString(song);
+
+        assertThat(xml).contains("<dynamicLayout>true</dynamicLayout>");
+    }
+
+    // row 16: all lines are serialized in document order; round-trip preserves per-line element counts.
+    @Test
+    void testWriteSongLinesSerializedInOrder() throws Exception {
+        // Build a two-line song via parseXml so the Song starts with no default line.
+        // Line 0: 2 crotchets + barline (3 elements).
+        // Line 1: 3 crotchets + final-double-barline (4 elements).
+        var song = parseXml(twoLineXml());
+
+        var reloaded = roundTrip(song);
+
+        assertThat(reloaded.lineCount())
+            .as("round-trip must preserve line count")
+            .isEqualTo(2);
+        assertThat(reloaded.getLine(0).elementCount())
+            .as("line 0 element count after round-trip")
+            .isEqualTo(3);
+        assertThat(reloaded.getLine(1).elementCount())
+            .as("line 1 element count after round-trip")
+            .isEqualTo(4);
     }
 
     // row 9: empty string fields → tags absent; non-empty → present, XML-escaped.
@@ -170,6 +255,35 @@ class SongIOTest extends UnitTest {
         var xml = writeSongToString(song);
 
         assertThat(xml).contains("<unofficialTranslation>true</unofficialTranslation>");
+    }
+
+    // row 13: rowheight omitted when exactly 0 (default); present when non-zero.
+    @Test
+    void testWriteSongRowHeightAbsentWhenZero() {
+        var song = new Song();
+        // Default rowHeightAdjustmentSs is 0; no explicit set needed.
+        var xml = writeSongToString(song);
+
+        assertThat(xml).doesNotContain("<rowheight>");
+    }
+
+    @Test
+    void testWriteSongRowHeightPresentWhenNonZero() {
+        var song = new Song();
+        song.setRowHeightAdjustmentSs(1.5);
+        var xml = writeSongToString(song);
+
+        assertThat(xml).contains("<rowheight>1.5</rowheight>");
+    }
+
+    // row 17: <view>…</view> block is always written.
+    @Test
+    void testWriteSongViewBlockAlwaysWritten() {
+        var song = new Song();
+        var xml = writeSongToString(song);
+
+        assertThat(xml).contains("<view>");
+        assertThat(xml).contains("</view>");
     }
 
     // row 7: XML header and <song> root carry the correct version attribute.
@@ -606,6 +720,57 @@ class SongIOTest extends UnitTest {
     }
 
     // -- XML Helpers --
+
+    /**
+     * Two-line v2.7 composition XML.
+     * Line 0: 2 crotchets + single barline (3 elements).
+     * Line 1: 3 crotchets + final-double-barline (4 elements).
+     */
+    private static String twoLineXml() {
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="2.7">
+              <keys>0</keys>
+              <rightinfostarty>0.0</rightinfostarty>
+              <linewidth>200.0</linewidth>
+              <dynamicLayout>true</dynamicLayout>
+              <lines>
+                <line>
+                  <lyricsypos>5.0</lyricsypos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                    </note>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                    </note>
+                    <note type="SINGLE_BARLINE">
+                      <staffposition>0</staffposition>
+                    </note>
+                  </notes>
+                </line>
+                <line>
+                  <lyricsypos>5.0</lyricsypos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                    </note>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                    </note>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                    </note>
+                    <note type="FINAL_DOUBLE_BARLINE">
+                      <staffposition>0</staffposition>
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """;
+    }
 
     /** Minimal v2.6 composition XML with three crotchets and a terminal barline. */
     private static String threeNoteXml() {
