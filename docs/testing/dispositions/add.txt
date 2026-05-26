@@ -558,3 +558,6 @@ LineIOTest.AccumulateLegacyTrillFlag.testContiguousIndicesCoalesceIntoOneTrill	2
 LineIOTest.AccumulateLegacyTrillFlag.testNonContiguousIndicesProduceTwoTrillPairs	2c	row 39 — accumulateLegacyTrillFlag non-contiguous → two pairs
 LineIOTest.EndElement11FullLineParse.testAllCreateMethodsInvokedOnLineClose	2c	row 40 — endElement11 returns completed Line on </line>
 LineIOTest.LineReaderNullGuard.testEndElementBeforeStartElementReturnsNull	2c	row 41 — LineReader null guard → endElement11 returns null
+LayoutEngineTest.testEmptyLineResultContainsHeaderElements	3a	row 11 — empty-line result contains clef + key signature
+LayoutEngineTest.testOverstuffedLineReturnsNullWithError	3a	row 12 — un-justifiable line → null + getLastError
+LayoutEngineTest.testLeadingLyricContinuationEmitsExtenderFromLineStart	3a	row 13 — 3-arg layout threads hasLeadingLyricContinuation

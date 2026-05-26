@@ -6,11 +6,11 @@
 | LayoutEngine | `layout()` places key signature immediately after clef (type + accidental count) | unit | `LayoutEngineTest.testLayoutStoresKeySignatureAfterClef` | adequate | keep | — |
 | LayoutEngine | `layout(line, true)` pins FINAL_DOUBLE_BARLINE flush-right | unit | `LayoutEngineTest.testFinalBarlineFlushRightOnLastLine` | adequate | keep | — |
 | LayoutEngine | `layout(line, true)` pins REPEAT_RIGHT terminal flush-right | unit | `LayoutEngineTest.testRightRepeatTerminalFlushRightOnLastLine` | adequate | keep | — |
-| LayoutEngine | `layout(line, false)` does NOT place barline flush-right | unit | `LayoutEngineTest.testFinalBarlineNotFlushRightOnNonLastLine` | inadequate | negative `isNotCloseTo(flushRight)` survives any wrong value (incl. X=0); assert exact expected X from horizontal spacing | ⬜ |
+| LayoutEngine | `layout(line, false)` does NOT place barline flush-right | unit | `LayoutEngineTest.testFinalBarlineNotFlushRightOnNonLastLine` | inadequate | negative `isNotCloseTo(flushRight)` survives any wrong value (incl. X=0); assert exact expected X from horizontal spacing | ✅ |
 | LayoutEngine | empty line returns non-null result with `MIN_LINE_HEIGHT_SS` | unit | `LineHeightTest.testEmptyLineZeroReturnsMinimumHeight`, `testEmptyNonLastLineReturnsMinimumHeight` | adequate | keep | — |
-| LayoutEngine | empty-line result still contains clef + key signature | unit | — | missing | assert `getClef()`/`getKeySignature()` non-null on empty line | ⬜ |
-| LayoutEngine | un-justifiable line → `layout()` returns null, `getLastError()` non-null | unit | — | missing | over-stuffed line → null result + descriptive error | ⬜ |
-| LayoutEngine | 3-arg `layout(line,false,true)` threads `hasLeadingLyricContinuation` to lyric layout | unit | — | missing | extending melisma → leading lyric connector at x=0 | ⬜ |
+| LayoutEngine | empty-line result still contains clef + key signature | unit | — | missing | assert `getClef()`/`getKeySignature()` non-null on empty line | ✅ |
+| LayoutEngine | un-justifiable line → `layout()` returns null, `getLastError()` non-null | unit | — | missing | over-stuffed line → null result + descriptive error | ✅ |
+| LayoutEngine | 3-arg `layout(line,false,true)` threads `hasLeadingLyricContinuation` to lyric layout | unit | — | missing | extending melisma → leading lyric connector at x=0 | ✅ |
 | LayoutEngine | unbeamed note below middle line (sp>0) → stem up | unit | — | missing | crotchet at sp=2 → stem-up geometry | ⬜ |
 | LayoutEngine | unbeamed note above middle line (sp≤0) → stem down | unit | — | missing | crotchet at sp=-2 → stem-down | ⬜ |
 | LayoutEngine | unbeamed grace note always stem up | unit | — | missing | grace at sp=-4 still stem-up, length `GRACE_NOTE_STEM_LENGTH_SS` | ⬜ |

@@ -15,3 +15,4 @@ BeatChangeAttachmentTest.Copy.testCopyReturnsDistinctInstanceWithNewOwnerAndPres
 SongLoaderTest.testLoadValidFileReturnsSuccess	2a	row 43: strengthened with field-level assertions (line count, element count) vs fixture
 StaffElementIOTest.DynamicSerialization.testRoundTripPreservesDynamicType
 LineIOTest.EndElement11LyricsYPos.testLyricsyposTagSetsLyricsYPosSs	2c	row 20 — strengthened to assert getLyricsYPosSs()==5.0
+LayoutEngineTest.testFinalBarlineNotFlushRightOnNonLastLine	3a	row 9 — strengthened to assert exact spacing-calculator X (was isNotCloseTo)

@@ -36,6 +36,7 @@ import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.layout.LayoutEngine;
+import songscribe.layout.LyricConnectorLayout;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.smufl.Engraving;
 
@@ -45,6 +46,9 @@ class LayoutEngineTest extends UnitTest {
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;
     private static final double CLEF_X_POSITION_SS = 0.625;
     private static final double TOLERANCE = 0.001;
+
+    /** Enough notes to exceed STAFF_RIGHT_MARGIN_SS even after maximum compression. */
+    private static final int OVERSTUFFED_NOTE_COUNT = 100;
 
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
@@ -119,7 +123,7 @@ class LayoutEngineTest extends UnitTest {
         assertThat(result.getElementXSs(terminal)).isCloseTo(expectedXSs, within(TOLERANCE));
     }
 
-    // T4: On a non-last line, the final barline is not flush-right
+    // T4: On a non-last line, the final barline lands at the normal horizontal-spacing position
     @Test
     void testFinalBarlineNotFlushRightOnNonLastLine() {
         var song = new Song();
@@ -127,8 +131,51 @@ class LayoutEngineTest extends UnitTest {
         var finalBarline = line.getElement(line.elementCount() - 1);
 
         var result = require(engine().layout(line, false), "LayoutResult");
-        var flushRightXSs = ElementType.terminalFlushRightXSs(STAFF_RIGHT_MARGIN_SS, ElementType.FINAL_DOUBLE_BARLINE);
+        // The barline is the only column; it gets the first-element position from the spacing calculator.
+        var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
 
-        assertThat(result.getElementXSs(finalBarline)).isNotCloseTo(flushRightXSs, within(TOLERANCE));
+        assertThat(result.getElementXSs(finalBarline)).isCloseTo(expectedXSs, within(TOLERANCE));
+    }
+
+    // T5: Empty line result still contains clef and key signature
+    @Test
+    void testEmptyLineResultContainsHeaderElements() {
+        var result = require(engine().layout(detachedLine()), "LayoutResult");
+
+        assertThat(result.getClef()).describedAs("Clef on empty line").isNotNull();
+        assertThat(result.getKeySignature()).describedAs("KeySignature on empty line").isNotNull();
+    }
+
+    // T6: Un-justifiable line returns null from layout() with a non-null getLastError()
+    @Test
+    void testOverstuffedLineReturnsNullWithError() {
+        var line = detachedLine();
+
+        for (var i = 0; i < OVERSTUFFED_NOTE_COUNT; i++) {
+            line.addElement(ElementType.CROTCHET.newInstance());
+        }
+
+        var engine = engine();
+        var result = engine.layout(line, false);
+
+        assertThat(result).describedAs("layout() result for overstuffed line").isNull();
+        assertThat(engine.getLastError()).describedAs("getLastError() for overstuffed line").isNotNull();
+    }
+
+    // T7: layout(line, false, true) threads hasLeadingLyricContinuation — a leading extender
+    //     connector starting at x=0 is emitted when the flag is true
+    @Test
+    void testLeadingLyricContinuationEmitsExtenderFromLineStart() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET_REST.newInstance());
+
+        var result = require(engine().layout(line, false, true), "LayoutResult");
+        var connectors = result.getLyricConnectors();
+
+        assertThat(connectors).describedAs("lyric connectors with leading continuation").isNotEmpty();
+
+        var leading = connectors.getFirst();
+        assertThat(leading.startXSs()).describedAs("leading extender startXSs").isCloseTo(0.0, within(TOLERANCE));
+        assertThat(leading.kind()).describedAs("leading connector kind").isEqualTo(LyricConnectorLayout.Kind.EXTENDER);
     }
 }
