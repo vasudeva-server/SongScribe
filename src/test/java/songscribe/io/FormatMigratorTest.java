@@ -32,15 +32,18 @@ import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.Crescendo;
 import songscribe.dom.Duration;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
 import songscribe.layout.Ending;
 
 class FormatMigratorTest extends UnitTest {
@@ -286,6 +289,112 @@ class FormatMigratorTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // Rows 13–16 — migratePixelsToStaffSpace()
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MigratePixelsToStaffSpace {
+
+        // Row 13: lyricsYPosSs is divided by pps.
+        @Test
+        void testLyricsYPosSsDividedByPps() {
+            var line = detachedLine();
+            line.setLyricsYPosSs(NON_ZERO_LYRICS_Y_POS_SS);
+
+            FormatMigrator.migratePixelsToStaffSpace(List.of(line));
+
+            assertThat(line.getLyricsYPosSs())
+                .isEqualTo(NON_ZERO_LYRICS_Y_POS_SS / ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
+        }
+
+        // Row 14a: Tuplet with non-zero verticalPositionSs → divided by pps (rounded).
+        @Test
+        void testTupletNonZeroVerticalPositionDividedByPps() {
+            var line = detachedLine();
+            var anchor = ElementType.CROTCHET.newInstance();
+            var end = ElementType.CROTCHET.newInstance();
+            line.addElement(anchor);
+            line.addElement(end);
+            var tuplet = new Tuplet(anchor, end, TUPLET_GRADE);
+            tuplet.setVerticalPositionSs(NON_ZERO_TUPLET_VERTICAL_POS_SS);
+            line.addRangeElement(tuplet);
+
+            FormatMigrator.migratePixelsToStaffSpace(List.of(line));
+
+            var expected = (int) Math.round(
+                NON_ZERO_TUPLET_VERTICAL_POS_SS / ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE
+            );
+            assertThat(tuplet.getVerticalPositionSs()).isEqualTo(expected);
+        }
+
+        // Row 14b: Tuplet with zero verticalPositionSs → no-op (stays zero).
+        @Test
+        void testTupletZeroVerticalPositionIsNoOp() {
+            var line = detachedLine();
+            var anchor = ElementType.CROTCHET.newInstance();
+            var end = ElementType.CROTCHET.newInstance();
+            line.addElement(anchor);
+            line.addElement(end);
+            var tuplet = new Tuplet(anchor, end, TUPLET_GRADE);
+            // verticalPositionSs defaults to 0 — no set needed
+            line.addRangeElement(tuplet);
+
+            FormatMigrator.migratePixelsToStaffSpace(List.of(line));
+
+            assertThat(tuplet.getVerticalPositionSs()).isEqualTo(0);
+        }
+
+        // Row 15: Hairpin with non-zero x1/x2/yShiftSs → all divided by pps.
+        @Test
+        void testHairpinShiftsDividedByPps() {
+            var line = detachedLine();
+            var anchor = ElementType.CROTCHET.newInstance();
+            var end = ElementType.CROTCHET.newInstance();
+            line.addElement(anchor);
+            line.addElement(end);
+            var hairpin = new Crescendo(anchor, end);
+            hairpin.setX1ShiftSs(NON_ZERO_HAIRPIN_X1_SHIFT_SS);
+            hairpin.setX2ShiftSs(NON_ZERO_HAIRPIN_X2_SHIFT_SS);
+            hairpin.setYShiftSs(NON_ZERO_HAIRPIN_Y_SHIFT_SS);
+            line.addRangeElement(hairpin);
+
+            FormatMigrator.migratePixelsToStaffSpace(List.of(line));
+
+            var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+            assertThat(hairpin.getX1ShiftSs()).isEqualTo(NON_ZERO_HAIRPIN_X1_SHIFT_SS / pps);
+            assertThat(hairpin.getX2ShiftSs()).isEqualTo(NON_ZERO_HAIRPIN_X2_SHIFT_SS / pps);
+            assertThat(hairpin.getYShiftSs()).isEqualTo(NON_ZERO_HAIRPIN_Y_SHIFT_SS / pps);
+        }
+
+        // Row 16: Note with a Glissando → x1Translate and x2Translate divided by pps.
+        @Test
+        void testGlissandoTranslatesDividedByPps() {
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            line.addElement(note);
+            note.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+
+            var glissando = note.getGlissando();
+            assertThat(glissando).isNotNull();
+
+            //noinspection ConstantValue -- needed for NullAway
+            if (glissando == null) {
+                return;
+            }
+
+            glissando.x1Translate = NON_ZERO_GLISSANDO_X1_TRANSLATE;
+            glissando.x2Translate = NON_ZERO_GLISSANDO_X2_TRANSLATE;
+
+            FormatMigrator.migratePixelsToStaffSpace(List.of(line));
+
+            var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+            assertThat(glissando.x1Translate).isEqualTo(NON_ZERO_GLISSANDO_X1_TRANSLATE / pps);
+            assertThat(glissando.x2Translate).isEqualTo(NON_ZERO_GLISSANDO_X2_TRANSLATE / pps);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Test constants
     // -----------------------------------------------------------------------
 
@@ -324,6 +433,49 @@ class FormatMigratorTest extends UnitTest {
      * Must be positive to trigger the below-staff migration branch in migrateAnnotationPositions.
      */
     private static final int BELOW_STAFF_Y_POS_PX = Annotation.BELOW;
+
+    /**
+     * Non-zero lyricsYPosSs value used to verify division by pps in migratePixelsToStaffSpace.
+     * Must differ from 0 so the division produces a distinct result.
+     */
+    private static final double NON_ZERO_LYRICS_Y_POS_SS = 16.0;
+
+    /**
+     * Tuplet grade used in migratePixelsToStaffSpace tests.
+     * Three is the standard triplet grade.
+     */
+    private static final int TUPLET_GRADE = 3;
+
+    /**
+     * Non-zero tuplet verticalPositionSs (in pixels pre-migration) used to verify
+     * rounding division by pps. Must be non-zero to enter the tuplet branch.
+     */
+    private static final int NON_ZERO_TUPLET_VERTICAL_POS_SS = 24;
+
+    /**
+     * Non-zero x1ShiftSs for hairpin shift migration test.
+     */
+    private static final double NON_ZERO_HAIRPIN_X1_SHIFT_SS = 8.0;
+
+    /**
+     * Non-zero x2ShiftSs for hairpin shift migration test.
+     */
+    private static final double NON_ZERO_HAIRPIN_X2_SHIFT_SS = 16.0;
+
+    /**
+     * Non-zero yShiftSs for hairpin shift migration test.
+     */
+    private static final double NON_ZERO_HAIRPIN_Y_SHIFT_SS = 8.0;
+
+    /**
+     * Non-zero x1Translate for glissando migration test.
+     */
+    private static final double NON_ZERO_GLISSANDO_X1_TRANSLATE = 8.0;
+
+    /**
+     * Non-zero x2Translate for glissando migration test.
+     */
+    private static final double NON_ZERO_GLISSANDO_X2_TRANSLATE = 16.0;
 
     // -----------------------------------------------------------------------
     // Fixture helpers

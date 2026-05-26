@@ -1,0 +1,3 @@
+section: docs/testing/matrix-io/2d-migration-subsystem-legacy-import.md
+rows: file lines 17–20 (data rows 13–16) — FormatMigrator migratePixelsToStaffSpace (lyricsYPosSs, Tuplet.verticalPositionSs, Hairpin x1/x2/yShiftSs, Glissando x1/x2Translate)
+timestamp: 2026-05-26T00:00:00Z

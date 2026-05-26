@@ -14,10 +14,10 @@
 | FormatMigrator | `migrateAnnotationDynamics` — text matches dynamic symbol → replaced w/ `DynamicAttachment`, annotation removed | unit | `FormatMigratorTest.MigrateAnnotationDynamics` (forte/pianissimo/removal) | adequate | keep | — |
 | FormatMigrator | `migrateAnnotationDynamics` — non-matching text → kept, no attachment | unit | `FormatMigratorTest.testAnnotation*NotConverted` (2) | adequate | keep | — |
 | FormatMigrator | `migrateAnnotationDynamics` — pre-existing `DynamicAttachment` → annotation removed, no duplicate | unit | `FormatMigratorTest.testAnnotationRemovedWhenDynamicAlreadyExists` | adequate | keep | — |
-| FormatMigrator | `migratePixelsToStaffSpace` — `lyricsYPosSs` /= pps per line | unit | `MigrationPipelineTest.PixelsToSsStage.testEffectDividesAllScalarsByPps` (scalars only) | missing | line w/ `lyricsYPosSs` → assert division | ⬜ |
-| FormatMigrator | `migratePixelsToStaffSpace` — `Tuplet.verticalPositionSs` /= pps (non-zero only) | unit | — | missing | non-zero /= pps; zero no-op | ⬜ |
-| FormatMigrator | `migratePixelsToStaffSpace` — Hairpin `x1/x2/yShiftSs` /= pps | unit | — | missing | non-zero shifts | ⬜ |
-| FormatMigrator | `migratePixelsToStaffSpace` — Glissando `x1/x2Translate` /= pps | unit | — | missing | write test | ⬜ |
+| FormatMigrator | `migratePixelsToStaffSpace` — `lyricsYPosSs` /= pps per line | unit | `MigrationPipelineTest.PixelsToSsStage.testEffectDividesAllScalarsByPps` (scalars only) | missing | line w/ `lyricsYPosSs` → assert division | ✅ |
+| FormatMigrator | `migratePixelsToStaffSpace` — `Tuplet.verticalPositionSs` /= pps (non-zero only) | unit | — | missing | non-zero /= pps; zero no-op | ✅ |
+| FormatMigrator | `migratePixelsToStaffSpace` — Hairpin `x1/x2/yShiftSs` /= pps | unit | — | missing | non-zero shifts | ✅ |
+| FormatMigrator | `migratePixelsToStaffSpace` — Glissando `x1/x2Translate` /= pps | unit | — | missing | write test | ✅ |
 | FormatMigrator | `migratePixelsToStaffSpace` — attachment `userYOffsetSs` /= pps (non-zero) | unit | — | missing | note w/ non-zero offset | ⬜ |
 | FormatMigrator | `migratePixelsToStaffSpace` — `note.xOffsetPx` reset to 0 unconditionally | unit | — | missing | non-zero → reset to 0 | ⬜ |
 | FormatMigrator | `migratePixelsToStaffSpace` — `Ending.yPositionSs`/`Trill.yPositionSs` /= pps (non-zero) | unit | — | missing | write test each | ⬜ |
