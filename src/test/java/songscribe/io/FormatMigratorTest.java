@@ -392,6 +392,74 @@ class FormatMigratorTest extends UnitTest {
             assertThat(glissando.x1Translate).isEqualTo(NON_ZERO_GLISSANDO_X1_TRANSLATE / pps);
             assertThat(glissando.x2Translate).isEqualTo(NON_ZERO_GLISSANDO_X2_TRANSLATE / pps);
         }
+
+        // Row 17: Note with a non-zero attachment userYOffsetSs → divided by pps.
+        @Test
+        void testAttachmentUserYOffsetSsDividedByPps() {
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            line.addElement(note);
+            var attachment = new DynamicAttachment(note, DynamicAttachment.DynamicType.FORTE);
+            attachment.setUserYOffsetSs(NON_ZERO_ATTACHMENT_USER_Y_OFFSET_SS);
+            note.addAttachment(attachment);
+
+            FormatMigrator.migratePixelsToStaffSpace(List.of(line));
+
+            var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+            assertThat(attachment.getUserYOffsetSs())
+                .isEqualTo(NON_ZERO_ATTACHMENT_USER_Y_OFFSET_SS / pps);
+        }
+
+        // Row 18: Note with non-zero xOffsetPx → reset to 0 unconditionally.
+        @Test
+        void testNoteXOffsetPxResetToZero() {
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            line.addElement(note);
+            note.setXOffsetPx(NON_ZERO_NOTE_X_OFFSET_PX);
+
+            FormatMigrator.migratePixelsToStaffSpace(List.of(line));
+
+            assertThat(note.getXOffsetPx()).isEqualTo(0);
+        }
+
+        // Row 19a: Ending with non-zero yPositionSs → divided by pps (rounded).
+        @Test
+        void testEndingYPositionSsDividedByPps() {
+            var line = detachedLine();
+            var anchor = ElementType.CROTCHET.newInstance();
+            var end = ElementType.CROTCHET.newInstance();
+            line.addElement(anchor);
+            line.addElement(end);
+            var ending = new Ending(anchor, end, Ending.Type.FIRST);
+            ending.setYPositionSs(NON_ZERO_ENDING_Y_POSITION_SS);
+            line.addRangeElement(ending);
+
+            FormatMigrator.migratePixelsToStaffSpace(List.of(line));
+
+            var expected = (int) Math.round(
+                NON_ZERO_ENDING_Y_POSITION_SS / ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE
+            );
+            assertThat(ending.getYPositionSs()).isEqualTo(expected);
+        }
+
+        // Row 19b: Trill with non-zero yPositionSs → divided by pps (rounded).
+        @Test
+        void testTrillYPositionSsDividedByPps() {
+            var line = detachedLine();
+            var anchor = ElementType.CROTCHET.newInstance();
+            line.addElement(anchor);
+            var trill = new Trill(anchor);
+            trill.setYPositionSs(NON_ZERO_TRILL_Y_POSITION_SS);
+            line.addRangeElement(trill);
+
+            FormatMigrator.migratePixelsToStaffSpace(List.of(line));
+
+            var expected = (int) Math.round(
+                NON_ZERO_TRILL_Y_POSITION_SS / ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE
+            );
+            assertThat(trill.getYPositionSs()).isEqualTo(expected);
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -476,6 +544,30 @@ class FormatMigratorTest extends UnitTest {
      * Non-zero x2Translate for glissando migration test.
      */
     private static final double NON_ZERO_GLISSANDO_X2_TRANSLATE = 16.0;
+
+    /**
+     * Non-zero attachment userYOffsetSs (in pixels pre-migration) used to verify
+     * division by pps in migratePixelsToStaffSpace. Must differ from 0 to enter the branch.
+     */
+    private static final double NON_ZERO_ATTACHMENT_USER_Y_OFFSET_SS = 16.0;
+
+    /**
+     * Non-zero xOffsetPx on a note used to verify unconditional reset to 0 in
+     * migratePixelsToStaffSpace.
+     */
+    private static final int NON_ZERO_NOTE_X_OFFSET_PX = 8;
+
+    /**
+     * Non-zero Ending yPositionSs (in pixels pre-migration) used to verify rounding
+     * division by pps. Must differ from 0 to enter the Ending branch.
+     */
+    private static final int NON_ZERO_ENDING_Y_POSITION_SS = 24;
+
+    /**
+     * Non-zero Trill yPositionSs (in pixels pre-migration) used to verify rounding
+     * division by pps. Must differ from 0 to enter the Trill branch.
+     */
+    private static final int NON_ZERO_TRILL_Y_POSITION_SS = 24;
 
     // -----------------------------------------------------------------------
     // Fixture helpers

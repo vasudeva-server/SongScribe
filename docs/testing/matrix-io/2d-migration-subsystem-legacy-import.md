@@ -18,9 +18,9 @@
 | FormatMigrator | `migratePixelsToStaffSpace` — `Tuplet.verticalPositionSs` /= pps (non-zero only) | unit | — | missing | non-zero /= pps; zero no-op | ✅ |
 | FormatMigrator | `migratePixelsToStaffSpace` — Hairpin `x1/x2/yShiftSs` /= pps | unit | — | missing | non-zero shifts | ✅ |
 | FormatMigrator | `migratePixelsToStaffSpace` — Glissando `x1/x2Translate` /= pps | unit | — | missing | write test | ✅ |
-| FormatMigrator | `migratePixelsToStaffSpace` — attachment `userYOffsetSs` /= pps (non-zero) | unit | — | missing | note w/ non-zero offset | ⬜ |
-| FormatMigrator | `migratePixelsToStaffSpace` — `note.xOffsetPx` reset to 0 unconditionally | unit | — | missing | non-zero → reset to 0 | ⬜ |
-| FormatMigrator | `migratePixelsToStaffSpace` — `Ending.yPositionSs`/`Trill.yPositionSs` /= pps (non-zero) | unit | — | missing | write test each | ⬜ |
+| FormatMigrator | `migratePixelsToStaffSpace` — attachment `userYOffsetSs` /= pps (non-zero) | unit | — | missing | note w/ non-zero offset | ✅ |
+| FormatMigrator | `migratePixelsToStaffSpace` — `note.xOffsetPx` reset to 0 unconditionally | unit | — | missing | non-zero → reset to 0 | ✅ |
+| FormatMigrator | `migratePixelsToStaffSpace` — `Ending.yPositionSs`/`Trill.yPositionSs` /= pps (non-zero) | unit | — | missing | write test each | ✅ |
 | FormatMigrator | `migrateFinalTerminal` — empty list → no-op | unit | `MigrationPipelineTest.FinalTerminalStage` (empty ctx) | adequate | keep | — |
 | FormatMigrator | `migrateFinalTerminal` — FINAL_DOUBLE_BARLINE on non-last lines stripped; last line's terminal preserved | unit | `FormatMigratorTest.MigrateFinalTerminal.testFinalBarlineOnNonLastLine*` (2) | adequate | keep | — |
 | FormatMigrator | `migrateFinalTerminal` — REPEAT_RIGHT on non-last line untouched | unit | `FormatMigratorTest.testRepeatRightOnNonLastLineIsPreserved` | adequate | keep | — |
