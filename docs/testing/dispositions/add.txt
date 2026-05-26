@@ -540,3 +540,12 @@ LineIOTest.BeamRoundTrip.testBeamRoundTripPreservesAnchorAndEnd	2c	row 23 — be
 LineIOTest.CreateBeamsFromPendingOutOfRange.testOutOfRangePairsProduceZeroBeams	2c	row 24 — out-of-range beam pairs → zero beams
 LineIOTest.CreateTiesFromPendingPairsOutOfRange.testOutOfRangeTiePairThrowsIndexOutOfBoundsException	2c	row 26 — out-of-range tie pair → IOOBE (unguarded)
 LineIOTest.TupletLegacyTripletsDefaultGrade.testLegacyTripletsTagDefaultsGradeToThree	2c	row 27 — legacy <triplets> defaults grade=3
+LineIOTest.TupletExplicitNonThreeGradeRoundTrip.testExplicitGradeFiveRoundTrip	2c	row 28 — explicit non-3 grade round-trip
+LineIOTest.TupletVerticalPositionRoundTrip.testNonZeroVertPosParsedCorrectly	2c	row 29 — verticalPositionSs round-trip (non-zero)
+LineIOTest.CreateTupletsFromPendingOutOfRange.testOutOfRangePairsProduceZeroTuplets	2c	row 30 — createTupletsFromPending skips out-of-range pairs
+LineIOTest.ParseTupletDataNfeDefaults.testNonNumericGradeDefaultsToThree	2c	row 31 — parseTupletData NFE grade defaults to 3
+LineIOTest.ParseTupletDataNfeDefaults.testNonNumericVertPosDefaultsToZero	2c	row 31 — parseTupletData NFE vertPos defaults to 0
+LineIOTest.CrescendoRoundTripAllZeroShifts.testAllZeroShiftsRoundTrip	2c	row 32 — crescendo round-trip all-zero shifts
+LineIOTest.CrescendoRoundTripExplicitShifts.testExplicitShiftsPreservedInRoundTrip	2c	row 33 — crescendo round-trip explicit x1/x2/y shifts
+LineIOTest.DiminuendoRoundTrip.testAllZeroShiftsRoundTrip	2c	row 34 — diminuendo round-trip all-zero shifts
+LineIOTest.DiminuendoRoundTrip.testExplicitShiftsPreservedInRoundTrip	2c	row 34 — diminuendo round-trip explicit shifts
