@@ -50,9 +50,24 @@ Then perform these steps once:
    For an oversized single class, continue the SAME worker via SendMessage rather
    than re-spawning.
 
-3. **Integrate** (main session): flip ⬜→✅ on completed rows in the section file;
-   append dispositions to `docs/testing/dispositions/*.txt`; run
-   `python3 docs/testing/gen_ledger.py`.
+3. **Integrate** (main session): The dispositions files and ledger are shared
+   across parallel sessions — acquire the integration lock before writing to them.
+
+   a. **Acquire the integration lock**: check whether
+      `docs/testing/.claims/.integration.lock` exists.
+      - If it exists and its timestamp is **less than 5 minutes old**: another
+        session is writing — STOP and tell the user to retry step 3 in a moment.
+      - If it exists and its timestamp is **5 minutes old or older**: treat as
+        stale and overwrite it.
+      - Otherwise: create the file with your claim file name and an ISO-8601
+        timestamp.
+
+   b. With the lock held: flip ⬜→✅ on completed rows in the section file;
+      append dispositions to `docs/testing/dispositions/*.txt`; run
+      `python3 docs/testing/gen_ledger.py`.
+
+   c. **Release the integration lock** immediately after `gen_ledger.py`
+      completes: delete `docs/testing/.claims/.integration.lock`.
 
 4. **Commit & stop.** Verify the worker's tests compiled and passed; if anything
    failed and is unresolved, delete the claim file and STOP and report instead of
@@ -63,5 +78,6 @@ Then perform these steps once:
    `/remediate` will pick up. Do NOT schedule a wakeup or otherwise continue; a
    future manual `/remediate` invocation handles the next chunk.
 
-> **Stale claims:** if a `.lock` file exists but its session is no longer running
-> (e.g., it crashed), delete the file manually before running `/remediate` again.
+> **Stale claims:** if a `.lock` file (including `.integration.lock`) exists but
+> its session is no longer running (e.g., it crashed), delete the file manually
+> before running `/remediate` again.
