@@ -12,14 +12,14 @@
 | UIAction | `enableFromSelectionSize` — REQUIRES_EMPTY_SELECTION: size 0 → true, size > 0 → false | unit | — | missing | write test | ✅ |
 | UIAction | `enableFromSelectionSize` — REQUIRES_SINGLE_SELECTION: size 1 → true, size ≠ 1 → false | unit | — | missing | write test | ✅ |
 | UIAction | `enableFromSelectionSize` — REQUIRES_OPTIONAL_SINGLE_SELECTION: size 0 or 1 → true, size > 1 → false | unit | — | missing | write test | ✅ |
-| UIAction | `enableFromSelectionSize` — REQUIRES_MULTIPLE_SELECTION: size > 1 → true, size ≤ 1 → false | unit | `TupletActionTest` (indirect — size=2 case only) | inadequate | write direct test covering both branches | ⬜ |
-| UIAction | `enableFromSelectionSize` — REQUIRES_OPTIONAL_MULTIPLE_SELECTION: size 0 or > 1 → true, size 1 → false | unit | — | missing | write test | ⬜ |
-| UIAction | `enableInRestMode` — DISABLE_IN_REST_MODE + REST_ACTION.isSelected → false | unit | — | missing | write test: stub `REST_ACTION.isSelected()==true`; assert false | ⬜ |
-| UIAction | `enableInRestMode` — DISABLE_IN_REST_MODE + selectionHasRests → false | unit | — | missing | write test: stub `selectionHasRests()==true`; assert false | ⬜ |
-| UIAction | `enableInRestMode` — no flag → always true | unit | — | missing | write test | ⬜ |
-| UIAction | `enableFromPlaybackState` — DISABLE_WHEN_PLAYING + isPlaying → false; no flag → true | unit | — | missing | write test mocking `PlaybackController.isPlaying()` | ⬜ |
+| UIAction | `enableFromSelectionSize` — REQUIRES_MULTIPLE_SELECTION: size > 1 → true, size ≤ 1 → false | unit | `TupletActionTest` (indirect — size=2 case only) | inadequate | write direct test covering both branches | ✅ |
+| UIAction | `enableFromSelectionSize` — REQUIRES_OPTIONAL_MULTIPLE_SELECTION: size 0 or > 1 → true, size 1 → false | unit | — | missing | write test | ✅ |
+| UIAction | `enableInRestMode` — DISABLE_IN_REST_MODE + REST_ACTION.isSelected → false | unit | — | missing | write test: stub `REST_ACTION.isSelected()==true`; assert false | ✅ |
+| UIAction | `enableInRestMode` — DISABLE_IN_REST_MODE + selectionHasRests → false | unit | — | missing | write test: stub `selectionHasRests()==true`; assert false | ✅ |
+| UIAction | `enableInRestMode` — no flag → always true | unit | — | missing | write test | ✅ |
+| UIAction | `enableFromPlaybackState` — DISABLE_WHEN_PLAYING + isPlaying → false; no flag → true | unit | — | missing | write test mocking `PlaybackController.isPlaying()` | ✅ |
 | UIAction | `enableFromDialogVisibility` — OPENS_DIALOG + dialog visible → false; dialog closed → true; no flag → true | unit | `UIActionFlagBehaviorTest` (3 tests) | adequate | keep | — |
-| UIAction | `enableFromGraceModeState` — DISABLE_IN_GRACE_MODE + `GraceModeManager.isActive()` → false | unit | `UIActionFlagBehaviorTest.testOpensDialogWithOtherDisablingFlagRemainsDisabledAfterDialogCloses` (combined with OPENS_DIALOG) | inadequate | write isolated test for DISABLE_IN_GRACE_MODE alone | ⬜ |
+| UIAction | `enableFromGraceModeState` — DISABLE_IN_GRACE_MODE + `GraceModeManager.isActive()` → false | unit | `UIActionFlagBehaviorTest.testOpensDialogWithOtherDisablingFlagRemainsDisabledAfterDialogCloses` (combined with OPENS_DIALOG) | inadequate | write isolated test for DISABLE_IN_GRACE_MODE alone | ✅ |
 | UIAction | `enableFromTextEditingState` — DISABLE_WHEN_EDITING_TEXT + editing → false; not editing → true | unit | `EditLyricActionTest.testEnableFromTextEditingState*` (via EditLyricAction subclass) | adequate | keep | — |
 | UIAction | `enableFromBarSelection` — DISABLE_WHEN_BAR_SELECTED + no active selection + bar selected → false | unit | `EnableFromSelectionTest` (3 tests) | adequate | keep | — |
 | UIAction | `enableFromSelection` — non-Reflectable, no active selection → true | unit | `EnableFromSelectionTest.testNoSelectionReturnsTrue` | adequate | keep | — |

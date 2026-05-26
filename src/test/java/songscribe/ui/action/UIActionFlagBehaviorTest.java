@@ -22,6 +22,7 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +30,7 @@ import songscribe.MainFrameMockTest;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.playback.PlaybackController;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -256,6 +258,115 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
         @Test
         void testRequiresOptionalSingleSelectionReturnsFalseWhenSizeIsGreaterThanOne() {
             assertThat(enable(2, UIAction.Flag.REQUIRES_OPTIONAL_SINGLE_SELECTION)).isFalse();
+        }
+
+        // REQUIRES_MULTIPLE_SELECTION: size > 1 → true, size ≤ 1 → false
+
+        @Test
+        void testRequiresMultipleSelectionReturnsTrueWhenSizeIsGreaterThanOne() {
+            assertThat(enable(2, UIAction.Flag.REQUIRES_MULTIPLE_SELECTION)).isTrue();
+        }
+
+        @Test
+        void testRequiresMultipleSelectionReturnsFalseWhenSizeIsOne() {
+            assertThat(enable(1, UIAction.Flag.REQUIRES_MULTIPLE_SELECTION)).isFalse();
+        }
+
+        @Test
+        void testRequiresMultipleSelectionReturnsFalseWhenSizeIsZero() {
+            assertThat(enable(0, UIAction.Flag.REQUIRES_MULTIPLE_SELECTION)).isFalse();
+        }
+
+        // REQUIRES_OPTIONAL_MULTIPLE_SELECTION: size 0 or > 1 → true, size 1 → false
+
+        @Test
+        void testRequiresOptionalMultipleSelectionReturnsTrueWhenSizeIsZero() {
+            assertThat(enable(0, UIAction.Flag.REQUIRES_OPTIONAL_MULTIPLE_SELECTION)).isTrue();
+        }
+
+        @Test
+        void testRequiresOptionalMultipleSelectionReturnsTrueWhenSizeIsGreaterThanOne() {
+            assertThat(enable(2, UIAction.Flag.REQUIRES_OPTIONAL_MULTIPLE_SELECTION)).isTrue();
+        }
+
+        @Test
+        void testRequiresOptionalMultipleSelectionReturnsFalseWhenSizeIsOne() {
+            assertThat(enable(1, UIAction.Flag.REQUIRES_OPTIONAL_MULTIPLE_SELECTION)).isFalse();
+        }
+    }
+
+    // -- enableInRestMode --
+
+    @Nested
+    class EnableInRestMode {
+
+        @AfterEach
+        void resetRestAction() {
+            Actions.REST_ACTION.setSelected(false);
+        }
+
+        private boolean enable(UIAction.Flag... flags) {
+            var action = createActionWithFlag(flags);
+            return action.enableInRestMode();
+        }
+
+        // DISABLE_IN_REST_MODE + REST_ACTION.isSelected() → false
+
+        @Test
+        void testDisableInRestModeReturnsFalseWhenRestActionIsSelected() {
+            Actions.REST_ACTION.setSelected(true);
+            assertThat(enable(UIAction.Flag.DISABLE_IN_REST_MODE)).isFalse();
+        }
+
+        // DISABLE_IN_REST_MODE + selectionHasRests → false
+
+        @Test
+        void testDisableInRestModeReturnsFalseWhenSelectionHasRests() {
+            when(mockEnv().coordinator().selectionHasRests()).thenReturn(true);
+            assertThat(enable(UIAction.Flag.DISABLE_IN_REST_MODE)).isFalse();
+        }
+
+        // no DISABLE_IN_REST_MODE flag → always true
+
+        @Test
+        void testWithoutDisableInRestModeFlagAlwaysReturnsTrue() {
+            Actions.REST_ACTION.setSelected(true);
+            when(mockEnv().coordinator().selectionHasRests()).thenReturn(true);
+            assertThat(enable()).isTrue();
+        }
+    }
+
+    // -- enableFromPlaybackState --
+
+    @Test
+    void testDisableWhenPlayingFlagReturnsFalseWhenPlaying() {
+        try (var playbackMock = mockStatic(PlaybackController.class)) {
+            playbackMock.when(PlaybackController::isPlaying).thenReturn(true);
+
+            var action = createActionWithFlag(UIAction.Flag.DISABLE_WHEN_PLAYING);
+            assertThat(action.enableFromPlaybackState()).isFalse();
+        }
+    }
+
+    @Test
+    void testWithoutDisableWhenPlayingFlagReturnsTrueWhenPlaying() {
+        try (var playbackMock = mockStatic(PlaybackController.class)) {
+            playbackMock.when(PlaybackController::isPlaying).thenReturn(true);
+
+            var action = createActionWithFlag();
+            assertThat(action.enableFromPlaybackState()).isTrue();
+        }
+    }
+
+    // -- enableFromGraceModeState --
+
+    @Test
+    void testDisableInGraceModeFlagReturnsFalseWhenGraceModeIsActive() {
+        try (var graceMock = mockStatic(GraceModeManager.class)) {
+            graceMock.when(GraceModeManager::isActive).thenReturn(true);
+
+            var action = createActionWithFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE);
+            assertThat(action.enableFromGraceModeState()).isFalse();
         }
     }
 
