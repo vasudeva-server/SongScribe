@@ -59,13 +59,13 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| XML | `escapeXML` — `&`→`&amp;`, `<`→`&lt;`, `>`→`&gt;`, `"`→`&quot;` (four specials) | unit | — | missing | one test per special + a combined-all-four test | ⬜ |
-| XML | `escapeXML` — no-specials passthrough; empty → empty | unit | — | missing | write both | ⬜ |
-| XML | `writeValue(pw,tag,value)` — `<tag>escaped</tag>` on its own line | unit | — | missing | `StringWriter` test (indent + tag + escape + close) | ⬜ |
-| XML | `writeValue` — indent prefix applied | unit | — | missing | `setIndent(2)` → line starts with two spaces | ⬜ |
-| XML | `writeEmptyTag` → `<tag />`; `writeBeginTag` → `<tag>`; `writeEndTag` → `</tag>` (each indented, own line) | unit | — | missing | write test each | ⬜ |
-| XML | `setIndent`/`printIndent` — shared static state | unit | — | missing | `setIndent(4)` → 4-space prefix; flag static-field non-thread-safe (production concern) | ⬜ |
-| XML | `writeValue` round-trip — content read back unchanged by SAX | unit | `SongIOTest.*` (indirect, escape-safe fixtures only) | inadequate | direct XML test faster/pinpoints; current fixtures never contain `& < > "` so escaping is unverified | ⬜ |
+| XML | `escapeXML` — `&`→`&amp;`, `<`→`&lt;`, `>`→`&gt;`, `"`→`&quot;` (four specials) | unit | `XMLTest.testEscapeXMLAmpersand`, `testEscapeXMLLessThan`, `testEscapeXMLGreaterThan`, `testEscapeXMLDoubleQuote`, `testEscapeXMLAllFourSpecialsCombined` | added | one test per special + a combined-all-four test | ✅ |
+| XML | `escapeXML` — no-specials passthrough; empty → empty | unit | `XMLTest.testEscapeXMLNoSpecialsPassthrough`, `testEscapeXMLEmptyStringReturnsEmpty` | added | write both | ✅ |
+| XML | `writeValue(pw,tag,value)` — `<tag>escaped</tag>` on its own line | unit | `XMLTest.testWriteValueProducesTaggedLine`, `testWriteValueEscapesSpecialCharacters` | added | `StringWriter` test (indent + tag + escape + close) | ✅ |
+| XML | `writeValue` — indent prefix applied | unit | `XMLTest.testWriteValueRespectsIndent` | added | `setIndent(2)` → line starts with two spaces | ✅ |
+| XML | `writeEmptyTag` → `<tag />`; `writeBeginTag` → `<tag>`; `writeEndTag` → `</tag>` (each indented, own line) | unit | `XMLTest.testWriteEmptyTagProducesSelfClosingTag`, `testWriteBeginTagProducesOpenTag`, `testWriteEndTagProducesCloseTag`, `testWriteTagsRespectIndent` | added | write test each | ✅ |
+| XML | `setIndent`/`printIndent` — shared static state | unit | `XMLTest.testSetIndentFourProducesFourSpacePrefix` | added | `setIndent(4)` → 4-space prefix; flag static-field non-thread-safe (production concern) | ✅ |
+| XML | `writeValue` round-trip — content read back unchanged by SAX | unit | `XMLTest.testWriteValueRoundTripViaXMLParser` | added | direct XML test faster/pinpoints; current fixtures never contain `& < > "` so escaping is unverified | ✅ |
 
 **2A notes (quality concerns):** The three highest-risk gaps: (1) **`XML.escapeXML` has zero direct tests** — every saved string flows through it, and the `SongIOTest` round-trips use only escape-safe fixtures, so a regression mishandling `"`/`&`/`<`/`>` in a title or attribution would silently corrupt every saved file. (2) **`writeSong` conditional-emission logic is entirely untested** — presence/absence of tags depends on runtime conditions (null tempo, empty strings, month/day > 0, `userSetTopPadding`), none directly asserted; round-trips only verify value preservation, not correct omission. (3) **The v1.0 load path** (`startElement10`/`endElement10`, flat-notes + `<tempo_changes>` + positional mapping) has no test or fixture whatsoever. `SongLoaderTest` classifies errors well but `testLoadValidFileReturnsSuccess` only asserts non-null song/fonts (doesn't verify content). `SongLoadResult.songOrThrow()` — the primary load API for converters — has no direct assertion on any of its five branches, the `LineWidthTooLarge` compound-message branch being the riskiest.
 
