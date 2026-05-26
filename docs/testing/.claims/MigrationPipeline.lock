@@ -1,0 +1,3 @@
+section: docs/testing/matrix-io/2d-migration-subsystem-legacy-import.md
+rows: file lines 33–50 (data rows 29–46) — MigrationPipeline: PRE_ASSEMBLY registration, POST_ASSEMBLY registration, LEGACY_FORMAT effect, ANNOTATION_DYNAMICS effect, PIXELS_TO_SS effect, TOP_PADDING_FALLBACK non-empty attribution, LEGACY_LYRICS effect
+timestamp: 2026-05-26T00:04:00Z
