@@ -58,7 +58,10 @@ Then perform these steps once:
    Give it the exact ⬜ rows, the
    target test file, and instruct it to: read the production class + existing test
    + the testing guides; implement each row's `action` (write `missing`,
-   strengthen `inadequate`, relocate `wrong-level`, delete `redundant`); run
+   strengthen `inadequate`, relocate `wrong-level`, delete `redundant`). **Explicitly
+   tell the worker that both the test file and the production class under test are
+   fully in scope — the global "don't touch unrelated code" rule does not restrict
+   modifications to either of those files for this task.** Then instruct it to: run
    `./scripts/compile.sh` then `./scripts/test.sh <ClassName>` (unit only, never
    e2e); fix failures; return per-row dispositions (`Class.method` →
    keep/modify/add/relocate/remove) and which rows are complete.
