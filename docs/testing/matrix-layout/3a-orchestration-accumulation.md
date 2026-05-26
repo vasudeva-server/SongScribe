@@ -19,10 +19,10 @@
 | LayoutEngine | beamed group manual override: first explicit direction wins for whole group | unit | — | missing | first note `upper=true` → `stemsUp=true` | ✅ |
 | LayoutEngine | beam slope hyperbolic dampening clamps below `BEAM_SLOPE_MAX` | unit | — | missing | large pitch diff → `abs(slope) < BEAM_SLOPE_MAX` | ✅ |
 | LayoutEngine | beam slope-reduction loop: all stems ≥ `MIN_STEM_SS` | unit | — | missing | large contour → every stem ≥ MIN_STEM_SS | ✅ |
-| LayoutEngine | flat-beam snapping: slope<0.05 snaps `startYSs` to 0.5 grid | unit | — | missing | equal-position quavers → startYSs multiple of 0.5 | ⬜ |
-| LayoutEngine | beam thickening: non-zero slope → `thickeningSs` in `(0, BEAM_DEPTH_SS*0.088]` | unit | — | missing | sloped group → bounded thickening | ⬜ |
-| LayoutEngine | stub direction: isolated semiquaver gets stub-right | unit | — | missing | quaver+semiquaver beam → `stubRight=true` | ⬜ |
-| LayoutEngine | tie geometry: `startXSs = noteX + TIE_NOTEHEAD_HALF_WIDTH_SS` | unit | — | missing | adjacent-note tie offset | ⬜ |
+| LayoutEngine | flat-beam snapping: slope<0.05 snaps `startYSs` to 0.5 grid | unit | — | missing | equal-position quavers → startYSs multiple of 0.5 | ✅ |
+| LayoutEngine | beam thickening: non-zero slope → `thickeningSs` in `(0, BEAM_DEPTH_SS*0.088]` | unit | — | missing | sloped group → bounded thickening | ✅ |
+| LayoutEngine | stub direction: isolated semiquaver gets stub-right | unit | — | missing | quaver+semiquaver beam → `stubRight=true` | ✅ |
+| LayoutEngine | tie geometry: `startXSs = noteX + TIE_NOTEHEAD_HALF_WIDTH_SS` | unit | — | missing | adjacent-note tie offset | ✅ |
 | LayoutEngine | tie shoulder height clamped to `[TIE_MIN, TIE_MAX]` | unit | — | missing | narrow→min, wide→max | ⬜ |
 | LayoutEngine | tie collision: interior note deflects arc outward | unit | — | missing | 3-note tie over intersecting note → larger outer control Y | ⬜ |
 | LayoutEngine | tie direction: stem-up note ties below (+1) | unit | — | missing | stem-up note → arc bulges down | ⬜ |

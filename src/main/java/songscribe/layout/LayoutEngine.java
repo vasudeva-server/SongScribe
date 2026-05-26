@@ -74,7 +74,7 @@ public class LayoutEngine {
     private static final double CLEF_X_POSITION_SS = 0.625;  // 5px
 
     // Beam geometry constants (staff-space units unless noted)
-    private static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
+    static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
     private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
     static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
     private static final double MIN_STEM_SS = NoteGeometry.STEM_LENGTH_SS;
@@ -87,7 +87,7 @@ public class LayoutEngine {
     private static final double TIE_MID_THICKNESS_SS = Engraving.TIE_MIDPOINT_THICKNESS_SS; // midpoint half-thickness (midWidth - endWidth)
     private static final double TIE_COLLISION_FACTOR = 0.65;        // interior deflection scaling
     private static final double TIE_COLLISION_PUSH = 0.45;          // midpoint push-up ratio on collision
-    private static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;   // visual half-width of notehead
+    static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;   // visual half-width of notehead
     private static final double TIE_ENDPOINT_Y_OFFSET_SS = 0.7;    // y offset from note center (noteHeight/2 + 0.2)
 
     private final LyricRenderMetrics lyricRenderMetrics;

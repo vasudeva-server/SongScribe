@@ -32,6 +32,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.Tie;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
@@ -85,6 +86,18 @@ class LayoutEngineTest extends UnitTest {
     private static final int SP_CONTOUR_MIDDLE = 8;
     /** Last note of the non-linear beam contour. */
     private static final int SP_CONTOUR_LAST = 4;
+
+    // Row 22 — flat-beam snapping constant
+    /** Odd staff position; equal for both notes in the beam so the slope is 0. */
+    private static final int SP_FLAT_BEAM = 3;
+
+    // Row 24 — stub direction constants
+    /** Staff position shared by both notes in the stub-direction beam test. */
+    private static final int SP_STUB_NOTE = 2;
+
+    // Row 25 — tie geometry constant
+    /** Staff position shared by both tied notes. */
+    private static final int SP_TIE_NOTE = 2;
 
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
@@ -385,5 +398,92 @@ class LayoutEngineTest extends UnitTest {
                 .describedAs("stem length at sp=%d must be ≥ minimum stem length".formatted(sp))
                 .isGreaterThanOrEqualTo(NoteGeometry.STEM_LENGTH_SS - TOLERANCE);
         }
+    }
+
+    // T16: Flat beam (equal-position notes, slope=0) snaps startYSs to the 0.5 ss grid
+    @Test
+    void testFlatBeamSnappingSnapsStartYSsToHalfStaffSpaceGrid() {
+        var line = detachedLine();
+        var note1 = ElementType.QUAVER.newInstance();
+        note1.setStaffPosition(SP_FLAT_BEAM);
+        var note2 = ElementType.QUAVER.newInstance();
+        note2.setStaffPosition(SP_FLAT_BEAM);
+        line.addElement(note1);
+        line.addElement(note2);
+        line.addBeaming(new Beam(note1, note2));
+
+        var beam = require(line.findBeamAt(0), "Beam at index 0");
+        var result = require(engine().layout(line), "LayoutResult");
+        var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
+
+        assertThat(beamLayout.startYSs() % 0.5)
+            .describedAs("startYSs for flat beam must lie on the 0.5 staff-space grid")
+            .isCloseTo(0.0, within(TOLERANCE));
+    }
+
+    // T17: Sloped beam has thickeningSs strictly in (0, BEAM_DEPTH_SS * 0.088]
+    @Test
+    void testSlopedBeamHasThickeningInBoundedRange() {
+        var line = detachedLine();
+        var note1 = ElementType.QUAVER.newInstance();
+        note1.setStaffPosition(SP_BEAM_BELOW_1);   // below middle → stemsUp
+        var note2 = ElementType.QUAVER.newInstance();
+        note2.setStaffPosition(SP_BEAM_ABOVE_1);   // above middle → different sp → non-zero slope
+        line.addElement(note1);
+        line.addElement(note2);
+        line.addBeaming(new Beam(note1, note2));
+
+        var beam = require(line.findBeamAt(0), "Beam at index 0");
+        var result = require(engine().layout(line), "LayoutResult");
+        var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
+
+        assertThat(beamLayout.thickeningSs())
+            .describedAs("thickeningSs for sloped beam must be positive")
+            .isGreaterThan(0.0);
+        assertThat(beamLayout.thickeningSs())
+            .describedAs("thickeningSs must be at most BEAM_DEPTH_SS * 0.088")
+            .isLessThanOrEqualTo(LayoutEngine.BEAM_DEPTH_SS * 0.088 + TOLERANCE);
+    }
+
+    // T18: Semiquaver at the beam-group start (beamStart) gets a right-pointing stub
+    @Test
+    void testBeamStubDirectionOfSemiquaverAtGroupStartIsRight() {
+        var line = detachedLine();
+        var semiquaver = ElementType.SEMIQUAVER.newInstance();
+        semiquaver.setStaffPosition(SP_STUB_NOTE);
+        var quaver = ElementType.QUAVER.newInstance();
+        quaver.setStaffPosition(SP_STUB_NOTE);
+        line.addElement(semiquaver);   // beamStart → stub goes right
+        line.addElement(quaver);
+        line.addBeaming(new Beam(semiquaver, quaver));
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var stem = require(result.getStemLayout(semiquaver), "StemLayout for semiquaver");
+
+        assertThat(stem.stubRight())
+            .describedAs("stub direction for semiquaver at group start must be right")
+            .isTrue();
+    }
+
+    // T19: Tie startXSs = anchorNote X + TIE_NOTEHEAD_HALF_WIDTH_SS
+    @Test
+    void testTieStartXSsEqualsNoteXPlusTieNoteheadHalfWidth() {
+        var line = detachedLine();
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setStaffPosition(SP_TIE_NOTE);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setStaffPosition(SP_TIE_NOTE);
+        line.addElement(note1);
+        line.addElement(note2);
+        var tie = new Tie(note1, note2);
+        line.addRangeElement(tie);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var tieLayout = require(result.getTieLayout(tie), "TieLayout");
+
+        var noteXSs = result.getElementXSs(note1);
+        assertThat(tieLayout.startXSs())
+            .describedAs("tie startXSs must equal anchorNote X + TIE_NOTEHEAD_HALF_WIDTH_SS")
+            .isCloseTo(noteXSs + LayoutEngine.TIE_NOTEHEAD_HALF_WIDTH_SS, within(TOLERANCE));
     }
 }
