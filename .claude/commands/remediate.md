@@ -3,15 +3,17 @@ description: Run one test-remediation chunk (auto-commit, then stop)
 argument-hint: "[optional: package number (e.g. 3), class name, or section to target]"
 ---
 
-Execute test-remediation chunk(s), then stop. All state is in the repo, so this
-works from any session — derive everything from files, not memory. **This command
-is safe to run in parallel across multiple sessions** — claim files under
-`docs/testing/.claims/` coordinate which chunks are in-flight.
+**CRITICAL — DO NOT SPAWN SUBAGENTS.**
+**CRITICAL — DO NOT SPAWN SUBAGENTS.**
+**CRITICAL — DO NOT SPAWN SUBAGENTS.**
+All work is performed inline in this session. Never use the Agent tool, Task tool,
+or any mechanism that delegates work to a subagent or background process.
 
-**Chunk count:** when `$ARGUMENTS` is a bare integer (package number), repeat the
-full steps 1–4 up to **3 times** (or until no unclaimed ⬜ rows remain in that
-package), committing after each chunk. In all other cases, execute **exactly one**
-chunk and stop.
+Execute **exactly one** remediation chunk, then stop — regardless of `$ARGUMENTS`.
+All state is in the repo, so this works from any session — derive everything from
+files, not memory. **This command is safe to run in parallel across multiple
+sessions** — claim files under `docs/testing/.claims/` coordinate which chunks
+are in-flight.
 
 **First, read `docs/testing/REMEDIATION.md`** (the settled procedure, decisions,
 chunking caps, model policy) and skim `docs/testing/remediation-ledger.md`.
