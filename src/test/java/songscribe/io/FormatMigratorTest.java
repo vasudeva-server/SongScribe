@@ -28,17 +28,20 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Annotation;
+import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
-import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
+import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.dom.Trill;
+import songscribe.layout.Ending;
 
 class FormatMigratorTest extends UnitTest {
 
@@ -177,6 +180,109 @@ class FormatMigratorTest extends UnitTest {
 
             assertThat(attachment.getUserYOffsetSs()).isEqualTo(0.0);
         }
+
+        // Row 9: firstSecondEndingYPosPx != default → delta (endingOffset - endingDefaultPx) is
+        // added to each Ending.yPositionSs on the line.
+        @Test
+        void testNonDefaultEndingOffsetAppliedToEndingYPosition() {
+            var line = lineWith(ElementType.CROTCHET);
+            var note = line.getElement(0);
+            var ending = new Ending(note, note, Ending.Type.FIRST);
+            line.addRangeElement(ending);
+
+            var endingDefaultPx = ScaleContext.ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS);
+            var nonDefaultEndingPx = endingDefaultPx + ENDING_OFFSET_DELTA_PX;
+            line.setFirstSecondEndingYPosPx(nonDefaultEndingPx);
+
+            // Route through the public API — migrateLineLevelOffsets is called for every legacy line.
+            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+
+            // delta = nonDefault - default = ENDING_OFFSET_DELTA_PX; initial yPositionSs is 0.
+            assertThat(ending.getYPositionSs()).isEqualTo(ENDING_OFFSET_DELTA_PX);
+        }
+
+        // Row 10: trillYPosPx != default → delta (trillOffset - trillDefaultPx) is
+        // added to each Trill.yPositionSs on the line.
+        @Test
+        void testNonDefaultTrillOffsetAppliedToTrillYPosition() {
+            var line = lineWith(ElementType.CROTCHET);
+            var note = line.getElement(0);
+            var trill = new Trill(note);
+            line.addRangeElement(trill);
+
+            var trillDefaultPx = ScaleContext.ssToRoundedPx(Line.TRILL_DEFAULT_Y_SS);
+            var nonDefaultTrillPx = trillDefaultPx + TRILL_OFFSET_DELTA_PX;
+            line.setTrillYPosPx(nonDefaultTrillPx);
+
+            // Route through the public API — migrateLineLevelOffsets is called for every legacy line.
+            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+
+            // delta = nonDefault - default = TRILL_OFFSET_DELTA_PX; initial yPositionSs is 0.
+            assertThat(trill.getYPositionSs()).isEqualTo(TRILL_OFFSET_DELTA_PX);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Rows 11 & 12 — migrateAnnotationPositions()
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MigrateAnnotationPositions {
+
+        // Row 11: yPosPx > 0 (below staff) → yPosPx set to ABOVE constant;
+        // userYOffsetSs adjusted to preserve visual position.
+        @Test
+        void testBelowStaffAnnotationMovedAboveWithOffsetAdjusted() {
+            var line = lineWithAnnotation("text");
+            var note = line.getElement(0);
+            var attachment = note.findAttachment(AnnotationAttachment.class);
+            assertThat(attachment).isNotNull();
+
+            //noinspection ConstantValue -- needed for NullAway
+            if (attachment == null) {
+                return;
+            }
+
+            var annotation = attachment.getAnnotation();
+            // Set a positive yPosPx to simulate a below-staff legacy annotation.
+            annotation.setYPosPx(BELOW_STAFF_Y_POS_PX);
+
+            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+
+            // After migration, yPosPx must be the ABOVE constant.
+            assertThat(annotation.getYPosPx()).isEqualTo(Annotation.ABOVE);
+
+            // userYOffsetSs absorbs the positional difference so the visual position is preserved.
+            // offset = oldYPosPx - ABOVE; initial userYOffsetSs was 0.
+            var expectedOffset = (double) (BELOW_STAFF_Y_POS_PX - Annotation.ABOVE);
+            assertThat(annotation.getUserYOffsetSs()).isEqualTo(expectedOffset);
+        }
+
+        // Row 12: yPosPx <= 0 (already above staff) → no change; position and offset unchanged.
+        @Test
+        void testAboveStaffAnnotationIsNoOp() {
+            var line = lineWithAnnotation("text");
+            var note = line.getElement(0);
+            var attachment = note.findAttachment(AnnotationAttachment.class);
+            assertThat(attachment).isNotNull();
+
+            //noinspection ConstantValue -- needed for NullAway
+            if (attachment == null) {
+                return;
+            }
+
+            var annotation = attachment.getAnnotation();
+            // Default yPosPx is ABOVE (negative), which satisfies yPosPx <= 0; no migration needed.
+            var originalYPosPx = annotation.getYPosPx();
+            var originalOffset = annotation.getUserYOffsetSs();
+
+            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+
+            // Neither field must change — above-staff annotations are already in the correct form.
+            assertThat(annotation.getYPosPx()).isEqualTo(originalYPosPx);
+            assertThat(annotation.getUserYOffsetSs()).isEqualTo(originalOffset);
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -200,6 +306,24 @@ class FormatMigratorTest extends UnitTest {
      * Must be non-zero to enter the beat-change migration branch.
      */
     private static final int BEAT_CHANGE_OFFSET_DELTA_PX = 8;
+
+    /**
+     * Delta added to the ending default px value to produce a non-default input.
+     * Must be non-zero to enter the ending migration branch.
+     */
+    private static final int ENDING_OFFSET_DELTA_PX = 6;
+
+    /**
+     * Delta added to the trill default px value to produce a non-default input.
+     * Must be non-zero to enter the trill migration branch.
+     */
+    private static final int TRILL_OFFSET_DELTA_PX = 4;
+
+    /**
+     * A positive yPosPx value representing a below-staff annotation (legacy positioning).
+     * Must be positive to trigger the below-staff migration branch in migrateAnnotationPositions.
+     */
+    private static final int BELOW_STAFF_Y_POS_PX = Annotation.BELOW;
 
     // -----------------------------------------------------------------------
     // Fixture helpers

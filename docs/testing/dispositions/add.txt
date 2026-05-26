@@ -570,3 +570,7 @@ FormatMigratorTest.Migrate.testIteratesPerLineAndAppliesTempoOffset	2d	row 6 —
 FormatMigratorTest.MigrateLineLevelOffsets.testNonZeroTempoOffsetAppliedToTempoAttachment	2d	row 7 — non-zero tempoChangeYPosPx delta to TempoChangeAttachment.userYOffsetSs (via public migrate)
 FormatMigratorTest.MigrateLineLevelOffsets.testNonDefaultBeatChangeOffsetAppliedToBeatChangeAttachment	2d	row 8 — non-default beatChangeYPosPx delta to BeatChangeAttachment.userYOffsetSs (via public migrate)
 FormatMigratorTest.MigrateLineLevelOffsets.testDefaultBeatChangeOffsetIsNoOp	2d	row 8 — default beatChangeYPosPx is zero-delta no-op
+FormatMigratorTest.MigrateLineLevelOffsets.testNonDefaultEndingOffsetAppliedToEndingYPosition	2d	row 9 — firstSecondEndingYPosPx delta to Ending.yPositionSs (via public migrate)
+FormatMigratorTest.MigrateLineLevelOffsets.testNonDefaultTrillOffsetAppliedToTrillYPosition	2d	row 10 — trillYPosPx delta to Trill.yPositionSs (via public migrate)
+FormatMigratorTest.MigrateAnnotationPositions.testBelowStaffAnnotationMovedAboveWithOffsetAdjusted	2d	row 11 — below-staff annotation (yPosPx>0) moved to ABOVE + userYOffset adjusted
+FormatMigratorTest.MigrateAnnotationPositions.testAboveStaffAnnotationIsNoOp	2d	row 12 — above-staff annotation (yPosPx<=0) unchanged
