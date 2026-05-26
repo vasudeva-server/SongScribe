@@ -41,10 +41,12 @@ import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.ElementType;
+import songscribe.dom.KeyType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.Lyric;
 import songscribe.dom.Tempo;
+import songscribe.dom.TempoChangeAttachment;
 import songscribe.font.DocumentFonts;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -317,6 +319,206 @@ class SongIOTest extends UnitTest {
         assertThat(xml).contains("<topspace>");
     }
 
+    /**
+     * Tests for the v1.0 load path through {@code startElement10} / {@code endElement10}.
+     * Covers: {@code startElement} dispatch creates {@code StaffElementReader} + {@code TempoReader}
+     * (not {@code LineReader}) for v1.0; {@code endElement10} restores {@code where=SONG} on
+     * {@code </notes>} and {@code </tempo_changes>}; first {@code Line} is auto-created on the
+     * first note when {@code parsedLines} is empty; and tempo at pos=0 maps to song-level while
+     * tempo at pos=N attaches to the element at that flat position.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class V10LoadPath {
+
+        private static final int SONG_LEVEL_TEMPO_BPM = 100;
+        private static final int ATTACHED_TEMPO_BPM = 72;
+        // Position 1 (0-based) in the flat note list targets the second note.
+        private static final int ATTACHED_TEMPO_FLAT_POS = 1;
+
+        // rows 18, 22, 24: parse v1.0 <song> → StaffElementReader loads notes into an
+        // auto-created Line; </notes> resets where to SONG; parsedLines non-empty.
+        @Test
+        void testV10NotesLoadedIntoAutoCreatedLine() throws Exception {
+            var song = parseXml(v10TwoNoteXml());
+
+            assertThat(song.lineCount())
+                .as("v1.0 parse: first note must auto-create a Line")
+                .isGreaterThanOrEqualTo(1);
+            assertThat(song.getLine(0).elementCount())
+                .as("v1.0 parse: notes must be loaded via StaffElementReader")
+                .isGreaterThan(0);
+        }
+
+        // row 23 (pos=0): tempo at flat position 0 becomes the song-level tempo.
+        @Test
+        void testV10TempoAtPositionZeroSetsSongLevelTempo() throws Exception {
+            var song = parseXml(v10WithSongLevelTempoXml());
+
+            assertThat(song.getTempo())
+                .as("v1.0 tempo at pos=0 must map to song-level tempo")
+                .isNotNull();
+
+            //noinspection ConstantValue -- NullAway guard
+            if (song.getTempo() == null) {
+                return;
+            }
+
+            assertThat(song.getTempo().getVisibleTempo())
+                .as("song-level tempo BPM")
+                .isEqualTo(SONG_LEVEL_TEMPO_BPM);
+        }
+
+        // row 23 (pos>0): tempo at flat position N attaches to the element at that position.
+        @Test
+        void testV10TempoAtNonZeroPositionAttachesToElement() throws Exception {
+            var song = parseXml(v10WithAttachedTempoXml());
+            var targetNote = song.getLine(0).getElement(ATTACHED_TEMPO_FLAT_POS);
+            var attachment = targetNote.findAttachment(TempoChangeAttachment.class);
+
+            assertThat(attachment)
+                .as("v1.0 tempo at pos=" + ATTACHED_TEMPO_FLAT_POS +
+                    " must attach to the element at that flat position")
+                .isNotNull();
+
+            //noinspection ConstantValue -- NullAway guard
+            if (attachment == null) {
+                return;
+            }
+
+            assertThat(attachment.getTempo().getVisibleTempo())
+                .as("attached tempo BPM")
+                .isEqualTo(ATTACHED_TEMPO_BPM);
+        }
+
+        // -- XML builders --
+
+        /** Minimal v1.0 song with two crotchets (no tempo changes). */
+        private static String v10TwoNoteXml() {
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <song version="1.0">
+                  <keys>0</keys>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                    </note>
+                    <note type="CROTCHET">
+                      <staffposition>2</staffposition>
+                    </note>
+                  </notes>
+                </song>
+                """;
+        }
+
+        /** v1.0 song with one note and a song-level tempo (position=0). */
+        private static String v10WithSongLevelTempoXml() {
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <song version="1.0">
+                  <keys>0</keys>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                    </note>
+                  </notes>
+                  <tempochanges>
+                    <tempochange>
+                      <position>0</position>
+                      <visibletempo>%d</visibletempo>
+                      <tempotype>CROTCHET</tempotype>
+                    </tempochange>
+                  </tempochanges>
+                </song>
+                """.formatted(SONG_LEVEL_TEMPO_BPM);
+        }
+
+        /**
+         * v1.0 song with two crotchets and a tempo attached to the second note
+         * (flat position=1).
+         */
+        private static String v10WithAttachedTempoXml() {
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <song version="1.0">
+                  <keys>0</keys>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                    </note>
+                    <note type="CROTCHET">
+                      <staffposition>2</staffposition>
+                    </note>
+                  </notes>
+                  <tempochanges>
+                    <tempochange>
+                      <position>%d</position>
+                      <visibletempo>%d</visibletempo>
+                      <tempotype>CROTCHET</tempotype>
+                    </tempochange>
+                  </tempochanges>
+                </song>
+                """.formatted(ATTACHED_TEMPO_FLAT_POS, ATTACHED_TEMPO_BPM);
+        }
+    }
+
+    /**
+     * Tests for {@code endElement11} grace-note post-processing: after a line is
+     * fully parsed in v1.1 format, every grace note in the last line has {@code upper}
+     * forced to {@code true}, regardless of whether the XML contained an {@code <upper/>} tag.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class V11GraceNotePostProcessing {
+
+        // row 25: grace note in v1.1 XML without <upper/> gets upper=true after endElement11.
+        @Test
+        void testV11GraceNoteUpperForcedTrue() throws Exception {
+            var song = parseXml(v11GraceNoteXml());
+            var graceNote = song.getLine(0).getElement(0);
+
+            assertThat(graceNote.getType().isGraceNote())
+                .as("element 0 must be a grace note")
+                .isTrue();
+            assertThat(graceNote.isUpper())
+                .as("v1.1 grace note must have upper=true after endElement11 post-processing")
+                .isTrue();
+        }
+
+        /**
+         * Minimal v1.1 composition with one grace note (no {@code <upper/>} tag) followed
+         * by a regular note. The grace note has no explicit upper flag so the post-processing
+         * in {@code endElement11} is the only source of {@code upper=true}.
+         */
+        private static String v11GraceNoteXml() {
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <composition version="1.1">
+                  <keys>0</keys>
+                  <rightinfostarty>0</rightinfostarty>
+                  <linewidth>200</linewidth>
+                  <lines>
+                    <line>
+                      <lyricsypos>5.0</lyricsypos>
+                      <notes>
+                        <note type="GRACE_QUAVER">
+                          <staffposition>0</staffposition>
+                        </note>
+                        <note type="CROTCHET">
+                          <staffposition>0</staffposition>
+                        </note>
+                        <note type="FINAL_DOUBLE_BARLINE">
+                          <staffposition>0</staffposition>
+                        </note>
+                      </notes>
+                    </line>
+                  </lines>
+                  <view/>
+                </composition>
+                """;
+        }
+    }
+
     // -- helpers --
 
     private static String writeSongToString(Song song) {
@@ -480,6 +682,122 @@ class SongIOTest extends UnitTest {
      * threads the migrated scalars and lines (from the {@code MigrationContext}) into {@code SongData}
      * rather than the stale parsed fields.
      */
+    /**
+     * Tests for {@code endElement12} field mapping: keys, keytype, number, title,
+     * place, year, month, day, underLyrics, banglaLyrics, translatedLyrics,
+     * attribution, footnotes, and unofficialTranslation are all read back correctly
+     * on a round-trip. Also covers the title-empty→"Untitled" branch.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EndElement12FieldMapping {
+
+        private static final int NON_DEFAULT_KEY_ACCIDENTAL_COUNT = 2;
+        private static final int NON_DEFAULT_NUMBER = 5;
+        private static final int NON_DEFAULT_MONTH = 6;
+        private static final int NON_DEFAULT_DAY = 15;
+
+        // row 27: round-trip preserves all non-default field values.
+        @Test
+        void testRoundTripPreservesAllFields() throws Exception {
+            var song = new Song();
+            song.setDefaultKeyAccidentalCount(NON_DEFAULT_KEY_ACCIDENTAL_COUNT);
+            song.setDefaultKeyType(KeyType.SHARPS);
+            song.setNumber(String.valueOf(NON_DEFAULT_NUMBER));
+            song.setTitle("My Song");
+            song.setPlace("London");
+            song.setYear("2024");
+            song.setMonth(NON_DEFAULT_MONTH);
+            song.setDay(NON_DEFAULT_DAY);
+            song.setUnderLyrics("under");
+            song.setBanglaLyrics("bangla");
+            song.setTranslatedLyrics("translated");
+            song.setAttribution("Author");
+            song.setFootnotes("Note");
+            song.setUnofficialTranslation(true);
+
+            var reloaded = roundTrip(song);
+
+            assertThat(reloaded.getDefaultKeyAccidentalCount())
+                .as("keys round-trip")
+                .isEqualTo(NON_DEFAULT_KEY_ACCIDENTAL_COUNT);
+            assertThat(reloaded.getDefaultKeyType())
+                .as("keytype round-trip")
+                .isEqualTo(KeyType.SHARPS);
+            assertThat(reloaded.getNumber())
+                .as("number round-trip")
+                .isEqualTo(String.valueOf(NON_DEFAULT_NUMBER));
+            assertThat(reloaded.getTitle())
+                .as("title round-trip")
+                .isEqualTo("My Song");
+            assertThat(reloaded.getPlace())
+                .as("place round-trip")
+                .isEqualTo("London");
+            assertThat(reloaded.getYear())
+                .as("year round-trip")
+                .isEqualTo("2024");
+            assertThat(reloaded.getMonth())
+                .as("month round-trip")
+                .isEqualTo(NON_DEFAULT_MONTH);
+            assertThat(reloaded.getDay())
+                .as("day round-trip")
+                .isEqualTo(NON_DEFAULT_DAY);
+            assertThat(reloaded.getUnderLyrics())
+                .as("underLyrics round-trip")
+                .isEqualTo("under");
+            assertThat(reloaded.getBanglaLyrics())
+                .as("banglaLyrics round-trip")
+                .isEqualTo("bangla");
+            assertThat(reloaded.getTranslatedLyrics())
+                .as("translatedLyrics round-trip")
+                .isEqualTo("translated");
+            assertThat(reloaded.getAttribution())
+                .as("attribution round-trip")
+                .isEqualTo("Author");
+            assertThat(reloaded.getFootnotes())
+                .as("footnotes round-trip")
+                .isEqualTo("Note");
+            assertThat(reloaded.isUnofficialTranslation())
+                .as("unofficialTranslation round-trip")
+                .isTrue();
+        }
+
+        // row 27 (title-empty branch): an empty <songtitle> tag maps to "Untitled".
+        @Test
+        void testTitleEmptyTagParsedAsUntitled() throws Exception {
+            var xml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <composition version="2.7">
+                  <keys>0</keys>
+                  <songtitle></songtitle>
+                  <rightinfostarty>0.0</rightinfostarty>
+                  <linewidth>200.0</linewidth>
+                  <dynamicLayout>true</dynamicLayout>
+                  <lines>
+                    <line>
+                      <lyricsypos>5.0</lyricsypos>
+                      <notes>
+                        <note type="CROTCHET">
+                          <staffposition>0</staffposition>
+                        </note>
+                        <note type="FINAL_DOUBLE_BARLINE">
+                          <staffposition>0</staffposition>
+                        </note>
+                      </notes>
+                    </line>
+                  </lines>
+                  <view/>
+                </composition>
+                """;
+
+            var song = parseXml(xml);
+
+            assertThat(song.getTitle())
+                .as("empty <songtitle> must produce 'Untitled'")
+                .isEqualTo("Untitled");
+        }
+    }
+
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class LegacyMigrationWiring {

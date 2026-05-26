@@ -15,16 +15,16 @@
 | SongIO | `writeSong` — `linewidth` always written | unit | `SongIOTest.LegacyMigrationWiring.*` (round-trip) | adequate | round-trip recovers value; direct serialized-string assertion optional | — |
 | SongIO | `writeSong` — all lines serialized in order via `LineIO.writeLine` | unit | `SongIOTest.testParsedLinesHaveSongSet` (parse only) | inadequate | multi-line round-trip asserting per-line element counts | ✅ |
 | SongIO | `writeSong` — `<view>` block always written | unit | — (`writeView` never called by any test, per 2C) | missing | add direct write test: serialized output contains `<view>…</view>` | ✅ |
-| SongIO | `DocumentReader.startElement` — v1.0 dispatch creates `StaffElementReader`+`TempoReader`, not `LineReader` | unit | — | missing | parse v1.0 `<song>`, assert notes load | ⬜ |
+| SongIO | `DocumentReader.startElement` — v1.0 dispatch creates `StaffElementReader`+`TempoReader`, not `LineReader` | unit | — | missing | parse v1.0 `<song>`, assert notes load | ✅ |
 | SongIO | `DocumentReader.startElement` — v1.1 dispatch creates `LineReader`+`ViewReader` | unit | `StaffElementIOTest` (v1.1 fixtures) | adequate | keep | — |
 | SongIO | `DocumentReader.startElement` — 2.x up to `IO_MINOR_VERSION` accepted; `2.(IO_MINOR+1)` throws `NewerVersionException` | unit | `SongIOTest.testOpeningNewerVersionFileThrowsNewerVersionException` | adequate | keep; add boundary test `2.IO_MINOR` accepted | — |
 | SongIO | `DocumentReader.startElement` — non-numeric version → `SAXException` wrapping `NumberFormatException` | unit | — | missing | version="abc" → SAXException | ✅ |
-| SongIO | `endElement10` — `<notes>`/`<tempo_changes>` restore `where=SONG` | unit | — | missing | part of v1.0 load test | ⬜ |
-| SongIO | `endElement10` — tempo at pos 0 → song-level; pos N → attached to element across multi-line flat layout | unit | — | missing | two-line v1.0 doc with multiple tempo-change positions | ⬜ |
-| SongIO | `endElement10` — empty `parsedLines` → first `Line` created on first note | unit | — | missing | part of v1.0 load test | ⬜ |
-| SongIO | `endElement11` — grace notes set `upper=true` (v1.1-only post-processing) | unit | — | missing | parse v1.1 grace note, assert `isUpper()==true` | ⬜ |
+| SongIO | `endElement10` — `<notes>`/`<tempo_changes>` restore `where=SONG` | unit | — | missing | part of v1.0 load test | ✅ |
+| SongIO | `endElement10` — tempo at pos 0 → song-level; pos N → attached to element across multi-line flat layout | unit | — | missing | two-line v1.0 doc with multiple tempo-change positions | ✅ |
+| SongIO | `endElement10` — empty `parsedLines` → first `Line` created on first note | unit | — | missing | part of v1.0 load test | ✅ |
+| SongIO | `endElement11` — grace notes set `upper=true` (v1.1-only post-processing) | unit | — | missing | parse v1.1 grace note, assert `isUpper()==true` | ✅ |
 | SongIO | `endElement12` — `<lines>`/`<view>` restore `where=SONG` | unit | `SongIOTest.*` (modern versions) | adequate | keep | — |
-| SongIO | `endElement12` — field mapping (keys, keytype, number, title empty→"Untitled", place, year, month, day, underLyrics, banglaLyrics, translatedLyrics, attribution, footnotes, unofficialTranslation) | unit | — | missing | round-trip all fields non-default; title-empty→"Untitled" branch separately | ⬜ |
+| SongIO | `endElement12` — field mapping (keys, keytype, number, title empty→"Untitled", place, year, month, day, underLyrics, banglaLyrics, translatedLyrics, attribution, footnotes, unofficialTranslation) | unit | — | missing | round-trip all fields non-default; title-empty→"Untitled" branch separately | ✅ |
 | SongIO | `endElement12` — `parseVersionedDouble` (<2.1 `Integer.parseInt`; ≥2.1 `Double.parseDouble`) for topspace/rightinfostarty/rowheight/linewidth | unit | `SongIOTest.LegacyMigrationWiring.testPre21Converts…` + `testBuggyLineWidthIsCorrectedOnLoad` | adequate | keep | — |
 | SongIO | `getSong` — `parsingSong==null` → `IllegalStateException` | unit | — | missing | empty XML (no root) → ISE | ✅ |
 | SongIO | `getSong` — migration pipeline runs pre- and post-assembly | unit | `SongIOTest.LegacyMigrationWiring` (5) | adequate | keep | — |

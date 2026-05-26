@@ -409,3 +409,9 @@ SongIOTest.testWriteSongViewBlockAlwaysWritten	2a	row 17: output always contains
 SongIOTest.testDocumentReaderNonNumericVersionThrowsSAXException	2a	row 21: version="1.abc" → SAXException wrapping NumberFormatException
 SongIOTest.testDocumentReaderGetSongThrowsIllegalStateWhenNotParsed	2a	row 29: getSong() before parse → IllegalStateException
 SongIOTest.testGetDocumentFontsReturnsDefaultsForV10Document	2a	row 31: v1.0 doc (no <view>) → DocumentFonts.defaultsFromPrefs()
+SongIOTest.V10LoadPath.testV10NotesLoadedIntoAutoCreatedLine	2a	rows 18,22,24: v1.0 dispatch loads notes into auto-created line
+SongIOTest.V10LoadPath.testV10TempoAtPositionZeroSetsSongLevelTempo	2a	row 23: pos=0 tempo → song.getTempo() non-null
+SongIOTest.V10LoadPath.testV10TempoAtNonZeroPositionAttachesToElement	2a	row 23: pos>0 tempo → attached to element
+SongIOTest.V11GraceNotePostProcessing.testV11GraceNoteUpperForcedTrue	2a	row 25: v1.1 grace note → isUpper()==true after endElement11
+SongIOTest.EndElement12FieldMapping.testRoundTripPreservesAllFields	2a	row 27: round-trip preserves all non-default fields
+SongIOTest.EndElement12FieldMapping.testTitleEmptyTagParsedAsUntitled	2a	row 27: empty <songtitle> → "Untitled"
