@@ -55,9 +55,10 @@ Then perform these steps once:
    d. State which section file + rows the chunk covers.
 
 2. **Delegate to ONE fresh worker** (model: Sonnet by default; **Opus** for heavy
-   pure-logic and for `inadequate` weak-but-green rewrites). Always pass
-   `{ "isolation": "none" }` when spawning so it shares the main working tree
-   (no worktree). Its prompt MUST begin with `MANDATORY: Read .agents/rules/serena.md`.
+   pure-logic and for `inadequate` weak-but-green rewrites). Do **not** pass
+   `isolation` when spawning — omitting it lets `bgIsolation: "none"` in
+   settings.json take effect, so the worker shares the main working tree (no
+   worktree). Its prompt MUST begin with `MANDATORY: Read .agents/rules/serena.md`.
    Give it the exact ⬜ rows, the
    target test file, and instruct it to: read the production class + existing test
    + the testing guides; implement each row's `action` (write `missing`,
