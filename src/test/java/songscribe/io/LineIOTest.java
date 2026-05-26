@@ -704,6 +704,249 @@ class LineIOTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // TupletExplicitNonThreeGradeRoundTrip — row 28
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class TupletExplicitNonThreeGradeRoundTrip {
+
+        private static final int QUINTUPLET_GRADE = 5;
+
+        @Test
+        void testExplicitGradeFiveRoundTrip() {
+            // Serialized: <tuplets>0,4,5;</tuplets> → parsed grade must be 5
+            var reader = buildReaderWithNotes(
+                ElementType.QUAVER,
+                ElementType.QUAVER,
+                ElementType.QUAVER,
+                ElementType.QUAVER,
+                ElementType.QUAVER
+            );
+            feedTag(reader, LineIO.XML_TUPLETS, "0,4,5;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var tuplets = parsedLine.findRangeElements(Tuplet.class);
+            assertThat(tuplets).hasSize(1);
+            assertThat(tuplets.getFirst().getGrade()).isEqualTo(QUINTUPLET_GRADE);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // TupletVerticalPositionRoundTrip — row 29
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class TupletVerticalPositionRoundTrip {
+
+        private static final int TRIPLET_GRADE = 3;
+        private static final int VERT_POS = 7;
+
+        @Test
+        void testNonZeroVertPosParsedCorrectly() {
+            // Serialized: <tuplets>0,2,3,7;</tuplets> → verticalPositionSs must be 7
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_TUPLETS, "0,2," + TRIPLET_GRADE + "," + VERT_POS + ";");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var tuplets = parsedLine.findRangeElements(Tuplet.class);
+            assertThat(tuplets).hasSize(1);
+            assertThat(tuplets.getFirst().getVerticalPositionSs()).isEqualTo(VERT_POS);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // CreateTupletsFromPendingOutOfRange — row 30
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class CreateTupletsFromPendingOutOfRange {
+
+        @Test
+        void testOutOfRangePairsProduceZeroTuplets() {
+            // Line has 2 elements (indices 0-1); supply three malformed pairs:
+            //   anchor < 0, end >= count, anchor > end
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_TUPLETS, "-1,1,3;0,5,3;1,0,3;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.findRangeElements(Tuplet.class)).isEmpty();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // ParseTupletDataNfeDefaults — row 31
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class ParseTupletDataNfeDefaults {
+
+        private static final int DEFAULT_GRADE = 3;
+        private static final int DEFAULT_VERT_POS = 0;
+
+        @Test
+        void testNonNumericGradeDefaultsToThree() {
+            // Non-numeric grade token → defaults to 3
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_TUPLETS, "0,2,bad;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var tuplets = parsedLine.findRangeElements(Tuplet.class);
+            assertThat(tuplets).hasSize(1);
+            assertThat(tuplets.getFirst().getGrade()).isEqualTo(DEFAULT_GRADE);
+        }
+
+        @Test
+        void testNonNumericVertPosDefaultsToZero() {
+            // Non-numeric vertPos token → defaults to 0
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_TUPLETS, "0,2,3,bad;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var tuplets = parsedLine.findRangeElements(Tuplet.class);
+            assertThat(tuplets).hasSize(1);
+            assertThat(tuplets.getFirst().getVerticalPositionSs()).isEqualTo(DEFAULT_VERT_POS);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // CrescendoRoundTripAllZeroShifts — row 32
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class CrescendoRoundTripAllZeroShifts {
+
+        @Test
+        void testAllZeroShiftsRoundTrip() {
+            // Serialized: <crescendo>0,2;</crescendo> → all shifts 0
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_CRESCENDO, "0,2;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var crescendos = parsedLine.findRangeElements(Crescendo.class);
+            assertThat(crescendos).hasSize(1);
+            var c = crescendos.getFirst();
+            assertThat(c.getX1ShiftSs()).isEqualTo(0.0);
+            assertThat(c.getX2ShiftSs()).isEqualTo(0.0);
+            assertThat(c.getYShiftSs()).isEqualTo(0.0);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // CrescendoRoundTripExplicitShifts — row 33
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class CrescendoRoundTripExplicitShifts {
+
+        private static final double X1_SHIFT = 1.5;
+        private static final double X2_SHIFT = -0.5;
+        private static final double Y_SHIFT = 0.25;
+
+        @Test
+        void testExplicitShiftsPreservedInRoundTrip() {
+            // Serialized: <crescendo>0,2,1.5,-0.5,0.25;</crescendo>
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_CRESCENDO, "0,2," + X1_SHIFT + "," + X2_SHIFT + "," + Y_SHIFT + ";");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var crescendos = parsedLine.findRangeElements(Crescendo.class);
+            assertThat(crescendos).hasSize(1);
+            var c = crescendos.getFirst();
+            assertThat(c.getX1ShiftSs()).isEqualTo(X1_SHIFT);
+            assertThat(c.getX2ShiftSs()).isEqualTo(X2_SHIFT);
+            assertThat(c.getYShiftSs()).isEqualTo(Y_SHIFT);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // DiminuendoRoundTrip — row 34
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class DiminuendoRoundTrip {
+
+        private static final double X1_SHIFT = 0.5;
+        private static final double X2_SHIFT = -1.0;
+        private static final double Y_SHIFT = 0.75;
+
+        @Test
+        void testAllZeroShiftsRoundTrip() {
+            // Serialized: <diminuendo>0,2;</diminuendo> → all shifts 0
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_DIMINUENDO, "0,2;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var diminuendos = parsedLine.findRangeElements(Diminuendo.class);
+            assertThat(diminuendos).hasSize(1);
+            var d = diminuendos.getFirst();
+            assertThat(d.getX1ShiftSs()).isEqualTo(0.0);
+            assertThat(d.getX2ShiftSs()).isEqualTo(0.0);
+            assertThat(d.getYShiftSs()).isEqualTo(0.0);
+        }
+
+        @Test
+        void testExplicitShiftsPreservedInRoundTrip() {
+            // Serialized: <diminuendo>0,2,0.5,-1.0,0.75;</diminuendo>
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.CROTCHET
+            );
+            feedTag(reader, LineIO.XML_DIMINUENDO, "0,2," + X1_SHIFT + "," + X2_SHIFT + "," + Y_SHIFT + ";");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var diminuendos = parsedLine.findRangeElements(Diminuendo.class);
+            assertThat(diminuendos).hasSize(1);
+            var d = diminuendos.getFirst();
+            assertThat(d.getX1ShiftSs()).isEqualTo(X1_SHIFT);
+            assertThat(d.getX2ShiftSs()).isEqualTo(X2_SHIFT);
+            assertThat(d.getYShiftSs()).isEqualTo(Y_SHIFT);
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers for reader-based tests
     // -------------------------------------------------------------------------
 

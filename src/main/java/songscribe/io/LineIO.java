@@ -54,11 +54,11 @@ public final class LineIO {
     static final String XML_BEAMINGS = "beamings";
     static final String XML_TIES = "ties";
     static final String XML_TRIPLETS = "triplets"; // the old version of triplets
-    private static final String XML_TUPLETS = "tuplets";
+    static final String XML_TUPLETS = "tuplets";
     static final String XML_FSENDINGS = "fsendings";
     private static final String XML_NOTES = "notes";
-    private static final String XML_CRESCENDO = "crescendo";
-    private static final String XML_DIMINUENDO = "diminuendo";
+    static final String XML_CRESCENDO = "crescendo";
+    static final String XML_DIMINUENDO = "diminuendo";
     private static final String XML_TRILLS = "trills";
 
     private LineIO() {
