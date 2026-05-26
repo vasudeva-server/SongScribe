@@ -22,15 +22,20 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
@@ -111,6 +116,147 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
             IllegalArgumentException.class,
             () -> new UIAction(null, "Test", null, 0, "test", "Test")
         );
+    }
+
+    // -- setFlags disables on construction for selection/song-state flags --
+
+    @Test
+    void testSetFlagsDisablesOnConstructionWithRequiresSelection() {
+        var action = createActionWithFlag(UIAction.Flag.REQUIRES_SELECTION);
+        assertThat(action.isEnabled()).isFalse();
+    }
+
+    @Test
+    void testSetFlagsDisablesOnConstructionWithRequiresSingleSelection() {
+        var action = createActionWithFlag(UIAction.Flag.REQUIRES_SINGLE_SELECTION);
+        assertThat(action.isEnabled()).isFalse();
+    }
+
+    @Test
+    void testSetFlagsDisablesOnConstructionWithRequiresMultipleSelection() {
+        var action = createActionWithFlag(UIAction.Flag.REQUIRES_MULTIPLE_SELECTION);
+        assertThat(action.isEnabled()).isFalse();
+    }
+
+    @Test
+    void testSetFlagsDisablesOnConstructionWithDisableWhenSongEmpty() {
+        var action = createActionWithFlag(UIAction.Flag.DISABLE_WHEN_SONG_EMPTY);
+        assertThat(action.isEnabled()).isFalse();
+    }
+
+    // -- updateEnabledState returns false and disables when getScoreView() is null --
+
+    @Test
+    void testUpdateEnabledStateReturnsFalseAndDisablesWhenScoreViewIsNull() {
+        when(mainFrame().getScoreView()).thenReturn(null);
+
+        var action = createActionWithFlag();
+        action.setEnabled(true);
+        var result = action.updateEnabledState();
+
+        assertAll(
+            () -> assertThat(result).isFalse(),
+            () -> assertThat(action.isEnabled()).isFalse()
+        );
+    }
+
+    // -- enableInSelectMode: DISABLE_IN_SELECT_MODE + isInSelectMode --
+
+    @Test
+    void testDisableInSelectModeFlagDisablesWhenInSelectMode() {
+        when(mockEnv().coordinator().isInSelectMode()).thenReturn(true);
+
+        var action = createActionWithFlag(UIAction.Flag.DISABLE_IN_SELECT_MODE);
+        var result = action.updateEnabledState();
+
+        assertAll(
+            () -> assertThat(result).isFalse(),
+            () -> assertThat(action.isEnabled()).isFalse()
+        );
+    }
+
+    @Test
+    void testDisableInSelectModeFlagEnablesWhenNotInSelectMode() {
+        when(mockEnv().coordinator().isInSelectMode()).thenReturn(false);
+
+        var action = createActionWithFlag(UIAction.Flag.DISABLE_IN_SELECT_MODE);
+        var result = action.updateEnabledState();
+
+        assertAll(
+            () -> assertThat(result).isTrue(),
+            () -> assertThat(action.isEnabled()).isTrue()
+        );
+    }
+
+    // -- enableFromSelectionSize --
+
+    @Nested
+    class EnableFromSelectionSize {
+
+        private boolean enable(int size, UIAction.Flag flag) {
+            var mockScore = mock(ScoreView.class);
+            when(mockScore.getSelectionSize()).thenReturn(size);
+            var action = createActionWithFlag(flag);
+            return action.enableFromSelectionSize(mockScore);
+        }
+
+        // REQUIRES_SELECTION: size 0 → false, size > 0 → true
+
+        @Test
+        void testRequiresSelectionReturnsFalseWhenSizeIsZero() {
+            assertThat(enable(0, UIAction.Flag.REQUIRES_SELECTION)).isFalse();
+        }
+
+        @Test
+        void testRequiresSelectionReturnsTrueWhenSizeIsPositive() {
+            assertThat(enable(1, UIAction.Flag.REQUIRES_SELECTION)).isTrue();
+        }
+
+        // REQUIRES_EMPTY_SELECTION: size 0 → true, size > 0 → false
+
+        @Test
+        void testRequiresEmptySelectionReturnsTrueWhenSizeIsZero() {
+            assertThat(enable(0, UIAction.Flag.REQUIRES_EMPTY_SELECTION)).isTrue();
+        }
+
+        @Test
+        void testRequiresEmptySelectionReturnsFalseWhenSizeIsPositive() {
+            assertThat(enable(1, UIAction.Flag.REQUIRES_EMPTY_SELECTION)).isFalse();
+        }
+
+        // REQUIRES_SINGLE_SELECTION: size 1 → true, size ≠ 1 → false
+
+        @Test
+        void testRequiresSingleSelectionReturnsTrueWhenSizeIsOne() {
+            assertThat(enable(1, UIAction.Flag.REQUIRES_SINGLE_SELECTION)).isTrue();
+        }
+
+        @Test
+        void testRequiresSingleSelectionReturnsFalseWhenSizeIsZero() {
+            assertThat(enable(0, UIAction.Flag.REQUIRES_SINGLE_SELECTION)).isFalse();
+        }
+
+        @Test
+        void testRequiresSingleSelectionReturnsFalseWhenSizeIsGreaterThanOne() {
+            assertThat(enable(2, UIAction.Flag.REQUIRES_SINGLE_SELECTION)).isFalse();
+        }
+
+        // REQUIRES_OPTIONAL_SINGLE_SELECTION: size 0 or 1 → true, size > 1 → false
+
+        @Test
+        void testRequiresOptionalSingleSelectionReturnsTrueWhenSizeIsZero() {
+            assertThat(enable(0, UIAction.Flag.REQUIRES_OPTIONAL_SINGLE_SELECTION)).isTrue();
+        }
+
+        @Test
+        void testRequiresOptionalSingleSelectionReturnsTrueWhenSizeIsOne() {
+            assertThat(enable(1, UIAction.Flag.REQUIRES_OPTIONAL_SINGLE_SELECTION)).isTrue();
+        }
+
+        @Test
+        void testRequiresOptionalSingleSelectionReturnsFalseWhenSizeIsGreaterThanOne() {
+            assertThat(enable(2, UIAction.Flag.REQUIRES_OPTIONAL_SINGLE_SELECTION)).isFalse();
+        }
     }
 
     // -- helpers --

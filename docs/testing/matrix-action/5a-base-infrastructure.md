@@ -3,15 +3,15 @@
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
 | UIAction | Constructor rejects null mainFrame | unit | `UIActionFlagBehaviorTest.testConstructorRejectsNullMainFrame` | adequate | keep | — |
-| UIAction | `setFlags` disables on construction when REQUIRES_SELECTION / REQUIRES_SINGLE_SELECTION / REQUIRES_MULTIPLE_SELECTION / DISABLE_WHEN_SONG_EMPTY | unit | — | missing | write test: construct with each of those four flags; assert `isEnabled() == false` | ⬜ |
+| UIAction | `setFlags` disables on construction when REQUIRES_SELECTION / REQUIRES_SINGLE_SELECTION / REQUIRES_MULTIPLE_SELECTION / DISABLE_WHEN_SONG_EMPTY | unit | — | missing | write test: construct with each of those four flags; assert `isEnabled() == false` | ✅ |
 | UIAction | `hasFlag` detects a set vs. unset flag | unit | `UIActionFlagBehaviorTest` (implicit via updateEnabledState calls) | adequate (indirect) | keep | — |
-| UIAction | `updateEnabledState` returns false and disables when `getScoreView()` is null | unit | — | missing | write test: stub `getScoreView()` → null; assert returns false and `isEnabled() == false` | ⬜ |
+| UIAction | `updateEnabledState` returns false and disables when `getScoreView()` is null | unit | — | missing | write test: stub `getScoreView()` → null; assert returns false and `isEnabled() == false` | ✅ |
 | UIAction | `enableInAdjustmentMode` — DISABLE_IN_ADJUSTMENT_MODE + adjustment mode disables; no flag or non-adjustment mode enables | unit | `UIActionReflectableGuardTest.testNonReflectableWithSelectionRunsNormalLogic` (DISABLE_IN_ADJUSTMENT_MODE only) | adequate | keep | — |
-| UIAction | `enableInSelectMode` — DISABLE_IN_SELECT_MODE + isInSelectMode disables | unit | — | missing | write test: stub `isInSelectMode()` → true; assert false; and false when not in select mode | ⬜ |
-| UIAction | `enableFromSelectionSize` — REQUIRES_SELECTION: size 0 → false, size > 0 → true | unit | — | missing | write test for each size-flag variant (see below rows) | ⬜ |
-| UIAction | `enableFromSelectionSize` — REQUIRES_EMPTY_SELECTION: size 0 → true, size > 0 → false | unit | — | missing | write test | ⬜ |
-| UIAction | `enableFromSelectionSize` — REQUIRES_SINGLE_SELECTION: size 1 → true, size ≠ 1 → false | unit | — | missing | write test | ⬜ |
-| UIAction | `enableFromSelectionSize` — REQUIRES_OPTIONAL_SINGLE_SELECTION: size 0 or 1 → true, size > 1 → false | unit | — | missing | write test | ⬜ |
+| UIAction | `enableInSelectMode` — DISABLE_IN_SELECT_MODE + isInSelectMode disables | unit | — | missing | write test: stub `isInSelectMode()` → true; assert false; and false when not in select mode | ✅ |
+| UIAction | `enableFromSelectionSize` — REQUIRES_SELECTION: size 0 → false, size > 0 → true | unit | — | missing | write test for each size-flag variant (see below rows) | ✅ |
+| UIAction | `enableFromSelectionSize` — REQUIRES_EMPTY_SELECTION: size 0 → true, size > 0 → false | unit | — | missing | write test | ✅ |
+| UIAction | `enableFromSelectionSize` — REQUIRES_SINGLE_SELECTION: size 1 → true, size ≠ 1 → false | unit | — | missing | write test | ✅ |
+| UIAction | `enableFromSelectionSize` — REQUIRES_OPTIONAL_SINGLE_SELECTION: size 0 or 1 → true, size > 1 → false | unit | — | missing | write test | ✅ |
 | UIAction | `enableFromSelectionSize` — REQUIRES_MULTIPLE_SELECTION: size > 1 → true, size ≤ 1 → false | unit | `TupletActionTest` (indirect — size=2 case only) | inadequate | write direct test covering both branches | ⬜ |
 | UIAction | `enableFromSelectionSize` — REQUIRES_OPTIONAL_MULTIPLE_SELECTION: size 0 or > 1 → true, size 1 → false | unit | — | missing | write test | ⬜ |
 | UIAction | `enableInRestMode` — DISABLE_IN_REST_MODE + REST_ACTION.isSelected → false | unit | — | missing | write test: stub `REST_ACTION.isSelected()==true`; assert false | ⬜ |
