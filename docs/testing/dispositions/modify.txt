@@ -14,3 +14,4 @@ DynamicAttachmentTest.Copy.testCopyReturnsDistinctInstanceWithNewOwnerAndPreserv
 BeatChangeAttachmentTest.Copy.testCopyReturnsDistinctInstanceWithNewOwnerAndPreservesBeatChange
 SongLoaderTest.testLoadValidFileReturnsSuccess	2a	row 43: strengthened with field-level assertions (line count, element count) vs fixture
 StaffElementIOTest.DynamicSerialization.testRoundTripPreservesDynamicType
+LineIOTest.EndElement11LyricsYPos.testLyricsyposTagSetsLyricsYPosSs	2c	row 20 — strengthened to assert getLyricsYPosSs()==5.0

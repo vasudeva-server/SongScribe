@@ -531,3 +531,12 @@ LineIOTest.LineReaderStateMachine.testUnknownTagSetsLastTag	2c	row 11 — LineRe
 LineIOTest.EndElement11Keys.testKeysTagSetsKeyAccidentalCount	2c	row 12 — <keys> → setKeyAccidentalCount
 LineIOTest.EndElement11Keytype.testKeytypeTagSetsKeyType	2c	row 13 — <keytype> → setKeyType
 LineIOTest.EndElement11NoteDist.testNotedistchangeTagSetsElementSpacingRatio	2c	row 14 — <notedistchange> → changeElementSpacingRatio
+LineIOTest.EndElement11LegacyYPosTags.testTempochangeyposTagSetsTempoChangeYPosPx	2c	row 21 — legacy tempoChangeypos tag
+LineIOTest.EndElement11LegacyYPosTags.testBeatchangeyposTagSetsBeatChangeYPosPx	2c	row 21 — legacy beatChangeypos tag
+LineIOTest.EndElement11LegacyYPosTags.testFsendingyposTagSetsFirstSecondEndingYPosPx	2c	row 21 — legacy fsendingypos tag
+LineIOTest.EndElement11LegacyYPosTags.testTrillyposTagSetsTrillYPosPx	2c	row 21 — legacy trillypos tag
+LineIOTest.EndElement11SlursIgnored.testSlursTagSilentlyIgnored	2c	row 22 — slurs tag silently ignored
+LineIOTest.BeamRoundTrip.testBeamRoundTripPreservesAnchorAndEnd	2c	row 23 — beam round-trip anchor/end
+LineIOTest.CreateBeamsFromPendingOutOfRange.testOutOfRangePairsProduceZeroBeams	2c	row 24 — out-of-range beam pairs → zero beams
+LineIOTest.CreateTiesFromPendingPairsOutOfRange.testOutOfRangeTiePairThrowsIndexOutOfBoundsException	2c	row 26 — out-of-range tie pair → IOOBE (unguarded)
+LineIOTest.TupletLegacyTripletsDefaultGrade.testLegacyTripletsTagDefaultsGradeToThree	2c	row 27 — legacy <triplets> defaults grade=3
