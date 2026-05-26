@@ -25,22 +25,29 @@ import static org.mockito.Mockito.mockStatic;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.List;
+
+import org.jspecify.annotations.Nullable;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.xml.sax.helpers.AttributesImpl;
 
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.layout.Ending;
 import songscribe.message.MessageCenter;
 
 @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
@@ -68,6 +75,22 @@ class LineIOTest extends UnitTest {
         var sw = new StringWriter();
         LineIO.writeLine(l, new PrintWriter(sw));
         return sw.toString();
+    }
+
+    /**
+     * Drives a LineReader through a minimal line parse (no notes).
+     * Feeds the text content of {@code tagName} and returns the fully closed Line.
+     * Uses a mock song with mutation tracking suspended so direct field writes succeed.
+     */
+    @Nullable
+    private static Line parseLineTag(String tagName, String content) {
+        var emptyAttrs = new AttributesImpl();
+        var reader = new LineIO.LineReader(minimalSongMock());
+        reader.startElement11("line", emptyAttrs);
+        reader.startElement11(tagName, emptyAttrs);
+        reader.characters(content.toCharArray(), 0, content.length());
+        reader.endElement11(tagName);
+        return reader.endElement11("line");
     }
 
     // -------------------------------------------------------------------------
@@ -275,6 +298,223 @@ class LineIOTest extends UnitTest {
 
             // verticalPositionSs != 0 → included; format: anchor,end,grade,vertPos;
             assertThat(result).isEqualTo("0,2,3,4;");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // HairpinsToString — row 8
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class HairpinsToString {
+
+        @Test
+        void testAllShiftsZeroOmitsShifts() {
+            var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
+            var crescendo = new Crescendo(elements.getElement(0), elements.getElement(1));
+            elements.addRangeElement(crescendo);
+
+            var result = LineIO.hairpinsToString(elements.findRangeElements(Crescendo.class));
+
+            assertThat(result).isEqualTo("0,1;");
+        }
+
+        @Test
+        void testAnyNonZeroShiftIncludesAllShifts() {
+            var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
+            var diminuendo = new Diminuendo(elements.getElement(0), elements.getElement(1));
+            final double X1 = 1.5;
+            final double X2 = 0.0;
+            final double Y = -2.0;
+            diminuendo.setX1ShiftSs(X1);
+            diminuendo.setX2ShiftSs(X2);
+            diminuendo.setYShiftSs(Y);
+            elements.addRangeElement(diminuendo);
+
+            var result = LineIO.hairpinsToString(elements.findRangeElements(Diminuendo.class));
+
+            // All three shift fields written when any is non-zero
+            assertThat(result).isEqualTo("0,1," + X1 + "," + X2 + "," + Y + ";");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndingsToString — row 9
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndingsToString {
+
+        @Test
+        void testProducesAnchorEndPairWithoutType() {
+            var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
+            var ending = new Ending(elements.getElement(0), elements.getElement(1), Ending.Type.SECOND);
+            elements.addRangeElement(ending);
+
+            var result = LineIO.endingsToString(elements.findRangeElements(Ending.class));
+
+            // Ending.Type is not serialized — only anchor,end;
+            assertThat(result).isEqualTo("0,1;");
+        }
+
+        @Test
+        void testTypeAlwaysDeserializesAsFirstDueToBug() {
+            // Deserializer always creates Ending.Type.FIRST regardless of original type.
+            // This test documents the current (buggy) behavior so regressions are detectable.
+            var reader = buildReaderWithOneNoteAndEnding("0,0;");
+            var parsedLine = reader.endElement11("line");
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            var endings = parsedLine.findRangeElements(Ending.class);
+            assertThat(endings).hasSize(1);
+            // Bug: type is not serialized, so deserialization always produces FIRST
+            assertThat(endings.getFirst().getType()).isEqualTo(Ending.Type.FIRST);
+        }
+
+        private static LineIO.LineReader buildReaderWithOneNoteAndEnding(String endingsStr) {
+            var emptyAttrs = new AttributesImpl();
+            var noteAttrs = new AttributesImpl();
+            noteAttrs.addAttribute("", "type", "type", "CDATA", "CROTCHET");
+            var reader = new LineIO.LineReader(minimalSongMock());
+            reader.startElement11("line", emptyAttrs);
+            reader.startElement11("notes", emptyAttrs);
+            reader.startElement11("note", noteAttrs);
+            reader.startElement11("staffposition", emptyAttrs);
+            reader.characters("0".toCharArray(), 0, 1);
+            reader.endElement11("staffposition");
+            reader.endElement11("note");
+            reader.endElement11("notes");
+            reader.startElement11(LineIO.XML_FSENDINGS, emptyAttrs);
+            reader.characters(endingsStr.toCharArray(), 0, endingsStr.length());
+            reader.endElement11(LineIO.XML_FSENDINGS);
+            return reader;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // ForEachSegment — row 10
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class ForEachSegment {
+
+        @Test
+        void testEmptyStringYieldsZeroIterations() {
+            var count = new int[]{0};
+            LineIO.forEachSegment("", (begin, end) -> count[0]++);
+            assertThat(count[0]).isEqualTo(0);
+        }
+
+        @Test
+        void testSingleSegmentYieldsOneIteration() {
+            var segments = new ArrayList<String>();
+            LineIO.forEachSegment("0,1;", (begin, end) -> segments.add("0,1;".substring(begin, end)));
+            assertThat(segments).containsExactly("0,1");
+        }
+
+        @Test
+        void testMultipleSegmentsYieldsOneIterationEach() {
+            var segments = new ArrayList<String>();
+            var input = "0,1;2,3;4,5;";
+            LineIO.forEachSegment(input, (begin, end) -> segments.add(input.substring(begin, end)));
+            assertThat(segments).containsExactly("0,1", "2,3", "4,5");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // LineReaderStateMachine — row 11
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class LineReaderStateMachine {
+
+        @Test
+        void testLineTagCreatesLineAndSetsWhereLine() {
+            var reader = new LineIO.LineReader(minimalSongMock());
+            assertThat(reader.line).isNull();
+            assertThat(reader.where).isNull();
+
+            reader.startElement11("line", new AttributesImpl());
+
+            assertThat(reader.line).isNotNull();
+            assertThat(reader.where).isEqualTo(LineIO.LineReader.Where.LINE);
+        }
+
+        @Test
+        void testNotesTagTransitionsToWhereNotes() {
+            var reader = new LineIO.LineReader(minimalSongMock());
+            reader.startElement11("line", new AttributesImpl());
+            assertThat(reader.where).isEqualTo(LineIO.LineReader.Where.LINE);
+
+            reader.startElement11("notes", new AttributesImpl());
+
+            assertThat(reader.where).isEqualTo(LineIO.LineReader.Where.NOTES);
+        }
+
+        @Test
+        void testUnknownTagSetsLastTag() {
+            var reader = new LineIO.LineReader(minimalSongMock());
+            reader.startElement11("line", new AttributesImpl());
+            assertThat(reader.lastTag).isNull();
+
+            reader.startElement11("keys", new AttributesImpl());
+
+            assertThat(reader.lastTag).isEqualTo("keys");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndElement11Keys — row 12
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndElement11Keys {
+
+        private static final int KEY_COUNT = 5;
+
+        @Test
+        void testKeysTagSetsKeyAccidentalCount() {
+            var parsedLine = parseLineTag(LineIO.XML_KEYS, String.valueOf(KEY_COUNT));
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.getKeyAccidentalCount()).isEqualTo(KEY_COUNT);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndElement11Keytype — row 13
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndElement11Keytype {
+
+        @Test
+        void testKeytypeTagSetsKeyType() {
+            var parsedLine = parseLineTag(LineIO.XML_KEYTYPE, KeyType.FLATS.name());
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.getKeyType()).isEqualTo(KeyType.FLATS);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndElement11NoteDist — row 14
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndElement11NoteDist {
+
+        private static final float SPACING_RATIO = 1.25f;
+
+        @Test
+        void testNotedistchangeTagSetsElementSpacingRatio() {
+            var parsedLine = parseLineTag(LineIO.XML_NOTE_DIST_CHANGE, String.valueOf(SPACING_RATIO));
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.getElementSpacingRatio()).isEqualTo(SPACING_RATIO);
         }
     }
 }

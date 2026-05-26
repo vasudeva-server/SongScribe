@@ -55,7 +55,7 @@ public final class LineIO {
     private static final String XML_TIES = "ties";
     private static final String XML_TRIPLETS = "triplets"; // the old version of triplets
     private static final String XML_TUPLETS = "tuplets";
-    private static final String XML_FSENDINGS = "fsendings";
+    static final String XML_FSENDINGS = "fsendings";
     private static final String XML_NOTES = "notes";
     private static final String XML_CRESCENDO = "crescendo";
     private static final String XML_DIMINUENDO = "diminuendo";
@@ -194,7 +194,7 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String endingsToString(List<? extends Ending> endings) {
+    static String endingsToString(List<? extends Ending> endings) {
         var sb = new StringBuilder(27);
 
         for (var ending : endings) {
@@ -241,7 +241,7 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String hairpinsToString(List<? extends Hairpin> hairpins) {
+    static String hairpinsToString(List<? extends Hairpin> hairpins) {
         var sb = new StringBuilder(27);
 
         for (var hairpin : hairpins) {
@@ -269,11 +269,11 @@ public final class LineIO {
     }
 
     @FunctionalInterface
-    private interface SegmentConsumer {
+    interface SegmentConsumer {
         void accept(int begin, int end);
     }
 
-    private static void forEachSegment(String str, SegmentConsumer consumer) {
+    static void forEachSegment(String str, SegmentConsumer consumer) {
         var begin = 0;
         var end = str.indexOf(';', begin);
 
@@ -289,17 +289,17 @@ public final class LineIO {
         private final Song song;
 
         @Nullable
-        private Line line = null;
+        Line line = null;
 
         @Nullable
-        private String lastTag;
+        String lastTag;
 
         @org.jetbrains.annotations.Nullable
         private StaffElementIO.StaffElementReader noteReader = null;
         private final StringBuilder value = new StringBuilder(20);
 
         @Nullable
-        private Where where = null;
+        Where where = null;
 
         /** Temporarily holds parsed fsendings index pairs (start, end) until elements are loaded. */
         private final List<int[]> pendingEndingPairs = new ArrayList<>();
@@ -733,7 +733,7 @@ public final class LineIO {
             });
         }
 
-        private enum Where {
+        enum Where {
             LINE,
             NOTES,
         }
