@@ -4,11 +4,11 @@
 |---|---|---|---|---|---|---|
 | Articulation | ctor wires owner/parent/line | unit | `ParentLinePropagationTest` | adequate | keep | — |
 | Articulation | `getContentWidth/HeightSs()` branch on `isStaccato()` → correct bbox | unit | `ArticulationStackingTest.PrecomposedGlyph` | adequate | keep | — |
-| Articulation | `getContentWidth/HeightPx()` via ssToPx | unit | — | missing | write test (both types) | ⬜ |
-| ArticulationType | `getMidiDurationPercent()` (STACCATO=33, ACCENT=−1) | unit | — | missing | write test per constant | ⬜ |
-| ArticulationType | `hasMidiDurationOverride()` (STACCATO true, ACCENT false) | unit | — | missing | write test | ⬜ |
-| ArticulationType | `getDrawingOrder(false)` ascending order | unit | — | missing | write test | ⬜ |
-| ArticulationType | `getDrawingOrder(true)` reversed order | unit | — | missing | write test | ⬜ |
+| Articulation | `getContentWidth/HeightPx()` via ssToPx | unit | `ArticulationTest` | adequate | written | ✅ |
+| ArticulationType | `getMidiDurationPercent()` (STACCATO=33, ACCENT=−1) | unit | `ArticulationTypeTest.GetMidiDurationPercent` | adequate | written | ✅ |
+| ArticulationType | `hasMidiDurationOverride()` (STACCATO true, ACCENT false) | unit | `ArticulationTypeTest.HasMidiDurationOverride` | adequate | written | ✅ |
+| ArticulationType | `getDrawingOrder(false)` ascending order | unit | `ArticulationTypeTest.GetDrawingOrderStemDown` | adequate | written | ✅ |
+| ArticulationType | `getDrawingOrder(true)` reversed order | unit | `ArticulationTypeTest.GetDrawingOrderStemUp` | adequate | written | ✅ |
 | Hairpin | `getContentHeightSs()` → HAIRPIN_OPENING_HEIGHT_SS | unit | — | missing | write test | ⬜ |
 | Hairpin | `getSpanWidthSs()` — `max(opening, endX−anchorX+NOTE_HEAD_WIDTH)` | unit | `ManualOffsetStackingTest.HairpinOffsets` (offsets, not formula) | inadequate | write both-branch test | ⬜ |
 | Hairpin | `x1ShiftSs`/`x2ShiftSs`/`yShiftSs` stored/retrieved | unit | `ManualOffsetStackingTest.HairpinOffsets` (2) | adequate | keep | — |
