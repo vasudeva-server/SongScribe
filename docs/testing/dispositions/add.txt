@@ -507,3 +507,14 @@ TempoIOTest.EndElement10Parse.testCanonicalDurationNameYieldsCorrectDuration	2b	
 TempoIOTest.EndElement10DontShowTempo.testDontShowTempoTagSetsShowTempoFalse	2b	row 61 — dontshowtempo tag → setShowTempo(false)
 TempoIOTest.EndElement11LegacyDurationNameThrows.testLegacyDurationNameInV11PathThrowsIllegalArgumentException	2b	row 63 — legacy name in v1.1 path throws IAE
 TempoIOTest.EndElement11NullGuard.testEndElement11BeforeStartElement11ReturnsNull	2b	row 64 — endElement11 null-guard before startElement11
+LineIOTest.WriteLineDeltaKeySig.testDifferingKeyWritesKeysAndKeytypeTags	2c	row 1 — differing key-sig → tags present
+LineIOTest.WriteLineDeltaKeySig.testMatchingSongDefaultOmitsKeysTags	2c	row 1 — matching key-sig → tags absent
+LineIOTest.WriteLineNoteDist.testNonUnitRatioWritesNoteDist	2c	row 2 — ratio≠1.0 → notedistchange present
+LineIOTest.WriteLineNoteDist.testUnitRatioOmitsNoteDist	2c	row 2 — ratio==1.0 → notedistchange absent
+LineIOTest.WriteLineLyricsYPos.testAlwaysWritesLyricsYPosTag	2c	row 3 — lyricsypos always present
+LineIOTest.WriteLineLegacyYPosTags.testLegacyYPosTagsAbsentInNewDocuments	2c	row 4 — legacy Y-pos tags absent in new docs
+LineIOTest.BeamsToString.testKnownBeamListProducesAnchorEndPairs	2c	row 5 — beamsToString exact string
+LineIOTest.TrillsToString.testZeroYPosOmitsYPos	2c	row 6 — trillsToString zero yPos branch
+LineIOTest.TrillsToString.testNonZeroYPosIncludesYPos	2c	row 6 — trillsToString non-zero yPos branch
+LineIOTest.TupletsToString.testZeroVertPosOmitsVertPos	2c	row 7 — tupletsToString zero vertPos branch
+LineIOTest.TupletsToString.testNonZeroVertPosIncludesVertPos	2c	row 7 — tupletsToString non-zero vertPos branch

@@ -2,14 +2,14 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| LineIO | `writeLine` — key-signature delta (count+type) only when line differs from song default | unit | — | missing | differing key → `<keys>`/`<keytype>` present; same → absent | ⬜ |
-| LineIO | `writeLine` — omit `<notedistchange>` when ratio==1.0; write otherwise | unit | — | missing | ratio=1.5 present; 1.0 absent | ⬜ |
-| LineIO | `writeLine` — always write `<lyricsypos>` | unit | — | missing | tag present | ⬜ |
-| LineIO | `writeLine` — omit legacy Y-pos tags (tempoChangeypos/beatChangeypos/fsendingypos/trillypos) in new docs | unit | — | missing | none of the four appear | ⬜ |
-| LineIO | `beamsToString` — `anchor,end;` pairs | unit | — | missing | known beam list → exact string | ⬜ |
+| LineIO | `writeLine` — key-signature delta (count+type) only when line differs from song default | unit | — | missing | differing key → `<keys>`/`<keytype>` present; same → absent | ✅ |
+| LineIO | `writeLine` — omit `<notedistchange>` when ratio==1.0; write otherwise | unit | — | missing | ratio=1.5 present; 1.0 absent | ✅ |
+| LineIO | `writeLine` — always write `<lyricsypos>` | unit | — | missing | tag present | ✅ |
+| LineIO | `writeLine` — omit legacy Y-pos tags (tempoChangeypos/beatChangeypos/fsendingypos/trillypos) in new docs | unit | — | missing | none of the four appear | ✅ |
+| LineIO | `beamsToString` — `anchor,end;` pairs | unit | — | missing | known beam list → exact string | ✅ |
 | LineIO | `tiesToString` — `anchor,end;` pairs | unit | `TieToggleTest.testTiePersistsThroughSaveLoad` (round-trip) | adequate | round-trip preserves anchor/end; exact-format test optional | — |
-| LineIO | `trillsToString` — `anchor,end;` w/o yPos when 0; incl. when non-zero | unit | — | missing | both branches | ⬜ |
-| LineIO | `tupletsToString` — `anchor,end,grade;` w/o vertPos when 0; incl. when non-zero | unit | — | missing | both branches | ⬜ |
+| LineIO | `trillsToString` — `anchor,end;` w/o yPos when 0; incl. when non-zero | unit | — | missing | both branches | ✅ |
+| LineIO | `tupletsToString` — `anchor,end,grade;` w/o vertPos when 0; incl. when non-zero | unit | — | missing | both branches | ✅ |
 | LineIO | `hairpinsToString` — `anchor,end;` w/o shifts when all zero; incl. `x1,x2,y` when any non-zero | unit | — | missing | both branches | ⬜ |
 | LineIO | `endingsToString` — `anchor,end;` per ending; **does not serialize `Ending.Type`** | unit | — | missing | exact-string test; see production observation (type-loss bug) | ⬜ |
 | LineIO | `forEachSegment` — semicolon-delimited: empty→0 iters; single; multiple | unit | — | missing | all three cases (shared parser foundation) | ⬜ |

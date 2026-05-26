@@ -43,14 +43,14 @@ import songscribe.dom.Tuplet;
 public final class LineIO {
 
     private static final String XML_LINE = "line";
-    private static final String XML_KEYS = "keys";
-    private static final String XML_KEYTYPE = "keytype";
-    private static final String XML_NOTE_DIST_CHANGE = "notedistchange";
-    private static final String XML_LYRICS_YPOS = "lyricsypos";
-    private static final String XML_FSENDING_YPOS = "fsendingypos";
-    private static final String XML_TEMPO_CHANGE_YPOS = "tempochangeypos";
-    private static final String XML_BEAT_CHANGE_YPOS = "beatchangeypos";
-    private static final String XML_TRILL_YPOS = "trillypos";
+    static final String XML_KEYS = "keys";
+    static final String XML_KEYTYPE = "keytype";
+    static final String XML_NOTE_DIST_CHANGE = "notedistchange";
+    static final String XML_LYRICS_YPOS = "lyricsypos";
+    static final String XML_FSENDING_YPOS = "fsendingypos";
+    static final String XML_TEMPO_CHANGE_YPOS = "tempochangeypos";
+    static final String XML_BEAT_CHANGE_YPOS = "beatchangeypos";
+    static final String XML_TRILL_YPOS = "trillypos";
     private static final String XML_BEAMINGS = "beamings";
     private static final String XML_TIES = "ties";
     private static final String XML_TRIPLETS = "triplets"; // the old version of triplets
@@ -175,7 +175,7 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String trillsToString(List<? extends Trill> trills) {
+    static String trillsToString(List<? extends Trill> trills) {
         var sb = new StringBuilder(27);
 
         for (var trill : trills) {
@@ -207,7 +207,7 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String beamsToString(List<? extends Beam> beams) {
+    static String beamsToString(List<? extends Beam> beams) {
         var sb = new StringBuilder(27);
 
         for (var beam : beams) {
@@ -220,7 +220,7 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String tupletsToString(List<? extends Tuplet> tuplets) {
+    static String tupletsToString(List<? extends Tuplet> tuplets) {
         var sb = new StringBuilder(27);
 
         for (var tuplet : tuplets) {
