@@ -368,3 +368,19 @@ AttributionTest.testGetContentDimensionsThrowUnsupportedOperationException	1f-or
 AttributionTest.testIsRightAlignedDefaultTrueAndRoundTrip	1f-ornaments-dynamics-misc	isRightAligned default true + round-trip
 EndingValidationResultTest.testInvalidReturnsIsValidFalse	1f-ornaments-dynamics-misc	invalid() → isValid false
 EndingValidationResultTest.testValidReturnsIsValidTrueAndAccessorsMatchInputs	1f-ornaments-dynamics-misc	valid(action, start, end) → isValid true + all 3 accessors
+XMLTest.testEscapeXMLAmpersand	2a-orchestration-xml	escapeXML & → &amp;
+XMLTest.testEscapeXMLLessThan	2a-orchestration-xml	escapeXML < → &lt;
+XMLTest.testEscapeXMLGreaterThan	2a-orchestration-xml	escapeXML > → &gt;
+XMLTest.testEscapeXMLDoubleQuote	2a-orchestration-xml	escapeXML " → &quot;
+XMLTest.testEscapeXMLAllFourSpecialsCombined	2a-orchestration-xml	escapeXML combined all four specials
+XMLTest.testEscapeXMLNoSpecialsPassthrough	2a-orchestration-xml	escapeXML no-specials passthrough
+XMLTest.testEscapeXMLEmptyStringReturnsEmpty	2a-orchestration-xml	escapeXML empty → empty
+XMLTest.testWriteValueProducesTaggedLine	2a-orchestration-xml	writeValue emits <tag>value</tag>
+XMLTest.testWriteValueEscapesSpecialCharacters	2a-orchestration-xml	writeValue escapes specials in content
+XMLTest.testWriteValueRespectsIndent	2a-orchestration-xml	writeValue indent prefix applied
+XMLTest.testWriteEmptyTagProducesSelfClosingTag	2a-orchestration-xml	writeEmptyTag → <tag />
+XMLTest.testWriteBeginTagProducesOpenTag	2a-orchestration-xml	writeBeginTag → <tag>
+XMLTest.testWriteEndTagProducesCloseTag	2a-orchestration-xml	writeEndTag → </tag>
+XMLTest.testWriteTagsRespectIndent	2a-orchestration-xml	writeEmptyTag/Begin/EndTag indented
+XMLTest.testSetIndentFourProducesFourSpacePrefix	2a-orchestration-xml	setIndent(4) → 4-space prefix
+XMLTest.testWriteValueRoundTripViaXMLParser	2a-orchestration-xml	writeValue round-trip SAX parse with specials
