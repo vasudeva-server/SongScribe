@@ -39,16 +39,25 @@ import org.xml.sax.SAXException;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
+import songscribe.dom.Annotation;
+import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
+import songscribe.dom.BeatChange;
+import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.Duration;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.ElementType;
+import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
 import songscribe.dom.StaffElement.Glissando;
+import songscribe.dom.Tempo;
+import songscribe.dom.TempoChangeAttachment;
 
 @SuppressWarnings({ "SameReturnValue", "OverlyBroadThrowsClause" })
 class StaffElementIOTest extends UnitTest {
@@ -65,6 +74,30 @@ class StaffElementIOTest extends UnitTest {
     @AfterEach
     void tearDown() {
         messageCenterMock.close();
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AnnotationSerialization {
+
+        @Test
+        void testAnnotationBlockAbsentWithoutAttachment() {
+            var note = ElementType.CROTCHET.newInstance();
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<annotation>");
+        }
+
+        @Test
+        void testAnnotationBlockPresentWithAttachment() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.addAttachment(new AnnotationAttachment(new Annotation("dolce")));
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<annotation>");
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -89,6 +122,35 @@ class StaffElementIOTest extends UnitTest {
             var output = writeNote(note);
 
             assertThat(output).contains("<durationarticulation>STACCATO</durationarticulation>");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BeatChangeSerialization {
+
+        @Test
+        void testBeatChangeTagAbsentWithoutAttachment() {
+            var note = ElementType.CROTCHET.newInstance();
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<beatchange");
+        }
+
+        @Test
+        void testBeatChangeTagEmitsBothAttributes() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.addAttachment(new BeatChangeAttachment(
+                note,
+                new BeatChange(Duration.CROTCHET, Duration.QUAVER)
+            ));
+
+            var output = writeNote(note);
+
+            assertThat(output)
+                .contains("duration=\"CROTCHET\"")
+                .contains("beat=\"QUAVER\"");
         }
     }
 
@@ -204,6 +266,30 @@ class StaffElementIOTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    class FermataSerialization {
+
+        @Test
+        void testFermataTagAbsentWithoutAttachment() {
+            var note = ElementType.CROTCHET.newInstance();
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<fermata");
+        }
+
+        @Test
+        void testFermataTagPresentWithAttachment() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.addAttachment(new FermataAttachment(note));
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<fermata");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
     class GlissandoSerialization {
 
         @Test
@@ -296,6 +382,52 @@ class StaffElementIOTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    class LyricSyllabicSerialization {
+
+        @Test
+        void testSyllabicSingleEmitsSingle() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.lyrics.add(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<syllabic>single</syllabic>");
+        }
+
+        @Test
+        void testSyllabicBeginEmitsBegin() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.lyrics.add(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<syllabic>begin</syllabic>");
+        }
+
+        @Test
+        void testSyllabicMiddleEmitsMiddle() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.lyrics.add(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, false));
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<syllabic>middle</syllabic>");
+        }
+
+        @Test
+        void testSyllabicEndEmitsEnd() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.lyrics.add(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<syllabic>end</syllabic>");
+        }
+
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
     class PrefixInParenthesisSerialization {
 
         @Test
@@ -358,6 +490,80 @@ class StaffElementIOTest extends UnitTest {
             var output = writeNote(note);
 
             assertThat(output).contains("<staffposition>4</staffposition>");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class StemDirectionAutoSerialization {
+
+        @Test
+        void testStemDirectionAutoTagAbsentWhenAutoTrue() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStemDirectionAuto(true);
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<stemDirectionAuto");
+        }
+
+        @Test
+        void testStemDirectionAutoTagPresentWhenAutoFalse() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStemDirectionAuto(false);
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<stemDirectionAuto");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TempoSerialization {
+
+        @Test
+        void testTempoBlockAbsentWithoutAttachment() {
+            var note = ElementType.CROTCHET.newInstance();
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<tempo>");
+        }
+
+        @Test
+        void testTempoBlockPresentWithAttachment() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.addAttachment(new TempoChangeAttachment(note, new Tempo()));
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<tempo>");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class UpperSerialization {
+
+        @Test
+        void testUpperTagAbsentWhenFalse() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(false);
+
+            var output = writeNote(note);
+
+            assertThat(output).doesNotContain("<upper");
+        }
+
+        @Test
+        void testUpperTagPresentWhenTrue() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+
+            var output = writeNote(note);
+
+            assertThat(output).contains("<upper");
         }
     }
 

@@ -10,15 +10,15 @@
 | StaffElementIO | `writeElement` — emit `<prefixinparenthesis>` only when `isAccidentalInParentheses()` | unit | — | missing | false→absent; true→present | ✅ |
 | StaffElementIO | `writeElement` — ACCENT→`<forcearticulation>`, STACCATO→`<durationarticulation>` | unit | — | missing | one tag per articulation type | ✅ |
 | StaffElementIO | `writeElement` — glissando type serialized; x1/x2 translates omit when 0, emit non-zero | unit | `GraceNoteLyricRoundTripTest` (type only) | inadequate | add translate omit/emit test (zero-translate regression undetectable today) | ✅ |
-| StaffElementIO | `writeElement` — `<stemDirectionAuto>` emitted when `!isStemDirectionAuto()` (inverted) | unit | — | missing | auto=true→absent; auto=false→present | ⬜ |
-| StaffElementIO | `writeElement` — `<upper>` emitted when `isUpper()` | unit | — | missing | false→absent; true→present | ⬜ |
-| StaffElementIO | `writeElement` — delegates to `TempoIO.writeTempo` when `TempoChangeAttachment` present | unit | — | missing | assert `<tempo>` block in element XML | ⬜ |
-| StaffElementIO | `writeElement` — delegates to `AnnotationIO.writeAnnotation` when `AnnotationAttachment` present | unit | — | missing | assert `<annotation>` block | ⬜ |
-| StaffElementIO | `writeElement` — `<fermata/>` when `FermataAttachment` present | unit | — | missing | absent without, present with | ⬜ |
+| StaffElementIO | `writeElement` — `<stemDirectionAuto>` emitted when `!isStemDirectionAuto()` (inverted) | unit | `StaffElementIOTest.StemDirectionAutoSerialization` (2) | adequate | keep | ✅ |
+| StaffElementIO | `writeElement` — `<upper>` emitted when `isUpper()` | unit | `StaffElementIOTest.UpperSerialization` (2) | adequate | keep | ✅ |
+| StaffElementIO | `writeElement` — delegates to `TempoIO.writeTempo` when `TempoChangeAttachment` present | unit | `StaffElementIOTest.TempoSerialization` (2) | adequate | keep | ✅ |
+| StaffElementIO | `writeElement` — delegates to `AnnotationIO.writeAnnotation` when `AnnotationAttachment` present | unit | `StaffElementIOTest.AnnotationSerialization` (2) | adequate | keep | ✅ |
+| StaffElementIO | `writeElement` — `<fermata/>` when `FermataAttachment` present | unit | `StaffElementIOTest.FermataSerialization` (2) | adequate | keep | ✅ |
 | StaffElementIO | `writeElement` — `<dynamic type="…"/>` for `DynamicAttachment` | unit | `StaffElementIOTest.DynamicSerialization.testWritesDynamicElement` | adequate | keep | — |
-| StaffElementIO | `writeElement` — `<beatchange duration beat/>` (new 2-attribute format) | unit | — | missing | assert both attributes correct | ⬜ |
+| StaffElementIO | `writeElement` — `<beatchange duration beat/>` (new 2-attribute format) | unit | `StaffElementIOTest.BeatChangeSerialization.testBeatChangeTagEmitsBothAttributes` | adequate | keep | ✅ |
 | StaffElementIO | `writeElement` — STOP/CONTINUE carrier emits only `<extend type/>`, no syllabic/text | unit | `SongIOTest.testRoundTripMelismaWithStopCarrier` | adequate | keep | — |
-| StaffElementIO | `writeElement` — syllabic→single/begin/middle/end; null→"single" | unit | `SongIOTest.testRoundTripPerNoteLyrics` (begin/single/end) | inadequate | `middle` and null-syllabic-non-carrier uncovered; add tests | ⬜ |
+| StaffElementIO | `writeElement` — syllabic→single/begin/middle/end; null→"single" | unit | `StaffElementIOTest.LyricSyllabicSerialization` (SINGLE/BEGIN/MIDDLE/END); null non-carrier enforced by `Lyric` compact constructor (dead write path) | adequate | keep | ✅ |
 | StaffElementIO | `writeElement` — compound=true appends `COMPOUND_WORD_MARKER` to `<text>` | unit | `SongIOTest.testRoundTripPerNoteLyrics` | adequate | keep | — |
 | StaffElementIO | `writeElement` — Extend.START emits `<extend type="start"/>` inside lyric | unit | `SongIOTest.testRoundTripPerNoteLyrics`, `testRoundTripMelismaWithStopCarrier` | adequate | keep | — |
 | StaffElementIO | `writeElement` — multi-verse lyric (verse 2) round-trips w/ `number` attribute | unit | — | missing | two Lyric entries at verse 1 and 2 | ⬜ |
