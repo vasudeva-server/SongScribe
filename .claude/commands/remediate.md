@@ -47,15 +47,17 @@ Then perform these steps once:
 
    c. **Immediately write the claim file** before doing any other work:
       `docs/testing/.claims/<ClassName>.lock` (or `<ClassA>+<ClassB>.lock` for a
-      batch). Content: section file path, row numbers, and ISO-8601 date-time
-      **including the time component** (e.g. `2026-05-26T14:30:00Z`).
+      batch). Content: section file path, row numbers, and an ISO-8601 date-time
+      **including the time component**. Obtain the timestamp by running
+      `date -Iseconds` — never hand-write or guess it.
       Writing this file is the reservation — do it before spawning the worker.
 
    d. State which section file + rows the chunk covers.
 
 2. **Delegate to ONE fresh worker** (model: Sonnet by default; **Opus** for heavy
-   pure-logic and for `inadequate` weak-but-green rewrites). Its prompt MUST begin
-   with `MANDATORY: Read .agents/rules/serena.md`.
+   pure-logic and for `inadequate` weak-but-green rewrites). Always pass
+   `{ "isolation": "none" }` when spawning so it shares the main working tree
+   (no worktree). Its prompt MUST begin with `MANDATORY: Read .agents/rules/serena.md`.
    Give it the exact ⬜ rows, the
    target test file, and instruct it to: read the production class + existing test
    + the testing guides; implement each row's `action` (write `missing`,
@@ -79,7 +81,8 @@ Then perform these steps once:
       - If it exists and its timestamp is **5 minutes old or older**: treat as
         stale and overwrite it.
       - Otherwise: create the file with your claim file name and an ISO-8601
-        date-time **including the time component** (e.g. `2026-05-26T14:30:00Z`).
+        date-time **including the time component**, obtained by running
+        `date -Iseconds` — never hand-write or guess it.
 
    b. With the lock held: flip ⬜→✅ on completed rows in the section file;
       append dispositions to `docs/testing/dispositions/*.txt`; run
