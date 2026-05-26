@@ -50,6 +50,18 @@ class LayoutEngineTest extends UnitTest {
     /** Enough notes to exceed STAFF_RIGHT_MARGIN_SS even after maximum compression. */
     private static final int OVERSTUFFED_NOTE_COUNT = 100;
 
+    /** Staff position (sp > 0) places the note below the middle staff line → auto stem up. */
+    private static final int SP_BELOW_MIDDLE = 2;
+
+    /** Staff position (sp < 0) places the note above the middle staff line → auto stem down. */
+    private static final int SP_ABOVE_MIDDLE = -2;
+
+    /** Staff position well above the middle line, used for the grace-note stem test. */
+    private static final int SP_ABOVE_MIDDLE_GRACE = -4;
+
+    /** Staff position below the middle line, used for the manual-override test. */
+    private static final int SP_BELOW_MIDDLE_MANUAL = 4;
+
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
         var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-");
@@ -177,5 +189,71 @@ class LayoutEngineTest extends UnitTest {
         var leading = connectors.getFirst();
         assertThat(leading.startXSs()).describedAs("leading extender startXSs").isCloseTo(0.0, within(TOLERANCE));
         assertThat(leading.kind()).describedAs("leading connector kind").isEqualTo(LyricConnectorLayout.Kind.EXTENDER);
+    }
+
+    // T8: Unbeamed note below the middle staff line (sp > 0) gets stem up under auto direction
+    @Test
+    void testUnbeamedNoteWithPositiveSPGetsStemUp() {
+        var line = detachedLine();
+        var element = ElementType.CROTCHET.newInstance();
+        element.setStaffPosition(SP_BELOW_MIDDLE);
+        line.addElement(element);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var stem = require(result.getStemLayout(element), "StemLayout");
+
+        var elementYSs = StaffExtents.spToSs(SP_BELOW_MIDDLE);
+        assertThat(stem.topYSs()).describedAs("stem-up top Y").isCloseTo(elementYSs - NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
+        assertThat(stem.bottomYSs()).describedAs("stem-up bottom Y").isCloseTo(elementYSs, within(TOLERANCE));
+    }
+
+    // T9: Unbeamed note above the middle staff line (sp < 0) gets stem down under auto direction
+    @Test
+    void testUnbeamedNoteWithNegativeSPGetsStemDown() {
+        var line = detachedLine();
+        var element = ElementType.CROTCHET.newInstance();
+        element.setStaffPosition(SP_ABOVE_MIDDLE);
+        line.addElement(element);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var stem = require(result.getStemLayout(element), "StemLayout");
+
+        var elementYSs = StaffExtents.spToSs(SP_ABOVE_MIDDLE);
+        assertThat(stem.topYSs()).describedAs("stem-down top Y").isCloseTo(elementYSs, within(TOLERANCE));
+        assertThat(stem.bottomYSs()).describedAs("stem-down bottom Y").isCloseTo(elementYSs + NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
+    }
+
+    // T10: Unbeamed grace note always gets stem up, with grace-note stem length, even when above the middle line
+    @Test
+    void testGraceNoteAlwaysGetsStemUpWithGraceLength() {
+        var line = detachedLine();
+        var element = ElementType.GRACE_QUAVER.newInstance();
+        element.setStaffPosition(SP_ABOVE_MIDDLE_GRACE);
+        line.addElement(element);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var stem = require(result.getStemLayout(element), "StemLayout");
+
+        var elementYSs = StaffExtents.spToSs(SP_ABOVE_MIDDLE_GRACE);
+        assertThat(stem.topYSs()).describedAs("grace stem-up top Y").isCloseTo(elementYSs - NoteGeometry.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
+        assertThat(stem.bottomYSs()).describedAs("grace stem-up bottom Y").isCloseTo(elementYSs, within(TOLERANCE));
+    }
+
+    // T11: Manual stem override (stemDirectionAuto=false, upper=false) is not auto-corrected even when sp > 0
+    @Test
+    void testManualStemOverrideNotAutoCorrected() {
+        var line = detachedLine();
+        var element = ElementType.CROTCHET.newInstance();
+        element.setStaffPosition(SP_BELOW_MIDDLE_MANUAL);
+        element.setStemDirectionAuto(false);
+        element.setUpper(false);
+        line.addElement(element);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var stem = require(result.getStemLayout(element), "StemLayout");
+
+        var elementYSs = StaffExtents.spToSs(SP_BELOW_MIDDLE_MANUAL);
+        assertThat(stem.topYSs()).describedAs("manual stem-down top Y").isCloseTo(elementYSs, within(TOLERANCE));
+        assertThat(stem.bottomYSs()).describedAs("manual stem-down bottom Y").isCloseTo(elementYSs + NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
     }
 }

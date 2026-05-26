@@ -11,10 +11,10 @@
 | LayoutEngine | empty-line result still contains clef + key signature | unit | — | missing | assert `getClef()`/`getKeySignature()` non-null on empty line | ✅ |
 | LayoutEngine | un-justifiable line → `layout()` returns null, `getLastError()` non-null | unit | — | missing | over-stuffed line → null result + descriptive error | ✅ |
 | LayoutEngine | 3-arg `layout(line,false,true)` threads `hasLeadingLyricContinuation` to lyric layout | unit | — | missing | extending melisma → leading lyric connector at x=0 | ✅ |
-| LayoutEngine | unbeamed note below middle line (sp>0) → stem up | unit | — | missing | crotchet at sp=2 → stem-up geometry | ⬜ |
-| LayoutEngine | unbeamed note above middle line (sp≤0) → stem down | unit | — | missing | crotchet at sp=-2 → stem-down | ⬜ |
-| LayoutEngine | unbeamed grace note always stem up | unit | — | missing | grace at sp=-4 still stem-up, length `GRACE_NOTE_STEM_LENGTH_SS` | ⬜ |
-| LayoutEngine | manual stem override not auto-corrected | unit | — | missing | `upper=false`,`stemDirectionAuto=false` at sp=4 → stays down | ⬜ |
+| LayoutEngine | unbeamed note below middle line (sp>0) → stem up | unit | — | missing | crotchet at sp=2 → stem-up geometry | ✅ |
+| LayoutEngine | unbeamed note above middle line (sp≤0) → stem down | unit | — | missing | crotchet at sp=-2 → stem-down | ✅ |
+| LayoutEngine | unbeamed grace note always stem up | unit | — | missing | grace at sp=-4 still stem-up, length `GRACE_NOTE_STEM_LENGTH_SS` | ✅ |
+| LayoutEngine | manual stem override not auto-corrected | unit | — | missing | `upper=false`,`stemDirectionAuto=false` at sp=4 → stays down | ✅ |
 | LayoutEngine | beamed group auto-direction (above→down, below→up) | unit | — | missing | two tests on `BeamLayout.stemsUp()` | ⬜ |
 | LayoutEngine | beamed group manual override: first explicit direction wins for whole group | unit | — | missing | first note `upper=true` → `stemsUp=true` | ⬜ |
 | LayoutEngine | beam slope hyperbolic dampening clamps below `BEAM_SLOPE_MAX` | unit | — | missing | large pitch diff → `abs(slope) < BEAM_SLOPE_MAX` | ⬜ |
