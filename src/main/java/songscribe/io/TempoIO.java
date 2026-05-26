@@ -32,12 +32,12 @@ public final class TempoIO {
     // version 1.1
     public static final String XML_TEMPO = "tempo";
     // version 1.0
-    private static final String XML_TEMPO_CHANGE = "tempochange";
-    private static final String XML_POS = "position";
-    private static final String XML_VISIBLE_TEMPO = "visibletempo";
-    private static final String XML_TEMPO_TYPE = "tempotype";
-    private static final String XML_TEMPO_DESCRIPTION = "tempodescription";
-    private static final String XML_DONT_SHOW_TEMPO = "dontshowtempo";
+    public static final String XML_TEMPO_CHANGE = "tempochange";
+    public static final String XML_POS = "position";
+    public static final String XML_VISIBLE_TEMPO = "visibletempo";
+    public static final String XML_TEMPO_TYPE = "tempotype";
+    public static final String XML_TEMPO_DESCRIPTION = "tempodescription";
+    public static final String XML_DONT_SHOW_TEMPO = "dontshowtempo";
 
     // Maps v1.0 XML names (no underscores) to the canonical Duration constants.
     private static final Map<String, Duration> LEGACY_TEMPO_DURATION_NAMES = Map.of(

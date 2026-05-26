@@ -497,3 +497,11 @@ AnnotationIOTest.WriteAnnotationSerialization.testOmitsUserYOffsetWhenZero
 AnnotationIOTest.WriteAnnotationSerialization.testEmitsUserYOffsetWhenNonZero
 AnnotationIOTest.RoundTripPerField.testRoundTripPreservesAllFields
 AnnotationIOTest.AnnotationReaderNullGuard.testEndElementBeforeStartElementDoesNotThrow
+TempoIOTest.WriteTempoFields.testWritesVisibleTempoTypeAndDescription	2b	row 55 — writeTempo emits visibletempo/tempotype/tempodescription
+TempoIOTest.DontShowTempoSerialization.testDontShowTempoAbsentWhenShown	2b	row 56 — dontshowtempo omitted when shown
+TempoIOTest.DontShowTempoSerialization.testDontShowTempoPresentWhenHidden	2b	row 56 — dontshowtempo emitted when hidden
+TempoIOTest.RoundTripViaStaffElementReader.testTempoRoundTripViaStaffElementReaderPreservesAllFields	2b	row 57 — full round-trip via StaffElementReader
+TempoIOTest.EndElement10Parse.testTempoChangeWrapperParsesFieldsAndPos10	2b	row 58 — v1.0 tempochange wrapper parse + pos10
+TempoIOTest.EndElement10LegacyDurationNames.testLegacyDurationNameMapsToCanonical	2b	row 59 — legacy no-underscore duration names parametrized x4
+TempoIOTest.EndElement10Parse.testCanonicalDurationNameYieldsCorrectDuration	2b	row 60 — canonical Duration.valueOf path
+TempoIOTest.EndElement10DontShowTempo.testDontShowTempoTagSetsShowTempoFalse	2b	row 61 — dontshowtempo tag → setShowTempo(false)

@@ -52,13 +52,13 @@
 | AnnotationIO | `AnnotationReader.endElement11` — `<name>`/`<alignment>`/`<ypos>`/`<useryoffset>` → setters | unit | — | missing | parametrized round-trip per field | ✅ |
 | AnnotationIO | `AnnotationReader` — null-guard (endElement before startElement) | unit | — | missing | no NPE | ✅ |
 | AnnotationIO | `AnnotationReader.startElement11`/`characters` — fresh `Annotation("")`; accumulate only when `lastTag!=null` | unit | — | missing | covered by round-trip test | ✅ |
-| TempoIO | `writeTempo` — emits `<visibletempo>`/`<tempotype>`/`<tempodescription>` | unit | — | missing | direct parse-back of all three | ⬜ |
-| TempoIO | `writeTempo` — omit `<dontshowtempo>` when shown; emit when not | unit | — | missing | both branches | ⬜ |
-| TempoIO | `writeTempo`+`endElement11` round-trip — all fields preserved | unit | — | missing | per-note `<tempo>` round-trip via `StaffElementReader` | ⬜ |
-| TempoIO | `endElement10` (v1.0) — `<tempochange>` wrapper → `Tempo`; `<position>` via `getPos10()` | unit | — | missing | v1.0 parse asserting pos10 + fields | ⬜ |
-| TempoIO | `endElement10` — legacy no-underscore duration names (MINIMDOTTED/CROTCHETDOTTED/QUAVERDOTTED/SEMIBREVE) → `Duration` | unit | — | missing | parametrized for all 4 | ⬜ |
-| TempoIO | `endElement10` — canonical duration name → `Duration.valueOf` path | unit | — | missing | write test | ⬜ |
-| TempoIO | `endElement10` — `<dontshowtempo>` → `setShowTempo(false)` | unit | — | missing | write test | ⬜ |
+| TempoIO | `writeTempo` — emits `<visibletempo>`/`<tempotype>`/`<tempodescription>` | unit | — | missing | direct parse-back of all three | ✅ |
+| TempoIO | `writeTempo` — omit `<dontshowtempo>` when shown; emit when not | unit | — | missing | both branches | ✅ |
+| TempoIO | `writeTempo`+`endElement11` round-trip — all fields preserved | unit | — | missing | per-note `<tempo>` round-trip via `StaffElementReader` | ✅ |
+| TempoIO | `endElement10` (v1.0) — `<tempochange>` wrapper → `Tempo`; `<position>` via `getPos10()` | unit | — | missing | v1.0 parse asserting pos10 + fields | ✅ |
+| TempoIO | `endElement10` — legacy no-underscore duration names (MINIMDOTTED/CROTCHETDOTTED/QUAVERDOTTED/SEMIBREVE) → `Duration` | unit | — | missing | parametrized for all 4 | ✅ |
+| TempoIO | `endElement10` — canonical duration name → `Duration.valueOf` path | unit | — | missing | write test | ✅ |
+| TempoIO | `endElement10` — `<dontshowtempo>` → `setShowTempo(false)` | unit | — | missing | write test | ✅ |
 | TempoIO | `endElement11` (v1.1) — `<tempo>` wrapper → `Tempo`; canonical names only | unit | — | missing | covered by round-trip test | ⬜ |
 | TempoIO | `endElement11` — legacy name → `Duration.valueOf` fails (no legacy map in v1.1) | unit | — | missing | legacy name in v1.1 path throws IAE | ⬜ |
 | TempoIO | `endElement11` — null-guard (endElement before startElement) → null | unit | — | missing | write test | ⬜ |
