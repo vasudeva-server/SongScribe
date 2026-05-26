@@ -21,6 +21,7 @@
 package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
 
 import java.io.PrintWriter;
@@ -203,6 +204,39 @@ class TempoIOTest extends UnitTest {
             assertThat(tempo).isNotNull();
             if (tempo == null) return;
             assertThat(tempo.getTempoType()).isEqualTo(Duration.MINIM);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EndElement11LegacyDurationNameThrows {
+
+        // Row 63: legacy name (no underscore) in v1.1 path → Duration.valueOf throws IAE
+        @Test
+        void testLegacyDurationNameInV11PathThrowsIllegalArgumentException() {
+            var legacyName = "MINIMDOTTED";
+            var reader = new TempoIO.TempoReader();
+            reader.startElement11(TempoIO.XML_TEMPO);
+            reader.startElement11(TempoIO.XML_TEMPO_TYPE);
+            reader.characters(legacyName.toCharArray(), 0, legacyName.length());
+
+            assertThatThrownBy(() -> reader.endElement11(TempoIO.XML_TEMPO_TYPE))
+                .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EndElement11NullGuard {
+
+        // Row 64: endElement11 called before startElement11 (tempo is null) → returns null
+        @Test
+        void testEndElement11BeforeStartElement11ReturnsNull() {
+            var reader = new TempoIO.TempoReader();
+
+            var result = reader.endElement11(TempoIO.XML_TEMPO);
+
+            assertThat(result).isNull();
         }
     }
 

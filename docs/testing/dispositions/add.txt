@@ -505,3 +505,5 @@ TempoIOTest.EndElement10Parse.testTempoChangeWrapperParsesFieldsAndPos10	2b	row 
 TempoIOTest.EndElement10LegacyDurationNames.testLegacyDurationNameMapsToCanonical	2b	row 59 — legacy no-underscore duration names parametrized x4
 TempoIOTest.EndElement10Parse.testCanonicalDurationNameYieldsCorrectDuration	2b	row 60 — canonical Duration.valueOf path
 TempoIOTest.EndElement10DontShowTempo.testDontShowTempoTagSetsShowTempoFalse	2b	row 61 — dontshowtempo tag → setShowTempo(false)
+TempoIOTest.EndElement11LegacyDurationNameThrows.testLegacyDurationNameInV11PathThrowsIllegalArgumentException	2b	row 63 — legacy name in v1.1 path throws IAE
+TempoIOTest.EndElement11NullGuard.testEndElement11BeforeStartElement11ReturnsNull	2b	row 64 — endElement11 null-guard before startElement11

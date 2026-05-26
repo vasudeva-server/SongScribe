@@ -59,11 +59,11 @@
 | TempoIO | `endElement10` — legacy no-underscore duration names (MINIMDOTTED/CROTCHETDOTTED/QUAVERDOTTED/SEMIBREVE) → `Duration` | unit | — | missing | parametrized for all 4 | ✅ |
 | TempoIO | `endElement10` — canonical duration name → `Duration.valueOf` path | unit | — | missing | write test | ✅ |
 | TempoIO | `endElement10` — `<dontshowtempo>` → `setShowTempo(false)` | unit | — | missing | write test | ✅ |
-| TempoIO | `endElement11` (v1.1) — `<tempo>` wrapper → `Tempo`; canonical names only | unit | — | missing | covered by round-trip test | ⬜ |
-| TempoIO | `endElement11` — legacy name → `Duration.valueOf` fails (no legacy map in v1.1) | unit | — | missing | legacy name in v1.1 path throws IAE | ⬜ |
-| TempoIO | `endElement11` — null-guard (endElement before startElement) → null | unit | — | missing | write test | ⬜ |
+| TempoIO | `endElement11` (v1.1) — `<tempo>` wrapper → `Tempo`; canonical names only | unit | — | missing | covered by round-trip test | ✅ |
+| TempoIO | `endElement11` — legacy name → `Duration.valueOf` fails (no legacy map in v1.1) | unit | — | missing | legacy name in v1.1 path throws IAE | ✅ |
+| TempoIO | `endElement11` — null-guard (endElement before startElement) → null | unit | — | missing | write test | ✅ |
 | TempoIO | `characters` — accumulate only when `lastTag!=null` | none | — | none | trivial delegation | — |
-| TempoIO | `getPos10()` returns v1.0 parse position | unit | — | missing | covered by v1.0 parse test | ⬜ |
+| TempoIO | `getPos10()` returns v1.0 parse position | unit | — | missing | covered by v1.0 parse test | ✅ |
 
 **2B notes (quality concerns):** **`AnnotationIO` and `TempoIO` have zero dedicated IO round-trip tests** — the largest gap here. The only `AnnotationIO` touch (`SongIOTest.testPre23ConvertsAnnotationToDynamic`) parses an annotation then migrates it away, never asserting persistence; `TempoIO` is exercised only via song-level fixture headers, never a per-note `TempoChangeAttachment` round-trip. The **v1.0 legacy decode paths** (`startElement10`/`endElement10`, NEWLINE/LINE/GRACESEMIQUAVER renames, MINIMDOTTED/CROTCHETDOTTED durations) are completely untested. The **inverted `stemDirectionAuto` write/read asymmetry** (tag present ⇒ `false`) has no coverage in either direction — high regression risk. The `extendTypeAttr(NONE)` IAE guard, the legacy `<beatchange>` happy paths, the glissando translate omit/emit, and the `getSyllabic()` `middle`/default branches are all unguarded. `testRoundTripPreservesDynamicType` excludes `SFORZANDO`/`SFORZATO` (enum has 8, comment says "6 UI types") — confirm intent.
 
