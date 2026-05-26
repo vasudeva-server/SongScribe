@@ -172,6 +172,29 @@ class LegacyLyricsImporterTest extends UnitTest {
         assertNoLyric(line, 2);
     }
 
+    // A stray `-` with no preceding word is not a relation marker for anything;
+    // the parser skips it without consuming a note slot, so `word` lands on note[0].
+    @Test
+    void testStrayHyphenWithoutPrecedingWordIsSkipped() {
+        var line = lineWithNotes(1);
+
+        LegacyLyricsImporter.importLegacyLyrics(List.of(line), "- word");
+
+        assertLyric(line, 0, Lyric.Syllabic.SINGLE, false, "word", false);
+    }
+
+    // A stray `--` mid-line with no preceding word is skipped as two characters;
+    // a leading space ensures it is not mistaken for the line-start compound-continuation
+    // prefix (which also starts with "--" but is checked at position 0 only).
+    @Test
+    void testStrayDoubleHyphenWithoutPrecedingWordIsSkipped() {
+        var line = lineWithNotes(1);
+
+        LegacyLyricsImporter.importLegacyLyrics(List.of(line), " -- word");
+
+        assertLyric(line, 0, Lyric.Syllabic.SINGLE, false, "word", false);
+    }
+
     @Test
     void testTrailingWordsBeyondElementCountAreDropped() {
         var line = lineWithNotes(2);

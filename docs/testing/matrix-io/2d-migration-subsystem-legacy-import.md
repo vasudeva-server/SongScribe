@@ -49,8 +49,8 @@
 | MigrationPipeline | LEGACY_LYRICS gate — `!lyrics.isBlank()` AND `isBefore(2, PER_NOTE_LYRIC_VERSION)` | unit | `MigrationPipelineTest.LegacyLyricsStage` (3) | adequate | keep | — |
 | MigrationPipeline | LEGACY_LYRICS effect — delegates to `LegacyLyricsImporter.importLegacyLyrics` | unit | (no direct effect test; indirect via `SongIOTest.testLegacyLyricsBlobPopulatesPerNoteRecords`) | inadequate | add direct effect test asserting lyric records populated | ✅ |
 | MigrationPipeline | SYLLABIC_BACKFILL gate — always applies | unit | `MigrationPipelineTest.SyllabicBackfillStage.testAlwaysAppliesRegardlessOfVersion` | adequate | keep | — |
-| MigrationPipeline | SYLLABIC_BACKFILL effect — `line.backfillSyllabic()` per line | unit | `MigrationPipelineTest.SyllabicBackfillStage.testEffectRunsOnSongWithNoLines` | inadequate | smoke mocks an empty line list ⇒ call never fires; test a line w/ stale markers → normalized | ⬜ |
-| MigrationPipeline | `requireSong(ctx)` throws ISE when `ctx.song==null` | unit | — | missing | post-assembly stage `apply()` w/ null song → ISE | ⬜ |
+| MigrationPipeline | SYLLABIC_BACKFILL effect — `line.backfillSyllabic()` per line | unit | `MigrationPipelineTest.SyllabicBackfillStage.testEffectRunsOnSongWithNoLines` | inadequate | smoke mocks an empty line list ⇒ call never fires; test a line w/ stale markers → normalized | ✅ |
+| MigrationPipeline | `requireSong(ctx)` throws ISE when `ctx.song==null` | unit | — | missing | post-assembly stage `apply()` w/ null song → ISE | ✅ |
 | MigrationPipeline | `runPreAssembly` executes applicable stages in order | unit | `MigrationPipelineTest.testPreAssemblyScalarConversion`, `testStageOrderingPreservesScalarInvariant` | adequate | keep | — |
 | MigrationPipeline | `runPostAssembly` executes applicable stages | unit | (indirect via `SongIOTest.LegacyMigrationWiring`) | adequate | keep | — |
 | MigrationPipeline | stage ordering — PIXELS_TO_SS before LINE_WIDTH_FIX | unit | `MigrationPipelineTest.testStageOrderingPreservesScalarInvariant` | adequate | keep | — |
@@ -71,8 +71,8 @@
 | LegacyLyricsImporter | standalone `_` run → elementIdx += runLen, no Lyric | unit | `LegacyLyricsImporterTest.testExtenderWithSpaceSeparatedUnderscores…` | adequate | keep | — |
 | LegacyLyricsImporter | `_` run abutting next word → one underscore absorbed (`runLen--`) | unit | `LegacyLyricsImporterTest.testExtenderWith…` ("_garden") | adequate | keep | — |
 | LegacyLyricsImporter | trailing `_` run abutting next word → one continuation absorbed | unit | `LegacyLyricsImporterTest.testFullCombinedExample` | adequate | keep | — |
-| LegacyLyricsImporter | stray `-`/`=` without preceding word → skipped (no lyric, no advance) | unit | — | missing | blob `- word` → first note gets `word` | ⬜ |
-| LegacyLyricsImporter | stray `--` without preceding word mid-line → skipped (two chars consumed) | unit | — | missing | blob `-- word` → first note gets `word` | ⬜ |
+| LegacyLyricsImporter | stray `-`/`=` without preceding word → skipped (no lyric, no advance) | unit | — | missing | blob `- word` → first note gets `word` | ✅ |
+| LegacyLyricsImporter | stray `--` without preceding word mid-line → skipped (two chars consumed) | unit | — | missing | blob `-- word` → first note gets `word` | ✅ |
 | LegacyLyricsImporter | `isWordChar` boundary (space/tab/`_`/`-`/`=`/`\n` false; ASCII true) | unit | (implicit via all paths) | adequate | no isolated gap given full path coverage | — |
 | LegacyLyricsImporter | full combined scenario (extend + compound + multi-syllable) | unit | `LegacyLyricsImporterTest.testFullCombinedExample` | adequate | keep | — |
 

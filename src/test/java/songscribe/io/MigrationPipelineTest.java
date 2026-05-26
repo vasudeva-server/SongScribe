@@ -21,6 +21,7 @@
 package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -37,6 +38,7 @@ import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
@@ -373,6 +375,51 @@ class MigrationPipelineTest extends UnitTest {
             var c = ctx(2, 5);
             c.song = mockSongWithLines();
             stage(StageId.SYLLABIC_BACKFILL).apply().accept(c);
+        }
+
+        // Proves the forEach actually fires: two notes both loaded with BEGIN syllabic
+        // (a stale value from a legacy read path). After backfill, note[1]'s predecessor
+        // continues (BEGIN), so deriveSyllabic yields MIDDLE — a change that would be
+        // invisible if the forEach were deleted.
+        @Test
+        void testEffectNormalizesStaleSyllabicMarkers() {
+            var c = ctx(2, 5);
+            var line = detachedLine();
+            var note0 = ElementType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
+            line.addElement(note0);
+            line.addElement(note1);
+            // Both notes carry BEGIN — the stale value a legacy read path would produce.
+            note0.lyrics.add(new Lyric(1, "a", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            note1.lyrics.add(new Lyric(1, "b", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+
+            var song = mock(Song.class);
+            var songLines = new ArrayList<Line>();
+            songLines.add(line);
+            when(song.getLines()).thenReturn(songLines);
+            c.song = song;
+
+            stage(StageId.SYLLABIC_BACKFILL).apply().accept(c);
+
+            // note[1] has a BEGIN predecessor, so its syllabic must be MIDDLE after normalization.
+            assertThat(note1.lyrics.get(0).syllabic()).isEqualTo(Lyric.Syllabic.MIDDLE);
+            // note[0] has no predecessor, its own BEGIN signals continuation — stays BEGIN.
+            assertThat(note0.lyrics.get(0).syllabic()).isEqualTo(Lyric.Syllabic.BEGIN);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RequireSong {
+
+        // requireSong is a programming-error guard: if a post-assembly stage runs before
+        // the song is assembled (ctx.song == null), the pipeline was driven out of order.
+        @Test
+        void testThrowsIllegalStateExceptionWhenSongNull() {
+            var c = ctx(2, 5);
+            // c.song is null by default — simulates a caller that forgot to assemble first.
+            assertThatThrownBy(() -> stage(StageId.SYLLABIC_BACKFILL).apply().accept(c))
+                .isInstanceOf(IllegalStateException.class);
         }
     }
 
