@@ -20,6 +20,8 @@
 
 package songscribe.layout;
 
+import java.awt.font.TextLayout;
+
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -30,8 +32,10 @@ import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
+import songscribe.util.GraphicUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 class AnnotationAttachmentTest extends UnitTest {
@@ -75,6 +79,79 @@ class AnnotationAttachmentTest extends UnitTest {
             var expected = ScaleContext.textHeightSs(font);
 
             assertThat(attachment.computeContentHeightSs(font)).isCloseTo(expected, within(EPSILON));
+        }
+
+    }
+
+    // -------------------------------------------------------------------------
+    // Row 10 — computeContentWidthSs(font) returns the text advance in staff-space units
+    //
+    // The expected value is derived independently via TextLayout.getAdvance(),
+    // which is the same underlying measurement that ScaleContext.textWidthSs
+    // delegates to — so the oracle is the raw AWT primitive, not the production
+    // wrapper being tested.
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ComputeContentWidthSs {
+
+        // A short but non-trivial string whose advance is distinguishable from
+        // both zero and degenerate single-char values.
+        private static final String ANNOTATION_TEXT = "dolce";
+
+        @Test
+        void testReturnsTextAdvanceInStaffSpaces() {
+            var font = DocumentFonts.defaultsFromPrefs().getAnnotationFont();
+            var attachment = new AnnotationAttachment(ANNOTATION_TEXT);
+
+            // Compute expected width from the raw AWT text advance converted to
+            // staff-space units, bypassing ScaleContext.textWidthSs entirely.
+            double rawAdvancePx = new TextLayout(ANNOTATION_TEXT, font, GraphicUtils.SCREEN_FRC).getAdvance();
+            double expectedWidthSs = ScaleContext.pxToSs(rawAdvancePx);
+
+            assertThat(attachment.computeContentWidthSs(font)).isCloseTo(expectedWidthSs, within(EPSILON));
+        }
+
+    }
+
+    // -------------------------------------------------------------------------
+    // Row 12 — getContentWidthSs/HeightSs/Px/Px all throw UnsupportedOperationException
+    //
+    // These accessors are guarded because width and height are font-dependent;
+    // callers must use computeContentWidthSs/computeContentHeightSs instead.
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class GetContentDimensions {
+
+        @Test
+        void testGetContentHeightPxThrowsUnsupportedOperationException() {
+            var attachment = new AnnotationAttachment("test");
+            assertThatThrownBy(attachment::getContentHeightPx)
+                .isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
+        void testGetContentHeightSsThrowsUnsupportedOperationException() {
+            var attachment = new AnnotationAttachment("test");
+            assertThatThrownBy(attachment::getContentHeightSs)
+                .isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
+        void testGetContentWidthPxThrowsUnsupportedOperationException() {
+            var attachment = new AnnotationAttachment("test");
+            assertThatThrownBy(attachment::getContentWidthPx)
+                .isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
+        void testGetContentWidthSsThrowsUnsupportedOperationException() {
+            var attachment = new AnnotationAttachment("test");
+            assertThatThrownBy(attachment::getContentWidthSs)
+                .isInstanceOf(UnsupportedOperationException.class);
         }
 
     }

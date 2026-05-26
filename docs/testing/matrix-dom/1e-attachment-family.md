@@ -4,12 +4,12 @@
 |---|---|---|---|---|---|---|
 | Attachment | `Alignment` enum + owner/alignment accessors | none | — | none | trivial | — |
 | Attachment | `copy(StaffElement)` contract — same-typed instance re-owned by newOwner | unit | `StaffElementCopyConstructorTest` (presence only) | inadequate | write per-subclass tests: correct type, fields preserved, owner==newOwner | ✅ |
-| Annotation | `ABOVE`/`BELOW` constants derived from `ssToPx(−2)`/`ssToPx(4)` | unit | — | missing | write relative-position test (ABOVE<0, BELOW>0, BELOW>|ABOVE|) | ⬜ |
+| Annotation | `ABOVE`/`BELOW` constants derived from `ssToPx(−2)`/`ssToPx(4)` | unit | — | missing | write relative-position test (ABOVE<0, BELOW>0, BELOW>|ABOVE|) | ✅ |
 | Annotation | `userYOffsetSs` default 0 + round-trip | none | — | none | trivial accessors | — |
-| Annotation | `yPosPx` default == ABOVE | unit | — | missing | write test | ⬜ |
-| AnnotationAttachment | `computeContentWidthSs(font)` via `textWidthSs` | unit | `AnnotationAttachmentTest` (height only) | inadequate | add width test w/ known font/string | ⬜ |
+| Annotation | `yPosPx` default == ABOVE | unit | — | missing | write test | ✅ |
+| AnnotationAttachment | `computeContentWidthSs(font)` via `textWidthSs` | unit | `AnnotationAttachmentTest` (height only) | inadequate | add width test w/ known font/string | ✅ |
 | AnnotationAttachment | `computeContentHeightSs(font)` via `textHeightSs` | unit | `AnnotationAttachmentTest.testUsesProvidedFont` | adequate | keep (but see defect note) | — |
-| AnnotationAttachment | `getContentWidth/HeightSs/Px()` throw UnsupportedOperationException | unit | — | missing | write test (all 4 throw — contract guard) | ⬜ |
+| AnnotationAttachment | `getContentWidth/HeightSs/Px()` throw UnsupportedOperationException | unit | — | missing | write test (all 4 throw — contract guard) | ✅ |
 | AnnotationAttachment | `setText`/`getText` via inner Annotation | none | — | none | trivial delegation | — |
 | DynamicAttachment | `DynamicType` — symbol/glyph/velocityFraction for all 8 | unit | `DynamicAttachmentTest.DynamicTypeFields` | adequate | keep (but see defect note) | — |
 | DynamicAttachment | `getContentWidth/HeightSs()` — bbox path + fallback path | unit | `DynamicAttachmentTest.Dimensions` (4) | adequate | keep | — |
