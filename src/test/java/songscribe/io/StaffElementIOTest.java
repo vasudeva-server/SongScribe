@@ -148,6 +148,15 @@ class StaffElementIOTest extends UnitTest {
 
             assertThat(output).contains("<durationarticulation>STACCATO</durationarticulation>");
         }
+
+        @Test
+        void testVolumeLouderYieldsAccentArticulation() throws Exception {
+            var song = parseXml(buildXmlWithNoteContent("<volume>LOUDER</volume>"));
+            var note = song.getLine(0).getElement(0);
+            var articulations = note.getArticulations();
+            assertThat(articulations).hasSize(1);
+            assertThat(articulations.get(0).getType()).isEqualTo(ArticulationType.ACCENT);
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -336,6 +345,13 @@ class StaffElementIOTest extends UnitTest {
 
             assertThat(output).contains("<fermata");
         }
+
+        @Test
+        void testFermataTagYieldsFermataAttachment() throws Exception {
+            var song = parseXml(buildXmlWithNoteContent("<fermata/>"));
+            var attachment = song.getLine(0).getElement(0).findAttachment(FermataAttachment.class);
+            assertThat(attachment).isNotNull();
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -400,6 +416,36 @@ class StaffElementIOTest extends UnitTest {
             var output = writeNote(note);
 
             assertThat(output).contains("<glissandox2translate>3.5</glissandox2translate>");
+        }
+
+        @Test
+        void testLegacyNumericGlissandoYieldsConnected() throws Exception {
+            var song = parseXml(buildXmlWithNoteContent("<glissando>5</glissando>"));
+            var note = song.getLine(0).getElement(0);
+            var glissando = note.getGlissando();
+            assertThat(glissando).isNotNull();
+            if (glissando != null) {
+                assertThat(glissando.type).isEqualTo(Glissando.Type.CONNECTED);
+            }
+        }
+
+        @Test
+        void testX1TranslateSurvivesWhenGlissandoPresent() throws Exception {
+            var song = parseXml(buildXmlWithNoteContent(
+                "<glissando>CONNECTED</glissando><glissandox1translate>7.5</glissandox1translate>"
+            ));
+            var glissando = song.getLine(0).getElement(0).getGlissando();
+            assertThat(glissando).isNotNull();
+            if (glissando != null) {
+                assertThat(glissando.x1Translate).isNotZero();
+            }
+        }
+
+        @Test
+        void testX1TranslateWithoutGlissandoDoesNotCrash() {
+            assertThatCode(() -> parseXml(buildXmlWithNoteContent(
+                "<glissandox1translate>7.5</glissandox1translate>"
+            ))).doesNotThrowAnyException();
         }
     }
 
@@ -571,6 +617,14 @@ class StaffElementIOTest extends UnitTest {
     class StaffPositionSerialization {
 
         @Test
+        void testLegacyYposTagYieldsStaffPosition() throws Exception {
+            var expectedStaffPosition = 3;
+            var song = parseXml(buildXmlWithNoteContent("<ypos>" + expectedStaffPosition + "</ypos>"));
+            var note = song.getLine(0).getElement(0);
+            assertThat(note.getStaffPosition()).isEqualTo(expectedStaffPosition);
+        }
+
+        @Test
         void testStaffPositionAlwaysEmitted() {
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(4);
@@ -604,6 +658,13 @@ class StaffElementIOTest extends UnitTest {
 
             assertThat(output).contains("<stemDirectionAuto");
         }
+
+        @Test
+        void testStemDirectionAutoTagYieldsFalseAutoFlag() throws Exception {
+            var song = parseXml(buildXmlWithNoteContent("<stemDirectionAuto/>"));
+            var note = song.getLine(0).getElement(0);
+            assertThat(note.isStemDirectionAuto()).isFalse();
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -627,6 +688,28 @@ class StaffElementIOTest extends UnitTest {
             var output = writeNote(note);
 
             assertThat(output).contains("<tempo>");
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TrillSerialization {
+
+        private static AttributesImpl noteAttrs() {
+            var attrs = new AttributesImpl();
+            attrs.addAttribute("", "type", "type", "CDATA", "CROTCHET");
+            return attrs;
+        }
+
+        @Test
+        void testTrillTagSetsTrillFlaggedTrue() {
+            var reader = new StaffElementIO.StaffElementReader();
+            reader.startElement11("note", noteAttrs());
+            reader.startElement11("trill", new AttributesImpl());
+            reader.endElement11("trill");
+            var element = reader.endElement11("note");
+            assertThat(element).isNotNull();
+            assertThat(reader.isTrillFlagged()).isTrue();
         }
     }
 
@@ -787,6 +870,37 @@ class StaffElementIOTest extends UnitTest {
     }
 
     // -- Helpers --
+
+    private static String buildXmlWithNoteContent(String innerXml) {
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="1.1">
+              <keys>0</keys>
+              <keytype>SHARPS</keytype>
+              <tempo>
+                <visibletempo>120</visibletempo>
+                <tempotype>CROTCHET</tempotype>
+                <tempodescription></tempodescription>
+                <showtempo>true</showtempo>
+              </tempo>
+              <songtitle>Test</songtitle>
+              <lines>
+                <line>
+                  <keyCount>0</keyCount>
+                  <keyType>SHARPS</keyType>
+                  <tempoChangeYPos>-28</tempoChangeYPos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                      %s
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """.formatted(innerXml);
+    }
 
     private String writeNote(StaffElement note) {
         var sw = new StringWriter();

@@ -31,13 +31,13 @@
 | StaffElementIO | `ACCIDENTAL_MAP` unknown name → IAE wrapped in `SAXException` | unit | `StaffElementIOTest.InvalidMapLookups.testUnknownAccidentalThrowsMeaningfulError` | adequate | keep | — |
 | StaffElementIO | `startElement10` — `NEWLINE`→`where=null` (ignored); `LINE`→SINGLE_BARLINE; `GRACESEMIQUAVER*`→GRACE_QUAVER | unit | — | missing | v1.0 type-alias tests | ✅ |
 | StaffElementIO | `startElement11` — `VERTICALLINE`→SINGLE_BARLINE; `GRACE_SEMIQUAVER*`→GRACE_QUAVER | unit | — | missing | v1.1 type-alias tests | ✅ |
-| StaffElementIO | `endElement11` — legacy `<ypos>` and `<staffposition>` both → `setStaffPosition` | unit | — | missing | v1.0 `<ypos>` yields correct staffPosition | ⬜ |
-| StaffElementIO | `endElement11` — legacy `<volume>LOUDER</volume>` → ACCENT articulation | unit | — | missing | write test | ⬜ |
-| StaffElementIO | `endElement11` — `<glissando>` numeric content (legacy) → CONNECTED | unit | — | missing | `<glissando>5</glissando>` → CONNECTED | ⬜ |
-| StaffElementIO | `endElement11` — `<glissandox1translate>`/`x2translate` set when glissando present, ignored when null | unit | — | missing | non-zero survives; translate w/o glissando doesn't crash | ⬜ |
-| StaffElementIO | `endElement11` — `<trill>` sets `trillFlagged=true` | unit | — | missing | `isTrillFlagged()` true | ⬜ |
-| StaffElementIO | `endElement11` — `<fermata>` → `FermataAttachment` | unit | — | missing | round-trip test | ⬜ |
-| StaffElementIO | `endElement11` — `<stemDirectionAuto>` → `setStemDirectionAuto(false)` (inverted) | unit | — | missing | tag → `isStemDirectionAuto()==false` | ⬜ |
+| StaffElementIO | `endElement11` — legacy `<ypos>` and `<staffposition>` both → `setStaffPosition` | unit | — | missing | v1.0 `<ypos>` yields correct staffPosition | ✅ |
+| StaffElementIO | `endElement11` — legacy `<volume>LOUDER</volume>` → ACCENT articulation | unit | — | missing | write test | ✅ |
+| StaffElementIO | `endElement11` — `<glissando>` numeric content (legacy) → CONNECTED | unit | — | missing | `<glissando>5</glissando>` → CONNECTED | ✅ |
+| StaffElementIO | `endElement11` — `<glissandox1translate>`/`x2translate` set when glissando present, ignored when null | unit | — | missing | non-zero survives; translate w/o glissando doesn't crash | ✅ |
+| StaffElementIO | `endElement11` — `<trill>` sets `trillFlagged=true` | unit | — | missing | `isTrillFlagged()` true | ✅ |
+| StaffElementIO | `endElement11` — `<fermata>` → `FermataAttachment` | unit | — | missing | round-trip test | ✅ |
+| StaffElementIO | `endElement11` — `<stemDirectionAuto>` → `setStemDirectionAuto(false)` (inverted) | unit | — | missing | tag → `isStemDirectionAuto()==false` | ✅ |
 | StaffElementIO | `endElement11` — `<invertfractionbeamorientation>` silently ignored | unit | — | missing | no-throw + no-side-effect | ⬜ |
 | StaffElementIO | `endElement11` — legacy `<beatchange>` text-content → `fromLegacyName` | unit | `StaffElementIOTest.InvalidMapLookups.testUnknownBeatChangeThrowsMeaningfulError` (error only) | inadequate | happy paths untested; test each valid legacy name | ⬜ |
 | StaffElementIO | `startElement11` — `<beatchange>` new 2-attribute format → `BeatChangeAttachment` directly | unit | — | missing | v2.5+ duration/beat attributes | ⬜ |
