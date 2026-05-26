@@ -29,11 +29,20 @@ import songscribe.dom.Attribution;
 import songscribe.dom.ScaleContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 class AttributionTest extends UnitTest {
 
     private static final double EPSILON = 1e-10;
+
+    @Test
+    void testCtorSetsAttributionMarginBottomSs() {
+        var attribution = new Attribution("Composer");
+
+        assertThat(attribution.getMarginBottomSs())
+            .isCloseTo(Attribution.ATTRIBUTION_MARGIN_BOTTOM_SS, within(EPSILON));
+    }
 
     @Test
     void testComputeContentWidthSsUsesStringWidth() {
@@ -53,5 +62,29 @@ class AttributionTest extends UnitTest {
         var expected = ScaleContext.textHeightSs(font);
 
         assertThat(attribution.computeContentHeightSs(font)).isCloseTo(expected, within(EPSILON));
+    }
+
+    @Test
+    void testGetContentDimensionsThrowUnsupportedOperationException() {
+        var attribution = new Attribution("Composer");
+
+        assertThatThrownBy(attribution::getContentWidthSs)
+            .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(attribution::getContentHeightSs)
+            .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(attribution::getContentWidthPx)
+            .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(attribution::getContentHeightPx)
+            .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void testIsRightAlignedDefaultTrueAndRoundTrip() {
+        var attribution = new Attribution("Composer");
+
+        assertThat(attribution.isRightAligned()).isTrue();
+
+        attribution.setRightAligned(false);
+        assertThat(attribution.isRightAligned()).isFalse();
     }
 }

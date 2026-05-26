@@ -99,5 +99,11 @@ class LyricTest {
             .isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void testInvariantRejectsCompoundOnContinueCarrier() {
+        assertThatThrownBy(() -> new Lyric(1, "", Lyric.Extend.CONTINUE, null, true))
+            .isInstanceOf(IllegalStateException.class);
+    }
+
     private record Variant(Lyric.Syllabic syllabic, boolean compound) {}
 }
