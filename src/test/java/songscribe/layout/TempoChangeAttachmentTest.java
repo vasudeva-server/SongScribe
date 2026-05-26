@@ -30,8 +30,79 @@ import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.font.DocumentFonts;
 
 class TempoChangeAttachmentTest extends UnitTest {
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ComputeContentMetrics {
+
+        // -------------------------------------------------------------------------
+        // Row 30 — showTempo=true → glyph+text regions, both widths > 0
+        // -------------------------------------------------------------------------
+
+        @Test
+        void testShowTempoTrueProducesNonZeroGlyphAndTextWidths() {
+            var tempo = new Tempo(120, Duration.CROTCHET, "Allegro", true);
+            var attachment = new TempoChangeAttachment(tempo);
+            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+
+            var metrics = attachment.computeContentMetrics(font);
+
+            // Two regions: glyph region and text region
+            assertThat(metrics.regions()).hasSize(2);
+
+            var glyphRegion = metrics.regions().get(0);
+            var textRegion = metrics.regions().get(1);
+
+            assertThat(glyphRegion.widthSs()).isGreaterThan(0.0);
+            assertThat(textRegion.widthSs()).isGreaterThan(0.0);
+
+            // Total width must equal glyph width + text width
+            assertThat(metrics.widthSs())
+                .isEqualTo(glyphRegion.widthSs() + textRegion.widthSs());
+        }
+
+        // -------------------------------------------------------------------------
+        // Row 31 — showTempo=false + non-empty description → text-only, glyph width 0
+        // -------------------------------------------------------------------------
+
+        @Test
+        void testShowTempoFalseWithDescriptionProducesTextOnlyRegion() {
+            var tempo = new Tempo(120, Duration.CROTCHET, "Andante", false);
+            var attachment = new TempoChangeAttachment(tempo);
+            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+
+            var metrics = attachment.computeContentMetrics(font);
+
+            // Only one region: text (no glyph region)
+            assertThat(metrics.regions()).hasSize(1);
+
+            var textRegion = metrics.regions().get(0);
+
+            assertThat(textRegion.widthSs()).isGreaterThan(0.0);
+
+            // Total width equals the text region width (glyph contributes 0)
+            assertThat(metrics.widthSs()).isEqualTo(textRegion.widthSs());
+        }
+
+        // -------------------------------------------------------------------------
+        // Row 32 — showTempo=false + empty description → zero width, no regions
+        // -------------------------------------------------------------------------
+
+        @Test
+        void testShowTempoFalseWithEmptyDescriptionProducesZeroWidthAndNoRegions() {
+            var tempo = new Tempo(120, Duration.CROTCHET, "", false);
+            var attachment = new TempoChangeAttachment(tempo);
+            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+
+            var metrics = attachment.computeContentMetrics(font);
+
+            assertThat(metrics.regions()).isEmpty();
+            assertThat(metrics.widthSs()).isEqualTo(0.0);
+        }
+    }
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested

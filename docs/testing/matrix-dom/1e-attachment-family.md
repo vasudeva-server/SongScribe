@@ -25,13 +25,13 @@
 | MetronomeAttachment | `getContentHeightSs()` — QUARTER_NOTE_HEIGHT_SS | unit | `BeatChangeAttachmentTest` | adequate | keep | — |
 | BeatChangeAttachment | `computeContentMetrics(font)` — 3-region geometry, total width, descent | unit | `BeatChangeAttachmentTest` (7) | adequate | keep | — |
 | BeatChangeAttachment | `copy()` — same beatChange + newOwner | unit | — | missing | write test | ✅ |
-| BeatChange | `fromLegacyName` — canonical names → duration pairs | unit | (only error path covered) | inadequate | write parametrized test for all 5 names + aliases | ⬜ |
+| BeatChange | `fromLegacyName` — canonical names → duration pairs | unit | (only error path covered) | inadequate | write parametrized test for all 5 names + aliases | ✅ |
 | BeatChange | `fromLegacyName` unknown → IAE w/ message | unit | `StaffElementIOTest.testUnknownBeatChangeThrowsMeaningfulError` (wrapped) | adequate (indirect) | keep; optionally add direct test | — |
-| TempoChangeAttachment | `computeContentMetrics` showTempo=true → glyph+text regions | unit | `SystemTierStackingTest` (`>0` only) | inadequate | write direct region/width test | ⬜ |
-| TempoChangeAttachment | showTempo=false + description → text-only, glyph width 0 | unit | — | missing | write test | ⬜ |
-| TempoChangeAttachment | showTempo=false + empty description → zero width, no regions | unit | — | missing | write test | ⬜ |
+| TempoChangeAttachment | `computeContentMetrics` showTempo=true → glyph+text regions | unit | `SystemTierStackingTest` (`>0` only) | inadequate | write direct region/width test | ✅ |
+| TempoChangeAttachment | showTempo=false + description → text-only, glyph width 0 | unit | — | missing | write test | ✅ |
+| TempoChangeAttachment | showTempo=false + empty description → zero width, no regions | unit | — | missing | write test | ✅ |
 | TempoChangeAttachment | `copy()` — same tempo + newOwner | unit | — | missing | write test | ✅ |
-| Tempo | `getRealTempo()` — `(visibleTempo × noteDuration)/PPQ` | unit | — | missing | write test (CROTCHET + MINIM to catch divisor regression) | ⬜ |
+| Tempo | `getRealTempo()` — `(visibleTempo × noteDuration)/PPQ` | unit | — | missing | write test (CROTCHET + MINIM to catch divisor regression) | ✅ |
 | Tempo | default ctor → 120/CROTCHET/"Moderate"/show=true | unit | `SongDefaultsTest.testDefaultTempo` | adequate | keep | — |
 | Tempo | `shouldShowTempo()` fallback when song tempo null | unit | `SongDefaultsTest.testEffectiveTempoFallbackWhenTempoIsNull` | adequate | keep | — |
 
