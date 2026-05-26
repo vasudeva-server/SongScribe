@@ -19,9 +19,9 @@
 | FermataAttachment | `getContentWidth/HeightSs()` SMuFL constants | unit | `FermataTrillStackingTest.testFermataHasPositiveDimensions` (`>0`) | inadequate | write direct test vs exact bbox values | ✅ |
 | FermataAttachment | `getContentWidth/HeightPx()` via ssToPx | unit | — | missing | write px-matches-ssToPx test | ✅ |
 | FermataAttachment | `copy()` — new instance, owner preserved | unit | `StaffElementCopyConstructorTest` (presence only) | inadequate | add owner assertion | ✅ |
-| MetronomeAttachment | `metronomeGlyphFor(ElementType)` — 6 notes + default null | unit | — | missing | write parametrized test | ⬜ |
-| MetronomeAttachment | `dotAdvanceWidthSs()` — bbox advance × NOTE_SCALE | unit | — | missing | write test | ⬜ |
-| MetronomeAttachment | `noteWidthSs(el)` — 0 for unmapped; +dot width for dotted | unit | `BeatChangeAttachmentTest` (indirect) | inadequate | write direct tests (undotted, dotted, barline→0) | ⬜ |
+| MetronomeAttachment | `metronomeGlyphFor(ElementType)` — 6 notes + default null | unit | — | missing | write parametrized test | ✅ |
+| MetronomeAttachment | `dotAdvanceWidthSs()` — bbox advance × NOTE_SCALE | unit | — | missing | write test | ✅ |
+| MetronomeAttachment | `noteWidthSs(el)` — 0 for unmapped; +dot width for dotted | unit | `BeatChangeAttachmentTest` (indirect) | inadequate | write direct tests (undotted, dotted, barline→0) | ✅ |
 | MetronomeAttachment | `getContentHeightSs()` — QUARTER_NOTE_HEIGHT_SS | unit | `BeatChangeAttachmentTest` | adequate | keep | — |
 | BeatChangeAttachment | `computeContentMetrics(font)` — 3-region geometry, total width, descent | unit | `BeatChangeAttachmentTest` (7) | adequate | keep | — |
 | BeatChangeAttachment | `copy()` — same beatChange + newOwner | unit | — | missing | write test | ✅ |
