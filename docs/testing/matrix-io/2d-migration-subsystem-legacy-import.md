@@ -2,10 +2,10 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| FormatMigrator | `migrate` skips when `formatVersion >= 2` | unit | `MigrationPipelineTest.LegacyFormatStage.testDoesNotApplyAtThreshold` (gate via pipeline) | inadequate | the in-`migrate` version guard never asserted directly; call w/ version=2, confirm untouched | ⬜ |
-| FormatMigrator | `migrate(lines,1)` iterates calling `migrateLineLevelOffsets` per line | unit | `MigrationPipelineTest.LegacyFormatStage.testEffectRunsOnEmptyLines` | inadequate | smoke (empty list); test a line w/ non-zero `tempoChangeYPosPx`, verify `userYOffsetSs` updated | ⬜ |
-| FormatMigrator | `migrateLineLevelOffsets` — non-zero `tempoChangeYPosPx` → delta to each `TempoChangeAttachment.userYOffsetSs` | unit | — | missing | line+attachment offset → verify delta | ⬜ |
-| FormatMigrator | `migrateLineLevelOffsets` — `beatChangeYPosPx`≠default → delta to `BeatChangeAttachment.userYOffsetSs` | unit | — | missing | non-default + zero-delta no-op | ⬜ |
+| FormatMigrator | `migrate` skips when `formatVersion >= 2` | unit | `MigrationPipelineTest.LegacyFormatStage.testDoesNotApplyAtThreshold` (gate via pipeline) | inadequate | the in-`migrate` version guard never asserted directly; call w/ version=2, confirm untouched | ✅ |
+| FormatMigrator | `migrate(lines,1)` iterates calling `migrateLineLevelOffsets` per line | unit | `MigrationPipelineTest.LegacyFormatStage.testEffectRunsOnEmptyLines` | inadequate | smoke (empty list); test a line w/ non-zero `tempoChangeYPosPx`, verify `userYOffsetSs` updated | ✅ |
+| FormatMigrator | `migrateLineLevelOffsets` — non-zero `tempoChangeYPosPx` → delta to each `TempoChangeAttachment.userYOffsetSs` | unit | — | missing | line+attachment offset → verify delta | ✅ |
+| FormatMigrator | `migrateLineLevelOffsets` — `beatChangeYPosPx`≠default → delta to `BeatChangeAttachment.userYOffsetSs` | unit | — | missing | non-default + zero-delta no-op | ✅ |
 | FormatMigrator | `migrateLineLevelOffsets` — `firstSecondEndingYPosPx`≠default → delta to `Ending.yPositionSs` | unit | — | missing | write test | ⬜ |
 | FormatMigrator | `migrateLineLevelOffsets` — `trillYPosPx`≠default → delta to `Trill.yPositionSs` | unit | — | missing | write test | ⬜ |
 | FormatMigrator | `migrateAnnotationPositions` — below-staff (`yPosPx>0`) → above-staff + userYOffset | unit | — | missing | positive yPosPx → yPosPx=ABOVE, userYOffset += (old−ABOVE) | ⬜ |

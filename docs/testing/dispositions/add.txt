@@ -565,3 +565,8 @@ ViewIOTest.WriteView.testWriteViewSerializesAllSixFontRoles	2c	row 42 — writeV
 ViewIOTest.WriteView.testWriteViewUsesPostScriptNameNotFamilyName	2c	row 43 — writeView uses PS name not display name
 ViewIOTest.RoundTrip.testWriteViewAndViewReaderPreserveAllSixRoles	2c	row 51 — writeView+ViewReader full round-trip, all 6 roles
 ViewIOTest.StringFontSizeAsInt.testNonNumericSizePropagatesNumberFormatException	2c	row 52 — sizeAsInt non-numeric size → NFE propagates
+FormatMigratorTest.Migrate.testSkipsWhenFormatVersionAtThreshold	2d	row 5 — migrate skips when formatVersion >= 2 (direct guard test)
+FormatMigratorTest.Migrate.testIteratesPerLineAndAppliesTempoOffset	2d	row 6 — migrate(lines,1) iterates applying migrateLineLevelOffsets per line
+FormatMigratorTest.MigrateLineLevelOffsets.testNonZeroTempoOffsetAppliedToTempoAttachment	2d	row 7 — non-zero tempoChangeYPosPx delta to TempoChangeAttachment.userYOffsetSs (via public migrate)
+FormatMigratorTest.MigrateLineLevelOffsets.testNonDefaultBeatChangeOffsetAppliedToBeatChangeAttachment	2d	row 8 — non-default beatChangeYPosPx delta to BeatChangeAttachment.userYOffsetSs (via public migrate)
+FormatMigratorTest.MigrateLineLevelOffsets.testDefaultBeatChangeOffsetIsNoOp	2d	row 8 — default beatChangeYPosPx is zero-delta no-op

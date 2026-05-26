@@ -28,12 +28,193 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.BeatChange;
+import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
+import songscribe.dom.Line;
+import songscribe.dom.ScaleContext;
+import songscribe.dom.Tempo;
+import songscribe.dom.TempoChangeAttachment;
 
 class FormatMigratorTest extends UnitTest {
+
+    // -----------------------------------------------------------------------
+    // Row 5 & 6 — migrate()
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class Migrate {
+
+        // Row 5: version guard — migrate(lines, 2) is a no-op; lines are untouched.
+        // The in-method guard (formatVersion >= 2) is asserted here directly,
+        // independent of the pipeline.
+        @Test
+        void testSkipsWhenFormatVersionAtThreshold() {
+            var line = lineWith(ElementType.CROTCHET);
+            var note = line.getElement(0);
+            note.addAttachment(new TempoChangeAttachment(new Tempo()));
+            // A non-zero tempoChangeYPosPx would cause userYOffsetSs to change if migration ran.
+            line.setTempoChangeYPosPx(NON_ZERO_TEMPO_OFFSET_PX);
+
+            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_AT_THRESHOLD);
+
+            var attachment = note.findAttachment(TempoChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+
+            //noinspection ConstantValue -- needed for NullAway
+            if (attachment == null) {
+                return;
+            }
+
+            // Offset must remain at the default (0.0) because migration was skipped.
+            assertThat(attachment.getUserYOffsetSs()).isEqualTo(0.0);
+        }
+
+        // Row 6: migrate(lines, 1) iterates per-line — a line with a non-zero
+        // tempoChangeYPosPx has its TempoChangeAttachment.userYOffsetSs updated.
+        @Test
+        void testIteratesPerLineAndAppliesTempoOffset() {
+            var line = lineWith(ElementType.CROTCHET);
+            var note = line.getElement(0);
+            note.addAttachment(new TempoChangeAttachment(new Tempo()));
+            line.setTempoChangeYPosPx(NON_ZERO_TEMPO_OFFSET_PX);
+
+            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+
+            var attachment = note.findAttachment(TempoChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+
+            //noinspection ConstantValue -- needed for NullAway
+            if (attachment == null) {
+                return;
+            }
+
+            // Legacy migration adds the raw px value directly to userYOffsetSs
+            // (no unit conversion — the px field is repurposed as an Ss delta).
+            assertThat(attachment.getUserYOffsetSs()).isEqualTo(NON_ZERO_TEMPO_OFFSET_PX);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Rows 7 & 8 — migrateLineLevelOffsets()
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MigrateLineLevelOffsets {
+
+        // Row 7: non-zero tempoChangeYPosPx → the raw px value is added to each
+        // TempoChangeAttachment.userYOffsetSs on the line (legacy: no unit conversion).
+        @Test
+        void testNonZeroTempoOffsetAppliedToTempoAttachment() {
+            var line = lineWith(ElementType.CROTCHET);
+            var note = line.getElement(0);
+            note.addAttachment(new TempoChangeAttachment(new Tempo()));
+            line.setTempoChangeYPosPx(NON_ZERO_TEMPO_OFFSET_PX);
+
+            // Route through the public API — migrateLineLevelOffsets is called for every legacy line.
+            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+
+            var attachment = note.findAttachment(TempoChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+
+            //noinspection ConstantValue -- needed for NullAway
+            if (attachment == null) {
+                return;
+            }
+
+            assertThat(attachment.getUserYOffsetSs()).isEqualTo(NON_ZERO_TEMPO_OFFSET_PX);
+        }
+
+        // Row 8a: beatChangeYPosPx != default → delta (beatChangeYPosPx - defaultPx) is added
+        // to each BeatChangeAttachment.userYOffsetSs.
+        @Test
+        void testNonDefaultBeatChangeOffsetAppliedToBeatChangeAttachment() {
+            var line = buildLineWithBeatChange();
+            var note = line.getElement(0);
+            var beatChangeDefaultPx = ScaleContext.ssToRoundedPx(Line.BEAT_CHANGE_DEFAULT_Y_SS);
+            var nonDefaultBeatChangePx = beatChangeDefaultPx + BEAT_CHANGE_OFFSET_DELTA_PX;
+            line.setBeatChangeYPosPx(nonDefaultBeatChangePx);
+
+            // Route through the public API — migrateLineLevelOffsets is called for every legacy line.
+            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+
+            var attachment = note.findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+
+            //noinspection ConstantValue -- needed for NullAway
+            if (attachment == null) {
+                return;
+            }
+
+            // delta = nonDefault - default = BEAT_CHANGE_OFFSET_DELTA_PX; initial offset is 0.
+            assertThat(attachment.getUserYOffsetSs()).isEqualTo(BEAT_CHANGE_OFFSET_DELTA_PX);
+        }
+
+        // Row 8b: beatChangeYPosPx == default → condition is false; no delta applied,
+        // BeatChangeAttachment.userYOffsetSs stays at its initial value.
+        @Test
+        void testDefaultBeatChangeOffsetIsNoOp() {
+            var line = buildLineWithBeatChange();
+            var note = line.getElement(0);
+            // Default is the field's initial value — no explicit set needed.
+
+            // Route through the public API — migrateLineLevelOffsets is called for every legacy line.
+            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+
+            var attachment = note.findAttachment(BeatChangeAttachment.class);
+            assertThat(attachment).isNotNull();
+
+            //noinspection ConstantValue -- needed for NullAway
+            if (attachment == null) {
+                return;
+            }
+
+            assertThat(attachment.getUserYOffsetSs()).isEqualTo(0.0);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Test constants
+    // -----------------------------------------------------------------------
+
+    /** Format version at which migration is skipped (the threshold tested by the version guard). */
+    private static final int FORMAT_VERSION_AT_THRESHOLD = 2;
+
+    /** Format version that triggers migration (legacy v1 format). */
+    private static final int FORMAT_VERSION_LEGACY = 1;
+
+    /**
+     * Arbitrary non-zero tempo offset in pixels used to exercise the tempo migration path.
+     * The value must differ from 0 to ensure the migration branch is entered.
+     */
+    private static final int NON_ZERO_TEMPO_OFFSET_PX = 16;
+
+    /**
+     * Delta added to the beat-change default px value to produce a non-default input.
+     * Must be non-zero to enter the beat-change migration branch.
+     */
+    private static final int BEAT_CHANGE_OFFSET_DELTA_PX = 8;
+
+    // -----------------------------------------------------------------------
+    // Fixture helpers
+    // -----------------------------------------------------------------------
+
+    /** Creates a line containing a single crotchet with a BeatChangeAttachment. */
+    private static Line buildLineWithBeatChange() {
+        var line = detachedLine();
+        var note = ElementType.CROTCHET.newInstance();
+        line.addElement(note);
+        note.addAttachment(
+            new BeatChangeAttachment(note, new BeatChange(Duration.CROTCHET, Duration.CROTCHET))
+        );
+        return line;
+    }
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
