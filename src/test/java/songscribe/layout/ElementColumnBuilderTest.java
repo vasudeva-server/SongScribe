@@ -29,8 +29,12 @@ import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.layout.ElementColumnBuilder;
 import songscribe.smufl.Engraving;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 class ElementColumnBuilderTest extends UnitTest {
+
+    private static final int DOUBLE_DOT_COUNT = 2;
 
     private static StaffElement element(ElementType type) {
         return type.newInstance();
@@ -46,33 +50,59 @@ class ElementColumnBuilderTest extends UnitTest {
         assertThat(extent).isEqualTo(noteheadOnly);
     }
 
-    // T6: Dotted quaver extent is >= both notehead+dots extent and flag extent individually
+    // T6: Dotted quaver right extent is exactly max(notehead+dots, flag) extent
     @Test
     void testDottedQuaverExtentIsMaxOfDotsAndFlag() {
         var dottedQuaver = element(ElementType.QUAVER);
         dottedQuaver.setDotCount(1);
 
-        var dotsOnlyExtent = Engraving.NOTE_HEAD_WIDTH_SS + 0.25 + 0.5; // DOT_GAP + DOT_WIDTH
-
-        var undottedQuaver = element(ElementType.QUAVER);
-        var flagOnlyExtent = ElementColumnBuilder.calculateRightExtentSs(undottedQuaver, false, true);
+        var noteheadPlusDotsExtent =
+            Engraving.NOTE_HEAD_WIDTH_SS + (ElementColumnBuilder.DOT_GAP_SS + ElementColumnBuilder.DOT_WIDTH_SS);
+        var flagExtent =
+            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() + SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_UP);
+        var expected = Math.max(noteheadPlusDotsExtent, flagExtent);
 
         var actual = ElementColumnBuilder.calculateRightExtentSs(dottedQuaver, false, true);
 
-        assertThat(actual)
-            .isGreaterThanOrEqualTo(dotsOnlyExtent)
-            .isGreaterThanOrEqualTo(flagOnlyExtent);
+        assertThat(actual).isEqualTo(expected);
     }
 
-    // T5: Grace quaver gets a scaled flag width (smaller than regular quaver)
+    // Two-dot quaver right extent adds two (gap + dot) pairs to the notehead extent
+    @Test
+    void testDoubleDottedQuaverExtentIncludesTwoDotPairs() {
+        var doubleDottedQuaver = element(ElementType.QUAVER);
+        doubleDottedQuaver.setDotCount(DOUBLE_DOT_COUNT);
+
+        var dotPairSs = ElementColumnBuilder.DOT_GAP_SS + ElementColumnBuilder.DOT_WIDTH_SS;
+        var noteheadPlusTwoDotsExtent = Engraving.NOTE_HEAD_WIDTH_SS + dotPairSs + dotPairSs;
+        var flagExtent =
+            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() + SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_UP);
+        var expected = Math.max(noteheadPlusTwoDotsExtent, flagExtent);
+
+        var actual = ElementColumnBuilder.calculateRightExtentSs(doubleDottedQuaver, false, true);
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    // T5: Grace quaver uses the small notehead + small-stem anchor, regular uses full-size — exact values
     @Test
     void testGraceQuaverExtentSmallerThanRegularQuaver() {
         var graceQuaver = element(ElementType.GRACE_QUAVER);
         var regularQuaver = element(ElementType.QUAVER);
 
+        var flagAdvanceSs = SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_UP);
+        var expectedGrace = Math.max(
+            ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS,
+            NoteGeometry.STEM_UP_SE_BLACK_SMALL.x() + flagAdvanceSs);
+        var expectedRegular = Math.max(
+            Engraving.NOTE_HEAD_WIDTH_SS,
+            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() + flagAdvanceSs);
+
         var graceExtent = ElementColumnBuilder.calculateRightExtentSs(graceQuaver, false, true);
         var regularExtent = ElementColumnBuilder.calculateRightExtentSs(regularQuaver, false, true);
 
+        assertThat(graceExtent).isEqualTo(expectedGrace);
+        assertThat(regularExtent).isEqualTo(expectedRegular);
         assertThat(graceExtent).isLessThan(regularExtent);
     }
 
@@ -94,13 +124,25 @@ class ElementColumnBuilderTest extends UnitTest {
         }
     }
 
-    // T4: Stem-up vs stem-down produce different extents for an unbeamed quaver
+    // T4: Stem-up and stem-down unbeamed quaver each use their own stem anchor + flag — exact values
     @Test
     void testStemUpVsStemDownProduceDifferentExtents() {
         var quaver = element(ElementType.QUAVER);
+
+        var expectedUp = Math.max(
+            Engraving.NOTE_HEAD_WIDTH_SS,
+            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x()
+                + SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_UP));
+        var expectedDown = Math.max(
+            Engraving.NOTE_HEAD_WIDTH_SS,
+            Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x()
+                + SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_DOWN));
+
         var upExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
         var downExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, false);
 
+        assertThat(upExtent).isEqualTo(expectedUp);
+        assertThat(downExtent).isEqualTo(expectedDown);
         assertThat(upExtent).isNotEqualTo(downExtent);
     }
 

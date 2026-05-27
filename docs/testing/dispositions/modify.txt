@@ -25,3 +25,6 @@ PageModelTest.DefaultLineWidth.defaultLineWidthSsMatchesContentArea	3a	row 62 �
 LineHeightTest.testHighNoteAboveStaffExtendsAboveReservationToNoteheadTop	3a	row 65 — renamed from testHighNoteAboveStaffIncreasesLineHeight; replaced weak >=MIN_LINE_HEIGHT_SS with exact aboveStaffSs (notehead-top derived), below==floor, exact line height
 LineHeightTest.testLowNoteBelowStaffExtendsBelowReservationToNoteheadBottom	3a	row 65 — renamed from testLowNoteBelowStaffIncreasesLineHeight; replaced weak >=MIN_LINE_HEIGHT_SS with exact belowStaffSs (notehead-bottom derived), above==floor, exact line height
 LayoutEngine.beamCount	3a	row 30 — widened private static → package-private static for direct unit assertion
+ElementColumnBuilderTest.testStemUpVsStemDownProduceDifferentExtents	3b	row 14 — replaced isNotEqualTo with exact stem-up/down extents (max of notehead width and stem-anchor.x + flag advance per direction)
+ElementColumnBuilderTest.testGraceQuaverExtentSmallerThanRegularQuaver	3b	row 15 — replaced isLessThan with exact grace (small notehead + small stem anchor) and regular extents; kept isLessThan as sanity
+ElementColumnBuilderTest.testDottedQuaverExtentIsMaxOfDotsAndFlag	3b	row 16 — replaced >= with exact max(notehead+DOT_GAP+DOT_WIDTH, stem-up.x + flag advance); removed magic 0.25/0.5 literals

@@ -11,10 +11,10 @@
 | ElementColumnBuilder | `calculateRightExtentSs` unbeamed quaver > notehead-only | unit | `ElementColumnBuilderTest.testUnbeamedQuaverExtentExceedsNoteheadOnly` | adequate | keep | — |
 | ElementColumnBuilder | beamed quaver = notehead-only (flag suppressed) | unit | `testBeamedQuaverExtentEqualsNoteheadOnly` | adequate | keep | — |
 | ElementColumnBuilder | non-flagged types unchanged by beamed/upper | unit | `testNonFlaggedTypesUnchanged` | adequate | keep | — |
-| ElementColumnBuilder | stem-up vs stem-down differ (unbeamed quaver) | unit | `testStemUpVsStemDownProduceDifferentExtents` | inadequate | `isNotEqualTo` survives constant swap; pin exact values | ⬜ |
-| ElementColumnBuilder | grace quaver < regular quaver | unit | `testGraceQuaverExtentSmallerThanRegularQuaver` | inadequate | `isLessThan` only; pin exact values | ⬜ |
-| ElementColumnBuilder | dotted quaver = max(dots-extent, flag-extent) | unit | `testDottedQuaverExtentIsMaxOfDotsAndFlag` | inadequate | `>=` survives extra dot width; assert exact | ⬜ |
-| ElementColumnBuilder | two-dot extent includes two gap+dot pairs | unit | — | missing | double-dotted test | ⬜ |
+| ElementColumnBuilder | stem-up vs stem-down differ (unbeamed quaver) | unit | `testStemUpVsStemDownProduceDifferentExtents` | inadequate | `isNotEqualTo` survives constant swap; pin exact values | ✅ |
+| ElementColumnBuilder | grace quaver < regular quaver | unit | `testGraceQuaverExtentSmallerThanRegularQuaver` | inadequate | `isLessThan` only; pin exact values | ✅ |
+| ElementColumnBuilder | dotted quaver = max(dots-extent, flag-extent) | unit | `testDottedQuaverExtentIsMaxOfDotsAndFlag` | inadequate | `>=` survives extra dot width; assert exact | ✅ |
+| ElementColumnBuilder | two-dot extent includes two gap+dot pairs | unit | — | missing | double-dotted test | ✅ |
 | ElementColumnBuilder | rest/barline → `type.getElementWidthSs()` unchanged | unit | — | missing | REST + BARLINE test | ⬜ |
 | ElementColumnBuilder | `calculateLeftExtentSs` 0 without accidental; negative `-(accW+ACCIDENTAL_GAP_SS)` with | unit | — | missing | both cases | ⬜ |
 | ElementColumnBuilder | `buildColumn` minGap = hyphen width (BEGIN/MIDDLE) vs space width (END/SINGLE) | unit | — | missing | hyphenated + non-hyphenated lyric | ⬜ |

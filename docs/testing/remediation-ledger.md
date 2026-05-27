@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 422 / 1619 actionable rows done (26%).**
+**Overall: 426 / 1619 actionable rows done (26%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -17,7 +17,7 @@
 |  | [2c-line-view-serialization](matrix-io/2c-line-view-serialization.md) | 41 | 41 | ✅ complete |
 |  | [2d-migration-subsystem-legacy-import](matrix-io/2d-migration-subsystem-legacy-import.md) | 26 | 26 | ✅ complete |
 | 3 · layout | [3a-orchestration-accumulation](matrix-layout/3a-orchestration-accumulation.md) | 46 | 46 | ✅ complete |
-|  | [3b-horizontal-spacing-columns](matrix-layout/3b-horizontal-spacing-columns.md) | 6 | 40 | in progress |
+|  | [3b-horizontal-spacing-columns](matrix-layout/3b-horizontal-spacing-columns.md) | 10 | 40 | in progress |
 |  | [3c-geometry-primitives-metrics](matrix-layout/3c-geometry-primitives-metrics.md) | 0 | 27 | not started |
 |  | [3d-lyric-layout](matrix-layout/3d-lyric-layout.md) | 0 | 17 | not started |
 |  | [3e-ranges-endings-attachments-collision](matrix-layout/3e-ranges-endings-attachments-collision.md) | 0 | 19 | not started |

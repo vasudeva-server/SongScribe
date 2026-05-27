@@ -806,3 +806,4 @@ ElementColumnTest.testIsBarlineDelegatesToElementType	3b	row 10 — isBarline de
 ElementColumnTest.testIsBeamedReflectsConstructorFlag	3b	row 10 — isBeamed reflects ctor flag
 ElementColumnTest.testHasGraceNotesReflectsGraceNoteList	3b	row 10 — hasGraceNotes reflects grace-note list
 ElementColumnTest.testHasGlissandoDelegatesToElement	3b	row 10 — hasGlissando delegates to element.getGlissando
+ElementColumnBuilderTest.testDoubleDottedQuaverExtentIncludesTwoDotPairs	3b	row 17 — new: double-dotted quaver extent adds two (DOT_GAP+DOT_WIDTH) pairs, exact max vs flag extent
