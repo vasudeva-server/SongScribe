@@ -97,15 +97,12 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
 
     @Override
     public boolean matchesElement(StaffElement element) {
-        return element.getDotCount() == switch (dotLevel) {
-            case SINGLE -> 1;
-            case DOUBLE -> 2;
-        };
+        return element.getDotCount() == dotLevel.dotCount;
     }
 
     @Override
     public void applyToElement(StaffElement element, boolean selected) {
-        element.setDotCount(selected ? dotLevel.ordinal() + 1 : 0);
+        element.setDotCount(selected ? dotLevel.dotCount : 0);
     }
 
     @Override
@@ -114,7 +111,13 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
     }
 
     public enum DotLevel {
-        SINGLE,
-        DOUBLE,
+        SINGLE(1),
+        DOUBLE(2);
+
+        final int dotCount;
+
+        DotLevel(int dotCount) {
+            this.dotCount = dotCount;
+        }
     }
 }
