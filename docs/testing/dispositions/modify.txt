@@ -20,3 +20,5 @@ ViewIOTest.LegacyFontStyleElements.testDocumentWithFontStyleElementsLoadsWithout
 ViewIOTest.DocumentFontsLoad.testDefaultsFromPrefsIsDeterministic	2c	row 49 — renamed from testNewDocumentInstallsPrefsDefaults; tautology replaced with two independent defaultsFromPrefs() calls
 GlissandoMidiHelperTest.CreatePitchBendMessages.testUpwardSlideExactBendValuesAtKeyTicks	4a	row 13 — added exact bend values at t=0/0.5/1.0 for upward slide
 GlissandoMidiHelperTest.CreatePitchBendMessages.testDownwardSlideExactBendValuesAtKeyTicks	4a	row 13 — added exact bend values at t=0/0.5/1.0 for downward slide
+PageModelTest.ContentArea.contentAreaWidthAccountsForDefaultMargins	3a	row 60 — de-self-referenced: oracle now derives LETTER content width from spec inches (8.5 page, 0.5 margin) instead of getPageWidthPx()/production margin constant
+PageModelTest.DefaultLineWidth.defaultLineWidthSsMatchesContentArea	3a	row 62 — broke tautology pxToSs(getContentAreaWidthPx())==pxToSs(...); expected ss now derived from independently-computed content width px

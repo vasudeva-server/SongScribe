@@ -57,9 +57,9 @@
 | PageModel | `getSize()` default LETTER / "a4" / case-insensitive / unknown→LETTER | unit | `PageModelTest.PageSizeFromPrefs.*` (4) | adequate | keep | — |
 | PageModel | `getPageWidthPx`/`getPageHeightPx` for LETTER+A4 | unit | `PageModelTest.PageDimensionsPx` (4) | adequate | keep | — |
 | PageModel | top/bottom margins = 0.5"; horizontal centers; 0 when line ≥ page | unit | `PageModelTest.Margins.*` (5) | adequate | keep | — |
-| PageModel | `getContentAreaWidthPx` = `pageWidth - 2*defaultMargin` | unit | `PageModelTest.ContentArea.contentAreaWidthAccountsForDefaultMargins` | inadequate | self-referential (expected uses same formula); pin concrete px for LETTER | ⬜ |
+| PageModel | `getContentAreaWidthPx` = `pageWidth - 2*defaultMargin` | unit | `PageModelTest.ContentArea.contentAreaWidthAccountsForDefaultMargins` | inadequate | self-referential (expected uses same formula); pin concrete px for LETTER | ✅ |
 | PageModel | `getMaxLineWidthInches`=7.77 / `getMinLineWidthInches`=5.0 | unit | `PageModelTest.LineWidthConstants.*` (2) | adequate | keep | — |
-| PageModel | `getDefaultLineWidthSs` = `pxToSs(contentAreaWidthPx)` | unit | `PageModelTest.DefaultLineWidth.defaultLineWidthSsMatchesContentArea` | inadequate | self-referential oracle; pin explicit LETTER constant | ⬜ |
+| PageModel | `getDefaultLineWidthSs` = `pxToSs(contentAreaWidthPx)` | unit | `PageModelTest.DefaultLineWidth.defaultLineWidthSsMatchesContentArea` | inadequate | self-referential oracle; pin explicit LETTER constant | ✅ |
 | PageModel | size changes reactively on pref change; A4 width < LETTER | unit | `PageModelTest.PageSizeChange.*` (2) | adequate | keep | — |
 | LayoutLayer | enum constants (ELEMENT, TIE, …, LYRICS) | none | — | none | pure enum, no derivation | — |
 | LayoutEngine/VSC | high/low note increases line height | unit | `LineHeightTest.testHighNoteAboveStaffIncreasesLineHeight`, `testLowNoteBelowStaffIncreasesLineHeight` | inadequate | `>=MIN_LINE_HEIGHT_SS` passes even if extension broken; assert exact height for the staff position | ⬜ |

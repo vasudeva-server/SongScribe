@@ -35,6 +35,22 @@ import songscribe.util.GraphicUtils;
 
 class PageModelTest extends UnitTest {
 
+    private static final double LETTER_WIDTH_INCHES = 8.5;
+    private static final double HORIZONTAL_MARGIN_INCHES = 0.5;
+    private static final double SS_TOLERANCE = 0.001;
+
+    /**
+     * LETTER content-area width in px, derived from the page-size spec rather than
+     * from the accessors under test, so the oracle stays independent of them while
+     * remaining exact at any DPI (it converts each spec dimension exactly as
+     * production does). The page is 8.5" wide with a 0.5" margin on each side.
+     */
+    private static int letterContentWidthPx() {
+        var pageWidthPx = GraphicUtils.Unit.INCH.convertToPixels(LETTER_WIDTH_INCHES);
+        var marginPx = GraphicUtils.Unit.INCH.convertToPixels(HORIZONTAL_MARGIN_INCHES);
+        return pageWidthPx - 2 * marginPx;
+    }
+
     @AfterEach
     void resetPageSize() {
         Prefs.put(PrefsKey.PAGE_SIZE, "letter");
@@ -159,11 +175,7 @@ class PageModelTest extends UnitTest {
 
         @Test
         void contentAreaWidthAccountsForDefaultMargins() {
-            var defaultMarginPx = GraphicUtils.Unit.INCH.convertToPixels(
-                PageModel.DEFAULT_HORIZONTAL_MARGIN_INCHES
-            );
-            var expected = PageModel.getPageWidthPx() - 2 * defaultMarginPx;
-            assertThat(PageModel.getContentAreaWidthPx()).isEqualTo(expected);
+            assertThat(PageModel.getContentAreaWidthPx()).isEqualTo(letterContentWidthPx());
         }
     }
 
@@ -188,8 +200,10 @@ class PageModelTest extends UnitTest {
 
         @Test
         void defaultLineWidthSsMatchesContentArea() {
-            var expected = ScaleContext.pxToSs(PageModel.getContentAreaWidthPx());
-            assertThat(PageModel.getDefaultLineWidthSs()).isCloseTo(expected, within(0.001));
+            // Expected px derived independently of getContentAreaWidthPx(), so this no
+            // longer reduces to the tautology pxToSs(x) == pxToSs(x).
+            var expectedSs = ScaleContext.pxToSs(letterContentWidthPx());
+            assertThat(PageModel.getDefaultLineWidthSs()).isCloseTo(expectedSs, within(SS_TOLERANCE));
         }
     }
 
