@@ -1079,3 +1079,11 @@ LyricLayoutBuilderTest.testNormalNoteLyricBoxIsCenteredOnNoteCenter
 LyricLayoutBuilderTest.testFirstGraphemeClusterEndIndexHandlesMultiCodepointClusters
 # 3d row 23 — LyricLayoutBuilder REST + CONTINUE keeps extender open
 LyricLayoutBuilderTest.testRestWithContinueLyricContinuesExtender
+# 3d row 24 — LyricLayoutBuilder REST + STOP closes extender past rest right edge
+LyricLayoutBuilderTest.testRestWithStopLyricClosesExtenderPastRestRightEdge
+# 3d row 32 — LyricLayoutBuilder emitDanglingHyphen no eligible follower → no connector
+LyricLayoutBuilderTest.testDanglingHyphenWithNoEligibleFollowerEmitsNoConnector
+# 3d row 33 — LyricLayoutBuilder DANGLING_HYPHEN ends at next eligible element left edge
+LyricLayoutBuilderTest.testDanglingHyphenEndsAtNextEligibleElementLeftEdge
+# 3d row 34 — LyricLayoutBuilder sourceElementIndex on EXTENDER/DANGLING_* kinds
+LyricLayoutBuilderTest.testSourceElementIndexOnExtenderAndDanglingKinds

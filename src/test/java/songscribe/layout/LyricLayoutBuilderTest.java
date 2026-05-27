@@ -650,6 +650,168 @@ class LyricLayoutBuilderTest extends UnitTest {
             .isCloseTo(expectedSurrogateXSs, within(TOLERANCE));
     }
 
+    // REST + STOP: extender ends STOP_MELISMA_OVERSHOOT_SS past the rest's right edge —
+    // a distinct code path from note+STOP (tested by testStopCarrierEndsExtenderAtNoteRightEdge).
+    @Test
+    void testRestWithStopLyricClosesExtenderPastRestRightEdge() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
+        var r = rest();
+        setLyric(r, null, false, "", Lyric.Extend.STOP);
+        addToLine(n1, r);
+
+        var col0XSs = 5.0;
+        var col1XSs = 5.0 + COLUMN_SPACING_SS;
+        var columns = List.of(columnAt(n1, col0XSs), columnAt(r, col1XSs));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        // Only n1 gets a box; the rest carries only a STOP marker.
+        assertThat(result.boxes()).containsOnlyKeys(n1);
+
+        var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
+        assertThat(extenders)
+            .as("REST+STOP must close exactly one EXTENDER")
+            .hasSize(1);
+        assertThat(extenders.getFirst().endXSs())
+            .as("extender ends STOP_MELISMA_OVERSHOOT_SS past rest's right edge")
+            .isCloseTo(
+                columns.get(1).getRightEdgeXSs() + LyricLayoutBuilder.STOP_MELISMA_OVERSHOOT_SS,
+                within(TOLERANCE));
+        assertThat(result.hasTrailingContinuation())
+            .as("STOP on rest terminates the melisma — no trailing continuation")
+            .isFalse();
+    }
+
+    // emitDanglingHyphen — no eligible follower: BEGIN syllable is the last element on the line;
+    // no following element can receive the hyphen, so no DANGLING_HYPHEN (or HYPHEN) is emitted.
+    @Test
+    void testDanglingHyphenWithNoEligibleFollowerEmitsNoConnector() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.BEGIN, false, "do", false);
+        addToLine(n1);
+
+        // n1 is the only column; emitDanglingHyphen finds no eligible successor.
+        var columns = List.of(columnAt(n1, 5.0));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.DANGLING_HYPHEN))
+            .as("no eligible follower → no DANGLING_HYPHEN emitted")
+            .isEmpty();
+        assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN))
+            .as("no eligible follower → no HYPHEN emitted")
+            .isEmpty();
+    }
+
+    // emitDanglingHyphen — happy path: BEGIN syllable followed by an ineligible rest then an
+    // eligible note; the DANGLING_HYPHEN ends at the eligible note's left edge.
+    @Test
+    void testDanglingHyphenEndsAtNextEligibleElementLeftEdge() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.BEGIN, false, "do", false);
+        // Rest with no lyric is not eligible for lyric — skipped by emitDanglingHyphen.
+        var r = rest();
+        // Note with no lyric is always eligible — DANGLING_HYPHEN ends here.
+        var n2 = note();
+        addToLine(n1, r, n2);
+
+        var col0XSs = 5.0;
+        var col1XSs = 5.0 + COLUMN_SPACING_SS;
+        var col2XSs = 5.0 + 2 * COLUMN_SPACING_SS;
+        var columns = List.of(
+            columnAt(n1, col0XSs),
+            columnAt(r, col1XSs),
+            columnAt(n2, col2XSs));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var danglingHyphens = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.DANGLING_HYPHEN);
+        assertThat(danglingHyphens)
+            .as("exactly one DANGLING_HYPHEN to the eligible note")
+            .hasSize(1);
+        assertThat(danglingHyphens.getFirst().endXSs())
+            .as("DANGLING_HYPHEN ends at eligible note's left edge")
+            .isCloseTo(columns.get(2).getLeftEdgeXSs(), within(TOLERANCE));
+        assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN))
+            .as("no closed HYPHEN — syllable never resolved to a text box")
+            .isEmpty();
+    }
+
+    // sourceElementIndex on EXTENDER, DANGLING_HYPHEN, and DANGLING_EXTENDER connectors.
+    // (HYPHEN sourceElementIndex is already verified in testDoReMiProducesThreeBoxesAndTwoHyphens.)
+    @Test
+    void testSourceElementIndexOnExtenderAndDanglingKinds() {
+        // --- EXTENDER: opened by n1 at column index 0, closed by n3 ---
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
+        var n2 = note();
+        var n3 = note();
+        setLyric(n3, Lyric.Syllabic.SINGLE, false, "men", Lyric.Extend.NONE);
+        addToLine(n1, n2, n3);
+
+        var columns = List.of(
+            columnAt(n1, 5.0),
+            columnAt(n2, 5.0 + COLUMN_SPACING_SS),
+            columnAt(n3, 5.0 + 2 * COLUMN_SPACING_SS));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
+        assertThat(extenders).hasSize(1);
+        assertThat(extenders.getFirst().sourceElementIndex())
+            .as("EXTENDER sourceElementIndex = column index of START syllable (n1 = 0)")
+            .isEqualTo(0);
+
+        // --- DANGLING_EXTENDER: opened by n1 (SINGLE+START), no closer on line ---
+        var nStart = note();
+        setLyric(nStart, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
+        var nBare = note();
+
+        var songD = new Song();
+        var lineD = songD.getLine(0);
+        songD.withoutMutationTracking(() -> {
+            lineD.addElement(nStart);
+            lineD.addElement(nBare);
+        });
+
+        var colsDangling = List.of(
+            columnAt(nStart, 5.0),
+            columnAt(nBare, 5.0 + COLUMN_SPACING_SS));
+
+        var resultD = LyricLayoutBuilder.build(colsDangling, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var danglingExtenders = connectorsOfKind(resultD.connectors(), LyricConnectorLayout.Kind.DANGLING_EXTENDER);
+        assertThat(danglingExtenders).hasSize(1);
+        assertThat(danglingExtenders.getFirst().sourceElementIndex())
+            .as("DANGLING_EXTENDER sourceElementIndex = column index of START syllable (nStart = 0)")
+            .isEqualTo(0);
+
+        // --- DANGLING_HYPHEN: opened by BEGIN at column index 0, eligible follower at column index 1 ---
+        var nBegin = note();
+        setLyric(nBegin, Lyric.Syllabic.BEGIN, false, "do", false);
+        var nEligible = note();
+
+        var songH = new Song();
+        var lineH = songH.getLine(0);
+        songH.withoutMutationTracking(() -> {
+            lineH.addElement(nBegin);
+            lineH.addElement(nEligible);
+        });
+
+        var colsHyphen = List.of(
+            columnAt(nBegin, 5.0),
+            columnAt(nEligible, 5.0 + COLUMN_SPACING_SS));
+
+        var resultH = LyricLayoutBuilder.build(colsHyphen, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var danglingHyphens = connectorsOfKind(resultH.connectors(), LyricConnectorLayout.Kind.DANGLING_HYPHEN);
+        assertThat(danglingHyphens).hasSize(1);
+        assertThat(danglingHyphens.getFirst().sourceElementIndex())
+            .as("DANGLING_HYPHEN sourceElementIndex = column index of BEGIN syllable (nBegin = 0)")
+            .isEqualTo(0);
+    }
+
     // Multi-verse: verse 1 and verse 2 each emit their own boxes and spans keyed by verseIndex
     @Test
     void testMultiVerseProducesSeparateBoxesPerVerse() {

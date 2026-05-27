@@ -21,7 +21,7 @@
 | LyricLayoutBuilder | REST no-lyric → extender closed at rest left | unit | `testRestWithoutLyricBreaksExtender` | adequate | keep | — |
 | LyricLayoutBuilder | REST + START → extender continues | unit | `testRestWithExtendingLyricContinuesExtender` | adequate | keep | — |
 | LyricLayoutBuilder | REST + CONTINUE → extender continues (distinct sub-case) | unit | — | missing | CONTINUE on rest | ✅ |
-| LyricLayoutBuilder | REST + STOP → closes `STOP_MELISMA_OVERSHOOT_SS` past rest right | unit | — | missing | assert ending = rightEdge + overshoot | ⬜ |
+| LyricLayoutBuilder | REST + STOP → closes `STOP_MELISMA_OVERSHOOT_SS` past rest right | unit | — | missing | assert ending = rightEdge + overshoot | ✅ |
 | LyricLayoutBuilder | note + STOP → closes with overshoot, no box | unit | `testStopCarrierEndsExtenderAtNoteRightEdge` | adequate | keep (assertion uses constant; see stale-comment observation) | — |
 | LyricLayoutBuilder | note + CONTINUE passes through | unit | `testContinueCarrierPassesThrough` | adequate | keep | — |
 | LyricLayoutBuilder | BEGIN+START → hyphen, extender suppressed | unit | `testNonFinalSyllableWithMelismaEmitsHyphenOnly` | adequate | keep | — |
@@ -29,9 +29,9 @@
 | LyricLayoutBuilder | NONE-extend text note with active extender closes at box left | unit | `testContinueCarrierPassesThrough` | adequate | keep | — |
 | LyricLayoutBuilder | dangling extender extends through CONTINUE/STOP not bare notes | unit | `testDanglingExtenderEndsAtStartNoteWhenNoContinueFollows`, `testDanglingExtenderExtendsThroughContinueMarkers` | adequate | keep | — |
 | LyricLayoutBuilder | trailing continuation flag + leading stub from x=0 | unit | `testTrailingContinuationAndLeadingStub` | adequate | keep | — |
-| LyricLayoutBuilder | `emitDanglingHyphen` no eligible follower → LOG.error, no connector | unit | — | missing | open BEGIN at line end → no DANGLING_HYPHEN | ⬜ |
-| LyricLayoutBuilder | DANGLING_HYPHEN emitted to next eligible element left edge | unit | — (renderer test uses hand-built record) | missing | builder coords for DANGLING_HYPHEN | ⬜ |
-| LyricLayoutBuilder | `sourceElementIndex` on HYPHEN/EXTENDER/DANGLING_* | unit | never asserted | missing | ≥1 assertion per kind | ⬜ |
+| LyricLayoutBuilder | `emitDanglingHyphen` no eligible follower → LOG.error, no connector | unit | — | missing | open BEGIN at line end → no DANGLING_HYPHEN | ✅ |
+| LyricLayoutBuilder | DANGLING_HYPHEN emitted to next eligible element left edge | unit | — (renderer test uses hand-built record) | missing | builder coords for DANGLING_HYPHEN | ✅ |
+| LyricLayoutBuilder | `sourceElementIndex` on HYPHEN/EXTENDER/DANGLING_* | unit | never asserted | missing | ≥1 assertion per kind | ✅ |
 | LyricLayoutBuilder | multi-verse separate boxes/connectors by `verseIndex`; `verseCount` = max verse | unit | `testMultiVerseProducesSeparateBoxesPerVerse` | adequate | keep | — |
 | LyricLayoutBuilder | verse-1 (`getSyllableWidthSs`) vs verse-≥2 (`lyricBoxWidthSs`) equal width for same text | unit | — | missing | catch divergence between cached and on-the-fly paths | ⬜ |
 | LyricLayoutBuilder | compound-word boundary (BEGIN+compound) opens HYPHEN | unit | `testCompoundWordBoundaryProducesHyphen` | adequate | keep | — |
