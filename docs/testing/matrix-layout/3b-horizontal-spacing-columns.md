@@ -40,10 +40,10 @@
 | InsertionSpacingCalculator | mid-insertion shift = max(0, required), never negative | unit | — | missing | non-negative shift | ✅ |
 | InsertionSpacingCalculator | `calculateNextElementXSs` delegates via xOffset | unit | — | missing | equals `calculateNextColumnXSs` | ✅ |
 | InsertionSpacingCalculator | `InsertionResult.newLineWidthSs` = max(inserted right edge, shifted last) | unit | round-trip tests check only `fitsWithinLine` | inadequate | assert `newLineWidthSs()` directly | ✅ |
-| LineJustificationCalculator | empty list → success | unit | — | missing | guard | ⬜ |
-| LineJustificationCalculator | line fits → success, no compression | unit | — | missing | assert `!wasCompressionApplied()` | ⬜ |
-| LineJustificationCalculator | compression ratio = (target-extentOffset)/centerSpan | unit | — | missing | two columns over margin; verify ratio + positions | ⬜ |
-| LineJustificationCalculator | `applyCompression` first column fixed, rest scale by ratio | unit | — | missing | exact compressed positions | ⬜ |
+| LineJustificationCalculator | empty list → success | unit | — | missing | guard | ✅ |
+| LineJustificationCalculator | line fits → success, no compression | unit | — | missing | assert `!wasCompressionApplied()` | ✅ |
+| LineJustificationCalculator | compression ratio = (target-extentOffset)/centerSpan | unit | — | missing | two columns over margin; verify ratio + positions | ✅ |
+| LineJustificationCalculator | `applyCompression` first column fixed, rest scale by ratio | unit | — | missing | exact compressed positions | ✅ |
 | LineJustificationCalculator | `validateCompression` rejects gap < `COMPRESSED_MIN_COLUMN_GAP_SS` | unit | — | missing | tight columns → failure | ⬜ |
 | LineJustificationCalculator | rejects syllable gap < `COMPRESSED_MIN_SYLLABLE_GAP_SS` | unit | — | missing | wide-syllable columns | ⬜ |
 | LineJustificationCalculator | `success`/`successWithCompression`/`failure` factories + errorMessage null contract | unit | — | missing | guard on getErrorMessage | ⬜ |
