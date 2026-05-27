@@ -223,7 +223,7 @@ public class HorizontalSpacingCalculator {
         var nextXSs = prevColumn.getXSs() + requiredSpacingSs;
 
         // Check accidental clearance and push right if needed
-        if (needsAccidentalPush(prevColumn, currColumn, nextXSs)) {
+        if (needsAccidentalPush(currColumn)) {
             var accidentalClearanceSs = ACCIDENTAL_CLEARANCE_SS;
             var prevRightEdgeSs = prevColumn.getRightEdgeXSs();
             var currAccidentalLeftSs = nextXSs + currColumn.getLeftExtentSs();
@@ -301,18 +301,14 @@ public class HorizontalSpacingCalculator {
     }
 
     /**
-     * Checks if the current column needs to be pushed right for accidental clearance.
+     * Returns {@code true} iff the current column's element has an accidental.
+     * The caller is responsible for computing whether actual clearance is violated
+     * and pushing the column right if needed.
      *
-     * @param prevColumn Previous column
      * @param currColumn Current column
-     * @param currXSs    Tentative X position for current column in staff spaces
-     * @return true if accidental clearance would be violated
+     * @return true if the current column's element has an accidental
      */
-    private static boolean needsAccidentalPush(
-        ElementColumn prevColumn,
-        ElementColumn currColumn,
-        double currXSs) {
-
+    private static boolean needsAccidentalPush(ElementColumn currColumn) {
         // Only check if current note has an accidental
         return currColumn.getElement().getAccidental() != null;
     }
