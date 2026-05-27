@@ -34,3 +34,5 @@ ElementColumnBuilder.calculateStemTopSs  # widened to package-private
 ElementColumnBuilder.calculateStemBottomSs  # widened to package-private
 HorizontalSpacingCalculatorTest.testCalculatePositionsFirstColumnXSsEqualsClefPlusKeyAccidentalsPlusOffset  # was self-referential; pins concrete value
 GlissandoMidiIntegrationTest.testNoPitchBendWithoutGlissando→testNoPitchBendEventsWhenNoGlissando	4a	row 44 — rewrite to build MIDI track and assert zero pitch-bend events (was fixture-model-only)
+# 3b row 35 — InsertionSpacingCalculator
+InsertionSpacingCalculatorTest.FitsWithinLine.testAppendToEmptyLine→testAppendToEmptyLineReturnsFirstElementX  # was fitsWithinLine(500)-only; pins exact X = calculateFirstElementXSs(keyAccidentalCount)
