@@ -18,10 +18,6 @@ are in-flight.
 **First, read `docs/testing/REMEDIATION.md`** (the settled procedure, decisions,
 chunking caps, model policy) and skim `docs/testing/remediation-ledger.md`.
 
-**Determine your model** from the system context (e.g. `claude-sonnet-4-6` →
-Sonnet; `claude-opus-*` → Opus). This governs which chunks you are eligible to
-handle — see step 1b.
-
 Then perform these steps once:
 
 1. **Select the chunk and claim it.**
@@ -37,28 +33,19 @@ Then perform these steps once:
       130K-token budget. **Skip e2e-level rows** — they are deferred to
       the final batch; leave them ⬜.
 
-      **Model eligibility** — apply before selecting any row:
-      - **Sonnet:** ordinary rows only. Skip heavy pure-logic rows and any class
-        whose ⬜ rows are all `inadequate` weak-but-green rewrites. If no
-        Sonnet-eligible chunk exists, STOP and report that all remaining chunks
-        require Opus.
-      - **Opus:** heavy pure-logic rows and `inadequate` weak-but-green rewrites
-        only. If no such chunk exists, STOP and report that no Opus-eligible
-        chunks remain.
-
       - **Bare integer (e.g. `3`):** treat as a package number. Read
         `docs/testing/remediation-ledger.md`, find all sections whose row
         begins with `| N ·` or has a blank first cell (continuation rows of
         that package), where N matches the argument. Restrict chunk selection
         to those sections: pick the first section that is "in progress" or
         "not started" (in ledger order), open its section file, and find the
-        first ⬜ row not already claimed that is eligible for the current model.
+        first ⬜ row not already claimed.
       - **Class name (e.g. `LineIO`):** use that class directly (verify it
-        has no claim file first, and that it is eligible for the current model).
+        has no claim file first).
       - **No argument:** pick the next package with ⬜ rows in risk-order
         (`dom → io → layout → util → action → selection → component → message
         → renderer → dialog → menu → lifecycle → e2e`), and within it the
-        next unclaimed class eligible for the current model.
+        next unclaimed class.
 
    c. **Immediately write the claim file** before doing any other work:
       `docs/testing/.claims/<ClassName>.lock` (or `<ClassA>+<ClassB>.lock` for a

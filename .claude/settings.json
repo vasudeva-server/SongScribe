@@ -26,6 +26,7 @@
       "Bash(pkill -f*)",
       "Bash(wc:*)",
       "Bash(xargs:*)",
+      "Edit(.claude/commands/*)",
       "mcp__plugin_compound-engineering_context7__resolve-library-id",
       "mcp__plugin_serena_serena__activate_project",
       "mcp__plugin_serena_serena__check_onboarding_performed",
