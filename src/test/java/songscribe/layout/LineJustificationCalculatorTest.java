@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.layout.LineJustificationCalculator.JustificationResult;
 
 class LineJustificationCalculatorTest extends UnitTest {
 
@@ -52,6 +53,28 @@ class LineJustificationCalculatorTest extends UnitTest {
             rightExtentSs,
             0, 0,
             null, 0,
+            false
+        );
+        col.setXSs(xSs);
+        return col;
+    }
+
+    /**
+     * Builds an ElementColumn with the given position, extents, and syllable.
+     */
+    private static ElementColumn columnWithSyllableAt(
+        double xSs,
+        double leftExtentSs,
+        double rightExtentSs,
+        String syllable,
+        double syllableWidthSs) {
+        var col = new ElementColumn(
+            crotchet(),
+            Collections.emptyList(),
+            leftExtentSs,
+            rightExtentSs,
+            0, 0,
+            syllable, syllableWidthSs,
             false
         );
         col.setXSs(xSs);
@@ -266,6 +289,141 @@ class LineJustificationCalculatorTest extends UnitTest {
             // Each subsequent column scales by ratio relative to the anchor.
             assertThat(midCol.getXSs()).isEqualTo(expectedMidXAfter);
             assertThat(tailCol.getXSs()).isEqualTo(expectedTailXAfter);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 47: validateCompression rejects when column gap < COMPRESSED_MIN_COLUMN_GAP_SS
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ValidateCompressionColumnGapViolation {
+
+        @Test
+        void testTightColumnsProduceColumnGapFailure() {
+            // Row 47: when the post-compression column gap falls below
+            // COMPRESSED_MIN_COLUMN_GAP_SS (0.125 ss), justifyLine must return failure.
+            //
+            // Fixture (staff spaces):
+            //   firstCol:  xSs=1.0, left=0.0, right=0.5  → rightEdge=1.5
+            //   secondCol: xSs=3.0, left=0.0, right=1.5  → rightEdge=4.5
+            //   margin=3.0  →  4.5 > 3.0, triggers compression
+            //
+            // compressionRatio = (targetWidth - extentOffset) / centerSpan
+            //                  = ((3.0 - 1.0) - 1.5) / (3.0 - 1.0) = 0.5 / 2.0 = 0.25
+            //
+            // compressedGap = currentGap - centerDist * (1 - ratio)
+            //               = 1.5 - 2.0 * (1.0 - 0.25) = 1.5 - 1.5 = 0.0
+            //
+            // 0.0 < COMPRESSED_MIN_COLUMN_GAP_SS (0.125) → failure
+            final double firstColX = 1.0;
+            final double firstColLeftExtentSs = 0.0;
+            final double firstColRightExtentSs = 0.5;
+            final double secondColX = 3.0;
+            final double secondColLeftExtentSs = 0.0;
+            final double secondColRightExtentSs = 1.5;
+            final double tightMarginSs = 3.0;
+
+            var calculator = new LineJustificationCalculator();
+            var firstCol = columnAt(firstColX, firstColLeftExtentSs, firstColRightExtentSs);
+            var secondCol = columnAt(secondColX, secondColLeftExtentSs, secondColRightExtentSs);
+
+            // Precondition: line overflows.
+            assertThat(secondCol.getRightEdgeXSs()).isGreaterThan(tightMarginSs);
+
+            var result = calculator.justifyLine(List.of(firstCol, secondCol), tightMarginSs);
+
+            assertThat(result.isSuccess()).isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 48: validateCompression rejects when syllable gap < COMPRESSED_MIN_SYLLABLE_GAP_SS
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ValidateCompressionSyllableGapViolation {
+
+        @Test
+        void testWideSyllableColumnsProduceSyllableGapFailure() {
+            // Row 48: when the post-compression syllable gap falls below
+            // LyricRenderMetrics.COMPRESSED_MIN_SYLLABLE_GAP_SS, justifyLine must fail.
+            // The column gap check must pass first (so the syllable check is actually reached).
+            //
+            // Fixture (staff spaces):
+            //   firstCol:  xSs=1.0, left=0.0, right=0.5, syllableWidthSs=2.0
+            //   secondCol: xSs=4.0, left=0.0, right=0.5, syllableWidthSs=2.0
+            //   margin=3.0  →  4.5 > 3.0, triggers compression
+            //
+            // compressionRatio = ((3.0 - 1.0) - 0.5) / (4.0 - 1.0) = 1.5 / 3.0 = 0.5
+            //
+            // compressedColumnGap = 2.5 - 3.0 * (1.0 - 0.5) = 1.0  → 1.0 > 0.125 ✓ (passes)
+            //
+            // currentSyllableGap = centerDist - prevHalfWidth - currHalfWidth
+            //                    = 3.0 - 1.0 - 1.0 = 1.0
+            // compressedSyllableGap = 1.0 - 3.0 * (1.0 - 0.5) = -0.5
+            //
+            // -0.5 < COMPRESSED_MIN_SYLLABLE_GAP_SS (0.125) → failure
+            final double firstColX = 1.0;
+            final double firstColLeftExtentSs = 0.0;
+            final double firstColRightExtentSs = 0.5;
+            final double syllableWidthSs = 2.0;
+            final double secondColX = 4.0;
+            final double secondColLeftExtentSs = 0.0;
+            final double secondColRightExtentSs = 0.5;
+            final double syllableMarginSs = 3.0;
+
+            var calculator = new LineJustificationCalculator();
+            var firstCol = columnWithSyllableAt(
+                firstColX, firstColLeftExtentSs, firstColRightExtentSs, "la", syllableWidthSs);
+            var secondCol = columnWithSyllableAt(
+                secondColX, secondColLeftExtentSs, secondColRightExtentSs, "la", syllableWidthSs);
+
+            // Precondition: line overflows.
+            assertThat(secondCol.getRightEdgeXSs()).isGreaterThan(syllableMarginSs);
+            // Precondition: both columns have syllables (syllable check will be reached).
+            assertThat(firstCol.hasSyllable()).isTrue();
+            assertThat(secondCol.hasSyllable()).isTrue();
+
+            var result = calculator.justifyLine(List.of(firstCol, secondCol), syllableMarginSs);
+
+            assertThat(result.isSuccess()).isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 49: JustificationResult factories + getErrorMessage null contract
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ResultFactories {
+
+        @Test
+        void testSuccessFactoryHasNoCompressionAndNullErrorMessage() {
+            var result = JustificationResult.success();
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.wasCompressionApplied()).isFalse();
+            assertThat(result.getErrorMessage()).isNull();
+        }
+
+        @Test
+        void testSuccessWithCompressionFactoryHasCompressionAndNullErrorMessage() {
+            var result = JustificationResult.successWithCompression();
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.wasCompressionApplied()).isTrue();
+            assertThat(result.getErrorMessage()).isNull();
+        }
+
+        @Test
+        void testFailureFactoryHasNonNullErrorMessage() {
+            final var errorMsg = "Note cannot fit on line";
+            var result = JustificationResult.failure(errorMsg);
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.wasCompressionApplied()).isFalse();
+            assertThat(result.getErrorMessage()).isEqualTo(errorMsg);
         }
     }
 }
