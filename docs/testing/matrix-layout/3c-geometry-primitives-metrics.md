@@ -15,9 +15,9 @@
 | Size | pure record (`ZERO`, width/height) | none | — | none | trivial data holder | — |
 | Margin | `uniform(m)` all sides equal; `NONE` all zero | unit | — | missing | one-liner asserting invariant | ✅ |
 | MarginReference | pure documentation enum | none | — | none | no branching | — |
-| LineThickness | each field = `LILYPOND_BASE_THICKNESS_SS × multiplier` | unit | only `barlineSeparationSs()` exercised indirectly (`ElementTypeTest`) | inadequate | assert `stemSs`/`ledgerLineSs`/`hairpinSs`/`voltaBracketSs`/`tupletBracketSs` + multipliers | ⬜ |
+| LineThickness | each field = `LILYPOND_BASE_THICKNESS_SS × multiplier` | unit | only `barlineSeparationSs()` exercised indirectly (`ElementTypeTest`) | inadequate | assert `stemSs`/`ledgerLineSs`/`hairpinSs`/`voltaBracketSs`/`tupletBracketSs` + multipliers | ✅ |
 | LineThickness | `barlineSeparationSs()` = `staffLineSs × BARLINE_SEPARATION_MULTIPLIER` | unit | `ElementTypeTest.testDoubleBarlineWidth` | adequate | keep | — |
-| LineThickness | `repeatRightThinBarlineCenterXSs`/`repeatRightAfterThickXSs` arithmetic | unit | — | missing | known-constant tests | ⬜ |
+| LineThickness | `repeatRightThinBarlineCenterXSs`/`repeatRightAfterThickXSs` arithmetic | unit | — | missing | known-constant tests | ✅ |
 | NoteGeometry | `initializeAccidentalWidths()` idempotent | unit | `NoteRendererTest`/`NoteAreaBuilderTest` (called twice) | adequate | keep | — |
 | NoteGeometry | `getAccidentalWidthSs(note)` dispatch small/base/parens; 0 for none | unit | — | missing | each accidental kind; exact SMuFL width | ⬜ |
 | NoteGeometry | `getAccidentalBoundsSs(note)` null/grace-null/table | unit | `NoteRendererTest` (directional only) | inadequate | weak `isNegative`/`isPositive`; pin exact for ≥1; add DOUBLE_SHARP/NATURAL_* variants | ⬜ |
@@ -31,8 +31,8 @@
 | StaffExtents | `ySet`/`yGet` reserve/query above/below | unit | `StaffExtentsTest` (defaults, overlaps, clamp, isolation) | adequate | keep | — |
 | StaffExtents | `copyTopFrom` copies top, leaves bot | unit | `StaffExtentsTest.CopyTopFrom` | adequate | keep | — |
 | StaffExtents | derived constants (`MIN_ABOVE/BELOW_STAFF_SS`, `MIN/MAX_STAFF_POSITION_SP`) | unit | used, never asserted | missing | pin computed values (catch `STAFF_LINES_ABOVE/BELOW` change) | ⬜ |
-| VerticalOrder | `isAboveStaff`/`isBelowStaff` relative to `NOTE_STEM.order` | unit | — | missing | each constant; NOTE_STEM neither | ⬜ |
-| VerticalOrder | `compareByOrder` | unit | — | missing | <0 / >0 / 0 cases | ⬜ |
+| VerticalOrder | `isAboveStaff`/`isBelowStaff` relative to `NOTE_STEM.order` | unit | — | missing | each constant; NOTE_STEM neither | ✅ |
+| VerticalOrder | `compareByOrder` | unit | — | missing | <0 / >0 / 0 cases | ✅ |
 | SongLayoutMetrics | `staffTopYSsInLine`/`staffBottomYSsInLine` | unit | `SongLayoutMetricsTest.testStaffYHelpers` | adequate | keep | — |
 | SongLayoutMetrics | `verseYSsInLine(verse)` formula | unit | `SongLayoutMetricsTest.testVerseBaselineYHelper` | inadequate | **self-referential** (expected from same accessors); pin concrete literals | ⬜ |
 | SongLayoutMetricsBuilder | `build()` max above/below/belowContent; floor at `MIN_*` | unit | `SongLayoutMetricsTest` (empty, max above/below/belowContent) | adequate | keep | — |
