@@ -328,16 +328,16 @@ public final class ElementBoundsSs {
 
         // Top/bottom same, left/right same
         if (t == b && l == r) {
-            return t + "px " + r + "ss";
+            return t + "ss " + r + "ss";
         }
 
         // Top different, left/right same, bottom different
         if (l == r) {
-            return t + "px " + r + "px " + b + "ss";
+            return t + "ss " + r + "ss " + b + "ss";
         }
 
         // All different
-        return t + "px " + r + "px " + b + "px " + l + "ss";
+        return t + "ss " + r + "ss " + b + "ss " + l + "ss";
     }
 
     @Override
