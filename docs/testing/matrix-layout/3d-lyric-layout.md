@@ -4,13 +4,13 @@
 |---|---|---|---|---|---|---|
 | LyricBoxLayout | pure data record | none | — | none | no computation | — |
 | LyricConnectorLayout | `Kind` enum + `NO_SOURCE_ELEMENT_INDEX` sentinel; discriminants drive rendering | none | `LyricConnectorRendererTest` (renderer level) | none | rendering assertion belongs to renderer | — |
-| LyricRenderMetrics | `lyricBoxWidthSs("")` → 0.0 | unit | — | missing | empty guard | ⬜ |
-| LyricRenderMetrics | `lyricBoxWidthSs(text)` advance for non-empty | unit | `LyricRenderMetricsTest.testLyricBoxWidthSsMatchesLayoutBoxWidth` | inadequate | **self-referential**: builder stores `lyricBoxWidthSs(text)` then asserts equality; use independent oracle | ⬜ |
-| LyricRenderMetrics | `lyricBoxMetricsSs("")` → `LyricBoxMetrics.EMPTY` | unit | — | missing | empty guard | ⬜ |
-| LyricRenderMetrics | `lyricBoxMetricsSs(text)` advance/bearing/extent triple | unit | — | missing | fixed font or structural relations | ⬜ |
-| LyricRenderMetrics | `lyricBoxHeightSs()` positive ascent+descent | unit | — | missing | write test | ⬜ |
-| LyricRenderMetrics | `preferredHyphenCellWidthSs()` = `HYPHEN_WIDENING_FACTOR × hyphenWidthSs` | unit | — | missing | non-zero hyphen width | ⬜ |
-| LyricRenderMetrics | `COMPRESSED_MIN_SYLLABLE_GAP_SS < MIN_SYLLABLE_GAP_SS` invariant | unit | — | missing | ordering assertion | ⬜ |
+| LyricRenderMetrics | `lyricBoxWidthSs("")` → 0.0 | unit | — | missing | empty guard | ✅ |
+| LyricRenderMetrics | `lyricBoxWidthSs(text)` advance for non-empty | unit | `LyricRenderMetricsTest.testLyricBoxWidthSsMatchesLayoutBoxWidth` | inadequate | **self-referential**: builder stores `lyricBoxWidthSs(text)` then asserts equality; use independent oracle | ✅ |
+| LyricRenderMetrics | `lyricBoxMetricsSs("")` → `LyricBoxMetrics.EMPTY` | unit | — | missing | empty guard | ✅ |
+| LyricRenderMetrics | `lyricBoxMetricsSs(text)` advance/bearing/extent triple | unit | — | missing | fixed font or structural relations | ✅ |
+| LyricRenderMetrics | `lyricBoxHeightSs()` positive ascent+descent | unit | — | missing | write test | ✅ |
+| LyricRenderMetrics | `preferredHyphenCellWidthSs()` = `HYPHEN_WIDENING_FACTOR × hyphenWidthSs` | unit | — | missing | non-zero hyphen width | ✅ |
+| LyricRenderMetrics | `COMPRESSED_MIN_SYLLABLE_GAP_SS < MIN_SYLLABLE_GAP_SS` invariant | unit | — | missing | ordering assertion | ✅ |
 | LyricLayoutBuilder | empty line / no-lyrics → empty result | unit | `testEmptyLineProducesEmptyResult`, `testLineWithoutLyricsProducesEmptyResult` | adequate | keep | — |
 | LyricLayoutBuilder | BEGIN/MIDDLE→opens HYPHEN, END closes (do-re-mi) | unit | `testDoReMiProducesThreeBoxesAndTwoHyphens` | inadequate | only count asserted; add HYPHEN start/end coords + sourceElementIndex | ⬜ |
 | LyricLayoutBuilder | SINGLE no-extend → box, no connector | unit | implicit via multi-element tests | adequate | keep | — |

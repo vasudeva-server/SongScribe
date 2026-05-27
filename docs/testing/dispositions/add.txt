@@ -1059,3 +1059,17 @@ StaffExtentsTest.DerivedConstants.testMinBelowStaffSsMatchesFormulaAndConcreteVa
 SongLayoutMetricsTest.testStaffToLyricsGapIncludesLyricAscent
 # 3c row 42 — SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS exact pin
 SongLayoutMetricsTest.testMinLineHeightSsConstantHasConcretePinnedValue
+# 3d row 7 — LyricRenderMetrics.lyricBoxWidthSs("") empty guard
+LyricRenderMetricsTest.testLyricBoxWidthSsEmptyStringReturnsZero
+# 3d row 8 — LyricRenderMetrics.lyricBoxWidthSs(text) independent oracle
+LyricRenderMetricsTest.testLyricBoxWidthSsNonEmptyMatchesScaleContextTextWidth
+# 3d row 9 — LyricRenderMetrics.lyricBoxMetricsSs("") EMPTY sentinel
+LyricRenderMetricsTest.testLyricBoxMetricsSsEmptyStringReturnsEmptySentinel
+# 3d row 10 — LyricRenderMetrics.lyricBoxMetricsSs(text) triple
+LyricRenderMetricsTest.testLyricBoxMetricsSsNonEmptyHasPositiveAdvanceAndConsistentExtents
+# 3d row 11 — LyricRenderMetrics.lyricBoxHeightSs
+LyricRenderMetricsTest.testLyricBoxHeightSsIsPositiveAndEqualsAscentPlusDescent
+# 3d row 12 — LyricRenderMetrics.preferredHyphenCellWidthSs
+LyricRenderMetricsTest.testPreferredHyphenCellWidthSsEqualsFactorTimesHyphenWidth
+# 3d row 13 — LyricRenderMetrics gap ordering invariant
+LyricRenderMetricsTest.testCompressedGapIsStrictlyLessThanNormalGap

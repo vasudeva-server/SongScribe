@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.mockStatic;
 
 import java.awt.Font;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.dom.ScaleContext;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LyricLayoutBuilder;
 import songscribe.layout.LyricRenderMetrics;
@@ -88,6 +90,101 @@ class LyricRenderMetricsTest extends UnitTest {
         var box = boxes.getFirst();
 
         assertThat(box.widthSs()).isCloseTo(LYRIC_METRICS.lyricBoxWidthSs(text), within(TOLERANCE));
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 7: lyricBoxWidthSs("") → 0.0 (empty guard)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testLyricBoxWidthSsEmptyStringReturnsZero() {
+        assertThat(LYRIC_METRICS.lyricBoxWidthSs("")).isEqualTo(0.0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 8: lyricBoxWidthSs(text) — independent oracle via ScaleContext
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testLyricBoxWidthSsNonEmptyMatchesScaleContextTextWidth() {
+        // Independent oracle: call ScaleContext.textWidthSs directly (the underlying
+        // utility the production delegates to) rather than lyricBoxWidthSs itself.
+        // This is NOT f(x)≈f(x) — it catches any divergence if the production method
+        // switches to a different width-computation path.
+        final String text = "do";
+        final double expectedWidthSs = ScaleContext.textWidthSs(LYRICS_FONT, text);
+        assertThat(LYRIC_METRICS.lyricBoxWidthSs(text)).isCloseTo(expectedWidthSs, within(TOLERANCE));
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 9: lyricBoxMetricsSs("") → LyricBoxMetrics.EMPTY
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testLyricBoxMetricsSsEmptyStringReturnsEmptySentinel() {
+        assertThat(LYRIC_METRICS.lyricBoxMetricsSs(""))
+            .isSameAs(LyricRenderMetrics.LyricBoxMetrics.EMPTY);
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 10: lyricBoxMetricsSs(text) — advance/bearing/extent structural relations
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testLyricBoxMetricsSsNonEmptyHasPositiveAdvanceAndConsistentExtents() {
+        var metrics = LYRIC_METRICS.lyricBoxMetricsSs("do");
+        assertAll(
+            () -> assertThat(metrics).isNotSameAs(LyricRenderMetrics.LyricBoxMetrics.EMPTY),
+            () -> assertThat(metrics.advanceSs())
+                      .describedAs("advance must be positive for non-empty text")
+                      .isGreaterThan(0.0),
+            () -> assertThat(metrics.rightExtentSs())
+                      .describedAs("rightmost ink pixel must be to the right of the origin")
+                      .isGreaterThan(0.0),
+            () -> assertThat(metrics.leftBearingSs())
+                      .describedAs("leftBearing is the left overhang; must not exceed advance")
+                      .isLessThanOrEqualTo(metrics.advanceSs())
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 11: lyricBoxHeightSs() — positive and equals ascent + descent
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testLyricBoxHeightSsIsPositiveAndEqualsAscentPlusDescent() {
+        final double expectedHeightSs =
+            ScaleContext.fontAscentSs(LYRICS_FONT) + ScaleContext.fontDescentSs(LYRICS_FONT);
+        assertAll(
+            () -> assertThat(LYRIC_METRICS.lyricBoxHeightSs())
+                      .describedAs("height must be positive for a real font")
+                      .isGreaterThan(0.0),
+            () -> assertThat(LYRIC_METRICS.lyricBoxHeightSs())
+                      .isCloseTo(expectedHeightSs, within(TOLERANCE))
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 12: preferredHyphenCellWidthSs() = HYPHEN_WIDENING_FACTOR × hyphenWidthSs
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testPreferredHyphenCellWidthSsEqualsFactorTimesHyphenWidth() {
+        final double hyphenWidthSs = 1.5;
+        final double expectedWidthSs = LyricRenderMetrics.HYPHEN_WIDENING_FACTOR * hyphenWidthSs;
+        var metricsWithHyphen = new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, hyphenWidthSs, 0.0);
+        assertThat(metricsWithHyphen.preferredHyphenCellWidthSs())
+            .isCloseTo(expectedWidthSs, within(TOLERANCE));
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 13: COMPRESSED_MIN_SYLLABLE_GAP_SS < MIN_SYLLABLE_GAP_SS invariant
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCompressedGapIsStrictlyLessThanNormalGap() {
+        assertThat(LyricRenderMetrics.COMPRESSED_MIN_SYLLABLE_GAP_SS)
+            .isLessThan(LyricRenderMetrics.MIN_SYLLABLE_GAP_SS);
     }
 
     // ==========================================================================
