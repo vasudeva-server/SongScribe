@@ -21,6 +21,7 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.within;
 
 import java.util.Collections;
@@ -46,6 +47,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     private static final double WIDE_SYLLABLE_WIDTH_SS = 8.0;
     private static final double ACCIDENTAL_LEFT_EXTENT_SS = -0.625;
     private static final double GRACE_RIGHT_EXTENT_SS = 1.0;
+    private static final double BEAM_RIGHT_EXTENT_SS = 2.0;
 
     // Row 23 (strengthened): calculatePositions places first column at clef+keyAccidentals+firstNoteOffset
     // (pinned concrete value — not self-referential against calculateFirstElementXSs)
@@ -214,5 +216,126 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         // Grace note gap is tighter than the default gap
         assertThat(HorizontalSpacingCalculator.GRACE_NOTE_GAP_SS)
             .isLessThan(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS);
+    }
+
+    // Row 30: glissando spacing is enforced within beam group (tight gap < MIN_GLISSANDO_RESERVATION_SS)
+    // In a beam group the tight internal gap (1.5ss) < MIN_GLISSANDO_RESERVATION_SS (1.6ss),
+    // so a glissando on the prev column forces extra spacing.
+    @Test
+    void testGlissandoSpacingEnforcedInBeamGroup() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var glissandoElement = ElementType.CROTCHET.newInstance();
+        glissandoElement.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            glissandoElement, Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col2 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1, col2), line);
+
+        // Beam tight gap = 1.5ss; MIN_GLISSANDO_RESERVATION = 1.6ss → extra 0.1ss added
+        var expectedSpacing = BEAM_RIGHT_EXTENT_SS + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
+        assertThat(col2.getXSs() - col1.getXSs()).isCloseTo(expectedSpacing, within(TOLERANCE));
+        assertThat(col2.getXSs() - col1.getXSs())
+            .isGreaterThan(BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS);
+    }
+
+    // Row 31: calculatePositions with empty list returns without exception
+    @Test
+    void testCalculatePositionsEmptyListDoesNotThrow() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+        assertThatCode(() -> calculator.calculatePositions(Collections.emptyList(), line))
+            .doesNotThrowAnyException();
+    }
+
+    // Row 32 (without lyrics): beam-group gets tight internal spacing < DEFAULT_COLUMN_GAP_SS
+    @Test
+    void testBeamGroupTightSpacingWithoutLyrics() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col2 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1, col2), line);
+
+        var tightSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+        assertThat(col2.getXSs() - col1.getXSs()).isCloseTo(tightSpacing, within(TOLERANCE));
+        // Tight beam gap is smaller than the default note-to-note gap
+        assertThat(col2.getXSs() - col1.getXSs())
+            .isLessThan(BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS);
+    }
+
+    // Row 32 (with lyrics): beam-group expands evenly when lyric spacing exceeds tight spacing
+    @Test
+    void testBeamGroupExpandsEvenlyForWideSyllables() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, "do", WIDE_SYLLABLE_WIDTH_SS, true
+        );
+        var col2 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, "re", WIDE_SYLLABLE_WIDTH_SS, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1, col2), line);
+
+        // Lyric spacing = WIDE/2 + MIN_GAP + WIDE/2 = WIDE + MIN_GAP > tight beam spacing
+        var lyricSpacing = WIDE_SYLLABLE_WIDTH_SS + LyricRenderMetrics.MIN_SYLLABLE_GAP_SS;
+        assertThat(col2.getXSs() - col1.getXSs()).isCloseTo(lyricSpacing, within(TOLERANCE));
+        // Lyric expansion exceeds tight beam spacing
+        assertThat(col2.getXSs() - col1.getXSs())
+            .isGreaterThan(BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS);
+    }
+
+    // Row 33: single-column beam group receives normal (DEFAULT_COLUMN_GAP_SS) spacing
+    @Test
+    void testSingleColumnBeamGroupGetsNormalSpacing() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1), line);
+
+        // handleBeamGroup with columnCount=1 falls back to calculateNextColumnXSs → default spacing
+        var expectedSpacing = PLAIN_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        assertThat(col1.getXSs() - col0.getXSs()).isCloseTo(expectedSpacing, within(TOLERANCE));
     }
 }

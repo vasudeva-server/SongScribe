@@ -27,10 +27,10 @@
 | HorizontalSpacingCalculator | lyric spacing dominates with wide syllables | unit | — | missing | wide-syllable columns | ✅ |
 | HorizontalSpacingCalculator | accidental push when next column accidental would overlap | unit | — | missing | construct triggering case | ✅ |
 | HorizontalSpacingCalculator | grace→host tight gap | unit | — | missing | grace+host columns | ✅ |
-| HorizontalSpacingCalculator | glissando spacing enforced (`ensureGlissandoSpacing`) | unit | — | missing | prev-has-glissando | ⬜ |
-| HorizontalSpacingCalculator | `calculatePositions` empty list returns (no exception) | unit | — | missing | guard test | ⬜ |
-| HorizontalSpacingCalculator | beam-group tight spacing + even lyric expansion (`identifyBeamGroupRanges`/`handleBeamGroup`) | unit | — | missing | critical multi-branch; with/without lyrics | ⬜ |
-| HorizontalSpacingCalculator | single-column beam group → normal spacing | unit | — | missing | edge case | ⬜ |
+| HorizontalSpacingCalculator | glissando spacing enforced (`ensureGlissandoSpacing`) | unit | — | missing | prev-has-glissando | ✅ |
+| HorizontalSpacingCalculator | `calculatePositions` empty list returns (no exception) | unit | — | missing | guard test | ✅ |
+| HorizontalSpacingCalculator | beam-group tight spacing + even lyric expansion (`identifyBeamGroupRanges`/`handleBeamGroup`) | unit | — | missing | critical multi-branch; with/without lyrics | ✅ |
+| HorizontalSpacingCalculator | single-column beam group → normal spacing | unit | — | missing | edge case | ✅ |
 | InsertionSpacingCalculator | `calculateInsertion` out-of-bounds → IAE | unit | — | missing | negative + > count | ⬜ |
 | InsertionSpacingCalculator | `calculateAppendPositionSs` empty line → `calculateFirstElementXSs` | unit | `FitsWithinLine.testAppendToEmptyLine` (asserts `fitsWithinLine(500)`) | inadequate | assert exact X = `calculateFirstElementXSs(keyAccidentalCount)` | ⬜ |
 | InsertionSpacingCalculator | `fitsWithinLine` exact margin+DEFAULT_GAP boundary → false | unit | `testInsertIntoNearlyFullLine` (uses width-1) | inadequate | test the exact `DEFAULT_COLUMN_GAP_SS` boundary | ⬜ |
