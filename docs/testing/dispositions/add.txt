@@ -766,3 +766,11 @@ LayoutResultTest.testCalculateInsertionXSsSnapsToElementHead	3a	row 36 — over-
 LayoutResultTest.testCalculateInsertionXSsRightAlignsPreviewOverTerminal	3a	row 36 — over terminal right-aligns preview to terminal right edge (termX + termRight - previewRight)
 LayoutResultTest.testCalculateInsertionXSsAfterLastUsesSpacingCalculator	3a	row 36 — after-last delegates to calculateNextColumnXSs; result right of last column
 LayoutResultTest.testCalculateInsertionXSsBetweenElementsUsesMidpoint	3a	row 36 — between-elements midpoint of prev/curr X
+LayoutResultTest.testGetBelowStaffReservationSsSubtractsAboveStaffAndStaffHeight	3a	row 37 — reservation = lineHeight - aboveStaff - STAFF_HEIGHT_SS (pinned concrete oracle)
+LayoutResultTest.testFindAttachmentBoundsMatchesOwnerAndType	3a	row 39 — two same-type attachments on different owners resolve to own bounds; unknown owner null
+LayoutResultTest.testFindAttachmentReturnsMatchingAttachmentElseNull	3a	row 41 — findAttachment returns matching owner/type attachment else null
+LayoutResultTest.testFindRangeElementBoundsMatchesAnchorEndAndType	3a	row 40 — range bounds by anchor+end+type; differing end returns null
+LayoutResultTest.testContainsReflectsElementBoundsMembership	3a	row 43 — contains true iff elementBounds has element; non-LineElement false
+LayoutResultTest.testGetDecorationLayoutsByTypeFiltersByClass	3a	row 44 — two types filtered to own entry/layout
+LayoutResultTest.testGetElementXSsReturnsColumnXOrZero	3a	row 45 — column X for laid-out element, 0 for unknown
+LayoutResultTest.testGetElementPositionReturnsTopLeftOrNull	3a	row 45 — content top-left for laid-out element, null for unknown

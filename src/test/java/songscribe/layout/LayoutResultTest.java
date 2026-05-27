@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.util.Objects;
 import java.util.Collections;
 
@@ -36,6 +37,7 @@ import songscribe.dom.KeySignature;
 import songscribe.dom.ScaleContext;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.ElementType;
+import songscribe.dom.FermataAttachment;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -455,6 +457,163 @@ class LayoutResultTest extends UnitTest {
     }
 
     // ==========================================================================
+    // getBelowStaffReservationSs — line-height accounting
+    // ==========================================================================
+
+    // The below-staff reservation is the line height minus the above-staff extent
+    // minus the fixed staff height.
+    @Test
+    void testGetBelowStaffReservationSsSubtractsAboveStaffAndStaffHeight() {
+        var result = LayoutResult.builder()
+            .setLineHeightSs(RESERVATION_LINE_HEIGHT_SS)
+            .setAboveStaffSs(RESERVATION_ABOVE_STAFF_SS)
+            .build();
+
+        assertThat(result.getBelowStaffReservationSs())
+            .isCloseTo(EXPECTED_BELOW_STAFF_RESERVATION_SS, within(TOLERANCE));
+    }
+
+    // ==========================================================================
+    // findAttachmentBounds / findAttachment — owner+type lookup
+    // ==========================================================================
+
+    // Two same-type attachments on different owners resolve to their own bounds;
+    // an owner with no attachment of that type resolves to null.
+    @Test
+    void testFindAttachmentBoundsMatchesOwnerAndType() {
+        var ownerOne = ElementType.CROTCHET.newInstance();
+        var ownerTwo = ElementType.CROTCHET.newInstance();
+        var boundsOne = sampleBounds();
+        var boundsTwo = sampleBounds();
+        var result = LayoutResult.builder()
+            .putElementBounds(new FermataAttachment(ownerOne), boundsOne)
+            .putElementBounds(new FermataAttachment(ownerTwo), boundsTwo)
+            .build();
+
+        assertThat(result.findAttachmentBounds(ownerOne, FermataAttachment.class)).isSameAs(boundsOne);
+        assertThat(result.findAttachmentBounds(ownerTwo, FermataAttachment.class)).isSameAs(boundsTwo);
+        var unownedNote = ElementType.CROTCHET.newInstance();
+        assertThat(result.findAttachmentBounds(unownedNote, FermataAttachment.class)).isNull();
+    }
+
+    // findAttachment returns the attachment object whose owner and type match, else null.
+    @Test
+    void testFindAttachmentReturnsMatchingAttachmentElseNull() {
+        var owner = ElementType.CROTCHET.newInstance();
+        var fermata = new FermataAttachment(owner);
+        var result = LayoutResult.builder()
+            .putElementBounds(fermata, sampleBounds())
+            .build();
+
+        assertThat(result.findAttachment(owner, FermataAttachment.class)).isSameAs(fermata);
+        var otherNote = ElementType.CROTCHET.newInstance();
+        assertThat(result.findAttachment(otherNote, FermataAttachment.class)).isNull();
+    }
+
+    // ==========================================================================
+    // findRangeElementBounds — anchor+end+type lookup
+    // ==========================================================================
+
+    // A range element resolves by matching anchor AND end AND type; a differing end
+    // element resolves to null.
+    @Test
+    void testFindRangeElementBoundsMatchesAnchorEndAndType() {
+        var anchor = ElementType.CROTCHET.newInstance();
+        var end = ElementType.CROTCHET.newInstance();
+        var trill = new Trill(anchor, end);
+        var bounds = sampleBounds();
+        var result = LayoutResult.builder()
+            .putElementBounds(trill, bounds)
+            .build();
+
+        assertThat(result.findRangeElementBounds(anchor, end, Trill.class)).isSameAs(bounds);
+        var otherEnd = ElementType.CROTCHET.newInstance();
+        assertThat(result.findRangeElementBounds(anchor, otherEnd, Trill.class)).isNull();
+    }
+
+    // ==========================================================================
+    // contains — element-bounds membership
+    // ==========================================================================
+
+    // contains is true exactly when elementBounds holds the given LineElement; a
+    // non-laid-out element and a non-LineElement both return false.
+    @Test
+    void testContainsReflectsElementBoundsMembership() {
+        var present = ElementType.CROTCHET.newInstance();
+        var absent = ElementType.CROTCHET.newInstance();
+        var result = LayoutResult.builder()
+            .putElementBounds(present, sampleBounds())
+            .build();
+
+        assertThat(result.contains(present)).isTrue();
+        assertThat(result.contains(absent)).isFalse();
+        assertThat(result.contains(NON_ELEMENT)).isFalse();
+    }
+
+    // ==========================================================================
+    // getDecorationLayoutsByType — type-filtered decoration entries
+    // ==========================================================================
+
+    // Filtering by type returns only the entries whose key is an instance of that
+    // type, paired with their own layout.
+    @Test
+    void testGetDecorationLayoutsByTypeFiltersByClass() {
+        var anchor = ElementType.CROTCHET.newInstance();
+        var trill = new Trill(anchor);
+        var fermata = new FermataAttachment(anchor);
+        var trillLayout = sampleDecorationLayout();
+        var fermataLayout = sampleDecorationLayout();
+        var result = LayoutResult.builder()
+            .putDecorationLayout(trill, trillLayout)
+            .putDecorationLayout(fermata, fermataLayout)
+            .build();
+
+        var trills = result.getDecorationLayoutsByType(Trill.class);
+        assertThat(trills).hasSize(1);
+        assertThat(trills.get(0).getKey()).isSameAs(trill);
+        assertThat(trills.get(0).getValue()).isSameAs(trillLayout);
+
+        var fermatas = result.getDecorationLayoutsByType(FermataAttachment.class);
+        assertThat(fermatas).hasSize(1);
+        assertThat(fermatas.get(0).getKey()).isSameAs(fermata);
+        assertThat(fermatas.get(0).getValue()).isSameAs(fermataLayout);
+    }
+
+    // ==========================================================================
+    // getElementXSs / getElementPosition — element lookup with absent fallback
+    // ==========================================================================
+
+    // getElementXSs returns the column X for a laid-out element and 0 for an unknown one.
+    @Test
+    void testGetElementXSsReturnsColumnXOrZero() {
+        var present = ElementType.CROTCHET.newInstance();
+        var absent = ElementType.CROTCHET.newInstance();
+        var result = LayoutResult.builder()
+            .putElementColumn(present, columnAt(present, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(result.getElementXSs(present)).isCloseTo(FIRST_ELEMENT_X_SS, within(TOLERANCE));
+        assertThat(result.getElementXSs(absent)).isEqualTo(0.0);
+    }
+
+    // getElementPosition returns the content top-left for a laid-out element and null
+    // for an unknown one.
+    @Test
+    void testGetElementPositionReturnsTopLeftOrNull() {
+        var present = ElementType.CROTCHET.newInstance();
+        var absent = ElementType.CROTCHET.newInstance();
+        var result = LayoutResult.builder()
+            .putElementBounds(present, sampleBounds())
+            .build();
+
+        var position = result.getElementPosition(present);
+        assertThat(position).isNotNull();
+        assertThat(Objects.requireNonNull(position).getX()).isCloseTo(SAMPLE_BOUNDS_LEFT_SS, within(TOLERANCE));
+        assertThat(position.getY()).isCloseTo(SAMPLE_BOUNDS_TOP_SS, within(TOLERANCE));
+        assertThat(result.getElementPosition(absent)).isNull();
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 
@@ -505,6 +664,26 @@ class LayoutResultTest extends UnitTest {
     private static final double DECORATION_WIDTH_SS = 1.5;
     private static final double DECORATION_HEIGHT_SS = 1.0;
     private static final double DECORATION_MARGIN_SS = 0.25;
+
+    private static final double RESERVATION_LINE_HEIGHT_SS = 10.0;
+    private static final double RESERVATION_ABOVE_STAFF_SS = 2.0;
+    // RESERVATION_LINE_HEIGHT_SS - RESERVATION_ABOVE_STAFF_SS - StaffExtents.STAFF_HEIGHT_SS (4.0).
+    private static final double EXPECTED_BELOW_STAFF_RESERVATION_SS = 4.0;
+
+    private static final double SAMPLE_BOUNDS_LEFT_SS = 5.0;
+    private static final double SAMPLE_BOUNDS_TOP_SS = 1.0;
+    private static final double SAMPLE_BOUNDS_WIDTH_SS = 2.0;
+    private static final double SAMPLE_BOUNDS_HEIGHT_SS = 3.0;
+
+    private static final Object NON_ELEMENT = "not-a-line-element";
+
+    // Each call returns a distinct ElementBoundsSs instance so reference-identity
+    // (isSameAs) assertions can distinguish entries.
+    private static ElementBoundsSs sampleBounds() {
+        return ElementBoundsSs.contentOnly(new Rectangle2D.Double(
+            SAMPLE_BOUNDS_LEFT_SS, SAMPLE_BOUNDS_TOP_SS,
+            SAMPLE_BOUNDS_WIDTH_SS, SAMPLE_BOUNDS_HEIGHT_SS));
+    }
 
     private static LayoutResult.DecorationLayout sampleDecorationLayout() {
         return new LayoutResult.DecorationLayout(
