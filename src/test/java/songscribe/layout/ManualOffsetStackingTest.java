@@ -465,7 +465,7 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line,note2);
 
             var yPositionSs = -2;
-            var ending = new Ending(note1, note2, Ending.Type.FIRST);
+            var ending = new Ending(note1, note2);
             ending.setYPositionSs(yPositionSs);
             setupTest(() -> line.addRangeElement(ending));
 
@@ -483,7 +483,7 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line2,note3);
             populate(line2,note4);
 
-            var ending2 = new Ending(note3, note4, Ending.Type.FIRST);
+            var ending2 = new Ending(note3, note4);
             setupTest(() -> line2.addRangeElement(ending2));
 
             var resultBaseline = stackColumns(

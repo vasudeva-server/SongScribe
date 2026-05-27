@@ -73,14 +73,6 @@ public class Ending extends RangeElement {
         ENDING_FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, "2.").getVisualBounds();
 
     /**
-     * The type of ending (first or second).
-     */
-    public enum Type {
-        FIRST,
-        SECOND
-    }
-
-    /**
      * The x-range and properties of a single visual bracket (first or second ending).
      *
      * @param x1Ss             left edge X in staff spaces
@@ -132,7 +124,6 @@ public class Ending extends RangeElement {
         record CompensateSplit(Ending ending, ElementType newSplitType) implements EndingEffect {}
     }
 
-    private Type type;
     private int yPositionSs = 0;
     private int repeatSplitIndex = -1;
     private List<BracketRange> bracketRanges = List.of();
@@ -142,25 +133,9 @@ public class Ending extends RangeElement {
      *
      * @param anchorElement The first element of the ending
      * @param endElement    The last element of the ending
-     * @param type       Whether this is a first or second ending
      */
-    public Ending(StaffElement anchorElement, StaffElement endElement, Type type) {
+    public Ending(StaffElement anchorElement, StaffElement endElement) {
         super(anchorElement, endElement);
-        this.type = type;
-    }
-
-    /**
-     * Returns the ending type (first or second).
-     */
-    public Type getType() {
-        return type;
-    }
-
-    /**
-     * Sets the ending type.
-     */
-    public void setType(Type type) {
-        this.type = type;
     }
 
     /**
@@ -175,13 +150,6 @@ public class Ending extends RangeElement {
      */
     public void setYPositionSs(int yPositionSs) {
         this.yPositionSs = yPositionSs;
-    }
-
-    /**
-     * Returns the label text for this ending ("1." or "2.").
-     */
-    public String getLabel() {
-        return type == Type.FIRST ? "1." : "2.";
     }
 
     /**

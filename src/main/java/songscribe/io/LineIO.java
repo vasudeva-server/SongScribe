@@ -664,7 +664,7 @@ public final class LineIO {
             for (var pair : pendingEndingPairs) {
                 var startElement = line.getElement(pair[0]);
                 var endElement = line.getElement(pair[1]);
-                var ending = new Ending(startElement, endElement, Ending.Type.FIRST);
+                var ending = new Ending(startElement, endElement);
                 line.addRangeElement(ending);
             }
 

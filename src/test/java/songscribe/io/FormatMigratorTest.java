@@ -190,7 +190,7 @@ class FormatMigratorTest extends UnitTest {
         void testNonDefaultEndingOffsetAppliedToEndingYPosition() {
             var line = lineWith(ElementType.CROTCHET);
             var note = line.getElement(0);
-            var ending = new Ending(note, note, Ending.Type.FIRST);
+            var ending = new Ending(note, note);
             line.addRangeElement(ending);
 
             var endingDefaultPx = ScaleContext.ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS);
@@ -431,7 +431,7 @@ class FormatMigratorTest extends UnitTest {
             var end = ElementType.CROTCHET.newInstance();
             line.addElement(anchor);
             line.addElement(end);
-            var ending = new Ending(anchor, end, Ending.Type.FIRST);
+            var ending = new Ending(anchor, end);
             ending.setYPositionSs(NON_ZERO_ENDING_Y_POSITION_SS);
             line.addRangeElement(ending);
 

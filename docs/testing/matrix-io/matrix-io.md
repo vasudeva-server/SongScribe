@@ -11,13 +11,12 @@ Audited all 15 production classes (excl. `package-info`) via four parallel produ
 
 Filed as a single tracked GitHub issue ([#407](https://github.com/vasudeva-server/SongScribe/issues/407)) — these are real code observations, not test gaps, so the disposable matrix isn't their only home:
 
-1. **⚠️ `LineIO` — `Ending.Type` data loss (correctness bug).** `endingsToString` serializes only anchor/end indices; `createEndingsFromPendingPairs` hard-codes `Ending.Type.FIRST`. Any **SECOND** ending (a "2." volta bracket) is silently reset to FIRST on save/load. Needs a real fix (encode/decode the type), not just a regression test.
-2. **`LineIO` — missing bounds guards.** `createBeamsFromPending`/`createTupletsFromPending` validate index ranges; `createTiesFromPendingPairs`, `createCrescendosFromPending`, `createDiminuendosFromPending`, `createTrillsFromPendingPairs`, `createEndingsFromPendingPairs` do not — they throw `IndexOutOfBoundsException` on truncated/corrupt files. Make uniform or document as fail-loud.
-3. **`LineIO` — `parseEndingPairs` asymmetry.** It uniquely `.clear()`s its pending list at entry; all other `parse*` methods accumulate. Document or unify.
-4. **`XML` — static mutable `indent`.** `setIndent`/`printIndent` use an unsynchronized static field: a thread-safety hazard in production and a test-isolation hazard (tests that call `setIndent` leak state). Make it a parameter or document not-thread-safe.
-5. **`FormatMigrator` — pixel-vs-staff-space unit coupling.** `applyTopPaddingFallback` and `migrateLineLevelOffsets` compute pixel-valued quantities/deltas and assign them to `*Ss` fields, correct only because `migratePixelsToStaffSpace` divides by pps afterward. Tests written in terms of the same formula can't catch a unit mismatch. Verify against `SongIOTest.testTopPaddingFallbackValueReachesSong` and add an explanatory comment about the two-step dependency.
-6. **`StaffElementIO` — `lenght` parameter misspelling** in `characters` (cosmetic; compiles and works).
-7. **`TempoIO` — `endElement11` has no legacy-duration-name lookup** (only `endElement10` does); a v1.1 file with a legacy name (e.g. `MINIMDOTTED`) throws `IllegalArgumentException` from `Duration.valueOf`. Likely an intentional v1.1 contract, but untested.
+1. **`LineIO` — missing bounds guards.** `createBeamsFromPending`/`createTupletsFromPending` validate index ranges; `createTiesFromPendingPairs`, `createCrescendosFromPending`, `createDiminuendosFromPending`, `createTrillsFromPendingPairs`, `createEndingsFromPendingPairs` do not — they throw `IndexOutOfBoundsException` on truncated/corrupt files. Make uniform or document as fail-loud.
+2. **`LineIO` — `parseEndingPairs` asymmetry.** It uniquely `.clear()`s its pending list at entry; all other `parse*` methods accumulate. Document or unify.
+3. **`XML` — static mutable `indent`.** `setIndent`/`printIndent` use an unsynchronized static field: a thread-safety hazard in production and a test-isolation hazard (tests that call `setIndent` leak state). Make it a parameter or document not-thread-safe.
+4. **`FormatMigrator` — pixel-vs-staff-space unit coupling.** `applyTopPaddingFallback` and `migrateLineLevelOffsets` compute pixel-valued quantities/deltas and assign them to `*Ss` fields, correct only because `migratePixelsToStaffSpace` divides by pps afterward. Tests written in terms of the same formula can't catch a unit mismatch. Verify against `SongIOTest.testTopPaddingFallbackValueReachesSong` and add an explanatory comment about the two-step dependency.
+5. **`StaffElementIO` — `lenght` parameter misspelling** in `characters` (cosmetic; compiles and works).
+6. **`TempoIO` — `endElement11` has no legacy-duration-name lookup** (only `endElement10` does); a v1.1 file with a legacy name (e.g. `MINIMDOTTED`) throws `IllegalArgumentException` from `Duration.valueOf`. Likely an intentional v1.1 contract, but untested.
 
 ### io — summary
 

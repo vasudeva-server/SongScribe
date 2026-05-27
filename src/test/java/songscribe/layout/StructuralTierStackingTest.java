@@ -417,7 +417,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var ending = new Ending(note1, note2, Ending.Type.FIRST);
+            var ending = new Ending(note1, note2);
             line.addRangeElement(ending);
 
             var result = stackColumns(
@@ -439,7 +439,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var ending = new Ending(note1, note2, Ending.Type.SECOND);
+            var ending = new Ending(note1, note2);
             line.addRangeElement(ending);
 
             var result = stackColumns(
@@ -466,7 +466,7 @@ class StructuralTierStackingTest extends UnitTest {
             var crescendo = new Crescendo(note1, note2);
             line.addRangeElement(crescendo);
 
-            var ending = new Ending(note1, note2, Ending.Type.FIRST);
+            var ending = new Ending(note1, note2);
             line.addRangeElement(ending);
 
             var result = stackColumns(
@@ -492,7 +492,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var ending = new Ending(note1, note2, Ending.Type.FIRST);
+            var ending = new Ending(note1, note2);
             line.addRangeElement(ending);
 
             var result = stackColumns(
@@ -526,7 +526,7 @@ class StructuralTierStackingTest extends UnitTest {
             var crescendo = new Crescendo(note1, note2);
             line.addRangeElement(crescendo);
 
-            var ending = new Ending(note1, note2, Ending.Type.FIRST);
+            var ending = new Ending(note1, note2);
             line.addRangeElement(ending);
 
             var result = stackColumns(

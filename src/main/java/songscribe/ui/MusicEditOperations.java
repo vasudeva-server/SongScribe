@@ -589,7 +589,7 @@ public final class MusicEditOperations {
 
             var startElement = line.getElement(start);
             var endElement = line.getElement(end);
-            line.addRangeElement(new Ending(startElement, endElement, Ending.Type.FIRST));
+            line.addRangeElement(new Ending(startElement, endElement));
         });
     }
 

@@ -73,7 +73,7 @@ public record EndingLineFixture(
         var note4  = new StaffElement(ElementType.CROTCHET);
         var note5  = new StaffElement(ElementType.CROTCHET);
         var end    = new StaffElement(ElementType.SINGLE_BARLINE);
-        var ending = new Ending(anchor, end, Ending.Type.FIRST);
+        var ending = new Ending(anchor, end);
 
         song.withoutMutationTracking(() -> {
             line.addElement(anchor);
@@ -107,7 +107,7 @@ public record EndingLineFixture(
         var note4  = new StaffElement(ElementType.CROTCHET);
         var note5  = new StaffElement(ElementType.CROTCHET);
         var end    = new StaffElement(ElementType.REPEAT_RIGHT);
-        var ending = new Ending(anchor, end, Ending.Type.FIRST);
+        var ending = new Ending(anchor, end);
 
         song.withoutMutationTracking(() -> {
             line.addElement(anchor);

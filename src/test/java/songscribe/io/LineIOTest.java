@@ -348,48 +348,15 @@ class LineIOTest extends UnitTest {
     class EndingsToString {
 
         @Test
-        void testProducesAnchorEndPairWithoutType() {
+        void testProducesAnchorEndPair() {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
-            var ending = new Ending(elements.getElement(0), elements.getElement(1), Ending.Type.SECOND);
+            var ending = new Ending(elements.getElement(0), elements.getElement(1));
             elements.addRangeElement(ending);
 
             var result = LineIO.endingsToString(elements.findRangeElements(Ending.class));
 
-            // Ending.Type is not serialized — only anchor,end;
+            // Serialized as anchor,end; pairs only.
             assertThat(result).isEqualTo("0,1;");
-        }
-
-        @Test
-        void testTypeAlwaysDeserializesAsFirstDueToBug() {
-            // Deserializer always creates Ending.Type.FIRST regardless of original type.
-            // This test documents the current (buggy) behavior so regressions are detectable.
-            var reader = buildReaderWithOneNoteAndEnding("0,0;");
-            var parsedLine = reader.endElement11("line");
-            assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
-            var endings = parsedLine.findRangeElements(Ending.class);
-            assertThat(endings).hasSize(1);
-            // Bug: type is not serialized, so deserialization always produces FIRST
-            assertThat(endings.getFirst().getType()).isEqualTo(Ending.Type.FIRST);
-        }
-
-        private static LineIO.LineReader buildReaderWithOneNoteAndEnding(String endingsStr) {
-            var emptyAttrs = new AttributesImpl();
-            var noteAttrs = new AttributesImpl();
-            noteAttrs.addAttribute("", "type", "type", "CDATA", "CROTCHET");
-            var reader = new LineIO.LineReader(minimalSongMock());
-            reader.startElement11("line", emptyAttrs);
-            reader.startElement11("notes", emptyAttrs);
-            reader.startElement11("note", noteAttrs);
-            reader.startElement11("staffposition", emptyAttrs);
-            reader.characters("0".toCharArray(), 0, 1);
-            reader.endElement11("staffposition");
-            reader.endElement11("note");
-            reader.endElement11("notes");
-            reader.startElement11(LineIO.XML_FSENDINGS, emptyAttrs);
-            reader.characters(endingsStr.toCharArray(), 0, endingsStr.length());
-            reader.endElement11(LineIO.XML_FSENDINGS);
-            return reader;
         }
     }
 
@@ -973,36 +940,6 @@ class LineIOTest extends UnitTest {
             assertThat(c.getX1ShiftSs()).isEqualTo(0.0);
             assertThat(c.getX2ShiftSs()).isEqualTo(0.0);
             assertThat(c.getYShiftSs()).isEqualTo(0.0);
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // EndingRoundTrip — row 36
-    // -------------------------------------------------------------------------
-
-    @Nested
-    class EndingRoundTrip {
-
-        @Test
-        void testSecondTypeDeserializesAsFirstDueToBug() {
-            // Write a line with an Ending.Type.SECOND, then parse the serialized output.
-            // Known bug: Ending.Type is not serialized, so deserialization always produces FIRST.
-            var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
-            var ending = new Ending(elements.getElement(0), elements.getElement(1), Ending.Type.SECOND);
-            elements.addRangeElement(ending);
-
-            // Serialize and round-trip
-            var serialized = LineIO.endingsToString(elements.findRangeElements(Ending.class));
-            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
-            feedTag(reader, LineIO.XML_FSENDINGS, serialized);
-            var parsedLine = reader.endElement11("line");
-
-            assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
-            var endings = parsedLine.findRangeElements(Ending.class);
-            assertThat(endings).hasSize(1);
-            // Bug: type is not serialized, so SECOND becomes FIRST after round-trip
-            assertThat(endings.getFirst().getType()).isEqualTo(Ending.Type.FIRST);
         }
     }
 

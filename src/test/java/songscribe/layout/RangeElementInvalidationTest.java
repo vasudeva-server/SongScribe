@@ -58,7 +58,7 @@ class RangeElementInvalidationTest extends UnitTest {
             Arguments.of("Tuplet",     (RangeElementFactory) (a, e) -> new Tuplet(a, e, 3)),
             Arguments.of("Crescendo",  (RangeElementFactory) Crescendo::new),
             Arguments.of("Diminuendo", (RangeElementFactory) Diminuendo::new),
-            Arguments.of("Ending",     (RangeElementFactory) (a, e) -> new Ending(a, e, Ending.Type.FIRST))
+            Arguments.of("Ending",     (RangeElementFactory) (a, e) -> new Ending(a, e))
         );
     }
 

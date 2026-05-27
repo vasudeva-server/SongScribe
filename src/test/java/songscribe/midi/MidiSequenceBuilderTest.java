@@ -372,7 +372,7 @@ class MidiSequenceBuilderTest extends UnitTest {
             line.addElement(note2nd);     // index 3
 
             // First ending spans note1st (index 1) through REPEAT_RIGHT (index 2).
-            line.addRangeElement(new Ending(note1st, repeatRight, Ending.Type.FIRST));
+            line.addRangeElement(new Ending(note1st, repeatRight));
 
             var track = buildFirstTrack(songWith(line), SETTINGS_WITH_REPEATS);
             assertThat(noteOnEvents(track))

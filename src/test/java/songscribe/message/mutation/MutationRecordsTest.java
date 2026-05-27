@@ -272,8 +272,7 @@ class MutationRecordsTest extends UnitTest {
             var line = detachedLine();
             RangeElement element = new Ending(
                 ElementType.CROTCHET.newInstance(),
-                ElementType.CROTCHET.newInstance(),
-                Ending.Type.FIRST
+                ElementType.CROTCHET.newInstance()
             );
             var mutation = new RangeElementAddition(line, element);
 
@@ -287,8 +286,7 @@ class MutationRecordsTest extends UnitTest {
             var line = detachedLine();
             RangeElement element = new Ending(
                 ElementType.CROTCHET.newInstance(),
-                ElementType.CROTCHET.newInstance(),
-                Ending.Type.SECOND
+                ElementType.CROTCHET.newInstance()
             );
             var mutation = new RangeElementRemoval(line, element);
 

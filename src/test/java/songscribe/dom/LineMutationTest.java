@@ -325,7 +325,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testInvalidatedRangeElementIsRemoved() {
             // Ending anchored at e3 (index 3), which falls inside the deleted range [2, 5].
-            var ending = new Ending(elements.get(3), elements.get(7), Ending.Type.FIRST);
+            var ending = new Ending(elements.get(3), elements.get(7));
             song.withoutMutationTracking(() -> line.addRangeElement(ending));
 
             song.withModification(() -> line.removeRange(2, 5));
@@ -336,7 +336,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testUnaffectedRangeElementIsPreserved() {
             // Ending spans e0 → e1; deleted range [5, 8] is entirely disjoint.
-            var ending = new Ending(elements.get(0), elements.get(1), Ending.Type.FIRST);
+            var ending = new Ending(elements.get(0), elements.get(1));
             song.withoutMutationTracking(() -> line.addRangeElement(ending));
 
             song.withModification(() -> line.removeRange(5, 8));
@@ -728,7 +728,7 @@ class LineMutationTest extends UnitTest {
                 line2.addElement(new StaffElement(ElementType.CROTCHET));
                 line2.addElement(end2);
             });
-            var ending2 = new Ending(anchor2, end2, Ending.Type.FIRST);
+            var ending2 = new Ending(anchor2, end2);
             comp2.withoutMutationTracking(() -> line2.addRangeElement(ending2));
 
             comp2.withModification(() ->

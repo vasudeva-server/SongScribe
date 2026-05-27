@@ -259,7 +259,7 @@ class EndingInvalidationTest extends UnitTest {
                 line2.addElement(new StaffElement(ElementType.CROTCHET));
                 line2.addElement(end2);
             });
-            var ending2 = new Ending(anchor2, end2, Ending.Type.FIRST);
+            var ending2 = new Ending(anchor2, end2);
             assertThat(ending2.isInvalidatedByReplacement(split2, new StaffElement(ElementType.REPEAT_LEFT_RIGHT), line2)).isFalse();
         }
 
@@ -286,7 +286,7 @@ class EndingInvalidationTest extends UnitTest {
                     line2.addElement(new StaffElement(ElementType.CROTCHET));
                     line2.addElement(end2);
                 });
-                ending2 = new Ending(anchor2, end2, Ending.Type.FIRST);
+                ending2 = new Ending(anchor2, end2);
             }
 
             @Test
