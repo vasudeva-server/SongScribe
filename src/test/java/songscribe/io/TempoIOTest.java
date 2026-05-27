@@ -223,7 +223,7 @@ class TempoIOTest extends UnitTest {
 
             assertThatThrownBy(() -> reader.endElement11(TempoIO.XML_TEMPO_TYPE))
                 .isInstanceOf(SAXException.class)
-                .hasMessageContaining("Corrupt document: unknown tempo duration: " + unknownName);
+                .hasMessageContaining("Corrupt document: unknown tempo duration: '" + unknownName + "'");
         }
     }
 
