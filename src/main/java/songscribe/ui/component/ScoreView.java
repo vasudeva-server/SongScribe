@@ -111,9 +111,6 @@ public final class ScoreView
 
     private static final Logger LOG = LoggerFactory.getLogger(ScoreView.class);
 
-    // The vertical distance between whole tones on the staff (e.g. A to B)
-    public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.ssToPx(StaffExtents.STAFF_POSITION_OFFSET_SS);
-
     private static final String DISABLED_KEY_BINDING = "none";
 
     // Colors used to draw the music score in various states — read from UIManager for theming.
@@ -592,8 +589,8 @@ public final class ScoreView
 
     @Override
     public int getNoteYPosPx(int staffPosition, int lineIndex) {
-        return (int) (middleLineYPx +
-            (staffPosition * STAFF_POSITION_OFFSET_PX) +
+        return (int) Math.round(middleLineYPx +
+            ScaleContext.ssToPx(StaffExtents.spToSs(staffPosition)) +
             (lineIndex * rowHeightPx));
     }
 

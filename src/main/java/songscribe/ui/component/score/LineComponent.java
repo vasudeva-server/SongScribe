@@ -245,7 +245,7 @@ public class LineComponent extends ScoreComponent
      * @return Y coordinate in pixels
      */
     public int staffPositionToYPx(int staffPositionSp) {
-        return getMiddleLineYPx() + (int) Math.round(staffPositionSp * ScoreView.STAFF_POSITION_OFFSET_PX);
+        return getMiddleLineYPx() + (int) Math.round(ScaleContext.ssToPx(StaffExtents.spToSs(staffPositionSp)));
     }
 
     /**
