@@ -1087,3 +1087,5 @@ LyricLayoutBuilderTest.testDanglingHyphenWithNoEligibleFollowerEmitsNoConnector
 LyricLayoutBuilderTest.testDanglingHyphenEndsAtNextEligibleElementLeftEdge
 # 3d row 34 — LyricLayoutBuilder sourceElementIndex on EXTENDER/DANGLING_* kinds
 LyricLayoutBuilderTest.testSourceElementIndexOnExtenderAndDanglingKinds
+# 3d row 36 — LyricLayoutBuilder verse-1 vs verse-≥2 width path parity
+LyricLayoutBuilderTest.testVerse1AndVerse2ProduceEqualWidthForSameText
