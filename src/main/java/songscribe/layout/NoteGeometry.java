@@ -74,7 +74,7 @@ public final class NoteGeometry {
     // ==========================================================================
 
     /** Fallback right-edge width (staff spaces) for noteheadBlack when SMuFL metadata is absent. */
-    private static final double NOTEHEAD_BLACK_RIGHT_EDGE_SS = 1.18;
+    static final double NOTEHEAD_BLACK_RIGHT_EDGE_SS = 1.18;
 
     // ==========================================================================
     // Accidental Constants
@@ -83,7 +83,7 @@ public final class NoteGeometry {
     /** Horizontal gap between notehead origin and the right edge of an accidental, in staff spaces. */
     public static final float ACCIDENTAL_PADDING_SS = 0.3375f; // 2.7px / 8 px/ss
 
-    private static final float SPACE_BETWEEN_TWO_ACCIDENTALS_SS = 0.1625f; // 1.3px / 8 px/ss
+    static final float SPACE_BETWEEN_TWO_ACCIDENTALS_SS = 0.1625f; // 1.3px / 8 px/ss
 
     /** Accidental glyph components indexed by {@code Accidental.ordinal()}. */
     private static final SMuFLGlyph[][] ACCIDENTAL_COMPONENTS = {
