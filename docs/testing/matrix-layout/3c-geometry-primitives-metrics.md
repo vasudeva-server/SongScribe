@@ -2,10 +2,10 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| ElementBoundsSs | `uniform`/`withMargin`/`withMarginOnly`/`contentOnly` factories | unit | — | missing | assert exact layer rects per factory (incl. no-top-margin in `withMargin`) | ⬜ |
-| ElementBoundsSs | `collapsedMarginWith(below)` = `max(thisBottom, belowTop)` CSS collapse | unit | — | missing | this-wins / below-wins / equal | ⬜ |
-| ElementBoundsSs | `containsForHitTest` delegates to padding bounds | unit | — | missing | inside-padding / inside-content-outside-padding / outside | ⬜ |
-| ElementBoundsSs | `intersectsMargin`/`intersectsPadding` layer-specific | unit | — | missing | overlap + non-overlap per layer | ⬜ |
+| ElementBoundsSs | `uniform`/`withMargin`/`withMarginOnly`/`contentOnly` factories | unit | — | missing | assert exact layer rects per factory (incl. no-top-margin in `withMargin`) | ✅ |
+| ElementBoundsSs | `collapsedMarginWith(below)` = `max(thisBottom, belowTop)` CSS collapse | unit | — | missing | this-wins / below-wins / equal | ✅ |
+| ElementBoundsSs | `containsForHitTest` delegates to padding bounds | unit | — | missing | inside-padding / inside-content-outside-padding / outside | ✅ |
+| ElementBoundsSs | `intersectsMargin`/`intersectsPadding` layer-specific | unit | — | missing | overlap + non-overlap per layer | ✅ |
 | ElementBoundsSs | `translate(dx,dy)` shifts all four layers (incl. nullable visual) | unit | — | missing | verify exact shift | ⬜ |
 | ElementBoundsSs | `getVisualBounds()` explicit-visual vs `marginBoundsSs` fallback | unit | — | missing | both branches | ⬜ |
 | ElementBoundsSs | coordinate accessors (`getTop/Bottom/Left/Right/MarginTop/MarginBottom Ss`) | unit | — | missing | fold into factory tests | ⬜ |
