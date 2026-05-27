@@ -843,3 +843,15 @@ HorizontalSpacingCalculatorTest.testDefaultGapFloorDominatesWithoutLyrics
 HorizontalSpacingCalculatorTest.testLyricSpacingDominatesWithWideSyllables
 HorizontalSpacingCalculatorTest.testAccidentalClearanceSatisfiedByDefaultGap
 HorizontalSpacingCalculatorTest.testGraceNoteToHostNoteUsesGraceNoteGap
+MidiSequenceBuilderTest.BuildFullSequence.testReturnsNonNullSequence	4a	row 33 — buildFullSequence returns non-null Sequence
+MidiSequenceBuilderTest.BuildFullSequence.testResolutionEqualsPpq	4a	row 33 — buildFullSequence resolution equals PPQ (96)
+MidiSequenceBuilderTest.BuildFullSequence.testHasAtLeastOneMidiTrack	4a	row 33 — buildFullSequence produces at least one MIDI track
+MidiSequenceBuilderTest.BuildFullSequence.testProgramChangeEventPresentAtTickZero	4a	row 33 — buildFullSequence program-change at tick 0
+MidiSequenceBuilderTest.BuildFromNoteToEnd.testInitialTempoMatchesMidLineTempoAtStartNote	4a	row 34 — buildFromNoteToEnd picks startTempo via getTempoAt
+MidiSequenceBuilderTest.BuildSequenceLinear.testBankSelectMsbEmittedAtTickZero	4a	row 35/38 — buildSequence bank select CC0 (MSB) at tick 0
+MidiSequenceBuilderTest.BuildSequenceLinear.testBankSelectLsbEmittedAtTickZero	4a	row 35/38 — buildSequence bank select CC32 (LSB) at tick 0
+MidiSequenceBuilderTest.BuildSequenceLinear.testProgramChangeOnChannelZeroWithCorrectInstrumentAtTickZero	4a	row 35/37 — buildSequence program change ch0 at tick 0
+MidiSequenceBuilderTest.BuildSequenceLinear.testInitialSetTempoEmittedAtTickZero	4a	row 35 — buildSequence initial SET_TEMPO at tick 0
+MidiSequenceBuilderTest.BuildSequenceLinear.testEndOfTrackPlacedAtEndOfFinalNoteDuration	4a	row 35 — buildSequence END_OF_TRACK at final note tick
+MidiSequenceBuilderTest.BuildSequenceWithRepeats.testSimpleRepeatPlaysNotesTwice	4a	row 36 — buildSequenceWithRepeats simple repeat / no explicit start plays twice
+MidiSequenceBuilderTest.BuildSequenceWithRepeats.testFirstSecondEndingsSkipsFirstEndingOnSecondPass	4a	row 36 — buildSequenceWithRepeats first/second endings skip first on second pass
