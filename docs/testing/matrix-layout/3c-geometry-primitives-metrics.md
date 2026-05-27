@@ -25,12 +25,12 @@
 | NoteGeometry | `getNoteheadXOffsetSs(type,upper)` `-stemWidth/2` stem-down else 0 | unit | — | missing | stemmed up/down/non-stemmed | ✅ |
 | NoteGeometry | `getNoteheadRightEdgeSs(note)` SMuFL bbox + fallback | unit | — | missing | known bbox + null fallback | ✅ |
 | NoteGeometry | `walkAccidentalGlyphs` visitor advances/parens/kerning | unit | — | missing | verify emitted positions for known sequence | ✅ |
-| StaffExtents | `spToSs(sp)` = sp×0.5 | unit | fixture input only (`VerticalStackingCalculatorTest`) | missing | direct: spToSs(0/2/-4) + round-trip | ⬜ |
-| StaffExtents | `ssToSp(ss)` = round(ss/0.5) | unit | — | missing | exact + rounding boundaries | ⬜ |
+| StaffExtents | `spToSs(sp)` = sp×0.5 | unit | fixture input only (`VerticalStackingCalculatorTest`) | missing | direct: spToSs(0/2/-4) + round-trip | ✅ |
+| StaffExtents | `ssToSp(ss)` = round(ss/0.5) | unit | — | missing | exact + rounding boundaries | ✅ |
 | StaffExtents | `xToStep` clamp (private, via ySet/yGet) | unit | `StaffExtentsTest` (clamping via ySet/yGet) | adequate | keep | — |
 | StaffExtents | `ySet`/`yGet` reserve/query above/below | unit | `StaffExtentsTest` (defaults, overlaps, clamp, isolation) | adequate | keep | — |
 | StaffExtents | `copyTopFrom` copies top, leaves bot | unit | `StaffExtentsTest.CopyTopFrom` | adequate | keep | — |
-| StaffExtents | derived constants (`MIN_ABOVE/BELOW_STAFF_SS`, `MIN/MAX_STAFF_POSITION_SP`) | unit | used, never asserted | missing | pin computed values (catch `STAFF_LINES_ABOVE/BELOW` change) | ⬜ |
+| StaffExtents | derived constants (`MIN_ABOVE/BELOW_STAFF_SS`, `MIN/MAX_STAFF_POSITION_SP`) | unit | used, never asserted | missing | pin computed values (catch `STAFF_LINES_ABOVE/BELOW` change) | ✅ |
 | VerticalOrder | `isAboveStaff`/`isBelowStaff` relative to `NOTE_STEM.order` | unit | — | missing | each constant; NOTE_STEM neither | ✅ |
 | VerticalOrder | `compareByOrder` | unit | — | missing | <0 / >0 / 0 cases | ✅ |
 | SongLayoutMetrics | `staffTopYSsInLine`/`staffBottomYSsInLine` | unit | `SongLayoutMetricsTest.testStaffYHelpers` | adequate | keep | — |
