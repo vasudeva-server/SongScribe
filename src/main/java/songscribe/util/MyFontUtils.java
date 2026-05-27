@@ -374,12 +374,4 @@ public final class MyFontUtils {
         return metrics;
     }
 
-    public static float getXHeight(Graphics2D g2) {
-        var layout = new TextLayout(
-            "x",
-            g2.getFont(),
-            g2.getFontRenderContext()
-        );
-        return (float) (layout.getBounds().getHeight() / 2);
-    }
 }

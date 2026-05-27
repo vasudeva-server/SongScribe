@@ -54,14 +54,6 @@ public final class StringUtils {
     public static final Pattern LF_PATTERN = Pattern.compile("\n");
     public static final Pattern TRIM_END_PATTERN = Pattern.compile("\\s+$");
 
-    // Used to remove syllabify markings from lyrics
-    public static final Pattern IN_PARENTHESES_PATTERN = Pattern.compile(
-        "\\(.*?\\)"
-    );
-    public static final Pattern HYPHEN_UNDERSCORE_PATTERN = Pattern.compile(
-        "(?<!-)\\-|_"
-    );
-
     // When wrapping text, we want each line to have at least this many words
     public static final int MINIMUM_WRAPPED_WORD_COUNT = 3;
 
@@ -102,14 +94,6 @@ public final class StringUtils {
 
     public static String collapseMultipleSpaces(String str) {
         return MULTIPLE_SPACES_PATTERN.matcher(str).replaceAll(" ");
-    }
-
-    public static String removeSyllabifyMarkings(String lyrics) {
-        // Remove characters inside parentheses
-        var result = IN_PARENTHESES_PATTERN.matcher(lyrics).replaceAll("");
-
-        // Remove single hyphens and underscores
-        return HYPHEN_UNDERSCORE_PATTERN.matcher(result).replaceAll("");
     }
 
     public static List<String> wrapText(

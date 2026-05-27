@@ -124,9 +124,13 @@ public final class Prefs {
         var value = INSTANCE.store.get(key.key());
 
         if (value instanceof List<?> list) {
-            return list.stream()
-                    .map(Object::toString)
-                    .toList();
+            return list.stream().map(Object::toString).toList();
+        }
+
+        var defaultValue = INSTANCE.defaults.get(key.key());
+
+        if (defaultValue instanceof List<?> list) {
+            return list.stream().map(Object::toString).toList();
         }
 
         return Collections.emptyList();
@@ -272,14 +276,6 @@ public final class Prefs {
 
                 if (value != null) {
                     result.put(entry.getKey(), value);
-                } else if (element.isJsonArray()) {
-                    var list = new ArrayList<String>();
-
-                    for (var item : element.getAsJsonArray()) {
-                        list.add(item.getAsString());
-                    }
-
-                    result.put(entry.getKey(), list);
                 }
             }
 
@@ -330,6 +326,16 @@ public final class Prefs {
 
         if (element.isJsonObject()) {
             return GSON.fromJson(element, Map.class);
+        }
+
+        if (element.isJsonArray()) {
+            var list = new ArrayList<String>();
+
+            for (var item : element.getAsJsonArray()) {
+                list.add(item.getAsString());
+            }
+
+            return list;
         }
 
         return null;
