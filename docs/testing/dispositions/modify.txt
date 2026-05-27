@@ -36,3 +36,5 @@ HorizontalSpacingCalculatorTest.testCalculatePositionsFirstColumnXSsEqualsClefPl
 GlissandoMidiIntegrationTest.testNoPitchBendWithoutGlissando→testNoPitchBendEventsWhenNoGlissando	4a	row 44 — rewrite to build MIDI track and assert zero pitch-bend events (was fixture-model-only)
 # 3b row 35 — InsertionSpacingCalculator
 InsertionSpacingCalculatorTest.FitsWithinLine.testAppendToEmptyLine→testAppendToEmptyLineReturnsFirstElementX  # was fitsWithinLine(500)-only; pins exact X = calculateFirstElementXSs(keyAccidentalCount)
+# 3c row 37 — SongLayoutMetrics.verseYSsInLine: replace self-referential oracle with concrete literals
+SongLayoutMetricsTest.testVerseBaselineYHelper

@@ -161,22 +161,48 @@ class SongLayoutMetricsTest extends UnitTest {
 
     @Test
     void testVerseBaselineYHelper() {
-        var above = 3.0;
-        var belowContent = 2.5;
-        var lineHeight = above + StaffExtents.STAFF_HEIGHT_SS + 2.0;
+        // Build with known concrete inputs to pin the formula with literal expected values.
+        // above=3.0, STAFF_HEIGHT_SS=4.0 → staffBottomY = 7.0
+        // belowContent=2.5, LYRICS_ROW_MARGIN_SS=1.0, lyricAscent=0 → gap = 1.0
+        // LYRICS_HEIGHT_SS=2.5
+        // verse1 = 7.0 + 2.5 + 1.0 + 0×2.5 = 10.5
+        // verse2 = 7.0 + 2.5 + 1.0 + 1×2.5 = 13.0
+        final double aboveSs = 3.0;
+        final double belowContentSs = 2.5;
+        final double expectedVerse1Ss = 10.5;
+        final double expectedVerse2Ss = 13.0;
+
+        var lineHeight = aboveSs + StaffExtents.STAFF_HEIGHT_SS + 2.0;
         var metrics = SongLayoutMetricsBuilder.build(
-            List.of(fakeLayoutWithVerses(above, lineHeight, belowContent, 2)), 0.0);
+            List.of(fakeLayoutWithVerses(aboveSs, lineHeight, belowContentSs, 2)), 0.0);
 
-        var expectedVerse1 = metrics.staffBottomYSsInLine()
-            + metrics.maxBelowContentSs()
-            + metrics.staffToLyricsGapSs();
-        var expectedVerse2 = metrics.staffBottomYSsInLine()
-            + metrics.maxBelowContentSs()
-            + metrics.staffToLyricsGapSs()
-            + metrics.lyricsLineHeightSs();
+        assertThat(metrics.verseYSsInLine(1)).isEqualTo(expectedVerse1Ss, within(TOLERANCE));
+        assertThat(metrics.verseYSsInLine(2)).isEqualTo(expectedVerse2Ss, within(TOLERANCE));
+    }
 
-        assertThat(metrics.verseYSsInLine(1)).isEqualTo(expectedVerse1, within(TOLERANCE));
-        assertThat(metrics.verseYSsInLine(2)).isEqualTo(expectedVerse2, within(TOLERANCE));
+    @Test
+    void testStaffToLyricsGapIncludesLyricAscent() {
+        // lyricAscentSs=0 is tested in testLyricsBandPopulatedWhenVersesPresent.
+        // Here, pin that the + lyricAscentSs addend is actually added.
+        // LYRICS_ROW_MARGIN_SS=1.0, lyricAscentSs=1.5 → gap = 2.5
+        final double lyricAscentSs = 1.5;
+        final double expectedGapSs = 2.5; // LYRICS_ROW_MARGIN_SS + lyricAscentSs = 1.0 + 1.5
+
+        var above = 2.0;
+        var lineHeight = above + StaffExtents.STAFF_HEIGHT_SS + 2.0;
+        var layout = fakeLayoutWithVerses(above, lineHeight, 1);
+        var metrics = SongLayoutMetricsBuilder.build(List.of(layout), lyricAscentSs);
+
+        assertThat(metrics.staffToLyricsGapSs()).isEqualTo(expectedGapSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testMinLineHeightSsConstantHasConcretePinnedValue() {
+        // STAFF_HEIGHT_SS=4.0 + MIN_ABOVE_STAFF_SS=3.0 + MIN_BELOW_STAFF_SS=4.0 + INTER_LINE_MARGIN_SS=1.25 = 12.25
+        final double expectedMinLineHeightSs = 12.25;
+
+        assertThat(SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS)
+            .isEqualTo(expectedMinLineHeightSs, within(TOLERANCE));
     }
 
     @Test
