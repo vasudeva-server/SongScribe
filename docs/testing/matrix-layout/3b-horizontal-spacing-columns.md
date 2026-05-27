@@ -2,12 +2,12 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| ElementColumn | ctor stores all fields (graceNotes defensively copied) | unit | fixture-only in stacking tests, fields never asserted | inadequate | `ElementColumnTest`: assert field storage + defensive copy | ⬜ |
-| ElementColumn | `getWidthSs` = `abs(leftExtent)+rightExtent` | unit | — | missing | test formula | ⬜ |
-| ElementColumn | `getLeftEdgeXSs` = `xSs+leftExtent`; `getRightEdgeXSs` = `xSs+rightExtent` | unit | — | missing | test (incl. negative leftExtent / accidental) | ⬜ |
-| ElementColumn | `hasSyllable()` false when null or empty | unit | — | missing | null + "" cases | ⬜ |
-| ElementColumn | `minGapToNextSyllableSs` round-trip; default `LyricRenderMetrics.MIN_SYLLABLE_GAP_SS` | unit | — | missing | default + setter | ⬜ |
-| ElementColumn | `isRest`/`isBarline`/`isBeamed`/`hasGraceNotes`/`hasGlissando` delegation | unit | — | missing | one delegation test each | ⬜ |
+| ElementColumn | ctor stores all fields (graceNotes defensively copied) | unit | fixture-only in stacking tests, fields never asserted | inadequate | `ElementColumnTest`: assert field storage + defensive copy | ✅ |
+| ElementColumn | `getWidthSs` = `abs(leftExtent)+rightExtent` | unit | — | missing | test formula | ✅ |
+| ElementColumn | `getLeftEdgeXSs` = `xSs+leftExtent`; `getRightEdgeXSs` = `xSs+rightExtent` | unit | — | missing | test (incl. negative leftExtent / accidental) | ✅ |
+| ElementColumn | `hasSyllable()` false when null or empty | unit | — | missing | null + "" cases | ✅ |
+| ElementColumn | `minGapToNextSyllableSs` round-trip; default `LyricRenderMetrics.MIN_SYLLABLE_GAP_SS` | unit | — | missing | default + setter | ✅ |
+| ElementColumn | `isRest`/`isBarline`/`isBeamed`/`hasGraceNotes`/`hasGlissando` delegation | unit | — | missing | one delegation test each | ✅ |
 | ElementColumnBuilder | `calculateRightExtentSs` unbeamed quaver > notehead-only | unit | `ElementColumnBuilderTest.testUnbeamedQuaverExtentExceedsNoteheadOnly` | adequate | keep | — |
 | ElementColumnBuilder | beamed quaver = notehead-only (flag suppressed) | unit | `testBeamedQuaverExtentEqualsNoteheadOnly` | adequate | keep | — |
 | ElementColumnBuilder | non-flagged types unchanged by beamed/upper | unit | `testNonFlaggedTypesUnchanged` | adequate | keep | — |

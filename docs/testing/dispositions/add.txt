@@ -792,3 +792,17 @@ SectionLayoutTest.testGetHeightReturnsContentBoundsHeight	3a	row 52 — getHeigh
 SectionLayoutTest.testEmptyFactoryHasZeroSizeNoLinesAndNullFont	3a	row 53 — empty() zero size, no lines, null font, zero baseline
 SectionLayoutTest.testStringConstructorWrapsTextInSingleElementList	3a	row 54 — 2-arg string ctor wraps text in single-element list
 SectionLayoutTest.testLinesIsDefensiveCopyOfConstructorArgument	3a	row 55 — lines() defensive copy; mutating source leaves lines() unchanged
+ElementColumnTest.testConstructorStoresAllFields	3b	row 5 — ctor stores element, extents, stem, syllable, beamed
+ElementColumnTest.testConstructorDefensivelyCopiesGraceNotes	3b	row 5 — graceNotes defensively copied; mutating source leaves list unchanged
+ElementColumnTest.testGetWidthSsIsAbsoluteLeftPlusRightExtent	3b	row 6 — getWidthSs = abs(leftExtent)+rightExtent
+ElementColumnTest.testEdgeXPositionsOffsetXSsByExtents	3b	row 7 — getLeftEdgeXSs/getRightEdgeXSs offset xSs by extents (negative left)
+ElementColumnTest.testHasSyllableFalseWhenNull	3b	row 8 — hasSyllable() false when syllable null
+ElementColumnTest.testHasSyllableFalseWhenEmptyString	3b	row 8 — hasSyllable() false when syllable empty string
+ElementColumnTest.testHasSyllableTrueWhenNonEmpty	3b	row 8 — hasSyllable() true when syllable non-empty
+ElementColumnTest.testMinGapToNextSyllableDefaultsToMetricConstant	3b	row 9 — minGapToNextSyllableSs defaults to LyricRenderMetrics.MIN_SYLLABLE_GAP_SS
+ElementColumnTest.testMinGapToNextSyllableSetterRoundTrips	3b	row 9 — setMinGapToNextSyllableSs round-trip
+ElementColumnTest.testIsRestDelegatesToElementType	3b	row 10 — isRest delegates to ElementType.isRest
+ElementColumnTest.testIsBarlineDelegatesToElementType	3b	row 10 — isBarline delegates to ElementType.isBarLine
+ElementColumnTest.testIsBeamedReflectsConstructorFlag	3b	row 10 — isBeamed reflects ctor flag
+ElementColumnTest.testHasGraceNotesReflectsGraceNoteList	3b	row 10 — hasGraceNotes reflects grace-note list
+ElementColumnTest.testHasGlissandoDelegatesToElement	3b	row 10 — hasGlissando delegates to element.getGlissando
