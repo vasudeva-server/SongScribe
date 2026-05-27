@@ -10,10 +10,10 @@
 | ElementBoundsSs | `getVisualBounds()` explicit-visual vs `marginBoundsSs` fallback | unit | — | missing | both branches | ✅ |
 | ElementBoundsSs | coordinate accessors (`getTop/Bottom/Left/Right/MarginTop/MarginBottom Ss`) | unit | — | missing | fold into factory tests | ✅ |
 | ElementBoundsSs | `formatCssSpacing` 5-branch shorthand (all-zero/all-same/2/3/4-value) | unit | — | missing | each branch; **see production observation re px/ss suffixes** | ✅ |
-| ElementBoundsSs | `getPaddingCss`/`getMarginCss` pass correct differentials | unit | — | missing | uniform + asymmetric | ⬜ |
-| InsetsSs | `toInsetsPx()` rounds all four via `ScaleContext.ssToRoundedPx` | unit | — | missing | known scale → exact Insets fields | ⬜ |
+| ElementBoundsSs | `getPaddingCss`/`getMarginCss` pass correct differentials | unit | — | missing | uniform + asymmetric | ✅ |
+| InsetsSs | `toInsetsPx()` rounds all four via `ScaleContext.ssToRoundedPx` | unit | — | missing | known scale → exact Insets fields | ✅ |
 | Size | pure record (`ZERO`, width/height) | none | — | none | trivial data holder | — |
-| Margin | `uniform(m)` all sides equal; `NONE` all zero | unit | — | missing | one-liner asserting invariant | ⬜ |
+| Margin | `uniform(m)` all sides equal; `NONE` all zero | unit | — | missing | one-liner asserting invariant | ✅ |
 | MarginReference | pure documentation enum | none | — | none | no branching | — |
 | LineThickness | each field = `LILYPOND_BASE_THICKNESS_SS × multiplier` | unit | only `barlineSeparationSs()` exercised indirectly (`ElementTypeTest`) | inadequate | assert `stemSs`/`ledgerLineSs`/`hairpinSs`/`voltaBracketSs`/`tupletBracketSs` + multipliers | ⬜ |
 | LineThickness | `barlineSeparationSs()` = `staffLineSs × BARLINE_SEPARATION_MULTIPLIER` | unit | `ElementTypeTest.testDoubleBarlineWidth` | adequate | keep | — |

@@ -429,6 +429,99 @@ class ElementBoundsSsTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // Row 13: getPaddingCss / getMarginCss — correct differentials
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class PaddingAndMarginCss {
+
+        @Test
+        void testGetPaddingCssUniformPaddingReturnsOneToken() {
+            final double contentXSs = 2.0;
+            final double contentYSs = 2.0;
+            final double contentWidthSs = 4.0;
+            final double contentHeightSs = 4.0;
+            final double paddingSs = 2.0;
+            final double marginSs = 5.0;
+            final int expectedTokenSs = (int) paddingSs;
+
+            var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
+            var bounds = ElementBoundsSs.uniform(content, paddingSs, marginSs);
+
+            assertThat(bounds.getPaddingCss()).isEqualTo(expectedTokenSs + "ss");
+        }
+
+        @Test
+        void testGetPaddingCssAsymmetricPaddingReturnsFourTokens() {
+            final double contentXSs = 5.0;
+            final double contentYSs = 5.0;
+            final double contentWidthSs = 4.0;
+            final double contentHeightSs = 4.0;
+            final double topPaddingSs = 1.0;
+            final double rightPaddingSs = 2.0;
+            final double bottomPaddingSs = 3.0;
+            final double leftPaddingSs = 4.0;
+            final int expectedTop = (int) topPaddingSs;
+            final int expectedRight = (int) rightPaddingSs;
+            final int expectedBottom = (int) bottomPaddingSs;
+            final int expectedLeft = (int) leftPaddingSs;
+
+            var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
+            var padding = new Rectangle2D.Double(
+                contentXSs - leftPaddingSs,
+                contentYSs - topPaddingSs,
+                contentWidthSs + leftPaddingSs + rightPaddingSs,
+                contentHeightSs + topPaddingSs + bottomPaddingSs);
+            var bounds = new ElementBoundsSs(content, padding, padding);
+
+            assertThat(bounds.getPaddingCss())
+                .isEqualTo(expectedTop + "ss " + expectedRight + "ss " + expectedBottom + "ss " + expectedLeft + "ss");
+        }
+
+        @Test
+        void testGetMarginCssUniformMarginReturnsOneToken() {
+            final double contentXSs = 2.0;
+            final double contentYSs = 2.0;
+            final double contentWidthSs = 4.0;
+            final double contentHeightSs = 4.0;
+            final double marginSs = 3.0;
+            final int expectedTokenSs = (int) marginSs;
+
+            var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
+            var bounds = ElementBoundsSs.uniform(content, 0.0, marginSs);
+
+            assertThat(bounds.getMarginCss()).isEqualTo(expectedTokenSs + "ss");
+        }
+
+        @Test
+        void testGetMarginCssAsymmetricMarginReturnsFourTokens() {
+            final double contentXSs = 10.0;
+            final double contentYSs = 10.0;
+            final double contentWidthSs = 4.0;
+            final double contentHeightSs = 4.0;
+            final double topMarginSs = 2.0;
+            final double rightMarginSs = 4.0;
+            final double bottomMarginSs = 6.0;
+            final double leftMarginSs = 8.0;
+            final int expectedTop = (int) topMarginSs;
+            final int expectedRight = (int) rightMarginSs;
+            final int expectedBottom = (int) bottomMarginSs;
+            final int expectedLeft = (int) leftMarginSs;
+
+            var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
+            var margin = new Rectangle2D.Double(
+                contentXSs - leftMarginSs,
+                contentYSs - topMarginSs,
+                contentWidthSs + leftMarginSs + rightMarginSs,
+                contentHeightSs + topMarginSs + bottomMarginSs);
+            var bounds = new ElementBoundsSs(content, content, margin);
+
+            assertThat(bounds.getMarginCss())
+                .isEqualTo(expectedTop + "ss " + expectedRight + "ss " + expectedBottom + "ss " + expectedLeft + "ss");
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Row 11: coordinate accessors — content and margin edges
     // -----------------------------------------------------------------------
 
