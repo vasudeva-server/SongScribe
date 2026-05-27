@@ -20,27 +20,41 @@
 
 package songscribe.ui.action;
 
+import module java.desktop;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
 import java.util.Objects;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
+import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
-import songscribe.ui.component.MainFrame;
+import songscribe.dom.StaffElement;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.BarWasSelectedNotification;
+import songscribe.message.notification.DurationWasSelectedNotification;
 
-class ElementTypeActionTest extends UnitTest {
+class ElementTypeActionTest extends MainFrameMockTest {
 
-    private static final MainFrame MOCK_FRAME = mock(MainFrame.class, RETURNS_DEEP_STUBS);
+    private ElementTypeAction durationAction;
+    private ElementTypeAction nonDurationAction;
+    private ElementTypeAction breathMarkAction;
+    private ElementTypeAction glissandoAction;
 
-    private final ElementTypeAction durationAction =
-        ElementTypeAction.createQuarterNoteAction(MOCK_FRAME);
-
-    private final ElementTypeAction nonDurationAction =
-        ElementTypeAction.createSingleBarlineAction(MOCK_FRAME);
+    @BeforeEach
+    void createActions() {
+        durationAction = ElementTypeAction.createQuarterNoteAction(mainFrame());
+        nonDurationAction = ElementTypeAction.createSingleBarlineAction(mainFrame());
+        breathMarkAction = ElementTypeAction.createBreathMarkAction(mainFrame());
+        glissandoAction = ElementTypeAction.createGlissandoAction(mainFrame());
+    }
 
     // CR2: createReplacement preserves note kind (note stays note)
     @Test
@@ -61,7 +75,7 @@ class ElementTypeActionTest extends UnitTest {
     // CR4: createReplacement with grace note (toNote/toRest returns this)
     @Test
     void testCreateReplacementWithGraceNote() {
-        var graceAction = ElementTypeAction.createGraceEighthNoteAction(MOCK_FRAME);
+        var graceAction = ElementTypeAction.createGraceEighthNoteAction(mainFrame());
         var element = ElementType.CROTCHET.newInstance();
         var replacement = Objects.requireNonNull(graceAction.createReplacement(element, true));
         assertThat(replacement.getType()).isEqualTo(ElementType.GRACE_QUAVER);
@@ -146,5 +160,64 @@ class ElementTypeActionTest extends UnitTest {
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue();
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE)).isTrue();
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_EDITING_TEXT)).isTrue();
+    }
+
+    // Row 7: BREATH_MARK appliesTo — applies only to BREATH_MARK elements, not barlines
+    @Test
+    void testBreathMarkAppliesToBreathMark() {
+        var element = ElementType.BREATH_MARK.newInstance();
+        assertThat(breathMarkAction.appliesTo(element)).isTrue();
+    }
+
+    @Test
+    void testBreathMarkDoesNotApplyToBarline() {
+        var element = ElementType.SINGLE_BARLINE.newInstance();
+        assertThat(breathMarkAction.appliesTo(element)).isFalse();
+    }
+
+    // Row 9: matchesGlissandoType — true when type matches, false when it differs
+    @Test
+    void testMatchesGlissandoTypeWhenMatches() {
+        assertThat(glissandoAction.matchesGlissandoType(StaffElement.Glissando.Type.CONNECTED)).isTrue();
+    }
+
+    @Test
+    void testMatchesGlissandoTypeWhenDiffers() {
+        assertThat(glissandoAction.matchesGlissandoType(StaffElement.Glissando.Type.SLIDE_OUT)).isFalse();
+    }
+
+    // Rows 11–12: actionPerformed posts the correct notification when no active selection
+    @Nested
+    class ActionPerformed {
+
+        private MockedStatic<MessageCenter> messageMock;
+
+        @BeforeEach
+        void setUpMessageCenter() {
+            messageMock = mockStatic(MessageCenter.class);
+        }
+
+        @AfterEach
+        void tearDownMessageCenter() {
+            messageMock.close();
+        }
+
+        @Test
+        void testDurationActionPostsDurationWasSelectedNotification() {
+            var e = new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "");
+            durationAction.actionPerformed(e);
+            var captor = ArgumentCaptor.forClass(DurationWasSelectedNotification.class);
+            messageMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue().getNoteType()).isEqualTo(ElementType.CROTCHET);
+        }
+
+        @Test
+        void testNonDurationActionPostsBarWasSelectedNotification() {
+            var e = new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "");
+            nonDurationAction.actionPerformed(e);
+            var captor = ArgumentCaptor.forClass(BarWasSelectedNotification.class);
+            messageMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue().getNoteType()).isEqualTo(ElementType.SINGLE_BARLINE);
+        }
     }
 }

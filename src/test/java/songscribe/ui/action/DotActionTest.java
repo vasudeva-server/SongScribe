@@ -104,4 +104,11 @@ class DotActionTest extends UnitTest {
         note.setDotCount(1);
         assertThat(singleDotAction.matchesElement(note)).isTrue();
     }
+
+    @Test
+    void testSingleDotDoesNotMatchDotCount2() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setDotCount(2);
+        assertThat(singleDotAction.matchesElement(note)).isFalse();
+    }
 }
