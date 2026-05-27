@@ -538,7 +538,6 @@ public final class LineIO {
         }
 
         private void parseEndingPairs(String str) {
-            pendingEndingPairs.clear();
             forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var a = Integer.parseInt(str.substring(begin, firstComma));

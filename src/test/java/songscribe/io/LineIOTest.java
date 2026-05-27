@@ -944,16 +944,16 @@ class LineIOTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // ParseEndingPairsClearsFirst — row 37
+    // ParseEndingPairsAccumulates — row 37
     // -------------------------------------------------------------------------
 
     @Nested
-    class ParseEndingPairsClearsFirst {
+    class ParseEndingPairsAccumulates {
 
         @Test
-        void testSecondCallReplacesFirstBatch() {
-            // parseEndingPairs clears pendingEndingPairs before accumulating (unlike other parsers).
-            // Calling it twice (two XML_FSENDINGS tags) → only the second batch survives.
+        void testSecondCallAccumulatesBothBatches() {
+            // parseEndingPairs accumulates, consistent with all other parse* methods.
+            // Two XML_FSENDINGS tags → both batches survive.
             var reader = buildReaderWithNotes(
                 ElementType.CROTCHET,
                 ElementType.CROTCHET,
@@ -961,17 +961,19 @@ class LineIOTest extends UnitTest {
             );
             // First batch: ending at 0–1
             feedTag(reader, LineIO.XML_FSENDINGS, "0,1;");
-            // Second batch: ending at 1–2 only — should replace the first
+            // Second batch: ending at 1–2 — should accumulate with first
             feedTag(reader, LineIO.XML_FSENDINGS, "1,2;");
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
             if (parsedLine == null) return;
             var endings = parsedLine.findRangeElements(Ending.class);
-            // Only the second batch (1 ending) survives
-            assertThat(endings).hasSize(1);
-            assertThat(endings.getFirst().getAnchorElementIndex()).isEqualTo(1);
-            assertThat(endings.getFirst().getEndElementIndex()).isEqualTo(2);
+            // Both batches survive — 2 endings total
+            assertThat(endings).hasSize(2);
+            assertThat(endings.get(0).getAnchorElementIndex()).isEqualTo(0);
+            assertThat(endings.get(0).getEndElementIndex()).isEqualTo(1);
+            assertThat(endings.get(1).getAnchorElementIndex()).isEqualTo(1);
+            assertThat(endings.get(1).getEndElementIndex()).isEqualTo(2);
         }
     }
 
