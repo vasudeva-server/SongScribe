@@ -43,10 +43,10 @@
 | LayoutResult | `contains` true iff `elementBounds` has element | unit | — | missing | write test | ✅ |
 | LayoutResult | `getDecorationLayoutsByType` filters by class | unit | — | missing | two types → each filtered list correct | ✅ |
 | LayoutResult | `getElementXSs` 0 / `getElementPosition` null for unknown element | unit | — | missing | write tests | ✅ |
-| LayoutAccumulator | `add`/`intersects` (Rectangle2D + Area), overlap true / non-overlap false | unit | — | missing | write tests | ⬜ |
-| LayoutAccumulator | `clear` → `isEmpty` true and `intersects` false; fresh `isEmpty` true | unit | — | missing | write tests | ⬜ |
-| LayoutAccumulator | `getArea()` returns defensive copy | unit | — | missing | mutate return; accumulator unchanged | ⬜ |
-| LayoutAccumulator | union of two rects intersects a spanning rect | unit | — | missing | write test | ⬜ |
+| LayoutAccumulator | `add`/`intersects` (Rectangle2D + Area), overlap true / non-overlap false | unit | — | missing | write tests | ✅ |
+| LayoutAccumulator | `clear` → `isEmpty` true and `intersects` false; fresh `isEmpty` true | unit | — | missing | write tests | ✅ |
+| LayoutAccumulator | `getArea()` returns defensive copy | unit | — | missing | mutate return; accumulator unchanged | ✅ |
+| LayoutAccumulator | union of two rects intersects a spanning rect | unit | — | missing | write test | ✅ |
 | SectionLayout | `hasContent()` true non-empty / false empty list / false empty first line | unit | — | missing | 3 tests | ⬜ |
 | SectionLayout | `getText()` first line / "" when empty | unit | — | missing | write tests | ⬜ |
 | SectionLayout | `getHeight()` from content bounds | unit | — | missing | known-bounds test | ⬜ |

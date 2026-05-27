@@ -774,3 +774,11 @@ LayoutResultTest.testContainsReflectsElementBoundsMembership	3a	row 43 — conta
 LayoutResultTest.testGetDecorationLayoutsByTypeFiltersByClass	3a	row 44 — two types filtered to own entry/layout
 LayoutResultTest.testGetElementXSsReturnsColumnXOrZero	3a	row 45 — column X for laid-out element, 0 for unknown
 LayoutResultTest.testGetElementPositionReturnsTopLeftOrNull	3a	row 45 — content top-left for laid-out element, null for unknown
+LayoutAccumulatorTest.testIntersectsRectangleReturnsTrueWhenRectanglesOverlap	3a	row 46 — add(Rectangle2D) + intersects(Rectangle2D); genuine area overlap true
+LayoutAccumulatorTest.testIntersectsRectangleReturnsFalseWhenRectanglesDisjoint	3a	row 46 — disjoint rectangle does not intersect
+LayoutAccumulatorTest.testIntersectsAreaReturnsTrueWhenAreasOverlap	3a	row 46 — add(Area) + intersects(Area) overlap true
+LayoutAccumulatorTest.testIntersectsAreaReturnsFalseWhenAreasDisjoint	3a	row 46 — disjoint area does not intersect
+LayoutAccumulatorTest.testFreshAccumulatorIsEmpty	3a	row 47 — fresh accumulator isEmpty true
+LayoutAccumulatorTest.testClearMakesAccumulatorEmptyAndStopsIntersecting	3a	row 47 — clear() → isEmpty true and intersects false
+LayoutAccumulatorTest.testGetAreaReturnsDefensiveCopy	3a	row 48 — mutating returned area leaves accumulator unchanged
+LayoutAccumulatorTest.testUnionOfTwoRectanglesIntersectsSpanningRectangle	3a	row 49 — union of two rects; spanning rect intersects, gap probe does not
