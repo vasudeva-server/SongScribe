@@ -22,6 +22,8 @@ package songscribe.io;
 import java.io.PrintWriter;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Annotation;
 
@@ -61,6 +63,8 @@ public final class AnnotationIO {
 
     public static class AnnotationReader {
 
+        private static final Logger LOG = LoggerFactory.getLogger(AnnotationReader.class);
+
         @Nullable
         private Annotation annotation = null;
 
@@ -92,13 +96,27 @@ public final class AnnotationIO {
 
                 switch (lastTag) {
                     case XML_NAME -> annotation.setAnnotation(str);
-                    case XML_ALIGNMENT -> annotation.setXAlignment(
-                        Float.parseFloat(str)
-                    );
-                    case XML_YPOS -> annotation.setYPosPx(Integer.parseInt(str));
-                    case XML_USER_Y_OFFSET -> annotation.setUserYOffsetSs(
-                        Double.parseDouble(str)
-                    );
+                    case XML_ALIGNMENT -> {
+                        try {
+                            annotation.setXAlignment(Float.parseFloat(str));
+                        } catch (NumberFormatException e) {
+                            LOG.warn("Corrupt document: malformed alignment: '{}', using default", str);
+                        }
+                    }
+                    case XML_YPOS -> {
+                        try {
+                            annotation.setYPosPx(Integer.parseInt(str));
+                        } catch (NumberFormatException e) {
+                            LOG.warn("Corrupt document: malformed ypos: '{}', using default", str);
+                        }
+                    }
+                    case XML_USER_Y_OFFSET -> {
+                        try {
+                            annotation.setUserYOffsetSs(Double.parseDouble(str));
+                        } catch (NumberFormatException e) {
+                            LOG.warn("Corrupt document: malformed userYOffset: '{}', using default", str);
+                        }
+                    }
                 }
             }
 

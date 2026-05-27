@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.font.DocumentFonts;
 import songscribe.font.DocumentFontsHolder;
@@ -70,6 +72,8 @@ public final class ViewIO {
 
     public static class ViewReader {
 
+        private static final Logger LOG = LoggerFactory.getLogger(ViewReader.class);
+
         @Nullable
         private String lastTag;
 
@@ -81,9 +85,16 @@ public final class ViewIO {
             var defaults = DocumentFonts.defaultsFromPrefs();
             for (var t : FONT_TAGS) {
                 var sf = StringFont.from(defaults, t.key);
+                var sizeTag = t.sizeTag;
                 stringFonts.put(t.key, sf);
                 setters.put(t.nameTag, v -> sf.name = v);
-                setters.put(t.sizeTag, v -> sf.size = v);
+                setters.put(sizeTag, v -> {
+                    try {
+                        sf.size = Integer.parseInt(v);
+                    } catch (NumberFormatException e) {
+                        LOG.warn("Corrupt document: malformed font size for {}: '{}', using default", sizeTag, v);
+                    }
+                });
             }
         }
 
@@ -120,26 +131,23 @@ public final class ViewIO {
          */
         public DocumentFonts getDocumentFonts() {
             var fonts = new DocumentFonts();
-            stringFonts.forEach((key, sf) -> fonts.setFont(key, sf.name, sf.sizeAsInt()));
+            stringFonts.forEach((key, sf) -> fonts.setFont(key, sf.name, sf.size));
             return fonts;
         }
 
         private static class StringFont {
 
-            String name, size;
+            String name;
+            int size;
 
-            StringFont(String name, String size) {
+            StringFont(String name, int size) {
                 this.name = name;
                 this.size = size;
             }
 
             static StringFont from(DocumentFonts defaults, FontKey key) {
                 var font = defaults.getFont(key);
-                return new StringFont(font.getPSName(), Integer.toString(font.getSize()));
-            }
-
-            int sizeAsInt() {
-                return Integer.parseInt(size);
+                return new StringFont(font.getPSName(), font.getSize());
             }
 
         }

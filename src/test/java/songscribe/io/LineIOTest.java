@@ -30,13 +30,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.LoggerFactory;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
@@ -60,14 +67,14 @@ class LineIOTest extends UnitTest {
     private Line line;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         messageCenterMock = mockStatic(MessageCenter.class);
         song = new Song();
         line = song.getLine(0);
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws Exception {
         messageCenterMock.close();
     }
 
@@ -85,7 +92,7 @@ class LineIOTest extends UnitTest {
      * Uses a mock song with mutation tracking suspended so direct field writes succeed.
      */
     @Nullable
-    private static Line parseLineTag(String tagName, String content) {
+    private static Line parseLineTag(String tagName, String content) throws SAXException {
         var emptyAttrs = new AttributesImpl();
         var reader = new LineIO.LineReader(minimalSongMock());
         reader.startElement11("line", emptyAttrs);
@@ -103,7 +110,7 @@ class LineIOTest extends UnitTest {
     class WriteLineDeltaKeySig {
 
         @Test
-        void testDifferingKeyWritesKeysAndKeytypeTags() {
+        void testDifferingKeyWritesKeysAndKeytypeTags() throws Exception {
             // Line key differs from song default (5 flats) → tags must appear
             song.withModification(() -> {
                 line.setKeyAccidentalCount(2);
@@ -117,7 +124,7 @@ class LineIOTest extends UnitTest {
         }
 
         @Test
-        void testMatchingSongDefaultOmitsKeysTags() {
+        void testMatchingSongDefaultOmitsKeysTags() throws Exception {
             // Line key matches song default → tags must be absent
             var output = writeLine(line);
 
@@ -136,7 +143,7 @@ class LineIOTest extends UnitTest {
         private static final float RATIO_ONE_AND_HALF = 1.5f;
 
         @Test
-        void testNonUnitRatioWritesNoteDist() {
+        void testNonUnitRatioWritesNoteDist() throws Exception {
             song.withModification(() -> line.changeElementSpacingRatio(RATIO_ONE_AND_HALF));
 
             var output = writeLine(line);
@@ -145,7 +152,7 @@ class LineIOTest extends UnitTest {
         }
 
         @Test
-        void testUnitRatioOmitsNoteDist() {
+        void testUnitRatioOmitsNoteDist() throws Exception {
             // elementSpacingRatio defaults to 1.0 — no changeElementSpacingRatio call
             var output = writeLine(line);
 
@@ -161,7 +168,7 @@ class LineIOTest extends UnitTest {
     class WriteLineLyricsYPos {
 
         @Test
-        void testAlwaysWritesLyricsYPosTag() {
+        void testAlwaysWritesLyricsYPosTag() throws Exception {
             var output = writeLine(line);
 
             assertThat(output).contains("<" + LineIO.XML_LYRICS_YPOS + ">");
@@ -176,7 +183,7 @@ class LineIOTest extends UnitTest {
     class WriteLineLegacyYPosTags {
 
         @Test
-        void testLegacyYPosTagsAbsentInNewDocuments() {
+        void testLegacyYPosTagsAbsentInNewDocuments() throws Exception {
             var output = writeLine(line);
 
             assertThat(output).doesNotContain("<" + LineIO.XML_TEMPO_CHANGE_YPOS + ">");
@@ -194,7 +201,7 @@ class LineIOTest extends UnitTest {
     class BeamsToString {
 
         @Test
-        void testKnownBeamListProducesAnchorEndPairs() {
+        void testKnownBeamListProducesAnchorEndPairs() throws Exception {
             var elements = lineWith(
                 ElementType.QUAVER,
                 ElementType.QUAVER,
@@ -217,7 +224,7 @@ class LineIOTest extends UnitTest {
                 elements.addRangeElement(beam);
             }
 
-            var result = LineIO.beamsToString(elements.findRangeElements(Beam.class));
+            var result = LineIO.rangeElementsToString(elements.findRangeElements(Beam.class));
 
             assertThat(result).isEqualTo("0,1;2,3;");
         }
@@ -231,26 +238,26 @@ class LineIOTest extends UnitTest {
     class TrillsToString {
 
         @Test
-        void testZeroYPosOmitsYPos() {
+        void testZeroYPosOmitsYPos() throws Exception {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             var trill = new Trill(elements.getElement(0), elements.getElement(1));
             elements.addRangeElement(trill);
 
-            var result = LineIO.trillsToString(elements.findRangeElements(Trill.class));
+            var result = LineIO.rangeElementsToString(elements.findRangeElements(Trill.class));
 
             // yPositionSs == 0 → omitted; format: anchor,end;
             assertThat(result).isEqualTo("0,1;");
         }
 
         @Test
-        void testNonZeroYPosIncludesYPos() {
+        void testNonZeroYPosIncludesYPos() throws Exception {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             var trill = new Trill(elements.getElement(0), elements.getElement(1));
             final int Y_POS = 3;
             trill.setYPositionSs(Y_POS);
             elements.addRangeElement(trill);
 
-            var result = LineIO.trillsToString(elements.findRangeElements(Trill.class));
+            var result = LineIO.rangeElementsToString(elements.findRangeElements(Trill.class));
 
             // yPositionSs != 0 → included; format: anchor,end,yPos;
             assertThat(result).isEqualTo("0,1,3;");
@@ -267,7 +274,7 @@ class LineIOTest extends UnitTest {
         private static final int TRIPLET_GRADE = 3;
 
         @Test
-        void testZeroVertPosOmitsVertPos() {
+        void testZeroVertPosOmitsVertPos() throws Exception {
             var elements = lineWith(
                 ElementType.CROTCHET,
                 ElementType.CROTCHET,
@@ -277,14 +284,14 @@ class LineIOTest extends UnitTest {
             var tuplet = new Tuplet(elements.getElement(0), elements.getElement(2), TRIPLET_GRADE);
             elements.addTuplet(tuplet);
 
-            var result = LineIO.tupletsToString(elements.findRangeElements(Tuplet.class));
+            var result = LineIO.rangeElementsToString(elements.findRangeElements(Tuplet.class));
 
             // verticalPositionSs == 0 → omitted; format: anchor,end,grade;
             assertThat(result).isEqualTo("0,2,3;");
         }
 
         @Test
-        void testNonZeroVertPosIncludesVertPos() {
+        void testNonZeroVertPosIncludesVertPos() throws Exception {
             var elements = lineWith(
                 ElementType.CROTCHET,
                 ElementType.CROTCHET,
@@ -296,7 +303,7 @@ class LineIOTest extends UnitTest {
             tuplet.setVerticalPositionSs(VERT_POS);
             elements.addTuplet(tuplet);
 
-            var result = LineIO.tupletsToString(elements.findRangeElements(Tuplet.class));
+            var result = LineIO.rangeElementsToString(elements.findRangeElements(Tuplet.class));
 
             // verticalPositionSs != 0 → included; format: anchor,end,grade,vertPos;
             assertThat(result).isEqualTo("0,2,3,4;");
@@ -311,18 +318,18 @@ class LineIOTest extends UnitTest {
     class HairpinsToString {
 
         @Test
-        void testAllShiftsZeroOmitsShifts() {
+        void testAllShiftsZeroOmitsShifts() throws Exception {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             var crescendo = new Crescendo(elements.getElement(0), elements.getElement(1));
             elements.addRangeElement(crescendo);
 
-            var result = LineIO.hairpinsToString(elements.findRangeElements(Crescendo.class));
+            var result = LineIO.rangeElementsToString(elements.findRangeElements(Crescendo.class));
 
             assertThat(result).isEqualTo("0,1;");
         }
 
         @Test
-        void testAnyNonZeroShiftIncludesAllShifts() {
+        void testAnyNonZeroShiftIncludesAllShifts() throws Exception {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             var diminuendo = new Diminuendo(elements.getElement(0), elements.getElement(1));
             final double X1 = 1.5;
@@ -333,7 +340,7 @@ class LineIOTest extends UnitTest {
             diminuendo.setYShiftSs(Y);
             elements.addRangeElement(diminuendo);
 
-            var result = LineIO.hairpinsToString(elements.findRangeElements(Diminuendo.class));
+            var result = LineIO.rangeElementsToString(elements.findRangeElements(Diminuendo.class));
 
             // All three shift fields written when any is non-zero
             assertThat(result).isEqualTo("0,1," + X1 + "," + X2 + "," + Y + ";");
@@ -348,12 +355,12 @@ class LineIOTest extends UnitTest {
     class EndingsToString {
 
         @Test
-        void testProducesAnchorEndPair() {
+        void testProducesAnchorEndPair() throws Exception {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             var ending = new Ending(elements.getElement(0), elements.getElement(1));
             elements.addRangeElement(ending);
 
-            var result = LineIO.endingsToString(elements.findRangeElements(Ending.class));
+            var result = LineIO.rangeElementsToString(elements.findRangeElements(Ending.class));
 
             // Serialized as anchor,end; pairs only.
             assertThat(result).isEqualTo("0,1;");
@@ -368,21 +375,21 @@ class LineIOTest extends UnitTest {
     class ForEachSegment {
 
         @Test
-        void testEmptyStringYieldsZeroIterations() {
+        void testEmptyStringYieldsZeroIterations() throws Exception {
             var count = new int[]{0};
             LineIO.forEachSegment("", (begin, end) -> count[0]++);
             assertThat(count[0]).isEqualTo(0);
         }
 
         @Test
-        void testSingleSegmentYieldsOneIteration() {
+        void testSingleSegmentYieldsOneIteration() throws Exception {
             var segments = new ArrayList<String>();
             LineIO.forEachSegment("0,1;", (begin, end) -> segments.add("0,1;".substring(begin, end)));
             assertThat(segments).containsExactly("0,1");
         }
 
         @Test
-        void testMultipleSegmentsYieldsOneIterationEach() {
+        void testMultipleSegmentsYieldsOneIterationEach() throws Exception {
             var segments = new ArrayList<String>();
             var input = "0,1;2,3;4,5;";
             LineIO.forEachSegment(input, (begin, end) -> segments.add(input.substring(begin, end)));
@@ -398,37 +405,37 @@ class LineIOTest extends UnitTest {
     class LineReaderStateMachine {
 
         @Test
-        void testLineTagCreatesLineAndSetsWhereLine() {
+        void testLineTagCreatesLineAndSetsWhereLine() throws Exception {
             var reader = new LineIO.LineReader(minimalSongMock());
-            assertThat(reader.line).isNull();
-            assertThat(reader.where).isNull();
+            assertThat(reader.getLine()).isNull();
+            assertThat(reader.getWhere()).isNull();
 
             reader.startElement11("line", new AttributesImpl());
 
-            assertThat(reader.line).isNotNull();
-            assertThat(reader.where).isEqualTo(LineIO.LineReader.Where.LINE);
+            assertThat(reader.getLine()).isNotNull();
+            assertThat(reader.getWhere()).isEqualTo(LineIO.LineReader.Where.LINE);
         }
 
         @Test
-        void testNotesTagTransitionsToWhereNotes() {
+        void testNotesTagTransitionsToWhereNotes() throws Exception {
             var reader = new LineIO.LineReader(minimalSongMock());
             reader.startElement11("line", new AttributesImpl());
-            assertThat(reader.where).isEqualTo(LineIO.LineReader.Where.LINE);
+            assertThat(reader.getWhere()).isEqualTo(LineIO.LineReader.Where.LINE);
 
             reader.startElement11("notes", new AttributesImpl());
 
-            assertThat(reader.where).isEqualTo(LineIO.LineReader.Where.NOTES);
+            assertThat(reader.getWhere()).isEqualTo(LineIO.LineReader.Where.NOTES);
         }
 
         @Test
-        void testUnknownTagSetsLastTag() {
+        void testUnknownTagSetsLastTag() throws Exception {
             var reader = new LineIO.LineReader(minimalSongMock());
             reader.startElement11("line", new AttributesImpl());
-            assertThat(reader.lastTag).isNull();
+            assertThat(reader.getLastTag()).isNull();
 
             reader.startElement11("keys", new AttributesImpl());
 
-            assertThat(reader.lastTag).isEqualTo("keys");
+            assertThat(reader.getLastTag()).isEqualTo("keys");
         }
     }
 
@@ -442,12 +449,28 @@ class LineIOTest extends UnitTest {
         private static final int KEY_COUNT = 5;
 
         @Test
-        void testKeysTagSetsKeyAccidentalCount() {
+        void testKeysTagSetsKeyAccidentalCount() throws Exception {
             var parsedLine = parseLineTag(LineIO.XML_KEYS, String.valueOf(KEY_COUNT));
 
             assertThat(parsedLine).isNotNull();
             if (parsedLine == null) return;
             assertThat(parsedLine.getKeyAccidentalCount()).isEqualTo(KEY_COUNT);
+        }
+
+        @Test
+        void testNonNumericKeysThrowsSAXException() throws Exception {
+            // Non-numeric <keys> value → parseIntOrThrow → SAXException with "malformed" and value
+            var badValue = "abc";
+            var emptyAttrs = new AttributesImpl();
+            var reader = new LineIO.LineReader(minimalSongMock());
+            reader.startElement11("line", emptyAttrs);
+            reader.startElement11(LineIO.XML_KEYS, emptyAttrs);
+            reader.characters(badValue.toCharArray(), 0, badValue.length());
+
+            assertThatThrownBy(() -> reader.endElement11(LineIO.XML_KEYS))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("malformed")
+                .hasMessageContaining(badValue);
         }
     }
 
@@ -459,7 +482,7 @@ class LineIOTest extends UnitTest {
     class EndElement11Keytype {
 
         @Test
-        void testKeytypeTagSetsKeyType() {
+        void testKeytypeTagSetsKeyType() throws Exception {
             var parsedLine = parseLineTag(LineIO.XML_KEYTYPE, KeyType.FLATS.name());
 
             assertThat(parsedLine).isNotNull();
@@ -478,7 +501,7 @@ class LineIOTest extends UnitTest {
         private static final float SPACING_RATIO = 1.25f;
 
         @Test
-        void testNotedistchangeTagSetsElementSpacingRatio() {
+        void testNotedistchangeTagSetsElementSpacingRatio() throws Exception {
             var parsedLine = parseLineTag(LineIO.XML_NOTE_DIST_CHANGE, String.valueOf(SPACING_RATIO));
 
             assertThat(parsedLine).isNotNull();
@@ -497,7 +520,7 @@ class LineIOTest extends UnitTest {
         private static final double LYRICS_YPOS = 5.0;
 
         @Test
-        void testLyricsyposTagSetsLyricsYPosSs() {
+        void testLyricsyposTagSetsLyricsYPosSs() throws Exception {
             var parsedLine = parseLineTag(LineIO.XML_LYRICS_YPOS, String.valueOf(LYRICS_YPOS));
 
             assertThat(parsedLine).isNotNull();
@@ -516,7 +539,7 @@ class LineIOTest extends UnitTest {
         private static final int YPOS_PX = 42;
 
         @Test
-        void testBeatchangeyposTagSetsBeatChangeYPosPx() {
+        void testBeatchangeyposTagSetsBeatChangeYPosPx() throws Exception {
             var parsedLine = parseLineTag(LineIO.XML_BEAT_CHANGE_YPOS, String.valueOf(YPOS_PX));
 
             assertThat(parsedLine).isNotNull();
@@ -525,7 +548,7 @@ class LineIOTest extends UnitTest {
         }
 
         @Test
-        void testFsendingyposTagSetsFirstSecondEndingYPosPx() {
+        void testFsendingyposTagSetsFirstSecondEndingYPosPx() throws Exception {
             var parsedLine = parseLineTag(LineIO.XML_FSENDING_YPOS, String.valueOf(YPOS_PX));
 
             assertThat(parsedLine).isNotNull();
@@ -534,7 +557,7 @@ class LineIOTest extends UnitTest {
         }
 
         @Test
-        void testTempochangeyposTagSetsTempoChangeYPosPx() {
+        void testTempochangeyposTagSetsTempoChangeYPosPx() throws Exception {
             var parsedLine = parseLineTag(LineIO.XML_TEMPO_CHANGE_YPOS, String.valueOf(YPOS_PX));
 
             assertThat(parsedLine).isNotNull();
@@ -543,7 +566,7 @@ class LineIOTest extends UnitTest {
         }
 
         @Test
-        void testTrillyposTagSetsTrillYPosPx() {
+        void testTrillyposTagSetsTrillYPosPx() throws Exception {
             var parsedLine = parseLineTag(LineIO.XML_TRILL_YPOS, String.valueOf(YPOS_PX));
 
             assertThat(parsedLine).isNotNull();
@@ -560,7 +583,7 @@ class LineIOTest extends UnitTest {
     class EndElement11SlursIgnored {
 
         @Test
-        void testSlursTagSilentlyIgnored() {
+        void testSlursTagSilentlyIgnored() throws Exception {
             // <slurs> is a removed feature; the parser must silently ignore it
             var parsedLine = parseLineTag("slurs", "0,1;");
 
@@ -577,12 +600,12 @@ class LineIOTest extends UnitTest {
     class BeamRoundTrip {
 
         @Test
-        void testBeamRoundTripPreservesAnchorAndEnd() {
+        void testBeamRoundTripPreservesAnchorAndEnd() throws Exception {
             var elements = lineWith(ElementType.QUAVER, ElementType.QUAVER, ElementType.QUAVER);
             var beam = new Beam(elements.getElement(0), elements.getElement(2));
             elements.addRangeElement(beam);
 
-            var serialized = LineIO.beamsToString(elements.findRangeElements(Beam.class));
+            var serialized = LineIO.rangeElementsToString(elements.findRangeElements(Beam.class));
 
             // Feed into a reader with matching notes to reconstruct
             var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER, ElementType.QUAVER);
@@ -607,18 +630,36 @@ class LineIOTest extends UnitTest {
     class CreateBeamsFromPendingOutOfRange {
 
         @Test
-        void testOutOfRangePairsProduceZeroBeams() {
-            // Line has 2 elements (indices 0-1); supply three malformed pairs:
-            //   anchor < 0, end >= count, anchor > end
+        void testAnchorBelowZeroThrowsSAXException() throws Exception {
+            // anchor < 0 → SAXException (previously silently skipped)
             var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER);
+            feedTag(reader, LineIO.XML_BEAMINGS, "-1,1;");
 
-            // anchor=-1 (anchor<0), end=5 (>=count), anchor=1 end=0 (anchor>end)
-            feedTag(reader, LineIO.XML_BEAMINGS, "-1,1;0,5;1,0;");
-            var parsedLine = reader.endElement11("line");
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("beam index out of range");
+        }
 
-            assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
-            assertThat(parsedLine.findRangeElements(Beam.class)).isEmpty();
+        @Test
+        void testEndBeyondCountThrowsSAXException() throws Exception {
+            // end >= elementCount → SAXException
+            var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER);
+            feedTag(reader, LineIO.XML_BEAMINGS, "0,5;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("beam index out of range");
+        }
+
+        @Test
+        void testCrossedPairThrowsSAXException() throws Exception {
+            // anchor > end → SAXException
+            var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER);
+            feedTag(reader, LineIO.XML_BEAMINGS, "1,0;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("beam index out of range");
         }
     }
 
@@ -630,15 +671,48 @@ class LineIOTest extends UnitTest {
     class CreateTiesFromPendingPairsOutOfRange {
 
         @Test
-        void testOutOfRangeTiePairThrowsIndexOutOfBoundsException() {
-            // createTiesFromPendingPairs has no bounds guard — IndexOutOfBoundsException
-            // is expected when a pair references an index beyond the element count.
-            // Line.getElement() uses ArrayList.get() which throws IndexOutOfBoundsException.
+        void testEndBeyondCountThrowsSAXException() throws Exception {
+            // end >= elementCount → SAXException (bounds guard added in Phase 1)
             var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER);
             feedTag(reader, LineIO.XML_TIES, "0,5;");
 
             assertThatThrownBy(() -> reader.endElement11("line"))
-                .isInstanceOf(IndexOutOfBoundsException.class);
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("tie index out of range");
+        }
+
+        @Test
+        void testNegativeAnchorThrowsSAXException() throws Exception {
+            // anchor < 0 → SAXException
+            var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER);
+            feedTag(reader, LineIO.XML_TIES, "-1,1;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("tie index out of range");
+        }
+
+        @Test
+        void testCrossedPairThrowsSAXException() throws Exception {
+            // anchor > end → SAXException
+            var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER);
+            feedTag(reader, LineIO.XML_TIES, "1,0;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("tie index out of range");
+        }
+
+        @Test
+        void testValidTiePairLoadsSuccessfully() throws Exception {
+            // Valid pair within bounds → Tie is created, no exception
+            var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER);
+            feedTag(reader, LineIO.XML_TIES, "0,1;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.findRangeElements(Tie.class)).hasSize(1);
         }
     }
 
@@ -652,7 +726,7 @@ class LineIOTest extends UnitTest {
         private static final int EXPECTED_GRADE = 3;
 
         @Test
-        void testLegacyTripletsTagDefaultsGradeToThree() {
+        void testLegacyTripletsTagDefaultsGradeToThree() throws Exception {
             // <triplets> format omits grade; parseTupletData defaults to 3
             var reader = buildReaderWithNotes(
                 ElementType.CROTCHET,
@@ -680,7 +754,7 @@ class LineIOTest extends UnitTest {
         private static final int QUINTUPLET_GRADE = 5;
 
         @Test
-        void testExplicitGradeFiveRoundTrip() {
+        void testExplicitGradeFiveRoundTrip() throws Exception {
             // Serialized: <tuplets>0,4,5;</tuplets> → parsed grade must be 5
             var reader = buildReaderWithNotes(
                 ElementType.QUAVER,
@@ -711,7 +785,7 @@ class LineIOTest extends UnitTest {
         private static final int VERT_POS = 7;
 
         @Test
-        void testNonZeroVertPosParsedCorrectly() {
+        void testNonZeroVertPosParsedCorrectly() throws Exception {
             // Serialized: <tuplets>0,2,3,7;</tuplets> → verticalPositionSs must be 7
             var reader = buildReaderWithNotes(
                 ElementType.CROTCHET,
@@ -737,16 +811,36 @@ class LineIOTest extends UnitTest {
     class CreateTupletsFromPendingOutOfRange {
 
         @Test
-        void testOutOfRangePairsProduceZeroTuplets() {
-            // Line has 2 elements (indices 0-1); supply three malformed pairs:
-            //   anchor < 0, end >= count, anchor > end
+        void testAnchorBelowZeroThrowsSAXException() throws Exception {
+            // anchor < 0 → SAXException (previously silently skipped)
             var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
-            feedTag(reader, LineIO.XML_TUPLETS, "-1,1,3;0,5,3;1,0,3;");
-            var parsedLine = reader.endElement11("line");
+            feedTag(reader, LineIO.XML_TUPLETS, "-1,1,3;");
 
-            assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
-            assertThat(parsedLine.findRangeElements(Tuplet.class)).isEmpty();
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("tuplet index out of range");
+        }
+
+        @Test
+        void testEndBeyondCountThrowsSAXException() throws Exception {
+            // end >= elementCount → SAXException
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_TUPLETS, "0,5,3;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("tuplet index out of range");
+        }
+
+        @Test
+        void testCrossedPairThrowsSAXException() throws Exception {
+            // anchor > end → SAXException
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_TUPLETS, "1,0,3;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("tuplet index out of range");
         }
     }
 
@@ -760,40 +854,77 @@ class LineIOTest extends UnitTest {
         private static final int DEFAULT_GRADE = 3;
         private static final int DEFAULT_VERT_POS = 0;
 
-        @Test
-        void testNonNumericGradeDefaultsToThree() {
-            // Non-numeric grade token → defaults to 3
-            var reader = buildReaderWithNotes(
-                ElementType.CROTCHET,
-                ElementType.CROTCHET,
-                ElementType.CROTCHET
-            );
-            feedTag(reader, LineIO.XML_TUPLETS, "0,2,bad;");
-            var parsedLine = reader.endElement11("line");
+        /**
+         * Attaches a ListAppender to the LineIO.LineReader logger and returns it.
+         * The caller is responsible for detaching after the test.
+         */
+        private static ListAppender<ILoggingEvent> attachListAppender() throws Exception {
+            var logger = (Logger) LoggerFactory.getLogger(LineIO.LineReader.class);
+            var appender = new ListAppender<ILoggingEvent>();
+            appender.start();
+            logger.addAppender(appender);
+            return appender;
+        }
 
-            assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
-            var tuplets = parsedLine.findRangeElements(Tuplet.class);
-            assertThat(tuplets).hasSize(1);
-            assertThat(tuplets.getFirst().getGrade()).isEqualTo(DEFAULT_GRADE);
+        private static void detachAppender(ListAppender<ILoggingEvent> appender) {
+            var logger = (Logger) LoggerFactory.getLogger(LineIO.LineReader.class);
+            logger.detachAppender(appender);
         }
 
         @Test
-        void testNonNumericVertPosDefaultsToZero() {
-            // Non-numeric vertPos token → defaults to 0
-            var reader = buildReaderWithNotes(
-                ElementType.CROTCHET,
-                ElementType.CROTCHET,
-                ElementType.CROTCHET
-            );
-            feedTag(reader, LineIO.XML_TUPLETS, "0,2,3,bad;");
-            var parsedLine = reader.endElement11("line");
+        void testNonNumericGradeDefaultsToThreeAndLogsWarn() throws Exception {
+            // Non-numeric grade token → defaults to 3 and logs WARN (W-1)
+            var appender = attachListAppender();
+            try {
+                var reader = buildReaderWithNotes(
+                    ElementType.CROTCHET,
+                    ElementType.CROTCHET,
+                    ElementType.CROTCHET
+                );
+                feedTag(reader, LineIO.XML_TUPLETS, "0,2,bad;");
+                var parsedLine = reader.endElement11("line");
 
-            assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
-            var tuplets = parsedLine.findRangeElements(Tuplet.class);
-            assertThat(tuplets).hasSize(1);
-            assertThat(tuplets.getFirst().getVerticalPositionSs()).isEqualTo(DEFAULT_VERT_POS);
+                assertThat(parsedLine).isNotNull();
+                if (parsedLine == null) return;
+                var tuplets = parsedLine.findRangeElements(Tuplet.class);
+                assertThat(tuplets).hasSize(1);
+                assertThat(tuplets.getFirst().getGrade()).isEqualTo(DEFAULT_GRADE);
+
+                // WARN must have been logged for the malformed grade
+                assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("grade"));
+            } finally {
+                detachAppender(appender);
+            }
+        }
+
+        @Test
+        void testNonNumericVertPosDefaultsToZeroAndLogsWarn() throws Exception {
+            // Non-numeric vertPos token → defaults to 0 and logs WARN (W-1)
+            var appender = attachListAppender();
+            try {
+                var reader = buildReaderWithNotes(
+                    ElementType.CROTCHET,
+                    ElementType.CROTCHET,
+                    ElementType.CROTCHET
+                );
+                feedTag(reader, LineIO.XML_TUPLETS, "0,2,3,bad;");
+                var parsedLine = reader.endElement11("line");
+
+                assertThat(parsedLine).isNotNull();
+                if (parsedLine == null) return;
+                var tuplets = parsedLine.findRangeElements(Tuplet.class);
+                assertThat(tuplets).hasSize(1);
+                assertThat(tuplets.getFirst().getVerticalPositionSs()).isEqualTo(DEFAULT_VERT_POS);
+
+                // WARN must have been logged for the malformed verticalPositionSs
+                assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("verticalPositionSs"));
+            } finally {
+                detachAppender(appender);
+            }
         }
     }
 
@@ -805,7 +936,7 @@ class LineIOTest extends UnitTest {
     class CrescendoRoundTripAllZeroShifts {
 
         @Test
-        void testAllZeroShiftsRoundTrip() {
+        void testAllZeroShiftsRoundTrip() throws Exception {
             // Serialized: <crescendo>0,2;</crescendo> → all shifts 0
             var reader = buildReaderWithNotes(
                 ElementType.CROTCHET,
@@ -838,7 +969,7 @@ class LineIOTest extends UnitTest {
         private static final double Y_SHIFT = 0.25;
 
         @Test
-        void testExplicitShiftsPreservedInRoundTrip() {
+        void testExplicitShiftsPreservedInRoundTrip() throws Exception {
             // Serialized: <crescendo>0,2,1.5,-0.5,0.25;</crescendo>
             var reader = buildReaderWithNotes(
                 ElementType.CROTCHET,
@@ -871,7 +1002,7 @@ class LineIOTest extends UnitTest {
         private static final double Y_SHIFT = 0.75;
 
         @Test
-        void testAllZeroShiftsRoundTrip() {
+        void testAllZeroShiftsRoundTrip() throws Exception {
             // Serialized: <diminuendo>0,2;</diminuendo> → all shifts 0
             var reader = buildReaderWithNotes(
                 ElementType.CROTCHET,
@@ -892,7 +1023,7 @@ class LineIOTest extends UnitTest {
         }
 
         @Test
-        void testExplicitShiftsPreservedInRoundTrip() {
+        void testExplicitShiftsPreservedInRoundTrip() throws Exception {
             // Serialized: <diminuendo>0,2,0.5,-1.0,0.75;</diminuendo>
             var reader = buildReaderWithNotes(
                 ElementType.CROTCHET,
@@ -921,7 +1052,7 @@ class LineIOTest extends UnitTest {
     class ParseHairpinPairsPartialShift {
 
         @Test
-        void testPartialShiftDataKeepsAllShiftsZero() {
+        void testPartialShiftDataKeepsAllShiftsZero() throws Exception {
             // <crescendo>0,2,1.5;</crescendo> has only 1 shift part instead of 3
             // → parts.length < 3, so all shifts remain 0
             var reader = buildReaderWithNotes(
@@ -941,6 +1072,40 @@ class LineIOTest extends UnitTest {
             assertThat(c.getX2ShiftSs()).isEqualTo(0.0);
             assertThat(c.getYShiftSs()).isEqualTo(0.0);
         }
+
+        @Test
+        void testMalformedShiftValuesLoadsWithZeroShiftsAndLogsWarn() throws Exception {
+            // Non-numeric shift values → WARN logged, all shifts remain 0 (W-2)
+            var logger = (Logger) LoggerFactory.getLogger(LineIO.LineReader.class);
+            var appender = new ListAppender<ILoggingEvent>();
+            appender.start();
+            logger.addAppender(appender);
+            try {
+                var reader = buildReaderWithNotes(
+                    ElementType.CROTCHET,
+                    ElementType.CROTCHET,
+                    ElementType.CROTCHET
+                );
+                feedTag(reader, LineIO.XML_CRESCENDO, "0,2,bad,worse,terrible;");
+                var parsedLine = reader.endElement11("line");
+
+                assertThat(parsedLine).isNotNull();
+                if (parsedLine == null) return;
+                var crescendos = parsedLine.findRangeElements(Crescendo.class);
+                assertThat(crescendos).hasSize(1);
+                var c = crescendos.getFirst();
+                assertThat(c.getX1ShiftSs()).isEqualTo(0.0);
+                assertThat(c.getX2ShiftSs()).isEqualTo(0.0);
+                assertThat(c.getYShiftSs()).isEqualTo(0.0);
+
+                // WARN must have been logged for the malformed shift values
+                assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("hairpin shift values"));
+            } finally {
+                logger.detachAppender(appender);
+            }
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -951,7 +1116,7 @@ class LineIOTest extends UnitTest {
     class ParseEndingPairsAccumulates {
 
         @Test
-        void testSecondCallAccumulatesBothBatches() {
+        void testSecondCallAccumulatesBothBatches() throws Exception {
             // parseEndingPairs accumulates, consistent with all other parse* methods.
             // Two XML_FSENDINGS tags → both batches survive.
             var reader = buildReaderWithNotes(
@@ -985,7 +1150,7 @@ class LineIOTest extends UnitTest {
     class TrillRoundTrip {
 
         @Test
-        void testZeroYPositionRoundTrip() {
+        void testZeroYPositionRoundTrip() throws Exception {
             // <trills>0,2;</trills> → yPositionSs == 0
             var reader = buildReaderWithNotes(
                 ElementType.CROTCHET,
@@ -1005,7 +1170,7 @@ class LineIOTest extends UnitTest {
         }
 
         @Test
-        void testNonZeroYPositionRoundTrip() {
+        void testNonZeroYPositionRoundTrip() throws Exception {
             // <trills>0,2,5;</trills> → yPositionSs == 5
             final int Y_POS = 5;
             var reader = buildReaderWithNotes(
@@ -1035,7 +1200,7 @@ class LineIOTest extends UnitTest {
          * Builds a reader with {@code count} notes, marking notes at the given indices
          * with a legacy {@code <trill>} tag. Notes not in {@code trillIndices} get no trill flag.
          */
-        private static LineIO.LineReader buildReaderWithTrillNotes(int count, int... trillIndices) {
+        private static LineIO.LineReader buildReaderWithTrillNotes(int count, int... trillIndices) throws SAXException {
             var emptyAttrs = new AttributesImpl();
             var trillSet = new java.util.HashSet<Integer>();
             for (var idx : trillIndices) {
@@ -1062,7 +1227,7 @@ class LineIOTest extends UnitTest {
         }
 
         @Test
-        void testContiguousIndicesCoalesceIntoOneTrill() {
+        void testContiguousIndicesCoalesceIntoOneTrill() throws Exception {
             // Notes at indices 2,3,4 are trill-flagged → single Trill covering [2,4]
             final int NOTE_COUNT = 5;
             var reader = buildReaderWithTrillNotes(NOTE_COUNT, 2, 3, 4);
@@ -1077,7 +1242,7 @@ class LineIOTest extends UnitTest {
         }
 
         @Test
-        void testNonContiguousIndicesProduceTwoTrillPairs() {
+        void testNonContiguousIndicesProduceTwoTrillPairs() throws Exception {
             // Notes at indices 2 and 4 (non-contiguous) → two Trills: [2,2] and [4,4]
             final int NOTE_COUNT = 5;
             var reader = buildReaderWithTrillNotes(NOTE_COUNT, 2, 4);
@@ -1102,7 +1267,7 @@ class LineIOTest extends UnitTest {
     class EndElement11FullLineParse {
 
         @Test
-        void testAllCreateMethodsInvokedOnLineClose() {
+        void testAllCreateMethodsInvokedOnLineClose() throws Exception {
             // Full start/chars/end sequence with all range element types:
             // beam, tie, tuplet, crescendo, diminuendo, trill, ending.
             // Uses 5 notes (indices 0-4) with valid ranges for all types.
@@ -1137,6 +1302,249 @@ class LineIOTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // CreateEndingsFromPendingPairsOutOfRange — C-2
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class CreateEndingsFromPendingPairsOutOfRange {
+
+        @Test
+        void testEndBeyondCountThrowsSAXException() throws Exception {
+            // end >= elementCount → SAXException (Phase 1 bounds guard)
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_FSENDINGS, "0,5;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("ending index out of range");
+        }
+
+        @Test
+        void testNegativeAnchorThrowsSAXException() throws Exception {
+            // anchor < 0 → SAXException
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_FSENDINGS, "-1,1;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("ending index out of range");
+        }
+
+        @Test
+        void testCrossedPairThrowsSAXException() throws Exception {
+            // anchor > end → SAXException
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_FSENDINGS, "1,0;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("ending index out of range");
+        }
+
+        @Test
+        void testValidEndingPairLoadsSuccessfully() throws Exception {
+            // Valid pair within bounds → Ending is created
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_FSENDINGS, "0,1;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.findRangeElements(Ending.class)).hasSize(1);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // CreateTrillsFromPendingPairsOutOfRange — C-3
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class CreateTrillsFromPendingPairsOutOfRange {
+
+        @Test
+        void testEndBeyondCountThrowsSAXException() throws Exception {
+            // end >= elementCount → SAXException (Phase 1 bounds guard)
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_TRILLS, "0,5;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("trill index out of range");
+        }
+
+        @Test
+        void testNegativeAnchorThrowsSAXException() throws Exception {
+            // anchor < 0 → SAXException
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_TRILLS, "-1,1;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("trill index out of range");
+        }
+
+        @Test
+        void testCrossedPairThrowsSAXException() throws Exception {
+            // anchor > end → SAXException
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_TRILLS, "1,0;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("trill index out of range");
+        }
+
+        @Test
+        void testValidTrillPairLoadsSuccessfully() throws Exception {
+            // Valid pair within bounds → Trill is created
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_TRILLS, "0,1;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.findRangeElements(Trill.class)).hasSize(1);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // CreateCrescendosFromPendingOutOfRange — C-4
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class CreateCrescendosFromPendingOutOfRange {
+
+        @Test
+        void testEndBeyondCountThrowsSAXException() throws Exception {
+            // end >= elementCount → SAXException (Phase 1 bounds guard with double→int cast)
+            // The parser reads integer indices; createCrescendosFromPending casts double→int
+            // before the bounds check. Index 5 > elementCount(2) so bounds guard fires.
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_CRESCENDO, "0,5;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("crescendo index out of range");
+        }
+
+        @Test
+        void testEndAtExactCountBoundaryThrowsSAXException() throws Exception {
+            // end == elementCount (2 with 2 elements, 0-based: valid = 0,1) → SAXException
+            // The double→int cast: index 2 is stored as double 2.0, cast back to int 2
+            // = elementCount, so the bounds check fires.
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_CRESCENDO, "0,2;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("crescendo index out of range");
+        }
+
+        @Test
+        void testValidCrescendoPairLoadsSuccessfully() throws Exception {
+            // Valid pair within bounds → Crescendo is created
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_CRESCENDO, "0,1;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.findRangeElements(Crescendo.class)).hasSize(1);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // CreateDiminuendosFromPendingOutOfRange — C-5
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class CreateDiminuendosFromPendingOutOfRange {
+
+        @Test
+        void testEndBeyondCountThrowsSAXException() throws Exception {
+            // end >= elementCount → SAXException (Phase 1 bounds guard with double→int cast)
+            // The parser reads integer indices; createDiminuendosFromPending casts double→int
+            // before the bounds check. Index 5 > elementCount(2) so bounds guard fires.
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_DIMINUENDO, "0,5;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("diminuendo index out of range");
+        }
+
+        @Test
+        void testEndAtExactCountBoundaryThrowsSAXException() throws Exception {
+            // end == elementCount (2 with 2 elements, 0-based: valid = 0,1) → SAXException
+            // The double→int cast: index 2 is stored as double 2.0, cast back to int 2
+            // = elementCount, so the bounds check fires.
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_DIMINUENDO, "0,2;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("diminuendo index out of range");
+        }
+
+        @Test
+        void testValidDiminuendoPairLoadsSuccessfully() throws Exception {
+            // Valid pair within bounds → Diminuendo is created
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_DIMINUENDO, "0,1;");
+            var parsedLine = reader.endElement11("line");
+
+            assertThat(parsedLine).isNotNull();
+            if (parsedLine == null) return;
+            assertThat(parsedLine.findRangeElements(Diminuendo.class)).hasSize(1);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndElement11KeytypeInvalid — C-9a
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndElement11KeytypeInvalid {
+
+        @Test
+        void testUnknownKeytypeStringThrowsSAXException() throws Exception {
+            // Unknown KeyType string → SAXException (Phase 2, C-9a)
+            var emptyAttrs = new AttributesImpl();
+            var reader = new LineIO.LineReader(minimalSongMock());
+            reader.startElement11("line", emptyAttrs);
+            reader.startElement11(LineIO.XML_KEYTYPE, emptyAttrs);
+            reader.characters("BOGUS_TYPE".toCharArray(), 0, "BOGUS_TYPE".length());
+
+            assertThatThrownBy(() -> reader.endElement11(LineIO.XML_KEYTYPE))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("unknown key type");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // EndElement11TrillYPosInvalid — C-9b
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EndElement11TrillYPosInvalid {
+
+        @Test
+        void testNonNumericTrillYPosThrowsSAXException() throws Exception {
+            // Non-numeric value for XML_TRILL_YPOS → SAXException (Phase 2, C-9b)
+            var content = "notanumber";
+            var emptyAttrs = new AttributesImpl();
+            var reader = new LineIO.LineReader(minimalSongMock());
+            reader.startElement11("line", emptyAttrs);
+            reader.startElement11(LineIO.XML_TRILL_YPOS, emptyAttrs);
+            reader.characters(content.toCharArray(), 0, content.length());
+
+            assertThatThrownBy(() -> reader.endElement11(LineIO.XML_TRILL_YPOS))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining(LineIO.XML_TRILL_YPOS);
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // LineReaderNullGuard — row 41
     // -------------------------------------------------------------------------
 
@@ -1144,7 +1552,7 @@ class LineIOTest extends UnitTest {
     class LineReaderNullGuard {
 
         @Test
-        void testEndElementBeforeStartElementReturnsNull() {
+        void testEndElementBeforeStartElementReturnsNull() throws Exception {
             // endElement11 before any startElement → line == null → returns null
             var reader = new LineIO.LineReader(minimalSongMock());
             var result = reader.endElement11("line");
@@ -1162,7 +1570,7 @@ class LineIOTest extends UnitTest {
      * {@code <notes>} block). The reader is left open at WHERE.LINE,
      * ready to accept additional tags before {@code endElement11("line")}.
      */
-    private static LineIO.LineReader buildReaderWithNotes(ElementType... types) {
+    private static LineIO.LineReader buildReaderWithNotes(ElementType... types) throws SAXException {
         var emptyAttrs = new AttributesImpl();
         var reader = new LineIO.LineReader(minimalSongMock());
         reader.startElement11("line", emptyAttrs);
@@ -1185,7 +1593,7 @@ class LineIOTest extends UnitTest {
     /**
      * Feeds a single tag with text content to an open LineReader (WHERE.LINE state).
      */
-    private static void feedTag(LineIO.LineReader reader, String tagName, String content) {
+    private static void feedTag(LineIO.LineReader reader, String tagName, String content) throws SAXException {
         var emptyAttrs = new AttributesImpl();
         reader.startElement11(tagName, emptyAttrs);
         reader.characters(content.toCharArray(), 0, content.length());

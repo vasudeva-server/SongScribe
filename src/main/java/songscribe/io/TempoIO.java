@@ -23,6 +23,9 @@ import java.io.PrintWriter;
 import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
 import songscribe.dom.Duration;
 import songscribe.dom.Tempo;
@@ -76,6 +79,8 @@ public final class TempoIO {
     }
 
     public static class TempoReader {
+
+        private static final Logger LOG = LoggerFactory.getLogger(TempoReader.class);
 
         @Nullable
         private Tempo tempo = null;
@@ -148,7 +153,7 @@ public final class TempoIO {
         }
 
         @Nullable
-        public Tempo endElement11(String qName) {
+        public Tempo endElement11(String qName) throws SAXException {
             if (qName.equals(XML_TEMPO)) {
                 return tempo;
             }
@@ -163,9 +168,13 @@ public final class TempoIO {
                     case XML_VISIBLE_TEMPO -> tempo.setVisibleTempo(
                         Integer.parseInt(str)
                     );
-                    case XML_TEMPO_TYPE -> tempo.setTempoType(
-                        Duration.valueOf(str)
-                    );
+                    case XML_TEMPO_TYPE -> {
+                        try {
+                            tempo.setTempoType(Duration.valueOf(str));
+                        } catch (IllegalArgumentException e) {
+                            throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown tempo duration: '{}'", str);
+                        }
+                    }
                     case XML_TEMPO_DESCRIPTION -> tempo.setTempoDescription(
                         str
                     );

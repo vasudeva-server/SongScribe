@@ -24,21 +24,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
 
-import songscribe.dom.KeyType;
-import songscribe.dom.Line;
-import songscribe.dom.Song;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
-import songscribe.layout.Ending;
-import songscribe.layout.LineEndingSupport;
-import songscribe.dom.Hairpin;
+import songscribe.dom.KeyType;
+import songscribe.dom.Line;
+import songscribe.dom.RangeElement;
+import songscribe.dom.Song;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.layout.Ending;
+import songscribe.layout.LineEndingSupport;
 
 public final class LineIO {
 
@@ -109,19 +111,19 @@ public final class LineIO {
         var beams = line.findRangeElements(Beam.class);
 
         if (!beams.isEmpty()) {
-            XML.writeValue(pw, XML_BEAMINGS, beamsToString(beams));
+            XML.writeValue(pw, XML_BEAMINGS, rangeElementsToString(beams));
         }
 
         var ties = line.findTies();
 
         if (!ties.isEmpty()) {
-            XML.writeValue(pw, XML_TIES, tiesToString(ties));
+            XML.writeValue(pw, XML_TIES, rangeElementsToString(ties));
         }
 
         var tuplets = line.findRangeElements(Tuplet.class);
 
         if (!tuplets.isEmpty()) {
-            XML.writeValue(pw, XML_TUPLETS, tupletsToString(tuplets));
+            XML.writeValue(pw, XML_TUPLETS, rangeElementsToString(tuplets));
         }
 
         var endings = LineEndingSupport.findEndings(line);
@@ -130,26 +132,26 @@ public final class LineIO {
             XML.writeValue(
                 pw,
                 XML_FSENDINGS,
-                endingsToString(endings)
+                rangeElementsToString(endings)
             );
         }
 
         var crescendos = line.getCrescendos();
 
         if (!crescendos.isEmpty()) {
-            XML.writeValue(pw, XML_CRESCENDO, hairpinsToString(crescendos));
+            XML.writeValue(pw, XML_CRESCENDO, rangeElementsToString(crescendos));
         }
 
         var diminuendos = line.getDiminuendos();
 
         if (!diminuendos.isEmpty()) {
-            XML.writeValue(pw, XML_DIMINUENDO, hairpinsToString(diminuendos));
+            XML.writeValue(pw, XML_DIMINUENDO, rangeElementsToString(diminuendos));
         }
 
         var trills = line.findRangeElements(Trill.class);
 
         if (!trills.isEmpty()) {
-            XML.writeValue(pw, XML_TRILLS, trillsToString(trills));
+            XML.writeValue(pw, XML_TRILLS, rangeElementsToString(trills));
         }
 
         pw.println("      <" + XML_NOTES + '>');
@@ -162,112 +164,17 @@ public final class LineIO {
         pw.println("    </" + XML_LINE + '>');
     }
 
-    private static String tiesToString(List<? extends Tie> ties) {
+    static String rangeElementsToString(List<? extends RangeElement> elements) {
         var sb = new StringBuilder(27);
 
-        for (var tie : ties) {
-            sb.append(tie.getAnchorElementIndex());
-            sb.append(',');
-            sb.append(tie.getEndElementIndex());
-            sb.append(';');
+        for (var element : elements) {
+            sb.append(element.toIndexString());
         }
 
         return sb.toString();
     }
 
-    static String trillsToString(List<? extends Trill> trills) {
-        var sb = new StringBuilder(27);
-
-        for (var trill : trills) {
-            sb.append(trill.getAnchorElementIndex());
-            sb.append(',');
-            sb.append(trill.getEndElementIndex());
-
-            if (trill.getYPositionSs() != 0) {
-                sb.append(',');
-                sb.append(trill.getYPositionSs());
-            }
-
-            sb.append(';');
-        }
-
-        return sb.toString();
-    }
-
-    static String endingsToString(List<? extends Ending> endings) {
-        var sb = new StringBuilder(27);
-
-        for (var ending : endings) {
-            sb.append(ending.getAnchorElementIndex());
-            sb.append(',');
-            sb.append(ending.getEndElementIndex());
-            sb.append(';');
-        }
-
-        return sb.toString();
-    }
-
-    static String beamsToString(List<? extends Beam> beams) {
-        var sb = new StringBuilder(27);
-
-        for (var beam : beams) {
-            sb.append(beam.getAnchorElementIndex());
-            sb.append(',');
-            sb.append(beam.getEndElementIndex());
-            sb.append(';');
-        }
-
-        return sb.toString();
-    }
-
-    static String tupletsToString(List<? extends Tuplet> tuplets) {
-        var sb = new StringBuilder(27);
-
-        for (var tuplet : tuplets) {
-            sb.append(tuplet.getAnchorElementIndex());
-            sb.append(',');
-            sb.append(tuplet.getEndElementIndex());
-            sb.append(',');
-            sb.append(tuplet.getGrade());
-
-            if (tuplet.getVerticalPositionSs() != 0) {
-                sb.append(',');
-                sb.append(tuplet.getVerticalPositionSs());
-            }
-
-            sb.append(';');
-        }
-
-        return sb.toString();
-    }
-
-    static String hairpinsToString(List<? extends Hairpin> hairpins) {
-        var sb = new StringBuilder(27);
-
-        for (var hairpin : hairpins) {
-            sb.append(hairpin.getAnchorElementIndex());
-            sb.append(',');
-            sb.append(hairpin.getEndElementIndex());
-
-            var x1 = hairpin.getX1ShiftSs();
-            var x2 = hairpin.getX2ShiftSs();
-            var y = hairpin.getYShiftSs();
-
-            if (x1 != 0 || x2 != 0 || y != 0) {
-                sb.append(',');
-                sb.append(x1);
-                sb.append(',');
-                sb.append(x2);
-                sb.append(',');
-                sb.append(y);
-            }
-
-            sb.append(';');
-        }
-
-        return sb.toString();
-    }
-
+    @SuppressWarnings("PackageVisibleInnerClass")
     @FunctionalInterface
     interface SegmentConsumer {
         void accept(int begin, int end);
@@ -286,20 +193,22 @@ public final class LineIO {
 
     public static class LineReader {
 
+        private static final Logger LOG = LoggerFactory.getLogger(LineReader.class);
+
         private final Song song;
 
         @Nullable
-        Line line = null;
+        private Line line = null;
 
         @Nullable
-        String lastTag;
+        private String lastTag;
 
         @org.jetbrains.annotations.Nullable
         private StaffElementIO.StaffElementReader noteReader = null;
         private final StringBuilder value = new StringBuilder(20);
 
         @Nullable
-        Where where = null;
+        private Where where = null;
 
         /** Temporarily holds parsed fsendings index pairs (start, end) until elements are loaded. */
         private final List<int[]> pendingEndingPairs = new ArrayList<>();
@@ -351,28 +260,27 @@ public final class LineIO {
          */
         private final List<int[]> pendingBeamPairs = new ArrayList<>();
 
-        /**
-         * Parses the {@code <beamings>} line-scope data into pending pairs.
-         * Format: {@code anchor,end;...}
-         */
-        private void parseBeamPairs(String str) {
+        private void parseIndexPairs(String str, List<int[]> pendingList) {
             forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var a = Integer.parseInt(str.substring(begin, firstComma));
                 var b = Integer.parseInt(str.substring(firstComma + 1, end));
-                pendingBeamPairs.add(new int[]{a, b});
+                pendingList.add(new int[]{a, b});
             });
+        }
+
+        /** Parses the {@code <beamings>} line-scope data into pending pairs. Format: {@code anchor,end;...} */
+        private void parseBeamPairs(String str) {
+            parseIndexPairs(str, pendingBeamPairs);
         }
 
         /**
          * Creates {@link Beam} range elements from the parsed beam index pairs.
          * Called at end-of-line after all elements have been loaded.
          */
-        private void createBeamsFromPending(Line line) {
+        private void createBeamsFromPending(Line line) throws SAXException {
             for (var pair : pendingBeamPairs) {
-                if (pair[0] < 0 || pair[1] >= line.elementCount() || pair[0] > pair[1]) {
-                    continue;
-                }
+                DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "beam");
 
                 var anchorElement = line.getElement(pair[0]);
                 var endElement = line.getElement(pair[1]);
@@ -386,8 +294,10 @@ public final class LineIO {
          * Creates {@link Tie} range elements from the parsed tie index pairs.
          * Called at end-of-line after all elements have been loaded.
          */
-        private void createTiesFromPendingPairs(Line line) {
+        private void createTiesFromPendingPairs(Line line) throws SAXException {
             for (var pair : pendingTiePairs) {
+                DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "tie");
+
                 var anchorElement = line.getElement(pair[0]);
                 var endElement = line.getElement(pair[1]);
                 var tie = new Tie(anchorElement, endElement);
@@ -401,10 +311,14 @@ public final class LineIO {
          * Creates {@link Crescendo} range elements from the parsed crescendo data.
          * Called at end-of-line after all elements have been loaded.
          */
-        private void createCrescendosFromPending(Line line) {
+        private void createCrescendosFromPending(Line line) throws SAXException {
             for (var data : pendingCrescendoPairs) {
-                var anchorElement = line.getElement((int) data[0]);
-                var endElement = line.getElement((int) data[1]);
+                var start = (int) data[0];
+                var end = (int) data[1];
+                DocumentValidation.requireIndexInRange(LOG, start, end, line.elementCount(), "crescendo");
+
+                var anchorElement = line.getElement(start);
+                var endElement = line.getElement(end);
                 var crescendo = new Crescendo(anchorElement, endElement);
                 crescendo.setX1ShiftSs(data[2]);
                 crescendo.setX2ShiftSs(data[3]);
@@ -419,10 +333,14 @@ public final class LineIO {
          * Creates {@link Diminuendo} range elements from the parsed diminuendo data.
          * Called at end-of-line after all elements have been loaded.
          */
-        private void createDiminuendosFromPending(Line line) {
+        private void createDiminuendosFromPending(Line line) throws SAXException {
             for (var data : pendingDiminuendoPairs) {
-                var anchorElement = line.getElement((int) data[0]);
-                var endElement = line.getElement((int) data[1]);
+                var start = (int) data[0];
+                var end = (int) data[1];
+                DocumentValidation.requireIndexInRange(LOG, start, end, line.elementCount(), "diminuendo");
+
+                var anchorElement = line.getElement(start);
+                var endElement = line.getElement(end);
                 var diminuendo = new Diminuendo(anchorElement, endElement);
                 diminuendo.setX1ShiftSs(data[2]);
                 diminuendo.setX2ShiftSs(data[3]);
@@ -433,17 +351,9 @@ public final class LineIO {
             pendingDiminuendoPairs.clear();
         }
 
-        /**
-         * Parses the {@code <ties>} line-scope data into pending pairs.
-         * Format: {@code anchor,end;...}
-         */
+        /** Parses the {@code <ties>} line-scope data into pending pairs. Format: {@code anchor,end;...} */
         private void parseTiePairs(String str) {
-            forEachSegment(str, (begin, end) -> {
-                var firstComma = str.indexOf(',', begin);
-                var a = Integer.parseInt(str.substring(begin, firstComma));
-                var b = Integer.parseInt(str.substring(firstComma + 1, end));
-                pendingTiePairs.add(new int[]{a, b});
-            });
+            parseIndexPairs(str, pendingTiePairs);
         }
 
         /**
@@ -466,6 +376,7 @@ public final class LineIO {
                     try {
                         grade = Integer.parseInt(parts[0]);
                     } catch (NumberFormatException _) {
+                        LOG.warn("Corrupt document: malformed tuplet grade: '{}', using default {}", parts[0], grade);
                         // Leave grade at default of 3
                     }
 
@@ -473,6 +384,7 @@ public final class LineIO {
                         try {
                             verticalPositionSs = Double.parseDouble(parts[1]);
                         } catch (NumberFormatException e) {
+                            LOG.warn("Corrupt document: malformed tuplet verticalPositionSs: '{}', using default {}", parts[1], verticalPositionSs);
                             verticalPositionSs = 0.0;
                         }
                     }
@@ -486,16 +398,13 @@ public final class LineIO {
          * Creates {@link Tuplet} range elements from the pending tuplet data.
          * Called at end-of-line after all elements have been loaded.
          */
-        private void createTupletsFromPending(Line line) {
+        private void createTupletsFromPending(Line line) throws SAXException {
             for (var data : pendingTupletData) {
                 var anchorIdx = (int) data[0];
                 var endIdx = (int) data[1];
                 var grade = (int) data[2];
                 var verticalPositionSs = (int) data[3];
-
-                if (anchorIdx < 0 || endIdx >= line.elementCount() || anchorIdx > endIdx) {
-                    continue;
-                }
+                DocumentValidation.requireIndexInRange(LOG, anchorIdx, endIdx, line.elementCount(), "tuplet");
 
                 var anchorElement = line.getElement(anchorIdx);
                 var endElement = line.getElement(endIdx);
@@ -520,7 +429,8 @@ public final class LineIO {
 
                 if (segment.secondComma() != -1) {
                     // Has data portion: x1,x2,y
-                    var parts = str.substring(segment.secondComma() + 1, end).split(",");
+                    var substring = str.substring(segment.secondComma() + 1, end);
+                    var parts = substring.split(",");
 
                     if (parts.length >= 3) {
                         try {
@@ -528,6 +438,9 @@ public final class LineIO {
                             x2 = Double.parseDouble(parts[1]);
                             y = Double.parseDouble(parts[2]);
                         } catch (NumberFormatException ignored) {
+                            LOG.warn("Corrupt document: malformed hairpin shift values '{}', using zero",
+                                substring
+                            );
                             // Leave shifts at 0
                         }
                     }
@@ -537,16 +450,12 @@ public final class LineIO {
             });
         }
 
+        /** Parses the {@code <fsendings>} line-scope data into pending pairs. Format: {@code anchor,end;...} */
         private void parseEndingPairs(String str) {
-            forEachSegment(str, (begin, end) -> {
-                var firstComma = str.indexOf(',', begin);
-                var a = Integer.parseInt(str.substring(begin, firstComma));
-                var b = Integer.parseInt(str.substring(firstComma + 1, end));
-                pendingEndingPairs.add(new int[]{a, b});
-            });
+            parseIndexPairs(str, pendingEndingPairs);
         }
 
-        public void startElement11(String qName, Attributes attributes) {
+        public void startElement11(String qName, Attributes attributes) throws SAXException {
             if (where == null) {
                 if (qName.equals(XML_LINE)) {
                     where = Where.LINE;
@@ -568,7 +477,7 @@ public final class LineIO {
         }
 
         @Nullable
-        public Line endElement11(String qName) {
+        public Line endElement11(String qName) throws SAXException {
             if (line == null || noteReader == null) {
                 return null;
             }
@@ -604,30 +513,20 @@ public final class LineIO {
                     var str = value.toString();
 
                     switch (lastTag) {
-                        case XML_KEYS -> line.setKeyAccidentalCount(
-                            Integer.parseInt(str)
-                        );
-                        case XML_KEYTYPE -> line.setKeyType(
-                            KeyType.valueOf(str)
-                        );
-                        case XML_NOTE_DIST_CHANGE -> line.changeElementSpacingRatio(
-                            Float.parseFloat(str)
-                        );
-                        case XML_TEMPO_CHANGE_YPOS -> line.setTempoChangeYPosPx(
-                            Integer.parseInt(str)
-                        );
-                        case XML_BEAT_CHANGE_YPOS -> line.setBeatChangeYPosPx(
-                            Integer.parseInt(str)
-                        );
-                        case XML_LYRICS_YPOS -> line.setLyricsYPosSs(
-                            Double.parseDouble(str)
-                        );
-                        case XML_FSENDING_YPOS -> line.setFirstSecondEndingYPosPx(
-                            Integer.parseInt(str)
-                        );
-                        case XML_TRILL_YPOS -> line.setTrillYPosPx(
-                            Integer.parseInt(str)
-                        );
+                        case XML_KEYS -> line.setKeyAccidentalCount(DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str));
+                        case XML_KEYTYPE -> {
+                            try {
+                                line.setKeyType(KeyType.valueOf(str));
+                            } catch (IllegalArgumentException e) {
+                                throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown key type: '{}'", str);
+                            }
+                        }
+                        case XML_NOTE_DIST_CHANGE -> line.changeElementSpacingRatio(DocumentValidation.parseFloatOrThrow(LOG, XML_NOTE_DIST_CHANGE, str));
+                        case XML_TEMPO_CHANGE_YPOS -> line.setTempoChangeYPosPx(DocumentValidation.parseIntOrThrow(LOG, XML_TEMPO_CHANGE_YPOS, str));
+                        case XML_BEAT_CHANGE_YPOS -> line.setBeatChangeYPosPx(DocumentValidation.parseIntOrThrow(LOG, XML_BEAT_CHANGE_YPOS, str));
+                        case XML_LYRICS_YPOS -> line.setLyricsYPosSs(DocumentValidation.parseDoubleOrThrow(LOG, XML_LYRICS_YPOS, str));
+                        case XML_FSENDING_YPOS -> line.setFirstSecondEndingYPosPx(DocumentValidation.parseIntOrThrow(LOG, XML_FSENDING_YPOS, str));
+                        case XML_TRILL_YPOS -> line.setTrillYPosPx(DocumentValidation.parseIntOrThrow(LOG, XML_TRILL_YPOS, str));
                         case XML_BEAMINGS -> parseBeamPairs(str);
                         case XML_TIES -> parseTiePairs(str);
                         // Slurs no longer supported - ignore for backwards compatibility
@@ -659,8 +558,10 @@ public final class LineIO {
          * Creates Ending range elements from the parsed fsendings index pairs.
          * Called at end-of-line after all elements have been loaded.
          */
-        private void createEndingsFromPendingPairs(Line line) {
+        private void createEndingsFromPendingPairs(Line line) throws SAXException {
             for (var pair : pendingEndingPairs) {
+                DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "ending");
+
                 var startElement = line.getElement(pair[0]);
                 var endElement = line.getElement(pair[1]);
                 var ending = new Ending(startElement, endElement);
@@ -676,8 +577,10 @@ public final class LineIO {
          * Handles both new {@code <trills>} data and legacy per-element trill flags (already
          * coalesced into contiguous runs by {@link #accumulateLegacyTrillFlag}).
          */
-        private void createTrillsFromPendingPairs(Line line) {
+        private void createTrillsFromPendingPairs(Line line) throws SAXException {
             for (var pair : pendingTrillPairs) {
+                DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "trill");
+
                 var anchorElement = line.getElement(pair[0]);
                 var endElement = line.getElement(pair[1]);
                 var trill = new Trill(anchorElement, endElement);
@@ -732,6 +635,22 @@ public final class LineIO {
             });
         }
 
+        @Nullable
+        Line getLine() {
+            return line;
+        }
+
+        @Nullable
+        String getLastTag() {
+            return lastTag;
+        }
+
+        @Nullable
+        Where getWhere() {
+            return where;
+        }
+
+        @SuppressWarnings("PackageVisibleInnerClass")
         enum Where {
             LINE,
             NOTES,

@@ -584,6 +584,23 @@ class StaffElementIOTest extends UnitTest {
                 .cause()
                 .isInstanceOf(IllegalArgumentException.class);
         }
+
+        // C-8: unknown element type attribute on <note> → SAXException
+        @Test
+        void testUnknownNoteTypeThrowsSAXException() {
+            var xml = buildXmlWithNoteType("BOGUS_TYPE");
+
+            assertThatThrownBy(() -> parseXml(xml))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("Corrupt document: unknown element type: 'BOGUS_TYPE'");
+        }
+
+        // C-8 (happy path): a known element type still parses correctly
+        @Test
+        void testKnownNoteTypeParsesCorrectly() throws Exception {
+            var song = parseXml(buildXmlWithNoteType("CROTCHET"));
+            assertThat(song.getLine(0).getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -653,7 +670,7 @@ class StaffElementIOTest extends UnitTest {
 
         // Row 46: middle syllabic parses to MIDDLE before backfill
         @Test
-        void testSyllabicMiddleParsesToMiddle() {
+        void testSyllabicMiddleParsesToMiddle() throws Exception {
             var attrs = new AttributesImpl();
             attrs.addAttribute("", "type", "type", "CDATA", "CROTCHET");
             var reader = new StaffElementIO.StaffElementReader();
@@ -680,7 +697,7 @@ class StaffElementIOTest extends UnitTest {
 
         // Row 46: absent <syllabic> defaults to SINGLE (empty lyricSyllabic hits the default branch)
         @Test
-        void testAbsentSyllabicDefaultsToSingle() {
+        void testAbsentSyllabicDefaultsToSingle() throws Exception {
             var attrs = new AttributesImpl();
             attrs.addAttribute("", "type", "type", "CDATA", "CROTCHET");
             var reader = new StaffElementIO.StaffElementReader();
@@ -766,7 +783,7 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testEndElementAfterNewlineReturnsNull() {
+        void testEndElementAfterNewlineReturnsNull() throws Exception {
             var reader = new StaffElementIO.StaffElementReader();
             reader.startElement10("note", attrs("NEWLINE"));
             // endElement10 on the NEWLINE note tag returns null (no element created)
@@ -925,7 +942,7 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testTrillTagSetsTrillFlaggedTrue() {
+        void testTrillTagSetsTrillFlaggedTrue() throws Exception {
             var reader = new StaffElementIO.StaffElementReader();
             reader.startElement11("note", noteAttrs());
             reader.startElement11("trill", new AttributesImpl());
@@ -954,7 +971,7 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testLineTypeYieldsSingleBarline() {
+        void testLineTypeYieldsSingleBarline() throws Exception {
             var reader = new StaffElementIO.StaffElementReader();
             reader.startElement10("note", noteAttrs("LINE"));
             var element = reader.endElement10("note");
@@ -965,7 +982,7 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testGraceSemiquaverTypeYieldsGraceQuaver() {
+        void testGraceSemiquaverTypeYieldsGraceQuaver() throws Exception {
             var reader = new StaffElementIO.StaffElementReader();
             reader.startElement10("note", noteAttrs("GRACESEMIQUAVER"));
             var element = reader.endElement10("note");
@@ -976,7 +993,7 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testGraceSemiquaverWithUnderscoreYieldsGraceQuaver() {
+        void testGraceSemiquaverWithUnderscoreYieldsGraceQuaver() throws Exception {
             var reader = new StaffElementIO.StaffElementReader();
             reader.startElement10("note", noteAttrs("GRACE_SEMIQUAVER"));
             var element = reader.endElement10("note");
@@ -987,7 +1004,7 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testGraceSemiquaverEditStep1YieldsGraceQuaver() {
+        void testGraceSemiquaverEditStep1YieldsGraceQuaver() throws Exception {
             var reader = new StaffElementIO.StaffElementReader();
             reader.startElement10("note", noteAttrs("GRACE_SEMIQUAVER_EDIT_STEP1"));
             var element = reader.endElement10("note");
@@ -1009,7 +1026,7 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testVerticalLineTypeYieldsSingleBarline() {
+        void testVerticalLineTypeYieldsSingleBarline() throws Exception {
             var reader = new StaffElementIO.StaffElementReader();
             reader.startElement11("note", noteAttrs("VERTICALLINE"));
             var element = reader.endElement11("note");
@@ -1020,7 +1037,7 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testGraceSemiquaverWithUnderscoreYieldsGraceQuaver() {
+        void testGraceSemiquaverWithUnderscoreYieldsGraceQuaver() throws Exception {
             var reader = new StaffElementIO.StaffElementReader();
             reader.startElement11("note", noteAttrs("GRACE_SEMIQUAVER"));
             var element = reader.endElement11("note");
@@ -1031,7 +1048,7 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testGraceSemiquaverEditStep1YieldsGraceQuaver() {
+        void testGraceSemiquaverEditStep1YieldsGraceQuaver() throws Exception {
             var reader = new StaffElementIO.StaffElementReader();
             reader.startElement11("note", noteAttrs("GRACE_SEMIQUAVER_EDIT_STEP1"));
             var element = reader.endElement11("note");
@@ -1123,6 +1140,36 @@ class StaffElementIOTest extends UnitTest {
               <view/>
             </composition>
             """.formatted(innerXml);
+    }
+
+    private static String buildXmlWithNoteType(String noteType) {
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="1.1">
+              <keys>0</keys>
+              <keytype>SHARPS</keytype>
+              <tempo>
+                <visibletempo>120</visibletempo>
+                <tempotype>CROTCHET</tempotype>
+                <tempodescription></tempodescription>
+                <showtempo>true</showtempo>
+              </tempo>
+              <songtitle>Test</songtitle>
+              <lines>
+                <line>
+                  <keyCount>0</keyCount>
+                  <keyType>SHARPS</keyType>
+                  <tempoChangeYPos>-28</tempoChangeYPos>
+                  <notes>
+                    <note type="%s">
+                      <staffposition>0</staffposition>
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """.formatted(noteType);
     }
 
     private String writeNote(StaffElement note) {

@@ -98,4 +98,13 @@ public class Tuplet extends RangeElement {
     public void setVerticalPositionSs(int verticalPosition) {
         verticalPositionSs = verticalPosition;
     }
+
+    @Override
+    public String toIndexString() {
+        var base = getAnchorElementIndex() + "," + getEndElementIndex() + "," + grade;
+        if (verticalPositionSs != 0) {
+            return base + "," + verticalPositionSs + ";";
+        }
+        return base + ";";
+    }
 }

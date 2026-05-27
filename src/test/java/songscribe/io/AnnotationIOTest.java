@@ -22,6 +22,7 @@ package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.awt.Component;
 import java.io.PrintWriter;
@@ -31,8 +32,14 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.slf4j.LoggerFactory;
 
 import org.jspecify.annotations.Nullable;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 import songscribe.UnitTest;
 import songscribe.dom.Annotation;
@@ -199,6 +206,132 @@ class AnnotationIOTest extends UnitTest {
             assertThat(restored.getXAlignment()).isEqualTo(alignment);
             assertThat(restored.getYPosPx()).isEqualTo(yPosPx);
             assertThat(restored.getUserYOffsetSs()).isEqualTo(userYOffsetSs);
+        }
+    }
+
+    /**
+     * Tests for the NFE guards added to {@link AnnotationIO.AnnotationReader#endElement11} in Phase 3 (I-2).
+     * Non-numeric alignment, ypos, and userYOffset must be soft-fails: load succeeds, WARN logged,
+     * and the field is left at its initialised default.
+     */
+    @Nested
+    class MalformedNumericFields {
+
+        private static final float DEFAULT_ALIGNMENT = Component.LEFT_ALIGNMENT;
+        private static final int DEFAULT_YPOS = Annotation.ABOVE;
+        private static final double DEFAULT_USER_Y_OFFSET = 0.0;
+
+        // I-2: non-numeric alignment → WARN logged
+        @Test
+        void testMalformedAlignmentLogsWarn() {
+            var appender = attachAnnotationLogAppender();
+            try {
+                readAnnotationWithMalformedField(AnnotationIO.XML_ALIGNMENT, "notafloat");
+                assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("alignment"));
+            } finally {
+                detachAnnotationLogAppender(appender);
+            }
+        }
+
+        // I-2: non-numeric alignment → default value retained (also confirms load succeeds)
+        @Test
+        void testMalformedAlignmentRetainsDefault() {
+            var annotation = readAnnotationWithMalformedField(
+                AnnotationIO.XML_ALIGNMENT, "notafloat"
+            );
+            assertThat(annotation).isNotNull();
+            //noinspection ConstantValue -- NullAway guard
+            if (annotation == null) return;
+            assertThat(annotation.getXAlignment()).isEqualTo(DEFAULT_ALIGNMENT);
+        }
+
+        // I-2: non-numeric ypos → WARN logged
+        @Test
+        void testMalformedYposLogsWarn() {
+            var appender = attachAnnotationLogAppender();
+            try {
+                readAnnotationWithMalformedField(AnnotationIO.XML_YPOS, "notanint");
+                assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("ypos"));
+            } finally {
+                detachAnnotationLogAppender(appender);
+            }
+        }
+
+        // I-2: non-numeric ypos → default value retained (also confirms load succeeds)
+        @Test
+        void testMalformedYposRetainsDefault() {
+            var annotation = readAnnotationWithMalformedField(
+                AnnotationIO.XML_YPOS, "notanint"
+            );
+            assertThat(annotation).isNotNull();
+            //noinspection ConstantValue -- NullAway guard
+            if (annotation == null) return;
+            assertThat(annotation.getYPosPx()).isEqualTo(DEFAULT_YPOS);
+        }
+
+        // I-2: non-numeric userYOffset → WARN logged
+        @Test
+        void testMalformedUserYOffsetLogsWarn() {
+            var appender = attachAnnotationLogAppender();
+            try {
+                readAnnotationWithMalformedField(AnnotationIO.XML_USER_Y_OFFSET, "notadouble");
+                assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("userYOffset"));
+            } finally {
+                detachAnnotationLogAppender(appender);
+            }
+        }
+
+        // I-2: non-numeric userYOffset → default value retained (also confirms load succeeds)
+        @Test
+        void testMalformedUserYOffsetRetainsDefault() {
+            var annotation = readAnnotationWithMalformedField(
+                AnnotationIO.XML_USER_Y_OFFSET, "notadouble"
+            );
+            assertThat(annotation).isNotNull();
+            //noinspection ConstantValue -- NullAway guard
+            if (annotation == null) return;
+            assertThat(annotation.getUserYOffsetSs()).isEqualTo(DEFAULT_USER_Y_OFFSET);
+        }
+
+        /**
+         * Drives an {@link AnnotationIO.AnnotationReader} with a valid annotation that
+         * has one field ({@code tag}) set to a malformed (non-numeric) string.
+         */
+        @Nullable
+        private static Annotation readAnnotationWithMalformedField(String tag, String badValue) {
+            var reader = new AnnotationIO.AnnotationReader();
+            reader.startElement11(AnnotationIO.XML_ANNOTATION);
+
+            // Feed the annotation name (required to produce a non-null result)
+            reader.startElement11(AnnotationIO.XML_NAME);
+            reader.characters("Test".toCharArray(), 0, "Test".length());
+            reader.endElement11(AnnotationIO.XML_NAME);
+
+            // Feed the malformed field
+            reader.startElement11(tag);
+            reader.characters(badValue.toCharArray(), 0, badValue.length());
+            reader.endElement11(tag);
+
+            return reader.endElement11(AnnotationIO.XML_ANNOTATION);
+        }
+
+        private static ListAppender<ILoggingEvent> attachAnnotationLogAppender() {
+            var logger = (Logger) LoggerFactory.getLogger(AnnotationIO.AnnotationReader.class);
+            var appender = new ListAppender<ILoggingEvent>();
+            appender.start();
+            logger.addAppender(appender);
+            return appender;
+        }
+
+        private static void detachAnnotationLogAppender(ListAppender<ILoggingEvent> appender) {
+            var logger = (Logger) LoggerFactory.getLogger(AnnotationIO.AnnotationReader.class);
+            logger.detachAppender(appender);
         }
     }
 }

@@ -24,7 +24,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -210,6 +211,10 @@ public final class SongIO {
 
     public static class DocumentReader extends DefaultHandler {
 
+        private static final Logger LOG = LoggerFactory.getLogger(DocumentReader.class);
+        private static final int MAX_MONTH = 12;
+        private static final int MAX_DAY = 31;
+
         @Nullable
         private Where where = null;
 
@@ -237,6 +242,7 @@ public final class SongIO {
         private String place = "";
         private int month = 0;
         private int day = 0;
+        private boolean monthInvalid = false;
         private String year = "";
         private String lyrics = "";
         private String underLyrics = "";
@@ -342,7 +348,7 @@ public final class SongIO {
             String localName,
             String qName,
             Attributes attributes
-        ) {
+        ) throws SAXException {
             if (where == Where.LINES) {
                 if (lineReader == null) {
                     return;
@@ -391,7 +397,7 @@ public final class SongIO {
             }
         }
 
-        public void endElement10(String qName) {
+        public void endElement10(String qName) throws SAXException {
             if (qName.equals(XML_NOTES)) {
                 where = Where.SONG;
             } else if (qName.equals(XML_TEMPO_CHANGES)) {
@@ -436,10 +442,14 @@ public final class SongIO {
                                 tempoReader.getPos10() <
                                     (firstElementInLine + line.elementCount())
                             ) {
-                                var element = line.getElement(
-                                        tempoReader.getPos10() - firstElementInLine
-                                    );
-                                    element.addAttachment(new TempoChangeAttachment(element, tc));
+                                var idx = tempoReader.getPos10() - firstElementInLine;
+
+                                if (idx < 0 || idx >= line.elementCount()) {
+                                    throw DocumentValidation.corrupt(LOG, "Corrupt document: legacy tempo position index out of range: {}, element count: {}", idx, line.elementCount());
+                                }
+
+                                var element = line.getElement(idx);
+                                element.addAttachment(new TempoChangeAttachment(element, tc));
                                 break;
                             }
 
@@ -471,7 +481,7 @@ public final class SongIO {
             lastTag = null;
         }
 
-        public void endElement11(String qName) {
+        public void endElement11(String qName) throws SAXException {
             // No change except at the end of the line reading we set
             // the quaver notes to upper position.
             endElement12(qName);
@@ -487,7 +497,7 @@ public final class SongIO {
             }
         }
 
-        public void endElement12(String qName) {
+        public void endElement12(String qName) throws SAXException {
             if (qName.equals(XML_LINES)) {
                 where = Where.SONG;
             } else if (qName.equals(XML_VIEW)) {
@@ -519,19 +529,38 @@ public final class SongIO {
                     var str = value.toString();
 
                     switch (lastTag) {
-                        case XML_KEYS -> defaultKeyAccidentalCount =
-                            Integer.parseInt(str);
-                        case XML_KEYTYPE -> defaultKeyType =
-                            KeyType.valueOf(str);
+                        case XML_KEYS ->
+                            defaultKeyAccidentalCount = DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
+                        case XML_KEYTYPE -> {
+                            try {
+                                defaultKeyType = KeyType.valueOf(str);
+                            } catch (IllegalArgumentException e) {
+                                throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown key type: '{}'", str);
+                            }
+                        }
                         case XML_NUMBER -> number = str;
                         case XML_TITLE -> title =
                             str.isEmpty() ? "Untitled" : str;
                         case XML_PLACE -> place = str;
                         case XML_YEAR -> year = str;
-                        case XML_MONTH -> month =
-                            Integer.parseInt(str);
-                        case XML_DAY -> day =
-                            Integer.parseInt(str);
+                        case XML_MONTH -> {
+                            month = DocumentValidation.parseIntOrThrow(LOG, XML_MONTH, str);
+                            if (month < 1 || month > MAX_MONTH) {
+                                LOG.warn("Corrupt document: month out of range: {}", month);
+                                month = 0;
+                                monthInvalid = true;
+                            }
+                        }
+                        case XML_DAY -> {
+                            day = DocumentValidation.parseIntOrThrow(LOG, XML_DAY, str);
+                            if (day < 1 || day > MAX_DAY) {
+                                LOG.warn("Corrupt document: day out of range: {}", day);
+                                day = 0;
+                            }
+                            if (monthInvalid) {
+                                day = 0;
+                            }
+                        }
                         case XML_LYRICS -> lyrics = str;
                         case XML_UNDERLYRICS -> underLyrics = str;
                         case XML_BANGLA_LYRICS -> banglaLyrics = str;

@@ -99,4 +99,13 @@ public abstract sealed class Hairpin extends RangeElement
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
         return Math.max(HAIRPIN_OPENING_HEIGHT_SS, endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS);
     }
+
+    @Override
+    public String toIndexString() {
+        var base = getAnchorElementIndex() + "," + getEndElementIndex();
+        if (x1ShiftSs != 0 || x2ShiftSs != 0 || yShiftSs != 0) {
+            return base + "," + x1ShiftSs + "," + x2ShiftSs + "," + yShiftSs + ";";
+        }
+        return base + ";";
+    }
 }

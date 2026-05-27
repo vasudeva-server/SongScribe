@@ -21,6 +21,7 @@
 package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.PrintWriter;
@@ -31,7 +32,13 @@ import javax.xml.parsers.SAXParserFactory;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.InputSource;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
@@ -298,23 +305,53 @@ class ViewIOTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class StringFontSizeAsInt {
+    class NonNumericFontSize {
 
+        // W-3: a non-numeric font-size value is caught; WARN is logged; the
+        // prefs default size is retained (soft fail, document loads successfully).
         @Test
-        void testNonNumericSizePropagatesNumberFormatException() {
-            // sizeAsInt() calls Integer.parseInt(size) with no catch clause — a
-            // non-numeric size string therefore propagates NFE to the caller.
-            // This documents the contract: corrupt size data fails loudly at
-            // getDocumentFonts() rather than silently producing a wrong size.
+        void testNonNumericFontSizeDoesNotThrow() {
             var viewReader = new ViewIO.ViewReader();
-
-            // Inject "abc" as the title-font size via the public SAX-delegate API.
             viewReader.startElement11("titlefontsize");
             viewReader.characters("abc".toCharArray(), 0, "abc".length());
             viewReader.endElement11("titlefontsize");
 
-            assertThatThrownBy(viewReader::getDocumentFonts)
-                .isInstanceOf(NumberFormatException.class);
+            assertThatCode(viewReader::getDocumentFonts).doesNotThrowAnyException();
+        }
+
+        @Test
+        void testNonNumericFontSizeLogsWarn() {
+            var logger = (Logger) LoggerFactory.getLogger(ViewIO.ViewReader.class);
+            var appender = new ListAppender<ILoggingEvent>();
+            appender.start();
+            logger.addAppender(appender);
+
+            try {
+                var viewReader = new ViewIO.ViewReader();
+                viewReader.startElement11("titlefontsize");
+                viewReader.characters("abc".toCharArray(), 0, "abc".length());
+                viewReader.endElement11("titlefontsize");
+                viewReader.getDocumentFonts();
+
+                assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("titlefontsize"));
+            } finally {
+                logger.detachAppender(appender);
+            }
+        }
+
+        @Test
+        void testNonNumericFontSizeUsesPrefsDefault() {
+            var viewReader = new ViewIO.ViewReader();
+            viewReader.startElement11("titlefontsize");
+            viewReader.characters("abc".toCharArray(), 0, "abc".length());
+            viewReader.endElement11("titlefontsize");
+
+            var fonts = viewReader.getDocumentFonts();
+            assertThat(fonts.getFont(FontKey.TITLE).getSize())
+                .as("corrupt font size must fall back to prefs default")
+                .isEqualTo(Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
         }
     }
 

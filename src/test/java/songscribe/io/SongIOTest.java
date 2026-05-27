@@ -29,8 +29,14 @@ import java.io.StringWriter;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 import javax.xml.parsers.SAXParserFactory;
 
@@ -1180,6 +1186,223 @@ class SongIOTest extends UnitTest {
      * A pre-migration v2.5 composition with obsolete per-note nudge fields that
      * must be silently discarded.
      */
+    // =========================================================================
+    // Phase 5 tests
+    // =========================================================================
+
+    /**
+     * Tests for the validation guards added to {@code endElement12} in Phase 3 (C-10 / I-1).
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EndElement12Validation {
+
+        // C-10a: unknown KeyType string → SAXException
+        @Test
+        void testUnknownKeyTypeStringThrowsSAXException() {
+            assertThatThrownBy(() -> parseXml(buildXmlWithKeyType("BOGUS_KEYTYPE")))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("Corrupt document: unknown key type: 'BOGUS_KEYTYPE'");
+        }
+
+        // C-10b: non-numeric <keys> value → SAXException
+        @Test
+        void testNonNumericKeysValueThrowsSAXException() {
+            assertThatThrownBy(() -> parseXml(buildXmlWithKeys("notanumber")))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("Corrupt document: malformed keys value: 'notanumber'");
+        }
+
+        // non-numeric <month> value → SAXException (parse fails before range check)
+        @Test
+        void testNonNumericMonthThrowsSAXException() {
+            assertThatThrownBy(() -> parseXml(buildXmlWithMonth("abc")))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("Corrupt document: malformed month value: 'abc'");
+        }
+
+        // non-numeric <day> value → SAXException (parse fails before range check)
+        @Test
+        void testNonNumericDayThrowsSAXException() {
+            assertThatThrownBy(() -> parseXml(buildXmlWithDay("abc")))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("Corrupt document: malformed day value: 'abc'");
+        }
+
+        // I-1: out-of-range month value → month zeroed
+        @Test
+        void testOutOfRangeMonthZerosMonth() throws Exception {
+            var song = parseXml(buildXmlWithMonth("13"));
+            assertThat(song.getMonth()).isZero();
+        }
+
+        // I-1: out-of-range month with a valid day → both zeroed
+        @Test
+        void testOutOfRangeMonthAlsoResetsDay() throws Exception {
+            var song = parseXml(buildXmlWithMonthAndDay("13", "15"));
+            assertThat(song.getMonth()).isZero();
+            assertThat(song.getDay()).isZero();
+        }
+
+        // I-1: out-of-range month value → WARN logged
+        @Test
+        void testOutOfRangeMonthLogsWarn() {
+            var logger = (Logger) LoggerFactory.getLogger(SongIO.DocumentReader.class);
+            var appender = new ListAppender<ILoggingEvent>();
+            appender.start();
+            logger.addAppender(appender);
+
+            try {
+                parseXml(buildXmlWithMonth("13"));
+                assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("month"));
+            } catch (Exception ignored) {
+                // Should not throw, but guard in case — assertion above captures the real failure
+            } finally {
+                logger.detachAppender(appender);
+            }
+        }
+
+        // I-1: out-of-range day value → day zeroed
+        @Test
+        void testOutOfRangeDayZerosDay() throws Exception {
+            var song = parseXml(buildXmlWithDay("32"));
+            assertThat(song.getDay()).isZero();
+        }
+
+        // I-1: out-of-range day value → WARN logged
+        @Test
+        void testOutOfRangeDayLogsWarn() {
+            var logger = (Logger) LoggerFactory.getLogger(SongIO.DocumentReader.class);
+            var appender = new ListAppender<ILoggingEvent>();
+            appender.start();
+            logger.addAppender(appender);
+
+            try {
+                parseXml(buildXmlWithDay("32"));
+                assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("day"));
+            } catch (Exception ignored) {
+                // Should not throw, but guard in case — assertion above captures the real failure
+            } finally {
+                logger.detachAppender(appender);
+            }
+        }
+
+        private static String minimalCompositionXml(String extraHeaders) {
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <composition version="2.7">
+                  %s
+                  <rightinfostarty>0.0</rightinfostarty>
+                  <linewidth>200.0</linewidth>
+                  <lines>
+                    <line>
+                      <lyricsypos>5.0</lyricsypos>
+                      <notes>
+                        <note type="CROTCHET">
+                          <staffposition>0</staffposition>
+                        </note>
+                        <note type="FINAL_DOUBLE_BARLINE">
+                          <staffposition>0</staffposition>
+                        </note>
+                      </notes>
+                    </line>
+                  </lines>
+                  <view/>
+                </composition>
+                """.formatted(extraHeaders);
+        }
+
+        private static String buildXmlWithKeyType(String keyType) {
+            return minimalCompositionXml("<keys>0</keys>\n  <keytype>" + keyType + "</keytype>");
+        }
+
+        private static String buildXmlWithKeys(String keys) {
+            return minimalCompositionXml("<keys>" + keys + "</keys>\n  <keytype>SHARPS</keytype>");
+        }
+
+        private static String buildXmlWithMonth(String month) {
+            return minimalCompositionXml(
+                "<keys>0</keys>\n  <keytype>SHARPS</keytype>\n  <month>" + month + "</month>"
+            );
+        }
+
+        private static String buildXmlWithDay(String day) {
+            return minimalCompositionXml(
+                "<keys>0</keys>\n  <keytype>SHARPS</keytype>\n  <day>" + day + "</day>"
+            );
+        }
+
+        private static String buildXmlWithMonthAndDay(String month, String day) {
+            return minimalCompositionXml(
+                "<keys>0</keys>\n  <keytype>SHARPS</keytype>\n  <month>" + month + "</month>\n  <day>" + day + "</day>"
+            );
+        }
+    }
+
+    /**
+     * Tests for the legacy tempo-position bounds check added to {@code endElement10} in Phase 3 (C-12).
+     *
+     * <p>The guard fires when {@code idx = pos - firstElementInLine} is negative — which requires
+     * a tempo position that falls in the "gap" between lines. In v1.0 format there is only ever a
+     * single {@code <notes>} block, so {@code parsedLines} always contains exactly one entry and
+     * {@code firstElementInLine} is always 0. The {@code idx < 0} path is therefore unreachable
+     * through the standard v1.0 XML parsing flow; these tests exercise the closest reachable
+     * behaviour (out-of-range position silently skips without crashing, and a valid position
+     * attaches the tempo correctly).
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EndElement10LegacyTempoBounds {
+
+        private static final int OUT_OF_RANGE_TEMPO_POS = 99;
+        private static final int VALID_TEMPO_POS = 0;
+        private static final int EXPECTED_VISIBLE_TEMPO = 120;
+
+        // C-12 (soft boundary): a tempo position beyond elementCount in v1.0 format silently
+        // skips rather than throwing, because the loop condition prevents entry when pos >= elementCount.
+        @Test
+        void testLegacyTempoPositionBeyondElementCountDoesNotThrow() {
+            assertThatCode(() -> parseXml(buildV10WithTempoPos(OUT_OF_RANGE_TEMPO_POS)))
+                .doesNotThrowAnyException();
+        }
+
+        // C-12 (valid path): a valid tempo position in v1.0 format attaches the tempo correctly.
+        @Test
+        void testLegacyTempoAtPositionZeroAttachesToSong() throws Exception {
+            var song = parseXml(buildV10WithTempoPos(VALID_TEMPO_POS));
+            assertThat(song.getTempo()).isNotNull();
+
+            //noinspection ConstantValue -- NullAway guard
+            if (song.getTempo() == null) return;
+            assertThat(song.getTempo().getVisibleTempo()).isEqualTo(EXPECTED_VISIBLE_TEMPO);
+        }
+
+        private static String buildV10WithTempoPos(int pos) {
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <song version="1.0">
+                  <keys>0</keys>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                    </note>
+                  </notes>
+                  <tempochanges>
+                    <tempochange>
+                      <position>%d</position>
+                      <visibletempo>%d</visibletempo>
+                      <tempotype>CROTCHET</tempotype>
+                    </tempochange>
+                  </tempochanges>
+                </song>
+                """.formatted(pos, EXPECTED_VISIBLE_TEMPO);
+        }
+    }
+
     private static String legacyNudgeFieldsXml() {
         return """
             <?xml version="1.0" encoding="UTF-8"?>

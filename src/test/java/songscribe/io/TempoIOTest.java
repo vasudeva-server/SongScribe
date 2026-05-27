@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
+import org.xml.sax.SAXException;
 
 import songscribe.UnitTest;
 import songscribe.dom.Duration;
@@ -211,17 +212,18 @@ class TempoIOTest extends UnitTest {
     @Nested
     class EndElement11LegacyDurationNameThrows {
 
-        // Row 63: legacy name (no underscore) in v1.1 path → Duration.valueOf throws IAE
+        // Row 63: unknown duration name in v1.1 path → SAXException wrapping the bad value
         @Test
-        void testLegacyDurationNameInV11PathThrowsIllegalArgumentException() {
-            var legacyName = "MINIMDOTTED";
+        void testUnknownDurationNameInV11PathThrowsSAXException() {
+            var unknownName = "MINIMDOTTED";
             var reader = new TempoIO.TempoReader();
             reader.startElement11(TempoIO.XML_TEMPO);
             reader.startElement11(TempoIO.XML_TEMPO_TYPE);
-            reader.characters(legacyName.toCharArray(), 0, legacyName.length());
+            reader.characters(unknownName.toCharArray(), 0, unknownName.length());
 
             assertThatThrownBy(() -> reader.endElement11(TempoIO.XML_TEMPO_TYPE))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("Corrupt document: unknown tempo duration: " + unknownName);
         }
     }
 
@@ -231,7 +233,7 @@ class TempoIOTest extends UnitTest {
 
         // Row 64: endElement11 called before startElement11 (tempo is null) → returns null
         @Test
-        void testEndElement11BeforeStartElement11ReturnsNull() {
+        void testEndElement11BeforeStartElement11ReturnsNull() throws Exception {
             var reader = new TempoIO.TempoReader();
 
             var result = reader.endElement11(TempoIO.XML_TEMPO);

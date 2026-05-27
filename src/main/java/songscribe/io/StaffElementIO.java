@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
 
 import songscribe.dom.ArticulationType;
 import songscribe.dom.BeatChange;
@@ -375,7 +376,7 @@ public final class StaffElementIO {
             return false;
         }
 
-        public void startElement11(String qName, Attributes attributes) {
+        public void startElement11(String qName, Attributes attributes) throws SAXException {
             if (where == Where.TEMPO_CHANGE) {
                 if (tempoReader == null) {
                     return;
@@ -403,7 +404,11 @@ public final class StaffElementIO {
                         type = ElementType.GRACE_QUAVER.name();
                     }
 
-                    element = ElementType.valueOf(type).newInstance();
+                    try {
+                        element = ElementType.valueOf(type).newInstance();
+                    } catch (IllegalArgumentException | NullPointerException e) {
+                        throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown element type: '{}'", type);
+                    }
                 }
             } else if (qName.equals(TempoIO.XML_TEMPO)) {
                 where = Where.TEMPO_CHANGE;
@@ -469,13 +474,13 @@ public final class StaffElementIO {
         }
 
         @Nullable
-        public StaffElement endElement10(String qName) {
+        public StaffElement endElement10(String qName) throws SAXException {
             return endElement11(qName);
         }
 
         @SuppressWarnings("StatementWithEmptyBody")
         @Nullable
-        public StaffElement endElement11(String qName) {
+        public StaffElement endElement11(String qName) throws SAXException {
             if (where == Where.TEMPO_CHANGE) {
                 if (tempoReader == null || element == null) {
                     return null;
