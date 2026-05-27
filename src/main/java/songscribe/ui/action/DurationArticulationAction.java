@@ -20,26 +20,17 @@
 
 package songscribe.ui.action;
 
-import java.util.EnumSet;
-
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
 import songscribe.dom.ArticulationType;
-import songscribe.dom.StaffElement;
-import songscribe.dom.Articulation;
 import songscribe.ui.component.MainFrame;
 
-public final class DurationArticulationAction extends NoteOnlyAction {
-
-    private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.ARTICULATION);
-
-    private final ArticulationType articulationType;
+public final class DurationArticulationAction extends ArticulationAction {
 
     public static DurationArticulationAction createStaccatoAction(MainFrame mainFrame) {
         return new DurationArticulationAction(
             mainFrame,
             ArticulationType.STACCATO,
-            Strings.get(Strings.ACTION_STACCATO), "@\uF38E", 22,
+            Strings.get(Strings.ACTION_STACCATO), "@", 22,
             "staccato", Strings.get(Strings.ACTION_STACCATO_TOOLTIP)
         );
     }
@@ -53,31 +44,6 @@ public final class DurationArticulationAction extends NoteOnlyAction {
         String actionCommand,
         String tooltip
     ) {
-        super(mainFrame, name, icon, size, actionCommand, tooltip, NoteOnlyAction.FLAGS);
-        this.articulationType = articulationType;
-    }
-
-    @Override
-    public boolean matchesElement(StaffElement element) {
-        return element.hasArticulation(articulationType);
-    }
-
-    @Override
-    public void applyToElement(StaffElement element, boolean selected) {
-        for (var a : element.getArticulations()) {
-            if (a.getType() == articulationType) {
-                element.removeArticulation(a);
-                break;
-            }
-        }
-
-        if (selected) {
-            element.addArticulation(new Articulation(element, articulationType));
-        }
-    }
-
-    @Override
-    public EnumSet<ElementField> modifiedFields() {
-        return MODIFIED_FIELDS;
+        super(mainFrame, articulationType, name, icon, size, actionCommand, tooltip);
     }
 }
