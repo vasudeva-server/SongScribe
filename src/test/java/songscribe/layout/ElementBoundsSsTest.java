@@ -460,4 +460,88 @@ class ElementBoundsSsTest extends UnitTest {
             assertThat(bounds.getMarginBottomSs()).isEqualTo(expectedMarginBottomSs);
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Row 12: formatCssSpacing — 5-branch CSS shorthand, all tokens use "ss"
+    // Tested through the public getPaddingCss() caller.
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class FormatCssSpacing {
+
+        // Shared fixture content rect; all padding amounts are integer-valued so
+        // Math.round() is a no-op and expected strings are exact.
+        private static final double CONTENT_X_SS = 2.0;
+        private static final double CONTENT_Y_SS = 2.0;
+        private static final double CONTENT_WIDTH_SS = 4.0;
+        private static final double CONTENT_HEIGHT_SS = 4.0;
+
+        private static Rectangle2D content() {
+            return new Rectangle2D.Double(CONTENT_X_SS, CONTENT_Y_SS, CONTENT_WIDTH_SS, CONTENT_HEIGHT_SS);
+        }
+
+        /** Builds bounds with the given asymmetric padding amounts (int-valued). */
+        private static ElementBoundsSs withPadding(
+            double topSs, double rightSs, double bottomSs, double leftSs) {
+            var c = content();
+            var p = new Rectangle2D.Double(
+                c.getX() - leftSs,
+                c.getY() - topSs,
+                c.getWidth() + leftSs + rightSs,
+                c.getHeight() + topSs + bottomSs);
+            return new ElementBoundsSs(c, p, p);
+        }
+
+        @Test
+        void testAllZeroPaddingReturnsZero() {
+            // padding == content → all differentials are 0
+            assertThat(ElementBoundsSs.contentOnly(content()).getPaddingCss()).isEqualTo("0");
+        }
+
+        @Test
+        void testAllSamePaddingReturnsOneToken() {
+            final double uniformPaddingSs = 3.0;
+            final int expected = (int) uniformPaddingSs;
+            var bounds = ElementBoundsSs.uniform(content(), uniformPaddingSs, 0.0);
+            assertThat(bounds.getPaddingCss()).isEqualTo(expected + "ss");
+        }
+
+        @Test
+        void testTopBottomSameLeftRightSameReturnsTwoTokens() {
+            final double topBottomPaddingSs = 2.0;
+            final double leftRightPaddingSs = 4.0;
+            final int expectedVertical = (int) topBottomPaddingSs;
+            final int expectedHorizontal = (int) leftRightPaddingSs;
+            var bounds = withPadding(topBottomPaddingSs, leftRightPaddingSs, topBottomPaddingSs, leftRightPaddingSs);
+            assertThat(bounds.getPaddingCss()).isEqualTo(expectedVertical + "ss " + expectedHorizontal + "ss");
+        }
+
+        @Test
+        void testLeftRightSameTopBottomDifferentReturnsThreeTokens() {
+            final double topPaddingSs = 1.0;
+            final double sidesPaddingSs = 2.0;
+            final double bottomPaddingSs = 3.0;
+            final int expectedTop = (int) topPaddingSs;
+            final int expectedSides = (int) sidesPaddingSs;
+            final int expectedBottom = (int) bottomPaddingSs;
+            var bounds = withPadding(topPaddingSs, sidesPaddingSs, bottomPaddingSs, sidesPaddingSs);
+            assertThat(bounds.getPaddingCss())
+                .isEqualTo(expectedTop + "ss " + expectedSides + "ss " + expectedBottom + "ss");
+        }
+
+        @Test
+        void testAllDifferentReturnsFourTokens() {
+            final double topPaddingSs = 1.0;
+            final double rightPaddingSs = 2.0;
+            final double bottomPaddingSs = 3.0;
+            final double leftPaddingSs = 4.0;
+            final int expectedTop = (int) topPaddingSs;
+            final int expectedRight = (int) rightPaddingSs;
+            final int expectedBottom = (int) bottomPaddingSs;
+            final int expectedLeft = (int) leftPaddingSs;
+            var bounds = withPadding(topPaddingSs, rightPaddingSs, bottomPaddingSs, leftPaddingSs);
+            assertThat(bounds.getPaddingCss())
+                .isEqualTo(expectedTop + "ss " + expectedRight + "ss " + expectedBottom + "ss " + expectedLeft + "ss");
+        }
+    }
 }
