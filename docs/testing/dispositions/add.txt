@@ -782,3 +782,4 @@ LayoutAccumulatorTest.testFreshAccumulatorIsEmpty	3a	row 47 — fresh accumulato
 LayoutAccumulatorTest.testClearMakesAccumulatorEmptyAndStopsIntersecting	3a	row 47 — clear() → isEmpty true and intersects false
 LayoutAccumulatorTest.testGetAreaReturnsDefensiveCopy	3a	row 48 — mutating returned area leaves accumulator unchanged
 LayoutAccumulatorTest.testUnionOfTwoRectanglesIntersectsSpanningRectangle	3a	row 49 — union of two rects; spanning rect intersects, gap probe does not
+LayoutEngineTest.testBeamCountReturnsFlagLevelPerNoteType	3a	row 30 — beamCount widened to package-private; QUAVER 1, SEMIQUAVER 2, DEMI_SEMIQUAVER 3

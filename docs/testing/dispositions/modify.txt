@@ -24,3 +24,4 @@ PageModelTest.ContentArea.contentAreaWidthAccountsForDefaultMargins	3a	row 60 �
 PageModelTest.DefaultLineWidth.defaultLineWidthSsMatchesContentArea	3a	row 62 — broke tautology pxToSs(getContentAreaWidthPx())==pxToSs(...); expected ss now derived from independently-computed content width px
 LineHeightTest.testHighNoteAboveStaffExtendsAboveReservationToNoteheadTop	3a	row 65 — renamed from testHighNoteAboveStaffIncreasesLineHeight; replaced weak >=MIN_LINE_HEIGHT_SS with exact aboveStaffSs (notehead-top derived), below==floor, exact line height
 LineHeightTest.testLowNoteBelowStaffExtendsBelowReservationToNoteheadBottom	3a	row 65 — renamed from testLowNoteBelowStaffIncreasesLineHeight; replaced weak >=MIN_LINE_HEIGHT_SS with exact belowStaffSs (notehead-bottom derived), above==floor, exact line height
+LayoutEngine.beamCount	3a	row 30 — widened private static → package-private static for direct unit assertion

@@ -124,6 +124,11 @@ class LayoutEngineTest extends UnitTest {
      */
     private static final int SP_TIE_NO_COLLISION_INTERIOR = 10;
 
+    // Row 30 — beam count (flag levels) per note type
+    private static final int QUAVER_BEAMS = 1;
+    private static final int SEMIQUAVER_BEAMS = 2;
+    private static final int DEMI_SEMIQUAVER_BEAMS = 3;
+
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
         var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-");
@@ -654,5 +659,19 @@ class LayoutEngineTest extends UnitTest {
         assertThat(keySig.getKeyType())
             .describedAs("null keyType in line must produce KeyType.NONE in key signature")
             .isEqualTo(KeyType.NONE);
+    }
+
+    // T30: beamCount → flag levels per note type (QUAVER 1, SEMIQUAVER 2, DEMI_SEMIQUAVER 3)
+    @Test
+    void testBeamCountReturnsFlagLevelPerNoteType() {
+        assertThat(LayoutEngine.beamCount(ElementType.QUAVER.newInstance()))
+            .describedAs("QUAVER has one flag")
+            .isEqualTo(QUAVER_BEAMS);
+        assertThat(LayoutEngine.beamCount(ElementType.SEMIQUAVER.newInstance()))
+            .describedAs("SEMIQUAVER has two flags")
+            .isEqualTo(SEMIQUAVER_BEAMS);
+        assertThat(LayoutEngine.beamCount(ElementType.DEMI_SEMIQUAVER.newInstance()))
+            .describedAs("DEMI_SEMIQUAVER has three flags")
+            .isEqualTo(DEMI_SEMIQUAVER_BEAMS);
     }
 }

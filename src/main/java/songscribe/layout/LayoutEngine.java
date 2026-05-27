@@ -757,7 +757,7 @@ public class LayoutEngine {
      * Returns the number of beams (flag levels) for a note type.
      * QUAVER = 1, SEMIQUAVER = 2, DEMI_SEMIQUAVER = 3.
      */
-    private static int beamCount(StaffElement note) {
+    static int beamCount(StaffElement note) {
         return switch (note.getType()) {
             case SEMIQUAVER -> 2;
             case DEMI_SEMIQUAVER -> 3;
