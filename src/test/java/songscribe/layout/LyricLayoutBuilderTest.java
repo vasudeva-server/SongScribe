@@ -94,12 +94,20 @@ class LyricLayoutBuilderTest extends UnitTest {
 
     /** Places {@code element} in a column at the given X with notehead-width right extent. */
     private static ElementColumn columnAt(StaffElement element, double xSs) {
+        return columnAt(element, xSs, 0.0);
+    }
+
+    /**
+     * Places {@code element} in a column at the given X with notehead-width right extent and
+     * a pre-measured {@code syllableWidthSs} (used by the verse-1 code path in the builder).
+     */
+    private static ElementColumn columnAt(StaffElement element, double xSs, double syllableWidthSs) {
         var column = new ElementColumn(
             element,
             Collections.emptyList(),
             0.0,
             Engraving.NOTE_HEAD_WIDTH_SS,
-            0.0, 0.0, null, 0.0, false);
+            0.0, 0.0, null, syllableWidthSs, false);
         column.setXSs(xSs);
         return column;
     }
@@ -477,6 +485,45 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(danglingExtenders.getFirst().endXSs())
             .as("dangling extender ends at last CONTINUE note's right edge (n3), not n4 (no extend marker)")
             .isCloseTo(columns.get(2).getRightEdgeXSs(), within(TOLERANCE));
+    }
+
+    // verse-1 (getSyllableWidthSs) vs verse-≥2 (lyricBoxWidthSs) must agree for the same text.
+    // The builder takes two distinct code paths to compute box width depending on verse index:
+    //   verse 1  → column.getSyllableWidthSs()  (pre-measured by ElementColumnBuilder)
+    //   verse ≥2 → lyricRenderMetrics.lyricBoxWidthSs(text)  (measured on the fly)
+    // Populate the verse-1 column with the real measured width so both paths use the same
+    // measurement source; then assert the resulting box widths are equal within TOLERANCE.
+    @Test
+    void testVerse1AndVerse2ProduceEqualWidthForSameText() {
+        var syllableText = "heart";
+        var measuredWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
+
+        var n1 = note();
+        // Verse 1 lyric: builder reads syllableWidthSs from the column.
+        n1.lyrics.add(new Lyric(1, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        // Verse 2 lyric: builder calls lyricRenderMetrics.lyricBoxWidthSs(text) on the fly.
+        n1.lyrics.add(new Lyric(2, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        addToLine(n1);
+
+        // Populate syllableWidthSs with the measured width so the verse-1 path uses real data.
+        var col = columnAt(n1, 5.0, measuredWidthSs);
+        var result = LyricLayoutBuilder.build(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var boxes = boxesOf(result.boxes(), n1);
+        assertThat(boxes).as("expected two boxes (one per verse) for n1").hasSize(2);
+
+        var verse1Box = boxes.stream()
+            .filter(b -> b.verseIndex() == 1)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no verse-1 box found"));
+        var verse2Box = boxes.stream()
+            .filter(b -> b.verseIndex() == 2)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no verse-2 box found"));
+
+        assertThat(verse1Box.widthSs())
+            .as("verse-1 box width (from cached getSyllableWidthSs) must equal verse-2 box width (from lyricBoxWidthSs)")
+            .isCloseTo(verse2Box.widthSs(), within(TOLERANCE));
     }
 
     // Compound-word boundary: heart(BEGIN+compound) garden(END) → HYPHEN span (visually identical to SYLLABLE)
