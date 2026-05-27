@@ -79,5 +79,8 @@
   "hooks": {
     "PostToolUse": []
   },
+  "worktree": {
+    "bgIsolation": "none"
+  },
   "plansDirectory": "plans"
 }
