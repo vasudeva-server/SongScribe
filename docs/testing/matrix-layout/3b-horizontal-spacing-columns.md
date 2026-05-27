@@ -37,9 +37,9 @@
 | InsertionSpacingCalculator | `hasRoomForGraceNote` empty/full/plenty | unit | `HasRoomForGraceNote.*` (3) | adequate | keep | — |
 | InsertionSpacingCalculator | `hasRoomForHostNoteAfterGrace` room/no-room | unit | `HasRoomForHostNoteAfterGrace.*` (2) | adequate | keep | — |
 | InsertionSpacingCalculator | `calculateInsertion` at index 0 correct X + shift | unit | — | missing | verify X and downstream shift | ✅ |
-| InsertionSpacingCalculator | mid-insertion shift = max(0, required), never negative | unit | — | missing | non-negative shift | ⬜ |
-| InsertionSpacingCalculator | `calculateNextElementXSs` delegates via xOffset | unit | — | missing | equals `calculateNextColumnXSs` | ⬜ |
-| InsertionSpacingCalculator | `InsertionResult.newLineWidthSs` = max(inserted right edge, shifted last) | unit | round-trip tests check only `fitsWithinLine` | inadequate | assert `newLineWidthSs()` directly | ⬜ |
+| InsertionSpacingCalculator | mid-insertion shift = max(0, required), never negative | unit | — | missing | non-negative shift | ✅ |
+| InsertionSpacingCalculator | `calculateNextElementXSs` delegates via xOffset | unit | — | missing | equals `calculateNextColumnXSs` | ✅ |
+| InsertionSpacingCalculator | `InsertionResult.newLineWidthSs` = max(inserted right edge, shifted last) | unit | round-trip tests check only `fitsWithinLine` | inadequate | assert `newLineWidthSs()` directly | ✅ |
 | LineJustificationCalculator | empty list → success | unit | — | missing | guard | ⬜ |
 | LineJustificationCalculator | line fits → success, no compression | unit | — | missing | assert `!wasCompressionApplied()` | ⬜ |
 | LineJustificationCalculator | compression ratio = (target-extentOffset)/centerSpan | unit | — | missing | two columns over margin; verify ratio + positions | ⬜ |
