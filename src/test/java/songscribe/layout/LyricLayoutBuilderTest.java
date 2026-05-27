@@ -416,7 +416,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
         assertThat(extenders.getFirst().endXSs())
-            .as("extender ends 0.25 ss beyond stop carrier note's right edge")
+            .as("extender ends 0.5 ss beyond stop carrier note's right edge")
             .isCloseTo(
                 columns.get(1).getRightEdgeXSs() + LyricLayoutBuilder.STOP_MELISMA_OVERSHOOT_SS,
                 within(TOLERANCE));

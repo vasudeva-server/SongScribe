@@ -65,7 +65,7 @@ public final class LyricLayoutBuilder {
 
     private static final Logger LOG = LoggerFactory.getLogger(LyricLayoutBuilder.class);
 
-    // Extends 0.25 ss past the column right edge so the line visually overshoots
+    // Extends 0.5 ss past the column right edge so the line visually overshoots
     // the notehead and makes the melisma termination unambiguous.
     static final double STOP_MELISMA_OVERSHOOT_SS = 0.5;
 
