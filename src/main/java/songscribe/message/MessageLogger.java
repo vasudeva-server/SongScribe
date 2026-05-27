@@ -33,6 +33,9 @@ public final class MessageLogger {
     public static @Nullable MessageLogger instance = null;
 
     public static void init() {
+        if (instance != null) {
+            return;
+        }
         instance = new MessageLogger();
     }
 

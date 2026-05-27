@@ -51,6 +51,11 @@ final class FieldTypeValidator {
         String parameter,
         @Nullable Object value
     ) {
+        if (expectedType.isPrimitive()) {
+            throw new IllegalArgumentException(
+                recordName + '.' + field.name() + ": expectedType must not be a primitive class; use the boxed type"
+            );
+        }
         if (value != null && !expectedType.isInstance(value)) {
             throw new IllegalArgumentException(
                 recordName + '.' + field.name() + " expected " + parameter

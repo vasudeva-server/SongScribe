@@ -33,6 +33,10 @@ import songscribe.dom.StaffElement;
 public record ElementRangeDeletion(Line line, int from, int to, List<StaffElement> deletedElements)
     implements Mutation, LineScopedMutation {
 
+    public ElementRangeDeletion {
+        deletedElements = List.copyOf(deletedElements);
+    }
+
     @Override
     public Line getLine() {
         return line;
