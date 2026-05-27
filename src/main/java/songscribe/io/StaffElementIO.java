@@ -647,18 +647,18 @@ public final class StaffElementIO {
             return syllabic;
         }
 
-        public void characters(char[] ch, int start, int lenght) {
+        public void characters(char[] ch, int start, int length) {
             if (where == Where.TEMPO_CHANGE) {
                 if (tempoReader != null) {
-                    tempoReader.characters(ch, start, lenght);
+                    tempoReader.characters(ch, start, length);
                 }
             } else if (where == Where.ANNOTATION) {
                 if (annotationReader != null) {
-                    annotationReader.characters(ch, start, lenght);
+                    annotationReader.characters(ch, start, length);
                 }
             } else if (lastTag != null &&
                 (where == Where.ELEMENT || where == Where.LYRIC)) {
-                value.append(ch, start, lenght);
+                value.append(ch, start, length);
             }
         }
 
