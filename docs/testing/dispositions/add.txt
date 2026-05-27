@@ -1073,3 +1073,9 @@ LyricRenderMetricsTest.testLyricBoxHeightSsIsPositiveAndEqualsAscentPlusDescent
 LyricRenderMetricsTest.testPreferredHyphenCellWidthSsEqualsFactorTimesHyphenWidth
 # 3d row 13 — LyricRenderMetrics gap ordering invariant
 LyricRenderMetricsTest.testCompressedGapIsStrictlyLessThanNormalGap
+# 3d row 17 — LyricLayoutBuilder computeLyricBoxLeftXSs normal-note centering
+LyricLayoutBuilderTest.testNormalNoteLyricBoxIsCenteredOnNoteCenter
+# 3d row 19 — LyricLayoutBuilder firstGraphemeClusterEndIndex multi-codepoint cluster
+LyricLayoutBuilderTest.testFirstGraphemeClusterEndIndexHandlesMultiCodepointClusters
+# 3d row 23 — LyricLayoutBuilder REST + CONTINUE keeps extender open
+LyricLayoutBuilderTest.testRestWithContinueLyricContinuesExtender

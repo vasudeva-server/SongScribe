@@ -12,15 +12,15 @@
 | LyricRenderMetrics | `preferredHyphenCellWidthSs()` = `HYPHEN_WIDENING_FACTOR × hyphenWidthSs` | unit | — | missing | non-zero hyphen width | ✅ |
 | LyricRenderMetrics | `COMPRESSED_MIN_SYLLABLE_GAP_SS < MIN_SYLLABLE_GAP_SS` invariant | unit | — | missing | ordering assertion | ✅ |
 | LyricLayoutBuilder | empty line / no-lyrics → empty result | unit | `testEmptyLineProducesEmptyResult`, `testLineWithoutLyricsProducesEmptyResult` | adequate | keep | — |
-| LyricLayoutBuilder | BEGIN/MIDDLE→opens HYPHEN, END closes (do-re-mi) | unit | `testDoReMiProducesThreeBoxesAndTwoHyphens` | inadequate | only count asserted; add HYPHEN start/end coords + sourceElementIndex | ⬜ |
+| LyricLayoutBuilder | BEGIN/MIDDLE→opens HYPHEN, END closes (do-re-mi) | unit | `testDoReMiProducesThreeBoxesAndTwoHyphens` | inadequate | only count asserted; add HYPHEN start/end coords + sourceElementIndex | ✅ |
 | LyricLayoutBuilder | SINGLE no-extend → box, no connector | unit | implicit via multi-element tests | adequate | keep | — |
-| LyricLayoutBuilder | `computeLyricBoxLeftXSs` normal note: center − halfWidth | unit | — | missing | assert box X centering | ⬜ |
+| LyricLayoutBuilder | `computeLyricBoxLeftXSs` normal note: center − halfWidth | unit | — | missing | assert box X centering | ✅ |
 | LyricLayoutBuilder | grace note: first glyph centred on grace notehead; host no box | unit | `testGraceLyricFirstGlyphCentredOnGraceNoteheadAndHostHasNoBox` | adequate | keep | — |
-| LyricLayoutBuilder | `firstGraphemeClusterEndIndex` multi-codepoint cluster | unit | — | missing | combining mark + surrogate pair | ⬜ |
+| LyricLayoutBuilder | `firstGraphemeClusterEndIndex` multi-codepoint cluster | unit | — | missing | combining mark + surrogate pair | ✅ |
 | LyricLayoutBuilder | note no-lyric + active extender passes through | unit | `testExtenderSpansContinuationNotes` | adequate | keep | — |
 | LyricLayoutBuilder | REST no-lyric → extender closed at rest left | unit | `testRestWithoutLyricBreaksExtender` | adequate | keep | — |
 | LyricLayoutBuilder | REST + START → extender continues | unit | `testRestWithExtendingLyricContinuesExtender` | adequate | keep | — |
-| LyricLayoutBuilder | REST + CONTINUE → extender continues (distinct sub-case) | unit | — | missing | CONTINUE on rest | ⬜ |
+| LyricLayoutBuilder | REST + CONTINUE → extender continues (distinct sub-case) | unit | — | missing | CONTINUE on rest | ✅ |
 | LyricLayoutBuilder | REST + STOP → closes `STOP_MELISMA_OVERSHOOT_SS` past rest right | unit | — | missing | assert ending = rightEdge + overshoot | ⬜ |
 | LyricLayoutBuilder | note + STOP → closes with overshoot, no box | unit | `testStopCarrierEndsExtenderAtNoteRightEdge` | adequate | keep (assertion uses constant; see stale-comment observation) | — |
 | LyricLayoutBuilder | note + CONTINUE passes through | unit | `testContinueCarrierPassesThrough` | adequate | keep | — |

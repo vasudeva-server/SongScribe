@@ -166,7 +166,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(result.verseCount()).isEqualTo(1);
     }
 
-    // do-re-mi across three notes → three boxes, two HYPHEN spans
+    // do-re-mi across three notes → three boxes, two HYPHEN spans with correct coordinates
     @Test
     void testDoReMiProducesThreeBoxesAndTwoHyphens() {
         var n1 = note();
@@ -177,10 +177,14 @@ class LyricLayoutBuilderTest extends UnitTest {
         setLyric(n3, Lyric.Syllabic.END, false, "mi", false);
         addToLine(n1, n2, n3);
 
+        // syllableWidthSs=0 in these test columns, so boxXSs = columnXSs + NOTE_HEAD_WIDTH_SS/2
+        var col0XSs = 5.0;
+        var col1XSs = 5.0 + COLUMN_SPACING_SS;
+        var col2XSs = 5.0 + 2 * COLUMN_SPACING_SS;
         var columns = List.of(
-            columnAt(n1, 5),
-            columnAt(n2, 5 + COLUMN_SPACING_SS),
-            columnAt(n3, 5 + 2 * COLUMN_SPACING_SS));
+            columnAt(n1, col0XSs),
+            columnAt(n2, col1XSs),
+            columnAt(n3, col2XSs));
 
         var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
@@ -195,6 +199,67 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER)).isEmpty();
         assertThat(result.hasTrailingContinuation()).isFalse();
         assertThat(result.verseCount()).isEqualTo(1);
+
+        // With syllableWidthSs=0, boxXSs == noteCenter (columnXSs + rightExtent/2) for each column.
+        // A hyphen opens at syllableEnd (= boxXSs + 0) and closes at the next box's xSs.
+        var halfHeadWidthSs = Engraving.NOTE_HEAD_WIDTH_SS / 2.0;
+        var box0XSs = col0XSs + halfHeadWidthSs;
+        var box1XSs = col1XSs + halfHeadWidthSs;
+        var box2XSs = col2XSs + halfHeadWidthSs;
+
+        // First hyphen: from "do" syllable end → "re" box left, opened by column index 0
+        assertThat(hyphens.get(0).startXSs())
+            .as("first hyphen startXSs: end of 'do' box")
+            .isCloseTo(box0XSs, within(TOLERANCE));
+        assertThat(hyphens.get(0).endXSs())
+            .as("first hyphen endXSs: start of 're' box")
+            .isCloseTo(box1XSs, within(TOLERANCE));
+        assertThat(hyphens.get(0).sourceElementIndex())
+            .as("first hyphen sourceElementIndex: column index of 'do' note")
+            .isEqualTo(0);
+
+        // Second hyphen: from "re" syllable end → "mi" box left, opened by column index 1
+        assertThat(hyphens.get(1).startXSs())
+            .as("second hyphen startXSs: end of 're' box")
+            .isCloseTo(box1XSs, within(TOLERANCE));
+        assertThat(hyphens.get(1).endXSs())
+            .as("second hyphen endXSs: start of 'mi' box")
+            .isCloseTo(box2XSs, within(TOLERANCE));
+        assertThat(hyphens.get(1).sourceElementIndex())
+            .as("second hyphen sourceElementIndex: column index of 're' note")
+            .isEqualTo(1);
+    }
+
+    // computeLyricBoxLeftXSs: normal note box is centered on the note column centre
+    // (columnXSs + rightExtentSs/2), minus half the syllable width.
+    // Uses a verse-2 lyric so the builder measures width via lyricBoxWidthSs(text)
+    // rather than the cached syllableWidthSs; the oracle calls lyricBoxWidthSs independently.
+    @Test
+    void testNormalNoteLyricBoxIsCenteredOnNoteCenter() {
+        var n1 = note();
+        // Use verse 2 so the builder calls lyricRenderMetrics.lyricBoxWidthSs(text) rather
+        // than the pre-measured syllableWidthSs (which would be 0 in the test column).
+        var syllableText = "heart";
+        n1.lyrics.add(new Lyric(2, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        addToLine(n1);
+
+        var noteXSs = 10.0;
+        var col = columnAt(n1, noteXSs);
+        var result = LyricLayoutBuilder.build(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var boxes = boxesOf(result.boxes(), n1);
+        assertThat(boxes).as("expected exactly one box for n1 (verse 2)").hasSize(1);
+
+        var box = boxes.getFirst();
+
+        // Independent oracle: box left = note centre − half syllable width
+        var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
+        var noteCenterXSs = noteXSs + col.getRightExtentSs() / 2.0;
+        var expectedBoxLeftXSs = noteCenterXSs - syllableWidthSs / 2.0;
+
+        assertThat(box.xSs())
+            .as("lyric box left edge = note centre − halfWidth")
+            .isCloseTo(expectedBoxLeftXSs, within(TOLERANCE));
     }
 
     // heart(extend=true) [..continuation..] garden → two boxes, one EXTENDER
@@ -281,6 +346,40 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
+    }
+
+    // heart(extend=true) [continuation] (rest with Lyric(extend=CONTINUE)) [continuation] garden →
+    // CONTINUE is a distinct enum value from START; both must keep the extender open through a rest.
+    @Test
+    void testRestWithContinueLyricContinuesExtender() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "heart", Lyric.Extend.START);
+        var n2 = note();
+        var r = rest();
+        setLyric(r, null, false, "", Lyric.Extend.CONTINUE);
+        var n3 = note();
+        var n4 = note();
+        setLyric(n4, Lyric.Syllabic.SINGLE, false, "garden", Lyric.Extend.NONE);
+        addToLine(n1, n2, r, n3, n4);
+
+        var columns = List.of(
+            columnAt(n1, 5),
+            columnAt(n2, 5 + COLUMN_SPACING_SS),
+            columnAt(r, 5 + 2 * COLUMN_SPACING_SS),
+            columnAt(n3, 5 + 3 * COLUMN_SPACING_SS),
+            columnAt(n4, 5 + 4 * COLUMN_SPACING_SS));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        // No box emitted for the rest (it is only a CONTINUE marker).
+        assertThat(result.boxes()).containsOnlyKeys(n1, n4);
+
+        // The CONTINUE on the rest must not break the extender; only one EXTENDER spanning n1 → n4.
+        var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
+        assertThat(extenders)
+            .as("REST + CONTINUE must keep extender open — exactly one EXTENDER emitted")
+            .hasSize(1);
+        assertThat(result.hasTrailingContinuation()).isFalse();
     }
 
     // Cross-line continuation: line A ends with extend=true; line A's build reports hasTrailingContinuation.
@@ -502,6 +601,53 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(result.boxes()).containsOnlyKeys(n1, n5, n8);
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER)).isEmpty();
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN)).hasSize(2);
+    }
+
+    // firstGraphemeClusterEndIndex: correctly identifies multi-codepoint grapheme clusters.
+    // Tested via the grace-note code path, which centres the first grapheme cluster (not
+    // the first Java char) of the lyric text on the grace notehead.
+    // (a) combining mark: "é" (base + combining acute = "é") is one cluster (2 Java chars).
+    // (b) surrogate pair: "😀" (U+1F600) is one cluster (2 Java chars, code point > 0xFFFF).
+    // A naive charAt(0) implementation would produce firstGlyph="e" or firstGlyph="\uD83D",
+    // resulting in a different (wrong) box position.
+    @Test
+    void testFirstGraphemeClusterEndIndexHandlesMultiCodepointClusters() {
+        // Use a grace note element so that computeLyricBoxLeftXSs follows the grace path
+        // and calls firstGraphemeClusterEndIndex on the lyric text.
+        var grace = ElementType.GRACE_QUAVER.newInstance();
+        grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        var host = note();
+        addToLine(grace, host);
+
+        var graceXSs = 5.0;
+        // Use NOTE_HEAD_WIDTH_SS as the right extent (approximation sufficient for this test).
+        var graceCol = columnAt(grace, graceXSs);
+        var hostCol = columnAt(host, graceXSs + COLUMN_SPACING_SS);
+        var noteheadCenterXSs = graceXSs + grace.getType().getElementCenterXSs();
+
+        // (a) Combining mark: "é" + "la" — first grapheme cluster = "é" (2 Java chars)
+        var combiningText = "éla";
+        grace.lyrics.clear();
+        grace.lyrics.add(new Lyric(1, combiningText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        var resultCombining = LyricLayoutBuilder.build(List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var combiningBox = boxesOf(resultCombining.boxes(), grace).getFirst();
+        var firstClusterCombining = "é";
+        var expectedCombiningXSs = noteheadCenterXSs - LYRIC_METRICS.lyricBoxWidthSs(firstClusterCombining) / 2.0;
+        assertThat(combiningBox.xSs())
+            .as("combining mark: box must be centred on first grapheme cluster 'e\\u0301', not just 'e'")
+            .isCloseTo(expectedCombiningXSs, within(TOLERANCE));
+
+        // (b) Surrogate pair: "😀" (U+1F600, 2 Java chars) + "la" — first grapheme cluster = "😀"
+        var surrogateText = "😀la";
+        grace.lyrics.clear();
+        grace.lyrics.add(new Lyric(1, surrogateText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        var resultSurrogate = LyricLayoutBuilder.build(List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var surrogateBox = boxesOf(resultSurrogate.boxes(), grace).getFirst();
+        var firstClusterSurrogate = "😀";
+        var expectedSurrogateXSs = noteheadCenterXSs - LYRIC_METRICS.lyricBoxWidthSs(firstClusterSurrogate) / 2.0;
+        assertThat(surrogateBox.xSs())
+            .as("surrogate pair: box must be centred on emoji grapheme cluster, not the lone surrogate")
+            .isCloseTo(expectedSurrogateXSs, within(TOLERANCE));
     }
 
     // Multi-verse: verse 1 and verse 2 each emit their own boxes and spans keyed by verseIndex

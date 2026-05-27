@@ -38,3 +38,5 @@ GlissandoMidiIntegrationTest.testNoPitchBendWithoutGlissando→testNoPitchBendEv
 InsertionSpacingCalculatorTest.FitsWithinLine.testAppendToEmptyLine→testAppendToEmptyLineReturnsFirstElementX  # was fitsWithinLine(500)-only; pins exact X = calculateFirstElementXSs(keyAccidentalCount)
 # 3c row 37 — SongLayoutMetrics.verseYSsInLine: replace self-referential oracle with concrete literals
 SongLayoutMetricsTest.testVerseBaselineYHelper
+# 3d row 15 — LyricLayoutBuilder do-re-mi HYPHEN coords + sourceElementIndex
+LyricLayoutBuilderTest.testDoReMiProducesThreeBoxesAndTwoHyphens	strengthened in place: added HYPHEN startXSs/endXSs + sourceElementIndex assertions (was count-only)
