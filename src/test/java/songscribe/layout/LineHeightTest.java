@@ -110,8 +110,13 @@ class LineHeightTest extends UnitTest {
             .isCloseTo(MIN_LINE_HEIGHT_SS, within(TOLERANCE));
     }
 
+    /** Below-staff reservation only: the line-height term minus the inter-line margin. */
+    private static double belowStaffSsOf(LayoutResult result) {
+        return result.getBelowStaffReservationSs() - SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
+    }
+
     @Test
-    void testHighNoteAboveStaffIncreasesLineHeight() {
+    void testHighNoteAboveStaffExtendsAboveReservationToNoteheadTop() {
         var song = new Song();
         var line = song.getLine(0);
 
@@ -119,23 +124,79 @@ class LineHeightTest extends UnitTest {
 
         var result = require(engine().layout(line, true), "LayoutResult");
 
+        // A note this high above the staff has a stem pointing down, so its topmost
+        // point is the notehead top: the note center (sp→ss) plus the notehead's
+        // (negative) top offset. The above-staff reservation is the distance from
+        // that point down to the staff top (one staff-half below y=0).
+        var noteheadTopSs = StaffExtents.spToSs(StaffExtents.MIN_STAFF_POSITION_SP)
+            + ElementType.CROTCHET.getNoteheadTopOffsetSs();
+        var expectedAboveStaffSs = -noteheadTopSs - StaffExtents.STAFF_HALF_SS;
+
+        // Fixture precondition: this position must actually exercise the extension
+        // path, i.e. push the reservation past its floor (otherwise a broken
+        // extension that returns the floor would still pass).
+        assertThat(expectedAboveStaffSs)
+            .describedAs("staff position must exceed the above-staff floor")
+            .isGreaterThan(StaffExtents.MIN_ABOVE_STAFF_SS);
+
+        assertThat(result.getAboveStaffSs())
+            .describedAs("above-staff reservation tracks the notehead top")
+            .isCloseTo(expectedAboveStaffSs, within(TOLERANCE));
+
+        // A high note grows the line only above the staff; the below-staff
+        // reservation stays at its floor.
+        assertThat(belowStaffSsOf(result))
+            .describedAs("a high note must not change the below-staff reservation")
+            .isCloseTo(StaffExtents.MIN_BELOW_STAFF_SS, within(TOLERANCE));
+
+        var expectedLineHeightSs = StaffExtents.STAFF_HEIGHT_SS
+            + expectedAboveStaffSs
+            + StaffExtents.MIN_BELOW_STAFF_SS
+            + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
         assertThat(result.getLineHeightSs())
-            .describedAs("high note above staff must grow the line height")
-            .isGreaterThanOrEqualTo(MIN_LINE_HEIGHT_SS);
+            .describedAs("line height reflects the extended above-staff reservation")
+            .isCloseTo(expectedLineHeightSs, within(TOLERANCE));
     }
 
     @Test
-    void testLowNoteBelowStaffIncreasesLineHeight() {
+    void testLowNoteBelowStaffExtendsBelowReservationToNoteheadBottom() {
         var song = new Song();
         var line = song.getLine(0);
 
-        // Regression guard for the below-staff term added in step 2 of the plan.
         addNote(song, line, crotchet(StaffExtents.MAX_STAFF_POSITION_SP));
 
         var result = require(engine().layout(line, true), "LayoutResult");
 
+        // A note this low below the staff has a stem pointing up, so its bottommost
+        // point is the notehead bottom: note center plus notehead top offset plus
+        // the full notehead height. The below-staff reservation is the distance from
+        // that point down past the staff bottom (one staff-half below y=0).
+        var noteheadBotSs = StaffExtents.spToSs(StaffExtents.MAX_STAFF_POSITION_SP)
+            + ElementType.CROTCHET.getNoteheadTopOffsetSs()
+            + ElementType.CROTCHET.getFullElementHeightSs();
+        var expectedBelowStaffSs = noteheadBotSs - StaffExtents.STAFF_HALF_SS;
+
+        // Fixture precondition: this position must push the reservation past its floor.
+        assertThat(expectedBelowStaffSs)
+            .describedAs("staff position must exceed the below-staff floor")
+            .isGreaterThan(StaffExtents.MIN_BELOW_STAFF_SS);
+
+        assertThat(belowStaffSsOf(result))
+            .describedAs("below-staff reservation tracks the notehead bottom")
+            .isCloseTo(expectedBelowStaffSs, within(TOLERANCE));
+
+        // A low note grows the line only below the staff; the above-staff
+        // reservation stays at its floor.
+        assertThat(result.getAboveStaffSs())
+            .describedAs("a low note must not change the above-staff reservation")
+            .isCloseTo(StaffExtents.MIN_ABOVE_STAFF_SS, within(TOLERANCE));
+
+        var expectedLineHeightSs = StaffExtents.STAFF_HEIGHT_SS
+            + StaffExtents.MIN_ABOVE_STAFF_SS
+            + expectedBelowStaffSs
+            + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
         assertThat(result.getLineHeightSs())
-            .describedAs("low note below staff must grow the line height")
-            .isGreaterThanOrEqualTo(MIN_LINE_HEIGHT_SS);
+            .describedAs("line height reflects the extended below-staff reservation")
+            .isCloseTo(expectedLineHeightSs, within(TOLERANCE));
     }
 }
