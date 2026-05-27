@@ -47,12 +47,12 @@
 | LayoutAccumulator | `clear` → `isEmpty` true and `intersects` false; fresh `isEmpty` true | unit | — | missing | write tests | ✅ |
 | LayoutAccumulator | `getArea()` returns defensive copy | unit | — | missing | mutate return; accumulator unchanged | ✅ |
 | LayoutAccumulator | union of two rects intersects a spanning rect | unit | — | missing | write test | ✅ |
-| SectionLayout | `hasContent()` true non-empty / false empty list / false empty first line | unit | — | missing | 3 tests | ⬜ |
-| SectionLayout | `getText()` first line / "" when empty | unit | — | missing | write tests | ⬜ |
-| SectionLayout | `getHeight()` from content bounds | unit | — | missing | known-bounds test | ⬜ |
-| SectionLayout | `empty()` factory: zero size, no lines, null font | unit | — | missing | assert each property | ⬜ |
-| SectionLayout | 2-arg string ctor wraps text in single-element list | unit | — | missing | round-trip via `lines()` | ⬜ |
-| SectionLayout | `lines()` immutable (defensive copy) | unit | — | missing | mutate source; `lines()` unchanged | ⬜ |
+| SectionLayout | `hasContent()` true non-empty / false empty list / false empty first line | unit | — | missing | 3 tests | ✅ |
+| SectionLayout | `getText()` first line / "" when empty | unit | — | missing | write tests | ✅ |
+| SectionLayout | `getHeight()` from content bounds | unit | — | missing | known-bounds test | ✅ |
+| SectionLayout | `empty()` factory: zero size, no lines, null font | unit | — | missing | assert each property | ✅ |
+| SectionLayout | 2-arg string ctor wraps text in single-element list | unit | — | missing | round-trip via `lines()` | ✅ |
+| SectionLayout | `lines()` immutable (defensive copy) | unit | — | missing | mutate source; `lines()` unchanged | ✅ |
 | PageModel | `Size.LETTER`/`A4` dimensions | unit | `PageModelTest.SizeEnum.*` (2) | adequate | keep | — |
 | PageModel | `getSize()` default LETTER / "a4" / case-insensitive / unknown→LETTER | unit | `PageModelTest.PageSizeFromPrefs.*` (4) | adequate | keep | — |
 | PageModel | `getPageWidthPx`/`getPageHeightPx` for LETTER+A4 | unit | `PageModelTest.PageDimensionsPx` (4) | adequate | keep | — |

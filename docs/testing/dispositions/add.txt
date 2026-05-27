@@ -783,3 +783,12 @@ LayoutAccumulatorTest.testClearMakesAccumulatorEmptyAndStopsIntersecting	3a	row 
 LayoutAccumulatorTest.testGetAreaReturnsDefensiveCopy	3a	row 48 — mutating returned area leaves accumulator unchanged
 LayoutAccumulatorTest.testUnionOfTwoRectanglesIntersectsSpanningRectangle	3a	row 49 — union of two rects; spanning rect intersects, gap probe does not
 LayoutEngineTest.testBeamCountReturnsFlagLevelPerNoteType	3a	row 30 — beamCount widened to package-private; QUAVER 1, SEMIQUAVER 2, DEMI_SEMIQUAVER 3
+SectionLayoutTest.testHasContentTrueWhenFirstLineNonEmpty	3a	row 50 — hasContent() true when first line non-empty
+SectionLayoutTest.testHasContentFalseWhenLinesEmpty	3a	row 50 — hasContent() false when lines empty
+SectionLayoutTest.testHasContentFalseWhenFirstLineEmptyString	3a	row 50 — hasContent() false when first line empty string
+SectionLayoutTest.testGetTextReturnsFirstLine	3a	row 51 — getText() returns first line
+SectionLayoutTest.testGetTextReturnsEmptyStringWhenNoLines	3a	row 51 — getText() returns "" when no lines
+SectionLayoutTest.testGetHeightReturnsContentBoundsHeight	3a	row 52 — getHeight() from content bounds height
+SectionLayoutTest.testEmptyFactoryHasZeroSizeNoLinesAndNullFont	3a	row 53 — empty() zero size, no lines, null font, zero baseline
+SectionLayoutTest.testStringConstructorWrapsTextInSingleElementList	3a	row 54 — 2-arg string ctor wraps text in single-element list
+SectionLayoutTest.testLinesIsDefensiveCopyOfConstructorArgument	3a	row 55 — lines() defensive copy; mutating source leaves lines() unchanged
