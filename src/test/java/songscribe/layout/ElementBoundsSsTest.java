@@ -325,4 +325,139 @@ class ElementBoundsSsTest extends UnitTest {
             assertThat(boundsA.intersectsPadding(boundsB)).isFalse();
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Row 9: translate(dx,dy) shifts all four layers (incl. nullable visual)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class Translate {
+
+        @Test
+        void testTranslateShiftsAllFourLayersWhenVisualExplicitlySet() {
+            final double contentXSs = 1.0;
+            final double contentYSs = 2.0;
+            final double contentWidthSs = 3.0;
+            final double contentHeightSs = 1.5;
+            final double paddingSs = 0.5;
+            final double marginSs = 0.25;
+            final double visualExtensionSs = 0.75;
+            final double dxSs = 2.0;
+            final double dySs = 3.0;
+
+            var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
+            var padding = new Rectangle2D.Double(
+                contentXSs - paddingSs, contentYSs - paddingSs,
+                contentWidthSs + 2 * paddingSs, contentHeightSs + 2 * paddingSs);
+            var margin = new Rectangle2D.Double(
+                padding.getX() - marginSs, padding.getY() - marginSs,
+                padding.getWidth() + 2 * marginSs, padding.getHeight() + 2 * marginSs);
+            // Visual extends beyond the margin on all sides.
+            var visual = new Rectangle2D.Double(
+                margin.getX() - visualExtensionSs, margin.getY() - visualExtensionSs,
+                margin.getWidth() + 2 * visualExtensionSs, margin.getHeight() + 2 * visualExtensionSs);
+
+            var bounds = new ElementBoundsSs(content, padding, margin, visual);
+            var translated = bounds.translate(dxSs, dySs);
+
+            assertThat(translated.getContentBounds()).isEqualTo(new Rectangle2D.Double(
+                content.getX() + dxSs, content.getY() + dySs, content.getWidth(), content.getHeight()));
+            assertThat(translated.getPaddingBounds()).isEqualTo(new Rectangle2D.Double(
+                padding.getX() + dxSs, padding.getY() + dySs, padding.getWidth(), padding.getHeight()));
+            assertThat(translated.getMarginBounds()).isEqualTo(new Rectangle2D.Double(
+                margin.getX() + dxSs, margin.getY() + dySs, margin.getWidth(), margin.getHeight()));
+            assertThat(translated.getVisualBounds()).isEqualTo(new Rectangle2D.Double(
+                visual.getX() + dxSs, visual.getY() + dySs, visual.getWidth(), visual.getHeight()));
+        }
+
+        @Test
+        void testTranslateWithNullVisualFallsBackToShiftedMargin() {
+            final double contentXSs = 0.0;
+            final double contentYSs = 0.0;
+            final double contentWidthSs = 2.0;
+            final double contentHeightSs = 2.0;
+            final double marginSs = 0.25;
+            final double dxSs = 1.5;
+            final double dySs = 2.5;
+
+            var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
+            var bounds = ElementBoundsSs.uniform(content, 0.0, marginSs);
+            var translated = bounds.translate(dxSs, dySs);
+
+            // Visual is null; getVisualBounds() must fall back to the shifted margin.
+            assertThat(translated.getVisualBounds()).isEqualTo(translated.getMarginBounds());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 10: getVisualBounds() — explicit-visual branch vs margin fallback
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class GetVisualBounds {
+
+        @Test
+        void testExplicitVisualRectIsReturnedWhenSet() {
+            final double contentXSs = 1.0;
+            final double contentYSs = 1.0;
+            final double contentSizeSs = 2.0;
+            final double visualXSs = 0.0;
+            final double visualYSs = 0.0;
+            final double visualWidthSs = 5.0;
+            final double visualHeightSs = 5.0;
+
+            var content = new Rectangle2D.Double(contentXSs, contentYSs, contentSizeSs, contentSizeSs);
+            var visual = new Rectangle2D.Double(visualXSs, visualYSs, visualWidthSs, visualHeightSs);
+            var bounds = new ElementBoundsSs(content, content, content, visual);
+
+            assertThat(bounds.getVisualBounds()).isEqualTo(visual);
+        }
+
+        @Test
+        void testNoVisualFallsBackToMarginBounds() {
+            final double contentXSs = 2.0;
+            final double contentYSs = 3.0;
+            final double contentWidthSs = 4.0;
+            final double contentHeightSs = 2.0;
+            final double marginSs = 0.5;
+
+            var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
+            var bounds = ElementBoundsSs.uniform(content, 0.0, marginSs);
+
+            assertThat(bounds.getVisualBounds()).isEqualTo(bounds.getMarginBounds());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 11: coordinate accessors — content and margin edges
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class CoordinateAccessors {
+
+        @Test
+        void testAccessorsReturnExactContentAndMarginCoordinates() {
+            final double contentXSs = 3.0;
+            final double contentYSs = 5.0;
+            final double contentWidthSs = 4.0;
+            final double contentHeightSs = 2.0;
+            final double paddingSs = 0.5;
+            final double marginSs = 0.25;
+
+            var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
+            var bounds = ElementBoundsSs.uniform(content, paddingSs, marginSs);
+
+            // Content-derived accessors
+            assertThat(bounds.getTopSs()).isEqualTo(contentYSs);
+            assertThat(bounds.getBottomSs()).isEqualTo(contentYSs + contentHeightSs);
+            assertThat(bounds.getLeftSs()).isEqualTo(contentXSs);
+            assertThat(bounds.getRightSs()).isEqualTo(contentXSs + contentWidthSs);
+
+            // Margin-derived accessors (margin = padding + marginSs on each side)
+            final double expectedMarginTopSs = contentYSs - paddingSs - marginSs;
+            final double expectedMarginBottomSs = contentYSs + contentHeightSs + paddingSs + marginSs;
+            assertThat(bounds.getMarginTopSs()).isEqualTo(expectedMarginTopSs);
+            assertThat(bounds.getMarginBottomSs()).isEqualTo(expectedMarginBottomSs);
+        }
+    }
 }
