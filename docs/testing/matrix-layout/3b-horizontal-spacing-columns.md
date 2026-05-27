@@ -15,10 +15,10 @@
 | ElementColumnBuilder | grace quaver < regular quaver | unit | `testGraceQuaverExtentSmallerThanRegularQuaver` | inadequate | `isLessThan` only; pin exact values | ✅ |
 | ElementColumnBuilder | dotted quaver = max(dots-extent, flag-extent) | unit | `testDottedQuaverExtentIsMaxOfDotsAndFlag` | inadequate | `>=` survives extra dot width; assert exact | ✅ |
 | ElementColumnBuilder | two-dot extent includes two gap+dot pairs | unit | — | missing | double-dotted test | ✅ |
-| ElementColumnBuilder | rest/barline → `type.getElementWidthSs()` unchanged | unit | — | missing | REST + BARLINE test | ⬜ |
-| ElementColumnBuilder | `calculateLeftExtentSs` 0 without accidental; negative `-(accW+ACCIDENTAL_GAP_SS)` with | unit | — | missing | both cases | ⬜ |
-| ElementColumnBuilder | `buildColumn` minGap = hyphen width (BEGIN/MIDDLE) vs space width (END/SINGLE) | unit | — | missing | hyphenated + non-hyphenated lyric | ⬜ |
-| ElementColumnBuilder | `buildColumns` empty line → empty list | unit | — | missing | empty-line edge | ⬜ |
+| ElementColumnBuilder | rest/barline → `type.getElementWidthSs()` unchanged | unit | — | missing | REST + BARLINE test | ✅ |
+| ElementColumnBuilder | `calculateLeftExtentSs` 0 without accidental; negative `-(accW+ACCIDENTAL_GAP_SS)` with | unit | — | missing | both cases | ✅ |
+| ElementColumnBuilder | `buildColumn` minGap = hyphen width (BEGIN/MIDDLE) vs space width (END/SINGLE) | unit | — | missing | hyphenated + non-hyphenated lyric | ✅ |
+| ElementColumnBuilder | `buildColumns` empty line → empty list | unit | — | missing | empty-line edge | ✅ |
 | ElementColumnBuilder | `calculateStemTop/BottomSs` for up/down/stemless | unit | — | missing | widen to package-private; stem geometry | ⬜ |
 | HorizontalSpacingCalculator | `calculateFirstElementXSs(n)` = clef + n·keyAcc + firstNoteOffset | unit | `HorizontalSpacingCalculatorTest.testFirstNoteXMatchesCalculateFirstElementXSs` | inadequate | **self-referential**: compares `calculatePositions` to same formula; pin concrete value | ⬜ |
 | HorizontalSpacingCalculator | `calculateHeaderRightEdgeSs(n)` = clef + n·keyAcc | unit | — | missing | 0/3/7 accidentals | ⬜ |

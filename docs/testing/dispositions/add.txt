@@ -807,3 +807,9 @@ ElementColumnTest.testIsBeamedReflectsConstructorFlag	3b	row 10 — isBeamed ref
 ElementColumnTest.testHasGraceNotesReflectsGraceNoteList	3b	row 10 — hasGraceNotes reflects grace-note list
 ElementColumnTest.testHasGlissandoDelegatesToElement	3b	row 10 — hasGlissando delegates to element.getGlissando
 ElementColumnBuilderTest.testDoubleDottedQuaverExtentIncludesTwoDotPairs	3b	row 17 — new: double-dotted quaver extent adds two (DOT_GAP+DOT_WIDTH) pairs, exact max vs flag extent
+ElementColumnBuilderTest.testRestAndBarlineRightExtentEqualsElementWidth	3b	row 18 — REST + BARLINE right extent equals type.getElementWidthSs() (no flag/dot adjustment)
+ElementColumnBuilderTest.testLeftExtentIsZeroWithoutAccidental	3b	row 19 — calculateLeftExtentSs = 0 with no accidental
+ElementColumnBuilderTest.testLeftExtentIsNegativeWithAccidental	3b	row 19 — calculateLeftExtentSs = -(accW + ACCIDENTAL_GAP_SS) with accidental
+ElementColumnBuilderTest.testBuildColumnMinGapIsHyphenCellWidthForHyphenatedSyllable	3b	row 20 — buildColumn minGap = hyphen cell width for BEGIN/MIDDLE syllabic
+ElementColumnBuilderTest.testBuildColumnMinGapIsSpaceWidthForNonHyphenatedSyllable	3b	row 20 — buildColumn minGap = space width for END/SINGLE syllabic
+ElementColumnBuilderTest.testBuildColumnsEmptyLineReturnsEmptyList	3b	row 21 — buildColumns on empty line returns empty list

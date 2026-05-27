@@ -21,11 +21,17 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.layout.ElementColumnBuilder;
 import songscribe.smufl.Engraving;
@@ -35,6 +41,15 @@ import songscribe.smufl.SMuFLMetadata;
 class ElementColumnBuilderTest extends UnitTest {
 
     private static final int DOUBLE_DOT_COUNT = 2;
+
+    // Arbitrary non-zero values used only as mock stubs to pin exact return path in buildColumn
+    private static final double HYPHENATED_CELL_WIDTH_SS = 0.5;
+    private static final double NON_HYPHENATED_SPACE_WIDTH_SS = 0.3;
+
+    @BeforeAll
+    static void initializeNoteGeometry() {
+        NoteGeometry.initializeAccidentalWidths();
+    }
 
     private static StaffElement element(ElementType type) {
         return type.newInstance();
@@ -154,5 +169,89 @@ class ElementColumnBuilderTest extends UnitTest {
         var extent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
 
         assertThat(extent).isGreaterThan(noteheadOnly);
+    }
+
+    // Row 18: REST + BARLINE right extent = type.getElementWidthSs() — no flag/dot adjustments
+    @Test
+    void testRestAndBarlineRightExtentEqualsElementWidth() {
+        for (var type : new ElementType[]{ElementType.CROTCHET_REST, ElementType.SINGLE_BARLINE}) {
+            var el = element(type);
+
+            assertThat(ElementColumnBuilder.calculateRightExtentSs(el, false, true))
+                .as("Right extent of %s should equal element width", type)
+                .isEqualTo(type.getElementWidthSs());
+        }
+    }
+
+    // Row 19: calculateLeftExtentSs = 0 with no accidental
+    @Test
+    void testLeftExtentIsZeroWithoutAccidental() {
+        var note = element(ElementType.CROTCHET);
+
+        assertThat(ElementColumnBuilder.calculateLeftExtentSs(note)).isEqualTo(0.0);
+    }
+
+    // Row 19: calculateLeftExtentSs = -(accW + ACCIDENTAL_GAP_SS) when accidental present
+    @Test
+    void testLeftExtentIsNegativeWithAccidental() {
+        var note = element(ElementType.CROTCHET);
+        note.setAccidental(StaffElement.Accidental.SHARP);
+
+        var accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(note);
+        var expected = -(accidentalWidthSs + ElementColumnBuilder.ACCIDENTAL_GAP_SS);
+
+        assertThat(ElementColumnBuilder.calculateLeftExtentSs(note)).isEqualTo(expected);
+    }
+
+    // Row 20: buildColumn minGap = preferredHyphenCellWidthSs for BEGIN and MIDDLE syllabic types
+    @Test
+    void testBuildColumnMinGapIsHyphenCellWidthForHyphenatedSyllable() {
+        for (var syllabic : new Lyric.Syllabic[]{Lyric.Syllabic.BEGIN, Lyric.Syllabic.MIDDLE}) {
+            var metrics = mock(LyricRenderMetrics.class);
+            when(metrics.preferredHyphenCellWidthSs()).thenReturn(HYPHENATED_CELL_WIDTH_SS);
+            when(metrics.lyricBoxWidthSs(anyString())).thenReturn(0.0);
+
+            var line = detachedLine();
+            var note = element(ElementType.CROTCHET);
+            note.setLyricForVerse(1, syllabic, false, "syl", Lyric.Extend.NONE);
+            line.addElement(note);
+
+            var column = new ElementColumnBuilder(metrics).buildColumn(note, line);
+
+            assertThat(column.getMinGapToNextSyllableSs())
+                .as("minGap for syllabic %s should equal hyphen cell width", syllabic)
+                .isEqualTo(HYPHENATED_CELL_WIDTH_SS);
+        }
+    }
+
+    // Row 20: buildColumn minGap = spaceWidthSs for END and SINGLE syllabic types
+    @Test
+    void testBuildColumnMinGapIsSpaceWidthForNonHyphenatedSyllable() {
+        for (var syllabic : new Lyric.Syllabic[]{Lyric.Syllabic.END, Lyric.Syllabic.SINGLE}) {
+            var metrics = mock(LyricRenderMetrics.class);
+            when(metrics.spaceWidthSs()).thenReturn(NON_HYPHENATED_SPACE_WIDTH_SS);
+            when(metrics.lyricBoxWidthSs(anyString())).thenReturn(0.0);
+
+            var line = detachedLine();
+            var note = element(ElementType.CROTCHET);
+            note.setLyricForVerse(1, syllabic, false, "word", Lyric.Extend.NONE);
+            line.addElement(note);
+
+            var column = new ElementColumnBuilder(metrics).buildColumn(note, line);
+
+            assertThat(column.getMinGapToNextSyllableSs())
+                .as("minGap for syllabic %s should equal space width", syllabic)
+                .isEqualTo(NON_HYPHENATED_SPACE_WIDTH_SS);
+        }
+    }
+
+    // Row 21: buildColumns on an empty line returns an empty list
+    @Test
+    void testBuildColumnsEmptyLineReturnsEmptyList() {
+        var metrics = mock(LyricRenderMetrics.class);
+        var builder = new ElementColumnBuilder(metrics);
+        var line = detachedLine();
+
+        assertThat(builder.buildColumns(line)).isEmpty();
     }
 }
