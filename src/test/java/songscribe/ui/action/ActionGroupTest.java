@@ -24,11 +24,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.awt.event.ActionEvent;
 
+import javax.swing.Action;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
+import songscribe.dom.ElementType;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.BarWasSelectedNotification;
+import songscribe.message.notification.DurationWasSelectedNotification;
 
 class ActionGroupTest extends MainFrameMockTest {
 
@@ -59,6 +65,38 @@ class ActionGroupTest extends MainFrameMockTest {
         group.setSelected(forteAction, true);
         group.setSelected(pianoAction, true);
         assertThat(group.getPreviousSelected()).isEqualTo(forteAction);
+    }
+
+    // Row 64: select(action, source) — calls perform(source) only when selection changes
+
+    @Test
+    void testSelectCallsPerformOnlyWhenSelectionChanges() {
+        var performCount = new int[]{0};
+        var trackingAction = new SelectableUIAction(mainFrame(), "track", "cmd-track") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                performCount[0]++;
+            }
+        };
+        var otherAction = new SelectableUIAction(mainFrame(), "other", "cmd-other") {
+            @Override
+            public void actionPerformed(ActionEvent e) {}
+        };
+        var group = new ActionGroup<>(trackingAction, otherAction);
+        var source = new Object();
+        group.select(trackingAction, source);
+        group.select(trackingAction, source);
+        assertThat(performCount[0]).isEqualTo(1);
+    }
+
+    // Row 65: propertyChange — external putValue(SELECTED_KEY, true) enforces exclusivity
+
+    @Test
+    void testPropertyChangeExternalPutValueEnforcesExclusivity() {
+        var group = new ActionGroup<>(forteAction, pianoAction);
+        group.setSelected(forteAction, true);
+        pianoAction.putValue(Action.SELECTED_KEY, true);
+        assertThat(group.getSelected()).isEqualTo(pianoAction);
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -169,6 +207,73 @@ class ActionGroupTest extends MainFrameMockTest {
             group.setSelected(selectableA, true);
             group.clearSelection();
             assertThat(group.anySelected()).isFalse();
+        }
+    }
+
+    // Rows 67-68: mutual exclusion between duration and non-duration action groups
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MutualExclusion {
+
+        // Row 67: DurationActionGroup.barWasSelected clears duration selection at HIGH_PRIORITY
+
+        @Test
+        void testBarWasSelectedClearsDurationSelection() {
+            Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+            assertThat(Actions.DURATION_ACTION_GROUP.getSelected())
+                .as("precondition")
+                .isEqualTo(Actions.QUARTER_NOTE_ACTION);
+            MessageCenter.post(new BarWasSelectedNotification(ElementType.SINGLE_BARLINE));
+            assertThat(Actions.DURATION_ACTION_GROUP.getSelected()).isNull();
+        }
+
+        // Row 68: NonDurationActionGroup.durationWasSelected clears non-duration selection at HIGH_PRIORITY
+
+        @Test
+        void testDurationWasSelectedClearsNonDurationSelection() {
+            Actions.NON_DURATION_ACTION_GROUP.setSelected(Actions.BREATH_MARK_ACTION, true);
+            assertThat(Actions.NON_DURATION_ACTION_GROUP.getSelected())
+                .as("precondition")
+                .isEqualTo(Actions.BREATH_MARK_ACTION);
+            MessageCenter.post(new DurationWasSelectedNotification(ElementType.CROTCHET));
+            assertThat(Actions.NON_DURATION_ACTION_GROUP.getSelected()).isNull();
+        }
+    }
+
+    // Rows 61-63: selectNext
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SelectNext {
+
+        // Row 61: selectNext — wraps from last to first
+
+        @Test
+        void testSelectNextWrapsFromLastToFirst() {
+            var group = new ActionGroup<>(forteAction, pianoAction);
+            group.setSelected(pianoAction, true);
+            group.selectNext();
+            assertThat(group.getSelected()).isEqualTo(forteAction);
+        }
+
+        // Row 62: selectNext — advances to next when selected is not last
+
+        @Test
+        void testSelectNextAdvancesToNextAction() {
+            var group = new ActionGroup<>(forteAction, pianoAction);
+            group.setSelected(forteAction, true);
+            group.selectNext();
+            assertThat(group.getSelected()).isEqualTo(pianoAction);
+        }
+
+        // Row 63: selectNext — when selected is null → selects first
+
+        @Test
+        void testSelectNextWhenNullSelectsFirst() {
+            var group = new ActionGroup<>(forteAction, pianoAction);
+            group.selectNext();
+            assertThat(group.getSelected()).isEqualTo(forteAction);
         }
     }
 }

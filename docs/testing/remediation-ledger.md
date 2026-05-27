@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 436 / 1619 actionable rows done (26%).**
+**Overall: 443 / 1576 actionable rows done (28%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -23,14 +23,11 @@
 |  | [3e-ranges-endings-attachments-collision](matrix-layout/3e-ranges-endings-attachments-collision.md) | 0 | 19 | not started |
 |  | [3f-stacking-subsystem](matrix-layout/3f-stacking-subsystem.md) | 0 | 31 | not started |
 | 4 · midi/converter/util/smufl/prefs/font/export/uiconverter | [4a-midi](matrix-util/4a-midi.md) | 18 | 26 | in progress |
-|  | [4b-converter](matrix-util/4b-converter.md) | 0 | 22 | not started |
 |  | [4c-util](matrix-util/4c-util.md) | 0 | 41 | not started |
 |  | [4d-smufl](matrix-util/4d-smufl.md) | 0 | 29 | not started |
 |  | [4e-prefs](matrix-util/4e-prefs.md) | 0 | 31 | not started |
 |  | [4f-font](matrix-util/4f-font.md) | 0 | 6 | not started |
-|  | [4g-export](matrix-util/4g-export.md) | 0 | 8 | not started |
-|  | [4h-uiconverter](matrix-util/4h-uiconverter.md) | 0 | 13 | not started |
-| 5 · ui/action | [5a-base-infrastructure](matrix-action/5a-base-infrastructure.md) | 35 | 48 | in progress |
+| 5 · ui/action | [5a-base-infrastructure](matrix-action/5a-base-infrastructure.md) | 42 | 48 | in progress |
 |  | [5b-note-element-insertion-duration-articulation](matrix-action/5b-note-element-insertion-duration-articulation.md) | 0 | 18 | not started |
 |  | [5c-markings](matrix-action/5c-markings.md) | 0 | 19 | not started |
 |  | [5d-clipboard-selection-line](matrix-action/5d-clipboard-selection-line.md) | 0 | 20 | not started |
