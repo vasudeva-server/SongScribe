@@ -638,7 +638,8 @@ public final class LayoutResult {
         return pointYSs >= baseYSs && pointYSs <= baseYSs + verseCount * rowHeightSs;
     }
 
-    private double lyricAreaBaseYSs() {
+    // Package-private for direct unit testing of the formula.
+    double lyricAreaBaseYSs() {
         return aboveStaffSs + StaffExtents.STAFF_HEIGHT_SS + belowContentSs + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS;
     }
 

@@ -751,3 +751,7 @@ ActionGroupTest.RemoveAndContains.testContainsFalseForActionNotAdded
 ActionGroupTest.AnySelected.testAnySelectedTrueWhenOneActionSelected
 ActionGroupTest.AnySelected.testAnySelectedFalseWhenNoActionSelected
 ActionGroupTest.AnySelected.testAnySelectedFalseAfterClearSelection
+LayoutResultTest.testLyricAreaBaseYSsFollowsAboveStaffAndBelowContent	3a	row 38 — focused test pinning lyricAreaBaseYSs formula + linear shift with aboveStaffSs/belowContentSs (was indirect via hitTestLyric)
+LayoutResultTest.testFindRangeElementDecorationLayoutMatchesAnchorAndType	3a	row 42 — focused range-element lookup by anchor+type (was transitive)
+LayoutResultTest.testFindRangeElementDecorationLayoutReturnsNullForUnmatchedAnchor	3a	row 42 — null on anchor mismatch
+LayoutResultTest.testFindRangeElementDecorationLayoutReturnsNullForUnmatchedType	3a	row 42 — null on type mismatch

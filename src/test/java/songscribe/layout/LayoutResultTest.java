@@ -39,6 +39,8 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricBoxLayout;
@@ -191,11 +193,92 @@ class LayoutResultTest extends UnitTest {
         assertThat(hit).isNull();
     }
 
+    // lyricAreaBaseYSs pins the verse base offset and tracks both vertical inputs.
+    @Test
+    void testLyricAreaBaseYSsFollowsAboveStaffAndBelowContent() {
+        var base = LayoutResult.builder()
+            .setAboveStaffSs(ABOVE_STAFF_SS)
+            .setBelowContentSs(BELOW_CONTENT_SS)
+            .build();
+        var raisedAbove = LayoutResult.builder()
+            .setAboveStaffSs(ABOVE_STAFF_SS + ABOVE_STAFF_DELTA_SS)
+            .setBelowContentSs(BELOW_CONTENT_SS)
+            .build();
+        var raisedBelow = LayoutResult.builder()
+            .setAboveStaffSs(ABOVE_STAFF_SS)
+            .setBelowContentSs(BELOW_CONTENT_SS + BELOW_CONTENT_DELTA_SS)
+            .build();
+
+        var expectedBase = ABOVE_STAFF_SS + StaffExtents.STAFF_HEIGHT_SS
+            + BELOW_CONTENT_SS + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS;
+
+        assertThat(base.lyricAreaBaseYSs()).isCloseTo(expectedBase, within(TOLERANCE));
+        assertThat(raisedAbove.lyricAreaBaseYSs() - base.lyricAreaBaseYSs())
+            .isCloseTo(ABOVE_STAFF_DELTA_SS, within(TOLERANCE));
+        assertThat(raisedBelow.lyricAreaBaseYSs() - base.lyricAreaBaseYSs())
+            .isCloseTo(BELOW_CONTENT_DELTA_SS, within(TOLERANCE));
+    }
+
+    // findRangeElementDecorationLayout returns the layout whose range matches anchor AND type.
+    @Test
+    void testFindRangeElementDecorationLayoutMatchesAnchorAndType() {
+        var anchor = ElementType.CROTCHET.newInstance();
+        var trill = new Trill(anchor);
+        var layout = sampleDecorationLayout();
+        var result = LayoutResult.builder()
+            .putDecorationLayout(trill, layout)
+            .build();
+
+        assertThat(result.findRangeElementDecorationLayout(anchor, Trill.class)).isSameAs(layout);
+    }
+
+    // A different anchor element finds no range decoration.
+    @Test
+    void testFindRangeElementDecorationLayoutReturnsNullForUnmatchedAnchor() {
+        var anchor = ElementType.CROTCHET.newInstance();
+        var otherAnchor = ElementType.CROTCHET.newInstance();
+        var trill = new Trill(anchor);
+        var result = LayoutResult.builder()
+            .putDecorationLayout(trill, sampleDecorationLayout())
+            .build();
+
+        assertThat(result.findRangeElementDecorationLayout(otherAnchor, Trill.class)).isNull();
+    }
+
+    // A range type the stored element is not an instance of finds no decoration.
+    @Test
+    void testFindRangeElementDecorationLayoutReturnsNullForUnmatchedType() {
+        var anchor = ElementType.CROTCHET.newInstance();
+        var trill = new Trill(anchor);
+        var result = LayoutResult.builder()
+            .putDecorationLayout(trill, sampleDecorationLayout())
+            .build();
+
+        assertThat(result.findRangeElementDecorationLayout(anchor, Tuplet.class)).isNull();
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================
 
     private static final double TOLERANCE = 0.0001;
+
+    private static final double ABOVE_STAFF_SS = 1.5;
+    private static final double BELOW_CONTENT_SS = 0.75;
+    private static final double ABOVE_STAFF_DELTA_SS = 2.0;
+    private static final double BELOW_CONTENT_DELTA_SS = 0.5;
+
+    private static final double DECORATION_X_SS = 2.0;
+    private static final double DECORATION_Y_SS = -3.0;
+    private static final double DECORATION_WIDTH_SS = 1.5;
+    private static final double DECORATION_HEIGHT_SS = 1.0;
+    private static final double DECORATION_MARGIN_SS = 0.25;
+
+    private static LayoutResult.DecorationLayout sampleDecorationLayout() {
+        return new LayoutResult.DecorationLayout(
+            DECORATION_X_SS, DECORATION_Y_SS, DECORATION_WIDTH_SS,
+            DECORATION_HEIGHT_SS, DECORATION_MARGIN_SS);
+    }
 
     private static SongLayoutMetrics testSongMetrics() {
         // maxAboveStaffSs=1, maxBelowStaffSs=1, maxBelowContentSs=0.5,

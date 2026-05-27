@@ -35,11 +35,11 @@
 | LayoutResult | `findInsertionIndex` over-head / before-first(0) / after-last(`effectiveElementCount`) / in-gap(slot) | unit | — | missing | write 4 tests | ⬜ |
 | LayoutResult | `calculateInsertionXSs` empty / over-head snap / terminal right-align / after-last spacing / between-midpoint | unit | — | missing | write 5 tests | ⬜ |
 | LayoutResult | `getBelowStaffReservationSs` = `lineHeight - aboveStaff - STAFF_HEIGHT_SS` | unit | — | missing | known-values test | ⬜ |
-| LayoutResult | `lyricAreaBaseYSs` shifts with `aboveStaffSs`/`belowContentSs` | unit | `LayoutResultTest.testHitTestLyricHitsInsideBounds` (indirect) | inadequate | focused test pinning the formula | ⬜ |
+| LayoutResult | `lyricAreaBaseYSs` shifts with `aboveStaffSs`/`belowContentSs` | unit | `LayoutResultTest.testHitTestLyricHitsInsideBounds` (indirect) | inadequate | focused test pinning the formula | ✅ |
 | LayoutResult | `findAttachmentBounds` correct owner/type; null unknown owner | unit | — (stacking tests use `findAttachmentDecorationLayout`) | missing | two same-type attachments on different owners | ⬜ |
 | LayoutResult | `findRangeElementBounds` by anchor+end+type | unit | — | missing | write test | ⬜ |
 | LayoutResult | `findAttachment` matching owner/type else null | unit | — | missing | write test | ⬜ |
-| LayoutResult | `findRangeElementDecorationLayout` by anchor+type | unit | covered transitively (`FermataTrillStackingTest` etc. use attachment variant) | inadequate | focused range-element test | ⬜ |
+| LayoutResult | `findRangeElementDecorationLayout` by anchor+type | unit | covered transitively (`FermataTrillStackingTest` etc. use attachment variant) | inadequate | focused range-element test | ✅ |
 | LayoutResult | `contains` true iff `elementBounds` has element | unit | — | missing | write test | ⬜ |
 | LayoutResult | `getDecorationLayoutsByType` filters by class | unit | — | missing | two types → each filtered list correct | ⬜ |
 | LayoutResult | `getElementXSs` 0 / `getElementPosition` null for unknown element | unit | — | missing | write tests | ⬜ |
