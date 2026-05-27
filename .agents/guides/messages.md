@@ -3,7 +3,7 @@
 MBassador event bus wrapped by `MessageCenter`. API:
 
 ```java
-MessageCenter.post(message) // EDT-only; synchronous; all handlers run on calling thread before returning
+MessageCenter.post(message) // Synchronous; all handlers run on calling thread before returning
 MessageCenter.subscribe(listener) // in constructor
 ```
 
