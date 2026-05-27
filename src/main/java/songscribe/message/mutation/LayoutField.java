@@ -27,7 +27,6 @@ package songscribe.message.mutation;
  */
 public enum LayoutField {
     LINE_WIDTH_SS(Double.class),
-    TOP_PADDING_SS(Double.class),
     ROW_HEIGHT_ADJUSTMENT_SS(Double.class),
     ATTRIBUTION_START_Y_SS(Double.class);
 

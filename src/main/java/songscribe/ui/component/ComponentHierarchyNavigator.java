@@ -90,39 +90,6 @@ public final class ComponentHierarchyNavigator {
     }
 
     /**
-     * Finds the line index at the given Y coordinate.
-     *
-     * @param y The Y coordinate in ScoreView coordinate system
-     * @return The line index, or -1 if not found
-     */
-    public int findLineIndexAtPoint(int y, int rowHeight) {
-        var mainPanel = provider.getMainPanel();
-        var song = provider.getSong();
-
-        if (mainPanel == null) {
-            return (int) (y - song.getTopPaddingSs()) / rowHeight;
-        }
-
-        // Convert ScoreView Y to StaffPanel Y
-        var staffPanel = mainPanel.getStaffPanel();
-        var staffPanelY = y - mainPanel.getY() - staffPanel.getY();
-
-        // Find which LinePanel contains this Y
-        var linePanels = staffPanel.getLinePanels();
-
-        for (var i = 0; i < linePanels.size(); i++) {
-            var linePanel = linePanels.get(i);
-            var bounds = linePanel.getBounds();
-
-            if (staffPanelY >= bounds.y && staffPanelY < bounds.y + bounds.height) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    /**
      * Sets up the selection provider and scoreView reference for all line components.
      *
      * @param selectionProvider Function that checks if a note is selected

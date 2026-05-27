@@ -277,52 +277,33 @@ class SongNotificationHandlerTest extends UnitTest {
     @Nested
     class LayoutDidChange {
 
-        private static final double NEW_TOP_PADDING_SS = 4.0;
         private static final double NEW_ROW_HEIGHT_ADJUSTMENT_SS = 2.5;
         private static final double NEW_LINE_WIDTH_SS = 80.0;
         private static final double NEW_ATTRIBUTION_START_Y_SS = 10.0;
 
         @Test
-        void testNonNullFieldsDispatchedToSettersAndSetByUserDerivedFromFlag() {
-            // Non-null fields in the notification must be dispatched to the corresponding
-            // setters.  topPaddingSetByUser=true must cause userSetTopPadding() to become true.
+        void testNonNullFieldsDispatchedToSetters() {
             song.layoutDidChange(new LayoutDidChangeNotification(
-                NEW_TOP_PADDING_SS, true,
                 NEW_ROW_HEIGHT_ADJUSTMENT_SS,
                 NEW_LINE_WIDTH_SS,
                 NEW_ATTRIBUTION_START_Y_SS
             ));
 
-            assertThat(song.getTopPaddingSs()).isEqualTo(NEW_TOP_PADDING_SS);
-            assertThat(song.userSetTopPadding()).isTrue();
             assertThat(song.getRowHeightAdjustmentSs()).isEqualTo(NEW_ROW_HEIGHT_ADJUSTMENT_SS);
             assertThat(song.getLineWidthSs()).isEqualTo(NEW_LINE_WIDTH_SS);
             assertThat(song.getAttributionStartYSs()).isEqualTo(NEW_ATTRIBUTION_START_Y_SS);
         }
 
         @Test
-        void testTopPaddingSetByUserFalseWhenFlagIsNull() {
-            // topPaddingSetByUser must be false when getTopPaddingSetByUser() returns null.
-            song.layoutDidChange(new LayoutDidChangeNotification(
-                NEW_TOP_PADDING_SS, null, null, null, null
-            ));
-
-            assertThat(song.getTopPaddingSs()).isEqualTo(NEW_TOP_PADDING_SS);
-            assertThat(song.userSetTopPadding()).isFalse();
-        }
-
-        @Test
         void testNullFieldsAreSkipped() {
             // A notification with all-null fields must not call any setter, so values
             // remain at their Song defaults.
-            var originalTopPadding = song.getTopPaddingSs();
             var originalRowHeight = song.getRowHeightAdjustmentSs();
             var originalLineWidth = song.getLineWidthSs();
             var originalAttributionY = song.getAttributionStartYSs();
 
-            song.layoutDidChange(new LayoutDidChangeNotification(null, null, null, null, null));
+            song.layoutDidChange(new LayoutDidChangeNotification(null, null, null));
 
-            assertThat(song.getTopPaddingSs()).isEqualTo(originalTopPadding);
             assertThat(song.getRowHeightAdjustmentSs()).isEqualTo(originalRowHeight);
             assertThat(song.getLineWidthSs()).isEqualTo(originalLineWidth);
             assertThat(song.getAttributionStartYSs()).isEqualTo(originalAttributionY);

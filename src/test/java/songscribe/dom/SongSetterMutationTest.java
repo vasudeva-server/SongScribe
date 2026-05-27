@@ -383,47 +383,6 @@ class SongSetterMutationTest extends UnitTest {
         }
 
         @Test
-        void testSetTopPaddingSsPostsMutation() {
-            var oldPadding = song.getTopPaddingSs();
-            song.setTopPaddingSs(oldPadding + 2.0, false);
-
-            var mutation = captureSingleLayoutChange();
-            assertThat(mutation.field()).isEqualTo(LayoutField.TOP_PADDING_SS);
-            assertThat(mutation.oldValue()).isEqualTo(oldPadding);
-            assertThat(mutation.newValue()).isEqualTo(oldPadding + 2.0);
-        }
-
-        // setTopPaddingSs always runs its apply block — posting a mutation even when
-        // the padding value is unchanged — because setByUser must still flow into the
-        // sticky userSetTopPadding flag.
-        @Test
-        void testSetTopPaddingSsAlwaysPostsMutationEvenWhenValueUnchanged() {
-            var padding = song.getTopPaddingSs();
-            song.setTopPaddingSs(padding, false);
-            captureSingleLayoutChange();
-
-            messageCenterMock.reset();
-
-            song.setTopPaddingSs(padding, true);
-            var mutation = captureSingleLayoutChange();
-            assertThat(mutation.field()).isEqualTo(LayoutField.TOP_PADDING_SS);
-            assertThat(song.userSetTopPadding()).isTrue();
-        }
-
-        // The userSetTopPadding flag OR-accumulates: once set to true by a
-        // setByUser=true call, a subsequent setByUser=false call must not clear it.
-        @Test
-        void testSetTopPaddingSsStickyFlagRemainsAfterFalseCall() {
-            var padding = song.getTopPaddingSs() + 1.0;
-            song.setTopPaddingSs(padding, true);
-            assertThat(song.userSetTopPadding()).isTrue();
-
-            // Same padding value, but setByUser=false — flag must stay true.
-            song.setTopPaddingSs(padding, false);
-            assertThat(song.userSetTopPadding()).isTrue();
-        }
-
-        @Test
         void testSetAttributionStartYSsPostsMutation() {
             var oldY = song.getAttributionStartYSs();
             song.setAttributionStartYSs(oldY + 3.0);

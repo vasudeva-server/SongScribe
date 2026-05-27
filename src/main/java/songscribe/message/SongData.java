@@ -61,7 +61,6 @@ public record SongData(
     boolean unofficialTranslation,
     int defaultKeyAccidentalCount,
     KeyType defaultKeyType,
-    double topPaddingSs,
     double attributionStartYSs,
     double rowHeightAdjustmentSs,
     double lineWidthSs,

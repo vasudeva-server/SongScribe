@@ -23,7 +23,6 @@ package songscribe.io;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -43,16 +42,13 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
 
 class MigrationPipelineTest extends UnitTest {
 
     // -- Constants --
 
-    // Arbitrary non-zero pixel values for the four song-level scalars; each distinct so a
+    // Arbitrary non-zero pixel values for the three song-level scalars; each distinct so a
     // cross-wired scalar would be caught.
-    private static final double TOP_PADDING_PX = 80.0;
     private static final double LINE_WIDTH_PX = 400.0;
     private static final double ROW_HEIGHT_PX = 160.0;
     private static final double ATTRIBUTION_START_Y_PX = 240.0;
@@ -64,25 +60,14 @@ class MigrationPipelineTest extends UnitTest {
     // < it after (1600/8 = 200), so line-width-fix can only have fired before pixels-to-ss.
     private static final double ORDERING_PROOF_LINE_WIDTH_PX = 1600.0;
 
-    // Any non-zero top-padding so the fallback stage's gate stays closed.
-    private static final double NON_ZERO_TOP_PADDING_SS = 10.0;
-
     // A version far beyond any real file, for the always-applies stage.
     private static final int FUTURE_VERSION = 99;
-
-    // Known font sizes stubbed into Prefs so the fallback computation is deterministic.
-    private static final int STUB_TITLE_FONT_SIZE = 24;
-    private static final int STUB_ATTRIBUTION_FONT_SIZE = 14;
 
     // Non-zero tempoChangeYPosPx value for testing legacy format wiring.
     private static final int TEMPO_CHANGE_Y_POS_PX = 20;
 
     // Non-zero lyricsYPosSs value (in pixels) for PIXELS_TO_SS wiring test.
     private static final double LYRICS_Y_POS_PX = 48.0;
-
-    // Attribution text with two lines for the TOP_PADDING_FALLBACK line-count term test.
-    private static final String TWO_LINE_ATTRIBUTION = "Line 1\nLine 2";
-    private static final int TWO_LINE_ATTRIBUTION_LINE_COUNT = 2;
 
     // -- Helpers --
 
@@ -330,14 +315,12 @@ class MigrationPipelineTest extends UnitTest {
         void testEffectDividesAllScalarsByPps() {
             var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
             var c = ctx(2, 0);
-            c.topPaddingSs = TOP_PADDING_PX;
             c.lineWidthSs = LINE_WIDTH_PX;
             c.rowHeightAdjustmentSs = ROW_HEIGHT_PX;
             c.attributionStartYSs = ATTRIBUTION_START_Y_PX;
 
             stage(StageId.PIXELS_TO_SS).apply().accept(c);
 
-            assertThat(c.topPaddingSs).isEqualTo(TOP_PADDING_PX / pps);
             assertThat(c.lineWidthSs).isEqualTo(LINE_WIDTH_PX / pps);
             assertThat(c.rowHeightAdjustmentSs).isEqualTo(ROW_HEIGHT_PX / pps);
             assertThat(c.attributionStartYSs).isEqualTo(ATTRIBUTION_START_Y_PX / pps);
@@ -348,8 +331,6 @@ class MigrationPipelineTest extends UnitTest {
         void testEffectDividesLineFieldsByPps() {
             var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
             var c = ctx(2, 0);
-            // Non-zero so TOP_PADDING_FALLBACK does not fire.
-            c.topPaddingSs = TOP_PADDING_PX;
             var line = detachedLine();
             line.setLyricsYPosSs(LYRICS_Y_POS_PX);
             c.lines.add(line);
@@ -423,85 +404,25 @@ class MigrationPipelineTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class TopPaddingFallbackStage {
-
-        @Test
-        void testAppliesWhenTopPaddingIsZero() {
-            var c = ctx(2, 5);
-            c.topPaddingSs = 0.0;
-            assertThat(stage(StageId.TOP_PADDING_FALLBACK).appliesTo().test(c)).isTrue();
-        }
-
-        @Test
-        void testDoesNotApplyWhenTopPaddingNonZero() {
-            var c = ctx(2, 5);
-            c.topPaddingSs = NON_ZERO_TOP_PADDING_SS;
-            assertThat(stage(StageId.TOP_PADDING_FALLBACK).appliesTo().test(c)).isFalse();
-        }
-
-        // Stage-6 computed-value test. Stubs Prefs to known sizes and asserts the
-        // exact fallback pixel value is written back, proving the formula is wired
-        // correctly through the pipeline rather than just that the gate fires.
-        @Test
-        void testEffectComputesCorrectFallbackValue() {
-            try (var prefsMock = mockStatic(Prefs.class)) {
-                prefsMock.when(() -> Prefs.getInt(PrefsKey.TITLE_FONT_SIZE)).thenReturn(STUB_TITLE_FONT_SIZE);
-                prefsMock.when(() -> Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)).thenReturn(STUB_ATTRIBUTION_FONT_SIZE);
-
-                // attribution is empty (""), so Utils.lineCount returns 0
-                var c = ctx(2, 5);
-                stage(StageId.TOP_PADDING_FALLBACK).apply().accept(c);
-
-                // ((2 * titleSize) + (0 * attributionSize)) - ssToRoundedPx(2.0)
-                var expected = (double) (2 * STUB_TITLE_FONT_SIZE) - ScaleContext.ssToRoundedPx(2.0);
-                assertThat(c.topPaddingSs).isEqualTo(expected);
-            }
-        }
-
-        // Verifies the lineCount term contributes to the fallback when attribution is non-empty.
-        // With empty attribution (above test) the term is 0; this test exercises the non-zero path.
-        @Test
-        void testEffectIncludesAttributionLineCountTerm() {
-            try (var prefsMock = mockStatic(Prefs.class)) {
-                prefsMock.when(() -> Prefs.getInt(PrefsKey.TITLE_FONT_SIZE)).thenReturn(STUB_TITLE_FONT_SIZE);
-                prefsMock.when(() -> Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)).thenReturn(STUB_ATTRIBUTION_FONT_SIZE);
-
-                var c = ctx(2, 5);
-                c.attribution = TWO_LINE_ATTRIBUTION;
-                stage(StageId.TOP_PADDING_FALLBACK).apply().accept(c);
-
-                var expected = (double) (2 * STUB_TITLE_FONT_SIZE) +
-                    (TWO_LINE_ATTRIBUTION_LINE_COUNT * STUB_ATTRIBUTION_FONT_SIZE) -
-                    ScaleContext.ssToRoundedPx(2.0);
-                assertThat(c.topPaddingSs).isEqualTo(expected);
-            }
-        }
-    }
-
     // -- Top-level tests --
 
-    // Verifies that runPreAssembly divides all four scalar fields by pps on a pre-2.1 context.
+    // Verifies that runPreAssembly divides all three scalar fields by pps on a pre-2.1 context.
     @Test
     void testPreAssemblyScalarConversion() {
         var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
         var c = ctx(1, 0);
-        // Non-zero so stage 6 (top-padding-fallback) does not fire after the division.
-        c.topPaddingSs = TOP_PADDING_PX;
         c.lineWidthSs = LINE_WIDTH_PX;
         c.rowHeightAdjustmentSs = ROW_HEIGHT_PX;
         c.attributionStartYSs = ATTRIBUTION_START_Y_PX;
 
         MigrationPipeline.runPreAssembly(c);
 
-        assertThat(c.topPaddingSs).isEqualTo(TOP_PADDING_PX / pps);
         assertThat(c.lineWidthSs).isEqualTo(LINE_WIDTH_PX / pps);
         assertThat(c.rowHeightAdjustmentSs).isEqualTo(ROW_HEIGHT_PX / pps);
         assertThat(c.attributionStartYSs).isEqualTo(ATTRIBUTION_START_Y_PX / pps);
     }
 
-    // Asserts that PRE_ASSEMBLY registers exactly 6 stages in StageId enum order.
+    // Asserts that PRE_ASSEMBLY registers exactly 5 stages in StageId enum order.
     @Test
     void testPreAssemblyStageListIsComplete() {
         var expectedIds = List.of(
@@ -509,8 +430,7 @@ class MigrationPipelineTest extends UnitTest {
             StageId.ANNOTATION_DYNAMICS,
             StageId.FINAL_TERMINAL,
             StageId.PIXELS_TO_SS,
-            StageId.LINE_WIDTH_FIX,
-            StageId.TOP_PADDING_FALLBACK
+            StageId.LINE_WIDTH_FIX
         );
         var actualIds = MigrationPipeline.PRE_ASSEMBLY.stream()
             .map(SongMigration::id)
@@ -539,7 +459,6 @@ class MigrationPipelineTest extends UnitTest {
     void testStageOrderingPreservesScalarInvariant() {
         var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
         var c = ctx(2, 0);
-        c.topPaddingSs = TOP_PADDING_PX; // non-zero so stage 6 does not fire after division
         c.lineWidthSs = ORDERING_PROOF_LINE_WIDTH_PX;
 
         MigrationPipeline.runPreAssembly(c);

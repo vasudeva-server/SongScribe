@@ -27,10 +27,6 @@ import org.jspecify.annotations.Nullable;
 public class LayoutDidChangeNotification extends Message {
 
     @Nullable
-    private final Double topPaddingSs;
-    @Nullable
-    private final Boolean topPaddingSetByUser;
-    @Nullable
     private final Double rowHeightAdjustmentSs;
     @Nullable
     private final Double lineWidthSs;
@@ -38,27 +34,13 @@ public class LayoutDidChangeNotification extends Message {
     private final Double attributionStartYSs;
 
     public LayoutDidChangeNotification(
-        @Nullable Double topPadding,
-        @Nullable Boolean topPaddingSetByUser,
         @Nullable Double rowHeightAdjustment,
         @Nullable Double lineWidth,
         @Nullable Double attributionStartY
     ) {
-        topPaddingSs = topPadding;
-        this.topPaddingSetByUser = topPaddingSetByUser;
         rowHeightAdjustmentSs = rowHeightAdjustment;
         lineWidthSs = lineWidth;
         attributionStartYSs = attributionStartY;
-    }
-
-    @Nullable
-    public Double getTopPaddingSs() {
-        return topPaddingSs;
-    }
-
-    @Nullable
-    public Boolean getTopPaddingSetByUser() {
-        return topPaddingSetByUser;
     }
 
     @Nullable

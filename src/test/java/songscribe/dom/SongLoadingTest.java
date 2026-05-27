@@ -59,7 +59,7 @@ class SongLoadingTest extends UnitTest {
         var data = new SongData(
             null, "", "", "", 0, 0, "", "", "", "", "", "", false,
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
-            0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0,
             List.of(dataLine), false, 1
         );
 
@@ -107,7 +107,6 @@ class SongLoadingTest extends UnitTest {
             true,
             2,
             KeyType.SHARPS,
-            7.5,
             10.0,
             1.5,
             50.0,
@@ -133,7 +132,6 @@ class SongLoadingTest extends UnitTest {
         assertThat(song.isUnofficialTranslation()).isTrue();
         assertThat(song.getDefaultKeyAccidentalCount()).isEqualTo(2);
         assertThat(song.getDefaultKeyType()).isEqualTo(KeyType.SHARPS);
-        assertThat(song.getTopPaddingSs()).isEqualTo(7.5);
         assertThat(song.getAttributionStartYSs()).isEqualTo(10.0);
         assertThat(song.getRowHeightAdjustmentSs()).isEqualTo(1.5);
         assertThat(song.getLineWidthSs()).isEqualTo(50.0);
@@ -171,7 +169,6 @@ class SongLoadingTest extends UnitTest {
             false,
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT,
             Song.DEFAULT_KEY_TYPE,
-            0.0,
             0.0,
             0.0,
             0.0,
@@ -216,7 +213,6 @@ class SongLoadingTest extends UnitTest {
             false,
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT,
             Song.DEFAULT_KEY_TYPE,
-            0.0,
             0.0,
             0.0,
             0.0,

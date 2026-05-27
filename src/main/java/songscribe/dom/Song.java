@@ -148,8 +148,6 @@ public final class Song {
     // When the title is set, it is wrapped into lines and stored here
     private final ArrayList<String> titleLines = new ArrayList<>();
 
-    private double topPaddingSs = 0;
-    private boolean userSetTopPadding = false;
     private double attributionStartYSs;
     private double rowHeightAdjustmentSs = 0;
 
@@ -211,7 +209,6 @@ public final class Song {
         tempo = new Tempo();
         defaultKeyAccidentalCount = DEFAULT_KEY_ACCIDENTAL_COUNT;
 
-        // Initial topPadding of 0 - layout calculation will set the correct value
         // attributionStartY is calculated from title, will be recalculated on layout
         attributionStartYSs = calculateAttributionStartY();
 
@@ -294,7 +291,6 @@ public final class Song {
         applyDefaultKeyType(data.defaultKeyType());
 
         // Apply layout
-        applyTopPaddingSs(data.topPaddingSs(), false);
         applyAttributionStartYSs(data.attributionStartYSs());
         applyRowHeightAdjustmentSs(data.rowHeightAdjustmentSs());
         applyLineWidthSs(data.lineWidthSs());
@@ -534,14 +530,6 @@ public final class Song {
         return lines.isEmpty() || lines.stream().allMatch(Line::isEmpty);
     }
 
-    public double getTopPaddingSs() {
-        return topPaddingSs;
-    }
-
-    public boolean userSetTopPadding() {
-        return userSetTopPadding;
-    }
-
     public double getAttributionStartYSs() {
         return attributionStartYSs;
     }
@@ -668,19 +656,6 @@ public final class Song {
     }
 
     // -- Layout setters --
-
-    /**
-     * Unlike the other layout setters, this always runs the apply block because
-     * {@code setByUser} flows into the sticky {@code userSetTopPadding} flag —
-     * a unchanged-padding update from user still needs to set that flag.
-     */
-    public void setTopPaddingSs(double padding, boolean setByUser) {
-        var old = topPaddingSs;
-        withModification(() -> applyChange(
-            new LayoutChange(LayoutField.TOP_PADDING_SS, old, padding),
-            () -> applyTopPaddingSs(padding, setByUser)
-        ));
-    }
 
     public void setAttributionStartYSs(double attributionStartY) {
         mutateLayout(
@@ -1341,11 +1316,6 @@ public final class Song {
     @Handler
     public void layoutDidChange(LayoutDidChangeNotification update) {
         withModification(() -> {
-            if (update.getTopPaddingSs() != null) {
-                var setByUser = update.getTopPaddingSetByUser() != null && update.getTopPaddingSetByUser();
-                setTopPaddingSs(update.getTopPaddingSs(), setByUser);
-            }
-
             if (update.getRowHeightAdjustmentSs() != null) {
                 setRowHeightAdjustmentSs(update.getRowHeightAdjustmentSs());
             }
@@ -1423,11 +1393,6 @@ public final class Song {
 
     private void applyDefaultKeyAccidentalCount(int count) {
         defaultKeyAccidentalCount = count;
-    }
-
-    private void applyTopPaddingSs(double padding, boolean setByUser) {
-        topPaddingSs = padding;
-        userSetTopPadding = userSetTopPadding || setByUser;
     }
 
     private void applyAttributionStartYSs(double attributionStartY) {

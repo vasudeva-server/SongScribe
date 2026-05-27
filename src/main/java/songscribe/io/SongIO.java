@@ -68,7 +68,6 @@ public final class SongIO {
     private static final String XML_UNDERLYRICS = "underlyrics";
     private static final String XML_TRANSLATED_LYRICS = "translatedlyrics";
     private static final String XML_BANGLA_LYRICS = "banglalyrics";
-    private static final String XML_TOP_SPACE = "topspace";
     private static final String XML_LINE_WIDTH = "linewidth";
     private static final String XML_ROW_HEIGHT = "rowheight";
     private static final String XML_PLACE = "place";
@@ -169,14 +168,6 @@ public final class SongIO {
             XML.writeValue(pw, XML_FOOTNOTES, c.getFootnotes());
         }
 
-        if (c.userSetTopPadding()) {
-            XML.writeValue(
-                pw,
-                XML_TOP_SPACE,
-                Double.toString(c.getTopPaddingSs())
-            );
-        }
-
         XML.writeValue(
             pw,
             XML_INFO_STARTY,
@@ -256,7 +247,6 @@ public final class SongIO {
         private boolean unofficialTranslation = false;
         private int defaultKeyAccidentalCount = Song.DEFAULT_KEY_ACCIDENTAL_COUNT;
         private KeyType defaultKeyType = Song.DEFAULT_KEY_TYPE;
-        private double topPaddingSs = 0;
         private double attributionStartYSs = 0;
         private double rowHeightAdjustmentSs = 0;
         private double lineWidthSs = PageModel.getDefaultLineWidthSs();
@@ -550,8 +540,6 @@ public final class SongIO {
                             Boolean.parseBoolean(str);
                         case XML_FOOTNOTES -> footnotes = str;
                         case XML_INFO -> attribution = str;
-                        case XML_TOP_SPACE -> topPaddingSs =
-                            parseVersionedDouble(str);
                         case XML_INFO_STARTY -> attributionStartYSs =
                             parseVersionedDouble(str);
                         case XML_ROW_HEIGHT -> rowHeightAdjustmentSs =
@@ -607,7 +595,6 @@ public final class SongIO {
             // see MigrationPipeline for the stage list and ordering invariant.
             var ctx = new MigrationContext();
             ctx.lines = parsedLines;
-            ctx.topPaddingSs = topPaddingSs;
             ctx.lineWidthSs = lineWidthSs;
             ctx.rowHeightAdjustmentSs = rowHeightAdjustmentSs;
             ctx.attributionStartYSs = attributionStartYSs;
@@ -638,7 +625,6 @@ public final class SongIO {
                 unofficialTranslation,
                 defaultKeyAccidentalCount,
                 defaultKeyType,
-                ctx.topPaddingSs,
                 ctx.attributionStartYSs,
                 ctx.rowHeightAdjustmentSs,
                 ctx.lineWidthSs,

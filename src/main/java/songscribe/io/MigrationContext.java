@@ -40,7 +40,6 @@ final class MigrationContext {
 
     List<Line> lines = new ArrayList<>();
 
-    double topPaddingSs;
     double lineWidthSs;
     double rowHeightAdjustmentSs;
     double attributionStartYSs;

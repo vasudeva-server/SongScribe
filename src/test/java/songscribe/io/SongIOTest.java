@@ -23,8 +23,6 @@ package songscribe.io;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mockStatic;
-
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -48,8 +46,6 @@ import songscribe.dom.Lyric;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.font.DocumentFonts;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
 
 @SuppressWarnings({ "SameReturnValue", "OverlyBroadThrowsClause" })
 class SongIOTest extends UnitTest {
@@ -297,26 +293,6 @@ class SongIOTest extends UnitTest {
 
         assertThat(xml).contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         assertThat(xml).contains("<song version=\"" + expectedVersion + "\">");
-    }
-
-    // row 12: userSetTopPadding=false → no <topspace>; =true → present.
-    @Test
-    void testWriteSongTopSpaceAbsentWhenNotUserSet() {
-        var song = new Song();
-        // Default: userSetTopPadding() is false.
-        var xml = writeSongToString(song);
-
-        assertThat(xml).doesNotContain("<topspace>");
-    }
-
-    @Test
-    void testWriteSongTopSpacePresentWhenUserSet() {
-        var song = new Song();
-        // setByUser=true sets the userSetTopPadding flag.
-        song.setTopPaddingSs(5.0, true);
-        var xml = writeSongToString(song);
-
-        assertThat(xml).contains("<topspace>");
     }
 
     /**
@@ -803,7 +779,6 @@ class SongIOTest extends UnitTest {
     class LegacyMigrationWiring {
 
         // Pre-2.1 files store song-level positions in pixels; v2.0 serializes them as integers.
-        private static final int LEGACY_TOP_PADDING_PX = 80;
         private static final int LEGACY_LINE_WIDTH_PX = 600;
         private static final int LEGACY_ROW_HEIGHT_PX = 160;
         private static final int LEGACY_ATTRIBUTION_START_Y_PX = 240;
@@ -812,26 +787,18 @@ class SongIOTest extends UnitTest {
         // pixel-detection threshold (400) is corrected by dividing by pps.
         private static final double BUGGY_LINE_WIDTH_PX = 700.0;
 
-        // Non-zero so the top-padding fallback (stage 6) does not fire and mask the linewidth assertion.
-        private static final double PRESERVED_TOP_PADDING_SS = 10.0;
-
-        // Known font sizes stubbed into Prefs so the fallback computation is deterministic.
-        private static final int STUB_TITLE_FONT_SIZE = 24;
-        private static final int STUB_ATTRIBUTION_FONT_SIZE = 14;
-
         // Structural fixture values no migration stage acts on. The linewidth is a valid ss
         // value (below the pixel-detection threshold), so line-width-fix leaves it untouched.
         private static final double INERT_LINE_WIDTH_SS = 200.0;
         private static final double LYRICS_Y_POS_SS = 5.0;
 
-        // Pre-2.1: all four song-level scalars are pixel→ss converted, and getSong reads the
+        // Pre-2.1: all three song-level scalars are pixel→ss converted, and getSong reads the
         // converted values (from the context) back into the Song rather than the stale pixel fields.
         @Test
         void testPre21ConvertsSongLevelScalarsToStaffSpace() throws Exception {
             var song = parseXml(pre21ScalarsXml());
             var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
 
-            assertThat(song.getTopPaddingSs()).isEqualTo(LEGACY_TOP_PADDING_PX / pps);
             assertThat(song.getLineWidthSs()).isEqualTo(LEGACY_LINE_WIDTH_PX / pps);
             assertThat(song.getRowHeightAdjustmentSs()).isEqualTo(LEGACY_ROW_HEIGHT_PX / pps);
             assertThat(song.getAttributionStartYSs()).isEqualTo(LEGACY_ATTRIBUTION_START_Y_PX / pps);
@@ -877,25 +844,6 @@ class SongIOTest extends UnitTest {
             assertThat(note.findAttachment(AnnotationAttachment.class)).isNull();
         }
 
-        // Top-padding fallback: a file with no <topspace> gets the computed fallback, and that
-        // computed value (not the stale 0 field) is read back into the Song.
-        @Test
-        void testTopPaddingFallbackValueReachesSong() throws Exception {
-            try (var prefsMock = mockStatic(Prefs.class)) {
-                prefsMock.when(() -> Prefs.getInt(PrefsKey.TITLE_FONT_SIZE))
-                    .thenReturn(STUB_TITLE_FONT_SIZE);
-                prefsMock.when(() -> Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE))
-                    .thenReturn(STUB_ATTRIBUTION_FONT_SIZE);
-
-                var song = parseXml(missingTopPaddingXml());
-
-                // attribution "Composer" is a single line, so lineCount is 1.
-                var expected = (double) ((2 * STUB_TITLE_FONT_SIZE) + STUB_ATTRIBUTION_FONT_SIZE -
-                    ScaleContext.ssToRoundedPx(2.0));
-                assertThat(song.getTopPaddingSs()).isEqualTo(expected);
-            }
-        }
-
         // -- Document builders --
 
         private String pre21ScalarsXml() {
@@ -903,7 +851,6 @@ class SongIOTest extends UnitTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <composition version="2.0">
                   <keys>0</keys>
-                  <topspace>%d</topspace>
                   <rightinfostarty>%d</rightinfostarty>
                   <rowheight>%d</rowheight>
                   <linewidth>%d</linewidth>
@@ -923,7 +870,6 @@ class SongIOTest extends UnitTest {
                   <view/>
                 </composition>
                 """.formatted(
-                LEGACY_TOP_PADDING_PX,
                 LEGACY_ATTRIBUTION_START_Y_PX,
                 LEGACY_ROW_HEIGHT_PX,
                 LEGACY_LINE_WIDTH_PX,
@@ -936,7 +882,6 @@ class SongIOTest extends UnitTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <composition version="2.2">
                   <keys>0</keys>
-                  <topspace>%s</topspace>
                   <rightinfostarty>0.0</rightinfostarty>
                   <linewidth>%s</linewidth>
                   <lines>
@@ -954,7 +899,7 @@ class SongIOTest extends UnitTest {
                   </lines>
                   <view/>
                 </composition>
-                """.formatted(PRESERVED_TOP_PADDING_SS, BUGGY_LINE_WIDTH_PX, LYRICS_Y_POS_SS);
+                """.formatted(BUGGY_LINE_WIDTH_PX, LYRICS_Y_POS_SS);
         }
 
         private String pre24SingleBarlineXml() {
@@ -1010,31 +955,6 @@ class SongIOTest extends UnitTest {
                 """.formatted(INERT_LINE_WIDTH_SS, LYRICS_Y_POS_SS);
         }
 
-        private String missingTopPaddingXml() {
-            return """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <composition version="2.5">
-                  <keys>0</keys>
-                  <rightinfo>Composer</rightinfo>
-                  <rightinfostarty>0.0</rightinfostarty>
-                  <linewidth>%s</linewidth>
-                  <lines>
-                    <line>
-                      <lyricsypos>%s</lyricsypos>
-                      <notes>
-                        <note type="CROTCHET">
-                          <staffposition>0</staffposition>
-                        </note>
-                        <note type="FINAL_DOUBLE_BARLINE">
-                          <staffposition>0</staffposition>
-                        </note>
-                      </notes>
-                    </line>
-                  </lines>
-                  <view/>
-                </composition>
-                """.formatted(INERT_LINE_WIDTH_SS, LYRICS_Y_POS_SS);
-        }
     }
 
     // -- XML Helpers --

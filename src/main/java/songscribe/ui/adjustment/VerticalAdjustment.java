@@ -126,7 +126,6 @@ public class VerticalAdjustment extends Adjustment {
 
         switch (dragRect.type) {
             case ATTRIBUTION -> adjustAttribution(diffY);
-            case TOP_SPACE -> adjustTopSpace(diffY);
             case ROW_HEIGHT -> adjustRowHeight(diffY);
             case TEMPO_CHANGE -> adjustTempoChange(line, diffY);
             case BEAT_CHANGE -> adjustBeatChange(line, diffY);
@@ -144,17 +143,12 @@ public class VerticalAdjustment extends Adjustment {
 
     private void adjustAttribution(int diffY) {
         var newY = scoreView.getSong().getAttributionStartYSs() + diffY;
-        MessageCenter.post(new LayoutDidChangeNotification(null, null, null, null, newY));
-    }
-
-    private void adjustTopSpace(int diffY) {
-        var newPadding = scoreView.getSong().getTopPaddingSs() + diffY;
-        MessageCenter.post(new LayoutDidChangeNotification(newPadding, true, null, null, null));
+        MessageCenter.post(new LayoutDidChangeNotification(null, null, newY));
     }
 
     private void adjustRowHeight(int diffY) {
         var newAdjustment = scoreView.getSong().getRowHeightAdjustmentSs() + diffY;
-        MessageCenter.post(new LayoutDidChangeNotification(null, null, newAdjustment, null, null));
+        MessageCenter.post(new LayoutDidChangeNotification(newAdjustment, null, null));
     }
 
     private void adjustTempoChange(Line line, int diffY) {
@@ -274,10 +268,6 @@ public class VerticalAdjustment extends Adjustment {
                 adjustRects.add(new AdjustRect(-1, AdjustType.ATTRIBUTION, -1));
             }
 
-            if (c.lineCount() > 0) {
-                adjustRects.add(new AdjustRect(0, AdjustType.TOP_SPACE, -1));
-            }
-
             if (c.lineCount() > 1) {
                 adjustRects.add(new AdjustRect(1, AdjustType.ROW_HEIGHT, -1));
             }
@@ -374,7 +364,7 @@ public class VerticalAdjustment extends Adjustment {
 
         switch (adjustRect.type) {
             case ATTRIBUTION -> getAttributionAdjustRect(adjustRect);
-            case TOP_SPACE, ROW_HEIGHT -> getHeightAdjustRect(adjustRect);
+            case ROW_HEIGHT -> getHeightAdjustRect(adjustRect);
             case TEMPO_CHANGE -> {
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
                 var bounds = layoutResult.findAttachmentBounds(note, TempoChangeAttachment.class);
@@ -591,7 +581,6 @@ public class VerticalAdjustment extends Adjustment {
 
     private enum AdjustType {
         ATTRIBUTION(Color.blue),
-        TOP_SPACE(Color.cyan),
         ROW_HEIGHT(Color.orange),
         TEMPO_CHANGE(Color.red),
         BEAT_CHANGE(Color.pink),

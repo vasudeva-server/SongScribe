@@ -228,7 +228,7 @@ class MutationRecordsTest extends UnitTest {
 
         @Test
         void testLayoutChangeAcceptsNullValues() {
-            var mutation = new LayoutChange(LayoutField.TOP_PADDING_SS, null, 5.0);
+            var mutation = new LayoutChange(LayoutField.ATTRIBUTION_START_Y_SS, null, 5.0);
 
             assertThat(mutation.oldValue()).isNull();
             assertThat(mutation.newValue()).isEqualTo(5.0);

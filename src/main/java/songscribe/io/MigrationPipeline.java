@@ -25,9 +25,6 @@ import java.util.function.Consumer;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
-import songscribe.util.Utils;
 
 /**
  * Ordered, two-phase migration of a parsed song from any legacy {@code .mssw} format to
@@ -56,22 +53,13 @@ final class MigrationPipeline {
     // │ 3 final-terminal       isBefore(2,4)              → migrateFinalTerminal                   │
     // │ 4 pixels-to-ss         isBefore(2,1)  ┌ scalars ┐ → migratePixelsToStaffSpace              │
     // │ 5 line-width-fix       v2 & minor<3 & lineWidthSs>=MIN └ lineWidthSs /= pps                │
-    // │ 6 top-padding-fallback topPaddingSs == 0          (reads Prefs + attribution)             │
     // └─────────────────────────────────────────────────────────────────────┘
-    //
-    // Scalar-ordering invariant (correctness-critical). Stage 4 divides the scalars by pps;
-    // stages 5 and 6 then read those *same* scalars. The guards are mutually safe only
-    // because 4 runs first — after 4, a v2.0 file's lineWidthSs is small, so 5's >= MIN guard
-    // cannot re-fire, and a 0 topPaddingSs stays 0 for 6. Reordering 4 after 5/6 silently
-    // double-divides or computes the fallback in the wrong unit (no crash, just wrong layout).
     static final List<SongMigration> PRE_ASSEMBLY = List.of(
         versioned(StageId.LEGACY_FORMAT, 2, 0, ctx -> FormatMigrator.migrate(ctx.lines, 1)),
         versioned(StageId.ANNOTATION_DYNAMICS, 2, 3, ctx -> FormatMigrator.migrateAnnotationDynamics(ctx.lines)),
         versioned(StageId.FINAL_TERMINAL, 2, 4, ctx -> FormatMigrator.migrateFinalTerminal(ctx.lines)),
         versioned(StageId.PIXELS_TO_SS, 2, 1, ctx -> {
-            // Scalars first, then lines — see the scalar-ordering invariant above.
             var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
-            ctx.topPaddingSs /= pps;
             ctx.lineWidthSs /= pps;
             ctx.rowHeightAdjustmentSs /= pps;
             ctx.attributionStartYSs /= pps;
@@ -79,10 +67,7 @@ final class MigrationPipeline {
         }),
         new SongMigration(StageId.LINE_WIDTH_FIX,
             ctx -> ctx.majorVersion == 2 && ctx.minorVersion < 3 && ctx.lineWidthSs >= LEGACY_LINE_WIDTH_PX_MIN,
-            ctx -> ctx.lineWidthSs /= ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE),
-        new SongMigration(StageId.TOP_PADDING_FALLBACK,
-            ctx -> ctx.topPaddingSs == 0,
-            MigrationPipeline::applyTopPaddingFallback));
+            ctx -> ctx.lineWidthSs /= ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE));
 
     // ┌────────────────────────── POST-ASSEMBLY (ctx.song set) ─────────────┐
     // │ 7 legacy-lyrics        !lyrics.isBlank() && isBefore(2,6) → importLegacyLyrics             │
@@ -98,17 +83,6 @@ final class MigrationPipeline {
 
     private static SongMigration versioned(StageId id, int major, int minor, Consumer<MigrationContext> apply) {
         return new SongMigration(id, ctx -> ctx.isBefore(major, minor), apply);
-    }
-
-    // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
-    // Layout calculation will recalculate this properly, but this provides
-    // a reasonable default for any code that accesses topPadding before layout.
-    private static void applyTopPaddingFallback(MigrationContext ctx) {
-        var titleSize = Prefs.getInt(PrefsKey.TITLE_FONT_SIZE);
-        var attributionSize = Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE);
-        ctx.topPaddingSs = ((2 * titleSize) +
-            (Utils.lineCount(ctx.attribution) * attributionSize)) -
-            ScaleContext.ssToRoundedPx(2.0);
     }
 
     private static void applyLegacyLyrics(MigrationContext ctx) {
