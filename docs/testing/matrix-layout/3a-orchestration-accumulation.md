@@ -31,9 +31,9 @@
 | LayoutResult | `Builder.setClef`/`setKeySignature` round-trip; default null | unit | `LayoutResultTest.testBuilderClefRoundTrip`, `…KeySignatureRoundTrip`, `…DefaultsToNullHeaderElements` | adequate | keep | — |
 | LayoutResult | `getLyricAnchor` box-anchored centerX+baselineY; column fallback; Y==`verseYSsInLine(1)`; throws ISE w/ neither | unit | `LayoutResultTest.testGetLyricAnchor*` (4) | adequate | keep | — |
 | LayoutResult | `hitTestLyric` inside-box hit / outside-box miss | unit | `LayoutResultTest.testHitTestLyric*` (2) | adequate | keep | — |
-| LayoutResult | `findElementAtXSs` returns index within head bounds / -1 in gap | unit | — | missing | two known-X columns; hit + gap | ⬜ |
-| LayoutResult | `findInsertionIndex` over-head / before-first(0) / after-last(`effectiveElementCount`) / in-gap(slot) | unit | — | missing | write 4 tests | ⬜ |
-| LayoutResult | `calculateInsertionXSs` empty / over-head snap / terminal right-align / after-last spacing / between-midpoint | unit | — | missing | write 5 tests | ⬜ |
+| LayoutResult | `findElementAtXSs` returns index within head bounds / -1 in gap | unit | — | missing | two known-X columns; hit + gap | ✅ |
+| LayoutResult | `findInsertionIndex` over-head / before-first(0) / after-last(`effectiveElementCount`) / in-gap(slot) | unit | — | missing | write 4 tests | ✅ |
+| LayoutResult | `calculateInsertionXSs` empty / over-head snap / terminal right-align / after-last spacing / between-midpoint | unit | — | missing | write 5 tests | ✅ |
 | LayoutResult | `getBelowStaffReservationSs` = `lineHeight - aboveStaff - STAFF_HEIGHT_SS` | unit | — | missing | known-values test | ⬜ |
 | LayoutResult | `lyricAreaBaseYSs` shifts with `aboveStaffSs`/`belowContentSs` | unit | `LayoutResultTest.testHitTestLyricHitsInsideBounds` (indirect) | inadequate | focused test pinning the formula | ✅ |
 | LayoutResult | `findAttachmentBounds` correct owner/type; null unknown owner | unit | — (stacking tests use `findAttachmentDecorationLayout`) | missing | two same-type attachments on different owners | ⬜ |

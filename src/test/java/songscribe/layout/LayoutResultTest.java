@@ -37,6 +37,7 @@ import songscribe.dom.ScaleContext;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
+import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Trill;
@@ -258,8 +259,239 @@ class LayoutResultTest extends UnitTest {
     }
 
     // ==========================================================================
+    // findElementAtXSs — head-bounds hit testing
+    // ==========================================================================
+
+    // A mouse X inside an element head's horizontal span returns that element's index;
+    // boundary edges are inclusive on both sides.
+    @Test
+    void testFindElementAtXSsReturnsIndexInsideHeadBounds() {
+        var first = ElementType.CROTCHET.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(result.findElementAtXSs(MOUSE_OVER_FIRST_HEAD_SS, line)).isEqualTo(0);
+        assertThat(result.findElementAtXSs(MOUSE_OVER_SECOND_HEAD_SS, line)).isEqualTo(1);
+        // Both edges of the head span are inclusive hits.
+        assertThat(result.findElementAtXSs(FIRST_ELEMENT_X_SS, line)).isEqualTo(0);
+        assertThat(result.findElementAtXSs(FIRST_ELEMENT_X_SS + HEAD_RIGHT_EXTENT_SS, line)).isEqualTo(0);
+    }
+
+    // A mouse X in the gap between heads — or outside all heads — returns -1.
+    @Test
+    void testFindElementAtXSsReturnsMinusOneOutsideHeads() {
+        var first = ElementType.CROTCHET.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(result.findElementAtXSs(MOUSE_IN_GAP_SS, line)).isEqualTo(-1);
+        assertThat(result.findElementAtXSs(MOUSE_BEFORE_FIRST_SS, line)).isEqualTo(-1);
+        assertThat(result.findElementAtXSs(MOUSE_AFTER_LAST_SS, line)).isEqualTo(-1);
+    }
+
+    // ==========================================================================
+    // findInsertionIndex — replacement / insertion slot resolution
+    // ==========================================================================
+
+    // Hovering over an element head resolves to that element's index (replacement slot).
+    @Test
+    void testFindInsertionIndexReturnsElementIndexOverHead() {
+        var first = ElementType.CROTCHET.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(result.findInsertionIndex(MOUSE_OVER_FIRST_HEAD_SS, line)).isEqualTo(0);
+        assertThat(result.findInsertionIndex(MOUSE_OVER_SECOND_HEAD_SS, line)).isEqualTo(1);
+    }
+
+    // A mouse X left of the first element head resolves to slot 0.
+    @Test
+    void testFindInsertionIndexReturnsZeroBeforeFirstElement() {
+        var first = ElementType.CROTCHET.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(result.findInsertionIndex(MOUSE_BEFORE_FIRST_SS, line)).isEqualTo(0);
+    }
+
+    // Past the last real element, the slot is effectiveElementCount — the auto-maintained
+    // terminal is excluded, so a one-element line yields slot 1, not 2.
+    @Test
+    void testFindInsertionIndexReturnsEffectiveCountAfterLastElement() {
+        var first = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first);
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(line.effectiveElementCount()).isEqualTo(1);
+        assertThat(result.findInsertionIndex(MOUSE_AFTER_LAST_SS, line)).isEqualTo(1);
+    }
+
+    // A mouse X in the gap between two heads resolves to the in-between slot.
+    @Test
+    void testFindInsertionIndexReturnsSlotBetweenElements() {
+        var first = ElementType.CROTCHET.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(result.findInsertionIndex(MOUSE_IN_GAP_SS, line)).isEqualTo(1);
+    }
+
+    // ==========================================================================
+    // calculateInsertionXSs — preview placement
+    // ==========================================================================
+
+    // An empty line (only the auto-maintained terminal) places the preview at the
+    // first-element position from the horizontal spacing calculator.
+    @Test
+    void testCalculateInsertionXSsEmptyLineUsesFirstElementPosition() {
+        var line = lineWithElements();
+        var preview = ElementType.CROTCHET.newInstance();
+        var result = LayoutResult.builder().build();
+
+        var expected = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+
+        assertThat(result.calculateInsertionXSs(0, MOUSE_BEFORE_FIRST_SS, preview, line))
+            .isCloseTo(expected, within(TOLERANCE));
+    }
+
+    // Hovering over an element head snaps the preview to that head's X position.
+    @Test
+    void testCalculateInsertionXSsSnapsToElementHead() {
+        var first = ElementType.CROTCHET.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var preview = ElementType.CROTCHET.newInstance();
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(result.calculateInsertionXSs(1, MOUSE_OVER_SECOND_HEAD_SS, preview, line))
+            .isCloseTo(SECOND_ELEMENT_X_SS, within(TOLERANCE));
+    }
+
+    // Hovering over the auto-maintained terminal right-aligns the preview to the
+    // terminal's right edge (so a wider replacement does not overflow the staff).
+    @Test
+    void testCalculateInsertionXSsRightAlignsPreviewOverTerminal() {
+        var first = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first);
+        var terminal = line.getElement(line.elementCount() - 1);
+        var preview = ElementType.CROTCHET.newInstance();
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(terminal, columnAt(terminal, TERMINAL_X_SS, TERMINAL_RIGHT_EXTENT_SS))
+            .build();
+
+        var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(preview, false, true);
+        var expected = TERMINAL_X_SS + TERMINAL_RIGHT_EXTENT_SS - previewRightExtentSs;
+
+        assertThat(result.calculateInsertionXSs(1, TERMINAL_X_SS, preview, line))
+            .isCloseTo(expected, within(TOLERANCE));
+    }
+
+    // Past the last real element, the preview is spaced via the shared
+    // HorizontalSpacingCalculator.calculateNextColumnXSs rather than snapped.
+    @Test
+    void testCalculateInsertionXSsAfterLastUsesSpacingCalculator() {
+        var first = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first);
+        var preview = ElementType.CROTCHET.newInstance();
+        var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
+        var result = LayoutResult.builder()
+            .putElementColumn(first, lastColumn)
+            .build();
+
+        var previewColumn = new ElementColumn(
+            preview,
+            Collections.emptyList(),
+            ElementColumnBuilder.calculateLeftExtentSs(preview),
+            ElementColumnBuilder.calculateRightExtentSs(preview, false, true),
+            0.0, 0.0, null, 0.0, false);
+        var expected = HorizontalSpacingCalculator.calculateNextColumnXSs(lastColumn, previewColumn);
+
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+
+        assertThat(actual).isCloseTo(expected, within(TOLERANCE));
+        assertThat(actual).isGreaterThan(lastColumn.getRightEdgeXSs());
+    }
+
+    // Between two element heads, the preview is placed at the midpoint of their X positions.
+    @Test
+    void testCalculateInsertionXSsBetweenElementsUsesMidpoint() {
+        var first = ElementType.CROTCHET.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var preview = ElementType.CROTCHET.newInstance();
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(result.calculateInsertionXSs(1, MOUSE_IN_GAP_SS, preview, line))
+            .isCloseTo(EXPECTED_MIDPOINT_SS, within(TOLERANCE));
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
+
+    private static final double HEAD_RIGHT_EXTENT_SS = 1.0;
+    private static final double FIRST_ELEMENT_X_SS = 10.0;
+    private static final double SECOND_ELEMENT_X_SS = 20.0;
+    private static final double MOUSE_OVER_FIRST_HEAD_SS = 10.5;
+    private static final double MOUSE_OVER_SECOND_HEAD_SS = 20.5;
+    private static final double MOUSE_IN_GAP_SS = 14.0;
+    private static final double MOUSE_BEFORE_FIRST_SS = 5.0;
+    private static final double MOUSE_AFTER_LAST_SS = 25.0;
+    private static final double TERMINAL_X_SS = 20.0;
+    private static final double TERMINAL_RIGHT_EXTENT_SS = 3.0;
+    // Midpoint of FIRST_ELEMENT_X_SS and SECOND_ELEMENT_X_SS.
+    private static final double EXPECTED_MIDPOINT_SS = 15.0;
+
+    // Builds a fresh single-line song, prepending the given elements before the
+    // line's auto-maintained FINAL_DOUBLE_BARLINE terminal so they occupy indices
+    // 0..n-1 with the terminal last.
+    private static Line lineWithElements(StaffElement... elements) {
+        var song = new Song();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> {
+            for (var i = 0; i < elements.length; i++) {
+                line.addElement(i, elements[i]);
+            }
+        });
+        return line;
+    }
+
+    private static ElementColumn columnAt(StaffElement element, double xSs, double rightExtentSs) {
+        var column = new ElementColumn(
+            element, Collections.emptyList(), 0.0, rightExtentSs,
+            0.0, 0.0, null, 0.0, false);
+        column.setXSs(xSs);
+        return column;
+    }
 
     private static final double TOLERANCE = 0.0001;
 

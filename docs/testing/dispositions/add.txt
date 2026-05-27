@@ -755,3 +755,14 @@ LayoutResultTest.testLyricAreaBaseYSsFollowsAboveStaffAndBelowContent	3a	row 38 
 LayoutResultTest.testFindRangeElementDecorationLayoutMatchesAnchorAndType	3a	row 42 — focused range-element lookup by anchor+type (was transitive)
 LayoutResultTest.testFindRangeElementDecorationLayoutReturnsNullForUnmatchedAnchor	3a	row 42 — null on anchor mismatch
 LayoutResultTest.testFindRangeElementDecorationLayoutReturnsNullForUnmatchedType	3a	row 42 — null on type mismatch
+LayoutResultTest.testFindElementAtXSsReturnsIndexInsideHeadBounds	3a	row 34 — findElementAtXSs head-bounds hit; inclusive left/right edges
+LayoutResultTest.testFindElementAtXSsReturnsMinusOneOutsideHeads	3a	row 34 — findElementAtXSs returns -1 in gap / before-first / after-last
+LayoutResultTest.testFindInsertionIndexReturnsElementIndexOverHead	3a	row 35 — findInsertionIndex resolves to element index when over head (replacement)
+LayoutResultTest.testFindInsertionIndexReturnsZeroBeforeFirstElement	3a	row 35 — findInsertionIndex slot 0 left of first head
+LayoutResultTest.testFindInsertionIndexReturnsEffectiveCountAfterLastElement	3a	row 35 — findInsertionIndex returns effectiveElementCount (excludes auto-maintained terminal) past last
+LayoutResultTest.testFindInsertionIndexReturnsSlotBetweenElements	3a	row 35 — findInsertionIndex in-between slot for gap X
+LayoutResultTest.testCalculateInsertionXSsEmptyLineUsesFirstElementPosition	3a	row 36 — empty line routes to HorizontalSpacingCalculator.calculateFirstElementXSs
+LayoutResultTest.testCalculateInsertionXSsSnapsToElementHead	3a	row 36 — over-head snaps preview to head X
+LayoutResultTest.testCalculateInsertionXSsRightAlignsPreviewOverTerminal	3a	row 36 — over terminal right-aligns preview to terminal right edge (termX + termRight - previewRight)
+LayoutResultTest.testCalculateInsertionXSsAfterLastUsesSpacingCalculator	3a	row 36 — after-last delegates to calculateNextColumnXSs; result right of last column
+LayoutResultTest.testCalculateInsertionXSsBetweenElementsUsesMidpoint	3a	row 36 — between-elements midpoint of prev/curr X
