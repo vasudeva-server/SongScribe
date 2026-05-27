@@ -158,6 +158,24 @@ class VelocityMapTest extends UnitTest {
     }
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MasterVelocityScaling {
+
+        private static final int REDUCED_MASTER_VELOCITY = 64;
+
+        @Test
+        void testReducedMasterVelocityScalesProportionally() {
+            var song = songWith(lineWith(noteWithDynamic(DynamicType.FORTE)));
+            var map = VelocityMap.build(song, REDUCED_MASTER_VELOCITY);
+
+            var expected = (int) Math.round(
+                REDUCED_MASTER_VELOCITY * DynamicType.FORTE.getVelocityFraction());
+            assertThat(map.getVelocity(0, 0)).isEqualTo(expected);
+        }
+    }
+
+
     // -- Helpers --
 
     private static StaffElement accentedNote() {

@@ -70,15 +70,15 @@
 | Actions | `resetToDefaults` resets all groups and standalones on `DocumentDidLoadNotification` | unit | `ActionsResetOnDocumentLoadTest.testDocumentDidLoadResetsAllActionStateToDefaults` | adequate | keep | — |
 | Actions | `getAppMenuActions` returns all `AppMenuAction` fields with correct native titles | unit | `ActionsAppMenuTest` (3 tests) | adequate | keep | — |
 | Actions | `getAppMenuActions` result is cached (same list instance) | unit | `ActionsAppMenuTest.testGetAppMenuActionsReturnsCachedList` | adequate | keep | — |
-| ModeAction | Factory methods bind correct `Mode` value | unit | — | missing | write test: `createSelectModeAction(mf).getMode() == Mode.SELECT` etc. | ⬜ |
-| ModeAction | `actionPerformed` — posts `ModeDidChangeNotification` with self as source | unit | — | missing | write test: subscribe handler; call `actionPerformed`; assert message posted with correct `ModeAction` instance | ⬜ |
-| ModeAction | `toggleOnKeyboardShortcut` toggles when source is JRootPane | unit | — | missing | write test: `setSelected(false)`, call `actionPerformed` with JRootPane source; assert `isSelected() == true` | ⬜ |
-| ModeAction | Hard-wired flags: DISABLE_WHEN_PLAYING + DISABLE_IN_GRACE_MODE | unit | — | missing | write test: assert both flags present via `hasFlag()` | ⬜ |
+| ModeAction | Factory methods bind correct `Mode` value | unit | — | missing | write test: `createSelectModeAction(mf).getMode() == Mode.SELECT` etc. | ✅ |
+| ModeAction | `actionPerformed` — posts `ModeDidChangeNotification` with self as source | unit | — | missing | write test: subscribe handler; call `actionPerformed`; assert message posted with correct `ModeAction` instance | ✅ |
+| ModeAction | `toggleOnKeyboardShortcut` toggles when source is JRootPane | unit | — | missing | write test: `setSelected(false)`, call `actionPerformed` with JRootPane source; assert `isSelected() == true` | ✅ |
+| ModeAction | Hard-wired flags: DISABLE_WHEN_PLAYING + DISABLE_IN_GRACE_MODE | unit | — | missing | write test: assert both flags present via `hasFlag()` | ✅ |
 | LaunchAction | `actionPerformed` — spawns ProcessBuilder using current process info plus `app.command` | none | — | none | involves `ProcessHandle` and OS process spawning; untestable without real process machinery; risk is `IOException` silently swallowed (see notes) | — |
 | LaunchAction | `App` enum maps correct command suffix (sb/ss) | none | — | none | pure data constant; no logic | — |
 | DialogOpenAction | Constructor auto-sets `OPENS_DIALOG` flag | unit | `UIActionFlagBehaviorTest.testDialogOpenActionAutoSetsOpensDialogFlag` | adequate | keep | — |
-| DialogOpenAction | Constructor derives `actionCommand` via `toKebabCase(name)` | unit | — | missing | write test: `new DialogOpenAction(mf, "Song Settings", ...)`: assert `getActionCommand().equals("song-settings")` | ⬜ |
-| DialogOpenAction | `getDialog` lazy-initializes on first call and caches | unit | — | missing | write test: call `getDialog()` twice; assert both return same non-null instance; also test reflective instantiation failure path returns null | ⬜ |
+| DialogOpenAction | Constructor derives `actionCommand` via `toKebabCase(name)` | unit | — | missing | write test: `new DialogOpenAction(mf, "Song Settings", ...)`: assert `getActionCommand().equals("song-settings")` | ✅ |
+| DialogOpenAction | `getDialog` lazy-initializes on first call and caches | unit | — | missing | write test: call `getDialog()` twice; assert both return same non-null instance; also test reflective instantiation failure path returns null | ✅ |
 | DialogOpenAction | `actionPerformed` calls `dialog.setVisible(true)` | none | — | none | pure Swing delegation, no logic | — |
 
 **5A notes (quality concerns):**

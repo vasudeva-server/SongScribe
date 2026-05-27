@@ -50,6 +50,8 @@ class GlissandoMidiIntegrationTest extends UnitTest {
     // Element indices in connections.mssw
     private static final int TEMPO_INDEX = 0;
 
+    private static final int PLAIN_NOTE_STAFF_POS = -2;
+
     private static final PlaybackSettings DEFAULT_SETTINGS = new PlaybackSettings(
         0, 100, 100, false
     );
@@ -123,10 +125,16 @@ class GlissandoMidiIntegrationTest extends UnitTest {
     }
 
     @Test
-    void testNoPitchBendWithoutGlissando() {
-        // PAIR_A_SRC (index 5) has no glissando in the unmodified fixture
-        var note = line.getElement(5);
-        assertThat(note.getGlissando()).as("pair A source has no glissando").isNull();
+    void testNoPitchBendEventsWhenNoGlissando() throws Exception {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setStaffPosition(PLAIN_NOTE_STAFF_POS);
+        var plainLine = detachedLine();
+        plainLine.addElement(note);
+
+        var track = buildMidiTrack(plainLine, new Tempo());
+        var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
+
+        assertThat(bendEvents).as("no pitch bend events when no glissando").isEmpty();
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
