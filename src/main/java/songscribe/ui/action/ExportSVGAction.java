@@ -43,7 +43,7 @@ public final class ExportSVGAction extends UIAction {
         var saveFile = PlatformFileDialog.showSaveDialog(
             getMainFrame(),
             NAME,
-            "Portable Document Format",
+            "Scalable Vector Graphics",
             scoreView.getSuggestedFileName(),
             "svg"
         );

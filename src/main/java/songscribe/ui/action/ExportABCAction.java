@@ -226,7 +226,7 @@ public final class ExportABCAction extends UIAction {
             fraction.asAbcString() +
                 '=' +
                 tempo.getVisibleTempo() +
-                " \"" +
+                " '" +
                 tempo.getTempoDescription() +
                 '\''
         );

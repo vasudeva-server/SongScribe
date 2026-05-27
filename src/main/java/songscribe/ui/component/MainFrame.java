@@ -790,7 +790,9 @@ public class MainFrame extends JFrame implements Printable {
             return false;
         }
 
-        var suggestedFileName = currentFile == null ? scoreView.getSuggestedFileName() : "";
+        var suggestedFileName = currentFile == null
+            ? scoreView.getSuggestedFileName()
+            : FileUtils.getPathWithoutExtension(currentFile.getName());
         var saveFile = PlatformFileDialog.showSaveDialog(
             this,
             Strings.get(Strings.DIALOG_SAVE_AS_TITLE),
