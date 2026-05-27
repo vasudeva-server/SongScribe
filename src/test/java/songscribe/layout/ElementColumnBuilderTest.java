@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -253,5 +254,56 @@ class ElementColumnBuilderTest extends UnitTest {
         var line = detachedLine();
 
         assertThat(builder.buildColumns(line)).isEmpty();
+    }
+
+    // Row 22: calculateStemTop/BottomSs for stem-up, stem-down, and stemless elements
+    @Nested
+    class StemGeometry {
+
+        private final ElementColumnBuilder builder = new ElementColumnBuilder(mock(LyricRenderMetrics.class));
+
+        @Test
+        void testStemTopSsStemUp() {
+            // isUpper=false (default) → stem extends upward: top = -STEM_LENGTH_SS
+            var note = element(ElementType.CROTCHET);
+            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-NoteGeometry.STEM_LENGTH_SS);
+        }
+
+        @Test
+        void testStemTopSsStemDown() {
+            // isUpper=true → stem extends downward: top = element head top = -HALF_NOTE_HEAD_SS
+            var note = element(ElementType.CROTCHET);
+            note.setUpper(true);
+            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+        }
+
+        @Test
+        void testStemTopSsStemless() {
+            // Rest has no stem: top = -HALF_NOTE_HEAD_SS
+            var rest = element(ElementType.CROTCHET_REST);
+            assertThat(builder.calculateStemTopSs(rest)).isEqualTo(-ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+        }
+
+        @Test
+        void testStemBottomSsStemUp() {
+            // isUpper=false (default) → stem up: bottom = element head bottom = HALF_NOTE_HEAD_SS
+            var note = element(ElementType.CROTCHET);
+            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+        }
+
+        @Test
+        void testStemBottomSsStemDown() {
+            // isUpper=true → stem extends downward: bottom = STEM_LENGTH_SS
+            var note = element(ElementType.CROTCHET);
+            note.setUpper(true);
+            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(NoteGeometry.STEM_LENGTH_SS);
+        }
+
+        @Test
+        void testStemBottomSsStemless() {
+            // Rest has no stem: bottom = HALF_NOTE_HEAD_SS
+            var rest = element(ElementType.CROTCHET_REST);
+            assertThat(builder.calculateStemBottomSs(rest)).isEqualTo(ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+        }
     }
 }

@@ -269,7 +269,7 @@ public class ElementColumnBuilder {
      * @param element The element
      * @return Stem top Y position in ss (relative to staff, negative = above)
      */
-    private double calculateStemTopSs(StaffElement element) {
+    double calculateStemTopSs(StaffElement element) {
         var elementType = element.getType();
 
         // Rests and stemless elements: use element head top
@@ -294,7 +294,7 @@ public class ElementColumnBuilder {
      * @param element The element
      * @return Stem bottom Y position in ss (relative to staff, positive = below)
      */
-    private double calculateStemBottomSs(StaffElement element) {
+    double calculateStemBottomSs(StaffElement element) {
         var elementType = element.getType();
 
         // Rests and stemless elements: use element head bottom

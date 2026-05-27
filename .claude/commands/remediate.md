@@ -3,17 +3,15 @@ description: Run one test-remediation chunk (auto-commit, then stop)
 argument-hint: "[optional: package number (e.g. 3), class name, or section to target]"
 ---
 
-**CRITICAL — DO NOT SPAWN SUBAGENTS.**
-**CRITICAL — DO NOT SPAWN SUBAGENTS.**
-**CRITICAL — DO NOT SPAWN SUBAGENTS.**
-All work is performed inline in this session. Never use the Agent tool, Task tool,
-or any mechanism that delegates work to a subagent or background process.
+Execute test-remediation chunk(s), then stop. All state is in the repo, so this
+works from any session — derive everything from files, not memory. **This command
+is safe to run in parallel across multiple sessions** — claim files under
+`docs/testing/.claims/` coordinate which chunks are in-flight.
 
-Execute **exactly one** remediation chunk, then stop — regardless of `$ARGUMENTS`.
-All state is in the repo, so this works from any session — derive everything from
-files, not memory. **This command is safe to run in parallel across multiple
-sessions** — claim files under `docs/testing/.claims/` coordinate which chunks
-are in-flight.
+**Chunk count:** when `$ARGUMENTS` is a bare integer (package number), repeat the
+full steps 1–4 up to **3 times** (or until no unclaimed ⬜ rows remain in that
+package), committing after each chunk. In all other cases, execute **exactly one**
+chunk and stop.
 
 **First, read `docs/testing/REMEDIATION.md`** (the settled procedure, decisions,
 chunking caps, model policy) and skim `docs/testing/remediation-ledger.md`.
@@ -56,15 +54,22 @@ Then perform these steps once:
 
    d. State which section file + rows the chunk covers.
 
-2. **Perform the work inline.** Read the production class, the existing test file,
-   and the testing guides. Both the test file and the production class under test
-   are fully in scope — the global "don't touch unrelated code" rule does not
-   restrict modifications to either of those files for this task. Implement each
-   ⬜ row's `action` (write `missing`, strengthen `inadequate`, relocate
-   `wrong-level`, delete `redundant`). Run `./scripts/compile.sh` then
-   `./scripts/test.sh <ClassName>` (unit only, never e2e); fix any failures.
-   Produce per-row dispositions (`Class.method` →
-   keep/modify/add/relocate/remove) and note which rows are complete.
+2. **Delegate to ONE fresh worker**. Do **not** pass
+   `isolation` when spawning — omitting it lets `bgIsolation: "none"` in
+   settings.json take effect, so the worker shares the main working tree (no
+   worktree). Its prompt MUST begin with `MANDATORY: Read .agents/rules/serena.md`.
+   Give it the exact ⬜ rows, the
+   target test file, and instruct it to: read the production class + existing test
+   + the testing guides; implement each row's `action` (write `missing`,
+   strengthen `inadequate`, relocate `wrong-level`, delete `redundant`). **Explicitly
+   tell the worker that both the test file and the production class under test are
+   fully in scope — the global "don't touch unrelated code" rule does not restrict
+   modifications to either of those files for this task.** Then instruct it to: run
+   `./scripts/compile.sh` then `./scripts/test.sh <ClassName>` (unit only, never
+   e2e); fix failures; return per-row dispositions (`Class.method` →
+   keep/modify/add/relocate/remove) and which rows are complete.
+   For an oversized single class, continue the SAME worker via SendMessage rather
+   than re-spawning.
 
 3. **Integrate** (main session): The dispositions files and ledger are shared
    across parallel sessions — acquire the integration lock before writing to them.

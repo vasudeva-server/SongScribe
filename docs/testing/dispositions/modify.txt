@@ -28,3 +28,8 @@ LayoutEngine.beamCount	3a	row 30 — widened private static → package-private 
 ElementColumnBuilderTest.testStemUpVsStemDownProduceDifferentExtents	3b	row 14 — replaced isNotEqualTo with exact stem-up/down extents (max of notehead width and stem-anchor.x + flag advance per direction)
 ElementColumnBuilderTest.testGraceQuaverExtentSmallerThanRegularQuaver	3b	row 15 — replaced isLessThan with exact grace (small notehead + small stem anchor) and regular extents; kept isLessThan as sanity
 ElementColumnBuilderTest.testDottedQuaverExtentIsMaxOfDotsAndFlag	3b	row 16 — replaced >= with exact max(notehead+DOT_GAP+DOT_WIDTH, stem-up.x + flag advance); removed magic 0.25/0.5 literals
+
+# 3b rows 22-25
+ElementColumnBuilder.calculateStemTopSs  # widened to package-private
+ElementColumnBuilder.calculateStemBottomSs  # widened to package-private
+HorizontalSpacingCalculatorTest.testCalculatePositionsFirstColumnXSsEqualsClefPlusKeyAccidentalsPlusOffset  # was self-referential; pins concrete value
