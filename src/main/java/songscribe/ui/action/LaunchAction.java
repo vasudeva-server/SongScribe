@@ -23,12 +23,18 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import java.util.ArrayList;
-
-import songscribe.Strings;
 import java.util.Arrays;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import songscribe.Strings;
+import songscribe.ui.OptionDialogs;
+
 public class LaunchAction extends AbstractAction {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LaunchAction.class);
 
     public enum App {
         SONGBOOK(Strings.ACTION_LAUNCH_SONG_BOOK, "sb"),
@@ -69,7 +75,8 @@ public class LaunchAction extends AbstractAction {
             commandList.add(app.command);
             new ProcessBuilder(commandList).start();
         } catch (Exception ex) {
-            // Ignore
+            LOG.error("Failed to spawn process for {}", app.command, ex);
+            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_LAUNCH_ERROR, Strings.ERROR_LAUNCH_FAILED, Strings.get(app.nameKey));
         }
     }
 }
