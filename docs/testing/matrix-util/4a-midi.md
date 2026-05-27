@@ -38,10 +38,10 @@ Audited production-code-first: read every method body in all 7 classes via seren
 | MidiSequenceBuilder | `addBankSelect` — emits CC 0 (MSB) and CC 32 (LSB) at tick 0 | unit | none found | missing | covered by buildSequence unit test above | ✅ |
 | VelocityMap | `build` — no dynamic: DEFAULT_VELOCITY_FRACTION; dynamic marking overrides; forward propagation within line; cross-line propagation; accent boost; accent boost capped at MAX_VELOCITY | unit | `VelocityMapTest` (8 methods across 4 nested classes) | adequate | none | — |
 | VelocityMap | `getVelocity` — simple array lookup; no bounds guard | unit | exercised by every VelocityMapTest method | adequate (covered transitively) | none | — |
-| VelocityMap | `build` with custom masterVelocity < MAX_VELOCITY — scales all velocities proportionally | unit | none found | missing — all tests call `VelocityMap.build(song, VelocityMap.MAX_VELOCITY)`; the `masterVelocity` parameter is never varied | add test with masterVelocity=64 to confirm velocities scale from ceiling | ⬜ |
+| VelocityMap | `build` with custom masterVelocity < MAX_VELOCITY — scales all velocities proportionally | unit | none found | missing — all tests call `VelocityMap.build(song, VelocityMap.MAX_VELOCITY)`; the `masterVelocity` parameter is never varied | add test with masterVelocity=64 to confirm velocities scale from ceiling | ✅ |
 | PlaybackSettings | pure data record — no logic | none | n/a | adequate | none | — |
 | TrackPosition | pure data record — no logic | none | n/a | adequate | none | — |
-| GlissandoMidiIntegrationTest `.testNoPitchBendWithoutGlissando` | asserts fixture model property (`getGlissando() == null`), not MIDI output | unit (misclassified) | exists | inadequate — name says "no pitch bend" but the test never builds a MIDI track; it only reads the fixture model; a mutation in the MIDI generation path would leave this test green | either delete (fixture integrity is not a MIDI generation concern) or rewrite to build the track and assert zero pitch bend events | ⬜ |
+| GlissandoMidiIntegrationTest `.testNoPitchBendWithoutGlissando` | asserts fixture model property (`getGlissando() == null`), not MIDI output | unit (misclassified) | exists | inadequate — name says "no pitch bend" but the test never builds a MIDI track; it only reads the fixture model; a mutation in the MIDI generation path would leave this test green | either delete (fixture integrity is not a MIDI generation concern) or rewrite to build the track and assert zero pitch bend events | ✅ |
 
 **4A notes (quality concerns):**
 
