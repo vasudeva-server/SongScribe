@@ -813,3 +813,8 @@ ElementColumnBuilderTest.testLeftExtentIsNegativeWithAccidental	3b	row 19 — ca
 ElementColumnBuilderTest.testBuildColumnMinGapIsHyphenCellWidthForHyphenatedSyllable	3b	row 20 — buildColumn minGap = hyphen cell width for BEGIN/MIDDLE syllabic
 ElementColumnBuilderTest.testBuildColumnMinGapIsSpaceWidthForNonHyphenatedSyllable	3b	row 20 — buildColumn minGap = space width for END/SINGLE syllabic
 ElementColumnBuilderTest.testBuildColumnsEmptyLineReturnsEmptyList	3b	row 21 — buildColumns on empty line returns empty list
+MidiEventFactoryTest.AddTempoEventWithBpm.testBytesEncode120Bpm	4a	row 31 — addTempoEvent(Track,int,Tempo,int) SET_TEMPO bytes for 120 BPM
+MidiEventFactoryTest.AddTempoEventWithBpm.testBytesEncode60Bpm	4a	row 31 — addTempoEvent(Track,int,Tempo,int) SET_TEMPO bytes for 60 BPM
+MidiEventFactoryTest.AddTempoEventWithBpm.testEventPlacedAtSpecifiedTick	4a	row 31 — addTempoEvent meta event placed at specified tick
+MidiEventFactoryTest.AddTempoEventWithTempoRecord.testBytesMatchDirectBpmAtFullPercent	4a	row 32 — addTempoEvent(Track,int,int) direct-BPM bytes at 100%
+MidiEventFactoryTest.AddTempoEventWithTempoRecord.testDoubledTempoAtTwoHundredPercent	4a	row 32 — addTempoEvent tempoChangePercent scaling at 200%
