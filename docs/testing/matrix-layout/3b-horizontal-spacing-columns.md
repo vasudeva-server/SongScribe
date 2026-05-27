@@ -23,10 +23,10 @@
 | HorizontalSpacingCalculator | `calculateFirstElementXSs(n)` = clef + n·keyAcc + firstNoteOffset | unit | `HorizontalSpacingCalculatorTest.testFirstNoteXMatchesCalculateFirstElementXSs` | inadequate | **self-referential**: compares `calculatePositions` to same formula; pin concrete value | ✅ |
 | HorizontalSpacingCalculator | `calculateHeaderRightEdgeSs(n)` = clef + n·keyAcc | unit | — | missing | 0/3/7 accidentals | ✅ |
 | HorizontalSpacingCalculator | `calculateNextColumnXSs` min spacing = prevRight+MIN_GAP+abs(currLeft) | unit | — | missing | two plain columns, exact value | ✅ |
-| HorizontalSpacingCalculator | default gap floor dominates without lyrics | unit | — | missing | verify DEFAULT_GAP floor | ⬜ |
-| HorizontalSpacingCalculator | lyric spacing dominates with wide syllables | unit | — | missing | wide-syllable columns | ⬜ |
-| HorizontalSpacingCalculator | accidental push when next column accidental would overlap | unit | — | missing | construct triggering case | ⬜ |
-| HorizontalSpacingCalculator | grace→host tight gap | unit | — | missing | grace+host columns | ⬜ |
+| HorizontalSpacingCalculator | default gap floor dominates without lyrics | unit | — | missing | verify DEFAULT_GAP floor | ✅ |
+| HorizontalSpacingCalculator | lyric spacing dominates with wide syllables | unit | — | missing | wide-syllable columns | ✅ |
+| HorizontalSpacingCalculator | accidental push when next column accidental would overlap | unit | — | missing | construct triggering case | ✅ |
+| HorizontalSpacingCalculator | grace→host tight gap | unit | — | missing | grace+host columns | ✅ |
 | HorizontalSpacingCalculator | glissando spacing enforced (`ensureGlissandoSpacing`) | unit | — | missing | prev-has-glissando | ⬜ |
 | HorizontalSpacingCalculator | `calculatePositions` empty list returns (no exception) | unit | — | missing | guard test | ⬜ |
 | HorizontalSpacingCalculator | beam-group tight spacing + even lyric expansion (`identifyBeamGroupRanges`/`handleBeamGroup`) | unit | — | missing | critical multi-branch; with/without lyrics | ⬜ |
