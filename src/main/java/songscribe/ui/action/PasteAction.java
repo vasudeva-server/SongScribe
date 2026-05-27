@@ -22,7 +22,10 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import net.engio.mbassy.listener.Handler;
+
 import songscribe.Strings;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -42,5 +45,12 @@ public final class PasteAction extends PasteboardAction {
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_PLAYING
         );
+    }
+
+    @Override
+    @Handler
+    public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
+        // paste not yet implemented — see issue #410
+        setEnabled(false);
     }
 }
