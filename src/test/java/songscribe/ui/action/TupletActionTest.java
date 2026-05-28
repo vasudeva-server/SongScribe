@@ -23,19 +23,29 @@ package songscribe.ui.action;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 
 import module java.desktop;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
-import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.dom.ElementType;
+import songscribe.dom.Song;
 import songscribe.dom.Tuplet;
+import songscribe.message.MessageCenter;
+import songscribe.message.command.ToggleTupletCommand;
+import songscribe.message.notification.DocumentDidLoadNotification;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.selection.TupletToggleInfo;
 
 /**
@@ -140,6 +150,49 @@ class TupletActionTest extends MainFrameMockTest {
 
         for (var action : addActions()) {
             assertThat(action.isEnabled()).isTrue();
+        }
+    }
+
+    // Row 45: songDidChange delegates to the same handleChange path
+    @Test
+    void testSongDidChangeUpdatesEnabledState() {
+        when(mockEnv().ctrl().canToggleTuplet()).thenReturn(new TupletToggleInfo(true, null, false));
+        tripletAction.songDidChange(new SongDidChangeNotification(List.of(), mock(Song.class)));
+        assertThat(tripletAction.isEnabled()).isTrue();
+    }
+
+    // Row 45: documentDidLoad delegates to the same handleChange path
+    @Test
+    void testDocumentDidLoadUpdatesEnabledState() {
+        when(mockEnv().ctrl().canToggleTuplet()).thenReturn(new TupletToggleInfo(true, null, false));
+        tripletAction.documentDidLoad(new DocumentDidLoadNotification(mock(Song.class)));
+        assertThat(tripletAction.isEnabled()).isTrue();
+    }
+
+    // Row 46: actionPerformed posts ToggleTupletCommand with the correct tuplet
+    @Nested
+    class ActionPerformed {
+
+        private MockedStatic<MessageCenter> messageMock;
+
+        @BeforeEach
+        void setUpMessageCenter() {
+            messageMock = mockStatic(MessageCenter.class);
+        }
+
+        @AfterEach
+        void tearDownMessageCenter() {
+            messageMock.close();
+        }
+
+        @Test
+        void testActionPerformedPostsToggleTupletCommand() {
+            var e = new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "");
+            tripletAction.actionPerformed(e);
+            var captor = ArgumentCaptor.forClass(ToggleTupletCommand.class);
+            messageMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue().getAction().getTuplet())
+                .isEqualTo(TupletAction.Tuplet.TRIPLET);
         }
     }
 

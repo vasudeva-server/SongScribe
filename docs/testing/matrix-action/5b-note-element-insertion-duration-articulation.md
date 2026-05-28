@@ -42,8 +42,8 @@
 | TupletAction | `handleChange` — canToggle=true, no existing: enables add-actions, disables remove | unit | `TupletActionTest.testUniformNoTupletEnablesAddActionsDisablesRemove` | adequate | — | — |
 | TupletAction | `handleChange` — canToggle=true, partial coverage: enables remove, disables all add-actions | unit | `TupletActionTest.testPartialCoverageOfTripletEnablesRemoveDisablesAllAddActions` | adequate | — | — |
 | TupletAction | `handleChange` — canToggle=true, full coverage, existing grade matches action: disable that action | unit | `TupletActionTest.testFullCoverageOfTripletDisablesTripletEnablesOthersAndRemove`, `testFullCoverageOfQuintupletDisablesQuintupletEnablesOthersAndRemove` | adequate | — | — |
-| TupletAction | `handleChange` — `songDidChange` and `documentDidLoad` trigger same `handleChange` path | unit | none | missing | add tests verifying `songDidChange` / `documentDidLoad` handlers update enabled state | ⬜ |
-| TupletAction | `actionPerformed` — posts `ToggleTupletCommand` with correct tuplet reference | unit | none | missing | add test asserting command posted with correct `getTuplet()` | ⬜ |
+| TupletAction | `handleChange` — `songDidChange` and `documentDidLoad` trigger same `handleChange` path | unit | none | missing | add tests verifying `songDidChange` / `documentDidLoad` handlers update enabled state | ✅ |
+| TupletAction | `actionPerformed` — posts `ToggleTupletCommand` with correct tuplet reference | unit | none | missing | add test asserting command posted with correct `getTuplet()` | ✅ |
 | TupletAction | `getTuplet()` / `Tuplet.getSize()` — enum size values correct | unit | indirectly via `TupletActionTest` which calls `makeTuplet(TupletAction.Tuplet.TRIPLET.getSize())` | adequate (implicit) | — | — |
 | ToggleTrillAction | `musicSelectionDidChange` — disables when `canToggleTrill()` returns false | unit | none | missing | add `ToggleTrillActionEnablementTest` with mocked `ctrl.canToggleTrill()` | ✅ |
 | ToggleTrillAction | `musicSelectionDidChange` — enables when `canToggleTrill()` returns true | unit | none | missing | same new test class | ✅ |

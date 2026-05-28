@@ -1204,3 +1204,8 @@ FlipStemDirectionActionEnablementTest.testEnablesWhenCanFlipStemDirection	new te
 # 5b rows 48,49 — ToggleTrillAction enablement
 ToggleTrillActionEnablementTest.testDisablesWhenCannotToggleTrill	new test: ctrl.canToggleTrill()==false → action disabled after musicSelectionDidChange
 ToggleTrillActionEnablementTest.testEnablesWhenCanToggleTrill	new test: ctrl.canToggleTrill()==true → action enabled after musicSelectionDidChange
+# 5b row 45 — TupletAction songDidChange/documentDidLoad enablement handlers
+TupletActionTest.testSongDidChangeUpdatesEnabledState	new test: songDidChange handler runs handleChange path → enabled state updated
+TupletActionTest.testDocumentDidLoadUpdatesEnabledState	new test: documentDidLoad handler runs handleChange path → enabled state updated
+# 5b row 46 — TupletAction actionPerformed posts ToggleTupletCommand
+TupletActionTest.ActionPerformed.testActionPerformedPostsToggleTupletCommand	new test: actionPerformed posts ToggleTupletCommand with correct getTuplet() reference
