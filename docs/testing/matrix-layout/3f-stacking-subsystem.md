@@ -7,11 +7,11 @@
 | StackingUtils | `stackAbove` collision-aware placement (query-expand-min-reserve) | unit | `ArticulationStackingTest` (integration) | adequate | keep | — |
 | StackingUtils | `stackAboveWithRegions` multi-region min-ceiling + per-region reserve | unit | `SystemTierStackingTest` (`ySs<0` only) | inadequate | exact-value via controlled extents; `<0` can't catch region/reservation bug | ✅ |
 | StackingUtils | `isRangeCovered(start,end)` | unit | — | missing | covered / uncovered / wrong-end | ✅ |
-| StackingUtils | symmetric horizontal margin (`STRUCTURAL_HORIZONTAL_MARGIN_SS`) on query+reserve | unit | margin never checked | missing | assert margin applied to queryX/queryWidth | ⬜ |
-| StackingContext | `buildColumnMap` element→column | unit | — | missing | 2 columns → map per element | ⬜ |
-| StackingContext | `updateLowestNoteBotSs` max-accumulation | unit | — | missing | ascending then descending → max kept | ⬜ |
-| StackingContext | `updateBotContentExtentSs` max-accumulation | unit | — | missing | same pattern | ⬜ |
-| StackingContext | `notesWithUpwardTie` default empty / setter replaces | unit | — | missing (low priority) | drives downstream margin branch | ⬜ |
+| StackingUtils | symmetric horizontal margin (`STRUCTURAL_HORIZONTAL_MARGIN_SS`) on query+reserve | unit | margin never checked | missing | assert margin applied to queryX/queryWidth | ✅ |
+| StackingContext | `buildColumnMap` element→column | unit | — | missing | 2 columns → map per element | ✅ |
+| StackingContext | `updateLowestNoteBotSs` max-accumulation | unit | — | missing | ascending then descending → max kept | ✅ |
+| StackingContext | `updateBotContentExtentSs` max-accumulation | unit | — | missing | same pattern | ✅ |
+| StackingContext | `notesWithUpwardTie` default empty / setter replaces | unit | — | missing (low priority) | drives downstream margin branch | ✅ |
 | NoteAttachedStacker | `computeNoteBounds` stem-path vs type-geometry path | unit | indirect (`ArticulationStackingTest`, `<0` only) | inadequate | both paths; exact top/bot Ss | ⬜ |
 | NoteAttachedStacker | `seedNoteBounds` updates `lowestNoteBotSs`/`botContentExtentSs` | unit | — | missing | assert context fields after seeding | ⬜ |
 | NoteAttachedStacker | `seedTieBounds` upward arc → above; membership in `notesWithUpwardTie` only when protruding | unit | — | missing | controlled TieLayout; set membership + extents | ⬜ |
