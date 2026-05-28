@@ -1192,3 +1192,9 @@ VerticalStackingCalculatorTest.testSeedAccidentalsBotTranslatedToStaffCoordinate
 ManualOffsetStackingTest.TupletOffsets.testTupletVerticalPositionApplied	new test: Tuplet getVerticalPositionSs manual offset applied (ySs == baseline + verticalPositionSs)
 # 3f row 43 — VerticalStackingCalculator calculate belowContentSs distinct
 VerticalStackingCalculatorTest.testCalculateBelowContentUsesDownwardStemExtent	new test: downward-stem note → non-zero belowContent; exact isEqualTo(stemBotSs - STAFF_HALF_SS)
+# 5b row 28 — NoteOnlyAction appliesTo grace note
+NoteOnlyActionAppliesToTest.testAppliesToGraceNote	new test: documents intentional contract that NoteOnlyAction applies to grace notes
+# 5b row 31 — DurationArticulationAction replaces duplicate articulation
+DurationArticulationActionTest.testApplyToNoteReplacesDuplicateArticulation	new test: re-apply when articulation present → removed and re-added, exactly one instance
+# 5b row 36 — FermataAction idempotent apply
+FermataActionTest.testApplyToNoteWithExistingFermataIsIdempotent	new test: applying twice → exactly one FermataAttachment (guard branch)

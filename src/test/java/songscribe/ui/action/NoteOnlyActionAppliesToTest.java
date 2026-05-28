@@ -58,4 +58,11 @@ class NoteOnlyActionAppliesToTest extends MainFrameMockTest {
         var note = ElementType.CROTCHET_REST.newInstance();
         assertThat(action.appliesTo(note)).isFalse();
     }
+
+    // A10: appliesTo returns true for grace notes (isNote() == true; no DISABLE_IN_GRACE_MODE flag)
+    @Test
+    void testAppliesToGraceNote() {
+        var note = ElementType.GRACE_QUAVER.newInstance();
+        assertThat(action.appliesTo(note)).isTrue();
+    }
 }

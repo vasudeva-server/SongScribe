@@ -66,4 +66,14 @@ class DurationArticulationActionTest extends MainFrameMockTest {
         note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
         assertThat(action.matchesElement(note)).isTrue();
     }
+
+    @Test
+    void testApplyToNoteReplacesDuplicateArticulation() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
+        action.applyToElement(note, true);
+        assertThat(note.getArticulations())
+            .filteredOn(a -> a.getType() == ArticulationType.STACCATO)
+            .hasSize(1);
+    }
 }

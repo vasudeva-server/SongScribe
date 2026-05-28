@@ -65,4 +65,14 @@ class FermataActionTest extends MainFrameMockTest {
         note.addAttachment(new FermataAttachment(note));
         assertThat(action.matchesElement(note)).isTrue();
     }
+
+    @Test
+    void testApplyToNoteWithExistingFermataIsIdempotent() {
+        var note = ElementType.CROTCHET.newInstance();
+        action.applyToElement(note, true);
+        action.applyToElement(note, true);
+        assertThat(note.getAttachments())
+            .filteredOn(a -> a instanceof FermataAttachment)
+            .hasSize(1);
+    }
 }

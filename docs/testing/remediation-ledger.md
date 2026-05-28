@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 594 / 1576 actionable rows done (37%).**
+**Overall: 597 / 1576 actionable rows done (37%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -28,7 +28,7 @@
 |  | [4e-prefs](matrix-util/4e-prefs.md) | 0 | 31 | not started |
 |  | [4f-font](matrix-util/4f-font.md) | 0 | 6 | not started |
 | 5 · ui/action | [5a-base-infrastructure](matrix-action/5a-base-infrastructure.md) | 48 | 48 | ✅ complete |
-|  | [5b-note-element-insertion-duration-articulation](matrix-action/5b-note-element-insertion-duration-articulation.md) | 7 | 18 | in progress |
+|  | [5b-note-element-insertion-duration-articulation](matrix-action/5b-note-element-insertion-duration-articulation.md) | 10 | 18 | in progress |
 |  | [5c-markings](matrix-action/5c-markings.md) | 0 | 19 | not started |
 |  | [5d-clipboard-selection-line](matrix-action/5d-clipboard-selection-line.md) | 0 | 20 | not started |
 |  | [5e-file-app-lifecycle](matrix-action/5e-file-app-lifecycle.md) | 0 | 19 | not started |
