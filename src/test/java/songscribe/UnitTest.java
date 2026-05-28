@@ -46,7 +46,10 @@ import songscribe.dom.Song;
 import songscribe.ui.OptionDialogs;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.xml.sax.SAXException;
+
+import songscribe.error.RuntimeErrorTestHelper;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -66,12 +69,18 @@ public abstract class UnitTest {
     @BeforeAll
     static void suppressDialogs() throws Exception {
         OptionDialogs.setSuppressDialogs(true);
+        RuntimeErrorTestHelper.install();
         installFlatLafDefaults();
 
         if (!bannerShown) {
             bannerShown = true;
             SongScribe.logBanner("SongScribe (Unit Tests)");
         }
+    }
+
+    @BeforeEach
+    void resetRuntimeError() {
+        RuntimeErrorTestHelper.reset();
     }
 
     /**

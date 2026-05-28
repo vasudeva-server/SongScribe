@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run tests via Gradle
-# Usage: ./scripts/test.sh [--debug] [--keep-going] [unit|e2e|ClassName|ClassName.method|...]
+# Usage: ./scripts/test.sh [--debug] [--keep-going] [--<gradle-flag>...] [unit|e2e|ClassName|ClassName.method|...]
 # Examples:
 #   ./scripts/test.sh                                          # All tests (unit then e2e)
 #   ./scripts/test.sh e2e                                      # e2e tests only
@@ -28,7 +28,7 @@ while [[ "${1:-}" == --* ]]; do
   case "$1" in
     --debug)      GRADLE_PROPS+=("-Pe2eDebug") ;;
     --keep-going) GRADLE_FLAGS+=("--continue"); GRADLE_PROPS+=("-PnoFailFast") ;;
-    *)            break ;;
+    *)            GRADLE_FLAGS+=("$1") ;;
   esac
   shift
 done

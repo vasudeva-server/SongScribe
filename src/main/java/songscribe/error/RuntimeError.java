@@ -21,6 +21,7 @@
 package songscribe.error;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.IntConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,9 @@ public final class RuntimeError {
 
     // Guards against showing the alert more than once if exit() is called re-entrantly.
     private static final AtomicBoolean ALERT_SHOWN = new AtomicBoolean(false);
+
+    // Replaceable in tests so System.exit(-1) doesn't kill the test JVM.
+    private static IntConsumer exitHandler = System::exit;
 
     /**
      * Logs the message, shows an error dialog to the user, and exits.
@@ -86,8 +90,18 @@ public final class RuntimeError {
 
         OptionDialogs.showErrorMessageWithString(null, FATAL_ALERT_TITLE, FATAL_USER_MESSAGE);
 
-        System.exit(-1);
+        exitHandler.accept(-1);
         throw new AssertionError("unreachable");
+    }
+
+    // Package-private — for use only by RuntimeErrorTestHelper in tests.
+    static void setExitHandlerForTesting(IntConsumer handler) {
+        exitHandler = handler;
+    }
+
+    // Package-private — for use only by RuntimeErrorTestHelper in tests.
+    static void resetAlertShownForTesting() {
+        ALERT_SHOWN.set(false);
     }
 
     private RuntimeError() {}
