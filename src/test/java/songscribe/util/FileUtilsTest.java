@@ -22,10 +22,18 @@ package songscribe.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import songscribe.UnitTest;
 
@@ -155,6 +163,53 @@ class FileUtilsTest extends UnitTest {
             // Non-Windows: File(user.home, "Documents")
             var expected = new File(System.getProperty("user.home"), "Documents");
             assertThat(FileUtils.getDocumentsDirectory()).isEqualTo(expected);
+        }
+    }
+
+    @Nested
+    class ZipFile {
+
+        private static final int BUFFER_SIZE = 256;
+
+        @Test
+        void testZipFileWithNullRequestNameUsesFileName(@TempDir Path tempDir) throws IOException {
+            var file = tempDir.resolve("song.mssw").toFile();
+            Files.writeString(file.toPath(), "content");
+            var baos = new ByteArrayOutputStream();
+            try (var zos = new ZipOutputStream(baos)) {
+                FileUtils.zipFile(zos, file, null, new byte[BUFFER_SIZE]);
+            }
+            try (var zis = new ZipInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+                assertThat(zis.getNextEntry().getName()).isEqualTo("song.mssw");
+            }
+        }
+
+        @Test
+        void testZipFileWithRequestNameUsesRequestName(@TempDir Path tempDir) throws IOException {
+            var file = tempDir.resolve("original.mssw").toFile();
+            Files.writeString(file.toPath(), "content");
+            var baos = new ByteArrayOutputStream();
+            try (var zos = new ZipOutputStream(baos)) {
+                FileUtils.zipFile(zos, file, "renamed.mssw", new byte[BUFFER_SIZE]);
+            }
+            try (var zis = new ZipInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+                assertThat(zis.getNextEntry().getName()).isEqualTo("renamed.mssw");
+            }
+        }
+
+        @Test
+        void testZipFileWritesFileContents(@TempDir Path tempDir) throws IOException {
+            var content = "hello world";
+            var file = tempDir.resolve("data.txt").toFile();
+            Files.writeString(file.toPath(), content);
+            var baos = new ByteArrayOutputStream();
+            try (var zos = new ZipOutputStream(baos)) {
+                FileUtils.zipFile(zos, file, null, new byte[BUFFER_SIZE]);
+            }
+            try (var zis = new ZipInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+                zis.getNextEntry();
+                assertThat(new String(zis.readAllBytes())).isEqualTo(content);
+            }
         }
     }
 }

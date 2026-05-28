@@ -19,10 +19,10 @@ Audited by reading every production class symbol-by-symbol with serena `jet_brai
 | FileUtils | `ensureExtension` — appends extension if not already present; multi-extension variant; uses case-insensitive match | unit | none | missing | add unit tests: already has ext (all variants), missing ext, dot-prefixed ext arg | ✅ |
 | FileUtils | `toDotExt` (private) — tested indirectly via `ensureExtension`; ext with and without leading dot | unit | none | missing | covered by `ensureExtension` tests | ✅ |
 | FileUtils | `getDocumentsDirectory` — platform-conditional path; Windows reads `USERPROFILE` env var | unit | none | missing | add unit test for non-Windows path; Windows branch is harder to isolate but non-Windows is trivially testable | ✅ |
-| FileUtils | `zipFile` — streams file into zip entry; `@Nullable` requestName branch | unit | none | missing | add unit test with a temp file; verify entry name for null vs non-null requestName | ⬜ |
-| ExtensionFileFilter | constructor — description appends `(ext1, ext2)` suffix | unit | none | missing | add unit test | ⬜ |
-| ExtensionFileFilter | `accept(File)` — directories always accepted; files matched by extension (case-insensitive) | unit | none | missing | add unit tests: directory, matching ext, non-matching ext, no extension | ⬜ |
-| ExtensionFileFilter | `accept(File, String)` / `accept(String)` (private) — delegates to extension check | unit | none | missing | covered by `accept(File)` tests (file-name branch) | ⬜ |
+| FileUtils | `zipFile` — streams file into zip entry; `@Nullable` requestName branch | unit | none | missing | add unit test with a temp file; verify entry name for null vs non-null requestName | ✅ |
+| ExtensionFileFilter | constructor — description appends `(ext1, ext2)` suffix | unit | none | missing | add unit test | ✅ |
+| ExtensionFileFilter | `accept(File)` — directories always accepted; files matched by extension (case-insensitive) | unit | none | missing | add unit tests: directory, matching ext, non-matching ext, no extension | ✅ |
+| ExtensionFileFilter | `accept(File, String)` / `accept(String)` (private) — delegates to extension check | unit | none | missing | covered by `accept(File)` tests (file-name branch) | ✅ |
 | ExtensionFileFilter | `getExtension(int)`, `getExtensions()` — simple accessors | none | none | adequate | no test needed | — |
 | ExtensionFileFilter | `getDescription()`, `toString()` — trivial accessors | none | none | adequate | no test needed | — |
 | GraphicUtils | `Unit.create(boolean)` — maps `isMetric` boolean to `CM`/`INCH` | unit | none | missing | add unit test | ⬜ |

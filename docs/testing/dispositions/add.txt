@@ -1209,3 +1209,7 @@ TupletActionTest.testSongDidChangeUpdatesEnabledState	new test: songDidChange ha
 TupletActionTest.testDocumentDidLoadUpdatesEnabledState	new test: documentDidLoad handler runs handleChange path → enabled state updated
 # 5b row 46 — TupletAction actionPerformed posts ToggleTupletCommand
 TupletActionTest.ActionPerformed.testActionPerformedPostsToggleTupletCommand	new test: actionPerformed posts ToggleTupletCommand with correct getTuplet() reference
+FileUtils.zipFile → add (FileUtilsTest$ZipFile: testZipFileWithNullRequestNameUsesFileName, testZipFileWithRequestNameUsesRequestName, testZipFileWritesFileContents)
+ExtensionFileFilter.<init> → add (ExtensionFileFilterTest$Constructor: testDescriptionAppendsSingleExtensionInParens, testDescriptionAppendsMultipleExtensionsCommaDelimited)
+ExtensionFileFilter.accept(File) → add (ExtensionFileFilterTest$AcceptFile: testAcceptDirectoryReturnsTrue, testAcceptFileWithMatchingExtensionReturnsTrue, testAcceptFileWithUppercaseExtensionReturnsTrue, testAcceptFileWithNonMatchingExtensionReturnsFalse, testAcceptFileWithNoExtensionReturnsFalse)
+ExtensionFileFilter.accept(String) → covered (by accept(File) tests, file-name branch)
