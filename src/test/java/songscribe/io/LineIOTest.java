@@ -102,6 +102,18 @@ class LineIOTest extends UnitTest {
         return reader.endElement11("line");
     }
 
+    /** Same as {@link #parseLineTag} but returns the {@link LegacyLineOffsets} captured by the reader. */
+    @Nullable
+    private static LegacyLineOffsets parseLegacyOffsets(String tagName, String content) throws SAXException {
+        var emptyAttrs = new AttributesImpl();
+        var reader = new LineIO.LineReader(minimalSongMock());
+        reader.startElement11("line", emptyAttrs);
+        reader.startElement11(tagName, emptyAttrs);
+        reader.characters(content.toCharArray(), 0, content.length());
+        reader.endElement11(tagName);
+        return reader.endElement11("line") == null ? null : reader.getLegacyOffsets();
+    }
+
     // -------------------------------------------------------------------------
     // WriteLineDeltaKeySig — row 1
     // -------------------------------------------------------------------------
@@ -540,38 +552,38 @@ class LineIOTest extends UnitTest {
 
         @Test
         void testBeatchangeyposTagSetsBeatChangeYPosPx() throws Exception {
-            var parsedLine = parseLineTag(LineIO.XML_BEAT_CHANGE_YPOS, String.valueOf(YPOS_PX));
+            var offsets = parseLegacyOffsets(LineIO.XML_BEAT_CHANGE_YPOS, String.valueOf(YPOS_PX));
 
-            assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
-            assertThat(parsedLine.getBeatChangeYPosPx()).isEqualTo(YPOS_PX);
+            assertThat(offsets).isNotNull();
+            if (offsets == null) return;
+            assertThat(offsets.beatChangeYPosPx()).isEqualTo(YPOS_PX);
         }
 
         @Test
         void testFsendingyposTagSetsFirstSecondEndingYPosPx() throws Exception {
-            var parsedLine = parseLineTag(LineIO.XML_FSENDING_YPOS, String.valueOf(YPOS_PX));
+            var offsets = parseLegacyOffsets(LineIO.XML_FSENDING_YPOS, String.valueOf(YPOS_PX));
 
-            assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
-            assertThat(parsedLine.getFirstSecondEndingYPosPx()).isEqualTo(YPOS_PX);
+            assertThat(offsets).isNotNull();
+            if (offsets == null) return;
+            assertThat(offsets.firstSecondEndingYPosPx()).isEqualTo(YPOS_PX);
         }
 
         @Test
         void testTempochangeyposTagSetsTempoChangeYPosPx() throws Exception {
-            var parsedLine = parseLineTag(LineIO.XML_TEMPO_CHANGE_YPOS, String.valueOf(YPOS_PX));
+            var offsets = parseLegacyOffsets(LineIO.XML_TEMPO_CHANGE_YPOS, String.valueOf(YPOS_PX));
 
-            assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
-            assertThat(parsedLine.getTempoChangeYPosPx()).isEqualTo(YPOS_PX);
+            assertThat(offsets).isNotNull();
+            if (offsets == null) return;
+            assertThat(offsets.tempoChangeYPosPx()).isEqualTo(YPOS_PX);
         }
 
         @Test
         void testTrillyposTagSetsTrillYPosPx() throws Exception {
-            var parsedLine = parseLineTag(LineIO.XML_TRILL_YPOS, String.valueOf(YPOS_PX));
+            var offsets = parseLegacyOffsets(LineIO.XML_TRILL_YPOS, String.valueOf(YPOS_PX));
 
-            assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
-            assertThat(parsedLine.getTrillYPosPx()).isEqualTo(YPOS_PX);
+            assertThat(offsets).isNotNull();
+            if (offsets == null) return;
+            assertThat(offsets.trillYPosPx()).isEqualTo(YPOS_PX);
         }
     }
 

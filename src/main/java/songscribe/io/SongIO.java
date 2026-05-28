@@ -21,7 +21,9 @@ package songscribe.io;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -258,6 +260,7 @@ public final class SongIO {
         private double lineWidthSs = PageModel.getDefaultLineWidthSs();
         private boolean hasBeenDynamicallyLaidOut = false;
         private final List<Line> parsedLines = new ArrayList<>();
+        private final Map<Line, LegacyLineOffsets> parsedLegacyOffsets = new HashMap<>();
 
         @Override
         public void startElement(
@@ -511,6 +514,7 @@ public final class SongIO {
 
                 if (l != null) {
                     parsedLines.add(l);
+                    parsedLegacyOffsets.put(l, lineReader.getLegacyOffsets());
                 }
             } else if (where == Where.TEMPO) {
                 if (tempoReader == null) {
@@ -624,6 +628,7 @@ public final class SongIO {
             // see MigrationPipeline for the stage list and ordering invariant.
             var ctx = new MigrationContext();
             ctx.lines = parsedLines;
+            ctx.legacyLineOffsets = parsedLegacyOffsets;
             ctx.lineWidthSs = lineWidthSs;
             ctx.rowHeightAdjustmentSs = rowHeightAdjustmentSs;
             ctx.attributionStartYSs = attributionStartYSs;

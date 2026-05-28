@@ -23,6 +23,7 @@ package songscribe.io;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -65,9 +66,9 @@ class FormatMigratorTest extends UnitTest {
             var note = line.getElement(0);
             note.addAttachment(new TempoChangeAttachment(new Tempo()));
             // A non-zero tempoChangeYPosPx would cause userYOffsetSs to change if migration ran.
-            line.setTempoChangeYPosPx(NON_ZERO_TEMPO_OFFSET_PX);
+            var offsets = Map.of(line, offsetsWithTempo(NON_ZERO_TEMPO_OFFSET_PX));
 
-            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_AT_THRESHOLD);
+            FormatMigrator.migrate(List.of(line), offsets, FORMAT_VERSION_AT_THRESHOLD);
 
             var attachment = note.findAttachment(TempoChangeAttachment.class);
             assertThat(attachment).isNotNull();
@@ -88,9 +89,9 @@ class FormatMigratorTest extends UnitTest {
             var line = lineWith(ElementType.CROTCHET);
             var note = line.getElement(0);
             note.addAttachment(new TempoChangeAttachment(new Tempo()));
-            line.setTempoChangeYPosPx(NON_ZERO_TEMPO_OFFSET_PX);
+            var offsets = Map.of(line, offsetsWithTempo(NON_ZERO_TEMPO_OFFSET_PX));
 
-            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+            FormatMigrator.migrate(List.of(line), offsets, FORMAT_VERSION_LEGACY);
 
             var attachment = note.findAttachment(TempoChangeAttachment.class);
             assertThat(attachment).isNotNull();
@@ -103,6 +104,37 @@ class FormatMigratorTest extends UnitTest {
             // Legacy migration adds the raw px value directly to userYOffsetSs
             // (no unit conversion — the px field is repurposed as an Ss delta).
             assertThat(attachment.getUserYOffsetSs()).isEqualTo(NON_ZERO_TEMPO_OFFSET_PX);
+        }
+
+        // A multi-line migrate() must apply each line's own map entry and fall back to DEFAULTS
+        // for a line absent from the map — guards the per-line getOrDefault identity keying.
+        @Test
+        void testAppliesPerLineOffsetsByIdentity() {
+            var lineWithOffset = lineWith(ElementType.CROTCHET);
+            lineWithOffset.getElement(0).addAttachment(new TempoChangeAttachment(new Tempo()));
+
+            var lineWithoutOffset = lineWith(ElementType.CROTCHET);
+            lineWithoutOffset.getElement(0).addAttachment(new TempoChangeAttachment(new Tempo()));
+
+            // Only the first line carries a tempo offset; the second is absent from the map.
+            var offsets = Map.of(lineWithOffset, offsetsWithTempo(NON_ZERO_TEMPO_OFFSET_PX));
+
+            FormatMigrator.migrate(
+                List.of(lineWithOffset, lineWithoutOffset), offsets, FORMAT_VERSION_LEGACY);
+
+            var migrated = lineWithOffset.getElement(0).findAttachment(TempoChangeAttachment.class);
+            var untouched = lineWithoutOffset.getElement(0).findAttachment(TempoChangeAttachment.class);
+            assertThat(migrated).isNotNull();
+            assertThat(untouched).isNotNull();
+
+            //noinspection ConstantValue -- needed for NullAway
+            if (migrated == null || untouched == null) {
+                return;
+            }
+
+            // The mapped line gets its offset; the unmapped line falls back to DEFAULTS (tempo 0 → no-op).
+            assertThat(migrated.getUserYOffsetSs()).isEqualTo(NON_ZERO_TEMPO_OFFSET_PX);
+            assertThat(untouched.getUserYOffsetSs()).isEqualTo(0.0);
         }
     }
 
@@ -121,10 +153,10 @@ class FormatMigratorTest extends UnitTest {
             var line = lineWith(ElementType.CROTCHET);
             var note = line.getElement(0);
             note.addAttachment(new TempoChangeAttachment(new Tempo()));
-            line.setTempoChangeYPosPx(NON_ZERO_TEMPO_OFFSET_PX);
+            var offsets = Map.of(line, offsetsWithTempo(NON_ZERO_TEMPO_OFFSET_PX));
 
             // Route through the public API — migrateLineLevelOffsets is called for every legacy line.
-            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+            FormatMigrator.migrate(List.of(line), offsets, FORMAT_VERSION_LEGACY);
 
             var attachment = note.findAttachment(TempoChangeAttachment.class);
             assertThat(attachment).isNotNull();
@@ -143,12 +175,11 @@ class FormatMigratorTest extends UnitTest {
         void testNonDefaultBeatChangeOffsetAppliedToBeatChangeAttachment() {
             var line = buildLineWithBeatChange();
             var note = line.getElement(0);
-            var beatChangeDefaultPx = ScaleContext.ssToRoundedPx(Line.BEAT_CHANGE_DEFAULT_Y_SS);
-            var nonDefaultBeatChangePx = beatChangeDefaultPx + BEAT_CHANGE_OFFSET_DELTA_PX;
-            line.setBeatChangeYPosPx(nonDefaultBeatChangePx);
+            var nonDefaultBeatChangePx = ScaleContext.ssToRoundedPx(Line.BEAT_CHANGE_DEFAULT_Y_SS) + BEAT_CHANGE_OFFSET_DELTA_PX;
+            var offsets = Map.of(line, offsetsWithBeatChange(nonDefaultBeatChangePx));
 
             // Route through the public API — migrateLineLevelOffsets is called for every legacy line.
-            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+            FormatMigrator.migrate(List.of(line), offsets, FORMAT_VERSION_LEGACY);
 
             var attachment = note.findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
@@ -168,10 +199,10 @@ class FormatMigratorTest extends UnitTest {
         void testDefaultBeatChangeOffsetIsNoOp() {
             var line = buildLineWithBeatChange();
             var note = line.getElement(0);
-            // Default is the field's initial value — no explicit set needed.
 
             // Route through the public API — migrateLineLevelOffsets is called for every legacy line.
-            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+            // Empty map → DEFAULTS used → beat-change offset equals default → no delta applied.
+            FormatMigrator.migrate(List.of(line), Map.of(), FORMAT_VERSION_LEGACY);
 
             var attachment = note.findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
@@ -193,12 +224,11 @@ class FormatMigratorTest extends UnitTest {
             var ending = new Ending(note, note);
             line.addRangeElement(ending);
 
-            var endingDefaultPx = ScaleContext.ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS);
-            var nonDefaultEndingPx = endingDefaultPx + ENDING_OFFSET_DELTA_PX;
-            line.setFirstSecondEndingYPosPx(nonDefaultEndingPx);
+            var nonDefaultEndingPx = ScaleContext.ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS) + ENDING_OFFSET_DELTA_PX;
+            var offsets = Map.of(line, offsetsWithEnding(nonDefaultEndingPx));
 
             // Route through the public API — migrateLineLevelOffsets is called for every legacy line.
-            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+            FormatMigrator.migrate(List.of(line), offsets, FORMAT_VERSION_LEGACY);
 
             // delta = nonDefault - default = ENDING_OFFSET_DELTA_PX; initial yPositionSs is 0.
             assertThat(ending.getYPositionSs()).isEqualTo(ENDING_OFFSET_DELTA_PX);
@@ -213,12 +243,11 @@ class FormatMigratorTest extends UnitTest {
             var trill = new Trill(note);
             line.addRangeElement(trill);
 
-            var trillDefaultPx = ScaleContext.ssToRoundedPx(Line.TRILL_DEFAULT_Y_SS);
-            var nonDefaultTrillPx = trillDefaultPx + TRILL_OFFSET_DELTA_PX;
-            line.setTrillYPosPx(nonDefaultTrillPx);
+            var nonDefaultTrillPx = ScaleContext.ssToRoundedPx(Line.TRILL_DEFAULT_Y_SS) + TRILL_OFFSET_DELTA_PX;
+            var offsets = Map.of(line, offsetsWithTrill(nonDefaultTrillPx));
 
             // Route through the public API — migrateLineLevelOffsets is called for every legacy line.
-            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+            FormatMigrator.migrate(List.of(line), offsets, FORMAT_VERSION_LEGACY);
 
             // delta = nonDefault - default = TRILL_OFFSET_DELTA_PX; initial yPositionSs is 0.
             assertThat(trill.getYPositionSs()).isEqualTo(TRILL_OFFSET_DELTA_PX);
@@ -251,7 +280,7 @@ class FormatMigratorTest extends UnitTest {
             // Set a positive yPosPx to simulate a below-staff legacy annotation.
             annotation.setYPosPx(BELOW_STAFF_Y_POS_PX);
 
-            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+            FormatMigrator.migrate(List.of(line), Map.of(), FORMAT_VERSION_LEGACY);
 
             // After migration, yPosPx must be the ABOVE constant.
             assertThat(annotation.getYPosPx()).isEqualTo(Annotation.ABOVE);
@@ -280,7 +309,7 @@ class FormatMigratorTest extends UnitTest {
             var originalYPosPx = annotation.getYPosPx();
             var originalOffset = annotation.getUserYOffsetSs();
 
-            FormatMigrator.migrate(List.of(line), FORMAT_VERSION_LEGACY);
+            FormatMigrator.migrate(List.of(line), Map.of(), FORMAT_VERSION_LEGACY);
 
             // Neither field must change — above-staff annotations are already in the correct form.
             assertThat(annotation.getYPosPx()).isEqualTo(originalYPosPx);
@@ -582,6 +611,34 @@ class FormatMigratorTest extends UnitTest {
             new BeatChangeAttachment(note, new BeatChange(Duration.CROTCHET, Duration.CROTCHET))
         );
         return line;
+    }
+
+    /** A LegacyLineOffsets equal to DEFAULTS except for the tempo field. */
+    private static LegacyLineOffsets offsetsWithTempo(int tempoChangeYPosPx) {
+        var defaults = LegacyLineOffsets.DEFAULTS;
+        return new LegacyLineOffsets(
+            tempoChangeYPosPx, defaults.beatChangeYPosPx(), defaults.firstSecondEndingYPosPx(), defaults.trillYPosPx());
+    }
+
+    /** A LegacyLineOffsets equal to DEFAULTS except for the beat-change field. */
+    private static LegacyLineOffsets offsetsWithBeatChange(int beatChangeYPosPx) {
+        var defaults = LegacyLineOffsets.DEFAULTS;
+        return new LegacyLineOffsets(
+            defaults.tempoChangeYPosPx(), beatChangeYPosPx, defaults.firstSecondEndingYPosPx(), defaults.trillYPosPx());
+    }
+
+    /** A LegacyLineOffsets equal to DEFAULTS except for the first/second ending field. */
+    private static LegacyLineOffsets offsetsWithEnding(int firstSecondEndingYPosPx) {
+        var defaults = LegacyLineOffsets.DEFAULTS;
+        return new LegacyLineOffsets(
+            defaults.tempoChangeYPosPx(), defaults.beatChangeYPosPx(), firstSecondEndingYPosPx, defaults.trillYPosPx());
+    }
+
+    /** A LegacyLineOffsets equal to DEFAULTS except for the trill field. */
+    private static LegacyLineOffsets offsetsWithTrill(int trillYPosPx) {
+        var defaults = LegacyLineOffsets.DEFAULTS;
+        return new LegacyLineOffsets(
+            defaults.tempoChangeYPosPx(), defaults.beatChangeYPosPx(), defaults.firstSecondEndingYPosPx(), trillYPosPx);
     }
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })

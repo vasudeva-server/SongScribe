@@ -63,15 +63,6 @@ import songscribe.util.Utils;
  */
 public final class Song {
 
-    /**
-     * Default tempo Y for first line (-5 staff spaces above middle)
-     */
-    public static final double TEMPO_DEFAULT_Y_FIRST_LINE_SS = -5.0;  // -40px
-    /**
-     * Default tempo Y for subsequent lines (-3 staff spaces above middle)
-     */
-    public static final double TEMPO_DEFAULT_Y_OTHER_LINES_SS = -3.0;  // -24px
-
     public enum LANGUAGE {
         // Not used, the ordinals of the actual languages start at 1
         NONE,
@@ -219,9 +210,6 @@ public final class Song {
             var initialLine = new Line(this);
             initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
             initialLine.setKeyType(defaultKeyType);
-            initialLine.setTempoChangeYPosPx(
-                ScaleContext.ssToRoundedPx(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
-            );
             initialLine.addElement(newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             lines.add(initialLine);
         });
@@ -323,22 +311,14 @@ public final class Song {
 
     private Line getLine(List<? extends Line> loadedLines, int lineIndex) {
         var line = loadedLines.get(lineIndex);
-        applyLineDefaults(line, lineIndex);
+        applyLineDefaults(line);
         return line;
     }
 
-    private void applyLineDefaults(Line line, int lineIndex) {
+    private void applyLineDefaults(Line line) {
         if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
             line.setKeyAccidentalCount(defaultKeyAccidentalCount);
             line.setKeyType(defaultKeyType);
-        }
-
-        if (line.getTempoChangeYPosPx() == 0) {
-            line.setTempoChangeYPosPx(
-                (lineIndex == 0)
-                    ? ScaleContext.ssToRoundedPx(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
-                    : ScaleContext.ssToRoundedPx(TEMPO_DEFAULT_Y_OTHER_LINES_SS)
-            );
         }
     }
 
@@ -762,7 +742,7 @@ public final class Song {
             applyChange(new LineInsertion(lineIndex, line), () -> {
                 lines.add(lineIndex, line);
 
-                applyLineDefaults(line, lineIndex);
+                applyLineDefaults(line);
             });
 
             if (willBecomeNewLast && !isMutationTrackingSuspended()) {

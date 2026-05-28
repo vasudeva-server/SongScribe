@@ -91,8 +91,7 @@ class LineMutationTest extends UnitTest {
             var newLine = new Line(song);
             song.addLine(1, newLine);
 
-            // addLine also fires LineKeyChange and LineLayoutChange mutations
-            // for the new line's key and tempo defaults; filter for the LineInsertion.
+            // addLine also fires LineKeyChange mutations for key defaults; filter for LineInsertion.
             var notification = captureSingleDidChange();
             var insertion = findSingleMutationOfType(notification, LineInsertion.class);
             assertThat(insertion.lineIndex()).isEqualTo(1);

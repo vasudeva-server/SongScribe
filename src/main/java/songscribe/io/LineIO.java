@@ -233,8 +233,27 @@ public final class LineIO {
         /** Temporarily holds parsed diminuendo data (same format as crescendo). */
         private final List<double[]> pendingDiminuendoPairs = new ArrayList<>();
 
+        // Legacy Y position fields — populated from pre-Phase 11 XML tags and retrieved
+        // via getLegacyOffsets() before this reader moves to the next line.
+        private int legacyTempoChangeYPosPx;
+        private int legacyBeatChangeYPosPx;
+        private int legacyFsEndingYPosPx;
+        private int legacyTrillYPosPx;
+
         public LineReader(Song song) {
             this.song = song;
+            resetLegacyOffsets();
+        }
+
+        private void resetLegacyOffsets() {
+            legacyTempoChangeYPosPx = LegacyLineOffsets.DEFAULTS.tempoChangeYPosPx();
+            legacyBeatChangeYPosPx = LegacyLineOffsets.DEFAULTS.beatChangeYPosPx();
+            legacyFsEndingYPosPx = LegacyLineOffsets.DEFAULTS.firstSecondEndingYPosPx();
+            legacyTrillYPosPx = LegacyLineOffsets.DEFAULTS.trillYPosPx();
+        }
+
+        public LegacyLineOffsets getLegacyOffsets() {
+            return new LegacyLineOffsets(legacyTempoChangeYPosPx, legacyBeatChangeYPosPx, legacyFsEndingYPosPx, legacyTrillYPosPx);
         }
 
         private record SegmentParts(int a, int b, int secondComma) {}
@@ -462,6 +481,7 @@ public final class LineIO {
                     line = new Line(song);
                     lastTag = null;
                     noteReader = new StaffElementIO.StaffElementReader();
+                    resetLegacyOffsets();
                 }
             } else if (where == Where.NOTES && noteReader != null) {
                 noteReader.startElement11(qName, attributes);
@@ -522,11 +542,11 @@ public final class LineIO {
                             }
                         }
                         case XML_NOTE_DIST_CHANGE -> line.changeElementSpacingRatio(DocumentValidation.parseFloatOrThrow(LOG, XML_NOTE_DIST_CHANGE, str));
-                        case XML_TEMPO_CHANGE_YPOS -> line.setTempoChangeYPosPx(DocumentValidation.parseIntOrThrow(LOG, XML_TEMPO_CHANGE_YPOS, str));
-                        case XML_BEAT_CHANGE_YPOS -> line.setBeatChangeYPosPx(DocumentValidation.parseIntOrThrow(LOG, XML_BEAT_CHANGE_YPOS, str));
+                        case XML_TEMPO_CHANGE_YPOS -> legacyTempoChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_TEMPO_CHANGE_YPOS, str);
+                        case XML_BEAT_CHANGE_YPOS -> legacyBeatChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_BEAT_CHANGE_YPOS, str);
                         case XML_LYRICS_YPOS -> line.setLyricsYPosSs(DocumentValidation.parseDoubleOrThrow(LOG, XML_LYRICS_YPOS, str));
-                        case XML_FSENDING_YPOS -> line.setFirstSecondEndingYPosPx(DocumentValidation.parseIntOrThrow(LOG, XML_FSENDING_YPOS, str));
-                        case XML_TRILL_YPOS -> line.setTrillYPosPx(DocumentValidation.parseIntOrThrow(LOG, XML_TRILL_YPOS, str));
+                        case XML_FSENDING_YPOS -> legacyFsEndingYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_FSENDING_YPOS, str);
+                        case XML_TRILL_YPOS -> legacyTrillYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_TRILL_YPOS, str);
                         case XML_BEAMINGS -> parseBeamPairs(str);
                         case XML_TIES -> parseTiePairs(str);
                         // Slurs no longer supported - ignore for backwards compatibility

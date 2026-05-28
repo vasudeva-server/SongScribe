@@ -26,18 +26,6 @@ package songscribe.message.mutation;
  * {@link LineLayoutChange}'s canonical constructor validates values against this type.
  */
 public enum LineLayoutField {
-    /** Y-position of tempo markings (pixels). Retained for deserializing legacy document formats. */
-    TEMPO_CHANGE_Y_POS_PX(Integer.class),
-
-    /** Y-position of beat-change markings (pixels). Retained for deserializing legacy document formats. */
-    BEAT_CHANGE_Y_POS_PX(Integer.class),
-
-    /** Y-position of first/second ending spans (pixels). Retained for deserializing legacy document formats. */
-    FIRST_SECOND_ENDING_Y_POS_PX(Integer.class),
-
-    /** Y-position of trill markings (pixels). Retained for deserializing legacy document formats. */
-    TRILL_Y_POS_PX(Integer.class),
-
     /** Y-position of lyrics baseline (staff spaces). */
     LYRICS_Y_POS_SS(Double.class),
 

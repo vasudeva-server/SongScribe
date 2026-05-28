@@ -55,7 +55,7 @@ final class MigrationPipeline {
     // │ 5 line-width-fix       v2 & minor<3 & lineWidthSs>=MIN └ lineWidthSs /= pps                │
     // └─────────────────────────────────────────────────────────────────────┘
     static final List<SongMigration> PRE_ASSEMBLY = List.of(
-        versioned(StageId.LEGACY_FORMAT, 2, 0, ctx -> FormatMigrator.migrate(ctx.lines, 1)),
+        versioned(StageId.LEGACY_FORMAT, 2, 0, ctx -> FormatMigrator.migrate(ctx.lines, ctx.legacyLineOffsets, 1)),
         versioned(StageId.ANNOTATION_DYNAMICS, 2, 3, ctx -> FormatMigrator.migrateAnnotationDynamics(ctx.lines)),
         versioned(StageId.FINAL_TERMINAL, 2, 4, ctx -> FormatMigrator.migrateFinalTerminal(ctx.lines)),
         versioned(StageId.PIXELS_TO_SS, 2, 1, ctx -> {

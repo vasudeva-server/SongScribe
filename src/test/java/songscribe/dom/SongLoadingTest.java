@@ -47,12 +47,10 @@ class SongLoadingTest extends UnitTest {
         var stub = Song.newParsingStub();
         var dataLine = new Line(stub);
         stub.withoutMutationTracking(() -> {
-            // Pre-set defaults so applyLineDefaults finds them already applied and is a no-op.
-            // If these were left at 0/null, applyLineDefaults would call setKeyAccidentalCount
-            // and setTempoChangeYPosPx which require a bracket or suspension.
+            // Pre-set key defaults so applyLineDefaults finds them already applied and is a no-op,
+            // avoiding a setKeyAccidentalCount call that would require a bracket or suspension.
             dataLine.setKeyAccidentalCount(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
             dataLine.setKeyType(Song.DEFAULT_KEY_TYPE);
-            dataLine.setTempoChangeYPosPx(1);
             dataLine.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
         });
 

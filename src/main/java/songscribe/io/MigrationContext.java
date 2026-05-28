@@ -20,7 +20,9 @@
 package songscribe.io;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
@@ -39,6 +41,7 @@ import songscribe.dom.Song;
 final class MigrationContext {
 
     List<Line> lines = new ArrayList<>();
+    Map<Line, LegacyLineOffsets> legacyLineOffsets = new HashMap<>();
 
     double lineWidthSs;
     double rowHeightAdjustmentSs;

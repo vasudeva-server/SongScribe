@@ -149,27 +149,6 @@ class SongDefaultsTest extends UnitTest {
             assertThat(line.getKeyType()).isEqualTo(KeyType.SHARPS);
         }
 
-        @Test
-        void testTempoYSetToFirstLineDefaultWhenZeroAndLineIsFirst() {
-            var song = new Song();
-            var firstLine = song.getLine(0);
-
-            assertThat(firstLine.getTempoChangeYPosPx())
-                .isEqualTo(ScaleContext.ssToRoundedPx(Song.TEMPO_DEFAULT_Y_FIRST_LINE_SS));
-        }
-
-        @Test
-        void testTempoYSetToOtherLineDefaultWhenZeroAndLineIsNotFirst() {
-            var song = new Song();
-            var otherLine = new Line(song);
-            song.withoutMutationTracking(() -> {
-                otherLine.setTempoChangeYPosPx(0);
-                song.addLine(otherLine);
-            });
-
-            assertThat(otherLine.getTempoChangeYPosPx())
-                .isEqualTo(ScaleContext.ssToRoundedPx(Song.TEMPO_DEFAULT_Y_OTHER_LINES_SS));
-        }
     }
 
     // -----------------------------------------------------------------------

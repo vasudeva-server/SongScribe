@@ -68,39 +68,10 @@ public class Line {
     private KeyType keyType = null;
     private final List<StaffElement> elements = new ArrayList<>();
 
-    // ---------------------------------------------------------------------
-    // Legacy View Properties (Y positions relative to middleLineY)
-    // ---------------------------------------------------------------------
-    // LEGACY SERIALIZATION: These line-level Y position fields exist solely
-    // to read pre-Phase 11 documents. New code must use per-instance offsets
-    // on the element objects themselves:
-    //   - Tempo/BeatChange: use Attachment.getUserYOffset()
-    //   - Endings: use Ending.getYPosition()
-    //   - Trills: use Trill.getYPosition()
-    //   - Annotations: use Annotation.getUserYOffset()
-    //
-    // When loading legacy documents, FormatMigrator converts these line-level
-    // offsets to per-instance offsets. LineIO no longer writes these fields
-    // to new documents.
-    // ---------------------------------------------------------------------
-
-    /**
-     * Y offset for tempo change display. Line 0 default: -40, others: -24.
-     * For legacy deserialization only — new code uses per-instance userYOffset
-     * on TempoChangeAttachment.
-     */
-    private int tempoChangeYPosPx = 0;
-
     /**
      * Default beat change Y position (-3 staff spaces above middle)
      */
     public static final double BEAT_CHANGE_DEFAULT_Y_SS = -3.0;  // -24px
-    /**
-     * Y offset for beat change display (default: -24, above staff).
-     * For legacy deserialization only — new code uses per-instance userYOffset
-     * on BeatChangeAttachment.
-     */
-    private int beatChangeYPosPx = ScaleContext.ssToRoundedPx(BEAT_CHANGE_DEFAULT_Y_SS);
 
     /**
      * Default lyrics Y position (below staff)
@@ -118,23 +89,11 @@ public class Line {
      * Default first/second ending Y position (above staff)
      */
     public static final double ENDING_DEFAULT_Y_SS = -3.125;  // -25px
-    /**
-     * Y offset for first/second ending display (default: -25, above staff).
-     * For legacy deserialization only — new code uses per-instance yPosition
-     * on Ending objects.
-     */
-    private int firstSecondEndingYPosPx = ScaleContext.ssToRoundedPx(ENDING_DEFAULT_Y_SS);
 
     /**
      * Default trill Y position (above staff)
      */
     public static final double TRILL_DEFAULT_Y_SS = -3.375;  // -27px
-    /**
-     * Y offset for trill display (default: -27, above staff).
-     * For legacy deserialization only — new code uses per-instance yPosition
-     * on Trill objects.
-     */
-    private int trillYPosPx = ScaleContext.ssToRoundedPx(TRILL_DEFAULT_Y_SS);
 
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
     private float elementSpacingRatio = 1f;
@@ -1034,34 +993,6 @@ public class Line {
         );
     }
 
-    /** For legacy deserialization only — see field Javadoc. */
-    public int getTempoChangeYPosPx() {
-        return tempoChangeYPosPx;
-    }
-
-    /** For legacy deserialization only — see field Javadoc. */
-    public void setTempoChangeYPosPx(int tempoChangeYPosPx) {
-        var old = this.tempoChangeYPosPx;
-        applyChange(
-            new LineLayoutChange(this, LineLayoutField.TEMPO_CHANGE_Y_POS_PX, old, tempoChangeYPosPx),
-            () -> this.tempoChangeYPosPx = tempoChangeYPosPx
-        );
-    }
-
-    /** For legacy deserialization only — see field Javadoc. */
-    public int getBeatChangeYPosPx() {
-        return beatChangeYPosPx;
-    }
-
-    /** For legacy deserialization only — see field Javadoc. */
-    public void setBeatChangeYPosPx(int beatChangeYPosPx) {
-        var old = this.beatChangeYPosPx;
-        applyChange(
-            new LineLayoutChange(this, LineLayoutField.BEAT_CHANGE_Y_POS_PX, old, beatChangeYPosPx),
-            () -> this.beatChangeYPosPx = beatChangeYPosPx
-        );
-    }
-
     public double getLyricsYPosSs() {
         return lyricsYPosSs;
     }
@@ -1071,34 +1002,6 @@ public class Line {
         applyChange(
             new LineLayoutChange(this, LineLayoutField.LYRICS_Y_POS_SS, old, lyricsYPosSs),
             () -> this.lyricsYPosSs = lyricsYPosSs
-        );
-    }
-
-    /** For legacy deserialization only — see field Javadoc. */
-    public int getFirstSecondEndingYPosPx() {
-        return firstSecondEndingYPosPx;
-    }
-
-    /** For legacy deserialization only — see field Javadoc. */
-    public void setFirstSecondEndingYPosPx(int fsEndingYPosPx) {
-        var old = firstSecondEndingYPosPx;
-        applyChange(
-            new LineLayoutChange(this, LineLayoutField.FIRST_SECOND_ENDING_Y_POS_PX, old, fsEndingYPosPx),
-            () -> firstSecondEndingYPosPx = fsEndingYPosPx
-        );
-    }
-
-    /** For legacy deserialization only — see field Javadoc. */
-    public int getTrillYPosPx() {
-        return trillYPosPx;
-    }
-
-    /** For legacy deserialization only — see field Javadoc. */
-    public void setTrillYPosPx(int trillYPosPx) {
-        var old = this.trillYPosPx;
-        applyChange(
-            new LineLayoutChange(this, LineLayoutField.TRILL_Y_POS_PX, old, trillYPosPx),
-            () -> this.trillYPosPx = trillYPosPx
         );
     }
 

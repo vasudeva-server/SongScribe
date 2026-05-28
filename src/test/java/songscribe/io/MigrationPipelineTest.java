@@ -63,7 +63,7 @@ class MigrationPipelineTest extends UnitTest {
     // A version far beyond any real file, for the always-applies stage.
     private static final int FUTURE_VERSION = 99;
 
-    // Non-zero tempoChangeYPosPx value for testing legacy format wiring.
+    // Non-zero tempo Y offset value (in pixels) for testing legacy format wiring.
     private static final int TEMPO_CHANGE_Y_POS_PX = 20;
 
     // Non-zero lyricsYPosSs value (in pixels) for PIXELS_TO_SS wiring test.
@@ -196,7 +196,10 @@ class MigrationPipelineTest extends UnitTest {
             var note = ElementType.CROTCHET.newInstance();
             line.addElement(note);
             note.addAttachment(new TempoChangeAttachment(note, new Tempo()));
-            line.setTempoChangeYPosPx(TEMPO_CHANGE_Y_POS_PX);
+            c.legacyLineOffsets.put(line, new LegacyLineOffsets(TEMPO_CHANGE_Y_POS_PX,
+                LegacyLineOffsets.DEFAULTS.beatChangeYPosPx(),
+                LegacyLineOffsets.DEFAULTS.firstSecondEndingYPosPx(),
+                LegacyLineOffsets.DEFAULTS.trillYPosPx()));
             c.lines.add(line);
 
             stage(StageId.LEGACY_FORMAT).apply().accept(c);

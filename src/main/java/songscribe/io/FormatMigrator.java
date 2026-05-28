@@ -85,15 +85,17 @@ public final class FormatMigrator {
      * The caller is responsible for setting the format version on the resulting data.
      *
      * @param lines The lines to migrate
+     * @param legacyOffsets Per-line Y position offsets read from legacy XML, keyed by line identity.
+     *                      Lines absent from the map use {@link LegacyLineOffsets#DEFAULTS}.
      * @param formatVersion The current format version (migration is skipped if >= 2)
      */
-    public static void migrate(List<? extends Line> lines, int formatVersion) {
+    public static void migrate(List<? extends Line> lines, Map<Line, LegacyLineOffsets> legacyOffsets, int formatVersion) {
         if (formatVersion >= 2) {
             return;
         }
 
         for (var line : lines) {
-            migrateLine(line);
+            migrateLine(line, legacyOffsets);
         }
     }
 
@@ -171,31 +173,33 @@ public final class FormatMigrator {
      * Migrates a single line from legacy format to new format.
      *
      * @param line The line to migrate
+     * @param legacyOffsets Per-line Y position offsets keyed by line identity.
      */
-    private static void migrateLine(Line line) {
+    private static void migrateLine(Line line, Map<Line, LegacyLineOffsets> legacyOffsets) {
         for (var i = 0; i < line.elementCount(); i++) {
             migrateElementAttachments(line.getElement(i));
         }
 
-        migrateLineLevelOffsets(line);
+        migrateLineLevelOffsets(line, legacyOffsets.getOrDefault(line, LegacyLineOffsets.DEFAULTS));
     }
 
     /**
      * Migrates deprecated line-level Y position offsets to per-instance offsets.
      * <p>
-     * This converts the legacy line-level fields (tempoChangeYPosPx, beatChangeYPosPx,
-     * firstSecondEndingYPosPx, trillYPosPx) to per-instance offsets on the respective
-     * element objects. After migration, the line-level fields can be ignored.
-     * <p>
-     * Also migrates below-staff annotations to above-staff with an appropriate userYOffset.
+     * Converts the four legacy offsets carried by {@code offsets} to per-instance values on the
+     * respective element/attachment objects. Also migrates below-staff annotations to above-staff
+     * with an appropriate userYOffset.
      *
-     * @param line The line to migrate
+     * @param line    The line whose elements are updated
+     * @param offsets The legacy Y position values read from the pre-Phase 11 XML for this line
      */
-    private static void migrateLineLevelOffsets(Line line) {
-        // Migrate tempo change offset to per-instance
-        var tempoOffset = line.getTempoChangeYPosPx();
+    private static void migrateLineLevelOffsets(Line line, LegacyLineOffsets offsets) {
+        // Migrate tempo change offset to per-instance. Tempo's default is 0, which also doubles as
+        // the "unset" sentinel, so the raw offset already equals the delta from default — unlike the
+        // three blocks below, no subtraction is needed.
+        var tempoOffset = offsets.tempoChangeYPosPx();
 
-        if (tempoOffset != 0) {
+        if (tempoOffset != LegacyLineOffsets.DEFAULTS.tempoChangeYPosPx()) {
             for (var i = 0; i < line.elementCount(); i++) {
                 var note = line.getElement(i);
                 var tempoAttachment = note.findAttachment(TempoChangeAttachment.class);
@@ -206,13 +210,12 @@ public final class FormatMigrator {
             }
         }
 
-        // Migrate beat change offset to per-instance
-        var beatChangeOffset = line.getBeatChangeYPosPx();
-        var beatChangeDefaultPx = ScaleContext.ssToRoundedPx(Line.BEAT_CHANGE_DEFAULT_Y_SS);
+        // Migrate beat change offset to per-instance; BeatChange has a non-zero default
+        var beatChangeOffset = offsets.beatChangeYPosPx();
+        var beatChangeDefault = LegacyLineOffsets.DEFAULTS.beatChangeYPosPx();
 
-        // BeatChange has a default offset, only migrate if different
-        if (beatChangeOffset != beatChangeDefaultPx) {
-            var delta = beatChangeOffset - beatChangeDefaultPx;
+        if (beatChangeOffset != beatChangeDefault) {
+            var delta = beatChangeOffset - beatChangeDefault;
 
             for (var i = 0; i < line.elementCount(); i++) {
                 var note = line.getElement(i);
@@ -226,11 +229,11 @@ public final class FormatMigrator {
         }
 
         // Migrate first/second ending offset to per-instance
-        var endingOffset = line.getFirstSecondEndingYPosPx();
-        var endingDefaultPx = ScaleContext.ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS);
+        var endingOffset = offsets.firstSecondEndingYPosPx();
+        var endingDefault = LegacyLineOffsets.DEFAULTS.firstSecondEndingYPosPx();
 
-        if (endingOffset != endingDefaultPx) {
-            var delta = endingOffset - endingDefaultPx;
+        if (endingOffset != endingDefault) {
+            var delta = endingOffset - endingDefault;
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Ending ending) {
@@ -240,11 +243,11 @@ public final class FormatMigrator {
         }
 
         // Migrate trill offset to per-instance
-        var trillOffset = line.getTrillYPosPx();
-        var trillDefaultPx = ScaleContext.ssToRoundedPx(Line.TRILL_DEFAULT_Y_SS);
+        var trillOffset = offsets.trillYPosPx();
+        var trillDefault = LegacyLineOffsets.DEFAULTS.trillYPosPx();
 
-        if (trillOffset != trillDefaultPx) {
-            var delta = trillOffset - trillDefaultPx;
+        if (trillOffset != trillDefault) {
+            var delta = trillOffset - trillDefault;
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Trill trill) {
