@@ -376,7 +376,7 @@ public class NoteAttachedStacker {
      * @param tieLayout the tie layout providing control point coordinates
      * @return the Y coordinate of the outer curve at {@code t}
      */
-    private static double evaluateBezierYSs(double t, LayoutResult.TieLayout tieLayout) {
+    static double evaluateBezierYSs(double t, LayoutResult.TieLayout tieLayout) {
         var mt = 1.0 - t;
         return mt * mt * mt * tieLayout.startYSs()
             + 3 * mt * mt * t * tieLayout.cp1YSs()

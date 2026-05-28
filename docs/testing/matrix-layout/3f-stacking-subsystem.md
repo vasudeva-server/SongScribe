@@ -16,12 +16,12 @@
 | NoteAttachedStacker | `seedNoteBounds` updates `lowestNoteBotSs`/`botContentExtentSs` | unit | — | missing | assert context fields after seeding | ✅ |
 | NoteAttachedStacker | `seedTieBounds` upward arc → above; membership in `notesWithUpwardTie` only when protruding | unit | — | missing | controlled TieLayout; set membership + extents | ✅ |
 | NoteAttachedStacker | `seedTieBounds` downward arc → below; `botContentExtentSs` updated | unit | — | missing | stem-up tie | ✅ |
-| NoteAttachedStacker | `evaluateBezierYSs` cubic at t=0/0.5/1 | unit | — | missing | hand-computed control points | ⬜ |
-| NoteAttachedStacker | reduced `TIE_DECORATION_MARGIN_SS` for upward-tie notes | unit | — | missing | articulation Y delta == margin delta | ⬜ |
+| NoteAttachedStacker | `evaluateBezierYSs` cubic at t=0/0.5/1 | unit | — | missing | hand-computed control points | ✅ |
+| NoteAttachedStacker | reduced `TIE_DECORATION_MARGIN_SS` for upward-tie notes | unit | — | missing | articulation Y delta == margin delta | ✅ |
 | NoteAttachedStacker | `stackArticulations` precomposed staccato+accent; single glyphs; collision stacking | unit | `ArticulationStackingTest.PrecomposedGlyph`, `CollisionDetection.testAboveStaffArticulationsReserveSpaceInExtents` | adequate | keep | — |
 | NoteAttachedStacker | `stackFermata` above articulations (ordering) | unit | `FermataTrillStackingTest.testFermataPositionedAboveArticulations` | adequate | keep | — |
-| NoteAttachedStacker | `stackFermata` exact Y = `ceiling - margin - height` | unit | `FermataTrillStackingTest` (`ySs<0`) | inadequate | exact-value from controlled extents | ⬜ |
-| NoteAttachedStacker | `stackSingleTrill` single-note → `endXSs=anchorXSs` | unit | `FermataTrillStackingTest.testSingleNoteTrillPositionedAboveNote` (`ySs<0`, no width) | inadequate | add exact single-note width assertion | ⬜ |
+| NoteAttachedStacker | `stackFermata` exact Y = `ceiling - margin - height` | unit | `FermataTrillStackingTest` (`ySs<0`) | inadequate | exact-value from controlled extents | ✅ |
+| NoteAttachedStacker | `stackSingleTrill` single-note → `endXSs=anchorXSs` | unit | `FermataTrillStackingTest.testSingleNoteTrillPositionedAboveNote` (`ySs<0`, no width) | inadequate | add exact single-note width assertion | ✅ |
 | NoteAttachedStacker | `stackSingleTrill` multi-note → spans anchor→end | unit | `FermataTrillStackingTest.testMultiNoteTrillReservesFullSpan` | adequate | keep | — |
 | NoteAttachedStacker | `computePreviewDecorationLayouts` (static preview path) | unit | — | missing | fermata+staccato preview all above-staff | ⬜ |
 | StructuralStacker | `stackSpanElement` null anchor/end → skipped | unit | — | missing | null anchor → no layout | ⬜ |

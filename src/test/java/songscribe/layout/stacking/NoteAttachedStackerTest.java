@@ -26,14 +26,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Articulation;
+import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
+import songscribe.dom.FermataAttachment;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
+import songscribe.dom.Trill;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.StaffExtents;
@@ -70,6 +76,11 @@ class NoteAttachedStackerTest extends UnitTest {
     // Downward arc Y far below the extreme stem bot so the tie becomes the
     // bottoming constraint for botContentExtentSs.
     private static final double DOWNWARD_ARC_Y_SS = 20.0;
+
+    // Control-point Y for the Bezier arc test (row 19).
+    // B(0) = 0, B(1) = 0, B(0.5) = 0.75 * BEZIER_CP_Y_SS = -3.0.
+    private static final double BEZIER_CP_Y_SS = -4.0;
+    private static final double BEZIER_MID_Y_SS = -3.0;
 
     // -------------------------------------------------------------------------
     // Row 15 — computeNoteBounds: both code paths
@@ -308,6 +319,123 @@ class NoteAttachedStackerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // Row 19 — evaluateBezierYSs: cubic Bezier at t=0, t=0.5, t=1
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EvaluateBezierYSs {
+
+        @Test
+        void testAtTZeroReturnsStartY() {
+            // B(0) = startYSs regardless of control points
+            var layout = arcTieLayout(BEZIER_CP_Y_SS);
+            assertThat(NoteAttachedStacker.evaluateBezierYSs(0.0, layout))
+                .isCloseTo(0.0, within(TOLERANCE));
+        }
+
+        @Test
+        void testAtTOneReturnsEndY() {
+            // B(1) = endYSs regardless of control points
+            var layout = arcTieLayout(BEZIER_CP_Y_SS);
+            assertThat(NoteAttachedStacker.evaluateBezierYSs(1.0, layout))
+                .isCloseTo(0.0, within(TOLERANCE));
+        }
+
+        @Test
+        void testAtTHalfReturnsHandComputedMidpoint() {
+            // B(0.5) = 0.125·0 + 0.375·(-4) + 0.375·(-4) + 0.125·0 = -3.0 = BEZIER_MID_Y_SS
+            var layout = arcTieLayout(BEZIER_CP_Y_SS);
+            assertThat(NoteAttachedStacker.evaluateBezierYSs(0.5, layout))
+                .isCloseTo(BEZIER_MID_Y_SS, within(TOLERANCE));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Row 20 — TIE_DECORATION_MARGIN_SS for notes with upward ties
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testUpwardTieNoteUsesReducedMarginForArticulation() {
+        var note = stemDownNote(STAFF_CENTER_SP);
+        note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
+        var articulation = note.getArticulations().getFirst();
+
+        var endNote = stemDownNote(STAFF_CENTER_SP);
+        var line = detachedLine();
+        var tie = new Tie(note, endNote);
+        line.addRangeElement(tie);
+
+        var builder = new LayoutResult.Builder();
+        // Protruding flat arc: arcY = -3.0 < anchorCeiling(-2.0) → note added to
+        // notesWithUpwardTie; extents at START_NOTE_X_SS are set to PROTRUDING_ARC_Y_SS.
+        builder.putTieLayout(tie, flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, PROTRUDING_ARC_Y_SS));
+
+        var context = new StackingContext(
+            List.of(mockColumnAt(note, START_NOTE_X_SS),
+                mockColumnAt(endNote, END_NOTE_X_SS)),
+            line, builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        // Tie arc sets ceiling to PROTRUDING_ARC_Y_SS; reduced margin = TIE_DECORATION_MARGIN_SS.
+        // If the code mistakenly used NOTE_DECORATION_MARGIN_SS the Y would differ by 0.25 ss.
+        var expectedYSs = PROTRUDING_ARC_Y_SS
+            - NoteAttachedStacker.TIE_DECORATION_MARGIN_SS
+            - articulation.getContentHeightSs();
+        var layout = require(builder.build().getDecorationLayout(articulation));
+        assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // Row 23 — stackFermata exact Y = anchor_ceiling − margin − height
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testFermataYEqualsAnchorCeilingMinusMarginMinusHeight() {
+        var note = stemDownNote(STAFF_CENTER_SP);
+        var fermata = new FermataAttachment(note);
+        note.addAttachment(fermata);
+
+        var builder = new LayoutResult.Builder();
+        var context = new StackingContext(
+            List.of(mockColumnAt(note, START_NOTE_X_SS)), detachedLine(), builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        var layout = require(builder.build().findAttachmentDecorationLayout(note, FermataAttachment.class));
+
+        // Fresh extents: top[] = 0.0; sp=0 (within staff) → anchorCeiling = STAFF_TOP_Y_SS.
+        // ceilingSs = min(0.0, STAFF_TOP_Y_SS) = STAFF_TOP_Y_SS.
+        var ceilingSs = StackingUtils.anchorCeilingSs(STAFF_CENTER_SP);
+        var expectedYSs = ceilingSs
+            - NoteAttachedStacker.NOTE_DECORATION_MARGIN_SS
+            - fermata.getContentHeightSs();
+        assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // Row 24 — stackSingleTrill single-note: endXSs == anchorXSs → width = glyph width
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testSingleNoteTrillWidthEqualsGlyphWidth() {
+        var note = stemDownNote(STAFF_CENTER_SP);
+        var line = detachedLine();
+        line.addElement(note);
+        var trill = new Trill(note);
+        line.addRangeElement(trill);
+
+        var builder = new LayoutResult.Builder();
+        var context = new StackingContext(
+            List.of(mockColumnAt(note, START_NOTE_X_SS)), line, builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        var layout = require(builder.build().getDecorationLayout(trill));
+
+        // Single-note trill: endXSs defaults to anchorXSs → span = 0, so
+        // widthSs = max(glyphWidth, 0 + glyphWidth) = glyphWidth = getContentWidthSs().
+        assertThat(layout.widthSs()).isCloseTo(trill.getContentWidthSs(), within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -341,6 +469,12 @@ class NoteAttachedStackerTest extends UnitTest {
         return note;
     }
 
+    @SuppressWarnings("NullAway")
+    private static <T> T require(@Nullable T value) {
+        assertThat(value).isNotNull();
+        return value;
+    }
+
     /**
      * Returns a cubic Bezier tie layout with all Y coordinates equal to {@code arcY}.
      * For a flat Bezier: (1-t)³+3(1-t)²t+3(1-t)t²+t³ = 1, so evaluateBezierYSs(t)=arcY for any t.
@@ -356,6 +490,26 @@ class NoteAttachedStackerTest extends UnitTest {
             cp2X, arcY,
             cp1X, arcY,
             cp2X, arcY
+        );
+    }
+
+    /**
+     * Returns a cubic Bezier tie layout with startYSs=endYSs=0 and both control-point Y
+     * values equal to {@code cpY}. Useful for Bezier math tests where endpoint and mid-arc
+     * Y values must be independently verifiable.
+     * <p>
+     * B(0) = 0, B(1) = 0, B(0.5) = 0.75 * cpY.
+     */
+    private static LayoutResult.TieLayout arcTieLayout(double cpY) {
+        var cp1X = START_NOTE_X_SS + (END_NOTE_X_SS - START_NOTE_X_SS) / 3.0;
+        var cp2X = START_NOTE_X_SS + (END_NOTE_X_SS - START_NOTE_X_SS) * 2.0 / 3.0;
+        return new LayoutResult.TieLayout(
+            START_NOTE_X_SS, 0.0,
+            END_NOTE_X_SS, 0.0,
+            cp1X, cpY,
+            cp2X, cpY,
+            cp1X, cpY,
+            cp2X, cpY
         );
     }
 }
