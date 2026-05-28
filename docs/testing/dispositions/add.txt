@@ -1186,3 +1186,7 @@ FermataTrillStackingTest.PreviewDecorationLayouts.testPreviewFermataAndStaccatoA
 SystemTierStackingTest.AnnotationStacking.testAnnotationXAlignmentProducesFormulaPositions	new test: left/center/right xAlignment → exact formula-driven xSs (columnX + align*(noteheadWidth-annotWidth))
 # 3f row 34 — SystemStacker.stackMetronomeAttachment exact region placement
 SystemTierStackingTest.TempoStacking.testTempoAttachmentExactYPlacementAtAnchor	new test: exact ySs = anchorCeiling - TEMPO_MARGIN_SS - region extents
+# 3f row 37 — VerticalStackingCalculator accidental bot reservation exact value
+VerticalStackingCalculatorTest.testSeedAccidentalsBotTranslatedToStaffCoordinatesForLowNote	new test: low note → seeded bot exceeds default floor; exact isEqualTo(botSs + centerYSs)
+# 3f row 39 — VerticalStackingCalculator applyDecorationOffsets Tuplet
+ManualOffsetStackingTest.TupletOffsets.testTupletVerticalPositionApplied	new test: Tuplet getVerticalPositionSs manual offset applied (ySs == baseline + verticalPositionSs)

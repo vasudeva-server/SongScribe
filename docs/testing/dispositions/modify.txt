@@ -44,3 +44,5 @@ LyricLayoutBuilderTest.testDoReMiProducesThreeBoxesAndTwoHyphens	strengthened in
 StructuralTierStackingTest.HairpinStacking.testAdjacentHairpinsStackDiminuendoAboveCrescendo	renamed from testNonOverlappingHairpinsAtSameHeight; added dimLayout.ySs < crescLayout.ySs ordering assertion (name was lying — heights are not equal)
 # 3f row 35 — SystemStacker tempo attachment fixture-only test strengthened
 SystemTierStackingTest.TempoStacking.testTempoAttachmentProducesLayout	strengthened: replaced bare isNotNull with require + exact xSs == column position
+# 3f row 37 — VerticalStackingCalculator accidental top oracle corrected
+VerticalStackingCalculatorTest.testSeedAccidentalsReservesSpaceAtAccidentalXForSharp	strengthened: top oracle corrected to bounds.topSs() + centerYSs (absolute staff coords)

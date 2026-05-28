@@ -7,3 +7,6 @@
 #   relocate  test moved to correct level; note records 'OLD -> NEW' (was 'wrong-level')
 # Final sweep: every @Test in the suite NOT in keep/modify/add/relocate-target is a
 # delete candidate, then judged via /check-tests before removal.
+# 3f rows 41,42 — VerticalStackingCalculator above/belowStaffSs already exact in LineHeightTest
+LineHeightTest.testHighNoteAboveStaffExtendsAboveReservationToNoteheadTop	already exact isCloseTo for aboveStaffSs + lineHeightSs (row 41)
+LineHeightTest.testLowNoteBelowStaffExtendsBelowReservationToNoteheadBottom	already exact isCloseTo for belowStaffSs + lineHeightSs (row 42)

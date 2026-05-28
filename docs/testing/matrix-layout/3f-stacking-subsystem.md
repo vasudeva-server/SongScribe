@@ -34,12 +34,12 @@
 | SystemStacker | `stackMetronomeAttachment` (tempo/beat-change) regions placement | unit | `SystemTierStackingTest` (`ySs<0`, dims `>0`, cross-tier `isLessThan`) | inadequate | exact-value for ≥1 region case (cross-tier ordering adequate) | ✅ |
 | SystemStacker | `testTempoAttachmentProducesLayout` | unit | `SystemTierStackingTest` (`isNotNull` only) | inadequate | fixture-only; merge with positioned test or add position/dim | ✅ |
 | VerticalStackingCalculator | `seedAccidentalsIntoStructural` high-note top reservation | unit | `VerticalStackingCalculatorTest.testSeedAccidentalsTranslatesToStaffCoordinatesForHighNote` (exact) | adequate | keep | — |
-| VerticalStackingCalculator | accidental bottom reservation | unit | `…testSeedAccidentalsReservesSpaceAtAccidentalXForSharp` (`>=`) | inadequate | `>=` allows any value; change to exact `isCloseTo(botSs+centerYSs)` | ⬜ |
+| VerticalStackingCalculator | accidental bottom reservation | unit | `…testSeedAccidentalsReservesSpaceAtAccidentalXForSharp` (`>=`) | inadequate | `>=` allows any value; change to exact `isCloseTo(botSs+centerYSs)` | ✅ |
 | VerticalStackingCalculator | grace note skipped | unit | `…testSeedAccidentalsIgnoresGraceNotes` (exact 0.0) | adequate | keep | — |
-| VerticalStackingCalculator | `applyDecorationOffsets` Tuplet `getVerticalPositionSs` | unit | `ManualOffsetStackingTest` covers Trill/Ending/Hairpin/TempoChange/Fermata/Annotation; **Tuplet absent** | missing | add `TupletOffsets` test | ⬜ |
+| VerticalStackingCalculator | `applyDecorationOffsets` Tuplet `getVerticalPositionSs` | unit | `ManualOffsetStackingTest` covers Trill/Ending/Hairpin/TempoChange/Fermata/Annotation; **Tuplet absent** | missing | add `TupletOffsets` test | ✅ |
 | VerticalStackingCalculator | `calculate` tier copy propagation (`copyTopFrom`) | unit | `StaffExtentsTest.CopyTopFrom` (primitive) + integration | adequate | keep | — |
-| VerticalStackingCalculator | `calculate` `aboveStaffSs` = `max(MIN_ABOVE_STAFF_SS, -topExtent - STAFF_HALF_SS)` | unit | `LineHeightTest` (`>=`) | inadequate | exact-value with known decoration | ⬜ |
-| VerticalStackingCalculator | `calculate` `belowStaffSs` max across 4 terms | unit | `LineHeightTest` (`>=`) | inadequate | pin exact `lineHeightSs` for below-staff note | ⬜ |
+| VerticalStackingCalculator | `calculate` `aboveStaffSs` = `max(MIN_ABOVE_STAFF_SS, -topExtent - STAFF_HALF_SS)` | unit | `LineHeightTest` (`>=`) | inadequate | exact-value with known decoration | ✅ |
+| VerticalStackingCalculator | `calculate` `belowStaffSs` max across 4 terms | unit | `LineHeightTest` (`>=`) | inadequate | pin exact `lineHeightSs` for below-staff note | ✅ |
 | VerticalStackingCalculator | `calculate` `belowContentSs` distinct, uses `botContentExtentSs` | unit | — | missing | downward-stem note → non-zero belowContent | ⬜ |
 | VerticalStackingCalculator | `calculate` empty line → MIN above/below | unit | `LineHeightTest.testEmptyLineZeroReturnsMinimumHeight` (exact) | adequate | keep | — |
 

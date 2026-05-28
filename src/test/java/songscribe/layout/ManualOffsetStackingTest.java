@@ -37,6 +37,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.Song;
 
@@ -449,6 +450,54 @@ class ManualOffsetStackingTest extends UnitTest {
 
             assertThat(layoutWithOffset.ySs())
                 .isCloseTo(layoutBaseline.ySs() + yPositionSs, within(TOLERANCE));
+        }
+    }
+
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
+    @Nested
+    class TupletOffsets {
+
+        @Test
+        void testTupletVerticalPositionApplied() {
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+            var line = newLine();
+            populate(line, note1);
+            populate(line, note2);
+
+            var verticalPositionSs = -2;
+            var tuplet = new Tuplet(note1, note2, 3);
+            tuplet.setVerticalPositionSs(verticalPositionSs);
+            setupTest(() -> line.addRangeElement(tuplet));
+
+            var result = stackColumns(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
+                line);
+
+            var layout = require(
+                result.getDecorationLayout(tuplet),
+                "tuplet DecorationLayout with verticalPosition");
+
+            // Create baseline without offset
+            var note3 = createNote(0, false);
+            var note4 = createNote(0, false);
+            var line2 = newLine();
+            populate(line2, note3);
+            populate(line2, note4);
+
+            var baselineTuplet = new Tuplet(note3, note4, 3);
+            setupTest(() -> line2.addRangeElement(baselineTuplet));
+
+            var baselineResult = stackColumns(
+                List.of(columnFor(note3, NOTE1_X_SS), columnFor(note4, NOTE2_X_SS)),
+                line2);
+
+            var baselineLayout = require(
+                baselineResult.getDecorationLayout(baselineTuplet),
+                "tuplet DecorationLayout baseline");
+
+            assertThat(layout.ySs())
+                .isCloseTo(baselineLayout.ySs() + verticalPositionSs, within(TOLERANCE));
         }
     }
 

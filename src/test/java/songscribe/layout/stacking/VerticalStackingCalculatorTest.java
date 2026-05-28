@@ -53,8 +53,10 @@ class VerticalStackingCalculatorTest extends UnitTest {
     private static final double SAMPLE_WIDTH_SS = 0.1;
     // Distance to sample past the notehead origin to confirm no extent bleeds there.
     private static final double FAR_RIGHT_OFFSET_SS = 5.0;
-    // Top of the valid staff range — worst-case for the centerYSs translation bug.
+    // Top of the valid staff range — worst-case for the centerYSs top-translation bug.
     private static final int TOP_STAFF_POSITION = StaffExtents.MIN_STAFF_POSITION_SP;
+    // Bottom of the valid staff range — makes botSs + centerYSs exceed the default STAFF_HEIGHT_SS.
+    private static final int BOTTOM_STAFF_POSITION = StaffExtents.MAX_STAFF_POSITION_SP;
 
     @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
@@ -114,20 +116,22 @@ class VerticalStackingCalculatorTest extends UnitTest {
         note.setAccidental(Accidental.SHARP);
 
         var bounds = require(NoteGeometry.getAccidentalBoundsSs(note), "sharp bounds");
+        var centerYSs = StaffExtents.spToSs(note.getStaffPosition());
 
         var structural = new StaffExtents(LINE_WIDTH_SS);
 
         VerticalStackingCalculator.seedAccidentalsIntoStructural(
             List.of(mockColumnFor(note)), structural);
 
-        // Sample just inside the accidental's left edge; top should match the bounds top.
-        // Bot is bounded below by the default staff-bottom reservation, so the seeded
-        // botSs only wins when it exceeds the default — checked via >=.
+        // Sample just inside the accidental's left edge; top should match the bounds
+        // top translated by centerYSs. Bot: the default staff-bottom (STAFF_HEIGHT_SS)
+        // exceeds the seeded value for a note at position 0, so the seeded bot is
+        // verified with a low-note test below.
         var sampleXSs = COLUMN_X_SS + bounds.leftSs() + SAMPLE_WIDTH_SS;
         assertThat(structural.yGet(true, sampleXSs, SAMPLE_WIDTH_SS))
-            .isEqualTo(bounds.topSs());
+            .isEqualTo(bounds.topSs() + centerYSs);
         assertThat(structural.yGet(false, sampleXSs, SAMPLE_WIDTH_SS))
-            .isGreaterThanOrEqualTo(bounds.botSs());
+            .isGreaterThanOrEqualTo(bounds.botSs() + centerYSs);
     }
 
     @Test
@@ -152,5 +156,35 @@ class VerticalStackingCalculatorTest extends UnitTest {
         var sampleXSs = COLUMN_X_SS + bounds.leftSs() + SAMPLE_WIDTH_SS;
         assertThat(structural.yGet(true, sampleXSs, SAMPLE_WIDTH_SS))
             .isEqualTo(expectedTopAbsoluteYSs);
+    }
+
+    @Test
+    void testSeedAccidentalsBotTranslatedToStaffCoordinatesForLowNote() {
+        // For a note well below the staff, centerYSs > 0 pushes botSs+centerYSs above
+        // the default STAFF_HEIGHT_SS floor, so the seeded value wins and we can pin
+        // the exact absolute Y. This verifies that centerYSs is added to botSs (same
+        // formula as topSs), not omitted.
+        var note = ElementType.CROTCHET.newInstance();
+        note.setStaffPosition(BOTTOM_STAFF_POSITION);
+        note.setAccidental(Accidental.SHARP);
+
+        var bounds = require(NoteGeometry.getAccidentalBoundsSs(note), "sharp bounds");
+        var centerYSs = StaffExtents.spToSs(BOTTOM_STAFF_POSITION);
+        var expectedBotAbsoluteYSs = bounds.botSs() + centerYSs;
+
+        // Fixture precondition: seeded value must exceed the default bottom (STAFF_HEIGHT_SS)
+        // so that it, not the default, is what yGet returns.
+        assertThat(expectedBotAbsoluteYSs)
+            .describedAs("seeded bot must exceed default STAFF_HEIGHT_SS floor")
+            .isGreaterThan(StaffExtents.STAFF_HEIGHT_SS);
+
+        var structural = new StaffExtents(LINE_WIDTH_SS);
+
+        VerticalStackingCalculator.seedAccidentalsIntoStructural(
+            List.of(mockColumnFor(note)), structural);
+
+        var sampleXSs = COLUMN_X_SS + bounds.leftSs() + SAMPLE_WIDTH_SS;
+        assertThat(structural.yGet(false, sampleXSs, SAMPLE_WIDTH_SS))
+            .isEqualTo(expectedBotAbsoluteYSs);
     }
 }
