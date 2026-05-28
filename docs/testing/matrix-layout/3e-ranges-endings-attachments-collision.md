@@ -22,13 +22,13 @@
 | Ending | base `isInvalidatedBy` anchor/end deleted | unit | `RangeElementInvalidationTest` (parametrized incl. Ending) | adequate | keep | — |
 | Ending | Line-mutation wiring removes invalidated Ending | unit | `LineMutationTest.EndingInvalidationConditions` (10+) | adequate | keep | — |
 | Ending | confirmation UI wiring (abort/proceed/dual change) | unit (integration) | `EndingConfirmsTest` (9, mocked dialogs) | adequate | keep | — |
-| LineEndingSupport | `findEndings()` extracts Ending range elements | unit | indirect only | missing | 0/1/2 endings, verify content | ⬜ |
-| LineEndingSupport | `findEndingAt(List,int)` span inclusion [start,end] | unit | — | missing | before/at-start/inside/at-end/after/empty | ⬜ |
+| LineEndingSupport | `findEndings()` extracts Ending range elements | unit | indirect only | missing | 0/1/2 endings, verify content | ✅ |
+| LineEndingSupport | `findEndingAt(List,int)` span inclusion [start,end] | unit | — | missing | before/at-start/inside/at-end/after/empty | ✅ |
 | LineEndingSupport | `findEndingAt(Line,int)` overload | none | — | none | trivial delegation | — |
-| LineEndingSupport | `isInsideAnyEnding` null-safe | unit | — | missing | positive + negative | ⬜ |
-| LineEndingSupport | `isStartOfAnyEnding` anchor equality | unit | — | missing | start / inside-not-start / empty | ⬜ |
-| LineEndingSupport | `isEndOfAnyEnding` end equality | unit | — | missing | end / inside-not-end / empty | ⬜ |
-| LineEndingSupport | `findEndingReplacementEffect()` first non-None effect | unit | `EndingConfirmsTest` via `SelectionCoordinator.applyActionToSelection` | inadequate | indirect only (reclassified from wrong-level); add direct 0/1/2-affected test | ⬜ |
+| LineEndingSupport | `isInsideAnyEnding` null-safe | unit | — | missing | positive + negative | ✅ |
+| LineEndingSupport | `isStartOfAnyEnding` anchor equality | unit | — | missing | start / inside-not-start / empty | ✅ |
+| LineEndingSupport | `isEndOfAnyEnding` end equality | unit | — | missing | end / inside-not-end / empty | ✅ |
+| LineEndingSupport | `findEndingReplacementEffect()` first non-None effect | unit | `EndingConfirmsTest` via `SelectionCoordinator.applyActionToSelection` | inadequate | indirect only (reclassified from wrong-level); add direct 0/1/2-affected test | ✅ |
 | RangeLayout | `getVerticalOrder()` ENDINGS / RANGE_ABOVE / RANGE_BELOW | unit | — | missing | **dead code (zero refs)** — resolve by deletion | ✅ |
 | RangeLayout | `getElementCount()` = end-start+1 | unit | — | missing | dead code | ✅ |
 | RangeLayout | `containsElement(int)` range-inclusive | unit | — | missing | dead code | ✅ |
