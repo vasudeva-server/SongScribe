@@ -17,9 +17,9 @@ Audited by reading each production class body symbol-by-symbol with serena `jet_
 | `GlyphAnchors/Anchor` | `fromSMuFL` flips Y (y becomes −y) | unit | none found | missing | Add test for `Anchor.fromSMuFL` Y-flip | ✅ |
 | `GlyphAnchors` | record component accessors (stemUpSE, stemDownNW, cutOutNW, cutOutSE — all `@Nullable`) | none | — | adequate (none warranted) | — | — |
 | `SMuFLData` | pure data record, no logic | none | — | adequate (none warranted) | — | — |
-| `SMuFLGlyph` | `smuflName()` returns canonical SMuFL name string | unit | none found | missing | Add `SMuFLGlyphTest.testSmuflNameMatchesSpec` (spot-check a few constants) | ⬜ |
-| `SMuFLGlyph` | `codepoint()` returns correct Unicode codepoint | unit | none found | missing | Add `SMuFLGlyphTest.testCodepointMatchesSpec` (spot-check a few constants) | ⬜ |
-| `SMuFLGlyph` | `asString()` returns single-character string of codepoint | unit | none found | missing | Add `SMuFLGlyphTest.testAsStringIsSingleCharOfCodepoint` | ⬜ |
+| `SMuFLGlyph` | `smuflName()` returns canonical SMuFL name string | unit | none found | missing | Add `SMuFLGlyphTest.testSmuflNameMatchesSpec` (spot-check a few constants) | ✅ |
+| `SMuFLGlyph` | `codepoint()` returns correct Unicode codepoint | unit | none found | missing | Add `SMuFLGlyphTest.testCodepointMatchesSpec` (spot-check a few constants) | ✅ |
+| `SMuFLGlyph` | `asString()` returns single-character string of codepoint | unit | none found | missing | Add `SMuFLGlyphTest.testAsStringIsSingleCharOfCodepoint` | ✅ |
 | `SMuFLMetadata` | `getBBox` returns populated BBox for a known glyph | unit | indirect via `KeySignatureTest`, `DynamicAttachmentTest`, `ArticulationStackingTest` | inadequate (self-referential: tests use `requireBBox` as their own oracle) | Add direct assertion with concrete numeric value | ⬜ |
 | `SMuFLMetadata` | `getBBox` returns null for a glyph absent from the metadata | unit | none found | missing | Add `SMuFLMetadataTest.testGetBBoxReturnsNullForUnknownGlyph` | ⬜ |
 | `SMuFLMetadata` | `requireBBox` throws when glyph absent from metadata | unit | none found | missing | Add `SMuFLMetadataTest.testRequireBBoxThrowsForAbsentGlyph` | ⬜ |

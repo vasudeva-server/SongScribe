@@ -1241,3 +1241,6 @@ GlyphAnchors.requireStemUpSE → add (GlyphAnchorsTest: testRequireStemUpSEThrow
 GlyphAnchors.requireStemDownNW → add (GlyphAnchorsTest: testRequireStemDownNWReturnsAnchorWhenPresent)
 GlyphAnchors.requireStemDownNW → add (GlyphAnchorsTest: testRequireStemDownNWThrowsWhenNull)
 GlyphAnchors.Anchor.fromSMuFL → add (GlyphAnchorsTest: testAnchorFromSmuflFlipsY)
+SMuFLGlyph.smuflName → add (SMuFLGlyphTest: testSmuflNameMatchesSpec)
+SMuFLGlyph.codepoint → add (SMuFLGlyphTest: testCodepointMatchesSpec)
+SMuFLGlyph.asString → add (SMuFLGlyphTest: testAsStringIsSingleCharOfCodepoint)
