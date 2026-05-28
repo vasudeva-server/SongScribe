@@ -4,7 +4,7 @@
 
 | Phase | Description | Status | Sub-plan |
 |-------|-------------|--------|----------|
-| 1 | [Conversion Scaffold + Round-Trip Harness](#-phase-1-conversion-scaffold--round-trip-harness) | ⏳ Pending | — |
+| 1 | [Conversion Scaffold + Round-Trip Harness](#-phase-1-conversion-scaffold--round-trip-harness) | 📋 Sub-plan | [phase-1-scaffold.md](./phase-1-scaffold.md) |
 | 2 | [Structural Model (Line ↔ Measure)](#-phase-2-structural-model-line--measure) | ⏳ Pending | — |
 | 3 | [Notes & Per-Note Attachments](#-phase-3-notes--per-note-attachments) | ⏳ Pending | — |
 | 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ⏳ Pending | — |
@@ -83,7 +83,9 @@ fields".
 
 ---
 
-## ⏳ Phase 1: Conversion Scaffold + Round-Trip Harness
+## 📋 Phase 1: Conversion Scaffold + Round-Trip Harness
+
+**Status**: Sub-plan — [phase-1-scaffold.md](./phase-1-scaffold.md)
 
 **Goal**: Foundation everything hangs off — an empty-but-valid `score-partwise`
 document, the writer/reader entry points, and a test harness that round-trips
