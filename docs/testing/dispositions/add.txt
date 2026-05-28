@@ -1190,3 +1190,5 @@ SystemTierStackingTest.TempoStacking.testTempoAttachmentExactYPlacementAtAnchor	
 VerticalStackingCalculatorTest.testSeedAccidentalsBotTranslatedToStaffCoordinatesForLowNote	new test: low note → seeded bot exceeds default floor; exact isEqualTo(botSs + centerYSs)
 # 3f row 39 — VerticalStackingCalculator applyDecorationOffsets Tuplet
 ManualOffsetStackingTest.TupletOffsets.testTupletVerticalPositionApplied	new test: Tuplet getVerticalPositionSs manual offset applied (ySs == baseline + verticalPositionSs)
+# 3f row 43 — VerticalStackingCalculator calculate belowContentSs distinct
+VerticalStackingCalculatorTest.testCalculateBelowContentUsesDownwardStemExtent	new test: downward-stem note → non-zero belowContent; exact isEqualTo(stemBotSs - STAFF_HALF_SS)

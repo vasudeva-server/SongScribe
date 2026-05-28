@@ -34,7 +34,9 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
+import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.ElementColumn;
+import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
 import songscribe.layout.stacking.VerticalStackingCalculator;
@@ -186,5 +188,46 @@ class VerticalStackingCalculatorTest extends UnitTest {
         var sampleXSs = COLUMN_X_SS + bounds.leftSs() + SAMPLE_WIDTH_SS;
         assertThat(structural.yGet(false, sampleXSs, SAMPLE_WIDTH_SS))
             .isEqualTo(expectedBotAbsoluteYSs);
+    }
+
+    @Test
+    void testCalculateBelowContentUsesDownwardStemExtent() {
+        // A downward-stem note whose stem tip is below the staff bottom must produce
+        // a non-zero belowContent that is exactly (stemBottomYSs - STAFF_HALF_SS).
+        // This pins the formula: belowContentSs = max(0, botContentExtentSs - STAFF_HALF_SS).
+        // A sign flip or wrong term in the production expression would cause the value to
+        // differ from the independently computed expected value.
+        //
+        // Stem tip chosen at STEM_BOT_SS (staff-space Y from center) so that:
+        //   botContentExtentSs = STEM_BOT_SS  (stem dominates; notehead at center is well above)
+        //   belowContentSs     = STEM_BOT_SS - STAFF_HALF_SS
+        //
+        // belowContentSs is distinct from belowStaff (which floors at MIN_BELOW_STAFF_SS = 4.0).
+        final double stemBotSs = 5.0;
+        final double expectedBelowContentSs = stemBotSs - StaffExtents.STAFF_HALF_SS;
+
+        var note = ElementType.CROTCHET.newInstance();
+        // Staff position 0 keeps centerYSs = 0, so notehead bot << STAFF_HALF_SS;
+        // the stem tip at stemBotSs wins in max(stemLayout.bottomYSs(), noteheadBotSs).
+
+        var column = mock(ElementColumn.class);
+        when(column.getElement()).thenReturn(note);
+        when(column.getXSs()).thenReturn(COLUMN_X_SS);
+
+        var builder = LayoutResult.builder();
+        // Provide a StemLayout so seedNoteBounds uses stemLayout.bottomYSs() as botSs.
+        // topYSs is above center (negative); bottomYSs is the downward stem tip.
+        builder.putStemLayout(note, new LayoutResult.StemLayout(-2.0, stemBotSs, 0.0, false));
+
+        var calculator = new VerticalStackingCalculator();
+        calculator.calculate(
+            List.of(column),
+            detachedLine(),
+            builder,
+            LINE_WIDTH_SS,
+            mock(DocumentFontsHolder.class));
+
+        var result = builder.build();
+        assertThat(result.getBelowContentSs()).isEqualTo(expectedBelowContentSs);
     }
 }
