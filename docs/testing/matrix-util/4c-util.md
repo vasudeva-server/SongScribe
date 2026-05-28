@@ -12,13 +12,13 @@ Audited by reading every production class symbol-by-symbol with serena `jet_brai
 | StringUtils | `collapseMultipleSpaces` — collapses internal runs of spaces (lookahead skips line start) | unit | none | missing | add unit tests: multiple spaces, leading spaces preserved, single space unchanged | ✅ |
 | StringUtils | `removeSyllabifyMarkings` — removes parenthesized groups and hyphens/underscores; **DEAD CODE** (zero callers in production) | unit | none | missing | verify dead, then delete or add caller; if retained, add tests | ✅ |
 | StringUtils | `wrapText` — word-wrap with min-word-count rebalancing; complex branching | unit | none | missing | add unit tests: single word wider than maxWidth, rebalancing triggered, empty input | ✅ |
-| FileUtils | `getExtension` — returns extension without dot; no-extension case returns `""`; uses `Paths.get` so path separators matter | unit | none | missing | add unit tests: plain filename, path with dir, no extension, dot-only filename | ⬜ |
-| FileUtils | `getPathWithoutExtension` (String overload) — strips last dot and beyond; no-dot returns whole path | unit | none | missing | add unit tests: with extension, without extension, multiple dots | ⬜ |
-| FileUtils | `getFilename` — returns filename component from path | unit | none | missing | add unit test | ⬜ |
-| FileUtils | `getDirectory` — returns parent dir string; null parent returns `""` | unit | none | missing | add unit tests: with parent, no parent (bare filename) | ⬜ |
-| FileUtils | `ensureExtension` — appends extension if not already present; multi-extension variant; uses case-insensitive match | unit | none | missing | add unit tests: already has ext (all variants), missing ext, dot-prefixed ext arg | ⬜ |
-| FileUtils | `toDotExt` (private) — tested indirectly via `ensureExtension`; ext with and without leading dot | unit | none | missing | covered by `ensureExtension` tests | ⬜ |
-| FileUtils | `getDocumentsDirectory` — platform-conditional path; Windows reads `USERPROFILE` env var | unit | none | missing | add unit test for non-Windows path; Windows branch is harder to isolate but non-Windows is trivially testable | ⬜ |
+| FileUtils | `getExtension` — returns extension without dot; no-extension case returns `""`; uses `Paths.get` so path separators matter | unit | none | missing | add unit tests: plain filename, path with dir, no extension, dot-only filename | ✅ |
+| FileUtils | `getPathWithoutExtension` (String overload) — strips last dot and beyond; no-dot returns whole path | unit | none | missing | add unit tests: with extension, without extension, multiple dots | ✅ |
+| FileUtils | `getFilename` — returns filename component from path | unit | none | missing | add unit test | ✅ |
+| FileUtils | `getDirectory` — returns parent dir string; null parent returns `""` | unit | none | missing | add unit tests: with parent, no parent (bare filename) | ✅ |
+| FileUtils | `ensureExtension` — appends extension if not already present; multi-extension variant; uses case-insensitive match | unit | none | missing | add unit tests: already has ext (all variants), missing ext, dot-prefixed ext arg | ✅ |
+| FileUtils | `toDotExt` (private) — tested indirectly via `ensureExtension`; ext with and without leading dot | unit | none | missing | covered by `ensureExtension` tests | ✅ |
+| FileUtils | `getDocumentsDirectory` — platform-conditional path; Windows reads `USERPROFILE` env var | unit | none | missing | add unit test for non-Windows path; Windows branch is harder to isolate but non-Windows is trivially testable | ✅ |
 | FileUtils | `zipFile` — streams file into zip entry; `@Nullable` requestName branch | unit | none | missing | add unit test with a temp file; verify entry name for null vs non-null requestName | ⬜ |
 | ExtensionFileFilter | constructor — description appends `(ext1, ext2)` suffix | unit | none | missing | add unit test | ⬜ |
 | ExtensionFileFilter | `accept(File)` — directories always accepted; files matched by extension (case-insensitive) | unit | none | missing | add unit tests: directory, matching ext, non-matching ext, no extension | ⬜ |
