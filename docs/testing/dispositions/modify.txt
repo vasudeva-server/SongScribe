@@ -40,3 +40,5 @@ InsertionSpacingCalculatorTest.FitsWithinLine.testAppendToEmptyLine→testAppend
 SongLayoutMetricsTest.testVerseBaselineYHelper
 # 3d row 15 — LyricLayoutBuilder do-re-mi HYPHEN coords + sourceElementIndex
 LyricLayoutBuilderTest.testDoReMiProducesThreeBoxesAndTwoHyphens	strengthened in place: added HYPHEN startXSs/endXSs + sourceElementIndex assertions (was count-only)
+# 3f row 32 — StructuralStacker non-overlapping-hairpins name mismatch
+StructuralTierStackingTest.HairpinStacking.testAdjacentHairpinsStackDiminuendoAboveCrescendo	renamed from testNonOverlappingHairpinsAtSameHeight; added dimLayout.ySs < crescLayout.ySs ordering assertion (name was lying — heights are not equal)

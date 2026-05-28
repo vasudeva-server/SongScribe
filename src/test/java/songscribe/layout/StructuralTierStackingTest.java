@@ -186,7 +186,7 @@ class StructuralTierStackingTest extends UnitTest {
         }
 
         @Test
-        void testNonOverlappingHairpinsAtSameHeight() {
+        void testAdjacentHairpinsStackDiminuendoAboveCrescendo() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var note3 = createNote(0, false);
@@ -195,7 +195,10 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
             line.addElement(note3);
 
-            // Two non-overlapping hairpins
+            // Adjacent (musically non-overlapping) hairpins: crescendo note1→note2,
+            // diminuendo note2→note3. The crescendo's span extends NOTE_HEAD_WIDTH_SS
+            // past note2's anchor; combined with the query margin, the diminuendo query
+            // overlaps the crescendo's reservation, so the diminuendo stacks above it.
             var crescendo = new Crescendo(note1, note2);
             var diminuendo = new Diminuendo(note2, note3);
             line.addRangeElement(crescendo);
@@ -215,11 +218,11 @@ class StructuralTierStackingTest extends UnitTest {
                 result.getDecorationLayout(diminuendo),
                 "diminuendo DecorationLayout");
 
-            // Non-overlapping hairpins should be at similar heights
-            // (they share the same horizontal extent overlap at note2, so they stack)
-            // Just verify both exist and have valid positions
             assertThat(crescLayout.ySs()).isLessThan(0.0);
             assertThat(dimLayout.ySs()).isLessThan(0.0);
+            // Diminuendo stacks above (more negative Y) because its query region
+            // overlaps the crescendo's reservation.
+            assertThat(dimLayout.ySs()).isLessThan(crescLayout.ySs());
         }
 
         @Test

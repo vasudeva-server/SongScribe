@@ -41,6 +41,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 
 @SuppressWarnings("DataFlowIssue")
@@ -256,6 +257,30 @@ class FermataTrillStackingTest extends UnitTest {
             assertThat(layout.widthSs()).isGreaterThan(NOTE2_X_SS - NOTE_X_SS);
         }
 
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class PreviewDecorationLayouts {
+
+        @Test
+        void testPreviewFermataAndStaccatoAreAboveStaff() {
+            var note = createNote(0, false);
+            note.addAttachment(new FermataAttachment(note));
+            note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
+
+            var result = NoteAttachedStacker.computePreviewDecorationLayouts(note, NOTE_X_SS);
+
+            var staccatoLayout = require(
+                result.getDecorationLayout(note.getArticulations().getFirst()),
+                "staccato DecorationLayout");
+            var fermataLayout = require(
+                result.findAttachmentDecorationLayout(note, FermataAttachment.class),
+                "fermata DecorationLayout");
+
+            assertThat(staccatoLayout.ySs()).isLessThan(0.0);
+            assertThat(fermataLayout.ySs()).isLessThan(0.0);
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
