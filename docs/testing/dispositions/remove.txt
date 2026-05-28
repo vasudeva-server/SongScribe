@@ -15,3 +15,5 @@ RangeLayout.getVerticalOrder	3e	dead code (zero refs) — production class delet
 RangeLayout.getElementCount	3e	dead code (zero refs) — production class deleted, no test written
 RangeLayout.containsElement	3e	dead code (zero refs) — production class deleted, no test written
 RangeLayout.containsPoint/getDataAs	3e	dead code (zero refs) — production class deleted, no test written
+StructuralTierStackingTest.testCrescendoRangeElementProducesDecorationLayout	3f	redundant — merged into exact-value testHairpinYEqualsAnchorCeilingMinusMarginMinusHeight
+StructuralTierStackingTest.testDiminuendoRangeElementProducesDecorationLayout	3f	redundant — merged into exact-value testDiminuendoYEqualsAnchorCeilingMinusMarginMinusHeight

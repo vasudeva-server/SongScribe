@@ -40,7 +40,11 @@ import songscribe.font.DocumentFonts;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.layout.stacking.StackingContext;
+import songscribe.layout.stacking.StackingUtils;
+import songscribe.layout.stacking.StructuralStacker;
 import songscribe.layout.stacking.VerticalStackingCalculator;
+import songscribe.layout.NoteGeometry;
 
 class StructuralTierStackingTest extends UnitTest {
 
@@ -68,6 +72,17 @@ class StructuralTierStackingTest extends UnitTest {
         var builder = new LayoutResult.Builder();
         var calculator = new VerticalStackingCalculator();
         calculator.calculate(columns, line, builder, LINE_WIDTH_SS, DocumentFonts.defaultsFromPrefs());
+        return builder.build();
+    }
+
+    /**
+     * Runs only the structural stacker against fresh (zero-top) extents.
+     * Use when you need exact Y control — no note-attached layer seeding occurs.
+     */
+    private static LayoutResult stackDirectly(List<ElementColumn> columns, Line line) {
+        var builder = new LayoutResult.Builder();
+        var context = new StackingContext(columns, line, builder);
+        new StructuralStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
         return builder.build();
     }
 
@@ -208,7 +223,9 @@ class StructuralTierStackingTest extends UnitTest {
         }
 
         @Test
-        void testCrescendoRangeElementProducesDecorationLayout() {
+        void testHairpinYEqualsAnchorCeilingMinusMarginMinusHeight() {
+            // Fresh structural extents (top=0.0), sp=0 → ceilingSs = anchorCeilingSs(0).
+            // Single crescendo: no prior reservation → ceiling is just the anchor ceiling.
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
@@ -218,19 +235,19 @@ class StructuralTierStackingTest extends UnitTest {
             var crescendo = new Crescendo(note1, note2);
             line.addRangeElement(crescendo);
 
-            var result = stackColumns(
-                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
-                line);
+            var result = stackDirectly(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
 
-            var layout = require(
-                result.getDecorationLayout(crescendo),
-                "crescendo DecorationLayout");
-
-            assertThat(layout.ySs()).isLessThan(0.0);
+            var ceilingSs = StackingUtils.anchorCeilingSs(0);
+            var expectedYSs = ceilingSs - StructuralStacker.HAIRPIN_MARGIN_SS
+                - crescendo.getContentHeightSs();
+            var layout = require(result.getDecorationLayout(crescendo), "crescendo layout");
+            assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
         }
 
         @Test
-        void testDiminuendoRangeElementProducesDecorationLayout() {
+        void testDiminuendoYEqualsAnchorCeilingMinusMarginMinusHeight() {
+            // Diminuendo follows the same stackSpanElement path as crescendo.
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
@@ -240,15 +257,14 @@ class StructuralTierStackingTest extends UnitTest {
             var diminuendo = new Diminuendo(note1, note2);
             line.addRangeElement(diminuendo);
 
-            var result = stackColumns(
-                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
-                line);
+            var result = stackDirectly(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
 
-            var layout = require(
-                result.getDecorationLayout(diminuendo),
-                "diminuendo DecorationLayout");
-
-            assertThat(layout.ySs()).isLessThan(0.0);
+            var ceilingSs = StackingUtils.anchorCeilingSs(0);
+            var expectedYSs = ceilingSs - StructuralStacker.HAIRPIN_MARGIN_SS
+                - diminuendo.getContentHeightSs();
+            var layout = require(result.getDecorationLayout(diminuendo), "diminuendo layout");
+            assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
         }
     }
 
@@ -328,6 +344,29 @@ class StructuralTierStackingTest extends UnitTest {
             assertThat(tupletLayout.ySs()).isLessThan(fermataLayout.ySs());
         }
 
+        @Test
+        void testTupletYEqualsAnchorCeilingMinusMarginMinusHeight() {
+            // Fresh extents (top=0.0), sp=0 → ceilingSs = anchorCeilingSs(0).
+            // Tuplets are stacked before hairpins, so no prior structural reservation.
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+
+            var result = stackDirectly(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
+
+            var ceilingSs = StackingUtils.anchorCeilingSs(0);
+            var expectedYSs = ceilingSs - StructuralStacker.TUPLET_MARGIN_SS
+                - tuplet.getContentHeightSs();
+            var layout = require(result.getDecorationLayout(tuplet), "tuplet layout");
+            assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+        }
+
     }
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
@@ -402,6 +441,54 @@ class StructuralTierStackingTest extends UnitTest {
             assertThat(dynamicsLayout.ySs())
                 .describedAs("text dynamics should stack above hairpin")
                 .isLessThan(hairpinLayout.ySs());
+        }
+
+        @Test
+        void testTextDynamicsXIsCenteredOnNotehead() {
+            // Verifies: centeredXSs = columnXSs + noteheadCenterXSs - contentWidthSs/2
+            var note = createNote(0, false);
+            var dynamic = new DynamicAttachment(note, DynamicAttachment.DynamicType.FORTE);
+            note.addAttachment(dynamic);
+
+            var line = detachedLine();
+            line.addElement(note);
+
+            var result = stackDirectly(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            var layout = require(
+                result.findAttachmentDecorationLayout(note, DynamicAttachment.class),
+                "text dynamics DecorationLayout");
+
+            var noteType = note.getType();
+            var noteheadCenterXSs = noteType.getElementCenterXSs()
+                + NoteGeometry.getNoteheadXOffsetSs(noteType, note.isUpper());
+            var expectedXSs = NOTE1_X_SS + noteheadCenterXSs - dynamic.getContentWidthSs() / 2.0;
+            assertThat(layout.xSs()).isCloseTo(expectedXSs, within(TOLERANCE));
+        }
+    }
+
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
+    @Nested
+    class SpanElementGuards {
+
+        @Test
+        void testStackSpanElementSkipsNullAnchor() {
+            // stackSpanElement checks anchor/end for null before column lookup.
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var crescendo = new Crescendo(note1, note2);
+            crescendo.setAnchorElement(null);  // trigger null guard
+            line.addRangeElement(crescendo);
+
+            var result = stackDirectly(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
+
+            // No layout should have been emitted for the null-anchor span element.
+            assertThat(result.getDecorationLayout(crescendo)).isNull();
         }
     }
 
