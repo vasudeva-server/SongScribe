@@ -17,3 +17,4 @@ RangeLayout.containsElement	3e	dead code (zero refs) — production class delete
 RangeLayout.containsPoint/getDataAs	3e	dead code (zero refs) — production class deleted, no test written
 StructuralTierStackingTest.testCrescendoRangeElementProducesDecorationLayout	3f	redundant — merged into exact-value testHairpinYEqualsAnchorCeilingMinusMarginMinusHeight
 StructuralTierStackingTest.testDiminuendoRangeElementProducesDecorationLayout	3f	redundant — merged into exact-value testDiminuendoYEqualsAnchorCeilingMinusMarginMinusHeight
+MyFontUtils.getXHeight → remove (dead code; confirmed zero callers, already deleted in 427405d1)

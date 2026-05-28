@@ -75,9 +75,16 @@ public final class MyFontUtils {
     @Nullable
     private static Font iconFont = null;
 
-    private record ParsedFontName(String family, String style) {}
+    record ParsedFontName(String family, String style) {}
 
     private MyFontUtils() {}
+
+    // Clears the lazy font cache so tests can install fonts before the first load.
+    static void resetFontCache() {
+        allFonts = List.of();
+        psFonts.clear();
+        familyNames.clear();
+    }
 
     public static List<Font> getAllFonts() {
         if (allFonts.isEmpty()) {
@@ -340,7 +347,7 @@ public final class MyFontUtils {
         return styles;
     }
 
-    private static String parseStyle(String style) {
+    static String parseStyle(String style) {
         // Replace some camel case style names that should not be separated
         var result = OSF_PATTERN.matcher(style).replaceAll("Oldstyle Figures");
 

@@ -46,3 +46,4 @@ StructuralTierStackingTest.HairpinStacking.testAdjacentHairpinsStackDiminuendoAb
 SystemTierStackingTest.TempoStacking.testTempoAttachmentProducesLayout	strengthened: replaced bare isNotNull with require + exact xSs == column position
 # 3f row 37 — VerticalStackingCalculator accidental top oracle corrected
 VerticalStackingCalculatorTest.testSeedAccidentalsReservesSpaceAtAccidentalXForSharp	strengthened: top oracle corrected to bounds.topSs() + centerYSs (absolute staff coords)
+MyFontUtils.createFont → modify (MyFontUtilsTest$CreateFont: testKnownPsNameReturnsMatchingFont positive PSName assertion, testUnknownPsNameReturnsFallbackFont positive fallback assertion)
