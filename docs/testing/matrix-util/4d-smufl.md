@@ -10,11 +10,11 @@ Audited by reading each production class body symbol-by-symbol with serena `jet_
 | `BBox` | `union` returns smallest enclosing box (min left/top, max right/bottom) | unit | none found | missing | Add `BBoxTest.testUnionReturnsSmallestEnclosingBox` | ✅ |
 | `BBox` | `fromSMuFL` flips Y-up to Y-down (top=−neY, bottom=−swY) | unit | none found | missing | Add `BBoxTest.testFromSmuflFlipsYConvention` | ✅ |
 | `BBox` | record component accessors (left, top, right, bottom) | none | — | adequate (none warranted) | — | — |
-| `GlyphAnchors` | `requireStemUpSE` returns anchor when present | unit | none found | missing | Add `GlyphAnchorsTest.testRequireStemUpSEReturnsAnchorWhenPresent` | ⬜ |
-| `GlyphAnchors` | `requireStemUpSE` throws when stemUpSE is null | unit | none found | missing | Add `GlyphAnchorsTest.testRequireStemUpSEThrowsWhenNull` | ⬜ |
-| `GlyphAnchors` | `requireStemDownNW` returns anchor when present | unit | none found | missing | Add `GlyphAnchorsTest.testRequireStemDownNWReturnsAnchorWhenPresent` | ⬜ |
-| `GlyphAnchors` | `requireStemDownNW` throws when stemDownNW is null | unit | none found | missing | Add `GlyphAnchorsTest.testRequireStemDownNWThrowsWhenNull` | ⬜ |
-| `GlyphAnchors/Anchor` | `fromSMuFL` flips Y (y becomes −y) | unit | none found | missing | Add test for `Anchor.fromSMuFL` Y-flip | ⬜ |
+| `GlyphAnchors` | `requireStemUpSE` returns anchor when present | unit | none found | missing | Add `GlyphAnchorsTest.testRequireStemUpSEReturnsAnchorWhenPresent` | ✅ |
+| `GlyphAnchors` | `requireStemUpSE` throws when stemUpSE is null | unit | none found | missing | Add `GlyphAnchorsTest.testRequireStemUpSEThrowsWhenNull` | ✅ |
+| `GlyphAnchors` | `requireStemDownNW` returns anchor when present | unit | none found | missing | Add `GlyphAnchorsTest.testRequireStemDownNWReturnsAnchorWhenPresent` | ✅ |
+| `GlyphAnchors` | `requireStemDownNW` throws when stemDownNW is null | unit | none found | missing | Add `GlyphAnchorsTest.testRequireStemDownNWThrowsWhenNull` | ✅ |
+| `GlyphAnchors/Anchor` | `fromSMuFL` flips Y (y becomes −y) | unit | none found | missing | Add test for `Anchor.fromSMuFL` Y-flip | ✅ |
 | `GlyphAnchors` | record component accessors (stemUpSE, stemDownNW, cutOutNW, cutOutSE — all `@Nullable`) | none | — | adequate (none warranted) | — | — |
 | `SMuFLData` | pure data record, no logic | none | — | adequate (none warranted) | — | — |
 | `SMuFLGlyph` | `smuflName()` returns canonical SMuFL name string | unit | none found | missing | Add `SMuFLGlyphTest.testSmuflNameMatchesSpec` (spot-check a few constants) | ⬜ |
