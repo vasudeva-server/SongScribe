@@ -44,10 +44,10 @@ public final class StackingUtils {
     static final double NOTE_HEAD_RADIUS_SS = NOTE_HEAD_HEIGHT_SS / 2.0;
 
     // Staff position of the top staff line (F5); positions <= this are at or above the staff
-    private static final int TOP_STAFF_LINE_POSITION = -4;
+    static final int TOP_STAFF_LINE_POSITION = -4;
 
     // Y coordinate of the top staff line in the middleLineY=0 coordinate system
-    private static final double STAFF_TOP_Y_SS =
+    static final double STAFF_TOP_Y_SS =
         TOP_STAFF_LINE_POSITION * StaffExtents.STAFF_POSITION_OFFSET_SS;
 
     // Horizontal collision margin for structural/system elements (collapses between adjacent elements)

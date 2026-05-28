@@ -2,11 +2,11 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| StackingUtils | `anchorCeilingSs(int)` within/below staff → top staff line | unit | — | missing | assert `STAFF_TOP_Y_SS` for sp > TOP_STAFF_LINE | ⬜ |
-| StackingUtils | `anchorCeilingSs(int)` at/above top line → above notehead | unit | — | missing | assert `sp*OFFSET - NOTE_HEAD_RADIUS_SS` for sp ≤ -4 | ⬜ |
+| StackingUtils | `anchorCeilingSs(int)` within/below staff → top staff line | unit | — | missing | assert `STAFF_TOP_Y_SS` for sp > TOP_STAFF_LINE | ✅ |
+| StackingUtils | `anchorCeilingSs(int)` at/above top line → above notehead | unit | — | missing | assert `sp*OFFSET - NOTE_HEAD_RADIUS_SS` for sp ≤ -4 | ✅ |
 | StackingUtils | `stackAbove` collision-aware placement (query-expand-min-reserve) | unit | `ArticulationStackingTest` (integration) | adequate | keep | — |
-| StackingUtils | `stackAboveWithRegions` multi-region min-ceiling + per-region reserve | unit | `SystemTierStackingTest` (`ySs<0` only) | inadequate | exact-value via controlled extents; `<0` can't catch region/reservation bug | ⬜ |
-| StackingUtils | `isRangeCovered(start,end)` | unit | — | missing | covered / uncovered / wrong-end | ⬜ |
+| StackingUtils | `stackAboveWithRegions` multi-region min-ceiling + per-region reserve | unit | `SystemTierStackingTest` (`ySs<0` only) | inadequate | exact-value via controlled extents; `<0` can't catch region/reservation bug | ✅ |
+| StackingUtils | `isRangeCovered(start,end)` | unit | — | missing | covered / uncovered / wrong-end | ✅ |
 | StackingUtils | symmetric horizontal margin (`STRUCTURAL_HORIZONTAL_MARGIN_SS`) on query+reserve | unit | margin never checked | missing | assert margin applied to queryX/queryWidth | ⬜ |
 | StackingContext | `buildColumnMap` element→column | unit | — | missing | 2 columns → map per element | ⬜ |
 | StackingContext | `updateLowestNoteBotSs` max-accumulation | unit | — | missing | ascending then descending → max kept | ⬜ |
