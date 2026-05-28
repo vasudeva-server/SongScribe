@@ -58,7 +58,7 @@ public final class UIUtils {
 
     private static final Dimension LABEL_SPACER = new Dimension(5, 5);
 
-    private static final int SCREEN_MARGIN_PX = 20;
+    static final int SCREEN_MARGIN_PX = 20;
 
     private UIUtils() {
     }
@@ -356,7 +356,7 @@ public final class UIUtils {
         return parent != null ? SwingUtilities.getWindowAncestor(parent) : null;
     }
 
-    private static Rectangle getScreenBounds(@Nullable Window window) {
+    static Rectangle getScreenBounds(@Nullable Window window) {
         if (window != null) {
             return window.getGraphicsConfiguration().getBounds();
         }
