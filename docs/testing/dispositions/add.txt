@@ -1244,3 +1244,8 @@ GlyphAnchors.Anchor.fromSMuFL → add (GlyphAnchorsTest: testAnchorFromSmuflFlip
 SMuFLGlyph.smuflName → add (SMuFLGlyphTest: testSmuflNameMatchesSpec)
 SMuFLGlyph.codepoint → add (SMuFLGlyphTest: testCodepointMatchesSpec)
 SMuFLGlyph.asString → add (SMuFLGlyphTest: testAsStringIsSingleCharOfCodepoint)
+SMuFLMetadata.getBBox → modify (SMuFLMetadataTest: testGetBBoxReturnsCorrectValuesForNoteheadBlack)
+SMuFLMetadata.noteHeadWidthSs → add (SMuFLMetadataTest: testNoteHeadWidthSsIsPositiveAndPlausible)
+SMuFLMetadata.noteHeadHeightSs → add (SMuFLMetadataTest: testNoteHeadHeightSsIsPositiveAndPlausible)
+SMuFLMetadata.getAnchors → add (SMuFLMetadataTest: testGetAnchorsReturnsAnchorsForKnownGlyph)
+SMuFLMetadata.getAnchors → add (SMuFLMetadataTest: testGetAnchorsReturnsNullForGlyphWithNoAnchors)

@@ -20,13 +20,13 @@ Audited by reading each production class body symbol-by-symbol with serena `jet_
 | `SMuFLGlyph` | `smuflName()` returns canonical SMuFL name string | unit | none found | missing | Add `SMuFLGlyphTest.testSmuflNameMatchesSpec` (spot-check a few constants) | ✅ |
 | `SMuFLGlyph` | `codepoint()` returns correct Unicode codepoint | unit | none found | missing | Add `SMuFLGlyphTest.testCodepointMatchesSpec` (spot-check a few constants) | ✅ |
 | `SMuFLGlyph` | `asString()` returns single-character string of codepoint | unit | none found | missing | Add `SMuFLGlyphTest.testAsStringIsSingleCharOfCodepoint` | ✅ |
-| `SMuFLMetadata` | `getBBox` returns populated BBox for a known glyph | unit | indirect via `KeySignatureTest`, `DynamicAttachmentTest`, `ArticulationStackingTest` | inadequate (self-referential: tests use `requireBBox` as their own oracle) | Add direct assertion with concrete numeric value | ⬜ |
+| `SMuFLMetadata` | `getBBox` returns populated BBox for a known glyph | unit | indirect via `KeySignatureTest`, `DynamicAttachmentTest`, `ArticulationStackingTest` | inadequate (self-referential: tests use `requireBBox` as their own oracle) | Add direct assertion with concrete numeric value | ✅ |
 | `SMuFLMetadata` | `getBBox` returns null for a glyph absent from the metadata | unit | none found | missing | Add `SMuFLMetadataTest.testGetBBoxReturnsNullForUnknownGlyph` | ⬜ |
 | `SMuFLMetadata` | `requireBBox` throws when glyph absent from metadata | unit | none found | missing | Add `SMuFLMetadataTest.testRequireBBoxThrowsForAbsentGlyph` | ⬜ |
-| `SMuFLMetadata` | `noteHeadWidthSs` returns correct notehead width in staff spaces | unit | none found | missing | Add `SMuFLMetadataTest.testNoteHeadWidthSsIsPositiveAndPlausible` with concrete bounds | ⬜ |
-| `SMuFLMetadata` | `noteHeadHeightSs` returns correct notehead height in staff spaces | unit | none found | missing | Add `SMuFLMetadataTest.testNoteHeadHeightSsIsPositiveAndPlausible` with concrete bounds | ⬜ |
-| `SMuFLMetadata` | `getAnchors` returns populated `GlyphAnchors` for a known glyph | unit | none found | missing | Add `SMuFLMetadataTest.testGetAnchorsReturnsAnchorsForKnownGlyph` | ⬜ |
-| `SMuFLMetadata` | `getAnchors` returns null for a glyph absent from anchors data | unit | none found | missing | Add `SMuFLMetadataTest.testGetAnchorsReturnsNullForGlyphWithNoAnchors` | ⬜ |
+| `SMuFLMetadata` | `noteHeadWidthSs` returns correct notehead width in staff spaces | unit | none found | missing | Add `SMuFLMetadataTest.testNoteHeadWidthSsIsPositiveAndPlausible` with concrete bounds | ✅ |
+| `SMuFLMetadata` | `noteHeadHeightSs` returns correct notehead height in staff spaces | unit | none found | missing | Add `SMuFLMetadataTest.testNoteHeadHeightSsIsPositiveAndPlausible` with concrete bounds | ✅ |
+| `SMuFLMetadata` | `getAnchors` returns populated `GlyphAnchors` for a known glyph | unit | none found | missing | Add `SMuFLMetadataTest.testGetAnchorsReturnsAnchorsForKnownGlyph` | ✅ |
+| `SMuFLMetadata` | `getAnchors` returns null for a glyph absent from anchors data | unit | none found | missing | Add `SMuFLMetadataTest.testGetAnchorsReturnsNullForGlyphWithNoAnchors` | ✅ |
 | `SMuFLMetadata` | `requireAnchors` throws when glyph absent from anchors | unit | none found | missing | Add `SMuFLMetadataTest.testRequireAnchorsThrowsForAbsentGlyph` | ⬜ |
 | `SMuFLMetadata` | `getAdvanceWidth` returns width for a known glyph | unit | none found | missing | Add `SMuFLMetadataTest.testGetAdvanceWidthReturnsValueForKnownGlyph` | ⬜ |
 | `SMuFLMetadata` | `getAdvanceWidth` returns null for a glyph absent from advance widths | unit | none found | missing | Add `SMuFLMetadataTest.testGetAdvanceWidthReturnsNullForAbsentGlyph` | ⬜ |
