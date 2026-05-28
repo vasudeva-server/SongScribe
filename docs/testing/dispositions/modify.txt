@@ -42,3 +42,5 @@ SongLayoutMetricsTest.testVerseBaselineYHelper
 LyricLayoutBuilderTest.testDoReMiProducesThreeBoxesAndTwoHyphens	strengthened in place: added HYPHEN startXSs/endXSs + sourceElementIndex assertions (was count-only)
 # 3f row 32 — StructuralStacker non-overlapping-hairpins name mismatch
 StructuralTierStackingTest.HairpinStacking.testAdjacentHairpinsStackDiminuendoAboveCrescendo	renamed from testNonOverlappingHairpinsAtSameHeight; added dimLayout.ySs < crescLayout.ySs ordering assertion (name was lying — heights are not equal)
+# 3f row 35 — SystemStacker tempo attachment fixture-only test strengthened
+SystemTierStackingTest.TempoStacking.testTempoAttachmentProducesLayout	strengthened: replaced bare isNotNull with require + exact xSs == column position

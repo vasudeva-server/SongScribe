@@ -30,9 +30,9 @@
 | StructuralStacker | `stackTextDynamics` X centering = `noteheadCenterX - contentWidth/2` | unit | `StructuralTierStackingTest` (`ySs<0`, no X) | missing | assert centered `xSs` | ✅ |
 | StructuralStacker | `stackEndings` above hairpins (ordering); `heightSs`=`VOLTA_TICK_HEIGHT_SS` | unit | `StructuralTierStackingTest.EndingStacking.testEndingPositionedAboveHairpins`, `testEndingHasPositiveDimensions` | adequate | keep | — |
 | StructuralStacker | `testNonOverlappingHairpinsAtSameHeight` | unit | `StructuralTierStackingTest` (only `ySs<0` each, never compared) | inadequate | **name-mismatch**: add `isCloseTo` equality or rename | ✅ |
-| SystemStacker | `stackAnnotations` X shifts with `xAlignment` (0/0.5/1) | unit | `SystemTierStackingTest` (`ySs<0`, no X) | missing | left/center/right → distinct formula-driven X | ⬜ |
-| SystemStacker | `stackMetronomeAttachment` (tempo/beat-change) regions placement | unit | `SystemTierStackingTest` (`ySs<0`, dims `>0`, cross-tier `isLessThan`) | inadequate | exact-value for ≥1 region case (cross-tier ordering adequate) | ⬜ |
-| SystemStacker | `testTempoAttachmentProducesLayout` | unit | `SystemTierStackingTest` (`isNotNull` only) | inadequate | fixture-only; merge with positioned test or add position/dim | ⬜ |
+| SystemStacker | `stackAnnotations` X shifts with `xAlignment` (0/0.5/1) | unit | `SystemTierStackingTest` (`ySs<0`, no X) | missing | left/center/right → distinct formula-driven X | ✅ |
+| SystemStacker | `stackMetronomeAttachment` (tempo/beat-change) regions placement | unit | `SystemTierStackingTest` (`ySs<0`, dims `>0`, cross-tier `isLessThan`) | inadequate | exact-value for ≥1 region case (cross-tier ordering adequate) | ✅ |
+| SystemStacker | `testTempoAttachmentProducesLayout` | unit | `SystemTierStackingTest` (`isNotNull` only) | inadequate | fixture-only; merge with positioned test or add position/dim | ✅ |
 | VerticalStackingCalculator | `seedAccidentalsIntoStructural` high-note top reservation | unit | `VerticalStackingCalculatorTest.testSeedAccidentalsTranslatesToStaffCoordinatesForHighNote` (exact) | adequate | keep | — |
 | VerticalStackingCalculator | accidental bottom reservation | unit | `…testSeedAccidentalsReservesSpaceAtAccidentalXForSharp` (`>=`) | inadequate | `>=` allows any value; change to exact `isCloseTo(botSs+centerYSs)` | ⬜ |
 | VerticalStackingCalculator | grace note skipped | unit | `…testSeedAccidentalsIgnoresGraceNotes` (exact 0.0) | adequate | keep | — |

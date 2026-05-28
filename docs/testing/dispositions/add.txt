@@ -1182,3 +1182,7 @@ StructuralTierStackingTest.testTextDynamicsXIsCenteredOnNotehead
 StructuralTierStackingTest.testStackSpanElementSkipsNullAnchor
 # 3f row 26 — NoteAttachedStacker.computePreviewDecorationLayouts preview path
 FermataTrillStackingTest.PreviewDecorationLayouts.testPreviewFermataAndStaccatoAreAboveStaff	new test: fermata+staccato preview layouts both above staff (ySs<0)
+# 3f row 33 — SystemStacker.stackAnnotations X-alignment formula
+SystemTierStackingTest.AnnotationStacking.testAnnotationXAlignmentProducesFormulaPositions	new test: left/center/right xAlignment → exact formula-driven xSs (columnX + align*(noteheadWidth-annotWidth))
+# 3f row 34 — SystemStacker.stackMetronomeAttachment exact region placement
+SystemTierStackingTest.TempoStacking.testTempoAttachmentExactYPlacementAtAnchor	new test: exact ySs = anchorCeiling - TEMPO_MARGIN_SS - region extents

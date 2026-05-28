@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 586 / 1576 actionable rows done (37%).**
+**Overall: 589 / 1576 actionable rows done (37%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -21,7 +21,7 @@
 |  | [3c-geometry-primitives-metrics](matrix-layout/3c-geometry-primitives-metrics.md) | 27 | 27 | ✅ complete |
 |  | [3d-lyric-layout](matrix-layout/3d-lyric-layout.md) | 16 | 17 | in progress |
 |  | [3e-ranges-endings-attachments-collision](matrix-layout/3e-ranges-endings-attachments-collision.md) | 19 | 19 | ✅ complete |
-|  | [3f-stacking-subsystem](matrix-layout/3f-stacking-subsystem.md) | 23 | 31 | in progress |
+|  | [3f-stacking-subsystem](matrix-layout/3f-stacking-subsystem.md) | 26 | 31 | in progress |
 | 4 · midi/converter/util/smufl/prefs/font/export/uiconverter | [4a-midi](matrix-util/4a-midi.md) | 26 | 26 | ✅ complete |
 |  | [4c-util](matrix-util/4c-util.md) | 15 | 41 | in progress |
 |  | [4d-smufl](matrix-util/4d-smufl.md) | 0 | 29 | not started |

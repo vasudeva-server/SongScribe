@@ -21,6 +21,7 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static songscribe.dom.StaffElementFactory.createNote;
 
 import java.util.List;
@@ -45,6 +46,8 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.stacking.StackingUtils;
+import songscribe.layout.stacking.SystemStacker;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 
 @SuppressWarnings({ "StaticVariableMayNotBeInitialized", "StaticVariableUsedBeforeInitialization" })
@@ -53,6 +56,8 @@ class SystemTierStackingTest extends UnitTest {
     private static final double LINE_WIDTH_SS = 64.0;
     private static final double NOTE1_X_SS = 10.0;
     private static final double NOTE2_X_SS = 30.0;
+    private static final double NOTE3_X_SS = 50.0;
+    private static final double TOLERANCE = 0.001;
 
     private static Song song;
 
@@ -190,12 +195,46 @@ class SystemTierStackingTest extends UnitTest {
 
             var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
 
-            var layout = result.findAttachmentDecorationLayout(
-                note, TempoChangeAttachment.class);
+            var layout = require(
+                result.findAttachmentDecorationLayout(note, TempoChangeAttachment.class),
+                "tempo attachment should produce DecorationLayout");
 
-            assertThat(layout)
-                .describedAs("tempo attachment should produce DecorationLayout")
-                .isNotNull();
+            // stackMetronomeAttachment passes column.getXSs() as xSs without adjustment
+            assertThat(layout.xSs())
+                .describedAs("tempo X matches column position")
+                .isEqualTo(NOTE1_X_SS);
+        }
+
+        @Test
+        void testTempoAttachmentExactYPlacementAtAnchor() {
+            var note = createNote(0, false);
+            var tempo = new TempoChangeAttachment(note, new Tempo(120, Duration.CROTCHET, "Allegro", true));
+            note.addAttachment(tempo);
+
+            var line = newLine();
+            populate(line, note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            var layout = require(result.getDecorationLayout(tempo), "tempo DecorationLayout");
+
+            // Oracle: for fresh extents (yGet = 0.0) and a note on the middle line (staffPosition=0),
+            // anchorCeilingSs = STAFF_TOP_Y_SS < 0, so regionCeilingSs = anchorCeilingSs.
+            // elementY = min over regions of (anchorSs - marginSs - yOffsetSs - heightSs).
+            var attrFont = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var metrics = tempo.computeContentMetrics(attrFont);
+            var anchorSs = StackingUtils.anchorCeilingSs(note);
+            var expectedYSs = Double.MAX_VALUE;
+
+            for (var region : metrics.regions()) {
+                var regionYSs = anchorSs - SystemStacker.TEMPO_MARGIN_SS
+                    - region.yOffsetSs() - region.heightSs();
+                expectedYSs = Math.min(expectedYSs, regionYSs);
+            }
+
+            assertThat(layout.ySs())
+                .describedAs("tempo Y = anchor - margin - region extents")
+                .isCloseTo(expectedYSs, within(TOLERANCE));
         }
     }
 
@@ -315,6 +354,54 @@ class SystemTierStackingTest extends UnitTest {
 
             assertThat(layout.widthSs()).isGreaterThan(0.0);
             assertThat(layout.heightSs()).isGreaterThan(0.0);
+        }
+
+        @Test
+        void testAnnotationXAlignmentProducesFormulaPositions() {
+            var fonts = DocumentFonts.defaultsFromPrefs();
+            var noteLeft = createNote(0, false);
+            var noteCenter = createNote(0, false);
+            var noteRight = createNote(0, false);
+
+            // 0.5f = center alignment, 1.0f = right alignment (Component.CENTER/RIGHT_ALIGNMENT)
+            var annotLeft = new AnnotationAttachment(noteLeft, new Annotation("Andante molto"));
+            var annotCenter = new AnnotationAttachment(noteCenter, new Annotation("Andante molto", 0.5f));
+            var annotRight = new AnnotationAttachment(noteRight, new Annotation("Andante molto", 1.0f));
+
+            noteLeft.addAttachment(annotLeft);
+            noteCenter.addAttachment(annotCenter);
+            noteRight.addAttachment(annotRight);
+
+            var line = newLine();
+            populate(line, noteLeft, noteCenter, noteRight);
+
+            var result = stackColumns(
+                List.of(
+                    columnFor(noteLeft, NOTE1_X_SS),
+                    columnFor(noteCenter, NOTE2_X_SS),
+                    columnFor(noteRight, NOTE3_X_SS)),
+                line);
+
+            var annotationFont = fonts.getAnnotationFont();
+            var annotWidthSs = annotLeft.computeContentWidthSs(annotationFont);
+            var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(noteLeft);
+
+            var layoutLeft = require(result.getDecorationLayout(annotLeft), "left annotation layout");
+            var layoutCenter = require(result.getDecorationLayout(annotCenter), "center annotation layout");
+            var layoutRight = require(result.getDecorationLayout(annotRight), "right annotation layout");
+
+            // Formula: xSs = columnXSs + xAlignment * (noteheadWidthSs - annotWidthSs)
+            assertThat(layoutLeft.xSs())
+                .describedAs("left-aligned (0.0): x = columnX")
+                .isCloseTo(NOTE1_X_SS, within(TOLERANCE));
+
+            assertThat(layoutCenter.xSs())
+                .describedAs("center-aligned (0.5): x = columnX + 0.5 × (noteheadWidth - annotWidth)")
+                .isCloseTo(NOTE2_X_SS + 0.5 * (noteheadWidthSs - annotWidthSs), within(TOLERANCE));
+
+            assertThat(layoutRight.xSs())
+                .describedAs("right-aligned (1.0): x = columnX + noteheadWidth - annotWidth")
+                .isCloseTo(NOTE3_X_SS + noteheadWidthSs - annotWidthSs, within(TOLERANCE));
         }
 
         @Test
