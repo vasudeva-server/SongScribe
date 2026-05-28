@@ -33,7 +33,9 @@ import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
+import songscribe.dom.Line;
 import songscribe.dom.Song;
 
 /**
@@ -44,16 +46,7 @@ import songscribe.dom.Song;
  */
 public final class MusicXmlReader extends DefaultHandler {
 
-    private static final String SUPPORTED_VERSION = "4.0";
-    private static final String ELEM_SCORE_PARTWISE = "score-partwise";
-    private static final String ELEM_PART_LIST = "part-list";
-    private static final String ELEM_SCORE_PART = "score-part";
-    private static final String ELEM_PART = "part";
-    private static final String ELEM_MEASURE = "measure";
-    private static final String ELEM_ATTRIBUTES = "attributes";
-    private static final String ELEM_KEY = "key";
-    private static final String ELEM_FIFTHS = "fifths";
-    private static final String ATTR_VERSION = "version";
+    // Element names, attribute names, and shared values are in MusicXmlTags.
 
     private static final SAXParserFactory PARSER_FACTORY;
 
@@ -79,6 +72,26 @@ public final class MusicXmlReader extends DefaultHandler {
 
     @Nullable
     private Song song = null;
+
+    // -------------------------------------------------------------------------
+    // Line-reconstruction state
+    // -------------------------------------------------------------------------
+
+    @Nullable
+    private Line currentLine = null;
+
+    // Barline-in-progress fields — valid while where == BARLINE or its children
+    @Nullable
+    private String barlineLocation = null;
+
+    @Nullable
+    private String barStyle = null;
+
+    @Nullable
+    private String repeatDirection = null;
+
+    // true while a REPEAT_RIGHT is held pending the next barline.
+    private boolean pendingRepeatRight = false;
 
     // -------------------------------------------------------------------------
     // Public API
@@ -145,13 +158,13 @@ public final class MusicXmlReader extends DefaultHandler {
 
         switch (where) {
             case NONE -> {
-                if (qName.equals(ELEM_SCORE_PARTWISE)) {
-                    var version = attributes.getValue(ATTR_VERSION);
+                if (qName.equals(MusicXmlTags.SCORE_PARTWISE)) {
+                    var version = attributes.getValue(MusicXmlTags.ATTR_VERSION);
 
-                    if (!SUPPORTED_VERSION.equals(version)) {
+                    if (!MusicXmlTags.VERSION_VALUE.equals(version)) {
                         throw new SAXException(
                             "Unsupported MusicXML version: '" + version +
-                            "'; only " + SUPPORTED_VERSION + " is supported."
+                            "'; only " + MusicXmlTags.VERSION_VALUE + " is supported."
                         );
                     }
 
@@ -161,35 +174,51 @@ public final class MusicXmlReader extends DefaultHandler {
                 }
             }
             case SCORE_PARTWISE -> {
-                if (qName.equals(ELEM_PART_LIST)) {
+                if (qName.equals(MusicXmlTags.PART_LIST)) {
                     where = Where.PART_LIST;
-                } else if (qName.equals(ELEM_PART)) {
+                } else if (qName.equals(MusicXmlTags.PART)) {
                     where = Where.PART;
                 }
             }
             case PART_LIST -> {
-                if (qName.equals(ELEM_SCORE_PART)) {
+                if (qName.equals(MusicXmlTags.SCORE_PART)) {
                     where = Where.SCORE_PART;
                 }
             }
             case PART -> {
-                if (qName.equals(ELEM_MEASURE)) {
+                if (qName.equals(MusicXmlTags.MEASURE)) {
                     where = Where.MEASURE;
                 }
             }
             case MEASURE -> {
-                if (qName.equals(ELEM_ATTRIBUTES)) {
+                if (qName.equals(MusicXmlTags.ATTRIBUTES)) {
                     where = Where.ATTRIBUTES;
+                } else if (qName.equals(MusicXmlTags.PRINT)) {
+                    if (MusicXmlTags.YES.equals(attributes.getValue(MusicXmlTags.ATTR_NEW_SYSTEM))) {
+                        startNewLine();
+                    }
+                } else if (qName.equals(MusicXmlTags.BARLINE)) {
+                    barlineLocation = attributes.getValue(MusicXmlTags.ATTR_LOCATION);
+                    barStyle = null;
+                    repeatDirection = null;
+                    where = Where.BARLINE;
                 }
             }
             case ATTRIBUTES -> {
-                if (qName.equals(ELEM_KEY)) {
+                if (qName.equals(MusicXmlTags.KEY)) {
                     where = Where.KEY;
                 }
             }
             case KEY -> {
-                if (qName.equals(ELEM_FIFTHS)) {
+                if (qName.equals(MusicXmlTags.FIFTHS)) {
                     where = Where.FIFTHS;
+                }
+            }
+            case BARLINE -> {
+                if (qName.equals(MusicXmlTags.BAR_STYLE)) {
+                    where = Where.BAR_STYLE;
+                } else if (qName.equals(MusicXmlTags.REPEAT)) {
+                    repeatDirection = attributes.getValue(MusicXmlTags.ATTR_DIRECTION);
                 }
             }
             default -> {
@@ -201,9 +230,21 @@ public final class MusicXmlReader extends DefaultHandler {
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
         switch (where) {
+            case BAR_STYLE -> {
+                if (qName.equals(MusicXmlTags.BAR_STYLE)) {
+                    barStyle = value.toString();
+                    where = Where.BARLINE;
+                }
+            }
+            case BARLINE -> {
+                if (qName.equals(MusicXmlTags.BARLINE)) {
+                    processBarline();
+                    where = Where.MEASURE;
+                }
+            }
             case FIFTHS -> {
-                if (qName.equals(ELEM_FIFTHS)) {
-                    var fifths = parseIntOrThrow(ELEM_FIFTHS, value.toString());
+                if (qName.equals(MusicXmlTags.FIFTHS)) {
+                    var fifths = parseIntOrThrow(MusicXmlTags.FIFTHS, value.toString());
 
                     if (song == null) {
                         throw new SAXException("Unexpected <fifths> outside <score-partwise>");
@@ -215,37 +256,38 @@ public final class MusicXmlReader extends DefaultHandler {
                 }
             }
             case KEY -> {
-                if (qName.equals(ELEM_KEY)) {
+                if (qName.equals(MusicXmlTags.KEY)) {
                     where = Where.ATTRIBUTES;
                 }
             }
             case ATTRIBUTES -> {
-                if (qName.equals(ELEM_ATTRIBUTES)) {
+                if (qName.equals(MusicXmlTags.ATTRIBUTES)) {
                     where = Where.MEASURE;
                 }
             }
             case MEASURE -> {
-                if (qName.equals(ELEM_MEASURE)) {
+                if (qName.equals(MusicXmlTags.MEASURE)) {
                     where = Where.PART;
                 }
             }
             case PART -> {
-                if (qName.equals(ELEM_PART)) {
+                if (qName.equals(MusicXmlTags.PART)) {
+                    flushPendingRepeatRight();
                     where = Where.SCORE_PARTWISE;
                 }
             }
             case SCORE_PART -> {
-                if (qName.equals(ELEM_SCORE_PART)) {
+                if (qName.equals(MusicXmlTags.SCORE_PART)) {
                     where = Where.PART_LIST;
                 }
             }
             case PART_LIST -> {
-                if (qName.equals(ELEM_PART_LIST)) {
+                if (qName.equals(MusicXmlTags.PART_LIST)) {
                     where = Where.SCORE_PARTWISE;
                 }
             }
             case SCORE_PARTWISE -> {
-                if (qName.equals(ELEM_SCORE_PARTWISE)) {
+                if (qName.equals(MusicXmlTags.SCORE_PARTWISE)) {
                     if (song != null) {
                         song.endSuspendMutationTracking();
                     }
@@ -261,7 +303,7 @@ public final class MusicXmlReader extends DefaultHandler {
 
     @Override
     public void characters(char[] ch, int start, int length) {
-        if (where == Where.FIFTHS) {
+        if (where == Where.FIFTHS || where == Where.BAR_STYLE) {
             value.append(ch, start, length);
         }
     }
@@ -269,6 +311,110 @@ public final class MusicXmlReader extends DefaultHandler {
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Starts a new {@link Line}, adds it to the song, and sets it as current.
+     */
+    private void startNewLine() throws SAXException {
+        if (song == null) {
+            throw new SAXException("Unexpected <print new-system> outside <score-partwise>");
+        }
+
+        // A REPEAT_LEFT_RIGHT pair never straddles a line break: the writer
+        // always opens the forward-left half with a plain measure, never a
+        // new-system one. So a REPEAT_RIGHT still pending at a line boundary is
+        // a standalone barline belonging to the line that is now ending — flush
+        // it there before the new line becomes current.
+        flushPendingRepeatRight();
+
+        currentLine = new Line(song);
+        song.addLine(currentLine);
+    }
+
+    /**
+     * Resolves the completed {@code <barline>} and appends the appropriate
+     * {@link ElementType} to the current line, or nothing for an invisible barline.
+     *
+     * <p>The REPEAT_LEFT_RIGHT straddling pair is handled here: a completed
+     * REPEAT_RIGHT is held as {@link #pendingRepeatRight}. If the very next
+     * barline is a REPEAT_LEFT on the left side, both are merged into a single
+     * REPEAT_LEFT_RIGHT element. If not, the pending REPEAT_RIGHT is flushed
+     * first, then the new barline is processed normally.
+     */
+    private void processBarline() throws SAXException {
+        if (barStyle == null || BarlineStyleMapping.BAR_STYLE_NONE.equals(barStyle)) {
+            // Invisible barline — line-break marker only; insert nothing.
+            // A pending REPEAT_RIGHT is flushed because an invisible barline
+            // can never be the forward half of a REPEAT_LEFT_RIGHT pair.
+            flushPendingRepeatRight();
+            return;
+        }
+
+        var elementType = BarlineStyleMapping.forBarStyle(barStyle, repeatDirection);
+
+        if (elementType == null) {
+            // Unknown combination — silently skip rather than corrupt the model.
+            flushPendingRepeatRight();
+            return;
+        }
+
+        if (pendingRepeatRight) {
+            if (elementType == ElementType.REPEAT_LEFT
+                    && BarlineStyleMapping.LOCATION_LEFT.equals(barlineLocation)) {
+                // This left-forward barline is the second half of a straddling
+                // REPEAT_LEFT_RIGHT pair — merge and emit the combined element.
+                pendingRepeatRight = false;
+                appendToCurrentLine(ElementType.REPEAT_LEFT_RIGHT);
+            } else {
+                // The pending REPEAT_RIGHT was not followed by a REPEAT_LEFT —
+                // flush it as a standalone element, then process the current one.
+                flushPendingRepeatRight();
+                appendOrHold(elementType);
+            }
+        } else {
+            appendOrHold(elementType);
+        }
+    }
+
+    /**
+     * Either holds {@code elementType} as {@link #pendingRepeatRight} (for
+     * deferred REPEAT_LEFT_RIGHT pair detection) or appends it immediately.
+     */
+    private void appendOrHold(ElementType elementType) throws SAXException {
+        if (elementType == ElementType.REPEAT_RIGHT) {
+            // Defer: the next barline may be the forward half of a pair.
+            pendingRepeatRight = true;
+        } else {
+            appendToCurrentLine(elementType);
+        }
+    }
+
+    /**
+     * Flushes a held {@link #pendingRepeatRight} as a standalone element.
+     */
+    private void flushPendingRepeatRight() throws SAXException {
+        if (pendingRepeatRight) {
+            appendToCurrentLine(ElementType.REPEAT_RIGHT);
+            pendingRepeatRight = false;
+        }
+    }
+
+    /**
+     * Appends a structural {@link ElementType} to the current line.
+     *
+     * <p>Structural (non-duration) elements are created via {@link ElementType#newInstance()},
+     * which clones the pre-built default instance — the same pattern used by
+     * {@code StaffElementIO.StaffElementReader} for barline elements.
+     */
+    private void appendToCurrentLine(ElementType elementType) throws SAXException {
+        if (currentLine == null) {
+            throw new SAXException(
+                "Barline element encountered before any line was started"
+            );
+        }
+
+        currentLine.addElement(elementType.newInstance());
+    }
 
     /**
      * Maps a MusicXML {@code <fifths>} value to the corresponding {@link KeyType}.
@@ -317,5 +463,7 @@ public final class MusicXmlReader extends DefaultHandler {
         ATTRIBUTES,
         KEY,
         FIFTHS,
+        BARLINE,
+        BAR_STYLE,
     }
 }

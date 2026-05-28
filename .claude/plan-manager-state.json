@@ -146,6 +146,15 @@
       "type": "sub-plan"
     },
     {
+      "path": "plans/migrations/musicxml/phase-2-structural-model.md",
+      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "parentPhase": 2,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "status": "pending",
+      "type": "sub-plan"
+    },
+    {
       "path": "plans/completed/migrations/rendering-rewrite/milestone-3-ties-glissandos.md",
       "parentPlan": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
       "parentPhase": 3,

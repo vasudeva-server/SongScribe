@@ -5,7 +5,7 @@
 | Phase | Description | Status | Sub-plan |
 |-------|-------------|--------|----------|
 | 1 | [Conversion Scaffold + Round-Trip Harness](#-phase-1-conversion-scaffold--round-trip-harness) | ✅ Complete | [phase-1-scaffold.md](./phase-1-scaffold.md) |
-| 2 | [Structural Model (Line ↔ Measure)](#-phase-2-structural-model-line--measure) | ⏳ Pending | — |
+| 2 | [Structural Model (Line ↔ Measure)](#-phase-2-structural-model-line--measure) | 📋 Sub-plan | [phase-2-structural-model.md](./phase-2-structural-model.md) |
 | 3 | [Notes & Per-Note Attachments](#-phase-3-notes--per-note-attachments) | ⏳ Pending | — |
 | 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ⏳ Pending | — |
 | 5 | [Per-Measure Attributes (Key, Tempo)](#-phase-5-per-measure-attributes-key-tempo) | ⏳ Pending | — |
@@ -91,7 +91,9 @@ Created `MusicXmlWriter`, `MusicXmlReader`, `MusicXmlSchemaValidator`, and round
 
 ---
 
-## ⏳ Phase 2: Structural Model (Line ↔ Measure)
+## 📋 Phase 2: Structural Model (Line ↔ Measure)
+
+**Status**: 📋 Sub-plan — see [phase-2-structural-model.md](./phase-2-structural-model.md)
 
 **Goal**: The reversible line-centric ↔ measure-centric transformation — the
 conceptual core. No note content yet (or minimal placeholder notes).

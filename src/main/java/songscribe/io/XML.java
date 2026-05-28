@@ -23,18 +23,42 @@ import java.io.PrintWriter;
 
 public final class XML {
 
-    private static int indent = 0;
+    // One nesting level is two spaces; shared by the legacy .mssw writers (which
+    // set absolute widths) and any push/pop writer using indent()/dedent().
+    private static final int INDENT_STEP = 2;
+    private static final Indent indent = new Indent(INDENT_STEP);
 
     private XML() {}
 
+    /**
+     * Sets the indentation to an absolute width in spaces.
+     *
+     * @deprecated Use {@link #indent()} / {@link #dedent()} instead. Retained
+     *     only for the legacy {@code .mssw} writers, which set an absolute
+     *     indent per element. Remove once those writers are replaced.
+     */
+    @Deprecated
     public static void setIndent(int newIndent) {
-        indent = newIndent;
+        indent.setIndent(newIndent);
     }
 
-    private static void printIndent(PrintWriter pw) {
-        for (var i = 0; i < indent; i++) {
-            pw.print(' ');
-        }
+    /** Descends one nesting level. */
+    public static void indent() {
+        indent.indent();
+    }
+
+    /** Ascends one nesting level. */
+    public static void dedent() {
+        indent.dedent();
+    }
+
+    /** Resets the indentation to column zero, for the start of a fresh document. */
+    public static void resetIndent() {
+        indent.reset();
+    }
+
+    public static void printIndent(PrintWriter pw) {
+        indent.print(pw);
     }
 
     public static void writeEmptyTag(PrintWriter pw, String tag) {
@@ -79,7 +103,7 @@ public final class XML {
 
     /** Appends {@code key="escaped-value"} pairs to the current output line. */
     private static void writeAttrs(PrintWriter pw, String[] attrs) {
-        for (int i = 0; i < attrs.length - 1; i += 2) {
+        for (var i = 0; i < attrs.length - 1; i += 2) {
             pw.print(' ');
             pw.print(attrs[i]);
             pw.print("=\"");
