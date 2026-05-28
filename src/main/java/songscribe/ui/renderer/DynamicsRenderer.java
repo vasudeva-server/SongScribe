@@ -70,10 +70,9 @@ public final class DynamicsRenderer {
      * @param g2          Graphics context with scale transform
      * @param ctx         Render context
      */
-    private void renderSingleHairpin(
+    static Line2D.Double[] computeHairpinLines(
         LayoutResult.DecorationLayout layout,
         boolean isCrescendo,
-        Graphics2D g2,
         LineInvariants invariants
     ) {
         var x1 = layout.xSs();
@@ -82,6 +81,25 @@ public final class DynamicsRenderer {
         var bottomYSs = topYSs + layout.heightSs();
         var middleYSs = topYSs + layout.heightSs() / 2.0;
 
+        if (isCrescendo) {
+            return new Line2D.Double[]{
+                new Line2D.Double(x1, middleYSs, x2, topYSs),
+                new Line2D.Double(x1, middleYSs, x2, bottomYSs)
+            };
+        } else {
+            return new Line2D.Double[]{
+                new Line2D.Double(x1, topYSs, x2, middleYSs),
+                new Line2D.Double(x1, bottomYSs, x2, middleYSs)
+            };
+        }
+    }
+
+    private void renderSingleHairpin(
+        LayoutResult.DecorationLayout layout,
+        boolean isCrescendo,
+        Graphics2D g2,
+        LineInvariants invariants
+    ) {
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
             g2.setColor(RenderingUtils.ELEMENT_COLOR);
             g2.setStroke(new BasicStroke(
@@ -90,12 +108,8 @@ public final class DynamicsRenderer {
                 BasicStroke.JOIN_ROUND
             ));
 
-            if (isCrescendo) {
-                g2.draw(new Line2D.Double(x1, middleYSs, x2, topYSs));
-                g2.draw(new Line2D.Double(x1, middleYSs, x2, bottomYSs));
-            } else {
-                g2.draw(new Line2D.Double(x1, topYSs, x2, middleYSs));
-                g2.draw(new Line2D.Double(x1, bottomYSs, x2, middleYSs));
+            for (var line : computeHairpinLines(layout, isCrescendo, invariants)) {
+                g2.draw(line);
             }
         }
     }

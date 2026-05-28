@@ -117,6 +117,7 @@ public final class GraphicsState implements AutoCloseable {
     @Override
     public void close() {
         if (has(Property.CLIP)) {
+            // null is a valid clip value meaning "no clipping region", so restore unconditionally
             g2.setClip(clip);
         }
 

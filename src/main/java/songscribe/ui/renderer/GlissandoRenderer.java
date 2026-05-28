@@ -466,28 +466,20 @@ public final class GlissandoRenderer {
         NoteContext src, @Nullable NoteContext tgt,
         double x1Translate, double x2Translate
     ) {
-        var isSlideOut = (tgt == null);
-
         // Tangent direction in layout space
         double dx, dy;
 
-        if (isSlideOut) {
+        if (tgt == null) {
             dx = Math.cos(Math.toRadians(SLIDE_OUT_ANGLE_DEG));
             dy = Math.sin(Math.toRadians(SLIDE_OUT_ANGLE_DEG));
         } else {
-            // tgt is non-null when isSlideOut is false (isSlideOut = (tgt == null))
-            //noinspection ConstantValue
-            if (tgt == null) {
-                throw new IllegalStateException("tgt must be non-null when not a slide-out");
-            }
-
             dx = tgt.cxSs - src.cxSs;
             dy = tgt.cySs - src.cySs;
         }
 
         var len = Math.sqrt(dx * dx + dy * dy);
 
-        if (!isSlideOut && len == 0) {
+        if (tgt != null && len == 0) {
             return null;
         }
 
@@ -513,17 +505,11 @@ public final class GlissandoRenderer {
 
         double endX, endY;
 
-        if (isSlideOut) {
+        if (tgt == null) {
             endX = startX + nx * SLIDE_OUT_LENGTH_SS;
             endY = startY + ny * SLIDE_OUT_LENGTH_SS;
         } else {
             // Target: find entry point on offset area in local space (reverse direction)
-            // tgt is non-null when isSlideOut is false (isSlideOut = (tgt == null))
-            //noinspection ConstantValue
-            if (tgt == null) {
-                throw new IllegalStateException("tgt must be non-null when not a slide-out");
-            }
-
             var localCx2 = NoteGeometry.getNoteheadRightEdgeSs(tgt.note) / 2.0;
             var offset2X = tgt.cxSs - localCx2;
             var offset2Y = tgt.cySs;

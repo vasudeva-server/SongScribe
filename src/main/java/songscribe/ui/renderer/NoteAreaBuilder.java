@@ -275,7 +275,7 @@ class NoteAreaBuilder {
         // For grace notes, accWidth already reflects the small glyph size.
         double xSs = -NoteGeometry.ACCIDENTAL_PADDING_SS - accWidth;
 
-        // Use the tallest accidental bbox height as a reasonable approximation.
+        // Use the sharp accidental height (see ACCIDENTAL_HEIGHT_SS) as a bounding-box approximation.
         // The actual accidental may be shorter, but this gives a safe bounding area.
         var heightSs = ACCIDENTAL_HEIGHT_SS;
         var halfHeightSs = heightSs / 2.0;

@@ -25,9 +25,6 @@ import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 
 import module java.desktop;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
@@ -61,8 +58,6 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         ElementType.SEMIQUAVER,
         ElementType.QUAVER,
     };
-
-    private static final Logger LOG = LoggerFactory.getLogger(BeamGroupRenderer.class);
 
     // Singleton instance
     private static final BeamGroupRenderer INSTANCE = new BeamGroupRenderer();

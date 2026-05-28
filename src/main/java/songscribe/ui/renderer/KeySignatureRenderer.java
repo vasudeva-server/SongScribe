@@ -184,7 +184,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
             accidentalCounts[0] = nextLine.getKeyAccidentalCount();
 
             if (nextLine.getKeyAccidentalCount() > line.getKeyAccidentalCount()) {
-                // Adding more accidentals - just show the new ones
+                // Adding more accidentals - show the new key signature without cancellation naturals
                 keyTypes[1] = null;
             } else {
                 // Removing accidentals - show naturals for the removed ones
