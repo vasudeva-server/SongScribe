@@ -159,6 +159,62 @@ class EndingTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // Row 15 — computeCollisionRegions(BracketRange, double)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class ComputeCollisionRegions {
+
+        private final LineThickness lt = LineThickness.getInstance();
+
+        @Test
+        void testNoClosingStrokeProducesThreeRegions() {
+            // No closing stroke → bar, left-tick, label = 3 regions
+            double xBase = 5.0;
+            double span = 10.0;
+            var bracket = new Ending.BracketRange(xBase, xBase + span, 1, false);
+            var ending = minimalEnding();
+
+            var regions = ending.computeCollisionRegions(bracket, xBase);
+
+            assertThat(regions).hasSize(3);
+            assertThat(regions.get(0).xOffsetSs()).isEqualTo(xBase);
+            assertThat(regions.get(1).xOffsetSs()).isEqualTo(xBase);
+            assertThat(regions.get(2).xOffsetSs()).isEqualTo(xBase + Ending.LABEL_X_INSET_SS);
+        }
+
+        @Test
+        void testClosingStrokeProducesFourRegionsWithRightTick() {
+            // Closing stroke → bar, left-tick, right-tick, label = 4 regions
+            double xBase = 5.0;
+            double span = 10.0;
+            var bracket = new Ending.BracketRange(xBase, xBase + span, 1, true);
+            var ending = minimalEnding();
+
+            var regions = ending.computeCollisionRegions(bracket, xBase);
+
+            assertThat(regions).hasSize(4);
+            double expectedRightTickX = xBase + span - lt.voltaBracketSs();
+            assertThat(regions.get(2).xOffsetSs()).isEqualTo(expectedRightTickX);
+            assertThat(regions.get(3).xOffsetSs()).isEqualTo(xBase + Ending.LABEL_X_INSET_SS);
+        }
+
+        private Ending minimalEnding() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var anchor = new StaffElement(ElementType.CROTCHET);
+            var end = new StaffElement(ElementType.CROTCHET);
+            var ending = new Ending(anchor, end);
+            song.withoutMutationTracking(() -> {
+                line.addElement(anchor);
+                line.addElement(end);
+                line.addRangeElement(ending);
+            });
+            return ending;
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Row 14 — computeBracketRanges(Line, ToDoubleFunction, LineThickness)
     // -------------------------------------------------------------------------
 

@@ -163,6 +163,32 @@ class EndingInvalidationTest extends UnitTest {
             // Non-barline/non-repeat insertions never invalidate the ending
             assertThat(ending.isInvalidatedByInsertion(2, ElementType.CROTCHET, line)).isFalse();
         }
+
+        @Test
+        void testBarlineAtSplitIndexReturnsFalse() {
+            // Split-boundary exemption: insertedIndex == splitIndex (3) → not an invalidating insertion
+            assertThat(ending.isInvalidatedByInsertion(3, ElementType.SINGLE_BARLINE, line)).isFalse();
+        }
+
+        @Test
+        void testBarlineInInteriorWithNoSplitElementReturnsTrue() {
+            // splitEl == null branch: any interior barline/repeat invalidates when there is no split
+            var song2 = new Song();
+            var line2 = song2.getLine(0);
+            var anchor2 = new StaffElement(ElementType.SINGLE_BARLINE);
+            var mid = new StaffElement(ElementType.CROTCHET);
+            var end2 = new StaffElement(ElementType.SINGLE_BARLINE);
+            var ending2 = new Ending(anchor2, end2);
+            song2.withoutMutationTracking(() -> {
+                line2.addElement(anchor2);
+                line2.addElement(mid);
+                line2.addElement(end2);
+                line2.addRangeElement(ending2);
+            });
+
+            // index 1 is interior (anchor=0, end=2); no REPEAT_RIGHT/LEFT_RIGHT in span
+            assertThat(ending2.isInvalidatedByInsertion(1, ElementType.SINGLE_BARLINE, line2)).isTrue();
+        }
     }
 
     // -----------------------------------------------------------------------

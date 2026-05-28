@@ -12,11 +12,11 @@
 | Ending | `getSpanWidthSs()` = `max(NOTE_HEAD_WIDTH_SS, endX-anchorX+NOTE_HEAD_WIDTH_SS)` | unit | — | missing | zero-span + positive span | ✅ |
 | Ending | `findRepeatSplitElement()` scans for REPEAT_RIGHT/REPEAT_LEFT_RIGHT | unit | indirect via invalidation tests | missing | direct: no-split / each split type / invalid indices | ✅ |
 | Ending | `computeBracketRanges()` start-adjust, split detection, two-bracket geometry | unit | — | missing | **high-risk**: no-split, split→two brackets, start-adjust from barline, end-extend, closing-stroke per end type | ✅ |
-| Ending | `computeCollisionRegions()` bar/tick(s)/label decomposition | unit | — | missing | region count (3 vs 4 by `hasClosingStroke`), x-offsets, label inset | ⬜ |
+| Ending | `computeCollisionRegions()` bar/tick(s)/label decomposition | unit | — | missing | region count (3 vs 4 by `hasClosingStroke`), x-offsets, label inset | ✅ |
 | Ending | `labelBoundsSs(int)` cached glyph bounds | none | — | none | static lookup | — |
 | Ending | `isInvalidatedByDeletion()` split + all-content cases | unit | `EndingInvalidationTest.IsInvalidatedByDeletion` (6) | adequate | keep | — |
 | Ending | `isInvalidatedByReplacement()` / `checkReplacement()` all outcomes | unit | `EndingInvalidationTest.IsInvalidatedByReplacement` (15), `CheckReplacement` | adequate | keep | — |
-| Ending | `isInvalidatedByInsertion()` guards + interior/split logic | unit | `EndingInvalidationTest.IsInvalidatedByInsertion` (5) | inadequate | missing split-boundary exemption (`insertedIndex==splitIndex`→false) and `splitEl==null` interior branch | ⬜ |
+| Ending | `isInvalidatedByInsertion()` guards + interior/split logic | unit | `EndingInvalidationTest.IsInvalidatedByInsertion` (5) | inadequate | missing split-boundary exemption (`insertedIndex==splitIndex`→false) and `splitEl==null` interior branch | ✅ |
 | Ending | stacking above staff/hairpins | unit | `StructuralTierStackingTest.EndingStacking` (4) | adequate | keep (directional `isLessThan(0)` correct for the claim) | — |
 | Ending | `setYPositionSs`/`getYPositionSs` applied in stacking | unit | `ManualOffsetStackingTest.EndingOffsets.testEndingYPositionApplied` | adequate | keep | — |
 | Ending | base `isInvalidatedBy` anchor/end deleted | unit | `RangeElementInvalidationTest` (parametrized incl. Ending) | adequate | keep | — |
