@@ -46,11 +46,11 @@ Audited by reading every production class symbol-by-symbol with serena `jet_brai
 | MyFontUtils | `createFont` — by PS name with size; fallback on miss | unit | `MyFontUtilsTest.testCreateFontWithKnownPsNameReturnsCorrectSize` / `testCreateFontWithUnknownPsNameReturnsFallback` | inadequate | Both tests assert `font != null` and `font.getSize()` only; the unknown-name test asserts `getPSName() != bogus` (which is an inverse, not a positive contract). No test exercises font matching accuracy. | ✅ |
 | MyFontUtils | `getFontMetrics` — creates offscreen `BufferedImage`, returns `FontMetrics` | none | none | adequate | pure framework delegation; metrics correctness is tested where it is used | — |
 | MyFontUtils | `getXHeight` — **DEAD CODE** (zero callers found by `jet_brains_find_referencing_symbols`) | unit | none | missing | verify dead, then delete | ✅ |
-| Utils | `arrayIndexOf` — linear search on `Object[]`, returns `-1` on miss | unit | none | missing | add unit tests: found, not found, null element | ⬜ |
-| Utils | `lineCount` — empty → 0; trims then splits on `\n` | unit | none | missing | add unit tests: empty, single line, multi-line, whitespace-only | ⬜ |
-| Utils | `roundToTwoDecimalPlaces` — `Math.round(v * 100) / 100.0` | unit | none | missing | add unit tests: 0.005 boundary, negative value, already-rounded value | ⬜ |
-| Utils | `getPlatformKeyStrokeString` — platform-conditional modifier symbols + key-code branches | unit | none | missing | add unit tests: Mac vs non-Mac modifiers, special key codes (ENTER, BACKSPACE, etc.) | ⬜ |
-| Utils | `getResourcePath` — strips leading `/`, looks up via classloader, falls back to classpath root | unit | none | missing | testable in unit context; add tests: with leading `/`, without, non-existent resource throws | ⬜ |
+| Utils | `arrayIndexOf` — linear search on `Object[]`, returns `-1` on miss | unit | none | missing | add unit tests: found, not found, null element | ✅ |
+| Utils | `lineCount` — empty → 0; trims then splits on `\n` | unit | none | missing | add unit tests: empty, single line, multi-line, whitespace-only | ✅ |
+| Utils | `roundToTwoDecimalPlaces` — `Math.round(v * 100) / 100.0` | unit | none | missing | add unit tests: 0.005 boundary, negative value, already-rounded value | ✅ |
+| Utils | `getPlatformKeyStrokeString` — platform-conditional modifier symbols + key-code branches | unit | none | missing | add unit tests: Mac vs non-Mac modifiers, special key codes (ENTER, BACKSPACE, etc.) | ✅ |
+| Utils | `getResourcePath` — strips leading `/`, looks up via classloader, falls back to classpath root | unit | none | missing | testable in unit context; add tests: with leading `/`, without, non-existent resource throws | ✅ |
 | Utils | `withDesktop` / `openWebPage` / `openEmail` — orchestration around `DesktopUtils`; UI error dialog on failure | none | none | adequate | error-dialog path is framework wiring; no pure logic to assert | — |
 | Utils | `sleep` — wraps `Thread.sleep`, swallows `InterruptedException` | none | none | adequate | trivial wrapper; no logic | — |
 | Utils | `getCurrentYear` — delegates to `Calendar` | none | none | adequate | trivial; would be flaky | — |
