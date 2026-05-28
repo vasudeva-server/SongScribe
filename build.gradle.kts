@@ -1,6 +1,7 @@
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 
 plugins {
     java
@@ -188,6 +189,9 @@ fun Test.applyCommonTestConfig() {
     systemProperty("e2e.failFast", if (project.hasProperty("noFailFast")) "false" else "true")
     if (project.hasProperty("e2eDebug")) systemProperty("e2e.debug", "true")
     System.getenv("EXTRA_JVM_ARGS")?.takeIf { it.isNotBlank() }?.split(" ")?.let { jvmArgs(it) }
+    // Gradle auto-enables JaCoCo on all Test tasks; disable it here so that coverage.sh
+    // is the sole agent injector (double agents cause SIGABRT via conflicting ASM transforms).
+    configure<JacocoTaskExtension> { isEnabled = false }
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
@@ -295,6 +299,10 @@ jacoco {
 }
 
 tasks.named<JacocoReport>("jacocoTestReport") {
+    // coverage.sh injects the agent manually and appends all runs to *.exec files here.
+    executionData.setFrom(fileTree(layout.buildDirectory.dir("jacoco")) {
+        include("*.exec")
+    })
     reports {
         xml.required = true
         html.required = true
