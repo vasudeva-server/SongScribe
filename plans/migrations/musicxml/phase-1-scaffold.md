@@ -3,7 +3,7 @@
 **Type:** Sub-plan  <br>
 **Parent:** [musicxml-conversion.md](./musicxml-conversion.md) → Phase 1  <br>
 **Created:** 2026-05-28  <br>
-**Status:** In Progress  <br>
+**Status:** Complete  <br>
 **BlockedBy:** —
 
 ---
@@ -100,16 +100,16 @@ in Phase 3. Do not hardcode a bare literal.
 
 | Phase | Description | Status | Recommended model |
 |-------|-------------|--------|-------------------|
-| 1 | [Writer Scaffold](#-phase-1-writer-scaffold) | ⏳ Pending | Sonnet 4.6, medium |
-| 2 | [Reader Scaffold](#-phase-2-reader-scaffold) | ⏳ Pending | Sonnet 4.6, medium |
-| 3 | [Schema-Validation Harness](#-phase-3-schema-validation-harness) | ⏳ Pending | Sonnet 4.6, medium |
-| 4 | [Round-Trip Harness & Tests](#-phase-4-round-trip-harness--tests) | ⏳ Pending | Haiku 4.5 or Sonnet 4.6, low |
+| 1 | [Writer Scaffold](#-phase-1-writer-scaffold) | ✅ Complete | Sonnet 4.6, medium |
+| 2 | [Reader Scaffold](#-phase-2-reader-scaffold) | ✅ Complete | Sonnet 4.6, medium |
+| 3 | [Schema-Validation Harness](#-phase-3-schema-validation-harness) | ✅ Complete | Sonnet 4.6, medium |
+| 4 | [Round-Trip Harness & Tests](#-phase-4-round-trip-harness--tests) | ✅ Complete | Haiku 4.5 or Sonnet 4.6, low |
 
 ---
 
-## ⏳ Phase 1: Writer Scaffold
+## ✅ Phase 1: Writer Scaffold
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** —  <br>
 **Recommended model/effort:** Sonnet 4.6, medium effort — mostly mechanical
 emission mirroring `SongIO.writeSong`, but the scaffold structure and the
@@ -137,9 +137,9 @@ attribute-helper gap need judgment.
 
 ---
 
-## ⏳ Phase 2: Reader Scaffold
+## ✅ Phase 2: Reader Scaffold
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** 1  <br>
 **Recommended model/effort:** Sonnet 4.6, medium effort — directly mirrors the
 existing `SongIO.DocumentReader` SAX handler and `SongLoader` parse flow.
@@ -164,9 +164,9 @@ existing `SongIO.DocumentReader` SAX handler and `SongLoader` parse flow.
 
 ---
 
-## ⏳ Phase 3: Schema-Validation Harness
+## ✅ Phase 3: Schema-Validation Harness
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** 1  <br>
 **Recommended model/effort:** Sonnet 4.6, medium effort — JAXP `SchemaFactory`
 wiring plus local entity/include resolution against the bundled schema dir can
@@ -190,9 +190,9 @@ be fiddly; isolated so the round-trip tests stay clean.
 
 ---
 
-## ⏳ Phase 4: Round-Trip Harness & Tests
+## ✅ Phase 4: Round-Trip Harness & Tests
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** 2, 3  <br>
 **Recommended model/effort:** Haiku 4.5 or Sonnet 4.6, low effort — mechanical
 test wiring mirroring `SongIOTest`'s existing write/parse helpers.

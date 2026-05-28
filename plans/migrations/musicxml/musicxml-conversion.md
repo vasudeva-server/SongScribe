@@ -4,7 +4,7 @@
 
 | Phase | Description | Status | Sub-plan |
 |-------|-------------|--------|----------|
-| 1 | [Conversion Scaffold + Round-Trip Harness](#-phase-1-conversion-scaffold--round-trip-harness) | 📋 Sub-plan | [phase-1-scaffold.md](./phase-1-scaffold.md) |
+| 1 | [Conversion Scaffold + Round-Trip Harness](#-phase-1-conversion-scaffold--round-trip-harness) | ✅ Complete | [phase-1-scaffold.md](./phase-1-scaffold.md) |
 | 2 | [Structural Model (Line ↔ Measure)](#-phase-2-structural-model-line--measure) | ⏳ Pending | — |
 | 3 | [Notes & Per-Note Attachments](#-phase-3-notes--per-note-attachments) | ⏳ Pending | — |
 | 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ⏳ Pending | — |
@@ -83,26 +83,11 @@ fields".
 
 ---
 
-## 📋 Phase 1: Conversion Scaffold + Round-Trip Harness
+## ✅ Phase 1: Conversion Scaffold + Round-Trip Harness
 
-**Status**: Sub-plan — [phase-1-scaffold.md](./phase-1-scaffold.md)
+**Status**: ✅ Complete — see [phase-1-scaffold.md](./phase-1-scaffold.md)
 
-**Goal**: Foundation everything hangs off — an empty-but-valid `score-partwise`
-document, the writer/reader entry points, and a test harness that round-trips
-`Song → MusicXML → Song` and asserts model equality. (XML approach is settled —
-hand-rolled, see § Architectural Decisions.)
-
-**Create**:
-- `songscribe/io/musicxml/MusicXmlWriter.java` — emits the `score-partwise`
-  scaffold: root element + version, `<part-list>` with one `<score-part>`, one
-  empty `<part>`, treble `<clef>`, senza-misura `<time>`. Chosen `<divisions>`.
-- `songscribe/io/musicxml/MusicXmlReader.java` — parses the scaffold back; ignores
-  clef/time-print as documented.
-- Round-trip test harness (unit test) — `Song → write → read → Song'`, assert
-  equality of the populated subset. Grows each phase.
-
-**Verify**: Compile. Output validates against the bundled MusicXML 4.0 schema
-(`docs/musicxml-4.0-schema/`). Round-trip of an empty song is lossless.
+Created `MusicXmlWriter`, `MusicXmlReader`, `MusicXmlSchemaValidator`, and round-trip test harness in `songscribe.io.musicxml`. Writer output validates against the MusicXML 4.0 XSD; default-song round-trip is lossless. SAX parser hardened against XXE.
 
 ---
 

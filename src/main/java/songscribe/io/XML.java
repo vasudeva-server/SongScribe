@@ -44,11 +44,48 @@ public final class XML {
         pw.println(" />");
     }
 
+    /**
+     * Write a self-closing tag with attributes. {@code attrs} is a flat alternating
+     * key/value sequence: {@code "key1", "val1", "key2", "val2", ...}.
+     * Attribute values are XML-escaped automatically.
+     */
+    public static void writeEmptyTag(PrintWriter pw, String tag, String... attrs) {
+        printIndent(pw);
+        pw.print('<');
+        pw.print(tag);
+        writeAttrs(pw, attrs);
+        pw.println(" />");
+    }
+
     public static void writeBeginTag(PrintWriter pw, String tag) {
         printIndent(pw);
         pw.print('<');
         pw.print(tag);
         pw.println('>');
+    }
+
+    /**
+     * Write an opening tag with attributes. {@code attrs} is a flat alternating
+     * key/value sequence: {@code "key1", "val1", "key2", "val2", ...}.
+     * Attribute values are XML-escaped automatically.
+     */
+    public static void writeBeginTag(PrintWriter pw, String tag, String... attrs) {
+        printIndent(pw);
+        pw.print('<');
+        pw.print(tag);
+        writeAttrs(pw, attrs);
+        pw.println('>');
+    }
+
+    /** Appends {@code key="escaped-value"} pairs to the current output line. */
+    private static void writeAttrs(PrintWriter pw, String[] attrs) {
+        for (int i = 0; i < attrs.length - 1; i += 2) {
+            pw.print(' ');
+            pw.print(attrs[i]);
+            pw.print("=\"");
+            pw.print(escapeXML(attrs[i + 1]));
+            pw.print('"');
+        }
     }
 
     public static void writeEndTag(PrintWriter pw, String tag) {
