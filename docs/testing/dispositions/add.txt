@@ -1231,3 +1231,8 @@ Utils.getPlatformKeyStrokeString → add (UtilsTest: testGetPlatformKeyStrokeStr
 Utils.getResourcePath → add (UtilsTest: testGetResourcePathWithoutLeadingSlashReturnsExistingPath, testGetResourcePathWithLeadingSlashStripsSlash, testGetResourcePathWithAndWithoutLeadingSlashReturnSamePath, testGetResourcePathNonExistentResourceReturnsFallbackPath)
 UIUtils.makeTooltipWithKeystroke → add (UIUtilsTest$MakeTooltipWithKeystroke: testMakeTooltipWithNullAcceleratorReturnsNameUnchanged, testMakeTooltipWithAcceleratorAppendsFormattedKeystroke)
 UIUtils.getTaggedString → add (UIUtilsTest$GetTaggedString: testGetTaggedStringAtPrefixSetsIconFontAndStripsPrefix, testGetTaggedStringHashPrefixSetsMusicFontAndStripsPrefix, testGetTaggedStringNoPrefixReturnsNullFont, testGetTaggedStringWithBaselineShiftDerivesDistinctFont, testGetTaggedStringNoPrefixWithSlashIsReturnedVerbatim)
+BBox.width → add (BBoxTest: testWidthIsRightMinusLeft)
+BBox.height → add (BBoxTest: testHeightIsBottomMinusTop)
+BBox.translateX → add (BBoxTest: testTranslateXShiftsHorizontallyOnly)
+BBox.union → add (BBoxTest: testUnionReturnsSmallestEnclosingBox)
+BBox.fromSMuFL → add (BBoxTest: testFromSmuflFlipsYConvention)

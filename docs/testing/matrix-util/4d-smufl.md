@@ -4,11 +4,11 @@ Audited by reading each production class body symbol-by-symbol with serena `jet_
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| `BBox` | `width()` = right − left | unit | none found | missing | Add `BBoxTest.testWidthIsRightMinusLeft` | ⬜ |
-| `BBox` | `height()` = bottom − top | unit | none found | missing | Add `BBoxTest.testHeightIsBottomMinusTop` | ⬜ |
-| `BBox` | `translateX(dx)` shifts left and right by dx, leaves top/bottom unchanged | unit | none found | missing | Add `BBoxTest.testTranslateXShiftsHorizontallyOnly` | ⬜ |
-| `BBox` | `union` returns smallest enclosing box (min left/top, max right/bottom) | unit | none found | missing | Add `BBoxTest.testUnionReturnsSmallestEnclosingBox` | ⬜ |
-| `BBox` | `fromSMuFL` flips Y-up to Y-down (top=−neY, bottom=−swY) | unit | none found | missing | Add `BBoxTest.testFromSmuflFlipsYConvention` | ⬜ |
+| `BBox` | `width()` = right − left | unit | none found | missing | Add `BBoxTest.testWidthIsRightMinusLeft` | ✅ |
+| `BBox` | `height()` = bottom − top | unit | none found | missing | Add `BBoxTest.testHeightIsBottomMinusTop` | ✅ |
+| `BBox` | `translateX(dx)` shifts left and right by dx, leaves top/bottom unchanged | unit | none found | missing | Add `BBoxTest.testTranslateXShiftsHorizontallyOnly` | ✅ |
+| `BBox` | `union` returns smallest enclosing box (min left/top, max right/bottom) | unit | none found | missing | Add `BBoxTest.testUnionReturnsSmallestEnclosingBox` | ✅ |
+| `BBox` | `fromSMuFL` flips Y-up to Y-down (top=−neY, bottom=−swY) | unit | none found | missing | Add `BBoxTest.testFromSmuflFlipsYConvention` | ✅ |
 | `BBox` | record component accessors (left, top, right, bottom) | none | — | adequate (none warranted) | — | — |
 | `GlyphAnchors` | `requireStemUpSE` returns anchor when present | unit | none found | missing | Add `GlyphAnchorsTest.testRequireStemUpSEReturnsAnchorWhenPresent` | ⬜ |
 | `GlyphAnchors` | `requireStemUpSE` throws when stemUpSE is null | unit | none found | missing | Add `GlyphAnchorsTest.testRequireStemUpSEThrowsWhenNull` | ⬜ |
