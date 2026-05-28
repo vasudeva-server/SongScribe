@@ -11,7 +11,7 @@ is safe to run in parallel across multiple sessions** — claim files under
 **Chunk count:** when `$ARGUMENTS` is a bare integer (package number), repeat the
 full steps 1–4 up to **3 times** (or until no unclaimed ⬜ rows remain in that
 package), committing after each chunk. In all other cases, execute **exactly one**
-chunk and stop.
+chunk and stop, unless otherwise instructed.
 
 **First, read `docs/testing/REMEDIATION.md`** (the settled procedure, decisions,
 chunking caps, model policy) and skim `docs/testing/remediation-ledger.md`.
