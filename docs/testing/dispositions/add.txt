@@ -1198,3 +1198,9 @@ NoteOnlyActionAppliesToTest.testAppliesToGraceNote	new test: documents intention
 DurationArticulationActionTest.testApplyToNoteReplacesDuplicateArticulation	new test: re-apply when articulation present → removed and re-added, exactly one instance
 # 5b row 36 — FermataAction idempotent apply
 FermataActionTest.testApplyToNoteWithExistingFermataIsIdempotent	new test: applying twice → exactly one FermataAttachment (guard branch)
+# 5b rows 38,39 — FlipStemDirectionAction enablement
+FlipStemDirectionActionEnablementTest.testDisablesWhenCannotFlipStemDirection	new test: ctrl.canFlipStemDirection()==false → action disabled after musicSelectionDidChange
+FlipStemDirectionActionEnablementTest.testEnablesWhenCanFlipStemDirection	new test: ctrl.canFlipStemDirection()==true → action enabled after musicSelectionDidChange
+# 5b rows 48,49 — ToggleTrillAction enablement
+ToggleTrillActionEnablementTest.testDisablesWhenCannotToggleTrill	new test: ctrl.canToggleTrill()==false → action disabled after musicSelectionDidChange
+ToggleTrillActionEnablementTest.testEnablesWhenCanToggleTrill	new test: ctrl.canToggleTrill()==true → action enabled after musicSelectionDidChange

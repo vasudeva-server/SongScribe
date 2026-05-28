@@ -35,9 +35,9 @@
 | FermataAction | `applyToElement(el, false)` — removes existing `FermataAttachment` | unit | `FermataActionTest.testApplyToNoteRemovesFermata` | adequate | — | — |
 | FermataAction | `applyToElement(el, true)` idempotence — calling twice should not add a duplicate (guard branch: `if (findAttachment == null)`) | unit | none | missing | add `testApplyToNoteWithExistingFermataIsIdempotent` | ✅ |
 | FermataAction | `matchesElement` — true when fermata present, false when absent | unit | `FermataActionTest.testMatchesWhenFermataTrue`, `testDoesNotMatchWhenFermataFalse` | adequate | — | — |
-| FlipStemDirectionAction | `musicSelectionDidChange` — disables when `canFlipStemDirection()` returns false (all-rest selection) | unit | none | missing | add `FlipStemDirectionActionEnablementTest` with mocked `ctrl.canFlipStemDirection()` | ⬜ |
-| FlipStemDirectionAction | `musicSelectionDidChange` — enables when `canFlipStemDirection()` returns true (has at least one note in selection) | unit | none | missing | same new test class | ⬜ |
-| FlipStemDirectionAction | `actionPerformed` — posts `FlipStemDirectionCommand` | unit | `ScoreViewControllerCommandHandlerTest.testHandleFlipStemDirectionEmitsOneNotificationWithModificationsPerNote` (tests command handler, not the action dispatch) | wrong-level (handler test, not action dispatch) | add unit test asserting `FlipStemDirectionCommand` is posted | ⬜ |
+| FlipStemDirectionAction | `musicSelectionDidChange` — disables when `canFlipStemDirection()` returns false (all-rest selection) | unit | none | missing | add `FlipStemDirectionActionEnablementTest` with mocked `ctrl.canFlipStemDirection()` | ✅ |
+| FlipStemDirectionAction | `musicSelectionDidChange` — enables when `canFlipStemDirection()` returns true (has at least one note in selection) | unit | none | missing | same new test class | ✅ |
+| FlipStemDirectionAction | `actionPerformed` — posts `FlipStemDirectionCommand` | unit | `ScoreViewControllerCommandHandlerTest.testHandleFlipStemDirectionEmitsOneNotificationWithModificationsPerNote` (tests command handler, not the action dispatch) | wrong-level (handler test, not action dispatch) | add unit test asserting `FlipStemDirectionCommand` is posted | ✅ |
 | TupletAction | `handleChange` — canToggle=false disables all | unit | `TupletActionTest.testNotUniformDisablesEverything` | adequate | — | — |
 | TupletAction | `handleChange` — canToggle=true, no existing: enables add-actions, disables remove | unit | `TupletActionTest.testUniformNoTupletEnablesAddActionsDisablesRemove` | adequate | — | — |
 | TupletAction | `handleChange` — canToggle=true, partial coverage: enables remove, disables all add-actions | unit | `TupletActionTest.testPartialCoverageOfTripletEnablesRemoveDisablesAllAddActions` | adequate | — | — |
@@ -45,9 +45,9 @@
 | TupletAction | `handleChange` — `songDidChange` and `documentDidLoad` trigger same `handleChange` path | unit | none | missing | add tests verifying `songDidChange` / `documentDidLoad` handlers update enabled state | ⬜ |
 | TupletAction | `actionPerformed` — posts `ToggleTupletCommand` with correct tuplet reference | unit | none | missing | add test asserting command posted with correct `getTuplet()` | ⬜ |
 | TupletAction | `getTuplet()` / `Tuplet.getSize()` — enum size values correct | unit | indirectly via `TupletActionTest` which calls `makeTuplet(TupletAction.Tuplet.TRIPLET.getSize())` | adequate (implicit) | — | — |
-| ToggleTrillAction | `musicSelectionDidChange` — disables when `canToggleTrill()` returns false | unit | none | missing | add `ToggleTrillActionEnablementTest` with mocked `ctrl.canToggleTrill()` | ⬜ |
-| ToggleTrillAction | `musicSelectionDidChange` — enables when `canToggleTrill()` returns true | unit | none | missing | same new test class | ⬜ |
-| ToggleTrillAction | `actionPerformed` — posts `ToggleTrillCommand` | unit | `ScoreViewControllerCommandHandlerTest.testHandleToggleTrillEmitsOneNotificationWithSingleRangeElementAddition` (tests command handler, not action dispatch) | wrong-level | add unit test asserting `ToggleTrillCommand` is posted | ⬜ |
+| ToggleTrillAction | `musicSelectionDidChange` — disables when `canToggleTrill()` returns false | unit | none | missing | add `ToggleTrillActionEnablementTest` with mocked `ctrl.canToggleTrill()` | ✅ |
+| ToggleTrillAction | `musicSelectionDidChange` — enables when `canToggleTrill()` returns true | unit | none | missing | same new test class | ✅ |
+| ToggleTrillAction | `actionPerformed` — posts `ToggleTrillCommand` | unit | `ScoreViewControllerCommandHandlerTest.testHandleToggleTrillEmitsOneNotificationWithSingleRangeElementAddition` (tests command handler, not action dispatch) | wrong-level | add unit test asserting `ToggleTrillCommand` is posted | ✅ |
 
 **5B notes (quality concerns):**
 

@@ -7,3 +7,7 @@
 #   relocate  test moved to correct level; note records 'OLD -> NEW' (was 'wrong-level')
 # Final sweep: every @Test in the suite NOT in keep/modify/add/relocate-target is a
 # delete candidate, then judged via /check-tests before removal.
+# 5b row 40 — FlipStemDirectionAction actionPerformed (was only covered by command-handler test)
+FlipStemDirectionActionEnablementTest.ActionPerformed.testActionPerformedPostsFlipStemDirectionCommand	relocate to unit: asserts FlipStemDirectionCommand posted by the action itself
+# 5b row 50 — ToggleTrillAction actionPerformed (was only covered by command-handler test)
+ToggleTrillActionEnablementTest.ActionPerformed.testActionPerformedPostsToggleTrillCommand	relocate to unit: asserts ToggleTrillCommand posted by the action itself
