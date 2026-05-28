@@ -4,13 +4,13 @@ Audited by reading every production class symbol-by-symbol with serena `jet_brai
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| StringUtils | `capitalizeSentence` — uppercases first char, lowercases rest; empty-string guard | unit | none | missing | add unit tests: empty, all-caps, already capitalized | ⬜ |
-| StringUtils | `toKebabCase` — strips non-alphanumeric, collapses hyphens, lowercases; empty-string guard | unit | none | missing | add unit tests: spaces, accented chars, leading/trailing hyphens, empty | ⬜ |
-| StringUtils | `stripDiacritics` — NFD normalize + remove combining marks | unit | none | missing | add unit tests: accented Latin, non-diacritic stays | ⬜ |
-| StringUtils | `stripLinefeeds` — replaces `\n` with space | unit | none | missing | add trivial unit test | ⬜ |
-| StringUtils | `trimEnd` — trims trailing whitespace | unit | none | missing | add unit tests: trailing space/tab/newline, no trailing whitespace | ⬜ |
-| StringUtils | `collapseMultipleSpaces` — collapses internal runs of spaces (lookahead skips line start) | unit | none | missing | add unit tests: multiple spaces, leading spaces preserved, single space unchanged | ⬜ |
-| StringUtils | `removeSyllabifyMarkings` — removes parenthesized groups and hyphens/underscores; **DEAD CODE** (zero callers in production) | unit | none | missing | verify dead, then delete or add caller; if retained, add tests | ⬜ |
+| StringUtils | `capitalizeSentence` — uppercases first char, lowercases rest; empty-string guard | unit | none | missing | add unit tests: empty, all-caps, already capitalized | ✅ |
+| StringUtils | `toKebabCase` — strips non-alphanumeric, collapses hyphens, lowercases; empty-string guard | unit | none | missing | add unit tests: spaces, accented chars, leading/trailing hyphens, empty | ✅ |
+| StringUtils | `stripDiacritics` — NFD normalize + remove combining marks | unit | none | missing | add unit tests: accented Latin, non-diacritic stays | ✅ |
+| StringUtils | `stripLinefeeds` — replaces `\n` with space | unit | none | missing | add trivial unit test | ✅ |
+| StringUtils | `trimEnd` — trims trailing whitespace | unit | none | missing | add unit tests: trailing space/tab/newline, no trailing whitespace | ✅ |
+| StringUtils | `collapseMultipleSpaces` — collapses internal runs of spaces (lookahead skips line start) | unit | none | missing | add unit tests: multiple spaces, leading spaces preserved, single space unchanged | ✅ |
+| StringUtils | `removeSyllabifyMarkings` — removes parenthesized groups and hyphens/underscores; **DEAD CODE** (zero callers in production) | unit | none | missing | verify dead, then delete or add caller; if retained, add tests | ✅ |
 | StringUtils | `wrapText` — word-wrap with min-word-count rebalancing; complex branching | unit | none | missing | add unit tests: single word wider than maxWidth, rebalancing triggered, empty input | ⬜ |
 | FileUtils | `getExtension` — returns extension without dot; no-extension case returns `""`; uses `Paths.get` so path separators matter | unit | none | missing | add unit tests: plain filename, path with dir, no extension, dot-only filename | ⬜ |
 | FileUtils | `getPathWithoutExtension` (String overload) — strips last dot and beyond; no-dot returns whole path | unit | none | missing | add unit tests: with extension, without extension, multiple dots | ⬜ |
