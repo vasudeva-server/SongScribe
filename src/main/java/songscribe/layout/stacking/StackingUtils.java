@@ -51,7 +51,7 @@ public final class StackingUtils {
         TOP_STAFF_LINE_POSITION * StaffExtents.STAFF_POSITION_OFFSET_SS;
 
     // Horizontal collision margin for structural/system elements (collapses between adjacent elements)
-    private static final double STRUCTURAL_HORIZONTAL_MARGIN_SS = 0.75; // 6px
+    static final double STRUCTURAL_HORIZONTAL_MARGIN_SS = 0.75; // 6px
 
     private StackingUtils() {
     }

@@ -213,6 +213,113 @@ class StackingUtilsTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // Row 10 — stackAbove: STRUCTURAL_HORIZONTAL_MARGIN_SS applied to query and reserve
+    // -------------------------------------------------------------------------
+
+    // X position of element for margin tests
+    private static final double MARGIN_ELEM_X_SS = 5.0;
+    private static final double MARGIN_ELEM_WIDTH_SS = 3.0;
+    private static final double MARGIN_ELEM_HEIGHT_SS = 1.0;
+    private static final double MARGIN_ELEM_MARGIN_SS = 0.25;
+
+    // Reservation height planted in the margin zone (must be negative/above STAFF_TOP_Y_SS
+    // to be picked up by yGet min; here: just above STAFF_TOP_Y_SS so it beats the anchor)
+    private static final double OBSTRUCTION_TOP_SS = StackingUtils.STAFF_TOP_Y_SS - 1.0;
+
+    @Test
+    void testStackAboveQueryExpandedByMarginOnLeft() {
+        // Plant an obstruction at a position that is strictly outside the element's
+        // own [xSs, xSs+widthSs] but inside [xSs-MARGIN, xSs+widthSs+MARGIN].
+        // The obstruction is in the LEFT margin zone only:
+        //   obstructionXSs = xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS / 2  (well inside margin)
+        // If the query is NOT widened, yGet sees the default top[] = 0 and the anchor
+        // wins (STAFF_TOP_Y_SS), giving elementYSs = STAFF_TOP_Y_SS - marginSs - heightSs.
+        // If the query IS widened, yGet picks up the obstruction (OBSTRUCTION_TOP_SS <
+        // STAFF_TOP_Y_SS), so ceilingSs = OBSTRUCTION_TOP_SS and:
+        //   expectedElementYSs = OBSTRUCTION_TOP_SS - MARGIN_ELEM_MARGIN_SS - MARGIN_ELEM_HEIGHT_SS
+
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        var obstructionXSs = MARGIN_ELEM_X_SS - StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS / 2;
+        var obstructionWidthSs = 0.1;
+        extents.ySet(true, obstructionXSs, obstructionWidthSs, OBSTRUCTION_TOP_SS);
+
+        var element = mock(LineElement.class);
+        var builder = new LayoutResult.Builder();
+
+        var elementYSs = StackingUtils.stackAbove(
+            extents,
+            element,
+            MARGIN_ELEM_X_SS, MARGIN_ELEM_WIDTH_SS, MARGIN_ELEM_HEIGHT_SS, MARGIN_ELEM_MARGIN_SS,
+            WITHIN_STAFF_POSITION,
+            builder);
+
+        // Oracle: obstruction in margin zone is detected → ceiling = OBSTRUCTION_TOP_SS
+        var expectedElementYSs =
+            OBSTRUCTION_TOP_SS - MARGIN_ELEM_MARGIN_SS - MARGIN_ELEM_HEIGHT_SS;
+        assertThat(elementYSs).isCloseTo(expectedElementYSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testStackAboveQueryExpandedByMarginOnRight() {
+        // Same logic but plant obstruction in the RIGHT margin zone:
+        //   obstructionXSs = xSs + widthSs + STRUCTURAL_HORIZONTAL_MARGIN_SS / 2
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        var obstructionXSs = MARGIN_ELEM_X_SS + MARGIN_ELEM_WIDTH_SS
+            + StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS / 2;
+        var obstructionWidthSs = 0.1;
+        extents.ySet(true, obstructionXSs, obstructionWidthSs, OBSTRUCTION_TOP_SS);
+
+        var element = mock(LineElement.class);
+        var builder = new LayoutResult.Builder();
+
+        var elementYSs = StackingUtils.stackAbove(
+            extents,
+            element,
+            MARGIN_ELEM_X_SS, MARGIN_ELEM_WIDTH_SS, MARGIN_ELEM_HEIGHT_SS, MARGIN_ELEM_MARGIN_SS,
+            WITHIN_STAFF_POSITION,
+            builder);
+
+        var expectedElementYSs =
+            OBSTRUCTION_TOP_SS - MARGIN_ELEM_MARGIN_SS - MARGIN_ELEM_HEIGHT_SS;
+        assertThat(elementYSs).isCloseTo(expectedElementYSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testStackAboveReservesAtElementBoundsNotExpandedBounds() {
+        // The reserve (ySet) uses [xSs, widthSs] — NOT the expanded margin range.
+        // Verify two things:
+        // (a) The center of [xSs, xSs+widthSs] carries the expected reserved top.
+        // (b) A position well to the LEFT of xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS
+        //     (several step-widths away, to avoid shared step-bucket aliasing) still
+        //     shows the default top of 0 — confirming the reservation did not extend there.
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        var element = mock(LineElement.class);
+        var builder = new LayoutResult.Builder();
+
+        StackingUtils.stackAbove(
+            extents,
+            element,
+            MARGIN_ELEM_X_SS, MARGIN_ELEM_WIDTH_SS, MARGIN_ELEM_HEIGHT_SS, MARGIN_ELEM_MARGIN_SS,
+            WITHIN_STAFF_POSITION,
+            builder);
+
+        // Oracle: no pre-existing obstruction → ceiling = STAFF_TOP_Y_SS
+        var expectedReservedTopSs =
+            StackingUtils.STAFF_TOP_Y_SS - MARGIN_ELEM_MARGIN_SS - MARGIN_ELEM_HEIGHT_SS;
+
+        // (a) Center of the reserved range sees the reservation
+        var centerXSs = MARGIN_ELEM_X_SS + MARGIN_ELEM_WIDTH_SS / 2;
+        assertThat(extents.yGet(true, centerXSs, 0.1))
+            .isCloseTo(expectedReservedTopSs, within(TOLERANCE));
+
+        // (b) Well to the left — clearly outside both the reservation and the margin zone.
+        // MARGIN_ELEM_X_SS=5.0, STRUCTURAL_HORIZONTAL_MARGIN_SS=0.75 → expanded left=4.25.
+        // Sampling at xSs=1.0 (step 1 in a 128-step/100-ss grid) is safely out of range.
+        var farLeftXSs = 1.0;
+        assertThat(extents.yGet(true, farLeftXSs, 0.1)).isEqualTo(0.0);
+    }
+
+    // -------------------------------------------------------------------------
     // Row 9 — isRangeCovered: covered, uncovered, and partial/wrong-end cases
     // -------------------------------------------------------------------------
 
