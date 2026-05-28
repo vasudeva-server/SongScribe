@@ -17,8 +17,14 @@
     {
       "path": "plans/e2e-to-unit-test-conversion.md",
       "subdirectory": null,
-      "active": true,
+      "active": false,
       "description": "Convert e2e tests to unit tests where possible, delete redundant e2e tests"
+    },
+    {
+      "path": "plans/migrations/musicxml/musicxml-conversion.md",
+      "subdirectory": "migrations/musicxml",
+      "active": true,
+      "description": "Convert SongScribe document format to MusicXML 4.0 as the canonical lossless on-disk format (#288)"
     }
   ],
   "subPlans": [
