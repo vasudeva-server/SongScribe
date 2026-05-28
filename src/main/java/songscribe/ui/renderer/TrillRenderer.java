@@ -38,7 +38,7 @@ import songscribe.dom.Trill;
 /**
  * Renders trill markings (tr symbol + wavy line for extended trills).
  */
-public final class TrillRenderer implements ElementRenderer<Trill> {
+public final class TrillRenderer {
 
     // ==========================================================================
     // Constants
@@ -77,34 +77,6 @@ public final class TrillRenderer implements ElementRenderer<Trill> {
     // ==========================================================================
     // Rendering
     // ==========================================================================
-
-    @Override
-    public void render(
-        LineInvariants invariants,
-        ElementFrame frame,
-        Trill element,
-        Graphics2D g2
-    ) {
-        var anchorNote = element.getAnchorElement();
-
-        if (anchorNote == null) {
-            return;
-        }
-
-        var color = RenderingUtils.getDecorationColor(anchorNote, invariants, frame);
-        var decorationLayout = invariants.getLayoutResult().getDecorationLayout(element);
-
-        if (decorationLayout == null) {
-            return;
-        }
-
-        var trillTopYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
-        var layoutXSs = decorationLayout.xSs();
-
-        renderTrillAtPosition(
-            g2, anchorNote, element.getEndElement(),
-            layoutXSs, trillTopYSs, color, invariants.getLayoutResult());
-    }
 
     /**
      * Resolves the trill X position and end X position, then delegates to

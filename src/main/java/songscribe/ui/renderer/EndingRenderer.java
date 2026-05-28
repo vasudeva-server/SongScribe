@@ -28,7 +28,6 @@ import module java.desktop;
 import songscribe.dom.Line;
 import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
-import songscribe.dom.LineElement;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -38,7 +37,7 @@ import songscribe.util.GraphicUtils;
  * different iterations of a repeat. First ending is played the first time,
  * second ending is played on the repeat.
  */
-public final class EndingRenderer implements ElementRenderer<LineElement> {
+public final class EndingRenderer {
 
     // Singleton instance
     private static final EndingRenderer INSTANCE = new EndingRenderer();
@@ -60,17 +59,6 @@ public final class EndingRenderer implements ElementRenderer<LineElement> {
     // Rendering
     // ==========================================================================
 
-    @Override
-    public void render(
-        LineInvariants invariants,
-        ElementFrame frame,
-        LineElement element,
-        Graphics2D g2
-    ) {
-        // EndingRenderer is called directly with Line, not through element interface
-        // This method is a placeholder for the interface requirement
-    }
-
     /**
      * Renders all first/second endings for a line.
      *
@@ -86,8 +74,20 @@ public final class EndingRenderer implements ElementRenderer<LineElement> {
         LineInvariants invariants
     ) {
         for (var ending : LineEndingSupport.findEndings(line)) {
+            var decorationLayout = invariants.getLayoutResult().getDecorationLayout(ending);
+
+            // StructuralStacker.stackEndings writes no layout for an ending whose
+            // anchor/end note is missing or whose bracket ranges are empty. This loop
+            // iterates the same model collection (findRangeElements(Ending.class)), so a
+            // null layout here is an expected incomplete ending, not an error — skip it.
+            if (decorationLayout == null) {
+                continue;
+            }
+
+            var yTopSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
+
             for (var bracket : ending.getBracketRanges()) {
-                drawEnding(g2, invariants, ending, bracket);
+                drawEnding(g2, invariants, ending, bracket, yTopSs);
             }
         }
     }
@@ -99,16 +99,17 @@ public final class EndingRenderer implements ElementRenderer<LineElement> {
      * @param invariants     Line invariants
      * @param ending  The ending element
      * @param bracket The bracket range to draw
+     * @param yTopSs  Top Y of the bracket in component staff-space units
      */
     private void drawEnding(
         Graphics2D g2,
         LineInvariants invariants,
         Ending ending,
-        Ending.BracketRange bracket
+        Ending.BracketRange bracket,
+        double yTopSs
     ) {
         var x1 = bracket.x1Ss();
         var x2 = bracket.x2Ss();
-        var yTopSs = getEffectiveEndingYSs(invariants, ending);
         var yBottomSs = yTopSs + ending.getContentHeightSs();
 
         var thicknessSs = invariants.getLineThickness().voltaBracketSs();
@@ -144,23 +145,5 @@ public final class EndingRenderer implements ElementRenderer<LineElement> {
                 (float) (x1 + Ending.LABEL_X_INSET_SS),
                 (float) (yTopSs + glyphHeightSs + Ending.LABEL_Y_OFFSET_SS));
         }
-    }
-
-
-    // ==========================================================================
-    // Layout access
-    // ==========================================================================
-
-    /**
-     * Returns the top Y coordinate for an ending bracket in component staff-space units.
-     */
-    private double getEffectiveEndingYSs(LineInvariants invariants, Ending ending) {
-        var decorationLayout = invariants.getLayoutResult().getDecorationLayout(ending);
-
-        if (decorationLayout != null) {
-            return RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
-        }
-
-        throw new IllegalStateException("No layout found for Ending element");
     }
 }

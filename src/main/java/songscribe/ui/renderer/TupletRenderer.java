@@ -39,7 +39,7 @@ import songscribe.util.MyFontUtils;
  * Bracket styling follows LilyPond conventions: round caps/joins,
  * vertical arms pointing toward notes, and an italic serif number.
  */
-public final class TupletRenderer implements ElementRenderer<Tuplet> {
+public final class TupletRenderer {
 
     // ==========================================================================
     // Constants
@@ -77,17 +77,6 @@ public final class TupletRenderer implements ElementRenderer<Tuplet> {
     // Rendering
     // ==========================================================================
 
-    @Override
-    public void render(
-        LineInvariants invariants,
-        ElementFrame frame,
-        Tuplet element,
-        Graphics2D g2
-    ) {
-        // Tuplets are rendered via renderTupletsFromLine(), not through
-        // the per-element interface
-    }
-
     /**
      * Renders all tuplets for a line by iterating {@link Tuplet} range elements
      * and reading pre-computed positions from {@link LayoutResult.DecorationLayout}.
@@ -103,6 +92,9 @@ public final class TupletRenderer implements ElementRenderer<Tuplet> {
         for (var tuplet : line.findRangeElements(Tuplet.class)) {
             var decorLayout = layoutResult.getDecorationLayout(tuplet);
 
+            // StructuralStacker.stackSpanElement writes no layout for a tuplet whose
+            // anchor/end note (or their column) is missing. This loop iterates the same
+            // model collection, so a null layout here is an expected incomplete tuplet — skip it.
             if (decorLayout == null) {
                 continue;
             }

@@ -29,7 +29,6 @@ import module java.desktop;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.layout.LayoutResult;
-import songscribe.dom.LineElement;
 
 /**
  * Renders crescendo and diminuendo hairpins.
@@ -37,7 +36,7 @@ import songscribe.dom.LineElement;
  * Crescendo: opens from left to right (gets louder)
  * Diminuendo: opens from right to left (gets softer)
  */
-public final class DynamicsRenderer implements ElementRenderer<LineElement> {
+public final class DynamicsRenderer {
 
     // ==========================================================================
     // Constants
@@ -62,22 +61,6 @@ public final class DynamicsRenderer implements ElementRenderer<LineElement> {
     // ==========================================================================
     // Rendering
     // ==========================================================================
-
-    @Override
-    public void render(
-        LineInvariants invariants,
-        ElementFrame frame,
-        LineElement element,
-        Graphics2D g2
-    ) {
-        var layout = invariants.getLayoutResult().getDecorationLayout(element);
-
-        if (layout == null) {
-            return;
-        }
-
-        renderSingleHairpin(layout, element instanceof Crescendo, g2, invariants);
-    }
 
     /**
      * Renders a single hairpin from its decoration layout.
