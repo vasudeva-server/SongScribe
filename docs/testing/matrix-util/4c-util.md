@@ -25,18 +25,18 @@ Audited by reading every production class symbol-by-symbol with serena `jet_brai
 | ExtensionFileFilter | `accept(File, String)` / `accept(String)` (private) — delegates to extension check | unit | none | missing | covered by `accept(File)` tests (file-name branch) | ✅ |
 | ExtensionFileFilter | `getExtension(int)`, `getExtensions()` — simple accessors | none | none | adequate | no test needed | — |
 | ExtensionFileFilter | `getDescription()`, `toString()` — trivial accessors | none | none | adequate | no test needed | — |
-| GraphicUtils | `Unit.create(boolean)` — maps `isMetric` boolean to `CM`/`INCH` | unit | none | missing | add unit test | ⬜ |
-| GraphicUtils | `Unit.fromValue(int)` — maps int to enum; unknown value → `UNDETERMINED` | unit | none | missing | add unit tests: known values, unknown value | ⬜ |
-| GraphicUtils | `Unit.description()` — `"inch"` / `"cm"` / `""` per variant | unit | none | missing | add unit tests for all three variants | ⬜ |
-| GraphicUtils | `Unit.isMetric()` — `true` only for `CM` | unit | none | missing | add unit tests | ⬜ |
-| GraphicUtils | `convertFromPixels` — pixel→inch or pixel→mm with rounding; branches on `isMetric()` | unit | none (used as helper in `PageModelTest` but not tested in isolation) | missing | add unit tests: inch rounding, mm rounding, metric vs non-metric branch | ⬜ |
-| GraphicUtils | `convertToPixels` — inch/mm→pixel; metric divides by `CM_PER_INCH * 10` | unit | none (same as above) | missing | add unit tests for both branches | ⬜ |
+| GraphicUtils | `Unit.create(boolean)` — maps `isMetric` boolean to `CM`/`INCH` | unit | none | missing | add unit test | ✅ |
+| GraphicUtils | `Unit.fromValue(int)` — maps int to enum; unknown value → `UNDETERMINED` | unit | none | missing | add unit tests: known values, unknown value | ✅ |
+| GraphicUtils | `Unit.description()` — `"inch"` / `"cm"` / `""` per variant | unit | none | missing | add unit tests for all three variants | ✅ |
+| GraphicUtils | `Unit.isMetric()` — `true` only for `CM` | unit | none | missing | add unit tests | ✅ |
+| GraphicUtils | `convertFromPixels` — pixel→inch or pixel→mm with rounding; branches on `isMetric()` | unit | none (used as helper in `PageModelTest` but not tested in isolation) | missing | add unit tests: inch rounding, mm rounding, metric vs non-metric branch | ✅ |
+| GraphicUtils | `convertToPixels` — inch/mm→pixel; metric divides by `CM_PER_INCH * 10` | unit | none (same as above) | missing | add unit tests for both branches | ✅ |
 | GraphicUtils | `clampToScreen(Rectangle)` — clamps size then position; multi-monitor path | unit | `GraphicUtilsClampTest` (6 rectangle tests + 2 point/dimension tests) | adequate | multi-monitor path (different screen contains point) not covered — consider adding | — |
 | GraphicUtils | `clampToScreen(Point, Dimension)` — delegates to Rectangle overload | unit | `GraphicUtilsClampTest.ClampPointDimension` | adequate | — | — |
 | GraphicUtils | `setRenderingHints` — pure rendering setup on `Graphics2D`; `isRetina` branch | none | none | adequate | rendering setup; no geometry to assert | — |
 | GraphicUtils | `fillHorizontalLine` / `fillVerticalLine` — pure draw calls | none | none | adequate | no geometry to assert | — |
 | GraphicUtils | `readImageResource` / `readImage` — I/O delegation | none | none | adequate | framework I/O; no logic to assert | — |
-| GraphicUtils | `getTextBlockWidth` — iterates `\n`-split lines, measures each with `TextLayout`, returns max; requires `Graphics2D` | unit | none | missing | testable by passing a mock/stub `Graphics2D` with a fixed `FontRenderContext`; `empty → 0` branch is trivially testable | ⬜ |
+| GraphicUtils | `getTextBlockWidth` — iterates `\n`-split lines, measures each with `TextLayout`, returns max; requires `Graphics2D` | unit | none | missing | testable by passing a mock/stub `Graphics2D` with a fixed `FontRenderContext`; `empty → 0` branch is trivially testable | ✅ |
 | GraphicUtils | `glyphOutline` — delegates to `Font.createGlyphVector().getOutline()` | none | none | adequate | pure delegation | — |
 | ModifierState | `isAltPressed` — platform dispatch (`isMac` → JNA call; `isWindows` → JNA call; else `false`) | none | none | adequate | logic is only a platform guard; JNA calls cannot be unit-tested without the native library | — |
 | MyFontUtils | `parsePSName` — parses PostScript font name; `_`-split, `-`-split, and no-separator branches | unit | none | missing | add unit tests: `Family-Style`, `Family_Style`, style with hyphens, no separator | ⬜ |
