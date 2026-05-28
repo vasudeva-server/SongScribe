@@ -1089,3 +1089,19 @@ LyricLayoutBuilderTest.testDanglingHyphenEndsAtNextEligibleElementLeftEdge
 LyricLayoutBuilderTest.testSourceElementIndexOnExtenderAndDanglingKinds
 # 3d row 36 — LyricLayoutBuilder verse-1 vs verse-≥2 width path parity
 LyricLayoutBuilderTest.testVerse1AndVerse2ProduceEqualWidthForSameText
+# 3e row 10 — Ending.getLabel "1."/"2." (label lives on nested BracketRange.label())
+EndingTest.testLabelForNumberOneReturnsOnePeriod
+EndingTest.testLabelForNumberTwoReturnsTwoPeriod
+# 3e row 12 — Ending.getSpanWidthSs zero-span + positive span
+EndingTest.testZeroSpanReturnsNoteHeadWidth
+EndingTest.testPositiveSpanReturnsDifferencesPlusNoteHeadWidth
+# 3e row 13 — Ending.findRepeatSplitElement no-split / each split type / invalid index
+EndingTest.testNoRepeatInSpanReturnsNull
+EndingTest.testRepeatRightInSpanReturnsElement
+EndingTest.testRepeatLeftRightInSpanReturnsElement
+EndingTest.testRepeatAtEndIndexExcludedFromScanReturnsNull
+# 3e row 14 — Ending.computeBracketRanges no-split / split / start-adjust / closing-stroke
+EndingTest.testNoSplitProducesSingleBracketWithExpectedCoords
+EndingTest.testSplitProducesTwoBracketsWithGapAtRepeat
+EndingTest.testStartAdjustPullsBracketLeftwardToBarline
+EndingTest.testRepeatRightEndGivesClosingStrokeOnSecondBracket

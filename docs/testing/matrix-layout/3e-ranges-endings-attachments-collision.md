@@ -7,11 +7,11 @@
 | AttachmentLayout | `getDataAs` null-safe cast | unit | — | missing | dead code; delete | ✅ |
 | CollisionDetector | `calculateNoteExtent` accumulates min/max Y over notes/attachments/articulations/ranges | unit | — | missing | **dead code (zero refs)** — resolve by deletion | ✅ |
 | CollisionDetector | `COLLISION_PADDING_SS` constant | none | — | none | numeric constant | — |
-| Ending | `getLabel()` "1."/"2." | unit | — | missing | two-case test | ⬜ |
+| Ending | `getLabel()` "1."/"2." | unit | — | missing | two-case test | ✅ |
 | Ending | `getContentHeightSs()` = `VOLTA_TICK_HEIGHT_SS` | none | `StructuralTierStackingTest` pins value indirectly | none | constant return | — |
-| Ending | `getSpanWidthSs()` = `max(NOTE_HEAD_WIDTH_SS, endX-anchorX+NOTE_HEAD_WIDTH_SS)` | unit | — | missing | zero-span + positive span | ⬜ |
-| Ending | `findRepeatSplitElement()` scans for REPEAT_RIGHT/REPEAT_LEFT_RIGHT | unit | indirect via invalidation tests | missing | direct: no-split / each split type / invalid indices | ⬜ |
-| Ending | `computeBracketRanges()` start-adjust, split detection, two-bracket geometry | unit | — | missing | **high-risk**: no-split, split→two brackets, start-adjust from barline, end-extend, closing-stroke per end type | ⬜ |
+| Ending | `getSpanWidthSs()` = `max(NOTE_HEAD_WIDTH_SS, endX-anchorX+NOTE_HEAD_WIDTH_SS)` | unit | — | missing | zero-span + positive span | ✅ |
+| Ending | `findRepeatSplitElement()` scans for REPEAT_RIGHT/REPEAT_LEFT_RIGHT | unit | indirect via invalidation tests | missing | direct: no-split / each split type / invalid indices | ✅ |
+| Ending | `computeBracketRanges()` start-adjust, split detection, two-bracket geometry | unit | — | missing | **high-risk**: no-split, split→two brackets, start-adjust from barline, end-extend, closing-stroke per end type | ✅ |
 | Ending | `computeCollisionRegions()` bar/tick(s)/label decomposition | unit | — | missing | region count (3 vs 4 by `hasClosingStroke`), x-offsets, label inset | ⬜ |
 | Ending | `labelBoundsSs(int)` cached glyph bounds | none | — | none | static lookup | — |
 | Ending | `isInvalidatedByDeletion()` split + all-content cases | unit | `EndingInvalidationTest.IsInvalidatedByDeletion` (6) | adequate | keep | — |
