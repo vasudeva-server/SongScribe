@@ -168,13 +168,13 @@ public class NoteAttachedStacker {
     /**
      * Vertical bounds of a note without stem layout (non-beamed path).
      */
-    private record NoteBounds(double topSs, double botSs) {
+    record NoteBounds(double topSs, double botSs) {
     }
 
     /**
      * Computes note vertical bounds from element type geometry alone (no stem layout).
      */
-    private static NoteBounds computeNoteBounds(StaffElement element) {
+    static NoteBounds computeNoteBounds(StaffElement element) {
         var centerYSs = StaffExtents.spToSs(element.getStaffPosition());
         var type = element.getType();
         var upper = element.isUpper();

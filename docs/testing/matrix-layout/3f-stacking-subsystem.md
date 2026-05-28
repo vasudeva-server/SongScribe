@@ -12,10 +12,10 @@
 | StackingContext | `updateLowestNoteBotSs` max-accumulation | unit | — | missing | ascending then descending → max kept | ✅ |
 | StackingContext | `updateBotContentExtentSs` max-accumulation | unit | — | missing | same pattern | ✅ |
 | StackingContext | `notesWithUpwardTie` default empty / setter replaces | unit | — | missing (low priority) | drives downstream margin branch | ✅ |
-| NoteAttachedStacker | `computeNoteBounds` stem-path vs type-geometry path | unit | indirect (`ArticulationStackingTest`, `<0` only) | inadequate | both paths; exact top/bot Ss | ⬜ |
-| NoteAttachedStacker | `seedNoteBounds` updates `lowestNoteBotSs`/`botContentExtentSs` | unit | — | missing | assert context fields after seeding | ⬜ |
-| NoteAttachedStacker | `seedTieBounds` upward arc → above; membership in `notesWithUpwardTie` only when protruding | unit | — | missing | controlled TieLayout; set membership + extents | ⬜ |
-| NoteAttachedStacker | `seedTieBounds` downward arc → below; `botContentExtentSs` updated | unit | — | missing | stem-up tie | ⬜ |
+| NoteAttachedStacker | `computeNoteBounds` stem-path vs type-geometry path | unit | indirect (`ArticulationStackingTest`, `<0` only) | inadequate | both paths; exact top/bot Ss | ✅ |
+| NoteAttachedStacker | `seedNoteBounds` updates `lowestNoteBotSs`/`botContentExtentSs` | unit | — | missing | assert context fields after seeding | ✅ |
+| NoteAttachedStacker | `seedTieBounds` upward arc → above; membership in `notesWithUpwardTie` only when protruding | unit | — | missing | controlled TieLayout; set membership + extents | ✅ |
+| NoteAttachedStacker | `seedTieBounds` downward arc → below; `botContentExtentSs` updated | unit | — | missing | stem-up tie | ✅ |
 | NoteAttachedStacker | `evaluateBezierYSs` cubic at t=0/0.5/1 | unit | — | missing | hand-computed control points | ⬜ |
 | NoteAttachedStacker | reduced `TIE_DECORATION_MARGIN_SS` for upward-tie notes | unit | — | missing | articulation Y delta == margin delta | ⬜ |
 | NoteAttachedStacker | `stackArticulations` precomposed staccato+accent; single glyphs; collision stacking | unit | `ArticulationStackingTest.PrecomposedGlyph`, `CollisionDetection.testAboveStaffArticulationsReserveSpaceInExtents` | adequate | keep | — |
