@@ -2,10 +2,10 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| AttachmentLayout | `getVerticalOrder()` switch maps Type→VerticalOrder | unit | — | missing | **dead code (zero refs)** — resolve by deletion, not test (see observations) | ⬜ |
+| AttachmentLayout | `getVerticalOrder()` switch maps Type→VerticalOrder | unit | — | missing | **dead code (zero refs)** — resolve by deletion, not test (see observations) | ✅ |
 | AttachmentLayout | `isAboveStaff`/`containsPoint` delegations | none | — | none | trivial delegation | — |
-| AttachmentLayout | `getDataAs` null-safe cast | unit | — | missing | dead code; delete | ⬜ |
-| CollisionDetector | `calculateNoteExtent` accumulates min/max Y over notes/attachments/articulations/ranges | unit | — | missing | **dead code (zero refs)** — resolve by deletion | ⬜ |
+| AttachmentLayout | `getDataAs` null-safe cast | unit | — | missing | dead code; delete | ✅ |
+| CollisionDetector | `calculateNoteExtent` accumulates min/max Y over notes/attachments/articulations/ranges | unit | — | missing | **dead code (zero refs)** — resolve by deletion | ✅ |
 | CollisionDetector | `COLLISION_PADDING_SS` constant | none | — | none | numeric constant | — |
 | Ending | `getLabel()` "1."/"2." | unit | — | missing | two-case test | ⬜ |
 | Ending | `getContentHeightSs()` = `VOLTA_TICK_HEIGHT_SS` | none | `StructuralTierStackingTest` pins value indirectly | none | constant return | — |
@@ -29,10 +29,10 @@
 | LineEndingSupport | `isStartOfAnyEnding` anchor equality | unit | — | missing | start / inside-not-start / empty | ⬜ |
 | LineEndingSupport | `isEndOfAnyEnding` end equality | unit | — | missing | end / inside-not-end / empty | ⬜ |
 | LineEndingSupport | `findEndingReplacementEffect()` first non-None effect | unit | `EndingConfirmsTest` via `SelectionCoordinator.applyActionToSelection` | inadequate | indirect only (reclassified from wrong-level); add direct 0/1/2-affected test | ⬜ |
-| RangeLayout | `getVerticalOrder()` ENDINGS / RANGE_ABOVE / RANGE_BELOW | unit | — | missing | **dead code (zero refs)** — resolve by deletion | ⬜ |
-| RangeLayout | `getElementCount()` = end-start+1 | unit | — | missing | dead code | ⬜ |
-| RangeLayout | `containsElement(int)` range-inclusive | unit | — | missing | dead code | ⬜ |
-| RangeLayout | `containsPoint`/`getDataAs` | none/unit | — | none/missing | dead code | ⬜ |
+| RangeLayout | `getVerticalOrder()` ENDINGS / RANGE_ABOVE / RANGE_BELOW | unit | — | missing | **dead code (zero refs)** — resolve by deletion | ✅ |
+| RangeLayout | `getElementCount()` = end-start+1 | unit | — | missing | dead code | ✅ |
+| RangeLayout | `containsElement(int)` range-inclusive | unit | — | missing | dead code | ✅ |
+| RangeLayout | `containsPoint`/`getDataAs` | none/unit | — | none/missing | dead code | ✅ |
 
 **3E notes (quality concerns):** The most significant in-scope gap is **`Ending.computeBracketRanges()`** — the most complex method here (start-leftward-adjust, no-split single bracket, split→two brackets, per-end-type closing-stroke) — with zero direct coverage; bugs produce wrong visual geometry, not crashes. Its companion `computeCollisionRegions()` (3 vs 4 sub-regions) is also untested. `isInvalidatedByInsertion` has two survivable-mutant spots: the split-boundary exemption and the `splitEl==null` interior branch. **`LineEndingSupport`** is used by 8 production subsystems (MIDI, ABC export, IO, rendering, selection, vertical adjustment) but has no unit tests; its `findEndingAt` boundary comparators (`>=`/`<=`) are exactly where off-by-one hides. Out-of-scope production observation (**verified**): `AttachmentLayout`, `CollisionDetector`, `RangeLayout` have **zero references anywhere in `src/main` or `src/test`** (confirmed by grep + Serena) — dead scaffolding superseded by `LayoutResult.DecorationLayout`; resolve by deletion in remediation rather than writing the "missing" tests. Redundant: `StructuralTierStackingTest.EndingStacking.testEndingRangeElementProducesDecorationLayout` duplicates `testEndingPositionedAboveStaff`.
 

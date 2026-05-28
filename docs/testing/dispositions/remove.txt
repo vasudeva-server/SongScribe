@@ -8,3 +8,10 @@
 # Final sweep: every @Test in the suite NOT in keep/modify/add/relocate-target is a
 # delete candidate, then judged via /check-tests before removal.
 # StringUtils.removeSyllabifyMarkings — dead code already absent from production (no test, no deletion needed)
+AttachmentLayout.getVerticalOrder	3e	dead code (zero refs) — production class deleted, no test written
+AttachmentLayout.getDataAs	3e	dead code (zero refs) — production class deleted, no test written
+CollisionDetector.calculateNoteExtent	3e	dead code (zero refs) — production class deleted, no test written
+RangeLayout.getVerticalOrder	3e	dead code (zero refs) — production class deleted, no test written
+RangeLayout.getElementCount	3e	dead code (zero refs) — production class deleted, no test written
+RangeLayout.containsElement	3e	dead code (zero refs) — production class deleted, no test written
+RangeLayout.containsPoint/getDataAs	3e	dead code (zero refs) — production class deleted, no test written
