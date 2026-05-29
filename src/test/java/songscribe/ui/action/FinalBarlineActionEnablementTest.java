@@ -21,6 +21,7 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -95,5 +96,27 @@ class FinalBarlineActionEnablementTest extends MainFrameMockTest {
         }
 
         assertThat(song.currentTerminalType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+    }
+
+    // Row 54: replaceTerminal is a no-op when the incoming type already matches the current
+    // terminal. Important: a mutant removing the early-return guard would call withModification,
+    // setting modified=true and emitting a spurious SongDidChangeNotification.
+    @Test
+    void testReplaceTerminalIsNoOpWhenTypeMatchesCurrent() {
+        // A fresh Song defaults to FINAL_DOUBLE_BARLINE, so modified starts false.
+        assertThat(song.isModified()).isFalse();
+
+        song.replaceTerminal(ElementType.FINAL_DOUBLE_BARLINE);
+
+        // Terminal is unchanged and no mutation was committed (modified stays false).
+        assertThat(song.currentTerminalType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        assertThat(song.isModified()).isFalse();
+    }
+
+    // Row 55: replaceTerminal rejects non-terminal types with IllegalArgumentException.
+    @Test
+    void testReplaceTerminalThrowsForNonTerminalType() {
+        assertThatThrownBy(() -> song.replaceTerminal(ElementType.CROTCHET))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 }

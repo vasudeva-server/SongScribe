@@ -1282,3 +1282,6 @@ KeySignatureChangeAction.musicSelectionDidChange (null-scoreview guard) → add 
 FirstSecondEndingAction.validate → add (FirstSecondEndingActionTest$Validate: testValidResultEnablesActionAndSetsCachedResult, testInvalidResultDisablesAction)
 FirstSecondEndingAction.getCachedResult → add (FirstSecondEndingActionTest: testGetCachedResultIsNullBeforeValidate)
 FirstSecondEndingAction.actionPerformed → add (FirstSecondEndingActionTest$ActionPerformed: testActionPerformedPostsFirstSecondEndingCommand)
+Song.replaceTerminal (no-op same-type) → add (FinalBarlineActionEnablementTest: testReplaceTerminalIsNoOpWhenTypeMatchesCurrent)
+Song.replaceTerminal (invalid type) → add (FinalBarlineActionEnablementTest: testReplaceTerminalThrowsForNonTerminalType)
+PreviewElementAction.actionPerformed → add (PreviewElementActionTest$ActionPerformed: testActionPerformedTogglesSelectionWhenSourceIsJRootPane, testActionPerformedWithActiveSelectionPostsNoUpdatePreviewElementCommand, testActionPerformedWithNoSelectionPostsUpdatePreviewElementCommand)

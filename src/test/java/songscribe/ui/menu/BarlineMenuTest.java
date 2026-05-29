@@ -55,24 +55,6 @@ class BarlineMenuTest extends MainFrameMockTest {
     }
 
     @Test
-    void testFinalDoubleBarlineItemReplacesTerminalWithoutConfirm() {
-        var menu = new BarlineMenu(mainFrame());
-        song.replaceTerminal(ElementType.REPEAT_RIGHT);
-
-        var finalBarlineItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE));
-
-        try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
-            finalBarlineItem.getAction().actionPerformed(
-                new ActionEvent(finalBarlineItem, ActionEvent.ACTION_PERFORMED, "final-double-barline")
-            );
-
-            optionDialogsMock.verifyNoInteractions();
-        }
-
-        assertThat(song.currentTerminalType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
-    }
-
-    @Test
     void testFinalRightRepeatItemReplacesTerminalWithoutConfirm() {
         var menu = new BarlineMenu(mainFrame());
         var rightRepeatItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT));
