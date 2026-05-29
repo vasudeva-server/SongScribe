@@ -105,4 +105,24 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
             .as("lyric selection cleared after clearSelection")
             .isFalse();
     }
+
+    /**
+     * Row 15: selectLyric on an element whose line is not registered leaves
+     * activeLineIndex at -1 (findLineIndex returns -1 for unknown lines).
+     */
+    @Test
+    void testSelectLyricOnUnregisteredLineYieldsNegativeOneActiveLineIndex() {
+        var coordinator = ReflectionTestHelper.createCoordinatorForLine(detachedLine());
+
+        // Build a fresh, unregistered line with an element.
+        var unregisteredLine = detachedLine();
+        var element = ElementType.CROTCHET.newInstance();
+        unregisteredLine.addElement(element);
+
+        coordinator.selectLyric(element, 1);
+
+        assertThat(coordinator.getActiveLineIndex())
+            .as("activeLineIndex after selectLyric on unregistered line")
+            .isEqualTo(-1);
+    }
 }
