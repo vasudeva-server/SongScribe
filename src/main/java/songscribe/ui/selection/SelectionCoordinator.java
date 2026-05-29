@@ -829,6 +829,15 @@ public final class SelectionCoordinator {
     }
 
     /**
+     * Returns the LineComponent that currently has an active rubber-band drag, or null.
+     * Package-private for tests that verify drag-cleanup semantics.
+     */
+    @Nullable
+    LineComponent getDraggingLine() {
+        return draggingLine;
+    }
+
+    /**
      * Restores only the actions that have the given flag to their previously
      * saved state, then clears all saved states. Actions without the flag
      * are left at their current state.
@@ -1000,7 +1009,8 @@ public final class SelectionCoordinator {
 
     // Grace notes can only be inserted, not applied to existing notes.
     // In select mode the action is unconditionally disabled.
-    private void updateGraceNoteActionEnabled(boolean hasGraceNote) {
+    // Package-private so tests for rows 93/94 can exercise the logic directly.
+    void updateGraceNoteActionEnabled(boolean hasGraceNote) {
         Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(!inSelectMode && hasGraceNote);
     }
 }
