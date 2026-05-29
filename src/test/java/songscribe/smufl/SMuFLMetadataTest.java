@@ -346,4 +346,51 @@ class SMuFLMetadataTest extends UnitTest {
             .as("getAdvanceWidthOrZero must return 0.0 when the glyph has no advance-width entry")
             .isEqualTo(0.0);
     }
+
+    // -------------------------------------------------------------------------
+    // Row 35 — getEngravingDefaults returns SMuFLData with plausible non-zero values
+    //
+    // Expected values are hard-coded from bravura_metadata.json engravingDefaults,
+    // independent of any SMuFLMetadata accessor. This pins the parse and confirms
+    // that the SMuFLData record is populated with the correct Bravura values.
+    //
+    // Bravura JSON values:
+    //   beamThickness              = 0.5
+    //   beamSpacing                = 0.25
+    //   repeatBarlineDotSeparation = 0.16
+    //   legerLineThickness         = 0.16
+    //   legerLineExtension         = 0.4
+    //   tieMidpointThickness       = 0.22
+    // -------------------------------------------------------------------------
+    private static final double EXPECTED_BEAM_THICKNESS               = 0.5;
+    private static final double EXPECTED_BEAM_SPACING                 = 0.25;
+    private static final double EXPECTED_REPEAT_BARLINE_DOT_SEPARATION = 0.16;
+    private static final double EXPECTED_LEGER_LINE_THICKNESS         = 0.16;
+    private static final double EXPECTED_LEGER_LINE_EXTENSION         = 0.4;
+    private static final double EXPECTED_TIE_MIDPOINT_THICKNESS       = 0.22;
+
+    @Test
+    void testEngravingDefaultsAreNonZero() {
+        var defaults = SMuFLMetadata.getEngravingDefaults();
+
+        assertThat(defaults).isNotNull();
+        assertThat(defaults.beamThickness())
+            .as("beamThickness must match Bravura JSON value")
+            .isCloseTo(EXPECTED_BEAM_THICKNESS, within(TOLERANCE));
+        assertThat(defaults.beamSpacing())
+            .as("beamSpacing must match Bravura JSON value")
+            .isCloseTo(EXPECTED_BEAM_SPACING, within(TOLERANCE));
+        assertThat(defaults.repeatBarlineDotSeparation())
+            .as("repeatBarlineDotSeparation must match Bravura JSON value")
+            .isCloseTo(EXPECTED_REPEAT_BARLINE_DOT_SEPARATION, within(TOLERANCE));
+        assertThat(defaults.legerLineThickness())
+            .as("legerLineThickness must match Bravura JSON value")
+            .isCloseTo(EXPECTED_LEGER_LINE_THICKNESS, within(TOLERANCE));
+        assertThat(defaults.legerLineExtension())
+            .as("legerLineExtension must match Bravura JSON value")
+            .isCloseTo(EXPECTED_LEGER_LINE_EXTENSION, within(TOLERANCE));
+        assertThat(defaults.tieMidpointThickness())
+            .as("tieMidpointThickness must match Bravura JSON value")
+            .isCloseTo(EXPECTED_TIE_MIDPOINT_THICKNESS, within(TOLERANCE));
+    }
 }

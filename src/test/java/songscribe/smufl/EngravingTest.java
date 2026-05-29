@@ -21,6 +21,7 @@
 package songscribe.smufl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import org.junit.jupiter.api.Test;
 
@@ -28,10 +29,114 @@ import songscribe.UnitTest;
 
 class EngravingTest extends UnitTest {
 
-    // T6: G_CLEF_WIDTH_SS is derived from the SMuFL advance width, not hardcoded
+    // -----------------------------------------------------------------------
+    // ROW 37 — G_CLEF_WIDTH_SS reflects the concrete Bravura advance width
+    // -----------------------------------------------------------------------
+
+    // Bravura metadata: glyphAdvanceWidths.gClef = 2.684 (staff spaces)
+    private static final double BRAVURA_G_CLEF_ADVANCE_WIDTH_SS = 2.684;
+    // Tolerance of one unit in the last decimal place recorded in the JSON
+    private static final double ADVANCE_WIDTH_TOLERANCE_SS = 0.001;
+
     @Test
-    void testGClefWidthMatchesSmuflAdvanceWidth() {
-        var expected = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.G_CLEF);
-        assertThat(Engraving.G_CLEF_WIDTH_SS).isEqualTo(expected);
+    void testGClefWidthMatchesBravuraAdvanceWidth() {
+        assertThat(Engraving.G_CLEF_WIDTH_SS)
+                .isCloseTo(BRAVURA_G_CLEF_ADVANCE_WIDTH_SS, within(ADVANCE_WIDTH_TOLERANCE_SS));
+    }
+
+    // -----------------------------------------------------------------------
+    // ROW 38 — SS-suffixed engraving constants are positive and within a
+    //           plausible staff-space range
+    // -----------------------------------------------------------------------
+
+    // Lower bound: any engraving default thinner than this is implausibly small
+    private static final double MIN_ENGRAVING_SS = 0.05;
+    // Upper bound: no single engraving default should exceed a full staff space
+    private static final double MAX_ENGRAVING_SS = 1.0;
+
+    @Test
+    void testBeamThicknessIsPlausible() {
+        assertThat(Engraving.BEAM_THICKNESS_SS)
+                .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
+                .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
+    }
+
+    @Test
+    void testBeamSpacingIsPlausible() {
+        assertThat(Engraving.BEAM_SPACING_SS)
+                .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
+                .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
+    }
+
+    @Test
+    void testRepeatBarlineDotSeparationIsPlausible() {
+        assertThat(Engraving.REPEAT_BARLINE_DOT_SEPARATION_SS)
+                .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
+                .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
+    }
+
+    @Test
+    void testLedgerLineThicknessIsPlausible() {
+        assertThat(Engraving.LEDGER_LINE_THICKNESS_SS)
+                .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
+                .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
+    }
+
+    @Test
+    void testLedgerLineExtensionIsPlausible() {
+        assertThat(Engraving.LEDGER_LINE_EXTENSION_SS)
+                .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
+                .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
+    }
+
+    @Test
+    void testTieMidpointThicknessIsPlausible() {
+        assertThat(Engraving.TIE_MIDPOINT_THICKNESS_SS)
+                .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
+                .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
+    }
+
+    // -----------------------------------------------------------------------
+    // ROW 39 — NOTEHEAD_BLACK anchor coordinates reflect Y-down storage
+    //           (fromSMuFL flips Y: stored_y = -smufl_y)
+    //
+    // Bravura raw values (Y-up SMuFL convention):
+    //   noteheadBlack stemUpSE  = [1.18,  0.168]
+    //   noteheadBlack stemDownNW = [0.0,  -0.168]
+    //
+    // After Anchor.fromSMuFL(x, -y) (Y-down storage):
+    //   NOTEHEAD_BLACK_STEM_UP_SE   → x =  1.18,  y = -0.168
+    //   NOTEHEAD_BLACK_STEM_DOWN_NW → x =  0.0,   y =  0.168
+    // -----------------------------------------------------------------------
+
+    // Bravura anchor values for noteheadBlack (staff spaces)
+    private static final double BRAVURA_NOTEHEAD_BLACK_STEM_UP_SE_X   =  1.18;
+    private static final double BRAVURA_NOTEHEAD_BLACK_STEM_UP_SE_Y   = -0.168;
+    private static final double BRAVURA_NOTEHEAD_BLACK_STEM_DOWN_NW_X =  0.0;
+    private static final double BRAVURA_NOTEHEAD_BLACK_STEM_DOWN_NW_Y =  0.168;
+
+    // Tolerance of one unit in the last decimal place recorded in the JSON
+    private static final double ANCHOR_TOLERANCE_SS = 0.001;
+
+    @Test
+    void testNoteheadBlackStemUpSeAnchorMatchesBravura() {
+        var anchor = Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
+        assertThat(anchor.x())
+                .as("stemUpSE x (right edge, positive in Y-down)")
+                .isCloseTo(BRAVURA_NOTEHEAD_BLACK_STEM_UP_SE_X, within(ANCHOR_TOLERANCE_SS));
+        assertThat(anchor.y())
+                .as("stemUpSE y (above notehead center, negative in Y-down)")
+                .isCloseTo(BRAVURA_NOTEHEAD_BLACK_STEM_UP_SE_Y, within(ANCHOR_TOLERANCE_SS));
+    }
+
+    @Test
+    void testNoteheadBlackStemDownNwAnchorMatchesBravura() {
+        var anchor = Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
+        assertThat(anchor.x())
+                .as("stemDownNW x (left edge, zero in Bravura)")
+                .isCloseTo(BRAVURA_NOTEHEAD_BLACK_STEM_DOWN_NW_X, within(ANCHOR_TOLERANCE_SS));
+        assertThat(anchor.y())
+                .as("stemDownNW y (below notehead center, positive in Y-down)")
+                .isCloseTo(BRAVURA_NOTEHEAD_BLACK_STEM_DOWN_NW_Y, within(ANCHOR_TOLERANCE_SS));
     }
 }

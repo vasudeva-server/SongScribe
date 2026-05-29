@@ -31,12 +31,12 @@ Audited by reading each production class body symbol-by-symbol with serena `jet_
 | `SMuFLMetadata` | `getAdvanceWidth` returns width for a known glyph | unit | none found | missing | Add `SMuFLMetadataTest.testGetAdvanceWidthReturnsValueForKnownGlyph` | ✅ |
 | `SMuFLMetadata` | `getAdvanceWidth` returns null for a glyph absent from advance widths | unit | none found | missing | Add `SMuFLMetadataTest.testGetAdvanceWidthReturnsNullForAbsentGlyph` | ✅ |
 | `SMuFLMetadata` | `getAdvanceWidthOrZero` returns 0.0 when glyph absent | unit | none found | missing | Add `SMuFLMetadataTest.testGetAdvanceWidthOrZeroReturnsFallbackForAbsentGlyph` | ✅ |
-| `SMuFLMetadata` | `requireAdvanceWidth` throws when glyph absent | unit | none found | missing | Add `SMuFLMetadataTest.testRequireAdvanceWidthThrowsForAbsentGlyph` | ⬜ |
-| `SMuFLMetadata` | `getEngravingDefaults` returns SMuFLData with plausible non-zero values | unit | none found | missing | Add `SMuFLMetadataTest.testEngravingDefaultsAreNonZero` | ⬜ |
+| `SMuFLMetadata` | `requireAdvanceWidth` throws when glyph absent | unit | `testRequireAdvanceWidthExitsWhenAdvanceWidthAbsent` | already present (covered by existing test) | Keep `SMuFLMetadataTest.testRequireAdvanceWidthExitsWhenAdvanceWidthAbsent` | ✅ |
+| `SMuFLMetadata` | `getEngravingDefaults` returns SMuFLData with plausible non-zero values | unit | none found | missing | Add `SMuFLMetadataTest.testEngravingDefaultsAreNonZero` | ✅ |
 | `SMuFLMetadata` | `Holder.load()` loads from classpath resource without exception (singleton initializes) | unit | implied by every test that touches `SMuFLMetadata.*` | adequate (singleton load tested implicitly) | — | — |
-| `Engraving` | `G_CLEF_WIDTH_SS` is derived from SMuFL advance width, not hardcoded | unit | `EngravingTest.testGClefWidthMatchesSmuflAdvanceWidth` | inadequate (self-referential: expected value is `SMuFLMetadata.requireAdvanceWidth(G_CLEF)` — same call as the production code, so the test cannot detect a wrong value) | Rewrite with a concrete numeric bound or cross-check against a known Bravura value | ⬜ |
-| `Engraving` | `BEAM_THICKNESS_SS` / `BEAM_SPACING_SS` / `LEDGER_LINE_THICKNESS_SS` etc. are positive non-zero plausible values | unit | none found | missing | Add `EngravingTest` assertions with concrete plausible bounds | ⬜ |
-| `Engraving` | `NOTEHEAD_BLACK_STEM_UP_SE` / `NOTEHEAD_BLACK_STEM_DOWN_NW` anchors are loaded correctly | unit | none found | missing | Add `EngravingTest` assertions checking x/y are non-zero with expected sign | ⬜ |
+| `Engraving` | `G_CLEF_WIDTH_SS` is derived from SMuFL advance width, not hardcoded | unit | `EngravingTest.testGClefWidthMatchesBravuraAdvanceWidth` | adequate | Rewrote: asserts `isCloseTo(2.684, 0.001)` from Bravura JSON — no longer self-referential | ✅ |
+| `Engraving` | `BEAM_THICKNESS_SS` / `BEAM_SPACING_SS` / `LEDGER_LINE_THICKNESS_SS` etc. are positive non-zero plausible values | unit | `EngravingTest.testBeamThicknessIsPlausible` + 5 more | adequate | Added 6 tests asserting each SS constant is in [0.05, 1.0] | ✅ |
+| `Engraving` | `NOTEHEAD_BLACK_STEM_UP_SE` / `NOTEHEAD_BLACK_STEM_DOWN_NW` anchors are loaded correctly | unit | `EngravingTest.testNoteheadBlackStemUpSeAnchorMatchesBravura` + `testNoteheadBlackStemDownNwAnchorMatchesBravura` | adequate | Added 2 tests asserting x/y within 0.001 of concrete Bravura values (Y-down after fromSMuFL flip) | ✅ |
 | `Engraving` | private constructor prevents instantiation | none | — | adequate (none warranted) | — | — |
 
 **4D notes (quality concerns):**
