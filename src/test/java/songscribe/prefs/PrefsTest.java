@@ -46,6 +46,10 @@ class PrefsTest extends UnitTest {
     private static final boolean STORED_LOOP_PLAYBACK = true;
     private static final String RECENT_FILE_A = "song_a.mssw";
     private static final String RECENT_FILE_B = "song_b.mssw";
+    private static final String RECENT_FILE_C = "song_c.mssw";
+    private static final String OBSOLETE_KEY_COLORIZE_NOTE = "colorizeNote";
+    private static final String OBSOLETE_KEY_DEFAULT_PROFILE = "defaultProfile";
+    private static final String OBSOLETE_KEY_VALUE = "someValue";
     private static final String DIALOG1_NAME = "Dialog1";
     private static final String DIALOG2_NAME = "Dialog2";
     private static final String TEST_DIALOG_NAME = "TestDialog";
@@ -64,6 +68,10 @@ class PrefsTest extends UnitTest {
         Prefs.reset(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION);
         Prefs.reset(PrefsKey.LOOP_PLAYBACK);
         Prefs.reset(PrefsKey.RECENT_FILES);
+        // Defensive cleanup for raw keys seeded by testRemoveObsoleteKeysStripsObsoleteKeysFromStore.
+        // removeObsoleteKeysForTest() removes them on the happy path, but if the test fails
+        // early the raw keys would leak into subsequent tests.
+        Prefs.removeObsoleteKeysForTest();
     }
 
     @Test
@@ -304,6 +312,76 @@ class PrefsTest extends UnitTest {
         var rawValue = Prefs.getRawStored(PrefsKey.EXPORT_DPI);
         assertThat(rawValue).isInstanceOf(Long.class);
         assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(STORED_EXPORT_DPI);
+    }
+
+    // --- putStringList: wholesale replace ---
+
+    @Test
+    void testPutStringListReplacesListWholesale() {
+        // Unlike putMap (which merges), putStringList replaces the stored list entirely.
+        // Put an initial list, then overwrite it with a different list, and assert that
+        // getStringList returns exactly the second list — none of the first list's
+        // elements survive the second put.
+        var firstList = List.of(RECENT_FILE_A, RECENT_FILE_B);
+        Prefs.putStringList(PrefsKey.RECENT_FILES, firstList);
+
+        var secondList = List.of(RECENT_FILE_C);
+        Prefs.putStringList(PrefsKey.RECENT_FILES, secondList);
+
+        assertThat(Prefs.getStringList(PrefsKey.RECENT_FILES))
+            .containsExactly(RECENT_FILE_C);
+    }
+
+    // --- reset ---
+
+    @Test
+    void testResetRemovesOverrideAndRestoresDefault() {
+        // Store a non-default value, then reset the key and verify that the getter
+        // returns the defaults.json value — confirming the override is removed, not
+        // merely zeroed.
+        Prefs.put(PrefsKey.EXPORT_DPI, STORED_EXPORT_DPI);
+        assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(STORED_EXPORT_DPI);
+
+        Prefs.reset(PrefsKey.EXPORT_DPI);
+        assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(DEFAULT_EXPORT_DPI);
+    }
+
+    // --- resetAll ---
+
+    @Test
+    void testResetAllClearsAllOverrides() {
+        // Seed non-default values on two distinct keys, call resetAll, and verify
+        // that both keys revert to their defaults.json values. resetAll clears the
+        // entire store, so no individual reset is needed afterward — @AfterEach
+        // resets are harmless no-ops when the store is already empty.
+        Prefs.put(PrefsKey.EXPORT_DPI, STORED_EXPORT_DPI);
+        Prefs.put(PrefsKey.TITLE_FONT, STORED_TITLE_FONT);
+
+        Prefs.resetAll();
+
+        assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(DEFAULT_EXPORT_DPI);
+        assertThat(Prefs.getString(PrefsKey.TITLE_FONT)).isEqualTo(DEFAULT_TITLE_FONT);
+    }
+
+    // --- removeObsoleteKeys ---
+
+    @Test
+    void testRemoveObsoleteKeysStripsObsoleteKeysFromStore() {
+        // Seed the two known obsolete keys directly into the raw store
+        // (they have no PrefsKey enum constant, so no public API can write them).
+        // Also seed a live key to confirm it survives the call untouched.
+        Prefs.putRawStored(OBSOLETE_KEY_COLORIZE_NOTE, OBSOLETE_KEY_VALUE);
+        Prefs.putRawStored(OBSOLETE_KEY_DEFAULT_PROFILE, OBSOLETE_KEY_VALUE);
+        Prefs.put(PrefsKey.TITLE_FONT, STORED_TITLE_FONT);
+
+        Prefs.removeObsoleteKeysForTest();
+
+        // Both obsolete keys must be absent from the store after removal.
+        assertThat(Prefs.getRawStored(OBSOLETE_KEY_COLORIZE_NOTE)).isNull();
+        assertThat(Prefs.getRawStored(OBSOLETE_KEY_DEFAULT_PROFILE)).isNull();
+
+        // The non-obsolete live key must be intact — removeObsoleteKeys is surgical.
+        assertThat(Prefs.getRawStored(PrefsKey.TITLE_FONT)).isEqualTo(STORED_TITLE_FONT);
     }
 
 }

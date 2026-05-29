@@ -126,6 +126,34 @@ public final class Prefs {
         return INSTANCE.store.get(key.key());
     }
 
+    /**
+     * Returns the raw value stored for an arbitrary string key, or {@code null} if absent.
+     * Package-private for test use only — needed to verify that obsolete keys (which have
+     * no {@link PrefsKey} constant) were actually removed by {@link #removeObsoleteKeys()}.
+     * Do not call from production code.
+     */
+    static @Nullable Object getRawStored(String rawKey) {
+        return INSTANCE.store.get(rawKey);
+    }
+
+    /**
+     * Seeds an arbitrary string key/value directly into the raw store.
+     * Package-private for test use only — required to inject obsolete keys that have
+     * no {@link PrefsKey} enum constant and therefore cannot be written via any public API.
+     * Do not call from production code.
+     */
+    static void putRawStored(String rawKey, Object value) {
+        INSTANCE.store.put(rawKey, value);
+    }
+
+    /**
+     * Exposes {@link #removeObsoleteKeys()} for direct invocation in tests.
+     * Package-private for test use only — do not call from production code.
+     */
+    static void removeObsoleteKeysForTest() {
+        INSTANCE.removeObsoleteKeys();
+    }
+
     public static List<String> getStringList(PrefsKey key) {
         var value = INSTANCE.store.get(key.key());
 

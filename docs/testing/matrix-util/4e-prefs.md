@@ -18,13 +18,13 @@ Audited from production code outward: enumerated every testable behavior in `Pre
 | `Prefs` | `put(PrefsKey, String)`: stores string, triggers save+notification | unit | none | missing | add test | ✅ |
 | `Prefs` | `put(PrefsKey, int)`: stores as `Long` (documented type coercion) | unit | none | missing | critical: only `getInt` works after this if value is `Long`; needs explicit assertion | ✅ |
 | `Prefs` | `put(PrefsKey, long)` and `put(PrefsKey, boolean)`: store and retrieve | unit | none | missing | add tests | ✅ |
-| `Prefs` | `putStringList`: replaces list wholesale (not merge) | unit | none | missing | add test | ⬜ |
-| `Prefs` | `reset`: removes key from store, restores default | unit | none (only used in `@AfterEach` teardown, not as a behavior under test) | missing | add test verifying value reverts to default after reset | ⬜ |
-| `Prefs` | `resetAll`: clears all overrides | unit | none | missing | add test | ⬜ |
+| `Prefs` | `putStringList`: replaces list wholesale (not merge) | unit | none | missing | add test | ✅ |
+| `Prefs` | `reset`: removes key from store, restores default | unit | none (only used in `@AfterEach` teardown, not as a behavior under test) | missing | add test verifying value reverts to default after reset | ✅ |
+| `Prefs` | `resetAll`: clears all overrides | unit | none | missing | add test | ✅ |
 | `Prefs` | `parseJsonValue`: dispatches by JSON type (boolean / number stored as Long / string / object as Map / array → null) | unit | none | missing | high-risk: number-as-Long contract underpins all numeric getters; array→null gap means array values in defaults.json are silently dropped | ⬜ |
 | `Prefs` | `writeTyped`: parses string to typed value (Boolean / Long / String) based on default type; ignores invalid numeric strings | unit | none | missing | migration correctness depends on this | ⬜ |
 | `Prefs` | `migrate`: reads old `.properties` file, maps keys via `MIGRATION_MAP`, scans `showwhatsnew*` keys for highest version | unit | none | missing | high-risk legacy migration; no test | ⬜ |
-| `Prefs` | `removeObsoleteKeys`: strips keys in `OBSOLETE_KEYS` from store and saves | unit | none | missing | add test | ⬜ |
+| `Prefs` | `removeObsoleteKeys`: strips keys in `OBSOLETE_KEYS` from store and saves | unit | none | missing | add test | ✅ |
 | `Prefs` | `allKeysExistInDefaults`: every `PrefsKey` (except `ALL`) has entry in `defaults.json` | unit | `PrefsTest.testAllKeysExistInDefaults` | adequate | well-written contract guard | — |
 | `PrefsKey` | `key()` returns the camelCase JSON string matching the enum constant | unit | `PrefsTest.testAllKeysExistInDefaults` (indirectly exercises `key()`) | adequate | implicitly covered by the defaults check | — |
 | `PrefsKey` | enum is purely a typed-key holder with no value logic | none | — | — | — | — |
