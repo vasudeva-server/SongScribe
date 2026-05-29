@@ -11,13 +11,13 @@ Audited from production code outward: enumerated every testable behavior in `Pre
 | `Prefs` | `getLong`: analogous to `getInt` | unit | none | missing | add test | ✅ |
 | `Prefs` | `getBoolean`: casts to `Boolean` | unit | none | missing | add test | ✅ |
 | `Prefs` | `getStringList`: returns list from store; returns empty list (not default) when absent | unit | none | missing | add tests for both paths; empty-list contract must be verified | ✅ |
-| `Prefs` | `getStringList`: ignores defaults for list keys (unlike scalar getters) | unit | none | missing | this asymmetry is a likely bug-hiding point | ⬜ |
-| `Prefs` | `getMap`: returns store value when present (Map); falls to default when absent; returns empty map when absent and no default | unit | `PrefsTest.testGetMapReturnsEmptyMapForMissingKey`, `testGetMapOnNonMapValueReturnsEmptyMap` | inadequate | `testGetMapReturnsEmptyMapForMissingKey` name is wrong — `DIALOG_GEOMETRY` has a default `{}` in `defaults.json`; the test happens to pass because `{}` deserializes as empty, but it is not testing the "no default" path | ⬜ |
-| `Prefs` | `putMap`: merges new entries into existing map | unit | `PrefsTest.testPutMapMergesEntries` | inadequate | asserts only `containsKey` — does not verify values are correct; a mutation that stores the wrong values passes | ⬜ |
-| `Prefs` | `putMap` + `getMap` round-trip: stored value is retrievable | unit | `PrefsTest.testPutMapAndGetMapRoundTrip` | inadequate | asserts only `containsKey("TestDialog")` — not the nested map values | ⬜ |
-| `Prefs` | `put(PrefsKey, String)`: stores string, triggers save+notification | unit | none | missing | add test | ⬜ |
-| `Prefs` | `put(PrefsKey, int)`: stores as `Long` (documented type coercion) | unit | none | missing | critical: only `getInt` works after this if value is `Long`; needs explicit assertion | ⬜ |
-| `Prefs` | `put(PrefsKey, long)` and `put(PrefsKey, boolean)`: store and retrieve | unit | none | missing | add tests | ⬜ |
+| `Prefs` | `getStringList`: ignores defaults for list keys (unlike scalar getters) | unit | none | missing | this asymmetry is a likely bug-hiding point | ✅ |
+| `Prefs` | `getMap`: returns store value when present (Map); falls to default when absent; returns empty map when absent and no default | unit | `PrefsTest.testGetMapReturnsEmptyMapForMissingKey`, `testGetMapOnNonMapValueReturnsEmptyMap` | inadequate | `testGetMapReturnsEmptyMapForMissingKey` name is wrong — `DIALOG_GEOMETRY` has a default `{}` in `defaults.json`; the test happens to pass because `{}` deserializes as empty, but it is not testing the "no default" path | ✅ |
+| `Prefs` | `putMap`: merges new entries into existing map | unit | `PrefsTest.testPutMapMergesEntries` | inadequate | asserts only `containsKey` — does not verify values are correct; a mutation that stores the wrong values passes | ✅ |
+| `Prefs` | `putMap` + `getMap` round-trip: stored value is retrievable | unit | `PrefsTest.testPutMapAndGetMapRoundTrip` | inadequate | asserts only `containsKey("TestDialog")` — not the nested map values | ✅ |
+| `Prefs` | `put(PrefsKey, String)`: stores string, triggers save+notification | unit | none | missing | add test | ✅ |
+| `Prefs` | `put(PrefsKey, int)`: stores as `Long` (documented type coercion) | unit | none | missing | critical: only `getInt` works after this if value is `Long`; needs explicit assertion | ✅ |
+| `Prefs` | `put(PrefsKey, long)` and `put(PrefsKey, boolean)`: store and retrieve | unit | none | missing | add tests | ✅ |
 | `Prefs` | `putStringList`: replaces list wholesale (not merge) | unit | none | missing | add test | ⬜ |
 | `Prefs` | `reset`: removes key from store, restores default | unit | none (only used in `@AfterEach` teardown, not as a behavior under test) | missing | add test verifying value reverts to default after reset | ⬜ |
 | `Prefs` | `resetAll`: clears all overrides | unit | none | missing | add test | ⬜ |

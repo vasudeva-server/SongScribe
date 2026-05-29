@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.gson.JsonParser;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -45,6 +46,15 @@ class PrefsTest extends UnitTest {
     private static final boolean STORED_LOOP_PLAYBACK = true;
     private static final String RECENT_FILE_A = "song_a.mssw";
     private static final String RECENT_FILE_B = "song_b.mssw";
+    private static final String DIALOG1_NAME = "Dialog1";
+    private static final String DIALOG2_NAME = "Dialog2";
+    private static final String TEST_DIALOG_NAME = "TestDialog";
+    private static final int DIALOG1_X = 10;
+    private static final int DIALOG1_Y = 20;
+    private static final int DIALOG2_X = 30;
+    private static final int DIALOG2_Y = 40;
+    private static final int TEST_DIALOG_X = 100;
+    private static final int TEST_DIALOG_Y = 200;
 
     @AfterEach
     void tearDown() {
@@ -76,35 +86,98 @@ class PrefsTest extends UnitTest {
         }
     }
 
+    // --- getMap ---
+
     @Test
-    void testGetMapReturnsEmptyMapForMissingKey() {
-        var map = Prefs.getMap(PrefsKey.DIALOG_GEOMETRY);
-        assertThat(map).isEmpty();
+    void testGetMapStoreValueTakesPrecedenceOverDefault() {
+        // Path (a): store value present → returns that map with correct content.
+        // DIALOG_GEOMETRY has default {} in defaults.json; the stored value must win.
+        var entries = Map.<String, Object>of(TEST_DIALOG_NAME, Map.of("x", TEST_DIALOG_X, "y", TEST_DIALOG_Y));
+        Prefs.putMap(PrefsKey.DIALOG_GEOMETRY, entries);
+
+        var result = Prefs.getMap(PrefsKey.DIALOG_GEOMETRY);
+        assertThat(result).containsKey(TEST_DIALOG_NAME);
+
+        @SuppressWarnings("unchecked")
+        var nested = (Map<String, Object>) result.get(TEST_DIALOG_NAME);
+        assertMapCoordinates(nested, TEST_DIALOG_X, TEST_DIALOG_Y);
+    }
+
+    @Test
+    void testGetMapReturnsDefaultMapWhenStoreAbsent() {
+        // Path (b): key absent from store but has a default in defaults.json.
+        // DIALOG_GEOMETRY defaults to {} (empty map). Assert the default is returned
+        // exactly — an empty map — confirming the fallback path is exercised.
+        var result = Prefs.getMap(PrefsKey.DIALOG_GEOMETRY);
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void testGetMapReturnsEmptyMapWhenAbsentAndNoMapDefault() {
+        // Path (c): key absent from store AND has no map-typed default.
+        // TITLE_FONT has a String default, so getMap must degrade to an empty map.
+        var result = Prefs.getMap(PrefsKey.TITLE_FONT);
+        assertThat(result).isEmpty();
     }
 
     @Test
     void testPutMapAndGetMapRoundTrip() {
-        var entries = Map.of("TestDialog", Map.of("x", 100, "y", 200));
+        var entries = Map.<String, Object>of(TEST_DIALOG_NAME, Map.of("x", TEST_DIALOG_X, "y", TEST_DIALOG_Y));
         Prefs.putMap(PrefsKey.DIALOG_GEOMETRY, entries);
 
         var result = Prefs.getMap(PrefsKey.DIALOG_GEOMETRY);
-        assertThat(result).containsKey("TestDialog");
+        assertThat(result).containsKey(TEST_DIALOG_NAME);
+
+        @SuppressWarnings("unchecked")
+        var nested = (Map<String, Object>) result.get(TEST_DIALOG_NAME);
+        assertMapCoordinates(nested, TEST_DIALOG_X, TEST_DIALOG_Y);
     }
 
     @Test
     void testPutMapMergesEntries() {
-        Prefs.putMap(PrefsKey.DIALOG_GEOMETRY, Map.of("Dialog1", Map.of("x", 10, "y", 20)));
-        Prefs.putMap(PrefsKey.DIALOG_GEOMETRY, Map.of("Dialog2", Map.of("x", 30, "y", 40)));
+        Prefs.putMap(PrefsKey.DIALOG_GEOMETRY, Map.of(DIALOG1_NAME, Map.of("x", DIALOG1_X, "y", DIALOG1_Y)));
+        Prefs.putMap(PrefsKey.DIALOG_GEOMETRY, Map.of(DIALOG2_NAME, Map.of("x", DIALOG2_X, "y", DIALOG2_Y)));
 
         var result = Prefs.getMap(PrefsKey.DIALOG_GEOMETRY);
-        assertThat(result).containsKey("Dialog1");
-        assertThat(result).containsKey("Dialog2");
+
+        // Both entries must survive the second putMap — it merges, not replaces.
+        assertThat(result).containsKey(DIALOG1_NAME);
+        assertThat(result).containsKey(DIALOG2_NAME);
+
+        @SuppressWarnings("unchecked")
+        var dialog1 = (Map<String, Object>) result.get(DIALOG1_NAME);
+
+        @SuppressWarnings("unchecked")
+        var dialog2 = (Map<String, Object>) result.get(DIALOG2_NAME);
+
+        assertMapCoordinates(dialog1, DIALOG1_X, DIALOG1_Y);
+        assertMapCoordinates(dialog2, DIALOG2_X, DIALOG2_Y);
     }
 
-    @Test
-    void testGetMapOnNonMapValueReturnsEmptyMap() {
-        var map = Prefs.getMap(PrefsKey.TITLE_FONT);
-        assertThat(map).isEmpty();
+    /**
+     * Asserts that {@code map} contains numeric "x" and "y" values equal to the given coordinates.
+     * Reads values via {@link Number} because Gson deserializes JSON integers as {@code Double}
+     * after a round-trip through the prefs file.
+     */
+    @SuppressWarnings("NullAway")
+    private void assertMapCoordinates(@Nullable Map<String, Object> map, int expectedX, int expectedY) {
+        assertThat(map).isNotNull();
+
+        if (map == null) {
+            return; // unreachable — satisfies NullAway after the assertThat above
+        }
+
+        var xRaw = map.get("x");
+        var yRaw = map.get("y");
+        assertThat(xRaw).isNotNull();
+        assertThat(yRaw).isNotNull();
+
+        if (xRaw == null || yRaw == null) {
+            return; // unreachable — satisfies NullAway
+        }
+
+        assertThat(((Number) xRaw).intValue()).isEqualTo(expectedX);
+        assertThat(((Number) yRaw).intValue()).isEqualTo(expectedY);
     }
 
     // --- getOrDefault ---
@@ -194,4 +267,43 @@ class PrefsTest extends UnitTest {
         // distinguishes collection getters from scalar getters.
         assertThat(Prefs.getStringList(PrefsKey.TITLE_FONT)).isEmpty();
     }
+
+    @Test
+    void testGetStringListWithListDefaultReturnsEmptyListWhenStoreAbsent() {
+        // RECENT_FILES has a list-typed default (empty array []) in defaults.json.
+        // getStringList falls back to the defaults layer when the store has no value,
+        // so with no store entry the empty-list default is returned — not a stored list.
+        // This documents that getStringList consults defaults (unlike the row's claim
+        // that it ignores them), but since the recentFiles default is [] the observable
+        // result is still an empty list, giving no false confidence that items came from
+        // the store.
+        assertThat(Prefs.getStringList(PrefsKey.RECENT_FILES)).isEmpty();
+    }
+
+    // --- put(PrefsKey, String) ---
+
+    @Test
+    void testPutStringStoresAndRetrieves() {
+        // Verifies that put(key, String) stores a value retrievable by getString.
+        // (save() also posts PrefsDidChangeNotification synchronously, but verifying
+        // the bus side-effect would require subscribing a listener — the stored-value
+        // assertion is sufficient to confirm the write path executed.)
+        Prefs.put(PrefsKey.TITLE_FONT, STORED_TITLE_FONT);
+        assertThat(Prefs.getString(PrefsKey.TITLE_FONT)).isEqualTo(STORED_TITLE_FONT);
+    }
+
+    // --- put(PrefsKey, int) ---
+
+    @Test
+    void testPutIntStoresAsLong() {
+        // put(key, int) must coerce the value to Long for JSON round-trip consistency.
+        // Assert both the Long type in the raw store and that getInt reads it back
+        // correctly via Number.intValue().
+        Prefs.put(PrefsKey.EXPORT_DPI, STORED_EXPORT_DPI);
+
+        var rawValue = Prefs.getRawStored(PrefsKey.EXPORT_DPI);
+        assertThat(rawValue).isInstanceOf(Long.class);
+        assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(STORED_EXPORT_DPI);
+    }
+
 }

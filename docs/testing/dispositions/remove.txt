@@ -19,3 +19,4 @@ StructuralTierStackingTest.testCrescendoRangeElementProducesDecorationLayout	3f	
 StructuralTierStackingTest.testDiminuendoRangeElementProducesDecorationLayout	3f	redundant — merged into exact-value testDiminuendoYEqualsAnchorCeilingMinusMarginMinusHeight
 MyFontUtils.getXHeight → remove (dead code; confirmed zero callers, already deleted in 427405d1)
 BarlineMenuTest.testFinalDoubleBarlineItemReplacesTerminalWithoutConfirm → remove (redundant; no-confirm covered by FinalBarlineActionEnablementTest.testActionReplacesTerminalDirectlyWithoutConfirm)
+Prefs.testGetMapOnNonMapValueReturnsEmptyMap → remove (superseded by testGetMapReturnsEmptyMapWhenAbsentAndNoMapDefault)

@@ -120,6 +120,12 @@ public final class Prefs {
         return (Boolean) getOrDefault(key);
     }
 
+    /** Returns the raw value stored in the store for the given key, or {@code null} if absent.
+     *  Package-private for test use only — do not call from production code. */
+    static @Nullable Object getRawStored(PrefsKey key) {
+        return INSTANCE.store.get(key.key());
+    }
+
     public static List<String> getStringList(PrefsKey key) {
         var value = INSTANCE.store.get(key.key());
 
