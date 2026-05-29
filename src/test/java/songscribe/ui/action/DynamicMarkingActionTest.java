@@ -93,6 +93,18 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
             FORTE_ACTION.applyToElement(note, true);
             assertThat(note.findAttachment(DynamicAttachment.class)).isNull();
         }
+
+        // Row 17: selected=false with an existing same-type dynamic — the deselect path removes it.
+        // This is a third logical branch: existing!=null && isSameType && selected==false.
+        // The code removes the existing attachment and then skips the re-add (because selected=false),
+        // so the note ends up with no dynamic.
+        @Test
+        void testRemovesDynamicWhenNotSelectedAndSameTypeExists() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.addAttachment(new DynamicAttachment(note, DynamicType.FORTE));
+            FORTE_ACTION.applyToElement(note, false);
+            assertThat(note.findAttachment(DynamicAttachment.class)).isNull();
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -201,6 +213,53 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
 
             line.addRangeElement(new Diminuendo(line.getElement(0), line.getElement(3)));
             var selection = new ElementSelection(line, 1, 1);
+
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
+            when(mockEnv().coordinator().isApplicableToSelection(any())).thenReturn(true);
+            when(mockEnv().coordinator().getSelection()).thenReturn(selection);
+
+            var action = DynamicMarkingAction.createForteAction(mainFrame());
+            action.updateEnabledState();
+            assertThat(action.isEnabled()).isFalse();
+        }
+
+        // Row 26: isInHairpinRange uses inclusive bounds — anchor (index 0) and end (index 3)
+        // both fall inside the range [0..3] and must disable the action.
+
+        @Test
+        void testDisabledWhenNoteIsAtHairpinAnchorBoundary() {
+            setupRootPaneStub();
+            var line = detachedLine();
+
+            for (var i = 0; i < 4; i++) {
+                line.addElement(StaffElementFactory.crotchet());
+            }
+
+            line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(3)));
+            var selection = new ElementSelection(line, 0, 0);
+
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
+            when(mockEnv().coordinator().isApplicableToSelection(any())).thenReturn(true);
+            when(mockEnv().coordinator().getSelection()).thenReturn(selection);
+
+            var action = DynamicMarkingAction.createForteAction(mainFrame());
+            action.updateEnabledState();
+            assertThat(action.isEnabled()).isFalse();
+        }
+
+        @Test
+        void testDisabledWhenNoteIsAtHairpinEndBoundary() {
+            setupRootPaneStub();
+            var line = detachedLine();
+
+            for (var i = 0; i < 4; i++) {
+                line.addElement(StaffElementFactory.crotchet());
+            }
+
+            line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(3)));
+            var selection = new ElementSelection(line, 3, 3);
 
             when(mockEnv().score().getSelectionSize()).thenReturn(1);
             when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
