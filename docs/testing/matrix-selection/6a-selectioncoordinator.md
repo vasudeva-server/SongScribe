@@ -24,14 +24,14 @@
 | SelectionCoordinator | isLineSelected: returns false when lineIndex != activeLineIndex | unit | none | missing | add test similar to isElementSelected cross-line case | ✅ |
 | SelectionCoordinator | isLineSelected: delegates to state.isLineSelected for active line | unit | none unit (e2e SelectionTest.testClickInStaffHeaderSelectsLine covers end-to-end) | wrong-level | add unit test: mock/set up a state that returns isLineSelected=true, verify coordinator.isLineSelected returns true for that index | ✅ |
 | SelectionCoordinator | isGlissandoSelected: returns false for wrong line, delegates to state for correct line | unit | none | missing | add unit test for cross-line guard and delegation | ✅ |
-| SelectionCoordinator | isLyricSelected: returns false when activeLineIndex != lineIndex or no lyric selection | unit | none | missing | add unit tests for both early-return paths | ⬜ |
-| SelectionCoordinator | isLyricSelected: returns true only when element reference matches and verse matches | unit | none | missing | add test: selectLyric(e, 2), assert isLyricSelected(e, 2, …) true; false for wrong verse; false for different element | ⬜ |
+| SelectionCoordinator | isLyricSelected: returns false when activeLineIndex != lineIndex or no lyric selection | unit | none | missing | add unit tests for both early-return paths | ✅ |
+| SelectionCoordinator | isLyricSelected: returns true only when element reference matches and verse matches | unit | none | missing | add test: selectLyric(e, 2), assert isLyricSelected(e, 2, …) true; false for wrong verse; false for different element | ✅ |
 | SelectionCoordinator | hasGlissandoSelection delegates to active state's hasGlissandoSelection | unit | GlissandoReflectionTest (exercises via selectGlissando + triggerReflection flow) | adequate | — | — |
-| SelectionCoordinator | canDeleteLine: false when no active line | unit | none | missing | add unit test | ⬜ |
-| SelectionCoordinator | canDeleteLine: false when active line is not a line-selection (isLineSelected false) | unit | none | missing | add unit test | ⬜ |
-| SelectionCoordinator | canDeleteLine: false when line is selected but song has only one line | unit | none | missing | add unit test | ⬜ |
-| SelectionCoordinator | canDeleteLine: true when line selected and song has > 1 line | unit | none | missing | add unit test | ⬜ |
-| SelectionCoordinator | canChangeTempo: false when no active selection | unit | none | missing | add unit test | ⬜ |
+| SelectionCoordinator | canDeleteLine: false when no active line | unit | none | missing | add unit test | ✅ |
+| SelectionCoordinator | canDeleteLine: false when active line is not a line-selection (isLineSelected false) | unit | none | missing | add unit test | ✅ |
+| SelectionCoordinator | canDeleteLine: false when line is selected but song has only one line | unit | none | missing | add unit test | ✅ |
+| SelectionCoordinator | canDeleteLine: true when line selected and song has > 1 line | unit | none | missing | add unit test | ✅ |
+| SelectionCoordinator | canChangeTempo: false when no active selection | unit | none | missing | add unit test | ✅ |
 | SelectionCoordinator | canChangeTempo: false when active selection but no single selected element | unit | none | missing | add unit test (multi-element selection) | ⬜ |
 | SelectionCoordinator | canChangeTempo: true when exactly one element is selected | unit | none | missing | add unit test | ⬜ |
 | SelectionCoordinator | getSelectionSize: 0 when no active selection, delegates to state otherwise | unit | DeselectTest (verifies size 3 → 0) | adequate | — | — |
