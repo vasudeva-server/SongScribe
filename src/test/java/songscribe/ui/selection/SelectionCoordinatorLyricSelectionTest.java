@@ -67,4 +67,42 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
         assertThat(coordinator.hasActiveSelection()).isTrue();
         assertThat(coordinator.getSingleSelectedElement()).isSameAs(second);
     }
+
+    /**
+     * Row 6: activateLine clears lyric selection.
+     */
+    @Test
+    void testActivateLineClearsLyricSelection() {
+        var line = detachedLine();
+        var element = ElementType.CROTCHET.newInstance();
+        line.addElement(element);
+        var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+        coordinator.selectLyric(element, 1);
+        assertThat(coordinator.hasLyricSelection()).as("lyric selection before activateLine").isTrue();
+
+        coordinator.activateLine(0);
+
+        assertThat(coordinator.hasLyricSelection())
+            .as("lyric selection cleared after activateLine")
+            .isFalse();
+    }
+
+    /**
+     * Row 7: clearSelection clears lyric selection.
+     */
+    @Test
+    void testClearSelectionClearsLyricSelection() {
+        var line = detachedLine();
+        var element = ElementType.CROTCHET.newInstance();
+        line.addElement(element);
+        var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+        coordinator.selectLyric(element, 1);
+        assertThat(coordinator.hasLyricSelection()).as("lyric selection before clearSelection").isTrue();
+
+        coordinator.clearSelection();
+
+        assertThat(coordinator.hasLyricSelection())
+            .as("lyric selection cleared after clearSelection")
+            .isFalse();
+    }
 }
