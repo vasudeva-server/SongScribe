@@ -59,8 +59,15 @@ public final class KeySignatureChangeAction extends UIAction {
         MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
-            // Key signature changes can only be made when a line is selected
-            setEnabled(message.getScoreView().getSelectedLine() != -1);
+            var scoreView = message.getScoreView();
+
+            // Guard: getScoreView() can be null if the notification was constructed
+            // during teardown or from a null view — matches the defensive pattern
+            // used by sibling actions (e.g. TempoChangeAction checking ctrl != null).
+            if (scoreView != null) {
+                // Key signature changes can only be made when a line is selected
+                setEnabled(scoreView.getSelectedLine() != -1);
+            }
         }
     }
 
