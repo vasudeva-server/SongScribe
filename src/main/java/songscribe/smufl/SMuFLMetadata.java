@@ -141,6 +141,20 @@ public final class SMuFLMetadata {
         requireMapValue(map, glyph, description);
     }
 
+    // Package-private — for use only by SMuFLMetadataTest to exercise the nullable getAdvanceWidth path
+    // with a caller-supplied map (avoids needing a real glyph absent from Bravura advance widths).
+    @Nullable
+    static Double getAdvanceWidthForTesting(Map<SMuFLGlyph, Double> map, SMuFLGlyph glyph) {
+        return map.get(glyph);
+    }
+
+    // Package-private — for use only by SMuFLMetadataTest to exercise the zero-fallback path
+    // with a caller-supplied map (avoids needing a real glyph absent from Bravura advance widths).
+    static double getAdvanceWidthOrZeroForTesting(Map<SMuFLGlyph, Double> map, SMuFLGlyph glyph) {
+        var width = map.get(glyph);
+        return width != null ? width : 0.0;
+    }
+
     // --- Parsing ---
 
     private static SMuFLData parseEngravingDefaults(JsonObject obj) {

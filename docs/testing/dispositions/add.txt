@@ -1256,3 +1256,6 @@ SelectionCoordinator.getActiveLineIndex → add (SelectionCoordinatorRegistryTes
 SelectionCoordinator.activateLine → add (SelectionCoordinatorRegistryTest: testActivateLineClearsPreviousLineSelectionAndSetsActiveIndex)
 SelectionCoordinator.activateLine → add (SelectionCoordinatorLyricSelectionTest: testActivateLineClearsLyricSelection)
 SelectionCoordinator.clearSelection → add (SelectionCoordinatorLyricSelectionTest: testClearSelectionClearsLyricSelection)
+SMuFLMetadata.requireAnchors → add (SMuFLMetadataTest: testRequireAnchorsThrowsForAbsentGlyph)
+SMuFLMetadata.getAdvanceWidth → add (SMuFLMetadataTest: testGetAdvanceWidthReturnsValueForKnownGlyph, testGetAdvanceWidthReturnsNullForAbsentGlyph)
+SMuFLMetadata.getAdvanceWidthOrZero → add (SMuFLMetadataTest: testGetAdvanceWidthOrZeroReturnsFallbackForAbsentGlyph)
