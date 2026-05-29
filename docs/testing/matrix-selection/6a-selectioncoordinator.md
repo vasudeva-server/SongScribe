@@ -32,20 +32,20 @@
 | SelectionCoordinator | canDeleteLine: false when line is selected but song has only one line | unit | none | missing | add unit test | ✅ |
 | SelectionCoordinator | canDeleteLine: true when line selected and song has > 1 line | unit | none | missing | add unit test | ✅ |
 | SelectionCoordinator | canChangeTempo: false when no active selection | unit | none | missing | add unit test | ✅ |
-| SelectionCoordinator | canChangeTempo: false when active selection but no single selected element | unit | none | missing | add unit test (multi-element selection) | ⬜ |
-| SelectionCoordinator | canChangeTempo: true when exactly one element is selected | unit | none | missing | add unit test | ⬜ |
+| SelectionCoordinator | canChangeTempo: false when active selection but no single selected element | unit | none | missing | add unit test (multi-element selection) | ✅ |
+| SelectionCoordinator | canChangeTempo: true when exactly one element is selected | unit | none | missing | add unit test | ✅ |
 | SelectionCoordinator | getSelectionSize: 0 when no active selection, delegates to state otherwise | unit | DeselectTest (verifies size 3 → 0) | adequate | — | — |
 | SelectionCoordinator | getSelection: null when no active line or state, delegates to state otherwise | unit | SelectionApplyIntegrationTest (uses getSelection in assertions) | adequate | — | — |
 | SelectionCoordinator | getSingleSelectedElement: null when no active selection, delegates to state otherwise | unit | SelectionCoordinatorLyricSelectionTest.testElementSelectionClearsLyricSelection | adequate | — | — |
-| SelectionCoordinator | getSelectedLine: returns activeLineIndex when that line has a line-selection, -1 otherwise | unit | none | missing | add unit test | ⬜ |
-| SelectionCoordinator | getSelectedElements: returns empty list when no selection | unit | none explicit | missing | add test | ⬜ |
-| SelectionCoordinator | getSelectedElements: returns correct elements for selection range | unit | none explicit; behavior tested implicitly via applyActionToSelection results | inadequate | add direct test asserting element identity/order | ⬜ |
+| SelectionCoordinator | getSelectedLine: returns activeLineIndex when that line has a line-selection, -1 otherwise | unit | none | missing | add unit test | ✅ |
+| SelectionCoordinator | getSelectedElements: returns empty list when no selection | unit | none explicit | missing | add test | ✅ |
+| SelectionCoordinator | getSelectedElements: returns correct elements for selection range | unit | none explicit; behavior tested implicitly via applyActionToSelection results | inadequate | add direct test asserting element identity/order | ✅ |
 | SelectionCoordinator | hasActiveSelection: false when no element selection, true when selection exists | unit | SelectionContentTest.testNoSelectionReturnsNoActiveSelection, testWithSelectionReturnsActiveSelection | adequate | — | — |
 | SelectionCoordinator | selectionHasDurations: false when no selection | unit | SelectionContentTest.testNoSelectionHasDurationsReturnsFalse | adequate | — | — |
 | SelectionCoordinator | selectionHasDurations: true when selection contains at least one duration element | unit | SelectionContentTest.testSelectionWithMixedContentHasDurations, testSelectionWithOnlyDurationsHasDurations | adequate | — | — |
 | SelectionCoordinator | selectionHasDurations: false when selection contains only non-durations | unit | SelectionContentTest.testSelectionWithOnlyNonDurationsHasNoDurations | adequate | — | — |
-| SelectionCoordinator | selectionHasRests: false when no selection | unit | none | missing | add test: no selection → selectionHasRests returns false | ⬜ |
-| SelectionCoordinator | selectionHasRests: true when selection contains at least one rest | unit | none | missing | add test with a rest in selection | ⬜ |
+| SelectionCoordinator | selectionHasRests: false when no selection | unit | none | missing | add test: no selection → selectionHasRests returns false | ✅ |
+| SelectionCoordinator | selectionHasRests: true when selection contains at least one rest | unit | none | missing | add test with a rest in selection | ✅ |
 | SelectionCoordinator | selectionHasRests: false when selection contains only notes (no rests) | unit | none | missing | add test: note-only selection → selectionHasRests false | ⬜ |
 | SelectionCoordinator | isApplicableToSelection: false when no selection | unit | SelectionContentTest.testNoSelectionIsNotApplicable | adequate | — | — |
 | SelectionCoordinator | isApplicableToSelection: true when any element in selection matches action | unit | SelectionContentTest.testApplicableActionWithApplicableNotesReturnsTrue, testApplicableActionWithMixedNotesReturnsTrue | adequate | — | — |

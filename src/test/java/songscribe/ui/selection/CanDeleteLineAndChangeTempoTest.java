@@ -171,4 +171,45 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
             .as("canChangeTempo with no active selection")
             .isFalse();
     }
+
+    // -------------------------------------------------------------------------
+    // canChangeTempo — row 35
+    // -------------------------------------------------------------------------
+
+    /**
+     * Row 35: canChangeTempo returns false when there is an active selection
+     * but more than one element is selected (getSingleSelectedElement() returns null).
+     */
+    @Test
+    void testCanChangeTempoReturnsFalseWithMultiElementSelection() {
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER.newInstance()),
+            List.of()
+        );
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+        assertThat(coordinator.canChangeTempo())
+            .as("canChangeTempo with two elements selected")
+            .isFalse();
+    }
+
+    // -------------------------------------------------------------------------
+    // canChangeTempo — row 36
+    // -------------------------------------------------------------------------
+
+    /**
+     * Row 36: canChangeTempo returns true when exactly one element is selected.
+     */
+    @Test
+    void testCanChangeTempoReturnsTrueWithSingleElementSelected() {
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER.newInstance()),
+            List.of()
+        );
+        ReflectionTestHelper.selectNote(coordinator, 0);
+
+        assertThat(coordinator.canChangeTempo())
+            .as("canChangeTempo with exactly one element selected")
+            .isTrue();
+    }
 }

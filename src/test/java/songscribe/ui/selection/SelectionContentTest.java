@@ -186,4 +186,28 @@ class SelectionContentTest extends MainFrameMockTest {
 
         assertThat(coordinator.hasActiveSelection()).isTrue();
     }
+
+    // -- selectionHasRests --
+
+    @Test
+    void testNoSelectionHasRestsReturnsFalse() {
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.CROTCHET_REST.newInstance()),
+            List.of()
+        );
+
+        assertThat(coordinator.selectionHasRests()).isFalse();
+    }
+
+    @Test
+    void testSelectionContainingRestHasRests() {
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET_REST.newInstance()),
+            List.of()
+        );
+
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+        assertThat(coordinator.selectionHasRests()).isTrue();
+    }
 }

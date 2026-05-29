@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 698 / 1574 actionable rows done (44%).**
+**Overall: 705 / 1574 actionable rows done (44%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -33,7 +33,7 @@
 |  | [5d-clipboard-selection-line](matrix-action/5d-clipboard-selection-line.md) | 0 | 20 | not started |
 |  | [5e-file-app-lifecycle](matrix-action/5e-file-app-lifecycle.md) | 0 | 19 | not started |
 |  | [5f-export-misc-dialog-open](matrix-action/5f-export-misc-dialog-open.md) | 0 | 22 | not started |
-| 6 · ui/selection+edit+adjustment+clipboard | [6a-selectioncoordinator](matrix-selection/6a-selectioncoordinator.md) | 21 | 42 | in progress |
+| 6 · ui/selection+edit+adjustment+clipboard | [6a-selectioncoordinator](matrix-selection/6a-selectioncoordinator.md) | 28 | 42 | in progress |
 |  | [6b-selection-data-holders-clipboardmanager](matrix-selection/6b-selection-data-holders-clipboardmanager.md) | 0 | 36 | not started |
 |  | [6c-ui-edit](matrix-selection/6c-ui-edit.md) | 0 | 24 | not started |
 |  | [6d-ui-adjustment](matrix-selection/6d-ui-adjustment.md) | 0 | 69 | not started |
