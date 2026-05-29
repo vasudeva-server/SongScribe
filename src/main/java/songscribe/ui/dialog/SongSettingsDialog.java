@@ -731,11 +731,7 @@ public class SongSettingsDialog extends StandardDialog {
 
             var widthInches = validateLineWidth();
             var lineWidthPx = (int) Math.round(widthInches * GraphicUtils.getDpi());
-            var scoreView = getScoreView();
-
-            if (scoreView != null) {
-                scoreView.updatePageLayout(lineWidthPx);
-            }
+            requireScoreView().updatePageLayout(lineWidthPx);
         }
 
         @Override

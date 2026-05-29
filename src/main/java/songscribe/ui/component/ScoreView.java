@@ -535,6 +535,13 @@ public final class ScoreView
         return scrollPane;
     }
 
+    public JScrollPane requireScrollPane() {
+        if (scrollPane == null) {
+            throw RuntimeError.exit("score scroll pane not initialized");
+        }
+        return scrollPane;
+    }
+
     @Override
     public boolean isElementSelected(int elementIndex, int lineIndex) {
         return selectionCoordinator.isElementSelected(elementIndex, lineIndex);

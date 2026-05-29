@@ -285,11 +285,7 @@ public final class NoteGeometry {
         var glyph = note.getType().getSMuFLGlyph();
 
         if (glyph != null) {
-            var bbox = SMuFLMetadata.getBBox(glyph);
-
-            if (bbox != null) {
-                return bbox.right();
-            }
+            return SMuFLMetadata.requireBBox(glyph).right();
         }
 
         return NOTEHEAD_BLACK_RIGHT_EDGE_SS;
@@ -362,12 +358,7 @@ public final class NoteGeometry {
         var accumulator = new BBox[]{null};
 
         walkAccidentalGlyphs(components, parenthesized, startX, (glyph, xSs) -> {
-            var bbox = SMuFLMetadata.getBBox(glyph);
-
-            if (bbox == null) {
-                return;
-            }
-
+            var bbox = SMuFLMetadata.requireBBox(glyph);
             var shifted = bbox.translateX(xSs);
             accumulator[0] = (accumulator[0] == null) ? shifted : accumulator[0].union(shifted);
         });

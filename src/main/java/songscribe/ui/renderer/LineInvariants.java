@@ -41,6 +41,7 @@ import songscribe.layout.SongLayoutMetrics;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.dom.ScaleContext;
+import songscribe.error.RuntimeError;
 
 /**
  * Immutable per-line rendering state, built once per {@code LineRenderer.render()} call.
@@ -154,6 +155,18 @@ public final class LineInvariants {
 
     /** Returns the current line being rendered. */
     public @Nullable Line getCurrentLine() {
+        return currentLine;
+    }
+
+    /**
+     * Returns the current line being rendered, or throws if it is absent.
+     * Call this in rendering paths where a missing line represents corruption.
+     */
+    public Line requireCurrentLine() {
+        if (currentLine == null) {
+            throw RuntimeError.exit("no current line");
+        }
+
         return currentLine;
     }
 

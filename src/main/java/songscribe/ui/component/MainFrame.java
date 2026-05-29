@@ -460,7 +460,7 @@ public class MainFrame extends JFrame implements Printable {
         pane.setResizeWeight(SystemInfo.isLinux ? 0.85 : 1.0);
         pane.setBorder(BorderFactory.createEmptyBorder());
         pane.setDividerSize(0);
-        pane.setTopComponent(requireScoreView().getScoreScrollPane());
+        pane.setTopComponent(requireScoreView().requireScrollPane());
 
         return pane;
     }

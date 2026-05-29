@@ -228,12 +228,7 @@ class LineRenderer {
      */
     private void renderElements(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         var noteRenderer = NoteRenderer.getInstance();
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return;
-        }
-
+        var line = invariants.requireCurrentLine();
         var layoutResult = invariants.getLayoutResult();
 
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
@@ -294,12 +289,7 @@ class LineRenderer {
      * @param frame Element frame
      */
     private void renderGlissandos(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return;
-        }
-
+        var line = invariants.requireCurrentLine();
         GlissandoRenderer.getInstance().renderGlissandosFromLine(g2, line, invariants, frame);
     }
 
@@ -312,11 +302,7 @@ class LineRenderer {
      */
     private void renderBeams(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var beamRenderer = BeamGroupRenderer.getInstance();
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return;
-        }
+        var line = invariants.requireCurrentLine();
 
         for (var beam : line.findRangeElements(Beam.class)) {
             var anchorIdx = beam.getAnchorElementIndex();
@@ -335,12 +321,7 @@ class LineRenderer {
      */
     private void renderTies(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var tieRenderer = TieRenderer.getInstance();
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return;
-        }
-
+        var line = invariants.requireCurrentLine();
         var ties = line.findTies();
 
         for (var span : ties) {
@@ -378,12 +359,7 @@ class LineRenderer {
      * @param frame Element frame
      */
     private void renderTuplets(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return;
-        }
-
+        var line = invariants.requireCurrentLine();
         TupletRenderer.getInstance().renderTupletsFromLine(g2, line, invariants, frame);
     }
 
@@ -400,17 +376,13 @@ class LineRenderer {
     private void renderKeyChanges(Graphics2D g2, LineInvariants invariants) {
         var song = invariants.getSong();
         var lineIndex = invariants.getLineIndex();
-        var line = invariants.getCurrentLine();
 
         // Only render if there's a next line
         if (lineIndex + 1 >= song.lineCount()) {
             return;
         }
 
-        if (line == null) {
-            return;
-        }
-
+        var line = invariants.requireCurrentLine();
         var nextLine = song.getLine(lineIndex + 1);
 
         // Delegate to KeySignatureRenderer
@@ -430,12 +402,7 @@ class LineRenderer {
      * @param invariants Line invariants
      */
     private void renderDynamics(Graphics2D g2, LineInvariants invariants) {
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return;
-        }
-
+        invariants.requireCurrentLine();
         DynamicsRenderer.getInstance().renderHairpinsFromLine(g2, invariants);
     }
 
@@ -446,12 +413,7 @@ class LineRenderer {
      * @param invariants Line invariants
      */
     private void renderEndings(Graphics2D g2, LineInvariants invariants) {
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return;
-        }
-
+        var line = invariants.requireCurrentLine();
         EndingRenderer.getInstance().renderEndings(g2, line, invariants.getLineIndex(), invariants);
     }
 

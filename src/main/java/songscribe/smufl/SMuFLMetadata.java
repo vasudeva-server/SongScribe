@@ -136,6 +136,10 @@ public final class SMuFLMetadata {
         return result;
     }
 
+    // Package-private — for use only by SMuFLMetadataTest to exercise the fail-loud path.
+    static <V> void requireMapValueForTesting(Map<SMuFLGlyph, V> map, SMuFLGlyph glyph, String description) {
+        requireMapValue(map, glyph, description);
+    }
 
     // --- Parsing ---
 

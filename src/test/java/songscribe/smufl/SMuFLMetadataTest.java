@@ -21,7 +21,10 @@
 package songscribe.smufl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+
+import java.util.EnumMap;
 
 import org.junit.jupiter.api.Test;
 
@@ -172,5 +175,93 @@ class SMuFLMetadataTest extends UnitTest {
         var anchors = SMuFLMetadata.getAnchors(SMuFLGlyph.G_CLEF);
 
         assertThat(anchors).isNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // requireBBox fail-loud — exits fatally when bbox is absent
+    //
+    // requireMapValueForTesting exercises the same requireMapValue logic used by
+    // requireBBox/requireAdvanceWidth, but with a caller-supplied empty map so the
+    // test is independent of which glyphs happen to be in Bravura metadata.
+    // The UnitTest base class installs RuntimeErrorTestHelper, which replaces
+    // System.exit with a handler that throws AssertionError.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testRequireBBoxExitsWhenBBoxAbsent() {
+        var emptyMap = new EnumMap<SMuFLGlyph, BBox>(SMuFLGlyph.class);
+
+        assertThatThrownBy(
+            () -> SMuFLMetadata.requireMapValueForTesting(emptyMap, SMuFLGlyph.NOTEHEAD_BLACK, "bounding box"))
+            .isInstanceOf(AssertionError.class);
+    }
+
+    // -------------------------------------------------------------------------
+    // requireAdvanceWidth fail-loud — exits fatally when advance width is absent
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testRequireAdvanceWidthExitsWhenAdvanceWidthAbsent() {
+        var emptyMap = new EnumMap<SMuFLGlyph, Double>(SMuFLGlyph.class);
+
+        assertThatThrownBy(
+            () -> SMuFLMetadata.requireMapValueForTesting(emptyMap, SMuFLGlyph.ORNAMENT_TRILL, "advance width"))
+            .isInstanceOf(AssertionError.class);
+    }
+
+    // -------------------------------------------------------------------------
+    // Happy-path regression: requireBBox returns correct value for ACCIDENTAL_SHARP
+    //
+    // Bravura JSON: bBoxSW=[0.0, -1.392], bBoxNE=[0.996, 1.4]
+    // fromSMuFL → left=0.0, top=-1.4, right=0.996, bottom=1.392, height=2.792
+    // This pins the value used by NoteAreaBuilder.ACCIDENTAL_HEIGHT_SS.
+    // -------------------------------------------------------------------------
+    private static final double ACCIDENTAL_SHARP_EXPECTED_HEIGHT = 2.792;
+
+    @Test
+    void testRequireBBoxHeightForAccidentalSharpMatchesBravura() {
+        var height = SMuFLMetadata.requireBBox(SMuFLGlyph.ACCIDENTAL_SHARP).height();
+
+        assertThat(height).isCloseTo(ACCIDENTAL_SHARP_EXPECTED_HEIGHT, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // Happy-path regression: requireAdvanceWidth returns correct value for ORNAMENT_TRILL
+    //
+    // Bravura JSON: glyphAdvanceWidths.ornamentTrill = 2.084
+    // This pins the value used by TrillRenderer.TRILL_ADVANCE_WIDTH_SS.
+    // -------------------------------------------------------------------------
+    private static final double ORNAMENT_TRILL_EXPECTED_ADVANCE_WIDTH = 2.084;
+
+    @Test
+    void testRequireAdvanceWidthForOrnamentTrillMatchesBravura() {
+        var width = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
+
+        assertThat(width).isCloseTo(ORNAMENT_TRILL_EXPECTED_ADVANCE_WIDTH, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // Happy-path regression: requireAdvanceWidth returns correct value for AUGMENTATION_DOT
+    //
+    // Bravura JSON: glyphAdvanceWidths.augmentationDot = 0.4
+    // NoteRenderer.DOT_SPACING_SS = (float) requireAdvanceWidth(AUGMENTATION_DOT) + 0.35f
+    //                             = 0.4 + 0.35 = 0.75
+    // -------------------------------------------------------------------------
+    private static final double AUGMENTATION_DOT_EXPECTED_ADVANCE_WIDTH = 0.4;
+    private static final double DOT_SPACING_SS_ADDEND = 0.35;
+    private static final double DOT_SPACING_SS_EXPECTED = AUGMENTATION_DOT_EXPECTED_ADVANCE_WIDTH + DOT_SPACING_SS_ADDEND;
+
+    @Test
+    void testRequireAdvanceWidthForAugmentationDotMatchesBravura() {
+        var width = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
+
+        assertThat(width).isCloseTo(AUGMENTATION_DOT_EXPECTED_ADVANCE_WIDTH, within(TOLERANCE));
+    }
+
+    @Test
+    void testDotSpacingSsMatchesBravuraAdvanceWidthPlusAddend() {
+        var dotSpacingSs = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT) + DOT_SPACING_SS_ADDEND;
+
+        assertThat(dotSpacingSs).isCloseTo(DOT_SPACING_SS_EXPECTED, within(TOLERANCE));
     }
 }

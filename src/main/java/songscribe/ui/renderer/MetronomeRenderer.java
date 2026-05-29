@@ -75,20 +75,12 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         Font attrFont
     ) {}
 
-    /**
-     * Builds the shared render setup for a metronome-style decoration.
-     * Exits if the current line is absent (invariant violation).
-     */
     protected RenderSetup buildRenderSetup(
         StaffElement element,
         Class<? extends MetronomeAttachment> attachmentClass,
         LineInvariants invariants,
         ElementFrame frame
     ) {
-        if (invariants.getCurrentLine() == null) {
-            throw RuntimeError.exit("No current line for metronome decoration on " + element);
-        }
-
         var color = RenderingUtils.getDecorationColor(element, invariants, frame);
         var decorationLayout = requireDecorationLayout(element, attachmentClass, invariants);
         var ySs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);

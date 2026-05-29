@@ -50,15 +50,11 @@ public final class TrillRenderer {
     // Wavy line segment width from SMuFL repeatOffset (0.948 ss)
     private static final double WIGGLE_SEGMENT_WIDTH_SS = 0.948;
 
-    // Default fallback advance width in staff-space units (~2.125 ss)
-    private static final double DEFAULT_TRILL_ADVANCE_WIDTH_SS = 2.125;
-
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
 
     static {
-        var advanceWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
-        TRILL_ADVANCE_WIDTH_SS = (advanceWidth != null) ? advanceWidth : DEFAULT_TRILL_ADVANCE_WIDTH_SS;
+        TRILL_ADVANCE_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
     }
 
     /**

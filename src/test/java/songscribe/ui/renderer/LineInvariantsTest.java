@@ -21,6 +21,7 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -141,5 +142,24 @@ class LineInvariantsTest extends UnitTest {
             .build();
 
         assertThat(invariants.getElementColor(0)).isEqualTo(Color.RED);
+    }
+
+    // requireCurrentLine — returns line when set
+    @Test
+    void testRequireCurrentLineReturnsLineWhenSet() {
+        var line = detachedLine();
+        var invariants = seededBuilder().setCurrentLine(line).build();
+
+        assertThat(invariants.requireCurrentLine()).isSameAs(line);
+    }
+
+    // requireCurrentLine — exits fatally when currentLine is null
+    @Test
+    void testRequireCurrentLineExitsWhenNull() {
+        // setCurrentLine(null) leaves currentLine unset (it defaults to null)
+        var invariants = seededBuilder().build();
+
+        assertThatThrownBy(invariants::requireCurrentLine)
+            .isInstanceOf(AssertionError.class);
     }
 }

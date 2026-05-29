@@ -121,6 +121,7 @@ public final class RenderingUtils {
      * Returns the preview element color when the element is not found in the current
      * line (index &lt; 0): the element is the insertion preview, so its decorations
      * must match the preview note's color.
+     * Throws on corruption if there is no current line.
      */
     static Color getDecorationColor(
         StaffElement element,
@@ -133,12 +134,7 @@ public final class RenderingUtils {
             return invariants.getElementColor(index);
         }
 
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return ScoreView.getPreviewElementColor();
-        }
-
+        var line = invariants.requireCurrentLine();
         index = line.getElementIndex(element);
 
         if (index < 0) {

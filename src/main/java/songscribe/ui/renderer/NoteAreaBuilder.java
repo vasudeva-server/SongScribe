@@ -83,8 +83,7 @@ class NoteAreaBuilder {
         NOTEHEAD_WHOLE_SHAPE = GraphicUtils.glyphOutline(font, frc, SMuFLGlyph.NOTEHEAD_WHOLE);
         NOTEHEAD_GRACE_SHAPE = GraphicUtils.glyphOutline(graceFont, frc, SMuFLGlyph.NOTEHEAD_BLACK);
 
-        var accidentalBBox = SMuFLMetadata.getBBox(SMuFLGlyph.ACCIDENTAL_SHARP);
-        ACCIDENTAL_HEIGHT_SS = accidentalBBox != null ? accidentalBBox.height() : 2.5;
+        ACCIDENTAL_HEIGHT_SS = SMuFLMetadata.requireBBox(SMuFLGlyph.ACCIDENTAL_SHARP).height();
 
         var flagGlyphs = new SMuFLGlyph[]{
             SMuFLGlyph.FLAG_8TH_UP, SMuFLGlyph.FLAG_8TH_DOWN,
@@ -241,11 +240,7 @@ class NoteAreaBuilder {
         boolean beamed,
         boolean upper
     ) {
-        var dotBBox = SMuFLMetadata.getBBox(SMuFLGlyph.AUGMENTATION_DOT);
-
-        if (dotBBox == null) {
-            return;
-        }
+        var dotBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.AUGMENTATION_DOT);
 
         NoteRenderer.forEachDotPosition(note, beamed, upper, (dotX, yOffset) ->
             area.add(new Area(new Rectangle2D.Double(

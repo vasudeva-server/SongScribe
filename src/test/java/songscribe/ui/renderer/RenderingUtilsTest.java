@@ -21,6 +21,7 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -35,15 +36,14 @@ import songscribe.ui.component.ScoreView;
 
 class RenderingUtilsTest extends UnitTest {
 
-    // T1: line == null → preview element color (treated as preview)
+    // T1: line == null → fatal exit (corruption, not a preview scenario)
     @Test
-    void testGetDecorationColorNullLineReturnsPreviewColor() {
+    void testGetDecorationColorNullLineThrows() {
         var element = new StaffElement(ElementType.CROTCHET);
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
 
-        var color = RenderingUtils.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
-
-        assertThat(color).isEqualTo(ScoreView.getPreviewElementColor());
+        assertThatThrownBy(() -> RenderingUtils.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL))
+            .isInstanceOf(AssertionError.class);
     }
 
     // T2: element not in line (index < 0) → preview element color

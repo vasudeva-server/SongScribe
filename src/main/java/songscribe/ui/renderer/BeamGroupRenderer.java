@@ -124,12 +124,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         }
 
         var selectionProvider = invariants.getSelectionProvider();
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return null;
-        }
-
+        var line = invariants.requireCurrentLine();
         var lineIndex = invariants.getLineIndex();
         var anySelected = false;
         var anyHovered = false;

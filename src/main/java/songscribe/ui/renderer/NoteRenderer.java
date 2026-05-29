@@ -85,8 +85,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     static final float DOT_SPACING_SS;
 
     static {
-        var advanceWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
-        DOT_SPACING_SS = (advanceWidth != null) ? advanceWidth.floatValue() + 0.35f : 0.825f;
+        DOT_SPACING_SS = (float) SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT) + 0.35f;
     }
 
     // Singleton instance
@@ -330,17 +329,14 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         var beamThickeningSs = 0.0;
 
         if (beamed) {
-            var line = invariants.getCurrentLine();
+            var line = invariants.requireCurrentLine();
+            var beam = line.findBeamAt(line.getElementIndex(note));
 
-            if (line != null) {
-                var beam = line.findBeamAt(line.getElementIndex(note));
+            if (beam != null) {
+                var beamLayout = layoutResult.getBeamLayout(beam);
 
-                if (beam != null) {
-                    var beamLayout = layoutResult.getBeamLayout(beam);
-
-                    if (beamLayout != null) {
-                        beamThickeningSs = beamLayout.thickeningSs();
-                    }
+                if (beamLayout != null) {
+                    beamThickeningSs = beamLayout.thickeningSs();
                 }
             }
         }
@@ -532,12 +528,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     // ==========================================================================
 
     private boolean isNoteBeamed(StaffElement note, LineInvariants invariants) {
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return false;
-        }
-
+        var line = invariants.requireCurrentLine();
         var noteIndex = line.getElementIndex(note);
         return line.findBeamAt(noteIndex) != null &&
             note.getType() != ElementType.GRACE_QUAVER;

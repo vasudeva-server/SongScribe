@@ -73,15 +73,11 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
     static {
         // Compute first dot X for each rest type from its advance width (in ss)
         for (var entry : REST_GLYPHS.entrySet()) {
-            var advanceWidth = SMuFLMetadata.getAdvanceWidth(entry.getValue());
-
-            if (advanceWidth != null) {
-                FIRST_DOT_X_SS.put(entry.getKey(), (float) (advanceWidth + DOT_GAP_SS));
-            }
+            var advanceWidth = SMuFLMetadata.requireAdvanceWidth(entry.getValue());
+            FIRST_DOT_X_SS.put(entry.getKey(), (float) (advanceWidth + DOT_GAP_SS));
         }
 
-        var dotAdvanceWidth = SMuFLMetadata.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
-        DOT_SPACING_SS = (dotAdvanceWidth != null) ? dotAdvanceWidth.floatValue() + 0.35f : 0.825f;
+        DOT_SPACING_SS = (float) SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT) + 0.35f;
     }
 
     // Singleton instance

@@ -565,27 +565,24 @@ public enum ElementType {
         for (var type : types) {
             var glyph = SMUFL_GLYPHS.get(type);
             var bbox = requireBBox(glyph, type);
-            var anchors = (glyph != null) ? SMuFLMetadata.getAnchors(glyph) : null;
+            var anchors = (glyph != null) ? SMuFLMetadata.requireAnchors(glyph) : null;
 
             if (anchors != null && anchors.stemUpSE() != null && anchors.stemDownNW() != null) {
                 // Stemmed note
                 var headTop = bbox.top();
                 var headBottom = bbox.bottom();
                 var headRight = bbox.right();
-                var stemUpX = anchors.stemUpSE().x();
-                var stemUpY = anchors.stemUpSE().y();
-                var stemDownY = anchors.stemDownNW().y();
+                var stemUpX = anchors.requireStemUpSE().x();
+                var stemUpY = anchors.requireStemUpSE().y();
+                var stemDownY = anchors.requireStemDownNW().y();
 
                 // Width: max of notehead and stem-up flag extent
                 var width = headRight;
                 var flagGlyph = getStemUpFlagGlyph(type);
 
                 if (flagGlyph != null) {
-                    var flagBBox = SMuFLMetadata.getBBox(flagGlyph);
-
-                    if (flagBBox != null) {
-                        width = Math.max(width, stemUpX + flagBBox.right());
-                    }
+                    var flagBBox = requireBBox(flagGlyph, type);
+                    width = Math.max(width, stemUpX + flagBBox.right());
                 }
 
                 type.fullWidthSs = width;
@@ -635,11 +632,8 @@ public enum ElementType {
         var upTop = stemUpY - GRACE_NOTE_STEM_LENGTH_SS;
         var width = headRight;
 
-        var flagBBox = SMuFLMetadata.getBBox(SMuFLGlyph.FLAG_8TH_UP);
-
-        if (flagBBox != null) {
-            width = Math.max(width, stemUpX + flagBBox.right() * scale);
-        }
+        var flagBBox = requireBBox(SMuFLGlyph.FLAG_8TH_UP, type);
+        width = Math.max(width, stemUpX + flagBBox.right() * scale);
 
         var headTop = headBBox.top() * scale;
         var height = headBottom - upTop;
