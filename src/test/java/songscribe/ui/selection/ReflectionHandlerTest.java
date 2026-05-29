@@ -26,11 +26,16 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+
 import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
+import songscribe.ui.action.FermataAction;
+import songscribe.ui.action.RestModeAction;
 import songscribe.ui.action.SelectableUIAction;
+import songscribe.ui.action.UIAction;
 
 class ReflectionHandlerTest extends MainFrameMockTest {
 
@@ -289,6 +294,106 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         coordinator.triggerReflection();
 
         assertThat(uiAction.isSelected()).isFalse();
+    }
+
+    // -- row 73: clearSavedActionStates clears map without restoring --
+
+    @Test
+    void testClearSavedActionStatesDoesNotRestoreAndEmptiesMap() {
+        var note = ElementType.CROTCHET.newInstance();
+
+        var action = FermataAction.createAction(mainFrame());
+        var uiAction = (SelectableUIAction) action;
+        uiAction.setSelected(false);
+        uiAction.setEnabled(true);
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(note),
+            List.of(action)
+        );
+
+        // Save the initial state (selected=false, enabled=true)
+        ReflectionTestHelper.selectNote(coordinator, 0);
+
+        // Mutate the action to a different state while the selection is active
+        uiAction.setSelected(true);
+        uiAction.setEnabled(false);
+
+        // Clear without restoring — the mutated state must be preserved
+        coordinator.clearSavedActionStates();
+
+        assertThat(uiAction.isSelected())
+            .as("selected must remain at mutated value (not restored to saved false)")
+            .isTrue();
+        assertThat(uiAction.isEnabled())
+            .as("enabled must remain at mutated value (not restored to saved true)")
+            .isFalse();
+        assertThat(coordinator.hasSavedActionStates())
+            .as("saved map must be empty after clearSavedActionStates")
+            .isFalse();
+    }
+
+    // -- row 74: restoreActionStatesWithFlag restores only flagged actions and clears all saved states --
+
+    @Test
+    void testRestoreWithFlagRestoresOnlyFlaggedActionAndClearsMap() {
+        var note = ElementType.CROTCHET.newInstance();
+
+        // flaggedAction carries DISABLE_IN_GRACE_MODE → should be restored
+        var flaggedAction = RestModeAction.createAction(mainFrame());
+        var uiFlagged = (SelectableUIAction) flaggedAction;
+        uiFlagged.setSelected(false);
+        uiFlagged.setEnabled(true);
+
+        // unflaggedAction does not carry DISABLE_IN_GRACE_MODE → must not be restored
+        var unflaggedAction = FermataAction.createAction(mainFrame());
+        var uiUnflagged = (SelectableUIAction) unflaggedAction;
+        uiUnflagged.setSelected(false);
+        uiUnflagged.setEnabled(true);
+
+        var reflectableActions = List.<UIAction.Reflectable>of(flaggedAction, unflaggedAction);
+        var managedActions = new ArrayList<UIAction>();
+        managedActions.add(flaggedAction);
+        managedActions.add(unflaggedAction);
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(note),
+            reflectableActions,
+            managedActions
+        );
+
+        // Save initial states (selected=false, enabled=true for both)
+        ReflectionTestHelper.selectNote(coordinator, 0);
+
+        // Mutate both actions to distinct states while selection is active
+        uiFlagged.setSelected(true);
+        uiFlagged.setEnabled(false);
+        uiUnflagged.setSelected(true);
+        uiUnflagged.setEnabled(false);
+
+        // Restore only actions carrying DISABLE_IN_GRACE_MODE
+        coordinator.restoreActionStatesWithFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE);
+
+        // Flagged action must be restored to its saved state
+        assertThat(uiFlagged.isSelected())
+            .as("flagged action selected must be restored to saved false")
+            .isFalse();
+        assertThat(uiFlagged.isEnabled())
+            .as("flagged action enabled must be restored to saved true")
+            .isTrue();
+
+        // Non-flagged action must keep its mutated state
+        assertThat(uiUnflagged.isSelected())
+            .as("unflagged action selected must remain at mutated true (not restored)")
+            .isTrue();
+        assertThat(uiUnflagged.isEnabled())
+            .as("unflagged action enabled must remain at mutated false (not restored)")
+            .isFalse();
+
+        // The saved map must be fully cleared regardless
+        assertThat(coordinator.hasSavedActionStates())
+            .as("saved map must be empty after restoreActionStatesWithFlag")
+            .isFalse();
     }
 
     @Test

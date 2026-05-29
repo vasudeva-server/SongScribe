@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -352,6 +353,47 @@ class BatchMutationTest extends MainFrameMockTest {
         coordinator.applyActionToSelection(FERMATA_ACTION, true);
 
         assertThat(getLine(coordinator).getElement(0).findAttachment(FermataAttachment.class)).isNull();
+    }
+
+    // -- row 55: no modification bracket opened when no selection is active --
+
+    @Test
+    void testNoSelectionDoesNotOpenModificationBracket() {
+        // applyActionToSelection returns immediately when getSelection() == null,
+        // so withModification must never be called at all.
+        var notes = List.of(ElementType.CROTCHET.newInstance());
+        var songMock = createSongMock();
+        var coordinator = ReflectionTestHelper.createCoordinator(notes, List.of(FERMATA_ACTION), songMock);
+
+        // No selection — must not invoke the modification bracket
+        coordinator.applyActionToSelection(FERMATA_ACTION, true);
+
+        verify(songMock, never()).withModification(any());
+    }
+
+    // -- row 58: ElementReplaceable with selected=false skips all elements (continue guard) --
+
+    @Test
+    void testElementReplaceableWithSelectedFalseSkipsAllElements() {
+        // The ElementReplaceable branch has an explicit `if (!selected) { continue; }` guard.
+        // Applying QUARTER_ACTION (ElementReplaceable) with selected=false must leave every
+        // element unchanged — contrast with the ElementModifiable path that DOES process false.
+        var notes = List.of(
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
+        );
+        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
+        var line = getLine(coordinator);
+        ReflectionTestHelper.selectRange(coordinator, 0, 2);
+
+        coordinator.applyActionToSelection(QUARTER_ACTION, false);
+
+        for (var i = 0; i <= 2; i++) {
+            assertThat(line.getElement(i).getType())
+                .as("element %d type must be unchanged (QUAVER)", i)
+                .isEqualTo(ElementType.QUAVER);
+        }
     }
 
     @Test

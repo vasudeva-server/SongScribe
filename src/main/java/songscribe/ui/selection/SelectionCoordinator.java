@@ -821,6 +821,14 @@ public final class SelectionCoordinator {
     }
 
     /**
+     * Returns whether the saved action states map is empty.
+     * Package-private for tests that verify clear/restore semantics.
+     */
+    boolean hasSavedActionStates() {
+        return !savedActionStates.isEmpty();
+    }
+
+    /**
      * Restores only the actions that have the given flag to their previously
      * saved state, then clears all saved states. Actions without the flag
      * are left at their current state.
