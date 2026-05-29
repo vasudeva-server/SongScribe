@@ -4,13 +4,13 @@ Audited from production code outward: enumerated every testable behavior in `Pre
 
 | class | behavior | required level | existing test | verdict | action | done |
 |-------|----------|---------------|---------------|---------|--------|---|
-| `Prefs` | `getOrDefault`: returns store value when present, falls back to `getDefault` when absent | unit | none | missing | add tests for store-hit and store-miss paths | ⬜ |
-| `Prefs` | `getDefault`: throws `IllegalArgumentException` for unknown key (no default in `defaults.json`) | unit | none | missing | add test; critical contract for all scalar getters | ⬜ |
-| `Prefs` | `getString`: returns stored string value | unit | none | missing | add round-trip test | ⬜ |
-| `Prefs` | `getInt`: casts stored value through `Number.intValue()` — survives if value is `Long` | unit | none | missing | add test; int-stored-as-Long contract matters | ⬜ |
-| `Prefs` | `getLong`: analogous to `getInt` | unit | none | missing | add test | ⬜ |
-| `Prefs` | `getBoolean`: casts to `Boolean` | unit | none | missing | add test | ⬜ |
-| `Prefs` | `getStringList`: returns list from store; returns empty list (not default) when absent | unit | none | missing | add tests for both paths; empty-list contract must be verified | ⬜ |
+| `Prefs` | `getOrDefault`: returns store value when present, falls back to `getDefault` when absent | unit | none | missing | add tests for store-hit and store-miss paths | ✅ |
+| `Prefs` | `getDefault`: throws `IllegalArgumentException` for unknown key (no default in `defaults.json`) | unit | none | missing | add test; critical contract for all scalar getters | ✅ |
+| `Prefs` | `getString`: returns stored string value | unit | none | missing | add round-trip test | ✅ |
+| `Prefs` | `getInt`: casts stored value through `Number.intValue()` — survives if value is `Long` | unit | none | missing | add test; int-stored-as-Long contract matters | ✅ |
+| `Prefs` | `getLong`: analogous to `getInt` | unit | none | missing | add test | ✅ |
+| `Prefs` | `getBoolean`: casts to `Boolean` | unit | none | missing | add test | ✅ |
+| `Prefs` | `getStringList`: returns list from store; returns empty list (not default) when absent | unit | none | missing | add tests for both paths; empty-list contract must be verified | ✅ |
 | `Prefs` | `getStringList`: ignores defaults for list keys (unlike scalar getters) | unit | none | missing | this asymmetry is a likely bug-hiding point | ⬜ |
 | `Prefs` | `getMap`: returns store value when present (Map); falls to default when absent; returns empty map when absent and no default | unit | `PrefsTest.testGetMapReturnsEmptyMapForMissingKey`, `testGetMapOnNonMapValueReturnsEmptyMap` | inadequate | `testGetMapReturnsEmptyMapForMissingKey` name is wrong — `DIALOG_GEOMETRY` has a default `{}` in `defaults.json`; the test happens to pass because `{}` deserializes as empty, but it is not testing the "no default" path | ⬜ |
 | `Prefs` | `putMap`: merges new entries into existing map | unit | `PrefsTest.testPutMapMergesEntries` | inadequate | asserts only `containsKey` — does not verify values are correct; a mutation that stores the wrong values passes | ⬜ |
