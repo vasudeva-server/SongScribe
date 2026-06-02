@@ -176,8 +176,9 @@ rework lags.
 **Mapping** (musicxml.md §§ "Song header", "Layout", "Annotations", "Losslessness"):
 - Header: title → `<movement-title>`, number → `<movement-number>`,
   composer/lyricist → `<creator>` **(needs reworked attribution)**, date → ISO 8601
-  `<misc-field>` (+ optional `<credit-words>`), place/underlyrics/Bangla/translated
-  lyrics/footnotes → `<misc-field>`.
+  `<misc-field name="composition-date">` (+ optional `<credit-words>`), lyrics date
+  (when distinct from composition date) → `<misc-field name="lyrics-date">`,
+  place/underlyrics/Bangla/translated lyrics/footnotes → `<misc-field>`.
 - Layout: line width → `<scaling>` + `<system-layout>`; fonts → `<music-font>` /
   `<lyric-font>` / `<word-font>` (extra roles → `<misc-field>`); paddings/distances
   → system-layout fields; spacing factors → `<misc-field>`.

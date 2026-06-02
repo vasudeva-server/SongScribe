@@ -71,6 +71,7 @@ shape: composer/lyricist become native `<creator>` entries.
 | lyricist (from reworked attribution) | `<identification><creator type="lyricist">` | Native |
 | format version (`XML_VERSION`) | `<encoding><software>SongScribe x.y</software>` | Native+conv |
 | date — structured y/m/d | `<misc-field name="composition-date">` as ISO 8601 (`1987-12-01`, partial OK) | Ext |
+| lyrics date — structured y/m/d | `<misc-field name="lyrics-date">` as ISO 8601 (same partial-date rules; omitted when equal to composition date) | Ext |
 | date — display string ("December 1, 1987") | derived; optional `<credit><credit-words>` for on-page display | Native+conv |
 | place (`XML_PLACE`) | `<misc-field name="place">` (optional parallel `<credit-words>`) | Ext |
 | underlyrics (`XML_UNDERLYRICS`) | `<misc-field name="underlyrics">` | Ext |
@@ -89,6 +90,11 @@ ISO 8601 `<misc-field>` — fully decomposable to y/m/d, and ISO partial forms
 (the code gates on `month > 0` / `day > 0`). Optionally also emit the formatted
 string as `<credit-words>` for external display; SongScribe ignores that credit
 on read and reloads from the ISO field.
+
+The same ISO 8601 rules apply to `<misc-field name="lyrics-date">`, which
+records when the lyrics were written independently of the music. Omit the field
+when the lyrics date equals (or is unknown relative to) the composition date;
+emit it only when the two dates are distinct.
 
 ---
 
