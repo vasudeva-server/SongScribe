@@ -222,6 +222,11 @@ class RecentDocumentsManagerTest extends UnitTest {
             assertThat(RecentDocumentsManager.getRecents())
                 .containsExactly(tempFile)
                 .doesNotContain(Path.of("/no/such/file_xyz.mssw"));
+
+            // The pruned list must be written back to prefs — the "AndPersists"
+            // contract. Without this read-back, skipping persist() would go unnoticed.
+            assertThat(Prefs.getStringList(PrefsKey.RECENT_FILES))
+                .containsExactly(tempFile.toString());
         } finally {
             Files.deleteIfExists(tempFile);
         }
@@ -249,5 +254,18 @@ class RecentDocumentsManagerTest extends UnitTest {
         } finally {
             Files.deleteIfExists(tempFile);
         }
+    }
+
+    // --- constructor startup cleanup: empty prefs ---
+
+    @Test
+    void testReloadWithEmptyPrefsLoadsNothing() {
+        // An empty RECENT_FILES pref must produce an empty recents list — no pruning,
+        // no error, nothing loaded.
+        Prefs.putStringList(PrefsKey.RECENT_FILES, List.of());
+
+        RecentDocumentsManager.reloadForTest();
+
+        assertThat(RecentDocumentsManager.getRecents()).isEmpty();
     }
 }

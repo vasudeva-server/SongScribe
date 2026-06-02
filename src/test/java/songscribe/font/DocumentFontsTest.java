@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import java.awt.Font;
+import java.io.IOException;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -81,43 +82,6 @@ class DocumentFontsTest extends UnitTest {
     class DefaultsFromPrefs {
 
         @Test
-        void testAllRolesPopulated() {
-            // Verify both the size and the font family for each role. Checking only
-            // the size allows a mutant that swaps the PrefsKey font-name constant (e.g.
-            // TITLE_FONT -> LYRICS_FONT) to pass undetected.
-            var fonts = DocumentFonts.defaultsFromPrefs();
-            assertAll(
-                () -> assertThat(fonts.getFont(FontKey.TITLE).getSize())
-                    .isEqualTo(Prefs.getInt(PrefsKey.TITLE_FONT_SIZE)),
-                () -> assertThat(fonts.getFont(FontKey.LYRICS).getSize())
-                    .isEqualTo(Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)),
-                () -> assertThat(fonts.getFont(FontKey.ATTRIBUTION).getSize())
-                    .isEqualTo(Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)),
-                () -> assertThat(fonts.getFont(FontKey.ANNOTATION).getSize())
-                    .isEqualTo(Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)),
-                () -> assertThat(fonts.getFont(FontKey.FOOTNOTE).getSize())
-                    .isEqualTo(Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE)),
-                () -> assertThat(fonts.getFont(FontKey.BANGLA).getSize())
-                    .isEqualTo(Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE)),
-                // Verify the correct prefs font-name key is used for each role.
-                // Swapping, say, TITLE_FONT and LYRICS_FONT would still produce the right
-                // size if the sizes happen to match, but the font family name would differ.
-                () -> assertThat(fonts.getFont(FontKey.TITLE).getFamily())
-                    .isEqualTo(fontFamilyFor(PrefsKey.TITLE_FONT)),
-                () -> assertThat(fonts.getFont(FontKey.LYRICS).getFamily())
-                    .isEqualTo(fontFamilyFor(PrefsKey.LYRICS_FONT)),
-                () -> assertThat(fonts.getFont(FontKey.ATTRIBUTION).getFamily())
-                    .isEqualTo(fontFamilyFor(PrefsKey.ATTRIBUTION_FONT)),
-                () -> assertThat(fonts.getFont(FontKey.ANNOTATION).getFamily())
-                    .isEqualTo(fontFamilyFor(PrefsKey.ANNOTATION_FONT)),
-                () -> assertThat(fonts.getFont(FontKey.FOOTNOTE).getFamily())
-                    .isEqualTo(fontFamilyFor(PrefsKey.FOOTNOTE_FONT)),
-                () -> assertThat(fonts.getFont(FontKey.BANGLA).getFamily())
-                    .isEqualTo(fontFamilyFor(PrefsKey.BANGLA_FONT))
-            );
-        }
-
-        @Test
         void testAllRolesMappedToCorrectPrefsKey() {
             // Build fonts via defaultsFromPrefs() and verify that each FontKey reads
             // the expected PrefsKey pair. This catches a cut-paste bug where, e.g.,
@@ -136,20 +100,6 @@ class DocumentFontsTest extends UnitTest {
             expected.setFont(FontKey.BANGLA,      Prefs.getString(PrefsKey.BANGLA_FONT),      Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
 
             assertThat(fonts).isEqualTo(expected);
-        }
-
-        /**
-         * Returns the font family name that {@code MyFontUtils.createFont} resolves for
-         * the given prefs font-name key. This mirrors exactly what
-         * {@link DocumentFonts#defaultsFromPrefs} does so the assertion is meaningful
-         * even if SourceSans3 is not installed (in which case both sides fall back to the
-         * same label font).
-         */
-        private String fontFamilyFor(PrefsKey fontKey) {
-            // Create a throwaway DocumentFonts to resolve the PS name to a font.
-            var holder = new DocumentFonts();
-            holder.setFont(FontKey.TITLE, Prefs.getString(fontKey), BASE_SIZE);
-            return holder.getFont(FontKey.TITLE).getFamily();
         }
     }
 
@@ -197,7 +147,7 @@ class DocumentFontsTest extends UnitTest {
         @Test
         void testNotEqualToDifferentType() {
             // equals() must return false for an object of a different class.
-            assertThat(fullyPopulated().equals("not a DocumentFonts")).isFalse();
+            assertThat(fullyPopulated()).isNotEqualTo("not a DocumentFonts");
         }
 
         @Test
@@ -268,26 +218,25 @@ class DocumentFontsTest extends UnitTest {
             // classpath at /fonts/<name>. A typo in any constant silently falls back to
             // a system font at runtime; this test verifies the resource actually exists.
             assertAll(
-                () -> assertThat(fontResourceExists(SourceSans3Font.STYLE_REGULAR))
-                    .as("STYLE_REGULAR font resource must exist").isTrue(),
-                () -> assertThat(fontResourceExists(SourceSans3Font.STYLE_ITALIC))
-                    .as("STYLE_ITALIC font resource must exist").isTrue(),
-                () -> assertThat(fontResourceExists(SourceSans3Font.STYLE_SEMIBOLD))
-                    .as("STYLE_SEMIBOLD font resource must exist").isTrue(),
-                () -> assertThat(fontResourceExists(SourceSans3Font.STYLE_SEMIBOLD_ITALIC))
-                    .as("STYLE_SEMIBOLD_ITALIC font resource must exist").isTrue(),
-                () -> assertThat(fontResourceExists(SourceSans3Font.STYLE_BOLD))
-                    .as("STYLE_BOLD font resource must exist").isTrue(),
-                () -> assertThat(fontResourceExists(SourceSans3Font.STYLE_BOLD_ITALIC))
-                    .as("STYLE_BOLD_ITALIC font resource must exist").isTrue()
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_REGULAR),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_ITALIC),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_SEMIBOLD),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_SEMIBOLD_ITALIC),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_BOLD),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_BOLD_ITALIC)
             );
         }
 
-        private boolean fontResourceExists(String filename) {
-            try (var stream = SourceSans3Font.class.getResourceAsStream("/fonts/" + filename)) {
-                return stream != null;
-            } catch (Exception e) {
-                return false;
+        /**
+         * Asserts the bundled font file is present on the classpath at
+         * {@code /fonts/<filename>}. Opens the stream directly so the failure message
+         * names the missing resource, and lets any {@link IOException} from closing
+         * propagate rather than masking a genuine I/O failure as "not found".
+         */
+        private void assertFontResourceExists(String filename) throws IOException {
+            var resourcePath = "/fonts/" + filename;
+            try (var stream = SourceSans3Font.class.getResourceAsStream(resourcePath)) {
+                assertThat(stream).as("font resource %s must exist", resourcePath).isNotNull();
             }
         }
     }

@@ -172,8 +172,8 @@ public class MainFrame extends JFrame implements Printable {
             MidiController.openMidi();
             Song.setDefaultLineWidthProvider(PageModel::getDefaultLineWidthSs);
             var instance = getInstance();
-            var rawRecents = Prefs.getStringList(PrefsKey.RECENT_FILES);
-            var mostRecentPath = rawRecents.isEmpty() ? null : Path.of(rawRecents.getFirst());
+            var recents = RecentDocumentsManager.getRecents();
+            var mostRecentPath = recents.isEmpty() ? null : recents.getFirst();
             instance.initFrame();
 
             if (
