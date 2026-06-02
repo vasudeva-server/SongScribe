@@ -2,13 +2,13 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| `NewAction` | `actionPerformed` posts `NewFileCommand` on the message bus | unit | none | missing | write test: subscribe handler; call `actionPerformed`; assert `NewFileCommand` was posted | ⬜ |
-| `NewAction` | constructor sets `DISABLE_WHEN_PLAYING` flag | unit | none | missing | assert `hasFlag(Flag.DISABLE_WHEN_PLAYING) == true` | ⬜ |
-| `OpenAction` | `actionPerformed` posts `ShowOpenDialogCommand` on the message bus | unit | none | missing | write test: subscribe handler; call `actionPerformed`; assert `ShowOpenDialogCommand` was posted | ⬜ |
-| `OpenAction` | constructor sets `DISABLE_WHEN_PLAYING` and `OPENS_DIALOG` flags | unit | none | missing | assert both flags present | ⬜ |
-| `OpenRecentAction` | `actionPerformed` — path exists → posts `OpenFileCommand` with correct file | unit | none | missing | write test: temp file on disk; call `actionPerformed`; assert command posted with matching path | ⬜ |
-| `OpenRecentAction` | `actionPerformed` — path does not exist → shows error, calls `RecentDocumentsManager.remove`, does NOT post `OpenFileCommand` | unit | none | missing | write test: non-existent path; mock `OptionDialogs`; assert `remove` called and command not posted | ⬜ |
-| `OpenRecentAction` | constructor sets `DISABLE_WHEN_PLAYING` and `DISABLE_IN_GRACE_MODE` flags | unit | none | missing | assert both flags present via `hasFlag()` | ⬜ |
+| `NewAction` | `actionPerformed` posts `NewFileCommand` on the message bus | unit | none | missing | write test: subscribe handler; call `actionPerformed`; assert `NewFileCommand` was posted | ✅ |
+| `NewAction` | constructor sets `DISABLE_WHEN_PLAYING` flag | unit | none | missing | assert `hasFlag(Flag.DISABLE_WHEN_PLAYING) == true` | ✅ |
+| `OpenAction` | `actionPerformed` posts `ShowOpenDialogCommand` on the message bus | unit | none | missing | write test: subscribe handler; call `actionPerformed`; assert `ShowOpenDialogCommand` was posted | ✅ |
+| `OpenAction` | constructor sets `DISABLE_WHEN_PLAYING` and `OPENS_DIALOG` flags | unit | none | missing | assert both flags present | ✅ |
+| `OpenRecentAction` | `actionPerformed` — path exists → posts `OpenFileCommand` with correct file | unit | none | missing | write test: temp file on disk; call `actionPerformed`; assert command posted with matching path | ✅ |
+| `OpenRecentAction` | `actionPerformed` — path does not exist → shows error, calls `RecentDocumentsManager.remove`, does NOT post `OpenFileCommand` | unit | none | missing | write test: non-existent path; mock `OptionDialogs`; assert `remove` called and command not posted | ✅ |
+| `OpenRecentAction` | constructor sets `DISABLE_WHEN_PLAYING` and `DISABLE_IN_GRACE_MODE` flags | unit | none | missing | assert both flags present via `hasFlag()` | ✅ |
 | `ClearRecentsAction` | `actionPerformed` calls `RecentDocumentsManager.clear()` | unit | none | missing | write test: populate recents, call `actionPerformed`, assert list empty | ⬜ |
 | `ClearRecentsAction` | constructor sets `DISABLE_WHEN_PLAYING` and `DISABLE_IN_GRACE_MODE` flags | unit | none | missing | assert both flags present | ⬜ |
 | `SaveAction` | constructor sets **no** disabling flags (Save is always enabled, even during playback / in grace mode) | unit | none | missing | assert `!hasFlag(DISABLE_WHEN_PLAYING)` etc. — documents the deliberate design decision | ⬜ |
