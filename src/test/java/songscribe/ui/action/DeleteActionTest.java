@@ -20,6 +20,8 @@
 
 package songscribe.ui.action;
 
+import module java.desktop;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -27,9 +29,12 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
+import songscribe.message.MessageCenter;
+import songscribe.message.command.PasteboardOpCommand;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.dom.ElementType;
 import songscribe.ui.playback.PlaybackController;
@@ -52,6 +57,8 @@ class DeleteActionTest extends MainFrameMockTest {
         playbackControllerMock.close();
     }
 
+    // Row 3: updateEnabledState — all four enablement branches + all-false case
+
     @Test
     void testDeleteEnabledForLyricSelection() {
         var element = ElementType.CROTCHET.newInstance();
@@ -65,5 +72,68 @@ class DeleteActionTest extends MainFrameMockTest {
         action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
 
         assertThat(action.isEnabled()).isTrue();
+    }
+
+    @Test
+    void testDeleteEnabledForActiveSelection() {
+        when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
+
+        var action = DeleteAction.createAction(mainFrame());
+        action.setEnabled(false);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isTrue();
+    }
+
+    @Test
+    void testDeleteEnabledForGlissandoSelection() {
+        when(mockEnv().coordinator().hasGlissandoSelection()).thenReturn(true);
+
+        var action = DeleteAction.createAction(mainFrame());
+        action.setEnabled(false);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isTrue();
+    }
+
+    @Test
+    void testDeleteEnabledWhenCanDeleteLine() {
+        when(mockEnv().score().canDeleteLine()).thenReturn(true);
+
+        var action = DeleteAction.createAction(mainFrame());
+        action.setEnabled(false);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isTrue();
+    }
+
+    @Test
+    void testDeleteDisabledWhenNothingToDelete() {
+        // All four predicates return false (default mock state)
+        var action = DeleteAction.createAction(mainFrame());
+        action.setEnabled(true);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isFalse();
+    }
+
+    // Row 4: actionPerformed dispatches PasteboardOpCommand(DELETE)
+
+    @Test
+    void testActionPerformedDispatchesDeleteCommand() {
+        try (var messageCenterMock = mockStatic(MessageCenter.class)) {
+            var action = DeleteAction.createAction(mainFrame());
+            action.actionPerformed(
+                new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "edit-delete"));
+
+            var captor = ArgumentCaptor.forClass(PasteboardOpCommand.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue().getOperation())
+                .isEqualTo(PasteboardAction.Operation.DELETE);
+        }
     }
 }

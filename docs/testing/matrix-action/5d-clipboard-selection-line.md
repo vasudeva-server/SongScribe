@@ -2,16 +2,16 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| PasteboardAction | `musicSelectionDidChange`: COPY/CUT enabled iff `selectionSize > 0`; PASTE enabled iff `pasteboardSize > 0`; DELETE deferred to `DeleteAction.updateEnabledState()` | unit | — | missing | write unit tests: mock `MusicSelectionDidChangeNotification` and `ScoreView.getPasteboardSize()`/`getSelectionSize()`; verify each branch | ⬜ |
-| PasteboardAction | `actionPerformed` dispatches `PasteboardOpCommand(op)` for all four ops | unit | — | missing (wrong-level) | action dispatch not tested; write unit test verifying `MessageCenter.post(new PasteboardOpCommand(op))` for COPY, CUT, DELETE, PASTE (mock `MessageCenter`) | ⬜ |
+| PasteboardAction | `musicSelectionDidChange`: COPY/CUT enabled iff `selectionSize > 0`; PASTE enabled iff `pasteboardSize > 0`; DELETE deferred to `DeleteAction.updateEnabledState()` | unit | — | missing | write unit tests: mock `MusicSelectionDidChangeNotification` and `ScoreView.getPasteboardSize()`/`getSelectionSize()`; verify each branch | ✅ |
+| PasteboardAction | `actionPerformed` dispatches `PasteboardOpCommand(op)` for all four ops | unit | — | missing (wrong-level) | action dispatch not tested; write unit test verifying `MessageCenter.post(new PasteboardOpCommand(op))` for COPY, CUT, DELETE, PASTE (mock `MessageCenter`) | ✅ |
 | CopyAction | inherits `PasteboardAction` with `Operation.COPY`; no own logic | none | — | none | trivial delegating constructor | — |
 | CutAction | inherits `PasteboardAction` with `Operation.CUT`; no own logic | none | — | none | trivial delegating constructor | — |
 | PasteAction | inherits `PasteboardAction` with `Operation.PASTE`; no own logic | none | — | none | trivial delegating constructor | — |
-| DeleteAction | `updateEnabledState`: enabled iff lyricSelection OR activeSelection OR glissandoSelection OR canDeleteLine | unit | `DeleteActionTest.testDeleteEnabledForLyricSelection` | inadequate | only lyric-selection branch tested; missing: activeSelection branch, glissandoSelection branch, canDeleteLine branch, and all-false (disabled) case | ⬜ |
-| DeleteAction | `actionPerformed` (inherited): dispatches `PasteboardOpCommand(DELETE)` | unit | — | missing (wrong-level) | same gap as PasteboardAction above — mutant in action body survives | ⬜ |
-| DeselectAction | `actionPerformed` dispatches `DeselectCommand` | unit | — | missing (wrong-level) | write unit test verifying `MessageCenter.post(new DeselectCommand())` | ⬜ |
-| SelectLineAction | `actionPerformed` dispatches `SelectLineCommand` | unit | — | missing (wrong-level) | write unit test verifying `MessageCenter.post(new SelectLineCommand())` | ⬜ |
-| InsertLineAction | `getActionCommand(shift)` branch: ADD→"add-line", 0→"insert-line-before", 1→"insert-line-after" | unit | — | missing | write unit test asserting all three action-command strings | ⬜ |
+| DeleteAction | `updateEnabledState`: enabled iff lyricSelection OR activeSelection OR glissandoSelection OR canDeleteLine | unit | `DeleteActionTest.testDeleteEnabledForLyricSelection` | inadequate | only lyric-selection branch tested; missing: activeSelection branch, glissandoSelection branch, canDeleteLine branch, and all-false (disabled) case | ✅ |
+| DeleteAction | `actionPerformed` (inherited): dispatches `PasteboardOpCommand(DELETE)` | unit | — | missing (wrong-level) | same gap as PasteboardAction above — mutant in action body survives | ✅ |
+| DeselectAction | `actionPerformed` dispatches `DeselectCommand` | unit | — | missing (wrong-level) | write unit test verifying `MessageCenter.post(new DeselectCommand())` | ✅ |
+| SelectLineAction | `actionPerformed` dispatches `SelectLineCommand` | unit | — | missing (wrong-level) | write unit test verifying `MessageCenter.post(new SelectLineCommand())` | ✅ |
+| InsertLineAction | `getActionCommand(shift)` branch: ADD→"add-line", 0→"insert-line-before", 1→"insert-line-after" | unit | — | missing | write unit test asserting all three action-command strings | ✅ |
 | InsertLineAction | `actionPerformed` dispatches `InsertLineCommand(shift)` for all three variants | unit | — | missing (wrong-level) | write unit test verifying `MessageCenter.post(new InsertLineCommand(shift))` for shift ∈ {-1, 0, 1} | ⬜ |
 | EditLyricAction | `enableFromSelection`: false when no single selected element; delegates to `LyricEditor.isLyricTargetEligible` | unit | `EditLyricActionGraceNoteTest` (4 tests) | adequate | keep | — |
 | EditLyricAction | `actionPerformed`: deselects then opens `LyricEditor.openOn` for the selected element | unit | `EditLyricActionTest.testActionPerformedOpensEditorForSelectedElement` | adequate | keep | — |

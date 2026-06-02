@@ -1,0 +1,187 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.ui.action;
+
+import module java.desktop;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+
+import songscribe.MainFrameMockTest;
+import songscribe.message.MessageCenter;
+import songscribe.message.command.PasteboardOpCommand;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.ui.playback.PlaybackController;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
+
+class PasteboardActionTest extends MainFrameMockTest {
+
+    private MockedStatic<PlaybackController> playbackControllerMock;
+
+    @BeforeEach
+    void setUp() {
+        // Must follow MainFrame setup: PlaybackController.isPlaying() is checked by
+        // updateEnabledState() for DISABLE_WHEN_PLAYING actions.
+        playbackControllerMock = mockStatic(PlaybackController.class);
+        playbackControllerMock.when(PlaybackController::isPlaying).thenReturn(false);
+    }
+
+    @AfterEach
+    void tearDown() {
+        playbackControllerMock.close();
+    }
+
+    // Row 1: musicSelectionDidChange — enablement branches
+
+    @Nested
+    class MusicSelectionDidChange {
+
+        @Test
+        void testCopyEnabledWhenSelectionSizeGreaterThanZero() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            var action = CopyAction.createAction(mainFrame());
+            action.setEnabled(false);
+
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled()).isTrue();
+        }
+
+        @Test
+        void testCopyDisabledWhenSelectionSizeIsZero() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(0);
+            var action = CopyAction.createAction(mainFrame());
+            action.setEnabled(true);
+
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled()).isFalse();
+        }
+
+        @Test
+        void testCutEnabledWhenSelectionSizeGreaterThanZero() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(2);
+            var action = CutAction.createAction(mainFrame());
+            action.setEnabled(false);
+
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled()).isTrue();
+        }
+
+        @Test
+        void testCutDisabledWhenSelectionSizeIsZero() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(0);
+            var action = CutAction.createAction(mainFrame());
+            action.setEnabled(true);
+
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled()).isFalse();
+        }
+
+        // PasteAction.musicSelectionDidChange always disables paste (unimplemented, see #410)
+        @Test
+        void testPasteAlwaysDisabledRegardlessOfPasteboardSize() {
+            when(mockEnv().score().getPasteboardSize()).thenReturn(1);
+            var action = PasteAction.createAction(mainFrame());
+            action.setEnabled(true);
+
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled()).isFalse();
+        }
+    }
+
+    // Row 2: actionPerformed dispatches PasteboardOpCommand with correct operation
+
+    @Nested
+    class ActionPerformed {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+
+        @BeforeEach
+        void setUpMessageCenter() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+        }
+
+        @AfterEach
+        void tearDownMessageCenter() {
+            messageCenterMock.close();
+        }
+
+        @Test
+        void testActionPerformedDispatchesCopyCommand() {
+            var action = CopyAction.createAction(mainFrame());
+            action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "edit-copy"));
+
+            var captor = ArgumentCaptor.forClass(PasteboardOpCommand.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue().getOperation())
+                .isEqualTo(PasteboardAction.Operation.COPY);
+        }
+
+        @Test
+        void testActionPerformedDispatchesCutCommand() {
+            var action = CutAction.createAction(mainFrame());
+            action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "edit-cut"));
+
+            var captor = ArgumentCaptor.forClass(PasteboardOpCommand.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue().getOperation())
+                .isEqualTo(PasteboardAction.Operation.CUT);
+        }
+
+        @Test
+        void testActionPerformedDispatchesDeleteCommand() {
+            var action = DeleteAction.createAction(mainFrame());
+            action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "edit-delete"));
+
+            var captor = ArgumentCaptor.forClass(PasteboardOpCommand.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue().getOperation())
+                .isEqualTo(PasteboardAction.Operation.DELETE);
+        }
+
+        @Test
+        void testActionPerformedDispatchesPasteCommand() {
+            var action = PasteAction.createAction(mainFrame());
+            action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "edit-paste"));
+
+            var captor = ArgumentCaptor.forClass(PasteboardOpCommand.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue().getOperation())
+                .isEqualTo(PasteboardAction.Operation.PASTE);
+        }
+    }
+}

@@ -55,3 +55,6 @@ Prefs.testPutMapAndGetMapRoundTrip → modify (now asserts nested map x/y values
 DocumentFonts.defaultsFromPrefs → modify (testAllRolesPopulated now also asserts font.getFamily() per role matches the PS name from prefs, catching wrong-key assignments)
 DocumentFonts.setFont(key,psName,size) → modify (added testSetFontByPsNameResolvesCorrectFamily; installed SourceSans3 fonts in GetSet @BeforeAll to enable meaningful PS-name→family assertion)
 RecentDocumentsManager → modify (extracted loadFromPrefs() helper + added package-private reloadForTest() to enable constructor-behavior testing)
+
+# 5d-clipboard-selection-line (DeleteAction)
+DeleteActionTest.testDeleteEnabledForLyricSelection  # strengthened — now part of full branch coverage
