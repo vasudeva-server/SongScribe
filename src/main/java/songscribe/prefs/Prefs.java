@@ -154,6 +154,30 @@ public final class Prefs {
         INSTANCE.removeObsoleteKeys();
     }
 
+    /**
+     * Exposes {@link #parseJsonValue(JsonElement)} for direct invocation in tests.
+     * Package-private for test use only — do not call from production code.
+     */
+    static @Nullable Object parseJsonValueForTest(JsonElement element) {
+        return parseJsonValue(element);
+    }
+
+    /**
+     * Exposes {@link #writeTyped(String, String, Object)} for direct invocation in tests.
+     * Package-private for test use only — do not call from production code.
+     */
+    static void writeTypedForTest(String key, String value, @Nullable Object defaultValue) {
+        INSTANCE.writeTyped(key, value, defaultValue);
+    }
+
+    /**
+     * Exposes the migration logic for a caller-supplied file in tests.
+     * Package-private for test use only — do not call from production code.
+     */
+    static void migrateForTest(File oldPropsFile) {
+        INSTANCE.migrateFromFile(oldPropsFile);
+    }
+
     public static List<String> getStringList(PrefsKey key) {
         var value = INSTANCE.store.get(key.key());
 
@@ -386,13 +410,17 @@ public final class Prefs {
     }
 
     private void migrate() {
-        if (!OLD_PROPS_FILE.exists()) {
+        migrateFromFile(OLD_PROPS_FILE);
+    }
+
+    private void migrateFromFile(File oldPropsFile) {
+        if (!oldPropsFile.exists()) {
             return;
         }
 
         var oldProps = new Properties();
 
-        try (var reader = Files.newBufferedReader(OLD_PROPS_FILE.toPath())) {
+        try (var reader = Files.newBufferedReader(oldPropsFile.toPath())) {
             oldProps.load(reader);
         } catch (IOException e) {
             LOG.warn("Failed to load old props file for migration", e);
@@ -430,8 +458,8 @@ public final class Prefs {
 
         saveQuietly();
 
-        if (!OLD_PROPS_FILE.delete()) {
-            LOG.warn("Failed to delete old props file: {}", OLD_PROPS_FILE);
+        if (!oldPropsFile.delete()) {
+            LOG.warn("Failed to delete old props file: {}", oldPropsFile);
         }
     }
 

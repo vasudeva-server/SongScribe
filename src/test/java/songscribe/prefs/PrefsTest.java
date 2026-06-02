@@ -23,16 +23,22 @@ package songscribe.prefs;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 
+import com.google.gson.JsonNull;
 import com.google.gson.JsonParser;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import songscribe.UnitTest;
 
@@ -382,6 +388,209 @@ class PrefsTest extends UnitTest {
 
         // The non-obsolete live key must be intact — removeObsoleteKeys is surgical.
         assertThat(Prefs.getRawStored(PrefsKey.TITLE_FONT)).isEqualTo(STORED_TITLE_FONT);
+    }
+
+    // --- parseJsonValue ---
+
+    @Nested
+    class ParseJsonValue {
+
+        @Test
+        void testBooleanElementReturnsBooleanType() {
+            // boolean JSON primitive → Java Boolean; the type matters because getBoolean
+            // casts directly to Boolean — a non-Boolean stored value causes ClassCastException.
+            var result = Prefs.parseJsonValueForTest(JsonParser.parseString("true"));
+            assertThat(result).isInstanceOf(Boolean.class).isEqualTo(Boolean.TRUE);
+        }
+
+        @Test
+        void testNumberElementStoredAsLong() {
+            // Numbers must be stored as Long, not Integer or Double.
+            // getInt calls Number.intValue() and getLong calls Number.longValue() — both
+            // require a numeric type; storing as Double would lose precision for large values.
+            var result = Prefs.parseJsonValueForTest(JsonParser.parseString("42"));
+            assertThat(result).isInstanceOf(Long.class).isEqualTo(42L);
+        }
+
+        @Test
+        void testStringElementReturnsString() {
+            var result = Prefs.parseJsonValueForTest(JsonParser.parseString("\"hello\""));
+            assertThat(result).isInstanceOf(String.class).isEqualTo("hello");
+        }
+
+        @Test
+        void testObjectElementReturnsMap() {
+            // JSON objects are deserialized as Map<String,Object> so getMap() can
+            // return them without additional conversion.
+            var result = Prefs.parseJsonValueForTest(JsonParser.parseString("{\"x\":1,\"y\":2}"));
+            assertThat(result).isInstanceOf(Map.class);
+
+            @SuppressWarnings("unchecked")
+            var map = (Map<String, Object>) result;
+            assertThat(map).containsKey("x").containsKey("y");
+        }
+
+        @Test
+        void testArrayElementReturnsStringList() {
+            // JSON arrays are deserialized as List<String> so getStringList() can return them.
+            var result = Prefs.parseJsonValueForTest(JsonParser.parseString("[\"a\",\"b\"]"));
+            assertThat(result).isInstanceOf(List.class);
+
+            @SuppressWarnings("unchecked")
+            var list = (List<String>) result;
+            assertThat(list).containsExactly("a", "b");
+        }
+
+        @Test
+        void testNullJsonElementReturnsNull() {
+            // JsonNull is returned for JSON null literals; parseJsonValue returns null
+            // so that the caller (loadStore/loadDefaults) can skip null entries.
+            var result = Prefs.parseJsonValueForTest(JsonNull.INSTANCE);
+            assertThat(result).isNull();
+        }
+    }
+
+    // --- writeTyped ---
+
+    @Nested
+    class WriteTyped {
+
+        @AfterEach
+        void tearDown() {
+            Prefs.reset(PrefsKey.FIRST_RUN);
+            Prefs.reset(PrefsKey.EXPORT_DPI);
+            Prefs.reset(PrefsKey.TITLE_FONT);
+        }
+
+        @Test
+        void testBooleanDefaultParsesBooleanString() {
+            // When the default value is Boolean, the string "true" must be stored
+            // as Boolean.TRUE — not as a String — so that getBoolean() can cast without error.
+            Prefs.writeTypedForTest(PrefsKey.FIRST_RUN.key(), "true", Boolean.FALSE);
+            assertThat(Prefs.getRawStored(PrefsKey.FIRST_RUN)).isInstanceOf(Boolean.class).isEqualTo(Boolean.TRUE);
+        }
+
+        @Test
+        void testLongDefaultParsesNumericString() {
+            // When the default value is Long, the string must be parsed to Long
+            // so that getInt()/getLong() work via Number coercion.
+            Prefs.writeTypedForTest(PrefsKey.EXPORT_DPI.key(), "150", 600L);
+            assertThat(Prefs.getRawStored(PrefsKey.EXPORT_DPI)).isInstanceOf(Long.class).isEqualTo(150L);
+        }
+
+        @Test
+        void testLongDefaultInvalidNumericStringIsIgnored() {
+            // An invalid numeric string must be silently skipped (warning logged, no store entry
+            // written) — migration must not corrupt prefs with unparseable values.
+            // Seed a known value first so we can confirm it is unchanged.
+            Prefs.put(PrefsKey.EXPORT_DPI, STORED_EXPORT_DPI);
+            Prefs.writeTypedForTest(PrefsKey.EXPORT_DPI.key(), "not-a-number", 600L);
+            // The store value must remain the previously put value, not be overwritten with garbage.
+            assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(STORED_EXPORT_DPI);
+        }
+
+        @Test
+        void testOtherDefaultStoresStringAsIs() {
+            // When the default is a String (or any non-Boolean/non-Long type),
+            // the value is stored verbatim as a String.
+            Prefs.writeTypedForTest(PrefsKey.TITLE_FONT.key(), "MyFont-Regular", "default");
+            assertThat(Prefs.getRawStored(PrefsKey.TITLE_FONT)).isInstanceOf(String.class).isEqualTo("MyFont-Regular");
+        }
+    }
+
+    // --- migrate ---
+
+    @Nested
+    class Migrate {
+
+        private static final String OLD_KEY_DPI = "dpi";
+        private static final String OLD_KEY_FIRSTRUN = "firstrun";
+        private static final String OLD_KEY_LOOP = "playcontinuously";
+        private static final String OLD_DPI_VALUE = "300";
+        private static final String WHATS_NEW_VERSION_1 = "1.0";
+        private static final String WHATS_NEW_VERSION_2 = "2.0";
+        private static final String WHATS_NEW_PREFIX = "showwhatsnew";
+
+        @AfterEach
+        void tearDown() {
+            Prefs.reset(PrefsKey.EXPORT_DPI);
+            Prefs.reset(PrefsKey.FIRST_RUN);
+            Prefs.reset(PrefsKey.LOOP_PLAYBACK);
+            Prefs.reset(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION);
+        }
+
+        @Test
+        void testMigrateIsNoOpWhenOldFileAbsent(@TempDir File tempDir) {
+            // Passing a non-existent file must leave the store completely unchanged.
+            var storeSnapshot = Prefs.getInt(PrefsKey.EXPORT_DPI);
+            var noSuchFile = new File(tempDir, "no-such-props");
+
+            Prefs.migrateForTest(noSuchFile);
+
+            assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(storeSnapshot);
+        }
+
+        @Test
+        void testMigrateMapsKnownKeysIntoStore(@TempDir File tempDir) throws IOException {
+            // Old properties file with a "dpi" entry → must be stored under
+            // PrefsKey.EXPORT_DPI as Long (because the default is numeric).
+            var oldFile = writePropsFile(tempDir, OLD_KEY_DPI + "=" + OLD_DPI_VALUE);
+
+            Prefs.migrateForTest(oldFile);
+
+            assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(Integer.parseInt(OLD_DPI_VALUE));
+        }
+
+        @Test
+        void testMigrateBooleanKeyStoredAsBoolean(@TempDir File tempDir) throws IOException {
+            // "firstrun=true" must be stored as Boolean (not String) because
+            // the default for FIRST_RUN is a boolean.
+            var oldFile = writePropsFile(tempDir, OLD_KEY_FIRSTRUN + "=true");
+
+            Prefs.migrateForTest(oldFile);
+
+            assertThat(Prefs.getRawStored(PrefsKey.FIRST_RUN)).isInstanceOf(Boolean.class);
+            assertThat(Prefs.getBoolean(PrefsKey.FIRST_RUN)).isTrue();
+        }
+
+        @Test
+        void testMigrateRecordsHighestShowWhatsnewVersion(@TempDir File tempDir) throws IOException {
+            // Multiple showwhatsnew* keys: migration must record the lexicographically
+            // highest version suffix in LAST_SEEN_WHATS_NEW_VERSION.
+            var oldFile = writePropsFile(
+                tempDir,
+                WHATS_NEW_PREFIX + WHATS_NEW_VERSION_1 + "=true",
+                WHATS_NEW_PREFIX + WHATS_NEW_VERSION_2 + "=true"
+            );
+
+            Prefs.migrateForTest(oldFile);
+
+            assertThat(Prefs.getString(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION))
+                .isEqualTo(WHATS_NEW_VERSION_2);
+        }
+
+        @Test
+        void testMigrateDeletesOldFileAfterSuccess(@TempDir File tempDir) throws IOException {
+            // The old props file must be deleted after a successful migration
+            // so that the migration does not run again on the next launch.
+            var oldFile = writePropsFile(tempDir, OLD_KEY_LOOP + "=true");
+
+            Prefs.migrateForTest(oldFile);
+
+            assertThat(oldFile).doesNotExist();
+        }
+
+        private File writePropsFile(File dir, String... lines) throws IOException {
+            var file = new File(dir, "props");
+
+            try (var writer = new PrintWriter(Files.newBufferedWriter(file.toPath()))) {
+                for (var line : lines) {
+                    writer.println(line);
+                }
+            }
+
+            return file;
+        }
     }
 
 }
