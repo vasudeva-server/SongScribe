@@ -5,7 +5,7 @@
 | Phase | Description | Status | Sub-plan |
 |-------|-------------|--------|----------|
 | 1 | [Conversion Scaffold + Round-Trip Harness](#-phase-1-conversion-scaffold--round-trip-harness) | ✅ Complete | [phase-1-scaffold.md](./phase-1-scaffold.md) |
-| 2 | [Structural Model (Line ↔ Measure)](#-phase-2-structural-model-line--measure) | 📋 Sub-plan | [phase-2-structural-model.md](./phase-2-structural-model.md) |
+| 2 | [Structural Model (Line ↔ Measure)](#-phase-2-structural-model-line--measure) | ✅ Complete | [phase-2-structural-model.md](./phase-2-structural-model.md) |
 | 3 | [Notes & Per-Note Attachments](#-phase-3-notes--per-note-attachments) | ⏳ Pending | — |
 | 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ⏳ Pending | — |
 | 5 | [Per-Measure Attributes (Key, Tempo)](#-phase-5-per-measure-attributes-key-tempo) | ⏳ Pending | — |
@@ -91,27 +91,13 @@ Created `MusicXmlWriter`, `MusicXmlReader`, `MusicXmlSchemaValidator`, and round
 
 ---
 
-## 📋 Phase 2: Structural Model (Line ↔ Measure)
+## ✅ Phase 2: Structural Model (Line ↔ Measure)
 
-**Status**: 📋 Sub-plan — see [phase-2-structural-model.md](./phase-2-structural-model.md)
+**Status**: ✅ Complete — see [phase-2-structural-model.md](./phase-2-structural-model.md)
 
-**Goal**: The reversible line-centric ↔ measure-centric transformation — the
-conceptual core. No note content yet (or minimal placeholder notes).
+Implemented the reversible line-centric ↔ measure-centric transformation. `BarlineStyleMapping` provides the `ElementType` ↔ `<bar-style>`/`<repeat>` lookup table; `MusicXmlWriter` splits each `Line` into `<measure>` containers at every barline element and line break; `MusicXmlReader` reassembles measures back into lines with barline `StaffElement`s re-inserted. `REPEAT_LEFT_RIGHT` decomposes into a straddling backward/forward `<barline>` pair on write and recomposes on read.
 
-**Mapping** (musicxml.md § "Structural model"):
-- Insert a `<measure>` boundary at (a) every SongScribe barline element and
-  (b) every line break.
-- Real barline element → `<barline>` with matching `<bar-style>` (+ `<repeat>`).
-- Line break with no barline → invisible `<barline><bar-style>none</bar-style>`.
-- Line (system) break → `<print new-system="yes"/>` on the measure starting the line.
-- Read-back rule: invisible barline coinciding with a system break = line break;
-  visible one = real barline element.
-
-**Touches**: `MusicXmlWriter`/`MusicXmlReader`; reads `Song` lines + inline
-barline `ElementType`s (`io/LineIO`, `io/StaffElementIO` for reference).
-
-**Verify**: Round-trip a multi-line song with assorted barlines/repeats: line
-count, line breaks, and barline positions/styles all preserved.
+See [phase-2-structural-model.md](./phase-2-structural-model.md) for the detailed implementation plan.
 
 ---
 
