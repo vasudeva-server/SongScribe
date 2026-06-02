@@ -90,6 +90,15 @@ public final class RecentDocumentsManager {
         MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
+    /**
+     * Clears the in-memory paths list and resets the RECENT_FILES pref entry.
+     * Package-private for use in unit tests only — not part of the public API.
+     */
+    static void resetForTest() {
+        INSTANCE.paths.clear();
+        Prefs.reset(PrefsKey.RECENT_FILES);
+    }
+
     private void persist() {
         var strings = paths.stream().map(Path::toString).toList();
         Prefs.putStringList(PrefsKey.RECENT_FILES, strings);

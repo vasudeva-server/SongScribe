@@ -28,13 +28,13 @@ Audited from production code outward: enumerated every testable behavior in `Pre
 | `Prefs` | `allKeysExistInDefaults`: every `PrefsKey` (except `ALL`) has entry in `defaults.json` | unit | `PrefsTest.testAllKeysExistInDefaults` | adequate | well-written contract guard | — |
 | `PrefsKey` | `key()` returns the camelCase JSON string matching the enum constant | unit | `PrefsTest.testAllKeysExistInDefaults` (indirectly exercises `key()`) | adequate | implicitly covered by the defaults check | — |
 | `PrefsKey` | enum is purely a typed-key holder with no value logic | none | — | — | — | — |
-| `RecentDocumentsManager` | `add`: deduplicates (existing entry moves to front), adds at front of MRU list | unit | none | missing | core MRU logic; no test | ⬜ |
-| `RecentDocumentsManager` | `add`: enforces `MAX_SIZE` cap by removing last entries | unit | none | missing | off-by-one risk | ⬜ |
-| `RecentDocumentsManager` | `add`: normalizes path before insert | unit | none | missing | normalization correctness | ⬜ |
-| `RecentDocumentsManager` | `add`: posts `RecentDocumentsDidChangeNotification` after persist | unit | none | missing | notification contract | ⬜ |
-| `RecentDocumentsManager` | `remove`: removes matching normalized path; posts notification | unit | none | missing | add test | ⬜ |
-| `RecentDocumentsManager` | `remove`: no-op when path absent (should still persist+notify) | unit | none | missing | verify idempotency | ⬜ |
-| `RecentDocumentsManager` | `clear`: empties list, persists, posts notification | unit | none | missing | add test | ⬜ |
+| `RecentDocumentsManager` | `add`: deduplicates (existing entry moves to front), adds at front of MRU list | unit | none | missing | core MRU logic; no test | ✅ |
+| `RecentDocumentsManager` | `add`: enforces `MAX_SIZE` cap by removing last entries | unit | none | missing | off-by-one risk | ✅ |
+| `RecentDocumentsManager` | `add`: normalizes path before insert | unit | none | missing | normalization correctness | ✅ |
+| `RecentDocumentsManager` | `add`: posts `RecentDocumentsDidChangeNotification` after persist | unit | none | missing | notification contract | ✅ |
+| `RecentDocumentsManager` | `remove`: removes matching normalized path; posts notification | unit | none | missing | add test | ✅ |
+| `RecentDocumentsManager` | `remove`: no-op when path absent (should still persist+notify) | unit | none | missing | verify idempotency | ✅ |
+| `RecentDocumentsManager` | `clear`: empties list, persists, posts notification | unit | none | missing | add test | ✅ |
 | `RecentDocumentsManager` | `getRecents`: returns unmodifiable copy | unit | none | missing | verifies defensive copy | ⬜ |
 | `RecentDocumentsManager` | constructor: strips non-existent paths from loaded list and persists if any removed | unit | none | missing | startup cleanup logic; untested | ⬜ |
 | `RecentDocumentsManager` | constructor: gracefully skips malformed path strings | unit | none | missing | robustness under corrupt prefs | ⬜ |
