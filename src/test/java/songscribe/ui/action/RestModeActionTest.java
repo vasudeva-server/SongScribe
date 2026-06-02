@@ -147,4 +147,18 @@ class RestModeActionTest extends MainFrameMockTest {
         var rest = ElementType.CROTCHET_REST.newInstance();
         assertThat(action.appliesTo(rest)).isTrue();
     }
+
+    // Row 27: matchesElement — returns true for rest elements, false for non-rest elements
+
+    @Test
+    void testMatchesElementReturnsTrueForRestElement() {
+        var rest = ElementType.CROTCHET_REST.newInstance();
+        assertThat(action.matchesElement(rest)).isTrue();
+    }
+
+    @Test
+    void testMatchesElementReturnsFalseForNoteElement() {
+        var note = ElementType.CROTCHET.newInstance();
+        assertThat(action.matchesElement(note)).isFalse();
+    }
 }
