@@ -31,10 +31,13 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
+import com.formdev.flatlaf.util.SystemInfo;
+
 import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
+import songscribe.message.command.PrintCommand;
 import songscribe.message.command.SaveAsCommand;
 import songscribe.message.command.SaveCommand;
 import songscribe.message.command.ShowOpenDialogCommand;
@@ -296,6 +299,78 @@ class FileLifecycleActionsTest extends MainFrameMockTest {
 
                 messageCenterMock.verify(
                     () -> MessageCenter.post(any(SaveAsCommand.class)));
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // QuitAction — rows 21 & 22
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class QuitActionTests {
+
+        // Row 21: constructor sets platform-appropriate name and accelerator
+
+        @Test
+        void testConstructorSetsNameAndAcceleratorForCurrentPlatform() {
+            var action = QuitAction.createAction(mainFrame());
+
+            if (SystemInfo.isMacOS) {
+                // On macOS the system provides the accelerator; the action must not set one
+                assertThat(action.getName()).isEqualTo(QuitAction.NAME);
+                assertThat(action.getAccelerator()).isNull();
+            } else {
+                // On non-macOS platforms the action sets Alt+F4
+                assertThat(action.getName()).isEqualTo(QuitAction.NAME);
+                assertThat(action.getAccelerator()).isEqualTo(
+                    KeyStroke.getKeyStroke(KeyEvent.VK_F4, InputEvent.ALT_DOWN_MASK));
+            }
+        }
+
+        // Row 22: constructor sets no disabling flags (quit is always enabled)
+
+        @Test
+        void testConstructorSetsNoDisablingFlags() {
+            var action = QuitAction.createAction(mainFrame());
+            assertAll(
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isFalse(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE)).isFalse(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.OPENS_DIALOG)).isFalse()
+            );
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // PrintAction — rows 23 & 24
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class PrintActionTests {
+
+        // Row 24: constructor sets DISABLE_WHEN_PLAYING, DISABLE_IN_GRACE_MODE, and OPENS_DIALOG
+
+        @Test
+        void testConstructorSetsAllThreeFlags() {
+            var action = PrintAction.createAction(mainFrame());
+            assertAll(
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE)).isTrue(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.OPENS_DIALOG)).isTrue()
+            );
+        }
+
+        // Row 23: actionPerformed posts PrintCommand on the message bus
+
+        @Test
+        void testActionPerformedPostsPrintCommand() {
+            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
+                var action = PrintAction.createAction(mainFrame());
+                action.actionPerformed(
+                    new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "print-document"));
+
+                messageCenterMock.verify(
+                    () -> MessageCenter.post(any(PrintCommand.class)));
             }
         }
     }
