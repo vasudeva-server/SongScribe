@@ -35,6 +35,8 @@ import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
+import songscribe.message.command.SaveAsCommand;
+import songscribe.message.command.SaveCommand;
 import songscribe.message.command.ShowOpenDialogCommand;
 import songscribe.prefs.RecentDocumentsManager;
 
@@ -43,9 +45,10 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.when;
 
 /**
- * Tests for NewAction, OpenAction, and OpenRecentAction (section 5E rows 1–7).
+ * Tests for file/lifecycle actions (section 5E).
  */
 class FileLifecycleActionsTest extends MainFrameMockTest {
 
@@ -178,6 +181,122 @@ class FileLifecycleActionsTest extends MainFrameMockTest {
             messageCenterMock.verify(
                 () -> MessageCenter.post(any(OpenFileCommand.class)),
                 never());
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // ClearRecentsAction — rows 12 & 13
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class ClearRecentsActionTests {
+
+        // Row 13: constructor sets DISABLE_WHEN_PLAYING and DISABLE_IN_GRACE_MODE flags
+
+        @Test
+        void testConstructorSetsBothFlags() {
+            var action = ClearRecentsAction.createAction(mainFrame());
+            assertAll(
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE)).isTrue()
+            );
+        }
+
+        // Row 12: actionPerformed calls RecentDocumentsManager.clear()
+
+        @Test
+        void testActionPerformedCallsClear() {
+            try (var recentManagerMock = mockStatic(RecentDocumentsManager.class)) {
+                var action = ClearRecentsAction.createAction(mainFrame());
+                action.actionPerformed(
+                    new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "clear-recents"));
+
+                recentManagerMock.verify(RecentDocumentsManager::clear);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // SaveAction — rows 14, 15 & 16
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class SaveActionTests {
+
+        // Row 14: constructor sets no disabling flags (Save is always enabled)
+
+        @Test
+        void testConstructorSetsNoDisablingFlags() {
+            var action = SaveAction.createAction(mainFrame());
+            assertAll(
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isFalse(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE)).isFalse(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.OPENS_DIALOG)).isFalse()
+            );
+        }
+
+        // Row 15: perform(source) bypasses the message bus and returns mainFrame.save() result
+
+        @Test
+        void testPerformReturnsTrueWhenSaveSucceeds() {
+            when(mainFrame().save()).thenReturn(true);
+            var action = SaveAction.createAction(mainFrame());
+            assertThat(action.perform(null)).isTrue();
+        }
+
+        @Test
+        void testPerformReturnsFalseWhenSaveFails() {
+            when(mainFrame().save()).thenReturn(false);
+            var action = SaveAction.createAction(mainFrame());
+            assertThat(action.perform(null)).isFalse();
+        }
+
+        // Row 16: actionPerformed posts SaveCommand on the message bus
+
+        @Test
+        void testActionPerformedPostsSaveCommand() {
+            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
+                var action = SaveAction.createAction(mainFrame());
+                action.actionPerformed(
+                    new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "save"));
+
+                messageCenterMock.verify(
+                    () -> MessageCenter.post(any(SaveCommand.class)));
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // SaveAsAction — rows 17 & 18
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class SaveAsActionTests {
+
+        // Row 18: constructor sets DISABLE_WHEN_PLAYING, DISABLE_IN_GRACE_MODE, and OPENS_DIALOG flags
+
+        @Test
+        void testConstructorSetsAllThreeFlags() {
+            var action = SaveAsAction.createAction(mainFrame());
+            assertAll(
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE)).isTrue(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.OPENS_DIALOG)).isTrue()
+            );
+        }
+
+        // Row 17: actionPerformed posts SaveAsCommand on the message bus
+
+        @Test
+        void testActionPerformedPostsSaveAsCommand() {
+            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
+                var action = SaveAsAction.createAction(mainFrame());
+                action.actionPerformed(
+                    new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "save-as"));
+
+                messageCenterMock.verify(
+                    () -> MessageCenter.post(any(SaveAsCommand.class)));
+            }
         }
     }
 }

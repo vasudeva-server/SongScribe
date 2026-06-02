@@ -9,13 +9,13 @@
 | `OpenRecentAction` | `actionPerformed` — path exists → posts `OpenFileCommand` with correct file | unit | none | missing | write test: temp file on disk; call `actionPerformed`; assert command posted with matching path | ✅ |
 | `OpenRecentAction` | `actionPerformed` — path does not exist → shows error, calls `RecentDocumentsManager.remove`, does NOT post `OpenFileCommand` | unit | none | missing | write test: non-existent path; mock `OptionDialogs`; assert `remove` called and command not posted | ✅ |
 | `OpenRecentAction` | constructor sets `DISABLE_WHEN_PLAYING` and `DISABLE_IN_GRACE_MODE` flags | unit | none | missing | assert both flags present via `hasFlag()` | ✅ |
-| `ClearRecentsAction` | `actionPerformed` calls `RecentDocumentsManager.clear()` | unit | none | missing | write test: populate recents, call `actionPerformed`, assert list empty | ⬜ |
-| `ClearRecentsAction` | constructor sets `DISABLE_WHEN_PLAYING` and `DISABLE_IN_GRACE_MODE` flags | unit | none | missing | assert both flags present | ⬜ |
-| `SaveAction` | constructor sets **no** disabling flags (Save is always enabled, even during playback / in grace mode) | unit | none | missing | assert `!hasFlag(DISABLE_WHEN_PLAYING)` etc. — documents the deliberate design decision | ⬜ |
-| `SaveAction` | `perform(source)` overrides base to bypass the message bus and return `mainFrame.save()` result synchronously | unit | none | missing | mock `MainFrame.save()` → true/false; call `perform(null)`; assert returned boolean matches | ⬜ |
-| `SaveAction` | `actionPerformed` posts `SaveCommand` on the message bus | unit | none | missing | write test: subscribe handler; call `actionPerformed`; assert `SaveCommand` posted | ⬜ |
-| `SaveAsAction` | `actionPerformed` posts `SaveAsCommand` on the message bus | unit | none | missing | write test: subscribe handler; call `actionPerformed`; assert `SaveAsCommand` posted | ⬜ |
-| `SaveAsAction` | constructor sets `DISABLE_WHEN_PLAYING`, `DISABLE_IN_GRACE_MODE`, and `OPENS_DIALOG` flags | unit | none | missing | assert all three flags present | ⬜ |
+| `ClearRecentsAction` | `actionPerformed` calls `RecentDocumentsManager.clear()` | unit | none | missing | write test: populate recents, call `actionPerformed`, assert list empty | ✅ |
+| `ClearRecentsAction` | constructor sets `DISABLE_WHEN_PLAYING` and `DISABLE_IN_GRACE_MODE` flags | unit | none | missing | assert both flags present | ✅ |
+| `SaveAction` | constructor sets **no** disabling flags (Save is always enabled, even during playback / in grace mode) | unit | none | missing | assert `!hasFlag(DISABLE_WHEN_PLAYING)` etc. — documents the deliberate design decision | ✅ |
+| `SaveAction` | `perform(source)` overrides base to bypass the message bus and return `mainFrame.save()` result synchronously | unit | none | missing | mock `MainFrame.save()` → true/false; call `perform(null)`; assert returned boolean matches | ✅ |
+| `SaveAction` | `actionPerformed` posts `SaveCommand` on the message bus | unit | none | missing | write test: subscribe handler; call `actionPerformed`; assert `SaveCommand` posted | ✅ |
+| `SaveAsAction` | `actionPerformed` posts `SaveAsCommand` on the message bus | unit | none | missing | write test: subscribe handler; call `actionPerformed`; assert `SaveAsCommand` posted | ✅ |
+| `SaveAsAction` | constructor sets `DISABLE_WHEN_PLAYING`, `DISABLE_IN_GRACE_MODE`, and `OPENS_DIALOG` flags | unit | none | missing | assert all three flags present | ✅ |
 | `CloseWindowAction` | `actionPerformed` calls `Shutdown.now()` (same entry point as `QuitAction`) | e2e | `ShutdownTest.quitActionTriggersShutdown` (tests `QuitAction`, not `CloseWindowAction`) | missing | add e2e test: dispatch `CloseWindowAction.actionPerformed` on clean doc; assert sentinel fires | ⬜ |
 | `QuitAction` | `actionPerformed` calls `Shutdown.now()` | e2e | `ShutdownTest.quitActionTriggersShutdown` | adequate | keep | — |
 | `QuitAction` | constructor sets platform-appropriate name and accelerator (none on macOS, Alt+F4 elsewhere) | unit | none | missing | assert `NAME` and accelerator match platform | ⬜ |
