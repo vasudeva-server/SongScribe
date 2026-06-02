@@ -32,7 +32,6 @@
 |  | [5c-markings](matrix-action/5c-markings.md) | 19 | 19 | ✅ complete |
 |  | [5d-clipboard-selection-line](matrix-action/5d-clipboard-selection-line.md) | 0 | 20 | not started |
 |  | [5e-file-app-lifecycle](matrix-action/5e-file-app-lifecycle.md) | 0 | 19 | not started |
-|  | [5f-export-misc-dialog-open](matrix-action/5f-export-misc-dialog-open.md) | 0 | 22 | not started |
 | 6 · ui/selection+edit+adjustment+clipboard | [6a-selectioncoordinator](matrix-selection/6a-selectioncoordinator.md) | 42 | 42 | ✅ complete |
 |  | [6b-selection-data-holders-clipboardmanager](matrix-selection/6b-selection-data-holders-clipboardmanager.md) | 0 | 36 | not started |
 |  | [6c-ui-edit](matrix-selection/6c-ui-edit.md) | 0 | 24 | not started |
