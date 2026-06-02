@@ -20,11 +20,20 @@
 
 package songscribe.ui.action;
 
+import module java.desktop;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
+import songscribe.message.MessageCenter;
+import songscribe.message.command.InsertLineCommand;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mockStatic;
 
 class InsertLineActionTest extends MainFrameMockTest {
 
@@ -46,5 +55,51 @@ class InsertLineActionTest extends MainFrameMockTest {
     void testInsertLineAfterActionCommandIsInsertLineAfter() {
         var action = InsertLineAction.createInsertLineAfterAction(mainFrame());
         assertThat(action.getActionCommand()).isEqualTo("insert-line-after");
+    }
+
+    // Row 15: actionPerformed dispatches InsertLineCommand(shift) for all three variants
+
+    private MockedStatic<MessageCenter> messageCenterMock;
+
+    @BeforeEach
+    void setUpMessageCenter() {
+        messageCenterMock = mockStatic(MessageCenter.class);
+    }
+
+    @AfterEach
+    void tearDownMessageCenter() {
+        messageCenterMock.close();
+    }
+
+    @Test
+    void testAddLineActionPerformedPostsInsertLineCommandWithAddShift() {
+        var action = InsertLineAction.createAddLineAction(mainFrame());
+        action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "add-line"));
+
+        var captor = ArgumentCaptor.forClass(InsertLineCommand.class);
+        messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+        assertThat(captor.getValue().getShift()).isEqualTo(InsertLineAction.ADD);
+    }
+
+    @Test
+    void testInsertLineBeforeActionPerformedPostsInsertLineCommandWithShiftZero() {
+        var action = InsertLineAction.createInsertLineBeforeAction(mainFrame());
+        action.actionPerformed(
+            new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "insert-line-before"));
+
+        var captor = ArgumentCaptor.forClass(InsertLineCommand.class);
+        messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+        assertThat(captor.getValue().getShift()).isZero();
+    }
+
+    @Test
+    void testInsertLineAfterActionPerformedPostsInsertLineCommandWithShiftOne() {
+        var action = InsertLineAction.createInsertLineAfterAction(mainFrame());
+        action.actionPerformed(
+            new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "insert-line-after"));
+
+        var captor = ArgumentCaptor.forClass(InsertLineCommand.class);
+        messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+        assertThat(captor.getValue().getShift()).isEqualTo(1);
     }
 }

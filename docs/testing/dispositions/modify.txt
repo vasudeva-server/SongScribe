@@ -58,3 +58,6 @@ RecentDocumentsManager → modify (extracted loadFromPrefs() helper + added pack
 
 # 5d-clipboard-selection-line (DeleteAction)
 DeleteActionTest.testDeleteEnabledForLyricSelection  # strengthened — now part of full branch coverage
+
+# 5d-clipboard-selection-line (RestModeAction row 25)
+RestModeActionTest — added REQUIRES_EMPTY_SELECTION and ENABLE_WHEN_DURATION_SELECTED branch tests to address inadequate coverage

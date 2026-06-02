@@ -32,6 +32,7 @@ import songscribe.ui.component.LyricEditor;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -44,6 +45,18 @@ class EditLyricActionTest extends MainFrameMockTest {
     @BeforeEach
     void setUp() {
         action = EditLyricAction.createAction(mainFrame());
+    }
+
+    // Row 18: actionPerformed throws ISE when REQUIRES_SINGLE_SELECTION violated (no element selected)
+
+    @Test
+    void testActionPerformedThrowsIllegalStateExceptionWhenNoElementSelected() {
+        when(mockEnv().coordinator().getSingleSelectedElement()).thenReturn(null);
+
+        assertThatThrownBy(
+            () -> action.actionPerformed(
+                new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "edit-lyric"))
+        ).isInstanceOf(IllegalStateException.class);
     }
 
     // T27
