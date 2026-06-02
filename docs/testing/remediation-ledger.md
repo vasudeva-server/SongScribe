@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 747 / 1574 actionable rows done (47%).**
+**Overall: 756 / 1574 actionable rows done (48%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -25,8 +25,8 @@
 | 4 · midi/converter/util/smufl/prefs/font/export/uiconverter | [4a-midi](matrix-util/4a-midi.md) | 26 | 26 | ✅ complete |
 |  | [4c-util](matrix-util/4c-util.md) | 41 | 41 | ✅ complete |
 |  | [4d-smufl](matrix-util/4d-smufl.md) | 27 | 27 | ✅ complete |
-|  | [4e-prefs](matrix-util/4e-prefs.md) | 28 | 31 | in progress |
-|  | [4f-font](matrix-util/4f-font.md) | 0 | 6 | not started |
+|  | [4e-prefs](matrix-util/4e-prefs.md) | 31 | 31 | ✅ complete |
+|  | [4f-font](matrix-util/4f-font.md) | 6 | 6 | ✅ complete |
 | 5 · ui/action | [5a-base-infrastructure](matrix-action/5a-base-infrastructure.md) | 48 | 48 | ✅ complete |
 |  | [5b-note-element-insertion-duration-articulation](matrix-action/5b-note-element-insertion-duration-articulation.md) | 18 | 18 | ✅ complete |
 |  | [5c-markings](matrix-action/5c-markings.md) | 19 | 19 | ✅ complete |

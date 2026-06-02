@@ -35,9 +35,9 @@ Audited from production code outward: enumerated every testable behavior in `Pre
 | `RecentDocumentsManager` | `remove`: removes matching normalized path; posts notification | unit | none | missing | add test | ✅ |
 | `RecentDocumentsManager` | `remove`: no-op when path absent (should still persist+notify) | unit | none | missing | verify idempotency | ✅ |
 | `RecentDocumentsManager` | `clear`: empties list, persists, posts notification | unit | none | missing | add test | ✅ |
-| `RecentDocumentsManager` | `getRecents`: returns unmodifiable copy | unit | none | missing | verifies defensive copy | ⬜ |
-| `RecentDocumentsManager` | constructor: strips non-existent paths from loaded list and persists if any removed | unit | none | missing | startup cleanup logic; untested | ⬜ |
-| `RecentDocumentsManager` | constructor: gracefully skips malformed path strings | unit | none | missing | robustness under corrupt prefs | ⬜ |
+| `RecentDocumentsManager` | `getRecents`: returns unmodifiable copy | unit | none | missing | verifies defensive copy | ✅ |
+| `RecentDocumentsManager` | constructor: strips non-existent paths from loaded list and persists if any removed | unit | none | missing | startup cleanup logic; untested | ✅ |
+| `RecentDocumentsManager` | constructor: gracefully skips malformed path strings | unit | none | missing | robustness under corrupt prefs | ✅ |
 | `StartupAction` | pure enum — `DO_NOTHING`, `SHOW_FILE_CHOOSER`, `OPEN_MOST_RECENT` | none | — | — | — | — |
 
 **4E notes (quality concerns):**

@@ -38,8 +38,20 @@ public final class RecentDocumentsManager {
     private final List<Path> paths;
 
     private RecentDocumentsManager() {
-        var strings = Prefs.getStringList(PrefsKey.RECENT_FILES);
         paths = new ArrayList<>();
+        loadFromPrefs();
+    }
+
+    /**
+     * Loads the RECENT_FILES pref into {@code paths}, skipping malformed entries
+     * and persisting if any non-existent paths were pruned.
+     * <p>
+     * Extracted from the constructor so that {@link #reloadForTest()} can
+     * exercise the same logic without recreating the singleton.
+     */
+    private void loadFromPrefs() {
+        paths.clear();
+        var strings = Prefs.getStringList(PrefsKey.RECENT_FILES);
 
         for (var str : strings) {
             try {
@@ -97,6 +109,15 @@ public final class RecentDocumentsManager {
     static void resetForTest() {
         INSTANCE.paths.clear();
         Prefs.reset(PrefsKey.RECENT_FILES);
+    }
+
+    /**
+     * Reloads the in-memory paths list from the current RECENT_FILES pref,
+     * running the same startup cleanup (prune non-existent paths) as the
+     * constructor. Package-private for use in unit tests only.
+     */
+    static void reloadForTest() {
+        INSTANCE.loadFromPrefs();
     }
 
     private void persist() {

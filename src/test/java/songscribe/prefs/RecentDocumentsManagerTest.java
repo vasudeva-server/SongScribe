@@ -21,9 +21,12 @@
 package songscribe.prefs;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mockStatic;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +46,9 @@ class RecentDocumentsManagerTest extends UnitTest {
     // Path with a redundant ".." component — normalize() must collapse it.
     private static final Path UNNORMALIZED_PATH = Path.of("/music/subdir/../song_a.mssw");
     private static final Path NORMALIZED_PATH = UNNORMALIZED_PATH.normalize();
+
+    // A null byte in a path string causes Path.of() to throw InvalidPathException.
+    private static final String MALFORMED_PATH_STRING = "bad\u0000path";
 
     private MockedStatic<MessageCenter> messageCenterMock;
 
@@ -181,5 +187,67 @@ class RecentDocumentsManagerTest extends UnitTest {
         var captor = ArgumentCaptor.forClass(RecentDocumentsDidChangeNotification.class);
         messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
         assertThat(captor.getValue()).isInstanceOf(RecentDocumentsDidChangeNotification.class);
+    }
+
+    // --- getRecents: returns unmodifiable copy ---
+
+    @Test
+    void testGetRecentsReturnsUnmodifiableCopy() {
+        RecentDocumentsManager.add(PATH_A);
+
+        var recents = RecentDocumentsManager.getRecents();
+
+        // The returned list must be an independent, unmodifiable copy — mutating
+        // it must throw and must not affect subsequent calls to getRecents().
+        assertThrows(UnsupportedOperationException.class, () -> recents.add(PATH_B));
+        assertThat(RecentDocumentsManager.getRecents()).containsExactly(PATH_A);
+    }
+
+    // --- constructor startup cleanup: strips non-existent paths ---
+
+    @Test
+    void testReloadStripsNonExistentPathsAndPersists() throws Exception {
+        // Store two paths in prefs, only one of which exists on disk.
+        var tempFile = Files.createTempFile("songscribe-test-", ".mssw");
+
+        try {
+            Prefs.putStringList(
+                PrefsKey.RECENT_FILES,
+                List.of(tempFile.toString(), "/no/such/file_xyz.mssw")
+            );
+
+            RecentDocumentsManager.reloadForTest();
+
+            // Only the path that exists on disk must survive the cleanup.
+            assertThat(RecentDocumentsManager.getRecents())
+                .containsExactly(tempFile)
+                .doesNotContain(Path.of("/no/such/file_xyz.mssw"));
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
+    // --- constructor startup cleanup: skips malformed path strings ---
+
+    @Test
+    void testReloadSkipsMalformedPathStrings() throws Exception {
+        // A null byte in a path string causes Path.of() to throw InvalidPathException;
+        // the loading logic must silently skip it and load the valid entries.
+        var tempFile = Files.createTempFile("songscribe-test-", ".mssw");
+
+        try {
+            Prefs.putStringList(
+                PrefsKey.RECENT_FILES,
+                List.of(MALFORMED_PATH_STRING, tempFile.toString())
+            );
+
+            RecentDocumentsManager.reloadForTest();
+
+            // The valid, existing path is retained; the malformed one is silently dropped.
+            assertThat(RecentDocumentsManager.getRecents())
+                .containsExactly(tempFile);
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
     }
 }
