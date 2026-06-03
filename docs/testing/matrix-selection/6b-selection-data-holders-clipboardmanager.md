@@ -36,22 +36,22 @@
 | `LineSelectionState` | `canToggleBeaming()` — all beamable, no existing beam (add mode) | unit | `ToggleConflictTest.testChangeDurationToEighthBothEnabled` | adequate | — | — |
 | `LineSelectionState` | `canToggleBeaming()` — existing beam covering selection (remove mode) | unit | `ToggleConflictTest.testToggleTieOnDisablesBeam` / `testToggleTieOffReenablesBeam` | adequate | — | — |
 | `LineSelectionState` | `canToggleBeaming()` — blocked when would connect same span as existing tie | unit | `ToggleConflictTest.testToggleTieOnDisablesBeam` | adequate | — | — |
-| `LineSelectionState` | `canToggleTie()` — size != 2 returns false and sets canTie=false | unit | `ToggleConflictTest.testQuarterNotesBeamingDisabledTieEnabled` (size=2 path) + lacks explicit size!=2 assertion | inadequate | add explicit test for size < 2 and size > 2 setting canTie=false | ⬜ |
-| `LineSelectionState` | `canToggleTie()` — non-pitched element in range returns false | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `canToggleTie()` — pitch mismatch returns false | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `canToggleTie()` — elements in different ties returns false | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canToggleTie()` — size != 2 returns false and sets canTie=false | unit | `ToggleConflictTest.testQuarterNotesBeamingDisabledTieEnabled` (size=2 path) + lacks explicit size!=2 assertion | inadequate | add explicit test for size < 2 and size > 2 setting canTie=false | ✅ |
+| `LineSelectionState` | `canToggleTie()` — non-pitched element in range returns false | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `canToggleTie()` — pitch mismatch returns false | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `canToggleTie()` — elements in different ties returns false | unit | none | missing | add unit test | ✅ |
 | `LineSelectionState` | `canToggleTie()` — two same-pitch notes with no tie (add mode): canTie=true, existingTie=null | unit | `ToggleConflictTest.testQuarterNotesBeamingDisabledTieEnabled` + `testToggleTieOnDisablesBeam` | adequate | — | — |
 | `LineSelectionState` | `canToggleTie()` — two notes sharing existing tie (remove mode): canTie=true, existingTie set | unit | `ToggleConflictTest.testToggleTieOffReenablesBeam` (uses getExistingTie) | adequate | — | — |
 | `LineSelectionState` | `canToggleTie()` — blocked when would connect same span as existing beam | unit | `ToggleConflictTest.testToggleBeamOnDisablesTie` | adequate | — | — |
-| `LineSelectionState` | `resetTieState()` clears canTie and existingTie | unit | `ToggleConflictTest.toggleTie()` calls resetTieState but doesn't assert fields directly | inadequate | add unit test asserting `getCanTie()` and `getExistingTie()` return null after reset | ⬜ |
+| `LineSelectionState` | `resetTieState()` clears canTie and existingTie | unit | `ToggleConflictTest.toggleTie()` calls resetTieState but doesn't assert fields directly | inadequate | add unit test asserting `getCanTie()` and `getExistingTie()` return null after reset | ✅ |
 | `LineSelectionState` | `canToggleTuplet()` — size < 2 returns (false, null, false) | unit | `LineSelectionStateTest.testEmptySelectionCannotToggleTuplet` | adequate | — | — |
 | `LineSelectionState` | `canToggleTuplet()` — non-pitched element returns (false, null, false) | unit | `LineSelectionStateTest.testSelectionContainingNonPitchedElementCannotToggle` | adequate | — | — |
 | `LineSelectionState` | `canToggleTuplet()` — two pitched notes, no tuplet: (true, null, false) | unit | `LineSelectionStateTest.testTwoPitchedNotesNoTupletCanToggle` | adequate | — | — |
 | `LineSelectionState` | `canToggleTuplet()` — selection spans two different tuplets: (false, null, false) | unit | `LineSelectionStateTest.testSelectionSpanningTwoDifferentTupletsCannotToggle` | adequate | — | — |
 | `LineSelectionState` | `canToggleTuplet()` — full coverage of existing triplet: (true, tuplet, true) | unit | `LineSelectionStateTest.testFullCoverageOfTripletReportsCoversExisting` | adequate | — | — |
 | `LineSelectionState` | `canToggleTuplet()` — partial coverage of existing tuplet: (true, tuplet, false) | unit | `LineSelectionStateTest.testPartialCoverageOfTripletDoesNotCoverExisting` | adequate | — | — |
-| `LineSelectionState` | `canToggleTrill()` — returns false when no selection | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `canToggleTrill()` — returns true when at least one pitched note in range | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canToggleTrill()` — returns false when no selection | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `canToggleTrill()` — returns true when at least one pitched note in range | unit | none | missing | add unit test | ✅ |
 | `LineSelectionState` | `canToggleTrill()` — returns false when selection contains only rests | unit | none | missing | add unit test | ⬜ |
 | `LineSelectionState` | `canFlipStemDirection()` — returns false when nothing selected | unit | none | missing | add unit test | ⬜ |
 | `LineSelectionState` | `canFlipStemDirection()` — returns true when at least one non-rest in range | unit | none | missing | add unit test | ⬜ |

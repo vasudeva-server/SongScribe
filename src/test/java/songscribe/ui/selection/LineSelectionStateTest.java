@@ -25,11 +25,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
-import songscribe.ui.action.TupletAction;
+import songscribe.dom.Song;
+import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
+import songscribe.ui.action.TupletAction;
 
 class LineSelectionStateTest extends UnitTest {
 
@@ -624,5 +625,140 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(info.canToggle()).isFalse();
         assertThat(info.existing()).isNull();
         assertThat(info.coversExisting()).isFalse();
+    }
+
+    // -- canToggleTie failure paths --
+
+    @Test
+    void testCanToggleTieWithSizeLessThanTwoSetsCanTieFalse() {
+        // Size 1: only one element selected.
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    @Test
+    void testCanToggleTieWithSizeGreaterThanTwoSetsCanTieFalse() {
+        // Size 3: three elements selected.
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(2);
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    @Test
+    void testCanToggleTieWithNonPitchedElementSetsCanTieFalse() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET_REST.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    @Test
+    void testCanToggleTieWithPitchMismatchSetsCanTieFalse() {
+        // Two notes at different staff positions → different pitches.
+        var line = detachedLine();
+        var note0 = ElementType.CROTCHET.newInstance();
+        note0.setStaffPosition(0);
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setStaffPosition(1);
+        line.addElement(note0);
+        line.addElement(note1);
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    @Test
+    void testCanToggleTieWithElementsInDifferentTiesSetsCanTieFalse() {
+        // tie1 spans notes 0-1, tie2 spans notes 2-3.
+        // Selecting notes 1 and 2 crosses two different ties.
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addTie(new Tie(line.getElement(0), line.getElement(1)));
+        line.addTie(new Tie(line.getElement(2), line.getElement(3)));
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(1);
+        state.extendSelectionTo(2);
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    // -- resetTieState --
+
+    @Test
+    void testResetTieStateClearsCanTieAndExistingTie() {
+        // Arrange: two same-pitch notes → canToggleTie() sets canTie=true, existingTie=null (add mode).
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+        // Populate canTie and existingTie by calling canToggleTie().
+        assertThat(state.canToggleTie()).isTrue();
+        assertThat(state.getCanTie()).isEqualTo(true);
+
+        state.resetTieState();
+
+        assertThat(state.getCanTie()).isNull();
+        assertThat(state.getExistingTie()).isNull();
+    }
+
+    // -- canToggleTrill --
+
+    @Test
+    void testCanToggleTrillReturnsFalseWhenNoSelection() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        // selectionBegin defaults to -1 — no selection.
+
+        assertThat(state.canToggleTrill()).isFalse();
+    }
+
+    @Test
+    void testCanToggleTrillReturnsTrueWhenAtLeastOnePitchedNoteInRange() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+
+        assertThat(state.canToggleTrill()).isTrue();
     }
 }

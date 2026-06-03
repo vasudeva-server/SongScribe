@@ -61,3 +61,8 @@ DeleteActionTest.testDeleteEnabledForLyricSelection  # strengthened — now part
 
 # 5d-clipboard-selection-line (RestModeAction row 25)
 RestModeActionTest — added REQUIRES_EMPTY_SELECTION and ENABLE_WHEN_DURATION_SELECTED branch tests to address inadequate coverage
+
+# 6b-selection-data-holders-clipboardmanager (LineSelectionState canToggleTie size!=2, resetTieState)
+LineSelectionStateTest.testCanToggleTieWithSizeLessThanTwoSetsCanTieFalse  # strengthened — explicit size<2 path missing
+LineSelectionStateTest.testCanToggleTieWithSizeGreaterThanTwoSetsCanTieFalse  # strengthened — explicit size>2 path missing
+LineSelectionStateTest.testResetTieStateClearsCanTieAndExistingTie  # strengthened — resetTieState fields never directly asserted
