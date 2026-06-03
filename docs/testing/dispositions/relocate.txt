@@ -27,3 +27,9 @@ GraceModeManagerTest.MouseReleased.testReturnsFalseWhenStateIsInactive	6c	mouseR
 GraceModeManagerTest.MouseReleased.testFinishesWithCancelWhenMouseDownPointIsNull	6c	mouseReleased: null mouseDownPoint → finish(cancel)
 GraceModeManagerTest.MouseReleased.testDragLeftWithPendingCancelFinishesWithCancel	6c	mouseReleased: pendingCancel drag → finish(cancel), INACTIVE
 GraceModeManagerTest.MouseReleased.testClickTransitionsToGraceNoteInsertState	6c	mouseReleased: quick click → enterGraceNoteInsert (short time)
+# 6c row 9 — GraceModeManager mouseClicked (wrong-level: was e2e, added unit tests)
+GraceModeManagerTest.MouseClicked.testReturnsFalseWhenNotInProgress	6c	mouseClicked: e2e → unit, not in progress returns false
+GraceModeManagerTest.MouseClicked.testReturnsTrueWhenInProgressButNotGraceNoteInsertState	6c	mouseClicked: in progress but not GRACE_NOTE_INSERT returns true
+GraceModeManagerTest.MouseClicked.testJustEnteredInsertFlagSuppressesFirstClick	6c	mouseClicked: justEnteredInsert suppresses first click
+GraceModeManagerTest.MouseClicked.testCancelWhenClickOnDifferentLine	6c	mouseClicked: different-line click → finish(cancel)
+GraceModeManagerTest.MouseClicked.testCancelWhenClickLeftOfGraceNote	6c	mouseClicked: left-of-grace click → finish(cancel)

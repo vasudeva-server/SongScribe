@@ -1494,3 +1494,24 @@ GraceModeManagerTest.GetLockedInsertionXSs.testReturnsZeroWhenLayoutIsNull	6c	ge
 GraceModeManagerTest.GetLockedInsertionXSs.testReturnsZeroWhenColumnIsNull	6c	getLockedInsertionXSs returns 0 when column null
 GraceModeManagerTest.GetLockedInsertionXSs.testComputedValueIsColumnXPlusRightExtentPlusGapPlusHostLeftExtent	6c	getLockedInsertionXSs computed value correct
 GraceModeManagerTest.GetLockedInsertionXSs.testUsesZeroHostLeftExtentWhenPreviewElementIsNull	6c	getLockedInsertionXSs zero host extent when preview null
+# 6c row 8 — GraceModeManager mouseDragged (missing)
+GraceModeManagerTest.MouseDragged.testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert	6c	mouseDragged: GRACE_NOTE_INSERT consumes, returns true
+GraceModeManagerTest.MouseDragged.testReturnsFalseWhenStateIsInactive	6c	mouseDragged: INACTIVE returns false
+GraceModeManagerTest.MouseDragged.testPendingCancelSetWhenDragLeftOfGraceNote	6c	mouseDragged: drag left past threshold sets pendingCancel
+GraceModeManagerTest.MouseDragged.testPendingConnectSetAndGlissandoAddedWhenDragRightWithEligibleHost	6c	mouseDragged: drag right with eligible host sets pendingConnect + adds glissando
+GraceModeManagerTest.MouseDragged.testGlissandoRemovedWhenPendingConnectBecomesFlase	6c	mouseDragged: glissando removed when pendingConnect clears
+# 6c row 22 — GraceModeManager enterGraceNoteInsert abort (missing)
+GraceModeManagerTest.EnterGraceNoteInsertAbort.testFinishesWithCancelWhenHostNoteDoesNotFit	6c	enterGraceNoteInsert: no-fit host → error dialog + finish(cancel)
+# 6c row 23 — GraceModeManager finish(cancel=true) modification bracket (missing)
+GraceModeManagerTest.FinishCancel.testCancelRemovesGraceNoteViaModificationBracket	6c	finish(cancel=true): removeElement inside withModification bracket
+GraceModeManagerTest.FinishCancel.testCancelDoesNotRemoveWhenGraceNoteIsNull	6c	finish(cancel=true): no removal when graceNote null
+# 6c row 24 — GraceModeManager finish(cancel=false) state reset (missing)
+GraceModeManagerTest.FinishResetsState.testFinishResetsAllStateFieldsToDefaults	6c	finish(cancel=false): all state fields reset to defaults
+GraceModeManagerTest.FinishResetsState.testFinishPostsGraceModeStateDidChangeNotificationWithFalse	6c	finish(cancel=false): posts GraceModeStateDidChangeNotification(false)
+# 6c row 25 — GraceModeManager hasEligibleHostNote (missing)
+GraceModeManagerTest.HasEligibleHostNote.testPendingConnectIsFalseWhenNoNextElement	6c	hasEligibleHostNote: false when no next element
+GraceModeManagerTest.HasEligibleHostNote.testPendingConnectIsFalseWhenNextElementIsNotPitchedNote	6c	hasEligibleHostNote: false when next not pitched note
+GraceModeManagerTest.HasEligibleHostNote.testPendingConnectIsTrueWhenNextElementIsPitchedNote	6c	hasEligibleHostNote: true when next is pitched note
+# 6c row 26 — GraceModeManager GraceModeStateDidChangeNotification payloads (missing)
+GraceModeManagerTest.GraceModeStateNotification.testNotificationWithTruePostedOnEnterGraceNote	6c	notification(true) posted on enterGraceNote
+GraceModeManagerTest.GraceModeStateNotification.testNotificationWithFalsePostedOnFinish	6c	notification(false) posted on finish

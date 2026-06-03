@@ -31,6 +31,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import javax.swing.ActionMap;
@@ -41,11 +42,15 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.StaffElement;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LayoutResult;
+import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.notification.GraceModeStateDidChangeNotification;
+import songscribe.ui.action.Actions;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
@@ -54,6 +59,7 @@ import songscribe.ui.selection.SelectionCoordinator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -681,6 +687,744 @@ class GraceModeManagerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // mouseDragged — row 8
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class MouseDragged {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+        private MockedStatic<PreviewElementManager> previewMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            previewMock = mockStatic(PreviewElementManager.class);
+        }
+
+        @AfterEach
+        void tearDown() {
+            previewMock.close();
+            messageCenterMock.close();
+        }
+
+        @Test
+        void testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE_INSERT);
+            var lineComponent = mock(LineComponent.class);
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 0, 0, MouseEvent.BUTTON1);
+
+            assertThat(manager.mouseDragged(lineComponent, e)).isTrue();
+        }
+
+        @Test
+        void testReturnsFalseWhenStateIsInactive() {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var lineComponent = mock(LineComponent.class);
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 0, 0, MouseEvent.BUTTON1);
+
+            assertThat(manager.mouseDragged(lineComponent, e)).isFalse();
+        }
+
+        @Test
+        void testPendingCancelSetWhenDragLeftOfGraceNote() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var lineComponent = mock(LineComponent.class);
+            var layout = mock(LayoutResult.class);
+            var column = mock(ElementColumn.class);
+
+            // Grace note at xSs=10.0 → cancelThreshold = round(10*8) - 4 = 76
+            when(layout.getElementXSs(graceNote)).thenReturn(10.0);
+            when(layout.getElementColumn(graceNote)).thenReturn(column);
+            when(column.getXSs()).thenReturn(10.0);
+            when(column.getRightExtentSs()).thenReturn(2.0);
+            when(lineComponent.getLayoutResult()).thenReturn(layout);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceLine", detachedLine());
+            setField(manager, "graceLineComponent", lineComponent);
+            // Simulate an old mouse-down time to make isDrag = true
+            setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
+
+            // Mouse x <= cancelThreshold (76) → pendingCancel should become true
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 70, 0, MouseEvent.BUTTON1);
+            var result = manager.mouseDragged(lineComponent, e);
+
+            assertThat(result).isTrue();
+            assertThat((Boolean) getField(manager, "pendingCancel")).isTrue();
+        }
+
+        @Test
+        void testPendingConnectSetAndGlissandoAddedWhenDragRightWithEligibleHost() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var hostNote = ElementType.CROTCHET.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+            line.addElement(hostNote);
+
+            var lineComponent = mock(LineComponent.class);
+            var layout = mock(LayoutResult.class);
+            var column = mock(ElementColumn.class);
+
+            // Right edge at xSs=10+2=12 → connectThreshold = round(12*8) + 4 = 100
+            when(layout.getElementXSs(graceNote)).thenReturn(10.0);
+            when(layout.getElementColumn(graceNote)).thenReturn(column);
+            when(column.getXSs()).thenReturn(10.0);
+            when(column.getRightExtentSs()).thenReturn(2.0);
+            when(lineComponent.getLayoutResult()).thenReturn(layout);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", lineComponent);
+            setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
+
+            // Mouse x >= connectThreshold (100) → pendingConnect should become true
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 105, 0, MouseEvent.BUTTON1);
+            manager.mouseDragged(lineComponent, e);
+
+            assertThat((Boolean) getField(manager, "pendingConnect")).isTrue();
+            assertThat(graceNote.getGlissando()).isNotNull();
+        }
+
+        @Test
+        void testGlissandoRemovedWhenPendingConnectBecomesFlase() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            // Pre-attach a glissando (as if drag-right had fired before)
+            graceNote.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+
+            var line = detachedLine();
+            line.addElement(graceNote);
+
+            var lineComponent = mock(LineComponent.class);
+            var layout = mock(LayoutResult.class);
+            var column = mock(ElementColumn.class);
+
+            when(layout.getElementXSs(graceNote)).thenReturn(10.0);
+            when(layout.getElementColumn(graceNote)).thenReturn(column);
+            when(column.getXSs()).thenReturn(10.0);
+            when(column.getRightExtentSs()).thenReturn(2.0);
+            when(lineComponent.getLayoutResult()).thenReturn(layout);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", lineComponent);
+            setField(manager, "pendingConnect", true);
+            setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
+
+            // Mouse at x=50 → not right of grace note → pendingConnect = false
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 50, 0, MouseEvent.BUTTON1);
+            manager.mouseDragged(lineComponent, e);
+
+            assertThat((Boolean) getField(manager, "pendingConnect")).isFalse();
+            assertThat(graceNote.getGlissando()).isNull();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // mouseClicked — row 9 (wrong-level: unit coverage for state-machine paths)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class MouseClicked {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+        private MockedStatic<PreviewElementManager> previewMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            previewMock = mockStatic(PreviewElementManager.class);
+        }
+
+        @AfterEach
+        void tearDown() {
+            previewMock.close();
+            messageCenterMock.close();
+        }
+
+        @Test
+        void testReturnsFalseWhenNotInProgress() {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var lineComponent = mock(LineComponent.class);
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 0, 0, MouseEvent.BUTTON1);
+
+            assertThat(manager.mouseClicked(lineComponent, e)).isFalse();
+        }
+
+        @Test
+        void testReturnsTrueWhenInProgressButNotGraceNoteInsertState() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            var lineComponent = mock(LineComponent.class);
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 0, 0, MouseEvent.BUTTON1);
+
+            // Active in non-INSERT state — consume to prevent normal insertion
+            assertThat(manager.mouseClicked(lineComponent, e)).isTrue();
+        }
+
+        @Test
+        void testJustEnteredInsertFlagSuppressesFirstClick() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE_INSERT);
+            setField(manager, "justEnteredInsert", true);
+            var lineComponent = mock(LineComponent.class);
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 0, 0, MouseEvent.BUTTON1);
+
+            assertThat(manager.mouseClicked(lineComponent, e)).isTrue();
+            // Flag must be cleared after suppression
+            assertThat((Boolean) getField(manager, "justEnteredInsert")).isFalse();
+        }
+
+        @Test
+        void testCancelWhenClickOnDifferentLine() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+
+            var graceLineComponent = mock(LineComponent.class);
+            var otherLineComponent = mock(LineComponent.class);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE_INSERT);
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", graceLineComponent);
+
+            var e = mouseEvent(otherLineComponent, MouseEvent.MOUSE_CLICKED, 0, 0, MouseEvent.BUTTON1);
+            assertThat(manager.mouseClicked(otherLineComponent, e)).isTrue();
+
+            // finish(cancel=true) → state INACTIVE
+            assertThat(manager.isInProgress()).isFalse();
+        }
+
+        @Test
+        void testCancelWhenClickLeftOfGraceNote() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+
+            var lineComponent = mock(LineComponent.class);
+            var layout = mock(LayoutResult.class);
+            // Grace note at xSs=10.0 → cancelThreshold = round(10*8) - 4 = 76
+            when(layout.getElementXSs(graceNote)).thenReturn(10.0);
+            when(lineComponent.getLayoutResult()).thenReturn(layout);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE_INSERT);
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", lineComponent);
+
+            // Click at x=70 <= cancelThreshold → cancel
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 70, 0, MouseEvent.BUTTON1);
+            assertThat(manager.mouseClicked(lineComponent, e)).isTrue();
+            assertThat(manager.isInProgress()).isFalse();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // enterGraceNoteInsert abort when host note won't fit — row 22
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EnterGraceNoteInsertAbort {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+        private MockedStatic<EditModeManager> editModeManagerMock;
+        private MockedStatic<InsertionSpacingCalculator> calcMock;
+        private MockedStatic<MainFrame> mainFrameMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            editModeManagerMock = mockStatic(EditModeManager.class);
+            calcMock = mockStatic(InsertionSpacingCalculator.class);
+            mainFrameMock = mockStatic(MainFrame.class);
+            var mockFrame = mock(MainFrame.class);
+            var mockScore = mock(ScoreView.class);
+            var mockRootPane = mock(JRootPane.class);
+            when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
+            when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
+            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
+            when(mockFrame.getRootPane()).thenReturn(mockRootPane);
+            when(mockFrame.requireScoreView()).thenReturn(mockScore);
+            when(mockFrame.getScoreView()).thenReturn(mockScore);
+            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+        }
+
+        @AfterEach
+        void tearDown() throws Exception {
+            // Drain pending invokeLater tasks (e.g. Actions init) while mock is active,
+            // preventing Actions from initializing with the real MainFrame.
+            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            mainFrameMock.close();
+            calcMock.close();
+            editModeManagerMock.close();
+            messageCenterMock.close();
+        }
+
+        @Test
+        void testFinishesWithCancelWhenHostNoteDoesNotFit() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var hostPreview = ElementType.CROTCHET.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+
+            var lineComponent = mock(LineComponent.class);
+            var layout = mock(LayoutResult.class);
+            var column = mock(ElementColumn.class);
+
+            // Set up layout so getLockedInsertionXSs returns a non-zero value
+            when(column.getXSs()).thenReturn(5.0);
+            when(column.getRightExtentSs()).thenReturn(1.0);
+            when(layout.getElementColumn(graceNote)).thenReturn(column);
+            when(lineComponent.getLayoutResult()).thenReturn(layout);
+
+            editModeManagerMock.when(EditModeManager::getPreviewElement).thenReturn(hostPreview);
+
+            // calculateInsertion returns a result that doesn't fit
+            var mockResult = mock(InsertionSpacingCalculator.InsertionResult.class);
+            when(mockResult.fitsWithinLine(anyDouble())).thenReturn(false);
+            calcMock.when(() -> InsertionSpacingCalculator.calculateInsertion(
+                any(), any(), anyInt(), any()
+            )).thenReturn(mockResult);
+
+            // Set state and fields to trigger enterGraceNoteInsert via click (mouseReleased)
+            var startPoint = new Point(100, 100);
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "mouseDownPoint", startPoint);
+            setField(manager, "mouseDownTime", System.currentTimeMillis());
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", lineComponent);
+
+            // click event (x,y same as startPoint → no drag)
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_RELEASED, 100, 100, MouseEvent.BUTTON1);
+            assertThat(manager.mouseReleased(lineComponent, e)).isTrue();
+
+            // enterGraceNoteInsert → computeHostInsertion returns null → finish(cancel=true) → INACTIVE
+            assertThat(manager.isInProgress()).isFalse();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // finish(cancel=true) wraps in withModification — row 23
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class FinishCancel {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+        private MockedStatic<MainFrame> mainFrameMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            mainFrameMock = mockStatic(MainFrame.class);
+            var mockFrame = mock(MainFrame.class);
+            var mockScore = mock(ScoreView.class);
+            var mockRootPane = mock(JRootPane.class);
+            when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
+            when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
+            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
+            when(mockFrame.getRootPane()).thenReturn(mockRootPane);
+            when(mockFrame.requireScoreView()).thenReturn(mockScore);
+            when(mockFrame.getScoreView()).thenReturn(mockScore);
+            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+        }
+
+        @AfterEach
+        void tearDown() throws Exception {
+            // Drain pending invokeLater tasks (e.g. Actions init) while mock is active,
+            // preventing Actions from initializing with the real MainFrame.
+            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            mainFrameMock.close();
+            messageCenterMock.close();
+        }
+
+        @Test
+        void testCancelRemovesGraceNoteViaModificationBracket() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "mouseDownPoint", null);  // triggers finish(cancel=true)
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", mock(LineComponent.class));
+
+            var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
+            manager.mouseReleased(mock(LineComponent.class), e);
+
+            // Grace note must have been removed inside withModification
+            assertThat(line.elementCount()).isEqualTo(0);
+        }
+
+        @Test
+        void testCancelDoesNotRemoveWhenGraceNoteIsNull() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            line.addElement(note);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "mouseDownPoint", null);
+            setField(manager, "graceNote", null);  // no grace note to remove
+            setField(manager, "graceNoteIndex", -1);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", mock(LineComponent.class));
+
+            var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
+            manager.mouseReleased(mock(LineComponent.class), e);
+
+            // Line element should remain untouched
+            assertThat(line.elementCount()).isEqualTo(1);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // finish(cancel=false) resets state — row 24
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class FinishResetsState {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+        private MockedStatic<MainFrame> mainFrameMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            mainFrameMock = mockStatic(MainFrame.class);
+            var mockFrame = mock(MainFrame.class);
+            var mockScore = mock(ScoreView.class);
+            var mockRootPane = mock(JRootPane.class);
+            when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
+            when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
+            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
+            when(mockFrame.getRootPane()).thenReturn(mockRootPane);
+            when(mockFrame.requireScoreView()).thenReturn(mockScore);
+            when(mockFrame.getScoreView()).thenReturn(mockScore);
+            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+        }
+
+        @AfterEach
+        void tearDown() throws Exception {
+            // Drain pending invokeLater tasks (e.g. Actions init) while mock is active,
+            // preventing Actions from initializing with the real MainFrame.
+            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            mainFrameMock.close();
+            messageCenterMock.close();
+        }
+
+        @Test
+        void testFinishResetsAllStateFieldsToDefaults() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "mouseDownPoint", null);  // triggers finish(cancel=true)
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", mock(LineComponent.class));
+            setField(manager, "pendingCancel", true);
+            setField(manager, "pendingConnect", true);
+            setField(manager, "justEnteredInsert", true);
+
+            var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
+            manager.mouseReleased(mock(LineComponent.class), e);
+
+            // finish() must reset all state
+            assertThat(manager.isInProgress()).isFalse();
+            assertThat((Boolean) getField(manager, "pendingCancel")).isFalse();
+            assertThat((Boolean) getField(manager, "pendingConnect")).isFalse();
+            assertThat((Boolean) getField(manager, "justEnteredInsert")).isFalse();
+            assertThat(getField(manager, "graceNote")).isNull();
+            assertThat(getField(manager, "graceLine")).isNull();
+            assertThat(getField(manager, "graceLineComponent")).isNull();
+            assertThat((Integer) getField(manager, "graceNoteIndex")).isEqualTo(-1);
+        }
+
+        @Test
+        void testFinishPostsGraceModeStateDidChangeNotificationWithFalse() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "mouseDownPoint", null);
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", mock(LineComponent.class));
+
+            var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
+            manager.mouseReleased(mock(LineComponent.class), e);
+
+            var captor = ArgumentCaptor.forClass(Message.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+            var notification = captor.getValue();
+            assertThat(notification).isInstanceOf(GraceModeStateDidChangeNotification.class);
+            assertThat(((GraceModeStateDidChangeNotification) notification).isActive()).isFalse();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // hasEligibleHostNote — row 25
+    // (tested via mouseDragged pendingConnect logic)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class HasEligibleHostNote {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+        private MockedStatic<PreviewElementManager> previewMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            previewMock = mockStatic(PreviewElementManager.class);
+        }
+
+        @AfterEach
+        void tearDown() {
+            previewMock.close();
+            messageCenterMock.close();
+        }
+
+        @Test
+        void testPendingConnectIsFalseWhenNoNextElement() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            // Line with only the grace note — no next element
+            var line = detachedLine();
+            line.addElement(graceNote);
+
+            var lineComponent = mock(LineComponent.class);
+            var layout = mock(LayoutResult.class);
+            var column = mock(ElementColumn.class);
+
+            // Position grace note far right so connectThreshold is at x=100
+            when(layout.getElementXSs(graceNote)).thenReturn(10.0);
+            when(layout.getElementColumn(graceNote)).thenReturn(column);
+            when(column.getXSs()).thenReturn(10.0);
+            when(column.getRightExtentSs()).thenReturn(2.0);
+            when(lineComponent.getLayoutResult()).thenReturn(layout);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", lineComponent);
+            setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
+
+            // Drag right past connectThreshold, but no eligible host
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 105, 0, MouseEvent.BUTTON1);
+            manager.mouseDragged(lineComponent, e);
+
+            assertThat((Boolean) getField(manager, "pendingConnect")).isFalse();
+        }
+
+        @Test
+        void testPendingConnectIsFalseWhenNextElementIsNotPitchedNote() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var restNote = ElementType.CROTCHET_REST.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+            line.addElement(restNote);  // next element is a rest, not a pitched note
+
+            var lineComponent = mock(LineComponent.class);
+            var layout = mock(LayoutResult.class);
+            var column = mock(ElementColumn.class);
+
+            when(layout.getElementXSs(graceNote)).thenReturn(10.0);
+            when(layout.getElementColumn(graceNote)).thenReturn(column);
+            when(column.getXSs()).thenReturn(10.0);
+            when(column.getRightExtentSs()).thenReturn(2.0);
+            when(lineComponent.getLayoutResult()).thenReturn(layout);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", lineComponent);
+            setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
+
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 105, 0, MouseEvent.BUTTON1);
+            manager.mouseDragged(lineComponent, e);
+
+            assertThat((Boolean) getField(manager, "pendingConnect")).isFalse();
+        }
+
+        @Test
+        void testPendingConnectIsTrueWhenNextElementIsPitchedNote() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var hostNote = ElementType.CROTCHET.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+            line.addElement(hostNote);  // pitched note follows grace note
+
+            var lineComponent = mock(LineComponent.class);
+            var layout = mock(LayoutResult.class);
+            var column = mock(ElementColumn.class);
+
+            when(layout.getElementXSs(graceNote)).thenReturn(10.0);
+            when(layout.getElementColumn(graceNote)).thenReturn(column);
+            when(column.getXSs()).thenReturn(10.0);
+            when(column.getRightExtentSs()).thenReturn(2.0);
+            when(lineComponent.getLayoutResult()).thenReturn(layout);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", lineComponent);
+            setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
+
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 105, 0, MouseEvent.BUTTON1);
+            manager.mouseDragged(lineComponent, e);
+
+            assertThat((Boolean) getField(manager, "pendingConnect")).isTrue();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // GraceModeStateDidChangeNotification payloads — row 26
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class GraceModeStateNotification {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+        private MockedStatic<PreviewElementManager> previewMock;
+        private MockedStatic<EditModeManager> editModeManagerMock;
+        private MockedStatic<MainFrame> mainFrameMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            previewMock = mockStatic(PreviewElementManager.class);
+            editModeManagerMock = mockStatic(EditModeManager.class);
+            mainFrameMock = mockStatic(MainFrame.class);
+            var mockFrame = mock(MainFrame.class);
+            var mockScore = mock(ScoreView.class);
+            var mockRootPane = mock(JRootPane.class);
+            when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
+            when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
+            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
+            when(mockFrame.getRootPane()).thenReturn(mockRootPane);
+            when(mockFrame.requireScoreView()).thenReturn(mockScore);
+            when(mockFrame.getScoreView()).thenReturn(mockScore);
+            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+        }
+
+        @AfterEach
+        void tearDown() throws Exception {
+            // Drain any pending invokeLater tasks (e.g., Actions.GRACE_EIGHTH_NOTE_ACTION
+            // initialization triggered by finish()) while the MainFrame mock is still
+            // active. Without this, Actions may initialize with the real MainFrame after
+            // teardown, causing requireScoreView() to throw RuntimeError in later tests.
+            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            mainFrameMock.close();
+            editModeManagerMock.close();
+            previewMock.close();
+            messageCenterMock.close();
+        }
+
+        @Test
+        void testNotificationWithTruePostedOnEnterGraceNote() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            editModeManagerMock.when(EditModeManager::getPreviewElement)
+                .thenReturn(ElementType.GRACE_QUAVER.newInstance());
+            previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
+
+            // Actions.QUARTER_NOTE_ACTION was constructed during Actions class-load with the
+            // real MainFrame singleton, so its private mainFrame field bypasses the static
+            // mock installed in setUp(). enterGraceNote() selects the crotchet duration via
+            // DURATION_ACTION_GROUP.select(), whose perform() calls requireScoreView() — on the
+            // real frame that resolves to a null scoreView and System.exit()s the test JVM.
+            // Pin the action's frame to the mock for the duration of the call, then restore it
+            // so the shared static action is not left pointing at a closed mock.
+            var originalActionFrame = getField(Actions.QUARTER_NOTE_ACTION, "mainFrame");
+            setField(Actions.QUARTER_NOTE_ACTION, "mainFrame", MainFrame.getInstance());
+
+            try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
+                calcMock.when(
+                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any())
+                ).thenReturn(true);
+
+                var line = lineWith(ElementType.GRACE_QUAVER);
+                var lineComponent = mock(LineComponent.class);
+                when(lineComponent.getLine()).thenReturn(line);
+                when(lineComponent.getLayoutResult()).thenReturn(null);
+                var e = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 50, 60, MouseEvent.BUTTON1);
+
+                manager.mousePressed(lineComponent, e);
+
+                // Capture ALL MessageCenter.post calls; enterGraceNote may trigger
+                // secondary posts (e.g. DurationWasSelectedNotification from Actions init).
+                // Filter for the GraceModeStateDidChangeNotification.
+                var captor = ArgumentCaptor.forClass(Message.class);
+                messageCenterMock.verify(() -> MessageCenter.post(captor.capture()),
+                    org.mockito.Mockito.atLeastOnce());
+                var graceModeNotification = captor.getAllValues().stream()
+                    .filter(m -> m instanceof GraceModeStateDidChangeNotification)
+                    .map(m -> (GraceModeStateDidChangeNotification) m)
+                    .findFirst();
+                assertThat(graceModeNotification).isPresent();
+                assertThat(graceModeNotification.get().isActive()).isTrue();
+            } finally {
+                setField(Actions.QUARTER_NOTE_ACTION, "mainFrame", originalActionFrame);
+            }
+        }
+
+        @Test
+        void testNotificationWithFalsePostedOnFinish() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+
+            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "mouseDownPoint", null);
+            setField(manager, "graceNote", graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            setField(manager, "graceLine", line);
+            setField(manager, "graceLineComponent", mock(LineComponent.class));
+
+            var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
+            manager.mouseReleased(mock(LineComponent.class), e);
+
+            var captor = ArgumentCaptor.forClass(Message.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue()).isInstanceOf(GraceModeStateDidChangeNotification.class);
+            assertThat(((GraceModeStateDidChangeNotification) captor.getValue()).isActive()).isFalse();
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -722,5 +1466,12 @@ class GraceModeManagerTest extends UnitTest {
             false,
             button
         );
+    }
+
+    @Nullable
+    private static Object getField(Object target, String name) throws Exception {
+        Field field = findField(target.getClass(), name);
+        field.setAccessible(true);
+        return field.get(target);
     }
 }

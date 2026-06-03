@@ -578,9 +578,11 @@ public final class GraceModeManager {
         var hostInsertion = computeHostInsertion();
 
         if (hostInsertion == null) {
+            // Save the component reference before finish() clears graceLineComponent.
+            var component = graceLineComponent;
             finish(true);
             OptionDialogs.showErrorMessage(
-                SwingUtilities.getWindowAncestor(graceLineComponent),
+                SwingUtilities.getWindowAncestor(component),
                 Strings.ALERT_TITLE_INSERT_ERROR,
                 Strings.ERROR_GRACE_NOTE_HOST_NO_ROOM
             );
