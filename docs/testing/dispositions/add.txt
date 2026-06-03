@@ -1566,3 +1566,19 @@ EditModeManagerTest.PreviewElementDidChange.testDoesNothingWhenPreviewElementIsN
 EditModeManagerTest.PreviewElementDidChangePlayThread.testStartsPlayThreadWhenPlayInsertedNoteAndInsertedElementIsNote	6c	PlayThread constructed and started when playInsertedNote=true and note
 EditModeManagerTest.PreviewElementDidChangePlayThread.testDoesNotStartPlayThreadWhenPlayInsertedNoteFalse	6c	no PlayThread when playInsertedNote=false
 EditModeManagerTest.PreviewElementDidChangePlayThread.testDoesNotStartPlayThreadWhenInsertedElementIsNotNote	6c	no PlayThread when element is a rest
+AdjustmentTest.MousePressed.testIgnoresEventWhenDisabled	6d-ui-adjustment	row 1: mousePressed disabled guard
+AdjustmentTest.MousePressed.testStartsDragWhenEnabled	6d-ui-adjustment	row 2: mousePressed sets startedDrag, startPoint, calls startedDrag(), disables drag
+AdjustmentTest.MouseReleased.testIgnoresEventWhenDisabled	6d-ui-adjustment	row 3: mouseReleased disabled guard
+AdjustmentTest.MouseReleased.testFinishesDragWhenEnabled	6d-ui-adjustment	row 4: mouseReleased clears startedDrag, calls finishedDrag(), re-enables drag
+AdjustmentTest.MouseDragged.testIgnoresEventWhenDisabled	6d-ui-adjustment	row 5: mouseDragged disabled guard
+AdjustmentTest.MouseDragged.testXInsideBoundsPassesThrough	6d-ui-adjustment	row 6: X clamping — inside
+AdjustmentTest.MouseDragged.testXAtLeftBoundIsNotClamped	6d-ui-adjustment	row 6: X clamping — at left bound
+AdjustmentTest.MouseDragged.testXBelowLeftBoundClampsToLeftBound	6d-ui-adjustment	row 6: X clamping — below left bound
+AdjustmentTest.MouseDragged.testXAtRightBoundClampsToRightBoundMinusOne	6d-ui-adjustment	row 6: X clamping — at right bound
+AdjustmentTest.MouseDragged.testXBeyondRightBoundClampsToRightBoundMinusOne	6d-ui-adjustment	row 6: X clamping — beyond right bound
+AdjustmentTest.MouseDragged.testYInsideBoundsPassesThrough	6d-ui-adjustment	row 7: Y clamping — inside
+AdjustmentTest.MouseDragged.testYAtTopBoundIsNotClamped	6d-ui-adjustment	row 7: Y clamping — at top bound
+AdjustmentTest.MouseDragged.testYAboveTopBoundClampsToTopBound	6d-ui-adjustment	row 7: Y clamping — above top bound
+AdjustmentTest.MouseDragged.testYAtBottomBoundClampsToBottomBoundMinusOne	6d-ui-adjustment	row 7: Y clamping — at bottom bound
+AdjustmentTest.MouseDragged.testYBeyondBottomBoundClampsToBottomBoundMinusOne	6d-ui-adjustment	row 7: Y clamping — beyond bottom bound
+AdjustmentTest.MouseDragged.testSkipsDragWhenStartedDragIsFalse	6d-ui-adjustment	row 8: mouseDragged skips drag() when startedDrag=false
