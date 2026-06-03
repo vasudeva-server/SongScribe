@@ -1515,3 +1515,41 @@ GraceModeManagerTest.HasEligibleHostNote.testPendingConnectIsTrueWhenNextElement
 # 6c row 26 — GraceModeManager GraceModeStateDidChangeNotification payloads (missing)
 GraceModeManagerTest.GraceModeStateNotification.testNotificationWithTruePostedOnEnterGraceNote	6c	notification(true) posted on enterGraceNote
 GraceModeManagerTest.GraceModeStateNotification.testNotificationWithFalsePostedOnFinish	6c	notification(false) posted on finish
+
+# 6c row 27 — GraceModeManager entering GRACE_NOTE selects QUARTER_NOTE and clears embellishments (missing)
+GraceModeManagerTest.EnterGraceNoteActionGroupState.testEnterGraceNoteSelectsQuarterNoteAndClearsEmbellishments	6c	enterGraceNote selects QUARTER_NOTE_ACTION and clears DOT/ACCIDENTAL/ARTICULATION/FERMATA
+
+# 6c row 28 — EditModeManager init()/instance() throws before init (missing)
+EditModeManagerTest.InitAndInstance.testInstanceThrowsWhenNotInitialized	6c	instance() without init → AssertionError
+EditModeManagerTest.InitAndInstance.testInstanceReturnsAfterInit	6c	instance() after init → non-null
+
+# 6c row 29 — EditModeManager makePreviewElement() from action groups (missing)
+EditModeManagerTest.MakePreviewElementFromActionGroup.testReturnsCrotchetWhenNothingSelected	6c	defaults to CROTCHET
+EditModeManagerTest.MakePreviewElementFromActionGroup.testReturnsDurationActionTypeWhenDurationGroupSelected	6c	returns DURATION_ACTION_GROUP type
+EditModeManagerTest.MakePreviewElementFromActionGroup.testFallsBackToNonDurationGroupWhenDurationIsUnselected	6c	falls back to NON_DURATION_ACTION_GROUP
+
+# 6c row 30 — EditModeManager makePreviewElement(ElementType) converts to rest (missing)
+EditModeManagerTest.MakePreviewElementFromType.testReturnsPitchedNoteWhenRestActionNotSelected	6c	pitched note unchanged when REST unselected
+EditModeManagerTest.MakePreviewElementFromType.testConvertsToRestWhenRestActionSelected	6c	CROTCHET → CROTCHET_REST when REST_ACTION selected
+EditModeManagerTest.MakePreviewElementFromType.testDoesNotConvertNonPitchedNoteToRest	6c	non-pitched type not converted
+
+# 6c row 31 — EditModeManager decorateElement() applies all decorations (missing)
+EditModeManagerTest.DecorateElement.testSetsDotCountFromDotActionGroup	6c	dot count applied from DOT_ACTION_GROUP
+EditModeManagerTest.DecorateElement.testSetsZeroDotCountWhenDotGroupUnselected	6c	zero dot count when unselected
+EditModeManagerTest.DecorateElement.testSkipsNonDotDecorationsForRests	6c	rests skip accidental/fermata/articulation
+EditModeManagerTest.DecorateElement.testSetsAccidentalFromAccidentalActionGroup	6c	accidental applied from ACCIDENTAL_ACTION_GROUP
+EditModeManagerTest.DecorateElement.testClearsAccidentalWhenAccidentalGroupUnselected	6c	accidental cleared when unselected
+EditModeManagerTest.DecorateElement.testSetsAccidentalInParenthesesWhenActionSelected	6c	accidental-in-parens applied
+EditModeManagerTest.DecorateElement.testAddsFermataAttachmentWhenFermataActionSelected	6c	FermataAttachment added when selected
+EditModeManagerTest.DecorateElement.testRemovesFermataAttachmentWhenFermataActionNotSelected	6c	FermataAttachment removed when not selected
+EditModeManagerTest.DecorateElement.testAddsStaccatoArticulationWhenArticulationGroupSelected	6c	STACCATO articulation added
+EditModeManagerTest.DecorateElement.testAddsAccentArticulationWhenAccentActionSelected	6c	ACCENT articulation added
+
+# 6c row 32 — EditModeManager elementWasModified() REPEAT_LEFT coalesces (missing)
+EditModeManagerTest.ElementWasModified.testRepeatLeftAdjacentToRepeatRightCoalescesToRepeatLeftRight	6c	REPEAT_LEFT + adjacent REPEAT_RIGHT → REPEAT_LEFT_RIGHT
+EditModeManagerTest.ElementWasModified.testRepeatLeftNotAdjacentToRepeatRightReturnsFalse	6c	REPEAT_LEFT not adjacent → returns false
+
+# 6c row 33 — EditModeManager elementWasModified() REPEAT_RIGHT coalesces (missing)
+EditModeManagerTest.ElementWasModified.testRepeatRightAdjacentToRepeatLeftCoalescesToRepeatLeftRight	6c	REPEAT_RIGHT + adjacent REPEAT_LEFT → REPEAT_LEFT_RIGHT
+EditModeManagerTest.ElementWasModified.testRepeatRightNotAdjacentToRepeatLeftReturnsFalse	6c	REPEAT_RIGHT not adjacent → returns false
+EditModeManagerTest.ElementWasModified.testReturnsFalseForNonRepeatPreviewElement	6c	non-repeat preview → returns false

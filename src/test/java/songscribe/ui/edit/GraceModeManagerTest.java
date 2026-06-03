@@ -1425,6 +1425,105 @@ class GraceModeManagerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // enterGraceNote selects QUARTER_NOTE and clears embellishments — row 27
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EnterGraceNoteActionGroupState {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+        private MockedStatic<PreviewElementManager> previewMock;
+        private MockedStatic<EditModeManager> editModeManagerMock;
+        private MockedStatic<MainFrame> mainFrameMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            previewMock = mockStatic(PreviewElementManager.class);
+            editModeManagerMock = mockStatic(EditModeManager.class);
+            mainFrameMock = mockStatic(MainFrame.class);
+            var mockFrame = mock(MainFrame.class);
+            var mockScore = mock(ScoreView.class);
+            var mockRootPane = mock(JRootPane.class);
+            when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
+            when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
+            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
+            when(mockFrame.getRootPane()).thenReturn(mockRootPane);
+            when(mockFrame.requireScoreView()).thenReturn(mockScore);
+            when(mockFrame.getScoreView()).thenReturn(mockScore);
+            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+        }
+
+        @AfterEach
+        void tearDown() throws Exception {
+            // Drain pending invokeLater tasks (e.g. Actions init) while mock is active.
+            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            mainFrameMock.close();
+            editModeManagerMock.close();
+            previewMock.close();
+            messageCenterMock.close();
+            // Restore action selections to avoid bleeding into other tests
+            Actions.DOT_ACTION_GROUP.clearSelection();
+            Actions.ACCIDENTAL_ACTION_GROUP.clearSelection();
+            Actions.ARTICULATION_ACTION_GROUP.clearSelection();
+            Actions.FERMATA_ACTION.setSelected(false);
+        }
+
+        @Test
+        void testEnterGraceNoteSelectsQuarterNoteAndClearsEmbellishments() throws Exception {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            editModeManagerMock.when(EditModeManager::getPreviewElement)
+                .thenReturn(ElementType.GRACE_QUAVER.newInstance());
+            previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
+
+            // Pre-select a non-quarter duration and embellishments
+            Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
+            Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
+            Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+            Actions.FERMATA_ACTION.setSelected(true);
+
+            // Wire QUARTER_NOTE_ACTION to the mock frame so its perform() doesn't blow up
+            var originalActionFrame = getField(Actions.QUARTER_NOTE_ACTION, "mainFrame");
+            setField(Actions.QUARTER_NOTE_ACTION, "mainFrame", MainFrame.getInstance());
+
+            try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
+                calcMock.when(
+                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any())
+                ).thenReturn(true);
+
+                var line = lineWith(ElementType.GRACE_QUAVER);
+                var lineComponent = mock(LineComponent.class);
+                when(lineComponent.getLine()).thenReturn(line);
+                when(lineComponent.getLayoutResult()).thenReturn(null);
+                var e = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 50, 60, MouseEvent.BUTTON1);
+
+                manager.mousePressed(lineComponent, e);
+            } finally {
+                setField(Actions.QUARTER_NOTE_ACTION, "mainFrame", originalActionFrame);
+            }
+
+            // enterGraceNote must have selected QUARTER_NOTE_ACTION
+            assertThat(Actions.DURATION_ACTION_GROUP.getSelected())
+                .as("DURATION_ACTION_GROUP should be QUARTER_NOTE_ACTION after entering grace note mode")
+                .isSameAs(Actions.QUARTER_NOTE_ACTION);
+
+            // All embellishment action groups must be cleared
+            assertThat(Actions.DOT_ACTION_GROUP.getSelected())
+                .as("DOT_ACTION_GROUP should be cleared after entering grace note mode")
+                .isNull();
+            assertThat(Actions.ACCIDENTAL_ACTION_GROUP.getSelected())
+                .as("ACCIDENTAL_ACTION_GROUP should be cleared after entering grace note mode")
+                .isNull();
+            assertThat(Actions.ARTICULATION_ACTION_GROUP.getSelected())
+                .as("ARTICULATION_ACTION_GROUP should be cleared after entering grace note mode")
+                .isNull();
+            assertThat(Actions.FERMATA_ACTION.isSelected())
+                .as("FERMATA_ACTION should be deselected after entering grace note mode")
+                .isFalse();
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
