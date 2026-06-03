@@ -52,16 +52,16 @@
 | `LineSelectionState` | `canToggleTuplet()` — partial coverage of existing tuplet: (true, tuplet, false) | unit | `LineSelectionStateTest.testPartialCoverageOfTripletDoesNotCoverExisting` | adequate | — | — |
 | `LineSelectionState` | `canToggleTrill()` — returns false when no selection | unit | none | missing | add unit test | ✅ |
 | `LineSelectionState` | `canToggleTrill()` — returns true when at least one pitched note in range | unit | none | missing | add unit test | ✅ |
-| `LineSelectionState` | `canToggleTrill()` — returns false when selection contains only rests | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `canFlipStemDirection()` — returns false when nothing selected | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `canFlipStemDirection()` — returns true when at least one non-rest in range | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `canFlipStemDirection()` — returns false when selection is all rests | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `canToggleTrill()` — returns false when selection contains only rests | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `canFlipStemDirection()` — returns false when nothing selected | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `canFlipStemDirection()` — returns true when at least one non-rest in range | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `canFlipStemDirection()` — returns false when selection is all rests | unit | none | missing | add unit test | ✅ |
 | `ClipboardManager` | `addElement()` normalizes FINAL_DOUBLE_BARLINE → DOUBLE_BARLINE | unit | `ClipboardManagerTest.AddElement.testFinalDoubleBarlineNormalizedToDoubleBarline` | adequate | — | — |
 | `ClipboardManager` | `addElement()` passes non-FINAL_DOUBLE_BARLINE through unchanged | unit | `ClipboardManagerTest.AddElement.testDoubleBarlinePassedThrough` + `testNotePassedThrough` | adequate | — | — |
 | `ClipboardManager` | `addElement()` does not mutate original song element | unit | `ClipboardManagerTest.testSongFinalBarlineUntouched` + `testSongRightRepeatTerminalUntouched` | adequate | — | — |
-| `ClipboardManager` | `getSize()` returns correct count after adds | unit | none (only used via `getElement(0)` by index in tests) | missing | add unit test | ⬜ |
-| `ClipboardManager` | `isEmpty()` returns true initially, false after add | unit | none | missing | add unit test | ⬜ |
-| `ClipboardManager` | `getFirstElement()` / `getLastElement()` return correct elements from multi-element pasteboard | unit | none | missing | add unit test | ⬜ |
+| `ClipboardManager` | `getSize()` returns correct count after adds | unit | none (only used via `getElement(0)` by index in tests) | missing | add unit test | ✅ |
+| `ClipboardManager` | `isEmpty()` returns true initially, false after add | unit | none | missing | add unit test | ✅ |
+| `ClipboardManager` | `getFirstElement()` / `getLastElement()` return correct elements from multi-element pasteboard | unit | none | missing | add unit test | ✅ |
 | `ClipboardManager` | `clear()` empties pasteboard and isEmpty() returns true | unit | none | missing | add unit test | ⬜ |
 
 **6B notes (quality concerns):**

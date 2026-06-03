@@ -98,4 +98,43 @@ class ClipboardManagerTest extends UnitTest {
         assertThat(lastLine.getElement(lastIdx).getType())
             .isEqualTo(ElementType.REPEAT_RIGHT);
     }
+
+    // -- getSize --
+
+    @Test
+    void testGetSizeReturnsCorrectCountAfterAdds() {
+        assertThat(clipboardManager.getSize()).isEqualTo(0);
+
+        clipboardManager.addElement(ElementType.CROTCHET.newInstance());
+        assertThat(clipboardManager.getSize()).isEqualTo(1);
+
+        clipboardManager.addElement(ElementType.QUAVER.newInstance());
+        assertThat(clipboardManager.getSize()).isEqualTo(2);
+    }
+
+    // -- isEmpty --
+
+    @Test
+    void testIsEmptyReturnsTrueInitiallyAndFalseAfterAdd() {
+        assertThat(clipboardManager.isEmpty()).isTrue();
+
+        clipboardManager.addElement(ElementType.CROTCHET.newInstance());
+
+        assertThat(clipboardManager.isEmpty()).isFalse();
+    }
+
+    // -- getFirstElement / getLastElement --
+
+    @Test
+    void testGetFirstElementAndGetLastElementReturnCorrectElementsFromMultiElementPasteboard() {
+        var first = ElementType.CROTCHET.newInstance();
+        var middle = ElementType.QUAVER.newInstance();
+        var last = ElementType.MINIM.newInstance();
+        clipboardManager.addElement(first);
+        clipboardManager.addElement(middle);
+        clipboardManager.addElement(last);
+
+        assertThat(clipboardManager.getFirstElement()).isSameAs(first);
+        assertThat(clipboardManager.getLastElement()).isSameAs(last);
+    }
 }
