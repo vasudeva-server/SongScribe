@@ -320,6 +320,139 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.getSelectionEnd()).isEqualTo(firstLine.elementCount() - 1);
     }
 
+    // -- isElementSelected --
+
+    @Test
+    void testIsElementSelectedReturnsTrueWithinInclusiveRange() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+
+        assertThat(state.isElementSelected(0)).isTrue();
+        assertThat(state.isElementSelected(1)).isTrue();
+        assertThat(state.isElementSelected(2)).isFalse();
+        assertThat(state.isElementSelected(-1)).isFalse();
+    }
+
+    // -- getSelectionSize --
+
+    @Test
+    void testGetSelectionSizeReturnsZeroWhenNoSelection() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+
+        assertThat(state.getSelectionSize()).isEqualTo(0);
+    }
+
+    @Test
+    void testGetSelectionSizeReturnsCorrectCountAfterSelection() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(2);
+
+        assertThat(state.getSelectionSize()).isEqualTo(3);
+    }
+
+    // -- getSelection --
+
+    @Test
+    void testGetSelectionReturnsNullWhenNothingSelected() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+
+        assertThat(state.getSelection()).isNull();
+    }
+
+    @Test
+    void testGetSelectionReturnsFullLineSpanWhenLineSelected() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setLineSelected(true);
+
+        assertThat(state.getSelection())
+            .isNotNull()
+            .satisfies(sel -> {
+                assertThat(sel.begin()).isEqualTo(0);
+                assertThat(sel.end()).isEqualTo(1);
+                assertThat(sel.line()).isSameAs(line);
+            });
+    }
+
+    @Test
+    void testGetSelectionReturnsElementRangeWhenElementSelected() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(1);
+        state.extendSelectionTo(2);
+
+        assertThat(state.getSelection())
+            .isNotNull()
+            .satisfies(sel -> {
+                assertThat(sel.begin()).isEqualTo(1);
+                assertThat(sel.end()).isEqualTo(2);
+                assertThat(sel.line()).isSameAs(line);
+            });
+    }
+
+    // -- setSelectionFromClick --
+
+    @Test
+    void testSetSelectionFromClickSetsAllFieldsAndClearsGlissandoAndFiresCallback() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.selectGlissando(0);
+        assertThat(state.hasGlissandoSelection()).isTrue();
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.setSelectionFromClick(1);
+
+        assertThat(state.getSelectionBegin()).isEqualTo(1);
+        assertThat(state.getSelectionEnd()).isEqualTo(1);
+        assertThat(state.getSelectionAnchor()).isEqualTo(1);
+        assertThat(state.hasGlissandoSelection()).isFalse();
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    // -- extendSelectionTo --
+
+    @Test
+    void testExtendSelectionToWithAnchorBeforeIndexSetsBeginToAnchorEndToIndex() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.extendSelectionTo(2);
+
+        assertThat(state.getSelectionBegin()).isEqualTo(0);
+        assertThat(state.getSelectionEnd()).isEqualTo(2);
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
     @Test
     void testSelectionContainingNonPitchedElementCannotToggle() {
         var line = detachedLine();
