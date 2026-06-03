@@ -141,6 +141,7 @@ Return \`{"status":"success","detail":"<rows done>, <class name>"}\`.
     label: `chunk:${chunk}`,
     phase: 'Remediate',
     schema: RESULT_SCHEMA,
+    model: 'opus',
   })
 
   if (!result) {
