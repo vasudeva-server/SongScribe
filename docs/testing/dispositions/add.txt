@@ -1553,3 +1553,16 @@ EditModeManagerTest.ElementWasModified.testRepeatLeftNotAdjacentToRepeatRightRet
 EditModeManagerTest.ElementWasModified.testRepeatRightAdjacentToRepeatLeftCoalescesToRepeatLeftRight	6c	REPEAT_RIGHT + adjacent REPEAT_LEFT → REPEAT_LEFT_RIGHT
 EditModeManagerTest.ElementWasModified.testRepeatRightNotAdjacentToRepeatLeftReturnsFalse	6c	REPEAT_RIGHT not adjacent → returns false
 EditModeManagerTest.ElementWasModified.testReturnsFalseForNonRepeatPreviewElement	6c	non-repeat preview → returns false
+
+# 6c row 34 — EditModeManager elementWasModified() returns false for non-repeat (missing)
+# Note: testReturnsFalseForNonRepeatPreviewElement already added in row 33 batch; row 34 is now ✅
+
+# 6c row 35 — EditModeManager previewElementDidChange() callbacks and action state (missing)
+EditModeManagerTest.PreviewElementDidChange.testTurnOffFermataAndAccidentalInParensAfterInsert	6c	FERMATA_ACTION and ACCIDENTAL_IN_PARENS turned off after insert
+EditModeManagerTest.PreviewElementDidChange.testCallsScoreActionsCallbacksAfterInsert	6c	setPreviewElement + drawWidthIfWiderLine + repaint called
+EditModeManagerTest.PreviewElementDidChange.testDoesNothingWhenPreviewElementIsNull	6c	null previewElement → early return
+
+# 6c row 36 — EditModeManager previewElementDidChange() starts PlayThread (missing)
+EditModeManagerTest.PreviewElementDidChangePlayThread.testStartsPlayThreadWhenPlayInsertedNoteAndInsertedElementIsNote	6c	PlayThread constructed and started when playInsertedNote=true and note
+EditModeManagerTest.PreviewElementDidChangePlayThread.testDoesNotStartPlayThreadWhenPlayInsertedNoteFalse	6c	no PlayThread when playInsertedNote=false
+EditModeManagerTest.PreviewElementDidChangePlayThread.testDoesNotStartPlayThreadWhenInsertedElementIsNotNote	6c	no PlayThread when element is a rest

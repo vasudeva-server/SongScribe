@@ -27,6 +27,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
 
 import songscribe.UnitTest;
 import songscribe.dom.Articulation;
@@ -36,11 +37,13 @@ import songscribe.dom.FermataAttachment;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.verify;
 
 class EditModeManagerTest extends UnitTest {
@@ -323,6 +326,124 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.setPreviewElement(ElementType.REPEAT_RIGHT.newInstance());
             var result = EditModeManager.elementWasModified(line, 0);
             assertThat(result).isFalse();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // previewElementDidChange() — rows 35 and 36
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class PreviewElementDidChange {
+
+        private ScoreActions scoreActions;
+
+        @BeforeEach
+        void setUp() {
+            scoreActions = mock(ScoreActions.class);
+            EditModeManager.init(
+                mock(ClipboardManager.class),
+                mock(SelectionCoordinator.class),
+                scoreActions
+            );
+        }
+
+        @Test
+        void testTurnOffFermataAndAccidentalInParensAfterInsert() {
+            // Set up: FERMATA and ACCIDENTAL_IN_PARENS selected before the insert.
+            Actions.FERMATA_ACTION.setSelected(true);
+            Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
+            var previewElement = ElementType.CROTCHET.newInstance();
+            EditModeManager.setPreviewElement(previewElement);
+            var line = lineWith(ElementType.CROTCHET);
+            // Index 0 is the inserted element.
+            EditModeManager.previewElementDidChange(line, 0);
+            assertThat(Actions.FERMATA_ACTION.isSelected())
+                .as("FERMATA_ACTION should be turned off after insert")
+                .isFalse();
+            assertThat(Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected())
+                .as("ACCIDENTAL_IN_PARENS_ACTION should be turned off after insert")
+                .isFalse();
+        }
+
+        @Test
+        void testCallsScoreActionsCallbacksAfterInsert() {
+            // Verify setPreviewElement, drawWidthIfWiderLine, and repaint are all called.
+            var previewElement = ElementType.CROTCHET.newInstance();
+            EditModeManager.setPreviewElement(previewElement);
+            var line = lineWith(ElementType.CROTCHET);
+            EditModeManager.previewElementDidChange(line, 0);
+            verify(scoreActions).setPreviewElement(org.mockito.ArgumentMatchers.any(StaffElement.class));
+            verify(scoreActions).drawWidthIfWiderLine(line, false);
+            verify(scoreActions).repaint();
+        }
+
+        @Test
+        void testDoesNothingWhenPreviewElementIsNull() {
+            // previewElement is null → method returns early without touching scoreActions.
+            EditModeManager.setPreviewElement(null);
+            var line = lineWith(ElementType.CROTCHET);
+            EditModeManager.previewElementDidChange(line, 0);
+            verify(scoreActions, org.mockito.Mockito.never()).setPreviewElement(
+                org.mockito.ArgumentMatchers.any()
+            );
+        }
+    }
+
+    @Nested
+    class PreviewElementDidChangePlayThread {
+
+        @BeforeEach
+        void setUp() {
+            EditModeManager.init(
+                mock(ClipboardManager.class),
+                mock(SelectionCoordinator.class),
+                mock(ScoreActions.class)
+            );
+        }
+
+        @Test
+        void testStartsPlayThreadWhenPlayInsertedNoteAndInsertedElementIsNote() {
+            EditModeManager.setPlayInsertedNote(true);
+            EditModeManager.setPreviewElement(ElementType.CROTCHET.newInstance());
+            var line = lineWith(ElementType.CROTCHET);
+            try (MockedConstruction<PlayThread> playThreadConstruction =
+                     mockConstruction(PlayThread.class)) {
+                EditModeManager.previewElementDidChange(line, 0);
+                assertThat(playThreadConstruction.constructed())
+                    .as("PlayThread should be constructed when playInsertedNote=true and element is a note")
+                    .hasSize(1);
+                verify(playThreadConstruction.constructed().get(0)).start();
+            }
+        }
+
+        @Test
+        void testDoesNotStartPlayThreadWhenPlayInsertedNoteFalse() {
+            EditModeManager.setPlayInsertedNote(false);
+            EditModeManager.setPreviewElement(ElementType.CROTCHET.newInstance());
+            var line = lineWith(ElementType.CROTCHET);
+            try (MockedConstruction<PlayThread> playThreadConstruction =
+                     mockConstruction(PlayThread.class)) {
+                EditModeManager.previewElementDidChange(line, 0);
+                assertThat(playThreadConstruction.constructed())
+                    .as("PlayThread should not be constructed when playInsertedNote=false")
+                    .isEmpty();
+            }
+        }
+
+        @Test
+        void testDoesNotStartPlayThreadWhenInsertedElementIsNotNote() {
+            // A REST element's type.isNote() returns false → no PlayThread.
+            EditModeManager.setPlayInsertedNote(true);
+            EditModeManager.setPreviewElement(ElementType.CROTCHET_REST.newInstance());
+            var line = lineWith(ElementType.CROTCHET_REST);
+            try (MockedConstruction<PlayThread> playThreadConstruction =
+                     mockConstruction(PlayThread.class)) {
+                EditModeManager.previewElementDidChange(line, 0);
+                assertThat(playThreadConstruction.constructed())
+                    .as("PlayThread should not be constructed when inserted element is a rest")
+                    .isEmpty();
+            }
         }
     }
 
