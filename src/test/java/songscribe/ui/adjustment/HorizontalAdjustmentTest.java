@@ -26,6 +26,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -43,25 +44,20 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.message.MessageCenter;
+import songscribe.ui.adjustment.HorizontalAdjustment.AdjustRect;
 import songscribe.ui.adjustment.HorizontalAdjustment.HorizontalAdjustmentType;
 import songscribe.ui.component.ScoreView;
 
 /**
  * Tests for {@link HorizontalAdjustment#startedDrag()} bounds computation and
- * drag snap-to-end skip.
+ * {@link HorizontalAdjustment#drag()} snap-to-end behavior.
  *
- * <p>The {@code SnapToEndSkipped} block verifies that the terminal-node guard in
- * {@link HorizontalAdjustment#drag()} correctly reflects model properties on
- * both valid terminal types.
+ * <p>The {@code SnapToEnd} block verifies that the terminal-node guard in
+ * {@link HorizontalAdjustment#drag()} correctly skips or applies the snap
+ * adjustment to {@code endPoint.x}.
  *
- * <p>The {@code StartedDrag} block verifies the bounds calculation for the
- * {@code SINGLE_NOTE} drag type: the three edge cases are
- * <ul>
- *   <li>No {@code AdjustRect} contains the start point → {@code startedDrag} cleared</li>
- *   <li>Middle note → left = prevNote.x + handleWidth; right = nextNote.x − handleWidth</li>
- *   <li>First note (xIndex=0) → left = {@code FIRST_NOTE_LEFT_MARGIN_PX} + handleWidth</li>
- *   <li>Last note → right = {@code lineWidthPx}</li>
- * </ul>
+ * <p>The {@code StartedDrag} block verifies the bounds calculation for all
+ * relevant drag types.
  */
 class HorizontalAdjustmentTest extends UnitTest {
 
@@ -78,6 +74,12 @@ class HorizontalAdjustmentTest extends UnitTest {
     private static final int FIRST_NOTE_LEFT_MARGIN_PX = 20;
 
     private static final int HANDLE = HorizontalAdjustment.HANDLE_SIZE_PX;
+
+    /**
+     * Distance threshold below which an interactable snap-to-end note is snapped.
+     * Mirrors {@code END_SNAP_LIMIT} in {@link HorizontalAdjustment}.
+     */
+    private static final int END_SNAP_LIMIT = 30;
 
     private MockedStatic<MessageCenter> messageCenterMock;
     private Song song;
@@ -100,59 +102,116 @@ class HorizontalAdjustmentTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Snap-to-end skipped for both terminal types (rows 21-22)
+    // Snap-to-end behavior in drag() — rows 21-23
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class SnapToEndSkipped {
+    class SnapToEnd {
 
-        /**
-         * The default {@code FINAL_DOUBLE_BARLINE} terminal satisfies both conditions
-         * that make {@code drag()} skip the snap:
-         * {@code !isInteractable} (position owned by layout) and {@code snapToEnd = true}.
-         */
-        @Test
-        void testFinalDoubleBarlineTerminalSkipsSnap() {
-            var termIdx = line.elementCount() - 1;
-            var terminal = line.getElement(termIdx);
+        private Song mockSong;
+        private Line mockLine;
+        private StaffElement mockNote;
+        private ElementType mockType;
 
-            assertThat(terminal.getType())
-                .as("default terminal type")
-                .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
-            assertThat(song.isInteractable(terminal, line))
-                .as("terminal must not be interactable — snap condition is false")
-                .isFalse();
-            assertThat(terminal.getType().snapToEnd())
-                .as("FINAL_DOUBLE_BARLINE snaps to end — condition would fire if interactable")
-                .isTrue();
+        @BeforeEach
+        void setUpMocks() {
+            mockSong = mock(Song.class);
+            mockLine = mock(Line.class);
+            mockNote = mock(StaffElement.class);
+            mockType = mock(ElementType.class);
+
+            when(scoreView.getSong()).thenReturn(mockSong);
+            when(mockSong.getLine(anyInt())).thenReturn(mockLine);
+            when(mockLine.getElement(anyInt())).thenReturn(mockNote);
+            when(mockNote.getType()).thenReturn(mockType);
+            when(mockSong.getLineWidthPx()).thenReturn(LINE_WIDTH_PX);
+            // revalidateRects → getAdjustRect → getLineComponent → returns null → early return
+            when(scoreView.getLineComponent(anyInt())).thenReturn(null);
         }
 
         /**
-         * Parallel case: after swapping to a {@code REPEAT_RIGHT} terminal, the same
-         * two conditions still hold. The snap-to-end skip applies to both terminal types.
+         * Installs a draggingRect with a SINGLE_NOTE handle at a known position and
+         * sets endPoint.x to the supplied value.
+         */
+        private void setUpDragState(int rectX, int endX) {
+            ha.draggingRect = ha.new AdjustRect(
+                0, 0, HorizontalAdjustmentType.SINGLE_NOTE,
+                new Rectangle(rectX, 0, HANDLE, HANDLE)
+            );
+            ha.adjustRects.add(ha.draggingRect);
+            ha.endPoint.setLocation(endX, 0);
+        }
+
+        /**
+         * Row 21: when the note is not interactable (auto-maintained terminal,
+         * {@code FINAL_DOUBLE_BARLINE}), {@code drag()} must NOT adjust
+         * {@code endPoint.x}, even when the note type has {@code snapToEnd=true} and
+         * the cursor is within {@code END_SNAP_LIMIT} of the line end.
+         */
+        @Test
+        void testFinalDoubleBarlineTerminalSkipsSnap() {
+            when(mockSong.isInteractable(any(), any())).thenReturn(false);
+            when(mockType.snapToEnd()).thenReturn(true);
+
+            // endPoint.x within END_SNAP_LIMIT of lineWidth — would snap if interactable
+            var endX = LINE_WIDTH_PX - (END_SNAP_LIMIT - 1);
+            setUpDragState(endX, endX);
+
+            ha.drag();
+
+            assertThat(ha.endPoint.x)
+                .as("endPoint.x must not change when note is not interactable")
+                .isEqualTo(endX);
+        }
+
+        /**
+         * Row 22: same guard applies to {@code REPEAT_RIGHT} terminal — {@code drag()}
+         * must not adjust {@code endPoint.x} even though {@code snapToEnd=true}.
          */
         @Test
         void testRepeatRightTerminalSkipsSnap() {
-            song.replaceTerminal(ElementType.REPEAT_RIGHT);
+            when(mockSong.isInteractable(any(), any())).thenReturn(false);
+            when(mockType.snapToEnd()).thenReturn(true);
 
-            var termIdx = line.elementCount() - 1;
-            var terminal = line.getElement(termIdx);
+            var endX = LINE_WIDTH_PX - (END_SNAP_LIMIT - 1);
+            setUpDragState(endX, endX);
 
-            assertThat(terminal.getType())
-                .as("terminal type after replaceTerminal")
-                .isEqualTo(ElementType.REPEAT_RIGHT);
-            assertThat(song.isInteractable(terminal, line))
-                .as("REPEAT_RIGHT terminal must not be interactable — snap condition is false")
-                .isFalse();
-            assertThat(terminal.getType().snapToEnd())
-                .as("REPEAT_RIGHT snaps to end — condition would fire if interactable")
-                .isTrue();
+            ha.drag();
+
+            assertThat(ha.endPoint.x)
+                .as("endPoint.x must not change when REPEAT_RIGHT terminal is not interactable")
+                .isEqualTo(endX);
+        }
+
+        /**
+         * Row 23: for an interactable note with {@code snapToEnd=true} (e.g., a barline
+         * that is not the auto-maintained terminal) positioned within {@code END_SNAP_LIMIT}
+         * of the line end, {@code drag()} must adjust {@code endPoint.x} to
+         * {@code lineWidth − note.contentWidthPx}.
+         */
+        @Test
+        void testInteractableSnapToEndNoteSetsEndPointX() {
+            var contentWidthPx = 12.0;
+            when(mockSong.isInteractable(any(), any())).thenReturn(true);
+            when(mockType.snapToEnd()).thenReturn(true);
+            when(mockNote.getContentWidthPx()).thenReturn(contentWidthPx);
+
+            // endPoint.x within END_SNAP_LIMIT of lineWidth
+            var endX = LINE_WIDTH_PX - (END_SNAP_LIMIT - 1);
+            setUpDragState(endX, endX);
+
+            ha.drag();
+
+            var expectedSnapX = (int) (LINE_WIDTH_PX - contentWidthPx);
+            assertThat(ha.endPoint.x)
+                .as("endPoint.x must be snapped to lineWidth - contentWidthPx")
+                .isEqualTo(expectedSnapX);
         }
     }
 
     // -----------------------------------------------------------------------
-    // startedDrag() — rows 9-12
+    // startedDrag() — rows 9-12 (SINGLE_NOTE bounds)
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -293,6 +352,256 @@ class HorizontalAdjustmentTest extends UnitTest {
                 assertThat(ha.bottomRightDragBounds.x)
                     .as("right bound = lineWidthPx for last note")
                     .isEqualTo(LINE_WIDTH_PX);
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // TO_END_OF_LINE bounds — row 17
+        // -------------------------------------------------------------------
+
+        @SuppressWarnings("PackageVisibleInnerClass")
+        @Nested
+        class ToEndOfLineBounds {
+
+            private Song mockSong;
+            private Line mockLine;
+            private StaffElement prevNote;
+            private StaffElement lastNote;
+
+            @BeforeEach
+            void setUpMocks() {
+                mockSong = mock(Song.class);
+                mockLine = mock(Line.class);
+                when(scoreView.getSong()).thenReturn(mockSong);
+                when(mockSong.getLine(anyInt())).thenReturn(mockLine);
+                when(mockSong.getLineWidthPx()).thenReturn(LINE_WIDTH_PX);
+
+                prevNote = mock(StaffElement.class);
+                lastNote = mock(StaffElement.class);
+            }
+
+            /**
+             * Row 17: for a TO_END_OF_LINE drag at xIndex=2 (effectiveElementCount=4):
+             * <ul>
+             *   <li>left bound = prevNote(xIndex-1).x + rect.width</li>
+             *   <li>right bound = (rect.x − rect.width + lineWidth) − lastNote.x</li>
+             * </ul>
+             */
+            @Test
+            void testToEndOfLineBoundsExact() {
+                when(mockLine.effectiveElementCount()).thenReturn(4);
+                when(mockLine.elementCount()).thenReturn(4);
+
+                var prevNoteX = 150;
+                var lastNoteX = 600;
+                var rectX = 250;
+                when(prevNote.getXOffsetPx()).thenReturn(prevNoteX);
+                when(lastNote.getXOffsetPx()).thenReturn(lastNoteX);
+                // xIndex-1 = 1
+                when(mockLine.getElement(1)).thenReturn(prevNote);
+                // last element = elementCount()-1 = 3
+                when(mockLine.getElement(3)).thenReturn(lastNote);
+
+                ha.adjustRects.add(
+                    ha.new AdjustRect(0, 2, HorizontalAdjustmentType.TO_END_OF_LINE,
+                        new Rectangle(rectX, 0, HANDLE, HANDLE))
+                );
+                ha.startedDrag = true;
+                ha.startPoint = new Point(rectX + 4, 4);
+                ha.startedDrag();
+
+                assertThat(ha.topLeftDragBounds.x)
+                    .as("left bound = prevNote.x + rect.width")
+                    .isEqualTo(prevNoteX + HANDLE);
+                assertThat(ha.bottomRightDragBounds.x)
+                    .as("right bound = (rect.x - rect.width + lineWidth) - lastNote.x")
+                    .isEqualTo((rectX - HANDLE + LINE_WIDTH_PX) - lastNoteX);
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // STRETCH_NOTE_SPACING — row 18
+        // -------------------------------------------------------------------
+
+        @SuppressWarnings("PackageVisibleInnerClass")
+        @Nested
+        class StretchNoteSpacingBounds {
+
+            private Song mockSong;
+            private Line mockLine;
+
+            @BeforeEach
+            void setUpMocks() {
+                mockSong = mock(Song.class);
+                mockLine = mock(Line.class);
+                when(scoreView.getSong()).thenReturn(mockSong);
+                when(mockSong.getLine(anyInt())).thenReturn(mockLine);
+                when(mockSong.getLineWidthPx()).thenReturn(LINE_WIDTH_PX);
+            }
+
+            /**
+             * Row 18: after {@code startedDrag()} for STRETCH_NOTE_SPACING,
+             * {@code stretchHelper} is populated with each note's xOffsetPx, and the
+             * array is reallocated when the existing one is too small.
+             */
+            @Test
+            void testStretchHelperPopulatedWithNoteXOffsets() {
+                var count = 3;
+                when(mockLine.effectiveElementCount()).thenReturn(count);
+
+                var noteXs = new int[]{100, 250, 400};
+                for (var i = 0; i < count; i++) {
+                    var note = mock(StaffElement.class);
+                    when(note.getXOffsetPx()).thenReturn(noteXs[i]);
+                    when(mockLine.getElement(i)).thenReturn(note);
+                }
+
+                var rectX = 400;
+                ha.adjustRects.add(
+                    ha.new AdjustRect(0, count - 1, HorizontalAdjustmentType.STRETCH_NOTE_SPACING,
+                        new Rectangle(rectX, 0, HANDLE, HANDLE))
+                );
+                ha.startedDrag = true;
+                ha.startPoint = new Point(rectX + 4, 4);
+                ha.startedDrag();
+
+                assertThat(ha.stretchHelper)
+                    .as("stretchHelper must not be null after startedDrag")
+                    .isNotNull();
+                var helper = ha.stretchHelper;
+                if (helper == null) {
+                    return;
+                }
+                assertThat(helper.length)
+                    .as("stretchHelper length >= effectiveElementCount")
+                    .isGreaterThanOrEqualTo(count);
+                for (var i = 0; i < count; i++) {
+                    assertThat(helper[i])
+                        .as("stretchHelper[%d] must equal note xOffsetPx %d", i, noteXs[i])
+                        .isEqualTo((float) noteXs[i]);
+                }
+            }
+
+            /**
+             * Row 18 (reallocation): when a pre-existing {@code stretchHelper} array is
+             * smaller than {@code effectiveElementCount}, it is reallocated to fit.
+             */
+            @Test
+            void testStretchHelperReallocatedWhenTooSmall() {
+                // Pre-install a too-small array
+                ha.stretchHelper = new float[1];
+
+                var count = 3;
+                when(mockLine.effectiveElementCount()).thenReturn(count);
+
+                for (var i = 0; i < count; i++) {
+                    var note = mock(StaffElement.class);
+                    when(note.getXOffsetPx()).thenReturn((i + 1) * 100);
+                    when(mockLine.getElement(i)).thenReturn(note);
+                }
+
+                var rectX = 300;
+                ha.adjustRects.add(
+                    ha.new AdjustRect(0, count - 1, HorizontalAdjustmentType.STRETCH_NOTE_SPACING,
+                        new Rectangle(rectX, 0, HANDLE, HANDLE))
+                );
+                ha.startedDrag = true;
+                ha.startPoint = new Point(rectX + 4, 4);
+                ha.startedDrag();
+
+                assertThat(ha.stretchHelper)
+                    .as("stretchHelper must be reallocated when too small")
+                    .isNotNull();
+                var helper = ha.stretchHelper;
+                if (helper == null) {
+                    return;
+                }
+                assertThat(helper.length)
+                    .as("reallocated stretchHelper must accommodate effectiveElementCount")
+                    .isGreaterThanOrEqualTo(count);
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // GLISSANDO_START / GLISSANDO_END bounds — rows 19-20
+        // -------------------------------------------------------------------
+
+        @SuppressWarnings("PackageVisibleInnerClass")
+        @Nested
+        class GlissandoBounds {
+
+            private Song mockSong;
+            private Line mockLine;
+            private StaffElement mockNote;
+
+            @BeforeEach
+            void setUpMocks() {
+                mockSong = mock(Song.class);
+                mockLine = mock(Line.class);
+                mockNote = mock(StaffElement.class);
+                when(scoreView.getSong()).thenReturn(mockSong);
+                when(mockSong.getLine(anyInt())).thenReturn(mockLine);
+                when(mockSong.getLineWidthPx()).thenReturn(LINE_WIDTH_PX);
+                when(mockLine.getElement(anyInt())).thenReturn(mockNote);
+                when(mockNote.getXOffsetPx()).thenReturn(200);
+            }
+
+            /**
+             * Row 19: for GLISSANDO_START, the right drag bound must equal the {@code rect.x}
+             * of the adjacent GLISSANDO_END {@code AdjustRect} (the next rect in the list).
+             */
+            @Test
+            void testGlissandoStartRightBoundIsNextRectX() {
+                var startRectX = 200;
+                var endRectX = 350;
+
+                var startRect = ha.new AdjustRect(
+                    0, 0, HorizontalAdjustmentType.GLISSANDO_START,
+                    new Rectangle(startRectX, 0, HANDLE, HANDLE)
+                );
+                var endRect = ha.new AdjustRect(
+                    0, 0, HorizontalAdjustmentType.GLISSANDO_END,
+                    new Rectangle(endRectX, 0, HANDLE, HANDLE)
+                );
+                ha.adjustRects.add(startRect);
+                ha.adjustRects.add(endRect);
+
+                ha.startedDrag = true;
+                ha.startPoint = new Point(startRectX + 4, 4);
+                ha.startedDrag();
+
+                assertThat(ha.bottomRightDragBounds.x)
+                    .as("right bound = next AdjustRect (GLISSANDO_END).rect.x")
+                    .isEqualTo(endRectX);
+            }
+
+            /**
+             * Row 20: for GLISSANDO_END, the left drag bound must equal the {@code rect.x}
+             * of the preceding GLISSANDO_START {@code AdjustRect} plus {@code rect.width}.
+             */
+            @Test
+            void testGlissandoEndLeftBoundIsPrevRectXPlusWidth() {
+                var startRectX = 200;
+                var endRectX = 350;
+
+                var startRect = ha.new AdjustRect(
+                    0, 0, HorizontalAdjustmentType.GLISSANDO_START,
+                    new Rectangle(startRectX, 0, HANDLE, HANDLE)
+                );
+                var endRect = ha.new AdjustRect(
+                    0, 0, HorizontalAdjustmentType.GLISSANDO_END,
+                    new Rectangle(endRectX, 0, HANDLE, HANDLE)
+                );
+                ha.adjustRects.add(startRect);
+                ha.adjustRects.add(endRect);
+
+                ha.startedDrag = true;
+                ha.startPoint = new Point(endRectX + 4, 4);
+                ha.startedDrag();
+
+                assertThat(ha.topLeftDragBounds.x)
+                    .as("left bound = prev AdjustRect (GLISSANDO_START).rect.x + rect.width")
+                    .isEqualTo(startRectX + HANDLE);
             }
         }
     }

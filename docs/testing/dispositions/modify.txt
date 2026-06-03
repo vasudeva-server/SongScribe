@@ -66,3 +66,7 @@ RestModeActionTest — added REQUIRES_EMPTY_SELECTION and ENABLE_WHEN_DURATION_S
 LineSelectionStateTest.testCanToggleTieWithSizeLessThanTwoSetsCanTieFalse  # strengthened — explicit size<2 path missing
 LineSelectionStateTest.testCanToggleTieWithSizeGreaterThanTwoSetsCanTieFalse  # strengthened — explicit size>2 path missing
 LineSelectionStateTest.testResetTieStateClearsCanTieAndExistingTie  # strengthened — resetTieState fields never directly asserted
+
+# 6d HorizontalAdjustment rows 21-22 (drag snap-to-end skip — inadequate tests strengthened)
+HorizontalAdjustmentTest.SnapToEnd.testFinalDoubleBarlineTerminalSkipsSnap  # strengthened — now calls drag() and asserts endPoint.x unchanged
+HorizontalAdjustmentTest.SnapToEnd.testRepeatRightTerminalSkipsSnap  # strengthened — now calls drag() and asserts endPoint.x unchanged

@@ -45,9 +45,9 @@ public class HorizontalAdjustment extends Adjustment {
     final ArrayList<AdjustRect> adjustRects = new ArrayList<>();
 
     @Nullable
-    private AdjustRect draggingRect;
+    AdjustRect draggingRect;
 
-    private float @Nullable [] stretchHelper;
+    float @Nullable [] stretchHelper;
 
     public HorizontalAdjustment(ScoreView score) {
         super(score);
