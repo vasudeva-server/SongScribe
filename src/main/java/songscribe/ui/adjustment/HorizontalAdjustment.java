@@ -38,7 +38,11 @@ import songscribe.ui.renderer.GraphicsState;
 public class HorizontalAdjustment extends Adjustment {
 
     private static final int END_SNAP_LIMIT = 30;
-    private final ArrayList<AdjustRect> adjustRects = new ArrayList<>();
+
+    /** Side length (width and height) of each drag handle in pixels. */
+    static final int HANDLE_SIZE_PX = 8;
+
+    final ArrayList<AdjustRect> adjustRects = new ArrayList<>();
 
     @Nullable
     private AdjustRect draggingRect;
@@ -511,8 +515,8 @@ public class HorizontalAdjustment extends Adjustment {
             default -> rect.rect.x = note.getXOffsetPx() + 1;
         }
 
-        rect.rect.width = 8;
-        rect.rect.height = 8;
+        rect.rect.width = HANDLE_SIZE_PX;
+        rect.rect.height = HANDLE_SIZE_PX;
     }
 
     private void revalidateRects() {
@@ -549,7 +553,7 @@ public class HorizontalAdjustment extends Adjustment {
         return null;
     }
 
-    private enum HorizontalAdjustmentType {
+    enum HorizontalAdjustmentType {
         // A single note is being shifted
         SINGLE_NOTE(Color.white, -1),
 
@@ -589,7 +593,7 @@ public class HorizontalAdjustment extends Adjustment {
         }
     }
 
-    private class AdjustRect {
+    class AdjustRect {
 
         final Rectangle rect;
         final int line;
@@ -606,6 +610,22 @@ public class HorizontalAdjustment extends Adjustment {
             this.horizontalAdjustmentType = horizontalAdjustmentType;
             rect = new Rectangle();
             getAdjustRect(this);
+        }
+
+        /**
+         * Test-only constructor that bypasses {@link HorizontalAdjustment#getAdjustRect}
+         * and uses a caller-supplied bounding rectangle directly.
+         */
+        AdjustRect(
+            int line,
+            int xIndex,
+            HorizontalAdjustmentType horizontalAdjustmentType,
+            Rectangle rect
+        ) {
+            this.line = line;
+            this.xIndex = xIndex;
+            this.horizontalAdjustmentType = horizontalAdjustmentType;
+            this.rect = rect;
         }
     }
 }

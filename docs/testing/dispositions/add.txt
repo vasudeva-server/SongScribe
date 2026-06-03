@@ -1582,3 +1582,9 @@ AdjustmentTest.MouseDragged.testYAboveTopBoundClampsToTopBound	6d-ui-adjustment	
 AdjustmentTest.MouseDragged.testYAtBottomBoundClampsToBottomBoundMinusOne	6d-ui-adjustment	row 7: Y clamping — at bottom bound
 AdjustmentTest.MouseDragged.testYBeyondBottomBoundClampsToBottomBoundMinusOne	6d-ui-adjustment	row 7: Y clamping — beyond bottom bound
 AdjustmentTest.MouseDragged.testSkipsDragWhenStartedDragIsFalse	6d-ui-adjustment	row 8: mouseDragged skips drag() when startedDrag=false
+
+# 6d HorizontalAdjustment rows 9-12 (StartedDrag)
+HorizontalAdjustmentTest.StartedDrag.testSetsStartedDragFalseWhenNoRectContainsStartPoint
+HorizontalAdjustmentTest.StartedDrag.SingleNoteBounds.testMiddleNoteBoundsUsePrevAndNextNoteX
+HorizontalAdjustmentTest.StartedDrag.SingleNoteBounds.testFirstNoteBoundsUseFixedLeftMargin
+HorizontalAdjustmentTest.StartedDrag.SingleNoteBounds.testLastNoteRightBoundIsLineWidth

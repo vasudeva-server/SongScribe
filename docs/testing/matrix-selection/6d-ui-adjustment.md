@@ -10,10 +10,10 @@
 | Adjustment | `mouseDragged`: clamps X to [topLeftDragBounds.x, bottomRightDragBounds.x-1] | unit | none | missing | Critical arithmetic: test exact boundary values — at bound, one-past-bound, below bound; assert endPoint.x is clamped precisely | ✅ |
 | Adjustment | `mouseDragged`: clamps Y to [topLeftDragBounds.y, bottomRightDragBounds.y-1] | unit | none | missing | Same — exact value assertions, not just sign | ✅ |
 | Adjustment | `mouseDragged`: skips drag() when startedDrag=false | unit | none | missing | Add unit test | ✅ |
-| HorizontalAdjustment | `startedDrag()`: sets startedDrag=false when no AdjustRect contains startPoint | unit | none | missing | Unit test with populated adjustRects, click outside all — assert startedDrag=false | ⬜ |
-| HorizontalAdjustment | `startedDrag()` SINGLE_NOTE: left bound = prev note x + rect.width; right bound = next note x - rect.width | unit | none | missing | Exact arithmetic; mock line with known note positions; assert topLeftDragBounds.x and bottomRightDragBounds.x to exact pixel values | ⬜ |
-| HorizontalAdjustment | `startedDrag()` SINGLE_NOTE: left bound = 20 + rect.width when xIndex=0 (no predecessor) | unit | none | missing | Edge case: first note | ⬜ |
-| HorizontalAdjustment | `startedDrag()` SINGLE_NOTE: right bound = lineWidth when xIndex = last note | unit | none | missing | Edge case: last note | ⬜ |
+| HorizontalAdjustment | `startedDrag()`: sets startedDrag=false when no AdjustRect contains startPoint | unit | none | missing | Unit test with populated adjustRects, click outside all — assert startedDrag=false | ✅ |
+| HorizontalAdjustment | `startedDrag()` SINGLE_NOTE: left bound = prev note x + rect.width; right bound = next note x - rect.width | unit | none | missing | Exact arithmetic; mock line with known note positions; assert topLeftDragBounds.x and bottomRightDragBounds.x to exact pixel values | ✅ |
+| HorizontalAdjustment | `startedDrag()` SINGLE_NOTE: left bound = 20 + rect.width when xIndex=0 (no predecessor) | unit | none | missing | Edge case: first note | ✅ |
+| HorizontalAdjustment | `startedDrag()` SINGLE_NOTE: right bound = lineWidth when xIndex = last note | unit | none | missing | Edge case: last note | ✅ |
 | HorizontalAdjustment | `startedDrag()` TO_END_OF_LINE: bounds computation | unit | none | missing | Exact arithmetic | ⬜ |
 | HorizontalAdjustment | `startedDrag()` STRETCH_NOTE_SPACING: stretchHelper populated with note x positions; reallocated when too small | unit | none | missing | Assert stretchHelper values equal note xOffsets | ⬜ |
 | HorizontalAdjustment | `startedDrag()` GLISSANDO_START: right bound = next AdjustRect's rect.x | unit | none | missing | Exact index lookup | ⬜ |
