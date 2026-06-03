@@ -21,9 +21,12 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.*;
 
@@ -49,7 +52,9 @@ import songscribe.message.command.ToggleTrillCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.CrescendoAddition;
+import songscribe.message.mutation.CrescendoRemoval;
 import songscribe.message.mutation.DiminuendoAddition;
+import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
@@ -283,8 +288,9 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
 
     @Test
     void testHandleRemoveDynamicsEmitsRemovals() {
-        // One crescendo, one diminuendo — the handler must coalesce both removals
-        // into a single notification.
+        // Row 53: one crescendo and one diminuendo — the handler must coalesce both
+        // removals into a single notification with exactly two mutations: one
+        // CrescendoRemoval and one DiminuendoRemoval.
         var env = setupTest(crotchet(), crotchet(), crotchet(), crotchet());
         var line = env.line();
         song.withoutMutationTracking(() -> {
@@ -296,7 +302,10 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         env.scoreMessageCoordinator().handleRemoveDynamics(new RemoveDynamicsCommand());
 
         var notification = captureSingleDidChange();
-        assertThat(notification.getMutations()).isNotEmpty();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(2);
+        assertThat(mutations.get(0)).isInstanceOf(CrescendoRemoval.class);
+        assertThat(mutations.get(1)).isInstanceOf(DiminuendoRemoval.class);
     }
 
     // -----------------------------------------------------------------------
@@ -360,6 +369,78 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
             assertThat(notification.getMutations().get(1)).isInstanceOf(RangeElementAddition.class);
             assertThat(((RangeElementAddition) notification.getMutations().get(1)).element())
                 .isInstanceOf(Ending.class);
+        } finally {
+            setCachedEndingResult(previous);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleToggleBeam no-op — row 48
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testHandleToggleBeamIsNoOpWhenNoActiveSelection() {
+        // Row 48: when getActiveSelection() returns null, the handler must return
+        // immediately without posting any SongDidChangeNotification.
+        //
+        // Uses a mocked SelectionCoordinator that returns null for getActiveSelection()
+        // rather than the real coordinator (which always has an active line state).
+        var coordinatorMock = mock(SelectionCoordinator.class);
+        when(coordinatorMock.getActiveSelection()).thenReturn(null);
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            coordinatorMock,
+            mock(ClipboardManager.class)
+        );
+
+        controller.handleToggleBeam(new ToggleBeamCommand());
+
+        var mock = messageCenterMock;
+        if (mock == null) throw new IllegalStateException("messageCenterMock not set");
+        mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
+    }
+
+    // -----------------------------------------------------------------------
+    // handleFirstSecondEnding no-op — row 57
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testHandleFirstSecondEndingIsNoOpWhenCachedResultIsNull() throws Exception {
+        // Row 57a: null cached result — handler must not emit any notification.
+        var env = setupTest(crotchet(), crotchet());
+        ReflectionTestHelper.selectNote(env.coordinator(), 0);
+
+        var previous = setCachedEndingResult(null);
+
+        try {
+            env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
+
+            var mock = messageCenterMock;
+            if (mock == null) throw new IllegalStateException("messageCenterMock not set");
+            mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
+        } finally {
+            setCachedEndingResult(previous);
+        }
+    }
+
+    @Test
+    void testHandleFirstSecondEndingIsNoOpWhenCachedResultIsInvalid() throws Exception {
+        // Row 57b: invalid cached result — handler must not emit any notification.
+        var env = setupTest(crotchet(), crotchet());
+        ReflectionTestHelper.selectNote(env.coordinator(), 0);
+
+        var previous = setCachedEndingResult(EndingValidationResult.invalid());
+
+        try {
+            env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
+
+            var mock = messageCenterMock;
+            if (mock == null) throw new IllegalStateException("messageCenterMock not set");
+            mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
         } finally {
             setCachedEndingResult(previous);
         }

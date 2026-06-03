@@ -70,3 +70,6 @@ LineSelectionStateTest.testResetTieStateClearsCanTieAndExistingTie  # strengthen
 # 6d HorizontalAdjustment rows 21-22 (drag snap-to-end skip — inadequate tests strengthened)
 HorizontalAdjustmentTest.SnapToEnd.testFinalDoubleBarlineTerminalSkipsSnap  # strengthened — now calls drag() and asserts endPoint.x unchanged
 HorizontalAdjustmentTest.SnapToEnd.testRepeatRightTerminalSkipsSnap  # strengthened — now calls drag() and asserts endPoint.x unchanged
+
+# 7a ScoreViewController row 53 (strengthen handleRemoveDynamics assertion)
+ScoreViewControllerCommandHandlerTest.testHandleRemoveDynamicsEmitsRemovals  # strengthened — now asserts hasSize(2) with CrescendoRemoval + DiminuendoRemoval

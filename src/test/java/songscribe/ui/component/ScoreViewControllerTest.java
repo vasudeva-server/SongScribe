@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +59,7 @@ import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.prefs.PrefsKey;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
@@ -855,6 +857,83 @@ class ScoreViewControllerTest extends UnitTest {
         void testPrefsDidChangeLoopPlaybackDoesNotCallUpdatePageLayout() {
             controller.prefsDidChange(new PrefsDidChangeNotification(PrefsKey.LOOP_PLAYBACK));
             verify(scoreMock, never()).updatePageLayout(anyInt());
+        }
+
+        @Test
+        void testPrefsDidChangePageSizeCallsUpdatePageLayoutWhenInitialized() {
+            // Row 44: PAGE_SIZE fires updatePageLayout (but not syncPlaybackPrefs)
+            // when score.isInitialized() returns true.
+            var song = new Song();
+            when(scoreMock.isInitialized()).thenReturn(true);
+            when(scoreMock.getSong()).thenReturn(song);
+
+            controller.prefsDidChange(new PrefsDidChangeNotification(PrefsKey.PAGE_SIZE));
+
+            verify(scoreMock).updatePageLayout(anyInt());
+            verify(scoreMock, never()).syncPlaybackPrefs();
+        }
+
+        @Test
+        void testPrefsDidChangePageSizeIsNoOpWhenNotInitialized() {
+            // Row 44 guard: PAGE_SIZE must not call updatePageLayout if score is not initialized.
+            when(scoreMock.isInitialized()).thenReturn(false);
+
+            controller.prefsDidChange(new PrefsDidChangeNotification(PrefsKey.PAGE_SIZE));
+
+            verify(scoreMock, never()).updatePageLayout(anyInt());
+        }
+
+        @Test
+        void testPrefsDidChangeAllCallsBothEffects() {
+            // Row 45: PrefsKey.ALL triggers both syncPlaybackPrefs and updatePageLayout.
+            var song = new Song();
+            when(scoreMock.isInitialized()).thenReturn(true);
+            when(scoreMock.getSong()).thenReturn(song);
+
+            controller.prefsDidChange(new PrefsDidChangeNotification(PrefsKey.ALL));
+
+            verify(scoreMock).syncPlaybackPrefs();
+            verify(scoreMock).updatePageLayout(anyInt());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // textEditingDidChange — row 46
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TextEditingDidChange {
+
+        private ScoreView scoreMock;
+        private ScoreViewController controller;
+
+        @BeforeEach
+        void setUp() {
+            scoreMock = mock(ScoreView.class);
+
+            controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                mock(SelectionCoordinator.class),
+                mock(ClipboardManager.class)
+            );
+        }
+
+        @Test
+        void testTextEditingDidChangeDisablesKeyBindingsWhenEditing() {
+            // Row 46a: editing=true → setKeyBindingsEnabled(false)
+            controller.textEditingDidChange(new TextEditingDidChangeNotification(true));
+
+            verify(scoreMock).setKeyBindingsEnabled(false);
+        }
+
+        @Test
+        void testTextEditingDidChangeEnablesKeyBindingsWhenNotEditing() {
+            // Row 46b: editing=false → setKeyBindingsEnabled(true)
+            controller.textEditingDidChange(new TextEditingDidChangeNotification(false));
+
+            verify(scoreMock).setKeyBindingsEnabled(true);
         }
     }
 
