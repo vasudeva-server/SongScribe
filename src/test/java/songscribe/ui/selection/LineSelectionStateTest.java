@@ -454,6 +454,163 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     @Test
+    void testExtendSelectionToWithAnchorAfterIndexSetsBeginToIndexEndToAnchor() {
+        // Reversed drag: anchor at index 2, extending back to index 0.
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(2);
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.extendSelectionTo(0);
+
+        assertThat(state.getSelectionBegin()).isEqualTo(0);
+        assertThat(state.getSelectionEnd()).isEqualTo(2);
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    @Test
+    void testExtendSelectionToIsNoOpWhenAnchorIsMinusOne() {
+        // No anchor set: extendSelectionTo should not modify begin/end.
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        // Default selectionAnchor is -1; set begin/end so we can detect any change.
+        state.setSelectionFromClick(0);
+        // Clear the anchor so we are testing the no-anchor path.
+        state.clearSelection();
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.extendSelectionTo(1);
+
+        assertThat(state.getSelectionBegin()).isEqualTo(-1);
+        assertThat(state.getSelectionEnd()).isEqualTo(-1);
+        assertThat(callbackCount[0]).isEqualTo(0);
+    }
+
+    // -- extendSelection --
+
+    @Test
+    void testExtendSelectionStartsNewSelectionWhenBeginIsMinusOne() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        // selectionBegin defaults to -1: first call should start a new selection.
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.extendSelection(1);
+
+        assertThat(state.getSelectionBegin()).isEqualTo(1);
+        assertThat(state.getSelectionEnd()).isEqualTo(1);
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    @Test
+    void testExtendSelectionExtendsEndWhenSelectionAlreadyExists() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.extendSelection(0);
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.extendSelection(2);
+
+        // begin must stay at 0; only end extends.
+        assertThat(state.getSelectionBegin()).isEqualTo(0);
+        assertThat(state.getSelectionEnd()).isEqualTo(2);
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    // -- resetElementSelection --
+
+    @Test
+    void testResetElementSelectionSetsBeginAndEndToMinusOneAndFiresCallback() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+        // Set lineSelected=true after all element-selection setup; note that setLineSelected(true)
+        // also clears selectedGlissandoElementIndex so glissando cannot be simultaneously active.
+        state.setLineSelected(true);
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.resetElementSelection();
+
+        assertThat(state.getSelectionBegin()).isEqualTo(-1);
+        assertThat(state.getSelectionEnd()).isEqualTo(-1);
+        // resetElementSelection must not touch lineSelected.
+        assertThat(state.isLineSelected()).isTrue();
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    // -- setSelectionAnchor / getSelectionAnchor --
+
+    @Test
+    void testSetSelectionAnchorRoundTrip() {
+        var line = detachedLine();
+        var state = new LineSelectionState(line);
+
+        assertThat(state.getSelectionAnchor()).isEqualTo(-1);
+
+        state.setSelectionAnchor(3);
+
+        assertThat(state.getSelectionAnchor()).isEqualTo(3);
+    }
+
+    // -- selectionChangeCallback fires on every state-mutating call --
+
+    @Test
+    void testSelectionChangeCallbackFiresOnEveryStateMutatingCall() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.setSelectionFromClick(0);
+        assertThat(callbackCount[0]).isEqualTo(1);
+
+        state.extendSelectionTo(2);
+        assertThat(callbackCount[0]).isEqualTo(2);
+
+        state.extendSelection(1);
+        assertThat(callbackCount[0]).isEqualTo(3);
+
+        state.setLineSelected(true);
+        assertThat(callbackCount[0]).isEqualTo(4);
+
+        state.selectGlissando(0);
+        assertThat(callbackCount[0]).isEqualTo(5);
+
+        state.resetElementSelection();
+        assertThat(callbackCount[0]).isEqualTo(6);
+
+        state.clearSelection();
+        assertThat(callbackCount[0]).isEqualTo(7);
+    }
+
+    @Test
     void testSelectionContainingNonPitchedElementCannotToggle() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());

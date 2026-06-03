@@ -20,17 +20,17 @@
 | `LineSelectionState` | `getSingleSelectedElement()` returns null when >1 selected, element when exactly 1 | unit | `SelectionCoordinatorLyricSelectionTest.testElementSelectionClearsLyricSelection` (indirect, asserts coordinator wrapper) | adequate | — | — |
 | `LineSelectionState` | `setSelectionFromClick()` sets begin=end=anchor=index, clears glissando, fires callback | unit | used as setup in `LineSelectionStateTest` and `ToggleConflictTest` but never directly asserted | inadequate | add unit test asserting all five side effects | ✅ |
 | `LineSelectionState` | `extendSelectionTo()` with anchor < index: sets begin=anchor, end=index | unit | used as setup in `LineSelectionStateTest` but never directly asserted on its own | inadequate | add unit test asserting correct [begin,end] ordering in both directions | ✅ |
-| `LineSelectionState` | `extendSelectionTo()` with anchor > index (reversed drag): begin=index, end=anchor | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `extendSelectionTo()` no-op when anchor is -1 | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `extendSelection()` starts new selection when begin=-1 | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `extendSelection()` extends end when selection exists (begin unchanged) | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `resetElementSelection()` sets begin=end=-1 (does not touch lineSelected/glissando), fires callback | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `setSelectionAnchor()` / `getSelectionAnchor()` round-trip | unit | none | missing | add unit test | ⬜ |
+| `LineSelectionState` | `extendSelectionTo()` with anchor > index (reversed drag): begin=index, end=anchor | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `extendSelectionTo()` no-op when anchor is -1 | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `extendSelection()` starts new selection when begin=-1 | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `extendSelection()` extends end when selection exists (begin unchanged) | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `resetElementSelection()` sets begin=end=-1 (does not touch lineSelected/glissando), fires callback | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `setSelectionAnchor()` / `getSelectionAnchor()` round-trip | unit | none | missing | add unit test | ✅ |
 | `LineSelectionState` | `selectAll()` excludes auto-maintained terminal (FINAL_DOUBLE_BARLINE) | unit | `LineSelectionStateTest.testSelectAllExcludesAutoMaintainedFinalBarlineOnLastLine` | adequate | — | — |
 | `LineSelectionState` | `selectAll()` excludes REPEAT_RIGHT terminal on last line | unit | `LineSelectionStateTest.testSelectAllExcludesAutoMaintainedRightRepeatTerminalOnLastLine` | adequate | — | — |
 | `LineSelectionState` | `selectAll()` on empty line (only terminal) selects nothing | unit | `LineSelectionStateTest.testSelectAllOnLineWithOnlyFinalBarlineSelectsNothing` | adequate | — | — |
 | `LineSelectionState` | `selectAll()` on non-last line includes all elements | unit | `LineSelectionStateTest.testSelectAllOnNonLastLineIncludesAllElements` | adequate | — | — |
-| `LineSelectionState` | `selectionChangeCallback` fires on every state-mutating call | unit | none | missing | add unit test with a counter callback | ⬜ |
+| `LineSelectionState` | `selectionChangeCallback` fires on every state-mutating call | unit | none | missing | add unit test with a counter callback | ✅ |
 | `LineSelectionState` | `canToggleBeaming()` — size < 2 returns false | unit | `ToggleConflictTest.testQuarterNotesBeamingDisabledTieEnabled` (indirectly; quarter notes are not beamable so size check and beamable check overlap) | adequate | — | — |
 | `LineSelectionState` | `canToggleBeaming()` — non-beamable element in range returns false | unit | `ToggleConflictTest.testChangeDurationToQuarterDisablesBeam` | adequate | — | — |
 | `LineSelectionState` | `canToggleBeaming()` — all beamable, no existing beam (add mode) | unit | `ToggleConflictTest.testChangeDurationToEighthBothEnabled` | adequate | — | — |
