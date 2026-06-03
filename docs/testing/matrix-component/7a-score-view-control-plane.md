@@ -26,13 +26,13 @@
 | ScoreViewController | `handlePasteboardOp` is a no-op when `score.isFocusOwner()` returns false | unit | — | missing | write unit test | ⬜ |
 | ScoreViewController | `handleDeselect` calls `score.deselect()` only when score has focus | unit | — | missing | write unit test (both focus states) | ⬜ |
 | ScoreViewController | `handleSelectLine` calls `state.selectAll()` and notifies score when active selection exists | unit | — | missing | write unit test | ⬜ |
-| ScoreViewController | `handleSelectLine` is a no-op when no active selection | unit | — | missing | write unit test | ⬜ |
-| ScoreViewController | `handleInsertLine` inserts line at `selectedLine + shift` when a line is selected | unit | — | missing | write unit test | ⬜ |
-| ScoreViewController | `handleInsertLine` with `shift == ADD` inserts line at end regardless of selection | unit | — | missing | write unit test | ⬜ |
-| ScoreViewController | `handleInsertLine` shows an error dialog when no line is selected and shift != ADD | unit | — | missing | write unit test (mock `OptionDialogs`) | ⬜ |
-| ScoreViewController | `modeDidChange`: clears selection when mode != SELECT | unit | — | missing | write unit test | ⬜ |
-| ScoreViewController | `modeDidChange`: syncs preview element on EDIT entry | unit | — | missing | write unit test (verify `score.setPreviewElement` called) | ⬜ |
-| ScoreViewController | `modeDidChange`: enables/disables horizontal and vertical adjustment controls per mode | unit | — | missing | write unit test | ⬜ |
+| ScoreViewController | `handleSelectLine` is a no-op when no active selection | unit | `ScoreViewControllerTest.SelectLine.testHandleSelectLineIsNoOpWhenNoActiveSelection` | missing | write unit test | ✅ |
+| ScoreViewController | `handleInsertLine` inserts line at `selectedLine + shift` when a line is selected | unit | `ScoreViewControllerTest.InsertLine.testHandleInsertLineInsertsAtSelectedLineIndexPlusShift` | missing | write unit test | ✅ |
+| ScoreViewController | `handleInsertLine` with `shift == ADD` inserts line at end regardless of selection | unit | `ScoreViewControllerTest.InsertLine.testHandleInsertLineWithAddShiftInsertsAtEndRegardlessOfSelection` | missing | write unit test | ✅ |
+| ScoreViewController | `handleInsertLine` shows an error dialog when no line is selected and shift != ADD | unit | `ScoreViewControllerTest.InsertLine.testHandleInsertLineShowsErrorWhenNoLineSelectedAndShiftIsNotAdd` | missing | write unit test (mock `OptionDialogs`) | ✅ |
+| ScoreViewController | `modeDidChange`: clears selection when mode != SELECT | unit | `ScoreViewControllerTest.ModeDidChange.testModeDidChangeClearsSelectionWhenModeIsNotSelect` | missing | write unit test | ✅ |
+| ScoreViewController | `modeDidChange`: syncs preview element on EDIT entry | unit | `ScoreViewControllerTest.ModeDidChange.testModeDidChangeSyncsPreviewElementOnEditEntry` | missing | write unit test (verify `score.setPreviewElement` called) | ✅ |
+| ScoreViewController | `modeDidChange`: enables/disables horizontal and vertical adjustment controls per mode | unit | `ScoreViewControllerTest.ModeDidChange.testModeDidChangeEnablesHorizontalAdjustmentForAdjustmentMode` + `testModeDidChangeEnablesVerticalAdjustmentForVerticalAdjustmentMode` | missing | write unit test | ✅ |
 | ScoreViewController | `hasLineLayoutMutation` returns true for `LineScopedMutation`, `LineInsertion`, `LineDeletion`; false otherwise | unit | `ScoreViewControllerTest.LayoutInvalidation` (6 tests) | adequate | keep | — |
 | ScoreViewController | `hasFullRelayoutMutation` returns true for `FontChange`, `MetadataChange`, `LayoutChange`; false for others | unit | — | missing | write unit test | ⬜ |
 | ScoreViewController | `songDidChange` calls `lineComponent.invalidateLayout()` only for the target line when mutation is line-scoped with a non-null target | unit | — | missing | write unit test | ⬜ |

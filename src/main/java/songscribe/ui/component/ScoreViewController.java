@@ -464,7 +464,7 @@ public final class ScoreViewController {
         }
     }
 
-    private void handleDelete() {
+    void handleDelete() {
         var song = score.getSong();
         var lyricSelection = selectionCoordinator.getLyricSelection();
 

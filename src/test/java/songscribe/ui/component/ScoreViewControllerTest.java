@@ -21,7 +21,12 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,8 +35,11 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.message.command.InsertLineCommand;
+import songscribe.message.command.SelectLineCommand;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.Mutation;
@@ -39,6 +47,7 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
+import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
@@ -49,11 +58,19 @@ import songscribe.dom.Beam;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.ui.MusicEditOperations;
+import songscribe.ui.Mode;
+import songscribe.ui.action.Actions;
+import songscribe.ui.action.ElementTypeAction;
+import songscribe.ui.action.InsertLineAction;
+import songscribe.ui.action.ModeAction;
+import songscribe.ui.adjustment.HorizontalAdjustment;
+import songscribe.ui.adjustment.VerticalAdjustment;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.LinePanel;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.StaffPanel;
+import songscribe.ui.edit.EditModeManager;
 
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -279,6 +296,208 @@ class ScoreViewControllerTest extends UnitTest {
             }
 
             return line;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleSelectLine — rows 28 (active, covered elsewhere) & 29 (no-op)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SelectLine {
+
+        @Test
+        void testHandleSelectLineIsNoOpWhenNoActiveSelection() {
+            var scoreMock = mock(ScoreView.class);
+            var coordinatorMock = mock(SelectionCoordinator.class);
+            when(coordinatorMock.getActiveSelection()).thenReturn(null);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinatorMock,
+                mock(ClipboardManager.class)
+            );
+
+            controller.handleSelectLine(new SelectLineCommand());
+
+            verify(scoreMock, never()).selectionChanged();
+            verify(scoreMock, never()).repaint();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleInsertLine — rows 30, 31, 32
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class InsertLine {
+
+        private ScoreView scoreMock;
+        private Song songMock;
+        private SelectionCoordinator coordinatorMock;
+        private ScoreViewController controller;
+
+        @BeforeEach
+        void setUp() {
+            scoreMock = mock(ScoreView.class);
+            songMock = mock(Song.class);
+            coordinatorMock = mock(SelectionCoordinator.class);
+            when(scoreMock.getSong()).thenReturn(songMock);
+
+            controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinatorMock,
+                mock(ClipboardManager.class)
+            );
+        }
+
+        @Test
+        void testHandleInsertLineInsertsAtSelectedLineIndexPlusShift() {
+            // selectedLine == 1, shift == 1 → index = 1 + 1 = 2
+            when(coordinatorMock.getSelectedLine()).thenReturn(1);
+
+            controller.handleInsertLine(new InsertLineCommand(1));
+
+            verify(songMock).addLine(eq(2), any(Line.class));
+            verify(scoreMock).deselect();
+        }
+
+        @Test
+        void testHandleInsertLineWithAddShiftInsertsAtEndRegardlessOfSelection() {
+            // shift == ADD forces end-of-song insertion even without a line selected
+            when(coordinatorMock.getSelectedLine()).thenReturn(-1);
+
+            controller.handleInsertLine(new InsertLineCommand(InsertLineAction.ADD));
+
+            verify(songMock).addLine(eq(InsertLineAction.ADD), any(Line.class));
+            verify(scoreMock).deselect();
+        }
+
+        @Test
+        void testHandleInsertLineShowsErrorWhenNoLineSelectedAndShiftIsNotAdd() {
+            // No line selected and shift != ADD → error dialog (suppressed in tests),
+            // addLine must NOT be called.
+            when(coordinatorMock.getSelectedLine()).thenReturn(-1);
+
+            controller.handleInsertLine(new InsertLineCommand(0));
+
+            verify(songMock, never()).addLine(anyInt(), any(Line.class));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // modeDidChange — rows 33, 34, 35
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ModeDidChange {
+
+        private ScoreView scoreMock;
+        private SelectionCoordinator coordinatorMock;
+        private ScoreViewController controller;
+
+        @BeforeEach
+        void setUp() {
+            scoreMock = mock(ScoreView.class);
+            coordinatorMock = mock(SelectionCoordinator.class);
+
+            controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinatorMock,
+                mock(ClipboardManager.class)
+            );
+        }
+
+        private ModeDidChangeNotification notificationFor(Mode mode) {
+            var action = mock(ModeAction.class);
+            when(action.getMode()).thenReturn(mode);
+            // Adjustment detection uses action.getActionCommand().startsWith("adjust-")
+            var command = switch (mode) {
+                case ADJUSTMENT -> "adjust-note-mode";
+                case VERTICAL_ADJUSTMENT -> "adjust-vertical-mode";
+                default -> mode.name().toLowerCase() + "-mode";
+            };
+            when(action.getActionCommand()).thenReturn(command);
+            return new ModeDidChangeNotification(action);
+        }
+
+        @Test
+        void testModeDidChangeClearsSelectionWhenModeIsNotSelect() {
+            controller.modeDidChange(notificationFor(Mode.EDIT));
+
+            verify(scoreMock).clearSelection();
+        }
+
+        @Test
+        void testModeDidChangeSyncsPreviewElementOnEditEntry() {
+            // When a duration action is selected, EDIT entry must call score.setPreviewElement.
+            // Inject a mock ElementTypeAction into the DURATION_ACTION_GROUP's selected field
+            // via reflection, bypassing the real UIAction constructor chain.
+            var mockAction = mock(ElementTypeAction.class);
+            when(mockAction.getType()).thenReturn(ElementType.CROTCHET);
+
+            var mockPreviewElement = mock(StaffElement.class);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+                emm.when(() -> EditModeManager.makePreviewElement(ElementType.CROTCHET))
+                    .thenReturn(mockPreviewElement);
+
+                setDurationGroupSelected(mockAction);
+                try {
+                    controller.modeDidChange(notificationFor(Mode.EDIT));
+                } finally {
+                    setDurationGroupSelected(null);
+                }
+            }
+
+            verify(scoreMock).setPreviewElement(mockPreviewElement);
+        }
+
+        @Test
+        void testModeDidChangeEnablesHorizontalAdjustmentForAdjustmentMode() {
+            var ha = mock(HorizontalAdjustment.class);
+            var va = mock(VerticalAdjustment.class);
+            when(scoreMock.getHorizontalAdjustment()).thenReturn(ha);
+            when(scoreMock.getVerticalAdjustment()).thenReturn(va);
+
+            controller.modeDidChange(notificationFor(Mode.ADJUSTMENT));
+
+            verify(ha).setEnabled(true);
+            verify(va).setEnabled(false);
+        }
+
+        @Test
+        void testModeDidChangeEnablesVerticalAdjustmentForVerticalAdjustmentMode() {
+            var ha = mock(HorizontalAdjustment.class);
+            var va = mock(VerticalAdjustment.class);
+            when(scoreMock.getHorizontalAdjustment()).thenReturn(ha);
+            when(scoreMock.getVerticalAdjustment()).thenReturn(va);
+
+            controller.modeDidChange(notificationFor(Mode.VERTICAL_ADJUSTMENT));
+
+            verify(ha).setEnabled(false);
+            verify(va).setEnabled(true);
+        }
+
+        /**
+         * Sets the {@code selected} field on {@link Actions#DURATION_ACTION_GROUP}
+         * via reflection. Pass {@code null} to clear the selection.
+         */
+        @SuppressWarnings("SameParameterValue")
+        private static void setDurationGroupSelected(@org.jspecify.annotations.Nullable ElementTypeAction value) {
+            try {
+                var field = Actions.DURATION_ACTION_GROUP.getClass().getSuperclass().getDeclaredField("selected");
+                field.setAccessible(true);
+                field.set(Actions.DURATION_ACTION_GROUP, value);
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException("Failed to set DURATION_ACTION_GROUP.selected", e);
+            }
         }
     }
 
