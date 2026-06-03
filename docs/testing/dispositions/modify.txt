@@ -73,3 +73,6 @@ HorizontalAdjustmentTest.SnapToEnd.testRepeatRightTerminalSkipsSnap  # strengthe
 
 # 7a ScoreViewController row 53 (strengthen handleRemoveDynamics assertion)
 ScoreViewControllerCommandHandlerTest.testHandleRemoveDynamicsEmitsRemovals  # strengthened — now asserts hasSize(2) with CrescendoRemoval + DiminuendoRemoval
+
+# 7a rows 15 — ScoreViewControllerTest (strengthen handleDelete lyric test)
+modify: ScoreViewControllerTest.DeleteLyric.testDeleteRemovesSelectedLyricAndClearsLyricSelection

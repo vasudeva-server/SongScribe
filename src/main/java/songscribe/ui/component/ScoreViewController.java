@@ -450,7 +450,7 @@ public final class ScoreViewController {
         score.getSong().withModification(this::handleDelete);
     }
 
-    private void handleCopy() {
+    void handleCopy() {
         var state = selectionCoordinator.getActiveSelection();
 
         if (state != null && state.hasElementSelection()) {

@@ -39,6 +39,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.dom.Beam;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.Lyric;
+import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
+import songscribe.dom.Tie;
+import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.message.Message;
 import songscribe.message.command.InsertLineCommand;
@@ -61,16 +69,9 @@ import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.prefs.PrefsKey;
-import songscribe.dom.Song;
-import songscribe.dom.ElementType;
-import songscribe.dom.Line;
-import songscribe.dom.Lyric;
-import songscribe.dom.StaffElement;
-import songscribe.dom.Beam;
-import songscribe.dom.Tie;
-import songscribe.dom.Tuplet;
-import songscribe.ui.MusicEditOperations;
+import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
+import songscribe.ui.MusicEditOperations;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.InsertLineAction;
@@ -83,6 +84,7 @@ import songscribe.ui.component.score.LinePanel;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.StaffPanel;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -112,14 +114,15 @@ class ScoreViewControllerTest extends UnitTest {
             when(scoreMock.getSong()).thenReturn(song);
             when(scoreMock.canDeleteLine()).thenReturn(false);
 
-            var coordinator = new ScoreViewController(
+            var controller = new ScoreViewController(
                 scoreMock,
                 mock(MusicEditOperations.class),
                 selectionCoordinator,
                 mock(ClipboardManager.class)
             );
 
-            invokeHandleDelete(coordinator);
+            // handleDelete is package-private — no reflection needed
+            controller.handleDelete();
 
             assertThat(element.getLyricForVerse(1)).isNull();
             assertThat(selectionCoordinator.hasLyricSelection()).isFalse();
@@ -127,15 +130,275 @@ class ScoreViewControllerTest extends UnitTest {
             verify(scoreMock).selectionChanged();
             verify(scoreMock).repaint();
         }
+    }
 
-        private void invokeHandleDelete(ScoreViewController coordinator) {
-            try {
-                var method = ScoreViewController.class.getDeclaredMethod("handleDelete");
-                method.setAccessible(true);
-                method.invoke(coordinator);
-            } catch (ReflectiveOperationException e) {
-                throw new RuntimeException("Failed to invoke handleDelete", e);
+    // -----------------------------------------------------------------------
+    // handleDelete — rows 16-20
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandleDelete {
+
+        private static StaffElement crotchet() {
+            return ElementType.CROTCHET.newInstance();
+        }
+
+        private static ScoreViewController buildController(
+            Song song,
+            SelectionCoordinator coordinator,
+            ScoreView scoreMock
+        ) {
+            return new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                mock(ClipboardManager.class)
+            );
+        }
+
+        // Row 16: contiguous-range path
+        @Test
+        void testHandleDeleteContiguousRangeStripsGlissandoAndShiftsAndRemovesElements() {
+            // Layout: [A(gliss), B, C, D] — select [B, C] (indices 1..2)
+            // Expected: glissando removed from A; B and C deleted; D shifted;
+            // A and D remain.
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            noteA.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            noteA.setXOffsetPx(0);
+            var noteB = crotchet();
+            noteB.setXOffsetPx(10);
+            var noteC = crotchet();
+            noteC.setXOffsetPx(20);
+            var noteD = crotchet();
+            noteD.setXOffsetPx(30);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+                line.addElement(noteC);
+                line.addElement(noteD);
+            });
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 1, 2);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            // Glissando stripped from the note before the selection
+            assertThat(noteA.getGlissando()).isNull();
+            // B and C are gone; A and D remain (plus terminal barline = 3 total)
+            assertThat(line.elementCount()).isEqualTo(3);
+            assertThat(line.getElement(0)).isSameAs(noteA);
+            assertThat(line.getElement(1)).isSameAs(noteD);
+            // D shifted left: shift = noteB.x - noteD.x = 10 - 30 = -20, so D.x = 30 - 20 = 10
+            assertThat(noteD.getXOffsetPx()).isEqualTo(10);
+        }
+
+        // Row 17: paired-grace-note at selection start falls back to deleteSelection
+        @Test
+        void testHandleDeleteFallsBackToDeleteSelectionWhenPairedGraceNotePrecedesSelection() {
+            // [A, G(paired), B, C] — select [B, C] (indices 2..3);
+            // index 2 is the host of a paired grace note (G at index 1).
+            // The fallback per-element loop must delete G+B and C, leaving only A.
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            // Paired grace note: GRACE_QUAVER with CONNECTED glissando
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var noteB = crotchet();
+            var noteC = crotchet();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(grace);
+                line.addElement(noteB);
+                line.addElement(noteC);
+            });
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 2, 3);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            // G (paired), B, and C all removed; A and terminal barline remain
+            assertThat(line.elementCount()).isEqualTo(2);
+            assertThat(line.getElement(0)).isSameAs(noteA);
+        }
+
+        // Row 18: glissando selection removes the glissando from source element
+        @Test
+        void testHandleDeleteGlissandoSelectionRemovesGlissandoFromElement() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            noteA.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            var noteB = crotchet();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+            });
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectGlissando(coordinator, 0);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            assertThat(noteA.getGlissando()).isNull();
+            // Only the glissando is removed; elements are unchanged (noteA, noteB, barline)
+            assertThat(line.elementCount()).isEqualTo(3);
+        }
+
+        // Row 19: no element/glissando selection, canDeleteLine() true → removes line
+        @Test
+        void testHandleDeleteRemovesSelectedLineWhenCanDeleteLine() {
+            var song = new Song();
+            var line = song.getLine(0);
+            // Add a second line so removing the first is legal (song needs >= 1 line)
+            song.withoutMutationTracking(() -> song.addLine(1, new Line(song)));
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.canDeleteLine()).thenReturn(true);
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            // No element or glissando selection — mark the line itself as selected so
+            // getSelectedLine() returns 0 rather than -1.
+            var state = coordinator.getActiveSelection();
+
+            if (state != null) {
+                state.setLineSelected(true);
             }
+
+            var controller = buildController(song, coordinator, scoreMock);
+            var lineCountBefore = song.lineCount();
+            controller.handleDelete();
+
+            assertThat(song.lineCount()).isEqualTo(lineCountBefore - 1);
+        }
+
+        // Row 20: confirmInvalidation() returns false → deletion is aborted
+        @Test
+        void testHandleDeleteAbortsWhenEndingInvalidationNotConfirmed() {
+            // Mock the line to report that the selection invalidates an ending,
+            // and mock EndingConfirms.confirmInvalidation() to return false.
+            // Verify the song's withModification is never called (no deletion occurs).
+            var noteA = crotchet();
+            var noteB = crotchet();
+
+            var songMock = mock(Song.class);
+            var lineMock = mock(Line.class);
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(songMock);
+
+            var coordinatorMock = mock(SelectionCoordinator.class);
+            var stateMock = mock(LineSelectionState.class);
+            when(coordinatorMock.getLyricSelection()).thenReturn(null);
+            when(coordinatorMock.getActiveSelection()).thenReturn(stateMock);
+            when(stateMock.hasElementSelection()).thenReturn(true);
+            when(stateMock.getLine()).thenReturn(lineMock);
+            when(stateMock.getSelectionBegin()).thenReturn(0);
+            when(stateMock.getSelectionEnd()).thenReturn(1);
+            when(lineMock.getElements(0, 1)).thenReturn(List.of(noteA, noteB));
+            when(lineMock.hasEndingInvalidatedByDeletion(any())).thenReturn(true);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinatorMock,
+                mock(ClipboardManager.class)
+            );
+
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                endingConfirmsMock.when(EndingConfirms::confirmInvalidation).thenReturn(false);
+
+                controller.handleDelete();
+
+                // No removal should have happened — withModification never called
+                verify(songMock, never()).withModification(any());
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleCopy — row 21
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandleCopy {
+
+        @Test
+        void testHandleCopyCopiesSelectedElementRangeIntoClipboard() {
+            // Row 21: handleCopy with an active element selection must copy exactly
+            // the selected range into the ClipboardManager.
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            var noteB = ElementType.CROTCHET.newInstance();
+            var noteC = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+                line.addElement(noteC);
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);  // select noteA and noteB
+
+            var clipboardManager = new ClipboardManager();
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                clipboardManager
+            );
+
+            controller.handleCopy();
+
+            // Two elements should have been copied (indices 0..1 inclusive)
+            assertThat(clipboardManager.getSize()).isEqualTo(2);
+            // Verify the copies are independent clones, not the originals
+            assertThat(clipboardManager.getElement(0)).isNotSameAs(noteA);
+            assertThat(clipboardManager.getElement(1)).isNotSameAs(noteB);
+            // Verify the types match
+            assertThat(clipboardManager.getElement(0).getType()).isEqualTo(noteA.getType());
+            assertThat(clipboardManager.getElement(1).getType()).isEqualTo(noteB.getType());
+        }
+
+        @Test
+        void testHandleCopyIsNoOpWhenNoActiveElementSelection() {
+            var scoreMock = mock(ScoreView.class);
+            var coordinatorMock = mock(SelectionCoordinator.class);
+            when(coordinatorMock.getActiveSelection()).thenReturn(null);
+
+            var clipboardManager = new ClipboardManager();
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinatorMock,
+                clipboardManager
+            );
+
+            controller.handleCopy();
+
+            assertThat(clipboardManager.isEmpty()).isTrue();
         }
     }
 
