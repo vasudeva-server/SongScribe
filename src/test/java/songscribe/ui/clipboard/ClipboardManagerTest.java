@@ -137,4 +137,17 @@ class ClipboardManagerTest extends UnitTest {
         assertThat(clipboardManager.getFirstElement()).isSameAs(first);
         assertThat(clipboardManager.getLastElement()).isSameAs(last);
     }
+
+    // -- clear --
+
+    @Test
+    void testClearEmpasteboardAndIsEmptyReturnsTrue() {
+        clipboardManager.addElement(ElementType.CROTCHET.newInstance());
+        clipboardManager.addElement(ElementType.QUAVER.newInstance());
+
+        clipboardManager.clear();
+
+        assertThat(clipboardManager.isEmpty()).isTrue();
+        assertThat(clipboardManager.getSize()).isEqualTo(0);
+    }
 }

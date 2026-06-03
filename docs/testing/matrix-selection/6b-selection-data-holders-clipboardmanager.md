@@ -62,7 +62,7 @@
 | `ClipboardManager` | `getSize()` returns correct count after adds | unit | none (only used via `getElement(0)` by index in tests) | missing | add unit test | ✅ |
 | `ClipboardManager` | `isEmpty()` returns true initially, false after add | unit | none | missing | add unit test | ✅ |
 | `ClipboardManager` | `getFirstElement()` / `getLastElement()` return correct elements from multi-element pasteboard | unit | none | missing | add unit test | ✅ |
-| `ClipboardManager` | `clear()` empties pasteboard and isEmpty() returns true | unit | none | missing | add unit test | ⬜ |
+| `ClipboardManager` | `clear()` empties pasteboard and isEmpty() returns true | unit | none | missing | add unit test | ✅ |
 
 **6B notes (quality concerns):**
 
