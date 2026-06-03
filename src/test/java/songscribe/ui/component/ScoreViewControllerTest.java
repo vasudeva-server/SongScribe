@@ -38,17 +38,27 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.font.DocumentFonts;
+import songscribe.message.Message;
 import songscribe.message.command.InsertLineCommand;
 import songscribe.message.command.SelectLineCommand;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
+import songscribe.message.mutation.FontChange;
+import songscribe.message.mutation.LayoutChange;
+import songscribe.message.mutation.LayoutField;
+import songscribe.message.mutation.MetadataChange;
+import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.ModeDidChangeNotification;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.prefs.PrefsKey;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
@@ -71,9 +81,9 @@ import songscribe.ui.component.score.LinePanel;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.StaffPanel;
 import songscribe.ui.edit.EditModeManager;
-
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
+import songscribe.ui.selection.TupletToggleInfo;
 
 class ScoreViewControllerTest extends UnitTest {
 
@@ -590,4 +600,262 @@ class ScoreViewControllerTest extends UnitTest {
             verify(lineComponentMock).invalidateLayout();
         }
     }
+
+    // -----------------------------------------------------------------------
+    // hasFullRelayoutMutation — row 37
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class FullRelayoutDetection {
+
+        private ScoreView scoreMock;
+        private ScoreViewController controller;
+
+        @BeforeEach
+        void setUp() {
+            scoreMock = mock(ScoreView.class);
+
+            // mainPanel must be non-null so songDidChange doesn't return early
+            var mainPanelMock = mock(MainPanel.class);
+            var staffPanelMock = mock(StaffPanel.class);
+            when(mainPanelMock.getStaffPanel()).thenReturn(staffPanelMock);
+            when(staffPanelMock.getLinePanels()).thenReturn(List.of());
+            when(scoreMock.getMainPanel()).thenReturn(mainPanelMock);
+
+            controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                mock(SelectionCoordinator.class),
+                mock(ClipboardManager.class)
+            );
+        }
+
+        private void fire(Mutation mutation) {
+            controller.songDidChange(new SongDidChangeNotification(List.of(mutation), new Song()));
+        }
+
+        @Test
+        void testFontChangeTriggerViewChanged() {
+            fire(new FontChange(new DocumentFonts(), new DocumentFonts()));
+            verify(scoreMock).viewChanged();
+        }
+
+        @Test
+        void testMetadataChangeTriggerViewChanged() {
+            fire(new MetadataChange(MetadataField.TITLE, "old", "new"));
+            verify(scoreMock).viewChanged();
+        }
+
+        @Test
+        void testLayoutChangeTriggerViewChanged() {
+            fire(new LayoutChange(LayoutField.LINE_WIDTH_SS, 40.0, 50.0));
+            verify(scoreMock).viewChanged();
+        }
+
+        @Test
+        void testLineScopedMutationDoesNotTriggerViewChanged() {
+            // BeamingRemoval is a LineScopedMutation — not a full-relayout trigger.
+            // The setUp wires scoreMock → mainPanel → staffPanel → empty linePanels,
+            // so no line component is invalidated and viewChanged() must not be called.
+            var line = detachedLine();
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
+
+            fire(new BeamingRemoval(line, new Beam(line.getElement(0), line.getElement(1))));
+            verify(scoreMock, never()).viewChanged();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // songDidChange — target-line filtering and viewChanged (rows 38-40)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SongDidChangeHandling {
+
+        private ScoreView scoreMock;
+        private Line targetLine;
+        private Line otherLine;
+        private LineComponent targetLineComponentMock;
+        private LineComponent otherLineComponentMock;
+        private ScoreViewController controller;
+
+        @BeforeEach
+        void setUp() {
+            scoreMock = mock(ScoreView.class);
+
+            targetLine = detachedLine();
+            targetLine.addElement(ElementType.CROTCHET.newInstance());
+            targetLine.addElement(ElementType.CROTCHET.newInstance());
+
+            otherLine = detachedLine();
+            otherLine.addElement(ElementType.CROTCHET.newInstance());
+            otherLine.addElement(ElementType.CROTCHET.newInstance());
+
+            targetLineComponentMock = mock(LineComponent.class);
+            otherLineComponentMock = mock(LineComponent.class);
+
+            var targetPanel = mock(LinePanel.class);
+            when(targetPanel.getLine()).thenReturn(targetLine);
+            when(targetPanel.getLineComponent()).thenReturn(targetLineComponentMock);
+
+            var otherPanel = mock(LinePanel.class);
+            when(otherPanel.getLine()).thenReturn(otherLine);
+            when(otherPanel.getLineComponent()).thenReturn(otherLineComponentMock);
+
+            var staffPanelMock = mock(StaffPanel.class);
+            when(staffPanelMock.getLinePanels()).thenReturn(List.of(targetPanel, otherPanel));
+
+            var mainPanelMock = mock(MainPanel.class);
+            when(mainPanelMock.getStaffPanel()).thenReturn(staffPanelMock);
+            when(scoreMock.getMainPanel()).thenReturn(mainPanelMock);
+
+            controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                mock(SelectionCoordinator.class),
+                mock(ClipboardManager.class)
+            );
+        }
+
+        @Test
+        void testSongDidChangeInvalidatesOnlyTargetLineWhenLineScopedMutationHasNonNullTarget() {
+            // Row 38: line-scoped mutation with a specific target line must invalidate
+            // only that line's component, not neighboring lines.
+            var beam = new Beam(targetLine.getElement(0), targetLine.getElement(1));
+            controller.songDidChange(
+                new SongDidChangeNotification(List.of(new BeamingAddition(targetLine, beam)), new Song())
+            );
+
+            verify(targetLineComponentMock).invalidateLayout();
+            verify(otherLineComponentMock, never()).invalidateLayout();
+        }
+
+        @Test
+        void testSongDidChangeCallsViewChangedForFullRelayoutMutation() {
+            // Row 39: a full-relayout mutation (MetadataChange) must trigger viewChanged()
+            controller.songDidChange(
+                new SongDidChangeNotification(
+                    List.of(new MetadataChange(MetadataField.TITLE, "A", "B")),
+                    new Song()
+                )
+            );
+
+            verify(scoreMock).viewChanged();
+        }
+
+        @Test
+        void testSongDidChangeRestartsRepaintDebounceTimer() {
+            // Row 40: every call to songDidChange (with a non-null mainPanel) must
+            // restart the debounce timer regardless of mutation type.
+            controller.songDidChange(
+                new SongDidChangeNotification(
+                    List.of(new MetadataChange(MetadataField.TITLE, "A", "B")),
+                    new Song()
+                )
+            );
+
+            assertThat(controller.repaintDebounceTimer.isRunning()).isTrue();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // canToggleTuplet / warmTupletCache — rows 41-42
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TupletCaching {
+
+        private MusicEditOperations operationsMock;
+        private ScoreViewController controller;
+
+        @BeforeEach
+        void setUp() {
+            operationsMock = mock(MusicEditOperations.class);
+
+            controller = new ScoreViewController(
+                mock(ScoreView.class),
+                operationsMock,
+                mock(SelectionCoordinator.class),
+                mock(ClipboardManager.class)
+            );
+        }
+
+        @Test
+        void testCanToggleTupletDelegatesToOperationsWhenCacheIsNull() {
+            // Row 41a: with no cache populated, canToggleTuplet() must call operations
+            var expected = new TupletToggleInfo(true, null, false);
+            when(operationsMock.canToggleTuplet()).thenReturn(expected);
+
+            var result = controller.canToggleTuplet();
+
+            assertThat(result).isSameAs(expected);
+            verify(operationsMock).canToggleTuplet();
+        }
+
+        @Test
+        void testCanToggleTupletReturnsCachedValueWithoutCallingOperations() {
+            // Row 41b: once the cache is warm, canToggleTuplet() must not delegate
+            var cached = new TupletToggleInfo(true, null, false);
+            when(operationsMock.canToggleTuplet()).thenReturn(cached);
+
+            // Warm the cache via musicSelectionDidChangeCacheTupletInfo
+            controller.musicSelectionDidChangeCacheTupletInfo(
+                mock(MusicSelectionDidChangeNotification.class)
+            );
+
+            // Now call canToggleTuplet() — operations should have been called
+            // exactly once (during warmTupletCache), and not again here.
+            controller.canToggleTuplet();
+            verify(operationsMock).canToggleTuplet();
+        }
+
+        @Test
+        void testTupletInfoCachePriorityExceedsHighPriority() {
+            // Row 42: the cache handler must run before all HIGH_PRIORITY subscribers
+            // so TupletAction reads a warm cache.
+            assertThat(ScoreViewController.TUPLET_INFO_CACHE_PRIORITY)
+                .isGreaterThan(Message.HIGH_PRIORITY);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // prefsDidChange — row 43
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class PrefsDidChange {
+
+        private ScoreView scoreMock;
+        private ScoreViewController controller;
+
+        @BeforeEach
+        void setUp() {
+            scoreMock = mock(ScoreView.class);
+
+            controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                mock(SelectionCoordinator.class),
+                mock(ClipboardManager.class)
+            );
+        }
+
+        @Test
+        void testPrefsDidChangeLoopPlaybackCallsSyncPlaybackPrefs() {
+            controller.prefsDidChange(new PrefsDidChangeNotification(PrefsKey.LOOP_PLAYBACK));
+            verify(scoreMock).syncPlaybackPrefs();
+        }
+
+        @Test
+        void testPrefsDidChangeLoopPlaybackDoesNotCallUpdatePageLayout() {
+            controller.prefsDidChange(new PrefsDidChangeNotification(PrefsKey.LOOP_PLAYBACK));
+            verify(scoreMock, never()).updatePageLayout(anyInt());
+        }
+    }
+
 }

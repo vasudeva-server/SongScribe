@@ -89,7 +89,7 @@ public final class ScoreViewController {
 
     // Runs before all HIGH_PRIORITY subscribers so the tuplet info cache is warm
     // by the time TupletAction handlers (HIGH_PRIORITY) read it.
-    private static final int TUPLET_INFO_CACHE_PRIORITY = Message.HIGH_PRIORITY + 100;
+    static final int TUPLET_INFO_CACHE_PRIORITY = Message.HIGH_PRIORITY + 100;
 
     private final ScoreView score;
     private final ScoreActions scoreActions;
@@ -103,7 +103,7 @@ public final class ScoreViewController {
     private TupletToggleInfo cachedTupletToggleInfo = null;
 
     // Timer for debouncing repaints when layout changes occur
-    private final Timer repaintDebounceTimer;
+    final Timer repaintDebounceTimer;
 
     public ScoreViewController(
         ScoreView score,
