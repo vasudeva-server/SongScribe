@@ -3,14 +3,14 @@
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
 | `ElementSelection` | pure data record (line, begin, end) — no logic | none | — | none | no test needed; pure carrier | — |
-| `TupletToggleInfo` | compact-record guard: throws when `coversExisting=true` and `existing=null` | unit | none | missing | add unit test asserting the `IllegalArgumentException` | ⬜ |
+| `TupletToggleInfo` | compact-record guard: throws when `coversExisting=true` and `existing=null` | unit | none | missing | add unit test asserting the `IllegalArgumentException` | ✅ |
 | `TupletToggleInfo` | `canToggle`, `existing`, `coversExisting` fields accessible as record components | none | — | none | pure data accessors; no logic | — |
-| `LineSelectionState` | `clearSelection()` resets all five fields and fires callback | unit | none | missing | add unit test with callback capture and field assertions | ⬜ |
-| `LineSelectionState` | `setLineSelected(true)` clears `selectedGlissandoElementIndex` and fires callback | unit | none | missing | add unit test asserting glissando index reset | ⬜ |
-| `LineSelectionState` | `setLineSelected(false)` sets `lineSelected=false` and fires callback | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `selectGlissando()` clears element + line selection, sets glissando index, fires callback | unit | `NoteConnectionTest.GlissandoSelection.testClickSelectGlissando` (e2e) | wrong-level | add unit test; e2e is also acceptable as an integration check but the logic can be exercised unit | ⬜ |
-| `LineSelectionState` | `isGlissandoSelected(index)` returns true iff index matches stored glissando index | unit | none | missing | add unit test | ⬜ |
-| `LineSelectionState` | `hasGlissandoSelection()` returns true iff `selectedGlissandoElementIndex != -1` | unit | `NoteConnectionTest` (e2e, asserts against real LSS) | wrong-level | add unit test | ⬜ |
+| `LineSelectionState` | `clearSelection()` resets all five fields and fires callback | unit | none | missing | add unit test with callback capture and field assertions | ✅ |
+| `LineSelectionState` | `setLineSelected(true)` clears `selectedGlissandoElementIndex` and fires callback | unit | none | missing | add unit test asserting glissando index reset | ✅ |
+| `LineSelectionState` | `setLineSelected(false)` sets `lineSelected=false` and fires callback | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `selectGlissando()` clears element + line selection, sets glissando index, fires callback | unit | `NoteConnectionTest.GlissandoSelection.testClickSelectGlissando` (e2e) | wrong-level | add unit test; e2e is also acceptable as an integration check but the logic can be exercised unit | ✅ |
+| `LineSelectionState` | `isGlissandoSelected(index)` returns true iff index matches stored glissando index | unit | none | missing | add unit test | ✅ |
+| `LineSelectionState` | `hasGlissandoSelection()` returns true iff `selectedGlissandoElementIndex != -1` | unit | `NoteConnectionTest` (e2e, asserts against real LSS) | wrong-level | add unit test | ✅ |
 | `LineSelectionState` | `hasElementSelection()` returns false when no selection, true after click-select | unit | `LineSelectionStateTest.testSelectAllOnLineWithOnlyFinalBarlineSelectsNothing` (indirect) | adequate | — | — |
 | `LineSelectionState` | `isElementSelected(index)` correctly bounds-checks with inclusive range | unit | `NoteConnectionTest.testSelectSourceNote` / `testSelectTargetNote` (e2e) | wrong-level | add unit test; selection range logic is pure state | ⬜ |
 | `LineSelectionState` | `getSelectionSize()` returns 0 when no selection, N=(end-begin+1) otherwise | unit | none (only mocked indirectly in other tests) | missing | add unit test | ⬜ |

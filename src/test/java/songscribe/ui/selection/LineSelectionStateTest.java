@@ -33,6 +33,121 @@ import songscribe.dom.Tuplet;
 
 class LineSelectionStateTest extends UnitTest {
 
+    // -- clearSelection --
+
+    @Test
+    void testClearSelectionResetsAllFiveFieldsAndFiresCallback() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+        state.setLineSelected(true);
+        state.selectGlissando(0);
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.clearSelection();
+
+        assertThat(state.getSelectionBegin()).isEqualTo(-1);
+        assertThat(state.getSelectionEnd()).isEqualTo(-1);
+        assertThat(state.getSelectionAnchor()).isEqualTo(-1);
+        assertThat(state.isLineSelected()).isFalse();
+        assertThat(state.hasGlissandoSelection()).isFalse();
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    // -- setLineSelected --
+
+    @Test
+    void testSetLineSelectedTrueClearsGlissandoIndexAndFiresCallback() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.selectGlissando(0);
+        assertThat(state.hasGlissandoSelection()).isTrue();
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.setLineSelected(true);
+
+        assertThat(state.isLineSelected()).isTrue();
+        assertThat(state.hasGlissandoSelection()).isFalse();
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    @Test
+    void testSetLineSelectedFalseSetsLineSelectedFalseAndFiresCallback() {
+        var line = detachedLine();
+        var state = new LineSelectionState(line);
+        state.setLineSelected(true);
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.setLineSelected(false);
+
+        assertThat(state.isLineSelected()).isFalse();
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    // -- selectGlissando --
+
+    @Test
+    void testSelectGlissandoClearsSelectionAndSetsIndexAndFiresCallback() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+        state.setLineSelected(true);
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.selectGlissando(1);
+
+        assertThat(state.getSelectionBegin()).isEqualTo(-1);
+        assertThat(state.getSelectionEnd()).isEqualTo(-1);
+        assertThat(state.getSelectionAnchor()).isEqualTo(-1);
+        assertThat(state.isLineSelected()).isFalse();
+        assertThat(state.isGlissandoSelected(1)).isTrue();
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    // -- isGlissandoSelected --
+
+    @Test
+    void testIsGlissandoSelectedReturnsTrueOnlyForMatchingIndex() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.selectGlissando(1);
+
+        assertThat(state.isGlissandoSelected(1)).isTrue();
+        assertThat(state.isGlissandoSelected(0)).isFalse();
+    }
+
+    // -- hasGlissandoSelection --
+
+    @Test
+    void testHasGlissandoSelectionReturnsFalseInitiallyAndTrueAfterSelectGlissando() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+
+        assertThat(state.hasGlissandoSelection()).isFalse();
+
+        state.selectGlissando(0);
+
+        assertThat(state.hasGlissandoSelection()).isTrue();
+    }
+
     // -- canToggleTuplet --
 
     @Test
