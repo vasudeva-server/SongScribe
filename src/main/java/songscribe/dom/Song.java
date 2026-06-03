@@ -390,6 +390,19 @@ public final class Song {
         return title;
     }
 
+    /**
+     * Returns the title prefixed with the song number and a separator
+     * (e.g. {@code "5. My Song"}) when a number is present, or the bare title
+     * when the number is empty.
+     */
+    public String getNumberedTitle() {
+        if (number.isEmpty()) {
+            return title;
+        }
+
+        return number + ". " + title;
+    }
+
     public String getPlace() {
         return place;
     }

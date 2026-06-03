@@ -60,25 +60,35 @@ and repeats (as inline `ElementType` values), and note pitch **is** fully deriva
 ## Song header → `<score-partwise>` head
 
 Attribution is being reworked from a single text blob into discrete fields
-(composer, lyricist, date, place). The mapping below reflects the **post-rework**
-shape: composer/lyricist become native `<creator>` entries.
+(composer, lyricist, arranger, date, lyrics date, rights, place). The mapping
+below reflects the **post-rework** shape: composer/lyricist/arranger become
+native `<creator>` entries and rights becomes a native `<rights>` entry.
+
+This table covers only the **metadata** that lives in the score head
+(`<movement-title>` / `<movement-number>` / `<identification>`). The on-page
+**display** of the title and every attribution role is emitted separately as
+`<credit>` elements — see § "Credits". MusicXML's recommended practice is to
+carry the same information in both places (metadata for consumers, credits for
+rendering); the two are intentional duplicates.
 
 | SongScribe field | MusicXML target | Bucket |
 |---|---|---|
-| `title` (`XML_TITLE`) | `<movement-title>` | Native |
+| `title` (`XML_TITLE`) | `<movement-title>` (bare title; display also as a `title` `<credit>` using `getNumberedTitle()` — title with movement-number prefix) | Native |
 | `number` (`XML_NUMBER`) | `<movement-number>` | Native |
-| composer (from reworked attribution) | `<identification><creator type="composer">` | Native |
-| lyricist (from reworked attribution) | `<identification><creator type="lyricist">` | Native |
+| composer (from reworked attribution) | `<identification><creator type="composer">` (display also as a `composer` `<credit>`) | Native |
+| lyricist (from reworked attribution) | `<identification><creator type="lyricist">` (display also as a `lyricist` `<credit>`) | Native |
+| arranger (from reworked attribution) | `<identification><creator type="arranger">` (display also as an `arranger` `<credit>`) | Native |
+| rights / copyright (from reworked attribution) | `<identification><rights>` (display also as a `rights` `<credit>`) | Native |
 | format version (`XML_VERSION`) | `<encoding><software>SongScribe x.y</software>` | Native+conv |
-| date — structured y/m/d | `<misc-field name="composition-date">` as ISO 8601 (`1987-12-01`, partial OK) | Ext |
-| lyrics date — structured y/m/d | `<misc-field name="lyrics-date">` as ISO 8601 (same partial-date rules; omitted when equal to composition date) | Ext |
-| date — display string ("December 1, 1987") | derived; optional `<credit><credit-words>` for on-page display | Native+conv |
-| place (`XML_PLACE`) | `<misc-field name="place">` (optional parallel `<credit-words>`) | Ext |
-| underlyrics (`XML_UNDERLYRICS`) | `<misc-field name="underlyrics">` | Ext |
-| Bangla lyrics (`XML_BANGLA_LYRICS`) | `<misc-field name="bangla-lyrics">` (+ `xml:lang`) | Ext |
-| translated lyrics (`XML_TRANSLATED_LYRICS`) | `<misc-field name="translated-lyrics">` | Ext |
+| date — structured y/m/d | `<misc-field name="composition-date">` as ISO 8601 (`1987-12-01`, partial OK); display string as a `composition date` `<credit>` | Ext |
+| lyrics date — structured y/m/d | `<misc-field name="lyrics-date">` as ISO 8601 (same partial-date rules; omitted when equal to composition date); display string as a `lyrics date` `<credit>` | Ext |
+| place (`XML_PLACE`) | `<misc-field name="place">` (display also as a `place` `<credit>`) | Ext |
 | unofficial-translation flag (`XML_UNOFFICIAL_TRANSLATION`) | `<misc-field name="unofficial-translation">` | Ext |
-| footnotes (`XML_FOOTNOTES`) | `<misc-field name="footnotes">` | Ext |
+
+The score-below text blocks — underlyrics, Bangla lyrics, translated lyrics, and
+footnotes — are **not** stored in `<miscellaneous>`. They are emitted as
+last-page `<credit>` elements (see § "Credits"), which serve as their canonical
+on-disk home.
 
 ### Date handling
 
@@ -87,9 +97,10 @@ The structured year/month/day is the **source of truth**; the formatted string
 value (it is locale/format-dependent and ambiguous to parse back). Store one
 ISO 8601 `<misc-field>` — fully decomposable to y/m/d, and ISO partial forms
 (`1987`, `1987-12`, `1987-12-01`) cover SongScribe's existing partial dates
-(the code gates on `month > 0` / `day > 0`). Optionally also emit the formatted
-string as `<credit-words>` for external display; SongScribe ignores that credit
-on read and reloads from the ISO field.
+(the code gates on `month > 0` / `day > 0`). The formatted display string is
+also emitted as the `composition date` / `lyrics date` `<credit>` (see
+§ "Credits"); SongScribe ignores those credits on read and reloads the structured
+date from the ISO misc-field.
 
 The same ISO 8601 rules apply to `<misc-field name="lyrics-date">`, which
 records when the lyrics were written independently of the music. Omit the field
@@ -103,14 +114,80 @@ emit it only when the two dates are distinct.
 | SongScribe field | MusicXML target | Bucket |
 |---|---|---|
 | line width (`XML_LINE_WIDTH`, ss) | `<scaling>` + `<system-layout>` (ss → tenths, ×10) | Native+conv |
-| view fonts: music / lyric / word roles | `<music-font>`, `<lyric-font>`, `<word-font>` | Native |
-| view fonts: title / composer / other roles | `<misc-field name="font-...">` (no native slot) | Ext |
+| view fonts: music / lyric / word roles (`LYRICS` / `ANNOTATION`) | `<music-font>`, `<lyric-font>`, `<word-font>` | Native |
+| view fonts: `TITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` roles | carried in the `font-family` / `font-size` / `font-weight` attributes of the corresponding `<credit-words>` (see § "Credits") | Native |
 | top padding (`XML_TOP_SPACE`, ss) | `<top-system-distance>` (or `<misc-field>` if exact) | Native+conv |
-| attribution start Y (`XML_INFO_STARTY`, ss) | `<credit>` `default-y` (ss → tenths) | Native+conv |
+| attribution start Y (`XML_INFO_STARTY`, ss) | `default-y` on the attribution `<credit-words>` (ss → tenths) | Native+conv |
 | row-height adjustment (`XML_ROW_HEIGHT`, ss) | `<system-distance>` (or `<misc-field>`) | Native+conv |
 | lyrics Y position (`XML_LYRICS_YPOS`, ss) | per-`<lyric>` `default-y` | Native+conv |
 | element spacing ratio (`XML_NOTE_DIST_CHANGE`) | `<misc-field>` (system-level spacing factor) | Ext |
 | dynamic-layout flag (`XML_DYNAMIC_LAYOUT`, always true) | drop, or `<misc-field>` | Ext |
+
+---
+
+## Credits → `<credit>`
+
+All on-page text that is not part of the staff — the title, every attribution
+role, and the score-below text blocks — is emitted as `<credit>` elements, which
+appear **after `<defaults>` and before `<part-list>`**. Each credit carries its
+own font and position, so the `TITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE`
+view-font roles need no separate storage: their `font-family` / `font-size` /
+`font-weight` ride directly on the `<credit-words>`.
+
+Shape (title shown; every other role is identical except `<credit-type>` and the
+text):
+
+```xml
+<credit>
+  <credit-type>title</credit-type>
+  <credit-words font-family="…" font-size="…" font-weight="…"
+                justify="center" default-x="…" default-y="…">The Title</credit-words>
+</credit>
+```
+
+### Attribution credits (first page, top)
+
+One credit per populated role; emitted only when the field has a value. The
+`<credit-type>` is the role name; the `<credit-words>` text is the rendered
+display string (for dates, the formatted string such as `December 1, 1987`).
+
+| Role | `<credit-type>` | Display text source | Font role |
+|---|---|---|---|
+| title | `title` | `getNumberedTitle()` (title with movement-number prefix) | `TITLE` |
+| composer | `composer` | composer field | `ATTRIBUTION` |
+| lyricist | `lyricist` | lyricist field | `ATTRIBUTION` |
+| arranger | `arranger` | arranger field | `ATTRIBUTION` |
+| composition date | `composition date` | formatted date string | `ATTRIBUTION` |
+| lyrics date | `lyrics date` | formatted lyrics-date string (only when distinct from composition date) | `ATTRIBUTION` |
+| rights | `rights` | copyright string | `ATTRIBUTION` |
+| place | `place` | place field | `ATTRIBUTION` |
+
+These credits are **display-only on read**: their canonical source of truth is
+the head metadata (`<movement-title>`, `<creator>`, `<rights>`) and the
+`composition-date` / `lyrics-date` / `place` misc-fields. SongScribe re-derives
+each credit from those on write and ignores the credit text on read.
+
+### Score-below credits (last page)
+
+The text blocks rendered below the score carry a `page` attribute pointing at the
+last page. SongScribe currently renders a **single page**
+(`ScoreView.updatePageLayout`), so the last page is page 1 and `page` is always
+`1`; the attribute generalizes to successive last pages if a multi-page layout is
+ever added. Unlike the attribution credits, **these credits are the canonical
+home** for their text — there is no parallel metadata element — so SongScribe both
+writes and reads them. Their on-page positions come from the rendered component
+geometry (see the Phase 7 sub-plan, § "Credit positions").
+
+| SongScribe field | `<credit-type>` | Font role | Bucket |
+|---|---|---|---|
+| underlyrics (`XML_UNDERLYRICS`) | `underlyrics` | `LYRICS` | Native |
+| Bangla lyrics (`XML_BANGLA_LYRICS`) | `bangla-lyrics` | `BANGLA` (+ `xml:lang` on `<credit-words>`) | Native |
+| translated lyrics (`XML_TRANSLATED_LYRICS`) | `translation` | `LYRICS` | Native |
+| footnotes (`XML_FOOTNOTES`) | `footnotes` | `FOOTNOTE` | Native |
+
+The `unofficial-translation` flag qualifies the translated lyrics but is not
+display text, so it stays a `<misc-field name="unofficial-translation">` rather
+than a credit.
 
 ---
 
@@ -198,10 +275,14 @@ information per note. Bijective: expand on write, re-collapse on read.
 Every persisted field has a home. Native+conv cases are bijective:
 staff-space ↔ tenths (×10); staff position + key + clef ↔ step/octave/alter;
 line-range spans ↔ per-note markers; line breaks ↔ invisible-barline-at-system-break.
-The only `<miscellaneous>` residents are genuinely SongScribe-specific score-level
-data (underlyrics, Bangla/translated lyrics, footnotes, composition date/place,
-extra font roles, two layout factors) — exactly what `<miscellaneous>` exists for,
-stored verbatim and reloaded exactly.
+The on-page text and its fonts (title, attribution roles, underlyrics,
+Bangla/translated lyrics, footnotes) all live in native `<credit>` elements,
+which also absorb the `TITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` view-font
+roles via their `<credit-words>` attributes. The only `<miscellaneous>` residents
+that remain are genuinely SongScribe-specific score-level data — the structured
+ISO composition/lyrics dates, place, the `unofficial-translation` flag, and two
+layout factors — exactly what `<miscellaneous>` exists for, stored verbatim and
+reloaded exactly.
 
 ### Legacy read-only fields
 

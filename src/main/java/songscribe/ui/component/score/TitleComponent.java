@@ -54,16 +54,10 @@ public class TitleComponent extends ScoreComponent {
             return;
         }
 
-        var title = song.getTitle();
+        var title = song.getNumberedTitle();
 
         if (title.isEmpty()) {
             return;
-        }
-
-        var number = song.getNumber();
-
-        if (!number.isEmpty()) {
-            title = number + ". " + title;
         }
 
         try (var ignored = GraphicsState.save(
@@ -110,16 +104,10 @@ public class TitleComponent extends ScoreComponent {
             return new Dimension(0, 0);
         }
 
-        var title = song.getTitle();
+        var title = song.getNumberedTitle();
 
         if (title.isEmpty()) {
             return new Dimension(0, 0);
-        }
-
-        var number = song.getNumber();
-
-        if (!number.isEmpty()) {
-            title = number + ". " + title;
         }
 
         var font = getFont();

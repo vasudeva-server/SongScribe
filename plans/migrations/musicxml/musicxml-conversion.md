@@ -170,22 +170,30 @@ and extenders.
 The layout and Ext-field portions are *not* blocked and could be split out if the
 rework lags.
 
-**Goal**: Score head, `<defaults>`/`<print>` layout, annotations, and all
-`<miscellaneous>` extension fields.
+**Goal**: Score head, `<defaults>`/`<print>` layout, `<credit>` elements,
+annotations, and the residual `<miscellaneous>` extension fields.
 
-**Mapping** (musicxml.md §§ "Song header", "Layout", "Annotations", "Losslessness"):
-- Header: title → `<movement-title>`, number → `<movement-number>`,
-  composer/lyricist → `<creator>` **(needs reworked attribution)**, date → ISO 8601
-  `<misc-field name="composition-date">` (+ optional `<credit-words>`), lyrics date
-  (when distinct from composition date) → `<misc-field name="lyrics-date">`,
-  place/underlyrics/Bangla/translated lyrics/footnotes → `<misc-field>`.
+**Mapping** (musicxml.md §§ "Song header", "Layout", "Credits", "Annotations", "Losslessness"):
+- Header (metadata): title → `<movement-title>`, number → `<movement-number>`,
+  composer/lyricist/arranger → `<creator>` and rights → `<rights>` **(needs
+  reworked attribution)**, date → ISO 8601 `<misc-field name="composition-date">`,
+  lyrics date (when distinct) → `<misc-field name="lyrics-date">`, place →
+  `<misc-field name="place">`, unofficial-translation flag → `<misc-field>`.
+- Credits (after `<defaults>`): title (text from `getNumberedTitle()` — title
+  with movement-number prefix) + each attribution role (composer,
+  lyricist, arranger, composition date, lyrics date, rights, place) → first-page
+  `<credit>` with `<credit-type>` + `<credit-words>` (font + position attributes);
+  underlyrics/Bangla/translated lyrics/footnotes → last-page `<credit page="N">`
+  (their canonical home). The `TITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE`
+  fonts ride in the `<credit-words>` attributes — no `font-...` misc-fields.
 - Layout: line width → `<scaling>` + `<system-layout>`; fonts → `<music-font>` /
-  `<lyric-font>` / `<word-font>` (extra roles → `<misc-field>`); paddings/distances
-  → system-layout fields; spacing factors → `<misc-field>`.
+  `<lyric-font>` / `<word-font>`; paddings/distances → system-layout fields;
+  spacing factors → `<misc-field>`.
 - Annotations → `<direction><words>` with halign/justify, default-y, relative-y.
 
-**Verify**: Round-trip a fully-populated header + layout + annotations; every
-`<misc-field>` reloads verbatim.
+**Verify**: Round-trip a fully-populated header + layout + credits + annotations;
+attribution credits re-derive from head metadata, score-below credits reload
+verbatim, and every residual `<misc-field>` reloads verbatim.
 
 ---
 
