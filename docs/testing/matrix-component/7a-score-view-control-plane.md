@@ -75,10 +75,10 @@
 | InputUtils | `DecimalDocumentFilter.replace` rejects replacement that would make document non-decimal | unit | — | missing | write unit test | ✅ |
 | InputUtils | `DecimalDocumentFilter` accepts partial decimal in progress (e.g. "1.", "0.5") | unit | — | missing | write unit test | ✅ |
 | InputUtils | `RegexFormatter.stringToValue` throws `ParseException` when input does not match pattern | unit | — | missing | write unit test | ✅ |
-| InputUtils | `RegexFormatter.stringToValue` returns value when input matches | unit | — | missing | write unit test | ⬜ |
-| InputUtils | `addNumericFilter(component)` installs integer-only document filter on `JTextField` | unit | — | missing | write unit test | ⬜ |
-| InputUtils | `addNumericFilter(component, true)` installs decimal-allowing filter on `JTextField` | unit | — | missing | write unit test | ⬜ |
-| InputUtils | `addInputFilter` on `JSpinner` installs `RegexFormatter` on the spinner's text field | unit | — | missing | write unit test | ⬜ |
+| InputUtils | `RegexFormatter.stringToValue` returns value when input matches | unit | — | missing | write unit test | ✅ |
+| InputUtils | `addNumericFilter(component)` installs integer-only document filter on `JTextField` | unit | — | missing | write unit test | ✅ |
+| InputUtils | `addNumericFilter(component, true)` installs decimal-allowing filter on `JTextField` | unit | — | missing | write unit test | ✅ |
+| InputUtils | `addInputFilter` on `JSpinner` installs `RegexFormatter` on the spinner's text field | unit | — | missing | write unit test | ✅ |
 | InputHandlerCallback | Interface — pure abstraction with no logic | none | — | — | no test needed | — |
 
 **7A notes (quality concerns):**

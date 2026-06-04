@@ -27,7 +27,10 @@ import static org.mockito.Mockito.never;
 
 import java.text.ParseException;
 
+import javax.swing.JSpinner;
 import javax.swing.JTextField;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.text.DefaultFormatterFactory;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -239,6 +242,98 @@ class InputUtilsTest extends UnitTest {
             var result = formatter.stringToValue("42");
 
             assertThat(result).isEqualTo("42");
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Row 79: addNumericFilter(component) installs integer-only filter
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddNumericFilterIntegerOnly {
+
+        @Test
+        void testAddNumericFilterInstallsIntegerOnlyFilter() throws Exception {
+            var field = new JTextField();
+            InputUtils.addNumericFilter(field);
+
+            try (var uiUtilsMock = mockStatic(UIUtils.class)) {
+                // Digits accepted
+                field.getDocument().insertString(0, "5", null);
+                uiUtilsMock.verify(UIUtils::beep, never());
+                assertThat(field.getText()).isEqualTo("5");
+
+                // Decimal point rejected — integer-only filter
+                field.getDocument().insertString(1, ".", null);
+                uiUtilsMock.verify(UIUtils::beep);
+                assertThat(field.getText()).isEqualTo("5");
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Row 80: addNumericFilter(component, true) installs decimal-allowing filter
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddNumericFilterDecimal {
+
+        @Test
+        void testAddNumericFilterWithDecimalAllowsDecimalPoint() throws Exception {
+            var field = new JTextField();
+            InputUtils.addNumericFilter(field, true);
+
+            try (var uiUtilsMock = mockStatic(UIUtils.class)) {
+                // "3.14" should be accepted by the decimal-allowing filter
+                field.getDocument().insertString(0, "3.14", null);
+                uiUtilsMock.verify(UIUtils::beep, never());
+                assertThat(field.getText()).isEqualTo("3.14");
+            }
+        }
+
+        @Test
+        void testAddNumericFilterWithDecimalRejectsLetters() throws Exception {
+            var field = new JTextField();
+            InputUtils.addNumericFilter(field, true);
+
+            try (var uiUtilsMock = mockStatic(UIUtils.class)) {
+                field.getDocument().insertString(0, "abc", null);
+                uiUtilsMock.verify(UIUtils::beep);
+                assertThat(field.getText()).isEmpty();
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Row 81: addInputFilter on JSpinner installs RegexFormatter on the
+    //         spinner's text field
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddInputFilterSpinner {
+
+        @Test
+        void testAddInputFilterInstallsRegexFormatterOnSpinnerTextField() throws Exception {
+            var spinner = new JSpinner(new SpinnerNumberModel(1, 0, 100, 1));
+            InputUtils.addInputFilter(spinner, "\\d+");
+
+            var editor = (JSpinner.DefaultEditor) spinner.getEditor();
+            var textField = editor.getTextField();
+            var factory = (DefaultFormatterFactory) textField.getFormatterFactory();
+            var formatter = (InputUtils.RegexFormatter) factory.getDefaultFormatter();
+
+            // Valid input passes through the formatter without throwing.
+            // The spinner's number model supplies an Integer value class, so
+            // DefaultFormatter converts "42" → Integer(42).
+            var result = formatter.stringToValue("42");
+            assertThat(result).isEqualTo(42);
+
+            // Invalid input throws ParseException
+            assertThatThrownBy(() -> formatter.stringToValue("abc"))
+                .isInstanceOf(ParseException.class);
         }
     }
 }

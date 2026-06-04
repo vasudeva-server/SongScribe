@@ -1669,3 +1669,7 @@ InputUtilsTest.DecimalFilterInsertString.testInsertStringAcceptsPartialDecimalIn
 InputUtilsTest.DecimalFilterInsertString.testInsertStringAcceptsFullDecimalValue	7a-score-view-control-plane	row 76: DecimalDocumentFilter accepts full decimal "0.5"
 InputUtilsTest.RegexFormatterStringToValue.testStringToValueThrowsParseExceptionWhenInputDoesNotMatch	7a-score-view-control-plane	row 77: RegexFormatter.stringToValue throws ParseException on mismatch
 InputUtilsTest.RegexFormatterStringToValue.testStringToValueReturnsValueWhenInputMatches	7a-score-view-control-plane	row 77: RegexFormatter.stringToValue returns value on match
+InputUtilsTest.AddNumericFilterIntegerOnly.testAddNumericFilterInstallsIntegerOnlyFilter	7a-score-view-control-plane	row 79: addNumericFilter installs integer-only filter on JTextField
+InputUtilsTest.AddNumericFilterDecimal.testAddNumericFilterWithDecimalAllowsDecimalPoint	7a-score-view-control-plane	row 80: addNumericFilter(true) allows decimal point
+InputUtilsTest.AddNumericFilterDecimal.testAddNumericFilterWithDecimalRejectsLetters	7a-score-view-control-plane	row 80: addNumericFilter(true) rejects letters
+InputUtilsTest.AddInputFilterSpinner.testAddInputFilterInstallsRegexFormatterOnSpinnerTextField	7a-score-view-control-plane	row 81: addInputFilter on JSpinner installs RegexFormatter
