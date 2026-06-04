@@ -22,7 +22,9 @@ package songscribe.ui.component;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.awt.Font;
 
@@ -33,9 +35,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.dom.ElementType;
+import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
+import songscribe.layout.HorizontalSpacingCalculator;
+import songscribe.layout.StaffExtents;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 
@@ -43,7 +49,10 @@ import songscribe.message.MessageCenter;
  * Unit tests for {@link ScoreView} behaviors not covered by {@link ScoreViewSetFontsTest}:
  * the {@link ScoreView#getDocumentFonts()} guard, the {@link ScoreView#installDocumentFonts}
  * non-mutation contract, {@link ScoreView#rebuildLyricRenderMetrics()} guard and
- * idempotency, and {@link ScoreView#getSuggestedFileName()} branch logic.
+ * idempotency, {@link ScoreView#getSuggestedFileName()} branch logic,
+ * {@link ScoreView#defaultUpperNote(songscribe.dom.StaffElement)} static logic,
+ * {@link ScoreView#getNoteYPosPx(int, int)} coordinate formula, and
+ * {@link ScoreView#drawWidthIfWiderLine(songscribe.dom.Line, boolean)} rescaling.
  */
 class ScoreViewTest extends UnitTest {
 
@@ -188,6 +197,138 @@ class ScoreViewTest extends UnitTest {
 
             // Non-numeric number → used as-is, followed by a space and the title.
             assertThat(scoreView.getSuggestedFileName()).isEqualTo("A Title");
+        }
+
+        @Test
+        void testGetSuggestedFileNameOmitsLeadingSeparatorWhenNumberIsEmpty() {
+            var scoreView = new ScoreView(null);
+            var song = new Song();
+            song.setNumber("");
+            song.setTitle("Mélodie");
+            scoreView.setSong(song);
+
+            // Empty number → no leading separator; only diacritic-stripped title.
+            assertThat(scoreView.getSuggestedFileName()).isEqualTo("Melodie");
+        }
+    }
+
+    @Nested
+    class DefaultUpperNote {
+
+        @Test
+        void testDefaultUpperNoteReturnsTrueWhenStaffPositionIsPositive() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(1);
+
+            assertThat(ScoreView.defaultUpperNote(note)).isTrue();
+        }
+
+        @Test
+        void testDefaultUpperNoteReturnsFalseWhenStaffPositionIsZeroAndNotGrace() {
+            // staffPosition == 0 and a non-grace type → stem should point down (upper=false).
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(0);
+
+            assertThat(ScoreView.defaultUpperNote(note)).isFalse();
+        }
+
+        @Test
+        void testDefaultUpperNoteReturnsTrueForGraceNoteRegardlessOfStaffPosition() {
+            // Grace notes always return true regardless of staff position.
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setStaffPosition(0);
+
+            assertThat(ScoreView.defaultUpperNote(grace)).isTrue();
+        }
+    }
+
+    @Nested
+    class GetNoteYPosPx {
+
+        @Test
+        void testGetNoteYPosPxComputesCorrectCoordinate() {
+            // Verify the formula: middleLineYPx + ssToPx(spToSs(staffPosition)) + lineIndex * rowHeightPx
+            var scoreView = new ScoreView(null);
+            var middleLineY = 100;
+            var rowHeight = 120;
+            var staffPosition = 2;
+            var lineIndex = 1;
+            scoreView.setMiddleLineYPx(middleLineY);
+            scoreView.setRowHeightPx(rowHeight);
+
+            var expected = (int) Math.round(
+                middleLineY
+                    + ScaleContext.ssToPx(StaffExtents.spToSs(staffPosition))
+                    + lineIndex * rowHeight
+            );
+
+            assertThat(scoreView.getNoteYPosPx(staffPosition, lineIndex)).isEqualTo(expected);
+        }
+    }
+
+    @Nested
+    class DrawWidthIfWiderLine {
+
+        private static final int LINE_WIDTH_PX = 800;
+        private static final int FIRST_X = 0;
+        private static final int MID_X = 500;
+        private static final int END_X = 1000;
+        private static final int END_X_WITHIN_THRESHOLD = 700;
+
+        /** Returns a ScoreView whose song reports the given lineWidthPx. */
+        private ScoreView scoreViewWithLineWidth(int lineWidthPx) {
+            var songMock = mock(Song.class);
+            when(songMock.getLineWidthPx()).thenReturn(lineWidthPx);
+            var scoreView = new ScoreView(null);
+            scoreView.setSong(songMock);
+            return scoreView;
+        }
+
+        @Test
+        void testDrawWidthIfWiderLineRescalesXOffsetsProportionallyWhenEndExceedsThreshold() {
+            var scoreView = scoreViewWithLineWidth(LINE_WIDTH_PX);
+            var line = detachedLine();
+            var elem0 = ElementType.CROTCHET.newInstance();
+            var elem1 = ElementType.CROTCHET.newInstance();
+            var elem2 = ElementType.CROTCHET.newInstance();
+            elem0.setXOffsetPx(FIRST_X);
+            elem1.setXOffsetPx(MID_X);
+            elem2.setXOffsetPx(END_X);
+            line.addElement(elem0);
+            line.addElement(elem1);
+            line.addElement(elem2);
+
+            scoreView.drawWidthIfWiderLine(line, false);
+
+            // Compute expected values using the same formula as production code.
+            var idealSpace = (float)(ScaleContext.ssToPx(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS) + 20);
+            var ratio = (LINE_WIDTH_PX - idealSpace - FIRST_X) / (float)(END_X - FIRST_X);
+            var expectedMid = FIRST_X + Math.round((MID_X - FIRST_X) * ratio);
+            var expectedEnd = FIRST_X + Math.round((END_X - FIRST_X) * ratio);
+
+            assertThat(elem1.getXOffsetPx()).isEqualTo(expectedMid);
+            assertThat(elem2.getXOffsetPx()).isEqualTo(expectedEnd);
+        }
+
+        @Test
+        void testDrawWidthIfWiderLineDoesNotChangeXOffsetsWhenEndNoteIsWithinThreshold() {
+            var scoreView = scoreViewWithLineWidth(LINE_WIDTH_PX);
+            var line = detachedLine();
+            var elem0 = ElementType.CROTCHET.newInstance();
+            var elem1 = ElementType.CROTCHET.newInstance();
+            var elem2 = ElementType.CROTCHET.newInstance();
+            elem0.setXOffsetPx(FIRST_X);
+            elem1.setXOffsetPx(MID_X);
+            elem2.setXOffsetPx(END_X_WITHIN_THRESHOLD);
+            line.addElement(elem0);
+            line.addElement(elem1);
+            line.addElement(elem2);
+
+            scoreView.drawWidthIfWiderLine(line, false);
+
+            // End note is within the threshold — x-offsets must be unchanged.
+            assertThat(elem1.getXOffsetPx()).isEqualTo(MID_X);
+            assertThat(elem2.getXOffsetPx()).isEqualTo(END_X_WITHIN_THRESHOLD);
         }
     }
 }
