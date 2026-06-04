@@ -3,7 +3,7 @@ export const meta = {
   description: 'Run test-remediation chunks sequentially with auto-commit',
   whenToUse: 'Invoked by the /remediate skill to run up to 5 chunks without polluting the main context.',
   phases: [
-    { title: 'Remediate', detail: 'Select, work, integrate, commit — one chunk per agent' },
+    { title: 'Remediate', detail: 'Select, work, integrate, commit — one chunk per agent', model: 'opus' },
   ],
 }
 
