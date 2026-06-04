@@ -1658,3 +1658,14 @@ ScoreViewControllerTest.HandlePasteboardOp.testHandlePasteboardOpRoutesDeleteToH
 ScoreViewControllerTest.Deselect.testHandleDeselectCallsDeselectWhenScoreHasFocus	7a-score-view-control-plane	row 27: handleDeselect calls deselect when focused
 ScoreViewControllerTest.Deselect.testHandleDeselectIsNoOpWhenScoreDoesNotHaveFocus	7a-score-view-control-plane	row 27: handleDeselect no-op when not focused
 ScoreViewControllerTest.SelectLine.testHandleSelectLineCallsSelectAllAndNotifiesScoreWhenActiveSelectionExists	7a-score-view-control-plane	row 28: handleSelectLine with active selection
+InputUtilsTest.CustomFilterInsertString.testInsertStringRejectsNonMatchingTextAndBeeps	7a-score-view-control-plane	row 71: CustomDocumentFilter.insertString rejects non-matching, beeps
+InputUtilsTest.CustomFilterInsertString.testInsertStringAcceptsMatchingText	7a-score-view-control-plane	row 72: CustomDocumentFilter.insertString accepts matching text
+InputUtilsTest.CustomFilterReplace.testReplaceRejectsNonMatchingText	7a-score-view-control-plane	row 73: CustomDocumentFilter.replace rejects non-matching
+InputUtilsTest.CustomFilterReplace.testReplaceAcceptsMatchingText	7a-score-view-control-plane	row 73: CustomDocumentFilter.replace accepts matching
+InputUtilsTest.DecimalFilterInsertString.testInsertStringRejectsNonDecimalText	7a-score-view-control-plane	row 74: DecimalDocumentFilter.insertString rejects non-decimal
+InputUtilsTest.DecimalFilterReplace.testReplaceRejectsNonDecimalReplacement	7a-score-view-control-plane	row 75: DecimalDocumentFilter.replace rejects non-decimal
+InputUtilsTest.DecimalFilterReplace.testReplaceAcceptsDecimalReplacement	7a-score-view-control-plane	row 75: DecimalDocumentFilter.replace accepts decimal
+InputUtilsTest.DecimalFilterInsertString.testInsertStringAcceptsPartialDecimalInProgress	7a-score-view-control-plane	row 76: DecimalDocumentFilter accepts partial decimal "1."
+InputUtilsTest.DecimalFilterInsertString.testInsertStringAcceptsFullDecimalValue	7a-score-view-control-plane	row 76: DecimalDocumentFilter accepts full decimal "0.5"
+InputUtilsTest.RegexFormatterStringToValue.testStringToValueThrowsParseExceptionWhenInputDoesNotMatch	7a-score-view-control-plane	row 77: RegexFormatter.stringToValue throws ParseException on mismatch
+InputUtilsTest.RegexFormatterStringToValue.testStringToValueReturnsValueWhenInputMatches	7a-score-view-control-plane	row 77: RegexFormatter.stringToValue returns value on match

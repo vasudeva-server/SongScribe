@@ -68,13 +68,13 @@
 | ScoreInputHandler | `KeyAction.handlePitchAdjustment` DOWN: increments staff position if below upper bound | unit | `ScoreInputHandlerTest.PitchAdjustment.testHandlePitchAdjustmentDownIncrementsStaffPosition` + `testHandlePitchAdjustmentDownIsNoOpAtLowerBound` | missing | write unit test | ✅ |
 | ScoreInputHandler | `KeyAction.handlePitchAdjustment`: no-op when mode != EDIT or control != KEYBOARD | unit | `ScoreInputHandlerTest.PitchAdjustment.testHandlePitchAdjustmentIsNoOpWhenModeIsNotEdit` + `testHandlePitchAdjustmentIsNoOpWhenControlIsNotKeyboard` | missing | write unit test | ✅ |
 | ScoreInputHandler | `installKeyBindings` registers one binding per key code in component input/action maps | unit | `ScoreInputHandlerTest.InstallKeyBindings.testInstallKeyBindingsRegistersOneBindingPerKeyCode` | missing | write unit test (construct real `JComponent`; verify map sizes and action types) | ✅ |
-| InputUtils | `CustomDocumentFilter.insertString` rejects text not matching regex; emits beep | unit | — | missing | write unit test (construct filter with pattern; invoke `insertString`; verify beep and no insertion) | ⬜ |
-| InputUtils | `CustomDocumentFilter.insertString` accepts text matching regex | unit | — | missing | write unit test | ⬜ |
-| InputUtils | `CustomDocumentFilter.replace` rejects non-matching replacement; accepts matching | unit | — | missing | write unit test | ⬜ |
-| InputUtils | `DecimalDocumentFilter.insertString` rejects insertion that would make document non-decimal | unit | — | missing | write unit test | ⬜ |
-| InputUtils | `DecimalDocumentFilter.replace` rejects replacement that would make document non-decimal | unit | — | missing | write unit test | ⬜ |
-| InputUtils | `DecimalDocumentFilter` accepts partial decimal in progress (e.g. "1.", "0.5") | unit | — | missing | write unit test | ⬜ |
-| InputUtils | `RegexFormatter.stringToValue` throws `ParseException` when input does not match pattern | unit | — | missing | write unit test | ⬜ |
+| InputUtils | `CustomDocumentFilter.insertString` rejects text not matching regex; emits beep | unit | — | missing | write unit test (construct filter with pattern; invoke `insertString`; verify beep and no insertion) | ✅ |
+| InputUtils | `CustomDocumentFilter.insertString` accepts text matching regex | unit | — | missing | write unit test | ✅ |
+| InputUtils | `CustomDocumentFilter.replace` rejects non-matching replacement; accepts matching | unit | — | missing | write unit test | ✅ |
+| InputUtils | `DecimalDocumentFilter.insertString` rejects insertion that would make document non-decimal | unit | — | missing | write unit test | ✅ |
+| InputUtils | `DecimalDocumentFilter.replace` rejects replacement that would make document non-decimal | unit | — | missing | write unit test | ✅ |
+| InputUtils | `DecimalDocumentFilter` accepts partial decimal in progress (e.g. "1.", "0.5") | unit | — | missing | write unit test | ✅ |
+| InputUtils | `RegexFormatter.stringToValue` throws `ParseException` when input does not match pattern | unit | — | missing | write unit test | ✅ |
 | InputUtils | `RegexFormatter.stringToValue` returns value when input matches | unit | — | missing | write unit test | ⬜ |
 | InputUtils | `addNumericFilter(component)` installs integer-only document filter on `JTextField` | unit | — | missing | write unit test | ⬜ |
 | InputUtils | `addNumericFilter(component, true)` installs decimal-allowing filter on `JTextField` | unit | — | missing | write unit test | ⬜ |
