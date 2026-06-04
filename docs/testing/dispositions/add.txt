@@ -1649,3 +1649,12 @@ add: ScoreViewControllerTest.HandleDelete.testHandleDeleteRemovesSelectedLineWhe
 add: ScoreViewControllerTest.HandleDelete.testHandleDeleteAbortsWhenEndingInvalidationNotConfirmed
 add: ScoreViewControllerTest.HandleCopy.testHandleCopyCopiesSelectedElementRangeIntoClipboard
 add: ScoreViewControllerTest.HandleCopy.testHandleCopyIsNoOpWhenNoActiveElementSelection
+ScoreViewControllerTest.HandleCopy.testHandleCopyIsNoOpWhenNoActiveElementSelection	7a-score-view-control-plane	row 22: handleCopy no-op when no active element selection
+ScoreViewControllerTest.HandleCut.testHandleCutCopiesSelectionThenDeletesIt	7a-score-view-control-plane	row 23: handleCut copies then deletes selection
+ScoreViewControllerTest.HandlePaste.testHandlePasteIsCurrentlyANoOpStub	7a-score-view-control-plane	row 24: handlePaste known-defect guard — stub is a no-op
+ScoreViewControllerTest.HandlePasteboardOp.testHandlePasteboardOpIsNoOpWhenScoreDoesNotHaveFocus	7a-score-view-control-plane	row 26: handlePasteboardOp no-op when no focus
+ScoreViewControllerTest.HandlePasteboardOp.testHandlePasteboardOpRoutesCopyToHandleCopy	7a-score-view-control-plane	row 25: handlePasteboardOp routes COPY
+ScoreViewControllerTest.HandlePasteboardOp.testHandlePasteboardOpRoutesDeleteToHandleDelete	7a-score-view-control-plane	row 25: handlePasteboardOp routes DELETE
+ScoreViewControllerTest.Deselect.testHandleDeselectCallsDeselectWhenScoreHasFocus	7a-score-view-control-plane	row 27: handleDeselect calls deselect when focused
+ScoreViewControllerTest.Deselect.testHandleDeselectIsNoOpWhenScoreDoesNotHaveFocus	7a-score-view-control-plane	row 27: handleDeselect no-op when not focused
+ScoreViewControllerTest.SelectLine.testHandleSelectLineCallsSelectAllAndNotifiesScoreWhenActiveSelectionExists	7a-score-view-control-plane	row 28: handleSelectLine with active selection

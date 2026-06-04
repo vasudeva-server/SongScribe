@@ -49,8 +49,11 @@ import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.message.Message;
+import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.InsertLineCommand;
+import songscribe.message.command.PasteboardOpCommand;
 import songscribe.message.command.SelectLineCommand;
+import songscribe.ui.action.PasteboardAction;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.FontChange;
@@ -334,7 +337,7 @@ class ScoreViewControllerTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // handleCopy — row 21
+    // handleCopy — rows 21, 22
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -399,6 +402,251 @@ class ScoreViewControllerTest extends UnitTest {
             controller.handleCopy();
 
             assertThat(clipboardManager.isEmpty()).isTrue();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleCut — row 23
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandleCut {
+
+        @Test
+        void testHandleCutCopiesSelectionThenDeletesIt() {
+            // Row 23: handleCut must copy the selected range into the clipboard
+            // and then delete those elements from the line.
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            var noteB = ElementType.CROTCHET.newInstance();
+            var noteC = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+                line.addElement(noteC);
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);  // select noteA and noteB
+
+            var clipboardManager = new ClipboardManager();
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+            when(scoreMock.canDeleteLine()).thenReturn(false);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                clipboardManager
+            );
+
+            // Drive handleCut via the public handlePasteboardOp with CUT operation.
+            controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.CUT));
+
+            // Clipboard must contain clones of the two selected elements.
+            assertThat(clipboardManager.getSize()).isEqualTo(2);
+            assertThat(clipboardManager.getElement(0).getType()).isEqualTo(noteA.getType());
+            assertThat(clipboardManager.getElement(1).getType()).isEqualTo(noteB.getType());
+
+            // noteA and noteB must have been removed; only noteC (plus the terminal barline) remains.
+            // The contiguous-range path in handleDelete removes [0..1], leaving noteC at index 0.
+            assertThat(line.getElement(0)).isSameAs(noteC);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handlePaste — row 24 (known defect: stub-only implementation)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandlePaste {
+
+        /**
+         * Known defect: {@code handlePaste()} is a TODO-only stub. A
+         * {@code PasteboardOpCommand(PASTE)} is silently swallowed with no
+         * effect — clipboard contents are never inserted into the document.
+         * This test guards against the stub remaining once the real
+         * implementation lands: it will fail (and must be updated) as soon
+         * as paste actually inserts elements.
+         */
+        @Test
+        void testHandlePasteIsCurrentlyANoOpStub() {
+            // Set up a song with one line and one note, and pre-load the clipboard.
+            var song = new Song();
+            var line = song.getLine(0);
+            var existingNote = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(existingNote));
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.addElement(ElementType.QUAVER.newInstance());
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                mock(SelectionCoordinator.class),
+                clipboardManager
+            );
+
+            controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));
+
+            // The line must still contain only the one original note (defect: paste is a no-op).
+            // effectiveElementCount() excludes the auto-maintained terminal barline.
+            assertThat(line.effectiveElementCount()).isEqualTo(1);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handlePasteboardOp — rows 25, 26
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandlePasteboardOp {
+
+        @Test
+        void testHandlePasteboardOpIsNoOpWhenScoreDoesNotHaveFocus() {
+            // Row 26: when score.isFocusOwner() is false, none of the handler
+            // methods must be invoked — verified by checking the clipboard stays empty.
+            var song = new Song();
+            var line = song.getLine(0);
+            var note = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(note));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+
+            var clipboardManager = new ClipboardManager();
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.isFocusOwner()).thenReturn(false);
+            when(scoreMock.getSong()).thenReturn(song);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                clipboardManager
+            );
+
+            controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.COPY));
+
+            // COPY must not have run — clipboard stays empty.
+            assertThat(clipboardManager.isEmpty()).isTrue();
+        }
+
+        @Test
+        void testHandlePasteboardOpRoutesCopyToHandleCopy() {
+            // Row 25 (COPY branch): routes to handleCopy — clipboard receives clones.
+            var song = new Song();
+            var line = song.getLine(0);
+            var note = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(note));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+
+            var clipboardManager = new ClipboardManager();
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+            when(scoreMock.getSong()).thenReturn(song);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                clipboardManager
+            );
+
+            controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.COPY));
+
+            assertThat(clipboardManager.getSize()).isEqualTo(1);
+            assertThat(clipboardManager.getElement(0).getType()).isEqualTo(note.getType());
+        }
+
+        @Test
+        void testHandlePasteboardOpRoutesDeleteToHandleDelete() {
+            // Row 25 (DELETE branch): routes to handleDelete — element is removed from line.
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            var noteB = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.canDeleteLine()).thenReturn(false);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                mock(ClipboardManager.class)
+            );
+
+            controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.DELETE));
+
+            // noteA deleted; noteB remains (plus terminal barline = 2 total after delete of 1).
+            assertThat(line.getElement(0)).isSameAs(noteB);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleDeselect — row 27
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class Deselect {
+
+        @Test
+        void testHandleDeselectCallsDeselectWhenScoreHasFocus() {
+            // Row 27a: when the score has focus, handleDeselect must delegate to score.deselect().
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                mock(SelectionCoordinator.class),
+                mock(ClipboardManager.class)
+            );
+
+            controller.handleDeselect(new DeselectCommand());
+
+            verify(scoreMock).deselect();
+        }
+
+        @Test
+        void testHandleDeselectIsNoOpWhenScoreDoesNotHaveFocus() {
+            // Row 27b: when the score does not have focus, handleDeselect must not call deselect().
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.isFocusOwner()).thenReturn(false);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                mock(SelectionCoordinator.class),
+                mock(ClipboardManager.class)
+            );
+
+            controller.handleDeselect(new DeselectCommand());
+
+            verify(scoreMock, never()).deselect();
         }
     }
 
@@ -575,12 +823,53 @@ class ScoreViewControllerTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // handleSelectLine — rows 28 (active, covered elsewhere) & 29 (no-op)
+    // handleSelectLine — rows 28, 29
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SelectLine {
+
+        @Test
+        void testHandleSelectLineCallsSelectAllAndNotifiesScoreWhenActiveSelectionExists() {
+            // Row 28: when an active selection exists, handleSelectLine must call
+            // state.selectAll() and then notify the score via selectionChanged() + repaint().
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            var noteB = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            // Start with a single-note selection so an active selection exists.
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            var scoreMock = mock(ScoreView.class);
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                mock(ClipboardManager.class)
+            );
+
+            controller.handleSelectLine(new SelectLineCommand());
+
+            // After selectAll, both notes must be within the selection.
+            // Pre-condition: getActiveSelection() is non-null because we selected a note above.
+            var state = coordinator.getActiveSelection();
+
+            if (state == null) {
+                throw new AssertionError("Expected active selection to be non-null after handleSelectLine");
+            }
+
+            assertThat(state.getSelectionBegin()).isEqualTo(0);
+            assertThat(state.getSelectionEnd()).isEqualTo(1);
+            verify(scoreMock).selectionChanged();
+            verify(scoreMock).repaint();
+        }
 
         @Test
         void testHandleSelectLineIsNoOpWhenNoActiveSelection() {
