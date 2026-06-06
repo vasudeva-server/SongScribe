@@ -28,6 +28,10 @@ import static org.mockito.Mockito.when;
 
 import java.awt.Font;
 import java.awt.event.KeyEvent;
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.JComponent;
 import javax.swing.KeyStroke;
@@ -37,6 +41,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.xml.sax.SAXException;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
@@ -44,7 +49,11 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
+import songscribe.io.SongIO;
+import songscribe.io.SongLoadResult;
+import songscribe.io.SongLoader;
 import songscribe.layout.HorizontalSpacingCalculator;
+import songscribe.layout.PageModel;
 import songscribe.layout.StaffExtents;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -446,6 +455,137 @@ class ScoreViewTest extends UnitTest {
             scoreView.setSong(new Song());
 
             assertThat(scoreView.isInitialized()).isTrue();
+        }
+    }
+
+    /**
+     * Unit tests for {@link ScoreView#openFile}: each failure branch returns {@code false}
+     * and the success path returns {@code true}, installs fonts, sets the song, and fires
+     * the {@code onFileOpened} callback.
+     *
+     * <p>Failure branches are driven by mocking {@link SongLoader#load} so no real file I/O
+     * is needed. The success path uses a real fixture file to verify the full happy path.
+     */
+    @Nested
+    class OpenFile {
+
+        // stubFile is the dummy file used in failure tests; all failure branches
+        // are exercised by mocking SongLoader.load within each test's try-with-resources.
+        private static final File STUB_FILE = new File("stub.mssw");
+
+        // An actual-inches value that clearly exceeds MAX_LINE_WIDTH_INCHES; used in the
+        // direct LineWidthTooLarge test so the value is self-documenting rather than raw.
+        private static final double EXCESS_LINE_WIDTH_INCHES = 100.0;
+
+        @Test
+        void testOpenFileReturnsFalseOnNewerVersion() {
+            var cause = new SongIO.NewerVersionException();
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE))
+                    .thenReturn(new SongLoadResult.NewerVersion(STUB_FILE, cause));
+
+                var scoreView = new ScoreView(null);
+                assertThat(scoreView.openFile(STUB_FILE, false)).isFalse();
+            }
+        }
+
+        @Test
+        void testOpenFileReturnsFalseOnParseError() {
+            var cause = new SAXException("damaged");
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE))
+                    .thenReturn(new SongLoadResult.ParseError(STUB_FILE, cause));
+
+                var scoreView = new ScoreView(null);
+                assertThat(scoreView.openFile(STUB_FILE, false)).isFalse();
+            }
+        }
+
+        @Test
+        void testOpenFileReturnsFalseOnIoError() {
+            var cause = new IOException("permission denied");
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE))
+                    .thenReturn(new SongLoadResult.IoError(STUB_FILE, cause));
+
+                var scoreView = new ScoreView(null);
+                assertThat(scoreView.openFile(STUB_FILE, false)).isFalse();
+            }
+        }
+
+        @Test
+        void testOpenFileReturnsFalseWhenLineTooWide() {
+            // openFile converts a Success whose line exceeds MAX_LINE_WIDTH_INCHES into
+            // a LineWidthTooLarge before the switch — verify the switch arm returns false.
+            // We supply the conversion result directly so the test remains focused on the
+            // switch arm rather than the conversion arithmetic.
+            var e = new SongLoadResult.LineWidthTooLarge(STUB_FILE, EXCESS_LINE_WIDTH_INCHES, PageModel.MAX_LINE_WIDTH_INCHES);
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE)).thenReturn(e);
+
+                var scoreView = new ScoreView(null);
+                assertThat(scoreView.openFile(STUB_FILE, false)).isFalse();
+            }
+        }
+
+        @Test
+        void testOpenFileDetectsLineWidthTooLargeFromSuccessResult() {
+            // Verify the conversion path: a Success whose song reports a line width that
+            // exceeds MAX_LINE_WIDTH_INCHES must be converted to LineWidthTooLarge, causing
+            // openFile to return false without setting a song.
+            var songMock = mock(Song.class);
+            // getLineWidthSs() is called inside openFile to convert to inches; return a
+            // value large enough that any reasonable DPI pushes it past the max.
+            var hugeLineWidthSs = 100_000.0;
+            when(songMock.getLineWidthSs()).thenReturn(hugeLineWidthSs);
+            var fonts = DocumentFonts.defaultsFromPrefs();
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE))
+                    .thenReturn(new SongLoadResult.Success(songMock, fonts));
+
+                var scoreView = new ScoreView(null);
+                assertThat(scoreView.openFile(STUB_FILE, false)).isFalse();
+                // Song must not have been installed — the file was refused.
+                assertThat(scoreView.isInitialized()).isFalse();
+            }
+        }
+
+        @Test
+        void testOpenFileReturnsTrueOnSuccessInstallsFontsSetsSongAndFiresCallback()
+            throws URISyntaxException {
+
+            // Use a real fixture file; SongLoader is not mocked here so the full
+            // success code path runs with real I/O.
+            var file = fixtureFile("full-line");
+            var capturedFile = new AtomicReference<File>();
+            var scoreView = new ScoreView(capturedFile::set);
+            var result = scoreView.openFile(file, true);
+
+            assertThat(result).isTrue();
+            // installDocumentFonts was called — getDocumentFonts() must not throw.
+            assertThat(scoreView.getDocumentFonts()).isNotNull();
+            // setSong was called — isInitialized() checks song != null.
+            assertThat(scoreView.isInitialized()).isTrue();
+            // onFileOpened callback must have been invoked with the opened file.
+            assertThat(capturedFile.get()).isEqualTo(file);
+        }
+
+        @Test
+        void testOpenFileDoesNotFireCallbackWhenUpdateCurrentFileIsFalse()
+            throws URISyntaxException {
+
+            // updateCurrentFile=false: the onFileOpened guard must suppress the callback
+            // even on a successful load; without the guard the callback would always fire.
+            var file = fixtureFile("full-line");
+            var capturedFile = new AtomicReference<File>();
+            var scoreView = new ScoreView(capturedFile::set);
+            var result = scoreView.openFile(file, false);
+
+            assertThat(result).isTrue();
+            // Song must still be installed.
+            assertThat(scoreView.isInitialized()).isTrue();
+            // Callback must not have been invoked.
+            assertThat(capturedFile.get()).isNull();
         }
     }
 }

@@ -1694,3 +1694,9 @@ ScoreViewTest.SetKeyBindingsEnabled.testSetKeyBindingsEnabledFalseReplacesEachBi
 ScoreViewTest.SetKeyBindingsEnabled.testSetKeyBindingsEnabledTrueRestoresOriginalActionKeys	7b-scoreview	row 28: setKeyBindingsEnabled(true) restores original action keys
 ScoreViewTest.IsInitialized.testIsInitializedReturnsFalseBeforeSongIsSet	7b-scoreview	row 29: isInitialized() false before song set
 ScoreViewTest.IsInitialized.testIsInitializedReturnsTrueAfterSongIsSet	7b-scoreview	row 29: isInitialized() true after setSong()
+ScoreViewTest.OpenFile.testOpenFileReturnsFalseOnNewerVersion	7b-scoreview	row 24: openFile returns false on NewerVersion
+ScoreViewTest.OpenFile.testOpenFileReturnsFalseOnParseError	7b-scoreview	row 24: openFile returns false on ParseError
+ScoreViewTest.OpenFile.testOpenFileReturnsFalseOnIoError	7b-scoreview	row 24: openFile returns false on IoError
+ScoreViewTest.OpenFile.testOpenFileReturnsFalseWhenLineTooWide	7b-scoreview	rows 24+26: openFile returns false on LineWidthTooLarge switch arm
+ScoreViewTest.OpenFile.testOpenFileDetectsLineWidthTooLargeFromSuccessResult	7b-scoreview	row 26: openFile detects oversized line width from Success and returns false
+ScoreViewTest.OpenFile.testOpenFileReturnsTrueOnSuccessInstallsFontsSetsSongAndFiresCallback	7b-scoreview	row 25: openFile returns true, installs fonts, sets song, fires callback
