@@ -36,9 +36,9 @@ public final class MainToolbarPanel extends JPanel {
     // The minimum space between the main tools and the playback controls
     private static final int TOOLBAR_MARGIN = 40;
 
-    private static final int NO_BORDER = 0;
-    private static final int LEFT_BORDER = 1;
-    private static final int RIGHT_BORDER = 1 << 1;
+    static final int NO_BORDER = 0;
+    static final int LEFT_BORDER = 1;
+    static final int RIGHT_BORDER = 1 << 1;
 
     private static final String BACKGROUND_KEY = "ToolBar.background";
 
@@ -68,7 +68,7 @@ public final class MainToolbarPanel extends JPanel {
         setBackground(UIManager.getColor(BACKGROUND_KEY));
     }
 
-    private static JPanel createToolbarPanel(int borders) {
+    static JPanel createToolbarPanel(int borders) {
         var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 
         panel.setBorder(
