@@ -594,7 +594,7 @@ public class MainFrame extends JFrame implements Printable {
         updateTitle();
     }
 
-    private String getDisplayName() {
+    String getDisplayName() {
         if (currentFile == null) {
             return Strings.get(Strings.DOCUMENT_UNTITLED);
         }

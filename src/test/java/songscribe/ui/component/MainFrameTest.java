@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -47,11 +48,14 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
+import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.Song;
 import songscribe.io.SongIO;
 import songscribe.message.MessageCenter;
+import songscribe.message.command.NewFileCommand;
 import songscribe.message.notification.DocumentWasSavedNotification;
+import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.dialog.PlatformFileDialog;
@@ -514,6 +518,228 @@ class MainFrameTest extends UnitTest {
                     .as("dialog cancelled (null) → returns false")
                     .isFalse();
             }
+        }
+
+        /**
+         * On a successful save, {@code saveAsNewFile()} adds the absolute path of the
+         * newly saved file to {@link RecentDocumentsManager}.
+         */
+        @Test
+        void testSuccessfulSaveAddsPathToRecentDocumentsManager() {
+            var saveFile = new File("SaveAsTest.mssw");
+
+            var mockScore = mock(ScoreView.class);
+            when(mockScore.getSuggestedFileName()).thenReturn("My Song");
+            frame.currentFile = null;
+            frame.scoreView = mockScore;
+
+            doCallRealMethod().when(frame).saveAsNewFile();
+            // setCurrentFile is called after the dialog; let it be a stub (does nothing by default).
+            // saveCurrentFile is also called internally; stub it to return true so we can focus on
+            // the RecentDocumentsManager side-effect rather than re-testing the save path itself.
+            when(frame.saveCurrentFile()).thenReturn(true);
+
+            try (var dialogMock = mockStatic(PlatformFileDialog.class);
+                 var recentDocsMock = mockStatic(RecentDocumentsManager.class)) {
+
+                dialogMock.when(
+                    () -> PlatformFileDialog.showSaveDialog(any(), any(), any(), any(), any())
+                ).thenReturn(saveFile);
+
+                var result = frame.saveAsNewFile();
+
+                assertThat(result)
+                    .as("successful save returns true")
+                    .isTrue();
+
+                var expectedPath = saveFile.toPath().toAbsolutePath();
+                recentDocsMock.verify(
+                    () -> RecentDocumentsManager.add(expectedPath)
+                );
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleNewFile
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandleNewFile {
+
+        /**
+         * When {@code showSaveDialog()} returns {@code false} (user cancelled), {@code handleNewFile}
+         * aborts without replacing the song — no call to {@code scoreView.setSong()}.
+         */
+        @Test
+        void testAbortWhenSaveDialogReturnsFalse() {
+            var mockScore = mock(ScoreView.class);
+            frame.scoreView = mockScore;
+
+            // showSaveDialog returns false — abort.
+            when(frame.showSaveDialog()).thenReturn(false);
+            doCallRealMethod().when(frame).handleNewFile(any());
+
+            frame.handleNewFile(new NewFileCommand());
+
+            verify(mockScore, never()).setSong(any());
+        }
+
+        /**
+         * When {@code showSaveDialog()} returns {@code true}, {@code handleNewFile} resets
+         * {@code currentFile} to null and installs a fresh {@link Song} into the score view.
+         */
+        @Test
+        void testConfirmedSaveResetsCurrentFileAndInstallsFreshSong() {
+            var mockScore = mock(ScoreView.class);
+            frame.currentFile = mock(File.class);
+            frame.scoreView = mockScore;
+
+            when(frame.showSaveDialog()).thenReturn(true);
+            doCallRealMethod().when(frame).handleNewFile(any());
+
+            frame.handleNewFile(new NewFileCommand());
+
+            // setCurrentFile(null) should have been called to clear the current file.
+            verify(frame).setCurrentFile(null);
+            // A fresh Song instance should be installed into the score view.
+            verify(mockScore).setSong(any(Song.class));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleOpenFile(File)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandleOpenFile {
+
+        /**
+         * When {@code showSaveDialog()} returns {@code false}, {@code handleOpenFile(File)} aborts
+         * without calling {@code scoreView.openFile()}.
+         */
+        @Test
+        void testAbortWhenSaveDialogReturnsFalse() {
+            var mockScore = mock(ScoreView.class);
+            frame.scoreView = mockScore;
+
+            when(frame.showSaveDialog()).thenReturn(false);
+            doCallRealMethod().when(frame).handleOpenFile(any(File.class));
+
+            frame.handleOpenFile(new File("some-song.mssw"));
+
+            verify(mockScore, never()).openFile(any(), anyBoolean());
+        }
+
+        /**
+         * When {@code scoreView} is null (even after save dialog passes), {@code handleOpenFile(File)}
+         * aborts without attempting to open the file.
+         */
+        @Test
+        void testAbortWhenScoreViewIsNull() {
+            frame.scoreView = null;
+
+            when(frame.showSaveDialog()).thenReturn(true);
+            doCallRealMethod().when(frame).handleOpenFile(any(File.class));
+
+            // Should not throw; just returns silently.
+            try (var recentDocsMock = mockStatic(RecentDocumentsManager.class)) {
+                frame.handleOpenFile(new File("some-song.mssw"));
+
+                recentDocsMock.verify(
+                    () -> RecentDocumentsManager.add(any()),
+                    never()
+                );
+            }
+        }
+
+        /**
+         * On a successful open, the file's absolute path is added to {@link RecentDocumentsManager}.
+         */
+        @Test
+        void testSuccessAddsToRecentDocumentsManager() {
+            var openFile = new File("some-song.mssw");
+            var mockScore = mock(ScoreView.class);
+            frame.scoreView = mockScore;
+
+            when(frame.showSaveDialog()).thenReturn(true);
+            when(mockScore.openFile(any(), anyBoolean())).thenReturn(true);
+            doCallRealMethod().when(frame).handleOpenFile(any(File.class));
+
+            try (var recentDocsMock = mockStatic(RecentDocumentsManager.class)) {
+                frame.handleOpenFile(openFile);
+
+                var expectedPath = openFile.toPath().toAbsolutePath();
+                recentDocsMock.verify(() -> RecentDocumentsManager.add(expectedPath));
+                recentDocsMock.verify(
+                    () -> RecentDocumentsManager.remove(any()),
+                    never()
+                );
+            }
+        }
+
+        /**
+         * On a failed open, the file's absolute path is removed from {@link RecentDocumentsManager}.
+         */
+        @Test
+        void testFailureRemovesFromRecentDocumentsManager() {
+            var openFile = new File("some-song.mssw");
+            var mockScore = mock(ScoreView.class);
+            frame.scoreView = mockScore;
+
+            when(frame.showSaveDialog()).thenReturn(true);
+            when(mockScore.openFile(any(), anyBoolean())).thenReturn(false);
+            doCallRealMethod().when(frame).handleOpenFile(any(File.class));
+
+            try (var recentDocsMock = mockStatic(RecentDocumentsManager.class)) {
+                frame.handleOpenFile(openFile);
+
+                var expectedPath = openFile.toPath().toAbsolutePath();
+                recentDocsMock.verify(() -> RecentDocumentsManager.remove(expectedPath));
+                recentDocsMock.verify(
+                    () -> RecentDocumentsManager.add(any()),
+                    never()
+                );
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // getDisplayName
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class GetDisplayName {
+
+        /**
+         * When {@code currentFile} is null, {@code getDisplayName()} returns the localized
+         * "Untitled" string.
+         */
+        @Test
+        void testNullCurrentFileReturnsUntitled() {
+            frame.currentFile = null;
+            doCallRealMethod().when(frame).getDisplayName();
+
+            assertThat(frame.getDisplayName())
+                .as("null currentFile → localized Untitled")
+                .isEqualTo(Strings.get(Strings.DOCUMENT_UNTITLED));
+        }
+
+        /**
+         * When {@code currentFile} is set, {@code getDisplayName()} returns the file name
+         * stripped of its extension.
+         */
+        @Test
+        void testNonNullCurrentFileReturnsNameWithoutExtension() {
+            frame.currentFile = new File("My Song.mssw");
+            doCallRealMethod().when(frame).getDisplayName();
+
+            assertThat(frame.getDisplayName())
+                .as("file with extension → name without extension")
+                .isEqualTo("My Song");
         }
     }
 
