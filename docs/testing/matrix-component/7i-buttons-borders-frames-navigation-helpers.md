@@ -45,16 +45,16 @@
 | `ComponentHierarchyNavigator` | `findLineIndexAtPoint`: returns -1 when Y is outside all panels | unit | none | missing | (same class) | ✅ |
 | `ComponentHierarchyNavigator` | `updateLayoutFromComponents`: single panel fallback uses height + margin | unit | none | missing | Mock one panel; assert `rowHeightPx` uses the single-line formula | ✅ |
 | `ComponentHierarchyNavigator` | `updateLayoutFromComponents`: with >= 2 panels, rowHeight = midY[1] - midY[0] | unit | none | missing | Mock two panels with known midpoints; assert difference | ✅ |
-| `ActivationGate` | `activate()` makes glass pane visible; `deactivate()` hides it and stops timer | unit | none | missing | Call `install` with a real (hidden) `JFrame`; call `activate()`/`deactivate()` and assert glass pane visibility + timer state | ⬜ |
-| `ActivationGate` | `appRaisedToForeground()` restarts the cmd+Tab timer | unit | none | missing | (same test class — assert timer restarts) | ⬜ |
+| `ActivationGate` | `activate()` makes glass pane visible; `deactivate()` hides it and stops timer | unit | none | missing | Call `install` with a real (hidden) `JFrame`; call `activate()`/`deactivate()` and assert glass pane visibility + timer state | ✅ |
+| `ActivationGate` | `appRaisedToForeground()` restarts the cmd+Tab timer | unit | none | missing | (same test class — assert timer restarts) | ✅ |
 | `ToolbarButton` | `propertyChange`: updates button from action when `FONT_ICON_KEY` or `FONT_KEY` changes | none | — | — | Pure Swing property dispatch wiring; no computable value beyond delegation | — |
 | `ToolbarToggleButton` | `configurePropertiesFromAction`: delegates to `UIUtils` for `UIAction`, Swing default otherwise | none | — | — | Pure delegation wiring | — |
 | `SplashWindow` | `loadSplashImage` throws `RuntimeError.exit` when image resource not found | none | — | — | Tests that interact with resource loading or `RuntimeError.exit` are impractical in unit context | — |
 | `SplashWindow` | `closeSplash` is threadsafe: calls `invokeAndWait` when off EDT | none | — | — | Swing threading; not practically unit-testable without real EDT | — |
 | `StartFrame` | `startFrame` — pure Swing frame construction and wiring | none | — | — | No logic beyond Swing setup | — |
-| `TipFrame` | `showTip` reads tips file sequentially, wraps index to 0 when buffer is empty (end of file) | unit | none | missing | Supply a fixture tips file; verify wrap-around and index advancement | ⬜ |
-| `TipFrame` | `previousButton` handler decrements `index` by 2 before calling `showTip` (and guards index > 1) | unit | none | missing | (same test class; exercise boundary at index==1 and index==2) | ⬜ |
-| `TipFrame` | `closeWindow` persists `showTip` checkbox state to `Prefs` | unit | none | missing | Mock `Prefs`; assert correct key/value written | ⬜ |
+| `TipFrame` | `showTip` reads tips file sequentially, wraps index to 0 when buffer is empty (end of file) | unit | none | missing | Supply a fixture tips file; verify wrap-around and index advancement | ✅ |
+| `TipFrame` | `previousButton` handler decrements `index` by 2 before calling `showTip` (and guards index > 1) | unit | none | missing | (same test class; exercise boundary at index==1 and index==2) | ✅ |
+| `TipFrame` | `closeWindow` persists `showTip` checkbox state to `Prefs` | unit | none | missing | Mock `Prefs`; assert correct key/value written | ✅ |
 
 **7I notes (quality concerns):**
 

@@ -37,18 +37,17 @@ import songscribe.util.Utils;
 
 public class TipFrame extends JFrame {
 
-    private static final File tipFile = new File(
-        Utils.getResourcePath("help/tips")
-    );
-    private int index;
+    private final File tipFile;
+    int index;
     private final StringBuilder tipBuffer = new StringBuilder(256);
 
-    private JTextPane tipPane;
-    private JCheckBox showTip;
+    JTextPane tipPane;
+    JCheckBox showTip;
 
     public TipFrame(MainFrame mainFrame)
         throws IOException, FileNotFoundException {
         super(Strings.get(Strings.DIALOG_TIP_TITLE));
+        tipFile = new File(Utils.getResourcePath("help/tips"));
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         addWindowListener(
             new WindowAdapter() {
@@ -63,6 +62,19 @@ public class TipFrame extends JFrame {
         showTip();
         setLocationRelativeTo(null);
         setVisible(true);
+    }
+
+    /**
+     * Package-private constructor for unit tests. Initialises only the
+     * Swing components needed by {@link #showTip()} and {@link #closeWindow()},
+     * without performing the full layout, the initial {@code showTip()} call,
+     * or {@code setVisible(true)}.
+     */
+    TipFrame(File tipFile) {
+        this.tipFile = tipFile;
+        index = 0;
+        tipPane = new JTextPane();
+        showTip = new JCheckBox();
     }
 
     private void initComponents() {
@@ -93,7 +105,7 @@ public class TipFrame extends JFrame {
         nextButton.addActionListener(_ -> {
             try {
                 showTip();
-            } catch (IOException e1) {
+            } catch (IOException err) {
                 OptionDialogs.showErrorMessage(
                     this,
                     Strings.ALERT_TITLE_TIP_ERROR,
@@ -103,20 +115,7 @@ public class TipFrame extends JFrame {
         });
 
         previousButton.setText(Strings.get(Strings.LABEL_TIP_PREVIOUS));
-        previousButton.addActionListener(_ -> {
-            try {
-                if (index > 1) {
-                    index -= 2;
-                    showTip();
-                }
-            } catch (IOException e1) {
-                OptionDialogs.showErrorMessage(
-                    this,
-                    Strings.ALERT_TITLE_TIP_ERROR,
-                    Strings.ERROR_TIP_READ
-                );
-            }
-        });
+        previousButton.addActionListener(_ -> goToPreviousTip());
 
         var layout = new GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -218,31 +217,46 @@ public class TipFrame extends JFrame {
         pack();
     }
 
-    private void closeWindow() {
+    void goToPreviousTip() {
+        try {
+            if (index > 1) {
+                index -= 2;
+                showTip();
+            }
+        } catch (IOException err) {
+            OptionDialogs.showErrorMessage(
+                this,
+                Strings.ALERT_TITLE_TIP_ERROR,
+                Strings.ERROR_TIP_READ
+            );
+        }
+    }
+
+    void closeWindow() {
         Prefs.put(PrefsKey.SHOW_TIPS, showTip.isSelected());
         setVisible(false);
         dispose();
     }
 
-    private void showTip() throws IOException, FileNotFoundException {
-        var fr = new FileReader(tipFile);
+    void showTip() throws IOException, FileNotFoundException {
         tipBuffer.delete(0, tipBuffer.length());
-        var breakFound = 0;
-        var ch = fr.read();
 
-        while ((ch != -1) && (breakFound <= index)) {
-            if (breakFound == index) {
-                tipBuffer.append((char) ch);
+        try (var fr = new FileReader(tipFile)) {
+            var breakFound = 0;
+            var ch = fr.read();
+
+            while ((ch != -1) && (breakFound <= index)) {
+                if (breakFound == index) {
+                    tipBuffer.append((char) ch);
+                }
+
+                if (ch == '\n') {
+                    breakFound++;
+                }
+
+                ch = fr.read();
             }
-
-            if (ch == '\n') {
-                breakFound++;
-            }
-
-            ch = fr.read();
         }
-
-        fr.close();
 
         if (tipBuffer.isEmpty()) {
             index = 0;
