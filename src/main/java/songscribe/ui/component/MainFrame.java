@@ -785,7 +785,7 @@ public class MainFrame extends JFrame implements Printable {
         }
     }
 
-    private boolean saveAsNewFile() {
+    boolean saveAsNewFile() {
         if (scoreView == null) {
             return false;
         }
