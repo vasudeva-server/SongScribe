@@ -64,13 +64,13 @@
 | `NonEmptyGuard` | `validate()`: blank text, defaultValueKey set, user dismisses/chooses "continue editing" → refocuses, returns false | unit | — | missing | | ✅ |
 | `NonEmptyGuard` | `install()`: temporary focus-lost event → guard skipped | unit | — | missing | `e.isTemporary()` guard | ✅ |
 | `NonEmptyGuard` | `install()`: focus-lost to exempt component → guard skipped | unit | — | missing | `exemptComponents.contains(e.getOppositeComponent())` guard | ✅ |
-| `TextFocusDelegate` | `focusGained`: sets `ignoreTabKey=true`, posts `TextEditingDidChangeNotification(true)` | unit | — | missing | | ⬜ |
-| `TextFocusDelegate` | `focusLost`: posts `TextEditingDidChangeNotification(false)` | unit | — | missing | | ⬜ |
-| `TextFocusDelegate` | `processKeyEvent` for JTextField host: returns false (no tab handling), clears ignoreTabKey | unit | — | missing | | ⬜ |
-| `TextFocusDelegate` | `processKeyEvent` for JTextArea host, Tab on first key after focus: consumed but focus NOT transferred (ignoreTabKey=true) | unit | — | missing | The `ignoreTabKey` guard on the first Tab after focus-gained is a documented subtle behavior with no test | ⬜ |
-| `TextFocusDelegate` | `processKeyEvent` for JTextArea host, Tab (not first): consumed, `transferFocus()` called | unit | — | missing | | ⬜ |
-| `TextFocusDelegate` | `processKeyEvent` for JTextArea host, Shift+Tab: consumed, `transferFocusBackward()` called | unit | — | missing | | ⬜ |
-| `TextFocusDelegate` | `processKeyEvent`: non-Tab key → returns false | unit | — | missing | | ⬜ |
+| `TextFocusDelegate` | `focusGained`: sets `ignoreTabKey=true`, posts `TextEditingDidChangeNotification(true)` | unit | — | missing | | ✅ |
+| `TextFocusDelegate` | `focusLost`: posts `TextEditingDidChangeNotification(false)` | unit | — | missing | | ✅ |
+| `TextFocusDelegate` | `processKeyEvent` for JTextField host: returns false (no tab handling), clears ignoreTabKey | unit | — | missing | | ✅ |
+| `TextFocusDelegate` | `processKeyEvent` for JTextArea host, Tab on first key after focus: consumed but focus NOT transferred (ignoreTabKey=true) | unit | — | missing | The `ignoreTabKey` guard on the first Tab after focus-gained is a documented subtle behavior with no test | ✅ |
+| `TextFocusDelegate` | `processKeyEvent` for JTextArea host, Tab (not first): consumed, `transferFocus()` called | unit | — | missing | | ✅ |
+| `TextFocusDelegate` | `processKeyEvent` for JTextArea host, Shift+Tab: consumed, `transferFocusBackward()` called | unit | — | missing | | ✅ |
+| `TextFocusDelegate` | `processKeyEvent`: non-Tab key → returns false | unit | — | missing | | ✅ |
 | `SelectionHidingCaret` | `paint`: when dot != mark (active selection) → caret NOT painted | none | — | — | Pure Swing rendering override; no geometry to compute, behavior is only observable via a real paint context; classify as none | — |
 | `SelectionHidingCaret` | `damage`: when selection active → repaint suppressed | none | — | — | Same as above; Swing integration behavior, not logic | — |
 | `SelectionHidingCaret` | `isSelectionActive`: getComponent()=null → returns false; dot==mark → returns false; dot!=mark → returns true | unit | — | missing | The three branches of `isSelectionActive` are pure predicate logic and can be tested without a paint context by setting up a real `DefaultCaret` on a `JTextField` | ⬜ |
