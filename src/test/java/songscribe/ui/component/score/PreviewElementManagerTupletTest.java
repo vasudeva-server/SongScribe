@@ -27,7 +27,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.Tuplet;
 
 /**
@@ -63,10 +62,6 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
         // the modification bracket requirement.
         song.withoutMutationTracking(() -> line.addTuplet(
             new Tuplet(line.getElement(start), line.getElement(end), TRIPLET_SIZE)));
-    }
-
-    private void setPreviewElement(StaffElement element) {
-        editModeManagerMock.when(EditModeManager::getPreviewElement).thenReturn(element);
     }
 
     // -----------------------------------------------------------------------

@@ -34,6 +34,7 @@ import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
@@ -47,6 +48,9 @@ import songscribe.ui.playback.PlaybackController;
  * and {@link MessageCenter} statics, plus the cursor reset in tearDown.
  */
 abstract class PreviewElementManagerTestBase extends UnitTest {
+
+    /** Line width large enough that no insertion check ever rejects an element. */
+    static final double WIDE_LINE_SS = 100.0;
 
     protected MockedStatic<MessageCenter> messageCenterMock;
     protected MockedStatic<EditModeManager> editModeManagerMock;
@@ -89,6 +93,11 @@ abstract class PreviewElementManagerTestBase extends UnitTest {
 
         PreviewElementManager.setCurrentPreviewLine(lc);
         PreviewElementManager.setCurrentStaffPosition(0);
+    }
+
+    /** Stubs {@link EditModeManager#getPreviewElement()} to return {@code element}. */
+    void setPreviewElement(StaffElement element) {
+        editModeManagerMock.when(EditModeManager::getPreviewElement).thenReturn(element);
     }
 
     @AfterEach

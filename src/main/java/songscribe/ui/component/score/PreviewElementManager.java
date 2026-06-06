@@ -284,6 +284,13 @@ public final class PreviewElementManager {
         xPosSsMatchesElement = matches;
     }
 
+    /**
+     * Sets the current glissando zone type (package-private for test setup).
+     */
+    static void setCurrentGlissandoZone(StaffElement.Glissando.@Nullable Type zone) {
+        currentGlissandoZone = zone;
+    }
+
     // ==========================================================================
     // Private Helpers
     // ==========================================================================
@@ -734,7 +741,7 @@ public final class PreviewElementManager {
      * Sets the staff position on an element: rests snap to their type's default
      * position, pitched notes use the given mouse-derived position.
      */
-    private static void applyStaffPosition(StaffElement element, int staffPositionSp) {
+    static void applyStaffPosition(StaffElement element, int staffPositionSp) {
         if (element.getType().isRest()) {
             element.setStaffPosition(element.getType().getDefaultStaffPosition());
         } else {
