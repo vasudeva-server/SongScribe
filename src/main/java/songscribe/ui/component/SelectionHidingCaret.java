@@ -47,7 +47,7 @@ public class SelectionHidingCaret extends DefaultCaret {
     /**
      * Returns true if there is an active selection (dot != mark)
      */
-    private boolean isSelectionActive() {
+    boolean isSelectionActive() {
         return getComponent() != null && getDot() != getMark();
     }
 

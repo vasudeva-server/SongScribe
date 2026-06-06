@@ -41,8 +41,13 @@ public class MyJTextArea extends JTextArea {
     }
 
     private void init() {
-        delegate = new TextFocusDelegate(this);
+        delegate = createDelegate();
         setCaret(new SelectionHidingCaret());
+    }
+
+    /** Hook for subclasses (and tests) to provide a specialized focus delegate. */
+    protected TextFocusDelegate createDelegate() {
+        return new TextFocusDelegate(this);
     }
 
     @Override

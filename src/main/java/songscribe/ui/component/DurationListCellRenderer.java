@@ -51,7 +51,7 @@ public final class DurationListCellRenderer implements ListCellRenderer<Object> 
     @Nullable
     private NoteLabel cell;
 
-    private static SMuFLGlyph noteGlyphFor(Duration duration) {
+    static SMuFLGlyph noteGlyphFor(Duration duration) {
         return switch (duration) {
             case SEMI_BREVE -> SMuFLGlyph.NOTE_WHOLE;
             case MINIM, MINIM_DOTTED -> SMuFLGlyph.NOTE_HALF_UP;
