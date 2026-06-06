@@ -3,7 +3,9 @@ export const meta = {
   description: 'Run test-remediation chunks sequentially with auto-commit',
   whenToUse: 'Invoked by the /remediate skill to run up to 5 chunks without polluting the main context.',
   phases: [
-    { title: 'Remediate', detail: 'Select, work, integrate, commit — one chunk per agent', model: 'opus' },
+    { title: 'Remediate', detail: 'Select, work, integrate — one chunk per agent (no commit yet)', model: 'opus' },
+    { title: 'Check', detail: 'Code review with auto-fix on uncommitted changes', model: 'opus' },
+    { title: 'Commit', detail: 'Commit after check passes and delete the claim file', model: 'opus' },
   ],
 }
 
@@ -13,11 +15,19 @@ const RESULT_SCHEMA = {
     status: {
       type: 'string',
       enum: ['success', 'no-rows', 'failure'],
-      description: '"success" = chunk committed; "no-rows" = nothing left to claim; "failure" = error before commit',
+      description: '"success" = chunk ready to commit; "no-rows" = nothing left to claim; "failure" = error',
     },
     detail: {
       type: 'string',
       description: 'Human-readable summary: rows done + class name on success, reason on failure/no-rows.',
+    },
+    claimFile: {
+      type: 'string',
+      description: 'Path to the claim lock file created in step 1c (e.g. docs/testing/.claims/MyClass.lock). Required on success.',
+    },
+    commitScope: {
+      type: 'string',
+      description: 'Short scope label for the commit message (e.g. the class or section just remediated). Required on success.',
     },
   },
   required: ['status', 'detail'],
@@ -122,16 +132,17 @@ c. **Release the integration lock** immediately after \`gen_ledger.py\`
 
 ---
 
-### 4. Commit
+### 4. Verify and return
 
 Verify the tests compiled and passed. If anything failed and is unresolved:
 delete the claim file, then return \`{"status":"failure","detail":"<reason>"}\`.
 
-Otherwise commit to \`develop\` via the \`commit-commands:commit\` skill (message
-scope: the class/section just remediated). After a successful commit, **delete
-the claim file** created in step 1c.
+Otherwise return:
+\`\`\`json
+{"status":"success","detail":"<rows done>, <class name>","claimFile":"docs/testing/.claims/<FileName>.lock","commitScope":"<class/section name>"}
+\`\`\`
 
-Return \`{"status":"success","detail":"<rows done>, <class name>"}\`.
+**Do NOT commit and do NOT delete the claim file** — a subsequent step handles both.
 
 > **Stale claims:** if a \`.lock\` file (including \`.integration.lock\`) exists but
 > its session is no longer running (e.g., it crashed), delete the file manually
@@ -152,6 +163,50 @@ Return \`{"status":"success","detail":"<rows done>, <class name>"}\`.
   log(`Chunk ${chunk}: ${result.status} — ${result.detail}`)
 
   if (result.status !== 'success') {
+    break
+  }
+
+  // Run /check --fix on the uncommitted changes before committing.
+  log(`Running check on chunk ${chunk} changes`)
+  const checkPrompt = `MANDATORY: Read .agents/rules/serena.md
+
+Read \`.agents/skills/check/SKILL.md\` and execute it with \`$ARGUMENTS = --fix\`.
+
+The working tree has uncommitted changes from a test-remediation chunk. Use the
+default git-diff mode (Mode A) — \`git diff\` will capture all uncommitted changes.
+Proceed directly through all phases in \`--fix\` mode (Path A in Phase 3):
+fix every finding without asking questions.`
+
+  const checkResult = await agent(checkPrompt, {
+    label: `check:${chunk}`,
+    phase: 'Check',
+    model: 'opus',
+  })
+
+  if (!checkResult) {
+    log(`Check for chunk ${chunk} was skipped.`)
+    break
+  }
+
+  // Commit the fully-reviewed changes and clean up the claim file.
+  const claimFile = result.claimFile || ''
+  const commitScope = result.commitScope || result.detail
+  log(`Committing chunk ${chunk}`)
+  const commitPrompt = `MANDATORY: Read .agents/rules/serena.md
+
+Commit the current working-tree changes using the \`commit-commands:commit\` skill.
+The commit scope is: **${commitScope}**
+
+After the commit succeeds, delete the claim file: \`${claimFile}\``
+
+  const commitResult = await agent(commitPrompt, {
+    label: `commit:${chunk}`,
+    phase: 'Commit',
+    model: 'opus',
+  })
+
+  if (!commitResult) {
+    log(`Commit for chunk ${chunk} was skipped.`)
     break
   }
 }

@@ -215,7 +215,8 @@ public final class ScoreView
     @Nullable private LyricEditor activeLyricEditor;
 
     // Maps each registered KeyStroke to its action key so bindings can be toggled.
-    private final Map<KeyStroke, Object> scoreKeyBindings = new LinkedHashMap<>();
+    // Package-private so tests can inject synthetic bindings directly.
+    final Map<KeyStroke, Object> scoreKeyBindings = new LinkedHashMap<>();
 
     /**
      * Creates a ScoreView with core infrastructure (SAX parser, selection, clipboard,

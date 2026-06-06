@@ -1689,3 +1689,8 @@ ScoreViewTest.DefaultUpperNote.testDefaultUpperNoteReturnsTrueForGraceNoteRegard
 ScoreViewTest.GetNoteYPosPx.testGetNoteYPosPxComputesCorrectCoordinate	7b-scoreview	row 20: getNoteYPosPx formula
 ScoreViewTest.DrawWidthIfWiderLine.testDrawWidthIfWiderLineRescalesXOffsetsProportionallyWhenEndExceedsThreshold	7b-scoreview	row 21: rescales x-offsets proportionally
 ScoreViewTest.DrawWidthIfWiderLine.testDrawWidthIfWiderLineDoesNotChangeXOffsetsWhenEndNoteIsWithinThreshold	7b-scoreview	row 22: no change within threshold
+ScoreViewTest.DrawWidthIfWiderLine.testDrawWidthIfWiderLineIsNoOpWhenEffectiveElementCountIsOne	7b-scoreview	row 23: ≤1 effective element is a no-op
+ScoreViewTest.SetKeyBindingsEnabled.testSetKeyBindingsEnabledFalseReplacesEachBindingWithNoneSentinel	7b-scoreview	row 27: setKeyBindingsEnabled(false) maps strokes to "none"
+ScoreViewTest.SetKeyBindingsEnabled.testSetKeyBindingsEnabledTrueRestoresOriginalActionKeys	7b-scoreview	row 28: setKeyBindingsEnabled(true) restores original action keys
+ScoreViewTest.IsInitialized.testIsInitializedReturnsFalseBeforeSongIsSet	7b-scoreview	row 29: isInitialized() false before song set
+ScoreViewTest.IsInitialized.testIsInitializedReturnsTrueAfterSongIsSet	7b-scoreview	row 29: isInitialized() true after setSong()

@@ -27,6 +27,10 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.awt.Font;
+import java.awt.event.KeyEvent;
+
+import javax.swing.JComponent;
+import javax.swing.KeyStroke;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -360,6 +364,88 @@ class ScoreViewTest extends UnitTest {
             // End note is within the threshold — x-offsets must be unchanged.
             assertThat(elem1.getXOffsetPx()).isEqualTo(MID_X);
             assertThat(elem2.getXOffsetPx()).isEqualTo(END_X_WITHIN_THRESHOLD);
+        }
+
+        @Test
+        void testDrawWidthIfWiderLineIsNoOpWhenEffectiveElementCountIsOne() {
+            // A line with exactly one effective element must not attempt rescaling:
+            // effectiveCount <= 1 is the early-exit guard; removing it would cause
+            // an index-out-of-bounds on line.getElement(effectiveCount - 1).
+            var scoreView = scoreViewWithLineWidth(LINE_WIDTH_PX);
+            var line = detachedLine();
+            var singleElem = ElementType.CROTCHET.newInstance();
+            singleElem.setXOffsetPx(END_X);  // far enough to exceed threshold if rescaling ran
+            line.addElement(singleElem);
+
+            scoreView.drawWidthIfWiderLine(line, false);
+
+            // x-offset must be completely unchanged — no rescaling occurred.
+            assertThat(singleElem.getXOffsetPx()).isEqualTo(END_X);
+        }
+    }
+
+    @Nested
+    class SetKeyBindingsEnabled {
+
+        private static final String ACTION_KEY = "testAction";
+        private static final KeyStroke STROKE =
+            KeyStroke.getKeyStroke(KeyEvent.VK_A, 0);
+
+        /**
+         * Injects a synthetic binding into the score-view's keybinding map so
+         * tests can exercise the enable/disable toggle without running full init().
+         */
+        private ScoreView scoreViewWithBinding() {
+            var scoreView = new ScoreView(null);
+            scoreView.scoreKeyBindings.put(STROKE, ACTION_KEY);
+            // Register the action key in the component's input map to simulate
+            // the state after installKeyBindings().
+            scoreView.getInputMap(JComponent.WHEN_FOCUSED).put(STROKE, ACTION_KEY);
+            return scoreView;
+        }
+
+        @Test
+        void testSetKeyBindingsEnabledFalseReplacesEachBindingWithNoneSentinel() {
+            var scoreView = scoreViewWithBinding();
+
+            scoreView.setKeyBindingsEnabled(false);
+
+            var inputMap = scoreView.getInputMap(JComponent.WHEN_FOCUSED);
+            // The stroke must now map to the disabled sentinel, not the original action key.
+            assertThat(inputMap.get(STROKE)).isEqualTo("none");
+        }
+
+        @Test
+        void testSetKeyBindingsEnabledTrueRestoresOriginalActionKeys() {
+            var scoreView = scoreViewWithBinding();
+
+            // Disable then re-enable.
+            scoreView.setKeyBindingsEnabled(false);
+            scoreView.setKeyBindingsEnabled(true);
+
+            var inputMap = scoreView.getInputMap(JComponent.WHEN_FOCUSED);
+            // The original action key must be restored after re-enabling.
+            assertThat(inputMap.get(STROKE)).isEqualTo(ACTION_KEY);
+        }
+    }
+
+    @Nested
+    class IsInitialized {
+
+        @Test
+        void testIsInitializedReturnsFalseBeforeSongIsSet() {
+            // A headless ScoreView(null) has song == null until setSong() is called.
+            var scoreView = new ScoreView(null);
+
+            assertThat(scoreView.isInitialized()).isFalse();
+        }
+
+        @Test
+        void testIsInitializedReturnsTrueAfterSongIsSet() {
+            var scoreView = new ScoreView(null);
+            scoreView.setSong(new Song());
+
+            assertThat(scoreView.isInitialized()).isTrue();
         }
     }
 }
