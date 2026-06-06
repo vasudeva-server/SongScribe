@@ -32,9 +32,9 @@
 | `MainPanel` | `getPreferredSize`: conditional `scoreMarginTop` added only when both title and score heights > 0 | unit | none | missing | Three cases: title empty (no gap), score empty (no gap), both non-empty (gap added) | ✅ |
 | `MainPanel` | `getLinePanelAt(point)`: transforms point to `staffPanel`-local coords, delegates to `StaffPanel.getLinePanelAt`; returns null when point outside `staffPanel` bounds | unit | none | missing | Point inside staffPanel vs. outside (title region, below score) | ✅ |
 | `MainPanel` | `rebuildLayout` delegates to `staffPanel.rebuildLayout()` then revalidates | none | — | — | Pure wiring delegation; no test warranted | — |
-| `ScorePanel` | `getPreferredSize`: width = max(contentWidth, parentWidth) — prevents horizontal shrink below parent | unit | none | missing | Content wider than parent (content width wins), content narrower (parent width wins) | ⬜ |
-| `ScorePanel` | `getPreferredScrollableViewportSize` returns `content.getPreferredSize()` (not `getPreferredSize()`) to break viewport-feedback loop | unit | none | missing | Assert returns content size, not panel size (the distinction is the documented bug guard) | ⬜ |
-| `ScorePanel` | `getScrollableBlockIncrement`: vertical = `visibleRect.height - 10`; horizontal = `visibleRect.width - 20` | unit | none | missing | Both orientations; the asymmetric constants must not regress | ⬜ |
+| `ScorePanel` | `getPreferredSize`: width = max(contentWidth, parentWidth) — prevents horizontal shrink below parent | unit | none | missing | Content wider than parent (content width wins), content narrower (parent width wins) | ✅ |
+| `ScorePanel` | `getPreferredScrollableViewportSize` returns `content.getPreferredSize()` (not `getPreferredSize()`) to break viewport-feedback loop | unit | none | missing | Assert returns content size, not panel size (the distinction is the documented bug guard) | ✅ |
+| `ScorePanel` | `getScrollableBlockIncrement`: vertical = `visibleRect.height - 10`; horizontal = `visibleRect.width - 20` | unit | none | missing | Both orientations; the asymmetric constants must not regress | ✅ |
 | `ScorePanel` | `getScrollableUnitIncrement` always returns 30 | none | — | — | Magic number but constant; no branch or computation to test | — |
 | `ScorePanel` | `updateUI`: sets background from `FlatLafProps` before fields initialized — early-exit safety | none | — | — | Framework bootstrap; no test warranted | — |
 

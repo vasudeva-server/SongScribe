@@ -1881,3 +1881,8 @@ TranslationTextPanelStaffPanelTest$MainPanelGetPreferredSize.testBothTitleAndSco
 TranslationTextPanelStaffPanelTest$MainPanelGetPreferredSize.testEmptyTitleDoesNotAddGap	7f-score-panels-text-components	MainPanel.getPreferredSize empty title → no gap
 TranslationTextPanelStaffPanelTest$MainPanelGetLinePanelAt.testPointInsideStaffPanelDelegatesToStaffPanel	7f-score-panels-text-components	MainPanel.getLinePanelAt point inside staffPanel → LinePanel returned
 TranslationTextPanelStaffPanelTest$MainPanelGetLinePanelAt.testPointOutsideStaffPanelReturnsNull	7f-score-panels-text-components	MainPanel.getLinePanelAt point outside staffPanel → null
+ScorePanelTest.testContentWiderThanParentUsesContentWidth	7f-score-panels-text-components	ScorePanel.getPreferredSize: content wider → content width wins
+ScorePanelTest.testParentWiderThanContentUsesParentWidth	7f-score-panels-text-components	ScorePanel.getPreferredSize: parent wider → parent width wins
+ScorePanelTest.testReturnsContentPreferredSizeNotPanelSize	7f-score-panels-text-components	ScorePanel.getPreferredScrollableViewportSize: returns content size not panel size
+ScorePanelTest.testVerticalIncrementIsHeightMinusDecrement	7f-score-panels-text-components	ScorePanel.getScrollableBlockIncrement: vertical = height - 10
+ScorePanelTest.testHorizontalIncrementIsWidthMinusDecrement	7f-score-panels-text-components	ScorePanel.getScrollableBlockIncrement: horizontal = width - 20

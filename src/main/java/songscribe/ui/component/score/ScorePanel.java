@@ -27,6 +27,12 @@ import songscribe.ui.FlatLafProps;
 
 public class ScorePanel extends JPanel implements Scrollable {
 
+    /** Subtracted from the visible height when computing a vertical block increment. */
+    static final int VERTICAL_BLOCK_DECREMENT = 10;
+
+    /** Subtracted from the visible width when computing a horizontal block increment. */
+    static final int HORIZONTAL_BLOCK_DECREMENT = 20;
+
     private final Component content;
 
     public ScorePanel(Component content) {
@@ -78,8 +84,8 @@ public class ScorePanel extends JPanel implements Scrollable {
         int direction
     ) {
         return (orientation == SwingConstants.VERTICAL)
-            ? (visibleRect.height - 10)
-            : (visibleRect.width - 20);
+            ? (visibleRect.height - VERTICAL_BLOCK_DECREMENT)
+            : (visibleRect.width - HORIZONTAL_BLOCK_DECREMENT);
     }
 
     @Override
