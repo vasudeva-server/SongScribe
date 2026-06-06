@@ -203,7 +203,7 @@ public class MainFrame extends JFrame implements Printable {
         }
     }
 
-    private static void performStartupAction(@Nullable Path mostRecentPath) {
+    static void performStartupAction(@Nullable Path mostRecentPath) {
         var startupAction = StartupAction.DO_NOTHING;
 
         try {
@@ -513,7 +513,7 @@ public class MainFrame extends JFrame implements Printable {
         return answer == dontSaveIdx;
     }
 
-    private void updateTitle() {
+    void updateTitle() {
         if (scoreView == null || !scoreView.isInitialized()) {
             return;
         }

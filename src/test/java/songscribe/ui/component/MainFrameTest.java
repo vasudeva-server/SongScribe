@@ -37,8 +37,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,11 +56,17 @@ import songscribe.dom.Song;
 import songscribe.io.SongIO;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.NewFileCommand;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
+import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.prefs.RecentDocumentsManager;
+import songscribe.prefs.StartupAction;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.dialog.PlatformFileDialog;
+import songscribe.util.ModifierState;
 
 /**
  * Unit tests for {@link MainFrame}'s save-dialog guard ({@link MainFrame#showSaveDialog}) and
@@ -700,6 +708,241 @@ class MainFrameTest extends UnitTest {
                 recentDocsMock.verify(() -> RecentDocumentsManager.remove(expectedPath));
                 recentDocsMock.verify(
                     () -> RecentDocumentsManager.add(any()),
+                    never()
+                );
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // updateTitle — behavior
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class UpdateTitleBehavior {
+
+        /**
+         * When {@code scoreView} is null, {@code updateTitle()} returns immediately
+         * without calling {@code setTitle()}.
+         */
+        @Test
+        void testNullScoreViewShortCircuitsBeforeSettingTitle() {
+            frame.scoreView = null;
+            doCallRealMethod().when(frame).updateTitle();
+
+            frame.updateTitle();
+
+            verify(frame, never()).setTitle(anyString());
+        }
+
+        /**
+         * When {@code scoreView} is not null but {@code isInitialized()} returns false,
+         * {@code updateTitle()} returns immediately without calling {@code setTitle()}.
+         */
+        @Test
+        void testUninitializedScoreViewShortCircuitsBeforeSettingTitle() {
+            var mockScore = mock(ScoreView.class);
+            when(mockScore.isInitialized()).thenReturn(false);
+            frame.scoreView = mockScore;
+            doCallRealMethod().when(frame).updateTitle();
+
+            frame.updateTitle();
+
+            verify(frame, never()).setTitle(anyString());
+        }
+
+        /**
+         * When the document is modified, {@code updateTitle()} sets the window title
+         * with a leading {@code •} prefix.
+         */
+        @Test
+        void testModifiedDocPrefixesBulletInTitle() throws Exception {
+            prepareInitializedScoreView(true);
+
+            // Run on the EDT so the isEventDispatchThread guard is satisfied.
+            SwingUtilities.invokeAndWait(() -> frame.updateTitle());
+
+            var captor = ArgumentCaptor.forClass(String.class);
+            verify(frame).setTitle(captor.capture());
+            assertThat(captor.getValue())
+                .as("modified document: title must start with '•'")
+                .startsWith("•");
+        }
+
+        /**
+         * When the document is clean, {@code updateTitle()} sets the window title
+         * without a {@code •} prefix.
+         */
+        @Test
+        void testCleanDocDoesNotPrefixBulletInTitle() throws Exception {
+            prepareInitializedScoreView(false);
+
+            SwingUtilities.invokeAndWait(() -> frame.updateTitle());
+
+            var captor = ArgumentCaptor.forClass(String.class);
+            verify(frame).setTitle(captor.capture());
+            assertThat(captor.getValue())
+                .as("clean document: title must not start with '•'")
+                .doesNotStartWith("•");
+        }
+
+        /**
+         * Wires up a fully initialized {@link ScoreView} mock with a song whose
+         * {@code isModified()} returns {@code isModified}, and configures {@code frame}
+         * to call its real {@code updateTitle()} and {@code getDisplayName()} methods.
+         */
+        private void prepareInitializedScoreView(boolean isModified) {
+            var mockScore = mock(ScoreView.class);
+            var mockSong = mock(Song.class);
+            when(mockScore.isInitialized()).thenReturn(true);
+            when(mockScore.getSong()).thenReturn(mockSong);
+            when(mockSong.isModified()).thenReturn(isModified);
+            frame.currentFile = new File("My Song.mssw");
+            frame.scoreView = mockScore;
+            doCallRealMethod().when(frame).updateTitle();
+            doCallRealMethod().when(frame).getDisplayName();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Notification handlers — each must call updateTitle()
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class NotificationHandlers {
+
+        /**
+         * {@code songDidChange} delegates to {@code updateTitle()}.
+         */
+        @Test
+        void testSongDidChangeCallsUpdateTitle() {
+            doCallRealMethod().when(frame).songDidChange(any());
+
+            frame.songDidChange(new SongDidChangeNotification(List.of(), mock(Song.class)));
+
+            verify(frame).updateTitle();
+        }
+
+        /**
+         * {@code documentDidLoad} delegates to {@code updateTitle()}.
+         */
+        @Test
+        void testDocumentDidLoadCallsUpdateTitle() {
+            doCallRealMethod().when(frame).documentDidLoad(any());
+
+            frame.documentDidLoad(new DocumentDidLoadNotification(mock(Song.class)));
+
+            verify(frame).updateTitle();
+        }
+
+        /**
+         * {@code documentWasSaved} delegates to {@code updateTitle()}.
+         */
+        @Test
+        void testDocumentWasSavedCallsUpdateTitle() {
+            doCallRealMethod().when(frame).documentWasSaved(any());
+
+            frame.documentWasSaved(new DocumentWasSavedNotification());
+
+            verify(frame).updateTitle();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // setCurrentFile
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SetCurrentFile {
+
+        /**
+         * {@code setCurrentFile(file)} stores the file in {@code currentFile} and
+         * calls {@code updateTitle()} to reflect the new document name.
+         */
+        @Test
+        void testStoresFileAndCallsUpdateTitle() {
+            var newFile = new File("New Song.mssw");
+            doCallRealMethod().when(frame).setCurrentFile(any());
+
+            frame.setCurrentFile(newFile);
+
+            assertThat(frame.currentFile)
+                .as("currentFile updated to the supplied file")
+                .isEqualTo(newFile);
+
+            verify(frame).updateTitle();
+        }
+
+        /**
+         * {@code setCurrentFile(null)} stores null and calls {@code updateTitle()}.
+         */
+        @Test
+        void testStoresNullAndCallsUpdateTitle() {
+            frame.currentFile = new File("Existing.mssw");
+            doCallRealMethod().when(frame).setCurrentFile(any());
+
+            frame.setCurrentFile(null);
+
+            assertThat(frame.currentFile)
+                .as("currentFile cleared to null")
+                .isNull();
+
+            verify(frame).updateTitle();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // performStartupAction
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class PerformStartupAction {
+
+        /**
+         * When the startup action pref is {@code DO_NOTHING}, no message is posted.
+         */
+        @Test
+        void testDoNothingPostsNoMessage() {
+            try (var prefsMock = mockStatic(Prefs.class);
+                 var messageCenterMock = mockStatic(MessageCenter.class)) {
+
+                prefsMock.when(() -> Prefs.getString(PrefsKey.STARTUP_ACTION))
+                    .thenReturn(StartupAction.DO_NOTHING.name());
+
+                MainFrame.performStartupAction(null);
+
+                messageCenterMock.verify(
+                    () -> MessageCenter.post(any()),
+                    never()
+                );
+            }
+        }
+
+        /**
+         * When the Alt key is pressed, the startup action is overridden to {@code DO_NOTHING}
+         * regardless of the pref value — so no message is posted even when the pref is
+         * {@code OPEN_MOST_RECENT}.
+         */
+        @Test
+        void testAltKeyForcesDoNothingRegardlessOfPref() {
+            try (var prefsMock = mockStatic(Prefs.class);
+                 var modifierStateMock = mockStatic(ModifierState.class);
+                 var messageCenterMock = mockStatic(MessageCenter.class)) {
+
+                prefsMock.when(() -> Prefs.getString(PrefsKey.STARTUP_ACTION))
+                    .thenReturn(StartupAction.OPEN_MOST_RECENT.name());
+
+                modifierStateMock.when(ModifierState::isAltPressed).thenReturn(true);
+
+                var recentPath = Path.of("some-song.mssw");
+                MainFrame.performStartupAction(recentPath);
+
+                messageCenterMock.verify(
+                    () -> MessageCenter.post(any()),
                     never()
                 );
             }
