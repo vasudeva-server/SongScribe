@@ -21,9 +21,15 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Point;
 import java.awt.image.BufferedImage;
 
 import org.junit.jupiter.api.Nested;
@@ -31,14 +37,18 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Line;
+import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.layout.LayoutResult;
+import songscribe.ui.component.ScoreView;
 
 /**
- * Unit tests for {@link TranslationComponent}, {@link TextPanel}, and
- * {@link StaffPanel}.
+ * Unit tests for {@link TranslationComponent}, {@link TextPanel},
+ * {@link StaffPanel}, and {@link MainPanel}.
  *
  * <p>Covers 7F rows 11-12 ({@link TranslationComponent}),
- * rows 20-22 ({@link TextPanel}), and row 24 ({@link StaffPanel#rebuildLayout()}).
+ * rows 20-22 ({@link TextPanel}), rows 24-29 ({@link StaffPanel}),
+ * and rows 32-33 ({@link MainPanel}).
  */
 class TranslationTextPanelStaffPanelTest extends UnitTest {
 
@@ -520,6 +530,501 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             assertThat(panel.getComponentCount())
                 .as("three lines → five child components (3 panels + 2 struts)")
                 .isEqualTo(expectedComponents);
+        }
+    }
+
+    // =========================================================================
+    // StaffPanel — row 25: getLinePanel(index) boundary conditions
+    // =========================================================================
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class StaffPanelGetLinePanel {
+
+        /**
+         * A negative index is out of bounds; {@link StaffPanel#getLinePanel} returns null.
+         */
+        @Test
+        void testNegativeIndexReturnsNull() {
+            var panel = new StaffPanel();
+            panel.setSong(new Song());  // 1 line → 1 LinePanel
+
+            assertThat(panel.getLinePanel(-1))
+                .as("index -1 is out of bounds → null")
+                .isNull();
+        }
+
+        /**
+         * Index 0 is valid for a single-line song; the panel is returned.
+         */
+        @Test
+        void testZeroIndexReturnsPanel() {
+            var panel = new StaffPanel();
+            panel.setSong(new Song());  // 1 line → 1 LinePanel (index 0)
+            var linePanels = panel.getLinePanels();
+
+            assertThat(panel.getLinePanel(0))
+                .as("index 0 is in range → first LinePanel returned")
+                .isSameAs(linePanels.get(0));
+        }
+
+        /**
+         * Index equal to the panel count (size) is out of bounds; returns null.
+         */
+        @Test
+        void testIndexAtSizeReturnsNull() {
+            var panel = new StaffPanel();
+            panel.setSong(new Song());  // 1 line → size = 1
+
+            assertThat(panel.getLinePanel(1))
+                .as("index == size (1) is out of bounds → null")
+                .isNull();
+        }
+
+        /**
+         * The last valid index (size - 1) returns the last LinePanel.
+         */
+        @Test
+        void testLastValidIndexReturnsLastPanel() {
+            var song = new Song();
+            song.withoutMutationTracking(() -> song.addLine(new Line(song)));
+            // song now has 2 lines; size = 2, last valid index = 1
+            var panel = new StaffPanel();
+            panel.setSong(song);
+            var linePanels = panel.getLinePanels();
+            int lastIndex = linePanels.size() - 1;
+
+            assertThat(panel.getLinePanel(lastIndex))
+                .as("last valid index returns last LinePanel")
+                .isSameAs(linePanels.get(lastIndex));
+        }
+    }
+
+    // =========================================================================
+    // StaffPanel — row 26: getLinePanelAt(point)
+    // =========================================================================
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class StaffPanelGetLinePanelAt {
+
+        /**
+         * A point whose coordinates fall inside the first LinePanel's bounds is
+         * returned as the first LinePanel.
+         */
+        @Test
+        void testPointInFirstPanelReturnsFirstPanel() {
+            var song = new Song();
+            song.withoutMutationTracking(() -> song.addLine(new Line(song)));
+            // 2 lines → 2 LinePanels
+            var panel = new StaffPanel();
+            panel.setSong(song);
+
+            var panels = panel.getLinePanels();
+            // Manually set bounds: first panel occupies y=[0,99], second y=[100,199]
+            panels.get(0).setBounds(0, 0, 200, 100);
+            panels.get(1).setBounds(0, 100, 200, 100);
+
+            var result = panel.getLinePanelAt(new Point(50, 50));
+            assertThat(result)
+                .as("point (50, 50) is inside first panel [0..99] → first panel returned")
+                .isSameAs(panels.get(0));
+        }
+
+        /**
+         * A point whose coordinates fall inside the last LinePanel's bounds is
+         * returned as the last LinePanel.
+         */
+        @Test
+        void testPointInLastPanelReturnsLastPanel() {
+            var song = new Song();
+            song.withoutMutationTracking(() -> song.addLine(new Line(song)));
+            var panel = new StaffPanel();
+            panel.setSong(song);
+
+            var panels = panel.getLinePanels();
+            panels.get(0).setBounds(0, 0, 200, 100);
+            panels.get(1).setBounds(0, 100, 200, 100);
+
+            var result = panel.getLinePanelAt(new Point(50, 150));
+            assertThat(result)
+                .as("point (50, 150) is inside second panel [100..199] → second panel returned")
+                .isSameAs(panels.get(1));
+        }
+
+        /**
+         * A point between two panels — in the gap — is not contained by either
+         * panel's bounds; {@link StaffPanel#getLinePanelAt} returns null.
+         */
+        @Test
+        void testPointInGapBetweenPanelsReturnsNull() {
+            var panel = new StaffPanel();
+            panel.setSong(new Song());  // 1 line
+
+            var panels = panel.getLinePanels();
+            // Single panel covers y=[0, 49]; point at y=60 is outside it.
+            panels.get(0).setBounds(0, 0, 200, 50);
+
+            assertThat(panel.getLinePanelAt(new Point(50, 60)))
+                .as("point y=60 is below the only panel (height 50) → null")
+                .isNull();
+        }
+    }
+
+    // =========================================================================
+    // StaffPanel — row 27: getPreferredSize
+    // =========================================================================
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class StaffPanelGetPreferredSize {
+
+        /**
+         * When the song is null, {@link StaffPanel#getPreferredSize()} returns
+         * {@code (0, 0)} without calling {@code updateSongMetrics}.
+         */
+        @Test
+        void testSongNullReturnsDimensionZero() {
+            var panel = new StaffPanel();
+            // song is null by default; no setSong() call
+            assertThat(panel.getPreferredSize())
+                .as("null song → Dimension(0, 0)")
+                .isEqualTo(new Dimension(0, 0));
+        }
+
+        /**
+         * For N lines, the total preferred height is the sum of all line heights plus
+         * exactly N-1 margins — one between each adjacent pair of lines.
+         * <p>
+         * An anonymous subclass of {@link StaffPanel} overrides the package-private
+         * {@code updateSongMetrics()} as a no-op to avoid requiring a real
+         * {@link songscribe.ui.component.ScoreView}. Known sizes are injected via
+         * {@code setPreferredSize()} on each {@link LinePanel}.
+         */
+        @Test
+        void testThreeLinesHeightIncludesTwoMargins() {
+            var song = new Song();
+            song.withoutMutationTracking(() -> {
+                song.addLine(new Line(song));
+                song.addLine(new Line(song));
+            });
+
+            // Anonymous subclass stubs out updateSongMetrics() so no ScoreView is needed.
+            var panel = new StaffPanel() {
+                @Override
+                void updateSongMetrics() {
+                    // no-op: skip ScoreView dependency in the test
+                }
+            };
+            panel.setSong(song);  // creates 3 LinePanels
+
+            // Inject a known size on each LinePanel so LineComponent is bypassed.
+            final int lineWidth = 200;
+            final int lineHeight = 50;
+            for (var linePanel : panel.getLinePanels()) {
+                linePanel.setPreferredSize(new Dimension(lineWidth, lineHeight));
+            }
+
+            var size = panel.getPreferredSize();
+            final int lineCount = 3;
+            final int marginCount = lineCount - 1;
+            int expectedMargin = ScaleContext.ssToRoundedPx(StaffPanel.LINE_MARGIN_BOTTOM_SS);
+            int expectedHeight = lineCount * lineHeight + marginCount * expectedMargin;
+
+            assertThat(size.height)
+                .as("3 lines → height = 3*lineHeight + 2*lineMargin")
+                .isEqualTo(expectedHeight);
+            assertThat(size.width)
+                .as("width = max of all line widths (all same here)")
+                .isEqualTo(lineWidth);
+        }
+    }
+
+    // =========================================================================
+    // StaffPanel — row 28: getLayoutResults threading
+    // =========================================================================
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class StaffPanelGetLayoutResults {
+
+        /**
+         * The {@code hasLeadingLyricContinuation} flag is threaded from each line
+         * to the next: if line N's layout result reports
+         * {@code hasTrailingLyricContinuation()=true}, line N+1's component receives
+         * {@code setHasLeadingLyricContinuation(true)}.
+         */
+        @Test
+        void testTrailingContinuationFeedsNextLine() {
+            // Build a real LayoutResult that reports trailing lyric continuation.
+            var resultWithContinuation = LayoutResult.builder()
+                .setHasTrailingLyricContinuation(true)
+                .build();
+
+            // Create mock LineComponent and LinePanel for the first line.
+            var lc1 = mock(LineComponent.class);
+            when(lc1.getLayoutResult()).thenReturn(resultWithContinuation);
+
+            var lp1 = mock(LinePanel.class);
+            when(lp1.getLineComponent()).thenReturn(lc1);
+
+            // Second LineComponent: captures the continuation flag passed to it.
+            var lc2 = mock(LineComponent.class);
+            when(lc2.getLayoutResult()).thenReturn(null);
+
+            var lp2 = mock(LinePanel.class);
+            when(lp2.getLineComponent()).thenReturn(lc2);
+
+            // Inject mock LinePanels directly into an otherwise-empty StaffPanel.
+            var panel = new StaffPanel();
+            panel.getLinePanels().add(lp1);
+            panel.getLinePanels().add(lp2);
+
+            panel.getLayoutResults();
+
+            // The second LineComponent must have received true from line 1's result.
+            verify(lc2).setHasLeadingLyricContinuation(true);
+        }
+
+        /**
+         * When a line's {@code getLayoutResult()} returns null (layout not available),
+         * the continuation flag is reset to false so the next line starts fresh.
+         */
+        @Test
+        void testNullLayoutResultResetsContinuationToFalse() {
+            // First line: non-null result with trailing continuation.
+            var resultWithContinuation = LayoutResult.builder()
+                .setHasTrailingLyricContinuation(true)
+                .build();
+
+            var lc1 = mock(LineComponent.class);
+            when(lc1.getLayoutResult()).thenReturn(resultWithContinuation);
+            var lp1 = mock(LinePanel.class);
+            when(lp1.getLineComponent()).thenReturn(lc1);
+
+            // Second line: null result (simulates layout not yet computed).
+            var lc2 = mock(LineComponent.class);
+            when(lc2.getLayoutResult()).thenReturn(null);
+            var lp2 = mock(LinePanel.class);
+            when(lp2.getLineComponent()).thenReturn(lc2);
+
+            // Third line: should receive false because line 2 returned null.
+            var lc3 = mock(LineComponent.class);
+            when(lc3.getLayoutResult()).thenReturn(null);
+            var lp3 = mock(LinePanel.class);
+            when(lp3.getLineComponent()).thenReturn(lc3);
+
+            var panel = new StaffPanel();
+            panel.getLinePanels().add(lp1);
+            panel.getLinePanels().add(lp2);
+            panel.getLinePanels().add(lp3);
+
+            panel.getLayoutResults();
+
+            // Line 2 gets true (from line 1's non-null result).
+            verify(lc2).setHasLeadingLyricContinuation(true);
+            // Line 3 gets false (reset because line 2's result was null).
+            verify(lc3).setHasLeadingLyricContinuation(false);
+        }
+    }
+
+    // =========================================================================
+    // StaffPanel — row 29: updateSongMetrics call order
+    // =========================================================================
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class StaffPanelUpdateSongMetrics {
+
+        /**
+         * {@link StaffPanel#updateSongMetrics()} must call
+         * {@code scoreView.rebuildLyricRenderMetrics()} BEFORE
+         * {@code scoreView.setSongLayoutMetrics(…)}, because line layouts read lyric
+         * metrics (set by the first call) during the intermediate
+         * {@code getLayoutResults()} step.
+         */
+        @Test
+        void testRebuildLyricRenderMetricsCalledBeforeSetSongLayoutMetrics() {
+            // Mock ScoreView (final class — Mockito 5 inline mock maker handles this).
+            var mockScoreView = mock(ScoreView.class);
+            // Return a real font so ScaleContext.fontAscentSs doesn't NPE.
+            when(mockScoreView.getLyricsFont()).thenReturn(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+
+            // Build a mock LineComponent that provides the ScoreView and returns null
+            // for getLayoutResult() so getLayoutResults() produces an empty list.
+            var mockLc = mock(LineComponent.class);
+            when(mockLc.getScoreView()).thenReturn(mockScoreView);
+            when(mockLc.getLayoutResult()).thenReturn(null);
+
+            var mockLp = mock(LinePanel.class);
+            when(mockLp.getLineComponent()).thenReturn(mockLc);
+
+            var panel = new StaffPanel();
+            panel.getLinePanels().add(mockLp);
+
+            panel.updateSongMetrics();
+
+            // Verify that rebuildLyricRenderMetrics was called BEFORE setSongLayoutMetrics.
+            var ordered = inOrder(mockScoreView);
+            ordered.verify(mockScoreView).rebuildLyricRenderMetrics();
+            ordered.verify(mockScoreView).setSongLayoutMetrics(any());
+        }
+    }
+
+    // =========================================================================
+    // MainPanel — row 32: getPreferredSize conditional gap
+    // =========================================================================
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MainPanelGetPreferredSize {
+
+        /**
+         * When the song is null, {@link MainPanel#getPreferredSize()} returns
+         * {@code (0, 0)}.
+         */
+        @Test
+        void testSongNullReturnsDimensionZero() {
+            var mainPanel = new MainPanel();
+            // No setSong() call — song remains null.
+            assertThat(mainPanel.getPreferredSize())
+                .as("null song → Dimension(0, 0)")
+                .isEqualTo(new Dimension(0, 0));
+        }
+
+        /**
+         * When both the title and the score have positive height, the gap
+         * ({@code scoreMarginTop}) is added between them.
+         * <p>
+         * A {@link StaffPanel} preferred size is injected via
+         * {@code setPreferredSize()} to avoid the ScoreView dependency.
+         * A new {@link Song} already has a non-empty default title ("Untitled"), so
+         * {@link TitleComponent#getPreferredSize()} returns a positive height without
+         * any extra setup.
+         * <p>
+         * The gap is verified by subtracting all children's sizes from the total:
+         * the remainder must equal exactly {@code scoreMarginTop}.
+         */
+        @Test
+        void testBothTitleAndScoreNonZeroHeightAddsGap() {
+            // new Song() has title = "Untitled" by default (non-empty).
+            var song = new Song();
+
+            var mainPanel = new MainPanel();
+            mainPanel.setSong(song);
+
+            var titleComponent = mainPanel.getTitleComponent();
+            var staffPanel = mainPanel.getStaffPanel();
+
+            // Set a font on TitleComponent so getFontMetrics() returns usable metrics.
+            titleComponent.setFont(TEST_FONT);
+
+            // Inject a known staff panel size to bypass the ScoreView dependency.
+            staffPanel.setPreferredSize(new Dimension(300, 100));
+
+            var titleHeight = titleComponent.getPreferredSize().height;
+            assertThat(titleHeight)
+                .as("non-empty default title must produce positive height (precondition)")
+                .isGreaterThan(0);
+
+            var totalSize = mainPanel.getPreferredSize();
+            var staffSize = staffPanel.getPreferredSize();
+            var textSize = mainPanel.getTextPanel().getPreferredSize();
+            var footnotesSize = mainPanel.getFootnotesComponent().getPreferredSize();
+
+            // The gap is what remains after subtracting all children's sizes.
+            int gap = totalSize.height - titleHeight - staffSize.height
+                - textSize.height - footnotesSize.height;
+            int expectedGap = ScaleContext.ssToRoundedPx(MainPanel.SCORE_MARGIN_TOP_SS);
+
+            assertThat(gap)
+                .as("gap between title and score must equal scoreMarginTop")
+                .isEqualTo(expectedGap);
+        }
+
+        /**
+         * When the title is empty (height == 0), the gap is NOT added even if
+         * the score has positive height.
+         */
+        @Test
+        void testEmptyTitleDoesNotAddGap() {
+            var song = new Song();
+            // A new Song has a non-empty default title ("Untitled") and a default number ("1").
+            // getNumberedTitle() returns "number. title" when number is non-empty, so both
+            // must be cleared to make getNumberedTitle() return "".
+            song.withoutMutationTracking(() -> {
+                song.setTitle("");
+                song.setNumber("");
+            });
+
+            var mainPanel = new MainPanel();
+            mainPanel.setSong(song);
+
+            var staffPanel = mainPanel.getStaffPanel();
+
+            // Inject a known staff panel size.
+            staffPanel.setPreferredSize(new Dimension(300, 100));
+
+            // With title empty (height == 0), the gap condition is false → no gap.
+            var totalSize = mainPanel.getPreferredSize();
+            var staffSize = staffPanel.getPreferredSize();
+            var textSize = mainPanel.getTextPanel().getPreferredSize();
+            var footnotesSize = mainPanel.getFootnotesComponent().getPreferredSize();
+
+            // No gap: total = 0(title) + 0(gap) + staffHeight + textHeight + footnotesHeight
+            int expectedHeight = staffSize.height + textSize.height + footnotesSize.height;
+
+            assertThat(totalSize.height)
+                .as("empty title (height=0) → no gap: total = staffH + textH + footnotesH")
+                .isEqualTo(expectedHeight);
+        }
+    }
+
+    // =========================================================================
+    // MainPanel — row 33: getLinePanelAt(point) routing
+    // =========================================================================
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MainPanelGetLinePanelAt {
+
+        /**
+         * A point inside the {@link StaffPanel}'s bounds is transformed to
+         * StaffPanel-local coordinates and the matching {@link LinePanel} is returned.
+         */
+        @Test
+        void testPointInsideStaffPanelDelegatesToStaffPanel() {
+            var mainPanel = new MainPanel();
+            mainPanel.setSong(new Song());  // 1 line → 1 LinePanel in staffPanel
+
+            // Place staffPanel at y=50, height=100.
+            mainPanel.getStaffPanel().setBounds(0, 50, 200, 100);
+            // Place the sole LinePanel to fill the staffPanel area (local coords).
+            mainPanel.getStaffPanel().getLinePanels().get(0).setBounds(0, 0, 200, 100);
+
+            // Point (10, 80) in mainPanel coords → local (10, 30) which is inside the LinePanel.
+            var result = mainPanel.getLinePanelAt(new Point(10, 80));
+            assertThat(result)
+                .as("point inside staffPanel bounds → LinePanel returned")
+                .isSameAs(mainPanel.getStaffPanel().getLinePanels().get(0));
+        }
+
+        /**
+         * A point outside the {@link StaffPanel}'s bounds (e.g., in the title area above
+         * the staff) causes {@link MainPanel#getLinePanelAt} to return null without
+         * delegating.
+         */
+        @Test
+        void testPointOutsideStaffPanelReturnsNull() {
+            var mainPanel = new MainPanel();
+            mainPanel.setSong(new Song());
+
+            // staffPanel starts at y=50; point at y=10 is above it.
+            mainPanel.getStaffPanel().setBounds(0, 50, 200, 100);
+
+            assertThat(mainPanel.getLinePanelAt(new Point(10, 10)))
+                .as("point y=10 is above staffPanel (starts at y=50) → null")
+                .isNull();
         }
     }
 }

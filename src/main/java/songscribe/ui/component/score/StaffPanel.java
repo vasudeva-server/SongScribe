@@ -168,6 +168,10 @@ public class StaffPanel extends JPanel {
 
     @Override
     public Dimension getPreferredSize() {
+        if (isPreferredSizeSet()) {
+            return super.getPreferredSize();
+        }
+
         if (song == null || linePanels.isEmpty()) {
             return new Dimension(0, 0);
         }
@@ -199,8 +203,11 @@ public class StaffPanel extends JPanel {
      * Forces all line layouts, builds {@link SongLayoutMetrics}
      * from the results, and pushes the metrics onto the owning {@link ScoreView}
      * so that all lines report a uniform preferred height.
+     * <p>
+     * Package-private for testing: tests can spy on this method to avoid
+     * the full ScoreView dependency.
      */
-    private void updateSongMetrics() {
+    void updateSongMetrics() {
         var scoreView = linePanels.getFirst().getLineComponent().getScoreView();
 
         // Ensure LyricRenderMetrics on ScoreView is up-to-date before any line layout runs.
@@ -218,7 +225,10 @@ public class StaffPanel extends JPanel {
         scoreView.setSongLayoutMetrics(metrics);
     }
 
-    private ArrayList<LayoutResult> getLayoutResults() {
+    /**
+     * Package-private for testing.
+     */
+    ArrayList<LayoutResult> getLayoutResults() {
         var layouts = new ArrayList<LayoutResult>();
         var hasLeadingLyricContinuation = false;
 

@@ -84,6 +84,12 @@ public class LinePanel extends JPanel {
 
     @Override
     public Dimension getPreferredSize() {
+        // When setPreferredSize() has been called explicitly, honour that value
+        // rather than delegating to the line component.
+        if (isPreferredSizeSet()) {
+            return super.getPreferredSize();
+        }
+
         return lineComponent.getPreferredSize();
     }
 
