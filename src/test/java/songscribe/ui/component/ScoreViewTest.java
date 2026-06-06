@@ -115,9 +115,10 @@ class ScoreViewTest extends UnitTest {
             // documentFonts is set but song is null — must return silently.
             scoreView.rebuildLyricRenderMetrics();
 
-            // lyricRenderMetrics was never populated; getLyricRenderMetrics() would throw,
-            // so we only verify that rebuildLyricRenderMetrics() itself did not throw.
-            // (The null guard leaves the field null; no further assertion is possible here.)
+            // The song == null guard must leave the field null. Without the guard the method
+            // would silently build metrics from the installed fonts, so this assertion is what
+            // catches the guard being removed.
+            assertThat(scoreView.lyricRenderMetrics).isNull();
         }
 
         @Test
@@ -129,7 +130,9 @@ class ScoreViewTest extends UnitTest {
 
             scoreView.rebuildLyricRenderMetrics();
 
-            // No exception; metrics remain null.
+            // The documentFonts == null guard must leave the field null (and not NPE on
+            // documentFonts.getLyricsFont()).
+            assertThat(scoreView.lyricRenderMetrics).isNull();
         }
 
         @Test
@@ -306,8 +309,36 @@ class ScoreViewTest extends UnitTest {
             var expectedMid = FIRST_X + Math.round((MID_X - FIRST_X) * ratio);
             var expectedEnd = FIRST_X + Math.round((END_X - FIRST_X) * ratio);
 
+            // elem0 anchors at FIRST_X and must be untouched (guards the loop start index).
+            assertThat(elem0.getXOffsetPx()).isEqualTo(FIRST_X);
             assertThat(elem1.getXOffsetPx()).isEqualTo(expectedMid);
             assertThat(elem2.getXOffsetPx()).isEqualTo(expectedEnd);
+            // The proportional rescale must also record the spacing ratio on the line.
+            assertThat(line.getElementSpacingRatio()).isEqualTo(ratio);
+        }
+
+        @Test
+        void testDrawWidthIfWiderLineUsesEndNoteContentWidthAsIdealSpaceWhenRevalidateOnly() {
+            // revalidateOnly=true takes the other idealSpace branch: the end note's own
+            // content width rather than the default column-gap formula.
+            var scoreView = scoreViewWithLineWidth(LINE_WIDTH_PX);
+            var line = detachedLine();
+            var elem0 = ElementType.CROTCHET.newInstance();
+            var elem1 = ElementType.CROTCHET.newInstance();
+            elem0.setXOffsetPx(FIRST_X);
+            elem1.setXOffsetPx(END_X);  // END_X > LINE_WIDTH_PX → exceeds threshold
+            line.addElement(elem0);
+            line.addElement(elem1);
+
+            scoreView.drawWidthIfWiderLine(line, true);
+
+            var idealSpace = (float) elem1.getContentWidthPx();
+            var ratio = (LINE_WIDTH_PX - idealSpace - FIRST_X) / (float) (END_X - FIRST_X);
+            var expectedEnd = FIRST_X + Math.round((END_X - FIRST_X) * ratio);
+
+            assertThat(elem0.getXOffsetPx()).isEqualTo(FIRST_X);
+            assertThat(elem1.getXOffsetPx()).isEqualTo(expectedEnd);
+            assertThat(line.getElementSpacingRatio()).isEqualTo(ratio);
         }
 
         @Test

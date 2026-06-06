@@ -96,13 +96,13 @@ class InputUtilsTest extends UnitTest {
             InputUtils.addInputFilter(field, "\\d+");
 
             try (var uiUtilsMock = mockStatic(UIUtils.class)) {
-                // Replace all content with a letter — should be rejected
-                field.getDocument().remove(0, field.getDocument().getLength());
-                field.getDocument().insertString(0, "abc", null);
+                // Drive CustomDocumentFilter.replace directly: swapping "123" → "abc"
+                // is non-matching and must be rejected, leaving the document unchanged.
+                var doc = (javax.swing.text.AbstractDocument) field.getDocument();
+                doc.replace(0, doc.getLength(), "abc", null);
 
                 uiUtilsMock.verify(UIUtils::beep);
-                // The remove succeeded; the insert was rejected
-                assertThat(field.getText()).isEmpty();
+                assertThat(field.getText()).isEqualTo("123");
             }
         }
 
@@ -173,6 +173,22 @@ class InputUtilsTest extends UnitTest {
 
                 uiUtilsMock.verify(UIUtils::beep, never());
                 assertThat(field.getText()).isEqualTo("0.5");
+            }
+        }
+
+        @Test
+        void testInsertStringRejectsSecondDecimalPoint() throws Exception {
+            // Guards the single-dot constraint of DECIMAL_PATTERN (\d*\.?\d*): a value
+            // introducing a second decimal point must be rejected on the prospective text.
+            var field = new JTextField("1.");
+            InputUtils.addDecimalFilter(field);
+
+            try (var uiUtilsMock = mockStatic(UIUtils.class)) {
+                // Prospective result "1.2.3" has two dots → must be rejected.
+                field.getDocument().insertString(field.getDocument().getLength(), "2.3", null);
+
+                uiUtilsMock.verify(UIUtils::beep);
+                assertThat(field.getText()).isEqualTo("1.");
             }
         }
     }

@@ -201,7 +201,9 @@ public final class ScoreView
 
     // Song-wide lyric render metrics shared across all line components.
     // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
-    private @Nullable LyricRenderMetrics lyricRenderMetrics;
+    // Package-private so tests can observe the rebuildLyricRenderMetrics() no-op guards
+    // without going through getLyricRenderMetrics(), which fatally exits when unset.
+    @Nullable LyricRenderMetrics lyricRenderMetrics;
 
     // Authoritative document-level fonts. Null only before first bootstrap in init().
     // Phase 5+: sole source of truth; ScoreView.setFonts() is the only write entry.

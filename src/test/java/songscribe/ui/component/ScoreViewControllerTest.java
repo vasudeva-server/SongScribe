@@ -403,6 +403,29 @@ class ScoreViewControllerTest extends UnitTest {
 
             assertThat(clipboardManager.isEmpty()).isTrue();
         }
+
+        @Test
+        void testHandleCopyIsNoOpWhenActiveSelectionHasNoElementSelection() {
+            // state != null but hasElementSelection() == false (e.g. a lyric-only or caret
+            // selection): the guard must prevent any copy. Without it, handleCopy would read
+            // a selection range that does not exist.
+            var stateMock = mock(LineSelectionState.class);
+            when(stateMock.hasElementSelection()).thenReturn(false);
+            var coordinatorMock = mock(SelectionCoordinator.class);
+            when(coordinatorMock.getActiveSelection()).thenReturn(stateMock);
+
+            var clipboardManager = new ClipboardManager();
+            var controller = new ScoreViewController(
+                mock(ScoreView.class),
+                mock(MusicEditOperations.class),
+                coordinatorMock,
+                clipboardManager
+            );
+
+            controller.handleCopy();
+
+            assertThat(clipboardManager.isEmpty()).isTrue();
+        }
     }
 
     // -----------------------------------------------------------------------
