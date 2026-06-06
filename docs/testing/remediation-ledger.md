@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 1047 / 1574 actionable rows done (66%).**
+**Overall: 1054 / 1574 actionable rows done (66%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -44,7 +44,7 @@
 |  | [7e-line-score-rendering-geometry](matrix-component/7e-line-score-rendering-geometry.md) | 19 | 19 | ✅ complete |
 |  | [7f-score-panels-text-components](matrix-component/7f-score-panels-text-components.md) | 24 | 24 | ✅ complete |
 |  | [7g-toolbars](matrix-component/7g-toolbars.md) | 2 | 2 | ✅ complete |
-|  | [7h-input-text-widgets](matrix-component/7h-input-text-widgets.md) | 0 | 28 | not started |
+|  | [7h-input-text-widgets](matrix-component/7h-input-text-widgets.md) | 7 | 28 | in progress |
 |  | [7i-buttons-borders-frames-navigation-helpers](matrix-component/7i-buttons-borders-frames-navigation-helpers.md) | 0 | 42 | not started |
 | 8 · message | [8a-core-message-bus](matrix-message/8a-core-message-bus.md) | 0 | 9 | not started |
 |  | [8b-mutation-infrastructure-field-enum-validation](matrix-message/8b-mutation-infrastructure-field-enum-validation.md) | 0 | 19 | not started |

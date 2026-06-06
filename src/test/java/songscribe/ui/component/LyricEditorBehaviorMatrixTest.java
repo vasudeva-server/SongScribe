@@ -22,7 +22,6 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
@@ -30,10 +29,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-import java.awt.BorderLayout;
-import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.MouseEvent;
@@ -41,37 +37,17 @@ import java.awt.event.MouseEvent;
 import javax.swing.JPanel;
 
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import songscribe.dom.Lyric;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
-import songscribe.dom.Lyric;
-import songscribe.dom.Song;
-import songscribe.layout.LyricRenderMetrics;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
 class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
-
-    private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
-    private static final LyricRenderMetrics LYRIC_METRICS =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
-
-    private Song song;
-    private ScoreView score;
-
-    @BeforeEach
-    void setUp() {
-        song = new Song();
-        score = mock(ScoreView.class);
-        when(score.getLyricRenderMetrics()).thenReturn(LYRIC_METRICS);
-        when(score.getSong()).thenReturn(song);
-        when(score.getLineComponent(anyInt())).thenReturn(null);
-        when(score.getLayout()).thenReturn(new BorderLayout());
-    }
 
     @AfterEach
     void tearDown() {
@@ -132,6 +108,48 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
         editor.getDocument().insertString(editor.getDocument().getLength(), "abc\ndef", null);
 
         assertThat(editor.getText()).isEqualTo("abcdef");
+    }
+
+    @Test
+    void w4_replaceWithinCapAllowed() throws Exception {
+        // currentLength=5, replacedLength=3, text.length=3 → net 5 ≤ 32
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("hello");
+        editor.attachListeners();
+
+        // Replace "hel" (positions 0..2, length 3) with "Hey" — net length stays at 5.
+        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 3, "Hey", null);
+
+        assertThat(editor.getText()).isEqualTo("Heylo");
+    }
+
+    @Test
+    void w5_replaceExceedingCapBeepsAndRejects() throws Exception {
+        // currentLength=30, replacedLength=2, text.length=5 → net 33 > 32 → beep + reject
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("a".repeat(30));
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+
+            // Replace first 2 chars with 5 chars — would push length to 33.
+            ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 2, "abcde", null);
+
+            verify(toolkitMock).beep();
+        }
+
+        assertThat(editor.getText()).hasSize(30);
     }
 
     // -----------------------------------------------------------------------
@@ -533,6 +551,68 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             }
 
             verify(score, never()).addOverlay(any());
+        }
+
+        // openedAsExtender=true, text non-empty, no next eligible → beep, stay open
+        @Test
+        void h_openedAsExtenderNonEmptyNoNextEligibleBeeps() {
+            var element = crotchet();
+            element.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(element));
+
+            var editor = new LyricEditor(score, line, element);
+            editor.setText("Re");
+            editor.attachListeners();
+
+            var toolkitMock = mock(Toolkit.class);
+
+            try (var toolkitStatic = mockStatic(Toolkit.class)) {
+                toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+                fireHyphen(editor);
+                verify(toolkitMock).beep();
+            }
+
+            // No advance, no mutation — editor stays open on the same element.
+            verify(score, never()).addOverlay(any());
+            assertThat(editor.getText()).isEqualTo("Re");
+        }
+
+        // openedAsExtender=true, text non-empty, next eligible → breakChainCommitAndAdvance
+        @Test
+        void h_openedAsExtenderNonEmptyNextEligibleBreaksChainAndAdvances() {
+            // e0(START chain root) → e1(CONTINUE, editor, typed "Re") → e2(STOP carrier) → e3(rest)
+            // findNextEligibleIndex() from e1 finds e2 (a crotchet, always eligible).
+            // breakChainAtCurrentElement clears e2's lyric; commitInner writes e1 as BEGIN;
+            // openIndexOrDismiss opens the new editor on e2 (now lyric-free).
+            var e0 = crotchet();
+            e0.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "Do", Lyric.Extend.START);
+            var e1 = crotchet();
+            e1.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+            var e2 = crotchet();
+            e2.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(e0));
+            song.withoutMutationTracking(() -> line.addElement(e1));
+            song.withoutMutationTracking(() -> line.addElement(e2));
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, line, e1);
+            editor.setText("Re");
+            editor.attachListeners();
+            fireHyphen(editor);
+
+            var notification = captureSingleDidChange();
+            // breakChainAtCurrentElement clears e2; commitInner writes e1 as BEGIN
+            assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(2);
+            assertThat(e1.getLyricForVerse(1)).extracting(Lyric::text).isEqualTo("Re");
+            assertThat(e1.getLyricForVerse(1)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(e2.getLyricForVerse(1)).isNull();
+
+            // A new editor opens on e2 (the next eligible element; its lyric was just cleared).
+            var captor = ArgumentCaptor.forClass(LyricEditor.class);
+            verify(score, atLeastOnce()).addOverlay(captor.capture());
+            assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(e2);
         }
 
         @Test
@@ -1222,6 +1302,65 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             assertThat(notification.getMutations()).hasSize(1);
             assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ha");
             assertThat(editor.getParent()).isNull();
+        }
+
+        @Test
+        void f4_focusedTrueButParentNullIsNoOp() {
+            var element = crotchet();
+            element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "ho", Lyric.Extend.NONE);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(element));
+
+            // No parent added — commitAndDismiss sees getParent()==null and returns immediately.
+            var editor = new LyricEditor(score, line, element);
+            editor.setText("ha");
+            editor.setFocusedForTesting(true);
+            // Do not add to a parent (parent remains null).
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            fireFocusLost(editor);
+
+            verifyNoSongDidChange();
+            assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ho");
+        }
+
+        @SuppressWarnings("ReturnOfNull")
+        @Test
+        void f5_outsideClickOnEditorItselfIsNoOp() {
+            var element = crotchet();
+            element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "ho", Lyric.Extend.NONE);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(element));
+
+            var editor = new LyricEditor(score, line, element);
+            editor.setText("ha");
+            var parent = new JPanel();
+            parent.add(editor);
+            editor.setFocusedForTesting(true);
+
+            var toolkitMock = mock(Toolkit.class);
+            AWTEventListener[] capturedListener = {null};
+            doAnswer(invocation -> {
+                capturedListener[0] = invocation.getArgument(0);
+                return null;
+            }).when(toolkitMock).addAWTEventListener(any(AWTEventListener.class), anyLong());
+
+            try (var toolkitStatic = mockStatic(Toolkit.class)) {
+                toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+                editor.attachListeners();
+                assertThat(capturedListener[0]).isNotNull();
+
+                messageCenterMock = mockStatic(MessageCenter.class);
+
+                // Source is the editor itself — the self-click guard returns immediately.
+                var selfClickEvent = new MouseEvent(
+                    editor, MouseEvent.MOUSE_PRESSED, 0L, 0, 0, 0, 1, false);
+                capturedListener[0].eventDispatched(selfClickEvent);
+
+                verifyNoSongDidChange();
+                assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ho");
+                assertThat(editor.getParent()).isNotNull();
+            }
         }
 
         @SuppressWarnings("ReturnOfNull")

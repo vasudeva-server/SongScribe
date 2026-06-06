@@ -83,3 +83,7 @@ modify: LineRenderer.renderPreviewElement — widened from private to package-pr
 modify: LineRenderer.renderKeyChanges — widened from private to package-private for direct testing
 modify: LineRenderer.computeOverrideXSs — extracted from renderElements as new package-private static method for row 20 testing
 modify: TextPanel.calculateUnionWidth — widened from private to package-private for direct testing
+modify: LyricEditor.LEADING_PAINT_SLACK_PX — widened from private to package-private for testing
+modify: LyricEditor.LeadingSlackFieldView — widened from private to package-private for testing
+modify: LyricEditor.LeadingSlackFieldView.paintingWithLeadingSlack — widened from private to package-private for testing
+modify: LyricEditor.keepAllocationAtContentOrigin — extracted from LeadingSlackFieldView as package-private static method on LyricEditor for direct testing

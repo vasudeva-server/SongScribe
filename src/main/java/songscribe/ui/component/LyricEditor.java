@@ -156,7 +156,7 @@ public final class LyricEditor extends MyJTextField {
      * rasterized glyph edges can land just outside that allocation even when Java reports
      * no negative left bearing, so the editor view gives the paint clip a small left guard.
      */
-    private static final int LEADING_PAINT_SLACK_PX = 1;
+    static final int LEADING_PAINT_SLACK_PX = 1;
 
     /**
      * Trailing pixel added to the expanded paint clip so the rightmost glyph column is
@@ -325,28 +325,11 @@ public final class LyricEditor extends MyJTextField {
      * {@link #adjustAllocation(Shape)} restores the original text allocation so caret
      * placement and lyric alignment do not shift.
      */
-    private static final class LeadingSlackFieldView extends FieldView {
-        private boolean paintingWithLeadingSlack;
+    static final class LeadingSlackFieldView extends FieldView {
+        boolean paintingWithLeadingSlack;
 
         LeadingSlackFieldView(Element elem) {
             super(elem);
-        }
-
-        private Shape keepAllocationAtContentOrigin(Shape input, Shape adjusted) {
-            //noinspection ConstantValue -- overridden method may be called with null string
-            if (input == null || adjusted == null) {
-                return adjusted;
-            }
-
-            var inputBounds = input.getBounds();
-            var adjustedBounds = adjusted.getBounds();
-
-            if (adjustedBounds.x < inputBounds.x) {
-                adjustedBounds.x = inputBounds.x;
-                return adjustedBounds;
-            }
-
-            return adjusted;
         }
 
         @Override
@@ -364,6 +347,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         @Override
+        @SuppressWarnings("NullAway")  // keepAllocationAtContentOrigin may return null in edge cases
         protected Shape adjustAllocation(Shape a) {
             Shape adjusted;
 
@@ -379,6 +363,34 @@ public final class LyricEditor extends MyJTextField {
             adjusted = super.adjustAllocation(a);
             return keepAllocationAtContentOrigin(a, adjusted);
         }
+    }
+
+    /**
+     * Prevents {@code adjustAllocation} from shifting the allocation to the left of the
+     * original content origin. When {@code super.adjustAllocation} moves the text leftward
+     * to center it in a wide allocation, this clamps the x coordinate back to the input
+     * content origin so lyric alignment and caret placement remain stable.
+     *
+     * @param input    the allocation passed to {@link LeadingSlackFieldView#adjustAllocation}
+     * @param adjusted the result returned by {@code super.adjustAllocation}
+     * @return {@code adjusted} if its x is at or to the right of {@code input.x};
+     *         otherwise {@code adjusted} with x clamped to {@code input.x}
+     */
+    @SuppressWarnings("ConstantValue")
+    static @Nullable Shape keepAllocationAtContentOrigin(@Nullable Shape input, @Nullable Shape adjusted) {
+        if (input == null || adjusted == null) {
+            return adjusted;
+        }
+
+        var inputBounds = input.getBounds();
+        var adjustedBounds = adjusted.getBounds();
+
+        if (adjustedBounds.x < inputBounds.x) {
+            adjustedBounds.x = inputBounds.x;
+            return adjustedBounds;
+        }
+
+        return adjusted;
     }
 
     /** Returns the element this editor session is bound to. */

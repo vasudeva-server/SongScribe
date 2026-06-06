@@ -22,29 +22,54 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.when;
 
+import java.awt.BorderLayout;
+import java.awt.Font;
 import java.awt.event.*;
 
 import javax.swing.JComponent;
 import javax.swing.KeyStroke;
 
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.message.Message;
-import songscribe.message.MessageCenter;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.layout.LyricRenderMetrics;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.SongDidChangeNotification;
 
 @SuppressWarnings("resource")
 abstract class LyricEditorTestSupport extends UnitTest {
+
+    protected static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+    protected static final LyricRenderMetrics LYRIC_METRICS =
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+
+    protected Song song;
+    protected ScoreView score;
+
+    @BeforeEach
+    void setUpLyricEditorSupport() {
+        song = new Song();
+        score = mock(ScoreView.class);
+        when(score.getLyricRenderMetrics()).thenReturn(LYRIC_METRICS);
+        when(score.getSong()).thenReturn(song);
+        when(score.getLineComponent(anyInt())).thenReturn(null);
+        when(score.getLayout()).thenReturn(new BorderLayout());
+    }
 
     @Nullable
     protected MockedStatic<MessageCenter> messageCenterMock;
