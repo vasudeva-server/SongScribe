@@ -21,6 +21,7 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -28,11 +29,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.awt.Component;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.KeyStroke;
 
 import org.junit.jupiter.api.Nested;
@@ -42,21 +45,106 @@ import org.mockito.MockedStatic;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.layout.StaffExtents;
+import songscribe.message.MessageCenter;
+import songscribe.message.command.DeselectCommand;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.util.UIUtils;
 
 class ScoreInputHandlerTest extends UnitTest {
 
     // -------------------------------------------------------------------
-    // Row 62: mousePressed / mouseReleased is a no-op when !isPopupTrigger
+    // Rows 59-60: mouseClicked requests focus only for BUTTON1
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MouseClicked {
+
+        @Test
+        void testMouseClickedNonButton1DoesNotRequestFocus() {
+            var callback = mock(InputHandlerCallback.class);
+            var handler = new ScoreInputHandler(callback);
+
+            handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON3));
+
+            verify(callback, never()).requestFocusInWindow();
+        }
+
+        @Test
+        void testMouseClickedButton1RequestsFocus() {
+            var callback = mock(InputHandlerCallback.class);
+            var handler = new ScoreInputHandler(callback);
+
+            handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
+
+            verify(callback).requestFocusInWindow();
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Rows 61-62: mousePressed / mouseReleased show the edit popup only
+    // when the event is a popup trigger
     // -------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class PopupTrigger {
+
+        @Test
+        void testMousePressedShowsPopupWhenPopupTriggerIsTrue() {
+            var callback = mock(InputHandlerCallback.class);
+            var popup = mock(JPopupMenu.class);
+            when(callback.getEditPopup()).thenReturn(popup);
+            var handler = new ScoreInputHandler(callback);
+            var source = mock(Component.class);
+            var event = mousePopupEvent(source, MouseEvent.MOUSE_PRESSED);
+
+            handler.mousePressed(event);
+
+            verify(popup).show(source, POPUP_X, POPUP_Y);
+        }
+
+        @Test
+        void testMouseReleasedShowsPopupWhenPopupTriggerIsTrue() {
+            var callback = mock(InputHandlerCallback.class);
+            var popup = mock(JPopupMenu.class);
+            when(callback.getEditPopup()).thenReturn(popup);
+            var handler = new ScoreInputHandler(callback);
+            var source = mock(Component.class);
+            var event = mousePopupEvent(source, MouseEvent.MOUSE_RELEASED);
+
+            handler.mouseReleased(event);
+
+            verify(popup).show(source, POPUP_X, POPUP_Y);
+        }
+
+        @Test
+        void testMousePressedWithPopupTriggerAndNullPopupIsNoOp() {
+            var callback = mock(InputHandlerCallback.class);
+            // getEditPopup() defaults to null; the null guard must prevent an NPE
+            var handler = new ScoreInputHandler(callback);
+            var source = mock(Component.class);
+
+            handler.mousePressed(mousePopupEvent(source, MouseEvent.MOUSE_PRESSED));
+
+            verify(callback).getEditPopup();
+        }
+
+        @Test
+        void testMouseReleasedWithPopupTriggerAndNullPopupIsNoOp() {
+            var callback = mock(InputHandlerCallback.class);
+            // getEditPopup() defaults to null; the null guard must prevent an NPE
+            var handler = new ScoreInputHandler(callback);
+            var source = mock(Component.class);
+
+            handler.mouseReleased(mousePopupEvent(source, MouseEvent.MOUSE_RELEASED));
+
+            verify(callback).getEditPopup();
+        }
 
         @Test
         void testMousePressedIsNoOpWhenPopupTriggerIsFalse() {
@@ -82,8 +170,32 @@ class ScoreInputHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------
-    // Row 65: keyPressed(ESCAPE) when grace mode is in progress delegates
-    // to GraceModeManager.keyPressed
+    // Row 63: keyPressed(ALT) clears the preview element, sets altPressed,
+    // and triggers a repaint
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AltKeyPressed {
+
+        @Test
+        void testKeyPressedAltClearsPreviewSetsAltPressedAndRepaints() {
+            var callback = mock(InputHandlerCallback.class);
+            var handler = new ScoreInputHandler(callback);
+
+            try (MockedStatic<LineComponent> lc = mockStatic(LineComponent.class)) {
+                handler.keyPressed(keyEvent(KeyEvent.VK_ALT));
+
+                lc.verify(LineComponent::clearPreviewElement);
+                lc.verify(() -> LineComponent.setAltPressed(true));
+            }
+
+            verify(callback).repaint();
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Rows 64-65: keyPressed(ESCAPE) behavior
     // -------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -104,6 +216,96 @@ class ScoreInputHandlerTest extends UnitTest {
                 handler.keyPressed(event);
 
                 verify(graceModeManager).keyPressed(event);
+            }
+        }
+
+        @Test
+        void testKeyPressedEscapeInSelectModeWithNullWindowPostsDeselectCommand() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.SELECT);
+            // null window short-circuits the text-editing guard, so a deselect is posted
+            when(callback.getWindow()).thenReturn(null);
+            var handler = new ScoreInputHandler(callback);
+            var graceModeManager = mock(GraceModeManager.class);
+            when(graceModeManager.isInProgress()).thenReturn(false);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+
+                handler.keyPressed(keyEvent(KeyEvent.VK_ESCAPE));
+
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)));
+            }
+        }
+
+        @Test
+        void testKeyPressedEscapeInSelectModeNotEditingTextPostsDeselectCommand() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.SELECT);
+            var window = mock(Window.class);
+            when(callback.getWindow()).thenReturn(window);
+            var handler = new ScoreInputHandler(callback);
+            var graceModeManager = mock(GraceModeManager.class);
+            when(graceModeManager.isInProgress()).thenReturn(false);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<UIUtils> ui = mockStatic(UIUtils.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                ui.when(() -> UIUtils.isEditingTextIn(window)).thenReturn(false);
+
+                handler.keyPressed(keyEvent(KeyEvent.VK_ESCAPE));
+
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)));
+            }
+        }
+
+        @Test
+        void testKeyPressedEscapeInSelectModeWhileEditingTextDoesNotPostDeselect() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.SELECT);
+            var window = mock(Window.class);
+            when(callback.getWindow()).thenReturn(window);
+            var handler = new ScoreInputHandler(callback);
+            var graceModeManager = mock(GraceModeManager.class);
+            when(graceModeManager.isInProgress()).thenReturn(false);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<UIUtils> ui = mockStatic(UIUtils.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                ui.when(() -> UIUtils.isEditingTextIn(window)).thenReturn(true);
+
+                handler.keyPressed(keyEvent(KeyEvent.VK_ESCAPE));
+
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)), never());
+            }
+        }
+
+        @Test
+        void testKeyPressedEscapeInEditModeDoesNotPostDeselect() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var handler = new ScoreInputHandler(callback);
+            var graceModeManager = mock(GraceModeManager.class);
+            when(graceModeManager.isInProgress()).thenReturn(false);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+
+                handler.keyPressed(keyEvent(KeyEvent.VK_ESCAPE));
+
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)), never());
             }
         }
     }
@@ -316,9 +518,24 @@ class ScoreInputHandlerTest extends UnitTest {
     // Helpers
     // -------------------------------------------------------------------
 
+    private static final int POPUP_X = 30;
+    private static final int POPUP_Y = 40;
+
     private MouseEvent mouseEvent(int id, boolean popupTrigger) {
         return new MouseEvent(
             mock(Component.class), id, 0L, 0, 0, 0, 0, 0, 1, popupTrigger, MouseEvent.BUTTON1
+        );
+    }
+
+    private MouseEvent mouseClickEvent(int button) {
+        return new MouseEvent(
+            mock(Component.class), MouseEvent.MOUSE_CLICKED, 0L, 0, 0, 0, 0, 0, 1, false, button
+        );
+    }
+
+    private MouseEvent mousePopupEvent(Component source, int id) {
+        return new MouseEvent(
+            source, id, 0L, 0, POPUP_X, POPUP_Y, POPUP_X, POPUP_Y, 1, true, MouseEvent.BUTTON3
         );
     }
 
