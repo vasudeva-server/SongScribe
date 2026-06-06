@@ -65,8 +65,11 @@ a. Scan \`docs/testing/.claims/\` (create the directory if absent). Each \`.lock
 b. Interpret the target as follows, then pick the next unclaimed class
    (or group of tiny same-source-dir classes) sized to the caps: **7 rows
    ordinary, 4 rows heavy pure-logic** (geometry/MIDI/serialization math),
-   130K-token budget. **Skip e2e-level rows** — they are deferred to
-   the final batch; leave them ⬜.
+   130K-token budget. **Skip e2e-level rows unless their verdict is
+   \`wrong-level\`** — pure-e2e rows are deferred to the final batch (leave
+   them ⬜), but a row whose Required-level is \`e2e\` AND whose verdict is
+   \`wrong-level\` has unit-test work specified in its \`action\` column; treat
+   it like any other unit-test row.
 
    - **Bare integer (e.g. \`3\`):** treat as a package number. Read
      \`docs/testing/remediation-ledger.md\`, find all sections whose row
