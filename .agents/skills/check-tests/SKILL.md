@@ -28,11 +28,13 @@ production code; this does not invoke e2e and needs no e2e approval.
 
 ## Phase 1: Parse Arguments and Determine Scope
 
-`$ARGUMENTS` may contain an optional `--mutation` flag plus a scope token. Parse
-the flag first, then resolve the remaining token as the scope.
+`$ARGUMENTS` may contain optional flags plus a scope token. Parse all flags
+first, then resolve the remaining token as the scope.
 
 - **`--mutation`** present → run the mutation-testing pass in Phase 4. Off by
   default because it is the slow path.
+- **`--fix`** present → suppress all interactive questions in Phase 5 and fix
+  every finding, including minor and low-confidence ones, without approval.
 
 ### Scope resolution (the remaining token)
 
@@ -127,7 +129,19 @@ Skip this phase entirely unless the flag was set.
 
 ## Phase 5: Report, Approve, Fix
 
-Mirror the review-and-approve flow used by the `check` skill:
+Choose the path based on whether `--fix` was in `$ARGUMENTS`.
+
+### Path A: `--fix` mode
+
+1. **Fix all findings immediately** — every finding from Phases 2–4 (Correctness,
+   Usefulness, Coverage, and Mutation if it ran), including minor and
+   low-confidence ones. Do not ask any questions or seek approval.
+2. Any change under `src/main/` or `src/test/` requires `./scripts/compile.sh`
+   before re-running; then re-run the relevant `./scripts/test.sh <target>`
+   (unit only) to confirm green.
+3. **Summarize** what was fixed when done, grouped by axis.
+
+### Path B: Interactive mode (default)
 
 1. **Present findings** in one organized summary, grouped by axis (Correctness,
    Usefulness, Coverage), each finding with file:line, the bug it misses, and

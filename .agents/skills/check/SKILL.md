@@ -39,6 +39,11 @@ Resolution steps:
 5. The collected code is the **review target** passed to agents in Phase 2.
 6. If there are many files, process them in batches of ~5-8 files per agent invocation to stay within context limits. Run multiple rounds of Phase 2 if needed.
 
+### Flags
+
+- **`--fix`** — suppress all interactive questions and fix every finding, including minor and low-confidence ones. Forward this flag to check-tests in Phase 2b.
+- **`--mutation`** — forward to check-tests in Phase 2b to enable mutation testing.
+
 ### Test Scope Detection
 
 After resolving the scope in either mode, partition it into two subsets:
@@ -91,13 +96,21 @@ Read `.agents/skills/check-tests/SKILL.md`. Execute **Phases 1–4** of that ski
 
 - Treat the already-resolved test files as the output of check-tests Phase 1 — do not re-resolve scope.
 - Mutation testing is **off by default**. Enable it only if `--mutation` was present in `$ARGUMENTS`.
+- If `--fix` was present in `$ARGUMENTS`, include it when invoking check-tests so its agents receive the flag.
 - **Do not execute check-tests Phase 5.** The unified report, approval, and fix flow is handled by Phase 3 of this skill.
 
 If mutation testing is not needed, Phase 2b's static-analysis agents (check-tests Phases 1–2) may be launched concurrently with Phase 2's agents in a single message for efficiency. If mutation is enabled, run Phase 2b after Phase 2 to avoid build contention.
 
 ## Phase 3: Review and Approve Findings
 
-Wait for Phase 2 (and Phase 2b, if it ran) to complete, then:
+Wait for Phase 2 (and Phase 2b, if it ran) to complete, then choose the path based on whether `--fix` was in `$ARGUMENTS`.
+
+### Path A: `--fix` mode
+
+1. **Fix all findings immediately** — every finding from every agent (Reuse, Quality, Efficiency, and Test Quality if Phase 2b ran), including minor and low-confidence ones. Do not ask any questions or seek approval.
+2. **Summarize** what was fixed when done, grouped by the same axes.
+
+### Path B: Interactive mode (default)
 
 1. **Present findings.** Output all findings in a single organized summary. Group by: Reuse, Quality, Efficiency (from Phase 2), and — if Phase 2b ran — Test Quality (Correctness → Usefulness → Coverage sub-groups). Add an empty line followed by "Ready for questions."
 
