@@ -168,8 +168,9 @@ class LineRenderer {
 
     /**
      * Draws the 5 staff lines as filled rounded rectangles snapped to device pixels.
+     * Package-private for testing.
      */
-    private void drawStaffLines(Graphics2D g2, LineInvariants invariants) {
+    void drawStaffLines(Graphics2D g2, LineInvariants invariants) {
         var selectionProvider = invariants.getSelectionProvider();
         var lineIndex = invariants.getLineIndex();
         var staffSelected = invariants.isEditMode()
@@ -335,7 +336,8 @@ class LineRenderer {
      * {@code spanStart} falls at or after the shift boundary. The transform is restored
      * on exit (including on exception).
      */
-    private static void renderWithPreviewShiftIfNeeded(
+    /** Package-private for testing. */
+    static void renderWithPreviewShiftIfNeeded(
         Graphics2D g2,
         ElementFrame frame,
         int spanStart,

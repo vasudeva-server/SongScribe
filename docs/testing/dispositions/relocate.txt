@@ -33,3 +33,7 @@ GraceModeManagerTest.MouseClicked.testReturnsTrueWhenInProgressButNotGraceNoteIn
 GraceModeManagerTest.MouseClicked.testJustEnteredInsertFlagSuppressesFirstClick	6c	mouseClicked: justEnteredInsert suppresses first click
 GraceModeManagerTest.MouseClicked.testCancelWhenClickOnDifferentLine	6c	mouseClicked: different-line click → finish(cancel)
 GraceModeManagerTest.MouseClicked.testCancelWhenClickLeftOfGraceNote	6c	mouseClicked: left-of-grace click → finish(cancel)
+LineComponentTest.MouseClickedRouting.testRightButtonClickExitsBeforeGraceModeCheck	7e-line-score-rendering-geometry	row 12 — mouseClicked: right-button guard (unit test, relocated from e2e coverage)
+LineComponentTest.MouseClickedRouting.testGraceModeConsumingClickCausesEarlyReturn	7e-line-score-rendering-geometry	row 12 — mouseClicked: grace mode consumes click early return (unit test)
+LineComponentTest.MousePressedRouting.testRightButtonPressExitsBeforeGraceModeCheck	7e-line-score-rendering-geometry	row 13 — mousePressed: right-button guard (unit test, relocated from e2e coverage)
+LineComponentTest.MousePressedRouting.testGraceModeConsumingPressCausesEarlyReturn	7e-line-score-rendering-geometry	row 13 — mousePressed: grace mode consumes press early return (unit test)

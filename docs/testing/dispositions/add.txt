@@ -1799,3 +1799,18 @@ LineComponentTest.LayoutDirtySemantics.testInvalidateLayoutNullsResultAndSetsDir
 LineComponentTest.LayoutDirtySemantics.testEnsureLayoutDoesNothingWhenSongAndLineAreNull	7e-line-score-rendering-geometry	row 5 — ensureLayout no-op when song/line null
 LineComponentTest.SetLine.testSetLineSetsLayoutDirtyAndNullsResultAndCreatesSelectionState	7e-line-score-rendering-geometry	row 6 — setLine marks dirty, nulls result, creates selection state
 LineComponentTest.SetLine.testSetLineRegistersSelectionStateWithCoordinatorWhenScoreViewIsSet	7e-line-score-rendering-geometry	row 6 — setLine registers selection state with coordinator when scoreView set
+LineComponentTest.IsYInLyricBounds.testNullLineReturnsFalse	7e-line-score-rendering-geometry	row 11 — isYInLyricBounds: null line returns false
+LineComponentTest.IsYInLyricBounds.testDelegatesToLayoutResultWhenLayoutIsReady	7e-line-score-rendering-geometry	row 11 — isYInLyricBounds: delegates to layout result
+LineComponentTest.ReadyLayout.testNullLineReturnsNull	7e-line-score-rendering-geometry	row 15 — readyLayout: null line returns null
+LineComponentTest.ReadyLayout.testNonNullLineAndLayoutReturnsReadyLayout	7e-line-score-rendering-geometry	row 15 — readyLayout: non-null line + layout returns ReadyLayout
+LineComponentTest.ReadyLayout.testNullLayoutAfterEnsureReturnsNull	7e-line-score-rendering-geometry	row 15 — readyLayout: null layout after ensureLayout no-op returns null
+LineComponentTest.GracePreviewLineFrame.testReturnsLineLevelWhenNotActiveGraceLine	7e-line-score-rendering-geometry	row 14 — gracePreviewLineFrame: not active grace line returns LINE_LEVEL
+LineComponentTest.GracePreviewLineFrame.testReturnsShiftedFrameWhenThisIsActiveGraceLineWithPreview	7e-line-score-rendering-geometry	row 14 — gracePreviewLineFrame: active grace line with preview returns shifted frame
+LineComponentTest.GracePreviewLineFrame.testReturnsLineLevelWhenThisIsActiveGraceLineButNoPreview	7e-line-score-rendering-geometry	row 14 — gracePreviewLineFrame: active grace line but null preview returns LINE_LEVEL
+LineRendererTest.DrawStaffLines.testNonSelectedLineUsesStaffLineColor	7e-line-score-rendering-geometry	row 16 — drawStaffLines: non-selected line uses staff-line color
+LineRendererTest.DrawStaffLines.testSelectedLineInEditModeUsesSelectionColor	7e-line-score-rendering-geometry	row 16 — drawStaffLines: selected line in edit mode uses selection color
+LineRendererTest.DrawStaffLines.testSelectedLineOutsideEditModeUsesStaffLineColor	7e-line-score-rendering-geometry	row 16 — drawStaffLines: selected line outside edit mode uses staff-line color
+LineRendererTest.RenderWithPreviewShiftIfNeeded.testShiftAppliedWhenSpanStartAtOrAfterFromIndex	7e-line-score-rendering-geometry	row 17 — renderWithPreviewShiftIfNeeded: shift applied when spanStart >= fromIndex
+LineRendererTest.RenderWithPreviewShiftIfNeeded.testShiftNotAppliedWhenSpanStartBeforeFromIndex	7e-line-score-rendering-geometry	row 17 — renderWithPreviewShiftIfNeeded: shift not applied when spanStart < fromIndex
+LineRendererTest.RenderWithPreviewShiftIfNeeded.testShiftNotAppliedWhenFrameHasNoPreviewShift	7e-line-score-rendering-geometry	row 17 — renderWithPreviewShiftIfNeeded: no shift applied when frame has no preview shift
+LineRendererTest.RenderWithPreviewShiftIfNeeded.testTransformRestoredAfterShiftedRender	7e-line-score-rendering-geometry	row 17 — renderWithPreviewShiftIfNeeded: transform restored after shifted render

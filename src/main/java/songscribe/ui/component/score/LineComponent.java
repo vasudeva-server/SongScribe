@@ -691,15 +691,17 @@ public class LineComponent extends ScoreComponent
             : null;
     }
 
-    private boolean isYInLyricBounds(int pointYPx) {
+    boolean isYInLyricBounds(int pointYPx) {
         var ready = readyLayout();
         return ready != null
             && ready.layoutResult().isYInLyricBounds(getScoreView().getLyricRenderMetrics(), pointYPx);
     }
 
-    private record ReadyLayout(Line line, LayoutResult layoutResult) {}
+    /** Package-private for testing. */
+    record ReadyLayout(Line line, LayoutResult layoutResult) {}
 
-    private @Nullable ReadyLayout readyLayout() {
+    /** Package-private for testing. */
+    @Nullable ReadyLayout readyLayout() {
         if (line == null) {
             return null;
         }
