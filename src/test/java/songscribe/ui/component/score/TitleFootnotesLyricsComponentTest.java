@@ -1,0 +1,485 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.ui.component.score;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.offset;
+
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.image.BufferedImage;
+
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import songscribe.UnitTest;
+import songscribe.dom.Song;
+
+/**
+ * Unit tests for {@link TitleComponent}, {@link FootnotesComponent}, and
+ * {@link LyricsComponent} (via its concrete subclass {@link UnderLyricsComponent}).
+ *
+ * <p>Covers:
+ * <ul>
+ *   <li>7F rows 5-7 — {@link TitleComponent#getPreferredSize()} null/empty guards,
+ *       wrapping formula, and number-prefix routing</li>
+ *   <li>7F rows 9-10 — {@link FootnotesComponent#getPreferredSize()} null/empty/non-empty,
+ *       and {@link FootnotesComponent#calculateRenderX(double)} width-cap invariant</li>
+ *   <li>7F rows 14-15 — {@link LyricsComponent#getTextWidth(java.awt.Graphics2D)} null/empty guards
+ *       and {@link LyricsComponent#getPreferredSize()} height-scaling formula</li>
+ * </ul>
+ */
+class TitleFootnotesLyricsComponentTest extends UnitTest {
+
+    /**
+     * A plain font used to initialise {@link ScoreComponent} subclasses before
+     * calling {@link javax.swing.JComponent#getFontMetrics(Font)}.
+     * <p>
+     * {@code JComponent.getFont()} returns null when neither the component nor any
+     * ancestor has a font explicitly set; passing null to {@code getFontMetrics}
+     * causes a NullPointerException in the JDK.  Setting a font explicitly on each
+     * component under test avoids that without adding FlatLaf-specific setup.
+     */
+    private static final Font TEST_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+
+    // -------------------------------------------------------------------------
+    // TitleComponent — rows 5-7
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TitleComponentPreferredSize {
+
+        /**
+         * When {@code song} is null, {@link TitleComponent#getPreferredSize()} returns
+         * {@code (0, 0)}.
+         */
+        @Test
+        void testNullSongReturnsDimensionZero() {
+            var component = new TitleComponent();
+            // song is null by default — no setSong() call.
+            assertThat(component.getPreferredSize())
+                .as("null song → Dimension(0, 0)")
+                .isEqualTo(new Dimension(0, 0));
+        }
+
+        /**
+         * When the song has an empty title and empty number, {@link Song#getNumberedTitle()}
+         * returns an empty string and {@link TitleComponent#getPreferredSize()} returns
+         * {@code (0, 0)}.
+         */
+        @Test
+        void testEmptyNumberedTitleReturnsDimensionZero() {
+            var song = new Song();
+            // Clear both number and title so that getNumberedTitle() returns "".
+            song.setNumber("");
+            song.setTitle("");
+            var component = new TitleComponent();
+            component.setSong(song);
+
+            assertThat(component.getPreferredSize())
+                .as("empty getNumberedTitle() → Dimension(0, 0)")
+                .isEqualTo(new Dimension(0, 0));
+        }
+
+        /**
+         * When the song has a non-empty title, {@link TitleComponent#getPreferredSize()}
+         * returns the song's line width as the width, and a positive height equal to
+         * {@code lineHeight * wrappedLineCount + marginBottom}.
+         * <p>
+         * This test verifies the formula is applied: a one-word title produces a height
+         * greater than {@code marginBottom} alone (i.e., lineHeight > 0).
+         */
+        @Test
+        void testNonEmptyTitleReturnsLineWidthAndPositiveHeight() {
+            var song = new Song();
+            song.setTitle("Ode");
+            var component = new TitleComponent();
+            component.setFont(TEST_FONT);
+            component.setSong(song);
+
+            var size = component.getPreferredSize();
+            var lineWidthPx = song.getLineWidthPx();
+
+            assertThat(size.width)
+                .as("width should equal song.getLineWidthPx()")
+                .isEqualTo(lineWidthPx);
+            assertThat(size.height)
+                .as("height = lineHeight * lineCount + marginBottom > marginBottom alone")
+                .isGreaterThan(component.getMarginBottom());
+        }
+
+        /**
+         * A title long enough to wrap across multiple lines produces a strictly greater
+         * height than a short one-word title on the same component, because
+         * {@code height = lineHeight * wrappedLineCount + marginBottom}.
+         */
+        @Test
+        void testWrappingTitleProducesGreaterHeightThanShortTitle() {
+            var song = new Song();
+
+            // Short title — expected to fit on one line.
+            song.setTitle("A");
+            var component = new TitleComponent();
+            component.setFont(TEST_FONT);
+            component.setSong(song);
+            var shortHeight = component.getPreferredSize().height;
+
+            // Long title — many words that should wrap to two or more lines.
+            song.setTitle("This Is A Very Long Title That Should Definitely Wrap To Multiple Lines When Laid Out");
+            var longHeight = component.getPreferredSize().height;
+
+            assertThat(longHeight)
+                .as("a long title that wraps must produce a strictly greater height than a short one")
+                .isGreaterThan(shortHeight);
+        }
+
+        /**
+         * When {@code number} is non-empty but {@code title} is empty,
+         * {@link Song#getNumberedTitle()} returns a non-empty string (e.g. "5. "),
+         * so {@link TitleComponent#getPreferredSize()} returns a non-zero height.
+         * <p>
+         * This test would fail if the implementation used {@link Song#getTitle()} instead
+         * of {@link Song#getNumberedTitle()}: the empty title would produce {@code (0, 0)}.
+         */
+        @Test
+        void testNumberPrefixIncludedInSizeCalculation() {
+            var song = new Song();
+            song.setNumber("5");
+            song.setTitle("");
+            // getNumberedTitle() → "5. " (non-empty); getTitle() → "" (empty).
+            var component = new TitleComponent();
+            component.setFont(TEST_FONT);
+            component.setSong(song);
+
+            var size = component.getPreferredSize();
+            assertThat(size.height)
+                .as("number prefix in getNumberedTitle() causes non-zero height even when title is empty")
+                .isGreaterThan(0);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // FootnotesComponent — rows 9-10
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class FootnotesComponentPreferredSize {
+
+        /**
+         * When {@code song} is null, {@link FootnotesComponent#getPreferredSize()}
+         * returns {@code (0, 0)}.
+         */
+        @Test
+        void testNullSongReturnsDimensionZero() {
+            var component = new FootnotesComponent();
+            assertThat(component.getPreferredSize())
+                .as("null song → Dimension(0, 0)")
+                .isEqualTo(new Dimension(0, 0));
+        }
+
+        /**
+         * When the song's footnotes are empty, {@link FootnotesComponent#getPreferredSize()}
+         * returns {@code (0, 0)}.
+         */
+        @Test
+        void testEmptyFootnotesReturnsDimensionZero() {
+            var song = new Song();
+            // song.getFootnotes() returns "" by default.
+            var component = new FootnotesComponent();
+            component.setSong(song);
+
+            assertThat(component.getPreferredSize())
+                .as("empty footnotes → Dimension(0, 0)")
+                .isEqualTo(new Dimension(0, 0));
+        }
+
+        /**
+         * For a single-line footnote, {@link FootnotesComponent#getPreferredSize()} returns
+         * {@code Dimension(lineWidthPx, marginTop + lineHeight)}, where {@code lineHeight}
+         * is positive.
+         */
+        @Test
+        void testSingleLineFootnoteReturnsLineWidthAndPositiveHeight() {
+            var song = new Song();
+            song.setFootnotes("Single footnote line");
+            var component = new FootnotesComponent();
+            component.setFont(TEST_FONT);
+            component.setSong(song);
+
+            var size = component.getPreferredSize();
+            assertThat(size.width)
+                .as("width equals song.getLineWidthPx()")
+                .isEqualTo(song.getLineWidthPx());
+            assertThat(size.height)
+                .as("height = marginTop + lineHeight, which is > marginTop alone")
+                .isGreaterThan(component.getMarginTop());
+        }
+
+        /**
+         * A two-line footnote (split on {@code '\n'}) produces a height equal to
+         * {@code marginTop + lineHeight * 2}, which is strictly greater than the
+         * height for a single-line footnote.
+         */
+        @Test
+        void testMultiLineFootnotesHeightScalesWithLineCount() {
+            var song = new Song();
+
+            song.setFootnotes("Line one");
+            var component = new FootnotesComponent();
+            component.setFont(TEST_FONT);
+            component.setSong(song);
+            var oneLineHeight = component.getPreferredSize().height;
+
+            song.setFootnotes("Line one\nLine two");
+            var twoLineHeight = component.getPreferredSize().height;
+
+            assertThat(twoLineHeight)
+                .as("two lines should produce strictly greater height than one line")
+                .isGreaterThan(oneLineHeight);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class FootnotesComponentWidthCap {
+
+        /**
+         * When {@code song} is null, {@link FootnotesComponent#calculateRenderX(double)}
+         * returns {@code 0} without throwing.
+         */
+        @Test
+        void testNullSongReturnsZeroX() {
+            var component = new FootnotesComponent();
+            // song is null by default.
+            assertThat((double) component.calculateRenderX(100.0))
+                .as("null song → calculateRenderX returns 0")
+                .isEqualTo(0.0);
+        }
+
+        /**
+         * When the footnote text width is narrower than the 2/3 line-width cap, the
+         * centering formula {@code x = (lineWidth - textWidth) / 2} produces a
+         * non-negative x (trivially, since textWidth < lineWidth).
+         */
+        @Test
+        void testNarrowFootnotesXIsNonNegative() {
+            var song = new Song();
+            song.setFootnotes("Short");
+            var component = new FootnotesComponent();
+            component.setSong(song);
+
+            // textWidth = 0 (narrowest possible) → x = lineWidth / 2 > 0
+            var x = component.calculateRenderX(0.0);
+            assertThat((double) x)
+                .as("x for zero-width text must be non-negative")
+                .isGreaterThanOrEqualTo(0.0);
+        }
+
+        /**
+         * When the footnote text is very wide (wider than the line), the width cap
+         * {@code actualWidth = min(textWidth, lineWidth * 2/3)} limits it to 2/3 of
+         * the line width, so {@code x = lineWidth / 6} which is strictly positive.
+         * <p>
+         * Without the cap, a textWidth > lineWidth would yield a negative x.
+         */
+        @Test
+        void testVeryWideFootnotesXIsNonNegativeDueToWidthCap() {
+            var song = new Song();
+            song.setFootnotes("Placeholder");
+            var component = new FootnotesComponent();
+            component.setSong(song);
+
+            // Simulate a text block wider than the full line width.
+            var oversizedTextWidth = song.getLineWidthPx() * 2.0;
+            var x = component.calculateRenderX(oversizedTextWidth);
+
+            assertThat((double) x)
+                .as("even for over-wide text the cap keeps x non-negative")
+                .isGreaterThanOrEqualTo(0.0);
+
+            // Without the cap: x = (lineWidth - oversizedTextWidth) / 2 < 0.
+            // With the cap:    x = (lineWidth - lineWidth*2/3) / 2 = lineWidth/6 > 0.
+            var expectedX = song.getLineWidthPx() / 6.0;
+            assertThat((double) x)
+                .as("capped x = lineWidth/6 (within floating-point tolerance)")
+                .isCloseTo(expectedX, offset(1.0));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // LyricsComponent (via UnderLyricsComponent) — rows 14-15
+    // -------------------------------------------------------------------------
+
+    /**
+     * Creates an off-screen {@link java.awt.Graphics2D} backed by a 1×1 pixel image.
+     * Used to test {@link LyricsComponent#getTextWidth} without a real display context.
+     * Caller is responsible for disposing the returned object.
+     */
+    private static java.awt.Graphics2D createOffscreenGraphics() {
+        return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class LyricsComponentGetTextWidth {
+
+        /**
+         * When {@code song} is null, {@link LyricsComponent#getTextWidth(java.awt.Graphics2D)}
+         * returns 0 without throwing.
+         */
+        @Test
+        void testNullSongReturnsZero() {
+            var component = new UnderLyricsComponent();
+            // song is null by default.
+            var g2 = createOffscreenGraphics();
+
+            try {
+                assertThat(component.getTextWidth(g2))
+                    .as("null song → getTextWidth returns 0")
+                    .isEqualTo(0.0);
+            } finally {
+                g2.dispose();
+            }
+        }
+
+        /**
+         * When the song has empty under-lyrics, {@link LyricsComponent#getTextWidth(java.awt.Graphics2D)}
+         * returns 0.
+         */
+        @Test
+        void testEmptyLyricsReturnsZero() {
+            var song = new Song();
+            // song.getUnderLyrics() returns "" by default.
+            var component = new UnderLyricsComponent();
+            component.setSong(song);
+            var g2 = createOffscreenGraphics();
+
+            try {
+                assertThat(component.getTextWidth(g2))
+                    .as("empty under-lyrics → getTextWidth returns 0")
+                    .isEqualTo(0.0);
+            } finally {
+                g2.dispose();
+            }
+        }
+
+        /**
+         * When under-lyrics are non-empty, {@link LyricsComponent#getTextWidth(java.awt.Graphics2D)}
+         * returns a positive value — confirming delegation to
+         * {@link songscribe.util.GraphicUtils#getTextBlockWidth}.
+         */
+        @Test
+        void testNonEmptyLyricsReturnsPositiveWidth() {
+            var song = new Song();
+            song.setUnderLyrics("La la la");
+            var component = new UnderLyricsComponent();
+            component.setFont(TEST_FONT);
+            component.setSong(song);
+            var g2 = createOffscreenGraphics();
+
+            try {
+                assertThat(component.getTextWidth(g2))
+                    .as("non-empty under-lyrics → getTextWidth returns positive width")
+                    .isGreaterThan(0.0);
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class LyricsComponentPreferredSize {
+
+        /**
+         * When {@code song} is null, {@link LyricsComponent#getPreferredSize()} returns
+         * {@code (0, 0)}.
+         */
+        @Test
+        void testNullSongReturnsDimensionZero() {
+            var component = new UnderLyricsComponent();
+            assertThat(component.getPreferredSize())
+                .as("null song → Dimension(0, 0)")
+                .isEqualTo(new Dimension(0, 0));
+        }
+
+        /**
+         * When under-lyrics are empty, {@link LyricsComponent#getPreferredSize()} returns
+         * {@code (0, 0)}.
+         */
+        @Test
+        void testEmptyLyricsReturnsDimensionZero() {
+            var song = new Song();
+            var component = new UnderLyricsComponent();
+            component.setSong(song);
+
+            assertThat(component.getPreferredSize())
+                .as("empty lyrics → Dimension(0, 0)")
+                .isEqualTo(new Dimension(0, 0));
+        }
+
+        /**
+         * For a single-line lyric, {@link LyricsComponent#getPreferredSize()} returns
+         * {@code Dimension(lineWidthPx, lineHeight + marginTop)}, where the width is exactly
+         * {@code song.getLineWidthPx()} and the height is positive.
+         */
+        @Test
+        void testSingleLineLyricReturnsLineWidthAndPositiveHeight() {
+            var song = new Song();
+            song.setUnderLyrics("La la la");
+            var component = new UnderLyricsComponent();
+            component.setFont(TEST_FONT);
+            component.setSong(song);
+
+            var size = component.getPreferredSize();
+            assertThat(size.width)
+                .as("width = song.getLineWidthPx()")
+                .isEqualTo(song.getLineWidthPx());
+            assertThat(size.height)
+                .as("height = lineHeight + marginTop > marginTop alone")
+                .isGreaterThan(component.getMarginTop());
+        }
+
+        /**
+         * Multi-line lyrics (split on {@code '\n'}) scale the height linearly:
+         * two lines produce a strictly greater height than one line.
+         */
+        @Test
+        void testMultiLineLyricsHeightScalesWithLineCount() {
+            var song = new Song();
+
+            song.setUnderLyrics("Line one");
+            var component = new UnderLyricsComponent();
+            component.setFont(TEST_FONT);
+            component.setSong(song);
+            var oneLineHeight = component.getPreferredSize().height;
+
+            song.setUnderLyrics("Line one\nLine two");
+            var twoLineHeight = component.getPreferredSize().height;
+
+            assertThat(twoLineHeight)
+                .as("two lyric lines produce a strictly greater height than one line")
+                .isGreaterThan(oneLineHeight);
+        }
+    }
+}

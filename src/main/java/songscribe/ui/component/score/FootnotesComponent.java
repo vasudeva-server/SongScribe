@@ -72,13 +72,9 @@ public class FootnotesComponent extends ScoreComponent {
             var metrics = g2.getFontMetrics();
             var lineHeight = metrics.getHeight();
 
-            // Calculate text width (capped at max width)
+            // Calculate text width (capped at max width) and derive the centered x position
             var textWidth = GraphicUtils.getTextBlockWidth(footnotes, g2);
-            var maxWidth = song.getLineWidthPx() * MAX_WIDTH_PERCENTAGE;
-            var actualWidth = Math.min(textWidth, maxWidth);
-
-            // Center horizontally
-            var x = (float) ((song.getLineWidthPx() - actualWidth) / 2);
+            var x = calculateRenderX(textWidth);
             var y = (float) (marginTop + metrics.getAscent());
 
             // Draw each line
@@ -89,6 +85,28 @@ public class FootnotesComponent extends ScoreComponent {
                 y += lineHeight;
             }
         }
+    }
+
+    /**
+     * Computes the horizontal render origin for footnote text given its measured pixel width.
+     * <p>
+     * The text width is capped at {@code MAX_WIDTH_PERCENTAGE} of the line width before
+     * centering, so the returned value is always non-negative.
+     * <p>
+     * Package-private for testing.
+     *
+     * @param textWidth measured pixel width of the footnote block
+     * @return x coordinate (in pixels) of the left edge of the first drawn character
+     */
+    float calculateRenderX(double textWidth) {
+        if (song == null) {
+            return 0;
+        }
+
+        var lineWidthPx = song.getLineWidthPx();
+        var maxWidth = lineWidthPx * MAX_WIDTH_PERCENTAGE;
+        var actualWidth = Math.min(textWidth, maxWidth);
+        return (float) ((lineWidthPx - actualWidth) / 2);
     }
 
     @Override
