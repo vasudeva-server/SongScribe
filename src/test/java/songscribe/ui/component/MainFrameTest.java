@@ -21,6 +21,7 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -1151,6 +1152,26 @@ class MainFrameTest extends UnitTest {
             assertThat(result)
                 .as("pageIndex ≥ 1 → NO_SUCH_PAGE")
                 .isEqualTo(Printable.NO_SUCH_PAGE);
+        }
+
+        /**
+         * When {@code printerJob} is null (i.e., {@code handlePrint()} was never called),
+         * calling {@code print(g, pf, 0)} triggers {@code RuntimeError.exit()}.
+         *
+         * <p>The test handler installed by {@link songscribe.UnitTest} converts
+         * {@code System.exit} into an {@link AssertionError}, confirming the guard fires.
+         */
+        @Test
+        void testNullPrinterJobThrows() {
+            // printerJob is private and defaults to null on a fresh mock.
+            doCallRealMethod().when(frame).print(any(Graphics.class), any(PageFormat.class), anyInt());
+
+            var graphics = mock(Graphics.class);
+            var pageFormat = mock(PageFormat.class);
+
+            // RuntimeError.exit() → UnitTest exit handler → AssertionError
+            assertThatThrownBy(() -> frame.print(graphics, pageFormat, 0))
+                .isInstanceOf(AssertionError.class);
         }
     }
 

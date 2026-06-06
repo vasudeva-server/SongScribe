@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 1001 / 1574 actionable rows done (63%).**
+**Overall: 1008 / 1574 actionable rows done (64%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -40,8 +40,8 @@
 | 7 · ui/component | [7a-score-view-control-plane](matrix-component/7a-score-view-control-plane.md) | 57 | 57 | ✅ complete |
 |  | [7b-scoreview](matrix-component/7b-scoreview.md) | 21 | 21 | ✅ complete |
 |  | [7c-hit-test-drag-selection-preview-routing](matrix-component/7c-hit-test-drag-selection-preview-routing.md) | 16 | 18 | in progress |
-|  | [7d-mainframe](matrix-component/7d-mainframe.md) | 34 | 35 | in progress |
-|  | [7e-line-score-rendering-geometry](matrix-component/7e-line-score-rendering-geometry.md) | 0 | 19 | not started |
+|  | [7d-mainframe](matrix-component/7d-mainframe.md) | 35 | 35 | ✅ complete |
+|  | [7e-line-score-rendering-geometry](matrix-component/7e-line-score-rendering-geometry.md) | 6 | 19 | in progress |
 |  | [7f-score-panels-text-components](matrix-component/7f-score-panels-text-components.md) | 0 | 24 | not started |
 |  | [7g-toolbars](matrix-component/7g-toolbars.md) | 0 | 2 | not started |
 |  | [7h-input-text-widgets](matrix-component/7h-input-text-widgets.md) | 0 | 28 | not started |

@@ -129,12 +129,12 @@ public class LineComponent extends ScoreComponent
     /** Index of the grace note paired with the currently playing note (-1 if none). */
     private int playingGraceNoteIndex = -1;
 
-    /** Cached layout result from the last layout pass. */
+    /** Cached layout result from the last layout pass. Package-private for test injection. */
     @Nullable
-    private LayoutResult layoutResult;
+    LayoutResult layoutResult;
 
-    /** Whether layout needs to be recalculated. */
-    private boolean layoutDirty = true;
+    /** Whether layout needs to be recalculated. Package-private for test inspection. */
+    boolean layoutDirty = true;
 
     /** True when the previous line's lyric extender continues into this line. */
     private boolean hasLeadingLyricContinuation;

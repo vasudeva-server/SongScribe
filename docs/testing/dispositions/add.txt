@@ -1785,3 +1785,17 @@ MainFrameTest.PerformStartupAction.testShowFileChooserPostsShowOpenDialogCommand
 MainFrameTest.TogglePref.testToggleLoopPlaybackPersistsLoopPlaybackPref	7d-mainframe	row 37 — handleToggleLoopPlayback persists LOOP_PLAYBACK pref
 MainFrameTest.TogglePref.testTogglePlayWithRepeatsPersistsPlayWithRepeatsPref	7d-mainframe	row 38 — handleTogglePlayWithRepeats persists PLAY_WITH_REPEATS pref
 MainFrameTest.Print.testPageIndexOneOrMoreReturnsNoSuchPage	7d-mainframe	row 42 — print() returns NO_SUCH_PAGE for pageIndex >= 1
+MainFrameTest.Print.testNullPrinterJobThrows	7d-mainframe	row 43 — print() throws when printerJob is null
+LineComponentTest.StaffPositionToYPx.testSpZeroReturnsMiddleLineYPx	7e-line-score-rendering-geometry	row 1 — staffPositionToYPx sp=0 returns middleLineYPx
+LineComponentTest.StaffPositionToYPx.testPositiveSpAddsDownwardOffset	7e-line-score-rendering-geometry	row 1 — staffPositionToYPx positive sp adds downward offset
+LineComponentTest.StaffPositionToYPx.testNegativeSpAddsUpwardOffset	7e-line-score-rendering-geometry	row 1 — staffPositionToYPx negative sp adds upward offset
+LineComponentTest.GetMiddleLineYPx.testExactValueRoundsCorrectly	7e-line-score-rendering-geometry	row 2 — getMiddleLineYPx rounds to nearest int (exact)
+LineComponentTest.GetMiddleLineYPx.testFractionalValueRoundsToNearestInt	7e-line-score-rendering-geometry	row 2 — getMiddleLineYPx rounds fractional to nearest int
+LineComponentTest.CalculateMiddleLineYSs.testReturnsAboveStaffSsPlusHalfStaff	7e-line-score-rendering-geometry	row 3 — calculateMiddleLineYSs returns aboveStaffSs + STAFF_HALF_SS
+LineComponentTest.GetPreferredSize.testNullSongReturnsDimensionZero	7e-line-score-rendering-geometry	row 4 — getPreferredSize null song returns (0,0)
+LineComponentTest.GetPreferredSize.testNullLineReturnsDimensionZero	7e-line-score-rendering-geometry	row 4 — getPreferredSize null line returns (0,0)
+LineComponentTest.GetPreferredSize.testNonNullInputsReturnCeilingRoundedDimension	7e-line-score-rendering-geometry	row 4 — getPreferredSize returns ceiling-rounded px dimensions
+LineComponentTest.LayoutDirtySemantics.testInvalidateLayoutNullsResultAndSetsDirty	7e-line-score-rendering-geometry	row 5 — invalidateLayout nulls result and sets dirty flag
+LineComponentTest.LayoutDirtySemantics.testEnsureLayoutDoesNothingWhenSongAndLineAreNull	7e-line-score-rendering-geometry	row 5 — ensureLayout no-op when song/line null
+LineComponentTest.SetLine.testSetLineSetsLayoutDirtyAndNullsResultAndCreatesSelectionState	7e-line-score-rendering-geometry	row 6 — setLine marks dirty, nulls result, creates selection state
+LineComponentTest.SetLine.testSetLineRegistersSelectionStateWithCoordinatorWhenScoreViewIsSet	7e-line-score-rendering-geometry	row 6 — setLine registers selection state with coordinator when scoreView set

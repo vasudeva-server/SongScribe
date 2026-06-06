@@ -40,7 +40,7 @@
 | MainFrame | Window-close on dirty doc with suppressed dialog vetoes shutdown (app stays alive) | e2e | `ShutdownTest.windowCloseOnDirtyDocCancelKeepsAppAlive` | adequate (partial) | Note: this test only covers the CLOSED_OPTION (dialog dismissed) path, not the explicit Cancel button — but this is the limit of what dialog suppression can simulate; distinct Cancel branch should be unit-tested | — |
 | MainFrame | Window-close on clean doc progresses past save check (sentinel fires) | e2e | `ShutdownTest.windowCloseOnCleanDocProgressesPastSaveCheck` | adequate | — | — |
 | MainFrame | `print()` — `Printable.print()` returns `NO_SUCH_PAGE` for pageIndex ≥ 1 | unit | — | missing | Add unit test: call `print(g, pf, 1)`, assert `Printable.NO_SUCH_PAGE` returned | ✅ |
-| MainFrame | `print()` — throws when `printerJob` is null | unit | — | missing | Add unit test: call without prior `handlePrint()`, assert `RuntimeError` thrown | ⬜ |
+| MainFrame | `print()` — throws when `printerJob` is null | unit | — | missing | Add unit test: call without prior `handlePrint()`, assert `RuntimeError` thrown | ✅ |
 | MainFrame | `handlePrint()` / `handlePrint(PrintCommand)` — pure Swing print dialog wiring | none | — | — | No test warranted — risk is the OS print dialog, not our code | — |
 | MainFrame | `handleShowOpenDialog` / `handlePrefs` / `installDesktopHandlers` — pure wiring, no branching logic other than `Desktop.isSupported()` | none | — | — | No test warranted | — |
 | MainFrame | `getInstance()` singleton / `InstanceHolder` / `firstRun()` stub | none | — | — | Trivial; no test warranted | — |
