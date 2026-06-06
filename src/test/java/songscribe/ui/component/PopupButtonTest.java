@@ -22,6 +22,14 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.withSettings;
+
+import java.awt.event.ActionEvent;
+
+import javax.swing.event.PopupMenuEvent;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,12 +37,18 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.ui.action.UIAction;
+import songscribe.util.UIUtils;
 
 /**
  * Unit tests for {@link PopupButton} covering:
  * <ul>
  *   <li>Row 25 — {@code setCurrentAction(null)}: is a no-op — no NPE thrown,
  *       {@code currentAction} is set to null, {@code configureButtonFromAction} is not called</li>
+ *   <li>Row 26 — {@code setCurrentAction(non-null Selectable)}: calls {@code setSelected(true)}
+ *       on the action and deselects the button</li>
+ *   <li>Row 27 — {@code actionPerformed} when {@code popupWasCanceledByButton} is true:
+ *       clears flag and deselects button without showing the popup</li>
+ *   <li>Row 29 — {@code popupMenuWillBecomeInvisible}: deselects the button</li>
  * </ul>
  */
 class PopupButtonTest extends UnitTest {
@@ -65,5 +79,59 @@ class PopupButtonTest extends UnitTest {
     void testSetCurrentActionNullSetsCurrentActionToNull() {
         button.setCurrentAction(null);
         assertThat(button.getCurrentAction()).isNull();
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 26: setCurrentAction(non-null Selectable) calls setSelected(true) on
+    // the action and deselects the button
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testSetCurrentActionSelectableCallsSetSelectedTrue() {
+        // A mock that is both UIAction and UIAction.Selectable so the
+        // instanceof check in setCurrentAction triggers
+        var action = mock(UIAction.class, withSettings().extraInterfaces(UIAction.Selectable.class));
+        button.setCurrentAction(action);
+        verify((UIAction.Selectable) action).setSelected(true);
+    }
+
+    @Test
+    void testSetCurrentActionSelectableDeselectsButton() {
+        // Pre-select the button so the change is observable
+        button.setSelected(true);
+        var action = mock(UIAction.class, withSettings().extraInterfaces(UIAction.Selectable.class));
+        button.setCurrentAction(action);
+        assertThat(button.isSelected()).isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 27: actionPerformed when popupWasCanceledByButton==true clears the
+    // flag and deselects the button without re-showing the popup
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testActionPerformedWhenCanceledByButtonDeselectsButton() {
+        // Set popupWasCanceledByButton = true by driving through popupMenuCanceled,
+        // mocking UIUtils.getComponentUnderMouse() to return this button.
+        try (var uiUtilsMock = mockStatic(UIUtils.class)) {
+            uiUtilsMock.when(UIUtils::getComponentUnderMouse).thenReturn(button);
+            button.popupMenuCanceled(new PopupMenuEvent(button));
+        }
+
+        // Pre-select so we can observe the deselect
+        button.setSelected(true);
+        button.actionPerformed(new ActionEvent(button, ActionEvent.ACTION_PERFORMED, ""));
+        assertThat(button.isSelected()).isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 29: popupMenuWillBecomeInvisible deselects the button
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testPopupMenuWillBecomeInvisibleDeselectsButton() {
+        button.setSelected(true);
+        button.popupMenuWillBecomeInvisible(new PopupMenuEvent(button));
+        assertThat(button.isSelected()).isFalse();
     }
 }
