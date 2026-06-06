@@ -30,16 +30,16 @@
 | MainFrame | `setCurrentFile()` — stores file and calls `updateTitle()` | unit | — | missing | Add unit test: call `setCurrentFile(file)`, assert `currentFile` updated and title reflects new name | ✅ |
 | MainFrame | `performStartupAction()` — `DO_NOTHING` branch posts nothing | unit | — | missing | Add unit test: stub prefs → `DO_NOTHING`, assert no message posted | ✅ |
 | MainFrame | `performStartupAction()` — Alt-key pressed forces `DO_NOTHING` regardless of pref | unit | — | missing | Add unit test: mock `ModifierState.isAltPressed() == true`, assert no message posted even when pref = `OPEN_MOST_RECENT` | ✅ |
-| MainFrame | `performStartupAction()` — `OPEN_MOST_RECENT` with existing file posts `OpenFileCommand` | unit | — | missing | Add unit test: stub path exists, assert `OpenFileCommand` posted | ⬜ |
-| MainFrame | `performStartupAction()` — `OPEN_MOST_RECENT` with missing file shows error dialog | unit | — | missing | Add unit test: stub `mostRecentPath.toFile().exists() == false`, assert `OptionDialogs.showErrorMessage()` called | ⬜ |
-| MainFrame | `performStartupAction()` — `OPEN_MOST_RECENT` with `mostRecentPath == null` returns early | unit | — | missing | Add unit test: pass `null`, assert no dialog and no message posted | ⬜ |
-| MainFrame | `performStartupAction()` — `SHOW_FILE_CHOOSER` posts `ShowOpenDialogCommand` | unit | — | missing | Add unit test | ⬜ |
-| MainFrame | `handleToggleLoopPlayback` — persists `LOOP_PLAYBACK` pref from command | unit | — | missing | Add unit test: post `ToggleLoopPlaybackCommand(true/false)`, assert `Prefs.getBoolean(LOOP_PLAYBACK)` matches | ⬜ |
-| MainFrame | `handleTogglePlayWithRepeats` — persists `PLAY_WITH_REPEATS` pref from command | unit | — | missing | Add unit test: post `TogglePlayWithRepeatsCommand(true/false)`, assert `Prefs.getBoolean(PLAY_WITH_REPEATS)` matches | ⬜ |
+| MainFrame | `performStartupAction()` — `OPEN_MOST_RECENT` with existing file posts `OpenFileCommand` | unit | — | missing | Add unit test: stub path exists, assert `OpenFileCommand` posted | ✅ |
+| MainFrame | `performStartupAction()` — `OPEN_MOST_RECENT` with missing file shows error dialog | unit | — | missing | Add unit test: stub `mostRecentPath.toFile().exists() == false`, assert `OptionDialogs.showErrorMessage()` called | ✅ |
+| MainFrame | `performStartupAction()` — `OPEN_MOST_RECENT` with `mostRecentPath == null` returns early | unit | — | missing | Add unit test: pass `null`, assert no dialog and no message posted | ✅ |
+| MainFrame | `performStartupAction()` — `SHOW_FILE_CHOOSER` posts `ShowOpenDialogCommand` | unit | — | missing | Add unit test | ✅ |
+| MainFrame | `handleToggleLoopPlayback` — persists `LOOP_PLAYBACK` pref from command | unit | — | missing | Add unit test: post `ToggleLoopPlaybackCommand(true/false)`, assert `Prefs.getBoolean(LOOP_PLAYBACK)` matches | ✅ |
+| MainFrame | `handleTogglePlayWithRepeats` — persists `PLAY_WITH_REPEATS` pref from command | unit | — | missing | Add unit test: post `TogglePlayWithRepeatsCommand(true/false)`, assert `Prefs.getBoolean(PLAY_WITH_REPEATS)` matches | ✅ |
 | MainFrame | App quit via QuitAction triggers `Shutdown.now()` | e2e | `ShutdownTest.quitActionTriggersShutdown` | adequate | — | — |
 | MainFrame | Window-close on dirty doc with suppressed dialog vetoes shutdown (app stays alive) | e2e | `ShutdownTest.windowCloseOnDirtyDocCancelKeepsAppAlive` | adequate (partial) | Note: this test only covers the CLOSED_OPTION (dialog dismissed) path, not the explicit Cancel button — but this is the limit of what dialog suppression can simulate; distinct Cancel branch should be unit-tested | — |
 | MainFrame | Window-close on clean doc progresses past save check (sentinel fires) | e2e | `ShutdownTest.windowCloseOnCleanDocProgressesPastSaveCheck` | adequate | — | — |
-| MainFrame | `print()` — `Printable.print()` returns `NO_SUCH_PAGE` for pageIndex ≥ 1 | unit | — | missing | Add unit test: call `print(g, pf, 1)`, assert `Printable.NO_SUCH_PAGE` returned | ⬜ |
+| MainFrame | `print()` — `Printable.print()` returns `NO_SUCH_PAGE` for pageIndex ≥ 1 | unit | — | missing | Add unit test: call `print(g, pf, 1)`, assert `Printable.NO_SUCH_PAGE` returned | ✅ |
 | MainFrame | `print()` — throws when `printerJob` is null | unit | — | missing | Add unit test: call without prior `handlePrint()`, assert `RuntimeError` thrown | ⬜ |
 | MainFrame | `handlePrint()` / `handlePrint(PrintCommand)` — pure Swing print dialog wiring | none | — | — | No test warranted — risk is the OS print dialog, not our code | — |
 | MainFrame | `handleShowOpenDialog` / `handlePrefs` / `installDesktopHandlers` — pure wiring, no branching logic other than `Desktop.isSupported()` | none | — | — | No test warranted | — |

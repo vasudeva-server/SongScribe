@@ -1778,3 +1778,10 @@ add:MainFrameTest.SetCurrentFile.testStoresFileAndCallsUpdateTitle
 add:MainFrameTest.SetCurrentFile.testStoresNullAndCallsUpdateTitle
 add:MainFrameTest.PerformStartupAction.testDoNothingPostsNoMessage
 add:MainFrameTest.PerformStartupAction.testAltKeyForcesDoNothingRegardlessOfPref
+MainFrameTest.PerformStartupAction.testOpenMostRecentWithExistingFilePostsOpenFileCommand	7d-mainframe	row 33 — OPEN_MOST_RECENT existing file posts OpenFileCommand
+MainFrameTest.PerformStartupAction.testOpenMostRecentWithMissingFileShowsErrorDialog	7d-mainframe	row 34 — OPEN_MOST_RECENT missing file shows error dialog
+MainFrameTest.PerformStartupAction.testOpenMostRecentWithNullPathReturnsEarly	7d-mainframe	row 35 — OPEN_MOST_RECENT null path returns early
+MainFrameTest.PerformStartupAction.testShowFileChooserPostsShowOpenDialogCommand	7d-mainframe	row 36 — SHOW_FILE_CHOOSER posts ShowOpenDialogCommand
+MainFrameTest.TogglePref.testToggleLoopPlaybackPersistsLoopPlaybackPref	7d-mainframe	row 37 — handleToggleLoopPlayback persists LOOP_PLAYBACK pref
+MainFrameTest.TogglePref.testTogglePlayWithRepeatsPersistsPlayWithRepeatsPref	7d-mainframe	row 38 — handleTogglePlayWithRepeats persists PLAY_WITH_REPEATS pref
+MainFrameTest.Print.testPageIndexOneOrMoreReturnsNoSuchPage	7d-mainframe	row 42 — print() returns NO_SUCH_PAGE for pageIndex >= 1

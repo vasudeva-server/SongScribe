@@ -33,6 +33,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.awt.Graphics;
+import java.awt.print.PageFormat;
+import java.awt.print.Printable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -56,6 +59,10 @@ import songscribe.dom.Song;
 import songscribe.io.SongIO;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.NewFileCommand;
+import songscribe.message.command.OpenFileCommand;
+import songscribe.message.command.ShowOpenDialogCommand;
+import songscribe.message.command.ToggleLoopPlaybackCommand;
+import songscribe.message.command.TogglePlayWithRepeatsCommand;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -946,6 +953,204 @@ class MainFrameTest extends UnitTest {
                     never()
                 );
             }
+        }
+
+        /**
+         * {@code OPEN_MOST_RECENT} with an existing file posts {@link OpenFileCommand} for
+         * that file.
+         */
+        @Test
+        void testOpenMostRecentWithExistingFilePostsOpenFileCommand(@TempDir Path tempDir) throws IOException {
+            var tempFile = Files.createTempFile(tempDir, "MainFrameTest", ".mssw").toFile();
+            var recentPath = tempFile.toPath();
+
+            try (var prefsMock = mockStatic(Prefs.class);
+                 var messageCenterMock = mockStatic(MessageCenter.class)) {
+
+                prefsMock.when(() -> Prefs.getString(PrefsKey.STARTUP_ACTION))
+                    .thenReturn(StartupAction.OPEN_MOST_RECENT.name());
+
+                MainFrame.performStartupAction(recentPath);
+
+                var captor = ArgumentCaptor.forClass(OpenFileCommand.class);
+                messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+                assertThat(captor.getValue().getFile())
+                    .as("OpenFileCommand posted with the recent file")
+                    .isEqualTo(tempFile);
+            }
+        }
+
+        /**
+         * {@code OPEN_MOST_RECENT} when the file does not exist shows an error dialog and
+         * posts no message.
+         */
+        @Test
+        void testOpenMostRecentWithMissingFileShowsErrorDialog() {
+            var missingPath = Path.of("nonexistent-song.mssw");
+
+            try (var prefsMock = mockStatic(Prefs.class);
+                 var mainFrameMock = mockStatic(MainFrame.class);
+                 var optionDialogsMock = mockStatic(OptionDialogs.class);
+                 var messageCenterMock = mockStatic(MessageCenter.class)) {
+
+                prefsMock.when(() -> Prefs.getString(PrefsKey.STARTUP_ACTION))
+                    .thenReturn(StartupAction.OPEN_MOST_RECENT.name());
+
+                // Allow the real performStartupAction to run while getInstance returns a mock.
+                mainFrameMock.when(MainFrame::getInstance).thenReturn(frame);
+                mainFrameMock.when(() -> MainFrame.performStartupAction(any()))
+                    .thenCallRealMethod();
+
+                MainFrame.performStartupAction(missingPath);
+
+                optionDialogsMock.verify(
+                    () -> OptionDialogs.showErrorMessage(any(), anyString(), anyString(), any())
+                );
+                messageCenterMock.verify(
+                    () -> MessageCenter.post(any()),
+                    never()
+                );
+            }
+        }
+
+        /**
+         * {@code OPEN_MOST_RECENT} with a null {@code mostRecentPath} returns early — no
+         * dialog and no message posted.
+         */
+        @Test
+        void testOpenMostRecentWithNullPathReturnsEarly() {
+            try (var prefsMock = mockStatic(Prefs.class);
+                 var optionDialogsMock = mockStatic(OptionDialogs.class);
+                 var messageCenterMock = mockStatic(MessageCenter.class)) {
+
+                prefsMock.when(() -> Prefs.getString(PrefsKey.STARTUP_ACTION))
+                    .thenReturn(StartupAction.OPEN_MOST_RECENT.name());
+
+                MainFrame.performStartupAction(null);
+
+                optionDialogsMock.verify(
+                    () -> OptionDialogs.showErrorMessage(any(), anyString(), anyString(), any()),
+                    never()
+                );
+                messageCenterMock.verify(
+                    () -> MessageCenter.post(any()),
+                    never()
+                );
+            }
+        }
+
+        /**
+         * {@code SHOW_FILE_CHOOSER} posts {@link ShowOpenDialogCommand}.
+         */
+        @Test
+        void testShowFileChooserPostsShowOpenDialogCommand() {
+            try (var prefsMock = mockStatic(Prefs.class);
+                 var messageCenterMock = mockStatic(MessageCenter.class)) {
+
+                prefsMock.when(() -> Prefs.getString(PrefsKey.STARTUP_ACTION))
+                    .thenReturn(StartupAction.SHOW_FILE_CHOOSER.name());
+
+                MainFrame.performStartupAction(null);
+
+                var captor = ArgumentCaptor.forClass(ShowOpenDialogCommand.class);
+                messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+                assertThat(captor.getValue())
+                    .as("ShowOpenDialogCommand posted")
+                    .isInstanceOf(ShowOpenDialogCommand.class);
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleToggleLoopPlayback / handleTogglePlayWithRepeats
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TogglePref {
+
+        /**
+         * {@code handleToggleLoopPlayback} persists {@code true} from the command.
+         */
+        @Test
+        void testToggleLoopPlaybackPersistsLoopPlaybackPrefTrue() {
+            doCallRealMethod().when(frame).handleToggleLoopPlayback(any());
+
+            try (var prefsMock = mockStatic(Prefs.class)) {
+                frame.handleToggleLoopPlayback(new ToggleLoopPlaybackCommand(true));
+
+                prefsMock.verify(() -> Prefs.put(PrefsKey.LOOP_PLAYBACK, true));
+            }
+        }
+
+        /**
+         * {@code handleToggleLoopPlayback} persists {@code false} from the command.
+         */
+        @Test
+        void testToggleLoopPlaybackPersistsLoopPlaybackPrefFalse() {
+            doCallRealMethod().when(frame).handleToggleLoopPlayback(any());
+
+            try (var prefsMock = mockStatic(Prefs.class)) {
+                frame.handleToggleLoopPlayback(new ToggleLoopPlaybackCommand(false));
+
+                prefsMock.verify(() -> Prefs.put(PrefsKey.LOOP_PLAYBACK, false));
+            }
+        }
+
+        /**
+         * {@code handleTogglePlayWithRepeats} persists {@code false} from the command.
+         */
+        @Test
+        void testTogglePlayWithRepeatsPersistsPlayWithRepeatsPrefFalse() {
+            doCallRealMethod().when(frame).handleTogglePlayWithRepeats(any());
+
+            try (var prefsMock = mockStatic(Prefs.class)) {
+                frame.handleTogglePlayWithRepeats(new TogglePlayWithRepeatsCommand(false));
+
+                prefsMock.verify(() -> Prefs.put(PrefsKey.PLAY_WITH_REPEATS, false));
+            }
+        }
+
+        /**
+         * {@code handleTogglePlayWithRepeats} persists {@code true} from the command.
+         */
+        @Test
+        void testTogglePlayWithRepeatsPersistsPlayWithRepeatsPrefTrue() {
+            doCallRealMethod().when(frame).handleTogglePlayWithRepeats(any());
+
+            try (var prefsMock = mockStatic(Prefs.class)) {
+                frame.handleTogglePlayWithRepeats(new TogglePlayWithRepeatsCommand(true));
+
+                prefsMock.verify(() -> Prefs.put(PrefsKey.PLAY_WITH_REPEATS, true));
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // print()
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class Print {
+
+        /**
+         * When {@code pageIndex >= 1}, {@link MainFrame#print} returns
+         * {@link Printable#NO_SUCH_PAGE} immediately — before inspecting
+         * {@code printerJob}.
+         */
+        @Test
+        void testPageIndexOneOrMoreReturnsNoSuchPage() {
+            doCallRealMethod().when(frame).print(any(Graphics.class), any(PageFormat.class), anyInt());
+
+            var graphics = mock(Graphics.class);
+            var pageFormat = mock(PageFormat.class);
+
+            var result = frame.print(graphics, pageFormat, 1);
+
+            assertThat(result)
+                .as("pageIndex ≥ 1 → NO_SUCH_PAGE")
+                .isEqualTo(Printable.NO_SUCH_PAGE);
         }
     }
 
