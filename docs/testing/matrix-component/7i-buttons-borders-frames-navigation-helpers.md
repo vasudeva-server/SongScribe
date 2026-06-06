@@ -36,15 +36,15 @@
 | `TickSlider` | `setSnappedValue`: selects the nearest stop when given an off-stop value | unit | none | missing | (same class — off-stop input) | ✅ |
 | `TickSlider` | `setSnappedValue`: updates `lastCommittedValue` to suppress a spurious `tickDidChange` on the subsequent `setValue` call | unit | none | missing | Verify no callback fires after `setSnappedValue` even if the value changes | ✅ |
 | `ComponentNames` | `line(index)` concatenates `LINE_PREFIX` + index correctly | unit | none | missing | Assert `line(0).equals("line-0")`, `line(3).equals("line-3")` — guards against future constant changes | ✅ |
-| `ComponentHierarchyNavigator` | `getLineComponent(index)`: returns null when `mainPanel` is null | unit | none | missing | Mock provider returning null; assert null result | ⬜ |
-| `ComponentHierarchyNavigator` | `getLineComponent(index)`: returns matching `LineComponent` when found | unit | none | missing | Mock panel hierarchy with known line index; assert correct component returned | ⬜ |
-| `ComponentHierarchyNavigator` | `getActualLineMiddleYPx`: returns 0 when `mainPanel` is null | unit | none | missing | (same test class — null panel path) | ⬜ |
-| `ComponentHierarchyNavigator` | `getActualLineMiddleYPx`: sums Y offsets from mainPanel + staffPanel + linePanel + lineComponent + middleLineY | unit | none | missing | Mock all contributors with known Y values; assert sum | ⬜ |
-| `ComponentHierarchyNavigator` | `findLineIndexAtPoint`: uses formula when `mainPanel` is null | unit | none | missing | Mock null panel + mock song with `topPaddingSs`; verify fallback formula | ⬜ |
-| `ComponentHierarchyNavigator` | `findLineIndexAtPoint`: finds correct line panel containing the Y coordinate | unit | none | missing | Mock panels with known bounds; assert correct index | ⬜ |
-| `ComponentHierarchyNavigator` | `findLineIndexAtPoint`: returns -1 when Y is outside all panels | unit | none | missing | (same class) | ⬜ |
-| `ComponentHierarchyNavigator` | `updateLayoutFromComponents`: single panel fallback uses height + margin | unit | none | missing | Mock one panel; assert `rowHeightPx` uses the single-line formula | ⬜ |
-| `ComponentHierarchyNavigator` | `updateLayoutFromComponents`: with >= 2 panels, rowHeight = midY[1] - midY[0] | unit | none | missing | Mock two panels with known midpoints; assert difference | ⬜ |
+| `ComponentHierarchyNavigator` | `getLineComponent(index)`: returns null when `mainPanel` is null | unit | none | missing | Mock provider returning null; assert null result | ✅ |
+| `ComponentHierarchyNavigator` | `getLineComponent(index)`: returns matching `LineComponent` when found | unit | none | missing | Mock panel hierarchy with known line index; assert correct component returned | ✅ |
+| `ComponentHierarchyNavigator` | `getActualLineMiddleYPx`: returns 0 when `mainPanel` is null | unit | none | missing | (same test class — null panel path) | ✅ |
+| `ComponentHierarchyNavigator` | `getActualLineMiddleYPx`: sums Y offsets from mainPanel + staffPanel + linePanel + lineComponent + middleLineY | unit | none | missing | Mock all contributors with known Y values; assert sum | ✅ |
+| `ComponentHierarchyNavigator` | `findLineIndexAtPoint`: uses formula when `mainPanel` is null | unit | none | missing | Mock null panel + mock song with `topPaddingSs`; verify fallback formula | ✅ |
+| `ComponentHierarchyNavigator` | `findLineIndexAtPoint`: finds correct line panel containing the Y coordinate | unit | none | missing | Mock panels with known bounds; assert correct index | ✅ |
+| `ComponentHierarchyNavigator` | `findLineIndexAtPoint`: returns -1 when Y is outside all panels | unit | none | missing | (same class) | ✅ |
+| `ComponentHierarchyNavigator` | `updateLayoutFromComponents`: single panel fallback uses height + margin | unit | none | missing | Mock one panel; assert `rowHeightPx` uses the single-line formula | ✅ |
+| `ComponentHierarchyNavigator` | `updateLayoutFromComponents`: with >= 2 panels, rowHeight = midY[1] - midY[0] | unit | none | missing | Mock two panels with known midpoints; assert difference | ✅ |
 | `ActivationGate` | `activate()` makes glass pane visible; `deactivate()` hides it and stops timer | unit | none | missing | Call `install` with a real (hidden) `JFrame`; call `activate()`/`deactivate()` and assert glass pane visibility + timer state | ⬜ |
 | `ActivationGate` | `appRaisedToForeground()` restarts the cmd+Tab timer | unit | none | missing | (same test class — assert timer restarts) | ⬜ |
 | `ToolbarButton` | `propertyChange`: updates button from action when `FONT_ICON_KEY` or `FONT_KEY` changes | none | — | — | Pure Swing property dispatch wiring; no computable value beyond delegation | — |
