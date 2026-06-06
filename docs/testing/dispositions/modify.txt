@@ -76,3 +76,9 @@ ScoreViewControllerCommandHandlerTest.testHandleRemoveDynamicsEmitsRemovals  # s
 
 # 7a rows 15 — ScoreViewControllerTest (strengthen handleDelete lyric test)
 modify: ScoreViewControllerTest.DeleteLyric.testDeleteRemovesSelectedLyricAndClearsLyricSelection
+
+# 7e rows 18,20 — LineRenderer production changes (widen for testing)
+modify: LineRenderer.getElementColor — widened from private to package-private for direct testing
+modify: LineRenderer.renderPreviewElement — widened from private to package-private for direct testing
+modify: LineRenderer.renderKeyChanges — widened from private to package-private for direct testing
+modify: LineRenderer.computeOverrideXSs — extracted from renderElements as new package-private static method for row 20 testing

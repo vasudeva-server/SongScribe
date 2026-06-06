@@ -21,7 +21,10 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -35,6 +38,7 @@ import java.awt.image.BufferedImage;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.assertj.core.data.Offset;
+import org.mockito.MockedStatic;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,14 +47,19 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.SongLayoutMetrics;
+import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.renderer.ElementFrame;
+import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.LineInvariants;
+import songscribe.ui.renderer.NoteRenderer;
 import songscribe.ui.renderer.RenderingUtils;
 
 /**
@@ -290,6 +299,339 @@ class LineRendererTest extends UnitTest {
             assertThat(g2.getTransform().getTranslateX())
                 .as("transform is restored to original after renderWithPreviewShiftIfNeeded")
                 .isEqualTo(identityTransform.getTranslateX(), TOLERANCE);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // getElementColor — grace-cancel coloring layer (row 18)
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class GetElementColor {
+
+        private LineComponent lc;
+        private LineRenderer renderer;
+
+        @BeforeEach
+        void setUp() {
+            lc = mock(LineComponent.class);
+            renderer = new LineRenderer(lc);
+        }
+
+        /**
+         * When the element is currently playing, {@code invariants.getElementColor}
+         * returns the playing-note color (non-BLACK). The renderer must return that
+         * color directly without applying the grace-cancel RED override.
+         */
+        @Test
+        void testPlayingElementReturnsPlayingColorNotRed() {
+            var invariants = seededBuilder()
+                .setEditMode(true)
+                .setPlayingNoteIndex(0)
+                .build();
+
+            var color = renderer.getElementColor(0, invariants);
+
+            var playingColor = ScoreView.getPlayingNoteColor();
+            assertThat(color)
+                .as("playing element should return the playing color, not RED")
+                .isEqualTo(playingColor)
+                .isNotEqualTo(Color.RED);
+        }
+
+        /**
+         * When {@code invariants.getElementColor} returns BLACK (no playing, no
+         * selection) and the element is pending grace-note cancellation,
+         * {@code getElementColor} must return {@link Color#RED}.
+         */
+        @Test
+        void testPendingCancelElementReturnsRed() {
+            var line = detachedLine();
+            var element = ElementType.CROTCHET.newInstance();
+            line.addElement(element);
+
+            var invariants = seededBuilder()
+                .setCurrentLine(line)
+                .setEditMode(true)
+                .build();
+
+            when(lc.getLine()).thenReturn(line);
+            when(lc.isPendingCancelElement(element)).thenReturn(true);
+
+            var color = renderer.getElementColor(0, invariants);
+
+            assertThat(color)
+                .as("pending-cancel element should be colored RED")
+                .isEqualTo(Color.RED);
+        }
+
+        /**
+         * When {@code invariants.getElementColor} returns BLACK and the element is NOT
+         * pending grace-note cancellation, the result must be BLACK (no override).
+         */
+        @Test
+        void testNonPendingCancelBlackElementReturnsBlack() {
+            var line = detachedLine();
+            var element = ElementType.CROTCHET.newInstance();
+            line.addElement(element);
+
+            var invariants = seededBuilder()
+                .setCurrentLine(line)
+                .setEditMode(true)
+                .build();
+
+            when(lc.getLine()).thenReturn(line);
+            when(lc.isPendingCancelElement(element)).thenReturn(false);
+
+            var color = renderer.getElementColor(0, invariants);
+
+            assertThat(color)
+                .as("non-pending-cancel element with BLACK invariant should remain BLACK")
+                .isEqualTo(Color.BLACK);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // computeOverrideXSs — preview-shift X arithmetic (row 20)
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ComputeOverrideXSs {
+
+        private static final int FROM_INDEX = 2;
+        private static final double SHIFT_SS = 3.0;
+        private static final double ELEMENT_X_SS = 7.0;
+
+        /**
+         * When the frame carries a preview shift and the element index is at or after
+         * the shift boundary, the override equals the element's layout X plus the shift.
+         * Tested for the boundary case ({@code elementIndex == fromIndex}) and beyond.
+         */
+        @Test
+        void testOverrideAppliedWhenIndexAtOrAfterBoundary() {
+            var element = ElementType.CROTCHET.newInstance();
+            // Use a mock LayoutResult to control getElementXSs without needing package-private setXSs
+            var layoutResult = mock(LayoutResult.class);
+            when(layoutResult.getElementXSs(element)).thenReturn(ELEMENT_X_SS);
+            var frame = ElementFrame.lineLevelWithPreviewShift(FROM_INDEX, SHIFT_SS);
+
+            // Boundary: elementIndex == fromIndex
+            var overrideAtBoundary = LineRenderer.computeOverrideXSs(frame, FROM_INDEX, element, layoutResult);
+            assertThat(overrideAtBoundary)
+                .as("override X at boundary equals layout X + shift")
+                .isEqualTo(ELEMENT_X_SS + SHIFT_SS);
+
+            // Beyond boundary: elementIndex > fromIndex
+            var overridePastBoundary = LineRenderer.computeOverrideXSs(frame, FROM_INDEX + 1, element, layoutResult);
+            assertThat(overridePastBoundary)
+                .as("override X past boundary equals layout X + shift")
+                .isEqualTo(ELEMENT_X_SS + SHIFT_SS);
+        }
+
+        /**
+         * When the element index is before the shift boundary, no override is applied
+         * and {@link Double#NaN} is returned.
+         */
+        @Test
+        void testNoOverrideWhenIndexBeforeBoundary() {
+            var element = ElementType.CROTCHET.newInstance();
+            var layoutResult = LayoutResult.builder().build();
+            var frame = ElementFrame.lineLevelWithPreviewShift(FROM_INDEX, SHIFT_SS);
+
+            var result = LineRenderer.computeOverrideXSs(frame, FROM_INDEX - 1, element, layoutResult);
+
+            assertThat(result)
+                .as("no override when element index is before the shift boundary")
+                .isNaN();
+        }
+
+        /**
+         * When the frame has no preview shift ({@link ElementFrame#LINE_LEVEL}),
+         * no override is applied regardless of element index.
+         */
+        @Test
+        void testNoOverrideWhenFrameHasNoPreviewShift() {
+            var element = ElementType.CROTCHET.newInstance();
+            var layoutResult = LayoutResult.builder().build();
+
+            var result = LineRenderer.computeOverrideXSs(ElementFrame.LINE_LEVEL, FROM_INDEX, element, layoutResult);
+
+            assertThat(result)
+                .as("no override when frame has no preview shift")
+                .isNaN();
+        }
+
+        /**
+         * A {@link ElementType#FINAL_DOUBLE_BARLINE} element is never shifted —
+         * the override must be {@link Double#NaN} even when all other conditions hold.
+         */
+        @Test
+        void testNoOverrideForFinalDoubleBarline() {
+            var element = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+            var layoutResult = LayoutResult.builder().build();
+            var frame = ElementFrame.lineLevelWithPreviewShift(FROM_INDEX, SHIFT_SS);
+
+            var result = LineRenderer.computeOverrideXSs(frame, FROM_INDEX, element, layoutResult);
+
+            assertThat(result)
+                .as("FINAL_DOUBLE_BARLINE is never shifted — override must be NaN")
+                .isNaN();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // renderPreviewElement — X-source routing (row 21)
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RenderPreviewElementXRouting {
+
+        private static final double LOCKED_X_SS = 5.0;
+
+        private LineComponent lc;
+        private LineRenderer renderer;
+        private MockedStatic<NoteRenderer> nrMock;
+        private MockedStatic<ScoreView> scoreMock;
+
+        @BeforeEach
+        void setUp() {
+            lc = mock(LineComponent.class);
+            renderer = new LineRenderer(lc);
+            nrMock = mockStatic(NoteRenderer.class);
+            scoreMock = mockStatic(ScoreView.class);
+
+            var mockScore = mock(ScoreView.class);
+            var nrInstance = mock(NoteRenderer.class);
+
+            nrMock.when(NoteRenderer::getInstance).thenReturn(nrInstance);
+            scoreMock.when(() -> ScoreView.defaultUpperNote(any())).thenReturn(true);
+            scoreMock.when(ScoreView::getPreviewElementColor).thenReturn(Color.GRAY);
+
+            when(lc.getScoreView()).thenReturn(mockScore);
+            when(mockScore.getMode()).thenReturn(Mode.EDIT);
+            when(lc.getPreviewElement()).thenReturn(ElementType.CROTCHET.newInstance());
+            when(lc.isPreviewElementVisible()).thenReturn(true);
+
+            PreviewElementManager.setCurrentPreviewLine(lc);
+            PreviewElementManager.setCurrentStaffPosition(0);
+        }
+
+        @AfterEach
+        void tearDown() {
+            PreviewElementManager.setCurrentPreviewLine(null);
+            scoreMock.close();
+            nrMock.close();
+        }
+
+        /**
+         * In grace mode, the locked X position from {@link LineComponent#getGraceModeLockedXSs()}
+         * is used as the preview element X, not {@code calculateInsertionXSs}.
+         */
+        @Test
+        void testGraceModeUsesLockedX() {
+            when(lc.isGraceModeInProgress()).thenReturn(true);
+            when(lc.getGraceModeLockedXSs()).thenReturn(LOCKED_X_SS);
+
+            var g2 = spyGraphics();
+            var invariants = seededBuilder().build();
+            renderer.renderPreviewElement(g2, invariants, ElementFrame.LINE_LEVEL);
+
+            // Grace-mode path reads the locked X
+            verify(lc).getGraceModeLockedXSs();
+            // Normal path: getLine() would be called for calculateInsertionXSs — must NOT happen
+            verify(lc, never()).getLine();
+        }
+
+        /**
+         * In normal (non-grace) mode, the X position comes from
+         * {@code layoutResult.calculateInsertionXSs}, which requires the current line
+         * from {@link LineComponent#getLine()}.
+         */
+        @Test
+        void testNormalModeUsesLayoutInsertionX() {
+            when(lc.isGraceModeInProgress()).thenReturn(false);
+            var song = new Song();
+            var line = song.getLine(0);
+            when(lc.getLine()).thenReturn(line);
+
+            var g2 = spyGraphics();
+            var invariants = seededBuilder().build();
+            renderer.renderPreviewElement(g2, invariants, ElementFrame.LINE_LEVEL);
+
+            // Normal path reads getLine() to pass to calculateInsertionXSs
+            verify(lc).getLine();
+            // Grace path must NOT be taken
+            verify(lc, never()).getGraceModeLockedXSs();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // renderKeyChanges — last-line guard (row 23)
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RenderKeyChanges {
+
+        private MockedStatic<KeySignatureRenderer> ksrMock;
+        private KeySignatureRenderer ksrInstance;
+
+        @BeforeEach
+        void setUp() {
+            ksrMock = mockStatic(KeySignatureRenderer.class);
+            ksrInstance = mock(KeySignatureRenderer.class);
+            ksrMock.when(KeySignatureRenderer::getInstance).thenReturn(ksrInstance);
+        }
+
+        @AfterEach
+        void tearDown() {
+            ksrMock.close();
+        }
+
+        /** Builds a minimal {@link LineInvariants} for line 0 of the given song. */
+        private LineInvariants invariantsFor(Song song) {
+            return LineInvariants.builder(song, DocumentFonts.defaultsFromPrefs())
+                .setLayoutResult(LayoutResult.builder().build())
+                .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
+                .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0))
+                .setLineIndex(0)
+                .setCurrentLine(song.getLine(0))
+                .build();
+        }
+
+        /**
+         * When the line is the last line in the song ({@code lineIndex + 1 >= lineCount}),
+         * {@code renderKeyChanges} returns immediately without delegating to
+         * {@link KeySignatureRenderer#renderKeyChange}.
+         */
+        @Test
+        void testLastLineSkipsRendering() {
+            // Song with 1 line → lineIndex=0 is the last line
+            var song = new Song();
+            var g2 = spyGraphics();
+
+            renderer.renderKeyChanges(g2, invariantsFor(song));
+
+            verify(ksrInstance, never()).renderKeyChange(any(), any(), any(), anyDouble(), any());
+        }
+
+        /**
+         * When the line is NOT the last line ({@code lineIndex + 1 < lineCount}),
+         * {@code renderKeyChanges} delegates to {@link KeySignatureRenderer#renderKeyChange}.
+         */
+        @Test
+        void testNonLastLineDelegatesToRenderer() {
+            // Song with 2 lines → lineIndex=0 is not the last line
+            var song = new Song();
+            song.addLine(new Line(song));  // appends a second line
+            var g2 = spyGraphics();
+
+            renderer.renderKeyChanges(g2, invariantsFor(song));
+
+            verify(ksrInstance).renderKeyChange(any(), any(), any(), anyDouble(), any());
         }
     }
 }

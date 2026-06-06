@@ -30,6 +30,7 @@ import songscribe.layout.NoteGeometry;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Beam;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.DynamicAttachment;
@@ -240,11 +241,7 @@ class LineRenderer {
                 var color = getElementColor(i, invariants);
                 g2.setColor(color);
 
-                var overrideXSs = lineFrame.hasPreviewShift()
-                    && i >= lineFrame.previewShiftFromIndex()
-                    && element.getType() != ElementType.FINAL_DOUBLE_BARLINE
-                    ? layoutResult.getElementXSs(element) + lineFrame.previewShiftSs()
-                    : Double.NaN;
+                var overrideXSs = computeOverrideXSs(lineFrame, i, element, layoutResult);
 
                 var frame = lineFrame.withElement(i, overrideXSs);
                 noteRenderer.render(invariants, frame, element, g2);
@@ -253,16 +250,45 @@ class LineRenderer {
     }
 
     /**
+     * Computes the X-position override (in staff-space) for an element when a preview
+     * shift is active and the element falls at or after the shift boundary.
+     * <p>
+     * Returns the element's natural layout X plus the preview shift amount, or
+     * {@link Double#NaN} if no override applies (no shift, element before boundary,
+     * or element is a final double barline which is never shifted).
+     * Package-private for testing.
+     *
+     * @param lineFrame    Line-level frame carrying any active preview shift
+     * @param elementIndex Index of the element within the line
+     * @param element      The element being rendered
+     * @param layoutResult The current layout result
+     * @return Override X in staff-space, or {@link Double#NaN}
+     */
+    static double computeOverrideXSs(
+        ElementFrame lineFrame,
+        int elementIndex,
+        StaffElement element,
+        LayoutResult layoutResult
+    ) {
+        return lineFrame.hasPreviewShift()
+            && elementIndex >= lineFrame.previewShiftFromIndex()
+            && element.getType() != ElementType.FINAL_DOUBLE_BARLINE
+            ? layoutResult.getElementXSs(element) + lineFrame.previewShiftSs()
+            : Double.NaN;
+    }
+
+    /**
      * Determines the color for rendering an element.
      * <p>
      * Delegates edit mode, playback, selection, and hover logic to
      * {@link LineInvariants#getElementColor}. Adds grace-cancel coloring on top.
+     * Package-private for testing.
      *
      * @param elementIndex The index of the element within this line
      * @param invariants          The per-line invariants
      * @return The color to use for rendering
      */
-    private Color getElementColor(int elementIndex, LineInvariants invariants) {
+    Color getElementColor(int elementIndex, LineInvariants invariants) {
         var color = invariants.getElementColor(elementIndex);
 
         if (color != Color.BLACK) {
@@ -371,11 +397,12 @@ class LineRenderer {
      * When the next line has a different key signature, this renders
      * naturals (if needed) and the new key signature at the end of
      * the current line as a warning to the performer.
+     * Package-private for testing.
      *
      * @param g2  Graphics context
      * @param invariants Line invariants
      */
-    private void renderKeyChanges(Graphics2D g2, LineInvariants invariants) {
+    void renderKeyChanges(Graphics2D g2, LineInvariants invariants) {
         var song = invariants.getSong();
         var lineIndex = invariants.getLineIndex();
 
@@ -519,12 +546,13 @@ class LineRenderer {
 
     /**
      * Renders the preview element if this line is the current preview line.
+     * Package-private for testing.
      *
      * @param g2        Graphics context
      * @param invariants       Line invariants
      * @param lineFrame Line-level frame (carries any active preview shift)
      */
-    private void renderPreviewElement(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
+    void renderPreviewElement(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         // Only render if this line is the current insertion line
         if (!PreviewElementManager.hasPreviewElement(lc)) {
             return;

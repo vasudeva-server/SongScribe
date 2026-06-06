@@ -1814,3 +1814,20 @@ LineRendererTest.RenderWithPreviewShiftIfNeeded.testShiftAppliedWhenSpanStartAtO
 LineRendererTest.RenderWithPreviewShiftIfNeeded.testShiftNotAppliedWhenSpanStartBeforeFromIndex	7e-line-score-rendering-geometry	row 17 — renderWithPreviewShiftIfNeeded: shift not applied when spanStart < fromIndex
 LineRendererTest.RenderWithPreviewShiftIfNeeded.testShiftNotAppliedWhenFrameHasNoPreviewShift	7e-line-score-rendering-geometry	row 17 — renderWithPreviewShiftIfNeeded: no shift applied when frame has no preview shift
 LineRendererTest.RenderWithPreviewShiftIfNeeded.testTransformRestoredAfterShiftedRender	7e-line-score-rendering-geometry	row 17 — renderWithPreviewShiftIfNeeded: transform restored after shifted render
+LineRendererTest.GetElementColor.testPlayingElementReturnsPlayingColorNotRed	7e-line-score-rendering-geometry	row 18 — getElementColor: playing element returns playing color, not RED
+LineRendererTest.GetElementColor.testPendingCancelElementReturnsRed	7e-line-score-rendering-geometry	row 18 — getElementColor: pending-cancel element returns Color.RED
+LineRendererTest.GetElementColor.testNonPendingCancelBlackElementReturnsBlack	7e-line-score-rendering-geometry	row 18 — getElementColor: non-pending-cancel element with BLACK invariant returns BLACK
+LineRendererTest.ComputeOverrideXSs.testOverrideAppliedWhenIndexAtOrAfterBoundary	7e-line-score-rendering-geometry	row 20 — computeOverrideXSs: override applied when element index >= boundary
+LineRendererTest.ComputeOverrideXSs.testNoOverrideWhenIndexBeforeBoundary	7e-line-score-rendering-geometry	row 20 — computeOverrideXSs: NaN when index < boundary
+LineRendererTest.ComputeOverrideXSs.testNoOverrideWhenFrameHasNoPreviewShift	7e-line-score-rendering-geometry	row 20 — computeOverrideXSs: NaN when no preview shift
+LineRendererTest.ComputeOverrideXSs.testNoOverrideForFinalDoubleBarline	7e-line-score-rendering-geometry	row 20 — computeOverrideXSs: FINAL_DOUBLE_BARLINE always NaN
+LineRendererTest.RenderPreviewElementXRouting.testGraceModeUsesLockedX	7e-line-score-rendering-geometry	row 21 — renderPreviewElement: grace mode uses getGraceModeLockedXSs
+LineRendererTest.RenderPreviewElementXRouting.testNormalModeUsesLayoutInsertionX	7e-line-score-rendering-geometry	row 21 — renderPreviewElement: normal mode reads getLine() for calculateInsertionXSs
+LineRendererTest.RenderKeyChanges.testLastLineSkipsRendering	7e-line-score-rendering-geometry	row 23 — renderKeyChanges: last-line guard skips KeySignatureRenderer
+LineRendererTest.RenderKeyChanges.testNonLastLineDelegatesToRenderer	7e-line-score-rendering-geometry	row 23 — renderKeyChanges: non-last line delegates to KeySignatureRenderer
+ScoreComponentTest.ResolveContentX.testExplicitContentXReturnedDirectly	7e-line-score-rendering-geometry	row 24 — resolveContentX: explicit contentXPx >= 0 returned directly
+ScoreComponentTest.ResolveContentX.testDefaultCenteringFormula	7e-line-score-rendering-geometry	row 24 — resolveContentX: default centering formula (lineWidthPx - textWidth) / 2
+ScoreComponentTest.ResolveContentX.testZeroContentXReturnedDirectly	7e-line-score-rendering-geometry	row 24 — resolveContentX: contentX == 0 is explicit, not centering
+ScoreComponentTest.SetMargin.testUniformMarginSetsAllSides	7e-line-score-rendering-geometry	row 25 — setMargin(int): uniform margin sets all four sides
+ScoreComponentTest.SetMargin.testCssStyleMarginSetsEachSideIndependently	7e-line-score-rendering-geometry	row 25 — setMargin(int,int,int,int): CSS-style sets each side independently
+ScoreComponentTest.SetMargin.testCssStyleOverridesPreviousUniformMargin	7e-line-score-rendering-geometry	row 25 — setMargin: CSS-style overrides previous uniform margin
