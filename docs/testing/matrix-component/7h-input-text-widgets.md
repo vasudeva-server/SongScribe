@@ -55,15 +55,15 @@
 | `LyricEditor` | `recomputeBounds`: lineComponent=null → early return without NPE | unit | Implicitly exercised (score mock returns null for `getLineComponent`) | adequate | — | — |
 | `LyricEditor` | `LeadingSlackFieldView.keepAllocationAtContentOrigin`: when `adjusted.x < input.x`, x is clamped to input.x | unit | — | missing | The null-guard and x-clamping inside `keepAllocationAtContentOrigin` are pure logic with no test | ✅ |
 | `LyricEditor` | `LeadingSlackFieldView.adjustAllocation`: during paint pass, allocation is shifted by `LEADING_PAINT_SLACK_PX` and clamped | unit | — | missing | Pure geometry branch untested; could be exercised without a full Swing pipeline | ✅ |
-| `NumericTextField` | Integer filter: digits allowed, non-digit rejected with beep | unit | — | missing | `InputUtils.CustomDocumentFilter` (used by integer `NumericTextField`) has no unit tests; the pattern `\d+` means multi-character non-digit input is rejected | ⬜ |
-| `NumericTextField` | Decimal filter: valid decimal prospective string allowed; would-be invalid (two dots) rejected with beep | unit | — | missing | `InputUtils.DecimalDocumentFilter.isProspectiveTextValid` performs whole-document validation; the prospective-string computation and two-dot rejection are untested logic | ⬜ |
-| `NumericTextField` | `addDecimalFilter` variant: `allowDecimal=true` routes to `DecimalDocumentFilter` for spinner; `allowDecimal=false` routes to `CustomDocumentFilter` | unit | — | missing | No test distinguishes the two filter types; a regression in routing would go undetected | ⬜ |
-| `NonEmptyGuard` | `validate()`: non-blank text → returns true, no dialog shown | unit | — | missing | | ⬜ |
-| `NonEmptyGuard` | `validate()`: blank text, no defaultValueKey → `showWarningAndRefocus`, returns false | unit | — | missing | | ⬜ |
-| `NonEmptyGuard` | `validate()`: blank text, defaultValueKey set, user chooses "use default" → fills field, returns true | unit | — | missing | Both modes (with and without default) carry real logic and need tests; `showDefaultValueDialog` has a non-trivial index/option-result mapping | ⬜ |
-| `NonEmptyGuard` | `validate()`: blank text, defaultValueKey set, user dismisses/chooses "continue editing" → refocuses, returns false | unit | — | missing | | ⬜ |
-| `NonEmptyGuard` | `install()`: temporary focus-lost event → guard skipped | unit | — | missing | `e.isTemporary()` guard | ⬜ |
-| `NonEmptyGuard` | `install()`: focus-lost to exempt component → guard skipped | unit | — | missing | `exemptComponents.contains(e.getOppositeComponent())` guard | ⬜ |
+| `NumericTextField` | Integer filter: digits allowed, non-digit rejected with beep | unit | — | missing | `InputUtils.CustomDocumentFilter` (used by integer `NumericTextField`) has no unit tests; the pattern `\d+` means multi-character non-digit input is rejected | ✅ |
+| `NumericTextField` | Decimal filter: valid decimal prospective string allowed; would-be invalid (two dots) rejected with beep | unit | — | missing | `InputUtils.DecimalDocumentFilter.isProspectiveTextValid` performs whole-document validation; the prospective-string computation and two-dot rejection are untested logic | ✅ |
+| `NumericTextField` | `addDecimalFilter` variant: `allowDecimal=true` routes to `DecimalDocumentFilter` for spinner; `allowDecimal=false` routes to `CustomDocumentFilter` | unit | — | missing | No test distinguishes the two filter types; a regression in routing would go undetected | ✅ |
+| `NonEmptyGuard` | `validate()`: non-blank text → returns true, no dialog shown | unit | — | missing | | ✅ |
+| `NonEmptyGuard` | `validate()`: blank text, no defaultValueKey → `showWarningAndRefocus`, returns false | unit | — | missing | | ✅ |
+| `NonEmptyGuard` | `validate()`: blank text, defaultValueKey set, user chooses "use default" → fills field, returns true | unit | — | missing | Both modes (with and without default) carry real logic and need tests; `showDefaultValueDialog` has a non-trivial index/option-result mapping | ✅ |
+| `NonEmptyGuard` | `validate()`: blank text, defaultValueKey set, user dismisses/chooses "continue editing" → refocuses, returns false | unit | — | missing | | ✅ |
+| `NonEmptyGuard` | `install()`: temporary focus-lost event → guard skipped | unit | — | missing | `e.isTemporary()` guard | ✅ |
+| `NonEmptyGuard` | `install()`: focus-lost to exempt component → guard skipped | unit | — | missing | `exemptComponents.contains(e.getOppositeComponent())` guard | ✅ |
 | `TextFocusDelegate` | `focusGained`: sets `ignoreTabKey=true`, posts `TextEditingDidChangeNotification(true)` | unit | — | missing | | ⬜ |
 | `TextFocusDelegate` | `focusLost`: posts `TextEditingDidChangeNotification(false)` | unit | — | missing | | ⬜ |
 | `TextFocusDelegate` | `processKeyEvent` for JTextField host: returns false (no tab handling), clears ignoreTabKey | unit | — | missing | | ⬜ |
