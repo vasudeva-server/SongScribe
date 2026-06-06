@@ -34,7 +34,7 @@
 | `PreviewElementManager` | `insertElement` tuplet removal: inserting within tuplet span removes it; inserting after span preserves it | unit | `PreviewElementManagerTupletTest` (`InsertElement`) | adequate | — | — |
 | `PreviewElementManager` | `insertElement` syllable/extend adjustment: `adjustSyllablesForNeighborChange`, `adjustExtendsForInsertion`, `adjustSyllablesForSuccessorAfterInsertion` called with correct indices | unit | — | missing | Add unit test verifying syllable state on adjacent elements is correct after insertion (integration with Line's lyric model) | ✅ |
 | `PreviewElementManager` | `trackMouse` alt-key clears preview; grace-mode locks X to `lockedInsertionXSs`; out-of-range sp clears preview; terminal block suppresses preview; grace-inside-pair suppresses preview | e2e | `ElementInsertionTest` (partial) | inadequate | The e2e tests exercise happy paths for insertion and drag-connect but do not systematically cover alt-key, grace-inside-pair suppression, or the "layout null during drag" guard; add unit tests for these pure-logic branches by driving `trackMouse` with a mocked `LineComponent` | ⬜ |
-| `PreviewElementManager` | `validateAndGetPreviewElement`: returns null when `elementWasModified` is true (stale-preview guard) | unit | — | missing | Add unit test: `elementWasModified` returns true → method returns null and `previewElementDidChange` is called | ⬜ |
+| `PreviewElementManager` | `validateAndGetPreviewElement`: returns null when `elementWasModified` is true (stale-preview guard) | unit | — | missing | Add unit test: `elementWasModified` returns true → method returns null and `previewElementDidChange` is called | ✅ |
 
 **7C notes (quality concerns):**
 

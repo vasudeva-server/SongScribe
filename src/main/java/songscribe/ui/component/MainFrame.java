@@ -481,7 +481,7 @@ public class MainFrame extends JFrame implements Printable {
         setMinimumSize(new Dimension(minSize.width, MIN_WINDOW_HEIGHT));
     }
 
-    private boolean showSaveDialog() {
+    boolean showSaveDialog() {
         if (scoreView == null || !scoreView.getSong().isModified()) {
             return true;
         }
@@ -759,7 +759,7 @@ public class MainFrame extends JFrame implements Printable {
         }
     }
 
-    private boolean saveCurrentFile() {
+    boolean saveCurrentFile() {
         if (currentFile == null || scoreView == null) {
             return false;
         }

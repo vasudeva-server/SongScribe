@@ -21,12 +21,17 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.ui.edit.EditModeManager;
 
 /**
  * Tests for the two principal routing branches inside
@@ -162,5 +167,46 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
                 .as("element at index 1 replaced with preview type")
                 .isEqualTo(ElementType.QUAVER);
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // validateAndGetPreviewElement stale-preview guard (row 37)
+    // -----------------------------------------------------------------------
+
+    /**
+     * When {@code EditModeManager.elementWasModified()} returns {@code true} for the
+     * current element, {@code validateAndGetPreviewElement} returns {@code null}, causing
+     * {@code modifyExistingElement} to bail out without changing the element. The stale-
+     * preview notification is still fired via {@code previewElementDidChange}.
+     */
+    @Test
+    void testElementWasModifiedCausesEarlyReturnAndFiresChangeNotification() {
+        addNotes(1, ElementType.CROTCHET);
+
+        // Preview element is a different type; clicking on the existing note would
+        // normally replace it — but elementWasModified will block that.
+        setPreviewElement(ElementType.QUAVER.newInstance());
+        PreviewElementManager.setCurrentXIndex(0);
+        PreviewElementManager.setXPosSsMatchesElement(true);
+
+        // Override the base stub: mark the element as already-modified (stale preview).
+        editModeManagerMock
+            .when(() -> EditModeManager.elementWasModified(any(Line.class), anyInt()))
+            .thenReturn(true);
+
+        var typeBefore = line.getElement(0).getType();
+
+        PreviewElementManager.handleClick(lc);
+
+        // Element must NOT have been replaced (modifyExistingElement returned early).
+        assertThat(line.getElement(0).getType())
+            .as("element type unchanged: stale-preview guard prevented replacement")
+            .isEqualTo(typeBefore);
+
+        // previewElementDidChange must have been called to notify that the preview
+        // is stale and should be refreshed.
+        editModeManagerMock.verify(
+            () -> EditModeManager.previewElementDidChange(any(Line.class), eq(0))
+        );
     }
 }
