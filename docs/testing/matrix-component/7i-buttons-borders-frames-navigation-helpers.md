@@ -16,13 +16,13 @@
 | `ThemeAwareMatteBorder` | `getBorderInsets()` returns correct insets matching constructor arguments | unit | none | missing | Construct with known values, assert insets are correct | ✅ |
 | `ThemeAwareMatteBorder` | `paintBorder` falls back to `DEFAULT_COLOR` when UIManager key not found | none | — | — | Pure rendering; color selection logic is trivial one-liner, no computable state to assert without Graphics mock | — |
 | `ThemeAwareMatteBorder` | `isBorderOpaque()` always returns true | none | — | — | Trivial constant return, framework behavior | — |
-| `ModeCycleButton` | `modeDidChange`: button NOT updated when `isAdjustmentMode()` is true | unit | none | missing | Mock `ModeDidChangeNotification`; verify `updateButton` is skipped in adjustment mode | ⬜ |
-| `ModeCycleButton` | `modeDidChange`: button IS updated when `isAdjustmentMode()` is false | unit | none | missing | (same test class) | ⬜ |
-| `ModeCycleButton` | `playbackStateDidChange`: button disabled when playing, enabled otherwise | unit | none | missing | Mock `PlaybackController.isPlaying()`; assert `isEnabled()` | ⬜ |
-| `ModeCycleButton` | `graceModeStateDidChange`: button disabled when grace mode active | unit | none | missing | Mock `GraceModeManager.isActive()`; assert `isEnabled()` | ⬜ |
-| `StickyToggleButton` | `actionPerformed`: when button is NOT selected after click, reselects it (sticky behavior) | unit | none | missing | Call `actionPerformed` with button in unselected state; verify `isSelected()` is re-set to true and action is NOT performed | ⬜ |
-| `StickyToggleButton` | `actionPerformed`: when button IS selected after click, marks action selected and fires `actionPerformed` | unit | none | missing | (same test class) | ⬜ |
-| `PopupButton` | `setCurrentAction(null)` is a no-op (no NPE, currentAction set to null, no configureButtonFromAction call) | unit | none | missing | Pass null; assert method returns without throwing | ⬜ |
+| `ModeCycleButton` | `modeDidChange`: button NOT updated when `isAdjustmentMode()` is true | unit | none | missing | Mock `ModeDidChangeNotification`; verify `updateButton` is skipped in adjustment mode | ✅ |
+| `ModeCycleButton` | `modeDidChange`: button IS updated when `isAdjustmentMode()` is false | unit | none | missing | (same test class) | ✅ |
+| `ModeCycleButton` | `playbackStateDidChange`: button disabled when playing, enabled otherwise | unit | none | missing | Mock `PlaybackController.isPlaying()`; assert `isEnabled()` | ✅ |
+| `ModeCycleButton` | `graceModeStateDidChange`: button disabled when grace mode active | unit | none | missing | Mock `GraceModeManager.isActive()`; assert `isEnabled()` | ✅ |
+| `StickyToggleButton` | `actionPerformed`: when button is NOT selected after click, reselects it (sticky behavior) | unit | none | missing | Call `actionPerformed` with button in unselected state; verify `isSelected()` is re-set to true and action is NOT performed | ✅ |
+| `StickyToggleButton` | `actionPerformed`: when button IS selected after click, marks action selected and fires `actionPerformed` | unit | none | missing | (same test class) | ✅ |
+| `PopupButton` | `setCurrentAction(null)` is a no-op (no NPE, currentAction set to null, no configureButtonFromAction call) | unit | none | missing | Pass null; assert method returns without throwing | ✅ |
 | `PopupButton` | `setCurrentAction(non-null Selectable)` calls `setSelected(true)` on the action and deselects button | unit | none | missing | Mock a `UIAction.Selectable`; verify `setSelected(true)` is called and button becomes deselected | ⬜ |
 | `PopupButton` | `actionPerformed`: `popupWasCanceledByButton` true → clears flag, deselects button, popup not shown again | unit | none | missing | Set flag via `popupMenuCanceled`, fire `actionPerformed`; verify flag reset and `isSelected()==false` | ⬜ |
 | `PopupButton` | `actionPerformed`: popup already visible → hides popup | none | — | — | Requires real Swing popup visibility; e2e cost exceeds value for this sub-branch | — |
