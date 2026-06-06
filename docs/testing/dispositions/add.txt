@@ -1700,3 +1700,24 @@ ScoreViewTest.OpenFile.testOpenFileReturnsFalseOnIoError	7b-scoreview	row 24: op
 ScoreViewTest.OpenFile.testOpenFileReturnsFalseWhenLineTooWide	7b-scoreview	rows 24+26: openFile returns false on LineWidthTooLarge switch arm
 ScoreViewTest.OpenFile.testOpenFileDetectsLineWidthTooLargeFromSuccessResult	7b-scoreview	row 26: openFile detects oversized line width from Success and returns false
 ScoreViewTest.OpenFile.testOpenFileReturnsTrueOnSuccessInstallsFontsSetsSongAndFiresCallback	7b-scoreview	row 25: openFile returns true, installs fonts, sets song, fires callback
+ElementHitTestTest.testPointInsideFirstElementReturnsZero	7c	add: hitTestElement returns 0 for point inside first element
+ElementHitTestTest.testPointBetweenElementsReturnsNegativeOne	7c	add: hitTestElement returns -1 for point that misses all elements
+ElementHitTestTest.testNonInteractableAutoTerminalSkippedAndReturnsNegativeOne	7c	add: hitTestElement skips auto-maintained terminal
+ElementHitTestTest.testNullLineReturnsNegativeOne	7c	add: hitTestElement returns -1 when line is null
+ElementHitTestTest.testExpandToMinimumExpandsNarrowElement	7c	add: buildElementHitRect(true) symmetrically expands narrow element
+ElementHitTestTest.testExpandToMinimumDoesNotExpandElementAtOrAboveThreshold	7c	add: buildElementHitRect(true) does not expand when minHitSize=0
+ElementHitTestTest.testNoExpansionReturnsNaturalRect	7c	add: buildElementHitRect(false) returns natural-size rect
+LineSelectionHandlerTest.testPointOnElementHeadReturnsElementHead	7c	add: hitTest returns ElementHead when element hit
+LineSelectionHandlerTest.testPointAtGlissandoOnNonGraceNoteReturnsGlissando	7c	add: hitTest returns Glissando for regular note glissando hit
+LineSelectionHandlerTest.testPointAtGlissandoOnGraceNoteReturnsGraceGlissando	7c	add: hitTest returns GraceGlissando for grace note glissando hit
+LineSelectionHandlerTest.testYExactlyAtRadiusBoundaryAndXInHeaderReturnsStaffLine	7c	add: hitTest returns StaffLine when Y exactly at ±2.0 ss radius
+LineSelectionHandlerTest.testYJustBeyondRadiusReturnsNothing	7c	add: hitTest returns Nothing when Y exceeds STAFF_HIT_RADIUS_SS
+LineSelectionHandlerTest.testXPastHeaderRightEdgeReturnsNothing	7c	add: hitTest returns Nothing when X past clef header right edge
+LineSelectionHandlerTest.testNoHitReturnsNothing	7c	add: hitTest returns Nothing when nothing hit
+LineSelectionHandlerTest.testDragRectEnclosingOneElementSelectsThatElement	7c	add: calculateLineSelectionFromDrag selects only intersecting elements
+LineSelectionHandlerTest.testDragRectEnclosingMultipleElementsSelectsRange	7c	add: calculateLineSelectionFromDrag selects range for multiple hits
+NoteDragHandlerTest.testReleaseWithoutDragCollapsesSelectionToClickedNote	7c	add: handleRelease calls selectElementAtIndex (not selectAndPlayElement) for no-drag preserved selection
+NoteDragHandlerTest.testNotSelectModeReturnsFalse	7c	add: handlePress returns false when mode != SELECT
+NoteDragHandlerTest.testMidiPlayingReturnsFalse	7c	add: handlePress returns false when MIDI is playing
+NoteDragHandlerTest.testShiftDownReturnsFalse	7c	add: handlePress returns false on shift+click
+NoteDragHandlerTest.testHitMissReturnsFalse	7c	add: handlePress returns false when no element hit

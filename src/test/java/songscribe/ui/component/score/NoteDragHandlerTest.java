@@ -23,10 +23,13 @@ package songscribe.ui.component.score;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import module java.desktop;
@@ -84,8 +87,9 @@ class NoteDragHandlerTest extends UnitTest {
     // the screen-Y delta that yields a specific target position.
     private int pressOriginalSp;
 
-    // Screen-Y in pixels used by the press MouseEvent; dragToPosition uses a different value
-    // so the handler sees a non-zero delta.
+    // Mouse coordinates used by press/drag events. X is arbitrary; screen-Y values differ
+    // so the handler sees a non-zero delta on drag.
+    private static final int MOUSE_X = 100;
     private static final int PRESS_SCREEN_Y = 100;
     private static final int DRAG_SCREEN_Y = 50;
 
@@ -415,6 +419,88 @@ class NoteDragHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // No-drag on Preserved Multi-selection
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class NoDragOnPreservedMultiSelection {
+
+        @Test
+        void testReleaseWithoutDragCollapsesSelectionToClickedNote() {
+            // [crotchet@0, crotchet@2, crotchet@4] with all three selected.
+            // Press on note 1 (already in selection) → pressPreservedMultiSelection = true.
+            // No drag. Release → selectElementAtIndex(1) called, not selectAndPlayElement.
+            var line = createLine(0, 2, 4);
+            when(lc.getLine()).thenReturn(line);
+
+            setupMultiSelection(0, 2, 1);
+            pressOnNote(1);
+            handler.handleRelease();
+
+            var mockSelectionHandler = lc.getSelectionHandler();
+            verify(mockSelectionHandler).selectElementAtIndex(1);
+            verify(mockSelectionHandler, never()).selectAndPlayElement(anyInt());
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // HandlePress Guards
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandlePressGuards {
+
+        private MouseEvent pressEvent() {
+            return mouseEvent(lc, MouseEvent.MOUSE_PRESSED, MOUSE_X, PRESS_SCREEN_Y, MouseEvent.BUTTON1);
+        }
+
+        private MouseEvent shiftPressEvent() {
+            return new MouseEvent(
+                lc, MouseEvent.MOUSE_PRESSED, 0L,
+                MouseEvent.SHIFT_DOWN_MASK,
+                MOUSE_X, PRESS_SCREEN_Y, MOUSE_X, PRESS_SCREEN_Y, 1, false, MouseEvent.BUTTON1
+            );
+        }
+
+        @Test
+        void testNotSelectModeReturnsFalse() {
+            var mockScore = lc.getScoreView();
+            when(mockScore.getMode()).thenReturn(Mode.EDIT);
+
+            var result = handler.handlePress(pressEvent());
+
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        void testMidiPlayingReturnsFalse() {
+            midiControllerMock.when(MidiController::isPlaying).thenReturn(true);
+
+            var result = handler.handlePress(pressEvent());
+
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        void testShiftDownReturnsFalse() {
+            var result = handler.handlePress(shiftPressEvent());
+
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        void testHitMissReturnsFalse() {
+            hitTestMock.when(() -> ElementHitTest.hitTestElement(any(), any())).thenReturn(-1);
+
+            var result = handler.handlePress(pressEvent());
+
+            assertThat(result).isFalse();
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
 
@@ -444,7 +530,7 @@ class NoteDragHandlerTest extends UnitTest {
         var deltaYSs = deltaSp * StaffExtents.STAFF_POSITION_OFFSET_SS;
         scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble())).thenReturn(deltaYSs);
 
-        var event = mouseEvent(lc, MouseEvent.MOUSE_DRAGGED, 100, DRAG_SCREEN_Y, MouseEvent.BUTTON1);
+        var event = mouseEvent(lc, MouseEvent.MOUSE_DRAGGED, MOUSE_X, DRAG_SCREEN_Y, MouseEvent.BUTTON1);
         handler.handleDrag(event);
     }
 
@@ -465,7 +551,7 @@ class NoteDragHandlerTest extends UnitTest {
             pressOriginalSp = line.getElement(hitIndex).getStaffPosition();
         }
 
-        var event = mouseEvent(lc, MouseEvent.MOUSE_PRESSED, 100, PRESS_SCREEN_Y, MouseEvent.BUTTON1);
+        var event = mouseEvent(lc, MouseEvent.MOUSE_PRESSED, MOUSE_X, PRESS_SCREEN_Y, MouseEvent.BUTTON1);
         handler.handlePress(event);
     }
 
