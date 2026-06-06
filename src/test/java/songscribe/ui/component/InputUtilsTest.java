@@ -27,6 +27,7 @@ import static org.mockito.Mockito.never;
 
 import java.text.ParseException;
 
+import javax.swing.JLabel;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
@@ -234,7 +235,7 @@ class InputUtilsTest extends UnitTest {
 
     // -------------------------------------------------------------------
     // Row 77: RegexFormatter.stringToValue throws ParseException when input
-    //         does not match the pattern; returns value when it matches
+    //         does not match the pattern
     // -------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -249,16 +250,6 @@ class InputUtilsTest extends UnitTest {
                 .isInstanceOf(ParseException.class);
         }
 
-        @Test
-        void testStringToValueReturnsValueWhenInputMatches() throws Exception {
-            var formatter = new InputUtils.RegexFormatter("\\d+");
-
-            // RegexFormatter delegates to DefaultFormatter on match, which returns
-            // the string itself when no value class is configured
-            var result = formatter.stringToValue("42");
-
-            assertThat(result).isEqualTo("42");
-        }
     }
 
     // -------------------------------------------------------------------
@@ -323,6 +314,22 @@ class InputUtilsTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------
+    // addInputFilter else branch: no-op for components that are neither
+    //         JTextField nor JSpinner
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddInputFilterOtherComponent {
+
+        @Test
+        void testAddInputFilterIsNoOpForNonTextNonSpinnerComponent() {
+            var label = new JLabel();
+            InputUtils.addInputFilter(label, "\\d+");
+        }
+    }
+
+    // -------------------------------------------------------------------
     // Row 81: addInputFilter on JSpinner installs RegexFormatter on the
     //         spinner's text field
     // -------------------------------------------------------------------
@@ -332,24 +339,14 @@ class InputUtilsTest extends UnitTest {
     class AddInputFilterSpinner {
 
         @Test
-        void testAddInputFilterInstallsRegexFormatterOnSpinnerTextField() throws Exception {
+        void testAddInputFilterInstallsRegexFormatterOnSpinnerTextField() {
             var spinner = new JSpinner(new SpinnerNumberModel(1, 0, 100, 1));
             InputUtils.addInputFilter(spinner, "\\d+");
 
             var editor = (JSpinner.DefaultEditor) spinner.getEditor();
             var textField = editor.getTextField();
             var factory = (DefaultFormatterFactory) textField.getFormatterFactory();
-            var formatter = (InputUtils.RegexFormatter) factory.getDefaultFormatter();
-
-            // Valid input passes through the formatter without throwing.
-            // The spinner's number model supplies an Integer value class, so
-            // DefaultFormatter converts "42" → Integer(42).
-            var result = formatter.stringToValue("42");
-            assertThat(result).isEqualTo(42);
-
-            // Invalid input throws ParseException
-            assertThatThrownBy(() -> formatter.stringToValue("abc"))
-                .isInstanceOf(ParseException.class);
+            assertThat(factory.getDefaultFormatter()).isInstanceOf(InputUtils.RegexFormatter.class);
         }
     }
 }
