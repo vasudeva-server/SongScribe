@@ -1,15 +1,27 @@
 #!/usr/bin/env bash
 # Run tests with JaCoCo coverage instrumentation, then generate the HTML report.
-# Usage: ./scripts/coverage.sh [test.sh arguments]
+# Usage: ./scripts/coverage.sh [--open] [test.sh arguments]
 # Examples:
 #   ./scripts/coverage.sh          # all tests
 #   ./scripts/coverage.sh unit     # unit tests only
 #   ./scripts/coverage.sh e2e      # e2e tests only
+#   ./scripts/coverage.sh --open   # all tests, open report when done
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+open_report=0
+rest=()
+
+for arg in "$@"; do
+  if [[ "$arg" == "--open" ]]; then
+    open_report=1
+  else
+    rest+=("$arg")
+  fi
+done
 
 AGENT_JAR="$("$PROJECT_DIR/gradlew" -q printJacocoAgentPath --project-dir "$PROJECT_DIR")"
 EXEC_FILE="${PROJECT_DIR}/build/jacoco/test.exec"
@@ -19,11 +31,14 @@ rm -f "$EXEC_FILE"
 
 JACOCO_ARG="-javaagent:${AGENT_JAR}=destfile=${EXEC_FILE},append=true"
 
-EXTRA_JVM_ARGS="${JACOCO_ARG}" "$SCRIPT_DIR/test.sh" "$@"
+EXTRA_JVM_ARGS="${JACOCO_ARG}" "$SCRIPT_DIR/test.sh" "${rest[@]+"${rest[@]}"}"
 
 "$PROJECT_DIR/gradlew" -q jacocoTestReport --project-dir "$PROJECT_DIR"
 
 REPORT="${PROJECT_DIR}/build/reports/jacoco/test/html/index.html"
 echo ""
 echo "Coverage report: $REPORT"
-open "$REPORT" 2>/dev/null || true
+
+if [[ "$open_report" == "1" ]]; then
+  open "$REPORT" 2>/dev/null || true
+fi
