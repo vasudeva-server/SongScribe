@@ -2,18 +2,18 @@
 
 | class | behavior | required level | existing test | verdict | action | done |
 |---|---|---|---|---|---|---|
-| `BaseLabel` | Constructor: index == -1 uses list background (not selection background), otherwise uses selection/normal background | unit | none | missing | Add `BaseLabel` unit tests: index==-1 path, isSelected==true path, isSelected==false path | ⬜ |
+| `BaseLabel` | Constructor: index == -1 uses list background (not selection background), otherwise uses selection/normal background | unit | none | missing | Add `BaseLabel` unit tests: index==-1 path, isSelected==true path, isSelected==false path | ✅ |
 | `BaseLabel` | `paintComponent` — pure rendering (fills background rect, sets foreground) | none | — | — | — | — |
-| `BorderPanel` | `getMyBorder()` returns `MyBorder(borderSpinner.getValue())` when in simple mode | unit | none | missing | Unit-test `getMyBorder` in simple and expert modes (requires Swing components, but logic is pure construction) | ⬜ |
-| `BorderPanel` | `getMyBorder()` returns per-edge `MyBorder(top,bottom,left,right)` when in expert mode | unit | none | missing | (same test class as above) | ⬜ |
-| `BorderPanel` | `setExpertBorder(true)` copies uniform spinner value into all four edge spinners | unit | none | missing | Assert that toggling to expert mode populates edge spinners from the uniform value | ⬜ |
+| `BorderPanel` | `getMyBorder()` returns `MyBorder(borderSpinner.getValue())` when in simple mode | unit | none | missing | Unit-test `getMyBorder` in simple and expert modes (requires Swing components, but logic is pure construction) | ✅ |
+| `BorderPanel` | `getMyBorder()` returns per-edge `MyBorder(top,bottom,left,right)` when in expert mode | unit | none | missing | (same test class as above) | ✅ |
+| `BorderPanel` | `setExpertBorder(true)` copies uniform spinner value into all four edge spinners | unit | none | missing | Assert that toggling to expert mode populates edge spinners from the uniform value | ✅ |
 | `BorderPanel` | `setExpertBorder(false/true)` toggles panel visibility and button label | none | — | — | Pure wiring/rendering, no computed value to assert | — |
-| `MyBorder` | Constructor `(size)` sets all four edges to `size` | unit | none | missing | Parameterized unit tests for all four constructors and `withOverrides` | ⬜ |
-| `MyBorder` | Constructor `(horizontal, vertical)` sets left/right = horizontal, top/bottom = vertical | unit | none | missing | (same class) | ⬜ |
-| `MyBorder` | Constructor `(top, bottom, left, right)` sets each edge independently | unit | none | missing | (same class) | ⬜ |
-| `MyBorder` | `withOverrides(defaultSize, top, left, bottom, right)`: override applied when value > -1, skipped when == -1 | unit | none | missing | Test that -1 leaves edge at defaultSize, non-negative value overrides | ⬜ |
-| `MyBorder` | `getWidth()` returns `left + right`; `getHeight()` returns `top + bottom` | unit | none | missing | (same class) | ⬜ |
-| `ThemeAwareMatteBorder` | `getBorderInsets()` returns correct insets matching constructor arguments | unit | none | missing | Construct with known values, assert insets are correct | ⬜ |
+| `MyBorder` | Constructor `(size)` sets all four edges to `size` | unit | none | missing | Parameterized unit tests for all four constructors and `withOverrides` | ✅ |
+| `MyBorder` | Constructor `(horizontal, vertical)` sets left/right = horizontal, top/bottom = vertical | unit | none | missing | (same class) | ✅ |
+| `MyBorder` | Constructor `(top, bottom, left, right)` sets each edge independently | unit | none | missing | (same class) | ✅ |
+| `MyBorder` | `withOverrides(defaultSize, top, left, bottom, right)`: override applied when value > -1, skipped when == -1 | unit | none | missing | Test that -1 leaves edge at defaultSize, non-negative value overrides | ✅ |
+| `MyBorder` | `getWidth()` returns `left + right`; `getHeight()` returns `top + bottom` | unit | none | missing | (same class) | ✅ |
+| `ThemeAwareMatteBorder` | `getBorderInsets()` returns correct insets matching constructor arguments | unit | none | missing | Construct with known values, assert insets are correct | ✅ |
 | `ThemeAwareMatteBorder` | `paintBorder` falls back to `DEFAULT_COLOR` when UIManager key not found | none | — | — | Pure rendering; color selection logic is trivial one-liner, no computable state to assert without Graphics mock | — |
 | `ThemeAwareMatteBorder` | `isBorderOpaque()` always returns true | none | — | — | Trivial constant return, framework behavior | — |
 | `ModeCycleButton` | `modeDidChange`: button NOT updated when `isAdjustmentMode()` is true | unit | none | missing | Mock `ModeDidChangeNotification`; verify `updateButton` is skipped in adjustment mode | ⬜ |

@@ -60,11 +60,14 @@ public class BorderPanel extends JPanel {
     @SuppressWarnings("NullAway.Init")
     private JPanel borderPanel;
 
+    /** Default border size (in pixels) applied to the uniform spinner on construction. Package-private for testing. */
+    static final int DEFAULT_BORDER_SIZE = 10;
+
     private boolean exportBorder = false;
     private @Nullable ActionListener packListener = null;
 
     public BorderPanel() {
-        borderSpinner.setValue(10);
+        borderSpinner.setValue(DEFAULT_BORDER_SIZE);
         expertBorderButton.addActionListener(_ -> {
             setExpertBorder(!exportBorder);
 
@@ -110,6 +113,19 @@ public class BorderPanel extends JPanel {
                 (Integer) leftSpinner.getValue(),
                 (Integer) rightSpinner.getValue()
             );
+    }
+
+    /** Sets the uniform border spinner value. Package-private for testing. */
+    void setUniformBorderValue(int value) {
+        borderSpinner.setValue(value);
+    }
+
+    /** Sets the four edge spinner values directly. Package-private for testing. */
+    void setEdgeBorderValues(int top, int bottom, int left, int right) {
+        topSpinner.setValue(top);
+        bottomSpinner.setValue(bottom);
+        leftSpinner.setValue(left);
+        rightSpinner.setValue(right);
     }
 
     {
