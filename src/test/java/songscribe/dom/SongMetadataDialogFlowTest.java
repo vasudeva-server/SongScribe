@@ -82,19 +82,28 @@ class SongMetadataDialogFlowTest extends UnitTest {
             var oldYear = song.getYear();
             var oldMonth = song.getMonth();
             var oldDay = song.getDay();
+            var oldComposer = song.getComposer();
+            var oldLyricist = song.getLyricist();
+            var oldLyricsSource = song.getLyricsSource();
+            var oldArrangement = song.isArrangement();
 
             var newTitle = "New Song Title";
             var newPlace = "Paris";
             var newYear = "2024";
             var newMonth = 3;
             var newDay = 15;
+            var newComposer = "Bach";
+            var newLyricist = "Mozart";
+            var newLyricsSource = Song.LyricsSource.TEXT;
+            var newArrangement = true;
 
             song.metadataDidChange(new MetadataDidChangeNotification(
-                newTitle, newPlace, newYear, null, null, newMonth, newDay, null
+                newTitle, newPlace, newYear, null, newMonth, newDay, null,
+                newComposer, newLyricist, newLyricsSource, newArrangement
             ));
 
             var notification = captureSingleDidChange();
-            assertThat(notification.getMutations()).hasSize(5);
+            assertThat(notification.getMutations()).hasSize(9);
 
             var titleChange = findMutation(notification, MetadataField.TITLE);
             assertThat(titleChange.oldValue()).isEqualTo(oldTitle);
@@ -115,13 +124,29 @@ class SongMetadataDialogFlowTest extends UnitTest {
             var dayChange = findMutation(notification, MetadataField.DAY);
             assertThat(dayChange.oldValue()).isEqualTo(oldDay);
             assertThat(dayChange.newValue()).isEqualTo(newDay);
+
+            var composerChange = findMutation(notification, MetadataField.COMPOSER);
+            assertThat(composerChange.oldValue()).isEqualTo(oldComposer);
+            assertThat(composerChange.newValue()).isEqualTo(newComposer);
+
+            var lyricistChange = findMutation(notification, MetadataField.LYRICIST);
+            assertThat(lyricistChange.oldValue()).isEqualTo(oldLyricist);
+            assertThat(lyricistChange.newValue()).isEqualTo(newLyricist);
+
+            var lyricsSourceChange = findMutation(notification, MetadataField.LYRICS_SOURCE);
+            assertThat(lyricsSourceChange.oldValue()).isEqualTo(oldLyricsSource);
+            assertThat(lyricsSourceChange.newValue()).isEqualTo(newLyricsSource);
+
+            var arrangementChange = findMutation(notification, MetadataField.ARRANGEMENT);
+            assertThat(arrangementChange.oldValue()).isEqualTo(oldArrangement);
+            assertThat(arrangementChange.newValue()).isEqualTo(newArrangement);
         }
 
         @Test
         void testNullFieldsAreNotRecorded() {
             // Fields passed as null in the notification must not produce mutations.
             song.metadataDidChange(new MetadataDidChangeNotification(
-                "Only Title", null, null, null, null, null, null, null
+                "Only Title", null, null, null, null, null, null, null, null, null, null
             ));
 
             var notification = captureSingleDidChange();
@@ -153,7 +178,7 @@ class SongMetadataDialogFlowTest extends UnitTest {
 
             song.withModification(() ->
                 song.metadataDidChange(new MetadataDidChangeNotification(
-                    newTitle, newPlace, null, null, null, null, null, null
+                    newTitle, newPlace, null, null, null, null, null, null, null, null, null
                 ))
             );
 

@@ -48,6 +48,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.Crescendo;
+import songscribe.dom.Song;
 import songscribe.dom.Tuplet;
 import songscribe.dom.Diminuendo;
 import songscribe.layout.Ending;
@@ -288,7 +289,7 @@ class MutationRecordsTest extends UnitTest {
 
         @Test
         void testLayoutChangeAcceptsNullValues() {
-            var mutation = new LayoutChange(LayoutField.ATTRIBUTION_START_Y_SS, null, 5.0);
+            var mutation = new LayoutChange(LayoutField.ROW_HEIGHT_ADJUSTMENT_SS, null, 5.0);
 
             assertThat(mutation.oldValue()).isNull();
             assertThat(mutation.newValue()).isEqualTo(5.0);
@@ -472,8 +473,7 @@ class MutationRecordsTest extends UnitTest {
     static Stream<Arguments> layoutFieldExpectedTypes() {
         return Stream.of(
             Arguments.of(LayoutField.LINE_WIDTH_SS, Double.class),
-            Arguments.of(LayoutField.ROW_HEIGHT_ADJUSTMENT_SS, Double.class),
-            Arguments.of(LayoutField.ATTRIBUTION_START_Y_SS, Double.class)
+            Arguments.of(LayoutField.ROW_HEIGHT_ADJUSTMENT_SS, Double.class)
         );
     }
 
@@ -503,7 +503,10 @@ class MutationRecordsTest extends UnitTest {
             Arguments.of(MetadataField.YEAR, String.class),
             Arguments.of(MetadataField.MONTH, Integer.class),
             Arguments.of(MetadataField.DAY, Integer.class),
-            Arguments.of(MetadataField.ATTRIBUTION, String.class),
+            Arguments.of(MetadataField.COMPOSER, String.class),
+            Arguments.of(MetadataField.LYRICIST, String.class),
+            Arguments.of(MetadataField.LYRICS_SOURCE, Song.LyricsSource.class),
+            Arguments.of(MetadataField.ARRANGEMENT, Boolean.class),
             Arguments.of(MetadataField.NUMBER, String.class),
             Arguments.of(MetadataField.TEMPO, Tempo.class),
             Arguments.of(MetadataField.DEFAULT_KEY_ACCIDENTAL_COUNT, Integer.class),

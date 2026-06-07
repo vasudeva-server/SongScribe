@@ -37,10 +37,12 @@ import songscribe.message.SongData;
 import songscribe.font.DocumentFonts;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.Song;
+import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.AttributionPane;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
@@ -49,7 +51,7 @@ import songscribe.dom.TempoChangeAttachment;
 public final class SongIO {
 
     public static final int IO_MAJOR_VERSION = 2;
-    public static final int IO_MINOR_VERSION = 7;
+    public static final int IO_MINOR_VERSION = 8;
 
     // version 1.0
     private static final String XML_SONG = "song";
@@ -85,6 +87,12 @@ public final class SongIO {
 
     // version 1.4
     private static final String XML_DYNAMIC_LAYOUT = "dynamicLayout";
+
+    // version 2.8 — discrete attribution fields
+    private static final String XML_COMPOSER = "composer";
+    private static final String XML_LYRICIST = "lyricist";
+    private static final String XML_LYRICS_SOURCE = "lyricssource";
+    private static final String XML_ARRANGEMENT = "arrangement";
 
     private SongIO() {
     }
@@ -161,21 +169,24 @@ public final class SongIO {
             );
         }
 
-        var attribution = c.getAttribution();
+        XML.writeValue(pw, XML_COMPOSER, c.getComposer());
+        XML.writeValue(pw, XML_LYRICIST, c.getLyricist());
+        XML.writeValue(pw, XML_LYRICS_SOURCE, c.getLyricsSource().name());
 
-        if (!attribution.isEmpty()) {
-            XML.writeValue(pw, XML_INFO, attribution);
+        if (c.isArrangement()) {
+            XML.writeValue(pw, XML_ARRANGEMENT, Boolean.toString(true));
+        }
+
+        // Keep writing the computed blob for interop with older readers.
+        var attributionBlob = AttributionPane.attributionText(c);
+
+        if (!attributionBlob.isEmpty()) {
+            XML.writeValue(pw, XML_INFO, attributionBlob);
         }
 
         if (!c.getFootnotes().isEmpty()) {
             XML.writeValue(pw, XML_FOOTNOTES, c.getFootnotes());
         }
-
-        XML.writeValue(
-            pw,
-            XML_INFO_STARTY,
-            Double.toString(c.getAttributionStartYSs())
-        );
 
         if (c.getRowHeightAdjustmentSs() != 0) {
             XML.writeValue(
@@ -216,6 +227,8 @@ public final class SongIO {
         private static final Logger LOG = LoggerFactory.getLogger(DocumentReader.class);
         private static final int MAX_MONTH = 12;
         private static final int MAX_DAY = 31;
+        private static final String BY_PREFIX = "by ";
+        private static final int CURRENT_FORMAT_VERSION = 3;
 
         @Nullable
         private Where where = null;
@@ -250,7 +263,11 @@ public final class SongIO {
         private String underLyrics = "";
         private String banglaLyrics = "";
         private String translatedLyrics = "";
-        private String attribution = Strings.get(Strings.SONG_DEFAULT_ATTRIBUTION);
+        private String composer = Song.SRI_CHINMOY;
+        private String lyricist = Song.SRI_CHINMOY;
+        private LyricsSource lyricsSource = LyricsSource.LYRICIST;
+        private boolean arrangement = false;
+        private String attribution = "";
         private String footnotes = "";
         private boolean unofficialTranslation = false;
         private int defaultKeyAccidentalCount = Song.DEFAULT_KEY_ACCIDENTAL_COUNT;
@@ -290,7 +307,7 @@ public final class SongIO {
                         } else if (
                             (majorVersion == 1 && minorVersion >= 1) ||
                             // Hard-coded to IO_MINOR_VERSION; bump when the reader is updated.
-                            (majorVersion == 2 && minorVersion <= 7)
+                            (majorVersion == 2 && minorVersion <= 8)
                         ) {
                             lineReader = new LineIO.LineReader(parsingSong);
                             viewReader = new ViewIO.ViewReader();
@@ -571,8 +588,21 @@ public final class SongIO {
                         case XML_TRANSLATED_LYRICS -> translatedLyrics = str;
                         case XML_UNOFFICIAL_TRANSLATION -> unofficialTranslation =
                             Boolean.parseBoolean(str);
+                        case XML_COMPOSER -> composer = Song.coercePerson(str);
+                        case XML_LYRICIST -> lyricist = Song.coercePerson(str);
+                        case XML_LYRICS_SOURCE -> {
+                            try {
+                                lyricsSource = LyricsSource.valueOf(str);
+                            } catch (IllegalArgumentException e) {
+                                LOG.warn("Unknown lyrics source '{}', defaulting to LYRICIST", str);
+                                lyricsSource = LyricsSource.LYRICIST;
+                            }
+                        }
+                        case XML_ARRANGEMENT -> arrangement = Boolean.parseBoolean(str);
                         case XML_FOOTNOTES -> footnotes = str;
                         case XML_INFO -> attribution = str;
+                        // Still read XML_INFO_STARTY from older files for the pixel→ss migration;
+                        // new files (≥ 2.8) do not write it.
                         case XML_INFO_STARTY -> attributionStartYSs =
                             parseVersionedDouble(str);
                         case XML_ROW_HEIGHT -> rowHeightAdjustmentSs =
@@ -623,6 +653,12 @@ public final class SongIO {
         }
 
         public Song getSong() {
+            // For legacy files that predate the discrete attribution tags, derive
+            // composer/lyricist (and, for v1.0 only, date/place) from the blob.
+            if (isLegacyAttributionFile()) {
+                parseLegacyAttributionBlob();
+            }
+
             // Run the ordered pre-assembly migrations over the parsed lines and
             // song-level scalars. The pipeline owns all version-gated dispatch;
             // see MigrationPipeline for the stage list and ordering invariant.
@@ -631,16 +667,14 @@ public final class SongIO {
             ctx.legacyLineOffsets = parsedLegacyOffsets;
             ctx.lineWidthSs = lineWidthSs;
             ctx.rowHeightAdjustmentSs = rowHeightAdjustmentSs;
-            ctx.attributionStartYSs = attributionStartYSs;
             ctx.majorVersion = majorVersion;
             ctx.minorVersion = minorVersion;
-            ctx.attribution = attribution;
             ctx.lyrics = lyrics;
 
             MigrationPipeline.runPreAssembly(ctx);
 
-            // After migration, format version is always 2.
-            var formatVersion = 2;
+            // After migration, format version is CURRENT_FORMAT_VERSION (discrete attribution fields).
+            var formatVersion = CURRENT_FORMAT_VERSION;
 
             // Read the migrated scalars and lines back from the context.
             var data = new SongData(
@@ -654,12 +688,14 @@ public final class SongIO {
                 underLyrics,
                 banglaLyrics,
                 translatedLyrics,
-                attribution,
+                composer,
+                lyricist,
+                lyricsSource,
+                arrangement,
                 footnotes,
                 unofficialTranslation,
                 defaultKeyAccidentalCount,
                 defaultKeyType,
-                ctx.attributionStartYSs,
                 ctx.rowHeightAdjustmentSs,
                 ctx.lineWidthSs,
                 ctx.lines,
@@ -723,6 +759,127 @@ public final class SongIO {
             return (majorVersion >= 2 && minorVersion >= 1)
                 ? Double.parseDouble(str)
                 : Integer.parseInt(str);
+        }
+
+        // True when the file predates the discrete attribution tags (< 2.8).
+        private boolean isLegacyAttributionFile() {
+            return majorVersion < 2 || (majorVersion == 2 && minorVersion < 8);
+        }
+
+        // True when the file is so old that place/date were only in the attribution blob.
+        private boolean isV10File() {
+            return majorVersion == 1 && minorVersion == 0;
+        }
+
+        /**
+         * Parses the legacy {@code XML_INFO} blob to populate {@code composer},
+         * {@code lyricist}, and (for v1.0 only) {@code month}/{@code day}/{@code year}/{@code place}.
+         *
+         * <p>The blob format is:
+         * <pre>
+         * Words and Music
+         * [bB]y &lt;person&gt;
+         * [optional date: "Month Day, Year" / "Month, Year" / "Year"]
+         * [optional place]
+         * </pre>
+         */
+        private void parseLegacyAttributionBlob() {
+            if (attribution.isBlank()) {
+                return;
+            }
+
+            var blobLines = attribution.split("\n", -1);
+            var byLineIndex = -1;
+
+            for (var i = 0; i < blobLines.length; i++) {
+                var trimmed = blobLines[i].trim();
+
+                if (trimmed.toLowerCase().startsWith(BY_PREFIX)) {
+                    var person = trimmed.substring(BY_PREFIX.length()).trim();
+
+                    if (!person.isEmpty()) {
+                        composer = person;
+                        lyricist = person;
+                    }
+
+                    byLineIndex = i;
+                    break;
+                }
+            }
+
+            // Only extract date/place from the blob for v1.0 files,
+            // where those fields were not serialized as separate XML tags.
+            if (!isV10File() || byLineIndex < 0) {
+                return;
+            }
+
+            var remainingStart = byLineIndex + 1;
+
+            if (remainingStart >= blobLines.length) {
+                return;
+            }
+
+            var dateLine = blobLines[remainingStart].trim();
+
+            if (!dateLine.isEmpty()) {
+                parseLegacyDateLine(dateLine);
+                remainingStart++;
+            }
+
+            if (remainingStart < blobLines.length) {
+                var placeLine = blobLines[remainingStart].trim();
+
+                if (!placeLine.isEmpty()) {
+                    place = placeLine;
+                }
+            }
+        }
+
+        private static final String[] MONTH_NAMES = {
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        };
+
+        /**
+         * Parses a date string of the form "Month Day, Year", "Month, Year", or "Year"
+         * into the {@code month}, {@code day}, and {@code year} fields.
+         */
+        private void parseLegacyDateLine(String dateLine) {
+            // Try "Month Day, Year" or "Month, Year"
+            for (var i = 0; i < MONTH_NAMES.length; i++) {
+                if (dateLine.startsWith(MONTH_NAMES[i])) {
+                    month = i + 1;
+                    var rest = dateLine.substring(MONTH_NAMES[i].length()).trim();
+
+                    if (rest.startsWith(",")) {
+                        rest = rest.substring(1).trim();
+                    }
+
+                    var spaceIdx = rest.indexOf(' ');
+
+                    if (spaceIdx > 0) {
+                        // "Day, Year" — the rest starts with a day number
+                        var dayStr = rest.substring(0, spaceIdx).replace(",", "").trim();
+
+                        try {
+                            var parsedDay = Integer.parseInt(dayStr);
+
+                            if (parsedDay >= 1 && parsedDay <= MAX_DAY) {
+                                day = parsedDay;
+                            }
+                        } catch (NumberFormatException ignored) { /* best-effort */ }
+
+                        year = rest.substring(spaceIdx).replace(",", "").trim();
+                    } else {
+                        year = rest;
+                    }
+
+                    return;
+                }
+            }
+
+            // Fall back: treat the whole line as a year
+            year = dateLine.trim();
         }
 
         private enum Where {

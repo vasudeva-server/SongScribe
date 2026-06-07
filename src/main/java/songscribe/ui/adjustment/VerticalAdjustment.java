@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.MessageCenter;
+import songscribe.dom.ScaleContext;
 import songscribe.dom.Line;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.MainPanel;
@@ -142,13 +143,25 @@ public class VerticalAdjustment extends Adjustment {
     }
 
     private void adjustAttribution(int diffY) {
-        var newY = scoreView.getSong().getAttributionStartYSs() + diffY;
-        MessageCenter.post(new LayoutDidChangeNotification(null, null, newY));
+        var element = scoreView.getSong().getAttributionElement();
+        element.setUserYOffsetSs(element.getUserYOffsetSs() + diffY);
+
+        // Growing/shrinking the above-staff band requires the first line to re-layout
+        // so that aboveStaffSs and line height reflect the new user offset.
+        var mainPanel = scoreView.getMainPanel();
+
+        if (mainPanel != null) {
+            var linePanels = mainPanel.getStaffPanel().getLinePanels();
+
+            if (!linePanels.isEmpty()) {
+                linePanels.getFirst().getLineComponent().invalidateLayout();
+            }
+        }
     }
 
     private void adjustRowHeight(int diffY) {
         var newAdjustment = scoreView.getSong().getRowHeightAdjustmentSs() + diffY;
-        MessageCenter.post(new LayoutDidChangeNotification(newAdjustment, null, null));
+        MessageCenter.post(new LayoutDidChangeNotification(newAdjustment, null));
     }
 
     private void adjustTempoChange(Line line, int diffY) {
@@ -262,9 +275,9 @@ public class VerticalAdjustment extends Adjustment {
         if (enabled) {
             var c = scoreView.getSong();
 
-            var attribution = c.getAttribution();
+            var attributionElement = c.getAttributionElement();
 
-            if (!attribution.isEmpty()) {
+            if (attributionElement.getContentWidthSs() > 0) {
                 adjustRects.add(new AdjustRect(-1, AdjustType.ATTRIBUTION, -1));
             }
 
@@ -514,8 +527,29 @@ public class VerticalAdjustment extends Adjustment {
     }
 
     private void getAttributionAdjustRect(AdjustRect adjustRect) {
-        adjustRect.rect.x = scoreView.getSheetWidthPx() - HANDLE_SIZE_PX;
-        adjustRect.rect.y = (int) scoreView.getSong().getAttributionStartYSs();
+        var song = scoreView.getSong();
+        var attributionElement = song.getAttributionElement();
+        var mainPanel = scoreView.getMainPanel();
+        var linePanels = mainPanel != null ? mainPanel.getStaffPanel().getLinePanels() : null;
+        var firstLineComponent = linePanels != null && !linePanels.isEmpty()
+            ? linePanels.getFirst().getLineComponent()
+            : null;
+        var layoutResult = firstLineComponent != null ? firstLineComponent.getLayoutResult() : null;
+        var layout = layoutResult != null
+            ? layoutResult.getDecorationLayout(attributionElement)
+            : null;
+
+        // Place the handle at the top-right corner of the attribution pane
+        if (layout != null && firstLineComponent != null) {
+            var middleYSs = firstLineComponent.getMiddleLineYSs();
+            adjustRect.rect.x = (int) Math.round(
+                ScaleContext.ssToPx(layout.xSs() + layout.widthSs())) - HANDLE_SIZE_PX;
+            adjustRect.rect.y = (int) Math.round(
+                ScaleContext.ssToPx(layout.ySs() + middleYSs));
+        } else {
+            adjustRect.rect.x = scoreView.getSheetWidthPx() - HANDLE_SIZE_PX;
+            adjustRect.rect.y = 0;
+        }
     }
 
     private void getHeightAdjustRect(AdjustRect adjustRect) {

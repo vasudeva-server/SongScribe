@@ -30,7 +30,7 @@ import songscribe.prefs.PrefsKey;
 import songscribe.util.MyFontUtils;
 
 /**
- * Mutable holder for the six document-level font roles.
+ * Mutable holder for the seven document-level font roles.
  *
  * <p>Only {@code ScoreView} and the load path retain a reference to this object.
  * External code receives individual {@link Font} instances or reads through
@@ -76,8 +76,9 @@ public final class DocumentFonts implements DocumentFontsHolder {
         var result = new DocumentFonts();
         result.setFont(FontKey.TITLE,       Prefs.getString(PrefsKey.TITLE_FONT),       Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
         result.setFont(FontKey.LYRICS,      Prefs.getString(PrefsKey.LYRICS_FONT),      Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
-        result.setFont(FontKey.ATTRIBUTION, Prefs.getString(PrefsKey.ATTRIBUTION_FONT), Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
-        result.setFont(FontKey.ANNOTATION,  Prefs.getString(PrefsKey.ANNOTATION_FONT),  Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
+        result.setFont(FontKey.ATTRIBUTION,     Prefs.getString(PrefsKey.ATTRIBUTION_FONT),     Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
+        result.setFont(FontKey.SUB_ATTRIBUTION, Prefs.getString(PrefsKey.SUB_ATTRIBUTION_FONT), Prefs.getInt(PrefsKey.SUB_ATTRIBUTION_FONT_SIZE));
+        result.setFont(FontKey.ANNOTATION,      Prefs.getString(PrefsKey.ANNOTATION_FONT),      Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
         result.setFont(FontKey.FOOTNOTE,    Prefs.getString(PrefsKey.FOOTNOTE_FONT),    Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
         result.setFont(FontKey.BANGLA,      Prefs.getString(PrefsKey.BANGLA_FONT),      Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
         return result;

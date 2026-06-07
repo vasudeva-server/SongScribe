@@ -55,6 +55,7 @@ import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
+import songscribe.ui.component.score.AttributionPane;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
 import songscribe.util.GraphicUtils;
@@ -126,10 +127,19 @@ public class SongSettingsDialog extends StandardDialog {
         private final NumericTextField yearField = new NumericTextField(5);
 
         // Attribution panel
-        private final MyJTextArea attributionArea = new MyJTextArea(4, 27);
+        private final MyJTextField composerField = new MyJTextField(27);
+        private final MyJTextField lyricistField = new MyJTextField(20);
+        private final JComboBox<Song.LyricsSource> sourceCombo =
+            new JComboBox<>(Song.LyricsSource.values());
+        private final JCheckBox unofficialTranslationCheck = new JCheckBox(
+            Strings.get(Strings.DIALOG_SONG_SETTINGS_UNOFFICIAL_TRANSLATION)
+        );
+        private final JCheckBox arrangementCheck = new JCheckBox(
+            Strings.get(Strings.DIALOG_SONG_SETTINGS_ARRANGEMENT)
+        );
+        private final AttributionPane attributionPreview = new AttributionPane();
 
         private final NonEmptyGuard titleGuard;
-        private final NonEmptyGuard attributionGuard;
 
         private TextTab() {
             monthCombo.setEditable(false);
@@ -154,20 +164,11 @@ public class SongSettingsDialog extends StandardDialog {
                 Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
             );
 
-            attributionGuard = new NonEmptyGuard(
-                attributionArea,
-                contentPanel,
-                Strings.ALERT_TITLE_SONG_SETTINGS,
-                Strings.CONFIRM_SONG_EMPTY_ATTRIBUTION,
-                Strings.SONG_DEFAULT_ATTRIBUTION,
-                Strings.DIALOG_SONG_SETTINGS_USE_DEFAULT,
-                Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
-            );
-
             titleGuard.addExemptComponent(okButton);
             titleGuard.addExemptComponent(cancelButton);
-            attributionGuard.addExemptComponent(okButton);
-            attributionGuard.addExemptComponent(cancelButton);
+
+            sourceCombo.setEditable(false);
+            attributionPreview.setOpaque(true);
 
             build();
         }
@@ -176,9 +177,9 @@ public class SongSettingsDialog extends StandardDialog {
         protected void initContents() {
             add(createTitleSection());
             addSeparator();
-            add(createPlaceAndDateSection());
-            addSeparator();
             add(createInfoSection());
+            addSeparator();
+            add(createPlaceAndDateSection());
         }
 
         private JPanel createTitleSection() {
@@ -293,55 +294,118 @@ public class SongSettingsDialog extends StandardDialog {
 
         private JPanel createInfoSection() {
             var section = new BaseDialog.TitledSection(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION),
-                BoxLayout.X_AXIS
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION)
             );
 
-            var scrollPane = new JScrollPane(attributionArea);
-            scrollPane.setAlignmentY(Component.CENTER_ALIGNMENT);
-            scrollPane.setVerticalScrollBarPolicy(
-                ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+            addLabeledField(
+                section,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_MUSIC),
+                composerField,
+                BaseDialog.LabelPosition.LEFT
             );
-            scrollPane.setHorizontalScrollBarPolicy(
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+
+            section.addSeparator();
+
+            var wordsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
+            wordsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            addLabeledField(
+                wordsRow,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_WORDS),
+                lyricistField,
+                BaseDialog.LabelPosition.LEFT
             );
-            scrollPane.setMaximumSize(scrollPane.getPreferredSize());
-            section.add(scrollPane);
 
-            section.add(Box.createHorizontalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP)));
-
-            var appendButtonPanel = new JPanel();
-            appendButtonPanel.setLayout(
-                new BoxLayout(appendButtonPanel, BoxLayout.Y_AXIS)
+            addLabeledField(
+                wordsRow,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SOURCE),
+                sourceCombo,
+                BaseDialog.LabelPosition.LEFT
             );
-            appendButtonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(appendButtonPanel);
 
-            var dateString = getDateString();
-            var button = new JButton(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_ADD_DATE)
-            );
-            button.setAlignmentX(Component.LEFT_ALIGNMENT);
-            button.addActionListener(new AddDateAndPlaceAction(false));
-            appendButtonPanel.add(button);
+            section.add(wordsRow);
+            section.addSeparator();
 
-            appendButtonPanel.add(Box.createVerticalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_SONG_SETTINGS_LYRICS_BUTTON_GAP)));
+            var song = getSong();
 
-            button = new JButton(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_ADD_DATE_PLACE)
-            );
-            button.setAlignmentX(Component.LEFT_ALIGNMENT);
-            button.addActionListener(new AddDateAndPlaceAction(true));
-            appendButtonPanel.add(button);
+            if (!song.getTranslatedLyrics().isEmpty()) {
+                unofficialTranslationCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
+                section.add(unofficialTranslationCheck);
+                section.addSeparator();
+            }
 
-            // Size the panel to its preferred size
-            appendButtonPanel.setMaximumSize(
-                appendButtonPanel.getPreferredSize()
-            );
+            arrangementCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
+            section.add(arrangementCheck);
+            section.addSeparator();
+
+            attributionPreview.setAlignmentX(Component.LEFT_ALIGNMENT);
+            attributionPreview.setMaximumSize(attributionPreview.getPreferredSize());
+            section.add(attributionPreview);
+
+            composerField.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    if (lyricistField.getText().isEmpty()) {
+                        lyricistField.setText(composerField.getText());
+                    }
+
+                    refreshPreview();
+                }
+            });
+
+            lyricistField.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    refreshPreview();
+                }
+            });
+
+            sourceCombo.addActionListener(e -> refreshPreview());
+            unofficialTranslationCheck.addActionListener(e -> refreshPreview());
+            arrangementCheck.addActionListener(e -> refreshPreview());
 
             // Don't let the section grow vertically
             UIUtils.setFlexibleWidth(section);
             return section;
+        }
+
+        private void refreshPreview() {
+            var fonts = requireScoreView().getDocumentFonts();
+            attributionPreview.setFont(fonts.getFont(FontKey.ATTRIBUTION));
+            attributionPreview.setSubAttributionFont(fonts.getFont(FontKey.SUB_ATTRIBUTION));
+            attributionPreview.setOverrideLines(buildPreviewLines());
+        }
+
+        private List<AttributionPane.AttributionLine> buildPreviewLines() {
+            var song = getSong();
+            var composerText = Song.coercePerson(composerField.getText());
+
+            var lyricistText = lyricistField.getText().trim();
+
+            if (lyricistText.isEmpty()) {
+                lyricistText = composerText;
+            }
+
+            var lyricsSource = (Song.LyricsSource) sourceCombo.getSelectedItem();
+
+            if (lyricsSource == null) {
+                lyricsSource = Song.LyricsSource.LYRICIST;
+            }
+
+            var arrangement = arrangementCheck.isSelected();
+            var unofficialTranslation = unofficialTranslationCheck.isSelected();
+            return AttributionPane.buildPreviewLines(
+                composerText,
+                lyricistText,
+                lyricsSource,
+                arrangement,
+                unofficialTranslation,
+                song.getTranslatedLyrics(),
+                song.getMonth(),
+                song.getDay(),
+                song.getYear(),
+                song.getPlace()
+            );
         }
 
         @Override
@@ -353,13 +417,18 @@ public class SongSettingsDialog extends StandardDialog {
             monthCombo.setSelectedIndex(song.getMonth());
             dayCombo.setSelectedIndex(song.getDay());
             yearField.setText(song.getYear());
-            attributionArea.setText(song.getAttribution());
+            composerField.setText(song.getComposer());
+            lyricistField.setText(song.getLyricist());
+            sourceCombo.setSelectedItem(song.getLyricsSource());
+            arrangementCheck.setSelected(song.isArrangement());
+            unofficialTranslationCheck.setSelected(song.isUnofficialTranslation());
+            refreshPreview();
             return true;
         }
 
         @Override
         protected boolean isValidData() {
-            return titleGuard.validate() && attributionGuard.validate();
+            return titleGuard.validate();
         }
 
         @Override
@@ -397,14 +466,31 @@ public class SongSettingsDialog extends StandardDialog {
             }
 
             var song = getSong();
+            var lyricsSource = (Song.LyricsSource) sourceCombo.getSelectedItem();
+
+            if (lyricsSource == null) {
+                lyricsSource = Song.LyricsSource.LYRICIST;
+            }
+
+            var composerText = Song.coercePerson(composerField.getText());
+
+            var lyricistText = lyricistField.getText().trim();
+
+            if (lyricistText.isEmpty()) {
+                lyricistText = composerText;
+            }
 
             if (titleField.getText().equals(song.getTitle())
                     && placeField.getText().equals(song.getPlace())
                     && Objects.equals(year, song.getYear())
                     && Objects.equals(number, song.getNumber())
-                    && attributionArea.getText().equals(song.getAttribution())
                     && monthCombo.getSelectedIndex() == song.getMonth()
-                    && dayCombo.getSelectedIndex() == song.getDay()) {
+                    && dayCombo.getSelectedIndex() == song.getDay()
+                    && composerText.equals(song.getComposer())
+                    && lyricistText.equals(song.getLyricist())
+                    && lyricsSource == song.getLyricsSource()
+                    && arrangementCheck.isSelected() == song.isArrangement()
+                    && unofficialTranslationCheck.isSelected() == song.isUnofficialTranslation()) {
                 return;
             }
 
@@ -413,37 +499,14 @@ public class SongSettingsDialog extends StandardDialog {
                 placeField.getText(),
                 year,
                 number,
-                attributionArea.getText(),
                 monthCombo.getSelectedIndex(),
                 dayCombo.getSelectedIndex(),
-                null
+                unofficialTranslationCheck.isSelected(),
+                composerText,
+                lyricistText,
+                lyricsSource,
+                arrangementCheck.isSelected()
             ));
-        }
-
-        private String getDateString() {
-            var year = yearField.getText();
-
-            // There at least has to be a year
-            if (year.isEmpty()) {
-                return "";
-            }
-
-            var sb = new StringBuilder(30);
-
-            if (monthCombo.getSelectedIndex() > 0) {
-                sb.append(monthCombo.getSelectedItem());
-
-                if (dayCombo.getSelectedIndex() > 0) {
-                    sb.append(' ');
-                    sb.append(dayCombo.getSelectedItem());
-                }
-
-                sb.append(", ");
-            }
-
-            // We know that the field will only contain numbers
-            sb.append(Integer.parseInt(yearField.getText()));
-            return sb.toString();
         }
 
         private final class TakeFirstLyricsWordAction extends UIAction {
@@ -514,56 +577,6 @@ public class SongSettingsDialog extends StandardDialog {
             }
         }
 
-        private final class AddDateAndPlaceAction extends AbstractAction {
-
-            private final boolean includePlace;
-
-            private AddDateAndPlaceAction(boolean includePlace) {
-                this.includePlace = includePlace;
-            }
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                var attribution = attributionArea.getText();
-                var sb = new StringBuilder(100);
-
-                var date = getDateString();
-
-                if (!date.isEmpty()) {
-                    if (attribution.charAt(attribution.length() - 1) != '\n') {
-                        sb.append('\n');
-                    }
-
-                    sb.append(date);
-                } else {
-                    OptionDialogs.showErrorMessage(
-                        getMainFrame(),
-                        Strings.ALERT_TITLE_SONG_SETTINGS,
-                        Strings.ERROR_SONG_YEAR_REQUIRED
-                    );
-                    return;
-                }
-
-                if (includePlace) {
-                    if (!placeField.getText().isEmpty()) {
-                        if (attribution.charAt(attribution.length() - 1) != '\n') {
-                            sb.append('\n');
-                        }
-
-                        sb.append(placeField.getText());
-                    } else {
-                        OptionDialogs.showErrorMessage(
-                            getMainFrame(),
-                            Strings.ALERT_TITLE_SONG_SETTINGS,
-                            Strings.ERROR_SONG_PLACE_REQUIRED
-                        );
-                        return;
-                    }
-                }
-
-                attributionArea.append(sb.toString());
-            }
-        }
     }
 
     private final class MusicTab extends BaseDialog.Tab {
@@ -846,6 +859,13 @@ public class SongSettingsDialog extends StandardDialog {
                 by Sri Chinmoy"""
         );
 
+        private final JLabel subAttributionFontLabel = new JLabel();
+        private final MyJTextArea subAttributionFontPreview = new MyJTextArea(
+            """
+                September 1972
+                New York, USA"""
+        );
+
         private final JLabel annotationFontLabel = new JLabel();
         private final JComponent annotationFontPreview = new JLabel(
             "D.C. al fine (a tempo)"
@@ -858,6 +878,7 @@ public class SongSettingsDialog extends StandardDialog {
                 titleFontPreview,
                 lyricsFontPreview,
                 attributionFontPreview,
+                subAttributionFontPreview,
                 annotationFontPreview,
             }) {
                 preview.setBackground(UIManager.getColor("TextField.background"));
@@ -904,6 +925,16 @@ public class SongSettingsDialog extends StandardDialog {
                     "Attribution (tempo, beat change, attribution)",
                     attributionFontLabel,
                     attributionFontPreview,
+                    false
+                )
+            );
+            tabbedPane.addTab(
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_SUB_ATTRIBUTION),
+                createFontSection(
+                    mainFrame,
+                    "Sub-attribution (date and place)",
+                    subAttributionFontLabel,
+                    subAttributionFontPreview,
                     false
                 )
             );
@@ -1069,10 +1100,11 @@ public class SongSettingsDialog extends StandardDialog {
 
         private void applyDefaultFonts() {
             var defaults = DocumentFonts.defaultsFromPrefs();
-            applyFont(defaults.getFont(FontKey.TITLE),       titleFontLabel,       titleFontPreview);
-            applyFont(defaults.getFont(FontKey.LYRICS),      lyricsFontLabel,      lyricsFontPreview);
-            applyFont(defaults.getFont(FontKey.ATTRIBUTION), attributionFontLabel, attributionFontPreview);
-            applyFont(defaults.getFont(FontKey.ANNOTATION),  annotationFontLabel,  annotationFontPreview);
+            applyFont(defaults.getFont(FontKey.TITLE),           titleFontLabel,           titleFontPreview);
+            applyFont(defaults.getFont(FontKey.LYRICS),          lyricsFontLabel,          lyricsFontPreview);
+            applyFont(defaults.getFont(FontKey.ATTRIBUTION),     attributionFontLabel,     attributionFontPreview);
+            applyFont(defaults.getFont(FontKey.SUB_ATTRIBUTION), subAttributionFontLabel,  subAttributionFontPreview);
+            applyFont(defaults.getFont(FontKey.ANNOTATION),      annotationFontLabel,      annotationFontPreview);
         }
 
         private static void applyFont(Font font, JLabel label, JComponent preview) {
@@ -1083,23 +1115,25 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected boolean getData() {
             var fonts = requireScoreView().getDocumentFonts();
-            applyFont(fonts.getFont(FontKey.TITLE),       titleFontLabel,       titleFontPreview);
-            applyFont(fonts.getFont(FontKey.LYRICS),      lyricsFontLabel,      lyricsFontPreview);
-            applyFont(fonts.getFont(FontKey.ATTRIBUTION), attributionFontLabel, attributionFontPreview);
-            applyFont(fonts.getFont(FontKey.ANNOTATION),  annotationFontLabel,  annotationFontPreview);
+            applyFont(fonts.getFont(FontKey.TITLE),           titleFontLabel,           titleFontPreview);
+            applyFont(fonts.getFont(FontKey.LYRICS),          lyricsFontLabel,          lyricsFontPreview);
+            applyFont(fonts.getFont(FontKey.ATTRIBUTION),     attributionFontLabel,     attributionFontPreview);
+            applyFont(fonts.getFont(FontKey.SUB_ATTRIBUTION), subAttributionFontLabel,  subAttributionFontPreview);
+            applyFont(fonts.getFont(FontKey.ANNOTATION),      annotationFontLabel,      annotationFontPreview);
             return true;
         }
 
         @Override
         protected void setData() {
             // Bangla and footnote fonts are document-level but this dialog only
-            // exposes the four primary fonts; preserve them by copying the current state.
+            // exposes the five primary fonts; preserve them by copying the current state.
             // TODO: add bangla and footnote font rows here and to ResetFontsAction.
             var newFonts = new DocumentFonts(requireScoreView().getDocumentFonts());
-            newFonts.setFont(FontKey.TITLE,       titleFontPreview.getFont());
-            newFonts.setFont(FontKey.LYRICS,      lyricsFontPreview.getFont());
-            newFonts.setFont(FontKey.ATTRIBUTION, attributionFontPreview.getFont());
-            newFonts.setFont(FontKey.ANNOTATION, annotationFontPreview.getFont());
+            newFonts.setFont(FontKey.TITLE,           titleFontPreview.getFont());
+            newFonts.setFont(FontKey.LYRICS,          lyricsFontPreview.getFont());
+            newFonts.setFont(FontKey.ATTRIBUTION,     attributionFontPreview.getFont());
+            newFonts.setFont(FontKey.SUB_ATTRIBUTION, subAttributionFontPreview.getFont());
+            newFonts.setFont(FontKey.ANNOTATION,      annotationFontPreview.getFont());
             requireScoreView().setFonts(newFonts);
         }
     }

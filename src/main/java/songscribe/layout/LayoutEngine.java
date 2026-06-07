@@ -28,6 +28,7 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Attribution;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
 import songscribe.dom.KeySignature;
@@ -156,10 +157,10 @@ public class LayoutEngine {
      * This is the main entry point for layout. It orchestrates all calculators
      * and produces a final LayoutResult ready for rendering.
      *
-     * @param line                      The line to lay out
-     * @param isLastLine                Whether this line is the last line of the song.
-     *                                  When true, the final double barline (if present) is
-     *                                  pinned flush with the right edge of the line.
+     * @param line                        The line to lay out
+     * @param isLastLine                  Whether this line is the last line of the song.
+     *                                    When true, the final double barline (if present) is
+     *                                    pinned flush with the right edge of the line.
      * @param hasLeadingLyricContinuation True when the previous line ended with an active
      *                                    melisma extender that should continue from x = 0
      *                                    on this line until the first syllable or rest that
@@ -167,6 +168,28 @@ public class LayoutEngine {
      * @return LayoutResult with all positioned elements, or null if layout fails
      */
     public @Nullable LayoutResult layout(Line line, boolean isLastLine, boolean hasLeadingLyricContinuation) {
+        return layout(line, isLastLine, hasLeadingLyricContinuation, null);
+    }
+
+    /**
+     * Executes the complete layout pipeline for a line, optionally stacking an attribution block.
+     * <p>
+     * On the first line, pass the song's {@link Attribution} element (with dimensions pre-set via
+     * {@link Attribution#setDimensionsSs}) to trigger attribution stacking above the right-edge
+     * columns. Passing a non-null {@code attribution} implies this is the first line.
+     *
+     * @param line                        The line to lay out
+     * @param isLastLine                  Whether this line is the last line of the song
+     * @param hasLeadingLyricContinuation True when the previous line's lyric extender continues
+     * @param attribution                 The attribution block element, or null if not applicable
+     * @return LayoutResult with all positioned elements, or null if layout fails
+     */
+    public @Nullable LayoutResult layout(
+        Line line,
+        boolean isLastLine,
+        boolean hasLeadingLyricContinuation,
+        @Nullable Attribution attribution) {
+
         lastError = null;
 
         // Accidental widths are a layout input. Initialise them here (idempotent and cheap)
@@ -223,7 +246,8 @@ public class LayoutEngine {
         // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
         // Use the song's staff width for consistent StaffExtents discretization,
         // not the content width which varies with column count.
-        verticalCalculator.calculate(columns, line, builder, staffRightMarginSs, fonts);
+        verticalCalculator.calculate(
+            columns, line, builder, staffRightMarginSs, fonts, attribution);
 
         // Step 7b: Compute lyric box and connector geometry.
         buildLyricLayout(columns, builder, hasLeadingLyricContinuation);

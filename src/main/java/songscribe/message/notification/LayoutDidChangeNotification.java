@@ -30,17 +30,13 @@ public class LayoutDidChangeNotification extends Message {
     private final Double rowHeightAdjustmentSs;
     @Nullable
     private final Double lineWidthSs;
-    @Nullable
-    private final Double attributionStartYSs;
 
     public LayoutDidChangeNotification(
         @Nullable Double rowHeightAdjustment,
-        @Nullable Double lineWidth,
-        @Nullable Double attributionStartY
+        @Nullable Double lineWidth
     ) {
         rowHeightAdjustmentSs = rowHeightAdjustment;
         lineWidthSs = lineWidth;
-        attributionStartYSs = attributionStartY;
     }
 
     @Nullable
@@ -51,10 +47,5 @@ public class LayoutDidChangeNotification extends Message {
     @Nullable
     public Double getLineWidthSs() {
         return lineWidthSs;
-    }
-
-    @Nullable
-    public Double getAttributionStartYSs() {
-        return attributionStartYSs;
     }
 }

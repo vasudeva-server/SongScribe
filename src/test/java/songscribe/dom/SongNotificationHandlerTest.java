@@ -38,6 +38,7 @@ import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
+import songscribe.message.notification.MetadataDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 
@@ -279,19 +280,16 @@ class SongNotificationHandlerTest extends UnitTest {
 
         private static final double NEW_ROW_HEIGHT_ADJUSTMENT_SS = 2.5;
         private static final double NEW_LINE_WIDTH_SS = 80.0;
-        private static final double NEW_ATTRIBUTION_START_Y_SS = 10.0;
 
         @Test
         void testNonNullFieldsDispatchedToSetters() {
             song.layoutDidChange(new LayoutDidChangeNotification(
                 NEW_ROW_HEIGHT_ADJUSTMENT_SS,
-                NEW_LINE_WIDTH_SS,
-                NEW_ATTRIBUTION_START_Y_SS
+                NEW_LINE_WIDTH_SS
             ));
 
             assertThat(song.getRowHeightAdjustmentSs()).isEqualTo(NEW_ROW_HEIGHT_ADJUSTMENT_SS);
             assertThat(song.getLineWidthSs()).isEqualTo(NEW_LINE_WIDTH_SS);
-            assertThat(song.getAttributionStartYSs()).isEqualTo(NEW_ATTRIBUTION_START_Y_SS);
         }
 
         @Test
@@ -300,13 +298,100 @@ class SongNotificationHandlerTest extends UnitTest {
             // remain at their Song defaults.
             var originalRowHeight = song.getRowHeightAdjustmentSs();
             var originalLineWidth = song.getLineWidthSs();
-            var originalAttributionY = song.getAttributionStartYSs();
 
-            song.layoutDidChange(new LayoutDidChangeNotification(null, null, null));
+            song.layoutDidChange(new LayoutDidChangeNotification(null, null));
 
             assertThat(song.getRowHeightAdjustmentSs()).isEqualTo(originalRowHeight);
             assertThat(song.getLineWidthSs()).isEqualTo(originalLineWidth);
-            assertThat(song.getAttributionStartYSs()).isEqualTo(originalAttributionY);
+        }
+    }
+
+
+    // -----------------------------------------------------------------------
+    // metadataDidChange — attribution routing
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MetadataDidChangeAttributionRouting {
+
+        @Test
+        void testComposerRoutedToSong() {
+            var newComposer = "Bach";
+            song.metadataDidChange(new MetadataDidChangeNotification(
+                null, null, null, null, null, null, null, newComposer, null, null, null
+            ));
+
+            assertThat(song.getComposer()).isEqualTo(newComposer);
+        }
+
+        @Test
+        void testNullComposerLeavesValueUnchanged() {
+            var originalComposer = song.getComposer();
+            song.metadataDidChange(new MetadataDidChangeNotification(
+                null, null, null, null, null, null, null, null, null, null, null
+            ));
+
+            assertThat(song.getComposer()).isEqualTo(originalComposer);
+        }
+
+        @Test
+        void testLyricistRoutedToSong() {
+            var newLyricist = "Mozart";
+            song.metadataDidChange(new MetadataDidChangeNotification(
+                null, null, null, null, null, null, null, null, newLyricist, null, null
+            ));
+
+            assertThat(song.getLyricist()).isEqualTo(newLyricist);
+        }
+
+        @Test
+        void testNullLyricistLeavesValueUnchanged() {
+            var originalLyricist = song.getLyricist();
+            song.metadataDidChange(new MetadataDidChangeNotification(
+                null, null, null, null, null, null, null, null, null, null, null
+            ));
+
+            assertThat(song.getLyricist()).isEqualTo(originalLyricist);
+        }
+
+        @Test
+        void testLyricsSourceRoutedToSong() {
+            var newSource = Song.LyricsSource.TEXT;
+            song.metadataDidChange(new MetadataDidChangeNotification(
+                null, null, null, null, null, null, null, null, null, newSource, null
+            ));
+
+            assertThat(song.getLyricsSource()).isEqualTo(newSource);
+        }
+
+        @Test
+        void testNullLyricsSourceLeavesValueUnchanged() {
+            var originalSource = song.getLyricsSource();
+            song.metadataDidChange(new MetadataDidChangeNotification(
+                null, null, null, null, null, null, null, null, null, null, null
+            ));
+
+            assertThat(song.getLyricsSource()).isEqualTo(originalSource);
+        }
+
+        @Test
+        void testArrangementRoutedToSong() {
+            song.metadataDidChange(new MetadataDidChangeNotification(
+                null, null, null, null, null, null, null, null, null, null, true
+            ));
+
+            assertThat(song.isArrangement()).isTrue();
+        }
+
+        @Test
+        void testNullArrangementLeavesValueUnchanged() {
+            var originalArrangement = song.isArrangement();
+            song.metadataDidChange(new MetadataDidChangeNotification(
+                null, null, null, null, null, null, null, null, null, null, null
+            ));
+
+            assertThat(song.isArrangement()).isEqualTo(originalArrangement);
         }
     }
 

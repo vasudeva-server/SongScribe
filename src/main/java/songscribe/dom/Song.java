@@ -53,9 +53,7 @@ import songscribe.message.notification.MetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.util.MyFontUtils;
 import songscribe.util.StringUtils;
-import songscribe.util.Utils;
 
 /**
  * This class serves as the model for data that is read from and written to
@@ -74,6 +72,31 @@ public final class Song {
         FRENCH, // 6
         SPANISH, // 7
         OTHER, // 8
+    }
+
+    public static final String SRI_CHINMOY = "Sri Chinmoy";
+
+    public enum LyricsSource {
+        LYRICIST(" by ", Strings.DIALOG_SONG_SETTINGS_SOURCE_LYRICIST),
+        TEXT(" from ", Strings.DIALOG_SONG_SETTINGS_SOURCE_TEXT),
+        OTHER(": ", Strings.DIALOG_SONG_SETTINGS_SOURCE_OTHER);
+
+        private final String connector;
+        private final String labelKey;
+
+        LyricsSource(String connector, String labelKey) {
+            this.connector = connector;
+            this.labelKey = labelKey;
+        }
+
+        public String getConnector() {
+            return connector;
+        }
+
+        @Override
+        public String toString() {
+            return Strings.get(labelKey);
+        }
     }
 
     // Used to replace the characters "ă" and "Ă" with "a" and "A" respectively
@@ -123,14 +146,20 @@ public final class Song {
     // If the song is in a language other than English, the translated lyrics (if available)
     private String translatedLyrics = "";
 
-    // The composer, date and place where the song was composed
-    private String attribution = "";
-
     // Additional info about the song
     private String footnotes = "";
 
     // If true, the translation is unofficial (affects header text)
     private boolean unofficialTranslation = false;
+
+    // Discrete attribution fields
+    private String composer = SRI_CHINMOY;
+    private String lyricist = SRI_CHINMOY;
+    private LyricsSource lyricsSource = LyricsSource.LYRICIST;
+    private boolean arrangement = false;
+
+    // Block element carrying the attribution pane geometry and user Y offset for stacking
+    private final Attribution attributionElement = new Attribution();
 
     // The number of accidentals in the key signature and the type of key (flats or sharps)
     private int defaultKeyAccidentalCount;
@@ -139,7 +168,6 @@ public final class Song {
     // When the title is set, it is wrapped into lines and stored here
     private final ArrayList<String> titleLines = new ArrayList<>();
 
-    private double attributionStartYSs;
     private double rowHeightAdjustmentSs = 0;
 
     // The width of a staff line in staff-space units
@@ -196,12 +224,8 @@ public final class Song {
 
 
     public Song() {
-        attribution = Strings.get(Strings.SONG_DEFAULT_ATTRIBUTION);
         tempo = new Tempo();
         defaultKeyAccidentalCount = DEFAULT_KEY_ACCIDENTAL_COUNT;
-
-        // attributionStartY is calculated from title, will be recalculated on layout
-        attributionStartYSs = calculateAttributionStartY();
 
         // Suspend mutation tracking so that setup changes don't post a spurious
         // SongDidChangeNotification to global subscribers before this Song is
@@ -219,7 +243,7 @@ public final class Song {
 
     /**
      * Loading constructor. Applies the parsed data and subscribes to the message bus.
-     * Avoids the wasted work of the no-arg constructor (default line, attributionStartY calculation).
+     * Avoids the wasted work of the no-arg constructor (default line initialization).
      */
     public Song(SongData data) {
         loadFrom(data);
@@ -272,14 +296,13 @@ public final class Song {
         applyUnderLyrics(data.underLyrics());
         applyBanglaLyrics(data.banglaLyrics());
         applyTranslatedLyrics(data.translatedLyrics());
-        applyAttribution(data.attribution());
+        applyAttributionFields(data);
         applyFootnotes(data.footnotes());
         applyUnofficialTranslation(data.unofficialTranslation());
         applyDefaultKeyAccidentalCount(data.defaultKeyAccidentalCount());
         applyDefaultKeyType(data.defaultKeyType());
 
         // Apply layout
-        applyAttributionStartYSs(data.attributionStartYSs());
         applyRowHeightAdjustmentSs(data.rowHeightAdjustmentSs());
         applyLineWidthSs(data.lineWidthSs());
 
@@ -483,8 +506,25 @@ public final class Song {
         return unofficialTranslation;
     }
 
-    public String getAttribution() {
-        return attribution;
+    public String getComposer() {
+        return composer;
+    }
+
+    public String getLyricist() {
+        return lyricist;
+    }
+
+    public LyricsSource getLyricsSource() {
+        return lyricsSource;
+    }
+
+    public boolean isArrangement() {
+        return arrangement;
+    }
+
+    /** Returns the stable attribution block element that carries geometry and user Y offset. */
+    public Attribution getAttributionElement() {
+        return attributionElement;
     }
 
     public String getNumber() {
@@ -521,10 +561,6 @@ public final class Song {
 
     public boolean isEmpty() {
         return lines.isEmpty() || lines.stream().allMatch(Line::isEmpty);
-    }
-
-    public double getAttributionStartYSs() {
-        return attributionStartYSs;
     }
 
     public double getRowHeightAdjustmentSs() {
@@ -624,9 +660,73 @@ public final class Song {
         );
     }
 
-    public void setAttribution(String text) {
-        var newAttribution = text.trim();
-        mutateMetadata(MetadataField.ATTRIBUTION, attribution, newAttribution, () -> attribution = newAttribution);
+    public void setComposer(String text) {
+        var newComposer = coercePerson(text);
+        mutateMetadata(MetadataField.COMPOSER, composer, newComposer, () -> composer = newComposer);
+    }
+
+    public void setLyricist(String text) {
+        var newLyricist = coercePerson(text);
+        mutateMetadata(MetadataField.LYRICIST, lyricist, newLyricist, () -> lyricist = newLyricist);
+    }
+
+    public void setLyricsSource(LyricsSource source) {
+        mutateMetadata(MetadataField.LYRICS_SOURCE, lyricsSource, source, () -> lyricsSource = source);
+    }
+
+    public void setArrangement(boolean isArrangement) {
+        mutateMetadata(MetadataField.ARRANGEMENT, arrangement, isArrangement, () -> arrangement = isArrangement);
+    }
+
+    // -- Direct setters (bypass mutation tracking; for preview/scratch Song instances only) --
+
+    public static String coercePerson(String text) {
+        var trimmed = text.trim();
+        return trimmed.isEmpty() ? SRI_CHINMOY : trimmed;
+    }
+
+    public void setComposerDirectly(String text) {
+        composer = coercePerson(text);
+    }
+
+    public void setLyricistDirectly(String text) {
+        lyricist = coercePerson(text);
+    }
+
+    public void setLyricsSourceDirectly(LyricsSource source) {
+        lyricsSource = source;
+    }
+
+    public void setArrangementDirectly(boolean isArrangement) {
+        arrangement = isArrangement;
+    }
+
+    public void setUnofficialTranslationDirectly(boolean unofficial) {
+        unofficialTranslation = unofficial;
+    }
+
+    public void setTranslatedLyricsDirectly(String text) {
+        translatedLyrics = text.trim();
+    }
+
+    public void setMonthDirectly(int month) {
+        this.month = month;
+    }
+
+    public void setDayDirectly(int day) {
+        this.day = day;
+    }
+
+    public void setYearDirectly(String text) {
+        year = text.trim();
+    }
+
+    public void setPlaceDirectly(String text) {
+        place = text.trim();
+    }
+
+    public void setLineWidthSsDirectly(double lineWidth) {
+        lineWidthSs = lineWidth;
     }
 
     public void setNumber(String text) {
@@ -649,13 +749,6 @@ public final class Song {
     }
 
     // -- Layout setters --
-
-    public void setAttributionStartYSs(double attributionStartY) {
-        mutateLayout(
-            LayoutField.ATTRIBUTION_START_Y_SS, attributionStartYSs, attributionStartY,
-            () -> attributionStartYSs = attributionStartY
-        );
-    }
 
     public void setRowHeightAdjustmentSs(double rowHeightAdjustment) {
         mutateLayout(
@@ -1210,10 +1303,6 @@ public final class Song {
                 setNumber(update.getNumber());
             }
 
-            if (update.getAttribution() != null) {
-                setAttribution(update.getAttribution());
-            }
-
             if (update.getMonth() != null) {
                 setMonth(update.getMonth());
             }
@@ -1224,6 +1313,22 @@ public final class Song {
 
             if (update.getUnofficialTranslation() != null) {
                 setUnofficialTranslation(update.getUnofficialTranslation());
+            }
+
+            if (update.getComposer() != null) {
+                setComposer(update.getComposer());
+            }
+
+            if (update.getLyricist() != null) {
+                setLyricist(update.getLyricist());
+            }
+
+            if (update.getLyricsSource() != null) {
+                setLyricsSource(update.getLyricsSource());
+            }
+
+            if (update.getArrangement() != null) {
+                setArrangement(update.getArrangement());
             }
         });
     }
@@ -1316,10 +1421,6 @@ public final class Song {
             if (update.getLineWidthSs() != null) {
                 setLineWidthSs(update.getLineWidthSs());
             }
-
-            if (update.getAttributionStartYSs() != null) {
-                setAttributionStartYSs(update.getAttributionStartYSs());
-            }
         });
     }
 
@@ -1372,8 +1473,11 @@ public final class Song {
         unofficialTranslation = unofficial;
     }
 
-    private void applyAttribution(String text) {
-        attribution = text.trim();
+    private void applyAttributionFields(SongData data) {
+        composer = coercePerson(data.composer());
+        lyricist = coercePerson(data.lyricist());
+        lyricsSource = data.lyricsSource();
+        arrangement = data.arrangement();
     }
 
     private void applyNumber(String text) {
@@ -1386,10 +1490,6 @@ public final class Song {
 
     private void applyDefaultKeyAccidentalCount(int count) {
         defaultKeyAccidentalCount = count;
-    }
-
-    private void applyAttributionStartYSs(double attributionStartY) {
-        attributionStartYSs = attributionStartY;
     }
 
     private void applyRowHeightAdjustmentSs(double rowHeightAdjustment) {
@@ -1408,24 +1508,6 @@ public final class Song {
         }
 
         return text.trim();
-    }
-
-    /**
-     * Calculates initial attributionStartY based on title font height.
-     * <p>
-     * This is only used in the constructor to provide an initial value.
-     * Layout calculation determines the actual attribution position using
-     * proper block flow layout. This method will be removed when attributionStartY
-     * is migrated to an offset-based system.
-     */
-    private double calculateAttributionStartY() {
-        // We want the attribution to start half of the song title font size below the song title.
-        // Uses prefs defaults since this is only called during Song construction, before any
-        // document fonts are available on ScoreView.
-        var lineCount = Utils.lineCount(title);
-        var titleFont = MyFontUtils.createFont(Prefs.getString(PrefsKey.TITLE_FONT), Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
-        var lineHeight = MyFontUtils.getFontMetrics(titleFont).getHeight();
-        return (lineHeight * lineCount) + (lineHeight / 2.0);
     }
 
 }

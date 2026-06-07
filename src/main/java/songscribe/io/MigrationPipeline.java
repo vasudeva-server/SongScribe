@@ -62,7 +62,6 @@ final class MigrationPipeline {
             var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
             ctx.lineWidthSs /= pps;
             ctx.rowHeightAdjustmentSs /= pps;
-            ctx.attributionStartYSs /= pps;
             FormatMigrator.migratePixelsToStaffSpace(ctx.lines);
         }),
         new SongMigration(StageId.LINE_WIDTH_FIX,

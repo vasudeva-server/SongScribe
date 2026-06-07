@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.Tempo;
 import songscribe.ui.component.ScoreView;
 
@@ -56,12 +57,14 @@ public record SongData(
     String underLyrics,
     String banglaLyrics,
     String translatedLyrics,
-    String attribution,
+    String composer,
+    String lyricist,
+    LyricsSource lyricsSource,
+    boolean arrangement,
     String footnotes,
     boolean unofficialTranslation,
     int defaultKeyAccidentalCount,
     KeyType defaultKeyType,
-    double attributionStartYSs,
     double rowHeightAdjustmentSs,
     double lineWidthSs,
     List<Line> lines,

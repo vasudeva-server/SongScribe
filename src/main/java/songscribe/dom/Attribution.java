@@ -20,111 +20,76 @@
 
 package songscribe.dom;
 
-import java.awt.Font;
-
 /**
- * Represents attribution text (composer/arranger) displayed on the staff.
+ * Block element that represents the attribution pane above the first staff line.
  * <p>
- * Attribution is typically rendered at the right edge of the staff. When it collides
- * with above-staff attachments (tempo, fermata, etc.), the staff moves down vertically
- * to accommodate both elements.
+ * Carries only the block geometry (width/height in staff-spaces) and a user Y
+ * offset. The layout engine measures the {@code AttributionPane}'s preferred
+ * size, converts it from pixels to staff-spaces, and stores the result here via
+ * {@link #setDimensionsSs(double, double)} before handing the dimensions to the
+ * stacker.
  * <p>
- * Right-aligned positioning: {@code x = staffWidth - attributionWidth - margin}
+ * X positioning is always right-aligned to the staff right edge; the user
+ * cannot shift it horizontally. Accordingly, {@link #getUserXOffsetSs()} is
+ * overridden to return {@code 0.0} so that
+ * {@code VerticalStackingCalculator.applyManualOffsets} never applies an X
+ * shift to this element.
  */
 public class Attribution extends LineElement {
 
-    /** Margin from attribution bottom to score */
-    public static final double ATTRIBUTION_MARGIN_BOTTOM_SS = 2.0;  // 16px
+    /** Margin from the attribution block's bottom edge to the top of the staff. */
+    public static final double ATTRIBUTION_MARGIN_BOTTOM_SS = 2.0;
 
-    /** The attribution text (composer, arranger, etc.). */
-    private String text;
-
-    /** Whether the text is right-aligned (default: true). */
-    private boolean isRightAligned = true;
+    private double widthSs;
+    private double heightSs;
 
     /**
-     * Creates an attribution with the specified text.
-     *
-     * @param text The attribution text
+     * Creates an attribution block element with zero initial dimensions.
+     * Call {@link #setDimensionsSs(double, double)} after measuring the pane.
      */
-    public Attribution(String text) {
-        this.text = text;
+    public Attribution() {
         setMarginSs(0, 0, ATTRIBUTION_MARGIN_BOTTOM_SS, 0);
     }
 
     /**
-     * Returns the attribution text.
-     */
-    public String getText() {
-        return text;
-    }
-
-    /**
-     * Sets the attribution text.
+     * Sets the block dimensions from the measured {@code AttributionPane}
+     * preferred size (already converted from pixels to staff-spaces by the
+     * caller via {@code ScaleContext.pxToSs}).
      *
-     * @param text The attribution text
+     * @param widthSs  pane width in staff-spaces
+     * @param heightSs pane height in staff-spaces
      */
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    /**
-     * Returns whether the attribution is right-aligned.
-     */
-    public boolean isRightAligned() {
-        return isRightAligned;
-    }
-
-    /**
-     * Sets whether the attribution is right-aligned.
-     *
-     * @param rightAligned true for right-aligned, false for left-aligned
-     */
-    public void setRightAligned(boolean rightAligned) {
-        isRightAligned = rightAligned;
-    }
-
-    /**
-     * Computes the content width from the actual attribution text.
-     *
-     * @param font the attribution font
-     * @return width in staff-space units
-     */
-    public double computeContentWidthSs(Font font) {
-        return ScaleContext.textWidthSs(font, text);
-    }
-
-    /**
-     * Computes the content height from the attribution font.
-     *
-     * @param font the attribution font
-     * @return height in staff-space units
-     */
-    public double computeContentHeightSs(Font font) {
-        return ScaleContext.textHeightSs(font);
-    }
-
-    @Override
-    public double getContentWidthPx() {
-        throw new UnsupportedOperationException(
-            "Attribution width is font-dependent; use computeContentWidthSs(font) instead.");
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        throw new UnsupportedOperationException(
-            "Attribution height is font-dependent; use computeContentHeightSs(font) instead.");
+    public void setDimensionsSs(double widthSs, double heightSs) {
+        this.widthSs = widthSs;
+        this.heightSs = heightSs;
     }
 
     @Override
     public double getContentWidthSs() {
-        throw new UnsupportedOperationException(
-            "Attribution width is font-dependent; use computeContentWidthSs(font) instead.");
+        return widthSs;
     }
 
     @Override
     public double getContentHeightSs() {
-        throw new UnsupportedOperationException(
-            "Attribution height is font-dependent; use computeContentHeightSs(font) instead.");
+        return heightSs;
+    }
+
+    @Override
+    public double getContentWidthPx() {
+        return ScaleContext.ssToPx(widthSs);
+    }
+
+    @Override
+    public double getContentHeightPx() {
+        return ScaleContext.ssToPx(heightSs);
+    }
+
+    /**
+     * Always returns {@code 0.0}. The attribution is always right-aligned to the
+     * staff right edge; horizontal position is never user-adjustable.
+     */
+    @Override
+    public double getUserXOffsetSs() {
+        return 0.0;
     }
 }

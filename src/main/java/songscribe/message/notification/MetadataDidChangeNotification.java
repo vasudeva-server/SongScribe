@@ -20,6 +20,7 @@
 
 package songscribe.message.notification;
 
+import songscribe.dom.Song;
 import songscribe.message.Message;
 
 import org.jspecify.annotations.Nullable;
@@ -35,32 +36,43 @@ public class MetadataDidChangeNotification extends Message {
     @Nullable
     private final String number;
     @Nullable
-    private final String attribution;
-    @Nullable
     private final Integer month;
     @Nullable
     private final Integer day;
     @Nullable
     private final Boolean unofficialTranslation;
+    @Nullable
+    private final String composer;
+    @Nullable
+    private final String lyricist;
+    private final Song.@Nullable LyricsSource lyricsSource;
+    @Nullable
+    private final Boolean arrangement;
 
     public MetadataDidChangeNotification(
         @Nullable String title,
         @Nullable String place,
         @Nullable String year,
         @Nullable String number,
-        @Nullable String attribution,
         @Nullable Integer month,
         @Nullable Integer day,
-        @Nullable Boolean unofficialTranslation
+        @Nullable Boolean unofficialTranslation,
+        @Nullable String composer,
+        @Nullable String lyricist,
+        Song.@Nullable LyricsSource lyricsSource,
+        @Nullable Boolean arrangement
     ) {
         this.title = title;
         this.place = place;
         this.year = year;
         this.number = number;
-        this.attribution = attribution;
         this.month = month;
         this.day = day;
         this.unofficialTranslation = unofficialTranslation;
+        this.composer = composer;
+        this.lyricist = lyricist;
+        this.lyricsSource = lyricsSource;
+        this.arrangement = arrangement;
     }
 
     @Nullable
@@ -84,11 +96,6 @@ public class MetadataDidChangeNotification extends Message {
     }
 
     @Nullable
-    public String getAttribution() {
-        return attribution;
-    }
-
-    @Nullable
     public Integer getMonth() {
         return month;
     }
@@ -101,5 +108,24 @@ public class MetadataDidChangeNotification extends Message {
     @Nullable
     public Boolean getUnofficialTranslation() {
         return unofficialTranslation;
+    }
+
+    @Nullable
+    public String getComposer() {
+        return composer;
+    }
+
+    @Nullable
+    public String getLyricist() {
+        return lyricist;
+    }
+
+    public Song.@Nullable LyricsSource getLyricsSource() {
+        return lyricsSource;
+    }
+
+    @Nullable
+    public Boolean getArrangement() {
+        return arrangement;
     }
 }

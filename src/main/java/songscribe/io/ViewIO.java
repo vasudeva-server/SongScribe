@@ -47,16 +47,19 @@ public final class ViewIO {
     private static final String XML_BANGLA_FONT_SIZE = "banglaFontSize";
     private static final String XML_FOOTNOTE_FONT = "footnoteFont";
     private static final String XML_FOOTNOTE_FONT_SIZE = "footnoteFontSize";
+    private static final String XML_SUB_ATTRIBUTION_FONT = "subAttributionFont";
+    private static final String XML_SUB_ATTRIBUTION_FONT_SIZE = "subAttributionFontSize";
 
     private record FontTags(FontKey key, String nameTag, String sizeTag) {}
 
     private static final FontTags[] FONT_TAGS = {
-        new FontTags(FontKey.TITLE,       XML_TITLE_FONT,      XML_TITLE_FONT_SIZE),
-        new FontTags(FontKey.LYRICS,      XML_LYRICS_FONT,     XML_LYRICS_FONT_SIZE),
-        new FontTags(FontKey.ATTRIBUTION, XML_GENERAL_FONT,    XML_GENERAL_FONT_SIZE),
-        new FontTags(FontKey.ANNOTATION,  XML_ANNOTATION_FONT, XML_ANNOTATION_FONT_SIZE),
-        new FontTags(FontKey.BANGLA,      XML_BANGLA_FONT,     XML_BANGLA_FONT_SIZE),
-        new FontTags(FontKey.FOOTNOTE,    XML_FOOTNOTE_FONT,   XML_FOOTNOTE_FONT_SIZE),
+        new FontTags(FontKey.TITLE,           XML_TITLE_FONT,           XML_TITLE_FONT_SIZE),
+        new FontTags(FontKey.LYRICS,          XML_LYRICS_FONT,          XML_LYRICS_FONT_SIZE),
+        new FontTags(FontKey.ATTRIBUTION,     XML_GENERAL_FONT,         XML_GENERAL_FONT_SIZE),
+        new FontTags(FontKey.SUB_ATTRIBUTION, XML_SUB_ATTRIBUTION_FONT, XML_SUB_ATTRIBUTION_FONT_SIZE),
+        new FontTags(FontKey.ANNOTATION,      XML_ANNOTATION_FONT,      XML_ANNOTATION_FONT_SIZE),
+        new FontTags(FontKey.BANGLA,          XML_BANGLA_FONT,          XML_BANGLA_FONT_SIZE),
+        new FontTags(FontKey.FOOTNOTE,        XML_FOOTNOTE_FONT,        XML_FOOTNOTE_FONT_SIZE),
     };
 
     private ViewIO() {}

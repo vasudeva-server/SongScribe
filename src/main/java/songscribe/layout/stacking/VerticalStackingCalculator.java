@@ -22,6 +22,9 @@ package songscribe.layout.stacking;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
+import songscribe.dom.Attribution;
 import songscribe.dom.LineElement;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.Line;
@@ -59,14 +62,7 @@ public class VerticalStackingCalculator {
 
     /**
      * Calculates vertical positions for all elements in the given columns.
-     * <p>
-     * Creates the three-layer StaffExtents model, seeds note bounding areas, then processes
-     * each decoration tier in order. Results are written directly to the builder.
-     *
-     * @param columns     list of element columns with X positions already set
-     * @param line        the line being laid out
-     * @param builder     the LayoutResult builder to write decoration positions into
-     * @param lineWidthSs total width of the staff line in staff-space units
+     * Equivalent to {@code calculate(columns, line, builder, lineWidthSs, fonts, null)}.
      */
     public void calculate(
         List<ElementColumn> columns,
@@ -74,6 +70,38 @@ public class VerticalStackingCalculator {
         LayoutResult.Builder builder,
         double lineWidthSs,
         DocumentFontsHolder fonts) {
+        calculate(columns, line, builder, lineWidthSs, fonts, null);
+    }
+
+    /**
+     * Calculates vertical positions for all elements in the given columns.
+     * <p>
+     * Creates the three-layer StaffExtents model, seeds note bounding areas, then processes
+     * each decoration tier in order. Results are written directly to the builder.
+     * <p>
+     * On the first line, if {@code attribution} is non-null with non-zero dimensions, it is
+     * stacked as the topmost tier (after {@link SystemStacker}) over its right-edge columns.
+     * The resulting {@link LayoutResult.DecorationLayout} is keyed by the attribution element
+     * so that {@link #applyManualOffsets} can apply the user Y offset. An upward (negative)
+     * user Y offset is accounted for when computing {@code aboveStaffSs}, growing the above-staff
+     * band and dropping the first staff via
+     * {@link songscribe.ui.component.score.LineComponent#calculateMiddleLineYSs()}.
+     *
+     * @param columns      list of element columns with X positions already set
+     * @param line         the line being laid out
+     * @param builder      the LayoutResult builder to write decoration positions into
+     * @param lineWidthSs  total width of the staff line in staff-space units
+     * @param fonts        font holder for measuring elements
+     * @param attribution  the attribution block element, or null if none to stack;
+     *                     non-null implies this is the first line of the song
+     */
+    public void calculate(
+        List<ElementColumn> columns,
+        Line line,
+        LayoutResult.Builder builder,
+        double lineWidthSs,
+        DocumentFontsHolder fonts,
+        @Nullable Attribution attribution) {
 
         var noteAttachedExtents = new StaffExtents(lineWidthSs);
         var structuralExtents = new StaffExtents(lineWidthSs);
@@ -98,6 +126,11 @@ public class VerticalStackingCalculator {
         systemExtents.copyTopFrom(structuralExtents);
         new SystemStacker(context, systemExtents, fonts).stack();
 
+        // Tier 5 (first line only): stack the attribution block above the right-edge columns
+        if (attribution != null) {
+            stackAttribution(attribution, systemExtents, lineWidthSs, builder);
+        }
+
         // Apply manual offsets post-layout (no collision re-run)
         applyManualOffsets(builder);
 
@@ -111,6 +144,22 @@ public class VerticalStackingCalculator {
         var aboveStaffSs = Math.max(
             StaffExtents.MIN_ABOVE_STAFF_SS,
             -topExtentSs - StaffExtents.STAFF_HALF_SS);
+
+        // An upward user Y offset on the attribution can raise it above the naturally
+        // stacked position. Grow aboveStaffSs to accommodate so the first staff drops.
+        if (attribution != null) {
+            var userYOffsetSs = attribution.getUserYOffsetSs();
+
+            if (userYOffsetSs < 0) {
+                var naturalLayout = builder.getDecorationLayout(attribution);
+
+                if (naturalLayout != null) {
+                    var shiftedTopSs = naturalLayout.ySs() + userYOffsetSs;
+                    var aboveFromAttribution = -shiftedTopSs - StaffExtents.STAFF_HALF_SS;
+                    aboveStaffSs = Math.max(aboveStaffSs, aboveFromAttribution);
+                }
+            }
+        }
 
         var botExtentSs = Math.max(
             Math.max(
@@ -138,6 +187,45 @@ public class VerticalStackingCalculator {
         builder.setLineHeightSs(lineHeightSs);
         builder.setAboveStaffSs(aboveStaffSs);
         builder.setBelowContentSs(belowContentSs);
+    }
+
+    /**
+     * Stacks the attribution block above the right-edge columns of the first line.
+     * <p>
+     * The attribution is right-aligned to the staff right edge. It uses
+     * {@link StackingUtils#stackAbove} over its x-range, anchored at the top staff line,
+     * so it nests as close to the staff as the system-layer extents allow.
+     *
+     * @param attribution  the attribution block element with dimensions already set
+     * @param systemExtents the system-tier extents (attribution stacks above these)
+     * @param staffRightSs  the right edge of the staff in staff-space units
+     * @param builder       the layout builder to receive the resulting DecorationLayout
+     */
+    private static void stackAttribution(
+        Attribution attribution,
+        StaffExtents systemExtents,
+        double staffRightSs,
+        LayoutResult.Builder builder) {
+
+        var widthSs = attribution.getContentWidthSs();
+        var heightSs = attribution.getContentHeightSs();
+
+        if (widthSs <= 0 || heightSs <= 0) {
+            return;
+        }
+
+        // Right-align to the staff right edge
+        var xSs = staffRightSs - widthSs;
+
+        StackingUtils.stackAbove(
+            systemExtents,
+            attribution,
+            xSs,
+            widthSs,
+            heightSs,
+            Attribution.ATTRIBUTION_MARGIN_BOTTOM_SS,
+            StackingUtils.TOP_STAFF_LINE_POSITION,
+            builder);
     }
 
 

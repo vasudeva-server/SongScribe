@@ -28,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Song.LyricsSource;
 import songscribe.message.SongData;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
@@ -55,9 +56,11 @@ class SongLoadingTest extends UnitTest {
         });
 
         var data = new SongData(
-            null, "", "", "", 0, 0, "", "", "", "", "", "", false,
+            null, "", "", "", 0, 0, "", "", "", "",
+            Song.SRI_CHINMOY, Song.SRI_CHINMOY, LyricsSource.LYRICIST, false,
+            "", false,
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
-            0.0, 0.0, 0.0,
+            0.0, 0.0,
             List.of(dataLine), false, 1
         );
 
@@ -100,12 +103,14 @@ class SongLoadingTest extends UnitTest {
             "under text",
             "bangla text",
             "translated text",
-            "Composed by Someone",
+            "Bach",
+            Song.SRI_CHINMOY,
+            LyricsSource.TEXT,
+            true,
             "See note 1",
             true,
             2,
             KeyType.SHARPS,
-            10.0,
             1.5,
             50.0,
             List.of(lineWithTempo),
@@ -125,12 +130,14 @@ class SongLoadingTest extends UnitTest {
         assertThat(song.getUnderLyrics()).isEqualTo("under text");
         assertThat(song.getBanglaLyrics()).isEqualTo("bangla text");
         assertThat(song.getTranslatedLyrics()).isEqualTo("translated text");
-        assertThat(song.getAttribution()).isEqualTo("Composed by Someone");
+        assertThat(song.getComposer()).isEqualTo("Bach");
+        assertThat(song.getLyricist()).isEqualTo(Song.SRI_CHINMOY);
+        assertThat(song.getLyricsSource()).isEqualTo(LyricsSource.TEXT);
+        assertThat(song.isArrangement()).isTrue();
         assertThat(song.getFootnotes()).isEqualTo("See note 1");
         assertThat(song.isUnofficialTranslation()).isTrue();
         assertThat(song.getDefaultKeyAccidentalCount()).isEqualTo(2);
         assertThat(song.getDefaultKeyType()).isEqualTo(KeyType.SHARPS);
-        assertThat(song.getAttributionStartYSs()).isEqualTo(10.0);
         assertThat(song.getRowHeightAdjustmentSs()).isEqualTo(1.5);
         assertThat(song.getLineWidthSs()).isEqualTo(50.0);
         assertThat(song.lineCount()).isEqualTo(1);
@@ -162,12 +169,14 @@ class SongLoadingTest extends UnitTest {
             "",
             "",
             "",
-            "",
+            Song.SRI_CHINMOY,
+            Song.SRI_CHINMOY,
+            LyricsSource.LYRICIST,
+            false,
             "",
             false,
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT,
             Song.DEFAULT_KEY_TYPE,
-            0.0,
             0.0,
             0.0,
             List.of(newLine),
@@ -206,12 +215,14 @@ class SongLoadingTest extends UnitTest {
             "",
             "",
             "",
-            "",
+            Song.SRI_CHINMOY,
+            Song.SRI_CHINMOY,
+            LyricsSource.LYRICIST,
+            false,
             "",
             false,
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT,
             Song.DEFAULT_KEY_TYPE,
-            0.0,
             0.0,
             0.0,
             List.of(lineWithNote),

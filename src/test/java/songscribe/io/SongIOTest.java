@@ -154,7 +154,8 @@ class SongIOTest extends UnitTest {
     }
 
     // row 9: empty string fields → tags absent; non-empty → present, XML-escaped.
-    // Tests: title, place, year, attribution, underlyrics, banglaLyrics, translatedLyrics.
+    // Tests: title, place, year, underlyrics, banglaLyrics, translatedLyrics.
+    // Note: <rightinfo> is always written (computed from discrete attribution fields).
     @Test
     void testWriteSongOptionalStringFieldsOmittedWhenEmpty() {
         var song = new Song();
@@ -162,7 +163,6 @@ class SongIOTest extends UnitTest {
         song.setTitle("");
         song.setPlace("");
         song.setYear("");
-        song.setAttribution("");
         song.setUnderLyrics("");
         song.setBanglaLyrics("");
         song.setTranslatedLyrics("");
@@ -171,20 +171,24 @@ class SongIOTest extends UnitTest {
         assertThat(xml).doesNotContain("<songtitle>");
         assertThat(xml).doesNotContain("<place>");
         assertThat(xml).doesNotContain("<year>");
-        assertThat(xml).doesNotContain("<rightinfo>");
         assertThat(xml).doesNotContain("<underlyrics>");
         assertThat(xml).doesNotContain("<banglalyrics>");
         assertThat(xml).doesNotContain("<translatedlyrics>");
+        // <rightinfo> is always written (computed from discrete attribution fields).
+        assertThat(xml).contains("<rightinfo>");
+        // <arrangement> is omitted when isArrangement() is false (the default).
+        assertThat(xml).doesNotContain("<arrangement>");
     }
 
     // row 9 (presence + escaping): non-empty values appear and are XML-escaped.
+    // <rightinfo> carries the computed attribution blob; discrete fields are always written.
     @Test
     void testWriteSongOptionalStringFieldsEmittedAndEscaped() {
         var song = new Song();
         song.setTitle("Heart & Soul");
         song.setPlace("New York");
         song.setYear("2024");
-        song.setAttribution("Composer <Name>");
+        song.setComposer("Composer <Name>");
         song.setUnderLyrics("under");
         song.setBanglaLyrics("bangla");
         song.setTranslatedLyrics("translated");
@@ -194,7 +198,9 @@ class SongIOTest extends UnitTest {
         assertThat(xml).contains("<songtitle>Heart &amp; Soul</songtitle>");
         assertThat(xml).contains("<place>New York</place>");
         assertThat(xml).contains("<year>2024</year>");
-        assertThat(xml).contains("<rightinfo>Composer &lt;Name&gt;</rightinfo>");
+        assertThat(xml).contains("<composer>Composer &lt;Name&gt;</composer>");
+        assertThat(xml).contains("<lyricist>");
+        assertThat(xml).contains("<lyricssource>");
         assertThat(xml).contains("<underlyrics>under</underlyrics>");
         assertThat(xml).contains("<banglalyrics>bangla</banglalyrics>");
         assertThat(xml).contains("<translatedlyrics>translated</translatedlyrics>");
@@ -694,7 +700,10 @@ class SongIOTest extends UnitTest {
             song.setUnderLyrics("under");
             song.setBanglaLyrics("bangla");
             song.setTranslatedLyrics("translated");
-            song.setAttribution("Author");
+            song.setComposer("Bach");
+            song.setLyricist(Song.SRI_CHINMOY);
+            song.setLyricsSource(Song.LyricsSource.TEXT);
+            song.setArrangement(true);
             song.setFootnotes("Note");
             song.setUnofficialTranslation(true);
 
@@ -733,9 +742,18 @@ class SongIOTest extends UnitTest {
             assertThat(reloaded.getTranslatedLyrics())
                 .as("translatedLyrics round-trip")
                 .isEqualTo("translated");
-            assertThat(reloaded.getAttribution())
-                .as("attribution round-trip")
-                .isEqualTo("Author");
+            assertThat(reloaded.getComposer())
+                .as("composer round-trip")
+                .isEqualTo("Bach");
+            assertThat(reloaded.getLyricist())
+                .as("lyricist round-trip")
+                .isEqualTo(Song.SRI_CHINMOY);
+            assertThat(reloaded.getLyricsSource())
+                .as("lyricsSource round-trip")
+                .isEqualTo(Song.LyricsSource.TEXT);
+            assertThat(reloaded.isArrangement())
+                .as("arrangement round-trip")
+                .isTrue();
             assertThat(reloaded.getFootnotes())
                 .as("footnotes round-trip")
                 .isEqualTo("Note");
@@ -807,7 +825,6 @@ class SongIOTest extends UnitTest {
 
             assertThat(song.getLineWidthSs()).isEqualTo(LEGACY_LINE_WIDTH_PX / pps);
             assertThat(song.getRowHeightAdjustmentSs()).isEqualTo(LEGACY_ROW_HEIGHT_PX / pps);
-            assertThat(song.getAttributionStartYSs()).isEqualTo(LEGACY_ATTRIBUTION_START_Y_PX / pps);
         }
 
         // 2.1–2.2 buggy linewidth: the pixel-stored value is corrected and the corrected value
@@ -1429,5 +1446,161 @@ class SongIOTest extends UnitTest {
               <view/>
             </composition>
             """;
+    }
+
+    /**
+     * Tests for {@link SongIO.DocumentReader#parseLegacyAttributionBlob} and
+     * {@link SongIO.DocumentReader#parseLegacyDateLine}.
+     *
+     * <p>These methods run on files predating the discrete attribution tags (< 2.8).
+     * The blob is the text content of the {@code <rightinfo>} element.
+     * For v1.0 files ({@code isV10File()} true), date and place lines after the
+     * "by" line are also parsed.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class LegacyAttributionBlob {
+
+        // ------------------------------------------------------------------
+        // parseLegacyAttributionBlob branches
+        // ------------------------------------------------------------------
+
+        // Blank blob → composer and lyricist fall back to Song.SRI_CHINMOY (the default).
+        @Test
+        void testBlankBlobLeavesSriChinmoyAsDefault() throws Exception {
+            var song = parseXml(legacyBlobXml("2.0", "   "));
+
+            assertThat(song.getComposer()).isEqualTo(Song.SRI_CHINMOY);
+            assertThat(song.getLyricist()).isEqualTo(Song.SRI_CHINMOY);
+        }
+
+        // No "by " line in blob → composer and lyricist fall back to Song.SRI_CHINMOY.
+        @Test
+        void testBlobWithoutByLineLeavesDefaultNames() throws Exception {
+            var song = parseXml(legacyBlobXml("2.0", "Words and Music"));
+
+            assertThat(song.getComposer()).isEqualTo(Song.SRI_CHINMOY);
+            assertThat(song.getLyricist()).isEqualTo(Song.SRI_CHINMOY);
+        }
+
+        // "by " line with empty person name → fall back to Song.SRI_CHINMOY.
+        @Test
+        void testByLineWithEmptyPersonLeavesDefaultNames() throws Exception {
+            var song = parseXml(legacyBlobXml("2.0", "Words and Music\nby "));
+
+            assertThat(song.getComposer()).isEqualTo(Song.SRI_CHINMOY);
+            assertThat(song.getLyricist()).isEqualTo(Song.SRI_CHINMOY);
+        }
+
+        // "by SomeName" → composer and lyricist both set to SomeName.
+        @Test
+        void testByLineWithPersonSetsComposerAndLyricist() throws Exception {
+            var song = parseXml(legacyBlobXml("2.0", "Words and Music\nby SomeName"));
+
+            assertThat(song.getComposer()).isEqualTo("SomeName");
+            assertThat(song.getLyricist()).isEqualTo("SomeName");
+        }
+
+        // ------------------------------------------------------------------
+        // parseLegacyDateLine branches (v1.0 files only)
+        // ------------------------------------------------------------------
+
+        // Full "Month Day, Year" → month, day, year all populated.
+        @Test
+        void testV10FullDateLinePopulatesMonthDayYear() throws Exception {
+            var song = parseXml(v10BlobXml("Words and Music\nby SomeName\nJune 15, 2001"));
+
+            assertThat(song.getMonth()).isEqualTo(6);
+            assertThat(song.getDay()).isEqualTo(15);
+            assertThat(song.getYear()).isEqualTo("2001");
+        }
+
+        // "Month, Year" (no day) → month and year populated; day stays 0.
+        @Test
+        void testV10MonthYearLinePopulatesMonthAndYear() throws Exception {
+            var song = parseXml(v10BlobXml("Words and Music\nby SomeName\nMarch, 1999"));
+
+            assertThat(song.getMonth()).isEqualTo(3);
+            assertThat(song.getDay()).isZero();
+            assertThat(song.getYear()).isEqualTo("1999");
+        }
+
+        // Year only → year populated; month and day stay at defaults.
+        @Test
+        void testV10YearOnlyLinePopulatesYear() throws Exception {
+            var song = parseXml(v10BlobXml("Words and Music\nby SomeName\n2005"));
+
+            assertThat(song.getYear()).isEqualTo("2005");
+            assertThat(song.getMonth()).isZero();
+            assertThat(song.getDay()).isZero();
+        }
+
+        // Unrecognised date format (no leading month name, not purely numeric) →
+        // treated as a year string; no month or day set.
+        @Test
+        void testV10UnrecognisedDateFormatTreatedAsYear() throws Exception {
+            var song = parseXml(v10BlobXml("Words and Music\nby SomeName\nABC123"));
+
+            assertThat(song.getYear()).isEqualTo("ABC123");
+            assertThat(song.getMonth()).isZero();
+            assertThat(song.getDay()).isZero();
+        }
+
+        // ------------------------------------------------------------------
+        // XML builders
+        // ------------------------------------------------------------------
+
+        /**
+         * Minimal legacy composition at the given version (must be < 2.8 to
+         * trigger {@code isLegacyAttributionFile()}) with the given
+         * {@code <rightinfo>} blob.
+         */
+        private static String legacyBlobXml(String version, String blob) {
+            // rightinfostarty and linewidth must be integers for v2.0 (parseVersionedDouble
+            // calls Integer.parseInt for versions < 2.1).
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <composition version="%s">
+                  <keys>0</keys>
+                  <rightinfostarty>0</rightinfostarty>
+                  <linewidth>200</linewidth>
+                  <rightinfo>%s</rightinfo>
+                  <lines>
+                    <line>
+                      <lyricsypos>5.0</lyricsypos>
+                      <notes>
+                        <note type="CROTCHET">
+                          <staffposition>0</staffposition>
+                        </note>
+                        <note type="FINAL_DOUBLE_BARLINE">
+                          <staffposition>0</staffposition>
+                        </note>
+                      </notes>
+                    </line>
+                  </lines>
+                  <view/>
+                </composition>
+                """.formatted(version, blob);
+        }
+
+        /**
+         * Minimal v1.0 song with the given {@code <rightinfo>} blob.
+         * v1.0 uses {@code <song>} root and triggers {@code isV10File()},
+         * enabling date/place parsing from the blob.
+         */
+        private static String v10BlobXml(String blob) {
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <song version="1.0">
+                  <keys>0</keys>
+                  <rightinfo>%s</rightinfo>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                    </note>
+                  </notes>
+                </song>
+                """.formatted(blob);
+        }
     }
 }

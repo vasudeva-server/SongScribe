@@ -53,6 +53,7 @@ import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
 import songscribe.layout.LineEndingSupport;
 import songscribe.midi.MidiSequenceBuilder;
+import songscribe.ui.component.score.AttributionPane;
 
 /**
  * The following features are not supported in abc 2.1
@@ -186,7 +187,7 @@ public final class ExportABCAction extends UIAction {
         writer.println("X:1");
         writer.println("T:" + song.getTitle().replace('\n', ' '));
         writer.println("W:" + song.getUnderLyrics().replace('\n', ' '));
-        writer.println("C:" + song.getAttribution().replace('\n', ' '));
+        writer.println("C:" + AttributionPane.attributionTextSingleLine(song));
         writer.println("Q:" + translateTempo(song.getEffectiveTempo()));
         writer.println(
             "L:" +

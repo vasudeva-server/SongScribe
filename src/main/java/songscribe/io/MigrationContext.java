@@ -45,12 +45,10 @@ final class MigrationContext {
 
     double lineWidthSs;
     double rowHeightAdjustmentSs;
-    double attributionStartYSs;
 
     int majorVersion;
     int minorVersion;
 
-    String attribution = "";
     String lyrics = "";
 
     @Nullable Song song;

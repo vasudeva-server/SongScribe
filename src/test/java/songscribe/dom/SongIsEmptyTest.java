@@ -26,6 +26,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Song.LyricsSource;
 import songscribe.message.SongData;
 
 class SongIsEmptyTest extends UnitTest {
@@ -35,9 +36,11 @@ class SongIsEmptyTest extends UnitTest {
     void testNoLinesReturnsTrue() {
         var song = new Song();
         var data = new SongData(
-            null, "", "", "", 0, 0, "", "", "", "", "", "", false,
+            null, "", "", "", 0, 0, "", "", "", "",
+            Song.SRI_CHINMOY, Song.SRI_CHINMOY, LyricsSource.LYRICIST, false,
+            "", false,
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
-            0.0, 0.0, 0.0, List.of(), false, 1
+            0.0, 0.0, List.of(), false, 1
         );
         song.withoutMutationTracking(() -> song.loadFrom(data));
 
@@ -50,9 +53,11 @@ class SongIsEmptyTest extends UnitTest {
         var song = new Song();
         var emptyLine = new Line(song);
         var data = new SongData(
-            null, "", "", "", 0, 0, "", "", "", "", "", "", false,
+            null, "", "", "", 0, 0, "", "", "", "",
+            Song.SRI_CHINMOY, Song.SRI_CHINMOY, LyricsSource.LYRICIST, false,
+            "", false,
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
-            0.0, 0.0, 0.0, List.of(emptyLine), false, 1
+            0.0, 0.0, List.of(emptyLine), false, 1
         );
         song.withoutMutationTracking(() -> song.loadFrom(data));
 

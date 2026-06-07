@@ -92,12 +92,13 @@ class DocumentFontsTest extends UnitTest {
             // Each role must produce the exact same font that setFont(key, psName, size)
             // would produce from the corresponding prefs pair — verified role by role.
             var expected = new DocumentFonts();
-            expected.setFont(FontKey.TITLE,       Prefs.getString(PrefsKey.TITLE_FONT),       Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
-            expected.setFont(FontKey.LYRICS,      Prefs.getString(PrefsKey.LYRICS_FONT),      Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
-            expected.setFont(FontKey.ATTRIBUTION, Prefs.getString(PrefsKey.ATTRIBUTION_FONT), Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
-            expected.setFont(FontKey.ANNOTATION,  Prefs.getString(PrefsKey.ANNOTATION_FONT),  Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
-            expected.setFont(FontKey.FOOTNOTE,    Prefs.getString(PrefsKey.FOOTNOTE_FONT),    Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
-            expected.setFont(FontKey.BANGLA,      Prefs.getString(PrefsKey.BANGLA_FONT),      Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
+            expected.setFont(FontKey.TITLE,           Prefs.getString(PrefsKey.TITLE_FONT),           Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+            expected.setFont(FontKey.LYRICS,          Prefs.getString(PrefsKey.LYRICS_FONT),          Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
+            expected.setFont(FontKey.ATTRIBUTION,     Prefs.getString(PrefsKey.ATTRIBUTION_FONT),     Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
+            expected.setFont(FontKey.SUB_ATTRIBUTION, Prefs.getString(PrefsKey.SUB_ATTRIBUTION_FONT), Prefs.getInt(PrefsKey.SUB_ATTRIBUTION_FONT_SIZE));
+            expected.setFont(FontKey.ANNOTATION,      Prefs.getString(PrefsKey.ANNOTATION_FONT),      Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
+            expected.setFont(FontKey.FOOTNOTE,        Prefs.getString(PrefsKey.FOOTNOTE_FONT),        Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
+            expected.setFont(FontKey.BANGLA,          Prefs.getString(PrefsKey.BANGLA_FONT),          Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
 
             assertThat(fonts).isEqualTo(expected);
         }

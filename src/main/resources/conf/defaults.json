@@ -30,6 +30,8 @@
   "showTips": true,
   "startupAction": "DO_NOTHING",
   "stripShortA": true,
+  "subAttributionFont": "SourceSans3-Regular",
+  "subAttributionFontSize": 16,
   "tempoChangePercent": 100,
   "tipIndex": 0,
   "titleFont": "SourceSans3-SemiBold",

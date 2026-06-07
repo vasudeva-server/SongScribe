@@ -21,6 +21,7 @@
 package songscribe.message.mutation;
 
 import songscribe.dom.KeyType;
+import songscribe.dom.Song;
 import songscribe.dom.Tempo;
 
 /**
@@ -35,13 +36,16 @@ public enum MetadataField {
     YEAR(String.class),
     MONTH(Integer.class),
     DAY(Integer.class),
-    ATTRIBUTION(String.class),
     NUMBER(String.class),
     TEMPO(Tempo.class),
     DEFAULT_KEY_ACCIDENTAL_COUNT(Integer.class),
     DEFAULT_KEY_TYPE(KeyType.class),
     FOOTNOTES(String.class),
-    UNOFFICIAL_TRANSLATION(Boolean.class);
+    UNOFFICIAL_TRANSLATION(Boolean.class),
+    COMPOSER(String.class),
+    LYRICIST(String.class),
+    LYRICS_SOURCE(Song.LyricsSource.class),
+    ARRANGEMENT(Boolean.class);
 
     private final Class<?> expectedType;
 

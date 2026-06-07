@@ -25,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.Strings;
 import songscribe.UnitTest;
 
 class SongDefaultsTest extends UnitTest {
@@ -158,8 +157,10 @@ class SongDefaultsTest extends UnitTest {
     @Test
     void testDefaultAttribution() {
         var song = new Song();
-        assertThat(song.getAttribution())
-            .isEqualTo(Strings.get(Strings.SONG_DEFAULT_ATTRIBUTION));
+        assertThat(song.getComposer()).isEqualTo(Song.SRI_CHINMOY);
+        assertThat(song.getLyricist()).isEqualTo(Song.SRI_CHINMOY);
+        assertThat(song.getLyricsSource()).isEqualTo(Song.LyricsSource.LYRICIST);
+        assertThat(song.isArrangement()).isFalse();
     }
 
     @Test

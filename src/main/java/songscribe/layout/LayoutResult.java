@@ -1195,6 +1195,16 @@ public final class LayoutResult {
         }
 
         /**
+         * Returns the decoration layout for a specific element, or null if not yet computed.
+         *
+         * @param element The decoration element to look up
+         * @return The decoration layout, or null if not present
+         */
+        public @Nullable DecorationLayout getDecorationLayout(LineElement element) {
+            return decorationLayouts.get(element);
+        }
+
+        /**
          * Returns the tie layout for a tie span from the builder's accumulated data.
          *
          * @param span The tie span to look up

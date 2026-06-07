@@ -120,19 +120,36 @@ class SongSetterMutationTest extends UnitTest {
         }
 
         @Test
-        void testSetAttributionPostsMutation() {
-            var oldAttribution = song.getAttribution();
-            song.setAttribution("Composed by Someone");
+        void testSetComposerPostsMutation() {
+            var oldComposer = song.getComposer();
+            song.setComposer("Bach");
 
             var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.ATTRIBUTION);
-            assertThat(mutation.oldValue()).isEqualTo(oldAttribution);
-            assertThat(mutation.newValue()).isEqualTo("Composed by Someone");
+            assertThat(mutation.field()).isEqualTo(MetadataField.COMPOSER);
+            assertThat(mutation.oldValue()).isEqualTo(oldComposer);
+            assertThat(mutation.newValue()).isEqualTo("Bach");
         }
 
         @Test
-        void testSetAttributionSameValuePostsNothing() {
-            song.setAttribution(song.getAttribution());
+        void testSetComposerSameValuePostsNothing() {
+            song.setComposer(song.getComposer());
+            verifyNoNotificationPosted();
+        }
+
+        @Test
+        void testSetLyricistPostsMutation() {
+            var oldLyricist = song.getLyricist();
+            song.setLyricist("Mozart");
+
+            var mutation = captureSingleMetadataChange();
+            assertThat(mutation.field()).isEqualTo(MetadataField.LYRICIST);
+            assertThat(mutation.oldValue()).isEqualTo(oldLyricist);
+            assertThat(mutation.newValue()).isEqualTo("Mozart");
+        }
+
+        @Test
+        void testSetLyricistSameValuePostsNothing() {
+            song.setLyricist(song.getLyricist());
             verifyNoNotificationPosted();
         }
 
@@ -281,6 +298,44 @@ class SongSetterMutationTest extends UnitTest {
             song.setUnofficialTranslation(song.isUnofficialTranslation());
             verifyNoNotificationPosted();
         }
+
+        @Test
+        void testSetLyricsSourcePostsMutation() {
+            var oldSource = song.getLyricsSource();
+            var newSource = oldSource == Song.LyricsSource.LYRICIST
+                ? Song.LyricsSource.TEXT
+                : Song.LyricsSource.LYRICIST;
+
+            song.setLyricsSource(newSource);
+
+            var mutation = captureSingleMetadataChange();
+            assertThat(mutation.field()).isEqualTo(MetadataField.LYRICS_SOURCE);
+            assertThat(mutation.oldValue()).isEqualTo(oldSource);
+            assertThat(mutation.newValue()).isEqualTo(newSource);
+        }
+
+        @Test
+        void testSetLyricsSourceWithSameValuePostsNothing() {
+            song.setLyricsSource(song.getLyricsSource());
+            verifyNoNotificationPosted();
+        }
+
+        @Test
+        void testSetArrangementPostsMutation() {
+            var oldArrangement = song.isArrangement();
+            song.setArrangement(!oldArrangement);
+
+            var mutation = captureSingleMetadataChange();
+            assertThat(mutation.field()).isEqualTo(MetadataField.ARRANGEMENT);
+            assertThat(mutation.oldValue()).isEqualTo(oldArrangement);
+            assertThat(mutation.newValue()).isEqualTo(!oldArrangement);
+        }
+
+        @Test
+        void testSetArrangementWithSameValuePostsNothing() {
+            song.setArrangement(song.isArrangement());
+            verifyNoNotificationPosted();
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -379,23 +434,6 @@ class SongSetterMutationTest extends UnitTest {
         @Test
         void testSetLineWidthSsSameValuePostsNothing() {
             song.setLineWidthSs(song.getLineWidthSs());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetAttributionStartYSsPostsMutation() {
-            var oldY = song.getAttributionStartYSs();
-            song.setAttributionStartYSs(oldY + 3.0);
-
-            var mutation = captureSingleLayoutChange();
-            assertThat(mutation.field()).isEqualTo(LayoutField.ATTRIBUTION_START_Y_SS);
-            assertThat(mutation.oldValue()).isEqualTo(oldY);
-            assertThat(mutation.newValue()).isEqualTo(oldY + 3.0);
-        }
-
-        @Test
-        void testSetAttributionStartYSsSameValuePostsNothing() {
-            song.setAttributionStartYSs(song.getAttributionStartYSs());
             verifyNoNotificationPosted();
         }
 

@@ -20,17 +20,20 @@
 
 package songscribe.layout;
 
-import java.awt.Font;
-
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import songscribe.UnitTest;
 import songscribe.dom.Attribution;
 import songscribe.dom.ScaleContext;
+import songscribe.font.DocumentFontsHolder;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.stacking.VerticalStackingCalculator;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.Mockito.mock;
 
 class AttributionTest extends UnitTest {
 
@@ -38,53 +41,61 @@ class AttributionTest extends UnitTest {
 
     @Test
     void testCtorSetsAttributionMarginBottomSs() {
-        var attribution = new Attribution("Composer");
+        var attribution = new Attribution();
 
         assertThat(attribution.getMarginBottomSs())
             .isCloseTo(Attribution.ATTRIBUTION_MARGIN_BOTTOM_SS, within(EPSILON));
     }
 
     @Test
-    void testComputeContentWidthSsUsesStringWidth() {
-        var font = new Font("Dialog", Font.PLAIN, 12);
+    void testGetContentPxConvertsFromSs() {
+        var attribution = new Attribution();
+        var widthSs = 10.0;
+        var heightSs = 4.0;
 
-        var attribution = new Attribution("Composer");
-        var expected = ScaleContext.textWidthSs(font, "Composer");
+        attribution.setDimensionsSs(widthSs, heightSs);
 
-        assertThat(attribution.computeContentWidthSs(font)).isCloseTo(expected, within(EPSILON));
+        assertThat(attribution.getContentWidthPx())
+            .isCloseTo(ScaleContext.ssToPx(widthSs), within(EPSILON));
+        assertThat(attribution.getContentHeightPx())
+            .isCloseTo(ScaleContext.ssToPx(heightSs), within(EPSILON));
     }
 
     @Test
-    void testComputeContentHeightSsUsesFontMetrics() {
-        var font = new Font("Dialog", Font.PLAIN, 12);
+    void testGetUserXOffsetSsAlwaysReturnsZero() {
+        var attribution = new Attribution();
 
-        var attribution = new Attribution("Composer");
-        var expected = ScaleContext.textHeightSs(font);
-
-        assertThat(attribution.computeContentHeightSs(font)).isCloseTo(expected, within(EPSILON));
+        assertThat(attribution.getUserXOffsetSs()).isZero();
     }
 
     @Test
-    void testGetContentDimensionsThrowUnsupportedOperationException() {
-        var attribution = new Attribution("Composer");
+    void testUserYOffsetSsRoundTrips() {
+        var attribution = new Attribution();
+        var offsetSs = -2.5;
 
-        assertThatThrownBy(attribution::getContentWidthSs)
-            .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(attribution::getContentHeightSs)
-            .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(attribution::getContentWidthPx)
-            .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(attribution::getContentHeightPx)
-            .isInstanceOf(UnsupportedOperationException.class);
+        attribution.setUserYOffsetSs(offsetSs);
+
+        assertThat(attribution.getUserYOffsetSs()).isCloseTo(offsetSs, within(EPSILON));
     }
 
     @Test
-    void testIsRightAlignedDefaultTrueAndRoundTrip() {
-        var attribution = new Attribution("Composer");
+    void testStackAttributionSkipsWhenDimensionsAreZero() {
+        // A freshly constructed Attribution has zero width and height.
+        // stackAttribution guards against this with `if (widthSs <= 0 || heightSs <= 0) return`,
+        // so the attribution must not receive a DecorationLayout in the builder.
+        var attribution = new Attribution();
+        var builder = LayoutResult.builder();
 
-        assertThat(attribution.isRightAligned()).isTrue();
+        new VerticalStackingCalculator().calculate(
+            List.of(),
+            detachedLine(),
+            builder,
+            100.0,
+            mock(DocumentFontsHolder.class),
+            attribution);
 
-        attribution.setRightAligned(false);
-        assertThat(attribution.isRightAligned()).isFalse();
+        assertThat(builder.getDecorationLayout(attribution))
+            .describedAs("attribution with zero dimensions must not be stacked")
+            .isNull();
     }
 }

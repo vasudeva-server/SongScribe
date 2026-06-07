@@ -47,11 +47,10 @@ class MigrationPipelineTest extends UnitTest {
 
     // -- Constants --
 
-    // Arbitrary non-zero pixel values for the three song-level scalars; each distinct so a
+    // Arbitrary non-zero pixel values for the two song-level scalars; each distinct so a
     // cross-wired scalar would be caught.
     private static final double LINE_WIDTH_PX = 400.0;
     private static final double ROW_HEIGHT_PX = 160.0;
-    private static final double ATTRIBUTION_START_Y_PX = 240.0;
 
     // A pixel-valued linewidth divided by pps when the line-width-fix effect runs.
     private static final double STORED_PIXEL_LINE_WIDTH = 800.0;
@@ -320,13 +319,11 @@ class MigrationPipelineTest extends UnitTest {
             var c = ctx(2, 0);
             c.lineWidthSs = LINE_WIDTH_PX;
             c.rowHeightAdjustmentSs = ROW_HEIGHT_PX;
-            c.attributionStartYSs = ATTRIBUTION_START_Y_PX;
 
             stage(StageId.PIXELS_TO_SS).apply().accept(c);
 
             assertThat(c.lineWidthSs).isEqualTo(LINE_WIDTH_PX / pps);
             assertThat(c.rowHeightAdjustmentSs).isEqualTo(ROW_HEIGHT_PX / pps);
-            assertThat(c.attributionStartYSs).isEqualTo(ATTRIBUTION_START_Y_PX / pps);
         }
 
         // Integration test via runPreAssembly: per-line lyricsYPosSs is also divided by pps.
@@ -409,20 +406,18 @@ class MigrationPipelineTest extends UnitTest {
 
     // -- Top-level tests --
 
-    // Verifies that runPreAssembly divides all three scalar fields by pps on a pre-2.1 context.
+    // Verifies that runPreAssembly divides scalar fields by pps on a pre-2.1 context.
     @Test
     void testPreAssemblyScalarConversion() {
         var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
         var c = ctx(1, 0);
         c.lineWidthSs = LINE_WIDTH_PX;
         c.rowHeightAdjustmentSs = ROW_HEIGHT_PX;
-        c.attributionStartYSs = ATTRIBUTION_START_Y_PX;
 
         MigrationPipeline.runPreAssembly(c);
 
         assertThat(c.lineWidthSs).isEqualTo(LINE_WIDTH_PX / pps);
         assertThat(c.rowHeightAdjustmentSs).isEqualTo(ROW_HEIGHT_PX / pps);
-        assertThat(c.attributionStartYSs).isEqualTo(ATTRIBUTION_START_Y_PX / pps);
     }
 
     // Asserts that PRE_ASSEMBLY registers exactly 5 stages in StageId enum order.

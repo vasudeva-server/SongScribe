@@ -26,6 +26,7 @@ import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Attribution;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.ui.Mode;
@@ -147,6 +148,13 @@ public class LineComponent extends ScoreComponent
 
     /** Renderer that handles all drawing for this line. */
     private final LineRenderer lineRenderer = new LineRenderer(this);
+
+    /**
+     * Attribution pane that lives above this line's staff, first line only.
+     * Null until the first layout pass for the first line.
+     */
+    @Nullable
+    private AttributionPane attributionPane;
 
     // ==========================================================================
     // Constants
@@ -366,9 +374,27 @@ public class LineComponent extends ScoreComponent
 
         var staffRightMarginSs = song.getLineWidthSs();
         var isLastLine = lineIndex == song.lineCount() - 1;
-        var lyricRenderMetrics = getScoreView().getLyricRenderMetrics();
-        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, getScoreView());
-        layoutResult = layoutEngine.layout(line, isLastLine, hasLeadingLyricContinuation);
+        var isFirstLine = lineIndex == 0;
+        var scoreView = getScoreView();
+        var lyricRenderMetrics = scoreView.getLyricRenderMetrics();
+        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, scoreView);
+
+        Attribution attribution = null;
+
+        if (isFirstLine) {
+            attribution = song.getAttributionElement();
+            var pane = getOrCreateAttributionPane();
+            pane.setFont(scoreView.getAttributionFont());
+            pane.setSubAttributionFont(scoreView.getSubAttributionFont());
+            pane.setSong(song);
+            var preferredSize = pane.getPreferredSize();
+            attribution.setDimensionsSs(
+                ScaleContext.pxToSs(preferredSize.width),
+                ScaleContext.pxToSs(preferredSize.height));
+        }
+
+        layoutResult = layoutEngine.layout(
+            line, isLastLine, hasLeadingLyricContinuation, attribution);
 
         if (layoutResult == null) {
             throw RuntimeError.exit(
@@ -376,7 +402,58 @@ public class LineComponent extends ScoreComponent
                 + layoutEngine.getLastError());
         }
 
+        // Mark clean before positionAttributionPane so calculateMiddleLineYSs
+        // doesn't recurse back into performLayout when called from within it.
         layoutDirty = false;
+
+        if (isFirstLine && attribution != null) {
+            positionAttributionPane(attribution);
+        }
+    }
+
+    /**
+     * Returns the cached attribution pane, creating and adding it as a Swing child if needed.
+     * Only called for the first line.
+     */
+    private AttributionPane getOrCreateAttributionPane() {
+        if (attributionPane == null) {
+            attributionPane = new AttributionPane();
+            add(attributionPane);
+        }
+
+        return attributionPane;
+    }
+
+    /**
+     * Positions the attribution pane as a Swing child using the computed DecorationLayout.
+     * Right-aligns the pane to the staff right edge. The Y position is in staff-space units
+     * relative to the line component's origin (middle staff line).
+     */
+    private void positionAttributionPane(Attribution attribution) {
+        if (attributionPane == null || layoutResult == null || song == null) {
+            return;
+        }
+
+        var layout = layoutResult.getDecorationLayout(attribution);
+
+        if (layout == null) {
+            attributionPane.setVisible(false);
+            return;
+        }
+
+        var middleYSs = calculateMiddleLineYSs();
+
+        // layout.xSs() and layout.ySs() are in staff coordinates (middle line at y=0).
+        // Convert to pixel coordinates relative to this component's origin.
+        // The component origin is at the top of the LineComponent (y=0 in component space),
+        // which is middleYSs above the middle staff line in staff-space units.
+        var xPx = (int) Math.round(ScaleContext.ssToPx(layout.xSs()));
+        var yPx = (int) Math.round(ScaleContext.ssToPx(layout.ySs() + middleYSs));
+        var widthPx = (int) Math.ceil(ScaleContext.ssToPx(layout.widthSs()));
+        var heightPx = (int) Math.ceil(ScaleContext.ssToPx(layout.heightSs()));
+
+        attributionPane.setBounds(xPx, yPx, widthPx, heightPx);
+        attributionPane.setVisible(true);
     }
 
     @Override
