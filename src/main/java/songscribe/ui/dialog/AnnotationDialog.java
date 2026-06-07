@@ -34,19 +34,19 @@ import songscribe.dom.AnnotationAttachment;
 
 public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
-    private static final String DEFAULT_ANNOTATION = "fine";
+    static final String DEFAULT_ANNOTATION = "fine";
     private static final String ANNOTATION_FILE = "annotations";
 
-    private final JComboBox<String> annotationCombo = new JComboBox<>();
-    private final JRadioButton leftRadio =
+    final JComboBox<String> annotationCombo = new JComboBox<>();
+    final JRadioButton leftRadio =
         new JRadioButton(Strings.get(Strings.LABEL_ALIGN_LEFT));
-    private final JRadioButton centerRadio =
+    final JRadioButton centerRadio =
         new JRadioButton(Strings.get(Strings.LABEL_ALIGN_CENTER));
-    private final JRadioButton rightRadio =
+    final JRadioButton rightRadio =
         new JRadioButton(Strings.get(Strings.LABEL_ALIGN_RIGHT));
-    private final JRadioButton aboveRadio =
+    final JRadioButton aboveRadio =
         new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_ABOVE_STAFF));
-    private final JRadioButton belowRadio =
+    final JRadioButton belowRadio =
         new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
 
     public AnnotationDialog() {
