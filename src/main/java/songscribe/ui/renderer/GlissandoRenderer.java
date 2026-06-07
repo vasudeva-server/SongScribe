@@ -261,7 +261,7 @@ public final class GlissandoRenderer {
      * glissando-specific selection rules on top (standalone glissando selection,
      * implied target-note selection for CONNECTED type).
      */
-    private Color determineGlissandoColor(
+    Color determineGlissandoColor(
         int noteIndex,
         StaffElement.Glissando.Type type,
         LineInvariants invariants
@@ -403,7 +403,7 @@ public final class GlissandoRenderer {
     /**
      * Resolved geometry for a single note: center position, offset area, and note reference.
      */
-    private record NoteContext(
+    record NoteContext(
         StaffElement note,
         double cxSs, double cySs,
         Area offsetArea,
@@ -413,7 +413,7 @@ public final class GlissandoRenderer {
     /**
      * Immutable record holding the computed glissando endpoint positions in layout space.
      */
-    private record Endpoints(double startXSs, double startYSs, double endXSs, double endYSs, double angle) {}
+    record Endpoints(double startXSs, double startYSs, double endXSs, double endYSs, double angle) {}
 
     /**
      * Resolves the geometry context for a note at the given index: notehead center
@@ -462,7 +462,7 @@ public final class GlissandoRenderer {
      * @param x2Translate  User drag offset for target endpoint
      * @return The glissando endpoints, or null if the glissando cannot render
      */
-    private static GlissandoRenderer.@Nullable Endpoints computeEndpoints(
+    static GlissandoRenderer.@Nullable Endpoints computeEndpoints(
         NoteContext src, @Nullable NoteContext tgt,
         double x1Translate, double x2Translate
     ) {

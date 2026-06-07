@@ -91,3 +91,9 @@ MutationRecordsTest.testSongScopedMutationsAreNotLineScoped	8b-mutation-infrastr
 MutationRecordsTest.SpanMutations.testSpanMutationIsLineScoped	8c	Extended parameterized test to also assert span payload accessor identity for all 10 span mutation records
 NoteAreaBuilderTest.testBuildNoteAreaQuarterNoteNoExtras	9a	inadequate→modify: added bounds width>0 and height>0 assertions
 NoteAreaBuilderTest.testBuildNoteAreaWithLedgerLinesBelowStaff	9a	inadequate→modify: strengthened to compare width vs on-staff note (mirrors above-staff test)
+
+# 9b GlissandoRenderer visibility widenings for testability (rows 21,23)
+GlissandoRenderer.determineGlissandoColor [private → package-private]
+GlissandoRenderer.computeEndpoints [private static → package-private static]
+GlissandoRenderer.NoteContext [private record → package-private record]
+GlissandoRenderer.Endpoints [private record → package-private record]

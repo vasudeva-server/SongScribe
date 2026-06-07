@@ -22,6 +22,10 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.Objects;
 
@@ -33,7 +37,11 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.layout.LayoutResult;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 class GlissandoRendererTest extends UnitTest {
 
@@ -295,5 +303,241 @@ class GlissandoRendererTest extends UnitTest {
         var note2 = line.getElement(1);
 
         assertThat(note1.getPitch()).isEqualTo(note2.getPitch());
+    }
+
+    // ======================================================================
+    // Unison suppression — renderGlissando must not draw for same-pitch notes
+    // (Row 20: verify the CONNECTED same-pitch early-return path)
+    // ======================================================================
+
+    @Test
+    void testRenderGlissando_unisonConnected_noDrawingOccurs() {
+        // Two notes at the same staff position → same MIDI pitch → unison suppression
+        var line = makeTwoNoteLineWithGlissando(0, null, 0, null);
+        var note = line.getElement(0);
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(LayoutResult.builder().build())
+            .setCurrentLine(line)
+            .build();
+
+        var g2 = mock(Graphics2D.class);
+
+        RENDERER.renderGlissando(g2, line, note, 0, invariants, ElementFrame.LINE_LEVEL);
+
+        // Unison guard fires before render(); no fill/draw should reach g2
+        verify(g2, never()).fill(org.mockito.ArgumentMatchers.any());
+        verify(g2, never()).draw(org.mockito.ArgumentMatchers.any());
+    }
+
+    // ======================================================================
+    // determineGlissandoColor — standalone glissando selection, implied
+    // target selection (CONNECTED), and no-provider fallback (Row 21)
+    // ======================================================================
+
+    private static LineInvariants.Builder editModeBuilder() {
+        return RenderContextTestHelper.newContext(new Song())
+            .setEditMode(true);
+    }
+
+    @Test
+    void testDetermineGlissandoColor_standaloneGlissandoSelected_returnsSelectionColor() {
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isGlissandoSelected(0, 0)).thenReturn(true);
+        var invariants = editModeBuilder()
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var color = RENDERER.determineGlissandoColor(
+            0, StaffElement.Glissando.Type.CONNECTED, invariants);
+
+        assertThat(color).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testDetermineGlissandoColor_connectedTargetNoteSelected_returnsSelectionColor() {
+        // Implied target-note selection: index 0 source, index 1 is target
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isGlissandoSelected(0, 0)).thenReturn(false);
+        when(selectionProvider.isElementSelected(1, 0)).thenReturn(true);
+        var invariants = editModeBuilder()
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var color = RENDERER.determineGlissandoColor(
+            0, StaffElement.Glissando.Type.CONNECTED, invariants);
+
+        assertThat(color).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testDetermineGlissandoColor_slideOutTargetNoteSelected_returnsBlack() {
+        // SLIDE_OUT does not imply target selection; even if isElementSelected(1) is true,
+        // the type guard prevents the implied-selection branch from firing.
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isGlissandoSelected(0, 0)).thenReturn(false);
+        when(selectionProvider.isElementSelected(1, 0)).thenReturn(true);
+        var invariants = editModeBuilder()
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var color = RENDERER.determineGlissandoColor(
+            0, StaffElement.Glissando.Type.SLIDE_OUT, invariants);
+
+        assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    @Test
+    void testDetermineGlissandoColor_noSelectionProvider_returnsBlack() {
+        // selectionProvider is null → early return with BLACK
+        var invariants = editModeBuilder()
+            .setSelectionProvider(null)
+            .build();
+
+        var color = RENDERER.determineGlissandoColor(
+            0, StaffElement.Glissando.Type.CONNECTED, invariants);
+
+        assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    @Test
+    void testDetermineGlissandoColor_playingNote_returnsPlayingColor() {
+        // getElementColor returns non-BLACK for the playing note → early return
+        // before glissando-specific selection logic fires
+        var invariants = editModeBuilder()
+            .setPlayingNoteIndex(0)
+            .build();
+
+        var color = RENDERER.determineGlissandoColor(
+            0, StaffElement.Glissando.Type.CONNECTED, invariants);
+
+        assertThat(color).isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    // ======================================================================
+    // getGlissandoX1Ss / getGlissandoX2Ss — fallback to notehead center
+    // when computeEndpoints returns null (Row 22)
+    // ======================================================================
+
+    /**
+     * Creates a detached two-note line whose backing song mock returns the line at index 0.
+     * Both notes are at layout X=0 (empty LayoutResult), so computeEndpointsForNote
+     * returns null (zero-length direction) and the fallback path fires.
+     */
+    private Line twoNoteLineWithMockSong() {
+        var line = detachedLine();
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setUpper(true);
+        note1.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setUpper(true);
+        line.addElement(note1);
+        line.addElement(note2);
+        // Wire the mock song so song.getLine(0) returns this line
+        when(line.getSong().getLine(0)).thenReturn(line);
+        return line;
+    }
+
+    @Test
+    void testGetGlissandoX1Ss_fallbackToNoteheadCenter_whenEndpointsNull() {
+        // Both notes at layout X=0 → zero-length direction → computeEndpoints returns null
+        // → fallback returns noteheadCenter = 0 + halfRightEdge
+        var line = twoNoteLineWithMockSong();
+        var note0 = line.getElement(0);
+        var glissando = Objects.requireNonNull(note0.getGlissando());
+        var layoutResult = LayoutResult.builder().build();
+
+        var x1 = GlissandoRenderer.getGlissandoX1Ss(
+            0, glissando, 0, line.getSong(), layoutResult, 0.0);
+
+        // Fallback: noteheadCenterXSs = layoutXSs(0) + halfRightEdge
+        var noteheadCenter = songscribe.layout.NoteGeometry.getNoteheadRightEdgeSs(note0) / 2.0;
+        assertThat(x1).isCloseTo(noteheadCenter, within(0.001));
+    }
+
+    @Test
+    void testGetGlissandoX2Ss_connectedFallback_returnsTargetNoteheadCenter() {
+        // CONNECTED glissando: x2 fallback uses note at index+1
+        var line = twoNoteLineWithMockSong();
+        var note0 = line.getElement(0);
+        var note1 = line.getElement(1);
+        var glissando = Objects.requireNonNull(note0.getGlissando());
+        var layoutResult = LayoutResult.builder().build();
+
+        var x2 = GlissandoRenderer.getGlissandoX2Ss(
+            0, glissando, 0, line.getSong(), layoutResult, 0.0);
+
+        var targetNoteheadCenter = songscribe.layout.NoteGeometry.getNoteheadRightEdgeSs(note1) / 2.0;
+        assertThat(x2).isCloseTo(targetNoteheadCenter, within(0.001));
+    }
+
+    // ======================================================================
+    // computeEndpoints — direct tests (Row 23)
+    // ======================================================================
+
+    /**
+     * Builds a NoteContext for a crotchet at the given layout-space center.
+     */
+    private static GlissandoRenderer.NoteContext noteContextAt(double cxSs, double cySs) {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+        var area = NoteAreaBuilder.createOffsetArea(
+            new Area(new Rectangle2D.Double(-0.5, -0.5, 1.0, 1.0)),
+            (float) NoteAreaBuilder.MIN_GAP_SS);
+        var bounds = area.getBounds2D();
+        return new GlissandoRenderer.NoteContext(note, cxSs, cySs, area, bounds);
+    }
+
+    @Test
+    void testComputeEndpoints_zeroLengthConnected_returnsNull() {
+        // src and tgt at identical positions → direction vector is zero → null
+        var src = noteContextAt(5.0, 0.0);
+        var tgt = noteContextAt(5.0, 0.0);
+        assertThat(GlissandoRenderer.computeEndpoints(src, tgt, 0, 0)).isNull();
+    }
+
+    @Test
+    void testComputeEndpoints_slideOut_returnsNonNull_withCorrectAngle() {
+        // SLIDE_OUT (tgt=null): direction is fixed at SLIDE_OUT_ANGLE_DEG = 30°
+        var src = noteContextAt(0.0, 0.0);
+        var result = GlissandoRenderer.computeEndpoints(src, null, 0, 0);
+        assertThat(result).isNotNull();
+        // The angle stored in Endpoints is atan2(ny, nx) = 30° in radians
+        assertThat(Objects.requireNonNull(result).angle()).isCloseTo(Math.toRadians(30.0), within(0.01));
+    }
+
+    @Test
+    void testComputeEndpoints_x1TranslateClamped_sameResultAsBoundary() {
+        // A very negative x1Translate is clamped to -MIN_GAP_SS.
+        // Both calls should produce the same startX.
+        var src = noteContextAt(0.0, 0.0);
+        var clamped = GlissandoRenderer.computeEndpoints(src, null, -NoteAreaBuilder.MIN_GAP_SS, 0);
+        var veryNegative = GlissandoRenderer.computeEndpoints(src, null, -1000.0, 0);
+        assertThat(clamped).isNotNull();
+        assertThat(veryNegative).isNotNull();
+        assertThat(Objects.requireNonNull(veryNegative).startXSs())
+            .isCloseTo(Objects.requireNonNull(clamped).startXSs(), within(0.001));
+    }
+
+    @Test
+    void testComputeEndpoints_x2TranslateClamped_sameResultAsBoundary() {
+        // A very negative x2Translate is clamped to -MIN_GAP_SS (symmetric to x1 clamping).
+        // Use notes far enough apart (10 ss) so both clamped and very-negative calls return non-null.
+        var src = noteContextAt(0.0, 0.0);
+        var tgt = noteContextAt(10.0, 0.0);
+        var clamped = GlissandoRenderer.computeEndpoints(src, tgt, 0, -NoteAreaBuilder.MIN_GAP_SS);
+        var veryNegative = GlissandoRenderer.computeEndpoints(src, tgt, 0, -1000.0);
+        assertThat(clamped).isNotNull();
+        assertThat(veryNegative).isNotNull();
+        assertThat(Objects.requireNonNull(veryNegative).endXSs())
+            .isCloseTo(Objects.requireNonNull(clamped).endXSs(), within(0.001));
+    }
+
+    @Test
+    void testComputeEndpoints_shortConnected_returnsNull() {
+        // Notes placed only 0.1 ss apart → glissando too short to render (< MIN_RECT_LENGTH_SS = 1.0)
+        // The offset areas overlap; after finding entry points the net length < 1.0 → null
+        var src = noteContextAt(0.0, 0.0);
+        var tgt = noteContextAt(0.1, 0.0);
+        assertThat(GlissandoRenderer.computeEndpoints(src, tgt, 0, 0)).isNull();
     }
 }

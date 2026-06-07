@@ -227,4 +227,50 @@ class LyricConnectorRendererTest extends UnitTest {
 
         verifyNoInteractions(g2);
     }
+
+    // ======================================================================
+    // drawHyphen count > 1 — multiple evenly-spaced hyphens (Row 25)
+    // ======================================================================
+
+    @Test
+    void testHyphenMultiple_wideGap_drawsCorrectCountAndPositions() {
+        // preferredCellWidthSs = HYPHEN_WIDENING_FACTOR * HYPHEN_WIDTH_SS
+        //                      = 1.75 * 0.875 = 1.53125
+        // gapSs = endX - startX = 5.0 - 0.0 = 5.0
+        // count = floor(5.0 / 1.53125) = floor(3.265) = 3
+        // offsetSs = (5.0 - 3 * 1.53125) / 2 = (5.0 - 4.59375) / 2 = 0.203125
+        // cell centers: offsetSs + 0.5*cell, offsetSs + 1.5*cell, offsetSs + 2.5*cell
+        //   = 0.203125 + 0.765625 = 0.96875
+        //   = 0.203125 + 2.296875 = 2.5
+        //   = 0.203125 + 3.828125 = 4.03125
+        // drawGlyphVector x = cellCenter - HYPHEN_WIDTH_SS / 2
+        //   = 0.96875 - 0.4375, 2.5 - 0.4375, 4.03125 - 0.4375
+        //   = 0.53125, 2.0625, 3.59375
+        var connector = new LyricConnectorLayout(0.0, 5.0, 1, Kind.HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var invariants = builderWith(List.of(connector), metrics(1.0, 2.5, 1)).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        var xCap = ArgumentCaptor.forClass(Float.class);
+        var yCap = ArgumentCaptor.forClass(Float.class);
+        verify(g2, times(3)).drawGlyphVector(any(GlyphVector.class), xCap.capture(), yCap.capture());
+
+        var preferredCellWidthSs = songscribe.layout.LyricRenderMetrics.HYPHEN_WIDENING_FACTOR * HYPHEN_WIDTH_SS;
+        var gapSs = 5.0;
+        var count = (int) Math.floor(gapSs / preferredCellWidthSs);
+        var offsetSs = (gapSs - count * preferredCellWidthSs) / 2.0;
+        var xs = xCap.getAllValues();
+
+        // Verify all three X positions match the formula
+        for (var i = 0; i < count; i++) {
+            var cellCenterXSs = offsetSs + (i + 0.5) * preferredCellWidthSs;
+            var expectedX = cellCenterXSs - HYPHEN_WIDTH_SS / 2.0;
+            assertThat(xs.get(i).doubleValue()).isCloseTo(expectedX, within(TOLERANCE));
+        }
+
+        // All hyphens are at the same verse baseline (verse 1, baseline = 7.0)
+        yCap.getAllValues().forEach(y ->
+            assertThat(y.doubleValue()).isCloseTo(7.0, within(TOLERANCE)));
+    }
 }
