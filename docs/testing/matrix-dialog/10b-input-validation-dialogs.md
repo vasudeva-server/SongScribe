@@ -26,20 +26,20 @@
 | TempoChangeDialog | `populateControls(existing)` — forwards existing attachment's Tempo to `TempoSection.setTempo` | unit | none | missing | Write unit test with a real attachment | ✅ |
 | TempoChangeDialog | `applyChange` — builds `Tempo` from `TempoSection` getters; `showTempo = !isShowOnlyDescription()` | unit | none | missing | Write unit test; verify Tempo construction and flag inversion | ✅ |
 | TempoChangeDialog | `applyChange` — updates existing attachment vs adds new one | unit | none | missing | Test both branches | ✅ |
-| TempoChangeDialog | `clearChange` — removes attachment, then calls `clearTempoIfOrphaned` | unit | none | missing | Write unit test: verify both `removeAttachment` and `clearTempoIfOrphaned` called | ⬜ |
-| TempoChangeDialog | `showForElement` — static factory pre-sets `selectedElement`/`selectedLine` before showing | unit | none | missing | Write unit test verifying fields are set correctly (widen to package-private if needed) | ⬜ |
-| ResolutionDialog | `handleResolutionChange()` — width = `round(scale * sheetWidthPx) + border.width`; scale = `resolution / screenDpi` | unit | none | missing | Write pure-logic unit test: inject known sheetWidthPx and mock `getDpi()`; assert widthField text | ⬜ |
-| ResolutionDialog | `handleResolutionChange()` — height subtracts `sheetHeightWithoutLyricsPx` when `withoutLyricsCheck` selected | unit | none | missing | Test with checkbox selected vs deselected; assert heightField text | ⬜ |
-| ResolutionDialog | `handleResolutionChange()` — height subtracts `sheetHeightWithoutTitlePx` when `exportWithoutTitleCheckBox` selected | unit | none | missing | Same pattern for title checkbox | ⬜ |
-| ResolutionDialog | `handleResolutionChange()` — both deductions can combine additively | unit | none | missing | Test with both checked | ⬜ |
-| ResolutionDialog | `getData()` — `withoutLyricsCheck` disabled (and deselected) when both lyrics collections empty | unit | none | missing | Mock song with empty lyrics; assert disabled state | ⬜ |
-| ResolutionDialog | `getData()` — `exportWithoutTitleCheckBox` disabled (and deselected) when title is empty | unit | none | missing | Mock song with empty title; assert disabled state | ⬜ |
-| ResolutionDialog | `getData()` — resets `approved = false` on each show | unit | none | missing | Verify approved is false before `setData` runs | ⬜ |
-| ResolutionDialog | `setData()` — sets `approved = true` and persists DPI to `Prefs` | unit | none | missing | Write unit test: mock `Prefs`; verify put and approved flag | ⬜ |
+| TempoChangeDialog | `clearChange` — removes attachment, then calls `clearTempoIfOrphaned` | unit | none | missing | Write unit test: verify both `removeAttachment` and `clearTempoIfOrphaned` called | ✅ |
+| TempoChangeDialog | `showForElement` — static factory pre-sets `selectedElement`/`selectedLine` before showing | unit | none | missing | Write unit test verifying fields are set correctly (widen to package-private if needed) | ✅ |
+| ResolutionDialog | `handleResolutionChange()` — width = `round(scale * sheetWidthPx) + border.width`; scale = `resolution / screenDpi` | unit | none | skip | — | — |
+| ResolutionDialog | `handleResolutionChange()` — height subtracts `sheetHeightWithoutLyricsPx` when `withoutLyricsCheck` selected | unit | none | skip | — | — |
+| ResolutionDialog | `handleResolutionChange()` — height subtracts `sheetHeightWithoutTitlePx` when `exportWithoutTitleCheckBox` selected | unit | none | skip | — | — |
+| ResolutionDialog | `handleResolutionChange()` — both deductions can combine additively | unit | none | skip | — | — |
+| ResolutionDialog | `getData()` — `withoutLyricsCheck` disabled (and deselected) when both lyrics collections empty | unit | none | skip | — | — |
+| ResolutionDialog | `getData()` — `exportWithoutTitleCheckBox` disabled (and deselected) when title is empty | unit | none | skip | — | — |
+| ResolutionDialog | `getData()` — resets `approved = false` on each show | unit | none | skip | — | — |
+| ResolutionDialog | `setData()` — sets `approved = true` and persists DPI to `Prefs` | unit | none | skip | — | — |
 | ResolutionDialog | `isApproved()` / `getResolution()` / `isWithoutLyrics()` / `isWithoutTitle()` / `getBorder()` — simple state accessors | none | none | adequate | No test needed — trivial getters | — |
-| FontDialog | `getData()` — passes `selectedFont` to `chooser.setSelectedFont` | unit | none | missing | Write unit test: set initial font; call getData; assert chooser.getSelectedFont equals it | ⬜ |
-| FontDialog | `setData()` — harvests `chooser.getSelectedFont()` into `selectedFont` | unit | none | missing | Write unit test: set chooser font; call setData; assert getSelectedFont() | ⬜ |
-| FontDialog | `showDialog` — returns `selectedFont` unchanged when dialog is cancelled (setData not called) | unit | none | missing | Verify font remains initial value when OK is not pressed | ⬜ |
+| FontDialog | `getData()` — passes `selectedFont` to `chooser.setSelectedFont` | unit | none | missing | Write unit test: set initial font; call getData; assert chooser.getSelectedFont equals it | ✅ |
+| FontDialog | `setData()` — harvests `chooser.getSelectedFont()` into `selectedFont` | unit | none | missing | Write unit test: set chooser font; call setData; assert getSelectedFont() | ✅ |
+| FontDialog | `showDialog` — returns `selectedFont` unchanged when dialog is cancelled (setData not called) | unit | none | missing | Verify font remains initial value when OK is not pressed | ✅ |
 | FontDialog | `getExtraHeight()` returns `EXTRA_PREVIEW_HEIGHT` constant; `isResizable()` returns true | none | none | adequate | Pure display/layout wiring | — |
 
 **Notes:**

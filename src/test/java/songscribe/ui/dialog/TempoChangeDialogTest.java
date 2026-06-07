@@ -24,11 +24,13 @@ import java.util.Collections;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.prefs.Prefs;
@@ -36,11 +38,15 @@ import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 
 /**
- * Unit tests for {@link TempoChangeDialog}: populateControls null/existing
- * and applyChange (Tempo construction + show-flag inversion, add vs update).
+ * Unit tests for {@link TempoChangeDialog}: populateControls null/existing,
+ * applyChange (Tempo construction + show-flag inversion, add vs update),
+ * clearChange (removeAttachment + clearTempoIfOrphaned), and showForElement
+ * (static factory pre-sets element/line before show).
  */
 class TempoChangeDialogTest extends MainFrameMockTest {
 
@@ -205,5 +211,67 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         assertThat(added == null ? 0 : added.getTempo().getVisibleTempo())
             .as("new attachment has the configured BPM")
             .isEqualTo(DEFAULT_BPM);
+    }
+
+    // ── Row 29: clearChange — removes attachment, then calls clearTempoIfOrphaned ──
+
+    @Test
+    void testClearChangeRemovesAttachmentAndCallsClearTempoIfOrphaned() {
+        // A real Line with its backing Song mock is needed so element.getLine() works.
+        var song = minimalSongMock();
+        var line = new Line(song);
+        var element = ElementType.CROTCHET.newInstance();
+        line.addElement(element);
+
+        var attachment = new TempoChangeAttachment(element, new Tempo(80, Duration.CROTCHET, "Largo", true));
+        element.addAttachment(attachment);
+
+        dialog.clearChange(element);
+
+        assertThat(element.findAttachment(TempoChangeAttachment.class))
+            .as("TempoChangeAttachment removed by clearChange")
+            .isNull();
+        verify(song).clearTempoIfOrphaned(element);
+    }
+
+    @Test
+    void testClearChangeCallsClearTempoIfOrphanedEvenWhenNoAttachment() {
+        var song = minimalSongMock();
+        var line = new Line(song);
+        var element = ElementType.CROTCHET.newInstance();
+        line.addElement(element);
+
+        // No attachment present — clearChange should still call clearTempoIfOrphaned
+        dialog.clearChange(element);
+
+        assertThat(element.findAttachment(TempoChangeAttachment.class))
+            .as("no attachment present either before or after clearChange")
+            .isNull();
+        verify(song).clearTempoIfOrphaned(element);
+    }
+
+    // ── Row 30: showForElement — static factory pre-sets selectedElement/selectedLine before showing ──
+
+    @Test
+    void testShowForElementSetsElementAndLineBeforeShow() {
+        var element = ElementType.CROTCHET.newInstance();
+        var line = detachedLine();
+
+        try (MockedConstruction<TempoChangeDialog> construction = mockConstruction(TempoChangeDialog.class)) {
+            TempoChangeDialog.showForElement(element, line);
+
+            assertThat(construction.constructed())
+                .as("exactly one TempoChangeDialog was created")
+                .hasSize(1);
+            var captured = construction.constructed().get(0);
+
+            assertThat(captured.selectedElement)
+                .as("selectedElement set to the provided element before setVisible")
+                .isSameAs(element);
+            assertThat(captured.selectedLine)
+                .as("selectedLine set to the provided line before setVisible")
+                .isSameAs(line);
+            verify(captured).setVisible(true);
+        }
     }
 }

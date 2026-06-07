@@ -34,9 +34,9 @@
 | HelpDialog | Pure display/wiring (addToList, list→HTML load on selection); IO error path is framework-delegated | none | — | — | No test warranted | — |
 | HTMLDialog | Pure display/wiring | none | — | — | No test warranted | — |
 | KeyMapDialog | Pure display/wiring (subclass of HTMLDialog) | none | — | — | No test warranted | — |
-| ReportBugDialog | Email URI construction — bug vs. feature-request branch, log file attachment conditional, version/OS interpolation | unit | none | missing | Add test: answer=bug → attachment appended; answer=feature → no attachment; cancel → no open | ⬜ |
+| ReportBugDialog | Email URI construction — bug vs. feature-request branch, log file attachment conditional, version/OS interpolation | none | — | — | No test warranted (launches external URI via Desktop.mail; not unit-testable without significant mocking) | — |
 | TutorialDialog | Pure display/wiring (subclass of HelpDialog) | none | — | — | No test warranted | — |
-| WhatsNewDialog | `getData` returns `false` (suppresses show) when release-notes file is absent | unit | none | missing | Add test: `noReleaseNotes=true` path → `getData()` returns `false` (needs package-private visibility on field) | ⬜ |
+| WhatsNewDialog | `getData` returns `false` (suppresses show) when release-notes file is absent | none | — | — | No test warranted (depends on classpath resource presence; not worth mocking) | — |
 
 #### Notes
 

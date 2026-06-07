@@ -33,7 +33,8 @@ public class FontDialog extends StandardDialog {
 
     private static final int EXTRA_PREVIEW_HEIGHT = 200;
 
-    private final FontChooser chooser = new FontChooser();
+    // Widened to package-private for testing (FontDialogTest accesses it directly)
+    final FontChooser chooser = new FontChooser();
     private Font selectedFont;
 
     public FontDialog(Font initialFont) {
