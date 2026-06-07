@@ -95,6 +95,28 @@ class BarlineMenuTest extends MainFrameMockTest {
         assertThat(rightRepeatItem.isSelected()).isTrue();
     }
 
+    // -------------------------------------------------------------------------
+    // Terminal items share a ButtonGroup — selecting one deselects the other
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testTerminalItemsAreMutuallyExclusive() {
+        var menu = new BarlineMenu(mainFrame());
+        var finalBarlineItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE));
+        var rightRepeatItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT));
+
+        // Pre-select right-repeat so the first transition is non-trivial.
+        rightRepeatItem.setSelected(true);
+
+        // Select the final-double-barline item; the right-repeat must deselect.
+        finalBarlineItem.setSelected(true);
+        assertThat(rightRepeatItem.isSelected()).isFalse();
+
+        // Now select the right-repeat item; the final-double-barline must deselect.
+        rightRepeatItem.setSelected(true);
+        assertThat(finalBarlineItem.isSelected()).isFalse();
+    }
+
     private JRadioButtonMenuItem findMenuItemByText(BarlineMenu menu, String text) {
         for (var i = 0; i < menu.getItemCount(); i++) {
             var item = menu.getItem(i);

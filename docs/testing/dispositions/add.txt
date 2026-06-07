@@ -2468,3 +2468,6 @@ MenuControllerTest.testRecentDocumentsDidChangeRebuildsMenu	11a	add — row 14: 
 MenuControllerTest.testInitFileMenuContainsQuitActionOnlyOnNonMacOS	11a	add — rows 15+16: initFileMenu Quit action platform conditional
 MenuControllerTest.testInitEditMenuContainsPreferencesActionOnlyOnNonMacOS	11a	add — rows 17+18: initEditMenu Preferences action platform conditional
 MenuControllerTest.testInitMenusSetsJMenuBarOnlyOnMacOS	11a	add — row 19: initMenus setJMenuBar macOS conditional
+NotationMenuTest.testMenuSelectedCallsValidateWhenControllerPresent	11a	add — row 23: menuSelected validates MAKE_ENDING_ACTION when controller present
+NotationMenuTest.testMenuSelectedDisablesMakeEndingWhenNoController	11a	add — row 24: menuSelected disables MAKE_ENDING_ACTION when no controller
+BarlineMenuTest.testTerminalItemsAreMutuallyExclusive	11a	add — row 31: terminal radio items are in the same ButtonGroup
