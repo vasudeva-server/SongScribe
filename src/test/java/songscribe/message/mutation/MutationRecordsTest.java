@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -123,27 +124,42 @@ class MutationRecordsTest extends UnitTest {
             var e1 = ElementType.CROTCHET.newInstance();
             line.addElement(e0);
             line.addElement(e1);
+            var beam1 = new Beam(e0, e1);
+            var beam2 = new Beam(e0, e1);
             var tie1 = new Tie(e0, e1);
             var tie2 = new Tie(e0, e1);
+            var tuplet1 = new Tuplet(e0, e1, 3);
+            var tuplet2 = new Tuplet(e0, e1, 5);
+            var crescendo1 = new Crescendo(e0, e1);
+            var crescendo2 = new Crescendo(e0, e1);
+            var diminuendo1 = new Diminuendo(e0, e1);
+            var diminuendo2 = new Diminuendo(e0, e1);
             return Stream.of(
-                Arguments.of("BeamingAddition",    new BeamingAddition(line, new Beam(e0, e1)), line),
-                Arguments.of("BeamingRemoval",     new BeamingRemoval(line, new Beam(e0, e1)), line),
-                Arguments.of("TieAddition",        new TieAddition(line, tie1), line),
-                Arguments.of("TieRemoval",         new TieRemoval(line, tie2), line),
-                Arguments.of("TupletAddition",     new TupletAddition(line, new Tuplet(e0, e1, 3)), line),
-                Arguments.of("TupletRemoval",      new TupletRemoval(line, new Tuplet(e0, e1, 5)), line),
-                Arguments.of("CrescendoAddition",  new CrescendoAddition(line, new Crescendo(e0, e1)), line),
-                Arguments.of("CrescendoRemoval",   new CrescendoRemoval(line, new Crescendo(e0, e1)), line),
-                Arguments.of("DiminuendoAddition", new DiminuendoAddition(line, new Diminuendo(e0, e1)), line),
-                Arguments.of("DiminuendoRemoval",  new DiminuendoRemoval(line, new Diminuendo(e0, e1)), line)
+                Arguments.of("BeamingAddition",    new BeamingAddition(line, beam1),       line, (Function<Mutation, Object>) m -> ((BeamingAddition) m).beam(),          beam1),
+                Arguments.of("BeamingRemoval",     new BeamingRemoval(line, beam2),        line, (Function<Mutation, Object>) m -> ((BeamingRemoval) m).beam(),           beam2),
+                Arguments.of("TieAddition",        new TieAddition(line, tie1),            line, (Function<Mutation, Object>) m -> ((TieAddition) m).tie(),               tie1),
+                Arguments.of("TieRemoval",         new TieRemoval(line, tie2),             line, (Function<Mutation, Object>) m -> ((TieRemoval) m).tie(),                tie2),
+                Arguments.of("TupletAddition",     new TupletAddition(line, tuplet1),      line, (Function<Mutation, Object>) m -> ((TupletAddition) m).tuplet(),         tuplet1),
+                Arguments.of("TupletRemoval",      new TupletRemoval(line, tuplet2),       line, (Function<Mutation, Object>) m -> ((TupletRemoval) m).tuplet(),          tuplet2),
+                Arguments.of("CrescendoAddition",  new CrescendoAddition(line, crescendo1), line, (Function<Mutation, Object>) m -> ((CrescendoAddition) m).crescendo(),  crescendo1),
+                Arguments.of("CrescendoRemoval",   new CrescendoRemoval(line, crescendo2),  line, (Function<Mutation, Object>) m -> ((CrescendoRemoval) m).crescendo(),   crescendo2),
+                Arguments.of("DiminuendoAddition", new DiminuendoAddition(line, diminuendo1), line, (Function<Mutation, Object>) m -> ((DiminuendoAddition) m).diminuendo(), diminuendo1),
+                Arguments.of("DiminuendoRemoval",  new DiminuendoRemoval(line, diminuendo2),  line, (Function<Mutation, Object>) m -> ((DiminuendoRemoval) m).diminuendo(),  diminuendo2)
             );
         }
 
         @ParameterizedTest(name = "{0} is line-scoped and exposes line")
         @MethodSource("spanMutations")
-        void testSpanMutationIsLineScoped(String name, Mutation mutation, Line line) {
+        void testSpanMutationIsLineScoped(
+            String name,
+            Mutation mutation,
+            Line line,
+            Function<Mutation, Object> spanGetter,
+            Object expectedSpan
+        ) {
             assertThat(mutation).isInstanceOf(LineScopedMutation.class);
             assertThat(((LineScopedMutation) mutation).getLine()).isSameAs(line);
+            assertThat(spanGetter.apply(mutation)).isSameAs(expectedSpan);
         }
     }
 

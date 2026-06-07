@@ -2056,3 +2056,8 @@ MutationRecordsTest.LineLevelMutations.testLineKeyChangeAcceptsNullValues	8b	Lin
 MutationRecordsTest.LineLevelMutations.testLineLayoutChangeRejectsTypeMismatch	8b	LineLayoutChange type mismatch fires validation
 MutationRecordsTest.LineLevelMutations.testLineLayoutChangeAcceptsNullValues	8b	LineLayoutChange null/null accepted
 MutationRecordsTest.PropertyMutations.testLayoutChangeRejectsTypeMismatch	8b	LayoutChange type mismatch fires validation
+ToggleTupletCommandTest.testGetTupletSizeReturnsActionTupletSize	8d	getTupletSize() delegates to action.getTuplet().getSize() for all Tuplet enum values
+ModeDidChangeNotificationTest.testIsAdjustmentModeReturnsTrueWhenCommandStartsWithAdjust	8e	isAdjustmentMode() true when action command starts with "adjust-"
+ModeDidChangeNotificationTest.testIsAdjustmentModeReturnsFalseWhenCommandDoesNotStartWithAdjust	8e	isAdjustmentMode() false when action command does not start with "adjust-"
+MusicSelectionDidChangeNotificationTest.testHasLyricSelectionReturnsTrueWhenLyricSelectionIsPresent	8e	hasLyricSelection() true when lyric selection is non-null
+MusicSelectionDidChangeNotificationTest.testHasLyricSelectionReturnsFalseWhenLyricSelectionIsAbsent	8e	hasLyricSelection() false when lyric selection is null

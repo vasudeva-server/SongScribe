@@ -88,3 +88,4 @@ modify: LyricEditor.LeadingSlackFieldView — widened from private to package-pr
 modify: LyricEditor.LeadingSlackFieldView.paintingWithLeadingSlack — widened from private to package-private for testing
 modify: LyricEditor.keepAllocationAtContentOrigin — extracted from LeadingSlackFieldView as package-private static method on LyricEditor for direct testing
 MutationRecordsTest.testSongScopedMutationsAreNotLineScoped	8b-mutation-infrastructure-field-enum-validation	Added FontChange assertion to existing test
+MutationRecordsTest.SpanMutations.testSpanMutationIsLineScoped	8c	Extended parameterized test to also assert span payload accessor identity for all 10 span mutation records
