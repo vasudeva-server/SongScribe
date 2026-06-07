@@ -11,13 +11,13 @@
 | `FieldTypeValidator` | correct type on both values → no exception | unit | Covered implicitly by every happy-path construction test in `MutationRecordsTest` | adequate | — | — |
 | `KeyField` | `ACCIDENTAL_COUNT.getExpectedType()` returns `Integer.class` | unit | — | missing | Add parameterized test asserting each constant's `getExpectedType()` return value | ✅ |
 | `KeyField` | `KEY_TYPE.getExpectedType()` returns `KeyType.class` | unit | — | missing | (covered by same parameterized test above) | ✅ |
-| `LayoutField` | all four constants return `Double.class` from `getExpectedType()` | unit | — | missing | Add parameterized test for `LayoutField` constants | ⬜ |
-| `LineLayoutField` | `TEMPO_CHANGE_Y_POS_PX`, `BEAT_CHANGE_Y_POS_PX`, `FIRST_SECOND_ENDING_Y_POS_PX`, `TRILL_Y_POS_PX` return `Integer.class` | unit | — | missing | Add parameterized test for `LineLayoutField` constants | ⬜ |
-| `LineLayoutField` | `LYRICS_Y_POS_SS` returns `Double.class` | unit | — | missing | (covered by same parameterized test) | ⬜ |
-| `LineLayoutField` | `ELEMENT_SPACING_RATIO` returns `Float.class` | unit | — | missing | (covered by same parameterized test) | ⬜ |
-| `MetadataField` | each constant returns the correct boxed type from `getExpectedType()` (12 constants, varied types) | unit | — | missing | Add parameterized test for all `MetadataField` constants | ⬜ |
+| `LayoutField` | all four constants return `Double.class` from `getExpectedType()` | unit | — | missing | Add parameterized test for `LayoutField` constants | ✅ |
+| `LineLayoutField` | `TEMPO_CHANGE_Y_POS_PX`, `BEAT_CHANGE_Y_POS_PX`, `FIRST_SECOND_ENDING_Y_POS_PX`, `TRILL_Y_POS_PX` return `Integer.class` | unit | — | missing | Add parameterized test for `LineLayoutField` constants | ✅ |
+| `LineLayoutField` | `LYRICS_Y_POS_SS` returns `Double.class` | unit | — | missing | (covered by same parameterized test) | ✅ |
+| `LineLayoutField` | `ELEMENT_SPACING_RATIO` returns `Float.class` | unit | — | missing | (covered by same parameterized test) | ✅ |
+| `MetadataField` | each constant returns the correct boxed type from `getExpectedType()` (12 constants, varied types) | unit | — | missing | Add parameterized test for all `MetadataField` constants | ✅ |
 | `LyricsField` | pure enum — no `getExpectedType()`, no logic beyond identity | none | — | — | No test warranted | — |
-| `ElementField` | `DURATION_AFFECTING` constant contains exactly `{DOT_COUNT}` | unit | — | missing | Add a test asserting `ElementField.DURATION_AFFECTING.equals(EnumSet.of(DOT_COUNT))`; this guards against accidental additions that would silently change tuplet-removal policy | ⬜ |
+| `ElementField` | `DURATION_AFFECTING` constant contains exactly `{DOT_COUNT}` | unit | — | missing | Add a test asserting `ElementField.DURATION_AFFECTING.equals(EnumSet.of(DOT_COUNT))`; this guards against accidental additions that would silently change tuplet-removal policy | ✅ |
 | `ElementField` | other constants are pure labels (no logic) | none | — | — | No test warranted | — |
 | `LineKeyChange` | valid construction: accessors return provided values and `getLine()` delegates to `line` component | unit | `testLineKeyChangeExposesFields` | adequate | — | — |
 | `LineKeyChange` | validation fires on type mismatch (e.g. passing `String` for `ACCIDENTAL_COUNT`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LineKeyChange(line, KeyField.ACCIDENTAL_COUNT, "bad", 1))` | ⬜ |

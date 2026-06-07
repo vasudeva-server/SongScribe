@@ -2047,3 +2047,7 @@ MutationRecordsTest.testValidatorAcceptsNullOldAndNewValues	8b-mutation-infrastr
 MutationRecordsTest.testValidatorRejectsTypeMismatchOnOldValue	8b-mutation-infrastructure-field-enum-validation	FieldTypeValidator oldValue type mismatch throws IAE
 MutationRecordsTest.testValidatorRejectsTypeMismatchOnNewValue	8b-mutation-infrastructure-field-enum-validation	FieldTypeValidator newValue type mismatch throws IAE
 MutationRecordsTest.testKeyFieldReturnsExpectedType	8b-mutation-infrastructure-field-enum-validation	KeyField.getExpectedType() parameterized (ACCIDENTAL_COUNT+KEY_TYPE)
+MutationRecordsTest.testLayoutFieldReturnsExpectedType	8b-mutation-infrastructure-field-enum-validation	LayoutField.getExpectedType() parameterized (3 constants)
+MutationRecordsTest.testLineLayoutFieldReturnsExpectedType	8b-mutation-infrastructure-field-enum-validation	LineLayoutField.getExpectedType() parameterized (2 constants)
+MutationRecordsTest.testMetadataFieldReturnsExpectedType	8b-mutation-infrastructure-field-enum-validation	MetadataField.getExpectedType() parameterized (12 constants)
+MutationRecordsTest.testElementFieldDurationAffectingContainsExactlyDotCount	8b-mutation-infrastructure-field-enum-validation	ElementField.DURATION_AFFECTING contains exactly DOT_COUNT

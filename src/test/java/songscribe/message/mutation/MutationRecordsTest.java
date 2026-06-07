@@ -401,4 +401,60 @@ class MutationRecordsTest extends UnitTest {
             Arguments.of(KeyField.KEY_TYPE, KeyType.class)
         );
     }
+
+    @ParameterizedTest(name = "{0}.getExpectedType() returns {1}")
+    @MethodSource("layoutFieldExpectedTypes")
+    void testLayoutFieldReturnsExpectedType(LayoutField field, Class<?> expectedType) {
+        assertThat(field.getExpectedType()).isEqualTo(expectedType);
+    }
+
+    static Stream<Arguments> layoutFieldExpectedTypes() {
+        return Stream.of(
+            Arguments.of(LayoutField.LINE_WIDTH_SS, Double.class),
+            Arguments.of(LayoutField.ROW_HEIGHT_ADJUSTMENT_SS, Double.class),
+            Arguments.of(LayoutField.ATTRIBUTION_START_Y_SS, Double.class)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}.getExpectedType() returns {1}")
+    @MethodSource("lineLayoutFieldExpectedTypes")
+    void testLineLayoutFieldReturnsExpectedType(LineLayoutField field, Class<?> expectedType) {
+        assertThat(field.getExpectedType()).isEqualTo(expectedType);
+    }
+
+    static Stream<Arguments> lineLayoutFieldExpectedTypes() {
+        return Stream.of(
+            Arguments.of(LineLayoutField.LYRICS_Y_POS_SS, Double.class),
+            Arguments.of(LineLayoutField.ELEMENT_SPACING_RATIO, Float.class)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}.getExpectedType() returns {1}")
+    @MethodSource("metadataFieldExpectedTypes")
+    void testMetadataFieldReturnsExpectedType(MetadataField field, Class<?> expectedType) {
+        assertThat(field.getExpectedType()).isEqualTo(expectedType);
+    }
+
+    static Stream<Arguments> metadataFieldExpectedTypes() {
+        return Stream.of(
+            Arguments.of(MetadataField.TITLE, String.class),
+            Arguments.of(MetadataField.PLACE, String.class),
+            Arguments.of(MetadataField.YEAR, String.class),
+            Arguments.of(MetadataField.MONTH, Integer.class),
+            Arguments.of(MetadataField.DAY, Integer.class),
+            Arguments.of(MetadataField.ATTRIBUTION, String.class),
+            Arguments.of(MetadataField.NUMBER, String.class),
+            Arguments.of(MetadataField.TEMPO, Tempo.class),
+            Arguments.of(MetadataField.DEFAULT_KEY_ACCIDENTAL_COUNT, Integer.class),
+            Arguments.of(MetadataField.DEFAULT_KEY_TYPE, KeyType.class),
+            Arguments.of(MetadataField.FOOTNOTES, String.class),
+            Arguments.of(MetadataField.UNOFFICIAL_TRANSLATION, Boolean.class)
+        );
+    }
+
+    @Test
+    void testElementFieldDurationAffectingContainsExactlyDotCount() {
+        // DURATION_AFFECTING drives tuplet-removal policy; guard against accidental additions.
+        assertThat(ElementField.DURATION_AFFECTING).isEqualTo(EnumSet.of(ElementField.DOT_COUNT));
+    }
 }
