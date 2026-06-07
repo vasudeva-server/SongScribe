@@ -14,11 +14,11 @@
 | AnnotationDialog | `applyChange` — builds `Annotation` with correct alignment float from radio selection and sets `yPosPx` to `ABOVE` or `BELOW` | unit | none | missing | Write unit test for each radio combination; assert annotation fields | ✅ |
 | AnnotationDialog | `applyChange` — updates existing attachment vs adds new one | unit | none | missing | Test both branches: stub findAttachment returning existing vs null | ✅ |
 | AnnotationDialog | `clearChange` — removes `AnnotationAttachment` if present; no-op if absent | unit | none | missing | Write unit test for both branches | ✅ |
-| BeatChangeDialog | `populateControls(null)` — defaults to `CROTCHET_DOTTED` for duration and `CROTCHET` for beat | unit | none | missing | Write unit test: call with null; assert combo selections | ⬜ |
-| BeatChangeDialog | `populateControls(existing)` — sets both combos from `BeatChange.duration()` and `BeatChange.beat()` | unit | none | missing | Write unit test with a real `BeatChange` | ⬜ |
-| BeatChangeDialog | `applyChange` — skips mutation if either combo returns null | unit | none | missing | Write unit test: stub null return; verify neither `addAttachment` nor `setBeatChange` called | ⬜ |
-| BeatChangeDialog | `applyChange` — updates existing `BeatChangeAttachment` vs adds new one | unit | none | missing | Test both branches of findAttachment | ⬜ |
-| BeatChangeDialog | `clearChange` — removes attachment if present; no-op if absent | unit | none | missing | Same pattern as Annotation | ⬜ |
+| BeatChangeDialog | `populateControls(null)` — defaults to `CROTCHET_DOTTED` for duration and `CROTCHET` for beat | unit | none | missing | Write unit test: call with null; assert combo selections | ✅ |
+| BeatChangeDialog | `populateControls(existing)` — sets both combos from `BeatChange.duration()` and `BeatChange.beat()` | unit | none | missing | Write unit test with a real `BeatChange` | ✅ |
+| BeatChangeDialog | `applyChange` — skips mutation if either combo returns null | unit | none | missing | Write unit test: stub null return; verify neither `addAttachment` nor `setBeatChange` called | ✅ |
+| BeatChangeDialog | `applyChange` — updates existing `BeatChangeAttachment` vs adds new one | unit | none | missing | Test both branches of findAttachment | ✅ |
+| BeatChangeDialog | `clearChange` — removes attachment if present; no-op if absent | unit | none | missing | Same pattern as Annotation | ✅ |
 | KeySignatureChangeDialog | `getData()` — pre-populates label from `indexOfLine + 1`, combo from `line.getKeyType()`, spinner from `line.getKeyAccidentalCount()` | unit | none | missing | Write unit test: mock score/song/line; assert label text and control values | ⬜ |
 | KeySignatureChangeDialog | `setData()` — skips post if `keysCombo.getSelectedItem()` is null | unit | none | missing | Write unit test: force combo to null; verify no post | ⬜ |
 | KeySignatureChangeDialog | `setData()` — posts `KeySignatureDidChangeNotification` with selected key type and spinner integer value | unit | none | missing | Write unit test: set known values; verify notification posted with correct fields | ⬜ |

@@ -35,9 +35,9 @@ import songscribe.dom.BeatChangeAttachment;
 
 public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 
-    private final JComboBox<Duration> durationCombo =
+    final JComboBox<Duration> durationCombo =
         DurationListCellRenderer.createCombo(Duration.values());
-    private final JComboBox<Duration> beatCombo =
+    final JComboBox<Duration> beatCombo =
         DurationListCellRenderer.createCombo(Duration.values());
 
     public BeatChangeDialog() {
