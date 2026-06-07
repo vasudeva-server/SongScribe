@@ -49,13 +49,13 @@
 | `PropertiesStateStore` | `put(key, value)` with non-null calls `prefs.put(key, value)` | unit | none | missing | Add test | ✅ |
 | `PropertiesStateStore` | `get(key, def)` delegates to `prefs.get(key, def)` | none | — | — | Trivial delegation, no logic | — |
 | `Step` | Pure container: `getInfo()` returns null, `start()`/`end()` are no-ops | none | — | — | No logic in base class | — |
-| `PaperSizeStep` | `getValueInPixels`: converts spinner double value to pixels using current unit | unit | none | missing | Add test: set unit to INCH, set spinner to 8.5; assert pixels match `Unit.INCH.convertToPixels(8.5)` | ⬜ |
-| `PaperSizeStep` | Unit switch (INCH→CM): scales all spinner values by `MM_PER_IN` multiplier | unit | none | missing | Add test: set to INCH with value 1.0; switch to CM; assert spinner values ≈ 25.4 | ⬜ |
-| `PaperSizeStep` | Unit switch (CM→INCH): scales values by `1/MM_PER_IN` | unit | none | missing | Add test | ⬜ |
-| `PaperSizeStep` | `TemplateObject` parsing: splits on `;`, assigns name/width/height/margin/unit/metric | unit | none | missing | Add test: parse a template line; assert all fields | ⬜ |
-| `PaperSizeStep` | `TemplateObject` parsing: partial line (fewer than 6 fields) uses defaults | unit | none | missing | Add test | ⬜ |
-| `PaperSizeStep` | Template selection populates all six spinners with template values | unit | none | missing | Add test | ⬜ |
-| `PaperSizeStep` | `end()` writes all six pixel values + `mirrored` flag to `pageLayoutData` | unit | none | missing | Add test: set up spinners; call `end()`; assert `pageLayoutData` fields | ⬜ |
+| `PaperSizeStep` | `getValueInPixels`: converts spinner double value to pixels using current unit | unit | `PaperSizeStepTest.testGetValueInPixelsConvertsInchesToPixelsUsingCurrentUnit` | missing | Add test: set unit to INCH, set spinner to 8.5; assert pixels match `Unit.INCH.convertToPixels(8.5)` | ✅ |
+| `PaperSizeStep` | Unit switch (INCH→CM): scales all spinner values by `MM_PER_IN` multiplier | unit | `PaperSizeStepTest.testUnitSwitchInchToCmScalesAllSpinnersBy25_4` | missing | Add test: set to INCH with value 1.0; switch to CM; assert spinner values ≈ 25.4 | ✅ |
+| `PaperSizeStep` | Unit switch (CM→INCH): scales values by `1/MM_PER_IN` | unit | `PaperSizeStepTest.testUnitSwitchCmToInchScalesAllSpinnersByInverseOf25_4` | missing | Add test | ✅ |
+| `PaperSizeStep` | `TemplateObject` parsing: splits on `;`, assigns name/width/height/margin/unit/metric | unit | `PaperSizeStepTest.TemplateObjectParsing.testFullLineAssignsAllFields` | missing | Add test: parse a template line; assert all fields | ✅ |
+| `PaperSizeStep` | `TemplateObject` parsing: partial line (fewer than 6 fields) uses defaults | unit | `PaperSizeStepTest.TemplateObjectParsing.testPartialLineFewerThanSixFieldsUsesDefaults` | missing | Add test | ✅ |
+| `PaperSizeStep` | Template selection populates all six spinners with template values | unit | `PaperSizeStepTest.testTemplateSelectionPopulatesAllSixSpinners` | missing | Add test | ✅ |
+| `PaperSizeStep` | `end()` writes all six pixel values + `mirrored` flag to `pageLayoutData` | unit | `PaperSizeStepTest.testEndWritesAllSixPixelValuesAndMirroredFlagToPageLayoutData` | missing | Add test: set up spinners; call `end()`; assert `pageLayoutData` fields | ✅ |
 | `PaperSizeStep` | `setValues()` round-trip: pixel values converted to current unit for display | unit | none | missing | Add test: call `setValues` with known pixel values; assert spinner values match conversion | ⬜ |
 | `PaperSizeStep` | `MirroredAction`: labels switch between Left/Inner and Right/Outer | unit | none | missing | Add test: toggle checkbox; assert label text | ⬜ |
 | `PaperSizeStep` | `start()` selects first template matching metric pref | unit | none | missing | Add test: set pref METRIC=false; call `start()`; assert selected template is imperial | ⬜ |

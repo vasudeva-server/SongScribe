@@ -38,46 +38,46 @@ public class PaperSizeStep extends Step {
 
     private static final String INFO =
         "<html>Set the output paper size and margins</html>";
-    private static final double MM_PER_IN = 25.4;
-    private final DefaultComboBoxModel<TemplateObject> templates =
+    static final double MM_PER_IN = 25.4;
+    final DefaultComboBoxModel<TemplateObject> templates =
         new DefaultComboBoxModel<>();
-    private final SpinnerModel widthSpinnerModel = new SpinnerNumberModel(
+    final SpinnerModel widthSpinnerModel = new SpinnerNumberModel(
         0.1,
         0.1,
         Double.MAX_VALUE,
         1.0
     );
-    private final SpinnerModel heightSpinnerModel = new SpinnerNumberModel(
+    final SpinnerModel heightSpinnerModel = new SpinnerNumberModel(
         0.1,
         0.1,
         Double.MAX_VALUE,
         1.0
     );
-    private final SpinnerModel leftInnerSpinnerModel = new SpinnerNumberModel(
+    final SpinnerModel leftInnerSpinnerModel = new SpinnerNumberModel(
         0.1,
         0.1,
         Double.MAX_VALUE,
         1.0
     );
-    private final SpinnerModel rightOuterSpinnerModel = new SpinnerNumberModel(
+    final SpinnerModel rightOuterSpinnerModel = new SpinnerNumberModel(
         0.1,
         0.1,
         Double.MAX_VALUE,
         1.0
     );
-    private final SpinnerModel topSpinnerModel = new SpinnerNumberModel(
+    final SpinnerModel topSpinnerModel = new SpinnerNumberModel(
         0.1,
         0.1,
         Double.MAX_VALUE,
         1.0
     );
-    private final SpinnerModel bottomSpinnerModel = new SpinnerNumberModel(
+    final SpinnerModel bottomSpinnerModel = new SpinnerNumberModel(
         0.1,
         0.1,
         Double.MAX_VALUE,
         1.0
     );
-    private final JComboBox<?> unitsCombo = new JComboBox<>(
+    final JComboBox<?> unitsCombo = new JComboBox<>(
         new String[] {
             GraphicUtils.Unit.INCH.description(),
             GraphicUtils.Unit.CM.description(),
@@ -85,8 +85,9 @@ public class PaperSizeStep extends Step {
     );
     private final JLabel leftInnerLabel = new JLabel();
     private final JLabel rightOuterLabel = new JLabel();
-    private final JCheckBox mirroredCheck = new JCheckBox(Strings.get(Strings.DIALOG_PAPER_SIZE_MIRRORED));
-    private GraphicUtils.Unit currentUnit = GraphicUtils.Unit.INCH;
+    final JCheckBox mirroredCheck = new JCheckBox(Strings.get(Strings.DIALOG_PAPER_SIZE_MIRRORED));
+    GraphicUtils.Unit currentUnit = GraphicUtils.Unit.INCH;
+    JComboBox<TemplateObject> templateCombo;
 
     public PaperSizeStep(PageLayoutData pageLayoutData) {
         super(pageLayoutData);
@@ -136,7 +137,7 @@ public class PaperSizeStep extends Step {
         c.anchor = GridBagConstraints.CENTER;
         c.gridwidth = 2;
         c.fill = GridBagConstraints.HORIZONTAL;
-        var templateCombo = new JComboBox<>(templates);
+        templateCombo = new JComboBox<>(templates);
         templateCombo.addActionListener(new TemplateAction());
         panel.add(templateCombo, c);
         c.gridy = 1;
@@ -285,7 +286,7 @@ public class PaperSizeStep extends Step {
         mirroredCheck.setVisible(false);
     }
 
-    private static class TemplateObject {
+    static class TemplateObject {
 
         final String name;
         final Double width;
