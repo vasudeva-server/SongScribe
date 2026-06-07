@@ -34,7 +34,16 @@ import songscribe.ui.dialog.fontchooser.FontFamilies;
 
 public class FamilyListModel extends AbstractListModel<String> {
 
-    private final FontFamilies fontFamilies = FontFamilies.getInstance();
+    private final FontFamilies fontFamilies;
+
+    public FamilyListModel() {
+        this.fontFamilies = FontFamilies.getInstance();
+    }
+
+    /** Package-private constructor for testing — allows injecting a custom FontFamilies. */
+    FamilyListModel(FontFamilies fontFamilies) {
+        this.fontFamilies = fontFamilies;
+    }
 
     private @Nullable List<String> fontFamilyNames = null;
 
