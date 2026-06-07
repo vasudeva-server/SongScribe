@@ -189,6 +189,13 @@ class BaseDialogPositionTest extends MainFrameMockTest {
     @Nested
     class GeometryPersistence {
 
+        private static final double PREFS_Y_VALUE = 100.0;
+        private static final int RESTORED_LOCATION_XY = 50;
+        private static final int NARROW_WIDTH = 200;
+        private static final int TALL_HEIGHT = 400;
+        private static final int WIDE_WIDTH = 500;
+        private static final int EXTRA_TALL_HEIGHT = 600;
+
         @SuppressWarnings("unchecked")
         @Test
         void testPersistOnCloseNonResizable() {
@@ -246,6 +253,89 @@ class BaseDialogPositionTest extends MainFrameMockTest {
                 new TestDialog().setVisible(true);
 
                 uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
+            }
+        }
+
+        @Test
+        void testMalformedPrefsEntryNotAMapFallsBackToDefaultPosition() {
+            // Entry is a String instead of a Map — should fall back to positionDialog
+            prefsMock.when(() -> Prefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(
+                Map.of("TestDialog", "not-a-map")
+            );
+
+            try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
+                new TestDialog().setVisible(true);
+
+                uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
+            }
+        }
+
+        @Test
+        void testMalformedPrefsEntryNonNumberXFallsBackToDefaultPosition() {
+            // Map present but x is a non-Number — should fall back to positionDialog
+            prefsMock.when(() -> Prefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(
+                Map.of("TestDialog", Map.of("x", "bad", "y", PREFS_Y_VALUE))
+            );
+
+            try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
+                new TestDialog().setVisible(true);
+
+                uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
+            }
+        }
+
+        @Test
+        void testApplyGeometryResizableFloorWidth() {
+            // packed = DEFAULT_DIALOG_SIZE; restored = NARROW_WIDTH × TALL_HEIGHT
+            // floor: width = max(packedWidth, NARROW_WIDTH) = packedWidth; height = max(packedHeight, TALL_HEIGHT) = TALL_HEIGHT
+            var restoredLocation = new Point(RESTORED_LOCATION_XY, RESTORED_LOCATION_XY);
+
+            prefsMock.when(() -> Prefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(
+                Map.of("TestResizableDialog", Map.of(
+                    "x", (double) restoredLocation.x,
+                    "y", (double) restoredLocation.y,
+                    "width", (double) NARROW_WIDTH,
+                    "height", (double) TALL_HEIGHT
+                ))
+            );
+
+            try (var construction = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, restoredLocation))) {
+                new TestResizableDialog().setVisible(true);
+
+                // setBounds must be called (not setLocation) with floor'd dimensions
+                var dialog = construction.constructed().getFirst();
+                var captor = ArgumentCaptor.forClass(Rectangle.class);
+                verify(dialog).setBounds(captor.capture());
+                var bounds = captor.getValue();
+                assertThat(bounds.width)
+                    .as("width floor: max(packedWidth, NARROW_WIDTH) = packedWidth")
+                    .isEqualTo(BaseDialogTestHelper.DEFAULT_DIALOG_SIZE.width);
+                assertThat(bounds.height)
+                    .as("height floor: max(packedHeight, TALL_HEIGHT) = TALL_HEIGHT")
+                    .isEqualTo(TALL_HEIGHT);
+            }
+        }
+
+        @Test
+        void testApplyGeometryResizableCallsSetBoundsNotSetLocation() {
+            // Verify that a resizable restore uses setBounds, not setLocation
+            var restoredLocation = new Point(RESTORED_LOCATION_XY, RESTORED_LOCATION_XY);
+
+            prefsMock.when(() -> Prefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(
+                Map.of("TestResizableDialog", Map.of(
+                    "x", (double) restoredLocation.x,
+                    "y", (double) restoredLocation.y,
+                    "width", (double) WIDE_WIDTH,
+                    "height", (double) EXTRA_TALL_HEIGHT
+                ))
+            );
+
+            try (var construction = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, restoredLocation))) {
+                new TestResizableDialog().setVisible(true);
+
+                var dialog = construction.constructed().getFirst();
+                verify(dialog).setBounds(any(Rectangle.class));
+                verify(dialog, never()).setLocation(any(Point.class));
             }
         }
     }

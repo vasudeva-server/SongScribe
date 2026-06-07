@@ -31,6 +31,7 @@ import org.mockito.MockedStatic;
 import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
+import songscribe.ui.FlatLafKeys;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -192,6 +193,56 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     }
 
 
+    // -- exclusive category increments counter --
+
+    @Test
+    void testExclusiveDialogIncrementsCounter() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new TestExclusiveDialog();
+            dialog.setVisible(true);
+            assertThat(BaseDialog.isAnyBlockingDialogVisible()).isTrue();
+        }
+    }
+
+    @Test
+    void testExclusiveDialogDecrementsCounterOnClose() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new TestExclusiveDialog();
+            dialog.setVisible(true);
+            dialog.setVisible(false);
+            assertThat(BaseDialog.isAnyBlockingDialogVisible()).isFalse();
+        }
+    }
+
+    // -- getData() returning false cancels show --
+
+    @Test
+    void testGetDataFalseDialogNotShownAndCounterNotIncremented() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new CancellingDialog();
+            dialog.setVisible(true);
+            assertThat(BaseDialog.isAnyBlockingDialogVisible()).isFalse();
+        }
+    }
+
+    // -- tab getData() iteration short-circuits on first false --
+
+    @Test
+    void testGetDataTabIterationShortCircuitsOnFirstFalse() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new TwoTabDialog();
+            var failingTab = dialog.new FailingTab();
+            var secondTab = dialog.new SecondTab();
+            dialog.registerTab(failingTab);
+            dialog.registerTab(secondTab);
+
+            dialog.setVisible(true);
+
+            assertThat(dialog.wasGetDataCalledOnTab(0)).isTrue();
+            assertThat(dialog.wasGetDataCalledOnTab(1)).isFalse();
+        }
+    }
+
     // -- helpers --
 
     private static final Point DEFAULT_LOCATION = new Point(100, 100);
@@ -211,6 +262,72 @@ class BaseDialogCounterTest extends MainFrameMockTest {
 
         TestInformationalDialog() {
             super("Info Dialog", false, DialogCategory.INFORMATIONAL);
+        }
+    }
+
+    private static class TestExclusiveDialog extends BaseDialog {
+
+        TestExclusiveDialog() {
+            super("Exclusive Dialog", false, DialogCategory.EXCLUSIVE);
+        }
+    }
+
+    private static class CancellingDialog extends BaseDialog {
+
+        CancellingDialog() {
+            super("Cancelling Dialog", false);
+        }
+
+        @Override
+        protected boolean getData() {
+            return false;
+        }
+    }
+
+    private static class TwoTabDialog extends BaseDialog {
+
+        private static final int TAB_COUNT = 2;
+
+        private final boolean[] getDataCalled = new boolean[TAB_COUNT];
+
+        TwoTabDialog() {
+            super("Two Tab Dialog", false);
+        }
+
+        boolean wasGetDataCalledOnTab(int index) {
+            return getDataCalled[index];
+        }
+
+        class FailingTab extends Tab {
+
+            FailingTab() {
+                super(FlatLafKeys.DIALOG_STD_PADDING);
+            }
+
+            @Override
+            protected void initContents() {}
+
+            @Override
+            protected boolean getData() {
+                getDataCalled[0] = true;
+                return false;
+            }
+        }
+
+        class SecondTab extends Tab {
+
+            SecondTab() {
+                super(FlatLafKeys.DIALOG_STD_PADDING);
+            }
+
+            @Override
+            protected void initContents() {}
+
+            @Override
+            protected boolean getData() {
+                getDataCalled[1] = true;
+                return true;
+            }
         }
     }
 

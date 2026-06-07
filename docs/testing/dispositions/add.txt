@@ -2242,3 +2242,12 @@ add: DynamicsRendererTest.testComputeHairpinLinesDiminuendoEndsAtMiddleY	9c	row 
 add: DynamicsRendererTest.testComputeHairpinLinesDiminuendoStartsAtTopAndBottomY	9c	row 40 — computeHairpinLines: diminuendo upper starts at topYSs, lower at bottomYSs
 add: DynamicsRendererTest.testComputeHairpinLinesBothTypesShareSameXCoordinates	9c	row 40 — computeHairpinLines: both types span x1..x2 = xSs..xSs+widthSs
 add: DynamicsRendererTest.testComputeHairpinLinesCrescendoAndDiminuendoEndpointsAreMirrored	9c	row 40 — computeHairpinLines: crescendo and diminuendo are mirrored (start/end swapped)
+# 10a-dialog-infrastructure-lifecycle — BaseDialogCounterTest + BaseDialogPositionTest (rows 8, 12, 13, 22, 23, 24, 25)
+add: BaseDialogCounterTest.testExclusiveDialogIncrementsCounter
+add: BaseDialogCounterTest.testExclusiveDialogDecrementsCounterOnClose
+add: BaseDialogCounterTest.testGetDataFalseDialogNotShownAndCounterNotIncremented
+add: BaseDialogCounterTest.testGetDataTabIterationShortCircuitsOnFirstFalse
+add: BaseDialogPositionTest.GeometryPersistence.testMalformedPrefsEntryNotAMapFallsBackToDefaultPosition
+add: BaseDialogPositionTest.GeometryPersistence.testMalformedPrefsEntryNonNumberXFallsBackToDefaultPosition
+add: BaseDialogPositionTest.GeometryPersistence.testApplyGeometryResizableFloorWidth
+add: BaseDialogPositionTest.GeometryPersistence.testApplyGeometryResizableCallsSetBoundsNotSetLocation
