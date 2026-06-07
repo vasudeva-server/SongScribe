@@ -9,13 +9,13 @@
 | `MenuController` | `tildeSubstitute` — path under home directory replaced with `~/...` | unit | none | missing | Add `testTildeSubstituteUnderHome` | ✅ |
 | `MenuController` | `tildeSubstitute` — path outside home directory returned unchanged | unit | none | missing | Add `testTildeSubstituteOutsideHome` | ✅ |
 | `MenuController` | `tildeSubstitute` — path exactly equal to home directory returns `~` | unit | none | missing | Add `testTildeSubstituteExactlyHome` | ✅ |
-| `MenuController` | `rebuildOpenRecentMenu` — empty recents list: menu contains a single disabled "No recent documents" item | unit | none | missing | Add `testRebuildOpenRecentMenuEmpty` — call `rebuildOpenRecentMenu` via reflection (or extract to package-private); assert item count = 1, disabled | ⬜ |
-| `MenuController` | `rebuildOpenRecentMenu` — non-empty recents list: menu contains one item per path + separator + Clear Recents action | unit | none | missing | Add `testRebuildOpenRecentMenuNonEmpty` | ⬜ |
-| `MenuController` | `recentDocumentsDidChange` handler rebuilds the open-recent menu when the MBassador notification fires | unit | none | missing | Add `testRecentDocumentsDidChangeRebuildsMen` — post `RecentDocumentsDidChangeNotification` via `MessageCenter`, assert menu is updated | ⬜ |
-| `MenuController` | `initFileMenu` — non-macOS: Quit action is present in file menu | unit | none | missing | Add `testQuitActionPresentOnNonMac` (mock `SystemInfo.isMacOS = false`) | ⬜ |
-| `MenuController` | `initFileMenu` — macOS: Quit action is absent from file menu | unit | none | missing | Add `testQuitActionAbsentOnMac` (mock `SystemInfo.isMacOS = true`) | ⬜ |
-| `MenuController` | `initEditMenu` — non-macOS: Preferences action is present in edit menu | unit | none | missing | Add `testPreferencesActionPresentOnNonMac` | ⬜ |
-| `MenuController` | `initEditMenu` — macOS: Preferences action is absent from edit menu | unit | none | missing | Add `testPreferencesActionAbsentOnMac` | ⬜ |
+| `MenuController` | `rebuildOpenRecentMenu` — empty recents list: menu contains a single disabled "No recent documents" item | unit | none | missing | Add `testRebuildOpenRecentMenuEmpty` — call `rebuildOpenRecentMenu` via reflection (or extract to package-private); assert item count = 1, disabled | ✅ |
+| `MenuController` | `rebuildOpenRecentMenu` — non-empty recents list: menu contains one item per path + separator + Clear Recents action | unit | none | missing | Add `testRebuildOpenRecentMenuNonEmpty` | ✅ |
+| `MenuController` | `recentDocumentsDidChange` handler rebuilds the open-recent menu when the MBassador notification fires | unit | none | missing | Add `testRecentDocumentsDidChangeRebuildsMen` — post `RecentDocumentsDidChangeNotification` via `MessageCenter`, assert menu is updated | ✅ |
+| `MenuController` | `initFileMenu` — non-macOS: Quit action is present in file menu | unit | none | missing | Add `testQuitActionPresentOnNonMac` (mock `SystemInfo.isMacOS = false`) | ✅ |
+| `MenuController` | `initFileMenu` — macOS: Quit action is absent from file menu | unit | none | missing | Add `testQuitActionAbsentOnMac` (mock `SystemInfo.isMacOS = true`) | ✅ |
+| `MenuController` | `initEditMenu` — non-macOS: Preferences action is present in edit menu | unit | none | missing | Add `testPreferencesActionPresentOnNonMac` | ✅ |
+| `MenuController` | `initEditMenu` — macOS: Preferences action is absent from edit menu | unit | none | missing | Add `testPreferencesActionAbsentOnMac` | ✅ |
 | `MenuController` | `initMenus` — macOS: `setJMenuBar` is called on `mainFrame`; non-macOS: it is not | unit | none | missing | Add `testJMenuBarSetOnMacOnly` — two cases, mock `SystemInfo.isMacOS` | ⬜ |
 | `MenuController` | `initHelpMenu` / `addCommonHelpItems` (dead — commented out in `initMenus`) | none | none | none | N/A — unreachable code | — |
 | `MenuController` | `initLaunchMenu` (dead — referenced only in commented-out code) | none | none | none | N/A — unreachable code | — |

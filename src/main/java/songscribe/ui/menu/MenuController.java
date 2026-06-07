@@ -81,7 +81,7 @@ public class MenuController {
     private static @Nullable MacNativeMenuController nativeMenuController = null;
 
     private final MainFrame mainFrame;
-    private JMenu openRecentMenu;
+    JMenu openRecentMenu;
 
     public static void init(MainFrame mainFrame) {
         instance = new MenuController(mainFrame);
@@ -94,7 +94,7 @@ public class MenuController {
         MessageCenter.subscribe(this);
     }
 
-    private void initMenus() {
+    void initMenus() {
         var menuBar = new JMenuBar();
 
         menuBar.add(initFileMenu());
@@ -127,7 +127,7 @@ public class MenuController {
     }
 
     @Initializer
-    private JMenu initFileMenu() {
+    JMenu initFileMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_FILE));
         menu.add(NewAction.createAction(mainFrame));
         menu.add(OpenAction.createAction(mainFrame));
@@ -163,7 +163,7 @@ public class MenuController {
         return menu;
     }
 
-    private void rebuildOpenRecentMenu() {
+    void rebuildOpenRecentMenu() {
         openRecentMenu.removeAll();
         var recents = RecentDocumentsManager.getRecents();
 
@@ -275,7 +275,7 @@ public class MenuController {
         return pathStr;
     }
 
-    private static JMenu initEditMenu() {
+    static JMenu initEditMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_EDIT));
 
         menu.add(Actions.CUT_ACTION);

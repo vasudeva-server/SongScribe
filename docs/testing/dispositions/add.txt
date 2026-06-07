@@ -2462,3 +2462,9 @@ add: songscribe.ui.menu.MenuControllerTest.testBuildLabelsFallbackToFullPath
 add: songscribe.ui.menu.MenuControllerTest.testTildeSubstituteUnderHome
 add: songscribe.ui.menu.MenuControllerTest.testTildeSubstituteOutsideHome
 add: songscribe.ui.menu.MenuControllerTest.testTildeSubstituteExactlyHome
+MenuControllerTest.testRebuildOpenRecentMenuEmptyShowsSingleDisabledItem	11a	add — row 12: rebuildOpenRecentMenu empty recents
+MenuControllerTest.testRebuildOpenRecentMenuNonEmptyShowsOneItemPerPathPlusSeparatorPlusClear	11a	add — row 13: rebuildOpenRecentMenu non-empty recents
+MenuControllerTest.testRecentDocumentsDidChangeRebuildsMenu	11a	add — row 14: recentDocumentsDidChange handler
+MenuControllerTest.testInitFileMenuContainsQuitActionOnlyOnNonMacOS	11a	add — rows 15+16: initFileMenu Quit action platform conditional
+MenuControllerTest.testInitEditMenuContainsPreferencesActionOnlyOnNonMacOS	11a	add — rows 17+18: initEditMenu Preferences action platform conditional
+MenuControllerTest.testInitMenusSetsJMenuBarOnlyOnMacOS	11a	add — row 19: initMenus setJMenuBar macOS conditional

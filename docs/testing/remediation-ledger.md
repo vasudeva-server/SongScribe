@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 1316 / 1564 actionable rows done (84%).**
+**Overall: 1323 / 1564 actionable rows done (84%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -59,7 +59,7 @@
 |  | [10c-settings-export-informational-dialogs](matrix-dialog/10c-settings-export-informational-dialogs.md) | 21 | 21 | ✅ complete |
 |  | [10d-font-chooser-core-model](matrix-dialog/10d-font-chooser-core-model.md) | 11 | 12 | in progress |
 |  | [10e-font-chooser-panes-listeners](matrix-dialog/10e-font-chooser-panes-listeners.md) | 5 | 5 | ✅ complete |
-| 11 · ui/menu+playback+platform+ui | [11a-ui-menu-menu-construction-controller](matrix-menu/11a-ui-menu-menu-construction-controller.md) | 7 | 18 | in progress |
+| 11 · ui/menu+playback+platform+ui | [11a-ui-menu-menu-construction-controller](matrix-menu/11a-ui-menu-menu-construction-controller.md) | 14 | 18 | in progress |
 |  | [11b-ui-playback-transport-midi-controller-play-thread](matrix-menu/11b-ui-playback-transport-midi-controller-play-thread.md) | 0 | 41 | not started |
 |  | [11c-ui-platform-mac-native-macos-menu-integration](matrix-menu/11c-ui-platform-mac-native-macos-menu-integration.md) | 0 | 7 | not started |
 |  | [11d-musiceditoperations-top-level-ui](matrix-menu/11d-musiceditoperations-top-level-ui.md) | 0 | 40 | not started |
