@@ -198,6 +198,25 @@ class MutationRecordsTest extends UnitTest {
         }
 
         @Test
+        void testLineKeyChangeRejectsTypeMismatch() {
+            // ACCIDENTAL_COUNT expects Integer; passing a String must throw.
+            var line = detachedLine();
+            assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(
+                () -> new LineKeyChange(line, KeyField.ACCIDENTAL_COUNT, "bad", 1)
+            );
+        }
+
+        @Test
+        void testLineKeyChangeAcceptsNullValues() {
+            // Null old and new values represent an unset key signature — no exception expected.
+            // KEY_TYPE is the field documented to accept null (unset key signature).
+            var line = detachedLine();
+            assertThatNoException().isThrownBy(
+                () -> new LineKeyChange(line, KeyField.KEY_TYPE, null, null)
+            );
+        }
+
+        @Test
         void testLineLayoutChangeExposesFields() {
             var line = detachedLine();
             var mutation = new LineLayoutChange(line, LineLayoutField.LYRICS_Y_POS_SS, 1.0, 2.0);
@@ -207,6 +226,24 @@ class MutationRecordsTest extends UnitTest {
             assertThat(mutation.oldValue()).isEqualTo(1.0);
             assertThat(mutation.newValue()).isEqualTo(2.0);
             assertThat(mutation.getLine()).isSameAs(line);
+        }
+
+        @Test
+        void testLineLayoutChangeRejectsTypeMismatch() {
+            // LYRICS_Y_POS_SS expects Double; passing Integer values must throw.
+            var line = detachedLine();
+            assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(
+                () -> new LineLayoutChange(line, LineLayoutField.LYRICS_Y_POS_SS, 1, 2)
+            );
+        }
+
+        @Test
+        void testLineLayoutChangeAcceptsNullValues() {
+            // Null values are valid when a layout property has not been set.
+            var line = detachedLine();
+            assertThatNoException().isThrownBy(
+                () -> new LineLayoutChange(line, LineLayoutField.LYRICS_Y_POS_SS, null, null)
+            );
         }
     }
 
@@ -239,6 +276,14 @@ class MutationRecordsTest extends UnitTest {
 
             assertThat(mutation.oldValue()).isNull();
             assertThat(mutation.newValue()).isEqualTo(5.0);
+        }
+
+        @Test
+        void testLayoutChangeRejectsTypeMismatch() {
+            // LINE_WIDTH_SS expects Double; passing Integer values must throw.
+            assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(
+                () -> new LayoutChange(LayoutField.LINE_WIDTH_SS, 1, 2)
+            );
         }
 
         @Test

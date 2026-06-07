@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 1139 / 1574 actionable rows done (72%).**
+**Overall: 1145 / 1574 actionable rows done (72%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -47,7 +47,7 @@
 |  | [7h-input-text-widgets](matrix-component/7h-input-text-widgets.md) | 28 | 28 | ✅ complete |
 |  | [7i-buttons-borders-frames-navigation-helpers](matrix-component/7i-buttons-borders-frames-navigation-helpers.md) | 42 | 42 | ✅ complete |
 | 8 · message | [8a-core-message-bus](matrix-message/8a-core-message-bus.md) | 9 | 9 | ✅ complete |
-|  | [8b-mutation-infrastructure-field-enum-validation](matrix-message/8b-mutation-infrastructure-field-enum-validation.md) | 13 | 19 | in progress |
+|  | [8b-mutation-infrastructure-field-enum-validation](matrix-message/8b-mutation-infrastructure-field-enum-validation.md) | 19 | 19 | ✅ complete |
 |  | [8c-mutation-records](matrix-message/8c-mutation-records.md) | 0 | 1 | not started |
 |  | [8d-command](matrix-message/8d-command.md) | 0 | 1 | not started |
 |  | [8e-notification](matrix-message/8e-notification.md) | 0 | 2 | not started |

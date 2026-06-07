@@ -20,18 +20,18 @@
 | `ElementField` | `DURATION_AFFECTING` constant contains exactly `{DOT_COUNT}` | unit | — | missing | Add a test asserting `ElementField.DURATION_AFFECTING.equals(EnumSet.of(DOT_COUNT))`; this guards against accidental additions that would silently change tuplet-removal policy | ✅ |
 | `ElementField` | other constants are pure labels (no logic) | none | — | — | No test warranted | — |
 | `LineKeyChange` | valid construction: accessors return provided values and `getLine()` delegates to `line` component | unit | `testLineKeyChangeExposesFields` | adequate | — | — |
-| `LineKeyChange` | validation fires on type mismatch (e.g. passing `String` for `ACCIDENTAL_COUNT`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LineKeyChange(line, KeyField.ACCIDENTAL_COUNT, "bad", 1))` | ⬜ |
-| `LineKeyChange` | null/null accepted (unset key signature) | unit | — | missing | Add construction with `(null, null)` and assert no exception | ⬜ |
+| `LineKeyChange` | validation fires on type mismatch (e.g. passing `String` for `ACCIDENTAL_COUNT`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LineKeyChange(line, KeyField.ACCIDENTAL_COUNT, "bad", 1))` | ✅ |
+| `LineKeyChange` | null/null accepted (unset key signature) | unit | — | missing | Add construction with `(null, null)` and assert no exception | ✅ |
 | `LineKeyChange` | implements both `Mutation` and `LineScopedMutation` | unit | `testElementMutationsAreLineScoped` covers element mutations; key-change line-scoped membership is only incidentally covered via `getLine()` accessor check | adequate | — | — |
 | `LineLayoutChange` | valid construction: accessors return values, `getLine()` delegates | unit | `testLineLayoutChangeExposesFields` | adequate | — | — |
-| `LineLayoutChange` | validation fires on type mismatch (e.g. passing `Integer` for `LYRICS_Y_POS_SS` which expects `Double`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LineLayoutChange(line, LineLayoutField.LYRICS_Y_POS_SS, 1, 2))` | ⬜ |
-| `LineLayoutChange` | null/null accepted | unit | — | missing | Add construction with `(null, null)` and assert no exception | ⬜ |
+| `LineLayoutChange` | validation fires on type mismatch (e.g. passing `Integer` for `LYRICS_Y_POS_SS` which expects `Double`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LineLayoutChange(line, LineLayoutField.LYRICS_Y_POS_SS, 1, 2))` | ✅ |
+| `LineLayoutChange` | null/null accepted | unit | — | missing | Add construction with `(null, null)` and assert no exception | ✅ |
 | `MetadataChange` | valid construction: accessors return values | unit | `testMetadataChangeExposesFields` | adequate | — | — |
 | `MetadataChange` | null old value accepted (string field going from unset) | unit | `testMetadataChangeAcceptsNullValues` | adequate | — | — |
-| `MetadataChange` | validation fires on type mismatch (e.g. passing `Integer` for `TITLE` which expects `String`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new MetadataChange(MetadataField.TITLE, 42, "x"))` | ⬜ |
+| `MetadataChange` | validation fires on type mismatch (e.g. passing `Integer` for `TITLE` which expects `String`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new MetadataChange(MetadataField.TITLE, 42, "x"))` | ✅ |
 | `LayoutChange` | valid construction: accessors return values | unit | `testLayoutChangeExposesFields` | adequate | — | — |
 | `LayoutChange` | null old value accepted | unit | `testLayoutChangeAcceptsNullValues` | adequate | — | — |
-| `LayoutChange` | validation fires on type mismatch (e.g. passing `Integer` for `LINE_WIDTH_SS` which expects `Double`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LayoutChange(LayoutField.LINE_WIDTH_SS, 1, 2))` | ⬜ |
+| `LayoutChange` | validation fires on type mismatch (e.g. passing `Integer` for `LINE_WIDTH_SS` which expects `Double`) | unit | — | missing | Add `assertThrows(IllegalArgumentException.class, () -> new LayoutChange(LayoutField.LINE_WIDTH_SS, 1, 2))` | ✅ |
 | `FontChange` | pure data holder — no validation, no derived methods, accessors only | none | `testFontChangeExposesFields` (accessor check) | adequate | Accessor test is fine; no extra tests needed since no logic present | — |
 | `LyricsChange` | pure typed-value record — no validation, accessors only | none | `testLyricsChangeExposesFields` | adequate | — | — |
 | `ElementModification` | valid construction: all four components accessible via record accessors | unit | `testElementModificationExposesFields` | adequate | — | — |

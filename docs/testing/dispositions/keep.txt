@@ -12,3 +12,4 @@ LineHeightTest.testHighNoteAboveStaffExtendsAboveReservationToNoteheadTop	alread
 LineHeightTest.testLowNoteBelowStaffExtendsBelowReservationToNoteheadBottom	already exact isCloseTo for belowStaffSs + lineHeightSs (row 42)
 # 4d row 34 — SMuFLMetadata.requireAdvanceWidth absent-glyph throw already covered
 SMuFLMetadataTest.testRequireAdvanceWidthExitsWhenAdvanceWidthAbsent	already asserts AssertionError via empty-map injection (row 34)
+MutationRecordsTest.FieldTypeValidatorBehavior.testValidatorRejectsTypeMismatchOnOldValue	8b	Covers MetadataChange type mismatch (row 31) — already present from FieldTypeValidator rows
