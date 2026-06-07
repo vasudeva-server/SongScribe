@@ -2453,3 +2453,12 @@ add: songscribe.ui.dialog.fontchooser.listeners.SizeListSelectionListenerTest.te
 add: songscribe.ui.dialog.fontchooser.listeners.StyleListSelectionListenerTest.testValueChangedSkipsWhenAdjusting
 add: songscribe.ui.dialog.fontchooser.listeners.StyleListSelectionListenerTest.testValueChangedDerivesNewFontFromSelectedStyleAtCurrentSizeOnNonAdjustingEvent
 
+
+# MenuControllerTest (11a rows 5-11)
+add: songscribe.ui.menu.MenuControllerTest.testBuildLabelsUniqueFilenames
+add: songscribe.ui.menu.MenuControllerTest.testBuildLabelsDuplicateFilenames
+add: songscribe.ui.menu.MenuControllerTest.testBuildLabelsTwoLevelDisambiguation
+add: songscribe.ui.menu.MenuControllerTest.testBuildLabelsFallbackToFullPath
+add: songscribe.ui.menu.MenuControllerTest.testTildeSubstituteUnderHome
+add: songscribe.ui.menu.MenuControllerTest.testTildeSubstituteOutsideHome
+add: songscribe.ui.menu.MenuControllerTest.testTildeSubstituteExactlyHome

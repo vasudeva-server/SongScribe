@@ -2,13 +2,13 @@
 
 | Class | Behavior | Required level | Existing test | Verdict | Action | done |
 |---|---|---|---|---|---|---|
-| `MenuController` | `buildLabels` — unique filenames: each path returns its filename as label | unit | none | missing | Add `MenuControllerTest.testBuildLabelsUniqueFilenames` — pass list of distinct filenames, assert each label equals the filename | ⬜ |
-| `MenuController` | `buildLabels` — duplicate filenames: appends shortest unique parent suffix to disambiguate | unit | none | missing | Add `testBuildLabelsDuplicateFilenames` — two paths with same filename, different parent dirs; assert label = `filename — parentDir` | ⬜ |
-| `MenuController` | `buildLabels` — duplicate filenames requiring multiple depth levels: falls back to deeper suffix when depth-1 parent is also identical | unit | none | missing | Add `testBuildLabelsTwoLevelDisambiguation` | ⬜ |
-| `MenuController` | `buildLabels` — all-duplicate fallback: uses full path with `~` substitution when no depth resolves uniqueness | unit | none | missing | Add `testBuildLabelsFallbackToFullPath` | ⬜ |
-| `MenuController` | `tildeSubstitute` — path under home directory replaced with `~/...` | unit | none | missing | Add `testTildeSubstituteUnderHome` | ⬜ |
-| `MenuController` | `tildeSubstitute` — path outside home directory returned unchanged | unit | none | missing | Add `testTildeSubstituteOutsideHome` | ⬜ |
-| `MenuController` | `tildeSubstitute` — path exactly equal to home directory returns `~` | unit | none | missing | Add `testTildeSubstituteExactlyHome` | ⬜ |
+| `MenuController` | `buildLabels` — unique filenames: each path returns its filename as label | unit | none | missing | Add `MenuControllerTest.testBuildLabelsUniqueFilenames` — pass list of distinct filenames, assert each label equals the filename | ✅ |
+| `MenuController` | `buildLabels` — duplicate filenames: appends shortest unique parent suffix to disambiguate | unit | none | missing | Add `testBuildLabelsDuplicateFilenames` — two paths with same filename, different parent dirs; assert label = `filename — parentDir` | ✅ |
+| `MenuController` | `buildLabels` — duplicate filenames requiring multiple depth levels: falls back to deeper suffix when depth-1 parent is also identical | unit | none | missing | Add `testBuildLabelsTwoLevelDisambiguation` | ✅ |
+| `MenuController` | `buildLabels` — all-duplicate fallback: uses full path with `~` substitution when no depth resolves uniqueness | unit | none | missing | Add `testBuildLabelsFallbackToFullPath` | ✅ |
+| `MenuController` | `tildeSubstitute` — path under home directory replaced with `~/...` | unit | none | missing | Add `testTildeSubstituteUnderHome` | ✅ |
+| `MenuController` | `tildeSubstitute` — path outside home directory returned unchanged | unit | none | missing | Add `testTildeSubstituteOutsideHome` | ✅ |
+| `MenuController` | `tildeSubstitute` — path exactly equal to home directory returns `~` | unit | none | missing | Add `testTildeSubstituteExactlyHome` | ✅ |
 | `MenuController` | `rebuildOpenRecentMenu` — empty recents list: menu contains a single disabled "No recent documents" item | unit | none | missing | Add `testRebuildOpenRecentMenuEmpty` — call `rebuildOpenRecentMenu` via reflection (or extract to package-private); assert item count = 1, disabled | ⬜ |
 | `MenuController` | `rebuildOpenRecentMenu` — non-empty recents list: menu contains one item per path + separator + Clear Recents action | unit | none | missing | Add `testRebuildOpenRecentMenuNonEmpty` | ⬜ |
 | `MenuController` | `recentDocumentsDidChange` handler rebuilds the open-recent menu when the MBassador notification fires | unit | none | missing | Add `testRecentDocumentsDidChangeRebuildsMen` — post `RecentDocumentsDidChangeNotification` via `MessageCenter`, assert menu is updated | ⬜ |

@@ -188,7 +188,7 @@ public class MenuController {
         rebuildOpenRecentMenu();
     }
 
-    private static List<String> buildLabels(List<? extends Path> paths) {
+    static List<String> buildLabels(List<? extends Path> paths) {
         var nameToIndices = new LinkedHashMap<String, List<Integer>>();
 
         for (var i = 0; i < paths.size(); i++) {
@@ -212,7 +212,7 @@ public class MenuController {
         return List.of(labels);
     }
 
-    private static void disambiguate(
+    static void disambiguate(
         List<? extends Path> paths,
         List<Integer> indices,
         String filename,
@@ -263,7 +263,7 @@ public class MenuController {
         }
     }
 
-    private static String tildeSubstitute(String pathStr, Path homePath) {
+    static String tildeSubstitute(String pathStr, Path homePath) {
         var path = Path.of(pathStr);
 
         if (path.startsWith(homePath)) {
