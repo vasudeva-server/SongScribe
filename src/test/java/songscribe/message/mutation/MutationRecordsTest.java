@@ -20,11 +20,16 @@
 package songscribe.message.mutation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import module java.desktop;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Nested;
@@ -153,6 +158,8 @@ class MutationRecordsTest extends UnitTest {
             assertThat(new LayoutChange(LayoutField.LINE_WIDTH_SS, 1.0, 2.0))
                 .isNotInstanceOf(LineScopedMutation.class);
             assertThat(new LyricsChange(LyricsField.UNDER, "a", "b"))
+                .isNotInstanceOf(LineScopedMutation.class);
+            assertThat(new FontChange(DocumentFonts.defaultsFromPrefs(), DocumentFonts.defaultsFromPrefs()))
                 .isNotInstanceOf(LineScopedMutation.class);
             assertThat(new LineInsertion(0, detachedLine()))
                 .isNotInstanceOf(LineScopedMutation.class);
@@ -317,5 +324,81 @@ class MutationRecordsTest extends UnitTest {
             assertThat(mutation.lineIndex()).isEqualTo(3);
             assertThat(mutation.line()).isSameAs(line);
         }
+    }
+
+    @Test
+    void testPermittedSubtypesAreExhaustive() {
+        // Reflectively verify that the permits list exactly matches the known
+        // set of concrete Mutation subtypes, so additions to either side are
+        // caught at test time.
+        var permittedNames = Arrays.stream(Mutation.class.getPermittedSubclasses())
+            .map(Class::getSimpleName)
+            .collect(Collectors.toSet());
+        var expectedNames = Set.of(
+            "ElementInsertion", "ElementDeletion", "ElementRangeDeletion",
+            "ElementModification", "ElementReplacement",
+            "LineInsertion", "LineDeletion",
+            "LineKeyChange", "LineLayoutChange",
+            "RangeElementAddition", "RangeElementRemoval",
+            "BeamingAddition", "BeamingRemoval",
+            "TieAddition", "TieRemoval",
+            "TupletAddition", "TupletRemoval",
+            "CrescendoAddition", "CrescendoRemoval",
+            "DiminuendoAddition", "DiminuendoRemoval",
+            "MetadataChange", "FontChange", "LayoutChange", "LyricsChange"
+        );
+        assertThat(permittedNames).isEqualTo(expectedNames);
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class FieldTypeValidatorBehavior {
+
+        @Test
+        void testValidatorAcceptsNullOldAndNewValues() {
+            // Null values bypass the type check — no exception should be thrown.
+            assertThatNoException().isThrownBy(
+                () -> new MetadataChange(MetadataField.TITLE, null, null)
+            );
+        }
+
+        @Test
+        void testValidatorRejectsTypeMismatchOnOldValue() {
+            // TITLE expects String; passing an Integer for oldValue must throw
+            // with a message identifying the record, field, parameter, and types.
+            assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(
+                () -> new MetadataChange(MetadataField.TITLE, 42, "x")
+            ).withMessageContaining("MetadataChange")
+             .withMessageContaining("TITLE")
+             .withMessageContaining("oldValue")
+             .withMessageContaining("String")
+             .withMessageContaining("Integer");
+        }
+
+        @Test
+        void testValidatorRejectsTypeMismatchOnNewValue() {
+            // TITLE expects String; passing an Integer for newValue must throw
+            // with a message identifying the record, field, parameter, and types.
+            assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(
+                () -> new MetadataChange(MetadataField.TITLE, "x", 42)
+            ).withMessageContaining("MetadataChange")
+             .withMessageContaining("TITLE")
+             .withMessageContaining("newValue")
+             .withMessageContaining("String")
+             .withMessageContaining("Integer");
+        }
+    }
+
+    @ParameterizedTest(name = "{0}.getExpectedType() returns {1}")
+    @MethodSource("keyFieldExpectedTypes")
+    void testKeyFieldReturnsExpectedType(KeyField field, Class<?> expectedType) {
+        assertThat(field.getExpectedType()).isEqualTo(expectedType);
+    }
+
+    static Stream<Arguments> keyFieldExpectedTypes() {
+        return Stream.of(
+            Arguments.of(KeyField.ACCIDENTAL_COUNT, Integer.class),
+            Arguments.of(KeyField.KEY_TYPE, KeyType.class)
+        );
     }
 }

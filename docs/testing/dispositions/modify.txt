@@ -87,3 +87,4 @@ modify: LyricEditor.LEADING_PAINT_SLACK_PX — widened from private to package-p
 modify: LyricEditor.LeadingSlackFieldView — widened from private to package-private for testing
 modify: LyricEditor.LeadingSlackFieldView.paintingWithLeadingSlack — widened from private to package-private for testing
 modify: LyricEditor.keepAllocationAtContentOrigin — extracted from LeadingSlackFieldView as package-private static method on LyricEditor for direct testing
+MutationRecordsTest.testSongScopedMutationsAreNotLineScoped	8b-mutation-infrastructure-field-enum-validation	Added FontChange assertion to existing test
