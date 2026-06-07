@@ -102,3 +102,5 @@ PropertiesStateStore.put [value param @NonNull → @Nullable for null-removal co
 PropertiesStateStore [added package-private constructor accepting Preferences for injection]
 modify SongSettingsDialog.canonicalKeySelectionFrom (extracted from MusicTab.setKeyComboFromSong for testability)
 modify SongSettingsDialog.applyMusicTabChanges (extracted from MusicTab.setData for testability)
+# 10e StyleEntry production bug fix (row 11)
+modify StyleEntry.hashCode [changed from font.hashCode() to font.getPSName().hashCode() to restore equals/hashCode contract]

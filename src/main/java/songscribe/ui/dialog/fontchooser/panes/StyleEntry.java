@@ -60,7 +60,8 @@ public final class StyleEntry {
 
     @Override
     public int hashCode() {
-        return font.hashCode();
+        // Must be consistent with equals, which compares by PS name.
+        return font.getPSName().hashCode();
     }
 
     @Override

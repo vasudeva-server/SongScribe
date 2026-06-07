@@ -40,7 +40,10 @@ class FamilyListModelTest extends UnitTest {
         for (var name : familyNames) {
             var font = Mockito.mock(Font.class);
             when(font.getFamily()).thenReturn(name);
-            when(font.getName()).thenReturn(name + " Regular");
+            // FontFamily stores fonts in a TreeSet<Font> sorted by FontNameComparator,
+            // which calls Font.getName(). The stub is required to avoid NPE during
+            // comparator invocations when more than one font shares a family.
+            when(font.getName()).thenReturn(name);
             families.add(font);
         }
 
@@ -57,5 +60,37 @@ class FamilyListModelTest extends UnitTest {
         assertThat(model.getElementAt(0)).isEqualTo("Apple");
         assertThat(model.getElementAt(1)).isEqualTo("Mango");
         assertThat(model.getElementAt(2)).isEqualTo("Zebra");
+    }
+
+    // ---------------------------------------------------------------------------
+    // findFirst — contract: caller passes a pre-lowercased search string;
+    //             findFirst lowercases stored family names before comparing.
+    // ---------------------------------------------------------------------------
+
+    @Test
+    void testFindFirstExactMatchReturnsFamily() {
+        // Exact lowercase match against the lowercased family name.
+        var model = new FamilyListModel(buildFamilies("Arial", "Times New Roman", "Helvetica"));
+        assertThat(model.findFirst("arial")).isEqualTo("Arial");
+    }
+
+    @Test
+    void testFindFirstPrefixMatchReturnsFamily() {
+        // Prefix of the lowercased family name matches.
+        var model = new FamilyListModel(buildFamilies("Courier New", "Verdana"));
+        assertThat(model.findFirst("courier")).isEqualTo("Courier New");
+    }
+
+    @Test
+    void testFindFirstSubstringMatchReturnsFamily() {
+        // Substring of the lowercased family name matches.
+        var model = new FamilyListModel(buildFamilies("Times New Roman", "Arial"));
+        assertThat(model.findFirst("new")).isEqualTo("Times New Roman");
+    }
+
+    @Test
+    void testFindFirstNoMatchReturnsNull() {
+        var model = new FamilyListModel(buildFamilies("Arial", "Helvetica"));
+        assertThat(model.findFirst("wingdings")).isNull();
     }
 }
