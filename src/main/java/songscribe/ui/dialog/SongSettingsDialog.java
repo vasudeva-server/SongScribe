@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
+
 
 import com.formdev.flatlaf.FlatClientProperties;
 
@@ -72,6 +74,177 @@ public class SongSettingsDialog extends StandardDialog {
      */
     public record KeySelection(KeyType keyType, int count) {}
 
+
+    // ── Package-private static helpers (exposed for unit testing) ──────────
+
+    /** Initial capacity for the lyrics-title {@link StringBuilder} — enough for a typical title. */
+    static final int LYRICS_TITLE_INITIAL_CAPACITY = 50;
+
+    /**
+     * Parses an integer text field value: empty string is valid (returns the
+     * empty string unchanged), a non-empty numeric string returns itself, and
+     * a non-empty non-numeric string returns {@code null} to indicate a
+     * parse error.
+     *
+     * @param text the raw field text (non-null)
+     * @return the original text if empty or parseable as an integer;
+     *         {@code null} if non-empty and not parseable
+     */
+    static @Nullable String parseIntFieldOrNull(String text) {
+        if (text.isEmpty()) {
+            return text;
+        }
+
+        try {
+            Integer.parseInt(text);
+            return text;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns {@code true} when the TextTab's current field values match the
+     * song's stored metadata exactly, i.e., nothing has changed and
+     * {@code setData} should skip posting a notification.
+     *
+     * <p>The {@code number} and {@code year} parameters are the
+     * already-validated values from {@link #parseIntFieldOrNull}: {@code null}
+     * means the field was invalid (non-numeric), which differs from the song's
+     * stored value and therefore counts as a change.
+     */
+    static boolean isTextTabUnchanged(
+        Song song,
+        String title,
+        String place,
+        @Nullable String year,
+        @Nullable String number,
+        int month,
+        int day,
+        String composerText,
+        String lyricistText,
+        Song.LyricsSource lyricsSource,
+        boolean arrangement,
+        boolean unofficialTranslation
+    ) {
+        return title.equals(song.getTitle())
+            && place.equals(song.getPlace())
+            && Objects.equals(year, song.getYear())
+            && Objects.equals(number, song.getNumber())
+            && month == song.getMonth()
+            && day == song.getDay()
+            && composerText.equals(song.getComposer())
+            && lyricistText.equals(song.getLyricist())
+            && lyricsSource == song.getLyricsSource()
+            && arrangement == song.isArrangement()
+            && unofficialTranslation == song.isUnofficialTranslation();
+    }
+
+    /**
+     * Extracts a title from the first {@code maxWords} words of the given lyrics
+     * string, applying capitalisation and hyphen-pair handling as used in the
+     * "Take first lyrics words" action.
+     *
+     * <p>Whitespace ({@code ' '} and {@code '\n'}) and double-hyphen pairs
+     * ({@code --}) act as word separators. Underscores ({@code _}) are ignored.
+     * The first character of each new word is upper-cased. A trailing
+     * non-letter character (space or separator) is trimmed before returning.
+     *
+     * <p><b>Bug note:</b> if {@code lyrics} contains no normal characters (e.g.,
+     * only underscores), the result buffer is empty and the trailing-trim step
+     * throws {@code StringIndexOutOfBoundsException}. The caller is responsible
+     * for guarding against all-separator input.
+     *
+     * @param lyrics   the raw lyrics text (must not be empty)
+     * @param maxWords the maximum number of words to include (≥ 1)
+     * @return the extracted title string (may be empty if {@code lyrics} is
+     *         all-separator characters — the IOOBE happens before returning)
+     */
+    static String extractLyricsTitle(String lyrics, int maxWords) {
+        var words = new StringBuilder(LYRICS_TITLE_INITIAL_CAPACITY);
+        var wordCount = 0;
+        var firstLetter = false;
+        var lastHyphen = false;
+
+        goThruString:
+        for (var i = 0; i < lyrics.length(); i++) {
+            switch (lyrics.charAt(i)) {
+                case ' ', '\n' -> {
+                    wordCount++;
+
+                    if (wordCount >= maxWords) {
+                        break goThruString;
+                    }
+
+                    words.append(' ');
+                    firstLetter = true;
+                }
+                case '-' -> {
+                    if (lastHyphen) {
+                        words.append('-');
+                        wordCount++;
+                        firstLetter = true;
+                    }
+
+                    lastHyphen = !lastHyphen;
+                }
+                case '_' -> {
+                }
+                default -> {
+                    if (firstLetter) {
+                        words.append(
+                            String.valueOf(lyrics.charAt(i)).toUpperCase()
+                        );
+                        firstLetter = false;
+                    } else {
+                        words.append(lyrics.charAt(i));
+                    }
+
+                    lastHyphen = false;
+                }
+            }
+        }
+
+        if (!Character.isLetter(words.charAt(words.length() - 1))) {
+            words.deleteCharAt(words.length() - 1);
+        }
+
+        return words.toString();
+    }
+
+    /**
+     * Parses and validates a line-width field value.
+     *
+     * <p>The text is parsed as a {@code double}; if metric is {@code true}
+     * the value is treated as centimetres and converted to inches before
+     * the range check.
+     *
+     * @param text     the raw field text (may be empty or non-numeric)
+     * @param isMetric {@code true} if the value is in centimetres,
+     *                 {@code false} if in inches
+     * @return the validated width in inches if the text is parseable and in
+     *         range; {@code -1} if the text is empty, unparseable, or outside
+     *         {@code [MIN_LINE_WIDTH_INCHES, MAX_LINE_WIDTH_INCHES]}
+     */
+    static double validateLineWidthText(String text, boolean isMetric) {
+        double value;
+
+        try {
+            value = Double.parseDouble(text);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+
+        var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
+
+        if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+            return -1;
+        }
+
+        return widthInches;
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
 
     public SongSettingsDialog() {
         super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
@@ -434,35 +607,25 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected void setData() {
             // Validate number field
-            var number = numberField.getText();
+            var number = parseIntFieldOrNull(numberField.getText());
 
-            try {
-                if (!number.isEmpty()) {
-                    Integer.parseInt(number);
-                }
-            } catch (NumberFormatException e) {
+            if (number == null) {
                 OptionDialogs.showErrorMessage(
                     contentPanel,
                     Strings.ALERT_TITLE_SONG_SETTINGS,
                     Strings.ERROR_SONG_NUMBER
                 );
-                number = null;
             }
 
             // Validate year field
-            var year = yearField.getText();
+            var year = parseIntFieldOrNull(yearField.getText());
 
-            try {
-                if (!year.isEmpty()) {
-                    Integer.parseInt(year);
-                }
-            } catch (NumberFormatException e) {
+            if (year == null) {
                 OptionDialogs.showErrorMessage(
                     contentPanel,
                     Strings.ALERT_TITLE_SONG_SETTINGS,
                     Strings.ERROR_SONG_YEAR
                 );
-                year = null;
             }
 
             var song = getSong();
@@ -480,17 +643,20 @@ public class SongSettingsDialog extends StandardDialog {
                 lyricistText = composerText;
             }
 
-            if (titleField.getText().equals(song.getTitle())
-                    && placeField.getText().equals(song.getPlace())
-                    && Objects.equals(year, song.getYear())
-                    && Objects.equals(number, song.getNumber())
-                    && monthCombo.getSelectedIndex() == song.getMonth()
-                    && dayCombo.getSelectedIndex() == song.getDay()
-                    && composerText.equals(song.getComposer())
-                    && lyricistText.equals(song.getLyricist())
-                    && lyricsSource == song.getLyricsSource()
-                    && arrangementCheck.isSelected() == song.isArrangement()
-                    && unofficialTranslationCheck.isSelected() == song.isUnofficialTranslation()) {
+            if (isTextTabUnchanged(
+                song,
+                titleField.getText(),
+                placeField.getText(),
+                year,
+                number,
+                monthCombo.getSelectedIndex(),
+                dayCombo.getSelectedIndex(),
+                composerText,
+                lyricistText,
+                lyricsSource,
+                arrangementCheck.isSelected(),
+                unofficialTranslationCheck.isSelected()
+            )) {
                 return;
             }
 
@@ -521,59 +687,10 @@ public class SongSettingsDialog extends StandardDialog {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                var lyrics = getSong().getLyricsText();
-                var words = new StringBuilder(50);
-                var wordCount = 0;
-                var firstLetter = false;
-                var lastHyphen = false;
-
-                goThruString:
-                for (var i = 0; i < lyrics.length(); i++) {
-                    switch (lyrics.charAt(i)) {
-                        case ' ', '\n' -> {
-                            wordCount++;
-
-                            if (
-                                wordCount >=
-                                    ((Number) takeFirstWordsSpinnerModel.getValue()).intValue()
-                            ) {
-                                break goThruString;
-                            }
-
-                            words.append(' ');
-                            firstLetter = true;
-                        }
-                        case '-' -> {
-                            if (lastHyphen) {
-                                words.append('-');
-                                wordCount++;
-                                firstLetter = true;
-                            }
-
-                            lastHyphen = !lastHyphen;
-                        }
-                        case '_' -> {
-                        }
-                        default -> {
-                            if (firstLetter) {
-                                words.append(
-                                    String.valueOf(lyrics.charAt(i)).toUpperCase()
-                                );
-                                firstLetter = false;
-                            } else {
-                                words.append(lyrics.charAt(i));
-                            }
-
-                            lastHyphen = false;
-                        }
-                    }
-                }
-
-                if (!Character.isLetter(words.charAt(words.length() - 1))) {
-                    words.deleteCharAt(words.length() - 1);
-                }
-
-                titleField.setText(words.toString());
+                titleField.setText(extractLyricsTitle(
+                    getSong().getLyricsText(),
+                    ((Number) takeFirstWordsSpinnerModel.getValue()).intValue()
+                ));
             }
         }
 
@@ -794,23 +911,10 @@ public class SongSettingsDialog extends StandardDialog {
          *         unparseable, or out of range
          */
         private double validateLineWidth() {
-            var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
-
-            double value;
-
-            try {
-                value = Double.parseDouble(lineWidthField.getText());
-            } catch (NumberFormatException e) {
-                return -1;
-            }
-
-            var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
-
-            if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
-                return -1;
-            }
-
-            return widthInches;
+            return validateLineWidthText(
+                lineWidthField.getText(),
+                Prefs.getBoolean(PrefsKey.METRIC)
+            );
         }
 
         private void showLineWidthError(String key, boolean isMetric) {
