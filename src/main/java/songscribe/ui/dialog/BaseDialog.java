@@ -133,6 +133,11 @@ public abstract class BaseDialog {
         return tabs;
     }
 
+    /** Package-private: allows tests to read the registered top-level tabbed pane without full dialog setup. */
+    @Nullable JTabbedPane getTabbedPane() {
+        return tabbedPane;
+    }
+
     protected JTabbedPane createTabbedPane() {
         var pane = new JTabbedPane();
 

@@ -23,13 +23,13 @@
 | `BaseDialog` | `loadGeometryFromPrefs`: entry is a map but x/y are non-`Number` → falls back | unit | none | missing | Add test: prefs map has `x`="bad"; assert `positionDialog` still called | ✅ |
 | `BaseDialog` | `applyGeometry` resizable floor semantics: restored size clamped to `max(packed, restored)` per dimension | unit | none | missing | Add test: packed=300×200, restored=200×400 → applied width=300, height=400 | ✅ |
 | `BaseDialog` | `applyGeometry` resizable: restores location+size (calls `setBounds`, not `setLocation`) | unit | none | missing | Add test verifying `setBounds` called with floor'd dimensions when dialog is resizable | ✅ |
-| `BaseDialog` | `GeometryResetSubscriber`: `PrefsDidChangeNotification` with key `DIALOG_GEOMETRY` clears `SAVED_GEOMETRY` | unit | none | missing | Add test: save geometry, post notification with `DIALOG_GEOMETRY` key, reopen → `positionDialog` called again | ⬜ |
-| `BaseDialog` | `GeometryResetSubscriber`: `PrefsDidChangeNotification` with key `ALL` clears `SAVED_GEOMETRY` | unit | none | missing | Add test: same as above with `ALL` key | ⬜ |
-| `BaseDialog` | `createTabbedPane`: first call registers top-level pane + lifecycle listener; second call returns new pane without overwriting | unit | none | missing | Add test: call twice; assert `tabbedPane` field holds first-call instance | ⬜ |
-| `BaseDialog` | `tabWillShow`/`tabWillHide` fired on tab switch via `ChangeListener` | unit | none | missing | Add test with two tabs; simulate selection change; assert correct callbacks fired | ⬜ |
-| `BaseDialog` | `tabWillShow` fired for initially-selected tab on `setVisible(true)` | unit | none | missing | Add test | ⬜ |
-| `BaseDialog` | `tabWillHide` called for all tabs on `setVisible(false)` | unit | none | missing | Add test | ⬜ |
-| `BaseDialog` | `getContentPaddingKey`: returns buttons-padding key when `hasButtons()` true, std-padding key when false | unit | none | missing | Add test on concrete subclass pairs | ⬜ |
+| `BaseDialog` | `GeometryResetSubscriber`: `PrefsDidChangeNotification` with key `DIALOG_GEOMETRY` clears `SAVED_GEOMETRY` | unit | none | missing | Add test: save geometry, post notification with `DIALOG_GEOMETRY` key, reopen → `positionDialog` called again | ✅ |
+| `BaseDialog` | `GeometryResetSubscriber`: `PrefsDidChangeNotification` with key `ALL` clears `SAVED_GEOMETRY` | unit | none | missing | Add test: same as above with `ALL` key | ✅ |
+| `BaseDialog` | `createTabbedPane`: first call registers top-level pane + lifecycle listener; second call returns new pane without overwriting | unit | none | missing | Add test: call twice; assert `tabbedPane` field holds first-call instance | ✅ |
+| `BaseDialog` | `tabWillShow`/`tabWillHide` fired on tab switch via `ChangeListener` | unit | none | missing | Add test with two tabs; simulate selection change; assert correct callbacks fired | ✅ |
+| `BaseDialog` | `tabWillShow` fired for initially-selected tab on `setVisible(true)` | unit | none | missing | Add test | ✅ |
+| `BaseDialog` | `tabWillHide` called for all tabs on `setVisible(false)` | unit | none | missing | Add test | ✅ |
+| `BaseDialog` | `getContentPaddingKey`: returns buttons-padding key when `hasButtons()` true, std-padding key when false | unit | none | missing | Add test on concrete subclass pairs | ✅ |
 | `BaseDialog` | `getScoreView()` returns null when scoreView not initialized (nullable contract) | unit | none | missing | Add test: mock `mainFrame.getScoreView()` → null; assert returns null | ⬜ |
 | `BaseDialog` | `requireScoreView()` throws when scoreView null (`RuntimeError.exit`) | unit | none | missing | Add test: mock `mainFrame.requireScoreView()` → throw; assert propagates | ⬜ |
 | `BaseDialog` | `getSong()` delegates to `requireScoreView().getSong()` | unit | none | missing | Add test | ⬜ |
