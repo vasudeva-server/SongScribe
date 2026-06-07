@@ -183,6 +183,7 @@ fun Test.applyCommonTestConfig() {
         jvmArgs(
             "-Dapple.laf.useScreenMenuBar=true",
             "-Dapple.awt.application.appearance=system",
+            "-Dapple.awt.UIElement=true",
             "-Djna.library.path=$projectDir/build/native",
         )
     }
