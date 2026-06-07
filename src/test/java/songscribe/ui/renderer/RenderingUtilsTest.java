@@ -22,8 +22,12 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.awt.Color;
+import java.util.ArrayList;
 
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +36,9 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.layout.NoteGeometry;
+import songscribe.layout.StaffExtents;
+import songscribe.smufl.Engraving;
 import songscribe.ui.component.ScoreView;
 
 class RenderingUtilsTest extends UnitTest {
@@ -78,5 +85,130 @@ class RenderingUtilsTest extends UnitTest {
         var color = RenderingUtils.getDecorationColor(element, invariants, ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    // T4: frame carries a valid element index (≥0) → fast path returns color without
+    // consulting the line (no line is needed — the method would throw if it tried to use one)
+    @Test
+    void testGetDecorationColorFrameWithValidIndexBypassesLineScan() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        // No current line set — fast-path must not try to use it
+        var invariants = RenderContextTestHelper.newContext(new Song()).build();
+        // Frame with a valid element index (≥0) takes the fast path
+        var frame = ElementFrame.LINE_LEVEL.withElement(0, Double.NaN);
+
+        // Outside edit mode, getElementColor always returns BLACK
+        var color = RenderingUtils.getDecorationColor(element, invariants, frame);
+
+        assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    // forEachLedgerLineYSs — below-staff position generates one ledger-line Y offset
+    // (positive staff position = lower pitch = below staff in Y-down coordinates)
+    @Test
+    void testForEachLedgerLineYSsBelowStaff() {
+        // Staff position 7 (odd, below staff): i adjusted to 6, one ledger line at sp 6
+        // Y offset relative to note: spToSs(6 - 7) = spToSs(-1) = -0.5
+        var positions = new ArrayList<Double>();
+        RenderingUtils.forEachLedgerLineYSs(7, positions::add);
+
+        assertThat(positions).containsExactly(StaffExtents.spToSs(-1));
+    }
+
+    // forEachLedgerLineYSs — two ledger lines below staff
+    @Test
+    void testForEachLedgerLineYSsTwoLinesBelowStaff() {
+        // Staff position 9 (odd, below staff): i adjusted to 8, two ledger lines at 8 and 6
+        // Y offsets: spToSs(8-9)=-0.5, spToSs(6-9)=-1.5
+        var positions = new ArrayList<Double>();
+        RenderingUtils.forEachLedgerLineYSs(9, positions::add);
+
+        assertThat(positions).containsExactly(
+            StaffExtents.spToSs(-1),
+            StaffExtents.spToSs(-3)
+        );
+    }
+
+    // forEachLedgerLineYSs — above-staff position generates one ledger line
+    // (negative staff position = higher pitch = above staff in Y-down coordinates)
+    @Test
+    void testForEachLedgerLineYSsAboveStaff() {
+        // Staff position -7 (odd, above staff): i adjusted to -6, one ledger line
+        // Y offset: spToSs(-6 - (-7)) = spToSs(1) = 0.5
+        var positions = new ArrayList<Double>();
+        RenderingUtils.forEachLedgerLineYSs(-7, positions::add);
+
+        assertThat(positions).containsExactly(StaffExtents.spToSs(1));
+    }
+
+    // forEachLedgerLineYSs — on-staff position produces no ledger lines
+    @Test
+    void testForEachLedgerLineYSsOnStaffProducesNoLines() {
+        var positions = new ArrayList<Double>();
+        RenderingUtils.forEachLedgerLineYSs(4, positions::add);
+
+        assertThat(positions).isEmpty();
+    }
+
+    // forEachLedgerLineYSs — parity normalization: even below-staff position is used as-is
+    @Test
+    void testForEachLedgerLineYSsEvenBelowStaffPosition() {
+        // Staff position 8 (even, below staff): no parity adjustment, i = 8, step = -2
+        // Y offset: spToSs(8-8)=0, spToSs(6-8)=-1.0
+        var positions = new ArrayList<Double>();
+        RenderingUtils.forEachLedgerLineYSs(8, positions::add);
+
+        assertThat(positions).containsExactly(
+            StaffExtents.spToSs(0),
+            StaffExtents.spToSs(-2)
+        );
+    }
+
+    // centeredGlyphX — arithmetic: layoutX + noteheadCenter - bboxLeft - glyphWidth/2
+    @Test
+    void testCenteredGlyphXComputesCorrectArithmetic() {
+        var note = new StaffElement(ElementType.CROTCHET);
+        note.setUpper(true);
+        var layoutXSs = 10.0;
+        var glyphBBoxLeft = -0.1;
+        var glyphWidthSs = 0.8;
+
+        var type = note.getType();
+        var noteheadCenterXSs =
+            type.getElementCenterXSs() + NoteGeometry.getNoteheadXOffsetSs(type, note.isUpper());
+        var expected = layoutXSs + noteheadCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
+
+        var actual = RenderingUtils.centeredGlyphX(layoutXSs, note, glyphBBoxLeft, glyphWidthSs);
+
+        assertThat(actual).isCloseTo(expected, within(1e-9));
+    }
+
+    // stemCenterXOffsetSs — all 4 branches: minim-up, minim-down, black-up, black-down
+    @Test
+    void testStemCenterXOffsetSsMinimUp() {
+        var expected = Engraving.NOTEHEAD_HALF_STEM_UP_SE.x() - NoteGeometry.STEM_WIDTH_SS / 2.0;
+        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.MINIM, true))
+            .isCloseTo(expected, within(1e-9));
+    }
+
+    @Test
+    void testStemCenterXOffsetSsMinimDown() {
+        var expected = Engraving.NOTEHEAD_HALF_STEM_DOWN_NW.x();
+        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.MINIM, false))
+            .isCloseTo(expected, within(1e-9));
+    }
+
+    @Test
+    void testStemCenterXOffsetSsBlackNoteheadUp() {
+        var expected = Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() - NoteGeometry.STEM_WIDTH_SS / 2.0;
+        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.CROTCHET, true))
+            .isCloseTo(expected, within(1e-9));
+    }
+
+    @Test
+    void testStemCenterXOffsetSsBlackNoteheadDown() {
+        var expected = Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x();
+        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.CROTCHET, false))
+            .isCloseTo(expected, within(1e-9));
     }
 }

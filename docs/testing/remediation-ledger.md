@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 1149 / 1574 actionable rows done (72%).**
+**Overall: 1156 / 1574 actionable rows done (73%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -51,7 +51,7 @@
 |  | [8c-mutation-records](matrix-message/8c-mutation-records.md) | 1 | 1 | ✅ complete |
 |  | [8d-command](matrix-message/8d-command.md) | 1 | 1 | ✅ complete |
 |  | [8e-notification](matrix-message/8e-notification.md) | 2 | 2 | ✅ complete |
-| 9 · ui/renderer | [9a-renderer-infrastructure-note-area-geometry](matrix-renderer/9a-renderer-infrastructure-note-area-geometry.md) | 0 | 16 | not started |
+| 9 · ui/renderer | [9a-renderer-infrastructure-note-area-geometry](matrix-renderer/9a-renderer-infrastructure-note-area-geometry.md) | 7 | 16 | in progress |
 |  | [9b-span-connector-renderers](matrix-renderer/9b-span-connector-renderers.md) | 0 | 15 | not started |
 |  | [9c-glyph-element-painters](matrix-renderer/9c-glyph-element-painters.md) | 0 | 22 | not started |
 | 10 · ui/dialog | [10a-dialog-infrastructure-lifecycle](matrix-dialog/10a-dialog-infrastructure-lifecycle.md) | 0 | 41 | not started |

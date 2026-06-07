@@ -71,4 +71,31 @@ class ElementFrameTest extends UnitTest {
         assertThat(ElementFrame.LINE_LEVEL.hasOverrideElementX()).isFalse();
         assertThat(ElementFrame.LINE_LEVEL.hasPreviewShift()).isFalse();
     }
+
+    // lineLevelWithPreviewShift copies LINE_LEVEL's index/override and attaches shift args
+    @Test
+    void testLineLevelWithPreviewShiftHasNoElementIndexAndCarriesShift() {
+        var fromIndex = 3;
+        var frame = ElementFrame.lineLevelWithPreviewShift(fromIndex, PREVIEW_SHIFT_SS);
+
+        assertThat(frame.currentElementIndex()).isEqualTo(ElementFrame.LINE_LEVEL.currentElementIndex());
+        assertThat(frame.hasOverrideElementX()).isFalse();
+        assertThat(frame.previewShiftFromIndex()).isEqualTo(fromIndex);
+        assertThat(frame.previewShiftSs()).isEqualTo(PREVIEW_SHIFT_SS);
+    }
+
+    // withElement creates a per-element frame and inherits the preview shift from the parent
+    @Test
+    void testWithElementSetsIndexAndOverrideAndInheritsPreviewShift() {
+        var fromIndex = 2;
+        var parent = ElementFrame.lineLevelWithPreviewShift(fromIndex, PREVIEW_SHIFT_SS);
+        var elementIndex = 5;
+        var frame = parent.withElement(elementIndex, OVERRIDE_X_SS);
+
+        assertThat(frame.currentElementIndex()).isEqualTo(elementIndex);
+        assertThat(frame.overrideElementXSs()).isEqualTo(OVERRIDE_X_SS);
+        assertThat(frame.hasOverrideElementX()).isTrue();
+        assertThat(frame.previewShiftFromIndex()).isEqualTo(fromIndex);
+        assertThat(frame.previewShiftSs()).isEqualTo(PREVIEW_SHIFT_SS);
+    }
 }

@@ -6,20 +6,20 @@
 | ElementFrame | `hasOverrideElementX()` — NaN vs. finite | unit | `testHasOverrideElementXFalseForNaN`, `testHasOverrideElementXTrueForFiniteValue` | adequate | — | — |
 | ElementFrame | `hasPreviewShift()` — negative vs. non-negative index | unit | `testHasPreviewShiftFalseForNegativeIndex`, `testHasPreviewShiftTrueForNonNegativeIndex` | adequate | — | — |
 | ElementFrame | `LINE_LEVEL` constant values | unit | `testLineLevelHasNoElementOverrideOrShift` | adequate | — | — |
-| ElementFrame | `lineLevelWithPreviewShift()` — copies LINE_LEVEL indices, attaches shift | unit | — | missing | Add unit test: verify currentElementIndex==-1, overrideXSs==NaN, fromIndex/shiftSs match args | ⬜ |
-| ElementFrame | `withElement()` — creates per-element frame, inherits preview shift | unit | — | missing | Add unit test: verify element index + override set, previewShift inherited from parent | ⬜ |
-| GraphicsState | `save()` + `close()` restore contract (bitmask-gated, per-property) | unit | — | missing | Add unit test with a mocked/real Graphics2D: set properties, enter try-with-resources, modify, confirm restore on close | ⬜ |
+| ElementFrame | `lineLevelWithPreviewShift()` — copies LINE_LEVEL indices, attaches shift | unit | — | missing | Add unit test: verify currentElementIndex==-1, overrideXSs==NaN, fromIndex/shiftSs match args | ✅ |
+| ElementFrame | `withElement()` — creates per-element frame, inherits preview shift | unit | — | missing | Add unit test: verify element index + override set, previewShift inherited from parent | ✅ |
+| GraphicsState | `save()` + `close()` restore contract (bitmask-gated, per-property) | unit | — | missing | Add unit test with a mocked/real Graphics2D: set properties, enter try-with-resources, modify, confirm restore on close | ✅ |
 | GraphicsState | `Property` enum / `has()` bitmask — no separate logic beyond branching in save/close | none | — | none | — | — |
 | RenderContext | Pure interface — no logic | none | — | none | — | — |
 | RenderingUtils | `getDecorationColor()` — null line → preview color | unit | `testGetDecorationColorNullLineReturnsPreviewColor` | adequate | — | — |
 | RenderingUtils | `getDecorationColor()` — element not in line → preview color | unit | `testGetDecorationColorElementNotInLineReturnsPreviewColor` | adequate | — | — |
 | RenderingUtils | `getDecorationColor()` — element in line → `invariants.getElementColor(index)` | unit | `testGetDecorationColorElementInLineReturnsCtxColor` | adequate | — | — |
-| RenderingUtils | `getDecorationColor()` fast path — frame has valid element index (≥0) bypasses line scan | unit | — | missing | Add unit test: construct frame with valid elementIndex, verify fast-path color returned without consulting line | ⬜ |
+| RenderingUtils | `getDecorationColor()` fast path — frame has valid element index (≥0) bypasses line scan | unit | — | missing | Add unit test: construct frame with valid elementIndex, verify fast-path color returned without consulting line | ✅ |
 | RenderingUtils | `noteStaffPositionToCoordinateSs()` — trivial delegation to `spToSs` + offset | none | — | none | — | — |
-| RenderingUtils | `forEachLedgerLineYSs()` — parity normalization + stepping loop, both above and below staff | unit | — | missing | Add unit tests: positions above/below staff, on-staff (no callback), parity normalization edge cases | ⬜ |
-| RenderingUtils | `centeredGlyphX()` — multi-term centering: noteheadCenter + xOffset − bBoxLeft − glyphWidth/2 | unit | — | missing | Add unit test: assert computed X equals expected arithmetic result for known inputs | ⬜ |
+| RenderingUtils | `forEachLedgerLineYSs()` — parity normalization + stepping loop, both above and below staff | unit | — | missing | Add unit tests: positions above/below staff, on-staff (no callback), parity normalization edge cases | ✅ |
+| RenderingUtils | `centeredGlyphX()` — multi-term centering: noteheadCenter + xOffset − bBoxLeft − glyphWidth/2 | unit | — | missing | Add unit test: assert computed X equals expected arithmetic result for known inputs | ✅ |
 | RenderingUtils | `glyphOriginYFromLayoutTop()` — trivial subtraction (layoutTop − bbox.top) | none | — | none | — | — |
-| RenderingUtils | `stemCenterXOffsetSs()` — branches on minim vs. black notehead, upper vs. lower | unit | — | missing | Add unit tests: all 4 combinations (minim-up, minim-down, black-up, black-down) | ⬜ |
+| RenderingUtils | `stemCenterXOffsetSs()` — branches on minim vs. black notehead, upper vs. lower | unit | — | missing | Add unit tests: all 4 combinations (minim-up, minim-down, black-up, black-down) | ✅ |
 | RenderingUtils | `layoutYToComponentYSs()` — trivial addition | none | — | none | — | — |
 | RenderingUtils | `drawLedgerLine`, `drawBravuraGlyph`, `applyDecorationColor` — pure painting | none | — | none | — | — |
 | LineInvariants | `getElementColor()` — not in edit mode → BLACK | unit | `testNotEditModeReturnsBlack` | adequate | — | — |
