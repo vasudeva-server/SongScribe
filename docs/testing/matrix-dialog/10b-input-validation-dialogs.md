@@ -19,13 +19,13 @@
 | BeatChangeDialog | `applyChange` — skips mutation if either combo returns null | unit | none | missing | Write unit test: stub null return; verify neither `addAttachment` nor `setBeatChange` called | ✅ |
 | BeatChangeDialog | `applyChange` — updates existing `BeatChangeAttachment` vs adds new one | unit | none | missing | Test both branches of findAttachment | ✅ |
 | BeatChangeDialog | `clearChange` — removes attachment if present; no-op if absent | unit | none | missing | Same pattern as Annotation | ✅ |
-| KeySignatureChangeDialog | `getData()` — pre-populates label from `indexOfLine + 1`, combo from `line.getKeyType()`, spinner from `line.getKeyAccidentalCount()` | unit | none | missing | Write unit test: mock score/song/line; assert label text and control values | ⬜ |
-| KeySignatureChangeDialog | `setData()` — skips post if `keysCombo.getSelectedItem()` is null | unit | none | missing | Write unit test: force combo to null; verify no post | ⬜ |
-| KeySignatureChangeDialog | `setData()` — posts `KeySignatureDidChangeNotification` with selected key type and spinner integer value | unit | none | missing | Write unit test: set known values; verify notification posted with correct fields | ⬜ |
-| TempoChangeDialog | `populateControls(null)` — default Tempo: BPM=120, `CROTCHET`, "Moderate", showTempo=true | unit | none | missing | Write unit test: call with null; assert `TempoSection.setTempo` arg fields | ⬜ |
-| TempoChangeDialog | `populateControls(existing)` — forwards existing attachment's Tempo to `TempoSection.setTempo` | unit | none | missing | Write unit test with a real attachment | ⬜ |
-| TempoChangeDialog | `applyChange` — builds `Tempo` from `TempoSection` getters; `showTempo = !isShowOnlyDescription()` | unit | none | missing | Write unit test; verify Tempo construction and flag inversion | ⬜ |
-| TempoChangeDialog | `applyChange` — updates existing attachment vs adds new one | unit | none | missing | Test both branches | ⬜ |
+| KeySignatureChangeDialog | `getData()` — pre-populates label from `indexOfLine + 1`, combo from `line.getKeyType()`, spinner from `line.getKeyAccidentalCount()` | unit | none | missing | Write unit test: mock score/song/line; assert label text and control values | ✅ |
+| KeySignatureChangeDialog | `setData()` — skips post if `keysCombo.getSelectedItem()` is null | unit | none | missing | Write unit test: force combo to null; verify no post | ✅ |
+| KeySignatureChangeDialog | `setData()` — posts `KeySignatureDidChangeNotification` with selected key type and spinner integer value | unit | none | missing | Write unit test: set known values; verify notification posted with correct fields | ✅ |
+| TempoChangeDialog | `populateControls(null)` — default Tempo: BPM=120, `CROTCHET`, "Moderate", showTempo=true | unit | none | missing | Write unit test: call with null; assert `TempoSection.setTempo` arg fields | ✅ |
+| TempoChangeDialog | `populateControls(existing)` — forwards existing attachment's Tempo to `TempoSection.setTempo` | unit | none | missing | Write unit test with a real attachment | ✅ |
+| TempoChangeDialog | `applyChange` — builds `Tempo` from `TempoSection` getters; `showTempo = !isShowOnlyDescription()` | unit | none | missing | Write unit test; verify Tempo construction and flag inversion | ✅ |
+| TempoChangeDialog | `applyChange` — updates existing attachment vs adds new one | unit | none | missing | Test both branches | ✅ |
 | TempoChangeDialog | `clearChange` — removes attachment, then calls `clearTempoIfOrphaned` | unit | none | missing | Write unit test: verify both `removeAttachment` and `clearTempoIfOrphaned` called | ⬜ |
 | TempoChangeDialog | `showForElement` — static factory pre-sets `selectedElement`/`selectedLine` before showing | unit | none | missing | Write unit test verifying fields are set correctly (widen to package-private if needed) | ⬜ |
 | ResolutionDialog | `handleResolutionChange()` — width = `round(scale * sheetWidthPx) + border.width`; scale = `resolution / screenDpi` | unit | none | missing | Write pure-logic unit test: inject known sheetWidthPx and mock `getDpi()`; assert widthField text | ⬜ |

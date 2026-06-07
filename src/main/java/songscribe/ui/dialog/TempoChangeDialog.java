@@ -33,7 +33,7 @@ import songscribe.dom.TempoChangeAttachment;
 
 public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
 
-    private final TempoSection tempoSection = new TempoSection(
+    final TempoSection tempoSection = new TempoSection(
         Duration.values(),
         Strings.get(Strings.DIALOG_TEMPO_CHANGE_SHOW_ONLY_DESCRIPTION),
         "tempochanges", "tempos"

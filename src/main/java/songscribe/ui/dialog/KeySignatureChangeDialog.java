@@ -28,9 +28,9 @@ import songscribe.dom.KeyType;
 
 public class KeySignatureChangeDialog extends StandardDialog {
 
-    private final JLabel indexOfSelectedElementLabel = new JLabel();
-    private final JComboBox<KeyType> keysCombo;
-    private final SpinnerModel keysSpinner = new SpinnerNumberModel(4, 0, 7, 1);
+    final JLabel indexOfSelectedElementLabel = new JLabel();
+    final JComboBox<KeyType> keysCombo;
+    final SpinnerModel keysSpinner = new SpinnerNumberModel(4, 0, 7, 1);
 
     public KeySignatureChangeDialog() {
         super(Strings.get(Strings.DIALOG_KEY_SIGNATURE_CHANGE_TITLE));
@@ -85,8 +85,9 @@ public class KeySignatureChangeDialog extends StandardDialog {
             return;
         }
 
-        requireScoreView().getSong().postWithModification(new KeySignatureDidChangeNotification(
-            requireScoreView().getSelectedLine(),
+        var score = requireScoreView();
+        score.getSong().postWithModification(new KeySignatureDidChangeNotification(
+            score.getSelectedLine(),
             keyType,
             (Integer) keysSpinner.getValue()
         ));
