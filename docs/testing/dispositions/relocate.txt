@@ -37,3 +37,6 @@ LineComponentTest.MouseClickedRouting.testRightButtonClickExitsBeforeGraceModeCh
 LineComponentTest.MouseClickedRouting.testGraceModeConsumingClickCausesEarlyReturn	7e-line-score-rendering-geometry	row 12 — mouseClicked: grace mode consumes click early return (unit test)
 LineComponentTest.MousePressedRouting.testRightButtonPressExitsBeforeGraceModeCheck	7e-line-score-rendering-geometry	row 13 — mousePressed: right-button guard (unit test, relocated from e2e coverage)
 LineComponentTest.MousePressedRouting.testGraceModeConsumingPressCausesEarlyReturn	7e-line-score-rendering-geometry	row 13 — mousePressed: grace mode consumes press early return (unit test)
+NoteAreaBuilderTest.testGetLedgerLineCountAboveStaff	9a	redundant→relocate: moved to StaffElementTest (tests StaffElement.getLedgerLineCount(), not NoteAreaBuilder)
+NoteAreaBuilderTest.testGetLedgerLineCountBelowStaff	9a	redundant→relocate: moved to StaffElementTest
+NoteAreaBuilderTest.testGetLedgerLineCountOnStaff	9a	redundant→relocate: moved to StaffElementTest

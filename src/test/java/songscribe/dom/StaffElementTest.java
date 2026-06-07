@@ -66,6 +66,16 @@ class StaffElementTest extends UnitTest {
     // No-override sentinel from findMidiDurationOverride
     private static final int NO_MIDI_OVERRIDE = -1;
 
+    // Staff-position distances used in getLedgerLineCount boundary tests.
+    // These are absolute values; negate for above-staff positions.
+    // Formula: even abs(sp) → count = max(0,(abs-4)/2); odd rounds down first.
+    private static final int ONE_LEDGER_EVEN_DIST = 6;   // (6-4)/2 = 1
+    private static final int ONE_LEDGER_ODD_DIST = 7;    // rounds to 6 → 1
+    private static final int TWO_LEDGER_EVEN_DIST = 8;   // (8-4)/2 = 2
+    private static final int THREE_LEDGER_EVEN_DIST = 10; // (10-4)/2 = 3
+    // Innermost on-staff boundary: |staffPosition| <= INNER_STAFF_EXTENT → 0 ledger lines
+    private static final int INNER_STAFF_EXTENT = 5;
+
     // ------------------------------------------------------------------
     // T10: getPitch / calculatePitch — absolute MIDI-value assertions
     // ------------------------------------------------------------------
@@ -655,6 +665,57 @@ class StaffElementTest extends UnitTest {
         assertThat(staccato.getOwnerElement()).isNull();
         // The articulation must no longer appear in the element's child list
         assertThat(element.getChildren()).doesNotContain(staccato);
+    }
+
+    // ------------------------------------------------------------------
+    // getLedgerLineCount — boundary tests (relocated from NoteAreaBuilderTest)
+    // ------------------------------------------------------------------
+
+    @Test
+    void testGetLedgerLineCountAboveStaff() {
+        var note = ElementType.CROTCHET.newInstance();
+
+        note.setStaffPosition(-ONE_LEDGER_EVEN_DIST);
+        assertThat(note.getLedgerLineCount()).isEqualTo(1);
+
+        note.setStaffPosition(-ONE_LEDGER_ODD_DIST);
+        assertThat(note.getLedgerLineCount()).isEqualTo(1);
+
+        note.setStaffPosition(-TWO_LEDGER_EVEN_DIST);
+        assertThat(note.getLedgerLineCount()).isEqualTo(2);
+
+        note.setStaffPosition(-THREE_LEDGER_EVEN_DIST);
+        assertThat(note.getLedgerLineCount()).isEqualTo(3);
+    }
+
+    @Test
+    void testGetLedgerLineCountBelowStaff() {
+        var note = ElementType.CROTCHET.newInstance();
+
+        note.setStaffPosition(ONE_LEDGER_EVEN_DIST);
+        assertThat(note.getLedgerLineCount()).isEqualTo(1);
+
+        note.setStaffPosition(ONE_LEDGER_ODD_DIST);
+        assertThat(note.getLedgerLineCount()).isEqualTo(1);
+
+        note.setStaffPosition(TWO_LEDGER_EVEN_DIST);
+        assertThat(note.getLedgerLineCount()).isEqualTo(2);
+
+        note.setStaffPosition(THREE_LEDGER_EVEN_DIST);
+        assertThat(note.getLedgerLineCount()).isEqualTo(3);
+    }
+
+    @Test
+    void testGetLedgerLineCountOnStaff() {
+        var note = ElementType.CROTCHET.newInstance();
+
+        // All positions within the staff (|sp| <= INNER_STAFF_EXTENT) require no ledger lines
+        for (var sp = -INNER_STAFF_EXTENT; sp <= INNER_STAFF_EXTENT; sp++) {
+            note.setStaffPosition(sp);
+            assertThat(note.getLedgerLineCount())
+                .as("staffPosition %d", sp)
+                .isEqualTo(0);
+        }
     }
 
     // ------------------------------------------------------------------

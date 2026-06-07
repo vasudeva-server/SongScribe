@@ -35,6 +35,9 @@ class NoteAreaBuilderTest extends UnitTest {
 
     private static final NoteAreaBuilder BUILDER = new NoteAreaBuilder();
 
+    // Staff position two ledger lines below the staff (|pos|=8 → (8-4)/2=2 ledger lines)
+    private static final int TWO_LEDGERS_BELOW_SP = 8;
+
     // ======================================================================
     // getOrBuildArea cache tests
     // ======================================================================
@@ -162,8 +165,11 @@ class NoteAreaBuilderTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         var area = BUILDER.buildNoteArea(note, false);
+        var bounds = area.getBounds2D();
 
         assertThat(area.isEmpty()).isFalse();
+        assertThat(bounds.getWidth()).isGreaterThan(0.0);
+        assertThat(bounds.getHeight()).isGreaterThan(0.0);
     }
 
     @Test
@@ -222,10 +228,73 @@ class NoteAreaBuilderTest extends UnitTest {
     void testBuildNoteAreaWithLedgerLinesBelowStaff() {
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(false);
-        note.setStaffPosition(8); // below staff, needs ledger lines
+        note.setStaffPosition(TWO_LEDGERS_BELOW_SP); // below staff, needs ledger lines
 
         var area = BUILDER.buildNoteArea(note, false);
+
+        // Ledger lines extend beyond notehead on both sides, making the area wider
+        var noteOnStaff = ElementType.CROTCHET.newInstance();
+        noteOnStaff.setUpper(false);
+        noteOnStaff.setStaffPosition(0); // on staff, no ledger lines
+
+        var areaOnStaff = BUILDER.buildNoteArea(noteOnStaff, false);
+
+        assertThat(area.getBounds2D().getWidth())
+            .isGreaterThan(areaOnStaff.getBounds2D().getWidth());
+    }
+
+    @Test
+    void testBuildNoteAreaSemibreveHasNonEmptyBounds() {
+        // SEMIBREVE uses NOTEHEAD_WHOLE_SHAPE — verify a distinct (non-empty) area is produced
+        var note = ElementType.SEMIBREVE.newInstance();
+        note.setUpper(true);
+        var area = BUILDER.buildNoteArea(note, false);
+        var bounds = area.getBounds2D();
+
         assertThat(area.isEmpty()).isFalse();
+        assertThat(bounds.getWidth()).isGreaterThan(0.0);
+        assertThat(bounds.getHeight()).isGreaterThan(0.0);
+    }
+
+    @Test
+    void testBuildNoteAreaMinimHasNonEmptyBounds() {
+        // MINIM uses NOTEHEAD_HALF_SHAPE — verify a distinct (non-empty) area is produced
+        var note = ElementType.MINIM.newInstance();
+        note.setUpper(true);
+        var area = BUILDER.buildNoteArea(note, false);
+        var bounds = area.getBounds2D();
+
+        assertThat(area.isEmpty()).isFalse();
+        assertThat(bounds.getWidth()).isGreaterThan(0.0);
+        assertThat(bounds.getHeight()).isGreaterThan(0.0);
+    }
+
+    @Test
+    void testBuildNoteAreaGraceNoteHasNonEmptyBounds() {
+        // GRACE_QUAVER uses NOTEHEAD_GRACE_SHAPE — verify a distinct (non-empty) area is produced
+        var note = ElementType.GRACE_QUAVER.newInstance();
+        note.setUpper(true);
+        var area = BUILDER.buildNoteArea(note, false);
+        var bounds = area.getBounds2D();
+
+        assertThat(area.isEmpty()).isFalse();
+        assertThat(bounds.getWidth()).isGreaterThan(0.0);
+        assertThat(bounds.getHeight()).isGreaterThan(0.0);
+    }
+
+    @Test
+    void testBuildNoteAreaBeamedQuaverSuppressesFlag() {
+        // A non-beamed quaver stem-up has a flag that extends the area upward.
+        // When beamed=true the flag is suppressed, so max-Y is less negative (closer to 0).
+        var note = ElementType.QUAVER.newInstance();
+        note.setUpper(true);
+
+        var areaWithFlag = BUILDER.buildNoteArea(note, false);
+        var areaBeamed = BUILDER.buildNoteArea(note, true);
+
+        // With a flag the area reaches further in the stem-tip direction (smaller max-Y for stem-up)
+        assertThat(areaWithFlag.getBounds2D().getMinY())
+            .isLessThan(areaBeamed.getBounds2D().getMinY());
     }
 
     @Test
@@ -275,59 +344,6 @@ class NoteAreaBuilderTest extends UnitTest {
         assertThat(offsetBounds.getMaxX()).isGreaterThan(origBounds.getMaxX() + offsetSs * 0.5);
         assertThat(offsetBounds.getMinY()).isLessThan(origBounds.getMinY() - offsetSs * 0.5);
         assertThat(offsetBounds.getMaxY()).isGreaterThan(origBounds.getMaxY() + offsetSs * 0.5);
-    }
-
-    // ======================================================================
-    // getLedgerLineCount() boundary tests
-    // ======================================================================
-
-    @Test
-    void testGetLedgerLineCountAboveStaff() {
-        var note = ElementType.CROTCHET.newInstance();
-
-        // -6 → 1 ledger line, -7 → 1, -8 → 2, -10 → 3
-        note.setStaffPosition(-6);
-        assertThat(note.getLedgerLineCount()).isEqualTo(1);
-
-        note.setStaffPosition(-7);
-        assertThat(note.getLedgerLineCount()).isEqualTo(1);
-
-        note.setStaffPosition(-8);
-        assertThat(note.getLedgerLineCount()).isEqualTo(2);
-
-        note.setStaffPosition(-10);
-        assertThat(note.getLedgerLineCount()).isEqualTo(3);
-    }
-
-    @Test
-    void testGetLedgerLineCountBelowStaff() {
-        var note = ElementType.CROTCHET.newInstance();
-
-        // +6 → 1 ledger line, +7 → 1, +8 → 2, +10 → 3
-        note.setStaffPosition(6);
-        assertThat(note.getLedgerLineCount()).isEqualTo(1);
-
-        note.setStaffPosition(7);
-        assertThat(note.getLedgerLineCount()).isEqualTo(1);
-
-        note.setStaffPosition(8);
-        assertThat(note.getLedgerLineCount()).isEqualTo(2);
-
-        note.setStaffPosition(10);
-        assertThat(note.getLedgerLineCount()).isEqualTo(3);
-    }
-
-    @Test
-    void testGetLedgerLineCountOnStaff() {
-        var note = ElementType.CROTCHET.newInstance();
-
-        // Positions within the staff: 0, ±1, ±2, ±3, ±4, ±5
-        for (var sp = -5; sp <= 5; sp++) {
-            note.setStaffPosition(sp);
-            assertThat(note.getLedgerLineCount())
-                .as("staffPosition %d", sp)
-                .isEqualTo(0);
-        }
     }
 
 }

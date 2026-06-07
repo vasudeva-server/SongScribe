@@ -2095,3 +2095,7 @@ LineInvariantsTest.testIsLyricSpanPlayingForMelismaExtender	9a-renderer-infrastr
 LineInvariantsTest.testIsLyricSpanPlayingForBeginMiddleContiguous	9a-renderer-infrastructure-note-area-geometry	getLyricColor BEGIN span playing
 LineInvariantsTest.testIsLyricSpanPlayingFalseWhenPlayingPastSpanEnd	9a-renderer-infrastructure-note-area-geometry	getLyricColor playing past span end
 LineInvariantsTest.testIsLyricSpanPlayingFalseWhenNoLyricOnAnchor	9a-renderer-infrastructure-note-area-geometry	getLyricColor no lyric on anchor
+NoteAreaBuilderTest.testBuildNoteAreaSemibreveHasNonEmptyBounds	9a	missing→add: SEMIBREVE uses NOTEHEAD_WHOLE_SHAPE; asserts non-empty area with positive bounds
+NoteAreaBuilderTest.testBuildNoteAreaMinimHasNonEmptyBounds	9a	missing→add: MINIM uses NOTEHEAD_HALF_SHAPE; asserts non-empty area with positive bounds
+NoteAreaBuilderTest.testBuildNoteAreaGraceNoteHasNonEmptyBounds	9a	missing→add: GRACE_QUAVER uses NOTEHEAD_GRACE_SHAPE; asserts non-empty area with positive bounds
+NoteAreaBuilderTest.testBuildNoteAreaBeamedQuaverSuppressesFlag	9a	missing→add: beamed quaver minY > non-beamed (flag suppressed when beamed=true)
