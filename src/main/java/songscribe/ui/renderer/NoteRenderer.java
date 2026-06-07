@@ -84,6 +84,17 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     static final float FIRST_DOT_X_SS = 1.6375f; // 13.1px / 8 px/ss
     static final float DOT_SPACING_SS;
 
+    // Augmentation dot Y shift (in ss) when the note sits on a staff line —
+    // moves the dot into the space above the line.
+    static final double DOT_ON_LINE_Y_SHIFT_SS = -0.5;
+
+    // X adjustments (in ss) added to FIRST_DOT_X_SS to clear wider noteheads
+    // or unbeamed flag tails.  Derived empirically from Bravura glyph metrics.
+    static final double DOT_X_ADJUST_SEMIBREVE_SS = 0.4375;
+    static final double DOT_X_ADJUST_MINIM_SS = 0.175;
+    static final double DOT_X_ADJUST_QUAVER_SS = 0.625;
+    static final double DOT_X_ADJUST_SEMIQUAVER_SS = 1.0;
+
     static {
         DOT_SPACING_SS = (float) SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT) + 0.35f;
     }
@@ -455,18 +466,18 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
         var noteType = note.getType();
 
-        // Dots shift up by 0.5 ss when note is on a line
-        var yOffset = (note.getStaffPosition() % 2 == 0) ? -0.5 : 0.0;
+        // Dots shift up when note is on a line (even staff position)
+        var yOffset = (note.getStaffPosition() % 2 == 0) ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
 
         // X offset adjustments for wider noteheads and flags
         var xAdjust = 0.0;
 
         if (noteType == ElementType.SEMIBREVE) {
-            xAdjust = 0.4375;
+            xAdjust = DOT_X_ADJUST_SEMIBREVE_SS;
         } else if (noteType == ElementType.MINIM) {
-            xAdjust = 0.175;
+            xAdjust = DOT_X_ADJUST_MINIM_SS;
         } else if (noteType.isBeamable() && !beamed && upper) {
-            xAdjust = (noteType == ElementType.QUAVER) ? 0.625 : 1.0;
+            xAdjust = (noteType == ElementType.QUAVER) ? DOT_X_ADJUST_QUAVER_SS : DOT_X_ADJUST_SEMIQUAVER_SS;
         }
 
         var dotX = FIRST_DOT_X_SS + xAdjust;

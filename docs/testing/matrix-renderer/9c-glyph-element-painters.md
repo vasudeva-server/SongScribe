@@ -2,13 +2,13 @@
 
 | Class | Behavior | Required level | Existing test | Verdict | Action | done |
 |---|---|---|---|---|---|---|
-| `NoteRenderer` | `getNoteHeadGlyph(ElementType)` — map lookup, returns glyph or null | unit | — | missing | Add: all 7 note types return correct glyph; non-note type returns null | ⬜ |
-| `NoteRenderer` | `getNoteHeadChar(ElementType)` — derives String from glyph or null | unit | — | missing | Add: null when type has no glyph, non-null for standard types | ⬜ |
-| `NoteRenderer` | `computeBaseStemGeometry(ElementType, boolean)` — derives stemLeftX, anchorY, length by type/direction | unit | — | missing | Add: minim vs. black head, up vs. down, grace note uses separate anchor | ⬜ |
-| `NoteRenderer.StemGeometry` | `stemTipYSs(boolean)` — tip = anchorY ∓ length | unit | — | missing | Add: up tip = anchorY - length; down tip = anchorY + length | ⬜ |
-| `NoteRenderer` | `forEachDotPosition(note, beamed, upper, consumer)` — xAdjust branching by note type, yOffset by staff position parity | unit | — | missing | Add: semibreve/minim offsets, beamable+unbeamed+upper offsets, on-line vs. space yOffset, dotCount loop | ⬜ |
-| `NoteRenderer` | `getLedgerLineCenterXSs(note)` — rightEdge / 2 | unit | — | missing | Add: simple arithmetic verified against known notehead width | ⬜ |
-| `NoteRenderer` | `getLedgerLineWidthSs(note, extensionSs)` — rightEdge + 2×extension | unit | — | missing | Add: verify additive formula | ⬜ |
+| `NoteRenderer` | `getNoteHeadGlyph(ElementType)` — map lookup, returns glyph or null | unit | — | missing | Add: all 7 note types return correct glyph; non-note type returns null | ✅ |
+| `NoteRenderer` | `getNoteHeadChar(ElementType)` — derives String from glyph or null | unit | — | missing | Add: null when type has no glyph, non-null for standard types | ✅ |
+| `NoteRenderer` | `computeBaseStemGeometry(ElementType, boolean)` — derives stemLeftX, anchorY, length by type/direction | unit | — | missing | Add: minim vs. black head, up vs. down, grace note uses separate anchor | ✅ |
+| `NoteRenderer.StemGeometry` | `stemTipYSs(boolean)` — tip = anchorY ∓ length | unit | — | missing | Add: up tip = anchorY - length; down tip = anchorY + length | ✅ |
+| `NoteRenderer` | `forEachDotPosition(note, beamed, upper, consumer)` — xAdjust branching by note type, yOffset by staff position parity | unit | — | missing | Add: semibreve/minim offsets, beamable+unbeamed+upper offsets, on-line vs. space yOffset, dotCount loop | ✅ |
+| `NoteRenderer` | `getLedgerLineCenterXSs(note)` — rightEdge / 2 | unit | — | missing | Add: simple arithmetic verified against known notehead width | ✅ |
+| `NoteRenderer` | `getLedgerLineWidthSs(note, extensionSs)` — rightEdge + 2×extension | unit | — | missing | Add: verify additive formula | ✅ |
 | `NoteRenderer` | Accidental bounds (via `NoteGeometry.getAccidentalBoundsSs`) — null for grace/no accidental; sensible extents per type; widens when parenthesized | unit | `NoteRendererTest.*` (6 tests) | inadequate | Tests are correct and can fail, but they test `NoteGeometry` not `NoteRenderer` — name mismatch (class should be `NoteGeometryTest` or tests should be moved); also assertions are directional-only (`isNegative`/`isPositive`/`isGreater`) with no expected values from independent calculation | ⬜ |
 | `NoteRenderer` | Pure painting (render, renderNoteHead, renderStem, renderFlags, renderDots, renderLedgerLines, renderAccidental, renderBreathMark) | none | — | none | — | — |
 | `RestRenderer` | `getRestGlyph(ElementType)` — map lookup | unit | — | missing | Add: each rest type maps to correct glyph; non-rest returns null | ⬜ |
