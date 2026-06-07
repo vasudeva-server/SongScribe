@@ -2184,3 +2184,22 @@ add: NoteRendererTest.ForEachDotPosition.testInSpacePositionHasZeroYOffset
 add: NoteRendererTest.ForEachDotPosition.testMultipleDotsSpacedByDotSpacing
 add: NoteRendererTest.testGetLedgerLineCenterXSsIsHalfOfRightEdge
 add: NoteRendererTest.testGetLedgerLineWidthSsIsRightEdgePlusTwoTimesExtension
+add: RestRendererTest.testGetRestGlyphReturnsSemibreveRestGlyph	9c	row 14 — getRestGlyph: SEMIBREVE_REST → REST_WHOLE
+add: RestRendererTest.testGetRestGlyphReturnsMinimRestGlyph	9c	row 14 — getRestGlyph: MINIM_REST → REST_HALF
+add: RestRendererTest.testGetRestGlyphReturnsCrotchetRestGlyph	9c	row 14 — getRestGlyph: CROTCHET_REST → REST_QUARTER
+add: RestRendererTest.testGetRestGlyphReturnsQuaverRestGlyph	9c	row 14 — getRestGlyph: QUAVER_REST → REST_8TH
+add: RestRendererTest.testGetRestGlyphReturnsSemiquaverRestGlyph	9c	row 14 — getRestGlyph: SEMIQUAVER_REST → REST_16TH
+add: RestRendererTest.testGetRestGlyphReturnsDemiSemiquaverRestGlyph	9c	row 14 — getRestGlyph: DEMI_SEMIQUAVER_REST → REST_32ND
+add: RestRendererTest.testGetRestGlyphReturnsNullForNonRestType	9c	row 14 — getRestGlyph: non-rest type returns null
+add: RestRendererTest.testCalculateRestYSsForSemibreveRestUsesFixedOffset	9c	row 15 — calculateRestYSs: SEMIBREVE_REST uses SEMIBREVE_REST_Y_OFFSET
+add: RestRendererTest.testCalculateRestYSsForMinimRestUsesFixedOffset	9c	row 15 — calculateRestYSs: MINIM_REST uses MINIM_REST_Y_OFFSET
+add: RestRendererTest.testCalculateRestYSsForOtherRestUsesTypeDefaultStaffPosition	9c	row 15 — calculateRestYSs: other rest uses type's default staff position
+add: KeySignatureRendererTest.testFlatStaffPositionsEncodeBeadgcfOrder	9c	row 19 — FLAT_STAFF_POSITIONS encodes BEADGCF order
+add: KeySignatureRendererTest.testSharpStaffPositionsEncodeFcgdaebOrder	9c	row 19 — SHARP_STAFF_POSITIONS encodes FCGDAEB order
+add: KeySignatureRendererTest.testRenderKeyChangeIsNoOpForIdenticalKeys	9c	row 20 — renderKeyChange: identical keys no-op
+add: KeySignatureRendererTest.testRenderKeyChangeSameTypeAddingAccidentalsDrawsOnlyNewKey	9c	row 20 — renderKeyChange: same type adding draws new key only
+add: KeySignatureRendererTest.testRenderKeyChangeSameTypeRemovingAccidentalsDrawsNewKeyAndNaturals	9c	row 20 — renderKeyChange: same type removing draws new key + naturals
+add: KeySignatureRendererTest.testRenderKeyChangeDifferentTypeDrawsNaturalsThenNewKey	9c	row 20 — renderKeyChange: different type draws naturals then new key
+add: KeySignatureRendererTest.testGetGlyphForKeyTypeReturnsFlatGlyphForFlats	9c	row 21 — getGlyphForKeyType: FLATS → FLAT glyph
+add: KeySignatureRendererTest.testGetGlyphForKeyTypeReturnsSharpGlyphForSharps	9c	row 21 — getGlyphForKeyType: SHARPS → SHARP glyph
+add: KeySignatureRendererTest.testGetGlyphForKeyTypeThrowsForNone	9c	row 21 — getGlyphForKeyType: NONE throws IllegalArgumentException

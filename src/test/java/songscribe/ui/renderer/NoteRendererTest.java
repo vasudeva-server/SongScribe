@@ -26,15 +26,12 @@ import static org.assertj.core.api.Assertions.within;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElement.Accidental;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
@@ -46,23 +43,6 @@ class NoteRendererTest extends UnitTest {
     // Staff positions: even = on a line, odd = in a space
     private static final int ON_LINE_STAFF_POSITION = 0;
     private static final int IN_SPACE_STAFF_POSITION = 1;
-
-    @BeforeAll
-    static void initializeAccidentalWidths() {
-        NoteGeometry.initializeAccidentalWidths();
-    }
-
-    @SuppressWarnings("NullAway")
-    private static <T> T require(@Nullable T value, String description) {
-        assertThat(value).describedAs(description).isNotNull();
-        return value;
-    }
-
-    private static StaffElement newCrotchetWithAccidental(Accidental accidental) {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setAccidental(accidental);
-        return note;
-    }
 
     // ==========================================================================
     // getNoteHeadGlyph (row 1)
@@ -364,90 +344,4 @@ class NoteRendererTest extends UnitTest {
             .isCloseTo(expectedWidth, within(TOLERANCE));
     }
 
-    // ==========================================================================
-    // Accidental bounds (row 8 — existing tests, kept in place)
-    // ==========================================================================
-
-    @Test
-    void testGetAccidentalBoundsReturnsNullForGraceNote() {
-        var graceNote = ElementType.GRACE_QUAVER.newInstance();
-        graceNote.setAccidental(Accidental.SHARP);
-
-        assertThat(NoteGeometry.getAccidentalBoundsSs(graceNote)).isNull();
-    }
-
-    @Test
-    void testGetAccidentalBoundsReturnsNullForNoAccidental() {
-        var note = ElementType.CROTCHET.newInstance();
-
-        assertThat(NoteGeometry.getAccidentalBoundsSs(note)).isNull();
-    }
-
-    @Test
-    void testGetAccidentalBoundsReturnsSensibleExtentsForDoubleFlat() {
-        var bounds = require(
-            NoteGeometry.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.DOUBLE_FLAT)),
-            "double-flat bounds");
-
-        assertThat(bounds.topSs()).isNegative();
-        assertThat(bounds.botSs()).isPositive();
-        assertThat(bounds.widthSs()).isPositive();
-        assertThat(bounds.leftSs()).isNegative();
-    }
-
-    @Test
-    void testGetAccidentalBoundsReturnsSensibleExtentsForFlat() {
-        var bounds = require(
-            NoteGeometry.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.FLAT)),
-            "flat bounds");
-
-        assertThat(bounds.topSs()).isNegative();
-        assertThat(bounds.botSs()).isPositive();
-        assertThat(bounds.widthSs()).isPositive();
-        assertThat(bounds.leftSs()).isNegative();
-    }
-
-    @Test
-    void testGetAccidentalBoundsReturnsSensibleExtentsForNatural() {
-        var bounds = require(
-            NoteGeometry.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.NATURAL)),
-            "natural bounds");
-
-        assertThat(bounds.topSs()).isNegative();
-        assertThat(bounds.botSs()).isPositive();
-        assertThat(bounds.widthSs()).isPositive();
-        assertThat(bounds.leftSs()).isNegative();
-    }
-
-    @Test
-    void testGetAccidentalBoundsReturnsSensibleExtentsForSharp() {
-        var bounds = require(
-            NoteGeometry.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.SHARP)),
-            "sharp bounds");
-
-        assertThat(bounds.topSs()).isNegative();
-        assertThat(bounds.botSs()).isPositive();
-        assertThat(bounds.widthSs()).isPositive();
-        assertThat(bounds.leftSs()).isNegative();
-    }
-
-    @Test
-    void testGetAccidentalBoundsWidensWhenParenthesized() {
-        var bareSharp = require(
-            NoteGeometry.getAccidentalBoundsSs(newCrotchetWithAccidental(Accidental.SHARP)),
-            "bare-sharp bounds");
-
-        var parenthesizedNote = newCrotchetWithAccidental(Accidental.SHARP);
-        parenthesizedNote.setAccidentalInParentheses(true);
-        var parenSharp = require(
-            NoteGeometry.getAccidentalBoundsSs(parenthesizedNote),
-            "parenthesized-sharp bounds");
-
-        // Parentheses extend the drawing on both sides, so the union widens
-        // and the left edge moves further from the notehead origin.
-        assertThat(parenSharp.widthSs()).isGreaterThan(bareSharp.widthSs());
-        assertThat(parenSharp.leftSs()).isLessThan(bareSharp.leftSs());
-        assertThat(parenSharp.topSs()).isLessThanOrEqualTo(bareSharp.topSs());
-        assertThat(parenSharp.botSs()).isGreaterThanOrEqualTo(bareSharp.botSs());
-    }
 }

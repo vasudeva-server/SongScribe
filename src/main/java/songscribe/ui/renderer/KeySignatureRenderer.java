@@ -49,14 +49,14 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
     private static final SMuFLGlyph SHARP_GLYPH = SMuFLGlyph.ACCIDENTAL_SHARP;
     private static final SMuFLGlyph NATURAL_GLYPH = SMuFLGlyph.ACCIDENTAL_NATURAL;
 
-    // Y positions for accidentals relative to middle line (0 = B4)
-    // Index 0 = None (empty), Index 1 = Flats, Index 2 = Sharps
+    // Staff positions for accidentals, relative to middle line (0 = B4), in accidental order.
     // Flats: B, E, A, D, G, C, F
-    private static final int[] FLAT_STAFF_POSITIONS = {0, -3, 1, -2, 2, -1, 3};
+    static final int[] FLAT_STAFF_POSITIONS = {0, -3, 1, -2, 2, -1, 3};
     // Sharps: F, C, G, D, A, E, B
-    private static final int[] SHARP_STAFF_POSITIONS = {-4, -1, -5, -2, 1, -3, 0};
+    static final int[] SHARP_STAFF_POSITIONS = {-4, -1, -5, -2, 1, -3, 0};
 
-    // Y positions indexed by KeyType ordinal (for key change rendering)
+    // Y positions indexed by KeyType ordinal (for key change rendering).
+    // Index 0 = NONE (empty), Index 1 = FLATS, Index 2 = SHARPS
     private static final int[][] KEY_STAFF_POSITIONS = new int[][]{
         new int[]{}, // NONE
         FLAT_STAFF_POSITIONS,
@@ -273,7 +273,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
     /**
      * Returns the glyph for the given key type.
      */
-    private SMuFLGlyph getGlyphForKeyType(KeyType keyType) {
+    SMuFLGlyph getGlyphForKeyType(KeyType keyType) {
         return switch (keyType) {
             case FLATS -> FLAT_GLYPH;
             case SHARPS -> SHARP_GLYPH;

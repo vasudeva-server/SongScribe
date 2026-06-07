@@ -61,8 +61,8 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
     }
 
     // Y position adjustment for whole and half rests (relative to middle line)
-    private static final int SEMIBREVE_REST_Y_OFFSET = -2;  // Above the middle line
-    private static final int MINIM_REST_Y_OFFSET = 0;       // On the middle line
+    static final int SEMIBREVE_REST_Y_OFFSET = -2;  // Above the middle line
+    static final int MINIM_REST_Y_OFFSET = 0;       // On the middle line
 
     // Dot positioning derived from SMuFL metadata, in staff-space units.
     // The Graphics2D scale transform handles pixel conversion.
@@ -172,7 +172,7 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
      * Whole rests hang from the second line, half rests sit on the middle line.
      * Other rests are centered vertically on the staff.
      */
-    private double calculateRestYSs(StaffElement note, double middleLineYSs) {
+    double calculateRestYSs(StaffElement note, double middleLineYSs) {
         var noteType = note.getType();
 
         if (noteType == ElementType.SEMIBREVE_REST) {
