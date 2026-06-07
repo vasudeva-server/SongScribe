@@ -25,7 +25,7 @@ import java.util.prefs.Preferences;
 
 public class DoNotShowMessage extends StandardDialog {
 
-    private final JCheckBox dontShowCheck = new JCheckBox(
+    final JCheckBox dontShowCheck = new JCheckBox(
         "Don’t show this message again."
     );
     private final String propName;

@@ -37,7 +37,7 @@ public class PlatformFileDialog {
     private ExtensionFileFilter @Nullable [] originalFilters = null;
     private SystemFileChooser.FileNameExtensionFilter @Nullable [] convertedFilters = null;
 
-    private static SystemFileChooser.FileNameExtensionFilter convertFilter(ExtensionFileFilter maf) {
+    static SystemFileChooser.FileNameExtensionFilter convertFilter(ExtensionFileFilter maf) {
         var extensions = maf.getExtensions();
 
         // Extract description without extension list (remove " (ext1, ext2)")
