@@ -101,6 +101,16 @@ public final class PlaybackController {
         state = newState;
     }
 
+    // Package-private for testing
+    static long getPausedTickPosition() {
+        return pausedTickPosition;
+    }
+
+    // Package-private for testing
+    static void setPausedTickPosition(long position) {
+        pausedTickPosition = position;
+    }
+
     @Nullable
     public static ScoreView getRegisteredScore() {
         return registeredScore;

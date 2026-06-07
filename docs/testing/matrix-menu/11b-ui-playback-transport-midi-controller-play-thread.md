@@ -6,13 +6,13 @@
 | `PlaybackController` | `selectionDidChange` — does nothing when not paused (STOPPED state) | unit | `PlaybackControllerTest.testDoesNothingWhenStopped` | adequate | — | — |
 | `PlaybackController` | `selectionDidChange` — clears highlight and updates `activeSelection` when paused with new selection | unit | `PlaybackControllerTest.testClearsHighlightAndUpdatesSelectionWhenPausedWithSelection` | adequate | — | — |
 | `PlaybackController` | `selectionDidChange` — stops when selection cleared (null) while paused | unit | `PlaybackControllerTest.testStopsWhenSelectionClearedWhilePaused` | adequate | — | — |
-| `PlaybackController` | `togglePlayPause` — transitions STOPPED → PLAYING (calls `play(null)`) | unit | none | missing | Add unit test: mock sequencer, verify state becomes PLAYING and `PlaybackStateDidChangeNotification` posted | ⬜ |
-| `PlaybackController` | `togglePlayPause` — transitions PLAYING → PAUSED (calls `playbackDidPause`) | unit | none | missing | Add unit test: mock sequencer, assert state becomes PAUSED | ⬜ |
-| `PlaybackController` | `togglePlayPause` — PAUSED with same selection calls `resume()` | unit | none | missing | Add unit test: confirm resume path taken (tick position restored) | ⬜ |
-| `PlaybackController` | `togglePlayPause` — PAUSED with changed selection calls `play(newSelection)` | unit | none | missing | Add unit test: verify `activeSelection` updated to new selection | ⬜ |
-| `PlaybackController` | `playbackDidStart` — sets state to PLAYING and posts `PlaybackStateDidChangeNotification` | unit | none | missing | Add unit test: assert state and notification | ⬜ |
-| `PlaybackController` | `playbackDidPause` — sets state to PAUSED, saves tick position, posts notification | unit | none | missing | Add unit test: mock sequencer tick, verify saved `pausedTickPosition` | ⬜ |
-| `PlaybackController` | `stop` — sets state to STOPPED, clears `activeSelection` and `pausedTickPosition`, posts notification | unit | none | missing | Add unit test via `stop()` directly | ⬜ |
+| `PlaybackController` | `togglePlayPause` — transitions STOPPED → PLAYING (calls `play(null)`) | unit | none | missing | Add unit test: mock sequencer, verify state becomes PLAYING and `PlaybackStateDidChangeNotification` posted | ✅ |
+| `PlaybackController` | `togglePlayPause` — transitions PLAYING → PAUSED (calls `playbackDidPause`) | unit | none | missing | Add unit test: mock sequencer, assert state becomes PAUSED | ✅ |
+| `PlaybackController` | `togglePlayPause` — PAUSED with same selection calls `resume()` | unit | none | missing | Add unit test: confirm resume path taken (tick position restored) | ✅ |
+| `PlaybackController` | `togglePlayPause` — PAUSED with changed selection calls `play(newSelection)` | unit | none | missing | Add unit test: verify `activeSelection` updated to new selection | ✅ |
+| `PlaybackController` | `playbackDidStart` — sets state to PLAYING and posts `PlaybackStateDidChangeNotification` | unit | none | missing | Add unit test: assert state and notification | ✅ |
+| `PlaybackController` | `playbackDidPause` — sets state to PAUSED, saves tick position, posts notification | unit | none | missing | Add unit test: mock sequencer tick, verify saved `pausedTickPosition` | ✅ |
+| `PlaybackController` | `stop` — sets state to STOPPED, clears `activeSelection` and `pausedTickPosition`, posts notification | unit | none | missing | Add unit test via `stop()` directly | ✅ |
 | `PlaybackController` | `rewindToBeginning` — while PLAYING: clears highlight and seeks sequencer to tick 0 | unit | none | missing | Add unit test: mock sequencer, verify `setTickPosition(0)` called | ⬜ |
 | `PlaybackController` | `rewindToBeginning` — while PAUSED: calls stop (state becomes STOPPED) | unit | none | missing | Add unit test: set state PAUSED, assert state becomes STOPPED | ⬜ |
 | `PlaybackController` | `rewindToBeginning` — while STOPPED: no-op | unit | none | missing | Add unit test: state remains STOPPED, no exceptions | ⬜ |
