@@ -97,3 +97,6 @@ GlissandoRenderer.determineGlissandoColor [private → package-private]
 GlissandoRenderer.computeEndpoints [private static → package-private static]
 GlissandoRenderer.NoteContext [private record → package-private record]
 GlissandoRenderer.Endpoints [private record → package-private record]
+# 10a PropertiesStateStore testability widening (rows 48-49)
+PropertiesStateStore.put [value param @NonNull → @Nullable for null-removal contract]
+PropertiesStateStore [added package-private constructor accepting Preferences for injection]

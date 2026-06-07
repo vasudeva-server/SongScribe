@@ -23,6 +23,8 @@ import java.util.prefs.Preferences;
 
 import com.formdev.flatlaf.util.SystemFileChooser;
 
+import org.jspecify.annotations.Nullable;
+
 public class PropertiesStateStore implements SystemFileChooser.StateStore {
 
     private final Preferences prefs;
@@ -32,14 +34,18 @@ public class PropertiesStateStore implements SystemFileChooser.StateStore {
             .node("fileDialog");
     }
 
+    /** Package-private: allows tests to inject a mock {@link Preferences} node. */
+    PropertiesStateStore(Preferences prefs) {
+        this.prefs = prefs;
+    }
+
     @Override
     public String get(String key, String def) {
         return prefs.get(key, def);
     }
 
     @Override
-    public void put(String key, String value) {
-        //noinspection ConstantValue -- overridden method may be called with null string
+    public void put(String key, @Nullable String value) {
         if (value == null) {
             prefs.remove(key);
         } else {
