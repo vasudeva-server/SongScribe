@@ -2,9 +2,9 @@
 
 | Class | Behavior | Required level | Existing test | Verdict | Action | done |
 |---|---|---|---|---|---|---|
-| PreferencesDialog | `programToIndex` — linear scan: returns 0 on miss, first matching index otherwise | unit | none | missing | Add `PreferencesDialogTest` testing: exact match, miss→0, first-of-duplicates | ⬜ |
-| PreferencesDialog | `ensureInstrumentsLoaded` / `instrumentsLoaded` guard — loads only once, sorted by name | unit | none | missing | Add tests for idempotency and alphabetic sort | ⬜ |
-| PreferencesDialog | `PlayTab.volumeToSliderIndex` — nearest-stop snap with tie-breaking | unit | none | missing | Add tests for each exact stop, midpoints, and values outside range (e.g. 0, 127) | ⬜ |
+| PreferencesDialog | `programToIndex` — linear scan: returns 0 on miss, first matching index otherwise | unit | none | missing | Add `PreferencesDialogTest` testing: exact match, miss→0, first-of-duplicates | ✅ |
+| PreferencesDialog | `ensureInstrumentsLoaded` / `instrumentsLoaded` guard — loads only once, sorted by name | unit | none | missing | Add tests for idempotency and alphabetic sort | ✅ |
+| PreferencesDialog | `PlayTab.volumeToSliderIndex` — nearest-stop snap with tie-breaking | unit | none | missing | Add tests for each exact stop, midpoints, and values outside range (e.g. 0, 127) | ✅ |
 | PreferencesDialog | `GeneralTab`/`PlayTab`/`InstrumentsTab` getData/setData — pure Prefs read/write wiring, no branching | none | — | — | No test warranted (trivial field read from Prefs → component) | — |
 | PreferencesDialog | Live preference writes via ActionListeners (page size, metric, appearance, startup action) — fire directly on radio click, no OK button | none | — | — | No test warranted (framework ActionListener wiring) | — |
 | SongSettingsDialog | `TextTab.setData` — change-detection: skips `MetadataDidChangeNotification` when no field changed | unit | none | missing | Add test: setData with unchanged fields posts nothing; changed fields post notification | ⬜ |
@@ -19,9 +19,9 @@
 | SongSettingsDialog | `KeyCellRenderer.SELECTIONS` list — exactly 15 entries (no-accidentals + 7 flats + 7 sharps), in canonical order | unit | none | missing | Add test for list size and order | ⬜ |
 | SongSettingsDialog | `FontTab.getData`/`setData`/`applyDefaultFonts` — pure display font assignment, no branching logic | none | — | — | No test warranted | — |
 | SongSettingsDialog | Tabbed dialog pane built with `createTabbedPane()`, not `new JTabbedPane()` | none | — | — | No test warranted (structural/wiring) | — |
-| ExportMidiDialog | `setData` — saves/restores playback settings around export; builds sequence with override instrument/tempo/repeats | unit | none | missing | Add test (mock `PlaybackController`, `requireScoreView`) verifying settings are restored even on exception | ⬜ |
+| ExportMidiDialog | `setData` — saves/restores playback settings around export; builds sequence with override instrument/tempo/repeats | unit | none | missing | Add test (mock `PlaybackController`, `requireScoreView`) verifying settings are restored even on exception | ✅ |
 | ExportMidiDialog | `getData` — loads instrument index from Prefs via `programToIndex`, loads `PLAY_WITH_REPEATS` pref | none | — | — | No test warranted (trivial pref read → component) | — |
-| ExportPDFDialog | `getData`/`setData`/`getPaperSizeData` — delegates entirely to `PaperSizeStep`; `getPaperSizeData` is `@Nullable` until OK clicked | unit | none | missing | Add test: `getPaperSizeData` is null before setData, non-null after | ⬜ |
+| ExportPDFDialog | `getData`/`setData`/`getPaperSizeData` — delegates entirely to `PaperSizeStep`; `getPaperSizeData` is `@Nullable` until OK clicked | unit | none | missing | Add test: `getPaperSizeData` is null before setData, non-null after | ✅ |
 | PlatformFileDialog | `convertFilter` — strips ` (ext1, ext2)` suffix from description; no paren → unchanged | unit | none | missing | Add tests: description with paren, without paren, paren at index 0 | ✅ |
 | PlatformFileDialog | `getFileFilter` — extension-based lookup (higher priority) vs dropdown-based lookup vs fallback to first filter | unit | none | missing | Add tests: filename matches ext → returns matching filter; filename matches nothing → returns dropdown match; dropdown also no match → returns first | ✅ |
 | PlatformFileDialog | `showSaveDialog` (static) — appends first extension when no existing extension matches; handles leading-dot form | unit | none | missing | Add tests: already has matching ext, has no ext, leading-dot extension form, multi-extension array | ✅ |

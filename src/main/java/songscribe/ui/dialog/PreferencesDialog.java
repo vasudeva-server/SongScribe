@@ -55,6 +55,10 @@ public class PreferencesDialog extends BaseDialog {
     private static int[] instrumentPrograms = new int[0];
     private static boolean instrumentsLoaded = false;
 
+    // Volume snap stops shared by PlayTab.getData() and exposed for testing
+    static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
+    private static final int VOLUME_STOP_COUNT = VALID_VOLUME_STOPS.length;
+
     public PreferencesDialog() {
         super(Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false, DialogCategory.EXCLUSIVE);
 
@@ -141,6 +145,37 @@ public class PreferencesDialog extends BaseDialog {
     public static int[] getInstrumentPrograms() {
         ensureInstrumentsLoaded();
         return instrumentPrograms;
+    }
+
+    /**
+     * Nearest-stop snap: returns the index in {@link #VALID_VOLUME_STOPS} whose
+     * value is closest to {@code volume}. Ties are broken in favour of the
+     * lower-indexed (quieter) stop.
+     */
+    static int volumeToSliderIndex(int volume) {
+        var closestIndex = 0;
+        var minDist = Math.abs(volume - VALID_VOLUME_STOPS[0]);
+
+        for (var i = 1; i < VOLUME_STOP_COUNT; i++) {
+            var dist = Math.abs(volume - VALID_VOLUME_STOPS[i]);
+
+            if (dist < minDist) {
+                minDist = dist;
+                closestIndex = i;
+            }
+        }
+
+        return closestIndex;
+    }
+
+    /**
+     * Resets the static instruments cache. For use in tests only — production
+     * code must never call this.
+     */
+    static void resetInstrumentsForTesting() {
+        instrumentsLoaded = false;
+        instrumentStrings = new String[0];
+        instrumentPrograms = new int[0];
     }
 
     private void syncPlaybackPrefs() {
@@ -406,9 +441,6 @@ public class PreferencesDialog extends BaseDialog {
 
     private final class PlayTab extends Tab {
 
-        private static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
-        private static final int VOLUME_STOP_COUNT = VALID_VOLUME_STOPS.length;
-
         private static final int[] VALID_VOLUME_INDICES = { 0, 1, 2, 3, 4 };
         private static final @Nullable String[] VOLUME_LABELS = {
             Strings.get(Strings.LABEL_PREFS_SOFTER), null,
@@ -537,21 +569,6 @@ public class PreferencesDialog extends BaseDialog {
             addLabeledField(section, Strings.get(labelKey), slider, LabelPosition.TOP);
         }
 
-        private static int volumeToSliderIndex(int volume) {
-            var closestIndex = 0;
-            var minDist = Math.abs(volume - VALID_VOLUME_STOPS[0]);
-
-            for (var i = 1; i < VOLUME_STOP_COUNT; i++) {
-                var dist = Math.abs(volume - VALID_VOLUME_STOPS[i]);
-
-                if (dist < minDist) {
-                    minDist = dist;
-                    closestIndex = i;
-                }
-            }
-
-            return closestIndex;
-        }
     }
 
     // -----------------------------------------------------------------------
