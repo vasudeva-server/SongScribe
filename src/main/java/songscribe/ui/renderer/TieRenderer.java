@@ -111,7 +111,7 @@ public final class TieRenderer {
      * <p>
      * A tie is colored if either its start or end note is playing or selected.
      */
-    private Color determineTieColor(Tie tie, LineInvariants invariants) {
+    Color determineTieColor(Tie tie, LineInvariants invariants) {
         var startColor = invariants.getElementColor(tie.getAnchorElementIndex());
 
         if (startColor != Color.BLACK) {

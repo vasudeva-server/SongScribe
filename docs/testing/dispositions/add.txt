@@ -2099,3 +2099,38 @@ NoteAreaBuilderTest.testBuildNoteAreaSemibreveHasNonEmptyBounds	9a	missing→add
 NoteAreaBuilderTest.testBuildNoteAreaMinimHasNonEmptyBounds	9a	missing→add: MINIM uses NOTEHEAD_HALF_SHAPE; asserts non-empty area with positive bounds
 NoteAreaBuilderTest.testBuildNoteAreaGraceNoteHasNonEmptyBounds	9a	missing→add: GRACE_QUAVER uses NOTEHEAD_GRACE_SHAPE; asserts non-empty area with positive bounds
 NoteAreaBuilderTest.testBuildNoteAreaBeamedQuaverSuppressesFlag	9a	missing→add: beamed quaver minY > non-beamed (flag suppressed when beamed=true)
+BeamGroupRendererTest.testGetBeamLevelAllQuavers_returns0	9b	missing→add: getBeamLevel; all quavers → level 0
+BeamGroupRendererTest.testGetBeamLevelSemiquaverPresent_returns1	9b	missing→add: getBeamLevel; semiquaver present → level 1
+BeamGroupRendererTest.testGetBeamLevelDemiSemiquaverPresent_returns2	9b	missing→add: getBeamLevel; demi-semiquaver → level 2
+BeamGroupRendererTest.testGetBeamLevelNonBeamableType_returns0	9b	missing→add: getBeamLevel; crotchet (non-beamable) → level 0
+BeamGroupRendererTest.testIsNoteTypeInLevel_quaverAtLevel0_returnsTrue	9b	missing→add: isNoteTypeInLevel; quaver at level 0 → true
+BeamGroupRendererTest.testIsNoteTypeInLevel_quaverAtLevel1_returnsFalse	9b	missing→add: isNoteTypeInLevel; quaver at level 1 → false
+BeamGroupRendererTest.testIsNoteTypeInLevel_semiquaverAtLevel0_returnsTrue	9b	missing→add: isNoteTypeInLevel; semiquaver at level 0 → true
+BeamGroupRendererTest.testIsNoteTypeInLevel_semiquaverAtLevel1_returnsTrue	9b	missing→add: isNoteTypeInLevel; semiquaver at level 1 → true
+BeamGroupRendererTest.testIsNoteTypeInLevel_semiquaverAtLevel2_returnsFalse	9b	missing→add: isNoteTypeInLevel; semiquaver at level 2 → false
+BeamGroupRendererTest.testIsNoteTypeInLevel_crotchetNotBeamable_returnsFalse	9b	missing→add: isNoteTypeInLevel; crotchet → false
+BeamGroupRendererTest.testIsNoteTypeInLevel_graceNoteChecksSurroundingNeighbors_bothQuavers_returnsTrue	9b	missing→add: isNoteTypeInLevel; grace note delegates to quaver neighbors at level 0 → true
+BeamGroupRendererTest.testIsNoteTypeInLevel_graceNoteChecksNeighbors_onlyQuavers_falseAtLevel1	9b	missing→add: isNoteTypeInLevel; grace note delegates to quaver neighbors at level 1 → false
+BeamGroupRendererTest.testStemTipYSsOffset_withLayout_stemUp_returnsTopYSs	9b	missing→add: stemTipYSsOffset; with StemLayout, stem-up → topYSs
+BeamGroupRendererTest.testStemTipYSsOffset_withLayout_stemDown_returnsBottomYSs	9b	missing→add: stemTipYSsOffset; with StemLayout, stem-down → bottomYSs
+BeamGroupRendererTest.testStemTipYSsOffset_nullLayout_stemUp_usesStaffPositionMinusStemLength	9b	missing→add: stemTipYSsOffset; null layout, stem-up → staff position - STEM_LENGTH_SS
+BeamGroupRendererTest.testStemTipYSsOffset_nullLayout_stemDown_usesStaffPositionPlusStemLength	9b	missing→add: stemTipYSsOffset; null layout, stem-down → staff position + STEM_LENGTH_SS
+BeamGroupRendererTest.testGetBeamHighlightColor_nonEditMode_returnsNull	9b	missing→add: getBeamHighlightColor; non-edit-mode → null
+BeamGroupRendererTest.testGetBeamHighlightColor_twoOrMoreBeamableRemaining_returnsNull	9b	missing→add: getBeamHighlightColor; ≥2 beamable remaining → null
+BeamGroupRendererTest.testGetBeamHighlightColor_oneSelected_oneBeamableRemaining_returnsSelectionColor	9b	missing→add: getBeamHighlightColor; 1 selected, 1 beamable remaining → selection color
+BeamGroupRendererTest.testGetBeamHighlightColor_selectionTakesPriorityOverHover	9b	missing→add: getBeamHighlightColor; selection takes priority over hover
+BeamGroupRendererTest.testGetBeamHighlightColor_noSelectionNoHover_noRemainingBeamable_returnsNull	9b	missing→add: getBeamHighlightColor; no selection, no hover, no beamable → null
+TieRendererTest.testDetermineTieColor_neitherNoteSelected_returnsElementColor	9b	missing→add: determineTieColor; neither endpoint active → ELEMENT_COLOR
+TieRendererTest.testDetermineTieColor_startNoteSelected_returnsSelectionColor	9b	missing→add: determineTieColor; start note selected → selection color
+TieRendererTest.testDetermineTieColor_endNoteSelected_returnsSelectionColor	9b	missing→add: determineTieColor; end note selected → selection color
+TieRendererTest.testDetermineTieColor_startNoteSelectedTakesPriorityOverEnd	9b	missing→add: determineTieColor; start-takes-priority over end
+TieRendererTest.testDetermineTieColor_nonEditMode_returnsElementColor	9b	missing→add: determineTieColor; non-edit-mode → ELEMENT_COLOR
+TieRendererTest.testDetermineTieColor_startNotePlaying_returnsPlayingColor	9b	missing→add: determineTieColor; start playing → playing color
+TieRendererTest.testDetermineTieColor_endNotePlaying_returnsPlayingColor	9b	missing→add: determineTieColor; end playing → playing color
+TupletRendererTest.testRenderTupletsFromLine_beamedStemUp_numberOnly_noArmsDrawn	9b	missing→add: numberOnly branch; beamed+stem-up → no arm draw() calls
+TupletRendererTest.testRenderTupletsFromLine_beamedStemUp_numberOnly_numberDrawn	9b	missing→add: numberOnly branch; number still drawn in numberOnly mode
+TupletRendererTest.testRenderTupletsFromLine_notBeamed_armsDrawn	9b	missing→add: numberOnly=false; not beamed → 4 draw() calls for bracket arms
+TupletRendererTest.testRenderTupletsFromLine_beamedStemDown_isUpperFalse_armsDrawn	9b	missing→add: numberOnly=false; beamed+stem-down → 4 draw() calls
+TupletRendererTest.testRenderTupletsFromLine_stemUp_leftXSsCorrect	9b	missing→add: bracket X; stem-up leftXSs = anchorXSs + NOTE_HEAD_WIDTH_SS - stemSs - ARM_EXTENSION_SS
+TupletRendererTest.testRenderTupletsFromLine_stemDown_leftXSsCorrect	9b	missing→add: bracket X; stem-down leftXSs = anchorXSs - ARM_EXTENSION_SS
+TupletRendererTest.testRenderTupletsFromLine_rightXSsCorrect	9b	missing→add: bracket X; rightXSs = endXSs + NOTE_HEAD_WIDTH_SS + ARM_EXTENSION_SS

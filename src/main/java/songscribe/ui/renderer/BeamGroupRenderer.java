@@ -114,7 +114,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
      * hovered notes use the insertion note color.
      */
     @Nullable
-    private Color getBeamHighlightColor(
+    Color getBeamHighlightColor(
         LineInvariants invariants,
         int beginIndex,
         int endIndex
@@ -161,7 +161,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
     /**
      * Determines the beam level based on the shortest note in the range.
      */
-    private int getBeamLevel(Line line, int beginIndex, int endIndex) {
+    int getBeamLevel(Line line, int beginIndex, int endIndex) {
         var maxLevel = 0;
 
         for (var i = beginIndex; i <= endIndex; i++) {
@@ -277,7 +277,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         }
     }
 
-    private boolean isNoteTypeInLevel(Line line, int noteIndex, int level) {
+    boolean isNoteTypeInLevel(Line line, int noteIndex, int level) {
         var type = line.getElement(noteIndex).getType();
 
         if (!type.isGraceNote()) {
@@ -385,7 +385,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
      * @param isUpper true = stem goes up (beam above notes)
      * @param element fallback element for staff-position estimate when layout is null
      */
-    private static double stemTipYSsOffset(
+    static double stemTipYSsOffset(
         LayoutResult.@Nullable StemLayout layout,
         boolean isUpper,
         StaffElement element
