@@ -164,7 +164,7 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
     // ==========================================================================
 
     // dots | sep | thin | sep | thick; returns x after the thick bar
-    private static double drawRightRepeat(
+    static double drawRightRepeat(
         Graphics2D g2,
         double x,
         double thin,

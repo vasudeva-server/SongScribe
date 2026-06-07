@@ -48,7 +48,7 @@ public final class TrillRenderer {
     private static final double TRILL_ADVANCE_WIDTH_SS;
 
     // Wavy line segment width from SMuFL repeatOffset (0.948 ss)
-    private static final double WIGGLE_SEGMENT_WIDTH_SS = 0.948;
+    static final double WIGGLE_SEGMENT_WIDTH_SS = 0.948;
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
@@ -78,7 +78,7 @@ public final class TrillRenderer {
      * Resolves the trill X position and end X position, then delegates to
      * {@link #renderTrill(Graphics2D, double, double, double, Color)}.
      */
-    private void renderTrillAtPosition(
+    void renderTrillAtPosition(
         Graphics2D g2,
         StaffElement anchor,
         @Nullable StaffElement endNote,
@@ -165,7 +165,7 @@ public final class TrillRenderer {
      * Draws a wavy trill extension line using tiled WIGGLE_TRILL glyphs.
      * All coordinates in staff-space units.
      */
-    private void drawWavyLine(
+    void drawWavyLine(
         Graphics2D g2,
         double x1,
         double y,

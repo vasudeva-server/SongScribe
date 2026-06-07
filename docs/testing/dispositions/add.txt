@@ -2203,3 +2203,32 @@ add: KeySignatureRendererTest.testRenderKeyChangeDifferentTypeDrawsNaturalsThenN
 add: KeySignatureRendererTest.testGetGlyphForKeyTypeReturnsFlatGlyphForFlats	9c	row 21 — getGlyphForKeyType: FLATS → FLAT glyph
 add: KeySignatureRendererTest.testGetGlyphForKeyTypeReturnsSharpGlyphForSharps	9c	row 21 — getGlyphForKeyType: SHARPS → SHARP glyph
 add: KeySignatureRendererTest.testGetGlyphForKeyTypeThrowsForNone	9c	row 21 — getGlyphForKeyType: NONE throws IllegalArgumentException
+add: BarRendererTest.testRenderSingleBarlineCallsOneFillAndNoDrawString	9c	row 23 — renderBarLineOrRepeat: SINGLE_BARLINE calls 1 fill, no repeat dots
+add: BarRendererTest.testRenderDoubleBarlineCallsTwoFillsAndNoDrawString	9c	row 23 — renderBarLineOrRepeat: DOUBLE_BARLINE calls 2 fills, no repeat dots
+add: BarRendererTest.testRenderFinalDoubleBarlineCallsTwoFillsAndNoDrawString	9c	row 23 — renderBarLineOrRepeat: FINAL_DOUBLE_BARLINE calls 2 fills, no repeat dots
+add: BarRendererTest.testRenderRepeatLeftCallsTwoFillsAndOneRepeatDotsDrawString	9c	row 23 — renderBarLineOrRepeat: REPEAT_LEFT calls 2 fills + 1 repeat dots glyph
+add: BarRendererTest.testRenderRepeatRightCallsTwoFillsAndOneRepeatDotsDrawString	9c	row 23 — renderBarLineOrRepeat: REPEAT_RIGHT calls 2 fills + 1 repeat dots glyph
+add: BarRendererTest.testRenderRepeatLeftRightCallsThreeFillsAndTwoRepeatDotsDrawStrings	9c	row 23 — renderBarLineOrRepeat: REPEAT_LEFT_RIGHT calls 3 fills + 2 repeat dots glyphs
+add: BarRendererTest.testDrawRightRepeatReturnsXAfterThickBar	9c	row 24 — drawRightRepeat: returned x = startX + dotsAdvance + sep + thin + sep + thick
+add: BarRendererTest.testDrawRightRepeatWithNonZeroStartXAccumulatesCorrectly	9c	row 24 — drawRightRepeat: arithmetic holds for non-zero startX
+add: ArticulationRendererTest.testRenderSoloStaccatoDrawsStaccatoGlyph	9c	row 26 — render: solo staccato → ARTIC_STACCATO_ABOVE glyph
+add: ArticulationRendererTest.testRenderSoloAccentDrawsAccentGlyph	9c	row 26 — render: solo accent → ARTIC_ACCENT_ABOVE glyph
+add: ArticulationRendererTest.testRenderStaccatoPlusAccentComboDrawsComboGlyphOnce	9c	row 26 — render: staccato+accent combo → ARTIC_ACCENT_STACCATO_ABOVE once
+add: TrillRendererTest.testDrawWavyLineIsNoOpForNonPositiveLength	9c	row 29 — drawWavyLine: zero/negative length draws nothing
+add: TrillRendererTest.testDrawWavyLineWithLengthEqualToSegmentWidthUsesOneSegment	9c	row 29 — drawWavyLine: 1× segment width → 1 drawString call
+add: TrillRendererTest.testDrawWavyLineWithLengthForThreeSegmentsDrawsThreeTimes	9c	row 29 — drawWavyLine: 3× segment width → 3 drawString calls with WIGGLE_TRILL
+add: TrillRendererTest.testDrawWavyLineRoundingEdgeCaseAlwaysDrawsAtLeastOneSegment	9c	row 29 — drawWavyLine: tiny length (Math.max(1,...)) → at least 1 drawString
+add: TrillRendererTest.testRenderTrillAtPositionSingleNotePassesNaNEndXToRenderTrill	9c	row 30 — renderTrillAtPosition: null endNote → ORNAMENT_TRILL only, no WIGGLE_TRILL
+add: TrillRendererTest.testRenderTrillAtPositionMultiNoteDrawsWavyLineGlyphs	9c	row 30 — renderTrillAtPosition: endNote != anchor → ORNAMENT_TRILL + WIGGLE_TRILL
+add: TrillRendererTest.testRenderTrillAtPositionEndNoteEqualToAnchorIsSingleNotePath	9c	row 30 — renderTrillAtPosition: endNote == anchor → single-note path, no WIGGLE_TRILL
+add: MetronomeRendererTest.testRequireMetronomeGlyphReturnsSemibreveGlyph	9c	row 33 — requireMetronomeGlyph: SEMIBREVE → MET_NOTE_WHOLE
+add: MetronomeRendererTest.testRequireMetronomeGlyphReturnsMinimGlyph	9c	row 33 — requireMetronomeGlyph: MINIM → MET_NOTE_HALF_UP
+add: MetronomeRendererTest.testRequireMetronomeGlyphReturnsCrotchetGlyph	9c	row 33 — requireMetronomeGlyph: CROTCHET → MET_NOTE_QUARTER_UP
+add: MetronomeRendererTest.testRequireMetronomeGlyphReturnsQuaverGlyph	9c	row 33 — requireMetronomeGlyph: QUAVER → MET_NOTE_8TH_UP
+add: MetronomeRendererTest.testRequireMetronomeGlyphReturnsSemiquaverGlyph	9c	row 33 — requireMetronomeGlyph: SEMIQUAVER → MET_NOTE_16TH_UP
+add: MetronomeRendererTest.testRequireMetronomeGlyphReturnsDemiSemiquaverGlyph	9c	row 33 — requireMetronomeGlyph: DEMI_SEMIQUAVER → MET_NOTE_32ND_UP
+add: MetronomeRendererTest.testRequireMetronomeGlyphThrowsForUnmappedType	9c	row 33 — requireMetronomeGlyph: unmapped type → RuntimeError exit (AssertionError in test)
+add: MetronomeRendererTest.testDrawDurationEqualsForUndottedNoteCallsTwoDrawStrings	9c	row 34 — drawDurationEquals: undotted → 2 drawString calls (glyph + equals)
+add: MetronomeRendererTest.testDrawDurationEqualsForDottedNoteCallsThreeDrawStrings	9c	row 34 — drawDurationEquals: dotted → 3 drawString calls (glyph + dot + equals)
+add: MetronomeRendererTest.testDrawDurationEqualsReturnsXGreaterThanStart	9c	row 34 — drawDurationEquals: returned x > startX
+add: MetronomeRendererTest.testDrawDurationEqualsForDottedNoteReturnsFurtherThanUndotted	9c	row 34 — drawDurationEquals: dotted return − undotted return ≈ dotAdvanceWidthSs

@@ -23,6 +23,8 @@ package songscribe.ui.renderer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import module java.desktop;
+
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
@@ -38,6 +40,16 @@ import songscribe.ui.component.score.LineComponent;
 final class RenderContextTestHelper {
 
     private RenderContextTestHelper() {}
+
+    /**
+     * Creates a real {@link Graphics2D} backed by a headless buffered image so
+     * that transform, font, color, and drawing operations inside renderers do not
+     * throw. The image dimensions are large enough for any renderer test.
+     */
+    static Graphics2D realG2() {
+        var img = new BufferedImage(400, 200, BufferedImage.TYPE_INT_ARGB);
+        return img.createGraphics();
+    }
 
     /**
      * Returns a builder seeded with placeholder layout fields so callers only need to
