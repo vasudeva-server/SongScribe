@@ -63,7 +63,7 @@ public final class LineInvariants {
     private static final int REPLACED_ELEMENT_ALPHA = 90;
 
     /** Color for an existing element that will be replaced by the current preview element. */
-    private static final Color REPLACED_ELEMENT_COLOR = new Color(
+    static final Color REPLACED_ELEMENT_COLOR = new Color(
         Color.RED.getRed(),
         Color.RED.getGreen(),
         Color.RED.getBlue(),

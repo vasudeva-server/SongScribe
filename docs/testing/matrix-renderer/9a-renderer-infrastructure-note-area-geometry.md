@@ -27,13 +27,13 @@
 | LineInvariants | `getElementColor()` — grace note playing → playing color | unit | `testGraceNoteCountsAsPlaying` | adequate | — | — |
 | LineInvariants | `getElementColor()` — element in playing tie → playing color | unit | `testElementInPlayingTieReturnsPlayingColor` | adequate | — | — |
 | LineInvariants | `getElementColor()` — selected element → selectionColor | unit | `testSelectedElementReturnsSelectionColor` | adequate | — | — |
-| LineInvariants | `getElementColor()` — hovered (replaced-element) → REPLACED_ELEMENT_COLOR | unit | — | missing | Add unit test: mockStatic PreviewElementManager to return matching location; verify semi-transparent red returned | ⬜ |
+| LineInvariants | `getElementColor()` — hovered (replaced-element) → REPLACED_ELEMENT_COLOR | unit | — | missing | Add unit test: mockStatic PreviewElementManager to return matching location; verify semi-transparent red returned | ✅ |
 | LineInvariants | `getElementColor()` — default (none of the above) → BLACK | unit | `testDefaultReturnsBlack` | adequate | — | — |
 | LineInvariants | `isElementPlaying()` — both primary and grace note | unit | `testIsElementPlayingFalseForUnrelatedIndex`, `testGraceNoteCountsAsPlaying` | adequate | — | — |
 | LineInvariants | `isElementInPlayingTie()` — in tie vs. no playing note | unit | `testElementInPlayingTieReturnsPlayingColor`, `testIsElementInPlayingTieFalseWithoutPlayingNote` | adequate | — | — |
-| LineInvariants | `getLyricColor()` + span-aware `isLyricSpanPlaying()` — melisma/BEGIN-MIDDLE/tied spans | unit | — | missing | Add unit tests covering: anchor playing, tied anchor, melisma extender carrier playing, BEGIN/MIDDLE continuation, span end boundary, no lyric on element | ⬜ |
-| LineInvariants | `getLyricConnectorColor()` — 3 branches (sourceIndex<0, no line, delegate to colorFor) | unit | — | missing | Add unit tests for each branch | ⬜ |
-| LineInvariants | `Builder.build()` validation — throws `IllegalStateException` when required fields unset | unit | — | missing | Add unit test: assert `assertThatThrownBy` when any of layoutResult/songLayoutMetrics/lyricRenderMetrics is null | ⬜ |
+| LineInvariants | `getLyricColor()` + span-aware `isLyricSpanPlaying()` — melisma/BEGIN-MIDDLE/tied spans | unit | — | missing | Add unit tests covering: anchor playing, tied anchor, melisma extender carrier playing, BEGIN/MIDDLE continuation, span end boundary, no lyric on element | ✅ |
+| LineInvariants | `getLyricConnectorColor()` — 3 branches (sourceIndex<0, no line, delegate to colorFor) | unit | — | missing | Add unit tests for each branch | ✅ |
+| LineInvariants | `Builder.build()` validation — throws `IllegalStateException` when required fields unset | unit | — | missing | Add unit test: assert `assertThatThrownBy` when any of layoutResult/songLayoutMetrics/lyricRenderMetrics is null | ✅ |
 | LineInvariants | Trivial getters (getSong, getFonts, getCurrentLine, getMiddleLineYSs, getLineIndex, etc.) | none | — | none | — | — |
 | NoteArea | Pure data record holder | none | — | none | — | — |
 | NoteAreaBuilder | `getOrBuildArea()` cache hit — same instance returned when note unchanged | unit | `testAreaCacheReturnsSameInstanceWhenNoteUnchanged` | adequate | — | — |

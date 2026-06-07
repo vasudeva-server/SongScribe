@@ -23,6 +23,7 @@ package songscribe.ui.renderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import module java.desktop;
@@ -30,9 +31,12 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.ElementLocation;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.LayoutResult;
@@ -40,11 +44,14 @@ import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.SongLayoutMetrics;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.component.score.PreviewElementManager;
 
 class LineInvariantsTest extends UnitTest {
 
     private static final int FONT_SIZE = 12;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, FONT_SIZE);
+    private static final String BUILD_VALIDATION_MESSAGE =
+        "LineInvariants requires layoutResult, songLayoutMetrics, and lyricRenderMetrics to be set";
 
     /**
      * A builder seeded with the required layout fields (set to minimal values that the
@@ -161,5 +168,378 @@ class LineInvariantsTest extends UnitTest {
 
         assertThatThrownBy(invariants::requireCurrentLine)
             .isInstanceOf(AssertionError.class);
+    }
+
+    // Edit mode + element is hovered (preview-replacement target) → semi-transparent red
+    @Test
+    void testHoveredElementReturnsReplacedElementColor() {
+        var hoveredLocation = new ElementLocation(0, 0);
+
+        try (var previewMock = mockStatic(PreviewElementManager.class)) {
+            previewMock.when(PreviewElementManager::getHoveredElementLocation)
+                .thenReturn(hoveredLocation);
+
+            var invariants = seededBuilder()
+                .setEditMode(true)
+                .setLineIndex(0)
+                .build();
+
+            assertThat(invariants.getElementColor(0))
+                .isEqualTo(LineInvariants.REPLACED_ELEMENT_COLOR);
+        }
+    }
+
+    // Builder.build() — throws IllegalStateException when layoutResult is null
+    @Test
+    void testBuildThrowsWhenLayoutResultNull() {
+        var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultsFromPrefs())
+            .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
+            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0));
+
+        assertThatThrownBy(builder::build)
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(BUILD_VALIDATION_MESSAGE);
+    }
+
+    // Builder.build() — throws IllegalStateException when songLayoutMetrics is null
+    @Test
+    void testBuildThrowsWhenSongLayoutMetricsNull() {
+        var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultsFromPrefs())
+            .setLayoutResult(LayoutResult.builder().build())
+            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0));
+
+        assertThatThrownBy(builder::build)
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(BUILD_VALIDATION_MESSAGE);
+    }
+
+    // Builder.build() — throws IllegalStateException when lyricRenderMetrics is null
+    @Test
+    void testBuildThrowsWhenLyricRenderMetricsNull() {
+        var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultsFromPrefs())
+            .setLayoutResult(LayoutResult.builder().build())
+            .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0));
+
+        assertThatThrownBy(builder::build)
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(BUILD_VALIDATION_MESSAGE);
+    }
+
+    // getLyricConnectorColor() — sourceElementIndex < 0 → Color.BLACK regardless of edit mode
+    @Test
+    void testGetLyricConnectorColorNegativeSourceIndexReturnsBlack() {
+        var invariants = seededBuilder().setEditMode(true).build();
+
+        assertThat(invariants.getLyricConnectorColor(-1, 1)).isEqualTo(Color.BLACK);
+    }
+
+    // getLyricConnectorColor() — no current line → delegates to getElementColor()
+    @Test
+    void testGetLyricConnectorColorNullLineReturnsElementColor() {
+        // No line set; playing note → playing color should propagate
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setPlayingNoteIndex(0)
+            .build();
+
+        // currentLine is null, so falls through to getElementColor(0) which returns playing color
+        assertThat(invariants.getLyricConnectorColor(0, 1))
+            .isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    // getLyricConnectorColor() — line present + anchor playing → playing color
+    @Test
+    void testGetLyricConnectorColorAnchorPlayingReturnsPlayingColor() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(0)
+            .build();
+
+        assertThat(invariants.getLyricConnectorColor(0, 1))
+            .isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    // isLyricSpanPlaying() — anchor note is playing → true
+    @Test
+    void testIsLyricSpanPlayingWhenAnchorIsPlaying() {
+        var line = lyricLine();
+        var element = (StaffElement) line.getElement(0);
+
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(0)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1))
+            .isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    // isLyricSpanPlaying() — melisma START anchor with carrier playing after it → true
+    @Test
+    void testIsLyricSpanPlayingForMelismaExtender() {
+        var line = melismaLine();
+        var element = (StaffElement) line.getElement(0);
+
+        // Index 1 is the STOP carrier; index 0 is the START anchor
+        // Playing index 1 should keep index 0's lyric highlighted
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(1)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1))
+            .isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    // isLyricSpanPlaying() — BEGIN/MIDDLE syllable with unlyriced note playing → true
+    @Test
+    void testIsLyricSpanPlayingForBeginMiddleContiguous() {
+        var line = beginMiddleLine();
+        var element = (StaffElement) line.getElement(0);
+
+        // Index 1 has no lyric; playing note at 1 is inside the BEGIN anchor's span
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(1)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1))
+            .isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    // isLyricSpanPlaying() — playing note is past span boundary → false
+    @Test
+    void testIsLyricSpanPlayingFalseWhenPlayingPastSpanEnd() {
+        var line = beginMiddleLine();
+        // Add a third element with a new syllable, terminating the span at index 1
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var thirdElement = (StaffElement) line.getElement(2);
+        thirdElement.setLyricForVerse(1, Lyric.Syllabic.END, false, "do", Lyric.Extend.NONE);
+
+        var element = (StaffElement) line.getElement(0);
+
+        // Now the BEGIN anchor's span ends at index 1 (the text-bearing END syllable is at 2,
+        // so spanEnd = 2 - 1 = 1). Playing at index 2 is outside.
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(2)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1))
+            .isEqualTo(Color.BLACK);
+    }
+
+    // isLyricSpanPlaying() — no lyric on element → false
+    @Test
+    void testIsLyricSpanPlayingFalseWhenNoLyricOnAnchor() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+
+        var element = (StaffElement) line.getElement(0);
+        // element has no lyric at verse 1
+
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(1)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1))
+            .isEqualTo(Color.BLACK);
+    }
+
+    // Not in edit mode → getLyricColor returns Color.BLACK regardless of playing state
+    @Test
+    void testGetLyricColorNotEditModeReturnsBlack() {
+        var line = lyricLine();
+        var element = (StaffElement) line.getElement(0);
+
+        var invariants = seededBuilder()
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(0)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1)).isEqualTo(Color.BLACK);
+    }
+
+    // getLyricColor() — lyric is selected → selectionColor
+    @Test
+    void testGetLyricColorSelectedLyricReturnsSelectionColor() {
+        var line = lyricLine();
+        var element = (StaffElement) line.getElement(0);
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(true);
+
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setSelectionProvider(selectionProvider)
+            .setSelectionColor(Color.BLUE)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1)).isEqualTo(Color.BLUE);
+    }
+
+    // isLyricSpanPlaying() — CONTINUE carrier mid-melisma → span includes it
+    @Test
+    void testIsLyricSpanPlayingForMelismaContinueCarrier() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        ((StaffElement) line.getElement(0)).setLyricForVerse(
+            1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
+        ((StaffElement) line.getElement(1)).setLyricForVerse(
+            1, null, false, null, Lyric.Extend.CONTINUE);
+        // index 2 has no lyric — span runs to end of line
+
+        var element = (StaffElement) line.getElement(0);
+
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(1)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1))
+            .isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    // isElementPlaying() — negative index is never playing
+    @Test
+    void testIsElementPlayingFalseForNegativeIndex() {
+        var invariants = seededBuilder().setEditMode(true).setPlayingNoteIndex(0).build();
+
+        assertThat(invariants.isElementPlaying(-1)).isFalse();
+    }
+
+    // isLyricSpanPlaying() — MIDDLE syllable with unlyriced note playing → true
+    @Test
+    void testIsLyricSpanPlayingForMiddleSyllable() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        ((StaffElement) line.getElement(0)).setLyricForVerse(
+            1, Lyric.Syllabic.MIDDLE, false, "lo", Lyric.Extend.NONE);
+        // index 1 intentionally left without a lyric
+
+        var element = (StaffElement) line.getElement(0);
+
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(1)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1))
+            .isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    // isLyricSpanPlaying() — SINGLE syllable, playing note is after it → not part of span
+    @Test
+    void testIsLyricSpanPlayingFalseForSingleSyllableWithPlayingAfter() {
+        var line = lyricLine(); // SINGLE syllable at index 0
+        line.addElement(ElementType.CROTCHET.newInstance());
+
+        var element = (StaffElement) line.getElement(0);
+
+        // Playing note at index 1 is past the anchor, but SINGLE does not extend forward
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(1)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1)).isEqualTo(Color.BLACK);
+    }
+
+    // isLyricSpanPlaying() — playing note is at or before anchor index → false
+    @Test
+    void testIsLyricSpanPlayingFalseWhenPlayingAtOrBeforeAnchor() {
+        // Place the BEGIN anchor at index 1; playing note is at 0 (before the anchor).
+        // isLyricSpanPlaying guards playingNoteIndex > anchorIndex, so returns false.
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        ((StaffElement) line.getElement(1)).setLyricForVerse(
+            1, Lyric.Syllabic.BEGIN, false, "hi", Lyric.Extend.NONE);
+
+        var element = (StaffElement) line.getElement(1);
+
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(0)
+            .build();
+
+        assertThat(invariants.getLyricColor(1, element, 1)).isEqualTo(Color.BLACK);
+    }
+
+    // getLyricColor() — selectionProvider present but lyric not selected → Color.BLACK
+    @Test
+    void testGetLyricColorSelectionProviderNotSelectedReturnsBlack() {
+        var line = lyricLine();
+        var element = (StaffElement) line.getElement(0);
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(false);
+
+        var invariants = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setSelectionProvider(selectionProvider)
+            .setSelectionColor(Color.BLUE)
+            .build();
+
+        assertThat(invariants.getLyricColor(0, element, 1)).isEqualTo(Color.BLACK);
+    }
+
+    /**
+     * A line with two notes: index 0 has a melisma-START lyric, index 1 has a STOP carrier.
+     */
+    private static Line melismaLine() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        ((StaffElement) line.getElement(0)).setLyricForVerse(
+            1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
+        ((StaffElement) line.getElement(1)).setLyricForVerse(
+            1, null, false, null, Lyric.Extend.STOP);
+        return line;
+    }
+
+    /**
+     * A line with two notes: index 0 has a BEGIN lyric, index 1 has no lyric
+     * (simulates the gap between a BEGIN/MIDDLE anchor and its next text syllable).
+     */
+    private static Line beginMiddleLine() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        ((StaffElement) line.getElement(0)).setLyricForVerse(
+            1, Lyric.Syllabic.BEGIN, false, "hel", Lyric.Extend.NONE);
+        // index 1 intentionally left without a lyric
+        return line;
+    }
+
+    /**
+     * A line with one note that has a single-syllable lyric (no span extension).
+     */
+    private static Line lyricLine() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        ((StaffElement) line.getElement(0)).setLyricForVerse(
+            1, Lyric.Syllabic.SINGLE, false, "la", Lyric.Extend.NONE);
+        return line;
     }
 }
