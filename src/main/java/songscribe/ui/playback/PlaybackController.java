@@ -153,7 +153,8 @@ public final class PlaybackController {
         }
     }
 
-    private static void handleMetaMessage(MetaMessage meta) {
+    // Package-private for testing
+    static void handleMetaMessage(MetaMessage meta) {
         if (meta.getType() == MidiMetaMessageTypes.SEQUENCE_NUMBER) {
             var data = meta.getData();
             var lineIndex = (data[0] << 8) | data[1];
@@ -164,7 +165,8 @@ public final class PlaybackController {
         }
     }
 
-    private static void updatePlayingNote(int lineIndex, int noteIndex) {
+    // Package-private for testing
+    static void updatePlayingNote(int lineIndex, int noteIndex) {
         var score = registeredScore;
         if (score == null) {
             return;

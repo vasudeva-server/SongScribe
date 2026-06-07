@@ -20,6 +20,7 @@
 
 package songscribe.ui.playback;
 
+import javax.sound.midi.MetaMessage;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 
@@ -32,6 +33,7 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
@@ -46,6 +48,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -300,6 +303,162 @@ class PlaybackControllerTest extends UnitTest {
                 messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
                 assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.STOPPED);
             }
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RewindToBeginning {
+
+        @Test
+        void testWhilePlayingClearsHighlightAndSeeksSequencerToTickZero() {
+            var mockSequencer = mock(Sequencer.class);
+            var mockScore = mock(ScoreView.class);
+            var mockLineComponent = mock(LineComponent.class);
+            when(mockScore.getLineComponent(0)).thenReturn(mockLineComponent);
+            PlaybackController.register(mockScore);
+            MidiController.sequencer = mockSequencer;
+
+            PlaybackController.setState(PlaybackState.PLAYING);
+            PlaybackController.setPreviousPlayingLine(0);
+
+            PlaybackController.rewindToBeginning();
+
+            verify(mockLineComponent).setPlayingIndices(-1, -1);
+            assertThat(PlaybackController.getPreviousPlayingLine()).isEqualTo(-1);
+            verify(mockSequencer).setTickPosition(0);
+            // State stays PLAYING — rewind does not stop playback
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PLAYING);
+        }
+
+        @Test
+        void testWhilePausedCallsStopAndStateBecomeStopped() {
+            PlaybackController.setState(PlaybackState.PAUSED);
+
+            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
+                PlaybackController.rewindToBeginning();
+
+                assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
+                var captor = ArgumentCaptor.forClass(PlaybackStateDidChangeNotification.class);
+                messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+                assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.STOPPED);
+            }
+        }
+
+        @Test
+        void testWhileStoppedIsNoOp() {
+            // State is already STOPPED from tearDown default; no sequencer set
+            PlaybackController.rewindToBeginning();
+
+            // State unchanged, no exceptions
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandleMetaMessage {
+
+        @Test
+        void testSequenceNumberMessageDecodesIndicesAndCallsUpdatePlayingNote()
+            throws Exception {
+            var mockScore = mock(ScoreView.class);
+            var mockLine = mock(Line.class);
+            var mockLineComponent = mock(LineComponent.class);
+            final int lineIndex = 2;
+            final int noteIndex = 5;
+            var mockSong = mock(Song.class);
+            when(mockScore.getLineComponent(lineIndex)).thenReturn(mockLineComponent);
+            when(mockScore.getSong()).thenReturn(mockSong);
+            when(mockSong.getLine(lineIndex)).thenReturn(mockLine);
+            when(mockLine.precedingGraceNoteIndex(noteIndex)).thenReturn(-1);
+            PlaybackController.register(mockScore);
+
+            // Pack lineIndex and noteIndex into 4 bytes matching the decode formula:
+            // lineIndex = (data[0] << 8) | data[1], noteIndex = (data[2] << 8) | data[3]
+            var data = new byte[]{
+                (byte) (lineIndex >> 8), (byte) (lineIndex & 0xFF),
+                (byte) (noteIndex >> 8), (byte) (noteIndex & 0xFF)
+            };
+            var meta = new MetaMessage(MidiMetaMessageTypes.SEQUENCE_NUMBER, data, data.length);
+
+            PlaybackController.handleMetaMessage(meta);
+
+            verify(mockLineComponent).setPlayingIndices(noteIndex, -1);
+            assertThat(PlaybackController.getPreviousPlayingLine()).isEqualTo(lineIndex);
+        }
+
+        @Test
+        void testEndOfTrackMessageCallsStop() throws Exception {
+            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
+                var meta = new MetaMessage();
+                // END_OF_TRACK carries no payload; set the type explicitly since the
+                // no-arg MetaMessage constructor defaults to type 0 (SEQUENCE_NUMBER).
+                meta.setMessage(MidiMetaMessageTypes.END_OF_TRACK, new byte[0], 0);
+
+                PlaybackController.handleMetaMessage(meta);
+
+                assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
+                var captor = ArgumentCaptor.forClass(PlaybackStateDidChangeNotification.class);
+                messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+                assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.STOPPED);
+            }
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class UpdatePlayingNote {
+
+        @Test
+        void testClearsPreviousLineHighlightWhenLineChanges() {
+            var mockScore = mock(ScoreView.class);
+            var mockPrevLineComponent = mock(LineComponent.class);
+            var mockNewLineComponent = mock(LineComponent.class);
+            var mockLine = mock(Line.class);
+            final int prevLine = 0;
+            final int newLine = 1;
+            final int noteIndex = 3;
+            var mockSong = mock(Song.class);
+            when(mockScore.getLineComponent(prevLine)).thenReturn(mockPrevLineComponent);
+            when(mockScore.getLineComponent(newLine)).thenReturn(mockNewLineComponent);
+            when(mockScore.getSong()).thenReturn(mockSong);
+            when(mockSong.getLine(newLine)).thenReturn(mockLine);
+            when(mockLine.precedingGraceNoteIndex(noteIndex)).thenReturn(-1);
+            PlaybackController.register(mockScore);
+            PlaybackController.setPreviousPlayingLine(prevLine);
+
+            PlaybackController.updatePlayingNote(newLine, noteIndex);
+
+            // Previous line component must be cleared
+            verify(mockPrevLineComponent).setPlayingIndices(-1, -1);
+            // New line component must be set to the playing note
+            verify(mockNewLineComponent).setPlayingIndices(noteIndex, -1);
+            assertThat(PlaybackController.getPreviousPlayingLine()).isEqualTo(newLine);
+        }
+
+        @Test
+        void testDoesNotClearPreviousLineComponentWhenLineIsUnchanged() {
+            var mockScore = mock(ScoreView.class);
+            var mockLineComponent = mock(LineComponent.class);
+            var mockLine = mock(Line.class);
+            final int lineIndex = 1;
+            final int noteIndex = 2;
+            var mockSong = mock(Song.class);
+            when(mockScore.getLineComponent(lineIndex)).thenReturn(mockLineComponent);
+            when(mockScore.getSong()).thenReturn(mockSong);
+            when(mockSong.getLine(lineIndex)).thenReturn(mockLine);
+            when(mockLine.precedingGraceNoteIndex(noteIndex)).thenReturn(-1);
+            PlaybackController.register(mockScore);
+            PlaybackController.setPreviousPlayingLine(lineIndex);
+
+            PlaybackController.updatePlayingNote(lineIndex, noteIndex);
+
+            // Same line — setPlayingIndices(-1,-1) must NOT be called to clear the previous
+            verify(mockLineComponent, never()).setPlayingIndices(-1, -1);
+            // New note IS highlighted
+            verify(mockLineComponent).setPlayingIndices(noteIndex, -1);
+            assertThat(PlaybackController.getPreviousPlayingLine()).isEqualTo(lineIndex);
         }
     }
 }
