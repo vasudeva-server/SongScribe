@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 1288 / 1564 actionable rows done (82%).**
+**Overall: 1293 / 1564 actionable rows done (82%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -56,7 +56,7 @@
 |  | [9c-glyph-element-painters](matrix-renderer/9c-glyph-element-painters.md) | 22 | 22 | ✅ complete |
 | 10 · ui/dialog | [10a-dialog-infrastructure-lifecycle](matrix-dialog/10a-dialog-infrastructure-lifecycle.md) | 41 | 41 | ✅ complete |
 |  | [10b-input-validation-dialogs](matrix-dialog/10b-input-validation-dialogs.md) | 29 | 29 | ✅ complete |
-|  | [10c-settings-export-informational-dialogs](matrix-dialog/10c-settings-export-informational-dialogs.md) | 16 | 21 | in progress |
+|  | [10c-settings-export-informational-dialogs](matrix-dialog/10c-settings-export-informational-dialogs.md) | 21 | 21 | ✅ complete |
 |  | [10d-font-chooser-core-model](matrix-dialog/10d-font-chooser-core-model.md) | 0 | 12 | not started |
 |  | [10e-font-chooser-panes-listeners](matrix-dialog/10e-font-chooser-panes-listeners.md) | 0 | 5 | not started |
 | 11 · ui/menu+playback+platform+ui | [11a-ui-menu-menu-construction-controller](matrix-menu/11a-ui-menu-menu-construction-controller.md) | 0 | 18 | not started |

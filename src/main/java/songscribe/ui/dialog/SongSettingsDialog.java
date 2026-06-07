@@ -244,6 +244,80 @@ public class SongSettingsDialog extends StandardDialog {
         return widthInches;
     }
 
+    /**
+     * Returns the canonical {@link KeySelection} for a song's current key.
+     *
+     * <p>When the accidental count is 0, the canonical type is always
+     * {@link KeyType#FLATS} regardless of the song's stored type (because
+     * there is no "0 sharps" entry — the no-accidentals slot uses FLATS).
+     *
+     * @param song the song whose default key to read
+     * @return the canonical {@code KeySelection} for use in the combo
+     */
+    static KeySelection canonicalKeySelectionFrom(Song song) {
+        var accidentalCount = song.getDefaultKeyAccidentalCount();
+        // (FLATS, 0) is the canonical no-accidentals entry; (SHARPS, 0) is never used.
+        var keyType = accidentalCount == 0 ? KeyType.FLATS : song.getDefaultKeyType();
+        return new KeySelection(keyType, accidentalCount);
+    }
+
+    /**
+     * Applies the MusicTab's tempo and key-signature changes to the song.
+     *
+     * <p>If the tempo or key (or both) changed relative to the song's current
+     * values, the changes are wrapped in a single {@link Song#withModification}
+     * bracket so they coalesce into one {@link songscribe.message.notification.SongDidChangeNotification}.
+     * If nothing changed no notification is posted.
+     *
+     * @param song             the song to update
+     * @param tempoType        the new tempo type
+     * @param visibleTempo     the new visible tempo value
+     * @param tempoDescription the new tempo description
+     * @param showTempo        whether the tempo should be shown
+     * @param keySelection     the new key selection (type + accidental count)
+     */
+    static void applyMusicTabChanges(
+        Song song,
+        Duration tempoType,
+        int visibleTempo,
+        String tempoDescription,
+        boolean showTempo,
+        KeySelection keySelection
+    ) {
+        var tempo = song.getEffectiveTempo();
+
+        var tempoChanged = tempoType != tempo.getTempoType()
+            || visibleTempo != tempo.getVisibleTempo()
+            || !tempoDescription.equals(tempo.getTempoDescription())
+            || showTempo != tempo.shouldShowTempo();
+
+        var keyChanged = keySelection.keyType() != song.getDefaultKeyType()
+            || keySelection.count() != song.getDefaultKeyAccidentalCount();
+
+        // Wrap both notifications in one bracket so tempo and key changes coalesce
+        // into a single SongDidChangeNotification when both are modified.
+        if (tempoChanged || keyChanged) {
+            song.withModification(() -> {
+                if (tempoChanged) {
+                    MessageCenter.post(new TempoDidChangeNotification(
+                        tempoType,
+                        visibleTempo,
+                        tempoDescription,
+                        showTempo
+                    ));
+                }
+
+                if (keyChanged) {
+                    MessageCenter.post(new KeySignatureDidChangeNotification(
+                        null,
+                        keySelection.keyType(),
+                        keySelection.count()
+                    ));
+                }
+            });
+        }
+    }
+
     // ───────────────────────────────────────────────────────────────────────
 
     public SongSettingsDialog() {
@@ -821,43 +895,13 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected void setData() {
             var song = getSong();
-            var tempo = song.getEffectiveTempo();
             var tempoType = tempoSection.getTempoType();
             var visibleTempo = tempoSection.getVisibleTempo();
             var tempoDescription = tempoSection.getTempoDescription();
             var showTempo = !tempoSection.isShowOnlyDescription();
             var typeAndCount = getKeyTypeAndCountFromCombo();
 
-            var tempoChanged = tempoType != tempo.getTempoType()
-                || visibleTempo != tempo.getVisibleTempo()
-                || !tempoDescription.equals(tempo.getTempoDescription())
-                || showTempo != tempo.shouldShowTempo();
-
-            var keyChanged = typeAndCount.keyType() != song.getDefaultKeyType()
-                || typeAndCount.count() != song.getDefaultKeyAccidentalCount();
-
-            // Wrap both notifications in one bracket so tempo and key changes coalesce
-            // into a single SongDidChangeNotification when both are modified.
-            if (tempoChanged || keyChanged) {
-                song.withModification(() -> {
-                    if (tempoChanged) {
-                        MessageCenter.post(new TempoDidChangeNotification(
-                            tempoType,
-                            visibleTempo,
-                            tempoDescription,
-                            showTempo
-                        ));
-                    }
-
-                    if (keyChanged) {
-                        MessageCenter.post(new KeySignatureDidChangeNotification(
-                            null,
-                            typeAndCount.keyType(),
-                            typeAndCount.count()
-                        ));
-                    }
-                });
-            }
+            applyMusicTabChanges(song, tempoType, visibleTempo, tempoDescription, showTempo, typeAndCount);
 
             var widthInches = validateLineWidth();
             var lineWidthPx = (int) Math.round(widthInches * GraphicUtils.getDpi());
@@ -870,12 +914,7 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private void setKeyComboFromSong(Song song) {
-            var accidentalCount = song.getDefaultKeyAccidentalCount();
-            // (FLATS, 0) is the canonical no-accidentals entry.
-            var keyType = accidentalCount == 0
-                ? KeyType.FLATS
-                : song.getDefaultKeyType();
-            keyCombo.setSelectedItem(new KeySelection(keyType, accidentalCount));
+            keyCombo.setSelectedItem(canonicalKeySelectionFrom(song));
         }
 
         private KeySelection getKeyTypeAndCountFromCombo() {

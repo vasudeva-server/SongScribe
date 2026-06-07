@@ -100,3 +100,5 @@ GlissandoRenderer.Endpoints [private record → package-private record]
 # 10a PropertiesStateStore testability widening (rows 48-49)
 PropertiesStateStore.put [value param @NonNull → @Nullable for null-removal contract]
 PropertiesStateStore [added package-private constructor accepting Preferences for injection]
+modify SongSettingsDialog.canonicalKeySelectionFrom (extracted from MusicTab.setKeyComboFromSong for testability)
+modify SongSettingsDialog.applyMusicTabChanges (extracted from MusicTab.setData for testability)
