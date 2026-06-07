@@ -33,11 +33,11 @@
 | `MetronomeRenderer` | `requireMetronomeGlyph(ElementType)` — 6-way mapping + throws on unmapped type | unit | — | missing | Add: each note type maps to correct SMuFL glyph; unmapped type throws RuntimeError | ✅ |
 | `MetronomeRenderer` | `drawDurationEquals` — advances xSs by glyph advance + dotAdvance (×2 if dotted) + equals string width | unit | — | missing | Add: dotted and non-dotted duration; verify returned xSs accounts for all advances | ✅ |
 | `MetronomeRenderer` | `drawDurationGlyph` — draws glyph + optional dot | none | — | none | Pure painting delegating to already-tested geometry | — |
-| `TempoChangeRenderer` | `renderTempoChange` — `shouldShowTempo` branch: with tempo shows "visibleTempo + space + description + glyph"; without shows description only | unit | — | missing | Add: verify StringBuilder contents for showTempo=true vs false | ⬜ |
+| `TempoChangeRenderer` | `renderTempoChange` — `shouldShowTempo` branch: with tempo shows "visibleTempo + space + description + glyph"; without shows description only | unit | — | missing | Add: verify StringBuilder contents for showTempo=true vs false | ✅ |
 | `TempoChangeRenderer` | Pure painting (drawString) | none | — | none | — | — |
 | `DynamicMarkingRenderer` | `render` — null guard on attachment; `glyph = dynamicType.getGlyph()` (null → return) | none | — | none | Glyph selection is an enum property on `DynamicAttachment.DynamicType`, already verified there; renderer itself has no logic | — |
 | `DynamicMarkingRenderer` | Pure painting | none | — | none | — | — |
-| `DynamicsRenderer` | `renderSingleHairpin` — type branch: crescendo → two lines from left-middle to right-top/bottom; diminuendo → two lines from left-top/bottom to right-middle | unit | — | missing | Add: verify line endpoints differ between crescendo and diminuendo (could test via a recording Graphics2D or by extracting coordinate logic to a pure method) | ⬜ |
+| `DynamicsRenderer` | `renderSingleHairpin` — type branch: crescendo → two lines from left-middle to right-top/bottom; diminuendo → two lines from left-top/bottom to right-middle | unit | — | missing | Add: verify line endpoints differ between crescendo and diminuendo (could test via a recording Graphics2D or by extracting coordinate logic to a pure method) | ✅ |
 | `DynamicsRenderer` | Pure painting (g2.draw calls) | none | — | none | — | — |
 
 **Notes.**

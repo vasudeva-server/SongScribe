@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 1200 / 1574 actionable rows done (76%).**
+**Overall: 1202 / 1574 actionable rows done (76%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -53,7 +53,7 @@
 |  | [8e-notification](matrix-message/8e-notification.md) | 2 | 2 | ✅ complete |
 | 9 · ui/renderer | [9a-renderer-infrastructure-note-area-geometry](matrix-renderer/9a-renderer-infrastructure-note-area-geometry.md) | 16 | 16 | ✅ complete |
 |  | [9b-span-connector-renderers](matrix-renderer/9b-span-connector-renderers.md) | 15 | 15 | ✅ complete |
-|  | [9c-glyph-element-painters](matrix-renderer/9c-glyph-element-painters.md) | 20 | 22 | in progress |
+|  | [9c-glyph-element-painters](matrix-renderer/9c-glyph-element-painters.md) | 22 | 22 | ✅ complete |
 | 10 · ui/dialog | [10a-dialog-infrastructure-lifecycle](matrix-dialog/10a-dialog-infrastructure-lifecycle.md) | 0 | 41 | not started |
 |  | [10b-input-validation-dialogs](matrix-dialog/10b-input-validation-dialogs.md) | 0 | 37 | not started |
 |  | [10c-settings-export-informational-dialogs](matrix-dialog/10c-settings-export-informational-dialogs.md) | 0 | 23 | not started |

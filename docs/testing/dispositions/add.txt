@@ -2232,3 +2232,13 @@ add: MetronomeRendererTest.testDrawDurationEqualsForUndottedNoteCallsTwoDrawStri
 add: MetronomeRendererTest.testDrawDurationEqualsForDottedNoteCallsThreeDrawStrings	9c	row 34 — drawDurationEquals: dotted → 3 drawString calls (glyph + dot + equals)
 add: MetronomeRendererTest.testDrawDurationEqualsReturnsXGreaterThanStart	9c	row 34 — drawDurationEquals: returned x > startX
 add: MetronomeRendererTest.testDrawDurationEqualsForDottedNoteReturnsFurtherThanUndotted	9c	row 34 — drawDurationEquals: dotted return − undotted return ≈ dotAdvanceWidthSs
+add: TempoChangeRendererTest.testRenderTempoChangeWithShowTempoIncludesVisibleTempoAndDescription	9c	row 36 — renderTempoChange: showTempo=true → drawn string contains visibleTempo and description
+add: TempoChangeRendererTest.testRenderTempoChangeWithShowTempoCallsDrawDurationEqualsBeforeText	9c	row 36 — renderTempoChange: showTempo=true → multiple drawString calls (duration glyph + text)
+add: TempoChangeRendererTest.testRenderTempoChangeWithoutShowTempoDrawsOnlyDescription	9c	row 36 — renderTempoChange: showTempo=false → exactly 1 drawString call with only description
+add: TempoChangeRendererTest.testRenderTempoChangeWithoutShowTempoDoesNotIncludeVisibleTempo	9c	row 36 — renderTempoChange: showTempo=false → visible tempo absent from drawn string
+add: DynamicsRendererTest.testComputeHairpinLinesCrescendoStartsAtMiddleY	9c	row 40 — computeHairpinLines: crescendo both lines start at middleYSs
+add: DynamicsRendererTest.testComputeHairpinLinesCrescendoEndsAtTopAndBottomY	9c	row 40 — computeHairpinLines: crescendo upper ends at topYSs, lower at bottomYSs
+add: DynamicsRendererTest.testComputeHairpinLinesDiminuendoEndsAtMiddleY	9c	row 40 — computeHairpinLines: diminuendo both lines end at middleYSs
+add: DynamicsRendererTest.testComputeHairpinLinesDiminuendoStartsAtTopAndBottomY	9c	row 40 — computeHairpinLines: diminuendo upper starts at topYSs, lower at bottomYSs
+add: DynamicsRendererTest.testComputeHairpinLinesBothTypesShareSameXCoordinates	9c	row 40 — computeHairpinLines: both types span x1..x2 = xSs..xSs+widthSs
+add: DynamicsRendererTest.testComputeHairpinLinesCrescendoAndDiminuendoEndpointsAreMirrored	9c	row 40 — computeHairpinLines: crescendo and diminuendo are mirrored (start/end swapped)
