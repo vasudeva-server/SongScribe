@@ -30,18 +30,25 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
+import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKeys;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.UIUtils;
 
+import org.jspecify.annotations.Nullable;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests for {@link BaseDialog} tab lifecycle and geometry-reset subscriber behavior.
@@ -231,6 +238,60 @@ class BaseDialogTabsTest extends MainFrameMockTest {
         assertThat(dialog.getContentPaddingKey()).isEqualTo(FlatLafKeys.DIALOG_STD_PADDING);
     }
 
+    // -- getScoreView / requireScoreView / getSong --
+
+    @Test
+    void testGetScoreViewReturnsNullWhenMainFrameHasNoScoreView() {
+        when(mainFrame().getScoreView()).thenReturn(null);
+        var dialog = new AccessorDialog();
+        assertThat(dialog.scoreView()).isNull();
+    }
+
+    @Test
+    void testRequireScoreViewPropagatesExceptionFromMainFrame() {
+        when(mainFrame().requireScoreView()).thenThrow(new RuntimeException("scoreView not initialized"));
+        var dialog = new AccessorDialog();
+        assertThatThrownBy(dialog::scoreViewRequired)
+            .isInstanceOf(RuntimeException.class)
+            .hasMessage("scoreView not initialized");
+    }
+
+    @Test
+    void testGetSongDelegatesToRequireScoreViewGetSong() {
+        var mockSong = mock(Song.class);
+        var mockScoreView = mock(ScoreView.class);
+        when(mainFrame().requireScoreView()).thenReturn(mockScoreView);
+        when(mockScoreView.getSong()).thenReturn(mockSong);
+        var dialog = new AccessorDialog();
+        assertThat(dialog.song()).isSameAs(mockSong);
+    }
+
+    // -- TitledSection.addSeparator --
+
+    @Test
+    void testTitledSectionAddSeparatorOnYAxisAddsVerticalStrut() {
+        var section = new BaseDialog.TitledSection("Section");
+        section.addSeparator();
+
+        assertThat(section.getComponentCount()).isEqualTo(1);
+        // A vertical strut has zero preferred width and positive preferred height
+        var strut = section.getComponent(0);
+        assertThat(strut.getPreferredSize().width).isZero();
+        assertThat(strut.getPreferredSize().height).isPositive();
+    }
+
+    @Test
+    void testTitledSectionAddSeparatorOnXAxisAddsHorizontalStrut() {
+        var section = new BaseDialog.TitledSection("Section", BoxLayout.X_AXIS);
+        section.addSeparator();
+
+        assertThat(section.getComponentCount()).isEqualTo(1);
+        // A horizontal strut has positive preferred width and zero preferred height
+        var strut = section.getComponent(0);
+        assertThat(strut.getPreferredSize().width).isPositive();
+        assertThat(strut.getPreferredSize().height).isZero();
+    }
+
     // -- helpers --
 
     private void configureMockDialog(JDialog dialog) {
@@ -291,6 +352,28 @@ class BaseDialogTabsTest extends MainFrameMockTest {
             protected void tabWillHide() {
                 willHideCount++;
             }
+        }
+    }
+
+    /**
+     * Subclass that widens access to protected score-view accessors for testing.
+     */
+    private static class AccessorDialog extends BaseDialog {
+
+        AccessorDialog() {
+            super("Accessor Dialog", false);
+        }
+
+        @Nullable ScoreView scoreView() {
+            return getScoreView();
+        }
+
+        ScoreView scoreViewRequired() {
+            return requireScoreView();
+        }
+
+        Song song() {
+            return getSong();
         }
     }
 }

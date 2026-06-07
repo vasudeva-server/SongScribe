@@ -30,15 +30,15 @@
 | `BaseDialog` | `tabWillShow` fired for initially-selected tab on `setVisible(true)` | unit | none | missing | Add test | ✅ |
 | `BaseDialog` | `tabWillHide` called for all tabs on `setVisible(false)` | unit | none | missing | Add test | ✅ |
 | `BaseDialog` | `getContentPaddingKey`: returns buttons-padding key when `hasButtons()` true, std-padding key when false | unit | none | missing | Add test on concrete subclass pairs | ✅ |
-| `BaseDialog` | `getScoreView()` returns null when scoreView not initialized (nullable contract) | unit | none | missing | Add test: mock `mainFrame.getScoreView()` → null; assert returns null | ⬜ |
-| `BaseDialog` | `requireScoreView()` throws when scoreView null (`RuntimeError.exit`) | unit | none | missing | Add test: mock `mainFrame.requireScoreView()` → throw; assert propagates | ⬜ |
-| `BaseDialog` | `getSong()` delegates to `requireScoreView().getSong()` | unit | none | missing | Add test | ⬜ |
+| `BaseDialog` | `getScoreView()` returns null when scoreView not initialized (nullable contract) | unit | none | missing | Add test: mock `mainFrame.getScoreView()` → null; assert returns null | ✅ |
+| `BaseDialog` | `requireScoreView()` throws when scoreView null (`RuntimeError.exit`) | unit | none | missing | Add test: mock `mainFrame.requireScoreView()` → throw; assert propagates | ✅ |
+| `BaseDialog` | `getSong()` delegates to `requireScoreView().getSong()` | unit | none | missing | Add test | ✅ |
 | `BaseDialog` (inner `Tab`) | `build()` appends fill-glue unless `addExpanding` called first (`hasFillItem`) | none | — | — | Pure layout wiring | — |
 | `BaseDialog` (inner `Tab`) | `Tab.getData()` returns true by default (no branching, override hook only) | none | — | — | Trivial default; only testable behavior is in overrides | — |
-| `BaseDialog` (inner `TitledSection`) | `addSeparator()` axis dispatch (Y→vertical strut, X→horizontal strut) | unit | none | missing | Add test: construct X-axis and Y-axis sections; call addSeparator; verify layout component added | ⬜ |
-| `StandardDialog` | OK click: `isValidData()` false → `setData()` not called, dialog stays open | unit | none | missing | Add test: override `isValidData()` → false; click OK; assert `setData` not called and dialog still visible | ⬜ |
-| `StandardDialog` | OK click: `isValidData()` true → `setData()` called, then `setVisible(false)` | unit | none | missing | Add test | ⬜ |
-| `StandardDialog` | Cancel click: `setVisible(false)` without calling `setData()` | unit | none | missing | Add test | ⬜ |
+| `BaseDialog` (inner `TitledSection`) | `addSeparator()` axis dispatch (Y→vertical strut, X→horizontal strut) | unit | none | missing | Add test: construct X-axis and Y-axis sections; call addSeparator; verify layout component added | ✅ |
+| `StandardDialog` | OK click: `isValidData()` false → `setData()` not called, dialog stays open | unit | none | missing | Add test: override `isValidData()` → false; click OK; assert `setData` not called and dialog still visible | ✅ |
+| `StandardDialog` | OK click: `isValidData()` true → `setData()` called, then `setVisible(false)` | unit | none | missing | Add test | ✅ |
+| `StandardDialog` | Cancel click: `setVisible(false)` without calling `setData()` | unit | none | missing | Add test | ✅ |
 | `StandardDialog` | `modifyButtonPanel` called exactly once on first `setVisible(true)` (once-only guard via `buttonPanelAttached`) | unit | none | missing | Add test: open twice; assert `modifyButtonPanel` called once (spy subclass) | ⬜ |
 | `StandardDialog` | `isValidData()` iterates tabs: first failing tab short-circuits | unit | none | missing | Add test with two tabs where tab[0] returns invalid | ⬜ |
 | `StandardDialog` | `setData()` iterates all registered tabs | unit | none | missing | Add test | ⬜ |
