@@ -83,8 +83,8 @@ public class PaperSizeStep extends Step {
             GraphicUtils.Unit.CM.description(),
         }
     );
-    private final JLabel leftInnerLabel = new JLabel();
-    private final JLabel rightOuterLabel = new JLabel();
+    final JLabel leftInnerLabel = new JLabel();
+    final JLabel rightOuterLabel = new JLabel();
     final JCheckBox mirroredCheck = new JCheckBox(Strings.get(Strings.DIALOG_PAPER_SIZE_MIRRORED));
     GraphicUtils.Unit currentUnit = GraphicUtils.Unit.INCH;
     JComboBox<TemplateObject> templateCombo;
@@ -242,13 +242,11 @@ public class PaperSizeStep extends Step {
         boolean mirroredMargin
     ) {
         var metric = GraphicUtils.Unit.create(Prefs.getBoolean(PrefsKey.METRIC));
-        unitsCombo.setSelectedIndex(metric.ordinal());
-        widthSpinnerModel.setValue(
-            GraphicUtils.convertFromPixels(pageWidth, metric)
-        );
-        heightSpinnerModel.setValue(
-            GraphicUtils.convertFromPixels(pageHeight, metric)
-        );
+        unitsCombo.setSelectedIndex(metric.getValue());
+        var convertedWidth = GraphicUtils.convertFromPixels(pageWidth, metric);
+        var convertedHeight = GraphicUtils.convertFromPixels(pageHeight, metric);
+
+        // Default to Custom template; find a predefined template whose dimensions match
         templates.setSelectedItem(
             templates.getElementAt(templates.getSize() - 1)
         );
@@ -259,14 +257,17 @@ public class PaperSizeStep extends Step {
                 var to = templates.getElementAt(i);
 
                 if (
-                    to.width.equals(widthSpinnerModel.getValue()) &&
-                    to.height.equals(heightSpinnerModel.getValue())
+                    to.width.equals(convertedWidth) &&
+                    to.height.equals(convertedHeight)
                 ) {
                     templates.setSelectedItem(to);
                 }
             }
         }
 
+        // Restore the actual converted dimensions — template selection may have overwritten them
+        widthSpinnerModel.setValue(convertedWidth);
+        heightSpinnerModel.setValue(convertedHeight);
         leftInnerSpinnerModel.setValue(
             GraphicUtils.convertFromPixels(leftInnerMargin, metric)
         );

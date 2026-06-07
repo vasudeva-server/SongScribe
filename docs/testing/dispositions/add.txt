@@ -2289,3 +2289,9 @@ PaperSizeStepTest.TemplateObjectParsing.testFullLineAssignsAllFields	10a-dialog-
 PaperSizeStepTest.TemplateObjectParsing.testPartialLineFewerThanSixFieldsUsesDefaults	10a-dialog-infrastructure-lifecycle	TemplateObject partial line uses defaults
 PaperSizeStepTest.testTemplateSelectionPopulatesAllSixSpinners	10a-dialog-infrastructure-lifecycle	template selection populates all six spinners
 PaperSizeStepTest.testEndWritesAllSixPixelValuesAndMirroredFlagToPageLayoutData	10a-dialog-infrastructure-lifecycle	end() commits all six pixel values and mirrored flag
+PaperSizeStepTest.testSetValuesConvertsPixelValuesToCurrentUnitForDisplay	10a	row 59; also fixed PaperSizeStep.setValues: used ordinal() instead of getValue() for combo index, and template selection overwrote spinner values
+PaperSizeStepTest.testMirroredActionSwitchesLabelsBetweenLeftRightAndInnerOuter	10a	row 60; widened leftInnerLabel+rightOuterLabel to package-private for test access
+PaperSizeStepTest.testStartSelectsFirstTemplateMatchingMetricPref	10a	row 61
+TempoSectionTest.testSetTempoAndGettersRoundTrip	10a	row 62; new test class for TempoSection
+TempoSectionTest.testGetTempoTypeThrowsIllegalStateExceptionWhenSelectionIsNull	10a	row 63; widened tempoTypeCombo to package-private
+TempoSectionTest.testGetTempoDescriptionReturnsEmptyStringWhenSelectionIsNull	10a	row 64; widened tempoDescriptionCombo+showOnlyDescriptionCheckBox to package-private

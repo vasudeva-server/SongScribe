@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
+import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.export.PageLayoutData;
 import songscribe.prefs.Prefs;
@@ -214,6 +215,91 @@ class PaperSizeStepTest extends UnitTest {
         assertThat((Double) step.bottomSpinnerModel.getValue())
             .as("bottom after A4 template selection")
             .isEqualTo(a4.margin);
+    }
+
+    // -- setValues() round-trip --
+
+    @Test
+    void testSetValuesConvertsPixelValuesToCurrentUnitForDisplay() {
+        // Prefs.getBoolean(METRIC) → false → unit is INCH
+        var widthPx = GraphicUtils.Unit.INCH.convertToPixels(8.5);
+        var heightPx = GraphicUtils.Unit.INCH.convertToPixels(11.0);
+        var marginPx = GraphicUtils.Unit.INCH.convertToPixels(0.75);
+
+        step.setValues(widthPx, heightPx, marginPx, marginPx, marginPx, marginPx, false);
+
+        var expectedWidth = GraphicUtils.convertFromPixels(widthPx, GraphicUtils.Unit.INCH);
+        var expectedHeight = GraphicUtils.convertFromPixels(heightPx, GraphicUtils.Unit.INCH);
+        var expectedMargin = GraphicUtils.convertFromPixels(marginPx, GraphicUtils.Unit.INCH);
+
+        assertThat((Double) step.widthSpinnerModel.getValue())
+            .as("widthSpinner after setValues in INCH")
+            .isCloseTo(expectedWidth, offset(1e-9));
+        assertThat((Double) step.heightSpinnerModel.getValue())
+            .as("heightSpinner after setValues in INCH")
+            .isCloseTo(expectedHeight, offset(1e-9));
+        assertThat((Double) step.leftInnerSpinnerModel.getValue())
+            .as("leftInnerSpinner after setValues in INCH")
+            .isCloseTo(expectedMargin, offset(1e-9));
+        assertThat((Double) step.rightOuterSpinnerModel.getValue())
+            .as("rightOuterSpinner after setValues in INCH")
+            .isCloseTo(expectedMargin, offset(1e-9));
+        assertThat((Double) step.topSpinnerModel.getValue())
+            .as("topSpinner after setValues in INCH")
+            .isCloseTo(expectedMargin, offset(1e-9));
+        assertThat((Double) step.bottomSpinnerModel.getValue())
+            .as("bottomSpinner after setValues in INCH")
+            .isCloseTo(expectedMargin, offset(1e-9));
+    }
+
+    // -- MirroredAction: labels switch --
+
+    @Test
+    void testMirroredActionSwitchesLabelsBetweenLeftRightAndInnerOuter() {
+        // Initially mirroredCheck is deselected: labels should be Left/Right
+        assertThat(step.leftInnerLabel.getText())
+            .as("leftInnerLabel when not mirrored")
+            .isEqualTo(Strings.get(Strings.DIALOG_PAPER_SIZE_LEFT));
+        assertThat(step.rightOuterLabel.getText())
+            .as("rightOuterLabel when not mirrored")
+            .isEqualTo(Strings.get(Strings.DIALOG_PAPER_SIZE_RIGHT));
+
+        // Select mirrored via doClick(): toggles state and fires all action listeners
+        step.mirroredCheck.doClick();
+
+        assertThat(step.leftInnerLabel.getText())
+            .as("leftInnerLabel when mirrored")
+            .isEqualTo(Strings.get(Strings.DIALOG_PAPER_SIZE_INNER));
+        assertThat(step.rightOuterLabel.getText())
+            .as("rightOuterLabel when mirrored")
+            .isEqualTo(Strings.get(Strings.DIALOG_PAPER_SIZE_OUTER));
+
+        // Deselect mirrored via doClick(): toggles back and fires all action listeners
+        step.mirroredCheck.doClick();
+
+        assertThat(step.leftInnerLabel.getText())
+            .as("leftInnerLabel after deselecting mirrored")
+            .isEqualTo(Strings.get(Strings.DIALOG_PAPER_SIZE_LEFT));
+        assertThat(step.rightOuterLabel.getText())
+            .as("rightOuterLabel after deselecting mirrored")
+            .isEqualTo(Strings.get(Strings.DIALOG_PAPER_SIZE_RIGHT));
+    }
+
+    // -- start() selects first template matching metric pref --
+
+    @Test
+    void testStartSelectsFirstTemplateMatchingMetricPref() {
+        // Prefs returns false (imperial) — start() should select US-Letter (first non-metric template)
+        step.start();
+
+        var selected = (PaperSizeStep.TemplateObject) step.templates.getSelectedItem();
+        assertThat(selected).as("selected template").isNotNull();
+        assertThat(selected.metric)
+            .as("selected template must be non-metric when METRIC pref is false")
+            .isFalse();
+        assertThat(selected.name)
+            .as("first imperial template is US-Letter")
+            .isEqualTo("US-Letter");
     }
 
     // -- end() commits to pageLayoutData --

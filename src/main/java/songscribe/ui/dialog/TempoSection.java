@@ -39,10 +39,10 @@ import songscribe.ui.component.InputUtils;
  */
 class TempoSection extends JPanel {
 
-    private final JComboBox<Duration> tempoTypeCombo;
-    private final SpinnerModel tempoSpinnerModel = new SpinnerNumberModel(120, 40, 220, 1);
-    private final JComboBox<String> tempoDescriptionCombo = new JComboBox<>();
-    private final JCheckBox showOnlyDescriptionCheckBox;
+    final JComboBox<Duration> tempoTypeCombo;
+    final SpinnerModel tempoSpinnerModel = new SpinnerNumberModel(120, 40, 220, 1);
+    final JComboBox<String> tempoDescriptionCombo = new JComboBox<>();
+    final JCheckBox showOnlyDescriptionCheckBox;
 
     /**
      * @param types         the note types to show in the type combo

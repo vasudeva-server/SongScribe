@@ -56,12 +56,12 @@
 | `PaperSizeStep` | `TemplateObject` parsing: partial line (fewer than 6 fields) uses defaults | unit | `PaperSizeStepTest.TemplateObjectParsing.testPartialLineFewerThanSixFieldsUsesDefaults` | missing | Add test | ✅ |
 | `PaperSizeStep` | Template selection populates all six spinners with template values | unit | `PaperSizeStepTest.testTemplateSelectionPopulatesAllSixSpinners` | missing | Add test | ✅ |
 | `PaperSizeStep` | `end()` writes all six pixel values + `mirrored` flag to `pageLayoutData` | unit | `PaperSizeStepTest.testEndWritesAllSixPixelValuesAndMirroredFlagToPageLayoutData` | missing | Add test: set up spinners; call `end()`; assert `pageLayoutData` fields | ✅ |
-| `PaperSizeStep` | `setValues()` round-trip: pixel values converted to current unit for display | unit | none | missing | Add test: call `setValues` with known pixel values; assert spinner values match conversion | ⬜ |
-| `PaperSizeStep` | `MirroredAction`: labels switch between Left/Inner and Right/Outer | unit | none | missing | Add test: toggle checkbox; assert label text | ⬜ |
-| `PaperSizeStep` | `start()` selects first template matching metric pref | unit | none | missing | Add test: set pref METRIC=false; call `start()`; assert selected template is imperial | ⬜ |
-| `TempoSection` | `setTempo`/getters round-trip: all four controls reflect passed `Tempo` | unit | none | missing | Add test: call `setTempo(t)`; assert `getTempoType`, `getVisibleTempo`, `getTempoDescription`, `isShowOnlyDescription` | ⬜ |
-| `TempoSection` | `getTempoType()` throws `IllegalStateException` when combo selection is null | unit | none | missing | Add test: clear combo selection; assert ISE thrown | ⬜ |
-| `TempoSection` | `getTempoDescription()` returns empty string when combo selection is null | unit | none | missing | Add test: clear combo; assert returns `""` | ⬜ |
+| `PaperSizeStep` | `setValues()` round-trip: pixel values converted to current unit for display | unit | none | missing | Add test: call `setValues` with known pixel values; assert spinner values match conversion | ✅ |
+| `PaperSizeStep` | `MirroredAction`: labels switch between Left/Inner and Right/Outer | unit | none | missing | Add test: toggle checkbox; assert label text | ✅ |
+| `PaperSizeStep` | `start()` selects first template matching metric pref | unit | none | missing | Add test: set pref METRIC=false; call `start()`; assert selected template is imperial | ✅ |
+| `TempoSection` | `setTempo`/getters round-trip: all four controls reflect passed `Tempo` | unit | none | missing | Add test: call `setTempo(t)`; assert `getTempoType`, `getVisibleTempo`, `getTempoDescription`, `isShowOnlyDescription` | ✅ |
+| `TempoSection` | `getTempoType()` throws `IllegalStateException` when combo selection is null | unit | none | missing | Add test: clear combo selection; assert ISE thrown | ✅ |
+| `TempoSection` | `getTempoDescription()` returns empty string when combo selection is null | unit | none | missing | Add test: clear combo; assert returns `""` | ✅ |
 
 **Notes:**
 
