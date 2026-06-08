@@ -2627,3 +2627,11 @@ KeySignatureDisplayTest.testTonicHasAccidentalNoneWithNonzeroCountHasNoGlyphFont
 KeySignatureDisplayTest.testGetDisplayNameSharpsCount0ReturnsAttributedOverEmptyString	11f	add: getDisplayName empty-string guard path
 KeySignatureDisplayTest.testGetDisplayNameNoAccidentalAppliesSingleLabelFont	11f	add: getDisplayName no accidental single label font
 KeySignatureDisplayTest.testGetDisplayNameWithAccidentalAppliesGlyphFontAndTracking	11f	add: getDisplayName accidental glyph font and tracking ranges
+ControlTest.testMouseGetDescriptionMatchesStringsKey	11f	add: Control.MOUSE.getDescription() matches Strings key
+ControlTest.testKeyboardGetDescriptionMatchesStringsKey	11f	add: Control.KEYBOARD.getDescription() matches Strings key
+ModeTest.testIsAdjustmentModeReturnsTrueForAdjustment	11f	add: Mode.ADJUSTMENT.isAdjustmentMode() returns true
+ModeTest.testIsAdjustmentModeReturnsTrueForVerticalAdjustment	11f	add: Mode.VERTICAL_ADJUSTMENT.isAdjustmentMode() returns true
+ModeTest.testIsAdjustmentModeReturnsFalseForSelect	11f	add: Mode.SELECT.isAdjustmentMode() returns false
+ModeTest.testIsAdjustmentModeReturnsFalseForEdit	11f	add: Mode.EDIT.isAdjustmentMode() returns false
+FlatLafPropsTest.testGetThrowsWhenKeyIsAbsent	11f	add: FlatLafProps.get throws RuntimeError for missing key
+FlatLafPropsTest.testGetReturnsTypedValueWhenKeyPresent	11f	add: FlatLafProps.get returns typed value for known key
