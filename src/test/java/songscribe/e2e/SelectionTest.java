@@ -198,7 +198,7 @@ class SelectionTest extends E2ETest {
             pause();
             robot.releaseMouseButtons();
             pause();
-            assertThat(scoreView().getSelectionSize()).as("drag-select").isGreaterThanOrEqualTo(3);
+            assertThat(scoreView().getSelectionSize()).as("drag-select").isEqualTo(3);
         }
 
     }

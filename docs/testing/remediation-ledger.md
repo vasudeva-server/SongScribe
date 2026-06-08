@@ -1,8 +1,8 @@
 # Remediation Ledger (generated — do not hand-edit counts)
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
-> column (⬜/✅) is the source of truth; this is a derived view.
+> column (⬜/✅/⏭️) is the source of truth; this is a derived view.
 
-**Overall: 1484 / 1564 actionable rows done (94%).**
+**Overall: 1491 / 1491 actionable rows done (100%); 23 rows skipped.**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -19,7 +19,7 @@
 | 3 · layout | [3a-orchestration-accumulation](matrix-layout/3a-orchestration-accumulation.md) | 46 | 46 | ✅ complete |
 |  | [3b-horizontal-spacing-columns](matrix-layout/3b-horizontal-spacing-columns.md) | 40 | 40 | ✅ complete |
 |  | [3c-geometry-primitives-metrics](matrix-layout/3c-geometry-primitives-metrics.md) | 27 | 27 | ✅ complete |
-|  | [3d-lyric-layout](matrix-layout/3d-lyric-layout.md) | 16 | 17 | in progress |
+|  | [3d-lyric-layout](matrix-layout/3d-lyric-layout.md) | 17 | 17 | ✅ complete |
 |  | [3e-ranges-endings-attachments-collision](matrix-layout/3e-ranges-endings-attachments-collision.md) | 19 | 19 | ✅ complete |
 |  | [3f-stacking-subsystem](matrix-layout/3f-stacking-subsystem.md) | 31 | 31 | ✅ complete |
 | 4 · midi/converter/util/smufl/prefs/font/export/uiconverter | [4a-midi](matrix-util/4a-midi.md) | 26 | 26 | ✅ complete |
@@ -31,15 +31,15 @@
 |  | [5b-note-element-insertion-duration-articulation](matrix-action/5b-note-element-insertion-duration-articulation.md) | 18 | 18 | ✅ complete |
 |  | [5c-markings](matrix-action/5c-markings.md) | 19 | 19 | ✅ complete |
 |  | [5d-clipboard-selection-line](matrix-action/5d-clipboard-selection-line.md) | 20 | 20 | ✅ complete |
-|  | [5e-file-app-lifecycle](matrix-action/5e-file-app-lifecycle.md) | 18 | 19 | in progress |
-|  | [5f-export-misc-dialog-open](matrix-action/5f-export-misc-dialog-open.md) | 0 | 22 | not started |
+|  | [5e-file-app-lifecycle](matrix-action/5e-file-app-lifecycle.md) | 19 | 19 | ✅ complete |
+|  | [5f-export-misc-dialog-open](matrix-action/5f-export-misc-dialog-open.md) | 0 | 0 | ⏭️ skipped (22) |
 | 6 · ui/selection+edit+adjustment+clipboard | [6a-selectioncoordinator](matrix-selection/6a-selectioncoordinator.md) | 42 | 42 | ✅ complete |
 |  | [6b-selection-data-holders-clipboardmanager](matrix-selection/6b-selection-data-holders-clipboardmanager.md) | 36 | 36 | ✅ complete |
 |  | [6c-ui-edit](matrix-selection/6c-ui-edit.md) | 24 | 24 | ✅ complete |
-|  | [6d-ui-adjustment](matrix-selection/6d-ui-adjustment.md) | 19 | 69 | in progress |
+|  | [6d-ui-adjustment](matrix-selection/6d-ui-adjustment.md) | 19 | 19 | ✅ complete |
 | 7 · ui/component | [7a-score-view-control-plane](matrix-component/7a-score-view-control-plane.md) | 57 | 57 | ✅ complete |
 |  | [7b-scoreview](matrix-component/7b-scoreview.md) | 21 | 21 | ✅ complete |
-|  | [7c-hit-test-drag-selection-preview-routing](matrix-component/7c-hit-test-drag-selection-preview-routing.md) | 16 | 18 | in progress |
+|  | [7c-hit-test-drag-selection-preview-routing](matrix-component/7c-hit-test-drag-selection-preview-routing.md) | 18 | 18 | ✅ complete |
 |  | [7d-mainframe](matrix-component/7d-mainframe.md) | 35 | 35 | ✅ complete |
 |  | [7e-line-score-rendering-geometry](matrix-component/7e-line-score-rendering-geometry.md) | 19 | 19 | ✅ complete |
 |  | [7f-score-panels-text-components](matrix-component/7f-score-panels-text-components.md) | 24 | 24 | ✅ complete |
@@ -57,7 +57,7 @@
 | 10 · ui/dialog | [10a-dialog-infrastructure-lifecycle](matrix-dialog/10a-dialog-infrastructure-lifecycle.md) | 41 | 41 | ✅ complete |
 |  | [10b-input-validation-dialogs](matrix-dialog/10b-input-validation-dialogs.md) | 29 | 29 | ✅ complete |
 |  | [10c-settings-export-informational-dialogs](matrix-dialog/10c-settings-export-informational-dialogs.md) | 21 | 21 | ✅ complete |
-|  | [10d-font-chooser-core-model](matrix-dialog/10d-font-chooser-core-model.md) | 11 | 12 | in progress |
+|  | [10d-font-chooser-core-model](matrix-dialog/10d-font-chooser-core-model.md) | 12 | 12 | ✅ complete |
 |  | [10e-font-chooser-panes-listeners](matrix-dialog/10e-font-chooser-panes-listeners.md) | 5 | 5 | ✅ complete |
 | 11 · ui/menu+playback+platform+ui | [11a-ui-menu-menu-construction-controller](matrix-menu/11a-ui-menu-menu-construction-controller.md) | 18 | 18 | ✅ complete |
 |  | [11b-ui-playback-transport-midi-controller-play-thread](matrix-menu/11b-ui-playback-transport-midi-controller-play-thread.md) | 41 | 41 | ✅ complete |
@@ -65,9 +65,9 @@
 |  | [11d-musiceditoperations-top-level-ui](matrix-menu/11d-musiceditoperations-top-level-ui.md) | 40 | 40 | ✅ complete |
 |  | [11e-appearance-dialog-helpers-top-level-ui](matrix-menu/11e-appearance-dialog-helpers-top-level-ui.md) | 8 | 8 | ✅ complete |
 |  | [11f-display-constants-top-level-ui](matrix-menu/11f-display-constants-top-level-ui.md) | 17 | 17 | ✅ complete |
-| 12 · lifecycle+error+top-level | [12a-lifecycle-shutdown-error-runtimeerror](matrix-lifecycle/12a-lifecycle-shutdown-error-runtimeerror.md) | 7 | 8 | in progress |
-|  | [12b-songscribe](matrix-lifecycle/12b-songscribe.md) | 24 | 25 | in progress |
+| 12 · lifecycle+error+top-level | [12a-lifecycle-shutdown-error-runtimeerror](matrix-lifecycle/12a-lifecycle-shutdown-error-runtimeerror.md) | 8 | 8 | ✅ complete |
+|  | [12b-songscribe](matrix-lifecycle/12b-songscribe.md) | 24 | 24 | ✅ complete · 1 skipped |
 | 13 · e2e reconciliation | [13a-elementinsertiontest](matrix-e2e/13a-elementinsertiontest.md) | 6 | 6 | ✅ complete |
-|  | [13b-selectiontest](matrix-e2e/13b-selectiontest.md) | 0 | 1 | not started |
+|  | [13b-selectiontest](matrix-e2e/13b-selectiontest.md) | 1 | 1 | ✅ complete |
 |  | [13c-noteconnectiontest](matrix-e2e/13c-noteconnectiontest.md) | 3 | 3 | ✅ complete |
 |  | [13d-dialogstest](matrix-e2e/13d-dialogstest.md) | 4 | 4 | ✅ complete |

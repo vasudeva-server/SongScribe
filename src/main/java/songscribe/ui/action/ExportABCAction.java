@@ -216,8 +216,10 @@ public final class ExportABCAction extends UIAction {
     }
 
     public static String translateTempo(Tempo tempo) {
+        // The ABC 2.1 Q: field wraps the tempo description in double quotes
+        // (e.g. Q:"Allegro" 1/4=120), not single quotes.
         if (!tempo.shouldShowTempo()) {
-            return '\'' + tempo.getTempoDescription() + '\'';
+            return '"' + tempo.getTempoDescription() + '"';
         }
         var fraction = translateUnitLength(
             tempo.getTempoType().getNote().getDuration(),
@@ -227,9 +229,9 @@ public final class ExportABCAction extends UIAction {
             fraction.asAbcString() +
                 '=' +
                 tempo.getVisibleTempo() +
-                " '" +
+                " \"" +
                 tempo.getTempoDescription() +
-                '\''
+                '"'
         );
     }
 

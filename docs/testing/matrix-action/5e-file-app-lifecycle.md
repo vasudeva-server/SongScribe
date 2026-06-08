@@ -16,7 +16,7 @@
 | `SaveAction` | `actionPerformed` posts `SaveCommand` on the message bus | unit | none | missing | write test: subscribe handler; call `actionPerformed`; assert `SaveCommand` posted | ✅ |
 | `SaveAsAction` | `actionPerformed` posts `SaveAsCommand` on the message bus | unit | none | missing | write test: subscribe handler; call `actionPerformed`; assert `SaveAsCommand` posted | ✅ |
 | `SaveAsAction` | constructor sets `DISABLE_WHEN_PLAYING`, `DISABLE_IN_GRACE_MODE`, and `OPENS_DIALOG` flags | unit | none | missing | assert all three flags present | ✅ |
-| `CloseWindowAction` | `actionPerformed` calls `Shutdown.now()` (same entry point as `QuitAction`) | e2e | `ShutdownTest.quitActionTriggersShutdown` (tests `QuitAction`, not `CloseWindowAction`) | missing | add e2e test: dispatch `CloseWindowAction.actionPerformed` on clean doc; assert sentinel fires | ⬜ |
+| `CloseWindowAction` | `actionPerformed` calls `Shutdown.now()` (same entry point as `QuitAction`) | e2e | `ShutdownTest.quitActionTriggersShutdown` (tests `QuitAction`, not `CloseWindowAction`) | missing | add e2e test: dispatch `CloseWindowAction.actionPerformed` on clean doc; assert sentinel fires | ✅ |
 | `QuitAction` | `actionPerformed` calls `Shutdown.now()` | e2e | `ShutdownTest.quitActionTriggersShutdown` | adequate | keep | — |
 | `QuitAction` | constructor sets platform-appropriate name and accelerator (none on macOS, Alt+F4 elsewhere) | unit | none | missing | assert `NAME` and accelerator match platform | ✅ |
 | `QuitAction` | constructor sets no disabling flags (quit always enabled) | unit | none | missing | assert `!hasFlag(DISABLE_WHEN_PLAYING)` etc. | ✅ |

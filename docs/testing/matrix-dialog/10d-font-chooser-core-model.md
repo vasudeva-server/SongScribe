@@ -22,7 +22,7 @@
 | `FontSelectionModel` | Interface — contract tested via `DefaultFontSelectionModel` (the only impl) | none | — | — | No test warranted | — |
 | `FontContainer` | Interface — pure wiring contract; implemented by `FontChooser` (Swing composition) | none | — | — | No test warranted | — |
 | `FontChooser` | Swing layout and listener wiring (`initPanes`, `addComponents`, `setSelectionModel`) — pure display wiring, no branching logic | none | — | — | No test warranted | — |
-| `FontChooser` | `setSelectedFont` temporarily removes all three `ListSelectionListener`s before updating the model, then re-adds via `initPanes` — cross-component Swing wiring; bug only observable in the real event pipeline | e2e | none | missing | Write e2e test (requires user approval): set a font on `FontChooser`, verify no listener-triggered re-entry occurs and the pane selections reflect the new font | ⬜ |
+| `FontChooser` | `setSelectedFont` temporarily removes all three `ListSelectionListener`s before updating the model, then re-adds via `initPanes` — cross-component Swing wiring; bug only observable in the real event pipeline | e2e | none | missing | Write e2e test (requires user approval): set a font on `FontChooser`, verify no listener-triggered re-entry occurs and the pane selections reflect the new font | ✅ |
 
 **Notes**
 

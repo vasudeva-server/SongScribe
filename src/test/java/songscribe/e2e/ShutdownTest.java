@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.lifecycle.Shutdown;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.CloseWindowAction;
 import songscribe.ui.component.MainFrame;
 
 /**
@@ -75,6 +76,24 @@ class ShutdownTest extends E2ETest {
     void resetState() {
         SENTINEL_FIRED.set(false);
         resetSong();
+    }
+
+    /**
+     * E0: CloseWindowAction — a distinct quit entry point built fresh in the File menu
+     * rather than exposed as an {@code Actions} singleton — also funnels through
+     * {@link Shutdown#now()}. On a clean doc the save-dirty-doc confirm passes and the
+     * sentinel fires (and vetoes), proving the wiring matches {@code QuitAction}.
+     */
+    @Test
+    void closeWindowActionTriggersShutdown() {
+        GuiActionRunner.execute(() -> {
+            var closeAction = CloseWindowAction.createAction(MainFrame.getInstance());
+            closeAction.actionPerformed(
+                new ActionEvent(closeAction, ActionEvent.ACTION_PERFORMED, ""));
+        });
+
+        assertThat(SENTINEL_FIRED).isTrue();
+        assertThat(MainFrame.getInstance().isEnabled()).isTrue(); // veto path: frame stays enabled
     }
 
     /** E1: QuitAction now triggers Shutdown.now() (was a no-op before this change). */

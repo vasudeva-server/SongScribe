@@ -28,7 +28,7 @@ Audited by reading each class body symbol-by-symbol via serena, then verifying e
 | `Shutdown` | e2e: `QuitAction.actionPerformed` → `Shutdown.now()` → registry triggered | e2e | `e2e/ShutdownTest.quitActionTriggersShutdown` | adequate | — | — |
 | `Shutdown` | e2e: `windowClosing` on dirty doc + suppressed save dialog vetoes shutdown, frame stays alive | e2e | `e2e/ShutdownTest.windowCloseOnDirtyDocCancelKeepsAppAlive` | adequate | — | — |
 | `Shutdown` | e2e: `windowClosing` on clean doc passes save-check, proceeds to sentinel | e2e | `e2e/ShutdownTest.windowCloseOnCleanDocProgressesPastSaveCheck` | adequate | — | — |
-| `Shutdown` | e2e: `CloseWindowAction.actionPerformed` → `Shutdown.now()` (quit entry point wiring) | e2e | none | missing | Add e2e test dispatching `CloseWindowAction` and asserting sentinel fires | ⬜ |
+| `Shutdown` | e2e: `CloseWindowAction.actionPerformed` → `Shutdown.now()` (quit entry point wiring) | e2e | none | missing | Add e2e test dispatching `CloseWindowAction` and asserting sentinel fires | ✅ |
 | `Shutdown` | e2e: macOS Desktop `setQuitHandler` → `Shutdown.now()` | none | — | — | Platform-specific integration; untestable in CI without macOS runtime hook | — |
 | `RuntimeError` | `exit(String)` logs the message at ERROR level before showing dialog | unit | none | missing | Use `LogCaptor` or similar to assert the message appears in the log at ERROR; mock/stub `System.exit` | ✅ |
 | `RuntimeError` | `exit(String, Throwable)` logs message+cause at ERROR level | unit | none | missing | Same approach as above with a cause throwable | ✅ |
