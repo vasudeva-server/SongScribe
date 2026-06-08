@@ -2635,3 +2635,10 @@ ModeTest.testIsAdjustmentModeReturnsFalseForSelect	11f	add: Mode.SELECT.isAdjust
 ModeTest.testIsAdjustmentModeReturnsFalseForEdit	11f	add: Mode.EDIT.isAdjustmentMode() returns false
 FlatLafPropsTest.testGetThrowsWhenKeyIsAbsent	11f	add: FlatLafProps.get throws RuntimeError for missing key
 FlatLafPropsTest.testGetReturnsTypedValueWhenKeyPresent	11f	add: FlatLafProps.get returns typed value for known key
+ShutdownTest.nowThrowsWhenCalledOffEdt	12a	add: Shutdown.now() throws IllegalStateException when called off the EDT
+ShutdownTest.runJvmTasksFromHookSwallowsEscapingError	12a	add: Shutdown.runJVMTasksFromHook() swallows any escaping Error from a JVM task
+RuntimeErrorTest.testExitLogsMessageAtErrorLevel	12a	add: RuntimeError.exit(String) logs message at ERROR level
+RuntimeErrorTest.testExitWithCauseLogsMessageAndCauseAtErrorLevel	12a	add: RuntimeError.exit(String, Throwable) logs message+cause at ERROR level
+RuntimeErrorTest.testShowDialogAndExitCasSucceedsExitHandlerInvoked	12a	add: RuntimeError.showDialogAndExit() CAS succeeds on first call; exit handler invoked with -1
+RuntimeErrorTest.testShowDialogAndExitReentrantCallThrowsExitInProgressError	12a	add: RuntimeError.showDialogAndExit() re-entrant call throws ExitInProgressError
+RuntimeErrorTest.testExitInProgressErrorExtendsErrorWithNoStackTrace	12a	add: ExitInProgressError extends Error with no stack trace and no suppressed

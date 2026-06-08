@@ -20,12 +20,15 @@
 package songscribe.lifecycle;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -312,5 +315,43 @@ class ShutdownTest {
         Shutdown.runJVMTasksFromHook();
 
         assertThat(log).containsExactly("j1");
+    }
+
+    // 19. now() called from a non-EDT thread throws IllegalStateException.
+    @Test
+    void nowThrowsWhenCalledOffEdt() throws InterruptedException {
+        var caught = new AtomicReference<Throwable>();
+        var done = new CountDownLatch(1);
+
+        var thread = new Thread(() -> {
+            try {
+                Shutdown.now();
+            } catch (Throwable t) {
+                caught.set(t);
+            } finally {
+                done.countDown();
+            }
+        });
+        thread.start();
+        done.await();
+
+        assertThat(caught.get())
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("EDT");
+    }
+
+    // 20. runJVMTasksFromHook() swallows any Error that escapes a JVM task (boundary catch).
+    @Test
+    void runJvmTasksFromHookSwallowsEscapingError() {
+        var afterThrowRan = new AtomicBoolean(false);
+
+        Shutdown.registerJVMTask("throwing", () -> { throw new Error("simulated hook error"); });
+        Shutdown.registerJVMTask("afterThrow", () -> afterThrowRan.set(true));
+
+        // Must not throw — outer catch in runJVMTasksFromHook swallows the Error.
+        assertThatCode(Shutdown::runJVMTasksFromHook).doesNotThrowAnyException();
+
+        // The error-throwing task runs last (LIFO), so afterThrow ran first.
+        assertThat(afterThrowRan).isTrue();
     }
 }
