@@ -21,6 +21,7 @@ package songscribe;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 
 import java.io.ByteArrayOutputStream;
@@ -31,7 +32,10 @@ import java.lang.reflect.Constructor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+
+import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -857,6 +861,62 @@ class SongScribeTest extends UnitTest {
             assertThatCode(() ->
                 handler.uncaughtException(testThread, exitInProgress)
             ).doesNotThrowAnyException();
+        }
+
+        // -----------------------------------------------------------------------
+        // main — uncaught exception handler dispatches via invokeLater on non-EDT (row 29)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testUncaughtExceptionHandlerDispatchesViaInvokeLaterOnNonEdtThread() {
+            // Install the uncaught exception handler by running main with a converter arg.
+            try (var imageConverterMock = mockStatic(ImageConverter.class)) {
+                SongScribe.main(new String[]{"image_converter"});
+            }
+
+            var handler = Thread.getDefaultUncaughtExceptionHandler();
+            assertThat(handler)
+                .as("main must install a default uncaught exception handler")
+                .isNotNull();
+
+            if (handler == null) {
+                return; // unreachable — satisfies NullAway
+            }
+
+            // Capture the Runnable passed to invokeLater to verify it is called
+            // for a non-ExitInProgressError throwable on a non-EDT thread.
+            var capturedRunnable = new AtomicReference<Runnable>();
+
+            try (var swingMock = mockStatic(SwingUtilities.class)) {
+                // Simulate being called from a background thread (not the EDT).
+                swingMock.when(SwingUtilities::isEventDispatchThread).thenReturn(false);
+                swingMock.when(() -> SwingUtilities.invokeLater(any(Runnable.class)))
+                    .thenAnswer(invocation -> {
+                        capturedRunnable.set(invocation.getArgument(0));
+                        return null;
+                    });
+
+                handler.uncaughtException(Thread.currentThread(), new RuntimeException("background error"));
+            }
+
+            assertThat(capturedRunnable.get())
+                .as("uncaught exception handler must schedule the error handler via invokeLater on a non-EDT thread")
+                .isNotNull();
+        }
+
+        // -----------------------------------------------------------------------
+        // main — swing.actions.reconfigureOnNull always set to "true" (row 30)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testMainSetsReconfigureOnNullToTrue() {
+            try (var imageConverterMock = mockStatic(ImageConverter.class)) {
+                SongScribe.main(new String[]{"image_converter"});
+            }
+
+            assertThat(System.getProperty(PROP_RECONFIGURE_ON_NULL))
+                .as("main must set swing.actions.reconfigureOnNull to \"true\"")
+                .isEqualTo("true");
         }
     }
 }

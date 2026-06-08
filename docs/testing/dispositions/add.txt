@@ -2665,3 +2665,6 @@ SongScribeTest$WhenMain.testMainLogsBannerWithConverterTitleForConverterApp	12b	
 SongScribeTest$WhenMain.testMainLogsBannerWithDefaultTitleForNonConverterApp	12b	add: SongScribe.main() passes "SongScribe" to logBanner when app is "sw" (no "converter")
 SongScribeTest$WhenMain.testMainSetsMacOsSystemPropertiesOnMacOs	12b	add: SongScribe.main() sets apple.laf.useScreenMenuBar and apple.awt.application.appearance on macOS
 SongScribeTest$WhenMain.testUncaughtExceptionHandlerSwallowsExitInProgressError	12b	add: SongScribe.main() installs uncaught handler that silently swallows ExitInProgressError
+SongScribeTest$WhenMain.testUncaughtExceptionHandlerDispatchesViaInvokeLaterOnNonEdtThread	12b	add: SongScribe.main() uncaught handler dispatches RuntimeError.exit via invokeLater on non-EDT thread
+SongScribeTest$WhenMain.testMainSetsReconfigureOnNullToTrue	12b	add: SongScribe.main() always sets swing.actions.reconfigureOnNull to "true"
+FileExtensionsTest.testSongwriterConstantIsCorrectExtension	12b	add: FileExtensions.SONGWRITER constant equals "mssw"

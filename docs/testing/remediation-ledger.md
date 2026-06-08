@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 1468 / 1564 actionable rows done (93%).**
+**Overall: 1471 / 1564 actionable rows done (94%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -66,7 +66,7 @@
 |  | [11e-appearance-dialog-helpers-top-level-ui](matrix-menu/11e-appearance-dialog-helpers-top-level-ui.md) | 8 | 8 | ✅ complete |
 |  | [11f-display-constants-top-level-ui](matrix-menu/11f-display-constants-top-level-ui.md) | 17 | 17 | ✅ complete |
 | 12 · lifecycle+error+top-level | [12a-lifecycle-shutdown-error-runtimeerror](matrix-lifecycle/12a-lifecycle-shutdown-error-runtimeerror.md) | 7 | 8 | in progress |
-|  | [12b-songscribe](matrix-lifecycle/12b-songscribe.md) | 21 | 25 | in progress |
+|  | [12b-songscribe](matrix-lifecycle/12b-songscribe.md) | 24 | 25 | in progress |
 | 13 · e2e reconciliation | [13a-elementinsertiontest](matrix-e2e/13a-elementinsertiontest.md) | 0 | 6 | not started |
 |  | [13b-selectiontest](matrix-e2e/13b-selectiontest.md) | 0 | 1 | not started |
 |  | [13c-noteconnectiontest](matrix-e2e/13c-noteconnectiontest.md) | 0 | 3 | not started |
