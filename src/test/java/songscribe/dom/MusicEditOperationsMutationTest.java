@@ -512,6 +512,188 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // canMakeFirstSecondEnding — validateEndingStructure: region content failures
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsFalseWhenFirstEndingRegionHasBarline() {
+        // First ending region (between selection start and the right-repeat) contains a
+        // SINGLE_BARLINE; validateEndingRegionContent returns false → validateEndingStructure
+        // returns -1 → canMakeFirstSecondEnding returns invalid.
+        //
+        // Layout: [CROTCHET(0), CROTCHET(1), SINGLE_BARLINE(2), CROTCHET(3),
+        //          REPEAT_RIGHT(4), CROTCHET(5), CROTCHET(6), SINGLE_BARLINE(7)]
+        // Selection 0–7. firstEndingStart=0 (CROTCHET), region=[0..3].
+        // Index 2 is SINGLE_BARLINE → validateEndingRegionContent returns false.
+        var env = setupEnv(
+            crotchet(), crotchet(), singleBarline(), crotchet(),
+            repeatRight(), crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 7);
+        assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+            .as("canMakeFirstSecondEnding() must return invalid when first ending region contains a barline")
+            .isFalse();
+    }
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsFalseWhenFirstEndingRegionEmpty() {
+        // First ending region is empty: selection starts with SINGLE_BARLINE, the very next
+        // element is REPEAT_RIGHT, so firstEndingStart == rightRepeatIndex → validateEndingRegionContent
+        // is called with from > to → hasContent stays false → returns false.
+        //
+        // Layout: [SINGLE_BARLINE(0), REPEAT_RIGHT(1), CROTCHET(2), CROTCHET(3),
+        //          CROTCHET(4), CROTCHET(5), SINGLE_BARLINE(6)]
+        // Selection 0–6. firstEndingStart=1 (adjusted past leading SINGLE_BARLINE),
+        // rightRepeatIndex=1 → region=[1..0] (empty) → validateEndingRegionContent returns false.
+        var env = setupEnv(
+            singleBarline(), repeatRight(), crotchet(), crotchet(),
+            crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 6);
+        assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+            .as("canMakeFirstSecondEnding() must return invalid when first ending region has no content elements")
+            .isFalse();
+    }
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsFalseWhenSecondEndingRegionHasBarline() {
+        // Second ending region (between right-repeat and terminal) contains a SINGLE_BARLINE;
+        // validateEndingRegionContent returns false → validateEndingStructure returns -1 → invalid.
+        //
+        // Layout: [CROTCHET(0), CROTCHET(1), REPEAT_RIGHT(2), CROTCHET(3),
+        //          SINGLE_BARLINE(4), CROTCHET(5), SINGLE_BARLINE(6)]
+        // Selection 0–6. rightRepeatIndex=2, second region=[3..5].
+        // Index 4 is SINGLE_BARLINE → validateEndingRegionContent returns false.
+        var env = setupEnv(
+            crotchet(), crotchet(), repeatRight(), crotchet(),
+            singleBarline(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 6);
+        assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+            .as("canMakeFirstSecondEnding() must return invalid when second ending region contains a barline")
+            .isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // canMakeFirstSecondEnding — hasOverlap: existing ending in selection range
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsFalseWhenSelectionOverlapsExistingEnding() {
+        // A line with an existing Ending span; the candidate selection overlaps it.
+        // hasOverlap returns true → canMakeFirstSecondEnding returns invalid.
+        //
+        // Layout: [REPEAT_LEFT(0), CROTCHET(1), CROTCHET(2), REPEAT_RIGHT(3),
+        //          CROTCHET(4), CROTCHET(5), SINGLE_BARLINE(6)]
+        // An Ending is pre-added from element[1] to element[6].
+        // Selection 1–6. Stage 1 passes (structural validation OK); stage 2 (hasOverlap) detects
+        // the existing ending → returns invalid.
+        var env = setupEnv(
+            repeatLeft(), crotchet(), crotchet(), repeatRight(),
+            crotchet(), crotchet(), singleBarline()
+        );
+        var line = env.line();
+        // Add an existing Ending spanning the same range so hasOverlap fires.
+        song.withoutMutationTracking(
+            () -> line.addRangeElement(new Ending(line.getElement(1), line.getElement(6))));
+        ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
+        assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+            .as("canMakeFirstSecondEnding() must return invalid when selection overlaps an existing ending")
+            .isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // canMakeFirstSecondEnding — checkPrecedingElement branches
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsNoneWhenPrecedingContentAndSelectionStartsWithBarline() {
+        // checkPrecedingElement: preceding element is a content note; selection starts with
+        // SINGLE_BARLINE → action is NONE (no barline insertion needed), result is valid.
+        //
+        // Layout: [REPEAT_LEFT(0), CROTCHET(1), SINGLE_BARLINE(2), CROTCHET(3),
+        //          REPEAT_RIGHT(4), CROTCHET(5), CROTCHET(6), SINGLE_BARLINE(7)]
+        // Selection 2–7. Preceding element at index 1 is CROTCHET (content).
+        // selectionBeginType = SINGLE_BARLINE → NONE action.
+        var env = setupEnv(
+            repeatLeft(), crotchet(), singleBarline(), crotchet(),
+            repeatRight(), crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 2, 7);
+        var result = env.operations().canMakeFirstSecondEnding();
+        assertThat(result.isValid())
+            .as("canMakeFirstSecondEnding() must be valid when preceding content + selection starts with barline")
+            .isTrue();
+        assertThat(result.getPrecedingAction())
+            .as("preceding action must be NONE when selection already starts with a barline")
+            .isEqualTo(EndingValidationResult.PrecedingAction.NONE);
+        assertThat(result.getSpanStart())
+            .as("span start must be the selection begin index")
+            .isEqualTo(2);
+        assertThat(result.getSpanEnd())
+            .as("span end must be the selection end index")
+            .isEqualTo(7);
+    }
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsInsertBarlineWhenPrecedingContentAndSelectionStartsWithNote() {
+        // checkPrecedingElement: preceding element is content; selection starts with a note
+        // (not a barline or left repeat) → action is INSERT_BARLINE, result is valid.
+        //
+        // Layout: [REPEAT_LEFT(0), CROTCHET(1), CROTCHET(2), CROTCHET(3),
+        //          REPEAT_RIGHT(4), CROTCHET(5), CROTCHET(6), SINGLE_BARLINE(7)]
+        // Selection 2–7. Preceding element at index 1 is CROTCHET (content).
+        // selectionBeginType = CROTCHET → INSERT_BARLINE action.
+        var env = setupEnv(
+            repeatLeft(), crotchet(), crotchet(), crotchet(),
+            repeatRight(), crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 2, 7);
+        var result = env.operations().canMakeFirstSecondEnding();
+        assertThat(result.isValid())
+            .as("canMakeFirstSecondEnding() must be valid when preceding content + selection starts with note")
+            .isTrue();
+        assertThat(result.getPrecedingAction())
+            .as("preceding action must be INSERT_BARLINE when selection starts with a note after content")
+            .isEqualTo(EndingValidationResult.PrecedingAction.INSERT_BARLINE);
+        assertThat(result.getSpanStart())
+            .as("span start must be the selection begin index")
+            .isEqualTo(2);
+        assertThat(result.getSpanEnd())
+            .as("span end must be the selection end index")
+            .isEqualTo(7);
+    }
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsExtendSpanWhenPrecedingElementIsBarline() {
+        // checkPrecedingElement: preceding element is SINGLE_BARLINE → action is EXTEND_SPAN;
+        // the span start is extended backward to include the preceding barline.
+        //
+        // Layout: [REPEAT_LEFT(0), CROTCHET(1), SINGLE_BARLINE(2), CROTCHET(3),
+        //          REPEAT_RIGHT(4), CROTCHET(5), CROTCHET(6), SINGLE_BARLINE(7)]
+        // Selection 3–7. Preceding element at index 2 is SINGLE_BARLINE → EXTEND_SPAN;
+        // spanStart extends back to 2.
+        var env = setupEnv(
+            repeatLeft(), crotchet(), singleBarline(), crotchet(),
+            repeatRight(), crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 3, 7);
+        var result = env.operations().canMakeFirstSecondEnding();
+        assertThat(result.isValid())
+            .as("canMakeFirstSecondEnding() must be valid when preceding element is a barline")
+            .isTrue();
+        assertThat(result.getPrecedingAction())
+            .as("preceding action must be EXTEND_SPAN when preceding element is a barline")
+            .isEqualTo(EndingValidationResult.PrecedingAction.EXTEND_SPAN);
+        assertThat(result.getSpanStart())
+            .as("span start must be extended back to the preceding barline index")
+            .isEqualTo(2);
+        assertThat(result.getSpanEnd())
+            .as("span end must remain the selection end index")
+            .isEqualTo(7);
+    }
+
+    // -----------------------------------------------------------------------
     // Trill
     // -----------------------------------------------------------------------
 

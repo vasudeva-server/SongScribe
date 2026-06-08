@@ -107,3 +107,5 @@ modify StyleEntry.hashCode [changed from font.hashCode() to font.getPSName().has
 PlaybackActionsTest.testActionRemainsEnabledDuringPlaybackBecauseDisableWhenPlayingFlagIsAbsent	11b-ui-playback-transport-midi-controller-play-thread	PlayPauseAction DISABLE_WHEN_PLAYING flag absent — was inadequate (row 48)
 # 11d-musiceditoperations-top-level-ui row 30
 MusicEditOperationsMutationTest.testRemoveDynamicsEmitsRemovalPerSpan  # strengthened: assert exact counts (hasSize(1) each) instead of isNotEmpty()
+# 11d-musiceditoperations-top-level-ui row 53
+MusicEditOperationsMutationTest.testCanMakeFirstSecondEndingReturnsInsertBarlineWhenPrecedingContentAndSelectionStartsWithNote  # strengthened: directly asserts getPrecedingAction()==INSERT_BARLINE from canMakeFirstSecondEnding() return value
