@@ -21,8 +21,10 @@ package songscribe;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.function.Function;
 
 import javax.swing.SwingUtilities;
 
@@ -44,13 +46,16 @@ public final class SongScribe {
 
     private SongScribe() {}
 
-    private static @Nullable String resolveLogDir() {
+    // Package-private for testing: look up a platform-specific log directory,
+    // creating it if it does not already exist, and return its path. Returns
+    // null if the directory could not be created.
+    static @Nullable String resolveLogDir(Function<String, @Nullable String> env) {
         String dir;
 
         if (SystemInfo.isMacOS) {
             dir = System.getProperty("user.home") + "/Library/Logs/SongScribe";
         } else if (SystemInfo.isWindows) {
-            var appData = System.getenv("APPDATA");
+            var appData = env.apply("APPDATA");
             dir = (appData != null ? appData : System.getProperty("user.home")) + "/SongScribe/Logs";
         } else {
             dir = System.getProperty("user.home") + "/.songscribe/logs";
@@ -67,14 +72,19 @@ public final class SongScribe {
     }
 
     public static void configureLogging() {
-        if (System.getenv("CONSOLE_LOG") != null) {
-            var url = SongScribe.class.getResource("/logback-console.xml");
+        configureLogging(System::getenv, SongScribe.class.getResource("/logback-console.xml"));
+    }
 
-            if (url != null) {
-                System.setProperty("logback.configurationFile", url.toString());
+    // Package-private for testing: accepts an env-var provider and console-log
+    // resource URL so tests can supply controlled values without relying on actual
+    // OS environment variables or classpath resources.
+    static void configureLogging(Function<String, @Nullable String> env, @Nullable URL consoleLogUrl) {
+        if (env.apply("CONSOLE_LOG") != null) {
+            if (consoleLogUrl != null) {
+                System.setProperty("logback.configurationFile", consoleLogUrl.toString());
             }
         } else {
-            var logDir = resolveLogDir();
+            var logDir = resolveLogDir(env);
 
             if (logDir != null) {
                 System.setProperty("songscribe.log.dir", logDir);
@@ -84,7 +94,7 @@ public final class SongScribe {
             // fails to initialize → only CONSOLE appender activates.
         }
 
-        var logLevel = System.getenv("LOG_LEVEL");
+        var logLevel = env.apply("LOG_LEVEL");
 
         if (logLevel != null) {
             System.setProperty("songscribe.log.level", logLevel.toUpperCase());

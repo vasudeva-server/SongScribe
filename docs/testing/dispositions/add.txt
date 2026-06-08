@@ -2642,3 +2642,10 @@ RuntimeErrorTest.testExitWithCauseLogsMessageAndCauseAtErrorLevel	12a	add: Runti
 RuntimeErrorTest.testShowDialogAndExitCasSucceedsExitHandlerInvoked	12a	add: RuntimeError.showDialogAndExit() CAS succeeds on first call; exit handler invoked with -1
 RuntimeErrorTest.testShowDialogAndExitReentrantCallThrowsExitInProgressError	12a	add: RuntimeError.showDialogAndExit() re-entrant call throws ExitInProgressError
 RuntimeErrorTest.testExitInProgressErrorExtendsErrorWithNoStackTrace	12a	add: ExitInProgressError extends Error with no stack trace and no suppressed
+SongScribeTest$WhenConsoleLogSet.testConsoleLogWithResourceSetsLogbackConfigProperty	12b	add: SongScribe.configureLogging() CONSOLE_LOG set + real URL sets logback.configurationFile
+SongScribeTest$WhenConsoleLogSet.testConsoleLogWithNullResourceDoesNotSetLogbackConfigProperty	12b	add: SongScribe.configureLogging() CONSOLE_LOG set + null URL does not set logback.configurationFile
+SongScribeTest$WhenConsoleLogAbsent.testResolvedLogDirSetsLogDirProperty	12b	add: SongScribe.configureLogging() CONSOLE_LOG absent + resolved dir sets songscribe.log.dir
+SongScribeTest$WhenConsoleLogAbsent.testUnresolvableLogDirDoesNotSetLogDirProperty	12b	add: SongScribe.configureLogging() CONSOLE_LOG absent + unresolvable dir does not set songscribe.log.dir
+SongScribeTest$WhenLogLevelSet.testLogLevelEnvSetToUppercasedProperty	12b	add: SongScribe.configureLogging() LOG_LEVEL env set → property uppercased
+SongScribeTest$WhenLogLevelSet.testLogLevelAbsentDoesNotSetProperty	12b	add: SongScribe.configureLogging() LOG_LEVEL absent → songscribe.log.level not set
+SongScribeTest$ResolveLogDir.testMacOsPathEndsWithLibraryLogsSongScribe	12b	add: SongScribe.resolveLogDir() on macOS constructs path ending with Library/Logs/SongScribe
