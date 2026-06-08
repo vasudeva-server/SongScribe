@@ -107,7 +107,7 @@ public final class EndingConfirms {
         return result == 0;
     }
 
-    private static String typeNameFor(ElementType type) {
+    static String typeNameFor(ElementType type) {
         return Strings.get(switch (type) {
             case REPEAT_RIGHT -> Strings.ELEMENT_TYPE_NAME_RIGHT_REPEAT;
             case REPEAT_LEFT_RIGHT -> Strings.ELEMENT_TYPE_NAME_LEFT_RIGHT_REPEAT;

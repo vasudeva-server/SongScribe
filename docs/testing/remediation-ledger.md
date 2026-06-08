@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 1415 / 1564 actionable rows done (90%).**
+**Overall: 1423 / 1564 actionable rows done (90%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -63,7 +63,7 @@
 |  | [11b-ui-playback-transport-midi-controller-play-thread](matrix-menu/11b-ui-playback-transport-midi-controller-play-thread.md) | 41 | 41 | ✅ complete |
 |  | [11c-ui-platform-mac-native-macos-menu-integration](matrix-menu/11c-ui-platform-mac-native-macos-menu-integration.md) | 7 | 7 | ✅ complete |
 |  | [11d-musiceditoperations-top-level-ui](matrix-menu/11d-musiceditoperations-top-level-ui.md) | 40 | 40 | ✅ complete |
-|  | [11e-appearance-dialog-helpers-top-level-ui](matrix-menu/11e-appearance-dialog-helpers-top-level-ui.md) | 0 | 8 | not started |
+|  | [11e-appearance-dialog-helpers-top-level-ui](matrix-menu/11e-appearance-dialog-helpers-top-level-ui.md) | 8 | 8 | ✅ complete |
 |  | [11f-display-constants-top-level-ui](matrix-menu/11f-display-constants-top-level-ui.md) | 0 | 17 | not started |
 | 12 · lifecycle+error+top-level | [12a-lifecycle-shutdown-error-runtimeerror](matrix-lifecycle/12a-lifecycle-shutdown-error-runtimeerror.md) | 0 | 8 | not started |
 |  | [12b-songscribe](matrix-lifecycle/12b-songscribe.md) | 0 | 25 | not started |

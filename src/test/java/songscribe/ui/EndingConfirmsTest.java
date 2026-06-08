@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
+import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.PasteboardOpCommand;
 import songscribe.dom.Song;
@@ -347,6 +348,67 @@ class EndingConfirmsTest extends MainFrameMockTest {
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getRangeElements()).contains(env.ending());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // typeNameFor — all four ElementType branches
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TypeNameFor {
+
+        @Test
+        void testRepeatRightReturnsRightRepeatName() {
+            assertThat(EndingConfirms.typeNameFor(ElementType.REPEAT_RIGHT))
+                .isEqualTo(Strings.get(Strings.ELEMENT_TYPE_NAME_RIGHT_REPEAT));
+        }
+
+        @Test
+        void testRepeatLeftRightReturnsLeftRightRepeatName() {
+            assertThat(EndingConfirms.typeNameFor(ElementType.REPEAT_LEFT_RIGHT))
+                .isEqualTo(Strings.get(Strings.ELEMENT_TYPE_NAME_LEFT_RIGHT_REPEAT));
+        }
+
+        @Test
+        void testRepeatLeftReturnsLeftRepeatName() {
+            assertThat(EndingConfirms.typeNameFor(ElementType.REPEAT_LEFT))
+                .isEqualTo(Strings.get(Strings.ELEMENT_TYPE_NAME_LEFT_REPEAT));
+        }
+
+        @Test
+        void testDefaultElementTypeReturnsBarlineName() {
+            // Any non-repeat type falls through to the default barline branch
+            assertThat(EndingConfirms.typeNameFor(ElementType.SINGLE_BARLINE))
+                .isEqualTo(Strings.get(Strings.ELEMENT_TYPE_NAME_BARLINE));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // applyCompensatingChange — null targetEl guard
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ApplyCompensatingChangeNullGuard {
+
+        @Test
+        void testNullEndElementSkipsSilently() {
+            // An ending whose end element is null causes getEndElement() to return null,
+            // so applyCompensatingEndChange must return without modifying the line.
+            var fixture = EndingLineFixture.primary();
+            var line = fixture.line();
+            var elementCountBefore = line.elementCount();
+
+            // Detach the end element from the ending so getEndElement() returns null.
+            fixture.ending().setEndElement(null);
+
+            var ce = new Ending.EndingEffect.CompensateEnd(fixture.ending(), ElementType.REPEAT_RIGHT);
+            EndingConfirms.applyCompensatingEndChange(line, ce);
+
+            // Line must be untouched — the null guard fired and returned early.
+            assertThat(line.elementCount()).isEqualTo(elementCountBefore);
         }
     }
 }

@@ -2577,3 +2577,20 @@ MusicEditOperationsMutationTest.testFlipStemDirectionDeduplicatesBeamGroupWhenPa
 MusicEditOperationsMutationTest.testFlipStemDirectionAlsoFlipsTiePartnersOutsideSelection	11d-musiceditoperations-top-level-ui	flipStemDirection: tie partners outside selection also flipped
 MusicEditOperationsMutationTest.testCanChangeTempoReturnsTrueWhenSingleNoteSelected	11d-musiceditoperations-top-level-ui	canChangeTempo delegates to coordinator — true when single note selected
 MusicEditOperationsMutationTest.testCanChangeTempoReturnsFalseWhenMultipleNotesSelected	11d-musiceditoperations-top-level-ui	canChangeTempo delegates to coordinator — false when range selected
+
+# 11e — Appearance & Dialog Helpers
+# EndingConfirms: typeNameFor branches + null guard
+add: EndingConfirmsTest.TypeNameFor.testRepeatRightReturnsRightRepeatName
+add: EndingConfirmsTest.TypeNameFor.testRepeatLeftRightReturnsLeftRightRepeatName
+add: EndingConfirmsTest.TypeNameFor.testRepeatLeftReturnsLeftRepeatName
+add: EndingConfirmsTest.TypeNameFor.testDefaultElementTypeReturnsBarlineName
+add: EndingConfirmsTest.ApplyCompensatingChangeNullGuard.testNullEndElementSkipsSilently
+# AppearanceManager: init/switchTheme error paths + double-registration guard
+add: AppearanceManagerTest.Init.testInitThrowsIllegalStateExceptionWhenInstallLafFails
+add: AppearanceManagerTest.SwitchTheme.testSwitchRevertsPreferenceWhenInstallLafFails
+add: AppearanceManagerTest.SwitchTheme.testRegisterOsListenerCalledOnlyOnceOnRepeatedSwitchToSystem
+# Appearance: fromKey all keys + unknown fallback
+add: AppearanceTest.testFromKeyReturnsSystemForSystemKey
+add: AppearanceTest.testFromKeyReturnsLightForLightKey
+add: AppearanceTest.testFromKeyReturnsDarkForDarkKey
+add: AppearanceTest.testFromKeyFallsBackToSystemForUnknownKey

@@ -263,7 +263,9 @@ class DialogsTest extends UnitTest {
         @Test
         void testShowOptionDialogReturnsClosedOption() {
             var result = OptionDialogs.showOptionDialog(
-                null, "Title", "Message",
+                null,
+                Strings.CONFIRM_TITLE_SAVE_CHANGES,
+                Strings.CONFIRM_SAVE_MODIFIED,
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
                 null, new String[]{"OK"}, "OK"
             );

@@ -40,11 +40,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -134,6 +137,17 @@ class AppearanceManagerTest extends UnitTest {
 
             verify(mockLafOps).installLaf(any(LookAndFeel.class));
             verify(mockDetector, never()).registerListener(any());
+        }
+
+        @Test
+        void testInitThrowsIllegalStateExceptionWhenInstallLafFails() throws Exception {
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
+            doThrow(new UnsupportedLookAndFeelException("test"))
+                .when(mockLafOps).installLaf(any());
+
+            assertThatThrownBy(AppearanceManager::init)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Failed to install initial look and feel");
         }
     }
 
@@ -229,6 +243,39 @@ class AppearanceManagerTest extends UnitTest {
             AppearanceManager.switchTheme(Appearance.SYSTEM);
 
             verify(mockDetector).registerListener(any());
+        }
+
+        @Test
+        void testSwitchRevertsPreferenceWhenInstallLafFails() throws UnsupportedLookAndFeelException {
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
+            doThrow(new UnsupportedLookAndFeelException("test"))
+                .when(mockLafOps).installLaf(any());
+
+            // showSnapshot is called before installLaf — we need that to succeed
+            AppearanceManager.switchTheme(Appearance.DARK);
+
+            // First put: optimistic write of new preference
+            prefsMock.verify(() -> Prefs.put(PrefsKey.APPEARANCE, Appearance.DARK.key()));
+            // Second put: revert to the old preference after installLaf failure
+            prefsMock.verify(() -> Prefs.put(PrefsKey.APPEARANCE, Appearance.LIGHT.key()));
+        }
+
+        @Test
+        void testRegisterOsListenerCalledOnlyOnceOnRepeatedSwitchToSystem() {
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
+            when(mockDetector.isDark()).thenReturn(false);
+
+            // First switch: LIGHT → SYSTEM — listener is registered and listenerRegistered = true
+            AppearanceManager.switchTheme(Appearance.SYSTEM);
+
+            // Second switch: preference appears to be DARK (so switchTheme is not a no-op),
+            // but the target is still SYSTEM — registerOsListener's listenerRegistered guard fires
+            prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.DARK.key());
+            AppearanceManager.switchTheme(Appearance.SYSTEM);
+
+            // registerListener must have been called exactly once — the guard in
+            // registerOsListener() blocks the second registration
+            verify(mockDetector, times(1)).registerListener(any());
         }
     }
 }
