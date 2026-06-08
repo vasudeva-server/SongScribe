@@ -20,3 +20,6 @@ StructuralTierStackingTest.testDiminuendoRangeElementProducesDecorationLayout	3f
 MyFontUtils.getXHeight → remove (dead code; confirmed zero callers, already deleted in 427405d1)
 BarlineMenuTest.testFinalDoubleBarlineItemReplacesTerminalWithoutConfirm → remove (redundant; no-confirm covered by FinalBarlineActionEnablementTest.testActionReplacesTerminalDirectlyWithoutConfirm)
 Prefs.testGetMapOnNonMapValueReturnsEmptyMap → remove (superseded by testGetMapReturnsEmptyMapWhenAbsentAndNoMapDefault)
+
+# 13d — e2e DialogsTest wrong-level removal
+e2e/DialogsTest.ConfirmDialog.testClickYesReturnsYesOption	13d	wrong-level — removed; YES_OPTION is direct JOptionPane return with no production mapping logic; unit coverage added in DialogsTest.WhenNotSuppressed

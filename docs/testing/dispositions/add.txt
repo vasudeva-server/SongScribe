@@ -2668,3 +2668,11 @@ SongScribeTest$WhenMain.testUncaughtExceptionHandlerSwallowsExitInProgressError	
 SongScribeTest$WhenMain.testUncaughtExceptionHandlerDispatchesViaInvokeLaterOnNonEdtThread	12b	add: SongScribe.main() uncaught handler dispatches RuntimeError.exit via invokeLater on non-EDT thread
 SongScribeTest$WhenMain.testMainSetsReconfigureOnNullToTrue	12b	add: SongScribe.main() always sets swing.actions.reconfigureOnNull to "true"
 FileExtensionsTest.testSongwriterConstantIsCorrectExtension	12b	add: FileExtensions.SONGWRITER constant equals "mssw"
+
+# 13c — NoteConnectionTest GlissandoSelection wrong-level unit work
+# getSelectedGlissandoElementIndex: missing unit coverage → added
+LineSelectionStateTest.testGetSelectedGlissandoElementIndexReturnsMinusOneInitiallyAndIndexAfterSelectGlissando	13c	add: selectGlissando(idx) sets getSelectedGlissandoElementIndex() to idx; initial value is -1
+
+# 13d — e2e DialogsTest wrong-level unit work
+# showConfirmDialog YES_OPTION positive path: missing unit coverage → added
+DialogsTest.WhenNotSuppressed.testShowConfirmDialogReturnsYesOptionWhenPaneReturnsYesOption	13d	add: showConfirmDialog returns YES_OPTION when pane.getValue() returns YES_OPTION (not CLOSED_OPTION, so no mapping applied)

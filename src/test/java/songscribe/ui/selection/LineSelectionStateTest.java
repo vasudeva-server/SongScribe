@@ -134,6 +134,22 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.isGlissandoSelected(0)).isFalse();
     }
 
+    // -- getSelectedGlissandoElementIndex --
+
+    @Test
+    void testGetSelectedGlissandoElementIndexReturnsMinusOneInitiallyAndIndexAfterSelectGlissando() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+
+        assertThat(state.getSelectedGlissandoElementIndex()).isEqualTo(-1);
+
+        state.selectGlissando(1);
+
+        assertThat(state.getSelectedGlissandoElementIndex()).isEqualTo(1);
+    }
+
     // -- hasGlissandoSelection --
 
     @Test

@@ -162,6 +162,28 @@ class DialogsTest extends UnitTest {
         }
 
         @Test
+        void testShowConfirmDialogReturnsYesOptionWhenPaneReturnsYesOption() {
+            var mockDialog = createMockDialog();
+
+            try (
+                var geMock = mockStatic(GraphicsEnvironment.class);
+                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) -> {
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getValue()).thenReturn(JOptionPane.YES_OPTION);
+                })
+            ) {
+                stubScreenBounds(geMock);
+
+                var result = OptionDialogs.showConfirmDialog(
+                    null, Strings.CONFIRM_TITLE_SAVE_CHANGES, Strings.CONFIRM_SAVE_MODIFIED,
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
+                );
+
+                assertThat(result).isEqualTo(JOptionPane.YES_OPTION);
+            }
+        }
+
+        @Test
         void testShowConfirmDialogTranslatesClosedOptionToCancelForYesNoCancelOption() {
             var mockDialog = createMockDialog();
 

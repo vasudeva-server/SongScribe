@@ -49,25 +49,6 @@ class DialogsTest extends E2ETest {
     class ConfirmDialog {
 
         @Test
-        void testClickYesReturnsYesOption() throws InterruptedException {
-            var result = new AtomicInteger();
-            var latch = new CountDownLatch(1);
-
-            SwingUtilities.invokeLater(() -> {
-                result.set(OptionDialogs.showConfirmDialog(
-                    MainFrame.getInstance(), Strings.CONFIRM_TITLE_SAVE_CHANGES, Strings.CONFIRM_SAVE_MODIFIED,
-                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
-                ));
-                latch.countDown();
-            });
-
-            JOptionPaneFinder.findOptionPane().using(robot).yesButton().click();
-            latch.await();
-
-            assertThat(result.get()).isEqualTo(JOptionPane.YES_OPTION);
-        }
-
-        @Test
         void testCloseWithYesNoOptionReturnsNoOption() throws InterruptedException {
             var result = new AtomicInteger();
             var latch = new CountDownLatch(1);
