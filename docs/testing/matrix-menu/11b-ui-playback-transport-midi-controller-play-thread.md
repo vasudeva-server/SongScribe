@@ -36,12 +36,12 @@
 | `MidiController` | `closeMidi` — idempotent: second call does not close resources again | unit | none | missing | Add unit test: call twice, verify `midiReceiver.close()` called exactly once | ✅ |
 | `MidiController` | `openMidi` / `openSynthesizerWithSoundbank` / `loadBundledSoundbank` / `extractSoundfontToTempFile` — full MIDI init path requires real MIDI hardware | none | — | none | Real hardware I/O; cannot be meaningfully mocked in unit or e2e context | — |
 | `MidiController` | `initChannels` / `initChannel` / `reinitChannels` — GM reset + CC setup; all wired to real `Receiver` | none | — | none | Side-effect-only hardware output; no pure-logic testable path | — |
-| `PlayThread` | `run` — when `playNoteOn=true` sends NOTE_ON, waits `NOTE_DURATION_MS`, sends NOTE_OFF | unit | none | missing | Add unit test: mock `MidiController.midiReceiver`, run thread, verify message sequence | ⬜ |
-| `PlayThread` | `run` — when `playNoteOn=false` skips NOTE_ON but still sends NOTE_OFF after delay | unit | none | missing | Add unit test: same setup, verify only NOTE_OFF sent | ⬜ |
-| `PlayThread` | `sendNoteOn` — no-op when `midiReceiver` is null | unit | none | missing | Add unit test: null receiver, no exception | ⬜ |
-| `PlayThread` | `sendNoteOff` — no-op when `midiReceiver` is null | unit | none | missing | Add unit test: null receiver, no exception | ⬜ |
-| `PlayThread` | `sendNoteOn` — sends bank-select + program-change + NOTE_ON messages with correct pitch and velocity | unit | none | missing | Add unit test: mock receiver, verify message types and values | ⬜ |
-| `PlayThread` | `sendNoteOff` — sends NOTE_OFF with correct pitch | unit | none | missing | Add unit test: mock receiver, verify NOTE_OFF message | ⬜ |
+| `PlayThread` | `run` — when `playNoteOn=true` sends NOTE_ON, waits `NOTE_DURATION_MS`, sends NOTE_OFF | unit | none | missing | Add unit test: mock `MidiController.midiReceiver`, run thread, verify message sequence | ✅ |
+| `PlayThread` | `run` — when `playNoteOn=false` skips NOTE_ON but still sends NOTE_OFF after delay | unit | none | missing | Add unit test: same setup, verify only NOTE_OFF sent | ✅ |
+| `PlayThread` | `sendNoteOn` — no-op when `midiReceiver` is null | unit | none | missing | Add unit test: null receiver, no exception | ✅ |
+| `PlayThread` | `sendNoteOff` — no-op when `midiReceiver` is null | unit | none | missing | Add unit test: null receiver, no exception | ✅ |
+| `PlayThread` | `sendNoteOn` — sends bank-select + program-change + NOTE_ON messages with correct pitch and velocity | unit | none | missing | Add unit test: mock receiver, verify message types and values | ✅ |
+| `PlayThread` | `sendNoteOff` — sends NOTE_OFF with correct pitch | unit | none | missing | Add unit test: mock receiver, verify NOTE_OFF message | ✅ |
 | `PlayPauseAction` | `actionPerformed` — toggles action icon/name then calls `PlaybackController.togglePlayPause()` | unit | none | missing | Add unit test: verify both icon toggle and `togglePlayPause` called | ⬜ |
 | `PlayPauseAction` | `playbackStateDidChange` (STOPPED) — calls `toggleToPlay` (sets play name/icon/tooltip) | unit | none | missing | Add unit test: set state to PAUSE name, post STOPPED notification, verify name reverts to PLAY_NAME | ⬜ |
 | `PlayPauseAction` | `toggleAction` — when name is PLAY_NAME switches to pause labels; when pause name switches back | unit | none | missing | Add unit test: call toggleAction twice, verify round-trip | ⬜ |
