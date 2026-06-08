@@ -207,4 +207,25 @@ class MusicEditOperationsNullStateTest extends UnitTest {
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("canToggle() == false");
     }
+
+    // -----------------------------------------------------------------------
+    // addDynamicsToSelection — null state guard
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testAddDynamicsToSelectionEmitsNoNotificationWhenStateNull() {
+        opsWithNullState().addDynamicsToSelection(true);
+        verifyNoChangeNotification();
+    }
+
+    // -----------------------------------------------------------------------
+    // canRemoveDynamicsFromSelection — null state
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanRemoveDynamicsReturnsFalseWhenStateNull() {
+        assertThat(opsWithNullState().canRemoveDynamicsFromSelection())
+            .as("canRemoveDynamicsFromSelection() with null state must return false")
+            .isFalse();
+    }
 }

@@ -305,6 +305,41 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(env.line().findTupletAt(0)).isSameAs(originalTuplet);
     }
 
+    @Test
+    void testToggleTupletWithSizeZeroRemovesExistingTuplet() {
+        // TupletAction.Tuplet.REMOVE.getSize() == 0; calling toggleTuplet with size 0
+        // must remove the existing tuplet via the tupletSize == 0 branch rather than
+        // the same-grade comparison path exercised by testToggleTupletMatchingGradeRemovesOnly.
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        song.withoutMutationTracking(() -> env.line().addTuplet(new Tuplet(
+            env.line().getElement(0), env.line().getElement(2), TupletAction.Tuplet.TRIPLET.getSize())));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleTuplet(TupletAction.Tuplet.REMOVE.getSize(), env.operations().canToggleTuplet());
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        var firstMutation = mutations.getFirst();
+        assertThat(firstMutation).isInstanceOf(TupletRemoval.class);
+        assertThat(((TupletRemoval) firstMutation).line()).isSameAs(env.line());
+        assertThat(env.line().findTupletAt(0))
+            .as("tuplet must be absent after removal via size-0 path")
+            .isNull();
+    }
+
+    @Test
+    void testToggleTupletWithSizeZeroAndNoExistingThrows() {
+        // size == 0 with no existing tuplet at the selection is a caller bug:
+        // toggleTuplet must throw IllegalStateException to prevent a silent no-op.
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        var info = env.operations().canToggleTuplet();
+
+        assertThatThrownBy(() -> env.operations().toggleTuplet(TupletAction.Tuplet.REMOVE.getSize(), info))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("toggleTuplet(0) requires an existing tuplet");
+    }
+
     // -----------------------------------------------------------------------
     // Dynamics
     // -----------------------------------------------------------------------
@@ -351,6 +386,51 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(crescendoRemovals).as("crescendo removals emitted").isNotEmpty();
         assertThat(diminuendoRemovals).as("diminuendo removals emitted").isNotEmpty();
         assertThat(mutations).hasSize(crescendoRemovals.size() + diminuendoRemovals.size());
+    }
+
+    @Test
+    void testCanRemoveDynamicsReturnsFalseWhenNoElementSelection() {
+        // The coordinator has an active line but no element selection (selectionBegin == -1),
+        // so hasElementSelection() is false and canRemoveDynamicsFromSelection() must return false.
+        var env = setupEnv(crotchet(), crotchet());
+        // No selectRange call — coordinator has a registered line but no element selection.
+        assertThat(env.operations().canRemoveDynamicsFromSelection())
+            .as("canRemoveDynamicsFromSelection() with no element selection must return false")
+            .isFalse();
+    }
+
+    @Test
+    void testCanRemoveDynamicsReturnsFalseWithNoHairpins() {
+        // Selection contains only notes — no crescendo or diminuendo overlapping the range.
+        var env = setupEnv(crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        assertThat(env.operations().canRemoveDynamicsFromSelection())
+            .as("canRemoveDynamicsFromSelection() with no overlapping hairpins must return false")
+            .isFalse();
+    }
+
+    @Test
+    void testCanRemoveDynamicsReturnsTrueWhenCrescendoOverlapsSelection() {
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        var line = env.line();
+        song.withoutMutationTracking(
+            () -> line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(2))));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        assertThat(env.operations().canRemoveDynamicsFromSelection())
+            .as("canRemoveDynamicsFromSelection() must return true when a crescendo overlaps selection")
+            .isTrue();
+    }
+
+    @Test
+    void testCanRemoveDynamicsReturnsTrueWhenDiminuendoOverlapsSelection() {
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        var line = env.line();
+        song.withoutMutationTracking(
+            () -> line.addRangeElement(new Diminuendo(line.getElement(0), line.getElement(2))));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        assertThat(env.operations().canRemoveDynamicsFromSelection())
+            .as("canRemoveDynamicsFromSelection() must return true when a diminuendo overlaps selection")
+            .isTrue();
     }
 
     // -----------------------------------------------------------------------
