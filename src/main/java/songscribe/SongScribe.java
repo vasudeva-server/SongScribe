@@ -50,15 +50,26 @@ public final class SongScribe {
     // creating it if it does not already exist, and return its path. Returns
     // null if the directory could not be created.
     static @Nullable String resolveLogDir(Function<String, @Nullable String> env) {
+        return resolveLogDir(env, SystemInfo.isMacOS, SystemInfo.isWindows);
+    }
+
+    // Package-private for testing: accepts explicit platform flags so tests can
+    // exercise Windows and "other OS" branches without requiring a real OS switch.
+    static @Nullable String resolveLogDir(
+        Function<String, @Nullable String> env,
+        boolean isMacOS,
+        boolean isWindows
+    ) {
+        var userHome = System.getProperty("user.home");
         String dir;
 
-        if (SystemInfo.isMacOS) {
-            dir = System.getProperty("user.home") + "/Library/Logs/SongScribe";
-        } else if (SystemInfo.isWindows) {
+        if (isMacOS) {
+            dir = userHome + "/Library/Logs/SongScribe";
+        } else if (isWindows) {
             var appData = env.apply("APPDATA");
-            dir = (appData != null ? appData : System.getProperty("user.home")) + "/SongScribe/Logs";
+            dir = (appData != null ? appData : userHome) + "/SongScribe/Logs";
         } else {
-            dir = System.getProperty("user.home") + "/.songscribe/logs";
+            dir = userHome + "/.songscribe/logs";
         }
 
         var logDir = new File(dir);
@@ -101,8 +112,14 @@ public final class SongScribe {
         }
     }
 
-    private static void truncateLogIfRequested() {
-        if (System.getenv("TRUNCATE_LOG") == null) {
+    static void truncateLogIfRequested() {
+        truncateLogIfRequested(System::getenv);
+    }
+
+    // Package-private for testing: accepts an env-var provider so tests can
+    // control whether TRUNCATE_LOG is considered set without touching the real OS env.
+    static void truncateLogIfRequested(Function<String, @Nullable String> env) {
+        if (env.apply("TRUNCATE_LOG") == null) {
             return;
         }
 

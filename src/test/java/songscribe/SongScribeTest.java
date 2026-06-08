@@ -29,6 +29,7 @@ import java.util.function.Function;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -254,6 +255,291 @@ class SongScribeTest extends UnitTest {
                 .endsWith("Library/Logs/SongScribe");
         } finally {
             System.setProperty(PROP_USER_HOME, originalHome);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // resolveLogDir — Windows path with APPDATA set (row 14a)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class WhenWindowsPlatform {
+
+        private static final String ENV_APPDATA = "APPDATA";
+
+        private @Nullable String originalHome;
+
+        @BeforeEach
+        void saveHome() {
+            originalHome = System.getProperty(PROP_USER_HOME);
+        }
+
+        @AfterEach
+        void restoreHome() {
+            if (originalHome != null) {
+                System.setProperty(PROP_USER_HOME, originalHome);
+            } else {
+                System.clearProperty(PROP_USER_HOME);
+            }
+        }
+
+        @Test
+        void testWindowsPathWithAppDataStartsWithAppDataValue(@TempDir Path tempAppData) {
+            // Simulate Windows platform with APPDATA set.
+            // Force the Windows branch by passing isMacOS=false, isWindows=true.
+            Function<String, @Nullable String> env = key -> ENV_APPDATA.equals(key) ? tempAppData.toString() : null;
+
+            var result = SongScribe.resolveLogDir(env, false, true);
+
+            assertThat(result)
+                .as("resolveLogDir on Windows with APPDATA set must return a non-null path")
+                .isNotNull();
+
+            if (result == null) {
+                return; // unreachable — satisfies NullAway
+            }
+
+            assertThat(result)
+                .as("resolveLogDir on Windows with APPDATA set must start with the APPDATA value")
+                .startsWith(tempAppData.toString());
+
+            assertThat(new File(result).isDirectory())
+                .as("resolveLogDir on Windows must create and return an existing directory")
+                .isTrue();
+        }
+
+        // -----------------------------------------------------------------------
+        // resolveLogDir — Windows path, APPDATA null, falls back to user.home (row 14b)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testWindowsPathWithoutAppDataFallsBackToUserHome(@TempDir Path tempHome) {
+            // Simulate Windows platform with no APPDATA env var.
+            System.setProperty(PROP_USER_HOME, tempHome.toString());
+            Function<String, @Nullable String> env = key -> null; // APPDATA absent
+
+            var result = SongScribe.resolveLogDir(env, false, true);
+
+            assertThat(result)
+                .as("resolveLogDir on Windows without APPDATA must return a non-null path under user.home")
+                .isNotNull();
+
+            if (result == null) {
+                return; // unreachable — satisfies NullAway
+            }
+
+            assertThat(result)
+                .as("resolveLogDir on Windows without APPDATA must fall back to user.home")
+                .startsWith(tempHome.toString());
+
+            assertThat(result)
+                .as("resolveLogDir on Windows without APPDATA must end with /SongScribe/Logs")
+                .endsWith("/SongScribe/Logs");
+
+            assertThat(new File(result).isDirectory())
+                .as("resolveLogDir on Windows without APPDATA must create an existing directory")
+                .isTrue();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // resolveLogDir — other platform path (row 15)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testOtherPlatformPathEndsWithDotSongscribeLogs(@TempDir Path tempHome) {
+        var originalHome = System.getProperty(PROP_USER_HOME);
+        System.setProperty(PROP_USER_HOME, tempHome.toString());
+
+        try {
+            // Simulate a non-macOS, non-Windows platform.
+            var result = SongScribe.resolveLogDir(emptyEnv(), false, false);
+
+            assertThat(result)
+                .as("resolveLogDir on other platform must return a non-null path")
+                .isNotNull();
+
+            if (result == null) {
+                return; // unreachable — satisfies NullAway
+            }
+
+            assertThat(result)
+                .as("resolveLogDir on other platform must end with .songscribe/logs")
+                .endsWith(".songscribe/logs");
+
+            assertThat(new File(result).isDirectory())
+                .as("resolveLogDir on other platform must create an existing directory")
+                .isTrue();
+        } finally {
+            System.setProperty(PROP_USER_HOME, originalHome);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // resolveLogDir — directory creation fails → returns null (row 16)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testResolveLogDirReturnNullWhenMkdirsFails(@TempDir Path blockingDir) throws IOException {
+        // Place a regular file where the log subdirectory ancestor must be created,
+        // so mkdirs() cannot succeed (a file is in the way).
+        var blockerFile = blockingDir.resolve("blocker.file");
+        Files.createFile(blockerFile);
+
+        var originalHome = System.getProperty(PROP_USER_HOME);
+        // Set user.home to a path *inside* a regular file so the computed
+        // log directory path is blocked at every OS branch.
+        System.setProperty(PROP_USER_HOME, blockerFile.toString());
+
+        try {
+            // Use the three-argument overload with isMacOS=false, isWindows=false
+            // ("other" branch) so the path is blockerFile + "/.songscribe/logs".
+            // mkdirs() must fail since blockerFile is a regular file, not a directory.
+            var result = SongScribe.resolveLogDir(emptyEnv(), false, false);
+
+            assertThat(result)
+                .as("resolveLogDir must return null when the log directory cannot be created")
+                .isNull();
+        } finally {
+            System.setProperty(PROP_USER_HOME, originalHome);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // resolveLogDir — directory already exists → returned without calling mkdirs (row 16b)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testResolveLogDirReturnsPathWhenDirectoryAlreadyExists(@TempDir Path tempHome) throws IOException {
+        var originalHome = System.getProperty(PROP_USER_HOME);
+        System.setProperty(PROP_USER_HOME, tempHome.toString());
+
+        try {
+            // Pre-create the exact directory that the "other platform" branch would produce,
+            // so logDir.exists() returns true and mkdirs() is never invoked.
+            var preExistingDir = tempHome.resolve(".songscribe/logs");
+            Files.createDirectories(preExistingDir);
+
+            var result = SongScribe.resolveLogDir(emptyEnv(), false, false);
+
+            assertThat(result)
+                .as("resolveLogDir must return the path when the log directory already exists")
+                .isNotNull();
+
+            if (result == null) {
+                return; // unreachable — satisfies NullAway
+            }
+
+            assertThat(result)
+                .as("resolveLogDir must return the pre-existing directory path")
+                .endsWith(".songscribe/logs");
+
+            assertThat(new File(result).isDirectory())
+                .as("resolveLogDir must return a path to an existing directory")
+                .isTrue();
+        } finally {
+            System.setProperty(PROP_USER_HOME, originalHome);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // truncateLogIfRequested — TRUNCATE_LOG absent → no file side-effects (row 17)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class WhenTruncateLog {
+
+        private static final String LOG_FILE_NAME = "songscribe.log";
+        private static final String ENV_TRUNCATE_LOG = "TRUNCATE_LOG";
+
+        private @Nullable String savedLogDir;
+
+        @BeforeEach
+        void saveLogDir() {
+            savedLogDir = System.getProperty(PROP_LOG_DIR);
+        }
+
+        @AfterEach
+        void restoreLogDir() {
+            if (savedLogDir != null) {
+                System.setProperty(PROP_LOG_DIR, savedLogDir);
+            } else {
+                System.clearProperty(PROP_LOG_DIR);
+            }
+        }
+
+        @Test
+        void testTruncateLogAbsentDoesNothingAndDoesNotCrash(@TempDir Path tempDir) throws IOException {
+            // Place a sentinel log file; it must remain untouched when TRUNCATE_LOG is absent.
+            var logFile = tempDir.resolve(LOG_FILE_NAME);
+            Files.createFile(logFile);
+            System.setProperty(PROP_LOG_DIR, tempDir.toString());
+
+            // Simulate TRUNCATE_LOG absent.
+            SongScribe.truncateLogIfRequested(key -> null);
+
+            assertThat(logFile)
+                .as("truncateLogIfRequested must not delete the log file when TRUNCATE_LOG is absent")
+                .exists();
+        }
+
+        // -----------------------------------------------------------------------
+        // truncateLogIfRequested — TRUNCATE_LOG set but songscribe.log.dir not set (row 18)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testTruncateLogSetButLogDirAbsentDoesNotCrash(@TempDir Path tempDir) throws IOException {
+            // Ensure songscribe.log.dir is not set.
+            System.clearProperty(PROP_LOG_DIR);
+
+            // Place a sentinel file that must remain untouched.
+            var logFile = tempDir.resolve(LOG_FILE_NAME);
+            Files.createFile(logFile);
+
+            // TRUNCATE_LOG is "set" (non-null), but songscribe.log.dir is absent.
+            SongScribe.truncateLogIfRequested(key -> ENV_TRUNCATE_LOG.equals(key) ? "1" : null);
+
+            // The log file is under tempDir which is not referenced by the property,
+            // so it must still exist (no deletion possible without the property).
+            assertThat(logFile)
+                .as("truncateLogIfRequested must not crash or delete anything when songscribe.log.dir is absent")
+                .exists();
+        }
+
+        // -----------------------------------------------------------------------
+        // truncateLogIfRequested — TRUNCATE_LOG set, log dir set, log file exists (row 19)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testTruncateLogDeletesLogFileWhenItExists(@TempDir Path tempDir) throws IOException {
+            // Create the log file that the method should delete.
+            var logFile = tempDir.resolve(LOG_FILE_NAME);
+            Files.createFile(logFile);
+            System.setProperty(PROP_LOG_DIR, tempDir.toString());
+
+            SongScribe.truncateLogIfRequested(key -> ENV_TRUNCATE_LOG.equals(key) ? "1" : null);
+
+            assertThat(logFile)
+                .as("truncateLogIfRequested must delete the log file when TRUNCATE_LOG is set and the file exists")
+                .doesNotExist();
+        }
+
+        // -----------------------------------------------------------------------
+        // truncateLogIfRequested — TRUNCATE_LOG set, log dir set, no log file (row 20)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testTruncateLogWithNoLogFileDoesNotCrash(@TempDir Path tempDir) {
+            // The log file does not exist; deleteIfExists is a no-op.
+            System.setProperty(PROP_LOG_DIR, tempDir.toString());
+
+            // Must not throw.
+            SongScribe.truncateLogIfRequested(key -> ENV_TRUNCATE_LOG.equals(key) ? "1" : null);
+
+            // No file was present and none was created — directory is still empty.
+            assertThat(tempDir.toFile().list())
+                .as("truncateLogIfRequested with no log file must leave the directory empty")
+                .isEmpty();
         }
     }
 }

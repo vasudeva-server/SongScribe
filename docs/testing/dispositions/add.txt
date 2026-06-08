@@ -2649,3 +2649,11 @@ SongScribeTest$WhenConsoleLogAbsent.testUnresolvableLogDirDoesNotSetLogDirProper
 SongScribeTest$WhenLogLevelSet.testLogLevelEnvSetToUppercasedProperty	12b	add: SongScribe.configureLogging() LOG_LEVEL env set → property uppercased
 SongScribeTest$WhenLogLevelSet.testLogLevelAbsentDoesNotSetProperty	12b	add: SongScribe.configureLogging() LOG_LEVEL absent → songscribe.log.level not set
 SongScribeTest$ResolveLogDir.testMacOsPathEndsWithLibraryLogsSongScribe	12b	add: SongScribe.resolveLogDir() on macOS constructs path ending with Library/Logs/SongScribe
+SongScribeTest$WhenWindowsPlatform.testWindowsPathWithAppDataStartsWithAppDataValue	12b	add: SongScribe.resolveLogDir() Windows APPDATA set → path starts with APPDATA value
+SongScribeTest$WhenWindowsPlatform.testWindowsPathWithoutAppDataFallsBackToUserHome	12b	add: SongScribe.resolveLogDir() Windows APPDATA absent → falls back to user.home/SongScribe/Logs
+SongScribeTest.testOtherPlatformPathEndsWithDotSongscribeLogs	12b	add: SongScribe.resolveLogDir() other platform → path ends with .songscribe/logs
+SongScribeTest.testResolveLogDirReturnNullWhenMkdirsFails	12b	add: SongScribe.resolveLogDir() mkdirs() fails → returns null
+SongScribeTest$WhenTruncateLog.testTruncateLogAbsentDoesNothingAndDoesNotCrash	12b	add: SongScribe.truncateLogIfRequested() TRUNCATE_LOG absent → log file untouched
+SongScribeTest$WhenTruncateLog.testTruncateLogSetButLogDirAbsentDoesNotCrash	12b	add: SongScribe.truncateLogIfRequested() TRUNCATE_LOG set but songscribe.log.dir absent → no crash
+SongScribeTest$WhenTruncateLog.testTruncateLogDeletesLogFileWhenItExists	12b	add: SongScribe.truncateLogIfRequested() TRUNCATE_LOG set + log dir set + file exists → file deleted
+SongScribeTest$WhenTruncateLog.testTruncateLogWithNoLogFileDoesNotCrash	12b	add: SongScribe.truncateLogIfRequested() TRUNCATE_LOG set + log dir set + no file → no-op, no crash
