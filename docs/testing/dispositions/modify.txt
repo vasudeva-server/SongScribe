@@ -104,3 +104,4 @@ modify SongSettingsDialog.canonicalKeySelectionFrom (extracted from MusicTab.set
 modify SongSettingsDialog.applyMusicTabChanges (extracted from MusicTab.setData for testability)
 # 10e StyleEntry production bug fix (row 11)
 modify StyleEntry.hashCode [changed from font.hashCode() to font.getPSName().hashCode() to restore equals/hashCode contract]
+PlaybackActionsTest.testActionRemainsEnabledDuringPlaybackBecauseDisableWhenPlayingFlagIsAbsent	11b-ui-playback-transport-midi-controller-play-thread	PlayPauseAction DISABLE_WHEN_PLAYING flag absent — was inadequate (row 48)

@@ -89,7 +89,7 @@ public final class PlayPauseAction extends SequencerAction {
         putValue(SHORT_DESCRIPTION, PAUSE_TOOLTIP);
     }
 
-    private void toggleAction() {
+    void toggleAction() {
         if (getName().equals(PLAY_NAME)) {
             toggleToPause();
         } else {

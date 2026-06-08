@@ -2517,3 +2517,11 @@ PlayThreadTest.SendNoteOn.testNoOpWhenMidiReceiverIsNull
 PlayThreadTest.SendNoteOff.testNoOpWhenMidiReceiverIsNull
 PlayThreadTest.SendNoteOn.testSendsBankSelectProgramChangeAndNoteOn
 PlayThreadTest.SendNoteOff.testSendsNoteOffWithCorrectPitch
+PlaybackActionsTest.testActionPerformedTogglesNameAndCallsTogglePlayPause	11b-ui-playback-transport-midi-controller-play-thread	PlayPauseAction.actionPerformed toggles icon/name and calls togglePlayPause (row 45)
+PlaybackActionsTest.testPlaybackStateDidChangeSwitchesToPlayNameOnStopped	11b-ui-playback-transport-midi-controller-play-thread	PlayPauseAction.playbackStateDidChange STOPPED reverts to PLAY_NAME (row 46)
+PlaybackActionsTest.testToggleActionRoundTripRestoresOriginalName	11b-ui-playback-transport-midi-controller-play-thread	PlayPauseAction.toggleAction round-trip (row 47)
+PlaybackActionsTest.testActionPerformedCallsRewindToBeginning	11b-ui-playback-transport-midi-controller-play-thread	RewindAction.actionPerformed delegates to rewindToBeginning (row 49)
+PlaybackActionsTest.testActionPerformedPostsToggleLoopPlaybackCommandWithCorrectState	11b-ui-playback-transport-midi-controller-play-thread	LoopPlaybackAction.actionPerformed posts command with isSelected=true (row 50)
+PlaybackActionsTest.testActionPerformedPostsFalseWhenDeselected	11b-ui-playback-transport-midi-controller-play-thread	LoopPlaybackAction.actionPerformed posts command with isSelected=false (row 50)
+PlaybackActionsTest.testActionPerformedPostsTogglePlayWithRepeatsCommandWithCorrectState	11b-ui-playback-transport-midi-controller-play-thread	PlayWithRepeatsAction.actionPerformed posts command with isSelected=true (row 51)
+PlaybackActionsTest.testActionPerformedPostsFalseWhenDeselected	11b-ui-playback-transport-midi-controller-play-thread	PlayWithRepeatsAction.actionPerformed posts command with isSelected=false (row 51)

@@ -42,13 +42,13 @@
 | `PlayThread` | `sendNoteOff` — no-op when `midiReceiver` is null | unit | none | missing | Add unit test: null receiver, no exception | ✅ |
 | `PlayThread` | `sendNoteOn` — sends bank-select + program-change + NOTE_ON messages with correct pitch and velocity | unit | none | missing | Add unit test: mock receiver, verify message types and values | ✅ |
 | `PlayThread` | `sendNoteOff` — sends NOTE_OFF with correct pitch | unit | none | missing | Add unit test: mock receiver, verify NOTE_OFF message | ✅ |
-| `PlayPauseAction` | `actionPerformed` — toggles action icon/name then calls `PlaybackController.togglePlayPause()` | unit | none | missing | Add unit test: verify both icon toggle and `togglePlayPause` called | ⬜ |
-| `PlayPauseAction` | `playbackStateDidChange` (STOPPED) — calls `toggleToPlay` (sets play name/icon/tooltip) | unit | none | missing | Add unit test: set state to PAUSE name, post STOPPED notification, verify name reverts to PLAY_NAME | ⬜ |
-| `PlayPauseAction` | `toggleAction` — when name is PLAY_NAME switches to pause labels; when pause name switches back | unit | none | missing | Add unit test: call toggleAction twice, verify round-trip | ⬜ |
-| `PlayPauseAction` | `DISABLE_WHEN_PLAYING` flag not set — action stays enabled during playback (it is the pause button) | unit | `LyricEditorActionAuditTest.testAllToolbarActionsCarryDisableWhenEditingTextFlag` | inadequate | Audit test only checks `DISABLE_WHEN_EDITING_TEXT`; no test verifies the action remains enabled during PLAYING state | ⬜ |
-| `RewindAction` | `actionPerformed` — calls `PlaybackController.rewindToBeginning()` (thin dispatcher) | unit | none | missing | Add unit test: mock `PlaybackController`, verify `rewindToBeginning()` called | ⬜ |
-| `LoopPlaybackAction` | `actionPerformed` — posts `ToggleLoopPlaybackCommand` with `isSelected()` value | unit | none | missing | Add unit test: mock `MessageCenter`, invoke action, verify command posted with correct payload | ⬜ |
-| `PlayWithRepeatsAction` | `actionPerformed` — posts `TogglePlayWithRepeatsCommand` with `isSelected()` value | unit | none | missing | Add unit test: same pattern | ⬜ |
+| `PlayPauseAction` | `actionPerformed` — toggles action icon/name then calls `PlaybackController.togglePlayPause()` | unit | none | missing | Add unit test: verify both icon toggle and `togglePlayPause` called | ✅ |
+| `PlayPauseAction` | `playbackStateDidChange` (STOPPED) — calls `toggleToPlay` (sets play name/icon/tooltip) | unit | none | missing | Add unit test: set state to PAUSE name, post STOPPED notification, verify name reverts to PLAY_NAME | ✅ |
+| `PlayPauseAction` | `toggleAction` — when name is PLAY_NAME switches to pause labels; when pause name switches back | unit | none | missing | Add unit test: call toggleAction twice, verify round-trip | ✅ |
+| `PlayPauseAction` | `DISABLE_WHEN_PLAYING` flag not set — action stays enabled during playback (it is the pause button) | unit | `LyricEditorActionAuditTest.testAllToolbarActionsCarryDisableWhenEditingTextFlag` | inadequate | Audit test only checks `DISABLE_WHEN_EDITING_TEXT`; no test verifies the action remains enabled during PLAYING state | ✅ |
+| `RewindAction` | `actionPerformed` — calls `PlaybackController.rewindToBeginning()` (thin dispatcher) | unit | none | missing | Add unit test: mock `PlaybackController`, verify `rewindToBeginning()` called | ✅ |
+| `LoopPlaybackAction` | `actionPerformed` — posts `ToggleLoopPlaybackCommand` with `isSelected()` value | unit | none | missing | Add unit test: mock `MessageCenter`, invoke action, verify command posted with correct payload | ✅ |
+| `PlayWithRepeatsAction` | `actionPerformed` — posts `TogglePlayWithRepeatsCommand` with `isSelected()` value | unit | none | missing | Add unit test: same pattern | ✅ |
 | `SequencerAction` | constructor delegation to `UIAction` | none | — | none | Pure super-call delegation with no own logic | — |
 | `MidiMetaMessageTypes` | Constants hold correct MIDI spec hex values | none | — | none | Pure constants holder; no logic | — |
 
