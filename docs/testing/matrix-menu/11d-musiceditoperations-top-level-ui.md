@@ -2,17 +2,17 @@
 
 | Class | Behavior | Required level | Existing test | Verdict | Action | done |
 |---|---|---|---|---|---|---|
-| `MusicEditOperations` | `canToggleBeaming()` delegates to `state.canToggleBeaming()`; returns false when state is null | unit | none | missing | Add test: null state → false; non-null state delegates to `LineSelectionState` (the delegation itself is a one-liner but the null branch is dark) | ⬜ |
-| `MusicEditOperations` | `toggleBeaming()` — null state guard (early return, no mutation) | unit | none | missing | Add test: invoking with no active selection emits no notification | ⬜ |
+| `MusicEditOperations` | `canToggleBeaming()` delegates to `state.canToggleBeaming()`; returns false when state is null | unit | none | missing | Add test: null state → false; non-null state delegates to `LineSelectionState` (the delegation itself is a one-liner but the null branch is dark) | ✅ |
+| `MusicEditOperations` | `toggleBeaming()` — null state guard (early return, no mutation) | unit | none | missing | Add test: invoking with no active selection emits no notification | ✅ |
 | `MusicEditOperations` | `toggleBeaming()` — add beam (no existing beam or split across different beams) | unit | `MusicEditOperationsMutationTest.testToggleBeamingAddEmitsBeamingAddition`, `BeamToggleTest.ToggleBeam.testToggleBeamOn` | adequate | None | — |
 | `MusicEditOperations` | `toggleBeaming()` — remove beam (begin and end in same beam group) | unit | `MusicEditOperationsMutationTest.testToggleBeamingRemoveEmitsBeamingRemoval`, `BeamToggleTest.ToggleBeam.testToggleBeamOff` | adequate | None | — |
-| `MusicEditOperations` | `canToggleTie()` delegates to `state.canToggleTie()`; returns false when state is null | unit | none | missing | Add test: null state → false | ⬜ |
-| `MusicEditOperations` | `toggleTie()` — null state guard | unit | none | missing | Add test: no mutation emitted | ⬜ |
+| `MusicEditOperations` | `canToggleTie()` delegates to `state.canToggleTie()`; returns false when state is null | unit | none | missing | Add test: null state → false | ✅ |
+| `MusicEditOperations` | `toggleTie()` — null state guard | unit | none | missing | Add test: no mutation emitted | ✅ |
 | `MusicEditOperations` | `toggleTie()` — add tie (no existing tie) | unit | `MusicEditOperationsMutationTest.testToggleTieAddEmitsTieAddition`, `TieToggleTest.testTieCreationAndRemoval` | adequate | None | — |
 | `MusicEditOperations` | `toggleTie()` — remove tie (existing tie found) | unit | `MusicEditOperationsMutationTest.testToggleTieRemoveEmitsTieRemoval`, `TieToggleTest.testTieCreationAndRemoval` | adequate | None | — |
-| `MusicEditOperations` | `canToggleTuplet()` — returns default `TupletToggleInfo(false, null, false)` when state is null | unit | none | missing | Add test: null state returns false-info | ⬜ |
-| `MusicEditOperations` | `toggleTuplet()` — null state guard | unit | none | missing | Add test: no mutation emitted | ⬜ |
-| `MusicEditOperations` | `toggleTuplet()` — guard: `info.canToggle() == false` throws `IllegalStateException` | unit | none | missing | Add test: throws with appropriate message | ⬜ |
+| `MusicEditOperations` | `canToggleTuplet()` — returns default `TupletToggleInfo(false, null, false)` when state is null | unit | none | missing | Add test: null state returns false-info | ✅ |
+| `MusicEditOperations` | `toggleTuplet()` — null state guard | unit | none | missing | Add test: no mutation emitted | ✅ |
+| `MusicEditOperations` | `toggleTuplet()` — guard: `info.canToggle() == false` throws `IllegalStateException` | unit | none | missing | Add test: throws with appropriate message | ✅ |
 | `MusicEditOperations` | `toggleTuplet(size=0, info)` — remove tuplet (existing tuplet, size==0 path) | unit | `MusicEditOperationsMutationTest.testToggleTupletRemoveEmitsTupletRemoval` (uses matching-grade, not size=0) | inadequate | Tests the same net effect via grade-match but does NOT exercise the `tupletSize == 0` branch. Add `toggleTuplet(REMOVE.getSize(), info)` test. | ⬜ |
 | `MusicEditOperations` | `toggleTuplet(size=0, info)` — size=0 with no existing tuplet throws `IllegalStateException` | unit | none | missing | Add test: `toggleTuplet(0, infoWithNoExisting)` throws | ⬜ |
 | `MusicEditOperations` | `toggleTuplet(size>0, null existing)` — add new tuplet | unit | `MusicEditOperationsMutationTest.testToggleTupletAddEmitsTupletAddition` | adequate | None | — |
