@@ -37,17 +37,17 @@ public final class KeySignatureDisplay {
     private static final char FLAT_GLYPH = SMuFLGlyph.CSYM_ACCIDENTAL_FLAT.codepoint();
     private static final char SHARP_GLYPH = SMuFLGlyph.CSYM_ACCIDENTAL_SHARP.codepoint();
 
-    private static final String[] FLAT_TONICS = {
+    static final String[] FLAT_TONICS = {
         "C", "F", "B" + FLAT_GLYPH, "E" + FLAT_GLYPH,
         "A" + FLAT_GLYPH, "D" + FLAT_GLYPH, "G" + FLAT_GLYPH, "C" + FLAT_GLYPH,
     };
 
-    private static final String[] SHARP_TONICS = {
+    static final String[] SHARP_TONICS = {
         "", "G", "D", "A", "E", "B", "F" + SHARP_GLYPH, "C" + SHARP_GLYPH,
     };
 
-    private static final int MIN_FLAT_COUNT_WITH_ACCIDENTAL = 2;
-    private static final int MIN_SHARP_COUNT_WITH_ACCIDENTAL = 6;
+    static final int MIN_FLAT_COUNT_WITH_ACCIDENTAL = 2;
+    static final int MIN_SHARP_COUNT_WITH_ACCIDENTAL = 6;
     private static final float LETTER_GLYPH_GAP_PX = 1.5f;
 
     private KeySignatureDisplay() {}

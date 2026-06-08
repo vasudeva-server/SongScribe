@@ -2,10 +2,10 @@
 
 | Class | Behavior | Required level | Existing test | Verdict | Action | done |
 |---|---|---|---|---|---|---|
-| `KeySignatureDisplay` | `tonicFor`: returns correct tonic string for each SHARPS key (0–7) | unit | none | missing | Test all 8 SHARPS entries against `SHARP_TONICS` table | ⬜ |
-| `KeySignatureDisplay` | `tonicFor`: returns correct tonic string for each FLATS key (0–7) | unit | none | missing | Test all 8 FLATS entries against `FLAT_TONICS` table | ⬜ |
-| `KeySignatureDisplay` | `suffixFor`: returns empty string when `KeyType.NONE` or count == 0 | unit | none | missing | Verify both `NONE`-type and zero-count paths return `""` | ⬜ |
-| `KeySignatureDisplay` | `suffixFor`: returns non-empty suffix containing count for SHARPS | unit | none | missing | Check suffix for SHARPS count > 0 contains the count and right plural form | ⬜ |
+| `KeySignatureDisplay` | `tonicFor`: returns correct tonic string for each SHARPS key (0–7) | unit | none | missing | Test all 8 SHARPS entries against `SHARP_TONICS` table | ✅ |
+| `KeySignatureDisplay` | `tonicFor`: returns correct tonic string for each FLATS key (0–7) | unit | none | missing | Test all 8 FLATS entries against `FLAT_TONICS` table | ✅ |
+| `KeySignatureDisplay` | `suffixFor`: returns empty string when `KeyType.NONE` or count == 0 | unit | none | missing | Verify both `NONE`-type and zero-count paths return `""` | ✅ |
+| `KeySignatureDisplay` | `suffixFor`: returns non-empty suffix containing count for SHARPS | unit | none | missing | Check suffix for SHARPS count > 0 contains the count and right plural form | ✅ |
 | `KeySignatureDisplay` | `suffixFor`: returns non-empty suffix containing count for FLATS | unit | none | missing | Check suffix for FLATS count > 0 contains the count and right plural form | ⬜ |
 | `KeySignatureDisplay` | `tonicHasAccidental`: returns false for FLATS count < 2, true for count >= 2 | unit | none | missing | Boundary at `MIN_FLAT_COUNT_WITH_ACCIDENTAL` = 2 | ⬜ |
 | `KeySignatureDisplay` | `tonicHasAccidental`: returns false for SHARPS count < 6, true for count >= 6 | unit | none | missing | Boundary at `MIN_SHARP_COUNT_WITH_ACCIDENTAL` = 6 | ⬜ |
