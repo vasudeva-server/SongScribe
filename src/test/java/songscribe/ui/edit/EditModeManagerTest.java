@@ -346,6 +346,12 @@ class EditModeManagerTest extends UnitTest {
                 mock(SelectionCoordinator.class),
                 scoreActions
             );
+            // These tests exercise non-playback behavior. Disable note playback so a real
+            // PlayThread is never started (playInsertedNote is shared static state that a
+            // sibling test may have left enabled). A leaked PlayThread sleeps, then sends a
+            // stray NOTE_OFF to whatever MidiController.midiReceiver is current — contaminating
+            // unrelated tests such as PlayThreadTest.
+            EditModeManager.setPlayInsertedNote(false);
         }
 
         @Test
