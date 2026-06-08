@@ -18,7 +18,7 @@ Symbols are addressed by **name path** + **relative_path** (the file).
   - `depth=1` to list children (e.g. a class's methods) without bodies.
   - `include_body=true` only when you actually need the source — read symbol-by-symbol, not whole files.
   - `include_info=true` for signature/docstring without the body.
-  - **To find constructors:** use `name_path_pattern=ClassName` with `depth=1` (lists all constructors as `ClassName[0]`, `ClassName[1]`, etc.). Use `include_body=true` or `include_info=true` to get the constructor implementation or signature.
+  - **To find constructor signatures:** use `name_path_pattern=ClassName` with `depth=1` (lists all constructors as `ClassName[0]`, `ClassName[1]`, etc.) and `include_info=true`. Do NOT use `include_body=true` for constructors — it does not return the body reliably. To read a constructor body, use `rg` to find its line number, then `Read` with `offset` and `limit` (see **Reading constructor bodies** below).
   - `max_matches=1` when expecting a unique symbol; raise it to refine a noisy search.
   - `search_deps=true` to inspect third-party/library code — prefer this over web search. Pass the returned `<ext...>` identifier as `relative_path` for follow-up queries.
 - **`jet_brains_find_declaration`** — jump from a usage to its declaration. Takes a `regex` with one capture group around the symbol; include surrounding context so the match is unambiguous.
@@ -26,6 +26,20 @@ Symbols are addressed by **name path** + **relative_path** (the file).
 - **`jet_brains_find_implementations`** — implementations of an interface/abstract method.
 - **`jet_brains_type_hierarchy`** — supertypes/subtypes of a class. `hierarchy_type` = `super` | `sub` | `both`; `depth=0` for unlimited.
 - **`search_for_pattern`** — use before Grep when the name is unknown.
+
+## Reading constructor bodies
+
+`jet_brains_find_symbol` with `include_body=true` does not return constructor bodies reliably. Use this two-step fallback instead:
+
+1. Find the constructor's line number with `rg`:
+   ```
+   rg -n "ClassName\s*\(" path/to/ClassName.java
+   ```
+2. Read the file from that line with enough lines to cover the body:
+   ```
+   Read(file_path, offset: <line>, limit: 30)
+   ```
+   Increase `limit` if the body is longer than expected.
 
 ## Refactoring — always prefer these over manual edits
 
