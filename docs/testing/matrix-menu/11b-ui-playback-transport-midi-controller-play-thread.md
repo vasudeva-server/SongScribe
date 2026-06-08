@@ -27,13 +27,13 @@
 | `PlaybackController` | `buildSequenceForSelection` — null selection builds full sequence | unit | none | missing | Add unit test: verify `MidiSequenceBuilder.buildFullSequence()` path | ✅ |
 | `PlaybackController` | `buildSequenceForSelection` — non-null selection builds from note to end | unit | none | missing | Add unit test: verify `buildFromNoteToEnd(lineIndex, begin)` path | ✅ |
 | `PlaybackController` | `getPlaybackSettings` / `applySettings` round-trip preserves all fields | unit | none | missing | Add unit test: set fields, `getPlaybackSettings()`, `applySettings()`, verify fields restored | ✅ |
-| `PlaybackController` | `applyVolumeFromPrefs` — delegates to `MidiController.setPlaybackVolume` with pref value | unit | none | missing | Add unit test: mock `Prefs.getInt` and `MidiController`, verify forwarding | ⬜ |
-| `MidiController` | `setPlaybackVolume` — percent 50..100 linearly scales to MIDI CC7 values ~64..127 (boundary/midpoint values) | unit | none | missing | Pure arithmetic: add unit test for boundary values (50→64, 100→127, 75→~96) | ⬜ |
-| `MidiController` | `setPlaybackVolume` — percent below 50 clamps to 50; above 100 clamps to 100 | unit | none | missing | Add unit test for out-of-range inputs | ⬜ |
-| `MidiController` | `setPlaybackInstrument` — sends PROGRAM_CHANGE on channel 0 with clamped program number | unit | none | missing | Add unit test: mock `Receiver`, verify `ShortMessage.PROGRAM_CHANGE` with correct channel and data | ⬜ |
-| `MidiController` | `isPlaying` — returns false when sequencer is null | unit | none | missing | Add unit test: null sequencer path | ⬜ |
-| `MidiController` | `isPlaying` — delegates to `sequencer.isRunning()` when sequencer is non-null | unit | none | missing | Add unit test: mock sequencer | ⬜ |
-| `MidiController` | `closeMidi` — idempotent: second call does not close resources again | unit | none | missing | Add unit test: call twice, verify `midiReceiver.close()` called exactly once | ⬜ |
+| `PlaybackController` | `applyVolumeFromPrefs` — delegates to `MidiController.setPlaybackVolume` with pref value | unit | none | missing | Add unit test: mock `Prefs.getInt` and `MidiController`, verify forwarding | ✅ |
+| `MidiController` | `setPlaybackVolume` — percent 50..100 linearly scales to MIDI CC7 values ~64..127 (boundary/midpoint values) | unit | none | missing | Pure arithmetic: add unit test for boundary values (50→64, 100→127, 75→~96) | ✅ |
+| `MidiController` | `setPlaybackVolume` — percent below 50 clamps to 50; above 100 clamps to 100 | unit | none | missing | Add unit test for out-of-range inputs | ✅ |
+| `MidiController` | `setPlaybackInstrument` — sends PROGRAM_CHANGE on channel 0 with clamped program number | unit | none | missing | Add unit test: mock `Receiver`, verify `ShortMessage.PROGRAM_CHANGE` with correct channel and data | ✅ |
+| `MidiController` | `isPlaying` — returns false when sequencer is null | unit | none | missing | Add unit test: null sequencer path | ✅ |
+| `MidiController` | `isPlaying` — delegates to `sequencer.isRunning()` when sequencer is non-null | unit | none | missing | Add unit test: mock sequencer | ✅ |
+| `MidiController` | `closeMidi` — idempotent: second call does not close resources again | unit | none | missing | Add unit test: call twice, verify `midiReceiver.close()` called exactly once | ✅ |
 | `MidiController` | `openMidi` / `openSynthesizerWithSoundbank` / `loadBundledSoundbank` / `extractSoundfontToTempFile` — full MIDI init path requires real MIDI hardware | none | — | none | Real hardware I/O; cannot be meaningfully mocked in unit or e2e context | — |
 | `MidiController` | `initChannels` / `initChannel` / `reinitChannels` — GM reset + CC setup; all wired to real `Receiver` | none | — | none | Side-effect-only hardware output; no pure-logic testable path | — |
 | `PlayThread` | `run` — when `playNoteOn=true` sends NOTE_ON, waits `NOTE_DURATION_MS`, sends NOTE_OFF | unit | none | missing | Add unit test: mock `MidiController.midiReceiver`, run thread, verify message sequence | ⬜ |

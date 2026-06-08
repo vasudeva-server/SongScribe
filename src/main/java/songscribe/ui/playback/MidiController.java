@@ -47,7 +47,7 @@ public final class MidiController {
     public static @Nullable Sequencer sequencer = null;
     public static @Nullable Receiver midiReceiver = null;
     public static @Nullable Synthesizer synthesizer = null;
-    private static boolean closed = false;
+    static boolean closed = false;
 
     private MidiController() {}
 
@@ -283,7 +283,7 @@ public final class MidiController {
     }
 
     // Close MIDI resources so other applications can use them
-    private static void closeMidi() {
+    static void closeMidi() {
         if (closed) return;
         closed = true;
 

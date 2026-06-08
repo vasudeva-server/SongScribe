@@ -628,6 +628,25 @@ class PlaybackControllerTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    class ApplyVolumeFromPrefs {
+
+        @Test
+        void testDelegatesToMidiControllerWithPrefValue() {
+            final int prefVolume = 80;
+
+            try (var prefsMock = mockStatic(Prefs.class);
+                 var midiControllerMock = mockStatic(MidiController.class)) {
+                prefsMock.when(() -> Prefs.getInt(PrefsKey.PLAYBACK_VOLUME)).thenReturn(prefVolume);
+
+                PlaybackController.applyVolumeFromPrefs();
+
+                midiControllerMock.verify(() -> MidiController.setPlaybackVolume(prefVolume));
+            }
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
     class GetAndApplySettings {
 
         @Test
