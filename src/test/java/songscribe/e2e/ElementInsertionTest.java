@@ -41,7 +41,6 @@ import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.Mode;
@@ -441,11 +440,7 @@ class ElementInsertionTest extends E2ETest {
         @BeforeAll
         void setUp() {
             baseIndex = song().getLine(0).effectiveElementCount();
-        }
 
-        @Order(1)
-        @Test
-        void testBuildSong() {
             buildNotes(Actions.QUARTER_NOTE_ACTION, -4);
             buildNotes(Actions.HALF_NOTE_ACTION, 2);
             buildNotes(Actions.EIGHTH_NOTE_ACTION, -2, -6);
@@ -573,31 +568,6 @@ class ElementInsertionTest extends E2ETest {
             deselectRestMode();
         }
 
-        @Order(6)
-        @Test
-        void testSameTypeClickKeepsDecorations() {
-            enterSelectMode();
-            clickAt(noteScreenPosition(0, baseIndex + 1));
-            clickAction(Actions.STACCATO_ACTION);
-            performLayout(0);
-
-            assertThat(GuiActionRunner.execute(
-                () -> song().getLine(0).getElement(baseIndex + 1).hasArticulation(ArticulationType.STACCATO)
-            )).as("staccato applied").isTrue();
-
-            enterEditMode();
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            clickAt(noteScreenPosition(0, baseIndex + 1));
-            performLayout(0);
-
-            assertAll(
-                () -> assertThat(GuiActionRunner.execute(
-                    () -> song().getLine(0).getElement(baseIndex + 1).hasArticulation(ArticulationType.STACCATO)
-                )).as("staccato copied to new note").isTrue(),
-                () -> assertThat(scoreView().getMode())
-                    .as("mode stays EDIT").isEqualTo(Mode.EDIT)
-            );
-        }
     }
 
 

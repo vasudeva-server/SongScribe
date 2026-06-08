@@ -26,9 +26,6 @@ import module java.desktop;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-
-import org.jspecify.annotations.Nullable;
 
 import org.assertj.swing.core.GenericTypeMatcher;
 import org.assertj.swing.finder.JOptionPaneFinder;
@@ -43,72 +40,6 @@ import songscribe.ui.component.MainFrame;
  * E2E tests for dialog behavior: return values and closed-option mapping.
  */
 class DialogsTest extends E2ETest {
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class ConfirmDialog {
-
-        @Test
-        void testCloseWithYesNoOptionReturnsNoOption() throws InterruptedException {
-            var result = new AtomicInteger();
-            var latch = new CountDownLatch(1);
-
-            SwingUtilities.invokeLater(() -> {
-                result.set(OptionDialogs.showConfirmDialog(
-                    MainFrame.getInstance(), Strings.CONFIRM_TITLE_SAVE_CHANGES, Strings.CONFIRM_SAVE_MODIFIED,
-                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
-                ));
-                latch.countDown();
-            });
-
-            JOptionPaneFinder.findOptionPane().using(robot).pressAndReleaseKeys(KeyEvent.VK_ESCAPE);
-            latch.await();
-
-            assertThat(result.get()).isEqualTo(JOptionPane.NO_OPTION);
-        }
-
-        @Test
-        void testCloseWithYesNoCancelOptionReturnsCancelOption() throws InterruptedException {
-            var result = new AtomicInteger();
-            var latch = new CountDownLatch(1);
-
-            SwingUtilities.invokeLater(() -> {
-                result.set(OptionDialogs.showConfirmDialog(
-                    MainFrame.getInstance(), Strings.CONFIRM_TITLE_SAVE_CHANGES, Strings.CONFIRM_SAVE_MODIFIED,
-                    JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE
-                ));
-                latch.countDown();
-            });
-
-            JOptionPaneFinder.findOptionPane().using(robot).pressAndReleaseKeys(KeyEvent.VK_ESCAPE);
-            latch.await();
-
-            assertThat(result.get()).isEqualTo(JOptionPane.CANCEL_OPTION);
-        }
-    }
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class InputDialog {
-
-        @Test
-        void testReturnsTypedText() throws InterruptedException {
-            var resultRef = new AtomicReference<@Nullable String>();
-            var latch = new CountDownLatch(1);
-
-            SwingUtilities.invokeLater(() -> {
-                resultRef.set(OptionDialogs.showInputDialog(MainFrame.getInstance(), Strings.INPUT_TITLE_NUMBER_SONGS, Strings.INPUT_CONVERTER_ENTER_NUMBER));
-                latch.countDown();
-            });
-
-            var optionPane = JOptionPaneFinder.findOptionPane().using(robot);
-            optionPane.textBox().setText("hello");
-            optionPane.okButton().click();
-            latch.await();
-
-            assertThat(resultRef.get()).isEqualTo("hello");
-        }
-    }
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested

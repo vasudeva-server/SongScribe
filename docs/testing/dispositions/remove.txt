@@ -23,3 +23,8 @@ Prefs.testGetMapOnNonMapValueReturnsEmptyMap → remove (superseded by testGetMa
 
 # 13d — e2e DialogsTest wrong-level removal
 e2e/DialogsTest.ConfirmDialog.testClickYesReturnsYesOption	13d	wrong-level — removed; YES_OPTION is direct JOptionPane return with no production mapping logic; unit coverage added in DialogsTest.WhenNotSuppressed
+e2e/DialogsTest.ConfirmDialog.testCloseWithYesNoOptionReturnsNoOption	13d	redundant — unit DialogsTest.WhenNotSuppressed.testShowConfirmDialogTranslatesClosedOptionToNoForYesNoOption covers the CLOSED_OPTION→NO_OPTION mapping
+e2e/DialogsTest.ConfirmDialog.testCloseWithYesNoCancelOptionReturnsCancelOption	13d	redundant — unit DialogsTest.WhenNotSuppressed.testShowConfirmDialogTranslatesClosedOptionToCancelForYesNoCancelOption covers the CLOSED_OPTION→CANCEL_OPTION mapping
+e2e/DialogsTest.InputDialog.testReturnsTypedText	13d	redundant — unit DialogsTest.WhenNotSuppressed.testShowInputDialogReturnsUserInput covers the return-value mapping
+e2e/ElementInsertionTest.InsertElementTypes.testBuildSong	13a	orphan — body merged into InsertElementTypes.setUp() @BeforeAll; no-assertion test method removed
+e2e/ElementInsertionTest.InsertElementTypes.testSameTypeClickKeepsDecorations	13a	redundant — PreviewElementManagerAttachmentTest.testCopyArticulationsOnModify already covers articulation preservation via copy-ctor
