@@ -47,3 +47,13 @@ NoteRendererTest.testGetAccidentalBoundsReturnsSensibleExtentsForFlat	9c	row 12 
 NoteRendererTest.testGetAccidentalBoundsReturnsSensibleExtentsForNatural	9c	row 12 — inadequate: removed (directional-only assertions); exact assertions in NoteGeometryTest
 NoteRendererTest.testGetAccidentalBoundsReturnsSensibleExtentsForSharp	9c	row 12 — inadequate: removed (directional-only assertions); exact assertions in NoteGeometryTest
 NoteRendererTest.testGetAccidentalBoundsWidensWhenParenthesized	9c	row 12 — inadequate: removed (directional-only assertions); exact assertions in NoteGeometryTest
+
+# 13a — ElementInsertionTest wrong-level unit work
+# Row 9: glissando preservation unit coverage already exists in PreviewElementManagerModifyInsertTest
+GraceNoteDeletion.testReplaceHostWithPitchedNotePreservesGlissando	13a	row 9 — wrong-level: unit coverage provided by PreviewElementManagerModifyInsertTest.testGraceNotePreservedWhenHostReplacedWithPitchedNote (pre-existing)
+# Row 16: e2e test testVerifyElementTypesAndAutoBeam — unit tests written; e2e candidate for removal
+InsertElementTypes.testVerifyElementTypesAndAutoBeam	13a	row 16 — wrong-level: logic relocated to PreviewElementManagerInsertVerifyTest (type/pitch + auto-beam unit tests)
+# Row 17: e2e test testInsertBetweenAndVerifyShift — unit test written
+InsertElementTypes.testInsertBetweenAndVerifyShift	13a	row 17 — wrong-level: logic relocated to PreviewElementManagerInsertVerifyTest.testInsertBeforeElementShiftsExistingToHigherIndex
+# Row 18: e2e test testClickOnNoteReplacesIt — unit test written
+InsertElementTypes.testClickOnNoteReplacesIt	13a	row 18 — wrong-level: logic relocated to PreviewElementManagerInsertVerifyTest.ModifyExistingElementPitchChange

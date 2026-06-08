@@ -2676,3 +2676,13 @@ LineSelectionStateTest.testGetSelectedGlissandoElementIndexReturnsMinusOneInitia
 # 13d — e2e DialogsTest wrong-level unit work
 # showConfirmDialog YES_OPTION positive path: missing unit coverage → added
 DialogsTest.WhenNotSuppressed.testShowConfirmDialogReturnsYesOptionWhenPaneReturnsYesOption	13d	add: showConfirmDialog returns YES_OPTION when pane.getValue() returns YES_OPTION (not CLOSED_OPTION, so no mapping applied)
+
+# 13a — ElementInsertionTest wrong-level unit work
+# Row 16: insertElement type/pitch and applyAutomaticBeaming span
+PreviewElementManagerInsertVerifyTest.testInsertElementProducesCorrectTypeAndPitch	13a	add: row 16 — insertElement produces correct element type and staff position at insertion index
+PreviewElementManagerInsertVerifyTest.testAutoBeamCreatedForTwoConsecutiveQuavers	13a	add: row 16 — applyAutomaticBeaming creates a beam span linking two consecutive inserted quavers
+# Row 17: insert-before index shift
+PreviewElementManagerInsertVerifyTest.testInsertBeforeElementShiftsExistingToHigherIndex	13a	add: row 17 — inserting before existing element shifts that element to the next index
+# Row 18: modifyExistingElement pitch-change path
+PreviewElementManagerInsertVerifyTest.ModifyExistingElementPitchChange.testClickOnExistingNoteReplacesTypeAndPitch	13a	add: row 18 — clicking on existing element's X replaces type and pitch; count unchanged
+PreviewElementManagerInsertVerifyTest.ModifyExistingElementPitchChange.testSameTypeClickUpdatesPitchOnly	13a	add: row 18 — same-type click updates pitch only; count unchanged

@@ -183,7 +183,6 @@ fun Test.applyCommonTestConfig() {
         jvmArgs(
             "-Dapple.laf.useScreenMenuBar=true",
             "-Dapple.awt.application.appearance=system",
-            "-Dapple.awt.UIElement=true",
             "-Djna.library.path=$projectDir/build/native",
         )
     }
@@ -220,6 +219,10 @@ fun Test.applyCommonTestConfig() {
 tasks.named<Test>("test") {
     applyCommonTestConfig()
     exclude("**/e2e/**")
+    // Unit tests run headlessly — suppress Dock icon and foreground activation.
+    if (System.getProperty("os.name", "").startsWith("Mac")) {
+        jvmArgs("-Dapple.awt.UIElement=true")
+    }
 }
 
 val e2eTest by tasks.registering(Test::class) {
