@@ -2,7 +2,7 @@
 > Regenerate with `python3 gen_ledger.py`. The section files' `done`
 > column (⬜/✅) is the source of truth; this is a derived view.
 
-**Overall: 1427 / 1564 actionable rows done (91%).**
+**Overall: 1434 / 1564 actionable rows done (91%).**
 
 | Package | Section | Done | Total | Status |
 |---|---|---:|---:|---|
@@ -64,7 +64,7 @@
 |  | [11c-ui-platform-mac-native-macos-menu-integration](matrix-menu/11c-ui-platform-mac-native-macos-menu-integration.md) | 7 | 7 | ✅ complete |
 |  | [11d-musiceditoperations-top-level-ui](matrix-menu/11d-musiceditoperations-top-level-ui.md) | 40 | 40 | ✅ complete |
 |  | [11e-appearance-dialog-helpers-top-level-ui](matrix-menu/11e-appearance-dialog-helpers-top-level-ui.md) | 8 | 8 | ✅ complete |
-|  | [11f-display-constants-top-level-ui](matrix-menu/11f-display-constants-top-level-ui.md) | 4 | 17 | in progress |
+|  | [11f-display-constants-top-level-ui](matrix-menu/11f-display-constants-top-level-ui.md) | 11 | 17 | in progress |
 | 12 · lifecycle+error+top-level | [12a-lifecycle-shutdown-error-runtimeerror](matrix-lifecycle/12a-lifecycle-shutdown-error-runtimeerror.md) | 0 | 8 | not started |
 |  | [12b-songscribe](matrix-lifecycle/12b-songscribe.md) | 0 | 25 | not started |
 | 13 · e2e reconciliation | [13a-elementinsertiontest](matrix-e2e/13a-elementinsertiontest.md) | 0 | 6 | not started |
