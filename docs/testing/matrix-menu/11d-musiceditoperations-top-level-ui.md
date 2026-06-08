@@ -63,13 +63,13 @@
 | `MusicEditOperations` | `toggleTrill()` — one overlapping trill exists → remove it | unit | `MusicEditOperationsMutationTest.testToggleTrillOffResultsInNoTrill` | adequate | None | — |
 | `MusicEditOperations` | `toggleTrill()` — multiple overlapping trills exist → remove all in one bracket | unit | none | missing | Add test: two trills whose spans overlap the selection are both removed in a single notification | ✅ |
 | `MusicEditOperations` | `canFlipStemDirection()` delegates to `state.canFlipStemDirection()`; returns false when state null | unit | none | missing | Add test: null state → false | ✅ |
-| `MusicEditOperations` | `flipStemDirection()` — null state guard: shows info dialog | unit | none | missing | Add test: null selection shows `OptionDialogs.showInfoMessage` and emits no mutation | ⬜ |
-| `MusicEditOperations` | `flipStemDirection()` — rest elements in selection are skipped (no mutation emitted for rests) | unit | none | missing | Add test: selection containing a rest; verify rest emits no `ElementModification`, only note does | ⬜ |
+| `MusicEditOperations` | `flipStemDirection()` — null state guard: shows info dialog | unit | none | missing | Add test: null selection shows `OptionDialogs.showInfoMessage` and emits no mutation | ✅ |
+| `MusicEditOperations` | `flipStemDirection()` — rest elements in selection are skipped (no mutation emitted for rests) | unit | none | missing | Add test: selection containing a rest; verify rest emits no `ElementModification`, only note does | ✅ |
 | `MusicEditOperations` | `flipStemDirection()` — unbeamed notes: flips each individually | unit | `MusicEditOperationsMutationTest.testFlipStemDirectionEmitsElementModificationPerAffectedIndex`, `BeamToggleTest.FlipStemDirection.testFlipStemUnbeamedWithPersistence` | adequate | None | — |
 | `MusicEditOperations` | `flipStemDirection()` — beamed notes: flips whole beam group together (single pass per group) | unit | `BeamToggleTest.FlipStemDirection.testFlipStemWhileBeamedChangesDirection` | adequate | None | — |
-| `MusicEditOperations` | `flipStemDirection()` — deduplication: beam group partially inside selection flipped only once | unit | none | missing | Add test: selection spanning only part of a beam group; group flipped once, not per-selected-note | ⬜ |
-| `MusicEditOperations` | `flipStemDirection()` — tie partners outside selection are also flipped | unit | none | missing | Add test: note with a tie whose partner is outside the selection; partner's stem is also flipped | ⬜ |
-| `MusicEditOperations` | `canChangeTempo()` delegates to `coordinator.canChangeTempo()` | unit | none | missing | Add test: verifies delegation; trivial but needed to guard the null state | ⬜ |
+| `MusicEditOperations` | `flipStemDirection()` — deduplication: beam group partially inside selection flipped only once | unit | none | missing | Add test: selection spanning only part of a beam group; group flipped once, not per-selected-note | ✅ |
+| `MusicEditOperations` | `flipStemDirection()` — tie partners outside selection are also flipped | unit | none | missing | Add test: note with a tie whose partner is outside the selection; partner's stem is also flipped | ✅ |
+| `MusicEditOperations` | `canChangeTempo()` delegates to `coordinator.canChangeTempo()` | unit | none | missing | Add test: verifies delegation; trivial but needed to guard the null state | ✅ |
 | `MusicEditOperations` | `setSong()` — replaces the song field (allows reuse across document loads) | none | `ScoreViewSetFontsTest` indirectly via `ScoreView.setSong()` (production path, not a direct test) | none | Trivial setter; no behavioral logic | — |
 
 **Notes:**

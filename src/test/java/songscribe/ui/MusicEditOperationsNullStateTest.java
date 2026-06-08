@@ -39,6 +39,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.Strings;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -292,5 +293,35 @@ class MusicEditOperationsNullStateTest extends UnitTest {
         assertThat(opsWithNullState().canFlipStemDirection())
             .as("canFlipStemDirection() with null state must return false")
             .isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // flipStemDirection — null state guard (row 66)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testFlipStemDirectionShowsInfoDialogAndEmitsNoMutationWhenStateNull() {
+        // flipStemDirection() is unique among operations: instead of silently returning,
+        // it shows an informational dialog when state == null. Verify both the dialog call
+        // and that no SongDidChangeNotification is emitted.
+        //
+        // Note: OptionDialogs is mocked *before* opsWithNullState() so that the mock is
+        // active when flipStemDirection() executes. messageCenterMock is opened inside
+        // opsWithNullState() and closed in tearDown().
+        try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+            var ops = opsWithNullState();
+            ops.flipStemDirection();
+
+            // Dialog must fire with the stem-direction title/message keys.
+            optionDialogsMock.verify(
+                () -> OptionDialogs.showInfoMessage(
+                    null,
+                    Strings.ALERT_TITLE_STEM_DIRECTION,
+                    Strings.ERROR_STEM_NO_SELECTION
+                )
+            );
+
+            verifyNoChangeNotification();
+        }
     }
 }

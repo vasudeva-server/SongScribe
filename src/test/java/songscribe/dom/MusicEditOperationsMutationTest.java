@@ -833,6 +833,105 @@ class MusicEditOperationsMutationTest extends UnitTest {
         }
     }
 
+    @Test
+    void testFlipStemDirectionSkipsRestElements() {
+        // [CROTCHET(0), CROTCHET_REST(1), CROTCHET(2)] — all three selected.
+        // The rest at index 1 must not receive an ElementModification; only the
+        // two notes at indices 0 and 2 are flipped.
+        var env = setupEnv(crotchet(), crotchetRest(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().flipStemDirection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+
+        assertThat(mutations)
+            .as("exactly two modifications — one per note, none for the rest")
+            .hasSize(2);
+
+        for (var mutation : mutations) {
+            assertThat(mutation).isInstanceOf(ElementModification.class);
+        }
+    }
+
+    @Test
+    void testFlipStemDirectionDeduplicatesBeamGroupWhenPartiallySelected() {
+        // Beam covers [0..3] (four eighth-notes). Selection covers only [0..1],
+        // a strict subset of the beam group. flipStemDirection must flip the
+        // entire beam group (indices 0–3) exactly once — not once per selected note.
+        var env = setupEnv(quaver(), quaver(), quaver(), quaver());
+        song.withoutMutationTracking(
+            () -> env.line().addBeaming(new Beam(env.line().getElement(0), env.line().getElement(3)))
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        env.operations().flipStemDirection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+
+        // All four beam members are flipped; each appears exactly once.
+        assertThat(mutations)
+            .as("all four beam members flipped exactly once despite partial selection")
+            .hasSize(4);
+
+        for (var mutation : mutations) {
+            assertThat(mutation).isInstanceOf(ElementModification.class);
+        }
+    }
+
+    @Test
+    void testFlipStemDirectionAlsoFlipsTiePartnersOutsideSelection() {
+        // [CROTCHET(0), CROTCHET(1), CROTCHET(2)], tie spans [0..2].
+        // Selection covers only index 0. Tie partners at indices 1 and 2 fall
+        // outside the selection but must also be flipped.
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        song.withoutMutationTracking(
+            () -> env.line().addTie(new Tie(env.line().getElement(0), env.line().getElement(2)))
+        );
+        ReflectionTestHelper.selectNote(env.coordinator(), 0);
+        env.operations().flipStemDirection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+
+        // Index 0 is in selection (directly flipped); indices 1 and 2 are tie
+        // partners outside the selection (also flipped). Total: 3 modifications.
+        assertThat(mutations)
+            .as("selected note plus both tie partners outside selection are all flipped")
+            .hasSize(3);
+
+        for (var mutation : mutations) {
+            assertThat(mutation).isInstanceOf(ElementModification.class);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // canChangeTempo — delegation
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanChangeTempoReturnsTrueWhenSingleNoteSelected() {
+        // canChangeTempo() delegates to coordinator.canChangeTempo(), which returns true
+        // when exactly one element is selected.
+        var env = setupEnv(crotchet(), crotchet());
+        ReflectionTestHelper.selectNote(env.coordinator(), 0);
+        assertThat(env.operations().canChangeTempo())
+            .as("canChangeTempo() must return true when a single note is selected")
+            .isTrue();
+    }
+
+    @Test
+    void testCanChangeTempoReturnsFalseWhenMultipleNotesSelected() {
+        // coordinator.canChangeTempo() returns false when state is null or no single
+        // element is selected. Use a coordinator with no active line to verify this path.
+        var env = setupEnv(crotchet(), crotchet());
+        // selectRange produces a multi-element selection; getSingleSelectedElement() → null
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        assertThat(env.operations().canChangeTempo())
+            .as("canChangeTempo() must return false when multiple notes are selected")
+            .isFalse();
+    }
+
     // -----------------------------------------------------------------------
     // First-second ending
     // -----------------------------------------------------------------------
