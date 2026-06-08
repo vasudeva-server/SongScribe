@@ -9,6 +9,23 @@ only when the behavior genuinely requires simulating mouse actions through the
 real Swing pipeline. Running E2E tests requires user approval (see
 `.agents/rules/development.md`).
 
+## Running E2E Tests
+
+E2E tests run under a dedicated Gradle task (`e2eTest`), selected by the `e2e`
+target keyword. The unit `test` task has `exclude("**/e2e/**")`, so e2e classes
+are invisible to it.
+
+- `./scripts/test.sh e2e` — run every e2e test.
+- `./scripts/test.sh e2e FooTest BarTest` — run only the named e2e classes.
+- `./scripts/test.sh e2e FooTest.testBaz` — run a single e2e method.
+
+**A bare class-name target does not run e2e tests.** Without the leading `e2e`
+keyword, `test.sh` routes targets to the unit `test` task. An e2e-only class
+then matches nothing and is silently skipped; a name it shares with a unit class
+(e.g. an `e2e.ShutdownTest` alongside a `lifecycle.ShutdownTest`) runs only the
+unit one. Either way the runner still prints a passing count, which is easy to
+mistake for a successful e2e run. Always prefix e2e targets with `e2e`.
+
 ## Structure
 
 All E2E tests extend `E2ETest` and live in `src/test/java/songscribe/e2e/`.

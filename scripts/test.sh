@@ -4,10 +4,12 @@
 # Examples:
 #   ./scripts/test.sh                                          # All tests (unit then e2e)
 #   ./scripts/test.sh e2e                                      # e2e tests only
+#   ./scripts/test.sh e2e FontChooserTest                      # Specific e2e class (e2e prefix required)
+#   ./scripts/test.sh e2e FontChooserTest.testFoo              # Specific e2e method
 #   ./scripts/test.sh unit                                     # Unit tests only
 #   ./scripts/test.sh --keep-going                             # All tests, continue past failures
 #   ./scripts/test.sh --debug e2e                              # e2e tests with debug pausing
-#   ./scripts/test.sh SMuFLMetadataTest                        # Specific test class
+#   ./scripts/test.sh SMuFLMetadataTest                        # Specific unit class (bare names use the unit task; prefix e2e classes with e2e)
 #   ./scripts/test.sh BeamingTest.testFlipStemDirection        # Specific test method
 #   ./scripts/test.sh 'NoteConnectionTest$Beaming'             # Nested class (single quotes prevent $ expansion)
 #   ./scripts/test.sh 'NoteConnectionTest$Beaming.method'      # Method in nested class
