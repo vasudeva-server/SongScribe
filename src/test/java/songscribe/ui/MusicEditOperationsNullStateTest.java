@@ -34,6 +34,7 @@ import org.mockito.MockedStatic;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.UnitTest;
+import songscribe.dom.EndingValidationResult;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
@@ -247,6 +248,49 @@ class MusicEditOperationsNullStateTest extends UnitTest {
     void testCanMakeFirstSecondEndingReturnsFalseWhenStateNull() {
         assertThat(opsWithNullState().canMakeFirstSecondEnding().isValid())
             .as("canMakeFirstSecondEnding() with null state must return invalid")
+            .isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // makeFirstSecondEnding — null state guard (row 56)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testMakeFirstSecondEndingEmitsNoNotificationWhenStateNull() {
+        var result = EndingValidationResult.valid(EndingValidationResult.PrecedingAction.NONE, 0, 1);
+        opsWithNullState().makeFirstSecondEnding(result);
+        verifyNoChangeNotification();
+    }
+
+    // -----------------------------------------------------------------------
+    // canToggleTrill — null state (row 60)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanToggleTrillReturnsFalseWhenStateNull() {
+        assertThat(opsWithNullState().canToggleTrill())
+            .as("canToggleTrill() with null state must return false")
+            .isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // toggleTrill — null state guard (row 61)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testToggleTrillEmitsNoNotificationWhenStateNull() {
+        opsWithNullState().toggleTrill();
+        verifyNoChangeNotification();
+    }
+
+    // -----------------------------------------------------------------------
+    // canFlipStemDirection — null state (row 65)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanFlipStemDirectionReturnsFalseWhenStateNull() {
+        assertThat(opsWithNullState().canFlipStemDirection())
+            .as("canFlipStemDirection() with null state must return false")
             .isFalse();
     }
 }

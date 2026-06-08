@@ -48,6 +48,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.RangeElementAddition;
+import songscribe.message.mutation.RangeElementRemoval;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
@@ -693,6 +694,63 @@ class MusicEditOperationsMutationTest extends UnitTest {
             .isEqualTo(7);
     }
 
+    @Test
+    void testCanMakeFirstSecondEndingReturnsFalseWhenPrecedingElementIsRightRepeat() {
+        // checkPrecedingElement: preceding element is REPEAT_RIGHT, which is a right-repeat;
+        // this branch returns invalid regardless of selection structure.
+        //
+        // Layout: [REPEAT_LEFT(0), CROTCHET(1), CROTCHET(2), REPEAT_RIGHT(3),
+        //          CROTCHET(4), CROTCHET(5), REPEAT_RIGHT(6), CROTCHET(7),
+        //          CROTCHET(8), SINGLE_BARLINE(9)]
+        // Selection 4–9. Preceding element at index 3 is REPEAT_RIGHT.
+        // validateEndingStructure [4..9] passes (one REPEAT_RIGHT at 6, 4 content elements).
+        // hasEnclosingRepeat: scan from 4 backward finds REPEAT_LEFT at 0 → valid.
+        // checkPrecedingElement: preceding type is REPEAT_RIGHT → invalid.
+        var env = setupEnv(
+            repeatLeft(), crotchet(), crotchet(), repeatRight(),
+            crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 4, 9);
+        assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+            .as("canMakeFirstSecondEnding() must return invalid when preceding element is a right-repeat")
+            .isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // makeFirstSecondEnding — EXTEND_SPAN path (row 59)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testMakeFirstSecondEndingWithExtendSpanEmitsOnlyRangeElementAdditionWithExtendedBounds() {
+        // EXTEND_SPAN: the preceding element is already a barline that should be included
+        // in the span. No new element is inserted; only one RangeElementAddition is emitted,
+        // and its Ending spans from the extended start (the barline index) to the original end.
+        //
+        // Layout: [SINGLE_BARLINE(0), CROTCHET(1), CROTCHET(2), CROTCHET(3)]
+        // Result: EXTEND_SPAN, spanStart=0, spanEnd=3 (barline already part of span).
+        var env = setupEnv(singleBarline(), crotchet(), crotchet(), crotchet());
+        ReflectionTestHelper.selectNote(env.coordinator(), 1);
+        var result = EndingValidationResult.valid(EndingValidationResult.PrecedingAction.EXTEND_SPAN, 0, 3);
+        env.operations().makeFirstSecondEnding(result);
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).as("only one mutation emitted for EXTEND_SPAN path").hasSize(1);
+        assertThat(mutations.getFirst())
+            .as("mutation is a RangeElementAddition")
+            .isInstanceOf(RangeElementAddition.class);
+
+        var rangeAddition = (RangeElementAddition) mutations.getFirst();
+        assertThat(rangeAddition.element()).as("added element is an Ending").isInstanceOf(Ending.class);
+        var ending = (Ending) rangeAddition.element();
+        assertThat(ending.getAnchorElementIndex())
+            .as("Ending anchor is at the extended start (the barline index)")
+            .isEqualTo(0);
+        assertThat(ending.getEndElementIndex())
+            .as("Ending end is at the original selection end")
+            .isEqualTo(3);
+    }
+
     // -----------------------------------------------------------------------
     // Trill
     // -----------------------------------------------------------------------
@@ -721,6 +779,35 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // After two toggles the line should have no trill range elements
         assertThat(env.line().findRangeElements(Trill.class))
             .as("trill removed after second toggle").isEmpty();
+    }
+
+    @Test
+    void testToggleTrillRemovesAllOverlappingTrillsInSingleNotification() {
+        // Two pre-existing trills both overlapping the selection must each be removed
+        // in a single notification containing two RangeElementRemoval mutations.
+        //
+        // Layout: [CROTCHET(0), CROTCHET(1), CROTCHET(2), CROTCHET(3), CROTCHET(4)]
+        // trill1: [0..1], trill2: [3..4], selection: [0..4] — both trills overlap.
+        var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet(), crotchet());
+        var line = env.line();
+        song.withoutMutationTracking(() -> {
+            line.addRangeElement(new Trill(line.getElement(0), line.getElement(1)));
+            line.addRangeElement(new Trill(line.getElement(3), line.getElement(4)));
+        });
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 4);
+        env.operations().toggleTrill();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        var removals = mutations.stream()
+            .filter(m -> m instanceof RangeElementRemoval r && r.element() instanceof Trill)
+            .toList();
+        assertThat(removals)
+            .as("both overlapping trills removed in one notification")
+            .hasSize(2);
+        assertThat(mutations)
+            .as("no mutations other than the two trill removals")
+            .hasSize(2);
     }
 
     // -----------------------------------------------------------------------
