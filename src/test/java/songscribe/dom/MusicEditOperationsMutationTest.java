@@ -383,9 +383,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
             .filter(m -> m instanceof DiminuendoRemoval)
             .toList();
 
-        assertThat(crescendoRemovals).as("crescendo removals emitted").isNotEmpty();
-        assertThat(diminuendoRemovals).as("diminuendo removals emitted").isNotEmpty();
-        assertThat(mutations).hasSize(crescendoRemovals.size() + diminuendoRemovals.size());
+        assertThat(crescendoRemovals).as("exactly one crescendo removal emitted").hasSize(1);
+        assertThat(diminuendoRemovals).as("exactly one diminuendo removal emitted").hasSize(1);
+        assertThat(mutations).as("total mutations equals one crescendo removal plus one diminuendo removal").hasSize(2);
     }
 
     @Test
@@ -431,6 +431,84 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(env.operations().canRemoveDynamicsFromSelection())
             .as("canRemoveDynamicsFromSelection() must return true when a diminuendo overlaps selection")
             .isTrue();
+    }
+
+    @Test
+    void testRemoveDynamicsRemovesCrescendoWhoseAnchorIsBeforeSelectionBegin() {
+        // A crescendo starting before the selection but ending inside the selection
+        // must be included in getDynamicsFromSelection and removed.
+        // Layout: [c0, c1, c2, c3]; crescendo spans [0..2], selection covers [2..3].
+        // Overlap condition: anchor(0) <= selectionEnd(3) AND end(2) >= selectionBegin(2) → included.
+        var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
+        var line = env.line();
+        var crescendo = new Crescendo(line.getElement(0), line.getElement(2));
+        song.withoutMutationTracking(() -> line.addRangeElement(crescendo));
+        ReflectionTestHelper.selectRange(env.coordinator(), 2, 3);
+        env.operations().removeDynamicsFromSelection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).as("one crescendo removal emitted for partial overlap").hasSize(1);
+        assertThat(mutations.getFirst())
+            .as("removal is a CrescendoRemoval")
+            .isInstanceOf(CrescendoRemoval.class);
+    }
+
+    // -----------------------------------------------------------------------
+    // canMakeFirstSecondEnding — null/no-element-selection (row 32)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsFalseWhenNoElementSelection() {
+        // Active line registered but no element range selected (hasElementSelection() == false).
+        var env = setupEnv(crotchet(), crotchet());
+        // No selectRange call — active line exists but selection is empty.
+        assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+            .as("canMakeFirstSecondEnding() with no element selection must return invalid")
+            .isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // canMakeFirstSecondEnding — validateEndingStructure failures
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsFalseWhenContentBelowMinimum() {
+        // Three content elements total (crotchet + repeat_right + single_barline) which is
+        // below MIN_CONTENT_ELEMENTS (4); validateEndingStructure must return -1.
+        // Layout: [CROTCHET(0), REPEAT_RIGHT(1), SINGLE_BARLINE(2)], selection 0-2.
+        var env = setupEnv(crotchet(), repeatRight(), singleBarline());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+            .as("canMakeFirstSecondEnding() with fewer than MIN_CONTENT_ELEMENTS must return invalid")
+            .isFalse();
+    }
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsFalseWhenMultipleRightRepeats() {
+        // Two REPEAT_RIGHT elements in the selection; validateEndingStructure detects the
+        // second right-repeat and returns -1 immediately.
+        // Layout: [CROTCHET(0), REPEAT_RIGHT(1), CROTCHET(2), REPEAT_RIGHT(3), CROTCHET(4),
+        //          SINGLE_BARLINE(5)], selection 0-5.
+        var env = setupEnv(crotchet(), repeatRight(), crotchet(), repeatRight(), crotchet(), singleBarline());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 5);
+        assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+            .as("canMakeFirstSecondEnding() with multiple right-repeats must return invalid")
+            .isFalse();
+    }
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsFalseWhenNoRightRepeatFound() {
+        // Five content elements (4 crotchets + SINGLE_BARLINE) satisfies MIN_CONTENT_ELEMENTS,
+        // but there is no REPEAT_RIGHT or REPEAT_LEFT_RIGHT in the selection;
+        // rightRepeatIndex stays -1 and validateEndingStructure returns -1.
+        // Layout: [CROTCHET(0), CROTCHET(1), CROTCHET(2), CROTCHET(3), SINGLE_BARLINE(4)],
+        // selection 0-4.
+        var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet(), singleBarline());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 4);
+        assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+            .as("canMakeFirstSecondEnding() with no right-repeat in selection must return invalid")
+            .isFalse();
     }
 
     // -----------------------------------------------------------------------

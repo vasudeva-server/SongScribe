@@ -228,4 +228,25 @@ class MusicEditOperationsNullStateTest extends UnitTest {
             .as("canRemoveDynamicsFromSelection() with null state must return false")
             .isFalse();
     }
+
+    // -----------------------------------------------------------------------
+    // removeDynamicsFromSelection — null state guard (row 29)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testRemoveDynamicsEmitsNoNotificationWhenStateNull() {
+        opsWithNullState().removeDynamicsFromSelection();
+        verifyNoChangeNotification();
+    }
+
+    // -----------------------------------------------------------------------
+    // canMakeFirstSecondEnding — null state (row 32, null branch)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsFalseWhenStateNull() {
+        assertThat(opsWithNullState().canMakeFirstSecondEnding().isValid())
+            .as("canMakeFirstSecondEnding() with null state must return invalid")
+            .isFalse();
+    }
 }

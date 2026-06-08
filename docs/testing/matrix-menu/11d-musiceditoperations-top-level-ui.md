@@ -26,14 +26,14 @@
 | `MusicEditOperations` | `canRemoveDynamicsFromSelection()` — returns false when selection has no dynamics | unit | none | missing | Add test: selection with only notes returns false | ✅ |
 | `MusicEditOperations` | `canRemoveDynamicsFromSelection()` — returns true when crescendo overlaps selection | unit | none | missing | Add test | ✅ |
 | `MusicEditOperations` | `canRemoveDynamicsFromSelection()` — returns true when diminuendo overlaps selection | unit | none | missing | Add test | ✅ |
-| `MusicEditOperations` | `removeDynamicsFromSelection()` — null state guard | unit | none | missing | Add test: no mutation emitted | ⬜ |
-| `MusicEditOperations` | `removeDynamicsFromSelection()` — removes all overlapping crescendos and diminuendos | unit | `MusicEditOperationsMutationTest.testRemoveDynamicsEmitsRemovalPerSpan` | inadequate | Test asserts `isNotEmpty()` instead of exact counts; `ScoreViewControllerCommandHandlerTest.testHandleRemoveDynamicsEmitsRemovals` also uses `isNotEmpty()`. Neither pins the exact number of removals emitted. | ⬜ |
-| `MusicEditOperations` | `getDynamicsFromSelection()` — partial overlap: span starting before selection and ending inside | unit | none | missing | Add test: hairpin whose anchor is before selectionBegin but end is within range is included | ⬜ |
-| `MusicEditOperations` | `canMakeFirstSecondEnding()` — null/no-element-selection returns invalid | unit | none | missing | Add test | ⬜ |
+| `MusicEditOperations` | `removeDynamicsFromSelection()` — null state guard | unit | none | missing | Add test: no mutation emitted | ✅ |
+| `MusicEditOperations` | `removeDynamicsFromSelection()` — removes all overlapping crescendos and diminuendos | unit | `MusicEditOperationsMutationTest.testRemoveDynamicsEmitsRemovalPerSpan` | inadequate | Test asserts `isNotEmpty()` instead of exact counts; `ScoreViewControllerCommandHandlerTest.testHandleRemoveDynamicsEmitsRemovals` also uses `isNotEmpty()`. Neither pins the exact number of removals emitted. | ✅ |
+| `MusicEditOperations` | `getDynamicsFromSelection()` — partial overlap: span starting before selection and ending inside | unit | none | missing | Add test: hairpin whose anchor is before selectionBegin but end is within range is included | ✅ |
+| `MusicEditOperations` | `canMakeFirstSecondEnding()` — null/no-element-selection returns invalid | unit | none | missing | Add test | ✅ |
 | `MusicEditOperations` | `canMakeFirstSecondEnding()` — auto-maintained terminal extension | unit | `MusicEditOperationsMutationTest.CanMakeFirstSecondEndingAtSongEnd.testSelectionEndingBeforeAutoMaintainedTerminalIsValid` | adequate | None | — |
-| `MusicEditOperations` | `canMakeFirstSecondEnding()` — validateEndingStructure: insufficient content (< MIN_CONTENT_ELEMENTS) returns invalid | unit | none | missing | Add test: selection with fewer than 4 content elements | ⬜ |
-| `MusicEditOperations` | `canMakeFirstSecondEnding()` — validateEndingStructure: multiple right-repeats within selection returns invalid | unit | none | missing | Add test | ⬜ |
-| `MusicEditOperations` | `canMakeFirstSecondEnding()` — validateEndingStructure: no right-repeat found returns invalid | unit | none | missing | Add test | ⬜ |
+| `MusicEditOperations` | `canMakeFirstSecondEnding()` — validateEndingStructure: insufficient content (< MIN_CONTENT_ELEMENTS) returns invalid | unit | none | missing | Add test: selection with fewer than 4 content elements | ✅ |
+| `MusicEditOperations` | `canMakeFirstSecondEnding()` — validateEndingStructure: multiple right-repeats within selection returns invalid | unit | none | missing | Add test | ✅ |
+| `MusicEditOperations` | `canMakeFirstSecondEnding()` — validateEndingStructure: no right-repeat found returns invalid | unit | none | missing | Add test | ✅ |
 | `MusicEditOperations` | `canMakeFirstSecondEnding()` — validateEndingStructure: first ending region has barline/repeat → invalid | unit | none | missing | Add test | ⬜ |
 | `MusicEditOperations` | `canMakeFirstSecondEnding()` — validateEndingStructure: first ending region empty → invalid | unit | none | missing | Add test | ⬜ |
 | `MusicEditOperations` | `canMakeFirstSecondEnding()` — validateEndingStructure: second ending region has barline/repeat → invalid | unit | none | missing | Add test | ⬜ |
