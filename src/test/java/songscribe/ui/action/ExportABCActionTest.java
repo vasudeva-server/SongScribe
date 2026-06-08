@@ -33,14 +33,13 @@ class ExportABCActionTest extends UnitTest {
     void testTranslateTempoDescriptionOnly() {
         var tempo = new Tempo(120, Duration.CROTCHET, "Allegro", false);
         var result = ExportABCAction.translateTempo(tempo);
-        assertThat(result).isEqualTo("'Allegro'");
+        assertThat(result).isEqualTo("\"Allegro\"");
     }
 
     @Test
     void testTranslateTempoWithBpm() {
         var tempo = new Tempo(120, Duration.CROTCHET, "Allegro", true);
         var result = ExportABCAction.translateTempo(tempo);
-        assertThat(result).endsWith(" 'Allegro'");
-        assertThat(result).doesNotContain("\"");
+        assertThat(result).endsWith(" \"Allegro\"");
     }
 }
