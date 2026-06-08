@@ -113,3 +113,7 @@ MusicEditOperationsMutationTest.testCanMakeFirstSecondEndingReturnsInsertBarline
 # 11e — Appearance & Dialog Helpers
 # DialogsTest: fix inadequate test (raw string literals → Strings.* keys)
 modify: DialogsTest.WhenSuppressed.testShowOptionDialogReturnsClosedOption
+
+# 12b — SongScribe bootstrap
+# logBanner: inadequate (no assertion) → strengthened with log capture
+modify: SongScribeTest.testLogBannerLogsExpectedLines  # was side-effect invocation with no assertion; now captures ListAppender output and asserts 4 log lines with correct content

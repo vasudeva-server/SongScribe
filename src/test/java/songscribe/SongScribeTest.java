@@ -20,11 +20,17 @@
 package songscribe;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.mockStatic;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.lang.reflect.Constructor;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.function.Function;
 
 import org.jspecify.annotations.Nullable;
@@ -33,6 +39,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.formdev.flatlaf.util.SystemInfo;
+import org.slf4j.LoggerFactory;
+
+import songscribe.converter.ImageConverter;
+import songscribe.error.RuntimeError;
+import songscribe.ui.component.MainFrame;
+import songscribe.util.UIUtils;
 
 class SongScribeTest extends UnitTest {
 
@@ -45,6 +62,35 @@ class SongScribeTest extends UnitTest {
     // Environment variable names used by SongScribe.
     private static final String ENV_CONSOLE_LOG = "CONSOLE_LOG";
     private static final String ENV_LOG_LEVEL = "LOG_LEVEL";
+
+    // Number of asterisks in the logBanner border line — must match production.
+    private static final int LOG_BANNER_BORDER_WIDTH = 40;
+
+    // -------------------------------------------------------------------------
+    // Logger capture helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Attaches a {@link ListAppender} to the SongScribe logger, runs {@code action},
+     * then detaches the appender and returns all captured formatted messages.
+     */
+    private static List<String> captureLogMessages(Runnable action) {
+        var songScribeLogger = (Logger) LoggerFactory.getLogger(SongScribe.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        songScribeLogger.addAppender(appender);
+
+        try {
+            action.run();
+        } finally {
+            songScribeLogger.detachAppender(appender);
+            appender.stop();
+        }
+
+        return appender.list.stream()
+            .map(ILoggingEvent::getFormattedMessage)
+            .toList();
+    }
 
     // -------------------------------------------------------------------------
     // configureLogging — CONSOLE_LOG present, resource URL non-null (row 7)
@@ -540,6 +586,277 @@ class SongScribeTest extends UnitTest {
             assertThat(tempDir.toFile().list())
                 .as("truncateLogIfRequested with no log file must leave the directory empty")
                 .isEmpty();
+        }
+
+        // -----------------------------------------------------------------------
+        // truncateLogIfRequested — IOException from deleteIfExists → stderr, no rethrow (row 21)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testTruncateLogIoExceptionPrintsToStderrAndDoesNotThrow(@TempDir Path tempDir) throws IOException {
+            // Place a non-empty directory named "songscribe.log" so that Files.deleteIfExists
+            // throws DirectoryNotEmptyException (an IOException subclass) — you cannot delete
+            // a directory that contains files with deleteIfExists on macOS/Linux.
+            var logDirPath = tempDir.resolve(LOG_FILE_NAME);
+            Files.createDirectory(logDirPath);
+            Files.createFile(logDirPath.resolve("notempty.txt"));
+
+            System.setProperty(PROP_LOG_DIR, tempDir.toString());
+
+            // Capture stderr to assert the error message is printed.
+            var originalErr = System.err;
+            var captured = new ByteArrayOutputStream();
+            System.setErr(new PrintStream(captured));
+
+            try {
+                assertThatCode(() ->
+                    SongScribe.truncateLogIfRequested(key -> ENV_TRUNCATE_LOG.equals(key) ? "1" : null)
+                ).doesNotThrowAnyException();
+            } finally {
+                System.setErr(originalErr);
+            }
+
+            assertThat(captured.toString())
+                .as("truncateLogIfRequested must print the IOException message to stderr")
+                .contains("Failed to delete log file:");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // logBanner — captures log output and asserts expected lines (row 22)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testLogBannerLogsExpectedLines() {
+        // logBanner logs: border, name+version, border, log level line — 4 messages.
+        var messages = captureLogMessages(() -> SongScribe.logBanner("TestApp"));
+        var expectedBorder = "*".repeat(LOG_BANNER_BORDER_WIDTH);
+
+        assertThat(messages)
+            .as("logBanner must emit exactly 4 log lines")
+            .hasSize(4);
+
+        assertThat(messages.get(0))
+            .as("logBanner first line must be a border of %d asterisks", LOG_BANNER_BORDER_WIDTH)
+            .isEqualTo(expectedBorder);
+
+        assertThat(messages.get(1))
+            .as("logBanner second line must contain the app name")
+            .contains("TestApp");
+
+        assertThat(messages.get(2))
+            .as("logBanner third line must be the closing border")
+            .isEqualTo(expectedBorder);
+
+        assertThat(messages.get(3))
+            .as("logBanner fourth line must start with 'Log level:'")
+            .startsWith("Log level:");
+    }
+
+    // -------------------------------------------------------------------------
+    // main — app dispatched from args[0] (row 23)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class WhenMain {
+
+        private static final String PROP_RECONFIGURE_ON_NULL = "swing.actions.reconfigureOnNull";
+
+        private @Nullable String savedHome;
+        private @Nullable String savedLogDir;
+        private @Nullable String savedReconfigureOnNull;
+
+        @BeforeEach
+        void saveProperties(@TempDir Path tempHome) {
+            savedHome = System.getProperty(PROP_USER_HOME);
+            savedLogDir = System.getProperty(PROP_LOG_DIR);
+            savedReconfigureOnNull = System.getProperty(PROP_RECONFIGURE_ON_NULL);
+
+            // Route user.home to a temp dir so configureLogging() can create its directory.
+            System.setProperty(PROP_USER_HOME, tempHome.toString());
+            System.clearProperty(PROP_LOG_DIR);
+        }
+
+        @AfterEach
+        void restoreProperties() {
+            if (savedHome != null) {
+                System.setProperty(PROP_USER_HOME, savedHome);
+            } else {
+                System.clearProperty(PROP_USER_HOME);
+            }
+
+            if (savedLogDir != null) {
+                System.setProperty(PROP_LOG_DIR, savedLogDir);
+            } else {
+                System.clearProperty(PROP_LOG_DIR);
+            }
+
+            if (savedReconfigureOnNull != null) {
+                System.setProperty(PROP_RECONFIGURE_ON_NULL, savedReconfigureOnNull);
+            } else {
+                System.clearProperty(PROP_RECONFIGURE_ON_NULL);
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // main — app dispatched from args[0] (row 23)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testMainDispatchesImageConverterWhenArgIsImageConverter() {
+            try (var imageConverterMock = mockStatic(ImageConverter.class)) {
+                SongScribe.main(new String[]{"image_converter"});
+
+                imageConverterMock.verify(() -> ImageConverter.main(new String[]{"image_converter"}));
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // main — app dispatched from system property (row 24)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testMainDispatchesConverterFromSystemProperty() {
+            var savedProp = System.getProperty("songscribe");
+
+            try {
+                System.setProperty("songscribe", "image_converter");
+
+                try (var imageConverterMock = mockStatic(ImageConverter.class)) {
+                    // No args → reads system property "songscribe".
+                    SongScribe.main(new String[]{});
+
+                    imageConverterMock.verify(() -> ImageConverter.main(new String[]{}));
+                }
+            } finally {
+                if (savedProp != null) {
+                    System.setProperty("songscribe", savedProp);
+                } else {
+                    System.clearProperty("songscribe");
+                }
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // main — logBanner title: converter apps → "SongScribe Converter" (row 26)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testMainLogsBannerWithConverterTitleForConverterApp() {
+            try (var imageConverterMock = mockStatic(ImageConverter.class)) {
+                var messages = captureLogMessages(() -> SongScribe.main(new String[]{"image_converter"}));
+
+                var bannerLine = messages.stream()
+                    .filter(message -> message.startsWith("* "))
+                    .findFirst()
+                    .orElse("");
+
+                assertThat(bannerLine)
+                    .as("main must pass 'SongScribe Converter' to logBanner when app contains 'converter'")
+                    .contains("SongScribe Converter");
+            }
+        }
+
+        @Test
+        void testMainLogsBannerWithDefaultTitleForNonConverterApp() {
+            try (
+                var uiUtilsMock = mockStatic(UIUtils.class);
+                var mainFrameMock = mockStatic(MainFrame.class)
+            ) {
+                // "sw" (the default app key) does not contain "converter" so logBanner
+                // must receive "SongScribe", not "SongScribe Converter".
+                var messages = captureLogMessages(() -> SongScribe.main(new String[]{"sw"}));
+
+                var bannerLine = messages.stream()
+                    .filter(message -> message.startsWith("* "))
+                    .findFirst()
+                    .orElse("");
+
+                assertThat(bannerLine)
+                    .as("main with non-converter app must pass 'SongScribe' (not 'SongScribe Converter') to logBanner")
+                    .contains("SongScribe")
+                    .doesNotContain("Converter");
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // main — macOS system properties set before AWT init (row 27)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testMainSetsMacOsSystemPropertiesOnMacOs() {
+            // The macOS branch in main() sets these two properties only when SystemInfo.isMacOS.
+            // On the macOS CI host this will always be true; skip gracefully on other platforms.
+            if (!SystemInfo.isMacOS) {
+                return;
+            }
+
+            var savedMenuBar = System.getProperty("apple.laf.useScreenMenuBar");
+            var savedAppearance = System.getProperty("apple.awt.application.appearance");
+
+            // Clear them first so we can confirm main() sets them.
+            System.clearProperty("apple.laf.useScreenMenuBar");
+            System.clearProperty("apple.awt.application.appearance");
+
+            try (var imageConverterMock = mockStatic(ImageConverter.class)) {
+                SongScribe.main(new String[]{"image_converter"});
+
+                // Assert while still in scope, before properties are restored.
+                assertThat(System.getProperty("apple.laf.useScreenMenuBar"))
+                    .as("main must set apple.laf.useScreenMenuBar to 'true' on macOS")
+                    .isEqualTo("true");
+
+                assertThat(System.getProperty("apple.awt.application.appearance"))
+                    .as("main must set apple.awt.application.appearance to 'system' on macOS")
+                    .isEqualTo("system");
+            } finally {
+                if (savedMenuBar != null) {
+                    System.setProperty("apple.laf.useScreenMenuBar", savedMenuBar);
+                } else {
+                    System.clearProperty("apple.laf.useScreenMenuBar");
+                }
+
+                if (savedAppearance != null) {
+                    System.setProperty("apple.awt.application.appearance", savedAppearance);
+                } else {
+                    System.clearProperty("apple.awt.application.appearance");
+                }
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // main — uncaught exception handler swallows ExitInProgressError on EDT (row 28)
+        // -----------------------------------------------------------------------
+
+        @Test
+        void testUncaughtExceptionHandlerSwallowsExitInProgressError() throws Exception {
+            // Install the uncaught exception handler by running main with a converter arg.
+            try (var imageConverterMock = mockStatic(ImageConverter.class)) {
+                SongScribe.main(new String[]{"image_converter"});
+            }
+
+            var handler = Thread.getDefaultUncaughtExceptionHandler();
+            assertThat(handler)
+                .as("main must install a default uncaught exception handler")
+                .isNotNull();
+
+            if (handler == null) {
+                return; // unreachable — satisfies NullAway
+            }
+
+            // ExitInProgressError has a private constructor — create via reflection.
+            Constructor<RuntimeError.ExitInProgressError> constructor =
+                RuntimeError.ExitInProgressError.class.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            var exitInProgress = constructor.newInstance();
+
+            // The handler checks instanceof ExitInProgressError before any EDT check
+            // and silently returns — verify it does not throw on any thread.
+            var testThread = Thread.currentThread();
+
+            assertThatCode(() ->
+                handler.uncaughtException(testThread, exitInProgress)
+            ).doesNotThrowAnyException();
         }
     }
 }

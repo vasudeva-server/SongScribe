@@ -2657,3 +2657,11 @@ SongScribeTest$WhenTruncateLog.testTruncateLogAbsentDoesNothingAndDoesNotCrash	1
 SongScribeTest$WhenTruncateLog.testTruncateLogSetButLogDirAbsentDoesNotCrash	12b	add: SongScribe.truncateLogIfRequested() TRUNCATE_LOG set but songscribe.log.dir absent → no crash
 SongScribeTest$WhenTruncateLog.testTruncateLogDeletesLogFileWhenItExists	12b	add: SongScribe.truncateLogIfRequested() TRUNCATE_LOG set + log dir set + file exists → file deleted
 SongScribeTest$WhenTruncateLog.testTruncateLogWithNoLogFileDoesNotCrash	12b	add: SongScribe.truncateLogIfRequested() TRUNCATE_LOG set + log dir set + no file → no-op, no crash
+SongScribeTest$WhenTruncateLog.testTruncateLogIoExceptionPrintsToStderrAndDoesNotThrow	12b	add: SongScribe.truncateLogIfRequested() IOException from deleteIfExists → stderr message, no rethrow
+SongScribeTest.testLogBannerLogsExpectedLines	12b	add: SongScribe.logBanner() captures log output and asserts 4 lines with correct content
+SongScribeTest$WhenMain.testMainDispatchesImageConverterWhenArgIsImageConverter	12b	add: SongScribe.main() with args[0]="image_converter" dispatches to ImageConverter.main
+SongScribeTest$WhenMain.testMainDispatchesConverterFromSystemProperty	12b	add: SongScribe.main() with empty args reads "songscribe" system property for dispatch
+SongScribeTest$WhenMain.testMainLogsBannerWithConverterTitleForConverterApp	12b	add: SongScribe.main() passes "SongScribe Converter" to logBanner when app contains "converter"
+SongScribeTest$WhenMain.testMainLogsBannerWithDefaultTitleForNonConverterApp	12b	add: SongScribe.main() passes "SongScribe" to logBanner when app is "sw" (no "converter")
+SongScribeTest$WhenMain.testMainSetsMacOsSystemPropertiesOnMacOs	12b	add: SongScribe.main() sets apple.laf.useScreenMenuBar and apple.awt.application.appearance on macOS
+SongScribeTest$WhenMain.testUncaughtExceptionHandlerSwallowsExitInProgressError	12b	add: SongScribe.main() installs uncaught handler that silently swallows ExitInProgressError
