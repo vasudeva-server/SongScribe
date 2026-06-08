@@ -444,7 +444,8 @@ public final class PlaybackController {
         }
     }
 
-    private static void setLoopSequence(
+    // Package-private for testing
+    static void setLoopSequence(
         @Nullable ElementSelection noteSelection,
         Sequencer sequencer
     ) {
@@ -458,7 +459,8 @@ public final class PlaybackController {
         sequencer.setLoopCount(loopPlayback ? Sequencer.LOOP_CONTINUOUSLY : 0);
     }
 
-    private static Sequence buildSequenceForSelection(
+    // Package-private for testing
+    static Sequence buildSequenceForSelection(
         Song song,
         @Nullable ElementSelection selection
     ) throws InvalidMidiDataException {

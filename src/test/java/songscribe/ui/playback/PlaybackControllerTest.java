@@ -20,6 +20,8 @@
 
 package songscribe.ui.playback;
 
+import java.util.ArrayList;
+
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
@@ -38,6 +40,9 @@ import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.midi.MidiSequenceBuilder;
+import songscribe.midi.PlaybackSettings;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.playback.PlaybackController.PlaybackState;
@@ -61,6 +66,10 @@ class PlaybackControllerTest extends UnitTest {
         PlaybackController.setActiveSelection(null);
         PlaybackController.setRegisteredScore(null);
         PlaybackController.setPausedTickPosition(0);
+        PlaybackController.setInstrument(0);
+        PlaybackController.setTempoChangePercent(100);
+        PlaybackController.setNoteDurationPercent(100);
+        PlaybackController.setPlayWithRepeats(false);
         MidiController.sequencer = null;
         MidiController.midiReceiver = null;
     }
@@ -459,6 +468,195 @@ class PlaybackControllerTest extends UnitTest {
             // New note IS highlighted
             verify(mockLineComponent).setPlayingIndices(noteIndex, -1);
             assertThat(PlaybackController.getPreviousPlayingLine()).isEqualTo(lineIndex);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ApplyPrefsDuringPlayback {
+
+        @Test
+        void testDoesNothingWhenNotPlaying() {
+            var mockSequencer = mock(Sequencer.class);
+            MidiController.sequencer = mockSequencer;
+            // State is STOPPED (default) — method should return immediately
+
+            PlaybackController.applyPrefsDuringPlayback();
+
+            // Sequencer must not be touched
+            verify(mockSequencer, never()).stop();
+            verify(mockSequencer, never()).start();
+        }
+
+        @Test
+        void testDoesNothingWhenPaused() {
+            var mockSequencer = mock(Sequencer.class);
+            MidiController.sequencer = mockSequencer;
+            PlaybackController.setState(PlaybackState.PAUSED);
+
+            PlaybackController.applyPrefsDuringPlayback();
+
+            verify(mockSequencer, never()).stop();
+            verify(mockSequencer, never()).start();
+        }
+
+        @Test
+        void testWhilePlayingStopsRebuildsSequenceRestoresTickAndRestarts() throws Exception {
+            var mockSequencer = mock(Sequencer.class);
+            var mockScore = mock(ScoreView.class);
+            var mockSong = mock(Song.class);
+            final long savedTick = 200L;
+            final long tickLength = 1000L;
+
+            when(mockScore.getSong()).thenReturn(mockSong);
+            when(mockSong.getLines()).thenReturn(new ArrayList<>());
+            when(mockSequencer.getTickPosition()).thenReturn(savedTick);
+            when(mockSequencer.getTickLength()).thenReturn(tickLength);
+            // isRunning() returns false immediately so the spin-wait exits at once
+            when(mockSequencer.isRunning()).thenReturn(false);
+
+            MidiController.sequencer = mockSequencer;
+            PlaybackController.register(mockScore);
+            PlaybackController.setState(PlaybackState.PLAYING);
+
+            try (var ignored = mockConstruction(MidiSequenceBuilder.class,
+                (builder, ctx) -> when(builder.buildFullSequence())
+                    .thenReturn(new Sequence(Sequence.PPQ, 480)))) {
+                PlaybackController.applyPrefsDuringPlayback();
+            }
+
+            // stop → setSequence → setTickPosition (clamped) → start
+            verify(mockSequencer).stop();
+            verify(mockSequencer).setTickPosition(Math.min(savedTick, tickLength));
+            verify(mockSequencer).start();
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SetLoopSequence {
+
+        @Test
+        void testSetsLoopContinuouslyWhenPrefTrueAndNotSingleNote() {
+            var mockSequencer = mock(Sequencer.class);
+            var selection = new ElementSelection(detachedLine(), 0, 2);
+
+            try (var prefsMock = mockStatic(Prefs.class)) {
+                prefsMock.when(() -> Prefs.getBoolean(PrefsKey.LOOP_PLAYBACK)).thenReturn(true);
+
+                PlaybackController.setLoopSequence(selection, mockSequencer);
+            }
+
+            verify(mockSequencer).setLoopCount(Sequencer.LOOP_CONTINUOUSLY);
+        }
+
+        @Test
+        void testDoesNotLoopWhenSingleNoteEvenIfPrefTrue() {
+            var mockSequencer = mock(Sequencer.class);
+            // begin == end → single-note selection
+            var singleNoteSelection = new ElementSelection(detachedLine(), 3, 3);
+
+            try (var prefsMock = mockStatic(Prefs.class)) {
+                prefsMock.when(() -> Prefs.getBoolean(PrefsKey.LOOP_PLAYBACK)).thenReturn(true);
+
+                PlaybackController.setLoopSequence(singleNoteSelection, mockSequencer);
+            }
+
+            verify(mockSequencer).setLoopCount(0);
+        }
+
+        @Test
+        void testDoesNotLoopWhenPrefFalse() {
+            var mockSequencer = mock(Sequencer.class);
+            var selection = new ElementSelection(detachedLine(), 0, 5);
+
+            try (var prefsMock = mockStatic(Prefs.class)) {
+                prefsMock.when(() -> Prefs.getBoolean(PrefsKey.LOOP_PLAYBACK)).thenReturn(false);
+
+                PlaybackController.setLoopSequence(selection, mockSequencer);
+            }
+
+            verify(mockSequencer).setLoopCount(0);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BuildSequenceForSelection {
+
+        @Test
+        void testNullSelectionBuildsFullSequence() throws Exception {
+            var mockSong = mock(Song.class);
+
+            try (var ignored = mockConstruction(MidiSequenceBuilder.class,
+                (builder, ctx) -> when(builder.buildFullSequence())
+                    .thenReturn(new Sequence(Sequence.PPQ, 480)))) {
+
+                var result = PlaybackController.buildSequenceForSelection(mockSong, null);
+
+                // buildFullSequence() was invoked and its return value was passed through
+                verify(ignored.constructed().get(0)).buildFullSequence();
+                assertThat(result).isNotNull();
+            }
+        }
+
+        @Test
+        void testNonNullSelectionBuildsFromNoteToEnd() throws Exception {
+            var mockSong = mock(Song.class);
+            var line = detachedLine();
+            final int beginIndex = 2;
+            var selection = new ElementSelection(line, beginIndex, 5);
+
+            // getLines().indexOf(line) must return the line index used in the call
+            var lines = new ArrayList<Line>();
+            lines.add(line);
+            when(mockSong.getLines()).thenReturn(lines);
+            final int expectedLineIndex = 0;
+
+            try (var ignored = mockConstruction(MidiSequenceBuilder.class,
+                (builder, ctx) -> when(builder.buildFromNoteToEnd(anyInt(), anyInt()))
+                    .thenReturn(new Sequence(Sequence.PPQ, 480)))) {
+
+                var result = PlaybackController.buildSequenceForSelection(mockSong, selection);
+
+                assertThat(result).isNotNull();
+                verify(ignored.constructed().get(0))
+                    .buildFromNoteToEnd(expectedLineIndex, beginIndex);
+            }
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class GetAndApplySettings {
+
+        @Test
+        void testGetPlaybackSettingsApplySettingsRoundTrip() {
+            final int expectedInstrument = 42;
+            final int expectedTempo = 110;
+            final int expectedDuration = 75;
+            final boolean expectedPlayWithRepeats = true;
+
+            PlaybackController.setInstrument(expectedInstrument);
+            PlaybackController.setTempoChangePercent(expectedTempo);
+            PlaybackController.setNoteDurationPercent(expectedDuration);
+            PlaybackController.setPlayWithRepeats(expectedPlayWithRepeats);
+
+            var settings = PlaybackController.getPlaybackSettings();
+
+            // Reset all fields to different values to confirm applySettings restores them
+            PlaybackController.setInstrument(0);
+            PlaybackController.setTempoChangePercent(100);
+            PlaybackController.setNoteDurationPercent(100);
+            PlaybackController.setPlayWithRepeats(false);
+
+            PlaybackController.applySettings(settings);
+
+            var restored = PlaybackController.getPlaybackSettings();
+            assertThat(restored.instrument()).isEqualTo(expectedInstrument);
+            assertThat(restored.tempoChangePercent()).isEqualTo(expectedTempo);
+            assertThat(restored.noteDurationPercent()).isEqualTo(expectedDuration);
+            assertThat(restored.playWithRepeats()).isEqualTo(expectedPlayWithRepeats);
         }
     }
 }
