@@ -57,6 +57,15 @@ public class MacNativeMenuController {
         MessageCenter.subscribe(this);
     }
 
+    /**
+     * Package-private constructor for testing: accepts a pre-built managed-item
+     * list and subscribes to the message bus, bypassing the native discovery chain.
+     */
+    MacNativeMenuController(List<NSMenuItem> managedItems) {
+        this.managedItems = managedItems;
+        MessageCenter.subscribe(this);
+    }
+
     @Handler()
     public void dialogVisibilityDidChange(DialogVisibilityDidChangeNotification notification) {
         var enabled = !notification.isVisible();
