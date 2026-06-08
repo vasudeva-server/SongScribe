@@ -26,65 +26,80 @@ PKG_NAMES = {
     "matrix-e2e": "13 · e2e reconciliation",
 }
 PKG_ORDER = list(PKG_NAMES.keys())
-DONE_CELL = re.compile(r"\|\s*(⬜|✅)\s*\|\s*$")
+DONE_CELL = re.compile(r"\|\s*(⬜|✅|⏭️)\s*\|\s*$")
 
 
 def count_file(path):
-    todo = done = 0
+    todo = done = skipped = 0
     with open(path, encoding="utf-8") as f:
         for line in f:
             m = DONE_CELL.search(line.rstrip("\n"))
             if m:
                 if m.group(1) == "✅":
                     done += 1
+                elif m.group(1) == "⏭️":
+                    skipped += 1
                 else:
                     todo += 1
-    return done, todo
+    return done, todo, skipped
 
 
 def main():
     base = os.path.dirname(os.path.abspath(__file__))
     rows = []
-    grand_done = grand_total = 0
+    grand_done = grand_total = grand_skipped = 0
     for pkg in PKG_ORDER:
         files = sorted(glob.glob(os.path.join(base, pkg, "[0-9]*.md")))
         for path in files:
-            done, todo = count_file(path)
+            done, todo, skipped = count_file(path)
             total = done + todo
-            if total == 0:
+            # A section with no actionable rows is dropped — unless every actionable
+            # row was deliberately skipped, in which case it stays visible as skipped.
+            if total == 0 and skipped == 0:
                 continue
             rel = os.path.relpath(path, base)
             section = os.path.splitext(os.path.basename(path))[0]
-            rows.append((PKG_NAMES[pkg], section, rel, done, total))
+            rows.append((PKG_NAMES[pkg], section, rel, done, total, skipped))
             grand_done += done
             grand_total += total
+            grand_skipped += skipped
 
     pct = (100 * grand_done // grand_total) if grand_total else 0
     out = []
     out.append("# Remediation Ledger (generated — do not hand-edit counts)\n")
     out.append(
         "> Regenerate with `python3 gen_ledger.py`. The section files' `done`\n"
-        "> column (⬜/✅) is the source of truth; this is a derived view.\n"
+        "> column (⬜/✅/⏭️) is the source of truth; this is a derived view.\n"
     )
-    out.append(f"\n**Overall: {grand_done} / {grand_total} actionable rows done ({pct}%).**\n")
+    overall = f"\n**Overall: {grand_done} / {grand_total} actionable rows done ({pct}%)"
+    if grand_skipped:
+        overall += f"; {grand_skipped} rows skipped"
+    overall += ".**\n"
+    out.append(overall)
     out.append("\n| Package | Section | Done | Total | Status |")
     out.append("\n|---|---|---:|---:|---|")
     cur_pkg = None
-    for pkg, section, rel, done, total in rows:
+    for pkg, section, rel, done, total, skipped in rows:
         pkgcell = pkg if pkg != cur_pkg else ""
         cur_pkg = pkg
-        if done == 0:
+        if total == 0:
+            # Every actionable row in this section was skipped.
+            status = f"⏭️ skipped ({skipped})"
+        elif done == 0:
             status = "not started"
         elif done < total:
             status = "in progress"
         else:
             status = "✅ complete"
+        if skipped and total != 0:
+            status += f" · {skipped} skipped"
         out.append(f"\n| {pkgcell} | [{section}]({rel}) | {done} | {total} | {status} |")
     out.append("\n")
 
     with open(os.path.join(base, "remediation-ledger.md"), "w", encoding="utf-8") as f:
         f.writelines(out)
-    print(f"Wrote remediation-ledger.md — {grand_done}/{grand_total} done ({pct}%).")
+    skip_note = f", {grand_skipped} skipped" if grand_skipped else ""
+    print(f"Wrote remediation-ledger.md — {grand_done}/{grand_total} done ({pct}%){skip_note}.")
 
 
 if __name__ == "__main__":
