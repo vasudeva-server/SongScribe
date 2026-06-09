@@ -67,6 +67,65 @@ pure-logic classes and unit tests only (it excludes `songscribe.e2e` and Swing/U
 by default). `check-tests --mutation` folds surviving mutants into its correctness
 findings.
 
+## Choosing the level: unit vs. e2e vs. none
+
+Every testable behavior is tested at exactly one level. This rubric decides
+*where*; the Test Quality Principles above decide whether a test is worth having
+at all and **override this rubric** — a test that cannot fail, asserts against a
+mock, has a name/behavior mismatch, or gives false confidence is a defect
+regardless of being at the correct level. Apply the Quality Principles
+(Correctness → Usefulness → Coverage) first; this level rubric second.
+
+### Default: unit
+
+Prefer a unit test. Unit tests are faster, run without approval, and localize
+failures. A behavior is unit-testable if its risk is **logic, computation,
+state, data transformation, or model mutation** — even when it requires:
+
+- mocking the `MainFrame.getInstance()` singleton chain (see `testing-unit.md`),
+- widening a member to package-private to test it directly (see *Testability
+  Over Encapsulation* below), or
+- constructing collaborators via `ReflectionTestHelper`.
+
+Examples that are **unit**: format migration, serialization round-trips, layout
+geometry/stacking math, MIDI generation, action enablement logic, selection
+state machines, mutation records, derived model state, `@Nullable` contracts.
+
+### Escalate to e2e ONLY when the risk *is* the integration
+
+Use an e2e test only when the behavior **genuinely requires the real Swing
+pipeline** and cannot be meaningfully verified with collaborators mocked:
+
+- real mouse/keyboard event dispatch (click, drag, shift-click, type),
+- cross-component integration where the bug lives in the wiring (action →
+  model mutation → layout invalidation → repaint → selection reflection),
+- behavior only observable after a real layout/repaint cycle,
+- application lifecycle (boot, shutdown, file open/save through the UI).
+
+If everything that matters can be asserted with the singleton mocked, it is
+**not** an e2e case — putting it in e2e is the wrong level.
+
+### Classify as none (no test warranted)
+
+- trivial getters/setters with no logic,
+- pure data holders (most `message.mutation` / `message.command` /
+  `message.notification` records, unless they carry derivation logic),
+- pure display/layout wiring with no branching logic (most dialogs, menus),
+- framework behavior that cannot regress in our code,
+- pure rendering to a `Graphics2D` with no computed geometry to assert
+  (the geometry, if any, is unit-tested upstream).
+
+### Assessing an existing test
+
+When judging whether a test already covers a behavior adequately:
+
+- **adequate** — a test exists at the right level and can actually fail.
+- **wrong-level** — covered, but as e2e what should be unit (or vice versa).
+- **inadequate** — exists but can't fail / name-mismatch / asserts a mock /
+  weak assertion (see *Correctness* + *Usefulness* above).
+- **missing** — behavior warrants a test (unit or e2e) and none exists.
+- **redundant** — duplicate coverage of a behavior already adequately tested.
+
 ## Frameworks
 
 - **JUnit 5** (Jupiter) — test lifecycle and structure. Global config in

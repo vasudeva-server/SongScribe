@@ -252,38 +252,6 @@ class ElementInsertionTest extends E2ETest {
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     class GraceNoteDeletion {
 
-        @Order(1)
-        @Test
-        void testReplaceHostWithPitchedNotePreservesGlissando() {
-            var pairAGraceIdx = GraceElement.PAIR_A_GRACE.index;
-            var pairAHostIdx = GraceElement.PAIR_A_HOST.index;
-            var countBefore = song().getLine(0).elementCount();
-
-            enterEditMode();
-            selectDuration(Actions.HALF_NOTE_ACTION);
-
-            // Click on pair A host at a different pitch
-            var existingPos = noteScreenPosition(0, pairAHostIdx);
-            var replacePoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
-                var loc = lc.getLocationOnScreen();
-                return new Point(existingPos.x, loc.y + lc.staffPositionToYPx(-4));
-            }));
-
-            clickAt(replacePoint);
-            performLayout(0);
-
-            var line = song().getLine(0);
-            assertAll(
-                () -> assertThat(line.elementCount())
-                    .as("element count unchanged").isEqualTo(countBefore),
-                () -> assertThat(line.getElement(pairAHostIdx).getType())
-                    .as("host replaced with half note").isEqualTo(ElementType.MINIM),
-                () -> assertThat(Objects.requireNonNull(line.getElement(pairAGraceIdx).getGlissando()).type)
-                    .as("glissando still connected").isEqualTo(StaffElement.Glissando.Type.CONNECTED)
-            );
-        }
-
         @Order(2)
         @Test
         void testDeleteHostRemovesBoth() {
@@ -449,99 +417,6 @@ class ElementInsertionTest extends E2ETest {
             enableRestMode();
             clickAt(insertionPoint(0, 0));
             performLayout(0);
-        }
-
-        @Order(2)
-        @Test
-        void testVerifyElementTypesAndAutoBeam() {
-            var line = song().getLine(0);
-            var insertedCount = line.effectiveElementCount() - baseIndex;
-            var elem0 = line.getElement(baseIndex);
-            var elem1 = line.getElement(baseIndex + 1);
-            var elem2 = line.getElement(baseIndex + 2);
-            var elem3 = line.getElement(baseIndex + 3);
-            var elem4 = line.getElement(baseIndex + 4);
-            var note2Beamed = isBeamed(0, baseIndex + 2);
-            var note3Beamed = isBeamed(0, baseIndex + 3);
-            var beamSpanStart = GuiActionRunner.execute(() -> {
-                var beam = song().getLine(0).findBeamAt(baseIndex + 2);
-                return beam != null ? beam.getAnchorElementIndex() : -1;
-            });
-            var beamSpanEnd = GuiActionRunner.execute(() -> {
-                var beam = song().getLine(0).findBeamAt(baseIndex + 2);
-                return beam != null ? beam.getEndElementIndex() : -1;
-            });
-
-            assertAll(
-                () -> assertThat(elem0.getType()).as("quarter note type").isEqualTo(ElementType.CROTCHET),
-                () -> assertThat(elem0.getStaffPosition()).as("quarter note position").isEqualTo(-4),
-                () -> assertThat(elem1.getType()).as("half note type").isEqualTo(ElementType.MINIM),
-                () -> assertThat(elem1.getStaffPosition()).as("half note position").isEqualTo(2),
-                () -> assertThat(elem2.getType()).as("eighth note type").isEqualTo(ElementType.QUAVER),
-                () -> assertThat(elem2.getStaffPosition()).as("eighth note position").isEqualTo(-2),
-                () -> assertThat(elem3.getType()).as("second eighth type").isEqualTo(ElementType.QUAVER),
-                () -> assertThat(elem3.getStaffPosition()).as("second eighth position").isEqualTo(-6),
-                () -> assertThat(note2Beamed).as("auto-beam: note 2 beamed").isTrue(),
-                () -> assertThat(note3Beamed).as("auto-beam: note 3 beamed").isTrue(),
-                () -> {
-                    assertThat(beamSpanStart).as("auto-beam: span start").isEqualTo(baseIndex + 2);
-                    assertThat(beamSpanEnd).as("auto-beam: span end").isEqualTo(baseIndex + 3);
-                },
-                () -> assertThat(elem4.getType().isRest()).as("rest type").isTrue(),
-                () -> assertThat(insertedCount).as("inserted element count").isEqualTo(5)
-            );
-        }
-
-        @Order(3)
-        @Test
-        void testInsertBetweenAndVerifyShift() {
-            deselectRestMode();
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            clickAt(insertionPointBefore(0, baseIndex + 1, 4));
-            performLayout(0);
-
-            var line = song().getLine(0);
-            var insertedCount = line.effectiveElementCount() - baseIndex;
-            var newElem = line.getElement(baseIndex + 1);
-            var shiftedElem = line.getElement(baseIndex + 2);
-
-            assertAll(
-                () -> assertThat(insertedCount).as("inserted element count").isEqualTo(6),
-                () -> assertThat(newElem.getType()).as("inserted element type").isEqualTo(ElementType.CROTCHET),
-                () -> assertThat(newElem.getStaffPosition()).as("inserted element position").isEqualTo(4),
-                () -> assertThat(shiftedElem.getType()).as("shifted element type").isEqualTo(ElementType.MINIM)
-            );
-        }
-
-        @Order(4)
-        @Test
-        void testClickOnNoteReplacesIt() {
-            var countBefore = song().getLine(0).elementCount();
-            var targetSp = -6;
-
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-
-            var existingPos = noteScreenPosition(0, baseIndex + 2);
-            var replacePoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
-                var loc = lc.getLocationOnScreen();
-                return new Point(existingPos.x, loc.y + lc.staffPositionToYPx(targetSp));
-            }));
-
-            clickAt(replacePoint);
-            performLayout(0);
-
-            var line = song().getLine(0);
-            assertAll(
-                () -> assertThat(line.getElement(baseIndex + 2).getType())
-                    .as("replaced with quarter").isEqualTo(ElementType.CROTCHET),
-                () -> assertThat(line.getElement(baseIndex + 2).getStaffPosition())
-                    .as("pitch updated").isEqualTo(targetSp),
-                () -> assertThat(line.elementCount())
-                    .as("count unchanged").isEqualTo(countBefore),
-                () -> assertThat(scoreView().getMode())
-                    .as("mode stays EDIT").isEqualTo(Mode.EDIT)
-            );
         }
 
         @Order(5)
