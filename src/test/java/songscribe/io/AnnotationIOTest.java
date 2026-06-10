@@ -49,10 +49,10 @@ class AnnotationIOTest extends UnitTest {
 
     // -- Helpers --
 
-    private static String writeAnnotation(Annotation a) {
-        var sw = new StringWriter();
-        AnnotationIO.writeAnnotation(a, new PrintWriter(sw), 0);
-        return sw.toString();
+    private static String writeAnnotation(Annotation annotation) {
+        var writer = new StringWriter();
+        AnnotationIO.writeAnnotation(annotation, new PrintWriter(writer), 0);
+        return writer.toString();
     }
 
     private static Annotation roundTripAnnotation(Annotation original) {
@@ -135,11 +135,11 @@ class AnnotationIOTest extends UnitTest {
         // Row 50: writeAnnotation emits <name>, <alignment>, <ypos>
         @Test
         void testWritesNameAlignmentAndYPos() {
-            var a = new Annotation("Hello");
-            a.setXAlignment(CENTER_ALIGNMENT);
-            a.setYPosPx(SAMPLE_Y_POS_PX);
+            var annotation = new Annotation("Hello");
+            annotation.setXAlignment(CENTER_ALIGNMENT);
+            annotation.setYPosPx(SAMPLE_Y_POS_PX);
 
-            var output = writeAnnotation(a);
+            var output = writeAnnotation(annotation);
 
             assertThat(output)
                 .contains("<" + AnnotationIO.XML_NAME + ">Hello</" + AnnotationIO.XML_NAME + ">")
@@ -150,10 +150,10 @@ class AnnotationIOTest extends UnitTest {
         // Row 51 (branch 1): userYOffsetSs == 0 → <useryoffset> element absent
         @Test
         void testOmitsUserYOffsetWhenZero() {
-            var a = new Annotation("Test");
+            var annotation = new Annotation("Test");
             // default userYOffsetSs is 0; no explicit set needed
 
-            var output = writeAnnotation(a);
+            var output = writeAnnotation(annotation);
 
             assertThat(output).doesNotContain(AnnotationIO.XML_USER_Y_OFFSET);
         }
@@ -161,11 +161,11 @@ class AnnotationIOTest extends UnitTest {
         // Row 51 (branch 2): userYOffsetSs != 0 → <useryoffset> element present
         @Test
         void testEmitsUserYOffsetWhenNonZero() {
-            var a = new Annotation("Test");
+            var annotation = new Annotation("Test");
             var nonZeroOffset = 1.5;
-            a.setUserYOffsetSs(nonZeroOffset);
+            annotation.setUserYOffsetSs(nonZeroOffset);
 
-            var output = writeAnnotation(a);
+            var output = writeAnnotation(annotation);
 
             assertThat(output).contains(
                 "<" + AnnotationIO.XML_USER_Y_OFFSET + ">" + nonZeroOffset + "</" + AnnotationIO.XML_USER_Y_OFFSET + ">"
@@ -242,8 +242,12 @@ class AnnotationIOTest extends UnitTest {
                 AnnotationIO.XML_ALIGNMENT, "notafloat"
             );
             assertThat(annotation).isNotNull();
+
             //noinspection ConstantValue -- NullAway guard
-            if (annotation == null) return;
+            if (annotation == null) {
+                return;
+            }
+
             assertThat(annotation.getXAlignment()).isEqualTo(DEFAULT_ALIGNMENT);
         }
 
@@ -268,8 +272,12 @@ class AnnotationIOTest extends UnitTest {
                 AnnotationIO.XML_YPOS, "notanint"
             );
             assertThat(annotation).isNotNull();
+
             //noinspection ConstantValue -- NullAway guard
-            if (annotation == null) return;
+            if (annotation == null) {
+                return;
+            }
+
             assertThat(annotation.getYPosPx()).isEqualTo(DEFAULT_YPOS);
         }
 
@@ -294,8 +302,12 @@ class AnnotationIOTest extends UnitTest {
                 AnnotationIO.XML_USER_Y_OFFSET, "notadouble"
             );
             assertThat(annotation).isNotNull();
+
             //noinspection ConstantValue -- NullAway guard
-            if (annotation == null) return;
+            if (annotation == null) {
+                return;
+            }
+
             assertThat(annotation.getUserYOffsetSs()).isEqualTo(DEFAULT_USER_Y_OFFSET);
         }
 
