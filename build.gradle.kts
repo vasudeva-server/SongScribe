@@ -49,7 +49,6 @@ dependencies {
     implementation("net.java.dev.jna:jna:5.18.1")
     implementation("net.java.dev.jna:jna-platform:5.18.1")
     implementation("org.rococoa:rococoa-core:0.10.0")
-    runtimeOnly("ch.qos.logback:logback-classic:1.5.32")
     implementation("com.formdev:flatlaf:3.7.1")
     implementation("com.formdev:flatlaf-extras:3.7.1")
     implementation("com.intellij:forms_rt:7.0.3")
@@ -77,6 +76,7 @@ dependencies {
 // -- Code generation --
 
 val generateVersion by tasks.registering {
+    description = "Generates Version.java, which contains constants for the public version (from project.version) and build version (current date). This allows us to display version info in the UI and have it accessible at runtime without hardcoding it in the source code."
     val outDir = generatedSourcesDir.map { it.dir("songscribe") }
     outputs.dir(outDir)
     doLast {
@@ -97,6 +97,7 @@ val generateVersion by tasks.registering {
 }
 
 val generateStrings by tasks.registering {
+    description = "Generates Strings.java, which contains constants for all user-facing strings in SongScribe. This allows us to keep all strings in a single properties file for easier localization and maintenance, while still having compile-time constants in the codebase."
     inputs.file("src/main/resources/songscribe/strings.properties")
     val outDir = generatedSourcesDir.map { it.dir("songscribe") }
     outputs.dir(outDir)
@@ -109,6 +110,7 @@ val generateStrings by tasks.registering {
 }
 
 val generateFlatLafKeys by tasks.registering {
+    description = "Generates FlatLafKeys.java, which contains constants for all FlatLaf UI defaults keys used in SongScribe. This allows us to avoid hardcoding string literals throughout the codebase and have a single source of truth for these keys."
     inputs.file("src/main/resources/songscribe/FlatLaf.properties")
     val outDir = generatedSourcesDir.map { it.dir("songscribe/ui") }
     outputs.dir(outDir)
@@ -123,6 +125,7 @@ val generateFlatLafKeys by tasks.registering {
 // -- Native libs --
 
 val copyNativeLibs by tasks.registering(Copy::class) {
+    description = "Copies native libraries to a directory where they can be loaded at runtime"
     from(nativeLibs)
     into(layout.buildDirectory.dir("native"))
     rename { "librococoa.dylib" }
@@ -179,6 +182,7 @@ fun Test.applyCommonTestConfig() {
     outputs.upToDateWhen { false }
     jvmArgs(addOpensArgs)
     jvmArgs("--enable-native-access=ALL-UNNAMED", "-XX:+EnableDynamicAgentLoading", "-Xshare:off")
+
     if (System.getProperty("os.name", "").startsWith("Mac")) {
         jvmArgs(
             "-Dapple.laf.useScreenMenuBar=true",
@@ -194,7 +198,11 @@ fun Test.applyCommonTestConfig() {
         layout.buildDirectory.dir("test-prefs").get().asFile.absolutePath
     )
     systemProperty("e2e.failFast", if (project.hasProperty("noFailFast")) "false" else "true")
-    if (project.hasProperty("e2eDebug")) systemProperty("e2e.debug", "true")
+
+    if (project.hasProperty("e2eDebug")) {
+        systemProperty("e2e.debug", "true")
+    }
+
     System.getenv("EXTRA_JVM_ARGS")?.takeIf { it.isNotBlank() }?.split(" ")?.let { jvmArgs(it) }
     // Gradle auto-enables JaCoCo on all Test tasks; disable it here so that coverage.sh
     // is the sole agent injector (double agents cause SIGABRT via conflicting ASM transforms).
@@ -204,18 +212,25 @@ fun Test.applyCommonTestConfig() {
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         showExceptions = true
         showCauses = true
-        showStackTraces = false
+        showStackTraces = true
     }
     addTestListener(object : TestListener {
         override fun beforeSuite(suite: TestDescriptor) {}
         override fun afterSuite(suite: TestDescriptor, result: TestResult) {
             if (suite.parent == null) {
                 val summary = buildString {
-                    append("Results: ${result.successfulTestCount} passed")
-                    if (result.failedTestCount > 0) append(", ${result.failedTestCount} FAILED")
-                    if (result.skippedTestCount > 0) append(", ${result.skippedTestCount} skipped")
+                    append("\nResults: ${result.successfulTestCount} passed")
+
+                    if (result.failedTestCount > 0) {
+                        append(", ${result.failedTestCount} FAILED")
+                    }
+
+                    if (result.skippedTestCount > 0) {
+                        append(", ${result.skippedTestCount} skipped")
+                    }
                 }
-                System.err.println(summary)
+
+                println(summary)
             }
         }
         override fun beforeTest(testDescriptor: TestDescriptor) {}
@@ -330,14 +345,17 @@ tasks.named<JacocoReport>("jacocoTestReport") {
 }
 
 tasks.register("printJacocoAgentPath") {
+    description = "Print Jacoco agent path"
     doLast {
         val wrapperJar = configurations["jacocoAgent"].singleFile
         val extractDir = layout.buildDirectory.dir("jacoco").get().asFile
         extractDir.mkdirs()
         val agentJar = File(extractDir, "${wrapperJar.nameWithoutExtension}-agent.jar")
+
         if (!agentJar.exists()) {
             zipTree(wrapperJar).matching { include("jacocoagent.jar") }.singleFile.copyTo(agentJar)
         }
+
         print(agentJar.absolutePath)
     }
 }

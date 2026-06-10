@@ -60,8 +60,9 @@ if ! "$PROJECT_DIR/gradlew" -q testClasses --project-dir "$PROJECT_DIR"; then
   exit 1
 fi
 
-echo "Running tests..."
+echo -n "Running tests..."
 
-"$PROJECT_DIR/gradlew" -q "${GRADLE_FLAGS[@]}" "${GRADLE_PROPS[@]}" \
+"$PROJECT_DIR/gradlew" "${GRADLE_FLAGS[@]}" "${GRADLE_PROPS[@]}" \
   "${TASKS[@]}" "${TEST_FILTERS[@]}" \
-  --project-dir "$PROJECT_DIR"
+  --project-dir "$PROJECT_DIR" \
+  2> /dev/null | grep -E -v '^(> Task :|[0-9]+ actionable|Consider enabling configuration cache)'
