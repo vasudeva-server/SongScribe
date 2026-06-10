@@ -13,7 +13,11 @@ IMPORTANT: All reviews MUST apply the rules in .agents/guides/java.md in additio
 
 ## Phase 1: Determine Scope
 
-This skill supports two modes based on `$ARGUMENTS`:
+This skill supports three modes based on `$ARGUMENTS`:
+
+- **Empty** → Mode A (working-tree diff).
+- **A git commit-ish** → Mode C (commit). Before treating a non-empty argument as a package/file, test whether it is a commit: run `/opt/homebrew/bin/git rev-parse --verify --quiet "$ARGUMENTS^{commit}"`. If that succeeds (and the argument is not also an existing file/directory path), use Mode C.
+- **Anything else** → Mode B (package or file).
 
 ### Mode A: Git Diff (default)
 
@@ -22,6 +26,14 @@ If `$ARGUMENTS` is empty or not provided, review changed files from git:
 - Run `/opt/homebrew/bin/git diff` (or `/opt/homebrew/bin/git diff HEAD` if there are staged changes) to get the diff.
 - If there are no git changes, review the most recently modified files that the user mentioned or edited earlier in this conversation.
 - The diff output is the **review target** passed to agents in Phase 2.
+- The set of changed file paths is the **format scope** used in Phase 4.
+
+### Mode C: Commit Review
+
+If `$ARGUMENTS` is a commit-ish (resolved as above), review the changes introduced by that commit:
+
+- Run `/opt/homebrew/bin/git show <commit>` to get the diff for the review target.
+- Run `/opt/homebrew/bin/git diff-tree --no-commit-id --name-only -r <commit>` to get the list of changed file paths. These are the **review target** (their diff) and the **format scope** used in Phase 4. Exclude deleted files.
 
 ### Mode B: Package or File Review
 
@@ -36,7 +48,7 @@ Resolution steps:
 2. If the path is a directory, collect all source files (`.java`, `.kt`) recursively.
 3. If the path is a file, use just that file.
 4. Read the full content of each file using Serena's `jet_brains_get_symbols_overview` (depth=2) for an efficient overview, then read specific symbol bodies only as needed for the review.
-5. The collected code is the **review target** passed to agents in Phase 2.
+5. The collected code is the **review target** passed to agents in Phase 2. The collected file paths are the **format scope** used in Phase 4.
 6. If there are many files, process them in batches of ~5-8 files per agent invocation to stay within context limits. Run multiple rounds of Phase 2 if needed.
 
 ### Flags
@@ -46,7 +58,7 @@ Resolution steps:
 
 ### Test Scope Detection
 
-After resolving the scope in either mode, partition it into two subsets:
+After resolving the scope in any mode, partition it into two subsets:
 
 - **Production scope** — all non-test source files (`.java`, `.kt` files that do not end in `Test.java`).
 - **Test scope** — all `*Test.java` files.
@@ -121,3 +133,9 @@ Wait for Phase 2 (and Phase 2b, if it ran) to complete, then choose the path bas
 4. **Approval.** Once all questions are resolved, use AskUserQuestion to present the final list of issues to fix and ask for approval to proceed (or for further discussion).
 
 5. **Fix.** After approval, fix the approved issues. Briefly summarize what was fixed when done.
+
+## Phase 4: Format
+
+As the final step, after all fixes are applied, run the format workflow over **all files in the review scope** — the complete format scope resolved in Phase 1 (production *and* test files), not just the ones changed during the review.
+
+Invoke the Workflow tool with `{scriptPath: ".claude/workflows/format.js", args: <file-paths>}`, where `<file-paths>` is the **array of repo-relative file paths** in the format scope. Passing the explicit array works uniformly across all modes — including Mode C, where the changes are already committed and so would not appear in the working-tree resolution the workflow does on its own.

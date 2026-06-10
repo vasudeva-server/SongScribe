@@ -4,21 +4,64 @@ paths: src/**/*.java
 
 # Java code style
 
-## Variable names
+## Variables
 
-Use full descriptive names. Single letters are reserved for loop counters (`i`, `j`, `k`).
+Always use `var` instead of explicit types, unless necessary for generic type inference. Use full descriptive names. Single letters are reserved for loop counters (`i`, `j`, `k`). Be sure not to shadow field names with local variables.
 
 ```java
 // Bad
 var lc = new LineComponent();
+double dx = lc.getXSs();
 
 // Good
 var lineComponent = new LineComponent();
+var dx = lineComponent.getXSs();
 ```
 
 These abbreviations are recognized and may be used as-is: `midi`, `abc`, `pdf`,
 `svg`, `dpi`, `pos`, `str`, `msg`, `min`, `max`, `len`, `err`. Ask before
 introducing any other abbreviation.
+
+## Braces
+
+Always use braces for `if`, `else`, `for`, `while`, and `do` statements, even if the body is a single statement. This improves readability and  prevents bugs when adding new statements later.
+
+```java// Bad — no braces
+if (condition) doSomething();
+    
+// Good — braces
+if (condition) {
+    doSomething();
+}
+```
+
+## Control structure vertical spacing
+
+Separate control structures from surrounding lines with a blank line to improve readability, unless at the beginning or end of a containing block. This includes `if`, `else if`, `else`, `for`, `while`, and `do` statements.
+
+```java
+// Bad — no blank lines around control structures
+var foo = 'foo';
+if (condition) {
+    doSomething();
+}
+doSomethingElse();
+
+// Good — blank lines around control structures
+var foo = 'foo';
+
+if (condition) {
+    doSomething();
+}
+
+doSomethingElse();
+
+void doSomething() {
+    if (condition) {
+        doSomethingElse();
+    }
+}
+```
 
 ## No nested ternaries
 
