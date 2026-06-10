@@ -20,7 +20,7 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.COLOR;
 
 import module java.desktop;
 
@@ -30,6 +30,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.dom.FermataAttachment;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.stacking.NoteAttachedStacker;
+import songscribe.util.GraphicsState;
 
 /**
  * Renders fermata symbols above or below notes.

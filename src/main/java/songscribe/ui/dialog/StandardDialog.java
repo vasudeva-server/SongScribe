@@ -52,7 +52,10 @@ public abstract class StandardDialog extends BaseDialog {
 
         okButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_OK));
         okButton.addActionListener(_ -> {
-            if (!isValidData()) {
+            // Pressing Enter fires the default button directly, without the focus
+            // traversal that a mouse click performs, so the focused field's
+            // InputVerifier is never consulted. Run it explicitly first.
+            if (!verifyFocusedField() || !isValidData()) {
                 return;
             }
 
@@ -72,6 +75,27 @@ public abstract class StandardDialog extends BaseDialog {
     @Override
     protected JButton getDefaultButton() {
         return okButton;
+    }
+
+    /**
+     * Runs the {@link InputVerifier} of the currently focused field, as a
+     * mouse click on OK would. Returns true if there is no focused field, the
+     * field has no verifier, or the verifier yields focus; false if the
+     * verifier rejects the value (in which case it has already shown the user
+     * the reason and focus remains on the field).
+     */
+    private boolean verifyFocusedField() {
+        var focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+
+        if (focusOwner instanceof JComponent component) {
+            var verifier = component.getInputVerifier();
+
+            if (verifier != null) {
+                return verifier.shouldYieldFocus(component, okButton);
+            }
+        }
+
+        return true;
     }
 
     @Override

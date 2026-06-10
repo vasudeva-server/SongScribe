@@ -27,10 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.jspecify.annotations.Nullable;
-
 
 import com.formdev.flatlaf.FlatClientProperties;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.error.RuntimeError;
@@ -38,7 +38,7 @@ import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
-import songscribe.message.notification.MetadataDidChangeNotification;
+import songscribe.message.notification.SongMetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.dom.Song;
 import songscribe.dom.Duration;
@@ -57,7 +57,10 @@ import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
-import songscribe.ui.component.score.AttributionPane;
+import songscribe.dom.AttributionFormatter;
+import songscribe.dom.AttributionLine;
+import songscribe.dom.AttributionPane;
+import songscribe.dom.SongMetadata;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
 import songscribe.util.GraphicUtils;
@@ -74,251 +77,13 @@ public class SongSettingsDialog extends StandardDialog {
      */
     public record KeySelection(KeyType keyType, int count) {}
 
+    private static final int SONG_NUMBER_MIN = 1;
+    private static final int SONG_NUMBER_MAX = 1000;
+    private static final int YEAR_MIN = 1942;
+    private static final int YEAR_MAX = 2007;
 
-    // ── Package-private static helpers (exposed for unit testing) ──────────
-
-    /** Initial capacity for the lyrics-title {@link StringBuilder} — enough for a typical title. */
-    static final int LYRICS_TITLE_INITIAL_CAPACITY = 50;
-
-    /**
-     * Parses an integer text field value: empty string is valid (returns the
-     * empty string unchanged), a non-empty numeric string returns itself, and
-     * a non-empty non-numeric string returns {@code null} to indicate a
-     * parse error.
-     *
-     * @param text the raw field text (non-null)
-     * @return the original text if empty or parseable as an integer;
-     *         {@code null} if non-empty and not parseable
-     */
-    static @Nullable String parseIntFieldOrNull(String text) {
-        if (text.isEmpty()) {
-            return text;
-        }
-
-        try {
-            Integer.parseInt(text);
-            return text;
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    /**
-     * Returns {@code true} when the TextTab's current field values match the
-     * song's stored metadata exactly, i.e., nothing has changed and
-     * {@code setData} should skip posting a notification.
-     *
-     * <p>The {@code number} and {@code year} parameters are the
-     * already-validated values from {@link #parseIntFieldOrNull}: {@code null}
-     * means the field was invalid (non-numeric), which differs from the song's
-     * stored value and therefore counts as a change.
-     */
-    static boolean isTextTabUnchanged(
-        Song song,
-        String title,
-        String place,
-        @Nullable String year,
-        @Nullable String number,
-        int month,
-        int day,
-        String composerText,
-        String lyricistText,
-        Song.LyricsSource lyricsSource,
-        boolean arrangement,
-        boolean unofficialTranslation
-    ) {
-        return title.equals(song.getTitle())
-            && place.equals(song.getPlace())
-            && Objects.equals(year, song.getYear())
-            && Objects.equals(number, song.getNumber())
-            && month == song.getMonth()
-            && day == song.getDay()
-            && composerText.equals(song.getComposer())
-            && lyricistText.equals(song.getLyricist())
-            && lyricsSource == song.getLyricsSource()
-            && arrangement == song.isArrangement()
-            && unofficialTranslation == song.isUnofficialTranslation();
-    }
-
-    /**
-     * Extracts a title from the first {@code maxWords} words of the given lyrics
-     * string, applying capitalisation and hyphen-pair handling as used in the
-     * "Take first lyrics words" action.
-     *
-     * <p>Whitespace ({@code ' '} and {@code '\n'}) and double-hyphen pairs
-     * ({@code --}) act as word separators. Underscores ({@code _}) are ignored.
-     * The first character of each new word is upper-cased. A trailing
-     * non-letter character (space or separator) is trimmed before returning.
-     *
-     * <p><b>Bug note:</b> if {@code lyrics} contains no normal characters (e.g.,
-     * only underscores), the result buffer is empty and the trailing-trim step
-     * throws {@code StringIndexOutOfBoundsException}. The caller is responsible
-     * for guarding against all-separator input.
-     *
-     * @param lyrics   the raw lyrics text (must not be empty)
-     * @param maxWords the maximum number of words to include (≥ 1)
-     * @return the extracted title string (may be empty if {@code lyrics} is
-     *         all-separator characters — the IOOBE happens before returning)
-     */
-    static String extractLyricsTitle(String lyrics, int maxWords) {
-        var words = new StringBuilder(LYRICS_TITLE_INITIAL_CAPACITY);
-        var wordCount = 0;
-        var firstLetter = false;
-        var lastHyphen = false;
-
-        goThruString:
-        for (var i = 0; i < lyrics.length(); i++) {
-            switch (lyrics.charAt(i)) {
-                case ' ', '\n' -> {
-                    wordCount++;
-
-                    if (wordCount >= maxWords) {
-                        break goThruString;
-                    }
-
-                    words.append(' ');
-                    firstLetter = true;
-                }
-                case '-' -> {
-                    if (lastHyphen) {
-                        words.append('-');
-                        wordCount++;
-                        firstLetter = true;
-                    }
-
-                    lastHyphen = !lastHyphen;
-                }
-                case '_' -> {
-                }
-                default -> {
-                    if (firstLetter) {
-                        words.append(
-                            String.valueOf(lyrics.charAt(i)).toUpperCase()
-                        );
-                        firstLetter = false;
-                    } else {
-                        words.append(lyrics.charAt(i));
-                    }
-
-                    lastHyphen = false;
-                }
-            }
-        }
-
-        if (!Character.isLetter(words.charAt(words.length() - 1))) {
-            words.deleteCharAt(words.length() - 1);
-        }
-
-        return words.toString();
-    }
-
-    /**
-     * Parses and validates a line-width field value.
-     *
-     * <p>The text is parsed as a {@code double}; if metric is {@code true}
-     * the value is treated as centimetres and converted to inches before
-     * the range check.
-     *
-     * @param text     the raw field text (may be empty or non-numeric)
-     * @param isMetric {@code true} if the value is in centimetres,
-     *                 {@code false} if in inches
-     * @return the validated width in inches if the text is parseable and in
-     *         range; {@code -1} if the text is empty, unparseable, or outside
-     *         {@code [MIN_LINE_WIDTH_INCHES, MAX_LINE_WIDTH_INCHES]}
-     */
-    static double validateLineWidthText(String text, boolean isMetric) {
-        double value;
-
-        try {
-            value = Double.parseDouble(text);
-        } catch (NumberFormatException e) {
-            return -1;
-        }
-
-        var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
-
-        if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
-            return -1;
-        }
-
-        return widthInches;
-    }
-
-    /**
-     * Returns the canonical {@link KeySelection} for a song's current key.
-     *
-     * <p>When the accidental count is 0, the canonical type is always
-     * {@link KeyType#FLATS} regardless of the song's stored type (because
-     * there is no "0 sharps" entry — the no-accidentals slot uses FLATS).
-     *
-     * @param song the song whose default key to read
-     * @return the canonical {@code KeySelection} for use in the combo
-     */
-    static KeySelection canonicalKeySelectionFrom(Song song) {
-        var accidentalCount = song.getDefaultKeyAccidentalCount();
-        // (FLATS, 0) is the canonical no-accidentals entry; (SHARPS, 0) is never used.
-        var keyType = accidentalCount == 0 ? KeyType.FLATS : song.getDefaultKeyType();
-        return new KeySelection(keyType, accidentalCount);
-    }
-
-    /**
-     * Applies the MusicTab's tempo and key-signature changes to the song.
-     *
-     * <p>If the tempo or key (or both) changed relative to the song's current
-     * values, the changes are wrapped in a single {@link Song#withModification}
-     * bracket so they coalesce into one {@link songscribe.message.notification.SongDidChangeNotification}.
-     * If nothing changed no notification is posted.
-     *
-     * @param song             the song to update
-     * @param tempoType        the new tempo type
-     * @param visibleTempo     the new visible tempo value
-     * @param tempoDescription the new tempo description
-     * @param showTempo        whether the tempo should be shown
-     * @param keySelection     the new key selection (type + accidental count)
-     */
-    static void applyMusicTabChanges(
-        Song song,
-        Duration tempoType,
-        int visibleTempo,
-        String tempoDescription,
-        boolean showTempo,
-        KeySelection keySelection
-    ) {
-        var tempo = song.getEffectiveTempo();
-
-        var tempoChanged = tempoType != tempo.getTempoType()
-            || visibleTempo != tempo.getVisibleTempo()
-            || !tempoDescription.equals(tempo.getTempoDescription())
-            || showTempo != tempo.shouldShowTempo();
-
-        var keyChanged = keySelection.keyType() != song.getDefaultKeyType()
-            || keySelection.count() != song.getDefaultKeyAccidentalCount();
-
-        // Wrap both notifications in one bracket so tempo and key changes coalesce
-        // into a single SongDidChangeNotification when both are modified.
-        if (tempoChanged || keyChanged) {
-            song.withModification(() -> {
-                if (tempoChanged) {
-                    MessageCenter.post(new TempoDidChangeNotification(
-                        tempoType,
-                        visibleTempo,
-                        tempoDescription,
-                        showTempo
-                    ));
-                }
-
-                if (keyChanged) {
-                    MessageCenter.post(new KeySignatureDidChangeNotification(
-                        null,
-                        keySelection.keyType(),
-                        keySelection.count()
-                    ));
-                }
-            });
-        }
-    }
-
-    // ───────────────────────────────────────────────────────────────────────
+    private final TitleTab textTab = new TitleTab();
+    private final AttributionTab attributionTab = new AttributionTab();
 
     public SongSettingsDialog() {
         super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
@@ -326,8 +91,13 @@ public class SongSettingsDialog extends StandardDialog {
         var tabbedPane = createTabbedPane();
         addTab(
             tabbedPane,
-            Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_TEXT),
-            new TextTab()
+            Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_TITLE),
+            textTab
+        );
+        addTab(
+            tabbedPane,
+            Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION),
+            attributionTab
         );
         addTab(
             tabbedPane,
@@ -341,15 +111,250 @@ public class SongSettingsDialog extends StandardDialog {
         );
 
         contentPanel.add(BorderLayout.CENTER, tabbedPane);
+
+        // Let Cancel bypass the range-validating fields' InputVerifiers so the
+        // user can always dismiss the dialog without first fixing the value.
+        cancelButton.setVerifyInputWhenFocusTarget(false);
     }
 
-    private final class TextTab extends BaseDialog.Tab {
+    /**
+     * The title, place/date, and attribution fields are split across the Text
+     * and Attribution tabs but together form a single {@link SongMetadata}
+     * record. Run the per-tab commits via {@code super.setData()}, then coalesce
+     * those fields here into one notification rather than posting per tab.
+     */
+    @Override
+    protected void setData() {
+        super.setData();
+        commitMetadata();
+    }
+
+    private void commitMetadata() {
+        // The number and year fields validate their own range via an
+        // InputVerifier, so by commit time the text is always valid.
+        var number = textTab.getNumberText();
+        var year = attributionTab.getYearText();
+        var song = getSong();
+        var title = textTab.getTitleText();
+        var place = attributionTab.getPlaceText();
+        var month = attributionTab.getMonth();
+        var day = attributionTab.getDay();
+        var composerText = attributionTab.getComposerText();
+        var lyricistText = attributionTab.getLyricistText();
+        var lyricsSource = attributionTab.getLyricsSource();
+        var arrangement = attributionTab.isArrangement();
+        var unofficialTranslation = attributionTab.isUnofficialTranslation();
+
+        if (title.equals(song.getTitle())
+                && place.equals(song.getPlace())
+                && Objects.equals(year, song.getYear())
+                && Objects.equals(number, song.getNumber())
+                && month == song.getMonth()
+                && day == song.getDay()
+                && composerText.equals(song.getComposer())
+                && lyricistText.equals(song.getLyricist())
+                && lyricsSource == song.getLyricsSource()
+                && arrangement == song.isArrangement()
+                && unofficialTranslation == song.isUnofficialTranslation()) {
+            return;
+        }
+
+        var newMetadata = new SongMetadata(
+            title,
+            number,
+            place,
+            year,
+            month,
+            day,
+            composerText,
+            lyricistText,
+            lyricsSource,
+            arrangement,
+            unofficialTranslation
+        );
+        song.postWithModification(new SongMetadataDidChangeNotification(newMetadata));
+    }
+
+    private final class TitleTab extends BaseDialog.Tab {
 
         // Title of song panel
-        private final NumericTextField numberField = new NumericTextField(3);
-        private final MyJTextArea titleField = new MyJTextArea(3, 47);
+        private final NumericTextField numberField =
+            new NumericTextField(3, SONG_NUMBER_MIN, SONG_NUMBER_MAX, true);
+        private final MyJTextField titleField = new MyJTextField(47);
         private final SpinnerModel takeFirstWordsSpinnerModel =
             new SpinnerNumberModel(4, 1, 10, 1);
+        private final TakeFirstLyricsWordAction takeAction =
+            new TakeFirstLyricsWordAction(SongSettingsDialog.this.getMainFrame());
+
+        private TitleTab() {
+            titleField.setInputVerifier(new NonEmptyGuard(
+                titleField,
+                contentPanel,
+                Strings.ALERT_TITLE_SONG_SETTINGS,
+                Strings.CONFIRM_SONG_EMPTY_TITLE,
+                Strings.DOCUMENT_UNTITLED,
+                Strings.DIALOG_SONG_SETTINGS_USE_UNTITLED,
+                Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
+            ));
+
+            build();
+        }
+
+        @Override
+        protected void initContents() {
+            add(createTitleSection());
+        }
+
+        private JPanel createTitleSection() {
+            var section = new BaseDialog.TitledSection(
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_TITLE_OF_SONG)
+            );
+            addLabeledField(
+                section,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_NUMBER),
+                numberField,
+                BaseDialog.LabelPosition.LEFT
+            );
+
+            section.addSeparator();
+
+            addLabeledField(
+                section,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE),
+                titleField,
+                BaseDialog.LabelPosition.TOP
+            );
+
+            section.addSeparator();
+            section.addSeparator();
+
+            section.add(createTakePanel());
+            UIUtils.setFlexibleWidth(section);
+            return section;
+        }
+
+        private JPanel createTakePanel() {
+            var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
+            panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            panel.add(new JButton(takeAction));
+
+            panel.add(new JLabel(
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_THE_FIRST)
+            ));
+
+            var spinner = new JSpinner(takeFirstWordsSpinnerModel);
+            var editor = (JSpinner.DefaultEditor) spinner.getEditor();
+            var textField = editor.getTextField();
+            textField.setEditable(false);
+            textField.setFocusable(false);
+
+            panel.add(spinner);
+            panel.add(new JLabel(
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_WORDS_FROM_LYRICS)
+            ));
+
+            return panel;
+        }
+
+        String getTitleText() {
+            return titleField.getText();
+        }
+
+        String getNumberText() {
+            return numberField.getText();
+        }
+
+        @Override
+        protected boolean getData() {
+            var song = getSong();
+            numberField.setText(song.getNumber());
+            titleField.setText(song.getTitle());
+            takeAction.updateEnabledState();
+            return true;
+        }
+
+        private final class TakeFirstLyricsWordAction extends UIAction {
+
+            private TakeFirstLyricsWordAction(MainFrame mainFrame) {
+                super(
+                    mainFrame,
+                    Strings.get(Strings.DIALOG_SONG_SETTINGS_TAKE),
+                    "take-lyrics"
+                );
+            }
+
+            // The button takes its words from the lyrics, so it is meaningless
+            // without them. As a UIAction it re-derives its enabled state from
+            // this hook on every global UI event (e.g. focusing the title
+            // field), so the lyrics check must live here rather than being set
+            // once.
+            @Override
+            protected boolean enableFromSongState() {
+                return !getSong().getLyricsText().isEmpty();
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                var lyrics = getSong().getLyricsText();
+                var words = new StringBuilder(50);
+                var wordCount = 0;
+                var firstLetter = false;
+                var lastHyphen = false;
+
+                goThruString:
+                for (var i = 0; i < lyrics.length(); i++) {
+                    switch (lyrics.charAt(i)) {
+                        case ' ', '\n' -> {
+                            wordCount++;
+
+                            if (
+                                wordCount >=
+                                    ((Number) takeFirstWordsSpinnerModel.getValue()).intValue()
+                            ) {
+                                break goThruString;
+                            }
+
+                            words.append(' ');
+                            firstLetter = true;
+                        }
+                        case '-' -> {
+                            if (lastHyphen) {
+                                words.append('-');
+                                wordCount++;
+                                firstLetter = true;
+                            }
+
+                            lastHyphen = !lastHyphen;
+                        }
+                        case '_' -> {
+                        }
+                        default -> {
+                            if (firstLetter) {
+                                words.append(
+                                    String.valueOf(lyrics.charAt(i)).toUpperCase()
+                                );
+                                firstLetter = false;
+                            } else {
+                                words.append(lyrics.charAt(i));
+                            }
+
+                            lastHyphen = false;
+                        }
+                    }
+                }
+
+                if (!Character.isLetter(words.charAt(words.length() - 1))) {
+                    words.deleteCharAt(words.length() - 1);
+                }
+
+                titleField.setText(words.toString());
+            }
+        }
+
+    }
+
+    private final class AttributionTab extends BaseDialog.Tab {
 
         // Place and date panel
         private final MyJTextField placeField = new MyJTextField(27);
@@ -371,7 +376,8 @@ public class SongSettingsDialog extends StandardDialog {
             }
         );
         private final JComboBox<String> dayCombo;
-        private final NumericTextField yearField = new NumericTextField(5);
+        private final NumericTextField yearField =
+            new NumericTextField(5, YEAR_MIN, YEAR_MAX, true);
 
         // Attribution panel
         private final MyJTextField composerField = new MyJTextField(27);
@@ -384,11 +390,9 @@ public class SongSettingsDialog extends StandardDialog {
         private final JCheckBox arrangementCheck = new JCheckBox(
             Strings.get(Strings.DIALOG_SONG_SETTINGS_ARRANGEMENT)
         );
-        private final AttributionPane attributionPreview = new AttributionPane();
+        private final AttributionPaneWidget attributionPreview = new AttributionPaneWidget();
 
-        private final NonEmptyGuard titleGuard;
-
-        private TextTab() {
+        private AttributionTab() {
             monthCombo.setEditable(false);
 
             var days = new String[32];
@@ -401,20 +405,9 @@ public class SongSettingsDialog extends StandardDialog {
             dayCombo = new JComboBox<>(days);
             dayCombo.setEditable(false);
 
-            titleGuard = new NonEmptyGuard(
-                titleField,
-                contentPanel,
-                Strings.ALERT_TITLE_SONG_SETTINGS,
-                Strings.CONFIRM_SONG_EMPTY_TITLE,
-                Strings.DOCUMENT_UNTITLED,
-                Strings.DIALOG_SONG_SETTINGS_USE_UNTITLED,
-                Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
-            );
-
-            titleGuard.addExemptComponent(okButton);
-            titleGuard.addExemptComponent(cancelButton);
-
             sourceCombo.setEditable(false);
+            composerField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
+            lyricistField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
             attributionPreview.setOpaque(true);
 
             build();
@@ -422,77 +415,9 @@ public class SongSettingsDialog extends StandardDialog {
 
         @Override
         protected void initContents() {
-            add(createTitleSection());
-            addSeparator();
             add(createInfoSection());
             addSeparator();
             add(createPlaceAndDateSection());
-        }
-
-        private JPanel createTitleSection() {
-            var section = new BaseDialog.TitledSection(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_TITLE_OF_SONG)
-            );
-            addLabeledField(
-                section,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_NUMBER),
-                numberField,
-                BaseDialog.LabelPosition.LEFT
-            );
-
-            section.addSeparator();
-
-            var scrollPane = new JScrollPane(titleField);
-            scrollPane.setAlignmentX(Component.LEFT_ALIGNMENT);
-            scrollPane.setVerticalScrollBarPolicy(
-                ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
-            );
-            scrollPane.setHorizontalScrollBarPolicy(
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-            );
-            scrollPane.setMaximumSize(scrollPane.getPreferredSize());
-
-            addLabeledField(
-                section,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE),
-                scrollPane,
-                BaseDialog.LabelPosition.TOP
-            );
-
-            section.addSeparator();
-
-            section.add(createTakePanel());
-            UIUtils.setFlexibleWidth(section);
-            return section;
-        }
-
-        private JPanel createTakePanel() {
-            var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
-            panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            var action = new TakeFirstLyricsWordAction(SongSettingsDialog.this.getMainFrame());
-            var takeButton = new JButton(action);
-            action.setEnabled(
-                !getSong().getLyricsText().isEmpty()
-            );
-            panel.add(takeButton);
-
-            panel.add(new JLabel(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_THE_FIRST)
-            ));
-
-            var spinner = new JSpinner(takeFirstWordsSpinnerModel);
-            var editor = (JSpinner.DefaultEditor) spinner.getEditor();
-            var textField = editor.getTextField();
-            textField.setEditable(false);
-            textField.setFocusable(false);
-
-            panel.add(spinner);
-            panel.add(new JLabel(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_WORDS_FROM_LYRICS)
-            ));
-
-            return panel;
         }
 
         private JPanel createPlaceAndDateSection() {
@@ -618,21 +543,27 @@ public class SongSettingsDialog extends StandardDialog {
 
         private void refreshPreview() {
             var fonts = requireScoreView().getDocumentFonts();
-            attributionPreview.setFont(fonts.getFont(FontKey.ATTRIBUTION));
-            attributionPreview.setSubAttributionFont(fonts.getFont(FontKey.SUB_ATTRIBUTION));
-            attributionPreview.setOverrideLines(buildPreviewLines());
+            attributionPreview.setPreviewState(
+                fonts.getFont(FontKey.ATTRIBUTION),
+                fonts.getFont(FontKey.SUB_ATTRIBUTION),
+                buildPreviewLines()
+            );
         }
 
-        private List<AttributionPane.AttributionLine> buildPreviewLines() {
+        /**
+         * Resolves the lyricist credit from the widgets: the trimmed lyricist
+         * field, or the composer credit when the lyricist field is blank
+         * (matching the legacy field-by-field default).
+         */
+        private String resolveLyricistText(String composerText) {
+            var lyricistText = lyricistField.getText().trim();
+            return lyricistText.isEmpty() ? composerText : lyricistText;
+        }
+
+        private List<AttributionLine> buildPreviewLines() {
             var song = getSong();
             var composerText = Song.coercePerson(composerField.getText());
-
-            var lyricistText = lyricistField.getText().trim();
-
-            if (lyricistText.isEmpty()) {
-                lyricistText = composerText;
-            }
-
+            var lyricistText = resolveLyricistText(composerText);
             var lyricsSource = (Song.LyricsSource) sourceCombo.getSelectedItem();
 
             if (lyricsSource == null) {
@@ -641,25 +572,63 @@ public class SongSettingsDialog extends StandardDialog {
 
             var arrangement = arrangementCheck.isSelected();
             var unofficialTranslation = unofficialTranslationCheck.isSelected();
-            return AttributionPane.buildPreviewLines(
+            var metadata = new SongMetadata(
+                song.getTitle(),
+                song.getNumber(),
+                song.getPlace(),
+                song.getYear(),
+                song.getMonth(),
+                song.getDay(),
                 composerText,
                 lyricistText,
                 lyricsSource,
                 arrangement,
-                unofficialTranslation,
-                song.getTranslatedLyrics(),
-                song.getMonth(),
-                song.getDay(),
-                song.getYear(),
-                song.getPlace()
+                unofficialTranslation
             );
+            var showTranslation = !unofficialTranslation && !song.getTranslatedLyrics().isEmpty();
+            return AttributionFormatter.lines(metadata, showTranslation);
+        }
+
+        String getPlaceText() {
+            return placeField.getText();
+        }
+
+        String getYearText() {
+            return yearField.getText();
+        }
+
+        int getMonth() {
+            return monthCombo.getSelectedIndex();
+        }
+
+        int getDay() {
+            return dayCombo.getSelectedIndex();
+        }
+
+        String getComposerText() {
+            return Song.coercePerson(composerField.getText());
+        }
+
+        String getLyricistText() {
+            return resolveLyricistText(getComposerText());
+        }
+
+        Song.LyricsSource getLyricsSource() {
+            var lyricsSource = (Song.LyricsSource) sourceCombo.getSelectedItem();
+            return lyricsSource != null ? lyricsSource : Song.LyricsSource.LYRICIST;
+        }
+
+        boolean isArrangement() {
+            return arrangementCheck.isSelected();
+        }
+
+        boolean isUnofficialTranslation() {
+            return unofficialTranslationCheck.isSelected();
         }
 
         @Override
         protected boolean getData() {
             var song = getSong();
-            numberField.setText(song.getNumber());
-            titleField.setText(song.getTitle());
             placeField.setText(song.getPlace());
             monthCombo.setSelectedIndex(song.getMonth());
             dayCombo.setSelectedIndex(song.getDay());
@@ -673,98 +642,59 @@ public class SongSettingsDialog extends StandardDialog {
             return true;
         }
 
-        @Override
-        protected boolean isValidData() {
-            return titleGuard.validate();
-        }
+        /**
+         * Thin Swing wrapper around {@link AttributionPane}.
+         * Delegates measure and paint to the bare rendering surface;
+         * stores the current fonts so {@link #getPreferredSize()} and
+         * {@link #paintComponent} can pass them through.
+         */
+        private final class AttributionPaneWidget extends JComponent {
 
-        @Override
-        protected void setData() {
-            // Validate number field
-            var number = parseIntFieldOrNull(numberField.getText());
+            private final AttributionPane pane = new AttributionPane();
 
-            if (number == null) {
-                OptionDialogs.showErrorMessage(
-                    contentPanel,
-                    Strings.ALERT_TITLE_SONG_SETTINGS,
-                    Strings.ERROR_SONG_NUMBER
-                );
-            }
+            @Nullable
+            private Font attributionFont;
 
-            // Validate year field
-            var year = parseIntFieldOrNull(yearField.getText());
+            @Nullable
+            private Font subAttributionFont;
 
-            if (year == null) {
-                OptionDialogs.showErrorMessage(
-                    contentPanel,
-                    Strings.ALERT_TITLE_SONG_SETTINGS,
-                    Strings.ERROR_SONG_YEAR
-                );
-            }
-
-            var song = getSong();
-            var lyricsSource = (Song.LyricsSource) sourceCombo.getSelectedItem();
-
-            if (lyricsSource == null) {
-                lyricsSource = Song.LyricsSource.LYRICIST;
-            }
-
-            var composerText = Song.coercePerson(composerField.getText());
-
-            var lyricistText = lyricistField.getText().trim();
-
-            if (lyricistText.isEmpty()) {
-                lyricistText = composerText;
-            }
-
-            if (isTextTabUnchanged(
-                song,
-                titleField.getText(),
-                placeField.getText(),
-                year,
-                number,
-                monthCombo.getSelectedIndex(),
-                dayCombo.getSelectedIndex(),
-                composerText,
-                lyricistText,
-                lyricsSource,
-                arrangementCheck.isSelected(),
-                unofficialTranslationCheck.isSelected()
-            )) {
-                return;
-            }
-
-            song.postWithModification(new MetadataDidChangeNotification(
-                titleField.getText(),
-                placeField.getText(),
-                year,
-                number,
-                monthCombo.getSelectedIndex(),
-                dayCombo.getSelectedIndex(),
-                unofficialTranslationCheck.isSelected(),
-                composerText,
-                lyricistText,
-                lyricsSource,
-                arrangementCheck.isSelected()
-            ));
-        }
-
-        private final class TakeFirstLyricsWordAction extends UIAction {
-
-            private TakeFirstLyricsWordAction(MainFrame mainFrame) {
-                super(
-                    mainFrame,
-                    Strings.get(Strings.DIALOG_SONG_SETTINGS_TAKE),
-                    "take-lyrics"
-                );
+            /**
+             * Sets both fonts and the override lines, then invalidates size and
+             * paint once. Batched so a single preview refresh triggers one
+             * {@code revalidate}/{@code repaint} rather than three.
+             */
+            void setPreviewState(
+                Font attributionFont,
+                Font subAttributionFont,
+                @Nullable List<AttributionLine> lines
+            ) {
+                this.attributionFont = attributionFont;
+                this.subAttributionFont = subAttributionFont;
+                pane.setOverrideLines(lines);
+                revalidate();
+                repaint();
             }
 
             @Override
-            public void actionPerformed(ActionEvent e) {
-                titleField.setText(extractLyricsTitle(
-                    getSong().getLyricsText(),
-                    ((Number) takeFirstWordsSpinnerModel.getValue()).intValue()
-                ));
+            public Dimension getPreferredSize() {
+                if (attributionFont == null || subAttributionFont == null) {
+                    return new Dimension(0, 0);
+                }
+
+                return pane.getContentSizePx(attributionFont, subAttributionFont);
+            }
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+
+                if (attributionFont == null || subAttributionFont == null) {
+                    return;
+                }
+
+                var g2 = (Graphics2D) g;
+                GraphicUtils.setRenderingHints(g2);
+                pane.render(g2, 0, 0, getWidth(), attributionFont, subAttributionFont);
             }
         }
 
@@ -800,30 +730,7 @@ public class SongSettingsDialog extends StandardDialog {
             );
 
             InputUtils.addDecimalFilter(lineWidthField);
-            lineWidthField.addFocusListener(new FocusAdapter() {
-                @Override
-                public void focusLost(FocusEvent e) {
-                    var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
-                    var text = lineWidthField.getText();
-
-                    double value;
-
-                    try {
-                        value = Double.parseDouble(text);
-                    } catch (NumberFormatException ex) {
-                        showLineWidthError(Strings.ERROR_LINE_WIDTH_INVALID, isMetric);
-                        revertLineWidthField();
-                        return;
-                    }
-
-                    var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
-
-                    if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
-                        showLineWidthError(Strings.ERROR_LINE_WIDTH_RANGE, isMetric);
-                        revertLineWidthField();
-                    }
-                }
-            });
+            lineWidthField.setInputVerifier(new LineWidthVerifier());
 
             build();
         }
@@ -895,13 +802,43 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected void setData() {
             var song = getSong();
+            var tempo = song.getEffectiveTempo();
             var tempoType = tempoSection.getTempoType();
             var visibleTempo = tempoSection.getVisibleTempo();
             var tempoDescription = tempoSection.getTempoDescription();
             var showTempo = !tempoSection.isShowOnlyDescription();
             var typeAndCount = getKeyTypeAndCountFromCombo();
 
-            applyMusicTabChanges(song, tempoType, visibleTempo, tempoDescription, showTempo, typeAndCount);
+            var tempoChanged = tempoType != tempo.getTempoType()
+                || visibleTempo != tempo.getVisibleTempo()
+                || !tempoDescription.equals(tempo.getTempoDescription())
+                || showTempo != tempo.shouldShowTempo();
+
+            var keyChanged = typeAndCount.keyType() != song.getDefaultKeyType()
+                || typeAndCount.count() != song.getDefaultKeyAccidentalCount();
+
+            // Wrap both notifications in one bracket so tempo and key changes coalesce
+            // into a single SongDidChangeNotification when both are modified.
+            if (tempoChanged || keyChanged) {
+                song.withModification(() -> {
+                    if (tempoChanged) {
+                        MessageCenter.post(new TempoDidChangeNotification(
+                            tempoType,
+                            visibleTempo,
+                            tempoDescription,
+                            showTempo
+                        ));
+                    }
+
+                    if (keyChanged) {
+                        MessageCenter.post(new KeySignatureDidChangeNotification(
+                            null,
+                            typeAndCount.keyType(),
+                            typeAndCount.count()
+                        ));
+                    }
+                });
+            }
 
             var widthInches = validateLineWidth();
             var lineWidthPx = (int) Math.round(widthInches * GraphicUtils.getDpi());
@@ -914,7 +851,12 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private void setKeyComboFromSong(Song song) {
-            keyCombo.setSelectedItem(canonicalKeySelectionFrom(song));
+            var accidentalCount = song.getDefaultKeyAccidentalCount();
+            // (FLATS, 0) is the canonical no-accidentals entry.
+            var keyType = accidentalCount == 0
+                ? KeyType.FLATS
+                : song.getDefaultKeyType();
+            keyCombo.setSelectedItem(new KeySelection(keyType, accidentalCount));
         }
 
         private KeySelection getKeyTypeAndCountFromCombo() {
@@ -950,10 +892,23 @@ public class SongSettingsDialog extends StandardDialog {
          *         unparseable, or out of range
          */
         private double validateLineWidth() {
-            return validateLineWidthText(
-                lineWidthField.getText(),
-                Prefs.getBoolean(PrefsKey.METRIC)
-            );
+            var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
+
+            double value;
+
+            try {
+                value = Double.parseDouble(lineWidthField.getText());
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+
+            var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
+
+            if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+                return -1;
+            }
+
+            return widthInches;
         }
 
         private void showLineWidthError(String key, boolean isMetric) {
@@ -972,6 +927,44 @@ public class SongSettingsDialog extends StandardDialog {
                 Strings.ALERT_TITLE_LINE_WIDTH_ERROR,
                 key, min, max, unit
             );
+        }
+
+        /**
+         * Validates the line width when focus leaves the field. While the value
+         * is empty, unparseable, or out of range the field refuses to yield
+         * focus and shows the reason, mirroring the number field on the Text
+         * tab. Cancel bypasses this via
+         * {@code cancelButton.setVerifyInputWhenFocusTarget(false)}.
+         */
+        private class LineWidthVerifier extends InputVerifier {
+
+            @Override
+            public boolean verify(JComponent input) {
+                return validateLineWidth() >= 0;
+            }
+
+            @Override
+            public boolean shouldYieldFocus(JComponent source, JComponent target) {
+                var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
+
+                double value;
+
+                try {
+                    value = Double.parseDouble(lineWidthField.getText());
+                } catch (NumberFormatException e) {
+                    showLineWidthError(Strings.ERROR_LINE_WIDTH_INVALID, isMetric);
+                    return false;
+                }
+
+                var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
+
+                if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+                    showLineWidthError(Strings.ERROR_LINE_WIDTH_RANGE, isMetric);
+                    return false;
+                }
+
+                return true;
+            }
         }
     }
 
@@ -997,9 +990,7 @@ public class SongSettingsDialog extends StandardDialog {
 
         private final JLabel attributionFontLabel = new JLabel();
         private final MyJTextArea attributionFontPreview = new MyJTextArea(
-            """
-                Words and music
-                by Sri Chinmoy"""
+            "Words and Music by Sri Chinmoy"
         );
 
         private final JLabel subAttributionFontLabel = new JLabel();

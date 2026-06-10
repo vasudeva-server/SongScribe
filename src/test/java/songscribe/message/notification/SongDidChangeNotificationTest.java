@@ -40,6 +40,7 @@ import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
 import songscribe.dom.Song;
+import songscribe.dom.SongMetadata;
 import songscribe.dom.ElementType;
 
 class SongDidChangeNotificationTest extends UnitTest {
@@ -58,7 +59,7 @@ class SongDidChangeNotificationTest extends UnitTest {
         @Test
         void testAllSongScopedReturnsNull() {
             var notification = makeNotification(
-                new MetadataChange(MetadataField.TITLE, "a", "b"),
+                attributionChange(),
                 new LayoutChange(LayoutField.LINE_WIDTH_SS, 1.0, 2.0)
             );
             assertThat(notification.getLine()).isNull();
@@ -75,7 +76,7 @@ class SongDidChangeNotificationTest extends UnitTest {
             var line = detachedLine();
             var notification = makeNotification(
                 new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance()),
-                new MetadataChange(MetadataField.TITLE, "a", "b")
+                attributionChange()
             );
             assertThat(notification.getLine()).isSameAs(line);
         }
@@ -134,7 +135,7 @@ class SongDidChangeNotificationTest extends UnitTest {
         @Test
         void testFalseForAbsentSubclass() {
             var notification = makeNotification(
-                new MetadataChange(MetadataField.TITLE, "a", "b")
+                attributionChange()
             );
             assertThat(notification.hasMutationOf(LayoutChange.class)).isFalse();
             assertThat(notification.hasMutationOf(LineInsertion.class)).isFalse();
@@ -149,7 +150,7 @@ class SongDidChangeNotificationTest extends UnitTest {
         @Test
         void testTrueForPresentSubclass() {
             var notification = makeNotification(
-                new MetadataChange(MetadataField.TITLE, "a", "b"),
+                attributionChange(),
                 new LyricsChange(LyricsField.UNDER, "x", "y")
             );
             assertThat(notification.hasMutationOf(MetadataChange.class)).isTrue();
@@ -162,7 +163,7 @@ class SongDidChangeNotificationTest extends UnitTest {
         // The notification constructor takes ownership of the supplied list and
         // assumes callers pass an already-immutable one. getMutations() must
         // still reject direct modification attempts.
-        var first = new MetadataChange(MetadataField.TITLE, "a", "b");
+        var first = attributionChange();
         var notification = new SongDidChangeNotification(List.of(first), song);
 
         assertThat(notification.getMutations()).containsExactly(first);
@@ -172,5 +173,27 @@ class SongDidChangeNotificationTest extends UnitTest {
 
     private SongDidChangeNotification makeNotification(Mutation... mutations) {
         return new SongDidChangeNotification(List.of(mutations), song);
+    }
+
+    /**
+     * Returns a minimal but valid {@link MetadataChange} using the song's
+     * current metadata as oldValue and a title-only variant as newValue.
+     */
+    private MetadataChange attributionChange() {
+        var oldMeta = song.getMetadata();
+        var newMeta = new SongMetadata(
+            "Changed Title",
+            oldMeta.number(),
+            oldMeta.place(),
+            oldMeta.year(),
+            oldMeta.month(),
+            oldMeta.day(),
+            oldMeta.composer(),
+            oldMeta.lyricist(),
+            oldMeta.lyricsSource(),
+            oldMeta.arrangement(),
+            oldMeta.unofficialTranslation()
+        );
+        return new MetadataChange(MetadataField.ATTRIBUTION, oldMeta, newMeta);
     }
 }

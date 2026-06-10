@@ -20,8 +20,8 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.FONT;
-import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
+import static songscribe.util.GraphicsState.Property.FONT;
+import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
@@ -29,6 +29,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.util.GraphicsState;
 
 /**
  * Renders bar lines and repeat signs using drawn primitives.

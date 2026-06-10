@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Song;
+import songscribe.dom.SongMetadata;
 
 /**
  * Unit tests for {@link TitleComponent}, {@link FootnotesComponent}, and
@@ -90,8 +91,13 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
         void testEmptyNumberedTitleReturnsDimensionZero() {
             var song = new Song();
             // Clear both number and title so that getNumberedTitle() returns "".
-            song.setNumber("");
-            song.setTitle("");
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "", "",
+                current.place(), current.year(), current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+            ));
             var component = new TitleComponent();
             component.setSong(song);
 
@@ -111,7 +117,13 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
         @Test
         void testNonEmptyTitleReturnsLineWidthAndPositiveHeight() {
             var song = new Song();
-            song.setTitle("Ode");
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "Ode", current.number(), current.place(), current.year(),
+                current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+            ));
             var component = new TitleComponent();
             component.setFont(TEST_FONT);
             component.setSong(song);
@@ -137,14 +149,26 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
             var song = new Song();
 
             // Short title — expected to fit on one line.
-            song.setTitle("A");
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "A", current.number(), current.place(), current.year(),
+                current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+            ));
             var component = new TitleComponent();
             component.setFont(TEST_FONT);
             component.setSong(song);
             var shortHeight = component.getPreferredSize().height;
 
             // Long title — many words that should wrap to two or more lines.
-            song.setTitle("This Is A Very Long Title That Should Definitely Wrap To Multiple Lines When Laid Out");
+            song.setMetadata(new SongMetadata(
+                "This Is A Very Long Title That Should Definitely Wrap To Multiple Lines When Laid Out",
+                current.number(), current.place(), current.year(),
+                current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+            ));
             var longHeight = component.getPreferredSize().height;
 
             assertThat(longHeight)
@@ -163,8 +187,13 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
         @Test
         void testNumberPrefixIncludedInSizeCalculation() {
             var song = new Song();
-            song.setNumber("5");
-            song.setTitle("");
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "", "5",
+                current.place(), current.year(), current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+            ));
             // getNumberedTitle() → "5. " (non-empty); getTitle() → "" (empty).
             var component = new TitleComponent();
             component.setFont(TEST_FONT);

@@ -22,7 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.ui.renderer.GraphicsState;
+import songscribe.util.GraphicsState;
 import songscribe.util.GraphicUtils;
 
 /**

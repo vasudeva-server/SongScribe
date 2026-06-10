@@ -34,6 +34,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.util.GraphicsState;
 
 class GraphicsStateTest extends UnitTest {
 

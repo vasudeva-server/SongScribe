@@ -20,6 +20,7 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,7 +39,6 @@ import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
-import songscribe.message.notification.MetadataDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 
@@ -140,13 +140,17 @@ class SongNotificationHandlerTest extends UnitTest {
             var newTempoObj = mutation.newValue();
 
             assertThat(oldTempoObj).isNotSameAs(newTempoObj);
-            assertThat(oldTempoObj).isInstanceOf(Tempo.class);
-            assertThat(newTempoObj).isInstanceOf(Tempo.class);
 
-            if (oldTempoObj instanceof Tempo oldTempo && newTempoObj instanceof Tempo newTempo) {
-                assertThat(oldTempo.getTempoDescription()).isEqualTo(initialDescription);
-                assertThat(newTempo.getTempoDescription()).isEqualTo(updatedDescription);
-            }
+            // asInstanceOf both narrows the type and fails loudly if the value
+            // is not a Tempo, so the description assertions can never be skipped.
+            assertThat(oldTempoObj)
+                .asInstanceOf(type(Tempo.class))
+                .extracting(Tempo::getTempoDescription)
+                .isEqualTo(initialDescription);
+            assertThat(newTempoObj)
+                .asInstanceOf(type(Tempo.class))
+                .extracting(Tempo::getTempoDescription)
+                .isEqualTo(updatedDescription);
         }
 
         @Test
@@ -161,11 +165,10 @@ class SongNotificationHandlerTest extends UnitTest {
             var mutation = (MetadataChange) notification.getMutations().getFirst();
             assertThat(mutation.field()).isEqualTo(MetadataField.TEMPO);
 
-            var resultTempoObj = mutation.newValue();
-            assertThat(resultTempoObj).isInstanceOf(Tempo.class);
-            if (resultTempoObj instanceof Tempo resultTempo) {
-                assertThat(resultTempo.getTempoDescription()).isEqualTo(newDescription);
-            }
+            assertThat(mutation.newValue())
+                .asInstanceOf(type(Tempo.class))
+                .extracting(Tempo::getTempoDescription)
+                .isEqualTo(newDescription);
         }
     }
 
@@ -306,94 +309,8 @@ class SongNotificationHandlerTest extends UnitTest {
         }
     }
 
-
-    // -----------------------------------------------------------------------
-    // metadataDidChange — attribution routing
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class MetadataDidChangeAttributionRouting {
-
-        @Test
-        void testComposerRoutedToSong() {
-            var newComposer = "Bach";
-            song.metadataDidChange(new MetadataDidChangeNotification(
-                null, null, null, null, null, null, null, newComposer, null, null, null
-            ));
-
-            assertThat(song.getComposer()).isEqualTo(newComposer);
-        }
-
-        @Test
-        void testNullComposerLeavesValueUnchanged() {
-            var originalComposer = song.getComposer();
-            song.metadataDidChange(new MetadataDidChangeNotification(
-                null, null, null, null, null, null, null, null, null, null, null
-            ));
-
-            assertThat(song.getComposer()).isEqualTo(originalComposer);
-        }
-
-        @Test
-        void testLyricistRoutedToSong() {
-            var newLyricist = "Mozart";
-            song.metadataDidChange(new MetadataDidChangeNotification(
-                null, null, null, null, null, null, null, null, newLyricist, null, null
-            ));
-
-            assertThat(song.getLyricist()).isEqualTo(newLyricist);
-        }
-
-        @Test
-        void testNullLyricistLeavesValueUnchanged() {
-            var originalLyricist = song.getLyricist();
-            song.metadataDidChange(new MetadataDidChangeNotification(
-                null, null, null, null, null, null, null, null, null, null, null
-            ));
-
-            assertThat(song.getLyricist()).isEqualTo(originalLyricist);
-        }
-
-        @Test
-        void testLyricsSourceRoutedToSong() {
-            var newSource = Song.LyricsSource.TEXT;
-            song.metadataDidChange(new MetadataDidChangeNotification(
-                null, null, null, null, null, null, null, null, null, newSource, null
-            ));
-
-            assertThat(song.getLyricsSource()).isEqualTo(newSource);
-        }
-
-        @Test
-        void testNullLyricsSourceLeavesValueUnchanged() {
-            var originalSource = song.getLyricsSource();
-            song.metadataDidChange(new MetadataDidChangeNotification(
-                null, null, null, null, null, null, null, null, null, null, null
-            ));
-
-            assertThat(song.getLyricsSource()).isEqualTo(originalSource);
-        }
-
-        @Test
-        void testArrangementRoutedToSong() {
-            song.metadataDidChange(new MetadataDidChangeNotification(
-                null, null, null, null, null, null, null, null, null, null, true
-            ));
-
-            assertThat(song.isArrangement()).isTrue();
-        }
-
-        @Test
-        void testNullArrangementLeavesValueUnchanged() {
-            var originalArrangement = song.isArrangement();
-            song.metadataDidChange(new MetadataDidChangeNotification(
-                null, null, null, null, null, null, null, null, null, null, null
-            ));
-
-            assertThat(song.isArrangement()).isEqualTo(originalArrangement);
-        }
-    }
+    // metadataDidChange record routing (apply-full-record, no-op when unchanged)
+    // is covered by SongMetadataDialogFlowTest.AttributionMutation.
 
 
     // -----------------------------------------------------------------------

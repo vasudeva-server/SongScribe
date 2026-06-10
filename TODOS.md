@@ -140,3 +140,86 @@ its test can drop to a plain injected mock (no static mock).
 **Depends on / blocked by:** Easiest after the centralized `MainFrameMockTest` lands
 (Phase 2 of plans/issue-375-review-followups.md), so per-test cleanup happens in one
 place. Larger effort; do incrementally, one action family at a time.
+
+## Undo/redo (#14) must replay the new attribution mutations
+
+**What:** When undo/redo (#14) is implemented, its replay engine must handle the
+two new mutation types introduced by the attribution refactor: the coarse
+`MetadataChange(MetadataField.ATTRIBUTION, oldSongMetadata, newSongMetadata)`
+record-swap, and the cross-line attribution-migration mutation emitted by
+`Song.addLine(0, …)` / `Song.removeLine(0)`.
+
+**Why:** Both mutations are pure groundwork — they are emitted and validated
+today but nothing consumes them, because no replay engine exists yet. They are
+easy to overlook when #14 lands: the metadata one collapses 11 former per-field
+changes into a single record swap (so a naive replay that diffs scalar fields
+will mishandle it), and the migration one moves the `Attribution` element
+between `Line`s (so replaying a `LineInsertion`/`LineDeletion` alone will leave
+the attribution on the wrong line — desyncing its geometry and `userYOffsetSs`
+after undo). The whole reason the migration was modeled as a recorded mutation
+(review decision 1C) rather than an imperative side effect was to make this
+replay correct; that intent is lost if #14 doesn't wire it up.
+
+**Context:** `MetadataChange` lives in `songscribe.message.mutation`; its
+canonical constructor validates `oldValue`/`newValue` against
+`MetadataField.getExpectedType()` (= `SongMetadata.class` for `ATTRIBUTION`).
+The migration mutation is emitted inside the same `withModification` /
+`applyChange` brackets that already carry the last-line terminal-invariant
+maintenance in `addLine`/`removeLine` — model the replay symmetrically to how
+terminal maintenance replays. `Song.getFirstLineAttribution()` is the
+invariant-enforcement point (asserts the first line owns the attribution);
+replay must keep that invariant true.
+
+**Depends on / blocked by:** Issue #14 (undo/redo) — not started; this refactor
+is the groundwork.
+
+## MusicXML attribution export via `AttributionFormatter`
+
+**What:** Wire attribution text into MusicXML export using `AttributionFormatter`
++ `SongMetadata`, mirroring how `SongIO.writeSong` and `ExportABCAction.writeABC`
+already format attribution.
+
+**Why:** The attribution refactor deliberately moved formatting into a
+UI-free `AttributionFormatter` in `songscribe.dom` so IO, ABC, and MusicXML
+could all format from `SongMetadata` without a Swing/pane dependency. ABC and
+`.mssw` IO are wired; MusicXML is the one consumer the design anticipated but
+left unbuilt (target architecture note: "(later) MusicXML"). Until it is wired,
+the no-pane-dependency design sits partially unused for the MusicXML path.
+
+**Context:** `AttributionFormatter` entry points to call:
+`text(SongMetadata, boolean showTranslation)` for multi-line attribution and
+`singleLineText(SongMetadata, boolean)` for a single-line rendering; derive the
+`showTranslation` flag from `Song.showTranslation()`. This is separate from the
+existing "MusicXML export/import implementation" TODO above, which covers
+lyrics; this entry is specifically the title/composer/lyricist/date attribution
+block. Place the credit text in the MusicXML `<credit>` / `<identification>`
+elements as appropriate.
+
+**Depends on / blocked by:** MusicXML export path existing (see the lyrics
+MusicXML TODO above); `AttributionFormatter` + `SongMetadata` shipped by this
+refactor.
+
+## De-Swing the Song Settings attribution preview
+
+**What:** Replace the interim `JComponent` wrapper added in the attribution
+refactor (`SongSettingsDialog.TextTab`) with a preview that renders the bare
+`AttributionPane` directly, once the pane's measure/render API has settled.
+
+**Why:** The refactor made `AttributionPane` a UI-free rendering surface in
+`songscribe.dom` (no longer a `JComponent`), so the dialog needs a small Swing
+adapter to host the live preview. That wrapper was explicitly scoped as
+"interim" — it re-introduces Swing glue the refactor otherwise removed. Once the
+pane API is stable, the preview can paint the pane without a bespoke wrapper.
+
+**Context:** The interim wrapper's `getPreferredSize()` returns the pane's
+measured size (passing the dialog's fonts) and `paintComponent` calls
+`pane.render(g2, 0, 0, getWidth(), attributionFont, subAttributionFont)`;
+`refreshPreview()` builds a `SongMetadata` from widget state and feeds the
+formatter via `setOverrideLines(...)`. A cleaner end state is a reusable
+pane-hosting Swing component (not dialog-private) that any panel can drop in,
+or a small canvas that delegates straight to `AttributionPane.render`. Revisit
+after the pane's caching (review decision P1A) and font-parameter signatures
+have proven stable across the score and dialog call sites.
+
+**Depends on / blocked by:** Attribution refactor shipped; pane measure/render
+API stable.

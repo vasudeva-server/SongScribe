@@ -19,9 +19,7 @@
 */
 package songscribe.ui.component;
 
-import java.util.HashSet;
 import songscribe.error.RuntimeError;
-import java.util.Set;
 
 import module java.desktop;
 
@@ -31,18 +29,22 @@ import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
 
 /**
- * Attaches a focus-lost guard to a {@link JTextComponent} that prevents
- * the field from being left blank.
+ * An {@link InputVerifier} for a {@link JTextComponent} that prevents the
+ * field from being left blank. Install it with
+ * {@code field.setInputVerifier(new NonEmptyGuard(field, ...))}. While the
+ * field is blank it refuses to yield focus, so a button that triggers it
+ * (e.g. an OK button) will not fire. To let a button bypass the guard
+ * (e.g. Cancel), call {@code button.setVerifyInputWhenFocusTarget(false)}.
  *
  * <p>Two modes of operation:
  * <ul>
  *   <li><b>With a default value</b> — an option dialog offers the user
  *       a choice between applying the default or continuing to edit.</li>
  *   <li><b>Without a default value</b> — a warning is shown and focus
- *       is returned to the field.</li>
+ *       is kept on the field.</li>
  * </ul>
  */
-public class NonEmptyGuard {
+public class NonEmptyGuard extends InputVerifier {
 
     private final JTextComponent field;
     private final Component parent;
@@ -51,7 +53,6 @@ public class NonEmptyGuard {
     private final @Nullable String defaultValueKey;
     private final @Nullable String useDefaultLabelKey;
     private final @Nullable String continueEditingLabelKey;
-    private final Set<Component> exemptComponents = new HashSet<>();
 
     /**
      * Creates a guard that offers the user a default value when the
@@ -81,11 +82,10 @@ public class NonEmptyGuard {
         this.defaultValueKey = defaultValueKey;
         this.useDefaultLabelKey = useDefaultLabelKey;
         this.continueEditingLabelKey = continueEditingLabelKey;
-        install();
     }
 
     /**
-     * Creates a guard that warns the user and returns focus when the
+     * Creates a guard that warns the user and keeps focus when the
      * field is left blank. No default value is offered.
      *
      * @param field          the text component to guard
@@ -106,41 +106,16 @@ public class NonEmptyGuard {
         defaultValueKey = null;
         useDefaultLabelKey = null;
         continueEditingLabelKey = null;
-        install();
     }
 
-    /**
-     * Registers a component that should not trigger focus-lost
-     * validation. Use this for buttons (e.g. OK, Cancel) whose
-     * action listeners perform their own validation.
-     */
-    public void addExemptComponent(Component component) {
-        exemptComponents.add(component);
+    @Override
+    public boolean verify(JComponent input) {
+        return !field.getText().isBlank();
     }
 
-    private void install() {
-        field.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusLost(FocusEvent e) {
-                if (e.isTemporary() || exemptComponents.contains(e.getOppositeComponent())) {
-                    return;
-                }
-
-                handleFocusLost();
-            }
-        });
-    }
-
-    /**
-     * Checks whether the guarded field is non-blank, showing the
-     * appropriate dialog if it is blank.
-     *
-     * @return {@code true} if the field contains non-blank text
-     *     (either already present or filled by the user accepting
-     *     the default); {@code false} if the field is still blank
-     */
-    public boolean validate() {
-        if (!field.getText().isBlank()) {
+    @Override
+    public boolean shouldYieldFocus(JComponent source, JComponent target) {
+        if (verify(source)) {
             return true;
         }
 
@@ -148,12 +123,9 @@ public class NonEmptyGuard {
             return showDefaultValueDialog();
         }
 
-        showWarningAndRefocus();
+        // Returning false keeps focus on the field; show the reason first.
+        OptionDialogs.showWarningMessage(parent, dialogTitleKey, messageKey);
         return false;
-    }
-
-    private void handleFocusLost() {
-        validate();
     }
 
     private boolean showDefaultValueDialog() {
@@ -182,13 +154,7 @@ public class NonEmptyGuard {
             return true;
         }
 
-        // Closed or "continue editing" -- return focus to the field
-        SwingUtilities.invokeLater(field::requestFocusInWindow);
+        // Closed or "continue editing" -- keep focus on the field
         return false;
-    }
-
-    private void showWarningAndRefocus() {
-        OptionDialogs.showWarningMessage(parent, dialogTitleKey, messageKey);
-        SwingUtilities.invokeLater(field::requestFocusInWindow);
     }
 }

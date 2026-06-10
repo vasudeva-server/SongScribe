@@ -40,6 +40,9 @@ public class Attribution extends LineElement {
     /** Margin from the attribution block's bottom edge to the top of the staff. */
     public static final double ATTRIBUTION_MARGIN_BOTTOM_SS = 2.0;
 
+    /** Margin from the staff right edge to the attribution block's right edge. */
+    public static final double ATTRIBUTION_RIGHT_MARGIN_SS = 0.5;
+
     private double widthSs;
     private double heightSs;
 

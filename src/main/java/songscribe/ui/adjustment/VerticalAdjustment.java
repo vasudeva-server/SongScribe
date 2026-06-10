@@ -43,7 +43,7 @@ import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.layout.LayoutResult;
-import songscribe.ui.renderer.GraphicsState;
+import songscribe.util.GraphicsState;
 
 public class VerticalAdjustment extends Adjustment {
 

@@ -20,7 +20,9 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,16 +37,16 @@ import songscribe.message.MessageCenter;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.message.notification.MetadataDidChangeNotification;
+import songscribe.message.notification.SongMetadataDidChangeNotification;
 
 /**
  * Tests the bracketing contract of {@link Song#metadataDidChange}, which is
- * the handler invoked (via MBassador) when {@code TextTab.setData} posts a
- * {@link MetadataDidChangeNotification} inside a {@code withModification} bracket.
+ * the handler invoked (via MBassador) when {@code SongSettingsDialog.setData} posts a
+ * {@link SongMetadataDidChangeNotification} inside a {@code postWithModification} bracket.
  *
  * <p>The tests call {@code metadataDidChange} directly to avoid the real bus,
- * and verify that all field mutations are coalesced into a single
- * {@link SongDidChangeNotification}.
+ * and verify that the change is recorded as a single coarse
+ * {@link MetadataField#ATTRIBUTION} mutation in a {@link SongDidChangeNotification}.
  */
 class SongMetadataDialogFlowTest extends UnitTest {
 
@@ -66,93 +68,76 @@ class SongMetadataDialogFlowTest extends UnitTest {
 
 
     // -----------------------------------------------------------------------
-    // Multiple-field coalescing
+    // Coarse ATTRIBUTION mutation
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class MultipleFieldCoalescing {
+    class AttributionMutation {
 
         @Test
-        void testMultipleFieldsProduceSingleNotificationWithAllMutations() {
-            // Calling metadataDidChange with N non-null fields must fire exactly one
-            // SongDidChangeNotification carrying N MetadataChange mutations.
-            var oldTitle = song.getTitle();
-            var oldPlace = song.getPlace();
-            var oldYear = song.getYear();
-            var oldMonth = song.getMonth();
-            var oldDay = song.getDay();
-            var oldComposer = song.getComposer();
-            var oldLyricist = song.getLyricist();
-            var oldLyricsSource = song.getLyricsSource();
-            var oldArrangement = song.isArrangement();
+        void testProducesSingleAttributionMutation() {
+            // metadataDidChange must emit exactly one SongDidChangeNotification
+            // carrying exactly one ATTRIBUTION MetadataChange mutation.
+            var oldMetadata = song.getMetadata();
+            var newMetadata = new SongMetadata(
+                "New Song Title",
+                "",
+                "Paris",
+                "2024",
+                3,
+                15,
+                "Bach",
+                "Mozart",
+                Song.LyricsSource.TEXT,
+                true,
+                false
+            );
 
-            var newTitle = "New Song Title";
-            var newPlace = "Paris";
-            var newYear = "2024";
-            var newMonth = 3;
-            var newDay = 15;
-            var newComposer = "Bach";
-            var newLyricist = "Mozart";
-            var newLyricsSource = Song.LyricsSource.TEXT;
-            var newArrangement = true;
-
-            song.metadataDidChange(new MetadataDidChangeNotification(
-                newTitle, newPlace, newYear, null, newMonth, newDay, null,
-                newComposer, newLyricist, newLyricsSource, newArrangement
-            ));
-
-            var notification = captureSingleDidChange();
-            assertThat(notification.getMutations()).hasSize(9);
-
-            var titleChange = findMutation(notification, MetadataField.TITLE);
-            assertThat(titleChange.oldValue()).isEqualTo(oldTitle);
-            assertThat(titleChange.newValue()).isEqualTo(newTitle);
-
-            var placeChange = findMutation(notification, MetadataField.PLACE);
-            assertThat(placeChange.oldValue()).isEqualTo(oldPlace);
-            assertThat(placeChange.newValue()).isEqualTo(newPlace);
-
-            var yearChange = findMutation(notification, MetadataField.YEAR);
-            assertThat(yearChange.oldValue()).isEqualTo(oldYear);
-            assertThat(yearChange.newValue()).isEqualTo(newYear);
-
-            var monthChange = findMutation(notification, MetadataField.MONTH);
-            assertThat(monthChange.oldValue()).isEqualTo(oldMonth);
-            assertThat(monthChange.newValue()).isEqualTo(newMonth);
-
-            var dayChange = findMutation(notification, MetadataField.DAY);
-            assertThat(dayChange.oldValue()).isEqualTo(oldDay);
-            assertThat(dayChange.newValue()).isEqualTo(newDay);
-
-            var composerChange = findMutation(notification, MetadataField.COMPOSER);
-            assertThat(composerChange.oldValue()).isEqualTo(oldComposer);
-            assertThat(composerChange.newValue()).isEqualTo(newComposer);
-
-            var lyricistChange = findMutation(notification, MetadataField.LYRICIST);
-            assertThat(lyricistChange.oldValue()).isEqualTo(oldLyricist);
-            assertThat(lyricistChange.newValue()).isEqualTo(newLyricist);
-
-            var lyricsSourceChange = findMutation(notification, MetadataField.LYRICS_SOURCE);
-            assertThat(lyricsSourceChange.oldValue()).isEqualTo(oldLyricsSource);
-            assertThat(lyricsSourceChange.newValue()).isEqualTo(newLyricsSource);
-
-            var arrangementChange = findMutation(notification, MetadataField.ARRANGEMENT);
-            assertThat(arrangementChange.oldValue()).isEqualTo(oldArrangement);
-            assertThat(arrangementChange.newValue()).isEqualTo(newArrangement);
-        }
-
-        @Test
-        void testNullFieldsAreNotRecorded() {
-            // Fields passed as null in the notification must not produce mutations.
-            song.metadataDidChange(new MetadataDidChangeNotification(
-                "Only Title", null, null, null, null, null, null, null, null, null, null
-            ));
+            song.metadataDidChange(new SongMetadataDidChangeNotification(newMetadata));
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
+
             var change = (MetadataChange) notification.getMutations().getFirst();
-            assertThat(change.field()).isEqualTo(MetadataField.TITLE);
+            assertThat(change.field()).isEqualTo(MetadataField.ATTRIBUTION);
+            assertThat(change.oldValue()).isEqualTo(oldMetadata);
+            assertThat(change.newValue()).isEqualTo(newMetadata);
+        }
+
+        @Test
+        void testSongStateReflectsNewMetadata() {
+            // After metadataDidChange, song getters must delegate to the new record.
+            var newMetadata = new SongMetadata(
+                "Dialog Title",
+                "",
+                "London",
+                "2025",
+                0,
+                0,
+                "Beethoven",
+                "Beethoven",
+                Song.LyricsSource.LYRICIST,
+                false,
+                false
+            );
+
+            song.metadataDidChange(new SongMetadataDidChangeNotification(newMetadata));
+
+            assertThat(song.getMetadata()).isEqualTo(newMetadata);
+            assertThat(song.getTitle()).isEqualTo(newMetadata.title());
+            assertThat(song.getPlace()).isEqualTo(newMetadata.place());
+            assertThat(song.getComposer()).isEqualTo(newMetadata.composer());
+        }
+
+        @Test
+        void testNoOpWhenMetadataUnchanged() {
+            // setMetadata is a no-op when the record equals the current one, so no
+            // SongDidChangeNotification should be emitted.
+            var currentMetadata = song.getMetadata();
+            song.metadataDidChange(new SongMetadataDidChangeNotification(currentMetadata));
+
+            messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
         }
     }
 
@@ -167,26 +152,36 @@ class SongMetadataDialogFlowTest extends UnitTest {
 
         @Test
         void testOuterAndInnerBracketsCoalesceIntoSingleNotification() {
-            // In production, TextTab.setData calls:
-            //   song.withModification(() -> MessageCenter.post(notification))
-            // MBassador then dispatches to metadataDidChange, which has its own
-            // withModification. We simulate this by calling metadataDidChange directly
-            // inside an outer withModification bracket and verify that the depth
-            // counter coalesces everything into one notification.
-            var newTitle = "Dialog Title";
-            var newPlace = "London";
+            // In production, SongSettingsDialog.setData calls:
+            //   song.postWithModification(new SongMetadataDidChangeNotification(metadata))
+            // MBassador then dispatches to metadataDidChange, which calls setMetadata.
+            // We simulate this by calling metadataDidChange directly inside an outer
+            // withModification bracket and verify that the depth counter coalesces
+            // everything into one notification.
+            var newMetadata = new SongMetadata(
+                "Dialog Title",
+                "",
+                "London",
+                "",
+                0,
+                0,
+                Song.SRI_CHINMOY,
+                Song.SRI_CHINMOY,
+                Song.LyricsSource.LYRICIST,
+                false,
+                false
+            );
 
             song.withModification(() ->
-                song.metadataDidChange(new MetadataDidChangeNotification(
-                    newTitle, newPlace, null, null, null, null, null, null, null, null, null
-                ))
+                song.metadataDidChange(new SongMetadataDidChangeNotification(newMetadata))
             );
 
             var notification = captureSingleDidChange();
-            assertThat(notification.getMutations()).hasSize(2);
+            assertThat(notification.getMutations()).hasSize(1);
 
-            assertThat(findMutation(notification, MetadataField.TITLE).newValue()).isEqualTo(newTitle);
-            assertThat(findMutation(notification, MetadataField.PLACE).newValue()).isEqualTo(newPlace);
+            var change = (MetadataChange) notification.getMutations().getFirst();
+            assertThat(change.field()).isEqualTo(MetadataField.ATTRIBUTION);
+            assertThat(change.newValue()).isEqualTo(newMetadata);
         }
     }
 
@@ -194,14 +189,6 @@ class SongMetadataDialogFlowTest extends UnitTest {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
-
-    private MetadataChange findMutation(SongDidChangeNotification notification, MetadataField field) {
-        return notification.getMutations().stream()
-            .filter(m -> m instanceof MetadataChange mc && mc.field() == field)
-            .map(m -> (MetadataChange) m)
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("No MetadataChange for field " + field));
-    }
 
     private SongDidChangeNotification captureSingleDidChange() {
         var captor = ArgumentCaptor.forClass(Message.class);

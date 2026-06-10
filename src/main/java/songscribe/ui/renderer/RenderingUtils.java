@@ -20,8 +20,8 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
-import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
@@ -40,6 +40,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.layout.StaffExtents;
 import songscribe.util.GraphicUtils;
+import songscribe.util.GraphicsState;
 import songscribe.util.MyFontUtils;
 
 /**

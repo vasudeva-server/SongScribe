@@ -59,6 +59,7 @@ import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LayoutField;
+import songscribe.dom.SongMetadata;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
@@ -1217,7 +1218,7 @@ class ScoreViewControllerTest extends UnitTest {
 
         @Test
         void testMetadataChangeTriggerViewChanged() {
-            fire(new MetadataChange(MetadataField.TITLE, "old", "new"));
+            fire(new MetadataChange(MetadataField.ATTRIBUTION, new Song().getMetadata(), new Song().getMetadata()));
             verify(scoreMock).viewChanged();
         }
 
@@ -1312,7 +1313,7 @@ class ScoreViewControllerTest extends UnitTest {
             // Row 39: a full-relayout mutation (MetadataChange) must trigger viewChanged()
             controller.songDidChange(
                 new SongDidChangeNotification(
-                    List.of(new MetadataChange(MetadataField.TITLE, "A", "B")),
+                    List.of(new MetadataChange(MetadataField.ATTRIBUTION, new Song().getMetadata(), new Song().getMetadata())),
                     new Song()
                 )
             );
@@ -1326,7 +1327,7 @@ class ScoreViewControllerTest extends UnitTest {
             // restart the debounce timer regardless of mutation type.
             controller.songDidChange(
                 new SongDidChangeNotification(
-                    List.of(new MetadataChange(MetadataField.TITLE, "A", "B")),
+                    List.of(new MetadataChange(MetadataField.ATTRIBUTION, new Song().getMetadata(), new Song().getMetadata())),
                     new Song()
                 )
             );

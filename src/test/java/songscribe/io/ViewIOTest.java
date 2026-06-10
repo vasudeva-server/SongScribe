@@ -50,6 +50,8 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.util.MyFontUtils;
 
+import static org.assertj.core.api.Assertions.within;
+
 @SuppressWarnings("SameReturnValue")
 class ViewIOTest extends UnitTest {
 
@@ -354,6 +356,69 @@ class ViewIOTest extends UnitTest {
             assertThat(fonts.getFont(FontKey.TITLE).getSize())
                 .as("corrupt font size must fall back to prefs default")
                 .isEqualTo(Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AttributionRoundTrip {
+
+        private static final double EPSILON = 1e-10;
+
+        /**
+         * An Attribution's userYOffsetSs must survive a save → load roundtrip.
+         * This guards the serialization added in SongIO (XML_ATTRIBUTION_Y_OFFSET):
+         * a regression that drops the write or parse would leave the value at 0.0
+         * after loading.
+         */
+        @Test
+        void testAttributionUserYOffsetSsSurvivesRoundTrip() throws Exception {
+            var song = new Song();
+            addNote(song);
+
+            var offsetSs = -3.5;
+            song.getAttributionElement().setUserYOffsetSs(offsetSs);
+
+            var restored = roundTrip(song);
+
+            assertThat(restored.getAttributionElement().getUserYOffsetSs())
+                .describedAs("attribution userYOffsetSs must survive a save → load roundtrip")
+                .isCloseTo(offsetSs, within(EPSILON));
+        }
+
+        /**
+         * When userYOffsetSs is zero (the default), no XML_ATTRIBUTION_Y_OFFSET
+         * element is written. After a roundtrip the value must still be zero.
+         */
+        @Test
+        void testAttributionDefaultYOffsetRoundTrips() throws Exception {
+            var song = new Song();
+            addNote(song);
+
+            var restored = roundTrip(song);
+
+            assertThat(restored.getAttributionElement().getUserYOffsetSs())
+                .describedAs("default zero userYOffsetSs must survive roundtrip as zero")
+                .isCloseTo(0.0, within(EPSILON));
+        }
+
+        /**
+         * A positive (downward) user Y offset must also survive the roundtrip —
+         * any non-zero value is written and read back.
+         */
+        @Test
+        void testAttributionPositiveYOffsetRoundTrips() throws Exception {
+            var song = new Song();
+            addNote(song);
+
+            var offsetSs = 2.0;
+            song.getAttributionElement().setUserYOffsetSs(offsetSs);
+
+            var restored = roundTrip(song);
+
+            assertThat(restored.getAttributionElement().getUserYOffsetSs())
+                .describedAs("positive userYOffsetSs must survive roundtrip")
+                .isCloseTo(offsetSs, within(EPSILON));
         }
     }
 

@@ -20,9 +20,9 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
-import static songscribe.ui.renderer.GraphicsState.Property.FONT;
-import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
+import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
@@ -31,6 +31,7 @@ import songscribe.dom.ScaleContext;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricBoxLayout;
 import songscribe.layout.SongLayoutMetrics;
+import songscribe.util.GraphicsState;
 
 /**
  * Renders per-element lyric syllable text beneath the staff.

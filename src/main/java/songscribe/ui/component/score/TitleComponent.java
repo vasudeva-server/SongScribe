@@ -23,7 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import songscribe.dom.ScaleContext;
-import songscribe.ui.renderer.GraphicsState;
+import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
 
 /**
@@ -39,7 +39,7 @@ public class TitleComponent extends ScoreComponent {
      */
     public static final double TITLE_MARGIN_BOTTOM_SS = 2.0;  // 16px
     /** Maximum percentage of line width the title can occupy before wrapping. */
-    private static final double TITLE_MAX_WIDTH_PERCENTAGE = 0.75;
+    private static final double TITLE_MAX_WIDTH_PERCENTAGE = 0.9;
 
     /**
      * Creates a new TitleComponent.

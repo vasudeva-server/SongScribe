@@ -45,6 +45,7 @@ import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
+import songscribe.dom.SongMetadata;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.Crescendo;
@@ -170,7 +171,8 @@ class MutationRecordsTest extends UnitTest {
 
         @Test
         void testSongScopedMutationsAreNotLineScoped() {
-            assertThat(new MetadataChange(MetadataField.TITLE, "a", "b"))
+            var meta = defaultSongMetadata();
+            assertThat(new MetadataChange(MetadataField.ATTRIBUTION, meta, meta))
                 .isNotInstanceOf(LineScopedMutation.class);
             assertThat(new LayoutChange(LayoutField.LINE_WIDTH_SS, 1.0, 2.0))
                 .isNotInstanceOf(LineScopedMutation.class);
@@ -325,10 +327,11 @@ class MutationRecordsTest extends UnitTest {
 
         @Test
         void testMetadataChangeAcceptsNullValues() {
-            var mutation = new MetadataChange(MetadataField.TITLE, null, "Some Title");
+            var meta = defaultSongMetadata();
+            var mutation = new MetadataChange(MetadataField.ATTRIBUTION, null, meta);
 
             assertThat(mutation.oldValue()).isNull();
-            assertThat(mutation.newValue()).isEqualTo("Some Title");
+            assertThat(mutation.newValue()).isSameAs(meta);
         }
     }
 
@@ -420,34 +423,36 @@ class MutationRecordsTest extends UnitTest {
         void testValidatorAcceptsNullOldAndNewValues() {
             // Null values bypass the type check — no exception should be thrown.
             assertThatNoException().isThrownBy(
-                () -> new MetadataChange(MetadataField.TITLE, null, null)
+                () -> new MetadataChange(MetadataField.ATTRIBUTION, null, null)
             );
         }
 
         @Test
         void testValidatorRejectsTypeMismatchOnOldValue() {
-            // TITLE expects String; passing an Integer for oldValue must throw
+            // ATTRIBUTION expects SongMetadata; passing a String for oldValue must throw
             // with a message identifying the record, field, parameter, and types.
+            var meta = defaultSongMetadata();
             assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(
-                () -> new MetadataChange(MetadataField.TITLE, 42, "x")
+                () -> new MetadataChange(MetadataField.ATTRIBUTION, "wrong-type", meta)
             ).withMessageContaining("MetadataChange")
-             .withMessageContaining("TITLE")
+             .withMessageContaining("ATTRIBUTION")
              .withMessageContaining("oldValue")
-             .withMessageContaining("String")
-             .withMessageContaining("Integer");
+             .withMessageContaining("SongMetadata")
+             .withMessageContaining("String");
         }
 
         @Test
         void testValidatorRejectsTypeMismatchOnNewValue() {
-            // TITLE expects String; passing an Integer for newValue must throw
+            // ATTRIBUTION expects SongMetadata; passing a String for newValue must throw
             // with a message identifying the record, field, parameter, and types.
+            var meta = defaultSongMetadata();
             assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(
-                () -> new MetadataChange(MetadataField.TITLE, "x", 42)
+                () -> new MetadataChange(MetadataField.ATTRIBUTION, meta, "wrong-type")
             ).withMessageContaining("MetadataChange")
-             .withMessageContaining("TITLE")
+             .withMessageContaining("ATTRIBUTION")
              .withMessageContaining("newValue")
-             .withMessageContaining("String")
-             .withMessageContaining("Integer");
+             .withMessageContaining("SongMetadata")
+             .withMessageContaining("String");
         }
     }
 
@@ -498,21 +503,11 @@ class MutationRecordsTest extends UnitTest {
 
     static Stream<Arguments> metadataFieldExpectedTypes() {
         return Stream.of(
-            Arguments.of(MetadataField.TITLE, String.class),
-            Arguments.of(MetadataField.PLACE, String.class),
-            Arguments.of(MetadataField.YEAR, String.class),
-            Arguments.of(MetadataField.MONTH, Integer.class),
-            Arguments.of(MetadataField.DAY, Integer.class),
-            Arguments.of(MetadataField.COMPOSER, String.class),
-            Arguments.of(MetadataField.LYRICIST, String.class),
-            Arguments.of(MetadataField.LYRICS_SOURCE, Song.LyricsSource.class),
-            Arguments.of(MetadataField.ARRANGEMENT, Boolean.class),
-            Arguments.of(MetadataField.NUMBER, String.class),
+            Arguments.of(MetadataField.ATTRIBUTION, SongMetadata.class),
             Arguments.of(MetadataField.TEMPO, Tempo.class),
             Arguments.of(MetadataField.DEFAULT_KEY_ACCIDENTAL_COUNT, Integer.class),
             Arguments.of(MetadataField.DEFAULT_KEY_TYPE, KeyType.class),
-            Arguments.of(MetadataField.FOOTNOTES, String.class),
-            Arguments.of(MetadataField.UNOFFICIAL_TRANSLATION, Boolean.class)
+            Arguments.of(MetadataField.FOOTNOTES, String.class)
         );
     }
 
@@ -520,5 +515,25 @@ class MutationRecordsTest extends UnitTest {
     void testElementFieldDurationAffectingContainsExactlyDotCount() {
         // DURATION_AFFECTING drives tuplet-removal policy; guard against accidental additions.
         assertThat(ElementField.DURATION_AFFECTING).isEqualTo(EnumSet.of(ElementField.DOT_COUNT));
+    }
+
+    /**
+     * Returns a minimal but valid {@link SongMetadata} for use in tests that
+     * need a concrete {@code SongMetadata} instance but do not care about its contents.
+     */
+    private static SongMetadata defaultSongMetadata() {
+        return new SongMetadata(
+            "Test Song",
+            "",
+            "",
+            "",
+            0,
+            0,
+            Song.SRI_CHINMOY,
+            Song.SRI_CHINMOY,
+            Song.LyricsSource.LYRICIST,
+            false,
+            false
+        );
     }
 }

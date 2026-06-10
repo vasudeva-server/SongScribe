@@ -33,7 +33,7 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
 import songscribe.dom.ScaleContext;
 import songscribe.ui.renderer.GlissandoRenderer;
-import songscribe.ui.renderer.GraphicsState;
+import songscribe.util.GraphicsState;
 
 public class HorizontalAdjustment extends Adjustment {
 

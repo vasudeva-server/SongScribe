@@ -42,7 +42,7 @@ import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.component.score.AttributionPane;
+import songscribe.dom.AttributionFormatter;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
@@ -93,6 +93,7 @@ public final class SongIO {
     private static final String XML_LYRICIST = "lyricist";
     private static final String XML_LYRICS_SOURCE = "lyricssource";
     private static final String XML_ARRANGEMENT = "arrangement";
+    private static final String XML_ATTRIBUTION_Y_OFFSET = "attributionyoffset";
 
     private SongIO() {
     }
@@ -178,7 +179,7 @@ public final class SongIO {
         }
 
         // Keep writing the computed blob for interop with older readers.
-        var attributionBlob = AttributionPane.attributionText(c);
+        var attributionBlob = AttributionFormatter.text(c.getMetadata(), c.showTranslation());
 
         if (!attributionBlob.isEmpty()) {
             XML.writeValue(pw, XML_INFO, attributionBlob);
@@ -201,6 +202,12 @@ public final class SongIO {
 
         // Always write dynamicLayout=true for new documents
         XML.writeValue(pw, XML_DYNAMIC_LAYOUT, Boolean.toString(true));
+
+        var attributionYOffsetSs = c.getAttributionElement().getUserYOffsetSs();
+
+        if (attributionYOffsetSs != 0) {
+            XML.writeValue(pw, XML_ATTRIBUTION_Y_OFFSET, Double.toString(attributionYOffsetSs));
+        }
 
         pw.println("  <" + XML_LINES + '>');
 
@@ -273,6 +280,7 @@ public final class SongIO {
         private int defaultKeyAccidentalCount = Song.DEFAULT_KEY_ACCIDENTAL_COUNT;
         private KeyType defaultKeyType = Song.DEFAULT_KEY_TYPE;
         private double attributionStartYSs = 0;
+        private double attributionUserYOffsetSs = 0;
         private double rowHeightAdjustmentSs = 0;
         private double lineWidthSs = PageModel.getDefaultLineWidthSs();
         private boolean hasBeenDynamicallyLaidOut = false;
@@ -611,6 +619,13 @@ public final class SongIO {
                             parseVersionedDouble(str);
                         case XML_DYNAMIC_LAYOUT -> hasBeenDynamicallyLaidOut =
                             Boolean.parseBoolean(str);
+                        case XML_ATTRIBUTION_Y_OFFSET -> {
+                            try {
+                                attributionUserYOffsetSs = Double.parseDouble(str);
+                            } catch (NumberFormatException e) {
+                                LOG.warn("Corrupt document: malformed attributionyoffset: '{}', using default", str);
+                            }
+                        }
                     }
                 }
             } else if (where == Where.VIEW) {
@@ -716,6 +731,9 @@ public final class SongIO {
 
             try {
                 song.loadFrom(data);
+                if (attributionUserYOffsetSs != 0) {
+                    song.getAttributionElement().setUserYOffsetSs(attributionUserYOffsetSs);
+                }
             } finally {
                 song.endSuspendMutationTracking();
             }

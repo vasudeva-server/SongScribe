@@ -57,7 +57,7 @@ public final class Converter {
         }
 
         if (withoutSongTitle) {
-            song.setTitle("");
+            song.setMetadata(song.getMetadata().withTitle(""));
         }
     }
 }

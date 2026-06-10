@@ -26,9 +26,7 @@ import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Attribution;
-import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
+import songscribe.dom.*;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;
@@ -38,11 +36,10 @@ import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.component.ScoreView;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
-import songscribe.dom.ScaleContext;
 import songscribe.layout.SongLayoutMetrics;
 import songscribe.layout.StaffExtents;
 import songscribe.ui.renderer.ElementFrame;
-import songscribe.ui.renderer.GraphicsState;
+import songscribe.util.GraphicsState;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.error.RuntimeError;
 
@@ -148,13 +145,6 @@ public class LineComponent extends ScoreComponent
 
     /** Renderer that handles all drawing for this line. */
     private final LineRenderer lineRenderer = new LineRenderer(this);
-
-    /**
-     * Attribution pane that lives above this line's staff, first line only.
-     * Null until the first layout pass for the first line.
-     */
-    @Nullable
-    private AttributionPane attributionPane;
 
     // ==========================================================================
     // Constants
@@ -368,29 +358,28 @@ public class LineComponent extends ScoreComponent
     }
 
     private void performLayout() {
-        if (song == null || line == null) {
+        if (song == null || line == null || scoreView == null) {
             return;
         }
 
         var staffRightMarginSs = song.getLineWidthSs();
         var isLastLine = lineIndex == song.lineCount() - 1;
         var isFirstLine = lineIndex == 0;
-        var scoreView = getScoreView();
-        var lyricRenderMetrics = scoreView.getLyricRenderMetrics();
-        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, scoreView);
+        var view = scoreView;
+        var lyricRenderMetrics = view.getLyricRenderMetrics();
+        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, view);
 
         Attribution attribution = null;
 
         if (isFirstLine) {
             attribution = song.getAttributionElement();
-            var pane = getOrCreateAttributionPane();
-            pane.setFont(scoreView.getAttributionFont());
-            pane.setSubAttributionFont(scoreView.getSubAttributionFont());
-            pane.setSong(song);
-            var preferredSize = pane.getPreferredSize();
+            var pane = song.getAttributionPane();
+            var attrFont = view.getAttributionFont();
+            var subAttrFont = view.getSubAttributionFont();
+            var sizePx = pane.getContentSizePx(attrFont, subAttrFont);
             attribution.setDimensionsSs(
-                ScaleContext.pxToSs(preferredSize.width),
-                ScaleContext.pxToSs(preferredSize.height));
+                ScaleContext.pxToSs(sizePx.width),
+                ScaleContext.pxToSs(sizePx.height));
         }
 
         layoutResult = layoutEngine.layout(
@@ -402,58 +391,7 @@ public class LineComponent extends ScoreComponent
                 + layoutEngine.getLastError());
         }
 
-        // Mark clean before positionAttributionPane so calculateMiddleLineYSs
-        // doesn't recurse back into performLayout when called from within it.
         layoutDirty = false;
-
-        if (isFirstLine && attribution != null) {
-            positionAttributionPane(attribution);
-        }
-    }
-
-    /**
-     * Returns the cached attribution pane, creating and adding it as a Swing child if needed.
-     * Only called for the first line.
-     */
-    private AttributionPane getOrCreateAttributionPane() {
-        if (attributionPane == null) {
-            attributionPane = new AttributionPane();
-            add(attributionPane);
-        }
-
-        return attributionPane;
-    }
-
-    /**
-     * Positions the attribution pane as a Swing child using the computed DecorationLayout.
-     * Right-aligns the pane to the staff right edge. The Y position is in staff-space units
-     * relative to the line component's origin (middle staff line).
-     */
-    private void positionAttributionPane(Attribution attribution) {
-        if (attributionPane == null || layoutResult == null || song == null) {
-            return;
-        }
-
-        var layout = layoutResult.getDecorationLayout(attribution);
-
-        if (layout == null) {
-            attributionPane.setVisible(false);
-            return;
-        }
-
-        var middleYSs = calculateMiddleLineYSs();
-
-        // layout.xSs() and layout.ySs() are in staff coordinates (middle line at y=0).
-        // Convert to pixel coordinates relative to this component's origin.
-        // The component origin is at the top of the LineComponent (y=0 in component space),
-        // which is middleYSs above the middle staff line in staff-space units.
-        var xPx = (int) Math.round(ScaleContext.ssToPx(layout.xSs()));
-        var yPx = (int) Math.round(ScaleContext.ssToPx(layout.ySs() + middleYSs));
-        var widthPx = (int) Math.ceil(ScaleContext.ssToPx(layout.widthSs()));
-        var heightPx = (int) Math.ceil(ScaleContext.ssToPx(layout.heightSs()));
-
-        attributionPane.setBounds(xPx, yPx, widthPx, heightPx);
-        attributionPane.setVisible(true);
     }
 
     @Override
@@ -476,6 +414,26 @@ public class LineComponent extends ScoreComponent
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
             g2.scale(scale, scale);
             lineRenderer.render(g2);
+        }
+
+        // Render the attribution pane directly in pixel space (first line only).
+        // The pane is not a Swing child; it is rendered here after the staff-space
+        // transform has been restored.
+        if (lineIndex == 0 && song != null && scoreView != null && layoutResult != null) {
+            var attribution = song.getAttributionElement();
+            var layout = layoutResult.getDecorationLayout(attribution);
+
+            if (layout != null) {
+                var view = scoreView;
+                var xPx = ScaleContext.ssToPx(layout.xSs());
+                var yPx = ScaleContext.ssToPx(layout.ySs() + middleLineYSs);
+                var widthPx = ScaleContext.ssToPx(layout.widthSs());
+                song.getAttributionPane().render(
+                    g2, xPx, yPx, widthPx,
+                    view.getAttributionFont(),
+                    view.getSubAttributionFont()
+                );
+            }
         }
 
         // Drag rectangle is a pixel-space UI overlay — render after restoring the transform

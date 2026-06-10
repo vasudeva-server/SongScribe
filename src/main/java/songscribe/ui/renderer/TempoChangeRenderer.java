@@ -20,8 +20,8 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
-import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
@@ -30,6 +30,7 @@ import songscribe.dom.Tempo;
 import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.util.GraphicsState;
 
 /** Renders tempo change indicators (note = number format, e.g. "♩ = 120"). */
 public final class TempoChangeRenderer extends MetronomeRenderer {

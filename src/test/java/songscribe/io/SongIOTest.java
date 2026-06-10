@@ -48,6 +48,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.dom.SongMetadata;
 import songscribe.dom.Lyric;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -160,9 +161,13 @@ class SongIOTest extends UnitTest {
     void testWriteSongOptionalStringFieldsOmittedWhenEmpty() {
         var song = new Song();
         // Song() sets non-empty defaults for some fields — clear them explicitly.
-        song.setTitle("");
-        song.setPlace("");
-        song.setYear("");
+        {
+            var m = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "", m.number(), "", "", m.month(), m.day(),
+                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation()
+            ));
+        }
         song.setUnderLyrics("");
         song.setBanglaLyrics("");
         song.setTranslatedLyrics("");
@@ -180,15 +185,34 @@ class SongIOTest extends UnitTest {
         assertThat(xml).doesNotContain("<arrangement>");
     }
 
+    // <arrangement>true</arrangement> is written when isArrangement() is true.
+    @Test
+    void testWriteSongArrangementEmittedWhenTrue() {
+        var song = new Song();
+        {
+            var m = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
+                m.composer(), m.lyricist(), m.lyricsSource(), true, m.unofficialTranslation()
+            ));
+        }
+        var xml = writeSongToString(song);
+
+        assertThat(xml).contains("<arrangement>true</arrangement>");
+    }
+
     // row 9 (presence + escaping): non-empty values appear and are XML-escaped.
     // <rightinfo> carries the computed attribution blob; discrete fields are always written.
     @Test
     void testWriteSongOptionalStringFieldsEmittedAndEscaped() {
         var song = new Song();
-        song.setTitle("Heart & Soul");
-        song.setPlace("New York");
-        song.setYear("2024");
-        song.setComposer("Composer <Name>");
+        {
+            var m = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "Heart & Soul", m.number(), "New York", "2024", m.month(), m.day(),
+                "Composer <Name>", m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation()
+            ));
+        }
         song.setUnderLyrics("under");
         song.setBanglaLyrics("bangla");
         song.setTranslatedLyrics("translated");
@@ -210,8 +234,7 @@ class SongIOTest extends UnitTest {
     @Test
     void testWriteSongMonthDayOmittedWhenNotPositive() {
         var song = new Song();
-        song.setMonth(0);
-        song.setDay(0);
+        // month and day are already 0 by default; this just asserts the default behavior
         var xml = writeSongToString(song);
 
         assertThat(xml).doesNotContain("<month>");
@@ -221,8 +244,13 @@ class SongIOTest extends UnitTest {
     @Test
     void testWriteSongMonthDayEmittedWhenPositive() {
         var song = new Song();
-        song.setMonth(3);
-        song.setDay(15);
+        {
+            var m = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                m.title(), m.number(), m.place(), m.year(), 3, 15,
+                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation()
+            ));
+        }
         var xml = writeSongToString(song);
 
         assertThat(xml).contains("<month>3</month>");
@@ -252,7 +280,7 @@ class SongIOTest extends UnitTest {
     @Test
     void testWriteSongUnofficialTranslationAbsentWhenFalse() {
         var song = new Song();
-        song.setUnofficialTranslation(false);
+        // unofficialTranslation is false by default; no change needed
         var xml = writeSongToString(song);
 
         assertThat(xml).doesNotContain("<unofficialTranslation>");
@@ -261,7 +289,13 @@ class SongIOTest extends UnitTest {
     @Test
     void testWriteSongUnofficialTranslationPresentWhenTrue() {
         var song = new Song();
-        song.setUnofficialTranslation(true);
+        {
+            var m = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
+                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true
+            ));
+        }
         var xml = writeSongToString(song);
 
         assertThat(xml).contains("<unofficialTranslation>true</unofficialTranslation>");
@@ -345,14 +379,8 @@ class SongIOTest extends UnitTest {
 
             assertThat(song.getTempo())
                 .as("v1.0 tempo at pos=0 must map to song-level tempo")
-                .isNotNull();
-
-            //noinspection ConstantValue -- NullAway guard
-            if (song.getTempo() == null) {
-                return;
-            }
-
-            assertThat(song.getTempo().getVisibleTempo())
+                .isNotNull()
+                .extracting(t -> t.getVisibleTempo())
                 .as("song-level tempo BPM")
                 .isEqualTo(SONG_LEVEL_TEMPO_BPM);
         }
@@ -691,21 +719,15 @@ class SongIOTest extends UnitTest {
             var song = new Song();
             song.setDefaultKeyAccidentalCount(NON_DEFAULT_KEY_ACCIDENTAL_COUNT);
             song.setDefaultKeyType(KeyType.SHARPS);
-            song.setNumber(String.valueOf(NON_DEFAULT_NUMBER));
-            song.setTitle("My Song");
-            song.setPlace("London");
-            song.setYear("2024");
-            song.setMonth(NON_DEFAULT_MONTH);
-            song.setDay(NON_DEFAULT_DAY);
+            song.setMetadata(new SongMetadata(
+                "My Song", String.valueOf(NON_DEFAULT_NUMBER), "London", "2024",
+                NON_DEFAULT_MONTH, NON_DEFAULT_DAY,
+                "Bach", Song.SRI_CHINMOY, Song.LyricsSource.TEXT, true, true
+            ));
             song.setUnderLyrics("under");
             song.setBanglaLyrics("bangla");
             song.setTranslatedLyrics("translated");
-            song.setComposer("Bach");
-            song.setLyricist(Song.SRI_CHINMOY);
-            song.setLyricsSource(Song.LyricsSource.TEXT);
-            song.setArrangement(true);
             song.setFootnotes("Note");
-            song.setUnofficialTranslation(true);
 
             var reloaded = roundTrip(song);
 

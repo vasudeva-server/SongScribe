@@ -20,9 +20,9 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
-import static songscribe.ui.renderer.GraphicsState.Property.FONT;
-import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
+import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
@@ -34,6 +34,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.LayoutResult;
 import songscribe.smufl.Engraving;
 import songscribe.dom.Trill;
+import songscribe.util.GraphicsState;
 
 /**
  * Renders trill markings (tr symbol + wavy line for extended trills).

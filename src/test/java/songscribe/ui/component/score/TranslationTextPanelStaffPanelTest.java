@@ -39,6 +39,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.dom.SongMetadata;
 import songscribe.layout.LayoutResult;
 import songscribe.ui.component.ScoreView;
 
@@ -131,7 +132,13 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             var component = new TranslationComponent();
             component.setFont(TEST_FONT);
 
-            song.setUnofficialTranslation(false);
+            {
+                var m = song.getMetadata();
+                song.setMetadata(new SongMetadata(
+                    m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
+                    m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), false
+                ));
+            }
             component.setSong(song);
             var g2 = createOffscreenGraphics();
             double officialWidth;
@@ -144,7 +151,13 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
                 g2.dispose();
             }
 
-            song.setUnofficialTranslation(true);
+            {
+                var m = song.getMetadata();
+                song.setMetadata(new SongMetadata(
+                    m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
+                    m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true
+                ));
+            }
             var g2b = createOffscreenGraphics();
 
             try {
@@ -953,8 +966,11 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             // getNumberedTitle() returns "number. title" when number is non-empty, so both
             // must be cleared to make getNumberedTitle() return "".
             song.withoutMutationTracking(() -> {
-                song.setTitle("");
-                song.setNumber("");
+                var m = song.getMetadata();
+                song.setMetadata(new SongMetadata(
+                    "", "", m.place(), m.year(), m.month(), m.day(),
+                    m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation()
+                ));
             });
 
             var mainPanel = new MainPanel();

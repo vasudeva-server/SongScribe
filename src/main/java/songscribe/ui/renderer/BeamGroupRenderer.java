@@ -20,8 +20,8 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.CLIP;
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.CLIP;
+import static songscribe.util.GraphicsState.Property.COLOR;
 
 import module java.desktop;
 
@@ -36,6 +36,7 @@ import songscribe.dom.LineElement;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
+import songscribe.util.GraphicsState;
 
 /**
  * Renders beam bars connecting beamed notes.

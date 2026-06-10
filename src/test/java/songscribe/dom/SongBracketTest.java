@@ -60,7 +60,7 @@ class SongBracketTest extends UnitTest {
 
     @Test
     void testApplyChangeOutsideBracketThrows() {
-        var mutation = new MetadataChange(MetadataField.TITLE, "old", "new");
+        var mutation = attributionChange();
         var ranInTryBlock = new boolean[]{false};
 
         assertThatThrownBy(() -> song.applyChange(mutation, () -> ranInTryBlock[0] = true))
@@ -75,7 +75,7 @@ class SongBracketTest extends UnitTest {
 
     @Test
     void testApplyChangeInsideBracketAccumulatesAndRunsMutator() {
-        var mutation = new MetadataChange(MetadataField.TITLE, "old", "new");
+        var mutation = attributionChange();
         var mutatorRan = new boolean[]{false};
 
         song.withModification(() -> song.applyChange(mutation, () -> mutatorRan[0] = true));
@@ -91,9 +91,9 @@ class SongBracketTest extends UnitTest {
 
         @Test
         void testNestedBracketsFireSingleDidChangeAtOutermostClose() {
-            var outer = new MetadataChange(MetadataField.TITLE, "a", "b");
-            var inner1 = new MetadataChange(MetadataField.PLACE, "c", "d");
-            var inner2 = new MetadataChange(MetadataField.YEAR, "e", "f");
+            var outer = attributionChange();
+            var inner1 = attributionChange();
+            var inner2 = attributionChange();
 
             song.withModification(() -> {
                 song.applyChange(outer, () -> {});
@@ -109,8 +109,8 @@ class SongBracketTest extends UnitTest {
 
         @Test
         void testNestedBracketsAcrossBeginEndPair() {
-            var first = new MetadataChange(MetadataField.TITLE, "a", "b");
-            var second = new MetadataChange(MetadataField.YEAR, "c", "d");
+            var first = attributionChange();
+            var second = attributionChange();
 
             song.beginModification();
             song.beginModification();
@@ -139,7 +139,7 @@ class SongBracketTest extends UnitTest {
 
             // Bracket must be closed: applyChange outside the bracket must throw IllegalStateException
             // (not silently accumulate into a stranded depth counter).
-            var followUp = new MetadataChange(MetadataField.TITLE, "a", "b");
+            var followUp = attributionChange();
             assertThatThrownBy(() -> song.applyChange(followUp, () -> {}))
                 .isInstanceOf(IllegalStateException.class);
         }
@@ -175,7 +175,7 @@ class SongBracketTest extends UnitTest {
     @Test
     void testNotificationCarriesThisSong() {
         song.withModification(() ->
-            song.applyChange(new MetadataChange(MetadataField.TITLE, "a", "b"), () -> {})
+            song.applyChange(attributionChange(), () -> {})
         );
 
         var notification = captureSingleDidChange();
@@ -199,6 +199,29 @@ class SongBracketTest extends UnitTest {
             // Both scopes ended; tracking is fully resumed.
             assertThat(song.isMutationTrackingSuspended()).isFalse();
         }
+    }
+
+    /**
+     * Returns a minimal but valid {@link MetadataChange} using the song's
+     * current metadata as oldValue and a title-only variant as newValue.
+     * The bracket tests care about the mutation <em>object identity</em>, not its contents.
+     */
+    private MetadataChange attributionChange() {
+        var oldMeta = song.getMetadata();
+        var newMeta = new SongMetadata(
+            "Changed Title",
+            oldMeta.number(),
+            oldMeta.place(),
+            oldMeta.year(),
+            oldMeta.month(),
+            oldMeta.day(),
+            oldMeta.composer(),
+            oldMeta.lyricist(),
+            oldMeta.lyricsSource(),
+            oldMeta.arrangement(),
+            oldMeta.unofficialTranslation()
+        );
+        return new MetadataChange(MetadataField.ATTRIBUTION, oldMeta, newMeta);
     }
 
     private SongDidChangeNotification captureSingleDidChange() {

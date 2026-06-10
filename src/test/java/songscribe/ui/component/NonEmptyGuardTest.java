@@ -26,15 +26,9 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 
-import java.awt.Component;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-
-import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -54,32 +48,15 @@ class NonEmptyGuardTest extends UnitTest {
     private static final JPanel PARENT = new JPanel();
 
     // -------------------------------------------------------------------
-    // Helper — fire a FOCUS_LOST event directly on the field's focus
-    // listeners (bypasses Swing EDT focus transfer).
-    // -------------------------------------------------------------------
-
-    private static void fireFocusLost(
-        JTextField field,
-        boolean temporary,
-        @Nullable Component opposite
-    ) {
-        var event = new FocusEvent(field, FocusEvent.FOCUS_LOST, temporary, opposite);
-
-        for (FocusListener listener : field.getFocusListeners()) {
-            listener.focusLost(event);
-        }
-    }
-
-    // -------------------------------------------------------------------
-    // Row 61: validate() — non-blank text returns true, no dialog shown
+    // Non-blank text → verify() passes, focus yields, no dialog shown
     // -------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class ValidateNonBlank {
+    class NonBlank {
 
         @Test
-        void testNonBlankTextReturnsTrue() {
+        void testNonBlankTextYieldsFocusWithoutDialog() {
             var field = new JTextField("Hello");
             var guard = new NonEmptyGuard(
                 field, PARENT,
@@ -88,7 +65,8 @@ class NonEmptyGuardTest extends UnitTest {
             );
 
             try (var optionMock = mockStatic(OptionDialogs.class)) {
-                assertThat(guard.validate()).isTrue();
+                assertThat(guard.verify(field)).isTrue();
+                assertThat(guard.shouldYieldFocus(field, field)).isTrue();
 
                 // No dialog should have been shown
                 optionMock.verify(
@@ -106,15 +84,15 @@ class NonEmptyGuardTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------
-    // Row 62: validate() — blank text, no defaultValueKey → showWarningAndRefocus, returns false
+    // Blank text, no default → warning shown, focus not yielded
     // -------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class ValidateBlankNoDefault {
+    class BlankNoDefault {
 
         @Test
-        void testBlankTextWithNoDefaultShowsWarningAndReturnsFalse() {
+        void testBlankTextWithNoDefaultShowsWarningAndKeepsFocus() {
             var field = new JTextField("");
             var guard = new NonEmptyGuard(
                 field, PARENT,
@@ -123,7 +101,8 @@ class NonEmptyGuardTest extends UnitTest {
             );
 
             try (var optionMock = mockStatic(OptionDialogs.class)) {
-                assertThat(guard.validate()).isFalse();
+                assertThat(guard.verify(field)).isFalse();
+                assertThat(guard.shouldYieldFocus(field, field)).isFalse();
 
                 optionMock.verify(
                     () -> OptionDialogs.showWarningMessage(
@@ -137,16 +116,15 @@ class NonEmptyGuardTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------
-    // Row 63: validate() — blank text, defaultValueKey set, user chooses
-    //         "use default" → fills field, returns true
+    // Blank text, default set, user chooses "use default" → fills field, yields
     // -------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class ValidateBlankWithDefaultUserChoosesDefault {
+    class BlankWithDefaultUserChoosesDefault {
 
         @Test
-        void testUserChoosingDefaultFillsFieldAndReturnsTrue() {
+        void testUserChoosingDefaultFillsFieldAndYieldsFocus() {
             var field = new JTextField("");
             var guard = new NonEmptyGuard(
                 field, PARENT,
@@ -165,23 +143,22 @@ class NonEmptyGuardTest extends UnitTest {
                     )
                 ).thenReturn(USE_DEFAULT_INDEX);
 
-                assertThat(guard.validate()).isTrue();
+                assertThat(guard.shouldYieldFocus(field, field)).isTrue();
                 assertThat(field.getText()).isEqualTo(Strings.get(Strings.DOCUMENT_UNTITLED));
             }
         }
     }
 
     // -------------------------------------------------------------------
-    // Row 64: validate() — blank text, defaultValueKey set, user dismisses /
-    //         chooses "continue editing" → refocuses, returns false
+    // Blank text, default set, user dismisses / "continue editing" → keeps focus
     // -------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class ValidateBlankWithDefaultUserDismisses {
+    class BlankWithDefaultUserDismisses {
 
         @Test
-        void testUserDismissingDefaultDialogReturnsFalse() {
+        void testUserDismissingDefaultDialogKeepsFocus() {
             var field = new JTextField("");
             var guard = new NonEmptyGuard(
                 field, PARENT,
@@ -193,94 +170,10 @@ class NonEmptyGuardTest extends UnitTest {
             );
 
             // OptionDialogs is suppressed in UnitTest → returns CLOSED_OPTION (-1),
-            // which is not USE_DEFAULT_INDEX, so the guard should return false
-            // and leave the field blank.
-            assertThat(guard.validate()).isFalse();
+            // which is not USE_DEFAULT_INDEX, so the guard should not yield focus
+            // and should leave the field blank.
+            assertThat(guard.shouldYieldFocus(field, field)).isFalse();
             assertThat(field.getText()).isEmpty();
-        }
-    }
-
-    // -------------------------------------------------------------------
-    // Row 65: install() — temporary focus-lost event → guard skipped
-    // -------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class InstallTemporaryFocusLost {
-
-        @Test
-        void testTemporaryFocusLostSkipsGuard() {
-            var field = new JTextField("");
-            var guard = new NonEmptyGuard(
-                field, PARENT,
-                Strings.ALERT_TITLE_SONG_SETTINGS,
-                Strings.CONFIRM_SONG_EMPTY_TITLE
-            );
-
-            try (var optionMock = mockStatic(OptionDialogs.class)) {
-                // A temporary focus-lost (e.g., window losing focus) must not trigger validation
-                fireFocusLost(field, true, null);
-
-                optionMock.verify(
-                    () -> OptionDialogs.showWarningMessage(any(), any(), any()),
-                    never()
-                );
-            }
-        }
-    }
-
-    // -------------------------------------------------------------------
-    // Row 66: install() — focus-lost to exempt component → guard skipped
-    // -------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class InstallFocusLostToExemptComponent {
-
-        @Test
-        void testFocusLostToExemptComponentSkipsGuard() {
-            var field = new JTextField("");
-            var guard = new NonEmptyGuard(
-                field, PARENT,
-                Strings.ALERT_TITLE_SONG_SETTINGS,
-                Strings.CONFIRM_SONG_EMPTY_TITLE
-            );
-
-            var exemptButton = new JButton("OK");
-            guard.addExemptComponent(exemptButton);
-
-            try (var optionMock = mockStatic(OptionDialogs.class)) {
-                // Focus moving to an exempt component (e.g., OK button) must not trigger validation
-                fireFocusLost(field, false, exemptButton);
-
-                optionMock.verify(
-                    () -> OptionDialogs.showWarningMessage(any(), any(), any()),
-                    never()
-                );
-            }
-        }
-
-        @Test
-        void testFocusLostToNonExemptComponentTriggersGuard() {
-            var field = new JTextField("");
-            var guard = new NonEmptyGuard(
-                field, PARENT,
-                Strings.ALERT_TITLE_SONG_SETTINGS,
-                Strings.CONFIRM_SONG_EMPTY_TITLE
-            );
-
-            var exemptButton = new JButton("OK");
-            guard.addExemptComponent(exemptButton);
-            var otherButton = new JButton("Other");
-
-            try (var optionMock = mockStatic(OptionDialogs.class)) {
-                // Focus moving to a non-exempt component must trigger validation
-                fireFocusLost(field, false, otherButton);
-
-                optionMock.verify(
-                    () -> OptionDialogs.showWarningMessage(any(), any(), any())
-                );
-            }
         }
     }
 }

@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.SongMetadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -47,8 +48,13 @@ class SongLineManagementTest extends UnitTest {
         void testReturnsBareTitle_WhenNumberIsEmpty() {
             // Clear the number (default is "1") so the bare-title branch is exercised.
             var song = new Song();
-            song.setNumber("");
-            song.setTitle("My Song");
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "My Song", "",
+                current.place(), current.year(), current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+            ));
 
             assertThat(song.getNumberedTitle()).isEqualTo("My Song");
         }
@@ -57,8 +63,13 @@ class SongLineManagementTest extends UnitTest {
         void testReturnsPrefixedTitle_WhenNumberIsNonEmpty() {
             // When number is set, title must be prefixed with "N. ".
             var song = new Song();
-            song.setNumber("5");
-            song.setTitle("My Song");
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "My Song", "5",
+                current.place(), current.year(), current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+            ));
 
             assertThat(song.getNumberedTitle()).isEqualTo("5. My Song");
         }

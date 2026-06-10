@@ -20,7 +20,7 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.COLOR;
 
 import module java.desktop;
 
@@ -29,6 +29,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.dom.DynamicAttachment;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.stacking.NoteAttachedStacker;
+import songscribe.util.GraphicsState;
 
 /**
  * Renders point dynamic markings (pp, p, mp, mf, f, ff) below the staff.

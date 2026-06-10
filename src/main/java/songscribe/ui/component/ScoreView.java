@@ -72,7 +72,7 @@ import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
 import songscribe.layout.StaffExtents;
-import songscribe.ui.renderer.GraphicsState;
+import songscribe.util.GraphicsState;
 import songscribe.util.GraphicUtils;
 import songscribe.util.StringUtils;
 import songscribe.ui.playback.PlaybackController;

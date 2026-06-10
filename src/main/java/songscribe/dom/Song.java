@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.DoubleSupplier;
-import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 
@@ -49,11 +48,8 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
-import songscribe.message.notification.MetadataDidChangeNotification;
+import songscribe.message.notification.SongMetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
-import songscribe.util.StringUtils;
 
 /**
  * This class serves as the model for data that is read from and written to
@@ -99,9 +95,6 @@ public final class Song {
         }
     }
 
-    // Used to replace the characters "ă" and "Ă" with "a" and "A" respectively
-    private static final Pattern SHORT_A_PATTERN = Pattern.compile("[ăĂ]");
-
     public static final int DEFAULT_KEY_ACCIDENTAL_COUNT = 5;
     public static final KeyType DEFAULT_KEY_TYPE = KeyType.FLATS;
 
@@ -119,20 +112,22 @@ public final class Song {
     @Nullable
     private Tempo tempo;
 
-    // The number of the song, can be empty
-    private String number = Strings.get(Strings.SONG_DEFAULT_NUMBER);
-
-    // The title of the song
-    private String title = Strings.get(Strings.DOCUMENT_UNTITLED);
-
-    // Where the song was composed
-    private String place = "";
-
-    // The date the song was composed. The month is 1-based, i.e. January is 1.
-    // If month/day/year are empty, they are not displayed.
-    private int month = 0;
-    private int day = 0;
-    private String year = "";
+    // The canonical attribution metadata record — single source of truth for all
+    // 11 attribution fields (title, number, place, year, month, day, composer,
+    // lyricist, lyricsSource, arrangement, unofficialTranslation).
+    private SongMetadata metadata = new SongMetadata(
+        Strings.get(Strings.DOCUMENT_UNTITLED),  // title
+        Strings.get(Strings.SONG_DEFAULT_NUMBER), // number
+        "",    // place
+        "",    // year
+        0,     // month
+        0,     // day
+        SRI_CHINMOY,           // composer
+        SRI_CHINMOY,           // lyricist
+        LyricsSource.LYRICIST, // lyricsSource
+        false,  // arrangement
+        false   // unofficialTranslation
+    );
 
     // The language of the song
     private final LANGUAGE language = LANGUAGE.NONE;
@@ -149,24 +144,18 @@ public final class Song {
     // Additional info about the song
     private String footnotes = "";
 
-    // If true, the translation is unofficial (affects header text)
-    private boolean unofficialTranslation = false;
-
-    // Discrete attribution fields
-    private String composer = SRI_CHINMOY;
-    private String lyricist = SRI_CHINMOY;
-    private LyricsSource lyricsSource = LyricsSource.LYRICIST;
-    private boolean arrangement = false;
-
     // Block element carrying the attribution pane geometry and user Y offset for stacking
     private final Attribution attributionElement = new Attribution();
+
+    // Rendering surface for the attribution block — owned here so layout and render
+    // both share the same cached measurement without LineComponent holding state.
+    // setSong is called in the instance initializer below so every constructor path
+    // wires the pane to this Song before any constructor body runs.
+    private final AttributionPane attributionPane = new AttributionPane();
 
     // The number of accidentals in the key signature and the type of key (flats or sharps)
     private int defaultKeyAccidentalCount;
     private KeyType defaultKeyType = DEFAULT_KEY_TYPE;
-
-    // When the title is set, it is wrapped into lines and stored here
-    private final ArrayList<String> titleLines = new ArrayList<>();
 
     private double rowHeightAdjustmentSs = 0;
 
@@ -222,6 +211,10 @@ public final class Song {
     @Nullable
     private ArrayList<Mutation> accumulatedMutations;
 
+    // Wire the pane to this Song instance — runs before every constructor body.
+    {
+        attributionPane.setSong(this);
+    }
 
     public Song() {
         tempo = new Tempo();
@@ -285,20 +278,29 @@ public final class Song {
      */
     @SuppressWarnings("CallToSimpleSetterFromWithinClass")
     public void loadFrom(SongData data) {
-        // Apply all scalar fields using apply methods (no individual message posting)
+        // Build the normalized attribution metadata record from the parsed data.
+        // Assigned directly (no mutation bracket) because loadFrom is always called
+        // under suspended mutation tracking (decision 8A).
+        metadata = new SongMetadata(
+            data.title(),
+            data.number(),
+            data.place(),
+            data.year(),
+            data.month(),
+            data.day(),
+            data.composer(),
+            data.lyricist(),
+            data.lyricsSource(),
+            data.arrangement(),
+            data.unofficialTranslation()
+        );
+
+        // Apply remaining scalar fields
         tempo = data.tempo();
-        applyNumber(data.number());
-        applyTitle(data.title());
-        applyPlace(data.place());
-        applyMonth(data.month());
-        applyDay(data.day());
-        applyYear(data.year());
         applyUnderLyrics(data.underLyrics());
         applyBanglaLyrics(data.banglaLyrics());
         applyTranslatedLyrics(data.translatedLyrics());
-        applyAttributionFields(data);
         applyFootnotes(data.footnotes());
-        applyUnofficialTranslation(data.unofficialTranslation());
         applyDefaultKeyAccidentalCount(data.defaultKeyAccidentalCount());
         applyDefaultKeyType(data.defaultKeyType());
 
@@ -409,8 +411,13 @@ public final class Song {
         return false;
     }
 
+    /** Returns the canonical attribution metadata record. */
+    public SongMetadata getMetadata() {
+        return metadata;
+    }
+
     public String getTitle() {
-        return title;
+        return metadata.title();
     }
 
     /**
@@ -419,27 +426,29 @@ public final class Song {
      * when the number is empty.
      */
     public String getNumberedTitle() {
+        var number = metadata.number();
+
         if (number.isEmpty()) {
-            return title;
+            return metadata.title();
         }
 
-        return number + ". " + title;
+        return number + ". " + metadata.title();
     }
 
     public String getPlace() {
-        return place;
+        return metadata.place();
     }
 
     public String getYear() {
-        return year;
+        return metadata.year();
     }
 
     public int getMonth() {
-        return month;
+        return metadata.month();
     }
 
     public int getDay() {
-        return day;
+        return metadata.day();
     }
 
     public LANGUAGE getLanguage() {
@@ -503,23 +512,35 @@ public final class Song {
     }
 
     public boolean isUnofficialTranslation() {
-        return unofficialTranslation;
+        return metadata.unofficialTranslation();
     }
 
     public String getComposer() {
-        return composer;
+        return metadata.composer();
     }
 
     public String getLyricist() {
-        return lyricist;
+        return metadata.lyricist();
     }
 
     public LyricsSource getLyricsSource() {
-        return lyricsSource;
+        return metadata.lyricsSource();
     }
 
     public boolean isArrangement() {
-        return arrangement;
+        return metadata.arrangement();
+    }
+
+    /**
+     * Returns {@code true} when the song has a non-empty official translation.
+     * Unofficial translations are not credited in the attribution.
+     * <p>
+     * This is the single authoritative derivation of the translation flag
+     * (decision 4A); rendering, IO, and ABC export pass this to
+     * {@link songscribe.dom.AttributionFormatter}.
+     */
+    public boolean showTranslation() {
+        return !metadata.unofficialTranslation() && !translatedLyrics.isEmpty();
     }
 
     /** Returns the stable attribution block element that carries geometry and user Y offset. */
@@ -527,8 +548,13 @@ public final class Song {
         return attributionElement;
     }
 
+    /** Returns the attribution rendering surface owned by this Song. */
+    public AttributionPane getAttributionPane() {
+        return attributionPane;
+    }
+
     public String getNumber() {
-        return number;
+        return metadata.number();
     }
 
     public int getDefaultKeyAccidentalCount() {
@@ -610,31 +636,31 @@ public final class Song {
         }
     }
 
-    public void setTitle(String text) {
-        var newTitle = normalizeTitle(text);
-        mutateMetadata(MetadataField.TITLE, title, newTitle, () -> title = newTitle);
-    }
+    /**
+     * Sets the canonical attribution metadata record atomically. The record must
+     * already be normalized — this method does not re-normalize (decision 7A).
+     * Records the change as a single coarse {@link MetadataField#ATTRIBUTION} mutation.
+     * No-op when {@code newMetadata} equals the current record.
+     */
+    public void setMetadata(SongMetadata newMetadata) {
+        if (metadata.equals(newMetadata)) {
+            return;
+        }
 
-    public void setPlace(String text) {
-        var newPlace = text.trim();
-        mutateMetadata(MetadataField.PLACE, place, newPlace, () -> place = newPlace);
-    }
-
-    public void setYear(String text) {
-        var newYear = text.trim();
-        mutateMetadata(MetadataField.YEAR, year, newYear, () -> year = newYear);
-    }
-
-    public void setMonth(int month) {
-        mutateMetadata(MetadataField.MONTH, this.month, month, () -> this.month = month);
-    }
-
-    public void setDay(int day) {
-        mutateMetadata(MetadataField.DAY, this.day, day, () -> this.day = day);
+        var oldMetadata = metadata;
+        withModification(() -> applyChange(
+            new MetadataChange(MetadataField.ATTRIBUTION, oldMetadata, newMetadata),
+            () -> {
+                metadata = newMetadata;
+                // Invalidate the attribution pane's measure cache so the next
+                // layout/render picks up the updated metadata.
+                attributionPane.invalidateCache();
+            }
+        ));
     }
 
     public void setUnderLyrics(String text) {
-        var newLyrics = processText(text);
+        var newLyrics = SongMetadata.processText(text);
         mutateLyrics(LyricsField.UNDER, underLyrics, newLyrics, () -> underLyrics = newLyrics);
     }
 
@@ -645,7 +671,13 @@ public final class Song {
 
     public void setTranslatedLyrics(String text) {
         var newLyrics = text.trim();
-        mutateLyrics(LyricsField.TRANSLATED, translatedLyrics, newLyrics, () -> translatedLyrics = newLyrics);
+        // showTranslation() — and thus the attribution's translation credit —
+        // is derived from translatedLyrics, so invalidate the pane's measure
+        // cache when the value actually changes.
+        mutateLyrics(LyricsField.TRANSLATED, translatedLyrics, newLyrics, () -> {
+            translatedLyrics = newLyrics;
+            attributionPane.invalidateCache();
+        });
     }
 
     public void setFootnotes(String text) {
@@ -653,85 +685,15 @@ public final class Song {
         mutateMetadata(MetadataField.FOOTNOTES, footnotes, newFootnotes, () -> footnotes = newFootnotes);
     }
 
-    public void setUnofficialTranslation(boolean unofficial) {
-        mutateMetadata(
-            MetadataField.UNOFFICIAL_TRANSLATION, unofficialTranslation, unofficial,
-            () -> unofficialTranslation = unofficial
-        );
-    }
-
-    public void setComposer(String text) {
-        var newComposer = coercePerson(text);
-        mutateMetadata(MetadataField.COMPOSER, composer, newComposer, () -> composer = newComposer);
-    }
-
-    public void setLyricist(String text) {
-        var newLyricist = coercePerson(text);
-        mutateMetadata(MetadataField.LYRICIST, lyricist, newLyricist, () -> lyricist = newLyricist);
-    }
-
-    public void setLyricsSource(LyricsSource source) {
-        mutateMetadata(MetadataField.LYRICS_SOURCE, lyricsSource, source, () -> lyricsSource = source);
-    }
-
-    public void setArrangement(boolean isArrangement) {
-        mutateMetadata(MetadataField.ARRANGEMENT, arrangement, isArrangement, () -> arrangement = isArrangement);
-    }
-
     // -- Direct setters (bypass mutation tracking; for preview/scratch Song instances only) --
 
+    /**
+     * Trims the person name; if empty, returns {@link #SRI_CHINMOY}.
+     * Still public because {@link songscribe.io.SongIO} uses it when parsing legacy files.
+     */
     public static String coercePerson(String text) {
         var trimmed = text.trim();
         return trimmed.isEmpty() ? SRI_CHINMOY : trimmed;
-    }
-
-    public void setComposerDirectly(String text) {
-        composer = coercePerson(text);
-    }
-
-    public void setLyricistDirectly(String text) {
-        lyricist = coercePerson(text);
-    }
-
-    public void setLyricsSourceDirectly(LyricsSource source) {
-        lyricsSource = source;
-    }
-
-    public void setArrangementDirectly(boolean isArrangement) {
-        arrangement = isArrangement;
-    }
-
-    public void setUnofficialTranslationDirectly(boolean unofficial) {
-        unofficialTranslation = unofficial;
-    }
-
-    public void setTranslatedLyricsDirectly(String text) {
-        translatedLyrics = text.trim();
-    }
-
-    public void setMonthDirectly(int month) {
-        this.month = month;
-    }
-
-    public void setDayDirectly(int day) {
-        this.day = day;
-    }
-
-    public void setYearDirectly(String text) {
-        year = text.trim();
-    }
-
-    public void setPlaceDirectly(String text) {
-        place = text.trim();
-    }
-
-    public void setLineWidthSsDirectly(double lineWidth) {
-        lineWidthSs = lineWidth;
-    }
-
-    public void setNumber(String text) {
-        var newNumber = text.trim();
-        mutateMetadata(MetadataField.NUMBER, number, newNumber, () -> number = newNumber);
     }
 
     public void setDefaultKeyAccidentalCount(int defaultKeyAccidentalCount) {
@@ -1285,52 +1247,8 @@ public final class Song {
     // ========== Update record handlers ==========
 
     @Handler
-    public void metadataDidChange(MetadataDidChangeNotification update) {
-        withModification(() -> {
-            if (update.getTitle() != null) {
-                setTitle(update.getTitle());
-            }
-
-            if (update.getPlace() != null) {
-                setPlace(update.getPlace());
-            }
-
-            if (update.getYear() != null) {
-                setYear(update.getYear());
-            }
-
-            if (update.getNumber() != null) {
-                setNumber(update.getNumber());
-            }
-
-            if (update.getMonth() != null) {
-                setMonth(update.getMonth());
-            }
-
-            if (update.getDay() != null) {
-                setDay(update.getDay());
-            }
-
-            if (update.getUnofficialTranslation() != null) {
-                setUnofficialTranslation(update.getUnofficialTranslation());
-            }
-
-            if (update.getComposer() != null) {
-                setComposer(update.getComposer());
-            }
-
-            if (update.getLyricist() != null) {
-                setLyricist(update.getLyricist());
-            }
-
-            if (update.getLyricsSource() != null) {
-                setLyricsSource(update.getLyricsSource());
-            }
-
-            if (update.getArrangement() != null) {
-                setArrangement(update.getArrangement());
-            }
-        });
+    public void metadataDidChange(SongMetadataDidChangeNotification update) {
+        setMetadata(update.getMetadata());
     }
 
     @Handler
@@ -1428,33 +1346,8 @@ public final class Song {
 
     // -- Apply methods (field mutation only, no side effects) --
 
-    private void applyTitle(String text) {
-        title = normalizeTitle(text);
-    }
-
-    /** Normalizes a title: strips linefeeds, collapses spaces, applies short-ă replacement. */
-    private String normalizeTitle(String text) {
-        return processText(StringUtils.collapseMultipleSpaces(StringUtils.stripLinefeeds(text)));
-    }
-
-    private void applyPlace(String place) {
-        this.place = place.trim();
-    }
-
-    private void applyYear(String year) {
-        this.year = year.trim();
-    }
-
-    private void applyMonth(int month) {
-        this.month = month;
-    }
-
-    private void applyDay(int day) {
-        this.day = day;
-    }
-
     private void applyUnderLyrics(String text) {
-        underLyrics = processText(text);
+        underLyrics = SongMetadata.processText(text);
     }
 
     private void applyBanglaLyrics(String text) {
@@ -1467,21 +1360,6 @@ public final class Song {
 
     private void applyFootnotes(String text) {
         footnotes = text.trim();
-    }
-
-    private void applyUnofficialTranslation(boolean unofficial) {
-        unofficialTranslation = unofficial;
-    }
-
-    private void applyAttributionFields(SongData data) {
-        composer = coercePerson(data.composer());
-        lyricist = coercePerson(data.lyricist());
-        lyricsSource = data.lyricsSource();
-        arrangement = data.arrangement();
-    }
-
-    private void applyNumber(String text) {
-        number = text.trim();
     }
 
     private void applyDefaultKeyType(KeyType keyType) {
@@ -1498,16 +1376,6 @@ public final class Song {
 
     private void applyLineWidthSs(double lineWidth) {
         lineWidthSs = lineWidth;
-    }
-
-    private String processText(String text) {
-        var strip = Prefs.getBoolean(PrefsKey.STRIP_SHORT_A);
-
-        if (strip && SHORT_A_PATTERN.matcher(text).find()) {
-            return text.replace("ă", "a").replace("Ă", "A");
-        }
-
-        return text.trim();
     }
 
 }

@@ -32,6 +32,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.dom.SongMetadata;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.LayoutChange;
@@ -61,114 +62,73 @@ class SongSetterMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Metadata setters
+    // Attribution metadata setter (coarse ATTRIBUTION mutation)
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class StringMetadataSetters {
+    class AttributionSetter {
 
         @Test
-        void testSetTitlePostsMutation() {
-            var oldTitle = song.getTitle();
-            song.setTitle("New Title");
+        void testSetMetadataPostsAttributionMutation() {
+            var oldMetadata = song.getMetadata();
+            var newMetadata = new SongMetadata(
+                "New Title", oldMetadata.number(), oldMetadata.place(), oldMetadata.year(),
+                oldMetadata.month(), oldMetadata.day(),
+                oldMetadata.composer(), oldMetadata.lyricist(),
+                oldMetadata.lyricsSource(), oldMetadata.arrangement(),
+                oldMetadata.unofficialTranslation()
+            );
+            song.setMetadata(newMetadata);
 
             var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.TITLE);
-            assertThat(mutation.oldValue()).isEqualTo(oldTitle);
-            assertThat(mutation.newValue()).isEqualTo("New Title");
+            assertThat(mutation.field()).isEqualTo(MetadataField.ATTRIBUTION);
+            assertThat(mutation.oldValue()).isEqualTo(oldMetadata);
+            assertThat(mutation.newValue()).isEqualTo(newMetadata);
         }
 
         @Test
-        void testSetTitleSameValuePostsNothing() {
-            song.setTitle(song.getTitle());
+        void testSetMetadataSameValuePostsNothing() {
+            song.setMetadata(song.getMetadata());
             verifyNoNotificationPosted();
         }
 
         @Test
-        void testSetPlacePostsMutation() {
-            var oldPlace = song.getPlace();
-            song.setPlace("Paris");
+        void testGettersDelegateToMetadataRecord() {
+            // Commit a record whose fields are all distinct and differ from the
+            // defaults, then assert each getter returns its specific expected
+            // value. Comparing getters against the same record (m.title() etc.)
+            // would be tautological and could not catch a getter reading the
+            // wrong field.
+            var month = 5;
+            var day = 31;
+            song.setMetadata(new SongMetadata(
+                "My Title", "42", "Jamaica, NY", "1984", month, day,
+                "Composer Name", "Lyricist Name",
+                Song.LyricsSource.TEXT, true, true
+            ));
 
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.PLACE);
-            assertThat(mutation.oldValue()).isEqualTo(oldPlace);
-            assertThat(mutation.newValue()).isEqualTo("Paris");
+            assertThat(song.getTitle()).isEqualTo("My Title");
+            assertThat(song.getNumber()).isEqualTo("42");
+            assertThat(song.getPlace()).isEqualTo("Jamaica, NY");
+            assertThat(song.getYear()).isEqualTo("1984");
+            assertThat(song.getMonth()).isEqualTo(month);
+            assertThat(song.getDay()).isEqualTo(day);
+            assertThat(song.getComposer()).isEqualTo("Composer Name");
+            assertThat(song.getLyricist()).isEqualTo("Lyricist Name");
+            assertThat(song.getLyricsSource()).isEqualTo(Song.LyricsSource.TEXT);
+            assertThat(song.isArrangement()).isTrue();
+            assertThat(song.isUnofficialTranslation()).isTrue();
         }
+    }
 
-        @Test
-        void testSetPlaceSameValuePostsNothing() {
-            song.setPlace(song.getPlace());
-            verifyNoNotificationPosted();
-        }
+    // -----------------------------------------------------------------------
+    // Footnotes setter (still individual)
+    // -----------------------------------------------------------------------
 
-        @Test
-        void testSetYearPostsMutation() {
-            var oldYear = song.getYear();
-            song.setYear("2024");
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.YEAR);
-            assertThat(mutation.oldValue()).isEqualTo(oldYear);
-            assertThat(mutation.newValue()).isEqualTo("2024");
-        }
-
-        @Test
-        void testSetYearSameValuePostsNothing() {
-            song.setYear(song.getYear());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetComposerPostsMutation() {
-            var oldComposer = song.getComposer();
-            song.setComposer("Bach");
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.COMPOSER);
-            assertThat(mutation.oldValue()).isEqualTo(oldComposer);
-            assertThat(mutation.newValue()).isEqualTo("Bach");
-        }
-
-        @Test
-        void testSetComposerSameValuePostsNothing() {
-            song.setComposer(song.getComposer());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetLyricistPostsMutation() {
-            var oldLyricist = song.getLyricist();
-            song.setLyricist("Mozart");
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.LYRICIST);
-            assertThat(mutation.oldValue()).isEqualTo(oldLyricist);
-            assertThat(mutation.newValue()).isEqualTo("Mozart");
-        }
-
-        @Test
-        void testSetLyricistSameValuePostsNothing() {
-            song.setLyricist(song.getLyricist());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetNumberPostsMutation() {
-            var oldNumber = song.getNumber();
-            song.setNumber("42");
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.NUMBER);
-            assertThat(mutation.oldValue()).isEqualTo(oldNumber);
-            assertThat(mutation.newValue()).isEqualTo("42");
-        }
-
-        @Test
-        void testSetNumberSameValuePostsNothing() {
-            song.setNumber(song.getNumber());
-            verifyNoNotificationPosted();
-        }
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class FootnotesSetter {
 
         @Test
         void testSetFootnotesPostsMutation() {
@@ -190,41 +150,7 @@ class SongSetterMutationTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class NumericAndTypedMetadataSetters {
-
-        @Test
-        void testSetMonthPostsMutation() {
-            var oldMonth = song.getMonth();
-            song.setMonth(oldMonth + 1);
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.MONTH);
-            assertThat(mutation.oldValue()).isEqualTo(oldMonth);
-            assertThat(mutation.newValue()).isEqualTo(oldMonth + 1);
-        }
-
-        @Test
-        void testSetMonthSameValuePostsNothing() {
-            song.setMonth(song.getMonth());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetDayPostsMutation() {
-            var oldDay = song.getDay();
-            song.setDay(oldDay + 1);
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.DAY);
-            assertThat(mutation.oldValue()).isEqualTo(oldDay);
-            assertThat(mutation.newValue()).isEqualTo(oldDay + 1);
-        }
-
-        @Test
-        void testSetDaySameValuePostsNothing() {
-            song.setDay(song.getDay());
-            verifyNoNotificationPosted();
-        }
+    class TempoAndKeyMetadataSetters {
 
         @Test
         void testSetTempoPostsMutation() {
@@ -279,61 +205,6 @@ class SongSetterMutationTest extends UnitTest {
         @Test
         void testSetDefaultKeyTypeSameValuePostsNothing() {
             song.setDefaultKeyType(song.getDefaultKeyType());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetUnofficialTranslationPostsMutation() {
-            var oldValue = song.isUnofficialTranslation();
-            song.setUnofficialTranslation(!oldValue);
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.UNOFFICIAL_TRANSLATION);
-            assertThat(mutation.oldValue()).isEqualTo(oldValue);
-            assertThat(mutation.newValue()).isEqualTo(!oldValue);
-        }
-
-        @Test
-        void testSetUnofficialTranslationSameValuePostsNothing() {
-            song.setUnofficialTranslation(song.isUnofficialTranslation());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetLyricsSourcePostsMutation() {
-            var oldSource = song.getLyricsSource();
-            var newSource = oldSource == Song.LyricsSource.LYRICIST
-                ? Song.LyricsSource.TEXT
-                : Song.LyricsSource.LYRICIST;
-
-            song.setLyricsSource(newSource);
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.LYRICS_SOURCE);
-            assertThat(mutation.oldValue()).isEqualTo(oldSource);
-            assertThat(mutation.newValue()).isEqualTo(newSource);
-        }
-
-        @Test
-        void testSetLyricsSourceWithSameValuePostsNothing() {
-            song.setLyricsSource(song.getLyricsSource());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetArrangementPostsMutation() {
-            var oldArrangement = song.isArrangement();
-            song.setArrangement(!oldArrangement);
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.ARRANGEMENT);
-            assertThat(mutation.oldValue()).isEqualTo(oldArrangement);
-            assertThat(mutation.newValue()).isEqualTo(!oldArrangement);
-        }
-
-        @Test
-        void testSetArrangementWithSameValuePostsNothing() {
-            song.setArrangement(song.isArrangement());
             verifyNoNotificationPosted();
         }
     }

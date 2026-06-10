@@ -48,7 +48,7 @@ import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.EndingRenderer;
 import songscribe.ui.renderer.FermataRenderer;
 import songscribe.ui.renderer.GlissandoRenderer;
-import songscribe.ui.renderer.GraphicsState;
+import songscribe.util.GraphicsState;
 import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.LineInvariants;
 import songscribe.ui.renderer.LyricConnectorRenderer;

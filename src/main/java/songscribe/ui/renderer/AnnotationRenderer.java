@@ -20,8 +20,8 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
-import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
@@ -29,6 +29,7 @@ import module java.desktop;
 import songscribe.dom.StaffElement;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ScaleContext;
+import songscribe.util.GraphicsState;
 
 /**
  * Renders text annotations attached to notes.

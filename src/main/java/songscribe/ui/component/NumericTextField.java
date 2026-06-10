@@ -20,7 +20,16 @@
 
 package songscribe.ui.component;
 
+import module java.desktop;
+
+import songscribe.Strings;
+import songscribe.ui.OptionDialogs;
+
 public class NumericTextField extends MyJTextField {
+
+    private int min;
+    private int max;
+    private boolean isOptional;
 
     public NumericTextField() {
         InputUtils.addNumericFilter(this);
@@ -37,5 +46,76 @@ public class NumericTextField extends MyJTextField {
     public NumericTextField(int columns, boolean allowDecimal) {
         super(columns);
         InputUtils.addNumericFilter(this, allowDecimal);
+    }
+
+    /**
+     * Creates a field that validates its value against an inclusive
+     * integer range when focus leaves it. A blank field is rejected.
+     */
+    public NumericTextField(int columns, int min, int max) {
+        this(columns, min, max, false);
+    }
+
+    /**
+     * Creates a field that validates its value against an inclusive
+     * integer range when focus leaves it.
+     *
+     * <p>Validation is enforced via an {@link InputVerifier}: while the
+     * value is out of range the field refuses to yield focus, so a button
+     * that triggers it (e.g. an OK button) will not fire. To let a button
+     * bypass validation (e.g. Cancel), call
+     * {@code button.setVerifyInputWhenFocusTarget(false)}.
+     *
+     * @param isOptional when {@code true}, a blank field is accepted and
+     *     range validation is skipped; when {@code false}, a blank field
+     *     is rejected
+     */
+    public NumericTextField(int columns, int min, int max, boolean isOptional) {
+        super(columns);
+        InputUtils.addNumericFilter(this, false);
+        this.min = min;
+        this.max = max;
+        this.isOptional = isOptional;
+        setInputVerifier(new RangeVerifier());
+    }
+
+    private boolean isValueInRange() {
+        var text = getText().strip();
+
+        if (text.isEmpty()) {
+            return isOptional;
+        }
+
+        try {
+            var value = Integer.parseInt(text);
+            return value >= min && value <= max;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private class RangeVerifier extends InputVerifier {
+
+        @Override
+        public boolean verify(JComponent input) {
+            return isValueInRange();
+        }
+
+        @Override
+        public boolean shouldYieldFocus(JComponent source, JComponent target) {
+            if (verify(source)) {
+                return true;
+            }
+
+            // Returning false keeps focus on the field; show the reason first.
+            OptionDialogs.showWarningMessage(
+                NumericTextField.this,
+                Strings.ALERT_TITLE_NUMBER_OUT_OF_RANGE,
+                Strings.ALERT_NUMBER_OUT_OF_RANGE,
+                min,
+                max
+            );
+            return false;
+        }
     }
 }

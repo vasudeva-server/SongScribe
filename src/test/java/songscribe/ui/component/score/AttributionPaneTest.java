@@ -24,18 +24,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.AttributionFormatter;
+import songscribe.dom.AttributionLine;
 import songscribe.dom.Song;
+import songscribe.dom.SongMetadata;
 import songscribe.font.FontKey;
 
 /**
- * Unit tests for {@link AttributionPane#buildLines(Song)} and
- * {@link AttributionPane#attributionText(Song)}.
+ * Unit tests for {@link AttributionFormatter#lines} and related methods.
  * <p>
- * No Swing instantiation: all tested methods are {@code static}.
+ * All tested methods are {@code static}; no Song or Swing instances are needed
+ * for the formatter tests.
  */
 class AttributionPaneTest extends UnitTest {
 
@@ -51,7 +53,7 @@ class AttributionPaneTest extends UnitTest {
     void testExample1AllSriChinmoyWithTranslation() {
         var song = songWith(Song.SRI_CHINMOY, Song.SRI_CHINMOY, Song.LyricsSource.LYRICIST, false, "translation text");
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertAttributionLines(lines, List.of("Words, Music and Translation by Sri Chinmoy"));
     }
@@ -64,7 +66,7 @@ class AttributionPaneTest extends UnitTest {
     void testExample2AllSriChinmoyWithArrangementAndTranslation() {
         var song = songWith(Song.SRI_CHINMOY, Song.SRI_CHINMOY, Song.LyricsSource.LYRICIST, true, "translation text");
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertAttributionLines(lines, List.of("Words, Music, Arrangement and Translation by Sri Chinmoy"));
     }
@@ -77,7 +79,7 @@ class AttributionPaneTest extends UnitTest {
     void testExample3LyricistSriChinmoyComposerOther() {
         var song = songWith(Song.SRI_CHINMOY, "Traditional Folk Song", Song.LyricsSource.OTHER, false, "");
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertAttributionLines(lines, List.of(
             "Words by Sri Chinmoy",
@@ -95,7 +97,7 @@ class AttributionPaneTest extends UnitTest {
     void testExample4LyricistJohnSmithComposerSriChinmoy() {
         var song = songWith("John Smith", Song.SRI_CHINMOY, Song.LyricsSource.LYRICIST, true, "translation text");
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertAttributionLines(lines, List.of(
             "Words by John Smith",
@@ -112,7 +114,7 @@ class AttributionPaneTest extends UnitTest {
     void testExample5LyricistSriChinmoyComposerJohnSmithText() {
         var song = songWith(Song.SRI_CHINMOY, "John Smith", Song.LyricsSource.TEXT, false, "translation text");
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertAttributionLines(lines, List.of(
             "Words and Translation by Sri Chinmoy",
@@ -133,9 +135,28 @@ class AttributionPaneTest extends UnitTest {
     void testDefaultSongGroupsWordsAndMusic() {
         var song = new Song();
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertAttributionLines(lines, List.of("Words and Music by Sri Chinmoy"));
+    }
+
+    /**
+     * A non–Sri Chinmoy lyricist with TEXT source must route the Words line
+     * through the lyricsSource connector (" from "), proving the lyricist — not
+     * only the composer — is passed through {@code connectorFor}. The LYRICIST
+     * source ({@code " by "}) cannot distinguish this from the Sri Chinmoy path,
+     * so TEXT is used here deliberately.
+     */
+    @Test
+    void testLyricistNonSriChinmoyUsesLyricsSourceConnector() {
+        var song = songWith("Rabindranath Tagore", Song.SRI_CHINMOY, Song.LyricsSource.TEXT, false, "");
+
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
+
+        assertAttributionLines(lines, List.of(
+            "Words from Rabindranath Tagore",
+            "Music by Sri Chinmoy"
+        ));
     }
 
     /**
@@ -147,7 +168,7 @@ class AttributionPaneTest extends UnitTest {
     void testDifferentPersonsDifferentGroups() {
         var song = songWith(Song.SRI_CHINMOY, "Folk Melody", Song.LyricsSource.TEXT, false, "");
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertAttributionLines(lines, List.of(
             "Words by Sri Chinmoy",
@@ -163,7 +184,7 @@ class AttributionPaneTest extends UnitTest {
     void testBothSriChinmoyNoExtrasCollapseToTwoItems() {
         var song = songWith(Song.SRI_CHINMOY, Song.SRI_CHINMOY, Song.LyricsSource.LYRICIST, false, "");
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertAttributionLines(lines, List.of("Words and Music by Sri Chinmoy"));
     }
@@ -176,9 +197,16 @@ class AttributionPaneTest extends UnitTest {
     void testUnofficialTranslationExcludedFromCredits() {
         var song = new Song();
         song.setTranslatedLyrics("some translation");
-        song.setUnofficialTranslation(true);
+        var current = song.getMetadata();
+        song.setMetadata(new SongMetadata(
+            current.title(), current.number(), current.place(), current.year(),
+            current.month(), current.day(),
+            current.composer(), current.lyricist(),
+            current.lyricsSource(), current.arrangement(),
+            true // unofficialTranslation
+        ));
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertAttributionLines(lines, List.of("Words and Music by Sri Chinmoy"));
     }
@@ -192,10 +220,7 @@ class AttributionPaneTest extends UnitTest {
      */
     @Test
     void testDateYearOnly() {
-        var song = new Song();
-        song.setYear("1984");
-
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(metadataWith("", 0, 0, "1984", ""), false);
 
         assertSubAttributionLines(lines, List.of("1984"));
     }
@@ -205,11 +230,7 @@ class AttributionPaneTest extends UnitTest {
      */
     @Test
     void testDateMonthAndYear() {
-        var song = new Song();
-        song.setYear("1984");
-        song.setMonth(5);   // May = 5
-
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(metadataWith("", 5, 0, "1984", ""), false);
 
         assertSubAttributionLines(lines, List.of("May, 1984"));
     }
@@ -219,12 +240,7 @@ class AttributionPaneTest extends UnitTest {
      */
     @Test
     void testDateFullDate() {
-        var song = new Song();
-        song.setYear("1984");
-        song.setMonth(5);   // May
-        song.setDay(31);
-
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(metadataWith("", 5, 31, "1984", ""), false);
 
         assertSubAttributionLines(lines, List.of("May 31, 1984"));
     }
@@ -234,10 +250,7 @@ class AttributionPaneTest extends UnitTest {
      */
     @Test
     void testDatePlaceOnly() {
-        var song = new Song();
-        song.setPlace("Jamaica, NY");
-
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(metadataWith("Jamaica, NY", 0, 0, "", ""), false);
 
         assertSubAttributionLines(lines, List.of("Jamaica, NY"));
     }
@@ -247,13 +260,7 @@ class AttributionPaneTest extends UnitTest {
      */
     @Test
     void testDateBothDateAndPlace() {
-        var song = new Song();
-        song.setYear("1984");
-        song.setMonth(5);
-        song.setDay(31);
-        song.setPlace("Jamaica, NY");
-
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(metadataWith("Jamaica, NY", 5, 31, "1984", ""), false);
 
         assertSubAttributionLines(lines, List.of("May 31, 1984", "Jamaica, NY"));
     }
@@ -265,7 +272,7 @@ class AttributionPaneTest extends UnitTest {
     void testDateNeitherDateNorPlace() {
         var song = new Song();
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertSubAttributionLines(lines, List.of());
     }
@@ -275,10 +282,7 @@ class AttributionPaneTest extends UnitTest {
      */
     @Test
     void testDateDayWithoutYearProducesNoDateLine() {
-        var song = new Song();
-        song.setDay(15);
-
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(metadataWith("", 0, 15, "", ""), false);
 
         assertSubAttributionLines(lines, List.of());
     }
@@ -288,13 +292,13 @@ class AttributionPaneTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     /**
-     * {@link AttributionPane#attributionText(Song)} joins lines with {@code \n}.
+     * {@link AttributionFormatter#text} joins lines with {@code \n}.
      */
     @Test
     void testAttributionTextJoinsLinesWithNewline() {
         var song = songWith(Song.SRI_CHINMOY, "Traditional Folk Song", Song.LyricsSource.OTHER, false, "");
 
-        var text = AttributionPane.attributionText(song);
+        var text = AttributionFormatter.text(song.getMetadata(), song.showTranslation());
 
         assertThat(text)
             .as("attributionText joins lines with newline")
@@ -302,13 +306,13 @@ class AttributionPaneTest extends UnitTest {
     }
 
     /**
-     * {@link AttributionPane#attributionTextSingleLine(Song)} joins lines with a space.
+     * {@link AttributionFormatter#singleLineText} joins lines with a space.
      */
     @Test
     void testAttributionTextSingleLineJoinsWithSpace() {
         var song = songWith(Song.SRI_CHINMOY, "Traditional Folk Song", Song.LyricsSource.OTHER, false, "");
 
-        var text = AttributionPane.attributionTextSingleLine(song);
+        var text = AttributionFormatter.singleLineText(song.getMetadata(), song.showTranslation());
 
         assertThat(text)
             .as("attributionTextSingleLine joins lines with space")
@@ -320,11 +324,21 @@ class AttributionPaneTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     /**
+     * Empty list: returns an empty string (no items to join).
+     */
+    @Test
+    void testOxfordJoinEmptyList() {
+        assertThat(AttributionFormatter.oxfordJoin(List.of()))
+            .as("empty list → empty string")
+            .isEqualTo("");
+    }
+
+    /**
      * Single item: returned as-is (no connector word).
      */
     @Test
     void testOxfordJoinSingleItem() {
-        assertThat(AttributionPane.oxfordJoin(List.of("Words")))
+        assertThat(AttributionFormatter.oxfordJoin(List.of("Words")))
             .as("single item → no 'and'")
             .isEqualTo("Words");
     }
@@ -334,7 +348,7 @@ class AttributionPaneTest extends UnitTest {
      */
     @Test
     void testOxfordJoinTwoItems() {
-        assertThat(AttributionPane.oxfordJoin(List.of("Words", "Music")))
+        assertThat(AttributionFormatter.oxfordJoin(List.of("Words", "Music")))
             .as("two items → 'A and B'")
             .isEqualTo("Words and Music");
     }
@@ -344,7 +358,7 @@ class AttributionPaneTest extends UnitTest {
      */
     @Test
     void testOxfordJoinThreeItems() {
-        assertThat(AttributionPane.oxfordJoin(List.of("Words", "Music", "Translation")))
+        assertThat(AttributionFormatter.oxfordJoin(List.of("Words", "Music", "Translation")))
             .as("three items → 'A, B and C'")
             .isEqualTo("Words, Music and Translation");
     }
@@ -354,7 +368,7 @@ class AttributionPaneTest extends UnitTest {
      */
     @Test
     void testOxfordJoinFourItems() {
-        assertThat(AttributionPane.oxfordJoin(List.of("Words", "Music", "Arrangement", "Translation")))
+        assertThat(AttributionFormatter.oxfordJoin(List.of("Words", "Music", "Arrangement", "Translation")))
             .as("four items → 'A, B, C and D'")
             .isEqualTo("Words, Music, Arrangement and Translation");
     }
@@ -370,7 +384,7 @@ class AttributionPaneTest extends UnitTest {
     void testAttributionLinesHaveAttributionFontKey() {
         var song = new Song();
 
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         var attributionLines = lines.stream()
             .filter(l -> l.font() == FontKey.ATTRIBUTION)
@@ -390,11 +404,7 @@ class AttributionPaneTest extends UnitTest {
      */
     @Test
     void testSubAttributionLinesHaveSubAttributionFontKey() {
-        var song = new Song();
-        song.setYear("1984");
-        song.setPlace("Jamaica, NY");
-
-        var lines = AttributionPane.buildLines(song);
+        var lines = AttributionFormatter.lines(metadataWith("Jamaica, NY", 0, 0, "1984", ""), false);
 
         var subLines = lines.stream()
             .filter(l -> l.font() == FontKey.SUB_ATTRIBUTION)
@@ -422,22 +432,36 @@ class AttributionPaneTest extends UnitTest {
         String translatedLyrics
     ) {
         var song = new Song();
-        song.setLyricist(lyricist);
-        song.setComposer(composer);
-        song.setLyricsSource(source);
-        song.setArrangement(arrangement);
+        var current = song.getMetadata();
+        song.setMetadata(new SongMetadata(
+            current.title(), current.number(), current.place(), current.year(),
+            current.month(), current.day(),
+            composer, lyricist, source, arrangement,
+            current.unofficialTranslation()
+        ));
         song.setTranslatedLyrics(translatedLyrics);
         return song;
+    }
+
+    /**
+     * Constructs a {@link SongMetadata} for testing sub-attribution (date/place) lines.
+     */
+    private static SongMetadata metadataWith(String place, int month, int day, String year, String title) {
+        return new SongMetadata(
+            title, "", place, year, month, day,
+            Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+            Song.LyricsSource.LYRICIST, false, false
+        );
     }
 
     /**
      * Asserts that the attribution (ATTRIBUTION-keyed) lines in {@code lines} match
      * {@code expected} in order, by text only.
      */
-    private static void assertAttributionLines(List<AttributionPane.AttributionLine> lines, List<String> expected) {
+    private static void assertAttributionLines(List<AttributionLine> lines, List<String> expected) {
         var actual = lines.stream()
             .filter(l -> l.font() == FontKey.ATTRIBUTION)
-            .map(AttributionPane.AttributionLine::text)
+            .map(AttributionLine::text)
             .toList();
 
         assertThat(actual)
@@ -449,10 +473,10 @@ class AttributionPaneTest extends UnitTest {
      * Asserts that the sub-attribution (SUB_ATTRIBUTION-keyed) lines match
      * {@code expected} in order, by text only.
      */
-    private static void assertSubAttributionLines(List<AttributionPane.AttributionLine> lines, List<String> expected) {
+    private static void assertSubAttributionLines(List<AttributionLine> lines, List<String> expected) {
         var actual = lines.stream()
             .filter(l -> l.font() == FontKey.SUB_ATTRIBUTION)
-            .map(AttributionPane.AttributionLine::text)
+            .map(AttributionLine::text)
             .toList();
 
         assertThat(actual)

@@ -20,8 +20,8 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
-import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
@@ -33,6 +33,7 @@ import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.dom.ScaleContext;
+import songscribe.util.GraphicsState;
 
 /**
  * Renders glissando lines connecting notes as filled rectangles.

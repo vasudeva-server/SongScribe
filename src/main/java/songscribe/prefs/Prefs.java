@@ -277,6 +277,15 @@ public final class Prefs {
     }
 
     private static Path resolvePrefsFile() {
+        // A directory override (set by the test harness) keeps unit/e2e runs from
+        // reading or writing the real per-user preferences file. Unset in
+        // production, so the OS-specific resolution below is used normally.
+        var override = System.getProperty("songscribe.prefsDir");
+
+        if (override != null && !override.isBlank()) {
+            return Paths.get(override).resolve("prefs.json");
+        }
+
         Path dir;
 
         if (SystemInfo.isMacOS) {

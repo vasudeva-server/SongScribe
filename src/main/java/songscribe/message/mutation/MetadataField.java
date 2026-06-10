@@ -21,7 +21,7 @@
 package songscribe.message.mutation;
 
 import songscribe.dom.KeyType;
-import songscribe.dom.Song;
+import songscribe.dom.SongMetadata;
 import songscribe.dom.Tempo;
 
 /**
@@ -31,21 +31,12 @@ import songscribe.dom.Tempo;
  * constructor validates values against this type.
  */
 public enum MetadataField {
-    TITLE(String.class),
-    PLACE(String.class),
-    YEAR(String.class),
-    MONTH(Integer.class),
-    DAY(Integer.class),
-    NUMBER(String.class),
+    /** Coarse attribution record swap — old/new values are {@link SongMetadata} instances. */
+    ATTRIBUTION(SongMetadata.class),
     TEMPO(Tempo.class),
     DEFAULT_KEY_ACCIDENTAL_COUNT(Integer.class),
     DEFAULT_KEY_TYPE(KeyType.class),
-    FOOTNOTES(String.class),
-    UNOFFICIAL_TRANSLATION(Boolean.class),
-    COMPOSER(String.class),
-    LYRICIST(String.class),
-    LYRICS_SOURCE(Song.LyricsSource.class),
-    ARRANGEMENT(Boolean.class);
+    FOOTNOTES(String.class);
 
     private final Class<?> expectedType;
 

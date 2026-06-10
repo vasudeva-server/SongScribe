@@ -20,9 +20,9 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
-import static songscribe.ui.renderer.GraphicsState.Property.FONT;
-import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
+import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
@@ -37,8 +37,8 @@ import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.dom.AccidentalBounds;
 import songscribe.layout.NoteGeometry;
+import songscribe.util.GraphicsState;
 
 /**
  * Renders notes (head, stem, flags, dots, accidentals, ledger lines).

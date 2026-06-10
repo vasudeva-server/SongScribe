@@ -20,8 +20,8 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
-import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.STROKE;
 
 import module java.desktop;
 
@@ -29,6 +29,7 @@ import module java.desktop;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.layout.LayoutResult;
+import songscribe.util.GraphicsState;
 
 /**
  * Renders crescendo and diminuendo hairpins.

@@ -214,8 +214,8 @@ public class VerticalStackingCalculator {
             return;
         }
 
-        // Right-align to the staff right edge
-        var xSs = staffRightSs - widthSs;
+        // Right-align with a small inset from the staff right edge
+        var xSs = staffRightSs - widthSs - Attribution.ATTRIBUTION_RIGHT_MARGIN_SS;
 
         StackingUtils.stackAbove(
             systemExtents,

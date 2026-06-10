@@ -47,6 +47,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.dom.SongMetadata;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.io.SongIO;
@@ -195,8 +196,13 @@ class ScoreViewTest extends UnitTest {
         void testGetSuggestedFileNameZeroPadsNumericSongNumber() {
             var scoreView = new ScoreView(null);
             var song = new Song();
-            song.setNumber("3");
-            song.setTitle("Mélodie");
+            var current3 = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "Mélodie", "3",
+                current3.place(), current3.year(), current3.month(), current3.day(),
+                current3.composer(), current3.lyricist(),
+                current3.lyricsSource(), current3.arrangement(), current3.unofficialTranslation()
+            ));
             scoreView.setSong(song);
 
             // Numeric number → zero-padded to three digits; diacritics stripped from title.
@@ -207,8 +213,13 @@ class ScoreViewTest extends UnitTest {
         void testGetSuggestedFileNameUsesNonNumericSongNumberVerbatim() {
             var scoreView = new ScoreView(null);
             var song = new Song();
-            song.setNumber("A");
-            song.setTitle("Title");
+            var currentA = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "Title", "A",
+                currentA.place(), currentA.year(), currentA.month(), currentA.day(),
+                currentA.composer(), currentA.lyricist(),
+                currentA.lyricsSource(), currentA.arrangement(), currentA.unofficialTranslation()
+            ));
             scoreView.setSong(song);
 
             // Non-numeric number → used as-is, followed by a space and the title.
@@ -219,8 +230,13 @@ class ScoreViewTest extends UnitTest {
         void testGetSuggestedFileNameOmitsLeadingSeparatorWhenNumberIsEmpty() {
             var scoreView = new ScoreView(null);
             var song = new Song();
-            song.setNumber("");
-            song.setTitle("Mélodie");
+            var currentEmpty = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "Mélodie", "",
+                currentEmpty.place(), currentEmpty.year(), currentEmpty.month(), currentEmpty.day(),
+                currentEmpty.composer(), currentEmpty.lyricist(),
+                currentEmpty.lyricsSource(), currentEmpty.arrangement(), currentEmpty.unofficialTranslation()
+            ));
             scoreView.setSong(song);
 
             // Empty number → no leading separator; only diacritic-stripped title.

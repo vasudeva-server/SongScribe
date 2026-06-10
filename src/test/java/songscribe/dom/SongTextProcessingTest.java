@@ -26,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.SongMetadata;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 
@@ -68,7 +69,16 @@ class SongTextProcessingTest extends UnitTest {
         Prefs.put(PrefsKey.STRIP_SHORT_A, true);
 
         // "hello\nworld  ă": has linefeed, double-space before ă, and a short-ă char.
-        song.setTitle("hello\nworld  ă");
+        // Normalization is performed by the SongMetadata compact constructor.
+        var current = song.getMetadata();
+        song.setMetadata(new SongMetadata(
+            "hello\nworld  ă",
+            current.number(), current.place(), current.year(),
+            current.month(), current.day(),
+            current.composer(), current.lyricist(),
+            current.lyricsSource(), current.arrangement(),
+            current.unofficialTranslation()
+        ));
 
         assertThat(song.getTitle()).isEqualTo("hello world a");
     }

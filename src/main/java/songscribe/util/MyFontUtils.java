@@ -369,16 +369,14 @@ public final class MyFontUtils {
         return result;
     }
 
-    public static FontMetrics getFontMetrics(Font font) {
-        var g = new BufferedImage(
-            1,
-            1,
-            BufferedImage.TYPE_INT_ARGB
-        ).getGraphics();
+    // Reused scratch graphics for font-metric lookups. getFontMetrics(font) is a
+    // read-only query that does not mutate the backing image, so a single shared
+    // instance avoids allocating a BufferedImage on every call.
+    private static final Graphics METRICS_GRAPHICS =
+        new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).getGraphics();
 
-        var metrics = g.getFontMetrics(font);
-        g.dispose();
-        return metrics;
+    public static FontMetrics getFontMetrics(Font font) {
+        return METRICS_GRAPHICS.getFontMetrics(font);
     }
 
 }
