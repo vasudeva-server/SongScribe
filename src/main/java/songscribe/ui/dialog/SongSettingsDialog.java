@@ -175,6 +175,160 @@ public class SongSettingsDialog extends StandardDialog {
         song.postWithModification(new SongMetadataDidChangeNotification(newMetadata));
     }
 
+    // ── Package-private static helpers ──
+    //
+    // These pure-logic units are inlined into the tab inner classes' Swing-bound
+    // methods at their call sites. Per "Testability Over Encapsulation" they live
+    // here as self-contained, directly unit-testable helpers, and the inner
+    // classes delegate to them.
+
+    private static final int LYRICS_TITLE_BUFFER_CAPACITY = 50;
+
+    /**
+     * Builds a title from the first {@code maxWords} words of {@code lyrics},
+     * capitalising the first letter of each word. Underscores (melisma markers)
+     * are skipped and a double hyphen counts as a word break. Returns an empty
+     * string when {@code lyrics} yields no characters (e.g. only underscores).
+     */
+    static String extractLyricsTitle(String lyrics, int maxWords) {
+        var words = new StringBuilder(LYRICS_TITLE_BUFFER_CAPACITY);
+        var wordCount = 0;
+        var firstLetter = false;
+        var lastHyphen = false;
+
+        goThruString:
+        for (var i = 0; i < lyrics.length(); i++) {
+            switch (lyrics.charAt(i)) {
+                case ' ', '\n' -> {
+                    wordCount++;
+
+                    if (wordCount >= maxWords) {
+                        break goThruString;
+                    }
+
+                    words.append(' ');
+                    firstLetter = true;
+                }
+                case '-' -> {
+                    if (lastHyphen) {
+                        words.append('-');
+                        wordCount++;
+                        firstLetter = true;
+                    }
+
+                    lastHyphen = !lastHyphen;
+                }
+                case '_' -> {
+                }
+                default -> {
+                    if (firstLetter) {
+                        words.append(
+                            String.valueOf(lyrics.charAt(i)).toUpperCase()
+                        );
+                        firstLetter = false;
+                    } else {
+                        words.append(lyrics.charAt(i));
+                    }
+
+                    lastHyphen = false;
+                }
+            }
+        }
+
+        // Lyrics made up only of separators (e.g. all underscores) leave the
+        // buffer empty; guard before indexing the last character so the trim
+        // does not throw on an empty buffer.
+        if (words.length() > 0 && !Character.isLetter(words.charAt(words.length() - 1))) {
+            words.deleteCharAt(words.length() - 1);
+        }
+
+        return words.toString();
+    }
+
+    /**
+     * Parses and range-validates line-width field text.
+     *
+     * @param text     the raw field text
+     * @param isMetric whether {@code text} is in centimetres (else inches)
+     * @return the width in inches if valid, or -1 if the text is empty,
+     *         unparseable, or out of range
+     */
+    static double validateLineWidthText(String text, boolean isMetric) {
+        double value;
+
+        try {
+            value = Double.parseDouble(text);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+
+        var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
+
+        if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+            return -1;
+        }
+
+        return widthInches;
+    }
+
+    /**
+     * Maps the song's stored default key to its canonical combo entry. Zero
+     * accidentals always canonicalises to {@code (FLATS, 0)} — the combo has no
+     * {@code (SHARPS, 0)} entry — otherwise the stored key type is preserved.
+     */
+    static KeySelection canonicalKeySelectionFrom(Song song) {
+        var accidentalCount = song.getDefaultKeyAccidentalCount();
+        var keyType = accidentalCount == 0 ? KeyType.FLATS : song.getDefaultKeyType();
+        return new KeySelection(keyType, accidentalCount);
+    }
+
+    /**
+     * Posts a {@link TempoDidChangeNotification} and/or a
+     * {@link KeySignatureDidChangeNotification} for whichever of tempo / key
+     * differs from the song's current state, coalesced into one modification
+     * bracket. Posts nothing when neither changed.
+     */
+    static void applyMusicTabChanges(
+        Song song,
+        Duration tempoType,
+        int visibleTempo,
+        String tempoDescription,
+        boolean showTempo,
+        KeySelection keySelection
+    ) {
+        var tempo = song.getEffectiveTempo();
+        var tempoChanged = tempoType != tempo.getTempoType()
+            || visibleTempo != tempo.getVisibleTempo()
+            || !tempoDescription.equals(tempo.getTempoDescription())
+            || showTempo != tempo.shouldShowTempo();
+
+        var keyChanged = keySelection.keyType() != song.getDefaultKeyType()
+            || keySelection.count() != song.getDefaultKeyAccidentalCount();
+
+        // Wrap both notifications in one bracket so tempo and key changes coalesce
+        // into a single SongDidChangeNotification when both are modified.
+        if (tempoChanged || keyChanged) {
+            song.withModification(() -> {
+                if (tempoChanged) {
+                    MessageCenter.post(new TempoDidChangeNotification(
+                        tempoType,
+                        visibleTempo,
+                        tempoDescription,
+                        showTempo
+                    ));
+                }
+
+                if (keyChanged) {
+                    MessageCenter.post(new KeySignatureDidChangeNotification(
+                        null,
+                        keySelection.keyType(),
+                        keySelection.count()
+                    ));
+                }
+            });
+        }
+    }
+
     private final class TitleTab extends BaseDialog.Tab {
 
         // Title of song panel
@@ -296,59 +450,8 @@ public class SongSettingsDialog extends StandardDialog {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                var lyrics = getSong().getLyricsText();
-                var words = new StringBuilder(50);
-                var wordCount = 0;
-                var firstLetter = false;
-                var lastHyphen = false;
-
-                goThruString:
-                for (var i = 0; i < lyrics.length(); i++) {
-                    switch (lyrics.charAt(i)) {
-                        case ' ', '\n' -> {
-                            wordCount++;
-
-                            if (
-                                wordCount >=
-                                    ((Number) takeFirstWordsSpinnerModel.getValue()).intValue()
-                            ) {
-                                break goThruString;
-                            }
-
-                            words.append(' ');
-                            firstLetter = true;
-                        }
-                        case '-' -> {
-                            if (lastHyphen) {
-                                words.append('-');
-                                wordCount++;
-                                firstLetter = true;
-                            }
-
-                            lastHyphen = !lastHyphen;
-                        }
-                        case '_' -> {
-                        }
-                        default -> {
-                            if (firstLetter) {
-                                words.append(
-                                    String.valueOf(lyrics.charAt(i)).toUpperCase()
-                                );
-                                firstLetter = false;
-                            } else {
-                                words.append(lyrics.charAt(i));
-                            }
-
-                            lastHyphen = false;
-                        }
-                    }
-                }
-
-                if (!Character.isLetter(words.charAt(words.length() - 1))) {
-                    words.deleteCharAt(words.length() - 1);
-                }
-
-                titleField.setText(words.toString());
+                var maxWords = ((Number) takeFirstWordsSpinnerModel.getValue()).intValue();
+                titleField.setText(extractLyricsTitle(getSong().getLyricsText(), maxWords));
             }
         }
 
@@ -802,43 +905,14 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected void setData() {
             var song = getSong();
-            var tempo = song.getEffectiveTempo();
-            var tempoType = tempoSection.getTempoType();
-            var visibleTempo = tempoSection.getVisibleTempo();
-            var tempoDescription = tempoSection.getTempoDescription();
-            var showTempo = !tempoSection.isShowOnlyDescription();
-            var typeAndCount = getKeyTypeAndCountFromCombo();
-
-            var tempoChanged = tempoType != tempo.getTempoType()
-                || visibleTempo != tempo.getVisibleTempo()
-                || !tempoDescription.equals(tempo.getTempoDescription())
-                || showTempo != tempo.shouldShowTempo();
-
-            var keyChanged = typeAndCount.keyType() != song.getDefaultKeyType()
-                || typeAndCount.count() != song.getDefaultKeyAccidentalCount();
-
-            // Wrap both notifications in one bracket so tempo and key changes coalesce
-            // into a single SongDidChangeNotification when both are modified.
-            if (tempoChanged || keyChanged) {
-                song.withModification(() -> {
-                    if (tempoChanged) {
-                        MessageCenter.post(new TempoDidChangeNotification(
-                            tempoType,
-                            visibleTempo,
-                            tempoDescription,
-                            showTempo
-                        ));
-                    }
-
-                    if (keyChanged) {
-                        MessageCenter.post(new KeySignatureDidChangeNotification(
-                            null,
-                            typeAndCount.keyType(),
-                            typeAndCount.count()
-                        ));
-                    }
-                });
-            }
+            applyMusicTabChanges(
+                song,
+                tempoSection.getTempoType(),
+                tempoSection.getVisibleTempo(),
+                tempoSection.getTempoDescription(),
+                !tempoSection.isShowOnlyDescription(),
+                getKeyTypeAndCountFromCombo()
+            );
 
             var widthInches = validateLineWidth();
             var lineWidthPx = (int) Math.round(widthInches * GraphicUtils.getDpi());
@@ -851,12 +925,7 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private void setKeyComboFromSong(Song song) {
-            var accidentalCount = song.getDefaultKeyAccidentalCount();
-            // (FLATS, 0) is the canonical no-accidentals entry.
-            var keyType = accidentalCount == 0
-                ? KeyType.FLATS
-                : song.getDefaultKeyType();
-            keyCombo.setSelectedItem(new KeySelection(keyType, accidentalCount));
+            keyCombo.setSelectedItem(canonicalKeySelectionFrom(song));
         }
 
         private KeySelection getKeyTypeAndCountFromCombo() {
@@ -892,23 +961,10 @@ public class SongSettingsDialog extends StandardDialog {
          *         unparseable, or out of range
          */
         private double validateLineWidth() {
-            var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
-
-            double value;
-
-            try {
-                value = Double.parseDouble(lineWidthField.getText());
-            } catch (NumberFormatException e) {
-                return -1;
-            }
-
-            var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
-
-            if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
-                return -1;
-            }
-
-            return widthInches;
+            return validateLineWidthText(
+                lineWidthField.getText(),
+                Prefs.getBoolean(PrefsKey.METRIC)
+            );
         }
 
         private void showLineWidthError(String key, boolean isMetric) {

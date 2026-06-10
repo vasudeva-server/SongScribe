@@ -19,88 +19,387 @@
  */
 package songscribe.ui.dialog;
 
-import javax.swing.JTextArea;
-
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
-import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.KeyType;
-import songscribe.ui.component.NonEmptyGuard;
+import songscribe.dom.Song;
+import songscribe.dom.Tempo;
+import songscribe.layout.PageModel;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.KeySignatureDidChangeNotification;
+import songscribe.message.notification.TempoDidChangeNotification;
+import songscribe.util.GraphicUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 /**
- * Unit tests for {@link SongSettingsDialog} helpers.
- *
- * <p>The static helper methods ({@code parseIntFieldOrNull},
- * {@code isTextTabUnchanged}, {@code extractLyricsTitle},
- * {@code validateLineWidthText}, {@code canonicalKeySelectionFrom},
- * {@code applyMusicTabChanges}) were inlined into private inner-class methods
- * during the attribution/song-settings redesign and are no longer directly
- * testable. Their behaviour is exercised indirectly via integration and e2e
- * tests.
- *
- * <p>Row 12 (TitleTab guard / isValidData): covered here via a direct call to
- * {@link NonEmptyGuard#verify} since the title-tab installs a
- * {@code NonEmptyGuard} and {@code isValidData} delegates to it.
+ * Unit tests for {@link SongSettingsDialog}'s package-private static helpers,
+ * which carry the dialog's pure logic so it stays directly testable even though
+ * the tabs that drive them are Swing-bound private inner classes:
+ * {@code extractLyricsTitle}, {@code validateLineWidthText},
+ * {@code canonicalKeySelectionFrom}, and {@code applyMusicTabChanges}.
  *
  * <p>Row 19: {@link SongSettingsDialog.KeyCellRenderer#SELECTIONS} — 15
  * entries in canonical order — is fully covered below.
+ *
+ * <p>The title field's empty-value guard (a {@link songscribe.ui.component.NonEmptyGuard}
+ * installed by {@code TitleTab}) is not re-tested here; its blank/non-blank
+ * contract is covered comprehensively by {@code NonEmptyGuardTest}.
  */
 class SongSettingsDialogTest extends UnitTest {
 
-    // ── Row 12: TitleTab NonEmptyGuard — title field validation ──
+    // ── extractLyricsTitle — word extraction and capitalisation ──
 
     @Nested
-    class IsValidData {
+    class ExtractLyricsTitle {
 
-        /**
-         * Mirrors the guard installed by {@code TitleTab}: a 7-arg
-         * {@link NonEmptyGuard} with a default-value option. Dialogs are
-         * suppressed by {@link UnitTest#suppressDialogs}.
-         */
-        private NonEmptyGuard guardFor(JTextArea field) {
-            return new NonEmptyGuard(
-                field,
-                field,
-                Strings.ALERT_TITLE_SONG_SETTINGS,
-                Strings.CONFIRM_SONG_EMPTY_TITLE,
-                Strings.DOCUMENT_UNTITLED,
-                Strings.DIALOG_SONG_SETTINGS_USE_UNTITLED,
-                Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
+        private static final int TWO_WORDS = 2;
+        private static final int MORE_WORDS_THAN_PRESENT = 10;
+        private static final int ANY_MAX_WORDS = 4;
+
+        @Test
+        void testNormalLyricsExtractsFirstWord() {
+            // "Hello world" with maxWords=1 should return "Hello".
+            assertThat(SongSettingsDialog.extractLyricsTitle("Hello world", 1))
+                .as("single word extracted from normal lyrics")
+                .isEqualTo("Hello");
+        }
+
+        @Test
+        void testNormalLyricsExtractsMultipleWords() {
+            // "Hello world foo" with maxWords=2 should return "Hello World".
+            assertThat(SongSettingsDialog.extractLyricsTitle("Hello world foo", TWO_WORDS))
+                .as("two words extracted and second word capitalised")
+                .isEqualTo("Hello World");
+        }
+
+        @Test
+        void testNewlineTreatedAsWordSeparator() {
+            assertThat(SongSettingsDialog.extractLyricsTitle("Hello\nworld", 1))
+                .as("newline acts as a word separator")
+                .isEqualTo("Hello");
+        }
+
+        @Test
+        void testUnderscoresAreIgnored() {
+            // Underscores are melisma markers and are skipped.
+            assertThat(SongSettingsDialog.extractLyricsTitle("Hel_lo world", 1))
+                .as("underscores are silently skipped; surrounding text is kept")
+                .isEqualTo("Hello");
+        }
+
+        @Test
+        void testHyphenPairIncrementsWordCountButDoesNotBreak() {
+            // A double-hyphen increments wordCount but does NOT trigger the
+            // maxWords break (which only fires on space/newline). For
+            // "hel--lo world" with maxWords=1, the break fires at the space
+            // before "world", yielding "hel-Lo" (capital L because firstLetter
+            // is set after "--").
+            assertThat(SongSettingsDialog.extractLyricsTitle("hel--lo world", 1))
+                .as("double-hyphen increments wordCount but break only fires on space")
+                .isEqualTo("hel-Lo");
+        }
+
+        @Test
+        void testAllUnderscoreLyricsReturnsEmptyString() {
+            // Lyrics consisting only of separator characters (underscores) leave
+            // the buffer empty. The trailing-character trim must guard the empty
+            // buffer rather than throwing StringIndexOutOfBoundsException.
+            assertThat(SongSettingsDialog.extractLyricsTitle("___", ANY_MAX_WORDS))
+                .as("all-underscore lyrics yield an empty title without throwing")
+                .isEqualTo("");
+        }
+
+        @Test
+        void testFewerWordsThanMaxCapitalisesAfterSpace() {
+            // maxWords larger than the word count returns all the text; the
+            // algorithm capitalises the first character after a space separator,
+            // so "world" becomes "World".
+            assertThat(SongSettingsDialog.extractLyricsTitle("Hello world", MORE_WORDS_THAN_PRESENT))
+                .as("second word is capitalised because firstLetter is set after the space separator")
+                .isEqualTo("Hello World");
+        }
+    }
+
+    // ── validateLineWidthText — parse, unit conversion, range ──
+
+    @Nested
+    class ValidateLineWidthText {
+
+        private static final double MIN_INCHES = PageModel.MIN_LINE_WIDTH_INCHES;
+        private static final double MAX_INCHES = PageModel.MAX_LINE_WIDTH_INCHES;
+
+        /** Small delta used to step just outside a boundary. */
+        private static final double BOUNDARY_STEP = 0.01;
+
+        /** A valid inch value that falls comfortably within [MIN, MAX]. */
+        private static final double VALID_INCHES = 6.0;
+
+        /** Floating-point comparison tolerance. */
+        private static final double COMPARISON_TOLERANCE = 0.0001;
+
+        /** Sentinel returned for empty, unparseable, or out-of-range text. */
+        private static final double INVALID = -1.0;
+
+        @Test
+        void testEmptyTextReturnsMinusOne() {
+            assertThat(SongSettingsDialog.validateLineWidthText("", false))
+                .as("empty text is unparseable — returns -1")
+                .isEqualTo(INVALID);
+        }
+
+        @Test
+        void testNonNumericTextReturnsMinusOne() {
+            assertThat(SongSettingsDialog.validateLineWidthText("abc", false))
+                .as("non-numeric text returns -1")
+                .isEqualTo(INVALID);
+        }
+
+        @Test
+        void testValueBelowMinInchesReturnsMinusOne() {
+            var belowMin = String.valueOf(MIN_INCHES - BOUNDARY_STEP);
+            assertThat(SongSettingsDialog.validateLineWidthText(belowMin, false))
+                .as("value below min inches returns -1")
+                .isEqualTo(INVALID);
+        }
+
+        @Test
+        void testValueAboveMaxInchesReturnsMinusOne() {
+            var aboveMax = String.valueOf(MAX_INCHES + BOUNDARY_STEP);
+            assertThat(SongSettingsDialog.validateLineWidthText(aboveMax, false))
+                .as("value above max inches returns -1")
+                .isEqualTo(INVALID);
+        }
+
+        @Test
+        void testValidInchesReturnsWidthInInches() {
+            var midInches = (MIN_INCHES + MAX_INCHES) / 2;
+            var text = String.valueOf(midInches);
+            assertThat(SongSettingsDialog.validateLineWidthText(text, false))
+                .as("valid inches value returned as-is")
+                .isCloseTo(midInches, org.assertj.core.data.Offset.offset(COMPARISON_TOLERANCE));
+        }
+
+        @Test
+        void testValidCentimetresReturnsWidthInInches() {
+            var cm = VALID_INCHES * GraphicUtils.CM_PER_INCH;
+            var text = String.valueOf(cm);
+            assertThat(SongSettingsDialog.validateLineWidthText(text, true))
+                .as("valid cm value is converted to inches and returned")
+                .isCloseTo(VALID_INCHES, org.assertj.core.data.Offset.offset(COMPARISON_TOLERANCE));
+        }
+
+        @Test
+        void testCentimetreValueBelowMinReturnsMinusOne() {
+            var belowMinCm = (MIN_INCHES - BOUNDARY_STEP) * GraphicUtils.CM_PER_INCH;
+            var text = String.valueOf(belowMinCm);
+            assertThat(SongSettingsDialog.validateLineWidthText(text, true))
+                .as("cm value that converts below min inches returns -1")
+                .isEqualTo(INVALID);
+        }
+    }
+
+    // ── canonicalKeySelectionFrom — (any, 0) → (FLATS, 0) canonicalization ──
+
+    @Nested
+    class CanonicalKeySelectionFrom {
+
+        private static final int SHARP_COUNT = 3;
+        private static final int FLAT_COUNT = 2;
+
+        @Test
+        void testZeroAccidentalsCanonicalizesToFlatsZero() {
+            // When accidental count is 0, the canonical type is always FLATS.
+            var song = new Song();
+            song.keySignatureDidChange(new KeySignatureDidChangeNotification(null, KeyType.FLATS, 0));
+
+            var selection = SongSettingsDialog.canonicalKeySelectionFrom(song);
+
+            assertThat(selection.keyType())
+                .as("zero accidentals always maps to FLATS canonical type")
+                .isEqualTo(KeyType.FLATS);
+            assertThat(selection.count())
+                .as("accidental count is preserved as 0")
+                .isEqualTo(0);
+        }
+
+        @Test
+        void testZeroSharpsAlsoCanonicalizesToFlatsZero() {
+            // The combo has no "(SHARPS, 0)" entry, only "(FLATS, 0)", so a
+            // (SHARPS, 0) song key must canonicalize to FLATS.
+            var song = new Song();
+            song.setDefaultKeyType(KeyType.SHARPS);
+            song.setDefaultKeyAccidentalCount(0);
+
+            var selection = SongSettingsDialog.canonicalKeySelectionFrom(song);
+
+            assertThat(selection.keyType())
+                .as("(SHARPS, 0) canonicalizes to FLATS type")
+                .isEqualTo(KeyType.FLATS);
+            assertThat(selection.count())
+                .as("accidental count is still 0")
+                .isEqualTo(0);
+        }
+
+        @Test
+        void testNonZeroAccidentalCountPreservesKeyType() {
+            var song = new Song();
+            song.keySignatureDidChange(new KeySignatureDidChangeNotification(null, KeyType.SHARPS, SHARP_COUNT));
+
+            var selection = SongSettingsDialog.canonicalKeySelectionFrom(song);
+
+            assertThat(selection.keyType())
+                .as("non-zero sharp count preserves SHARPS key type")
+                .isEqualTo(KeyType.SHARPS);
+            assertThat(selection.count())
+                .as("accidental count is preserved")
+                .isEqualTo(SHARP_COUNT);
+        }
+
+        @Test
+        void testNonZeroFlatCountPreservesKeyType() {
+            var song = new Song();
+            song.keySignatureDidChange(new KeySignatureDidChangeNotification(null, KeyType.FLATS, FLAT_COUNT));
+
+            var selection = SongSettingsDialog.canonicalKeySelectionFrom(song);
+
+            assertThat(selection.keyType())
+                .as("non-zero flat count preserves FLATS key type")
+                .isEqualTo(KeyType.FLATS);
+            assertThat(selection.count())
+                .as("accidental count is preserved")
+                .isEqualTo(FLAT_COUNT);
+        }
+    }
+
+    // ── applyMusicTabChanges — change-detection and notification posting ──
+
+    @Nested
+    class ApplyMusicTabChanges {
+
+        private static final int TEMPO_DELTA = 20;
+        private static final int SHARPS_COUNT = 2;
+        private static final int FLATS_COUNT = 3;
+        private static final int NO_POSTS = 0;
+        private static final int ONE_POST = 1;
+
+        private Song song;
+        private MockedStatic<MessageCenter> messageCenterMock;
+
+        @BeforeEach
+        void setUp() {
+            // Construct Song before mocking so its constructor bus operations go to the real bus.
+            song = new Song();
+            messageCenterMock = mockStatic(MessageCenter.class);
+        }
+
+        @AfterEach
+        void tearDown() {
+            messageCenterMock.close();
+        }
+
+        /** Returns the song's current effective tempo values as a convenience. */
+        private Tempo currentTempo() {
+            return song.getEffectiveTempo();
+        }
+
+        @Test
+        void testNoChangePostsNoMessage() {
+            // When all values match the song's current state, no notification is posted.
+            var tempo = currentTempo();
+
+            SongSettingsDialog.applyMusicTabChanges(
+                song,
+                tempo.getTempoType(),
+                tempo.getVisibleTempo(),
+                tempo.getTempoDescription(),
+                tempo.shouldShowTempo(),
+                SongSettingsDialog.canonicalKeySelectionFrom(song)
+            );
+
+            messageCenterMock.verify(() -> MessageCenter.post(any()), times(NO_POSTS));
+        }
+
+        @Test
+        void testTempoOnlyChangePostsTempoNotification() {
+            var tempo = currentTempo();
+            var newVisibleTempo = tempo.getVisibleTempo() + TEMPO_DELTA;
+
+            SongSettingsDialog.applyMusicTabChanges(
+                song,
+                tempo.getTempoType(),
+                newVisibleTempo,
+                tempo.getTempoDescription(),
+                tempo.shouldShowTempo(),
+                SongSettingsDialog.canonicalKeySelectionFrom(song)
+            );
+
+            messageCenterMock.verify(
+                () -> MessageCenter.post(any(TempoDidChangeNotification.class)),
+                times(ONE_POST)
+            );
+            messageCenterMock.verify(
+                () -> MessageCenter.post(any(KeySignatureDidChangeNotification.class)),
+                times(NO_POSTS)
             );
         }
 
         @Test
-        void testNonEmptyTitleReturnsTrueWithoutDialog() {
-            var titleField = new JTextArea("My Song");
-            var guard = guardFor(titleField);
+        void testKeyOnlyChangePostsKeyNotification() {
+            var tempo = currentTempo();
+            // Change to sharps (default is FLATS, 0).
+            var newKey = new SongSettingsDialog.KeySelection(KeyType.SHARPS, SHARPS_COUNT);
 
-            assertThat(guard.verify(titleField))
-                .as("non-blank title field: verify → true")
-                .isTrue();
+            SongSettingsDialog.applyMusicTabChanges(
+                song,
+                tempo.getTempoType(),
+                tempo.getVisibleTempo(),
+                tempo.getTempoDescription(),
+                tempo.shouldShowTempo(),
+                newKey
+            );
+
+            messageCenterMock.verify(
+                () -> MessageCenter.post(any(KeySignatureDidChangeNotification.class)),
+                times(ONE_POST)
+            );
+            messageCenterMock.verify(
+                () -> MessageCenter.post(any(TempoDidChangeNotification.class)),
+                times(NO_POSTS)
+            );
         }
 
         @Test
-        void testEmptyTitleReturnsFalse() {
-            var titleField = new JTextArea("");
-            var guard = guardFor(titleField);
+        void testBothChangedPostsBothNotifications() {
+            var tempo = currentTempo();
+            var newVisibleTempo = tempo.getVisibleTempo() + TEMPO_DELTA;
+            var newKey = new SongSettingsDialog.KeySelection(KeyType.FLATS, FLATS_COUNT);
 
-            assertThat(guard.verify(titleField))
-                .as("blank title field: verify → false")
-                .isFalse();
-        }
+            SongSettingsDialog.applyMusicTabChanges(
+                song,
+                tempo.getTempoType(),
+                newVisibleTempo,
+                tempo.getTempoDescription(),
+                tempo.shouldShowTempo(),
+                newKey
+            );
 
-        @Test
-        void testBlankWhitespaceTitleReturnsFalse() {
-            var titleField = new JTextArea("   ");
-            var guard = guardFor(titleField);
-
-            assertThat(guard.verify(titleField))
-                .as("whitespace-only title is blank: verify → false")
-                .isFalse();
+            messageCenterMock.verify(
+                () -> MessageCenter.post(any(TempoDidChangeNotification.class)),
+                times(ONE_POST)
+            );
+            messageCenterMock.verify(
+                () -> MessageCenter.post(any(KeySignatureDidChangeNotification.class)),
+                times(ONE_POST)
+            );
         }
     }
 
