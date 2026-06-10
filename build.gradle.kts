@@ -186,6 +186,13 @@ fun Test.applyCommonTestConfig() {
             "-Djna.library.path=$projectDir/build/native",
         )
     }
+
+    // Isolate preferences from the real per-user prefs.json so tests that reset
+    // or overwrite prefs (RecentDocumentsManagerTest, PrefsTest) never clobber it.
+    systemProperty(
+        "songscribe.prefsDir",
+        layout.buildDirectory.dir("test-prefs").get().asFile.absolutePath
+    )
     systemProperty("e2e.failFast", if (project.hasProperty("noFailFast")) "false" else "true")
     if (project.hasProperty("e2eDebug")) systemProperty("e2e.debug", "true")
     System.getenv("EXTRA_JVM_ARGS")?.takeIf { it.isNotBlank() }?.split(" ")?.let { jvmArgs(it) }
