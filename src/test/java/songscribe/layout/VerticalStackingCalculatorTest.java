@@ -117,7 +117,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
             assert layout != null;
             assertThat(layout.xSs())
                 .describedAs("attribution x must be staffRightSs - widthSs - ATTRIBUTION_RIGHT_MARGIN_SS")
-                .isCloseTo(staffRightSs - widthSs + Attribution.ATTRIBUTION_RIGHT_MARGIN_SS, EPSILON);
+                .isCloseTo(staffRightSs - widthSs - Attribution.ATTRIBUTION_RIGHT_MARGIN_SS, EPSILON);
         }
 
         @Test
