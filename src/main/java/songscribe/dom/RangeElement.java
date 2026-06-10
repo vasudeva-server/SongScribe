@@ -143,6 +143,16 @@ public abstract class RangeElement extends LineElement {
     }
 
     /**
+     * Returns whether removing this range element as a side effect of an edit warrants a
+     * user confirmation prompt. Default is false: range elements such as beams, ties, and
+     * tuplets are removed silently. Subclasses may override (endings do, since their loss
+     * is significant enough to confirm first).
+     */
+    public boolean requiresInvalidationConfirm() {
+        return false;
+    }
+
+    /**
      * Returns whether this range element is above the staff.
      */
     public boolean isAbove() {

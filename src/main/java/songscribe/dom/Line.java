@@ -1604,6 +1604,7 @@ public class Line {
      */
     public boolean hasEndingInvalidatedByDeletion(List<StaffElement> deletedElements) {
         return rangeElements.stream()
+            .filter(RangeElement::requiresInvalidationConfirm)
             .anyMatch(r -> r.isInvalidatedBy(deletedElements) ||
                            r.isInvalidatedByDeletion(deletedElements, this));
     }

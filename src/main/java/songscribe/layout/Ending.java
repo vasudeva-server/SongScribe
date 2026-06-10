@@ -394,6 +394,11 @@ public class Ending extends RangeElement {
         return regions;
     }
 
+    @Override
+    public boolean requiresInvalidationConfirm() {
+        return true;
+    }
+
     /**
      * Returns true if deleting the given elements invalidates this ending beyond what
      * {@link RangeElement#isInvalidatedBy} already detects.

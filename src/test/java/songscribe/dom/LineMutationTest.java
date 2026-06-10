@@ -1817,6 +1817,30 @@ class LineMutationTest extends UnitTest {
                 .as("an empty deletion list must not invalidate any ending")
                 .isFalse();
         }
+
+        @Test
+        void testReturnsFalseWhenDeletingTupletNote() {
+            // Issue #404: deleting a note that is a tuplet boundary invalidates the
+            // tuplet, but tuplets are removed silently. Only endings warrant the
+            // confirmation prompt, so this pre-flight check must report false.
+            var e0 = new StaffElement(ElementType.QUAVER);
+            var e1 = new StaffElement(ElementType.QUAVER);
+            var e2 = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(e0);
+                line.addElement(e1);
+                line.addElement(e2);
+            });
+
+            // Grade 3 = triplet spanning e0..e2.
+            var tripletGrade = 3;
+            var tuplet = new Tuplet(e0, e2, tripletGrade);
+            song.withoutMutationTracking(() -> line.addTuplet(tuplet));
+
+            assertThat(line.hasEndingInvalidatedByDeletion(List.of(e0)))
+                .as("deleting a tuplet boundary note must not trigger an ending confirmation")
+                .isFalse();
+        }
     }
 
     // -----------------------------------------------------------------------
