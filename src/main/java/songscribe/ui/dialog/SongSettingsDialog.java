@@ -399,6 +399,14 @@ public class SongSettingsDialog extends StandardDialog {
         protected void initContents() {
             add(createTitleSection());
             addSectionSeparator(this);
+            add(createPreviewSection());
+        }
+
+        private JPanel createPreviewSection() {
+            var section = new BaseDialog.TitledSection(
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_PREVIEW)
+            );
+
             var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
             var backgroundColor = titlePreview.getBackground();
             var previewWrapper = new JPanel();
@@ -408,7 +416,9 @@ public class SongSettingsDialog extends StandardDialog {
             previewWrapper.setLayout(new BorderLayout());
             previewWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
             previewWrapper.add(titlePreview, BorderLayout.CENTER);
-            add(previewWrapper);
+            section.add(previewWrapper);
+
+            return section;
         }
 
         private JPanel createTitleSection() {
