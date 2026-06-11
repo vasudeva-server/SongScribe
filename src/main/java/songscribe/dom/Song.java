@@ -426,13 +426,22 @@ public final class Song {
      * when the number is empty.
      */
     public String getNumberedTitle() {
-        var number = metadata.number();
+        return numberedTitle(metadata.number(), metadata.title());
+    }
 
+    /**
+     * Composes a numbered title from a raw number and title: the title prefixed
+     * with the number and a separator (e.g. {@code "5. My Song"}) when a number
+     * is present, or the bare title when the number is empty. Exposed so callers
+     * working with uncommitted values (e.g. the song settings dialog's title
+     * preview) can produce the same string without duplicating the format.
+     */
+    public static String numberedTitle(String number, String title) {
         if (number.isEmpty()) {
-            return metadata.title();
+            return title;
         }
 
-        return number + ". " + metadata.title();
+        return number + ". " + title;
     }
 
     public String getPlace() {

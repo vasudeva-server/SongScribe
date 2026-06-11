@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.event.DocumentEvent;
 
 import com.formdev.flatlaf.FlatClientProperties;
 
@@ -56,6 +57,7 @@ import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
+import songscribe.ui.component.score.TitleComponent;
 import songscribe.dom.AttributionFormatter;
 import songscribe.dom.AttributionLine;
 import songscribe.dom.AttributionPane;
@@ -85,6 +87,7 @@ public class SongSettingsDialog extends StandardDialog {
     private static final int TAKE_FIRST_WORDS_MAX = 10;
     private static final int DAYS_IN_MONTH_MAX = 31;
 
+    private final FontTab fontTab = new FontTab();
     private final TitleTab textTab = new TitleTab();
     private final AttributionTab attributionTab = new AttributionTab();
 
@@ -110,7 +113,7 @@ public class SongSettingsDialog extends StandardDialog {
         addTab(
             tabbedPane,
             Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_FONTS),
-            new FontTab()
+            fontTab
         );
 
         contentPanel.add(BorderLayout.CENTER, tabbedPane);
@@ -327,10 +330,16 @@ public class SongSettingsDialog extends StandardDialog {
         private final NumericTextField numberField =
             new NumericTextField(3, SONG_NUMBER_MIN, SONG_NUMBER_MAX, true);
         private final MyJTextField titleField = new MyJTextField(47);
+
+        // Non-shared font-name display for the title font row. Mirrors the
+        // shared font preview so we can prototype the new layout without
+        // touching FontTab's data wiring (refactor later).
+        private final JTextField titleFontField = new JTextField(31);
         private final SpinnerModel takeFirstWordsSpinnerModel =
             new SpinnerNumberModel(TAKE_FIRST_WORDS_DEFAULT, TAKE_FIRST_WORDS_MIN, TAKE_FIRST_WORDS_MAX, 1);
         private final TakeFirstLyricsWordAction takeAction =
             new TakeFirstLyricsWordAction(SongSettingsDialog.this.getMainFrame());
+        private final TitleComponent titlePreview = new TitleComponent();
 
         private TitleTab() {
             titleField.setInputVerifier(new NonEmptyGuard(
@@ -343,12 +352,63 @@ public class SongSettingsDialog extends StandardDialog {
                 Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
             ));
 
+            titleFontField.setEditable(false);
+            titleFontField.setFocusable(false);
+
+            titlePreview.setOpaque(true);
+            titlePreview.setBackground(
+                FlatLafProps.get(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND)
+            );
+
+            // Keep the preview in sync as the user edits the number/title, which
+            // together form the numbered title the score actually renders.
+            var previewUpdater = new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    updateTitlePreview();
+                }
+
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    updateTitlePreview();
+                }
+
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    updateTitlePreview();
+                }
+            };
+            numberField.getDocument().addDocumentListener(previewUpdater);
+            titleField.getDocument().addDocumentListener(previewUpdater);
+
+            // The title font is edited via the shared font preview (this tab's
+            // font row and the Fonts tab both target it); mirror its font onto
+            // the preview so font changes show immediately, before commit.
+            fontTab.titleFontPreview.addPropertyChangeListener("font", e -> {
+                var font = fontTab.titleFontPreview.getFont();
+                titleFontField.setText(MyFontUtils.getFullFontDescription(font));
+                titlePreview.setFont(font);
+                titlePreview.revalidate();
+                titlePreview.repaint();
+            });
+
             build();
         }
 
         @Override
         protected void initContents() {
             add(createTitleSection());
+            addSectionSeparator(this);
+            var gap = (int) FlatLafProps.get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
+            var backgroundColor = titlePreview.getBackground();
+            var previewWrapper = new JPanel();
+            previewWrapper.setOpaque(true);
+            previewWrapper.setBackground(backgroundColor);
+            previewWrapper.setBorder(BorderFactory.createMatteBorder(gap, 0, gap, 0, backgroundColor));
+            previewWrapper.setLayout(new BorderLayout());
+            previewWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+            previewWrapper.add(titlePreview, BorderLayout.CENTER);
+            add(previewWrapper);
         }
 
         private JPanel createTitleSection() {
@@ -362,7 +422,7 @@ public class SongSettingsDialog extends StandardDialog {
                 BaseDialog.LabelPosition.LEFT
             );
 
-            section.addSeparator();
+            addSeparator(section);
 
             addLabeledField(
                 section,
@@ -371,12 +431,47 @@ public class SongSettingsDialog extends StandardDialog {
                 BaseDialog.LabelPosition.TOP
             );
 
-            section.addSeparator();
-            section.addSeparator();
-
+            addLargeSeparator(section);
             section.add(createTakePanel());
+
+            addSectionSeparator(section);
+            var separator = new JSeparator();
+            separator.setAlignmentX(Component.LEFT_ALIGNMENT);
+            section.add(separator);
+            addSectionSeparator(section);
+
+            section.add(createTitleFontRow());
             UIUtils.setFlexibleWidth(section);
             return section;
+        }
+
+        private void updateTitlePreview() {
+            titlePreview.setPreviewTitle(
+                Song.numberedTitle(numberField.getText(), titleField.getText())
+            );
+        }
+
+        private JPanel createTitleFontRow() {
+            var mainFrame = getMainFrame();
+
+            var row = new JPanel(new FlowLayout(
+                FlowLayout.LEFT,
+                FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP),
+                0
+            ));
+            row.setBorder(BorderFactory.createEmptyBorder());
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            addLabeledField(row, "Font:", titleFontField, BaseDialog.LabelPosition.LEFT);
+
+            row.add(new JButton(new FontTab.ChooseFontAction(
+                mainFrame,
+                fontTab.titleFontLabel,
+                fontTab.titleFontPreview
+            )));
+
+            UIUtils.setFlexibleWidth(row);
+            return row;
         }
 
         private JPanel createTakePanel() {
@@ -414,9 +509,14 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected boolean getData() {
             var song = getSong();
+            titlePreview.setSong(song);
+            titlePreview.setFont(
+                requireScoreView().getDocumentFonts().getFont(FontKey.TITLE)
+            );
             numberField.setText(song.getNumber());
             titleField.setText(song.getTitle());
             takeAction.updateEnabledState();
+            updateTitlePreview();
             return true;
         }
 
@@ -1100,16 +1200,6 @@ public class SongSettingsDialog extends StandardDialog {
             var tabbedPane = createTabbedPane();
             tabbedPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
-            tabbedPane.addTab(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_TITLE),
-                createFontSection(
-                    mainFrame,
-                    "Title",
-                    titleFontLabel,
-                    titleFontPreview,
-                    true
-                )
-            );
             tabbedPane.addTab(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_LYRICS),
                 createFontSection(

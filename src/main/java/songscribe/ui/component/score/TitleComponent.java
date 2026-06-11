@@ -22,7 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.dom.ScaleContext;
+import org.jspecify.annotations.Nullable;
 import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
 
@@ -34,18 +34,29 @@ import songscribe.util.StringUtils;
  */
 public class TitleComponent extends ScoreComponent {
 
-    /**
-     * Margin from title bottom to next section
-     */
-    public static final double TITLE_MARGIN_BOTTOM_SS = 2.0;  // 16px
     /** Maximum percentage of line width the title can occupy before wrapping. */
     private static final double TITLE_MAX_WIDTH_PERCENTAGE = 0.9;
 
     /**
-     * Creates a new TitleComponent.
+     * When non-null, overrides the title text drawn by the component. Lets the
+     * song settings dialog render a live preview of the unsaved title without
+     * mutating the song.
      */
-    public TitleComponent() {
-        setMarginBottom(ScaleContext.ssToRoundedPx(TITLE_MARGIN_BOTTOM_SS));
+    @Nullable
+    private String previewTitle;
+
+    /**
+     * Overrides the rendered title with the given preview text, or restores
+     * rendering from the song when {@code null}.
+     */
+    public void setPreviewTitle(@Nullable String previewTitle) {
+        this.previewTitle = previewTitle;
+        revalidate();
+        repaint();
+    }
+
+    private String titleToRender() {
+        return previewTitle != null ? previewTitle : getSong().getNumberedTitle();
     }
 
     @Override
@@ -54,7 +65,17 @@ public class TitleComponent extends ScoreComponent {
             return;
         }
 
-        var title = song.getNumberedTitle();
+        // A bare JComponent does not fill its background even when opaque, so do
+        // it here. On the score the component is transparent (opaque == false);
+        // the settings-dialog preview makes it opaque to paint the page color.
+        if (isOpaque()) {
+            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+                g2.setColor(getBackground());
+                g2.fillRect(0, 0, getWidth(), getHeight());
+            }
+        }
+
+        var title = titleToRender();
 
         if (title.isEmpty()) {
             return;
@@ -104,7 +125,7 @@ public class TitleComponent extends ScoreComponent {
             return new Dimension(0, 0);
         }
 
-        var title = song.getNumberedTitle();
+        var title = titleToRender();
 
         if (title.isEmpty()) {
             return new Dimension(0, 0);
@@ -117,9 +138,12 @@ public class TitleComponent extends ScoreComponent {
         var maxWidth = (int) (song.getLineWidthPx() * TITLE_MAX_WIDTH_PERCENTAGE);
         var titleLines = StringUtils.wrapText(title, metrics, maxWidth);
 
-        var lineHeight = metrics.getHeight();
-        var height = lineHeight * titleLines.size();
+        // Tight bounding box: each line is ascent + descent tall, with the font's
+        // leading inserted only *between* lines, never below the last descender.
+        var lineCount = titleLines.size();
+        var glyphHeight = metrics.getAscent() + metrics.getDescent();
+        var height = lineCount * glyphHeight + (lineCount - 1) * metrics.getLeading();
 
-        return new Dimension(song.getLineWidthPx(), height + marginBottom);
+        return new Dimension(song.getLineWidthPx(), height);
     }
 }
