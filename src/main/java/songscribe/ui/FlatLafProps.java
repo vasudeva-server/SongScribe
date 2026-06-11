@@ -34,7 +34,7 @@ import songscribe.error.RuntimeError;
 /**
  * Typed access to custom {@code SongScribe.*} properties defined in
  * {@code FlatLaf.properties}. Keys are provided by the generated
- * {@link FlatLafKeys} constants class.
+ * {@link FlatLafKey} enum.
  *
  * <p>Use the typed getters ({@code getColor}, {@code getInt}, etc.) — one
  * exists for every type FlatLaf supports. A missing or wrongly-typed property
@@ -44,16 +44,16 @@ public final class FlatLafProps {
 
     private FlatLafProps() {}
 
-    private static <T> T get(String key, Class<T> type) {
-        var value = UIManager.get(key);
+    private static <T> T get(FlatLafKey key, Class<T> type) {
+        var value = UIManager.get(key.key());
 
         if (value == null) {
-            throw RuntimeError.exit("Missing required UI property: " + key);
+            throw RuntimeError.exit("Missing required UI property: " + key.key());
         }
 
         if (!type.isInstance(value)) {
             throw RuntimeError.exit(
-                "Wrong type for UI property " + key
+                "Wrong type for UI property " + key.key()
                 + ": expected " + type.getSimpleName()
                 + ", got " + value.getClass().getSimpleName()
             );
@@ -62,47 +62,47 @@ public final class FlatLafProps {
         return type.cast(value);
     }
 
-    public static boolean getBoolean(String key) {
+    public static boolean getBoolean(FlatLafKey key) {
         return get(key, Boolean.class);
     }
 
-    public static int getInt(String key) {
+    public static int getInt(FlatLafKey key) {
         return get(key, Integer.class);
     }
 
-    public static float getFloat(String key) {
+    public static float getFloat(FlatLafKey key) {
         return get(key, Float.class);
     }
 
-    public static String getString(String key) {
+    public static String getString(FlatLafKey key) {
         return get(key, String.class);
     }
 
-    public static Color getColor(String key) {
+    public static Color getColor(FlatLafKey key) {
         return get(key, Color.class);
     }
 
-    public static Font getFont(String key) {
+    public static Font getFont(FlatLafKey key) {
         return get(key, Font.class);
     }
 
-    public static Insets getInsets(String key) {
+    public static Insets getInsets(FlatLafKey key) {
         return get(key, Insets.class);
     }
 
-    public static Dimension getDimension(String key) {
+    public static Dimension getDimension(FlatLafKey key) {
         return get(key, Dimension.class);
     }
 
-    public static Border getBorder(String key) {
+    public static Border getBorder(FlatLafKey key) {
         return get(key, Border.class);
     }
 
-    public static Icon getIcon(String key) {
+    public static Icon getIcon(FlatLafKey key) {
         return get(key, Icon.class);
     }
 
-    public static GrayFilter getGrayFilter(String key) {
+    public static GrayFilter getGrayFilter(FlatLafKey key) {
         return get(key, GrayFilter.class);
     }
 }

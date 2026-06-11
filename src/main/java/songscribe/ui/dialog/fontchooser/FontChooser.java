@@ -24,7 +24,7 @@ import module java.desktop;
 import com.uber.nullaway.annotations.Initializer;
 
 import songscribe.Strings;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.dialog.BaseDialog.LabelPosition;
@@ -190,7 +190,7 @@ public class FontChooser extends JPanel implements FontContainer {
     }
 
     private void addComponents() {
-        var gap = FlatLafProps.getInt(FlatLafKeys.DIALOG_FONT_CHOOSER_GAP);
+        var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_FONT_CHOOSER_GAP);
 
         setLayout(new GridBagLayout());
         var gbc = new GridBagConstraints();

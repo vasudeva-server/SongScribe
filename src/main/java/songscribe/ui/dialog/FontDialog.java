@@ -24,7 +24,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.dialog.fontchooser.FontChooser;
 import songscribe.util.UIUtils;
@@ -43,12 +43,12 @@ public class FontDialog extends StandardDialog {
 
         // Padding applied here rather than via getContentPaddingKey() so the button
         // panel isn't indented by contentPanel's border insets, preventing extra side padding.
-        chooser.setBorder(UIUtils.spacingBorder(FlatLafKeys.DIALOG_STD_BUTTONS_PADDING));
+        chooser.setBorder(UIUtils.spacingBorder(FlatLafKey.DIALOG_STD_BUTTONS_PADDING));
         contentPanel.add(chooser, BorderLayout.CENTER);
     }
 
     @Override
-    protected @Nullable String getContentPaddingKey() {
+    protected @Nullable FlatLafKey getContentPaddingKey() {
         return null;
     }
 
@@ -70,7 +70,7 @@ public class FontDialog extends StandardDialog {
 
     @Override
     protected int getExtraWidth() {
-        return FlatLafProps.getInt(FlatLafKeys.DIALOG_FONT_EXTRA_WIDTH);
+        return FlatLafProps.getInt(FlatLafKey.DIALOG_FONT_EXTRA_WIDTH);
     }
 
     @Override

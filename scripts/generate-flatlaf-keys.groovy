@@ -1,4 +1,4 @@
-// Reads FlatLaf.properties and generates build/generated-sources/songscribe/ui/FlatLafKeys.java.
+// Reads FlatLaf.properties and generates build/generated-sources/songscribe/ui/FlatLafKey.java.
 // Only keys with the "SongScribe." prefix are included.
 // Bindings: basedir (project root), buildDir (build output directory).
 
@@ -9,10 +9,13 @@ def RG = System.getenv('RG') ?: '/opt/homebrew/bin/rg'
 def PREFIX = 'SongScribe.'
 def PROPS_FILE = new File("${basedir}/src/main/resources/songscribe/FlatLaf.properties")
 def OUT_DIR = new File("${buildDir}/generated-sources/songscribe/ui")
-def OUT_FILE = new File(OUT_DIR, 'FlatLafKeys.java')
+def OUT_FILE = new File(OUT_DIR, 'FlatLafKey.java')
+
+def STALE_FILE = new File(OUT_DIR, 'FlatLafKeys.java')
+if (STALE_FILE.exists()) { STALE_FILE.delete() }
 
 if (OUT_FILE.exists() && OUT_FILE.lastModified() >= PROPS_FILE.lastModified()) {
-    println "FlatLafKeys.java is up to date — skipping generation."
+    println "FlatLafKey.java is up to date — skipping generation."
     return
 }
 
@@ -46,21 +49,20 @@ keys.each { key ->
     constantToKey[constant] = key
 }
 
-// Generate FlatLafKeys.java
-def constants = constantToKey.toSorted().collect { constant, key ->
-    "    public static final String ${constant} = \"${key}\";"
-}.join('\n')
+// Generate FlatLafKey.java
+def entries = constantToKey.toSorted().collect { constant, key -> "    ${constant}(\"${key}\")" }
+def constants = entries.join(',\n') + ';'
 
-def template = new File("${basedir}/scripts/templates/FlatLafKeys.java.template")
+def template = new File("${basedir}/scripts/templates/FlatLafKey.java.template")
 OUT_FILE.withWriter('UTF-8') { out ->
     out.write(template.getText('UTF-8').replace('{{CONSTANTS}}', constants))
 }
 
-println "Generated FlatLafKeys.java with ${constantToKey.size()} constants."
+println "Generated FlatLafKey.java with ${constantToKey.size()} constants."
 
 // Audit: check that every constant is referenced somewhere in the Java sources.
 def rgConstantsProc = [RG, '--no-filename', '--no-line-number', '-o',
-                       'FlatLafKeys\\.[A-Z][A-Z0-9_]+',
+                       'FlatLafKey\\.[A-Z][A-Z0-9_]+',
                        "${basedir}/src"]
                       .execute()
 def rgConstantsOut = new StringBuilder()
@@ -76,7 +78,7 @@ rgRawKeysProc.waitForProcessOutput(rgRawKeysOut, new StringBuilder())
 def referencedRawKeys = rgRawKeysOut.toString().readLines().toSet()
 
 def deadKeys = constantToKey.findAll { constant, key ->
-    !referencedConstants.contains("FlatLafKeys.${constant}".toString()) && !referencedRawKeys.contains(key.toString())
+    !referencedConstants.contains("FlatLafKey.${constant}".toString()) && !referencedRawKeys.contains(key.toString())
 }.values().sort()
 
 if (deadKeys) {

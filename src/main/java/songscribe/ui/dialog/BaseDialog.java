@@ -38,7 +38,7 @@ import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.dom.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
@@ -142,7 +142,7 @@ public abstract class BaseDialog {
         var pane = new JTabbedPane();
 
         // Add a little padding at the top, above the tabs
-        var tabsMarginTop = FlatLafProps.getInt(FlatLafKeys.DIALOG_TABS_MARGIN_TOP);
+        var tabsMarginTop = FlatLafProps.getInt(FlatLafKey.DIALOG_TABS_MARGIN_TOP);
         pane.setBorder(BorderFactory.createEmptyBorder(tabsMarginTop, 0, 0, 0));
 
         // Only the first call registers this as the dialog's top-level tabbed pane.
@@ -191,7 +191,7 @@ public abstract class BaseDialog {
     ) {
         if (labelPosition == LabelPosition.LEFT) {
             var panel = new JPanel(
-                new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0)
+                new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP), 0)
             );
             panel.setBorder(BorderFactory.createEmptyBorder());
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -206,7 +206,7 @@ public abstract class BaseDialog {
             label.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             // Indent the title a bit to line up with the input field
-            var indent = FlatLafProps.getInt(FlatLafKeys.DIALOG_LABEL_INDENT);
+            var indent = FlatLafProps.getInt(FlatLafKey.DIALOG_LABEL_INDENT);
             label.setBorder(BorderFactory.createEmptyBorder(0, indent, 0, 0));
             container.add(label);
             field.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -244,7 +244,7 @@ public abstract class BaseDialog {
      */
     public static void addSectionSeparator(JComponent container) {
         container.add(Box.createVerticalStrut(
-            FlatLafProps.getInt(FlatLafKeys.DIALOG_SECTION_GAP)
+            FlatLafProps.getInt(FlatLafKey.DIALOG_SECTION_GAP)
         ));
     }
 
@@ -261,14 +261,14 @@ public abstract class BaseDialog {
                 && boxLayout.getAxis() == BoxLayout.X_AXIS) {
             container.add(Box.createHorizontalStrut(FlatLafProps.getInt(
                 isLarge
-                    ? FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP
-                    : FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP
+                    ? FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP
+                    : FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP
             )));
         } else {
             container.add(Box.createVerticalStrut(FlatLafProps.getInt(
                 isLarge
-                    ? FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP
-                    : FlatLafKeys.DIALOG_COMPONENT_VERTICAL_GAP
+                    ? FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP
+                    : FlatLafKey.DIALOG_COMPONENT_VERTICAL_GAP
             )));
         }
     }
@@ -500,8 +500,8 @@ public abstract class BaseDialog {
         return true;
     }
 
-    protected @Nullable String getContentPaddingKey() {
-        return hasButtons() ? FlatLafKeys.DIALOG_STD_BUTTONS_PADDING : FlatLafKeys.DIALOG_STD_PADDING;
+    protected @Nullable FlatLafKey getContentPaddingKey() {
+        return hasButtons() ? FlatLafKey.DIALOG_STD_BUTTONS_PADDING : FlatLafKey.DIALOG_STD_PADDING;
     }
 
     protected boolean hasButtons() {
@@ -565,10 +565,10 @@ public abstract class BaseDialog {
         private boolean hasFillItem = false;
 
         protected Tab() {
-            this(hasButtons() ? FlatLafKeys.DIALOG_STD_BUTTONS_PADDING : FlatLafKeys.DIALOG_STD_PADDING);
+            this(hasButtons() ? FlatLafKey.DIALOG_STD_BUTTONS_PADDING : FlatLafKey.DIALOG_STD_PADDING);
         }
 
-        protected Tab(String paddingKey) {
+        protected Tab(FlatLafKey paddingKey) {
             setLayout(new GridBagLayout());
 
             // Add inner padding to the panel
@@ -690,8 +690,8 @@ public abstract class BaseDialog {
 
     protected static class StandardTitledBorder extends TitledBorder {
 
-        private Insets insets = FlatLafProps.getInsets(FlatLafKeys.DIALOG_TITLED_BORDER_PADDING);
-        private final int labelIndent = FlatLafProps.getInt(FlatLafKeys.DIALOG_LABEL_INDENT);
+        private Insets insets = FlatLafProps.getInsets(FlatLafKey.DIALOG_TITLED_BORDER_PADDING);
+        private final int labelIndent = FlatLafProps.getInt(FlatLafKey.DIALOG_LABEL_INDENT);
 
         public StandardTitledBorder(String title) {
             super(title);
@@ -782,7 +782,9 @@ public abstract class BaseDialog {
 
         @Handler
         public void prefsDidChange(PrefsDidChangeNotification notification) {
-            if (notification.getKey() == PrefsKey.ALL || notification.getKey() == PrefsKey.DIALOG_GEOMETRY) {
+            var key = notification.getKey();
+
+            if (key == PrefsKey.ALL || key == PrefsKey.DIALOG_GEOMETRY) {
                 SAVED_GEOMETRY.clear();
             }
         }

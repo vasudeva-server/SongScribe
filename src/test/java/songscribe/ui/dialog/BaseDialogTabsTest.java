@@ -35,7 +35,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.component.ScoreView;
 import songscribe.util.UIUtils;
 
@@ -229,13 +229,13 @@ class BaseDialogTabsTest extends MainFrameMockTest {
     @Test
     void testGetContentPaddingKeyReturnButtonsPaddingWhenHasButtons() {
         var dialog = new ButtonsDialog();
-        assertThat(dialog.getContentPaddingKey()).isEqualTo(FlatLafKeys.DIALOG_STD_BUTTONS_PADDING);
+        assertThat(dialog.getContentPaddingKey()).isEqualTo(FlatLafKey.DIALOG_STD_BUTTONS_PADDING);
     }
 
     @Test
     void testGetContentPaddingKeyReturnsStdPaddingWhenNoButtons() {
         var dialog = new TestDialog();
-        assertThat(dialog.getContentPaddingKey()).isEqualTo(FlatLafKeys.DIALOG_STD_PADDING);
+        assertThat(dialog.getContentPaddingKey()).isEqualTo(FlatLafKey.DIALOG_STD_PADDING);
     }
 
     // -- getScoreView / requireScoreView / getSong --
@@ -337,7 +337,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
             int willHideCount = 0;
 
             TrackingTab() {
-                super(FlatLafKeys.DIALOG_STD_PADDING);
+                super(FlatLafKey.DIALOG_STD_PADDING);
             }
 
             @Override

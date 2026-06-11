@@ -22,7 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 
 public class ScorePanel extends JPanel implements Scrollable {
@@ -47,7 +47,7 @@ public class ScorePanel extends JPanel implements Scrollable {
         // setUI() (called by super) triggers updateUI() before our fields are initialized
         super.updateUI();
 
-        setBackground(FlatLafProps.getColor(FlatLafKeys.SCORE_PANEL_BACKGROUND));
+        setBackground(FlatLafProps.getColor(FlatLafKey.SCORE_PANEL_BACKGROUND));
     }
 
     @Override

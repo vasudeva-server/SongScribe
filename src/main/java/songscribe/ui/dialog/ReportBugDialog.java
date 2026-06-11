@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.Version;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.OptionDialogs;
 import songscribe.util.DesktopUtils;
 import songscribe.ui.component.MainFrame;
@@ -133,8 +133,8 @@ public class ReportBugDialog extends StandardDialog {
     }
 
     @Override
-    protected String getContentPaddingKey() {
-        return FlatLafKeys.DIALOG_NO_PADDING;
+    protected FlatLafKey getContentPaddingKey() {
+        return FlatLafKey.DIALOG_NO_PADDING;
     }
 
     @Override

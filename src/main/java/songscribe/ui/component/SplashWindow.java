@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Version;
 import songscribe.error.RuntimeError;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
@@ -40,7 +40,7 @@ public class SplashWindow extends JWindow {
 
     private static final Logger LOG = LoggerFactory.getLogger(SplashWindow.class);
     private static @Nullable BufferedImage splashImage = null;
-    private static final Color bg = FlatLafProps.getColor(FlatLafKeys.SPLASH_WINDOW_BACKGROUND);
+    private static final Color bg = FlatLafProps.getColor(FlatLafKey.SPLASH_WINDOW_BACKGROUND);
 
     public SplashWindow() {
         super((Frame) null);
@@ -97,7 +97,7 @@ public class SplashWindow extends JWindow {
         var infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setBackground(bg);
-        infoPanel.setBorder(UIUtils.spacingBorder(FlatLafKeys.SPLASH_WINDOW_PADDING));
+        infoPanel.setBorder(UIUtils.spacingBorder(FlatLafKey.SPLASH_WINDOW_PADDING));
         content.add(infoPanel, BorderLayout.SOUTH);
 
         var versionRow = new JPanel(new BorderLayout());
@@ -152,7 +152,7 @@ public class SplashWindow extends JWindow {
 
     private static JLabel createLabel(String text) {
         var label = new JLabel(text);
-        label.setForeground(FlatLafProps.getColor(FlatLafKeys.SPLASH_WINDOW_FOREGROUND));
+        label.setForeground(FlatLafProps.getColor(FlatLafKey.SPLASH_WINDOW_FOREGROUND));
         return label;
     }
 }

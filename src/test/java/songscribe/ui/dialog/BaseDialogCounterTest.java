@@ -31,7 +31,7 @@ import org.mockito.MockedStatic;
 import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -301,7 +301,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
         class FailingTab extends Tab {
 
             FailingTab() {
-                super(FlatLafKeys.DIALOG_STD_PADDING);
+                super(FlatLafKey.DIALOG_STD_PADDING);
             }
 
             @Override
@@ -317,7 +317,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
         class SecondTab extends Tab {
 
             SecondTab() {
-                super(FlatLafKeys.DIALOG_STD_PADDING);
+                super(FlatLafKey.DIALOG_STD_PADDING);
             }
 
             @Override

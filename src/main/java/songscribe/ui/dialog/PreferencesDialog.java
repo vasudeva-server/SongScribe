@@ -33,7 +33,7 @@ import songscribe.prefs.PrefsKey;
 import songscribe.prefs.StartupAction;
 import songscribe.ui.component.TickSlider;
 import songscribe.ui.Appearance;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.AppearanceManager;
 import songscribe.midi.MidiEventFactory;
@@ -86,7 +86,7 @@ public class PreferencesDialog extends BaseDialog {
 
     @Override
     protected int getExtraWidth() {
-        return FlatLafProps.getInt(FlatLafKeys.DIALOG_PREFERENCES_EXTRA_WIDTH);
+        return FlatLafProps.getInt(FlatLafKey.DIALOG_PREFERENCES_EXTRA_WIDTH);
     }
 
     public static void ensureInstrumentsLoaded() {
@@ -100,9 +100,10 @@ public class PreferencesDialog extends BaseDialog {
         var programs = new ArrayList<Integer>(128);
 
         if (MidiController.synthesizer != null) {
+            var synthesizer = MidiController.synthesizer;
             var count = 0;
 
-            for (var instrument : MidiController.synthesizer.getLoadedInstruments()) {
+            for (var instrument : synthesizer.getLoadedInstruments()) {
                 names.add(instrument.getName());
                 programs.add(instrument.getPatch().getProgram());
                 count += 1;
@@ -114,9 +115,10 @@ public class PreferencesDialog extends BaseDialog {
         }
 
         // Sort instruments alphabetically by name, keeping programs in sync
-        var pairs = new ArrayList<Map.Entry<String, Integer>>(names.size());
+        var nameCount = names.size();
+        var pairs = new ArrayList<Map.Entry<String, Integer>>(nameCount);
 
-        for (var i = 0; i < names.size(); i++) {
+        for (var i = 0; i < nameCount; i++) {
             pairs.add(Map.entry(names.get(i), programs.get(i)));
         }
 
@@ -356,7 +358,7 @@ public class PreferencesDialog extends BaseDialog {
 
         private JPanel createPageSizeAndUnitsRow() {
             var panel = new JPanel(new GridLayout(
-                1, 2, FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP), 0
+                1, 2, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP), 0
             ));
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
             panel.add(createPageSizeSection());
@@ -384,19 +386,20 @@ public class PreferencesDialog extends BaseDialog {
 
         private JPanel createAppearanceSection() {
             var section = new TitledSection(Strings.get(Strings.LABEL_PREFS_SECTION_APPEARANCE));
-            var row = new JPanel(new FlowLayout(FlowLayout.CENTER, FlatLafProps.getInt(FlatLafKeys.DIALOG_PREFERENCES_GENERAL_APPEARANCE_ITEM_GAP), 0));
-            row.setBorder(UIUtils.spacingBorder(FlatLafKeys.DIALOG_PREFERENCES_GENERAL_APPEARANCE_PADDING));
+            var row = new JPanel(new FlowLayout(FlowLayout.CENTER, FlatLafProps.getInt(FlatLafKey.DIALOG_PREFERENCES_GENERAL_APPEARANCE_ITEM_GAP), 0));
+            row.setBorder(UIUtils.spacingBorder(FlatLafKey.DIALOG_PREFERENCES_GENERAL_APPEARANCE_PADDING));
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            var iconSize = FlatLafProps.getInt(FlatLafKey.DIALOG_PREFERENCES_GENERAL_APPEARANCE_ICON_SIZE);
             row.add(createAppearanceItem(
-                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-system.svg"), FlatLafProps.getInt(FlatLafKeys.DIALOG_PREFERENCES_GENERAL_APPEARANCE_ICON_SIZE)),
+                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-system.svg"), iconSize),
                 systemRadio
             ));
             row.add(createAppearanceItem(
-                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-light.svg"), FlatLafProps.getInt(FlatLafKeys.DIALOG_PREFERENCES_GENERAL_APPEARANCE_ICON_SIZE)),
+                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-light.svg"), iconSize),
                 lightRadio
             ));
             row.add(createAppearanceItem(
-                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-dark.svg"), FlatLafProps.getInt(FlatLafKeys.DIALOG_PREFERENCES_GENERAL_APPEARANCE_ICON_SIZE)),
+                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-dark.svg"), iconSize),
                 darkRadio
             ));
             section.add(row);
@@ -429,7 +432,7 @@ public class PreferencesDialog extends BaseDialog {
             });
             radio.setAlignmentX(Component.CENTER_ALIGNMENT);
             panel.add(iconLabel);
-            panel.add(Box.createVerticalStrut(FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_GAP)));
+            panel.add(Box.createVerticalStrut(FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_GAP)));
             panel.add(radio);
             return panel;
         }
@@ -548,7 +551,7 @@ public class PreferencesDialog extends BaseDialog {
             );
 
             var border = (StandardTitledBorder) section.getBorder();
-            border.setInsets(FlatLafProps.getInsets(FlatLafKeys.DIALOG_PREFERENCES_PLAY_PLAYBACK_PADDING));
+            border.setInsets(FlatLafProps.getInsets(FlatLafKey.DIALOG_PREFERENCES_PLAY_PLAYBACK_PADDING));
 
             addSliderRow(section, Strings.LABEL_PREFS_PLAYBACK_DURATION, durationSlider);
             addSliderRow(section, Strings.LABEL_PREFS_PLAYBACK_VOLUME, volumeSlider);
@@ -558,7 +561,7 @@ public class PreferencesDialog extends BaseDialog {
         }
 
         private void addSliderRow(TitledSection section, String labelKey, TickSlider slider) {
-            var gap = FlatLafProps.getInt(FlatLafKeys.DIALOG_PREFERENCES_PLAY_SLIDER_GAP);
+            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_PREFERENCES_PLAY_SLIDER_GAP);
 
             if (section.getComponentCount() > 0) {
                 section.add(Box.createVerticalStrut(gap));
@@ -611,8 +614,8 @@ public class PreferencesDialog extends BaseDialog {
             panel.add(new JScrollPane(instrumentList), gc);
 
             scaleButton.setText("\uEF4E");
-            scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(FlatLafProps.getFloat(FlatLafKeys.DIALOG_PREFERENCES_INSTRUMENTS_PLAY_BUTTON_SIZE)));
-            scaleButton.setMargin(FlatLafProps.getInsets(FlatLafKeys.DIALOG_PREFERENCES_INSTRUMENTS_PLAY_BUTTON_PADDING));
+            scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(FlatLafProps.getFloat(FlatLafKey.DIALOG_PREFERENCES_INSTRUMENTS_PLAY_BUTTON_SIZE)));
+            scaleButton.setMargin(FlatLafProps.getInsets(FlatLafKey.DIALOG_PREFERENCES_INSTRUMENTS_PLAY_BUTTON_PADDING));
             UIUtils.setToolTipText(scaleButton, scaleAction);
 
             var spaceKey = (KeyStroke) scaleAction.getValue(Action.ACCELERATOR_KEY);
@@ -622,7 +625,7 @@ public class PreferencesDialog extends BaseDialog {
             gc.weightx = 0.5;
             gc.fill = GridBagConstraints.NONE;
             gc.anchor = GridBagConstraints.WEST;
-            var buttonGap = FlatLafProps.getInt(FlatLafKeys.DIALOG_PREFERENCES_INSTRUMENTS_BUTTON_GAP);
+            var buttonGap = FlatLafProps.getInt(FlatLafKey.DIALOG_PREFERENCES_INSTRUMENTS_BUTTON_GAP);
             gc.insets = new Insets(0, buttonGap, 0, 0);
             panel.add(scaleButton, gc);
 

@@ -24,7 +24,7 @@ import module java.desktop;
 import java.io.IOException;
 
 import songscribe.Strings;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.OptionDialogs;
 import songscribe.util.Utils;
 
@@ -72,8 +72,8 @@ public class HTMLDialog extends StandardDialog {
     }
 
     @Override
-    protected String getContentPaddingKey() {
-        return FlatLafKeys.DIALOG_NO_PADDING;
+    protected FlatLafKey getContentPaddingKey() {
+        return FlatLafKey.DIALOG_NO_PADDING;
     }
 
     @Override

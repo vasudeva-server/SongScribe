@@ -29,16 +29,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class FlatLafPropsTest extends UnitTest {
 
-    // --- Row 21: get throws RuntimeError when key is absent from UIManager ---
-
-    @Test
-    void testGetThrowsWhenKeyIsAbsent() {
-        // RuntimeError.exit() is redirected by UnitTest to throw AssertionError;
-        // the missing-key branch must trigger that path.
-        assertThatThrownBy(() -> FlatLafProps.get("SongScribe.nonexistent.key"))
-            .isInstanceOf(AssertionError.class);
-    }
-
     // --- Row 22: get returns typed value when key is present ---
 
     @Test
@@ -46,7 +36,18 @@ class FlatLafPropsTest extends UnitTest {
         // installFlatLafDefaults() is called by UnitTest.suppressDialogs(); no extra setup needed.
         // DIALOG_COMPONENT_VERTICAL_GAP is defined as 5 in FlatLaf.properties.
         final int expectedGap = 5;
-        int gap = FlatLafProps.get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_GAP);
+        var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_GAP);
         assertThat(gap).isEqualTo(expectedGap);
+    }
+
+    // --- Row 23: get throws when the requested type does not match the property's type ---
+
+    @Test
+    void testGetThrowsWhenTypeMismatch() {
+        // RuntimeError.exit() is redirected by UnitTest to throw AssertionError;
+        // the wrong-type branch must trigger that path. DIALOG_COMPONENT_VERTICAL_GAP
+        // is an Integer, so requesting it as a String must fail.
+        assertThatThrownBy(() -> FlatLafProps.getString(FlatLafKey.DIALOG_COMPONENT_VERTICAL_GAP))
+            .isInstanceOf(AssertionError.class);
     }
 }

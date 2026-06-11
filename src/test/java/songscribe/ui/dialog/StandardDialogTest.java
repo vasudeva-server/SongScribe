@@ -31,7 +31,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.prefs.Prefs;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -300,7 +300,7 @@ class StandardDialogTest extends MainFrameMockTest {
             int setDataCallCount = 0;
 
             ValidationTab(boolean valid) {
-                super(FlatLafKeys.DIALOG_STD_PADDING);
+                super(FlatLafKey.DIALOG_STD_PADDING);
                 this.valid = valid;
             }
 

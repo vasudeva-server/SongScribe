@@ -45,7 +45,7 @@ import songscribe.dom.Duration;
 import songscribe.dom.KeyType;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.KeySignatureDisplay;
 import songscribe.ui.OptionDialogs;
@@ -357,7 +357,7 @@ public class SongSettingsDialog extends StandardDialog {
 
             titlePreview.setOpaque(true);
             titlePreview.setBackground(
-                FlatLafProps.getColor(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND)
+                FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND)
             );
 
             // Keep the preview in sync as the user edits the number/title, which
@@ -399,7 +399,7 @@ public class SongSettingsDialog extends StandardDialog {
         protected void initContents() {
             add(createTitleSection());
             addSectionSeparator(this);
-            var gap = FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
+            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
             var backgroundColor = titlePreview.getBackground();
             var previewWrapper = new JPanel();
             previewWrapper.setOpaque(true);
@@ -456,7 +456,7 @@ public class SongSettingsDialog extends StandardDialog {
 
             var row = new JPanel(new FlowLayout(
                 FlowLayout.LEFT,
-                FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP),
+                FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP),
                 0
             ));
             row.setBorder(BorderFactory.createEmptyBorder());
@@ -475,7 +475,7 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private JPanel createTakePanel() {
-            var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
+            var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             panel.add(new JButton(takeAction));
@@ -673,7 +673,7 @@ public class SongSettingsDialog extends StandardDialog {
 
             addSeparator(section);
 
-            var wordsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
+            var wordsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
             wordsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             addLabeledField(
@@ -990,7 +990,7 @@ public class SongSettingsDialog extends StandardDialog {
             );
 
             var row = new JPanel(
-                new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0)
+                new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP), 0)
             );
             row.setBorder(BorderFactory.createEmptyBorder());
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -1174,7 +1174,7 @@ public class SongSettingsDialog extends StandardDialog {
         );
 
         private FontTab() {
-            super(FlatLafKeys.DIALOG_SONG_SETTINGS_FONT_PADDING);
+            super(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PADDING);
 
             for (var preview : new JComponent[]{
                 titleFontPreview,
@@ -1263,7 +1263,7 @@ public class SongSettingsDialog extends StandardDialog {
                 1,
                 UIManager.getColor("Component.borderColor")
             );
-            var innerBorder = UIUtils.spacingBorder(FlatLafKeys.DIALOG_SONG_SETTINGS_FONT_CONTAINER_PADDING);
+            var innerBorder = UIUtils.spacingBorder(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_CONTAINER_PADDING);
             container.setBorder(
                 BorderFactory.createCompoundBorder(outerBorder, innerBorder)
             );
@@ -1271,7 +1271,7 @@ public class SongSettingsDialog extends StandardDialog {
             var contents = new JPanel(new GridBagLayout());
             contents.setAlignmentX(Component.LEFT_ALIGNMENT);
             contents.setAlignmentY(Component.TOP_ALIGNMENT);
-            var tabsMarginTop = FlatLafProps.getInt(FlatLafKeys.DIALOG_TABS_MARGIN_TOP);
+            var tabsMarginTop = FlatLafProps.getInt(FlatLafKey.DIALOG_TABS_MARGIN_TOP);
             contents.setBorder(BorderFactory.createEmptyBorder(tabsMarginTop, 0, 0, 0));
 
             // Font name label
@@ -1287,7 +1287,7 @@ public class SongSettingsDialog extends StandardDialog {
             var labelOuterBorder = BorderFactory.createLineBorder(
                 UIManager.getColor("Component.borderColor")
             );
-            var labelInnerBorder = UIUtils.spacingBorder(FlatLafKeys.DIALOG_SONG_SETTINGS_FONT_LABEL_PADDING);
+            var labelInnerBorder = UIUtils.spacingBorder(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_LABEL_PADDING);
             fontLabel.setBorder(
                 BorderFactory.createCompoundBorder(
                     labelOuterBorder,
@@ -1299,7 +1299,7 @@ public class SongSettingsDialog extends StandardDialog {
 
             // Preview
             gbc.gridwidth = 2;
-            gbc.insets = new Insets(FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP), 0, 0, 0);
+            gbc.insets = new Insets(FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP), 0, 0, 0);
 
             // Create padding around the preview by giving it a border and wrapping
             // it in a panel
@@ -1308,8 +1308,8 @@ public class SongSettingsDialog extends StandardDialog {
                     preview,
                     FlatLafProps.getInsets(
                         isLarge
-                            ? FlatLafKeys.DIALOG_SONG_SETTINGS_FONT_PREVIEW_LARGE_PADDING
-                            : FlatLafKeys.DIALOG_SONG_SETTINGS_FONT_PREVIEW_SMALL_PADDING
+                            ? FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PREVIEW_LARGE_PADDING
+                            : FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PREVIEW_SMALL_PADDING
                     )
                 ),
                 gbc
@@ -1321,7 +1321,7 @@ public class SongSettingsDialog extends StandardDialog {
             gbc.anchor = GridBagConstraints.EAST;
             gbc.fill = GridBagConstraints.NONE;
             gbc.weightx = 0.0;
-            gbc.insets = new Insets(0, FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP), 0, 0);
+            gbc.insets = new Insets(0, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP), 0, 0);
             contents.add(
                 new JButton(new ChooseFontAction(mainFrame, fontLabel, preview)),
                 gbc
@@ -1554,7 +1554,7 @@ public class SongSettingsDialog extends StandardDialog {
                 GLYPH_BOX_WIDTH_PX = (int) Math.ceil(maxGlyphWidth);
                 GLYPH_BOX_HEIGHT_PX = (int) Math.ceil(maxGlyphHeight);
                 LABEL_GAP_PX = FlatLafProps.getInt(
-                    FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP
+                    FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP
                 );
                 LABEL_WIDTH_PX = maxLabelWidth;
 

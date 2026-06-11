@@ -22,7 +22,7 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.util.UIUtils;
 
@@ -33,7 +33,7 @@ import songscribe.util.UIUtils;
 public abstract class StandardDialog extends BaseDialog {
 
     protected JPanel buttonPanel = new JPanel(
-        new FlowLayout(FlowLayout.RIGHT, FlatLafProps.getInt(FlatLafKeys.DIALOG_BUTTON_HORIZONTAL_GAP), 0)
+        new FlowLayout(FlowLayout.RIGHT, FlatLafProps.getInt(FlatLafKey.DIALOG_BUTTON_HORIZONTAL_GAP), 0)
     );
     protected final JButton okButton;
     protected final JButton cancelButton;
@@ -67,7 +67,7 @@ public abstract class StandardDialog extends BaseDialog {
         cancelButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_CANCEL));
         cancelButton.addActionListener(_ -> setVisible(false));
 
-        buttonPanel.setBorder(UIUtils.spacingBorder(FlatLafKeys.DIALOG_BUTTON_PANEL_PADDING));
+        buttonPanel.setBorder(UIUtils.spacingBorder(FlatLafKey.DIALOG_BUTTON_PANEL_PADDING));
         buttonPanel.add(cancelButton);
         buttonPanel.add(okButton);
     }

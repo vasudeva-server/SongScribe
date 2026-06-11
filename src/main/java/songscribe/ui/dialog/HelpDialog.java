@@ -26,7 +26,7 @@ import java.io.IOException;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.OptionDialogs;
 import songscribe.util.Utils;
 
@@ -73,8 +73,8 @@ public class HelpDialog
     }
 
     @Override
-    protected String getContentPaddingKey() {
-        return FlatLafKeys.DIALOG_NO_PADDING;
+    protected FlatLafKey getContentPaddingKey() {
+        return FlatLafKey.DIALOG_NO_PADDING;
     }
 
     @Override
@@ -94,27 +94,31 @@ public class HelpDialog
         var lo = (ListObject) value;
 
         if (lo.component == null) {
-            lo.component = new JPanel();
+            var newPanel = new JPanel();
+            lo.component = newPanel;
             var label = new JLabel(lo.name);
             label.putClientProperty("FlatLaf.styleClass", "h2.regular");
             label.setPreferredSize(new Dimension(200, 30));
-            ((JPanel) lo.component).add(label);
+            newPanel.add(label);
         }
 
+        var panel = (JPanel) lo.component;
+        var firstChild = panel.getComponent(0);
+
         if (isSelected) {
-            lo.component.setBackground(list.getSelectionBackground());
-            ((JPanel) lo.component).getComponent(0).setForeground(list.getSelectionForeground());
+            panel.setBackground(list.getSelectionBackground());
+            firstChild.setForeground(list.getSelectionForeground());
         } else {
-            lo.component.setBackground(list.getBackground());
-            ((JPanel) lo.component).getComponent(0).setForeground(list.getForeground());
+            panel.setBackground(list.getBackground());
+            firstChild.setForeground(list.getForeground());
         }
 
         var border = cellHasFocus
             ? UIManager.getBorder("List.focusCellHighlightBorder")
             : null;
-        ((JComponent) lo.component).setBorder(border);
+        panel.setBorder(border);
 
-        return lo.component;
+        return panel;
     }
 
     @Override

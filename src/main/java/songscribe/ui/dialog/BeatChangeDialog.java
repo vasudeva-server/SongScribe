@@ -28,7 +28,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.dom.BeatChange;
 import songscribe.dom.Duration;
 import songscribe.dom.StaffElement;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.DurationListCellRenderer;
 import songscribe.dom.BeatChangeAttachment;
@@ -45,7 +45,7 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 
         var row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-        var extraGap = FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP);
+        var extraGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP);
         row.add(durationCombo);
         row.add(Box.createHorizontalStrut(extraGap));
         row.add(new JLabel("="));

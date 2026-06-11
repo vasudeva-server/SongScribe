@@ -53,7 +53,7 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Control;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
@@ -116,15 +116,15 @@ public final class ScoreView
     // Colors used to draw the music score in various states — read from UIManager for theming.
     // Callers should not cache these values; read at render time.
     public static Color getPlayingNoteColor() {
-        return FlatLafProps.getColor(FlatLafKeys.SCORE_PLAYING_NOTE_COLOR);
+        return FlatLafProps.getColor(FlatLafKey.SCORE_PLAYING_NOTE_COLOR);
     }
 
     public static Color getPreviewElementColor() {
-        return FlatLafProps.getColor(FlatLafKeys.SCORE_PREVIEW_ELEMENT_COLOR);
+        return FlatLafProps.getColor(FlatLafKey.SCORE_PREVIEW_ELEMENT_COLOR);
     }
 
     public static Color getSelectionColor() {
-        return FlatLafProps.getColor(FlatLafKeys.SCORE_SELECTION_COLOR);
+        return FlatLafProps.getColor(FlatLafKey.SCORE_SELECTION_COLOR);
     }
 
     // Edit popup
@@ -274,6 +274,7 @@ public final class ScoreView
         applyDocumentFonts();
 
         updatePageLayout(ScaleContext.ssToRoundedPx(song.getLineWidthSs()));
+
         if (inputHandler != null) {
             addMouseMotionListener(inputHandler);
             addMouseListener(inputHandler);
@@ -338,7 +339,7 @@ public final class ScoreView
             return;
         }
 
-        var color = FlatLafProps.getColor(FlatLafKeys.SCORE_PANEL_BACKGROUND);
+        var color = FlatLafProps.getColor(FlatLafKey.SCORE_PANEL_BACKGROUND);
         scrollPane.setBackground(color);
         scrollPane.getViewport().setBackground(color);
     }
@@ -420,7 +421,7 @@ public final class ScoreView
     }
 
     public boolean openFile(File file, boolean updateCurrentFile) {
-        SongLoadResult result = SongLoader.load(file);
+        var result = SongLoader.load(file);
 
         if (result instanceof SongLoadResult.Success success) {
             var lineWidthInches =
@@ -569,31 +570,31 @@ public final class ScoreView
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        var g2 = (Graphics2D) g;
+        var graphics2d = (Graphics2D) g;
 
         try (var ignored = GraphicsState.save(
-            g2,
+            graphics2d,
             GraphicsState.Property.COLOR
         )) {
-            g2.setColor(FlatLafProps.getColor(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND));
-            g2.fillRect(0, 0, getWidth(), getHeight());
+            graphics2d.setColor(FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND));
+            graphics2d.fillRect(0, 0, getWidth(), getHeight());
         }
 
-        drawEditElements(g2);
+        drawEditElements(graphics2d);
     }
 
     private void drawEditElements(Graphics2D g2) {
         var mode = viewState.getMode();
-        var ha = viewState.getHorizontalAdjustment();
-        var va = viewState.getVerticalAdjustment();
+        var horizontalAdjustment = viewState.getHorizontalAdjustment();
+        var verticalAdjustment = viewState.getVerticalAdjustment();
 
         //noinspection StatementWithEmptyBody
         if (mode == Mode.EDIT) {
             // Insertion note rendering is now handled by LineComponent
-        } else if (mode == Mode.ADJUSTMENT && ha != null) {
-            ha.repaint(g2);
-        } else if (mode == Mode.VERTICAL_ADJUSTMENT && va != null) {
-            va.repaint(g2);
+        } else if (mode == Mode.ADJUSTMENT && horizontalAdjustment != null) {
+            horizontalAdjustment.repaint(g2);
+        } else if (mode == Mode.VERTICAL_ADJUSTMENT && verticalAdjustment != null) {
+            verticalAdjustment.repaint(g2);
         }
     }
 
@@ -674,21 +675,21 @@ public final class ScoreView
         var theSong = getSong();
         var title = theSong.getTitle();
         var numberStr = theSong.getNumber();
-        var sb = new StringBuilder(title.length() + 10);
+        var stringBuilder = new StringBuilder(title.length() + 10);
 
         try {
             var number = Integer.parseInt(numberStr);
-            sb.append(String.format("%03d", number));
+            stringBuilder.append(String.format("%03d", number));
         } catch (NumberFormatException nfe) {
-            sb.append(numberStr);
+            stringBuilder.append(numberStr);
         }
 
         if (!numberStr.isEmpty()) {
-            sb.append(' ');
+            stringBuilder.append(' ');
         }
 
-        sb.append(StringUtils.stripDiacritics(title));
-        return sb.toString();
+        stringBuilder.append(StringUtils.stripDiacritics(title));
+        return stringBuilder.toString();
     }
 
     public void setSong(Song song) {
@@ -1076,16 +1077,19 @@ public final class ScoreView
         if (documentFonts == null) {
             throw new IllegalStateException("applyDocumentFonts called before documentFonts initialized");
         }
+
         // Headless converter path: openFile -> installDocumentFonts runs without init().
         if (mainPanel == null) {
             return;
         }
+
         rebuildLyricRenderMetrics();
         var textPanel = mainPanel.getTextPanel();
+        var lyricsFont = documentFonts.getLyricsFont();
         mainPanel.getTitleComponent().setFont(documentFonts.getTitleFont());
-        textPanel.getUnderLyricsComponent().setFont(documentFonts.getLyricsFont());
+        textPanel.getUnderLyricsComponent().setFont(lyricsFont);
         textPanel.getBanglaLyricsComponent().setFont(documentFonts.getBanglaFont());
-        textPanel.getTranslationComponent().setFont(documentFonts.getLyricsFont());
+        textPanel.getTranslationComponent().setFont(lyricsFont);
         mainPanel.getFootnotesComponent().setFont(documentFonts.getFootnoteFont());
         revalidate();
     }
@@ -1120,9 +1124,11 @@ public final class ScoreView
      */
     public void setFonts(DocumentFonts newFonts) {
         var oldFonts = getDocumentFonts();
+
         if (newFonts.equals(oldFonts)) {
             return;
         }
+
         var theSong = getSong();
         theSong.withModification(() ->
             theSong.applyChange(new FontChange(oldFonts, newFonts), () -> {

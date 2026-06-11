@@ -1,0 +1,21 @@
+// This is an auto generated code. DO NOT MODIFY!
+package songscribe.ui;
+
+/**
+ * Enum constants for custom SongScribe.* keys defined in FlatLaf.properties.
+ * Generated from {@code src/main/resources/songscribe/FlatLaf.properties}.
+ */
+public enum FlatLafKey {
+
+{{CONSTANTS}}
+
+    private final String key;
+
+    FlatLafKey(String key) {
+        this.key = key;
+    }
+
+    public String key() {
+        return key;
+    }
+}

@@ -39,7 +39,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.action.EditLyricAction;
 import songscribe.ui.component.score.LineComponent;
@@ -237,9 +237,9 @@ public final class LyricEditor extends MyJTextField {
         this.element = element;
 
         var openingLyric = element.getLyricForVerse(CURRENT_VERSE);
-        openedAsExtender = openingLyric != null
-            && (openingLyric.extend() == Lyric.Extend.CONTINUE
-                || openingLyric.extend() == Lyric.Extend.STOP);
+        var openingExtend = openingLyric != null ? openingLyric.extend() : null;
+        openedAsExtender = openingExtend == Lyric.Extend.CONTINUE
+            || openingExtend == Lyric.Extend.STOP;
 
         var lineIndex = score.getSong().indexOfLine(line);
         lineComponent = lineIndex >= 0 ? score.getLineComponent(lineIndex) : null;
@@ -255,12 +255,13 @@ public final class LyricEditor extends MyJTextField {
         installKeyBindings();
 
         var existingLyric = element.getMainLyric();
+        var existingText = existingLyric != null ? existingLyric.text() : null;
 
-        if (existingLyric != null && !existingLyric.text().isBlank()) {
+        if (existingText != null && !existingText.isBlank()) {
             // selectAll() leaves the caret at the end of the text (mark at 0, dot at length),
             // which gives "fully selected with caret at end" — no follow-up setCaretPosition
             // needed (and using one would collapse the selection).
-            setText(existingLyric.text());
+            setText(existingText);
             selectAll();
         }
     }
@@ -275,7 +276,7 @@ public final class LyricEditor extends MyJTextField {
         setUI(new LyricTextFieldUI());
         setFont(score.getLyricRenderMetrics().lyricsFont());
         setOpaque(true);
-        setBackground(FlatLafProps.getColor(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND));
+        setBackground(FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND));
         setForeground(Color.BLACK);
         setCaretColor(Color.BLACK);
         setHorizontalAlignment(LEFT);
@@ -610,7 +611,8 @@ public final class LyricEditor extends MyJTextField {
 
         var lyricRenderMetrics = score.getLyricRenderMetrics();
         var songLayoutMetrics = score.getSongLayoutMetrics();
-        var boxMetrics = lyricRenderMetrics.lyricBoxMetricsSs(getText());
+        var text = getText();
+        var boxMetrics = lyricRenderMetrics.lyricBoxMetricsSs(text);
         var advanceSs = Math.max(boxMetrics.advanceSs(), EMPTY_BOX_MIN_WIDTH_SS);
         var anchor = layoutResult.getLyricAnchor(element, songLayoutMetrics);
 
@@ -619,7 +621,7 @@ public final class LyricEditor extends MyJTextField {
 
         var advancePx = ScaleContext.ssToPx(advanceSs);
         var roundedAdvancePx = (int) Math.ceil(advancePx);
-        var trailingCaretRoomPx = getText().isEmpty()
+        var trailingCaretRoomPx = text.isEmpty()
             ? MIN_TRAILING_CARET_ROOM_PX
             : 0;
         var contentWidthPx = roundedAdvancePx + trailingCaretRoomPx;
@@ -689,9 +691,9 @@ public final class LyricEditor extends MyJTextField {
         var wantsCarrier = extend == Lyric.Extend.STOP || extend == Lyric.Extend.CONTINUE;
         var wantsContinues = kind != CommitKind.WORD_FINAL;
         var wantsCompound = kind == CommitKind.WORD_CONTINUING_COMPOUND;
-        var existingContinues = existingLyric != null
-            && (existingLyric.syllabic() == Lyric.Syllabic.BEGIN
-                || existingLyric.syllabic() == Lyric.Syllabic.MIDDLE);
+        var existingSyllabic = existingLyric != null ? existingLyric.syllabic() : null;
+        var existingContinues = existingSyllabic == Lyric.Syllabic.BEGIN
+            || existingSyllabic == Lyric.Syllabic.MIDDLE;
         var existingCompound = existingLyric != null && existingLyric.compound();
 
         if (text.equals(existingText)
@@ -777,8 +779,10 @@ public final class LyricEditor extends MyJTextField {
             return new CommitSpec(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
         }
 
-        if (lyric.extend() == Lyric.Extend.CONTINUE || lyric.extend() == Lyric.Extend.STOP) {
-            return new CommitSpec(CommitKind.WORD_FINAL, lyric.extend());
+        var extend = lyric.extend();
+
+        if (extend == Lyric.Extend.CONTINUE || extend == Lyric.Extend.STOP) {
+            return new CommitSpec(CommitKind.WORD_FINAL, extend);
         }
 
         var kind = switch (lyric.syllabic()) {
@@ -790,7 +794,7 @@ public final class LyricEditor extends MyJTextField {
                 "Text-bearing lyric at editor element is missing syllabic");
         };
 
-        return new CommitSpec(kind, lyric.extend());
+        return new CommitSpec(kind, extend);
     }
 
     private void openIndexOrDismiss(int nextIndex) {
@@ -1057,9 +1061,11 @@ public final class LyricEditor extends MyJTextField {
             return;
         }
 
-        if (backLyric.extend() == Lyric.Extend.CONTINUE) {
+        var backExtend = backLyric.extend();
+
+        if (backExtend == Lyric.Extend.CONTINUE) {
             rewriteLyricExtend(backIndex, backLyric, Lyric.Extend.STOP);
-        } else if (backLyric.extend() == Lyric.Extend.START) {
+        } else if (backExtend == Lyric.Extend.START) {
             // START directly precedes the break point — the whole chain collapses.
             rewriteLyricExtend(backIndex, backLyric, Lyric.Extend.NONE);
         }

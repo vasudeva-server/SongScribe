@@ -28,7 +28,7 @@ import songscribe.util.UIUtils;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Annotation;
 import songscribe.dom.StaffElement;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.dom.AnnotationAttachment;
 
@@ -84,14 +84,14 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         sectionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         sectionRow.add(alignmentSection);
         sectionRow.add(Box.createHorizontalStrut(
-            FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP)));
+            FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP)));
         sectionRow.add(verticalSection);
 
         var annotationLabel = new JLabel(Strings.get(Strings.LABEL_ANNOTATION));
         annotationLabel.setLabelFor(annotationCombo);
         var annotationRow = new JPanel(new FlowLayout(
             FlowLayout.LEFT,
-            FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP),
+            FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP),
             0
         ));
         annotationRow.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -102,7 +102,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.add(annotationRow);
         content.add(Box.createVerticalStrut(
-            FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP)));
+            FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP)));
         content.add(sectionRow);
 
         contentPanel.add(BorderLayout.CENTER, content);

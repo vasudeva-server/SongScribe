@@ -24,7 +24,7 @@ import module java.desktop;
 import java.awt.event.MouseEvent;
 
 import songscribe.Strings;
-import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.SplashWindow;
 import songscribe.util.DesktopUtils;
@@ -39,7 +39,7 @@ public class AboutDialog extends BaseDialog {
     public AboutDialog() {
         super(Strings.get(Strings.DIALOG_ABOUT_TITLE), true, DialogCategory.INFORMATIONAL);
 
-        var gap = FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
+        var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
 
         var divider = new JPanel();
         divider.setBackground(Color.LIGHT_GRAY);
@@ -69,8 +69,8 @@ public class AboutDialog extends BaseDialog {
     }
 
     @Override
-    protected String getContentPaddingKey() {
-        return FlatLafKeys.DIALOG_NO_PADDING;
+    protected FlatLafKey getContentPaddingKey() {
+        return FlatLafKey.DIALOG_NO_PADDING;
     }
 
     private JLabel createLink(String text, String url) {

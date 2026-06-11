@@ -40,6 +40,7 @@ import com.formdev.flatlaf.extras.FlatUIDefaultsInspector;
 import songscribe.Strings;
 import songscribe.ui.AppearanceManager;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 
 import songscribe.font.SourceSans3Font;
@@ -203,8 +204,8 @@ public final class UIUtils {
         return padComponent(component, insets.top, insets.left, insets.bottom, insets.right);
     }
 
-    public static Border spacingBorder(String flatLafKey) {
-        Insets insets = FlatLafProps.getInsets(flatLafKey);
+    public static Border spacingBorder(FlatLafKey flatLafKey) {
+        var insets = FlatLafProps.getInsets(flatLafKey);
         return BorderFactory.createEmptyBorder(insets.top, insets.left, insets.bottom, insets.right);
     }
 
