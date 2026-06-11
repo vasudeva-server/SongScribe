@@ -94,13 +94,13 @@ public record SongMetadata(
     }
 
     /**
-     * Returns {@code " by "} when the person is Sri Chinmoy, otherwise the
-     * {@code lyricsSource} connector. The connector is a function of the
-     * person, not the role.
+     * Returns the {@link Song.LyricsSource#LYRICIST} connector when the person is
+     * Sri Chinmoy, otherwise the {@code lyricsSource} connector. The connector is
+     * a function of the person, not the role.
      */
     public String connectorFor(String person) {
         if (person.equals(Song.SRI_CHINMOY)) {
-            return " by ";
+            return Song.LyricsSource.LYRICIST.getConnector();
         }
 
         return lyricsSource.getConnector();

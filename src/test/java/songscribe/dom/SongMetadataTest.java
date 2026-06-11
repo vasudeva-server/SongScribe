@@ -146,6 +146,16 @@ class SongMetadataTest extends UnitTest {
         }
 
         @Test
+        void testProcessTextPreservesShortAWhenPrefFalse() {
+            Prefs.put(PrefsKey.STRIP_SHORT_A, false);
+            // With replacement off, ă/Ă must be preserved verbatim.
+            var m = withTitle("ăĂ");
+            assertThat(m.title())
+                .as("ă/Ă preserved when STRIP_SHORT_A=false")
+                .isEqualTo("ăĂ");
+        }
+
+        @Test
         void testAllThreePhasesApplied() {
             // Exercises all three pipeline stages with a single input:
             //   "hello\nworld  ă" → strip-LF → "hello world  ă"
@@ -221,6 +231,14 @@ class SongMetadataTest extends UnitTest {
             var m = withPersons(Song.SRI_CHINMOY, "");
             assertThat(m.lyricist())
                 .as("empty lyricist coerced to SRI_CHINMOY")
+                .isEqualTo(Song.SRI_CHINMOY);
+        }
+
+        @Test
+        void testWhitespaceOnlyLyricistCoercedToSriChinmoy() {
+            var m = withPersons(Song.SRI_CHINMOY, "   ");
+            assertThat(m.lyricist())
+                .as("all-whitespace lyricist coerced to SRI_CHINMOY")
                 .isEqualTo(Song.SRI_CHINMOY);
         }
 
@@ -395,7 +413,7 @@ class SongMetadataTest extends UnitTest {
         void testOfficialEmptyLyricsReturnsFalse() {
             var song = songWith(false, "");
             assertThat(song.showTranslation())
-                .as("official=true, translatedLyrics=empty → false")
+                .as("unofficialTranslation=false, translatedLyrics=empty → false")
                 .isFalse();
         }
 
@@ -404,7 +422,7 @@ class SongMetadataTest extends UnitTest {
         void testOfficialNonEmptyLyricsReturnsTrue() {
             var song = songWith(false, "some translation");
             assertThat(song.showTranslation())
-                .as("official=true, translatedLyrics=non-empty → true")
+                .as("unofficialTranslation=false, translatedLyrics=non-empty → true")
                 .isTrue();
         }
 

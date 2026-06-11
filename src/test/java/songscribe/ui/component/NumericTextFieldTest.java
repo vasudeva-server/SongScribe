@@ -21,6 +21,8 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 
@@ -30,9 +32,17 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.ui.OptionDialogs;
 import songscribe.util.UIUtils;
 
 class NumericTextFieldTest extends UnitTest {
+
+    private static final int FIELD_COLUMNS = 4;
+    private static final int RANGE_MIN = 10;
+    private static final int RANGE_MAX = 20;
+    private static final int IN_RANGE_VALUE = 15;
+    private static final int BELOW_MIN_VALUE = 9;
+    private static final int ABOVE_MAX_VALUE = 21;
 
     // -------------------------------------------------------------------
     // Row 58: Integer filter — digits allowed, non-digit rejected with beep
@@ -178,6 +188,114 @@ class NumericTextFieldTest extends UnitTest {
                 field.getDocument().insertString(1, ".", null);
                 uiUtilsMock.verify(UIUtils::beep);
                 assertThat(field.getText()).isEqualTo("7");
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // RangeVerifier: focus-time inclusive range validation installed by the
+    // NumericTextField(columns, min, max, isOptional) constructor.
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RangeVerification {
+
+        private NumericTextField rangeField(boolean isOptional) {
+            return new NumericTextField(FIELD_COLUMNS, RANGE_MIN, RANGE_MAX, isOptional);
+        }
+
+        @Test
+        void testInRangeValueVerifies() {
+            var field = rangeField(false);
+            field.setText(Integer.toString(IN_RANGE_VALUE));
+            assertThat(field.getInputVerifier().verify(field))
+                .as("value within [min, max] verifies")
+                .isTrue();
+        }
+
+        @Test
+        void testMinBoundaryVerifies() {
+            var field = rangeField(false);
+            field.setText(Integer.toString(RANGE_MIN));
+            assertThat(field.getInputVerifier().verify(field))
+                .as("min boundary is inclusive")
+                .isTrue();
+        }
+
+        @Test
+        void testMaxBoundaryVerifies() {
+            var field = rangeField(false);
+            field.setText(Integer.toString(RANGE_MAX));
+            assertThat(field.getInputVerifier().verify(field))
+                .as("max boundary is inclusive")
+                .isTrue();
+        }
+
+        @Test
+        void testBelowMinFailsVerification() {
+            var field = rangeField(false);
+            field.setText(Integer.toString(BELOW_MIN_VALUE));
+            assertThat(field.getInputVerifier().verify(field))
+                .as("value below min fails verification")
+                .isFalse();
+        }
+
+        @Test
+        void testAboveMaxFailsVerification() {
+            var field = rangeField(false);
+            field.setText(Integer.toString(ABOVE_MAX_VALUE));
+            assertThat(field.getInputVerifier().verify(field))
+                .as("value above max fails verification")
+                .isFalse();
+        }
+
+        @Test
+        void testEmptyRequiredFailsVerification() {
+            var field = rangeField(false);
+            field.setText("");
+            assertThat(field.getInputVerifier().verify(field))
+                .as("blank value fails when the field is required")
+                .isFalse();
+        }
+
+        @Test
+        void testEmptyOptionalPassesVerification() {
+            var field = rangeField(true);
+            field.setText("");
+            assertThat(field.getInputVerifier().verify(field))
+                .as("blank value passes when the field is optional")
+                .isTrue();
+        }
+
+        @Test
+        void testShouldYieldFocusTrueWhenInRangeShowsNoWarning() {
+            var field = rangeField(false);
+            field.setText(Integer.toString(IN_RANGE_VALUE));
+
+            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                assertThat(field.getInputVerifier().shouldYieldFocus(field, field))
+                    .as("in-range value yields focus")
+                    .isTrue();
+                optionDialogsMock.verify(
+                    () -> OptionDialogs.showWarningMessage(any(), anyString(), anyString(), any(), any()),
+                    never()
+                );
+            }
+        }
+
+        @Test
+        void testShouldYieldFocusFalseWhenOutOfRangeShowsWarning() {
+            var field = rangeField(false);
+            field.setText(Integer.toString(ABOVE_MAX_VALUE));
+
+            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                assertThat(field.getInputVerifier().shouldYieldFocus(field, field))
+                    .as("out-of-range value does not yield focus")
+                    .isFalse();
+                optionDialogsMock.verify(
+                    () -> OptionDialogs.showWarningMessage(any(), anyString(), anyString(), any(), any())
+                );
             }
         }
     }

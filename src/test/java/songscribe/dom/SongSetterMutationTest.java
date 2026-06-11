@@ -94,6 +94,28 @@ class SongSetterMutationTest extends UnitTest {
         }
 
         @Test
+        void testSetMetadataNormalizesEqualValuePostsNothing() {
+            var current = song.getMetadata();
+            // A record whose title is textually different (surrounding whitespace)
+            // but normalizes — via the compact constructor — back to the current
+            // title. The equals-guard compares values, not identity or raw text,
+            // so this must be a no-op.
+            var normalizedEqual = new SongMetadata(
+                "  " + current.title() + "  ",
+                current.number(), current.place(), current.year(),
+                current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(),
+                current.unofficialTranslation()
+            );
+            // Precondition: normalization made the textually-different record equal.
+            assertThat(normalizedEqual).isEqualTo(current);
+
+            song.setMetadata(normalizedEqual);
+            verifyNoNotificationPosted();
+        }
+
+        @Test
         void testGettersDelegateToMetadataRecord() {
             // Commit a record whose fields are all distinct and differ from the
             // defaults, then assert each getter returns its specific expected

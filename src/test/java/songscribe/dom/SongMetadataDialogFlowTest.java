@@ -124,10 +124,12 @@ class SongMetadataDialogFlowTest extends UnitTest {
 
             song.metadataDidChange(new SongMetadataDidChangeNotification(newMetadata));
 
+            // This test's concern is the notification→handler wiring: that
+            // metadataDidChange applies the carried record. Per-getter field
+            // delegation is covered thoroughly (all 11 fields, distinct literals)
+            // by SongSetterMutationTest.testGettersDelegateToMetadataRecord, so
+            // it is not duplicated here.
             assertThat(song.getMetadata()).isEqualTo(newMetadata);
-            assertThat(song.getTitle()).isEqualTo(newMetadata.title());
-            assertThat(song.getPlace()).isEqualTo(newMetadata.place());
-            assertThat(song.getComposer()).isEqualTo(newMetadata.composer());
         }
 
         @Test

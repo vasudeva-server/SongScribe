@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 
 import com.formdev.flatlaf.FlatClientProperties;
@@ -81,6 +80,10 @@ public class SongSettingsDialog extends StandardDialog {
     private static final int SONG_NUMBER_MAX = 1000;
     private static final int YEAR_MIN = 1942;
     private static final int YEAR_MAX = 2007;
+    private static final int TAKE_FIRST_WORDS_DEFAULT = 4;
+    private static final int TAKE_FIRST_WORDS_MIN = 1;
+    private static final int TAKE_FIRST_WORDS_MAX = 10;
+    private static final int DAYS_IN_MONTH_MAX = 31;
 
     private final TitleTab textTab = new TitleTab();
     private final AttributionTab attributionTab = new AttributionTab();
@@ -145,20 +148,9 @@ public class SongSettingsDialog extends StandardDialog {
         var arrangement = attributionTab.isArrangement();
         var unofficialTranslation = attributionTab.isUnofficialTranslation();
 
-        if (title.equals(song.getTitle())
-                && place.equals(song.getPlace())
-                && Objects.equals(year, song.getYear())
-                && Objects.equals(number, song.getNumber())
-                && month == song.getMonth()
-                && day == song.getDay()
-                && composerText.equals(song.getComposer())
-                && lyricistText.equals(song.getLyricist())
-                && lyricsSource == song.getLyricsSource()
-                && arrangement == song.isArrangement()
-                && unofficialTranslation == song.isUnofficialTranslation()) {
-            return;
-        }
-
+        // No change-detection here: Song.setMetadata short-circuits on an equal
+        // record, so an unchanged commit produces an empty (no-op) modification
+        // bracket that neither dirties the document nor posts a notification.
         var newMetadata = new SongMetadata(
             title,
             number,
@@ -336,7 +328,7 @@ public class SongSettingsDialog extends StandardDialog {
             new NumericTextField(3, SONG_NUMBER_MIN, SONG_NUMBER_MAX, true);
         private final MyJTextField titleField = new MyJTextField(47);
         private final SpinnerModel takeFirstWordsSpinnerModel =
-            new SpinnerNumberModel(4, 1, 10, 1);
+            new SpinnerNumberModel(TAKE_FIRST_WORDS_DEFAULT, TAKE_FIRST_WORDS_MIN, TAKE_FIRST_WORDS_MAX, 1);
         private final TakeFirstLyricsWordAction takeAction =
             new TakeFirstLyricsWordAction(SongSettingsDialog.this.getMainFrame());
 
@@ -498,10 +490,10 @@ public class SongSettingsDialog extends StandardDialog {
         private AttributionTab() {
             monthCombo.setEditable(false);
 
-            var days = new String[32];
+            var days = new String[DAYS_IN_MONTH_MAX + 1];
             days[0] = "";
 
-            for (var i = 1; i <= 31; i++) {
+            for (var i = 1; i <= DAYS_IN_MONTH_MAX; i++) {
                 days[i] = Integer.toString(i);
             }
 
@@ -614,7 +606,6 @@ public class SongSettingsDialog extends StandardDialog {
             section.addSeparator();
 
             attributionPreview.setAlignmentX(Component.LEFT_ALIGNMENT);
-            attributionPreview.setMaximumSize(attributionPreview.getPreferredSize());
             section.add(attributionPreview);
 
             composerField.addFocusListener(new FocusAdapter() {
@@ -638,6 +629,17 @@ public class SongSettingsDialog extends StandardDialog {
             sourceCombo.addActionListener(e -> refreshPreview());
             unofficialTranslationCheck.addActionListener(e -> refreshPreview());
             arrangementCheck.addActionListener(e -> refreshPreview());
+
+            var previewOnFocusLost = new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    refreshPreview();
+                }
+            };
+            placeField.addFocusListener(previewOnFocusLost);
+            yearField.addFocusListener(previewOnFocusLost);
+            monthCombo.addActionListener(e -> refreshPreview());
+            dayCombo.addActionListener(e -> refreshPreview());
 
             // Don't let the section grow vertically
             UIUtils.setFlexibleWidth(section);
@@ -665,7 +667,10 @@ public class SongSettingsDialog extends StandardDialog {
 
         private List<AttributionLine> buildPreviewLines() {
             var song = getSong();
-            var composerText = Song.coercePerson(composerField.getText());
+            // Read live widget values, not committed Song state, so the preview
+            // reflects uncommitted edits. The SongMetadata constructor normalizes
+            // each field, so the raw widget text is passed through directly.
+            var composerText = composerField.getText();
             var lyricistText = resolveLyricistText(composerText);
             var lyricsSource = (Song.LyricsSource) sourceCombo.getSelectedItem();
 
@@ -676,12 +681,12 @@ public class SongSettingsDialog extends StandardDialog {
             var arrangement = arrangementCheck.isSelected();
             var unofficialTranslation = unofficialTranslationCheck.isSelected();
             var metadata = new SongMetadata(
-                song.getTitle(),
-                song.getNumber(),
-                song.getPlace(),
-                song.getYear(),
-                song.getMonth(),
-                song.getDay(),
+                textTab.getTitleText(),
+                textTab.getNumberText(),
+                getPlaceText(),
+                getYearText(),
+                getMonth(),
+                getDay(),
                 composerText,
                 lyricistText,
                 lyricsSource,
@@ -785,6 +790,14 @@ public class SongSettingsDialog extends StandardDialog {
                 }
 
                 return pane.getContentSizePx(attributionFont, subAttributionFont);
+            }
+
+            @Override
+            public Dimension getMaximumSize() {
+                // Track the preferred size so the BoxLayout never stretches the
+                // preview vertically. Computed dynamically because the preferred
+                // size is zero until the fonts are set by the first refresh.
+                return getPreferredSize();
             }
 
             @Override
@@ -1001,25 +1014,24 @@ public class SongSettingsDialog extends StandardDialog {
 
             @Override
             public boolean shouldYieldFocus(JComponent source, JComponent target) {
+                if (validateLineWidth() >= 0) {
+                    return true;
+                }
+
+                // validateLineWidth collapses both failure modes to -1, so parse
+                // once more to distinguish an unparseable value from an in-range
+                // violation and show the matching message.
                 var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
 
-                double value;
-
                 try {
-                    value = Double.parseDouble(lineWidthField.getText());
+                    Double.parseDouble(lineWidthField.getText());
                 } catch (NumberFormatException e) {
                     showLineWidthError(Strings.ERROR_LINE_WIDTH_INVALID, isMetric);
                     return false;
                 }
 
-                var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
-
-                if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
-                    showLineWidthError(Strings.ERROR_LINE_WIDTH_RANGE, isMetric);
-                    return false;
-                }
-
-                return true;
+                showLineWidthError(Strings.ERROR_LINE_WIDTH_RANGE, isMetric);
+                return false;
             }
         }
     }
@@ -1169,7 +1181,7 @@ public class SongSettingsDialog extends StandardDialog {
             var contents = new JPanel(new GridBagLayout());
             contents.setAlignmentX(Component.LEFT_ALIGNMENT);
             contents.setAlignmentY(Component.TOP_ALIGNMENT);
-            int tabsMarginTop = FlatLafProps.get(FlatLafKeys.DIALOG_TABS_MARGIN_TOP);
+            var tabsMarginTop = FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_TABS_MARGIN_TOP);
             contents.setBorder(BorderFactory.createEmptyBorder(tabsMarginTop, 0, 0, 0));
 
             // Font name label

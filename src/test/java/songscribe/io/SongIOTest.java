@@ -23,6 +23,7 @@ package songscribe.io;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -392,17 +393,13 @@ class SongIOTest extends UnitTest {
             var targetNote = song.getLine(0).getElement(ATTACHED_TEMPO_FLAT_POS);
             var attachment = targetNote.findAttachment(TempoChangeAttachment.class);
 
+            // asInstanceOf both narrows the type and fails loudly if the value is
+            // null, so the BPM assertion can never be silently skipped.
             assertThat(attachment)
                 .as("v1.0 tempo at pos=" + ATTACHED_TEMPO_FLAT_POS +
                     " must attach to the element at that flat position")
-                .isNotNull();
-
-            //noinspection ConstantValue -- NullAway guard
-            if (attachment == null) {
-                return;
-            }
-
-            assertThat(attachment.getTempo().getVisibleTempo())
+                .asInstanceOf(type(TempoChangeAttachment.class))
+                .extracting(a -> a.getTempo().getVisibleTempo())
                 .as("attached tempo BPM")
                 .isEqualTo(ATTACHED_TEMPO_BPM);
         }
@@ -1413,11 +1410,10 @@ class SongIOTest extends UnitTest {
         @Test
         void testLegacyTempoAtPositionZeroAttachesToSong() throws Exception {
             var song = parseXml(buildV10WithTempoPos(VALID_TEMPO_POS));
-            assertThat(song.getTempo()).isNotNull();
-
-            //noinspection ConstantValue -- NullAway guard
-            if (song.getTempo() == null) return;
-            assertThat(song.getTempo().getVisibleTempo()).isEqualTo(EXPECTED_VISIBLE_TEMPO);
+            assertThat(song.getTempo())
+                .asInstanceOf(type(Tempo.class))
+                .extracting(Tempo::getVisibleTempo)
+                .isEqualTo(EXPECTED_VISIBLE_TEMPO);
         }
 
         private static String buildV10WithTempoPos(int pos) {

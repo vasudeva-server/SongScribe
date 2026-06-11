@@ -219,7 +219,15 @@ class AttributionTest extends UnitTest {
 
             assertThat(builder.getDecorationLayout(attribution))
                 .describedAs("pane-derived dimensions must produce a DecorationLayout in the stacker")
-                .isNotNull();
+                .isNotNull()
+                .satisfies(layout -> {
+                    assertThat(layout.widthSs())
+                        .describedAs("layout width must carry the pane-derived width")
+                        .isCloseTo(ScaleContext.pxToSs(widthPx), within(EPSILON));
+                    assertThat(layout.heightSs())
+                        .describedAs("layout height must carry the pane-derived height")
+                        .isCloseTo(ScaleContext.pxToSs(heightPx), within(EPSILON));
+                });
         }
     }
 

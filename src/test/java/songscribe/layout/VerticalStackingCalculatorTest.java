@@ -114,7 +114,6 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 attribution);
 
             var layout = require(builder.getDecorationLayout(attribution), "attribution layout");
-            assert layout != null;
             assertThat(layout.xSs())
                 .describedAs("attribution x must be staffRightSs - widthSs - ATTRIBUTION_RIGHT_MARGIN_SS")
                 .isCloseTo(staffRightSs - widthSs - Attribution.ATTRIBUTION_RIGHT_MARGIN_SS, EPSILON);
@@ -139,7 +138,6 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 attribution);
 
             var layout = require(builder.getDecorationLayout(attribution), "attribution layout");
-            assert layout != null;
             assertThat(layout.widthSs()).isCloseTo(widthSs, EPSILON);
             assertThat(layout.heightSs()).isCloseTo(heightSs, EPSILON);
         }
@@ -162,7 +160,6 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 attribution);
 
             var layout = require(builder.getDecorationLayout(attribution), "attribution layout");
-            assert layout != null;
             assertThat(layout.ySs())
                 .describedAs("attribution top Y must be above the staff top")
                 .isLessThan(-STAFF_HALF_SS);
@@ -186,7 +183,6 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 attribution);
 
             var layout = require(builder.getDecorationLayout(attribution), "attribution layout");
-            assert layout != null;
             assertThat(layout.marginSs())
                 .isCloseTo(Attribution.ATTRIBUTION_MARGIN_BOTTOM_SS, EPSILON);
         }
