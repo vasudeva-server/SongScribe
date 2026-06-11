@@ -24,4 +24,9 @@ images/CleanShot*.png
 
 # IntelliJ IDEA
 .idea/compiler.xml
+.idea/modules.xml
+.idea/modules/SongScribe.main.iml
+.idea/modules/SongScribe.test.iml
+
+# External code
 lib/
