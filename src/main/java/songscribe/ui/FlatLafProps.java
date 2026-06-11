@@ -19,7 +19,15 @@
  */
 package songscribe.ui;
 
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Insets;
+
+import javax.swing.GrayFilter;
+import javax.swing.Icon;
 import javax.swing.UIManager;
+import javax.swing.border.Border;
 
 import songscribe.error.RuntimeError;
 
@@ -28,26 +36,73 @@ import songscribe.error.RuntimeError;
  * {@code FlatLaf.properties}. Keys are provided by the generated
  * {@link FlatLafKeys} constants class.
  *
- * <p>Missing properties are a fatal error — they indicate a broken
- * installation (FlatLaf.properties incomplete or not loaded).
+ * <p>Use the typed getters ({@code getColor}, {@code getInt}, etc.) — one
+ * exists for every type FlatLaf supports. A missing or wrongly-typed property
+ * is always a fatal error — it indicates a broken installation.
  */
 public final class FlatLafProps {
 
     private FlatLafProps() {}
 
-    /**
-     * Returns a typed property value from UIManager.
-     * The return type is inferred from the assignment target.
-     * Throws RuntimeError.exit if the property is missing.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T get(String key) {
+    private static <T> T get(String key, Class<T> type) {
         var value = UIManager.get(key);
 
         if (value == null) {
             throw RuntimeError.exit("Missing required UI property: " + key);
         }
 
-        return (T) value;
+        if (!type.isInstance(value)) {
+            throw RuntimeError.exit(
+                "Wrong type for UI property " + key
+                + ": expected " + type.getSimpleName()
+                + ", got " + value.getClass().getSimpleName()
+            );
+        }
+
+        return type.cast(value);
+    }
+
+    public static boolean getBoolean(String key) {
+        return get(key, Boolean.class);
+    }
+
+    public static int getInt(String key) {
+        return get(key, Integer.class);
+    }
+
+    public static float getFloat(String key) {
+        return get(key, Float.class);
+    }
+
+    public static String getString(String key) {
+        return get(key, String.class);
+    }
+
+    public static Color getColor(String key) {
+        return get(key, Color.class);
+    }
+
+    public static Font getFont(String key) {
+        return get(key, Font.class);
+    }
+
+    public static Insets getInsets(String key) {
+        return get(key, Insets.class);
+    }
+
+    public static Dimension getDimension(String key) {
+        return get(key, Dimension.class);
+    }
+
+    public static Border getBorder(String key) {
+        return get(key, Border.class);
+    }
+
+    public static Icon getIcon(String key) {
+        return get(key, Icon.class);
+    }
+
+    public static GrayFilter getGrayFilter(String key) {
+        return get(key, GrayFilter.class);
     }
 }

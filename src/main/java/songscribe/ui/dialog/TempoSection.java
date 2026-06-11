@@ -69,7 +69,7 @@ class TempoSection extends JPanel {
         var gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.insets = new Insets(0, 0, 0, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP));
+        gbc.insets = new Insets(0, 0, 0, FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP));
         gbc.anchor = GridBagConstraints.WEST;
         add(tempoTypeCombo, gbc);
 
@@ -85,7 +85,7 @@ class TempoSection extends JPanel {
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.gridwidth = 4;
-        gbc.insets = new Insets(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP), 0, 0, 0);
+        gbc.insets = new Insets(FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP), 0, 0, 0);
         add(showOnlyDescriptionCheckBox, gbc);
 
         // Prevent the panel from growing beyond its preferred size

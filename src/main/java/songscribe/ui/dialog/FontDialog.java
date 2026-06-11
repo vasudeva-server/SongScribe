@@ -70,7 +70,7 @@ public class FontDialog extends StandardDialog {
 
     @Override
     protected int getExtraWidth() {
-        return FlatLafProps.get(FlatLafKeys.DIALOG_FONT_EXTRA_WIDTH);
+        return FlatLafProps.getInt(FlatLafKeys.DIALOG_FONT_EXTRA_WIDTH);
     }
 
     @Override

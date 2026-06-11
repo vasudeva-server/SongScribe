@@ -275,7 +275,7 @@ public final class LyricEditor extends MyJTextField {
         setUI(new LyricTextFieldUI());
         setFont(score.getLyricRenderMetrics().lyricsFont());
         setOpaque(true);
-        setBackground(FlatLafProps.get(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND));
+        setBackground(FlatLafProps.getColor(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND));
         setForeground(Color.BLACK);
         setCaretColor(Color.BLACK);
         setHorizontalAlignment(LEFT);

@@ -204,7 +204,7 @@ public final class UIUtils {
     }
 
     public static Border spacingBorder(String flatLafKey) {
-        Insets insets = FlatLafProps.get(flatLafKey);
+        Insets insets = FlatLafProps.getInsets(flatLafKey);
         return BorderFactory.createEmptyBorder(insets.top, insets.left, insets.bottom, insets.right);
     }
 

@@ -2,28 +2,20 @@
 
 - Defs: `src/main/resources/songscribe/FlatLaf.properties`, keys prefixed `SongScribe.`. Dark overrides: `[dark]SongScribe.foo = ...`.
 - Generated constants: `build/generated-sources/songscribe/ui/FlatLafKeys.java` (via `scripts/generate-flatlaf-keys.groovy`, run by `./scripts/compile.sh`).
-- Read: `FlatLafProps.get(FlatLafKeys.X)` — return type inferred. Disambiguate with explicit type witness: `FlatLafProps.<T>get(...)`. Missing key → `RuntimeError.exit`.
+- Read: use typed getters — one exists for every type FlatLaf supports. Missing key or type mismatch → `RuntimeError.exit`.
 
 ### Usage
 
-FlatLaf stores each property already typed (e.g. `... = 20` is an `Integer`, a color is a `Color`). `get` just returns that stored value — it does not convert. The type witness is only about giving Java a target type to infer `T` from.
+FlatLaf stores each property already typed (e.g. `... = 20` is an `Integer`, a color is a `Color`). The typed getters retrieve, type-check, and return in one call.
 
 ```java
-// Reference-typed target — no witness needed:
-setBackground(FlatLafProps.get(FlatLafKeys.SCORE_PANEL_BACKGROUND));
-int indent = FlatLafProps.get(FlatLafKeys.DIALOG_LABEL_INDENT);
-
-// var with a reference type — use type witness:
-var color = FlatLafProps.<Color>get(FlatLafKeys.SCORE_PANEL_BACKGROUND);
-
-// var with a numeric/primitive type — use a primitive cast, not a witness:
-var gap = (int) FlatLafProps.get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
-
-// primitive parameter — cast to unbox:
-add(Box.createHorizontalStrut((int) FlatLafProps.get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP)));
+setBackground(FlatLafProps.getColor(FlatLafKeys.SCORE_PANEL_BACKGROUND));
+var color = FlatLafProps.getColor(FlatLafKeys.SCORE_PANEL_BACKGROUND);
+var indent = FlatLafProps.getInt(FlatLafKeys.DIALOG_LABEL_INDENT);
+var gap = FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
 ```
 
-Use the witness only for reference-typed `var` targets. For numeric values, a primitive cast (`(int)`, `(float)`, etc.) unboxes naturally and is clearer than a witness. Never add a redundant witness when the target type already resolves it. The cast inside `get` is unchecked, so a wrong type throws `ClassCastException` at the use site, not in `get`.
+Available typed getters: `getBoolean`, `getInt`, `getFloat`, `getString`, `getColor`, `getFont`, `getInsets`, `getDimension`, `getBorder`, `getIcon`, `getGrayFilter`.
 
 ### Adding / removing keys
 

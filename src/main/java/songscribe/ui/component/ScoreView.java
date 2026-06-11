@@ -116,15 +116,15 @@ public final class ScoreView
     // Colors used to draw the music score in various states — read from UIManager for theming.
     // Callers should not cache these values; read at render time.
     public static Color getPlayingNoteColor() {
-        return FlatLafProps.get(FlatLafKeys.SCORE_PLAYING_NOTE_COLOR);
+        return FlatLafProps.getColor(FlatLafKeys.SCORE_PLAYING_NOTE_COLOR);
     }
 
     public static Color getPreviewElementColor() {
-        return FlatLafProps.get(FlatLafKeys.SCORE_PREVIEW_ELEMENT_COLOR);
+        return FlatLafProps.getColor(FlatLafKeys.SCORE_PREVIEW_ELEMENT_COLOR);
     }
 
     public static Color getSelectionColor() {
-        return FlatLafProps.get(FlatLafKeys.SCORE_SELECTION_COLOR);
+        return FlatLafProps.getColor(FlatLafKeys.SCORE_SELECTION_COLOR);
     }
 
     // Edit popup
@@ -338,7 +338,7 @@ public final class ScoreView
             return;
         }
 
-        var color = FlatLafProps.<Color>get(FlatLafKeys.SCORE_PANEL_BACKGROUND);
+        var color = FlatLafProps.getColor(FlatLafKeys.SCORE_PANEL_BACKGROUND);
         scrollPane.setBackground(color);
         scrollPane.getViewport().setBackground(color);
     }
@@ -575,7 +575,7 @@ public final class ScoreView
             g2,
             GraphicsState.Property.COLOR
         )) {
-            g2.setColor(FlatLafProps.get(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND));
+            g2.setColor(FlatLafProps.getColor(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND));
             g2.fillRect(0, 0, getWidth(), getHeight());
         }
 

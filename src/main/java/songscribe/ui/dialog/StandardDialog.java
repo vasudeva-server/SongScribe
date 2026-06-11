@@ -33,7 +33,7 @@ import songscribe.util.UIUtils;
 public abstract class StandardDialog extends BaseDialog {
 
     protected JPanel buttonPanel = new JPanel(
-        new FlowLayout(FlowLayout.RIGHT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_BUTTON_HORIZONTAL_GAP), 0)
+        new FlowLayout(FlowLayout.RIGHT, FlatLafProps.getInt(FlatLafKeys.DIALOG_BUTTON_HORIZONTAL_GAP), 0)
     );
     protected final JButton okButton;
     protected final JButton cancelButton;

@@ -45,7 +45,7 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 
         var row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-        int extraGap = FlatLafProps.get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP);
+        var extraGap = FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP);
         row.add(durationCombo);
         row.add(Box.createHorizontalStrut(extraGap));
         row.add(new JLabel("="));

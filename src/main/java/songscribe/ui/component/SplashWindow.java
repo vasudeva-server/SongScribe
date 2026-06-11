@@ -40,7 +40,7 @@ public class SplashWindow extends JWindow {
 
     private static final Logger LOG = LoggerFactory.getLogger(SplashWindow.class);
     private static @Nullable BufferedImage splashImage = null;
-    private static final Color bg = FlatLafProps.get(FlatLafKeys.SPLASH_WINDOW_BACKGROUND);
+    private static final Color bg = FlatLafProps.getColor(FlatLafKeys.SPLASH_WINDOW_BACKGROUND);
 
     public SplashWindow() {
         super((Frame) null);
@@ -152,7 +152,7 @@ public class SplashWindow extends JWindow {
 
     private static JLabel createLabel(String text) {
         var label = new JLabel(text);
-        label.setForeground(FlatLafProps.get(FlatLafKeys.SPLASH_WINDOW_FOREGROUND));
+        label.setForeground(FlatLafProps.getColor(FlatLafKeys.SPLASH_WINDOW_FOREGROUND));
         return label;
     }
 }

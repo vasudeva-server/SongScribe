@@ -142,7 +142,7 @@ public abstract class BaseDialog {
         var pane = new JTabbedPane();
 
         // Add a little padding at the top, above the tabs
-        int tabsMarginTop = FlatLafProps.get(FlatLafKeys.DIALOG_TABS_MARGIN_TOP);
+        var tabsMarginTop = FlatLafProps.getInt(FlatLafKeys.DIALOG_TABS_MARGIN_TOP);
         pane.setBorder(BorderFactory.createEmptyBorder(tabsMarginTop, 0, 0, 0));
 
         // Only the first call registers this as the dialog's top-level tabbed pane.
@@ -191,7 +191,7 @@ public abstract class BaseDialog {
     ) {
         if (labelPosition == LabelPosition.LEFT) {
             var panel = new JPanel(
-                new FlowLayout(FlowLayout.LEFT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0)
+                new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0)
             );
             panel.setBorder(BorderFactory.createEmptyBorder());
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -206,7 +206,7 @@ public abstract class BaseDialog {
             label.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             // Indent the title a bit to line up with the input field
-            int indent = FlatLafProps.get(FlatLafKeys.DIALOG_LABEL_INDENT);
+            var indent = FlatLafProps.getInt(FlatLafKeys.DIALOG_LABEL_INDENT);
             label.setBorder(BorderFactory.createEmptyBorder(0, indent, 0, 0));
             container.add(label);
             field.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -244,7 +244,7 @@ public abstract class BaseDialog {
      */
     public static void addSectionSeparator(JComponent container) {
         container.add(Box.createVerticalStrut(
-            FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_SECTION_GAP)
+            FlatLafProps.getInt(FlatLafKeys.DIALOG_SECTION_GAP)
         ));
     }
 
@@ -259,13 +259,13 @@ public abstract class BaseDialog {
     private static void addSeparator(JComponent container, boolean isLarge) {
         if (container.getLayout() instanceof BoxLayout boxLayout
                 && boxLayout.getAxis() == BoxLayout.X_AXIS) {
-            container.add(Box.createHorizontalStrut(FlatLafProps.<Integer>get(
+            container.add(Box.createHorizontalStrut(FlatLafProps.getInt(
                 isLarge
                     ? FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP
                     : FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP
             )));
         } else {
-            container.add(Box.createVerticalStrut(FlatLafProps.<Integer>get(
+            container.add(Box.createVerticalStrut(FlatLafProps.getInt(
                 isLarge
                     ? FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP
                     : FlatLafKeys.DIALOG_COMPONENT_VERTICAL_GAP
@@ -690,8 +690,8 @@ public abstract class BaseDialog {
 
     protected static class StandardTitledBorder extends TitledBorder {
 
-        private Insets insets = FlatLafProps.get(FlatLafKeys.DIALOG_TITLED_BORDER_PADDING);
-        private final int labelIndent = FlatLafProps.get(FlatLafKeys.DIALOG_LABEL_INDENT);
+        private Insets insets = FlatLafProps.getInsets(FlatLafKeys.DIALOG_TITLED_BORDER_PADDING);
+        private final int labelIndent = FlatLafProps.getInt(FlatLafKeys.DIALOG_LABEL_INDENT);
 
         public StandardTitledBorder(String title) {
             super(title);

@@ -190,7 +190,7 @@ public class FontChooser extends JPanel implements FontContainer {
     }
 
     private void addComponents() {
-        int gap = FlatLafProps.get(FlatLafKeys.DIALOG_FONT_CHOOSER_GAP);
+        var gap = FlatLafProps.getInt(FlatLafKeys.DIALOG_FONT_CHOOSER_GAP);
 
         setLayout(new GridBagLayout());
         var gbc = new GridBagConstraints();

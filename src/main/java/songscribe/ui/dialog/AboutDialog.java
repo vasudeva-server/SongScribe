@@ -39,7 +39,7 @@ public class AboutDialog extends BaseDialog {
     public AboutDialog() {
         super(Strings.get(Strings.DIALOG_ABOUT_TITLE), true, DialogCategory.INFORMATIONAL);
 
-        int gap = FlatLafProps.get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
+        var gap = FlatLafProps.getInt(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
 
         var divider = new JPanel();
         divider.setBackground(Color.LIGHT_GRAY);
