@@ -148,10 +148,7 @@ public class StaffElement extends LineElement implements Cloneable {
             stemDirectionAuto = source.stemDirectionAuto;
             staffPosition = source.staffPosition;
 
-            // Deep-copy articulations
-            for (var art : source.articulations) {
-                addArticulation(new Articulation(this, art.getType()));
-            }
+            copyArticulationsFrom(source);
         } else {
             // Rest: use default staff position for the target type
             staffPosition = targetType.getDefaultStaffPosition();
@@ -178,10 +175,7 @@ public class StaffElement extends LineElement implements Cloneable {
             addAttachment(attachment.copy(this));
         }
 
-        // Deep-copy articulations
-        for (var art : note.articulations) {
-            addArticulation(new Articulation(this, art.getType()));
-        }
+        copyArticulationsFrom(note);
 
         // Deep-copy lyrics
         lyrics.addAll(note.lyrics);
@@ -301,6 +295,18 @@ public class StaffElement extends LineElement implements Cloneable {
         articulations.clear();
     }
 
+    /**
+     * Replaces this element's articulations with deep copies of the source element's
+     * articulations, reparented to this element.
+     */
+    public void copyArticulationsFrom(StaffElement source) {
+        clearArticulations();
+
+        for (var articulation : source.getArticulations()) {
+            addArticulation(new Articulation(this, articulation.getType()));
+        }
+    }
+
     // ========================================================================
     // Attachments (Phase 3 LineElement hierarchy)
     // ========================================================================
@@ -356,6 +362,22 @@ public class StaffElement extends LineElement implements Cloneable {
         }
 
         return null;
+    }
+
+    /**
+     * Adds or removes this element's fermata to match the requested state, leaving it
+     * unchanged if it already matches. Idempotent — never creates a duplicate fermata.
+     */
+    public void setFermata(boolean fermata) {
+        var existing = findAttachment(FermataAttachment.class);
+
+        if (fermata) {
+            if (existing == null) {
+                addAttachment(new FermataAttachment(this));
+            }
+        } else if (existing != null) {
+            removeAttachment(existing);
+        }
     }
 
     /**
@@ -650,7 +672,7 @@ public class StaffElement extends LineElement implements Cloneable {
                 (note.getStaffPosition() == staffPosition) &&
                     (note.getAccidental() != null)
             ) {
-                return line.getElement(i).getAccidental();
+                return note.getAccidental();
             }
         }
 

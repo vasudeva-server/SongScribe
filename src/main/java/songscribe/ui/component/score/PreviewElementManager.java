@@ -35,6 +35,7 @@ import songscribe.dom.Beam;
 import songscribe.dom.Song;
 import songscribe.dom.ElementLocation;
 import songscribe.dom.ElementType;
+import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.ui.Control;
@@ -344,7 +345,9 @@ public final class PreviewElementManager {
         }
 
         // Rests cannot be glissando source or target
-        if (line.getElement(xIndex - 1).getType().isRest()) {
+        var sourceElement = line.getElement(xIndex - 1);
+
+        if (sourceElement.getType().isRest()) {
             return null;
         }
 
@@ -354,13 +357,15 @@ public final class PreviewElementManager {
                 return null;
             }
 
+            var targetElement = line.getElement(xIndex);
+
             // Target cannot be a rest
-            if (line.getElement(xIndex).getType().isRest()) {
+            if (targetElement.getType().isRest()) {
                 return null;
             }
 
             // Same-pitch connected glissando is musically meaningless
-            if (line.getElement(xIndex - 1).getPitch() == line.getElement(xIndex).getPitch()) {
+            if (sourceElement.getPitch() == targetElement.getPitch()) {
                 return null;
             }
         }
@@ -390,10 +395,11 @@ public final class PreviewElementManager {
         var mouseYss = ScaleContext.pxToSs(e.getY());
 
         // In grace mode, lock the x-position to the host note slot
+        var graceModeManager = EditModeManager.getGraceModeManager();
         double mouseXss;
 
-        if (EditModeManager.getGraceModeManager().isInProgress()) {
-            mouseXss = EditModeManager.getGraceModeManager().getLockedInsertionXSs();
+        if (graceModeManager.isInProgress()) {
+            mouseXss = graceModeManager.getLockedInsertionXSs();
         } else {
             mouseXss = ScaleContext.pxToSs(e.getX());
         }
@@ -429,7 +435,7 @@ public final class PreviewElementManager {
         // In grace mode the locked x coincides with an existing note that will be
         // shifted (not replaced), so suppress the element-at-x match to avoid
         // painting it red as if it were the replacement target.
-        var inGraceMode = EditModeManager.getGraceModeManager().isInProgress();
+        var inGraceMode = graceModeManager.isInProgress();
         var elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXss, line);
 
         // Suppress preview over the song's auto-maintained terminal (unless the
@@ -574,10 +580,13 @@ public final class PreviewElementManager {
         // element can legally replace it. This bypasses the normal insertion path entirely.
         if (xPosSsMatchesElement) {
             if (previewElement != null
-                    && isDirectClickOnTerminal(song, line, currentXIndex)
-                    && song.canReplaceTerminal(previewElement.getType())) {
-                song.replaceTerminal(previewElement.getType());
-                return;
+                    && isDirectClickOnTerminal(song, line, currentXIndex)) {
+                var previewType = previewElement.getType();
+
+                if (song.canReplaceTerminal(previewType)) {
+                    song.replaceTerminal(previewType);
+                    return;
+                }
             }
         }
 
@@ -657,11 +666,13 @@ public final class PreviewElementManager {
      */
     private static boolean isPositionBlockedByTerminal(
         Song song, Line line, int xIndex, boolean xMatchesElement) {
-        if (line.elementCount() == 0) {
+        var elementCount = line.elementCount();
+
+        if (elementCount == 0) {
             return false;
         }
 
-        var lastIdx = line.elementCount() - 1;
+        var lastIdx = elementCount - 1;
         var terminalElement = line.getElement(lastIdx);
 
         if (!song.isAutoMaintainedTerminal(terminalElement, line)) {
@@ -677,7 +688,7 @@ public final class PreviewElementManager {
         }
 
         // Mouse is at the append slot immediately after the terminal — always blocked.
-        return xIndex == line.elementCount();
+        return xIndex == elementCount;
     }
 
     /**
@@ -806,12 +817,14 @@ public final class PreviewElementManager {
             return;
         }
 
-        if (EditModeManager.elementWasModified(line, line.elementCount())) {
-            EditModeManager.previewElementDidChange(line, line.elementCount() - 1);
+        var elementCount = line.elementCount();
+
+        if (EditModeManager.elementWasModified(line, elementCount)) {
+            EditModeManager.previewElementDidChange(line, elementCount - 1);
             return;
         }
 
-        var insertion = calculateInsertionOrShowError(line, previewElement, line.elementCount(), lc.getLayoutResult());
+        var insertion = calculateInsertionOrShowError(line, previewElement, elementCount, lc.getLayoutResult());
 
         if (insertion == null) {
             return;
@@ -820,9 +833,9 @@ public final class PreviewElementManager {
         previewElement.setXOffsetPx(ScaleContext.ssToRoundedPx(insertion.insertedElementXSs()));
         line.addElement(previewElement);
 
-        applyAutomaticBeaming(line, line.elementCount() - 1);
-
-        EditModeManager.previewElementDidChange(line, line.elementCount() - 1);
+        var newLastIndex = line.elementCount() - 1;
+        applyAutomaticBeaming(line, newLastIndex);
+        EditModeManager.previewElementDidChange(line, newLastIndex);
     }
 
     @Nullable
@@ -876,7 +889,8 @@ public final class PreviewElementManager {
         var shift = ScaleContext.ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
 
         for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {
-            line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
+            var element = line.getElement(i);
+            element.setXOffsetPx(element.getXOffsetPx() + shift);
         }
 
         applyAutomaticBeaming(line, xIndex);
@@ -894,9 +908,10 @@ public final class PreviewElementManager {
      */
     private static void applyAutomaticBeaming(Line line, int elementIndex) {
         var element = line.getElement(elementIndex);
+        var insertedType = element.getType();
 
         if (
-            !element.getType().isBeamable() ||
+            !insertedType.isBeamable() ||
                 (elementIndex < 1) ||
                 (line.findTupletAt(elementIndex - 1) != null)
         ) {
@@ -906,11 +921,13 @@ public final class PreviewElementManager {
         var sum = 0;
 
         for (var i = elementIndex - 1; i >= 0; i--) {
-            if (line.getElement(i).getType() == ElementType.QUAVER) {
+            var elementType = line.getElement(i).getType();
+
+            if (elementType == ElementType.QUAVER) {
                 sum += 2;
             } else if (
-                (line.getElement(i).getType() == ElementType.SEMIQUAVER) ||
-                    (line.getElement(i).getType() == ElementType.DEMI_SEMIQUAVER)
+                (elementType == ElementType.SEMIQUAVER) ||
+                    (elementType == ElementType.DEMI_SEMIQUAVER)
             ) {
                 sum += 1;
             } else {
@@ -925,12 +942,12 @@ public final class PreviewElementManager {
         }
 
         if (
-            ((element.getType() == ElementType.QUAVER) &&
+            ((insertedType == ElementType.QUAVER) &&
                 (sum > 0) &&
                 ((sum % 2) == 0) &&
                 ((sum % 4) != 0)) ||
-                (((element.getType() == ElementType.SEMIQUAVER) ||
-                    (element.getType() == ElementType.DEMI_SEMIQUAVER)) &&
+                (((insertedType == ElementType.SEMIQUAVER) ||
+                    (insertedType == ElementType.DEMI_SEMIQUAVER)) &&
                     (sum > 0) &&
                     ((sum % 4) != 0))
         ) {
@@ -942,9 +959,11 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Replaces an existing element with the current preview element's type and pitch,
-     * preserving all decorations (fermata, trill, annotation, tempo/beat change,
-     * articulations, dynamic attachments, lyrics, x position) from the existing element.
+     * Replaces an existing element with the current preview element's type and pitch.
+     * Note-entry decorations the user sets on the preview element via the toolbar/menu
+     * (accidental, dot count, articulations, fermata) are taken from the preview. Other
+     * decorations not settable on the preview (trill, annotation, tempo/beat change,
+     * dynamic attachments, lyrics, x position) are preserved from the existing element.
      * Called when the user clicks on an existing element head with the preview element active.
      *
      * @param lc           The LineComponent
@@ -962,11 +981,20 @@ public final class PreviewElementManager {
         // (fermata, trill, annotation, tempo/beat change, articulations, attachments, lyrics,
         // x position), then override with the preview's note-entry attributes.
         var existing = line.getElement(elementIndex);
-        var replacement = new StaffElement(previewElement.getType(), existing);
+        var previewType = previewElement.getType();
+        var replacement = new StaffElement(previewType, existing);
         replacement.setDotCount(previewElement.getDotCount());
         replacement.setAccidental(previewElement.getAccidental());
         replacement.setAccidentalInParentheses(previewElement.isAccidentalInParentheses());
         replacement.setStemDirectionAuto(previewElement.isStemDirectionAuto());
+
+        // Articulations and the fermata are note-entry decorations the user sets on the preview
+        // element via the toolbar/menu, exactly like the accidental above. Carry them over from
+        // the preview, overriding any inherited from the existing element. Other attachments
+        // (dynamics, annotations, trills) are not preview-settable, so they remain copied from
+        // the existing element by the copy constructor.
+        replacement.copyArticulationsFrom(previewElement);
+        replacement.setFermata(previewElement.findAttachment(FermataAttachment.class) != null);
 
         // Rests snap to their default staff position; pitched notes use the mouse Y position
         applyStaffPosition(replacement, currentStaffPosition);
@@ -995,7 +1023,7 @@ public final class PreviewElementManager {
 
         // Remove any containing tuplet if the duration type or dot count changes —
         // the replacement would make the tuplet rhythmically invalid.
-        if (existing.getType() != replacement.getType()
+        if (existing.getType() != previewType
                 || existing.getDotCount() != replacement.getDotCount()) {
             line.removeOverlappingTuplets(elementIndex, elementIndex);
         }
@@ -1018,7 +1046,7 @@ public final class PreviewElementManager {
                 EndingConfirms.applyCompensatingEndChange(line, ce);
             }
             case Ending.EndingEffect.CompensateSplit cs -> {
-                if (!EndingConfirms.confirmCompensateSplit(cs, replacement.getType())) {
+                if (!EndingConfirms.confirmCompensateSplit(cs, previewType)) {
                     return;
                 }
                 EndingConfirms.applyCompensatingSplitChange(line, cs);
@@ -1042,7 +1070,7 @@ public final class PreviewElementManager {
         // grace note. For pitched note replacements the glissando reattaches automatically since
         // setElement preserves the element index.
         if (line.isHostOfPairedGraceNote(elementIndex)
-                && !replacement.getType().isPitchedNote()) {
+                && !previewType.isPitchedNote()) {
             line.removeElement(elementIndex - 1);
             elementIndex--;
         }

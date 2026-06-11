@@ -25,20 +25,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.dom.Articulation;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Trill;
 
 /**
- * Tests that decorations on an existing element (fermata, trill, articulations, dynamic
- * attachments) are carried over to the replacement element when
- * {@link PreviewElementManager#handleClick} triggers a modify-existing operation.
+ * Tests that the decorations on an existing element that the preview cannot set (trill,
+ * dynamic attachments) are carried over to the replacement element when
+ * {@link PreviewElementManager#handleClick} triggers a modify-existing operation. The
+ * preview-authoritative decorations (fermata, articulations) are covered by
+ * {@link PreviewElementManagerReplaceDecorationsTest}.
  */
 class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase {
 
@@ -96,20 +96,6 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
         }
 
         @Test
-        void testFermataPreserved() {
-            song.withoutMutationTracking(() -> {
-                var note = ElementType.CROTCHET.newInstance();
-                note.addAttachment(new FermataAttachment(note));
-                line.addElement(note);
-            });
-
-            replaceAt(0, ElementType.QUAVER.newInstance());
-
-            assertThat(line.getElement(0).findAttachment(FermataAttachment.class))
-                .as("fermata preserved").isNotNull();
-        }
-
-        @Test
         void testTrillPreserved() {
             song.withoutMutationTracking(() -> {
                 var note = ElementType.CROTCHET.newInstance();
@@ -125,22 +111,6 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
             assertThat(trills).as("trill range element preserved").hasSize(1);
             assertThat(trills.getFirst().getAnchorElement())
                 .as("trill anchor points to replaced element").isEqualTo(replacedNote);
-        }
-
-        @Test
-        void testArticulationPreserved() {
-            song.withoutMutationTracking(() -> {
-                var note = ElementType.CROTCHET.newInstance();
-                note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
-                line.addElement(note);
-            });
-
-            replaceAt(0, ElementType.CROTCHET.newInstance());
-
-            var articulations = line.getElement(0).getArticulations();
-            assertThat(articulations).as("articulation preserved").hasSize(1);
-            assertThat(articulations.getFirst().getType())
-                .as("articulation type preserved").isEqualTo(ArticulationType.STACCATO);
         }
 
         @Test

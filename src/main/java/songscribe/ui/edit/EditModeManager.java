@@ -30,7 +30,6 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.dom.Articulation;
-import songscribe.dom.FermataAttachment;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -232,17 +231,7 @@ public final class EditModeManager {
             Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()
         );
 
-        if (Actions.FERMATA_ACTION.isSelected()) {
-            if (element.findAttachment(FermataAttachment.class) == null) {
-                element.addAttachment(new FermataAttachment(element));
-            }
-        } else {
-            var existingFermata = element.findAttachment(FermataAttachment.class);
-
-            if (existingFermata != null) {
-                element.removeAttachment(existingFermata);
-            }
-        }
+        element.setFermata(Actions.FERMATA_ACTION.isSelected());
 
         element.clearArticulations();
 
@@ -283,26 +272,26 @@ public final class EditModeManager {
 
         inst.scoreActions.clearSelection();
 
-        if (
-            (inst.previewElement.getType() == ElementType.REPEAT_LEFT) &&
-                ((elementIndex - 1) >= 0) &&
-                (line.getElement(elementIndex - 1).getType() == ElementType.REPEAT_RIGHT)
-        ) {
-            var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
-            repeatLeftRight.setXOffsetPx(line.getElement(elementIndex - 1).getXOffsetPx());
-            line.setElement(elementIndex - 1, repeatLeftRight);
-            return true;
+        if (inst.previewElement.getType() == ElementType.REPEAT_LEFT && (elementIndex - 1) >= 0) {
+            var prevElement = line.getElement(elementIndex - 1);
+
+            if (prevElement.getType() == ElementType.REPEAT_RIGHT) {
+                var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
+                repeatLeftRight.setXOffsetPx(prevElement.getXOffsetPx());
+                line.setElement(elementIndex - 1, repeatLeftRight);
+                return true;
+            }
         }
 
-        if (
-            (inst.previewElement.getType() == ElementType.REPEAT_RIGHT) &&
-                (elementIndex < line.elementCount()) &&
-                (line.getElement(elementIndex).getType() == ElementType.REPEAT_LEFT)
-        ) {
-            var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
-            repeatLeftRight.setXOffsetPx(line.getElement(elementIndex).getXOffsetPx());
-            line.setElement(elementIndex, repeatLeftRight);
-            return true;
+        if (inst.previewElement.getType() == ElementType.REPEAT_RIGHT && elementIndex < line.elementCount()) {
+            var nextElement = line.getElement(elementIndex);
+
+            if (nextElement.getType() == ElementType.REPEAT_LEFT) {
+                var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
+                repeatLeftRight.setXOffsetPx(nextElement.getXOffsetPx());
+                line.setElement(elementIndex, repeatLeftRight);
+                return true;
+            }
         }
 
         return false;

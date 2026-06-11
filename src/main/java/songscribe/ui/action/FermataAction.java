@@ -55,17 +55,7 @@ public final class FermataAction extends NoteOnlyAction {
 
     @Override
     public void applyToElement(StaffElement element, boolean selected) {
-        if (selected) {
-            if (element.findAttachment(FermataAttachment.class) == null) {
-                element.addAttachment(new FermataAttachment(element));
-            }
-        } else {
-            var existing = element.findAttachment(FermataAttachment.class);
-
-            if (existing != null) {
-                element.removeAttachment(existing);
-            }
-        }
+        element.setFermata(selected);
     }
 
     @Override

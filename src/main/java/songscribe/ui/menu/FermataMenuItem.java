@@ -22,7 +22,6 @@ package songscribe.ui.menu;
 import module java.desktop;
 
 import songscribe.ui.component.ScoreView;
-import songscribe.dom.FermataAttachment;
 
 public class FermataMenuItem
     extends JCheckBoxMenuItem
@@ -41,18 +40,7 @@ public class FermataMenuItem
         var insertionNote = scoreView.getPreviewElement();
 
         if (insertionNote != null) {
-            if (isSelected()) {
-                if (insertionNote.findAttachment(FermataAttachment.class) == null) {
-                    insertionNote.addAttachment(new FermataAttachment(insertionNote));
-                }
-            } else {
-                var existing = insertionNote.findAttachment(FermataAttachment.class);
-
-                if (existing != null) {
-                    insertionNote.removeAttachment(existing);
-                }
-            }
-
+            insertionNote.setFermata(isSelected());
             scoreView.repaint();
         }
     }
