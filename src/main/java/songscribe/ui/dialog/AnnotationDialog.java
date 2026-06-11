@@ -66,14 +66,14 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
         var alignmentSection = new TitledSection(Strings.get(Strings.DIALOG_ANNOTATION_ALIGNMENT));
         alignmentSection.add(leftRadio);
-        alignmentSection.addSeparator();
+        addSeparator(alignmentSection);
         alignmentSection.add(centerRadio);
-        alignmentSection.addSeparator();
+        addSeparator(alignmentSection);
         alignmentSection.add(rightRadio);
 
         var verticalSection = new TitledSection(Strings.get(Strings.DIALOG_ANNOTATION_VERTICAL));
         verticalSection.add(aboveRadio);
-        verticalSection.addSeparator();
+        addSeparator(verticalSection);
         verticalSection.add(belowRadio);
 
         alignmentSection.setAlignmentY(Component.TOP_ALIGNMENT);

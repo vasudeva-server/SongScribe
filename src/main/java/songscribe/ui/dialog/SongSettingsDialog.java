@@ -511,7 +511,7 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected void initContents() {
             add(createInfoSection());
-            addSeparator();
+            addSectionSeparator(this);
             add(createPlaceAndDateSection());
         }
 
@@ -527,7 +527,7 @@ public class SongSettingsDialog extends StandardDialog {
                 BaseDialog.LabelPosition.LEFT
             );
 
-            section.addSeparator();
+            addSeparator(section);
 
             var datePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
             datePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -571,7 +571,7 @@ public class SongSettingsDialog extends StandardDialog {
                 BaseDialog.LabelPosition.LEFT
             );
 
-            section.addSeparator();
+            addSeparator(section);
 
             var wordsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
             wordsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -591,19 +591,19 @@ public class SongSettingsDialog extends StandardDialog {
             );
 
             section.add(wordsRow);
-            section.addSeparator();
+            addSeparator(section);
 
             var song = getSong();
 
             if (!song.getTranslatedLyrics().isEmpty()) {
                 unofficialTranslationCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
                 section.add(unofficialTranslationCheck);
-                section.addSeparator();
+                addSeparator(section);
             }
 
             arrangementCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
             section.add(arrangementCheck);
-            section.addSeparator();
+            addSeparator(section);
 
             attributionPreview.setAlignmentX(Component.LEFT_ALIGNMENT);
             section.add(attributionPreview);
@@ -854,9 +854,9 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected void initContents() {
             add(createTempoSection(), constraints);
-            addSeparator();
+            addSectionSeparator(this);
             add(createKeySignatureSection());
-            addSeparator();
+            addSectionSeparator(this);
             add(createLineWidthSection());
         }
 
@@ -1151,7 +1151,7 @@ public class SongSettingsDialog extends StandardDialog {
                 )
             );
             add(tabbedPane);
-            addSeparator();
+            addSectionSeparator(this);
 
             constraints.fill = GridBagConstraints.NONE;
             add(new JButton(new ResetFontsAction(mainFrame)));

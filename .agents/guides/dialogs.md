@@ -27,6 +27,8 @@ Accessors: `getMainFrame()`, `getScore()` (nullable), `requireScore()` (throws),
 Static helpers:
 - `addLabeledField(container, labelText, field, LabelPosition.LEFT|TOP)`
 - `addLabelToBox(box, text, gapHeight)`
+- `addSeparator(container)` / `addLargeSeparator(container)` — add a component-gap spacer strut. Orientation follows the container's layout (X-axis `BoxLayout` → horizontal strut; Y-axis box or a `Tab`'s `GridBagLayout` → vertical), and the container's own `add` applies any constraints. Use within a `TitledSection`.
+- `addSectionSeparator(container)` — the larger `DIALOG_SECTION_GAP` vertical strut for spacing between stacked sections of a `Tab`. Pass `this` from the `Tab`.
 
 Spacing comes from FlatLaf props / per-component struts.
 
@@ -54,7 +56,7 @@ Canonical small example: `FontDialog` — adds content to `contentPanel`, overri
 
 `extends JPanel` with GridBagLayout, top/left-aligned, horizontal fill default. Subclass constructor MUST end with `build()`.
 
-Override `initContents()` to add components. `add(c)` auto-applies constraints. `addSeparator()` adds vertical strut. `addExpanding(c, HORIZONTAL|VERTICAL|BOTH)` — at most once per tab.
+Override `initContents()` to add components. `add(c)` auto-applies constraints. `addSectionSeparator(this)` (static on `BaseDialog`) adds the inter-section vertical strut. `addExpanding(c, HORIZONTAL|VERTICAL|BOTH)` — at most once per tab.
 
 Lifecycle: `getData()` (populate, return false to cancel show), `setData()` (commit, StandardDialog only), `isValidData()`, `tabWillShow()`, `tabWillHide()`.
 
@@ -68,7 +70,7 @@ Canonical examples: `PreferencesDialog`, `SongSettingsDialog`.
 
 ### TitledSection (BaseDialog inner class)
 
-`JPanel` + BoxLayout + `StandardTitledBorder`. `new TitledSection(title)` (Y_AXIS) or `(title, BoxLayout.X_AXIS)`. Has its own `addSeparator()`. Auto LEFT_ALIGNMENT.
+`JPanel` + BoxLayout + `StandardTitledBorder`. `new TitledSection(title)` (Y_AXIS) or `(title, BoxLayout.X_AXIS)`. Use `addSeparator(section)` / `addLargeSeparator(section)` (static on `BaseDialog`) for spacers. Auto LEFT_ALIGNMENT.
 
 ### Opening
 

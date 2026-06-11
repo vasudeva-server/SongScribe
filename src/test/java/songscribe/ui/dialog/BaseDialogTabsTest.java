@@ -266,12 +266,12 @@ class BaseDialogTabsTest extends MainFrameMockTest {
         assertThat(dialog.song()).isSameAs(mockSong);
     }
 
-    // -- TitledSection.addSeparator --
+    // -- addSeparator --
 
     @Test
     void testTitledSectionAddSeparatorOnYAxisAddsVerticalStrut() {
         var section = new BaseDialog.TitledSection("Section");
-        section.addSeparator();
+        BaseDialog.addSeparator(section);
 
         assertThat(section.getComponentCount()).isEqualTo(1);
         // A vertical strut has zero preferred width and positive preferred height
@@ -283,7 +283,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
     @Test
     void testTitledSectionAddSeparatorOnXAxisAddsHorizontalStrut() {
         var section = new BaseDialog.TitledSection("Section", BoxLayout.X_AXIS);
-        section.addSeparator();
+        BaseDialog.addSeparator(section);
 
         assertThat(section.getComponentCount()).isEqualTo(1);
         // A horizontal strut has positive preferred width and zero preferred height

@@ -249,9 +249,9 @@ public class PreferencesDialog extends BaseDialog {
             startupActionGroup.add(openMostRecentRadio);
 
             add(createPageSizeAndUnitsRow());
-            addSeparator();
+            addSectionSeparator(this);
             add(createAppearanceSection());
-            addSeparator();
+            addSectionSeparator(this);
             add(createStartupActionSection());
 
             addChangeListeners();
@@ -367,7 +367,7 @@ public class PreferencesDialog extends BaseDialog {
         private JPanel createPageSizeSection() {
             var section = new TitledSection(Strings.get(Strings.LABEL_PREFS_SECTION_PAGE_SIZE));
             section.add(letterRadio);
-            section.addSeparator();
+            addSeparator(section);
             section.add(a4Radio);
             return section;
         }
@@ -377,7 +377,7 @@ public class PreferencesDialog extends BaseDialog {
                 Strings.get(Strings.LABEL_PREFS_SECTION_MEASUREMENT_UNITS)
             );
             section.add(inchesRadio);
-            section.addSeparator();
+            addSeparator(section);
             section.add(centimetersRadio);
             return section;
         }
@@ -406,11 +406,11 @@ public class PreferencesDialog extends BaseDialog {
         private JPanel createStartupActionSection() {
             var section = new TitledSection(Strings.get(Strings.LABEL_PREFS_SECTION_STARTUP_ACTION));
             section.add(new JLabel(Strings.get(Strings.LABEL_PREFS_STARTUP_ACTION_PROMPT)));
-            section.addSeparator();
+            addSeparator(section);
             section.add(doNothingRadio);
-            section.addSeparator();
+            addSeparator(section);
             section.add(showFileChooserRadio);
-            section.addSeparator();
+            addSeparator(section);
             section.add(openMostRecentRadio);
             return section;
         }
@@ -501,7 +501,7 @@ public class PreferencesDialog extends BaseDialog {
         @Override
         protected void initContents() {
             add(createFeedbackSection());
-            addSeparator();
+            addSectionSeparator(this);
             add(createPlaybackSection());
         }
 
@@ -536,7 +536,7 @@ public class PreferencesDialog extends BaseDialog {
             );
 
             section.add(playInsertingNoteCheck);
-            section.addSeparator();
+            addSeparator(section);
             section.add(playSelectedNoteCheck);
 
             return section;

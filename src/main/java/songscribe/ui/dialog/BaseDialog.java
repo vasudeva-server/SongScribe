@@ -228,6 +228,51 @@ public abstract class BaseDialog {
         }
     }
 
+    public static void addSeparator(JComponent container) {
+        addSeparator(container, false);
+    }
+
+    public static void addLargeSeparator(JComponent container) {
+        addSeparator(container, true);
+    }
+
+    /**
+     * Adds the larger inter-section spacer used between stacked sections of a
+     * {@link Tab} (sized from {@code DIALOG_SECTION_GAP}). The container's own
+     * {@code add} applies any layout constraints (a {@link Tab} routes through
+     * its constrained {@code add}).
+     */
+    public static void addSectionSeparator(JComponent container) {
+        container.add(Box.createVerticalStrut(
+            FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_SECTION_GAP)
+        ));
+    }
+
+    /**
+     * Adds a spacer strut to {@code container}, sized from the FlatLaf gap
+     * properties. The orientation follows the container's layout: an X-axis
+     * {@link BoxLayout} gets a horizontal strut, anything else (Y-axis box or a
+     * {@link Tab}'s {@link GridBagLayout}) gets a vertical one. The container's
+     * own {@code add} applies any layout constraints (e.g. {@link Tab} routes
+     * through its constrained {@code add}).
+     */
+    private static void addSeparator(JComponent container, boolean isLarge) {
+        if (container.getLayout() instanceof BoxLayout boxLayout
+                && boxLayout.getAxis() == BoxLayout.X_AXIS) {
+            container.add(Box.createHorizontalStrut(FlatLafProps.<Integer>get(
+                isLarge
+                    ? FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP
+                    : FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP
+            )));
+        } else {
+            container.add(Box.createVerticalStrut(FlatLafProps.<Integer>get(
+                isLarge
+                    ? FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP
+                    : FlatLafKeys.DIALOG_COMPONENT_VERTICAL_GAP
+            )));
+        }
+    }
+
     public void setVisible(boolean visible) {
         if (visible) {
             dialog = new JDialog(mainFrame, dialogTitle, isModal);
@@ -600,10 +645,6 @@ public abstract class BaseDialog {
             return comp;
         }
 
-        public void addSeparator() {
-            add(Box.createVerticalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_SECTION_GAP)), constraints);
-        }
-
         /**
          * Adds a component that expands to fill available space in the given
          * direction ({@link GridBagConstraints#HORIZONTAL},
@@ -644,16 +685,6 @@ public abstract class BaseDialog {
             setLayout(new BoxLayout(this, axis));
             setBorder(new StandardTitledBorder(title));
             setAlignmentX(Component.LEFT_ALIGNMENT);
-        }
-
-        public void addSeparator() {
-            var layout = (BoxLayout) getLayout();
-
-            if (layout.getAxis() == BoxLayout.Y_AXIS) {
-                add(Box.createVerticalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_GAP)));
-            } else {
-                add(Box.createHorizontalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP)));
-            }
         }
     }
 
