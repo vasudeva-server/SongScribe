@@ -438,12 +438,13 @@ public abstract class BaseDialog {
     }
 
     private void applyGeometry(DialogGeometry geometry) {
-        if (isResizable() && geometry.size() != null) {
+        var size = geometry.size();
+
+        if (isResizable() && size != null) {
             // Floor semantics: max of packed size and restored size per dimension
             var packedSize = dialog.getSize();
-            var restoredSize = geometry.size();
-            var width = Math.max(packedSize.width, restoredSize.width);
-            var height = Math.max(packedSize.height, restoredSize.height);
+            var width = Math.max(packedSize.width, size.width);
+            var height = Math.max(packedSize.height, size.height);
             var bounds = new Rectangle(geometry.location(), new Dimension(width, height));
             var clamped = GraphicUtils.clampToScreen(bounds);
             dialog.setBounds(clamped);

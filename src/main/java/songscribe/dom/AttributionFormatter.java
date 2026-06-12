@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.font.FontKey;
+import songscribe.util.StringUtils;
 
 /**
  * Pure, UI-free formatter that turns a {@link SongMetadata} record (plus the
@@ -130,6 +131,21 @@ public final class AttributionFormatter {
      * lines; otherwise the newline is swallowed by a single {@code drawString}.
      */
     private static List<AttributionLine> splitEmbeddedNewlines(List<AttributionLine> lines) {
+        var hasEmbeddedNewline = false;
+
+        for (var line : lines) {
+            if (line.text().indexOf('\n') >= 0) {
+                hasEmbeddedNewline = true;
+                break;
+            }
+        }
+
+        // Common case: nothing to split, so return the list unchanged rather than
+        // allocating and copying an identical one on every render.
+        if (!hasEmbeddedNewline) {
+            return lines;
+        }
+
         var expanded = new ArrayList<AttributionLine>();
 
         for (var line : lines) {
@@ -140,7 +156,7 @@ public final class AttributionFormatter {
                 continue;
             }
 
-            for (var part : text.split("\n", -1)) {
+            for (var part : StringUtils.LF_PATTERN.split(text, -1)) {
                 expanded.add(new AttributionLine(part, line.font()));
             }
         }
@@ -287,7 +303,7 @@ public final class AttributionFormatter {
      * </ul>
      */
     public static String oxfordJoin(List<String> items) {
-        int size = items.size();
+        var size = items.size();
 
         if (size == 0) {
             return "";

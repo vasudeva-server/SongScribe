@@ -126,20 +126,6 @@ class AttributionFormatterTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     /**
-     * Music and Words group together when they share the same (person, connector).
-     * Default song (both = Sri Chinmoy, LYRICIST, no translation, no arrangement) →
-     * the merged credit "Words and Music by" with the shared name on its own line.
-     */
-    @Test
-    void testDefaultSongGroupsWordsAndMusic() {
-        var song = new Song();
-
-        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
-
-        assertAttributionLines(lines, List.of("Words and Music by", "Sri Chinmoy"));
-    }
-
-    /**
      * A non–Sri Chinmoy lyricist with TEXT source must route the Words line
      * through the lyricsSource connector (" from "), proving the lyricist — not
      * only the composer — is passed through {@code connectorFor}. The LYRICIST
@@ -209,6 +195,29 @@ class AttributionFormatterTest extends UnitTest {
         var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
         assertAttributionLines(lines, List.of("Words and Music by", "Sri Chinmoy"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Embedded newlines (multi-line lyricist)
+    // -------------------------------------------------------------------------
+
+    /**
+     * A lyricist entered as several physical lines carries embedded newlines into
+     * its credit; {@code lines()} must expand that credit into one display line
+     * per physical line, so each renders centered rather than being swallowed by
+     * a single {@code drawString}.
+     */
+    @Test
+    void testMultiLineLyricistExpandsToSeparateLines() {
+        var song = songWith("First Line\nSecond Line", Song.SRI_CHINMOY, Song.LyricsSource.TEXT, false, "");
+
+        var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
+
+        assertAttributionLines(lines, List.of(
+            "Words from First Line",
+            "Second Line",
+            "Music by Sri Chinmoy"
+        ));
     }
 
     // -------------------------------------------------------------------------
@@ -283,6 +292,17 @@ class AttributionFormatterTest extends UnitTest {
     @Test
     void testDateDayWithoutYearProducesNoDateLine() {
         var lines = AttributionFormatter.lines(metadataWith("", 0, 15, "", ""), false);
+
+        assertSubAttributionLines(lines, List.of());
+    }
+
+    /**
+     * Month alone (with no year) is ignored: an empty year suppresses the whole
+     * date line regardless of the month.
+     */
+    @Test
+    void testDateMonthWithoutYearProducesNoDateLine() {
+        var lines = AttributionFormatter.lines(metadataWith("", 5, 0, "", ""), false);
 
         assertSubAttributionLines(lines, List.of());
     }
@@ -405,13 +425,16 @@ class AttributionFormatterTest extends UnitTest {
     void testSubAttributionLinesHaveSubAttributionFontKey() {
         var lines = AttributionFormatter.lines(metadataWith("Jamaica, NY", 0, 0, "1984", ""), false);
 
-        var subLines = lines.stream()
+        var subTexts = lines.stream()
             .filter(l -> l.font() == FontKey.SUB_ATTRIBUTION)
+            .map(AttributionLine::text)
             .toList();
 
-        assertThat(subLines)
-            .as("two SUB_ATTRIBUTION lines: date and place")
-            .hasSize(2);
+        // Pin both the count and the content/order so swapped or garbled
+        // date/place text is caught, not just a wrong line count.
+        assertThat(subTexts)
+            .as("two SUB_ATTRIBUTION lines: date then place")
+            .containsExactly("1984", "Jamaica, NY");
     }
 
     // -------------------------------------------------------------------------

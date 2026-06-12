@@ -79,6 +79,21 @@ public class NumericTextField extends MyJTextField {
         setInputVerifier(new RangeVerifier());
     }
 
+    /**
+     * Returns {@code true} when the field holds a non-blank value within the
+     * inclusive {@code [min, max]} range. Unlike the focus-yield verifier, a
+     * blank field is always rejected here regardless of the optional flag.
+     */
+    public boolean hasValidValue() {
+        var text = getText().strip();
+
+        if (text.isEmpty()) {
+            return false;
+        }
+
+        return parsesInRange(text);
+    }
+
     private boolean isValueInRange() {
         var text = getText().strip();
 
@@ -86,6 +101,10 @@ public class NumericTextField extends MyJTextField {
             return isOptional;
         }
 
+        return parsesInRange(text);
+    }
+
+    private boolean parsesInRange(String text) {
         try {
             var value = Integer.parseInt(text);
             return value >= min && value <= max;

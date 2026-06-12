@@ -326,6 +326,30 @@ public class SongSettingsDialog extends StandardDialog {
         }
     }
 
+    /**
+     * Builds a "Preview" section wrapping the given live-preview widget, with the
+     * widget's own background bleeding into a top/bottom matte border. Shared by
+     * the title and attribution tabs.
+     */
+    private static JPanel createPreviewSection(JComponent preview) {
+        var section = new BaseDialog.TitledSection(
+            Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_PREVIEW)
+        );
+
+        var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
+        var backgroundColor = preview.getBackground();
+        var previewWrapper = new JPanel();
+        previewWrapper.setOpaque(true);
+        previewWrapper.setBackground(backgroundColor);
+        previewWrapper.setBorder(BorderFactory.createMatteBorder(gap, 0, gap, 0, backgroundColor));
+        previewWrapper.setLayout(new BorderLayout());
+        previewWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        previewWrapper.add(preview, BorderLayout.CENTER);
+        section.add(previewWrapper);
+
+        return section;
+    }
+
     private final class TitleTab extends BaseDialog.Tab {
 
         // Title of song panel
@@ -401,26 +425,7 @@ public class SongSettingsDialog extends StandardDialog {
         protected void initContents() {
             add(createTitleSection());
             addSectionSeparator(this);
-            add(createPreviewSection());
-        }
-
-        private JPanel createPreviewSection() {
-            var section = new BaseDialog.TitledSection(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_PREVIEW)
-            );
-
-            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
-            var backgroundColor = titlePreview.getBackground();
-            var previewWrapper = new JPanel();
-            previewWrapper.setOpaque(true);
-            previewWrapper.setBackground(backgroundColor);
-            previewWrapper.setBorder(BorderFactory.createMatteBorder(gap, 0, gap, 0, backgroundColor));
-            previewWrapper.setLayout(new BorderLayout());
-            previewWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-            previewWrapper.add(titlePreview, BorderLayout.CENTER);
-            section.add(previewWrapper);
-
-            return section;
+            add(createPreviewSection(titlePreview));
         }
 
         private JPanel createTitleSection() {
@@ -599,6 +604,10 @@ public class SongSettingsDialog extends StandardDialog {
         );
         private final AttributionPaneWidget attributionPreview = new AttributionPaneWidget();
 
+        // Set while the year focus listener programmatically resets the month/day
+        // combos, so their action listeners skip the work that reset triggers.
+        private boolean adjustingDateFields;
+
         private AttributionTab() {
             monthCombo.setEditable(false);
 
@@ -631,7 +640,7 @@ public class SongSettingsDialog extends StandardDialog {
             addSectionSeparator(this);
             add(createMusicSection());
             addSectionSeparator(this);
-            add(createPreviewSection());
+            add(createPreviewSection(attributionPreview));
         }
 
         private JPanel createWordsSection() {
@@ -785,14 +794,18 @@ public class SongSettingsDialog extends StandardDialog {
             yearField.addFocusListener(new FocusAdapter() {
                 @Override
                 public void focusLost(FocusEvent e) {
-                    var yearValid = isYearValid();
+                    var yearValid = yearField.hasValidValue();
 
                     if (!yearValid) {
+                        // Reset month/day programmatically; the guard keeps the
+                        // combos' listeners from re-running this same validation.
+                        adjustingDateFields = true;
                         monthCombo.setSelectedIndex(0);
                         dayCombo.setSelectedIndex(0);
+                        adjustingDateFields = false;
                     }
 
-                    updateDateFieldStates();
+                    updateDateFieldStates(yearValid);
 
                     if (yearValid) {
                         refreshPreview();
@@ -800,43 +813,33 @@ public class SongSettingsDialog extends StandardDialog {
                 }
             });
             monthCombo.addActionListener(e -> {
+                if (adjustingDateFields) {
+                    return;
+                }
+
                 if (monthCombo.getSelectedIndex() == 0) {
                     dayCombo.setSelectedIndex(0);
                 }
 
-                updateDateFieldStates();
+                var yearValid = yearField.hasValidValue();
+                updateDateFieldStates(yearValid);
 
-                if (isYearValid()) {
+                if (yearValid) {
                     refreshPreview();
                 }
             });
             dayCombo.addActionListener(e -> {
-                if (isYearValid()) {
+                if (adjustingDateFields) {
+                    return;
+                }
+
+                if (yearField.hasValidValue()) {
                     refreshPreview();
                 }
             });
 
             // Don't let the section grow vertically
             UIUtils.setFlexibleWidth(section);
-            return section;
-        }
-
-        private JPanel createPreviewSection() {
-            var section = new BaseDialog.TitledSection(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_PREVIEW)
-            );
-
-            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
-            var backgroundColor = attributionPreview.getBackground();
-            var previewWrapper = new JPanel();
-            previewWrapper.setOpaque(true);
-            previewWrapper.setBackground(backgroundColor);
-            previewWrapper.setBorder(BorderFactory.createMatteBorder(gap, 0, gap, 0, backgroundColor));
-            previewWrapper.setLayout(new BorderLayout());
-            previewWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-            previewWrapper.add(attributionPreview, BorderLayout.CENTER);
-            section.add(previewWrapper);
-
             return section;
         }
 
@@ -913,23 +916,7 @@ public class SongSettingsDialog extends StandardDialog {
             return dayCombo.getSelectedIndex();
         }
 
-        private boolean isYearValid() {
-            var text = yearField.getText().strip();
-
-            if (text.isEmpty()) {
-                return false;
-            }
-
-            try {
-                var value = Integer.parseInt(text);
-                return value >= YEAR_MIN && value <= YEAR_MAX;
-            } catch (NumberFormatException e) {
-                return false;
-            }
-        }
-
-        private void updateDateFieldStates() {
-            var yearValid = isYearValid();
+        private void updateDateFieldStates(boolean yearValid) {
             monthCombo.setEnabled(yearValid);
             dayCombo.setEnabled(yearValid && monthCombo.getSelectedIndex() != 0);
         }
@@ -962,7 +949,7 @@ public class SongSettingsDialog extends StandardDialog {
             monthCombo.setSelectedIndex(song.getMonth());
             dayCombo.setSelectedIndex(song.getDay());
             yearField.setText(song.getYear());
-            updateDateFieldStates();
+            updateDateFieldStates(yearField.hasValidValue());
             composerField.setText(song.getComposer());
             lyricistField.setText(song.getLyricist());
             sourceCombo.setSelectedItem(song.getLyricsSource());
@@ -1716,7 +1703,7 @@ public class SongSettingsDialog extends StandardDialog {
             @Override
             public void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                var g2d = (Graphics2D) g;
+                var g2 = (Graphics2D) g;
                 // Use the glyph's visual bounds (not advance width) for centering, since
                 // the MusescoreIcon font has a large advance width unrelated to ink size.
                 var contentXOffset = Math.max(0, (getWidth() - CELL_SIZE.width) / 2);
@@ -1724,12 +1711,12 @@ public class SongSettingsDialog extends StandardDialog {
                     + (GLYPH_BOX_WIDTH_PX - glyphBounds.getWidth()) / 2
                     - glyphBounds.getX());
                 var glyphY = (float) (CELL_PADDING_Y_PX - glyphBounds.getY());
-                g2d.drawGlyphVector(glyphVector, glyphX, glyphY);
+                g2.drawGlyphVector(glyphVector, glyphX, glyphY);
 
                 var labelX = (float) (contentXOffset + GLYPH_BOX_WIDTH_PX + LABEL_GAP_PX);
                 var labelY = (getHeight() + labelLayout.getAscent()
                     - labelLayout.getDescent()) / 2f;
-                labelLayout.draw(g2d, labelX, labelY);
+                labelLayout.draw(g2, labelX, labelY);
             }
         }
     }
