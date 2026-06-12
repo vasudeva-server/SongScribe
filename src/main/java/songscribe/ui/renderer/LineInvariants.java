@@ -431,12 +431,17 @@ public final class LineInvariants {
                 continue;
             }
 
-            // A carrier (STOP/CONTINUE) belongs to this anchor's melisma — span includes it.
+            var extend = next.extend();
+
+            // A CONTINUE carrier is an interior note of this anchor's melisma — keep
+            // scanning for the boundary so the span covers every carrier, not just the first.
+            if (extend == Lyric.Extend.CONTINUE) {
+                continue;
+            }
+
+            // A STOP carrier is the final note of this anchor's melisma — span includes it.
             // A text-bearing lyric starts a new span — this anchor's span ends just before it.
-            var spanEnd = (next.extend() == Lyric.Extend.STOP
-                    || next.extend() == Lyric.Extend.CONTINUE)
-                    ? i
-                    : i - 1;
+            var spanEnd = extend == Lyric.Extend.STOP ? i : i - 1;
             return playingNoteIndex <= spanEnd;
         }
 

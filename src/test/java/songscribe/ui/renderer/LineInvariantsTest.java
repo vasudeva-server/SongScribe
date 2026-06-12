@@ -297,6 +297,53 @@ class LineInvariantsTest extends UnitTest {
             .isEqualTo(ScoreView.getPlayingNoteColor());
     }
 
+    // isLyricSpanPlaying() — melisma spanning CONTINUE carriers stays highlighted on every
+    // carrier, not just the first (regression test for issue #364)
+    @Test
+    void testIsLyricSpanPlayingForMultiCarrierMelisma() {
+        var line = multiCarrierMelismaLine();
+        var anchor = (StaffElement) line.getElement(0);
+
+        // Anchor at 0 (START), carriers CONTINUE at 1 and 2, STOP at 3, new word at 4.
+        // Every carrier index must keep the anchor's lyric highlighted.
+        for (var playingIndex = 1; playingIndex <= 3; playingIndex++) {
+            var invariants = seededBuilder()
+                .setEditMode(true)
+                .setCurrentLine(line)
+                .setPlayingNoteIndex(playingIndex)
+                .build();
+
+            assertThat(invariants.getLyricColor(0, anchor, 1))
+                .as("carrier index %d should keep the melisma anchor highlighted", playingIndex)
+                .isEqualTo(ScoreView.getPlayingNoteColor());
+        }
+
+        // The span ends at the STOP carrier (index 3): playing the new word at index 4
+        // must leave the anchor unhighlighted.
+        var pastSpan = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(4)
+            .build();
+
+        assertThat(pastSpan.getLyricColor(0, anchor, 1))
+            .as("note past the STOP carrier must not highlight the anchor")
+            .isEqualTo(Color.BLACK);
+
+        // A CONTINUE carrier is not itself a forward-extending anchor: querying the
+        // carrier at index 1 while a later carrier plays must not highlight it.
+        var carrier = (StaffElement) line.getElement(1);
+        var playingLaterCarrier = seededBuilder()
+            .setEditMode(true)
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(3)
+            .build();
+
+        assertThat(playingLaterCarrier.getLyricColor(1, carrier, 1))
+            .as("a CONTINUE carrier must not be treated as its own anchor span")
+            .isEqualTo(Color.BLACK);
+    }
+
     // isLyricSpanPlaying() — BEGIN/MIDDLE syllable with unlyriced note playing → true
     @Test
     void testIsLyricSpanPlayingForBeginMiddleContiguous() {
@@ -515,6 +562,31 @@ class LineInvariantsTest extends UnitTest {
             1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
         ((StaffElement) line.getElement(1)).setLyricForVerse(
             1, null, false, null, Lyric.Extend.STOP);
+        return line;
+    }
+
+    /**
+     * A line with five notes spanning a melisma: index 0 has a melisma-START lyric,
+     * indices 1 and 2 are CONTINUE carriers, index 3 is the STOP carrier, and index 4
+     * begins a new text-bearing syllable just past the melisma boundary.
+     */
+    private static Line multiCarrierMelismaLine() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        ((StaffElement) line.getElement(0)).setLyricForVerse(
+            1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
+        ((StaffElement) line.getElement(1)).setLyricForVerse(
+            1, null, false, null, Lyric.Extend.CONTINUE);
+        ((StaffElement) line.getElement(2)).setLyricForVerse(
+            1, null, false, null, Lyric.Extend.CONTINUE);
+        ((StaffElement) line.getElement(3)).setLyricForVerse(
+            1, null, false, null, Lyric.Extend.STOP);
+        ((StaffElement) line.getElement(4)).setLyricForVerse(
+            1, Lyric.Syllabic.SINGLE, false, "next", Lyric.Extend.NONE);
         return line;
     }
 
