@@ -31,7 +31,6 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.Engraving;
-import songscribe.ui.component.ScoreView;
 import songscribe.dom.LineElement;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
@@ -112,7 +111,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
      * Returns the color to use for beam highlighting, or null if the beam should not be highlighted.
      * A beam is highlighted when removing the highlighted note(s) would eliminate the beam
      * (fewer than 2 beamable notes remain). Selected notes use the selection color;
-     * hovered notes use the insertion note color.
+     * hovered notes use the replaced-element color (matching the hovered note itself).
      */
     @Nullable
     Color getBeamHighlightColor(
@@ -153,7 +152,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         }
 
         if (anyHovered) {
-            return ScoreView.getPreviewElementColor();
+            return LineInvariants.REPLACED_ELEMENT_COLOR;
         }
 
         return null;
