@@ -343,13 +343,7 @@ public abstract class BaseDialog {
             }
 
             dialog.pack();
-
-            var minSize = dialog.getPreferredSize();
-            minSize.width += getExtraWidth();
-            minSize.height += getExtraHeight();
-            dialog.setPreferredSize(minSize);
-            dialog.setSize(minSize);
-            dialog.setMinimumSize(minSize);
+            pinSizeToPreferred();
 
             var geometry = SAVED_GEOMETRY.get(getClass());
 
@@ -519,6 +513,41 @@ public abstract class BaseDialog {
 
     protected void pack() {
         dialog.pack();
+    }
+
+    /**
+     * Pins the dialog's size to its current preferred size (plus any extra
+     * width/height), so the window neither grows nor shrinks on its own.
+     * Must be called immediately after {@link JDialog#pack()}.
+     */
+    private void pinSizeToPreferred() {
+        var size = dialog.getPreferredSize();
+        size.width += getExtraWidth();
+        size.height += getExtraHeight();
+        dialog.setPreferredSize(size);
+        dialog.setSize(size);
+        dialog.setMinimumSize(size);
+    }
+
+    /**
+     * Re-packs the dialog to fit its current content. Use when a tab's content
+     * changes height at runtime (e.g. a live preview) and the fixed size pinned
+     * at show time would otherwise starve it. Clears that pin so {@link JDialog#pack()}
+     * recomputes from the layout, then re-pins to the new preferred size,
+     * preserving the dialog's location. A no-op until the dialog is showing, so
+     * it is safe to call from content-population code that runs before display.
+     */
+    protected void repackToContent() {
+        if (!dialog.isShowing()) {
+            return;
+        }
+
+        var location = dialog.getLocation();
+        dialog.setPreferredSize(null);
+        dialog.setMinimumSize(null);
+        dialog.pack();
+        pinSizeToPreferred();
+        dialog.setLocation(location);
     }
 
     protected MainFrame getMainFrame() {

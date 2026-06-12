@@ -614,6 +614,9 @@ public class SongSettingsDialog extends StandardDialog {
             composerField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
             lyricistField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
             attributionPreview.setOpaque(true);
+            attributionPreview.setBackground(
+                FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND)
+            );
 
             build();
         }
@@ -622,51 +625,7 @@ public class SongSettingsDialog extends StandardDialog {
         protected void initContents() {
             add(createInfoSection());
             addSectionSeparator(this);
-            add(createPlaceAndDateSection());
-        }
-
-        private JPanel createPlaceAndDateSection() {
-            var section = new BaseDialog.TitledSection(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_PLACE_AND_DATE)
-            );
-
-            addLabeledField(
-                section,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_PLACE),
-                placeField,
-                BaseDialog.LabelPosition.LEFT
-            );
-
-            addSeparator(section);
-
-            var datePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-            datePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(datePanel);
-
-            addLabeledField(
-                datePanel,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_MONTH),
-                monthCombo,
-                BaseDialog.LabelPosition.LEFT
-            );
-
-            addLabeledField(
-                datePanel,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_DAY),
-                dayCombo,
-                BaseDialog.LabelPosition.LEFT
-            );
-
-            addLabeledField(
-                datePanel,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_YEAR),
-                yearField,
-                BaseDialog.LabelPosition.LEFT
-            );
-
-            // Don't let the section grow vertically
-            UIUtils.setFlexibleWidth(section);
-            return section;
+            add(createPreviewSection());
         }
 
         private JPanel createInfoSection() {
@@ -674,16 +633,13 @@ public class SongSettingsDialog extends StandardDialog {
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION)
             );
 
-            addLabeledField(
-                section,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_MUSIC),
-                composerField,
-                BaseDialog.LabelPosition.LEFT
-            );
+            var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
 
-            addSeparator(section);
-
-            var wordsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
+            // Use a zero gap on the row's own FlowLayout: each labeled field is
+            // itself wrapped in a FlowLayout that already contributes the leading
+            // gap, so a nonzero row gap would double it and push the first label
+            // out of alignment with the single-field rows.
+            var wordsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
             wordsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             addLabeledField(
@@ -703,20 +659,68 @@ public class SongSettingsDialog extends StandardDialog {
             section.add(wordsRow);
             addSeparator(section);
 
+            var musicRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            musicRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            addLabeledField(
+                musicRow,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_MUSIC),
+                composerField,
+                BaseDialog.LabelPosition.LEFT
+            );
+
+            // Match the gap between the Words field and the Source label.
+            musicRow.add(Box.createHorizontalStrut(horizontalGap));
+            musicRow.add(arrangementCheck);
+            section.add(musicRow);
+
             var song = getSong();
 
             if (!song.getTranslatedLyrics().isEmpty()) {
+                addSeparator(section);
                 unofficialTranslationCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
                 section.add(unofficialTranslationCheck);
-                addSeparator(section);
             }
 
-            arrangementCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(arrangementCheck);
+            addLargeSeparator(section);
+            var separator = new JSeparator();
+            separator.setAlignmentX(Component.LEFT_ALIGNMENT);
+            section.add(separator);
+            addLargeSeparator(section);
+
+            var datePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            datePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            section.add(datePanel);
+
+            addLabeledField(
+                datePanel,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_YEAR),
+                yearField,
+                BaseDialog.LabelPosition.LEFT
+            );
+
+            addLabeledField(
+                datePanel,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_MONTH),
+                monthCombo,
+                BaseDialog.LabelPosition.LEFT
+            );
+
+            addLabeledField(
+                datePanel,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_DAY),
+                dayCombo,
+                BaseDialog.LabelPosition.LEFT
+            );
+
             addSeparator(section);
 
-            attributionPreview.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(attributionPreview);
+            addLabeledField(
+                section,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_PLACE),
+                placeField,
+                BaseDialog.LabelPosition.LEFT
+            );
 
             composerField.addFocusListener(new FocusAdapter() {
                 @Override
@@ -747,12 +751,61 @@ public class SongSettingsDialog extends StandardDialog {
                 }
             };
             placeField.addFocusListener(previewOnFocusLost);
-            yearField.addFocusListener(previewOnFocusLost);
-            monthCombo.addActionListener(e -> refreshPreview());
-            dayCombo.addActionListener(e -> refreshPreview());
+            yearField.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    var yearValid = isYearValid();
+
+                    if (!yearValid) {
+                        monthCombo.setSelectedIndex(0);
+                        dayCombo.setSelectedIndex(0);
+                    }
+
+                    updateDateFieldStates();
+
+                    if (yearValid) {
+                        refreshPreview();
+                    }
+                }
+            });
+            monthCombo.addActionListener(e -> {
+                if (monthCombo.getSelectedIndex() == 0) {
+                    dayCombo.setSelectedIndex(0);
+                }
+
+                updateDateFieldStates();
+
+                if (isYearValid()) {
+                    refreshPreview();
+                }
+            });
+            dayCombo.addActionListener(e -> {
+                if (isYearValid()) {
+                    refreshPreview();
+                }
+            });
 
             // Don't let the section grow vertically
             UIUtils.setFlexibleWidth(section);
+            return section;
+        }
+
+        private JPanel createPreviewSection() {
+            var section = new BaseDialog.TitledSection(
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_PREVIEW)
+            );
+
+            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
+            var backgroundColor = attributionPreview.getBackground();
+            var previewWrapper = new JPanel();
+            previewWrapper.setOpaque(true);
+            previewWrapper.setBackground(backgroundColor);
+            previewWrapper.setBorder(BorderFactory.createMatteBorder(gap, 0, gap, 0, backgroundColor));
+            previewWrapper.setLayout(new BorderLayout());
+            previewWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+            previewWrapper.add(attributionPreview, BorderLayout.CENTER);
+            section.add(previewWrapper);
+
             return section;
         }
 
@@ -763,6 +816,12 @@ public class SongSettingsDialog extends StandardDialog {
                 fonts.getFont(FontKey.SUB_ATTRIBUTION),
                 buildPreviewLines()
             );
+
+            // The preview's height changes with both the line count and the
+            // attribution/sub-attribution font size. The dialog is packed to a
+            // fixed height at show time, so a taller preview would be starved by
+            // the tab's GridBagLayout. Re-pack so the window fits the new height.
+            repackToContent();
         }
 
         /**
@@ -823,6 +882,27 @@ public class SongSettingsDialog extends StandardDialog {
             return dayCombo.getSelectedIndex();
         }
 
+        private boolean isYearValid() {
+            var text = yearField.getText().strip();
+
+            if (text.isEmpty()) {
+                return false;
+            }
+
+            try {
+                var value = Integer.parseInt(text);
+                return value >= YEAR_MIN && value <= YEAR_MAX;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+
+        private void updateDateFieldStates() {
+            var yearValid = isYearValid();
+            monthCombo.setEnabled(yearValid);
+            dayCombo.setEnabled(yearValid && monthCombo.getSelectedIndex() != 0);
+        }
+
         String getComposerText() {
             return Song.coercePerson(composerField.getText());
         }
@@ -851,6 +931,7 @@ public class SongSettingsDialog extends StandardDialog {
             monthCombo.setSelectedIndex(song.getMonth());
             dayCombo.setSelectedIndex(song.getDay());
             yearField.setText(song.getYear());
+            updateDateFieldStates();
             composerField.setText(song.getComposer());
             lyricistField.setText(song.getLyricist());
             sourceCombo.setSelectedItem(song.getLyricsSource());
