@@ -32,9 +32,20 @@ import songscribe.util.UIUtils;
 
 public final class InputUtils {
 
+    /** Sentinel passed as {@code maxChars} to impose no length limit. */
+    public static final int NO_MAX_CHARS = Integer.MAX_VALUE;
+
     private InputUtils() {}
 
     public static void addInputFilter(JComponent component, String regex) {
+        addInputFilter(component, regex, NO_MAX_CHARS);
+    }
+
+    public static void addInputFilter(
+        JComponent component,
+        String regex,
+        int maxChars
+    ) {
         AbstractDocument document = null;
 
         if (component instanceof JTextField textField) {
@@ -49,7 +60,7 @@ public final class InputUtils {
         }
 
         if (document != null) {
-            document.setDocumentFilter(new CustomDocumentFilter(regex));
+            document.setDocumentFilter(new CustomDocumentFilter(regex, maxChars));
         }
     }
 
@@ -61,14 +72,24 @@ public final class InputUtils {
         JComponent component,
         boolean allowDecimal
     ) {
-        addInputFilter(component, allowDecimal ? "[\\d\\.]+" : "\\d+");
+        addNumericFilter(component, allowDecimal, NO_MAX_CHARS);
     }
 
-    private static final DecimalDocumentFilter DECIMAL_FILTER = new DecimalDocumentFilter();
+    public static void addNumericFilter(
+        JComponent component,
+        boolean allowDecimal,
+        int maxChars
+    ) {
+        addInputFilter(component, allowDecimal ? "[\\d\\.]+" : "\\d+", maxChars);
+    }
 
     public static void addDecimalFilter(JTextField field) {
+        addDecimalFilter(field, NO_MAX_CHARS);
+    }
+
+    public static void addDecimalFilter(JTextField field, int maxChars) {
         var document = (AbstractDocument) field.getDocument();
-        document.setDocumentFilter(DECIMAL_FILTER);
+        document.setDocumentFilter(new DecimalDocumentFilter(maxChars));
     }
 
     public static class RegexFormatter extends DefaultFormatter {
@@ -93,6 +114,12 @@ public final class InputUtils {
     public static final class DecimalDocumentFilter extends DocumentFilter {
 
         private static final Pattern DECIMAL_PATTERN = Pattern.compile("\\d*\\.?\\d*");
+
+        private final int maxChars;
+
+        private DecimalDocumentFilter(int maxChars) {
+            this.maxChars = maxChars;
+        }
 
         @Override
         public void insertString(
@@ -129,13 +156,19 @@ public final class InputUtils {
             }
         }
 
-        private static boolean isProspectiveTextValid(
+        private boolean isProspectiveTextValid(
             Document doc,
             int offset,
             int length,
             String text
         ) throws BadLocationException {
-            var current = doc.getText(0, doc.getLength());
+            var docLength = doc.getLength();
+
+            if (docLength - length + text.length() > maxChars) {
+                return false;
+            }
+
+            var current = doc.getText(0, docLength);
             var prospective = current.substring(0, offset) + text + current.substring(offset + length);
             return DECIMAL_PATTERN.matcher(prospective).matches();
         }
@@ -144,9 +177,11 @@ public final class InputUtils {
     public static final class CustomDocumentFilter extends DocumentFilter {
 
         private final Pattern pattern;
+        private final int maxChars;
 
-        private CustomDocumentFilter(String regex) {
+        private CustomDocumentFilter(String regex, int maxChars) {
             pattern = Pattern.compile(regex);
+            this.maxChars = maxChars;
         }
 
         @Override
@@ -158,7 +193,7 @@ public final class InputUtils {
         ) throws BadLocationException {
             //noinspection ConstantValue -- overridden method may be called with null string
             if (string != null) {
-                if (string.isEmpty() || pattern.matcher(string).matches()) {
+                if (isProspectiveTextValid(fb.getDocument(), 0, string)) {
                     super.insertString(fb, offset, string, attr);
                 } else {
                     UIUtils.beep();
@@ -176,12 +211,24 @@ public final class InputUtils {
         ) throws BadLocationException {
             //noinspection ConstantValue -- overridden method may be called with null string
             if (text != null) {
-                if (text.isEmpty() || pattern.matcher(text).matches()) {
+                if (isProspectiveTextValid(fb.getDocument(), length, text)) {
                     super.replace(fb, offset, length, text, attrs);
                 } else {
                     UIUtils.beep();
                 }
             }
+        }
+
+        private boolean isProspectiveTextValid(Document doc, int length, String text) {
+            if (!text.isEmpty() && !pattern.matcher(text).matches()) {
+                return false;
+            }
+
+            if (doc.getLength() - length + text.length() > maxChars) {
+                return false;
+            }
+
+            return true;
         }
     }
 }

@@ -82,6 +82,7 @@ public class SongSettingsDialog extends StandardDialog {
     private static final int SONG_NUMBER_MAX = 1000;
     private static final int YEAR_MIN = 1942;
     private static final int YEAR_MAX = 2007;
+    private static final int MAX_YEAR_CHARS = 4;
     private static final int TAKE_FIRST_WORDS_DEFAULT = 4;
     private static final int TAKE_FIRST_WORDS_MIN = 1;
     private static final int TAKE_FIRST_WORDS_MAX = 10;
@@ -589,7 +590,7 @@ public class SongSettingsDialog extends StandardDialog {
         );
         private final JComboBox<String> dayCombo;
         private final NumericTextField yearField =
-            new NumericTextField(5, YEAR_MIN, YEAR_MAX, true);
+            new NumericTextField(4, YEAR_MIN, YEAR_MAX, true, MAX_YEAR_CHARS);
 
         // Attribution panel
         private final MyJTextField composerField = new MyJTextField(27);
@@ -1567,6 +1568,7 @@ public class SongSettingsDialog extends StandardDialog {
             var flatGlyphs = new String[]{
                 "\uF37F", "\uF380", "\uF381", "\uF382", "\uF383", "\uF384", "\uF385"
             };
+
             for (var i = 0; i < MAX_ACCIDENTAL_COUNT; i++) {
                 var sel = new KeySelection(KeyType.FLATS, i + 1);
                 selections.add(sel);
@@ -1576,6 +1578,7 @@ public class SongSettingsDialog extends StandardDialog {
             var sharpGlyphs = new String[]{
                 "\uF378", "\uF379", "\uF37A", "\uF37B", "\uF37C", "\uF37D", "\uF37E"
             };
+
             for (var i = 0; i < MAX_ACCIDENTAL_COUNT; i++) {
                 var sel = new KeySelection(KeyType.SHARPS, i + 1);
                 selections.add(sel);

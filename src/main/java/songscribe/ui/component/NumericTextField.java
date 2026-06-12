@@ -71,8 +71,25 @@ public class NumericTextField extends MyJTextField {
      *     is rejected
      */
     public NumericTextField(int columns, int min, int max, boolean isOptional) {
+        this(columns, min, max, isOptional, InputUtils.NO_MAX_CHARS);
+    }
+
+    /**
+     * Creates a field that validates its value against an inclusive integer
+     * range when focus leaves it and limits typed input to {@code maxChars}
+     * characters. Pass {@link InputUtils#NO_MAX_CHARS} for no length limit.
+     *
+     * @see #NumericTextField(int, int, int, boolean)
+     */
+    public NumericTextField(
+        int columns,
+        int min,
+        int max,
+        boolean isOptional,
+        int maxChars
+    ) {
         super(columns);
-        InputUtils.addNumericFilter(this, false);
+        InputUtils.addNumericFilter(this, false, maxChars);
         this.min = min;
         this.max = max;
         this.isOptional = isOptional;
