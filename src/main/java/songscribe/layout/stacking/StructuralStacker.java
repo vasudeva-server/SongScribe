@@ -104,8 +104,9 @@ public class StructuralStacker {
         LayoutResult.Builder builder) {
 
         for (var tuplet : line.findRangeElements(Tuplet.class)) {
-            stackSpanElement(tuplet, TUPLET_MARGIN_SS,
-                columnsByElement, builder);
+            var numberOnly = tuplet.isNumberOnly(line);
+            var heightSs = numberOnly ? Tuplet.numberOnlyHeightSs() : Tuplet.bracketedHeightSs();
+            stackSpanElement(tuplet, heightSs, TUPLET_MARGIN_SS, columnsByElement, builder);
         }
     }
 
@@ -118,11 +119,11 @@ public class StructuralStacker {
         LayoutResult.Builder builder) {
 
         for (var crescendo : line.findRangeElements(Crescendo.class)) {
-            stackSpanElement(crescendo, HAIRPIN_MARGIN_SS, columnsByElement, builder);
+            stackSpanElement(crescendo, crescendo.getContentHeightSs(), HAIRPIN_MARGIN_SS, columnsByElement, builder);
         }
 
         for (var diminuendo : line.findRangeElements(Diminuendo.class)) {
-            stackSpanElement(diminuendo, HAIRPIN_MARGIN_SS, columnsByElement, builder);
+            stackSpanElement(diminuendo, diminuendo.getContentHeightSs(), HAIRPIN_MARGIN_SS, columnsByElement, builder);
         }
     }
 
@@ -229,6 +230,7 @@ public class StructuralStacker {
      */
     private void stackSpanElement(
         RangeElement element,
+        double heightSs,
         double marginSs,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
@@ -253,7 +255,7 @@ public class StructuralStacker {
         var widthSs = element.getSpanWidthSs(anchorXSs, endXSs);
 
         stackAbove(structuralExtents, element, anchorXSs, widthSs,
-            element.getContentHeightSs(), marginSs,
+            heightSs, marginSs,
             staffPosition, builder);
     }
 

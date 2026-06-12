@@ -21,7 +21,6 @@
 package songscribe.ui.renderer;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
@@ -31,7 +30,6 @@ import songscribe.layout.LayoutResult;
 import songscribe.dom.Tuplet;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
-import songscribe.util.MyFontUtils;
 
 /**
  * Renders tuplet brackets with numbers using staff-space coordinates
@@ -46,14 +44,8 @@ public final class TupletRenderer {
     // Constants
     // ==========================================================================
 
-    /** Italic serif font for tuplet numbers, matching LilyPond's italic style. */
-    private static final Font TUPLET_FONT = MyFontUtils.getLocalFont("C059-Italic.otf", 1.8f);
-
     /** Clearance on each side of tuplet number in bracket (LilyPond: 0.5ss per side) */
     private static final double TUPLET_NUMBER_GAP_SS = 0.5;  // 4px
-
-    /** Vertical arm height of bracket endpoints (LilyPond: 0.7ss) */
-    private static final double TUPLET_BRACKET_OVERHANG_SS = 0.7;  // 5.6px
 
     /** Rightward italic correction for tuplet number gap (LilyPond: +0.1ss) */
     private static final double TUPLET_GAP_ITALIC_CORRECTION_SS = 0.1;  // 0.8px
@@ -115,12 +107,7 @@ public final class TupletRenderer {
                 - Tuplet.ARM_EXTENSION_SS;
             var rightXSs = endXSs + Engraving.NOTE_HEAD_WIDTH_SS + Tuplet.ARM_EXTENSION_SS;
 
-            var anchorIdx = tuplet.getAnchorElementIndex();
-            var endIdx = tuplet.getEndElementIndex();
-            // Beamed + stems up: number only (beam already provides visual grouping)
-            var allBeamed = line.findBeamAt(anchorIdx) != null
-                && line.findBeamAt(endIdx) != null;
-            var numberOnly = allBeamed && isUpper;
+            var numberOnly = tuplet.isNumberOnly(line);
 
             renderTuplet(g2, invariants, leftXSs, rightXSs, decorLayout.ySs(), tuplet.getGrade(), numberOnly);
         }
@@ -134,7 +121,7 @@ public final class TupletRenderer {
      * @param invariants        line invariants
      * @param leftXSs    left edge of the visual bracket
      * @param rightXSs   right edge of the visual bracket
-     * @param ySs        Y position of the bracket in layout space
+     * @param ySs        Y of the reserved box top in layout space
      * @param grade      tuplet number (3 for triplet, 5 for quintuplet, etc.)
      * @param numberOnly true to draw only the number (no bracket)
      */
@@ -147,13 +134,15 @@ public final class TupletRenderer {
         int grade,
         boolean numberOnly
     ) {
-        // Convert layout Y to component Y
-        var bracketYSs = RenderingUtils.layoutYToComponentYSs(ySs, invariants);
+        // Convert layout Y to component Y — this is the top of the reserved box
+        var boxTopYSs = RenderingUtils.layoutYToComponentYSs(ySs, invariants);
         var centerXSs = (leftXSs + rightXSs) / 2.0;
 
-        // Measure number width for gap calculation
-        var numberAdvanceSs = measureNumberAdvanceSs(g2, grade);
-        var halfGapSs = numberAdvanceSs / 2.0 + TUPLET_NUMBER_GAP_SS;
+        // Shape the number once; its bounds drive both the bracket gap and centering
+        var glyphVector = Tuplet.TUPLET_FONT.createGlyphVector(
+            g2.getFontRenderContext(), String.valueOf(grade));
+        var inkBounds = glyphVector.getVisualBounds();
+        var halfGapSs = glyphVector.getLogicalBounds().getWidth() / 2.0 + TUPLET_NUMBER_GAP_SS;
 
         // With a bracket, shift the gap center rightward to account for italic slant
         var gapCenterXSs = numberOnly
@@ -162,11 +151,18 @@ public final class TupletRenderer {
 
         var thicknessSs = invariants.getLineThickness().tupletBracketSs();
 
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+        try (var ignored = GraphicsState.save(g2, COLOR)) {
             g2.setColor(RenderingUtils.ELEMENT_COLOR);
 
-            if (!numberOnly) {
-                var armHeightSs = TUPLET_BRACKET_OVERHANG_SS;
+            double numberBaselineYSs;
+
+            if (numberOnly) {
+                // Number-only: ink top sits at the box top
+                numberBaselineYSs = boxTopYSs - inkBounds.getY();
+            } else {
+                // Bracketed: bracket line sits inside the box at inkH/2 from the top
+                var bracketYSs = boxTopYSs + Tuplet.bracketLineOffsetSs();
+                var armHeightSs = Tuplet.BRACKET_ARM_HEIGHT_SS;
                 var gapLeftXSs = gapCenterXSs - halfGapSs;
                 var gapRightXSs = gapCenterXSs + halfGapSs;
 
@@ -183,42 +179,15 @@ public final class TupletRenderer {
                 // Right vertical arm — round cap at top tucks inside the horizontal line
                 GraphicUtils.fillVerticalLine(g2, rightXSs,
                     bracketYSs, bracketYSs + armHeightSs, thicknessSs);
+
+                // Number is centered on the bracket line
+                numberBaselineYSs = bracketYSs - inkBounds.getCenterY();
             }
 
-            // Draw tuplet number centered on the bracket line
-            drawTupletNumber(g2, grade, gapCenterXSs, bracketYSs);
+            // Center the number horizontally on the gap, then draw the shaped glyphs
+            var numberXSs = (float) (gapCenterXSs - inkBounds.getWidth() / 2.0);
+            g2.drawGlyphVector(glyphVector, numberXSs, (float) numberBaselineYSs);
         }
     }
 
-    // ==========================================================================
-    // Number drawing
-    // ==========================================================================
-
-    /**
-     * Draws the tuplet number centered horizontally at {@code centerXSs} and vertically
-     * centered on {@code bracketYSs} using the glyph's ink bounds.
-     */
-    private static void drawTupletNumber(
-        Graphics2D g2,
-        int grade,
-        double centerXSs,
-        double bracketYSs
-    ) {
-        g2.setFont(TUPLET_FONT);
-        var text = String.valueOf(grade);
-        var glyphVector = TUPLET_FONT.createGlyphVector(g2.getFontRenderContext(), text);
-        var inkBounds = glyphVector.getVisualBounds();
-
-        // Center ink bounding box on the bracket line
-        var x = (float) (centerXSs - inkBounds.getWidth() / 2.0);
-        var baseline = (float) (bracketYSs - inkBounds.getCenterY());
-        g2.drawString(text, x, baseline);
-    }
-
-    /**
-     * Measures the advance width of a tuplet number in staff spaces.
-     */
-    private static double measureNumberAdvanceSs(Graphics2D g2, int grade) {
-        return g2.getFontMetrics(TUPLET_FONT).stringWidth(String.valueOf(grade));
-    }
 }

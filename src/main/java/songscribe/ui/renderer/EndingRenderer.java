@@ -133,7 +133,7 @@ public final class EndingRenderer {
             g2.setFont(Ending.ENDING_FONT);
             var label = bracket.label();
             var glyphVector = Ending.ENDING_FONT.createGlyphVector(g2.getFontRenderContext(), label);
-            var glyphHeightSs = -glyphVector.getVisualBounds().getY();
+            var glyphHeightSs = GraphicUtils.inkHeight(glyphVector.getVisualBounds());
 
             // Add 1 device-pixel gap between the digit and the period
             var onePixelSs = 1.0 / g2.getTransform().getScaleX();

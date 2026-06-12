@@ -218,7 +218,7 @@ public class Ending extends RangeElement {
 
         var endElement = line.getElement(end);
         var ranges = new ArrayList<BracketRange>(2);
-        double repeatX = 0;
+        var repeatX = 0.0;
 
         // First bracket (before repeat, or entire span if no repeat)
         if (start < repeatSplitIndex || repeatSplitIndex == -1) {
@@ -386,7 +386,7 @@ public class Ending extends RangeElement {
         // Label (e.g. "1." or "2.")
         var labelBounds = labelBoundsSs(bracket.number());
         var labelWidthSs = labelBounds.getWidth();
-        var labelHeightSs = -labelBounds.getY();
+        var labelHeightSs = GraphicUtils.inkHeight(labelBounds);
         regions.add(new CollisionRegion(
             xBaseSs + LABEL_X_INSET_SS, 0,
             labelWidthSs, LABEL_Y_OFFSET_SS + labelHeightSs));

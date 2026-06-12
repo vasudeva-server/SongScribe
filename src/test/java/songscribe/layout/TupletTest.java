@@ -23,12 +23,15 @@ package songscribe.layout;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Tuplet;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.createNote;
 
 import org.junit.jupiter.api.Nested;
 
@@ -46,19 +49,34 @@ class TupletTest extends UnitTest {
     }
 
     @Test
-    void testContentHeightSsMatchesStylesheetConstant() {
+    void testContentHeightSsIsBracketedReservedHeight() {
         var tuplet = createTuplet();
 
-        assertThat(tuplet.getContentHeightSs())
-            .isEqualTo(Tuplet.TUPLET_BRACKET_HEIGHT_SS);
+        // Re-derive the expected height from the public constants rather than from
+        // bracketedHeightSs(), so the test fails if either the override or the formula changes.
+        var expectedHeightSs =
+            Tuplet.TUPLET_NUMBER_INK_HEIGHT_SS / 2.0 + Tuplet.BRACKET_ARM_HEIGHT_SS;
+
+        assertThat(tuplet.getContentHeightSs()).isEqualTo(expectedHeightSs);
     }
 
     @Test
     void testContentHeightPxIsToPixelsOfSs() {
         var tuplet = createTuplet();
         assertThat(tuplet.getContentHeightPx())
-            .isCloseTo(ScaleContext.ssToPx(Tuplet.TUPLET_BRACKET_HEIGHT_SS),
-                within(EPSILON));
+            .isCloseTo(ScaleContext.ssToPx(tuplet.getContentHeightSs()), within(EPSILON));
+    }
+
+    @Test
+    void testNumberOnlyHeightSsIsFullInkHeight() {
+        assertThat(Tuplet.numberOnlyHeightSs())
+            .isEqualTo(Tuplet.TUPLET_NUMBER_INK_HEIGHT_SS);
+    }
+
+    @Test
+    void testBracketLineOffsetSsIsHalfInkHeight() {
+        assertThat(Tuplet.bracketLineOffsetSs())
+            .isCloseTo(Tuplet.TUPLET_NUMBER_INK_HEIGHT_SS / 2.0, within(EPSILON));
     }
 
     // -------------------------------------------------------------------------
@@ -106,8 +124,8 @@ class TupletTest extends UnitTest {
             var tuplet = createTuplet();
 
             // anchorX == endX => geometry = 0, which is below the minimum of 1.0.
-            double anchorXSs = 2.0;
-            double endXSs = 2.0;
+            var anchorXSs = 2.0;
+            var endXSs = 2.0;
 
             assertThat(endXSs - anchorXSs)
                 .as("precondition: geometry width must be less than 1.0 for clamp branch")
@@ -124,9 +142,9 @@ class TupletTest extends UnitTest {
         void testGetSpanWidthSsReturnsGeometryWhenLargerThanMinimum() {
             var tuplet = createTuplet();
 
-            double anchorXSs = 0.0;
-            double endXSs = 4.0;
-            double expectedWidthSs = endXSs - anchorXSs;
+            var anchorXSs = 0.0;
+            var endXSs = 4.0;
+            var expectedWidthSs = endXSs - anchorXSs;
 
             assertThat(expectedWidthSs)
                 .as("precondition: geometry width must exceed 1.0 for geometry branch")
@@ -134,6 +152,84 @@ class TupletTest extends UnitTest {
 
             assertThat(tuplet.getSpanWidthSs(anchorXSs, endXSs))
                 .isCloseTo(expectedWidthSs, within(EPSILON));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // isNumberOnly(Line): true only when beamed at both ends with upward stems
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings({ "PackageVisibleInnerClass", "NullAway", "DataFlowIssue" })
+    @Nested
+    class IsNumberOnly {
+
+        // Builds a line of two notes joined by a beam, with a tuplet spanning them.
+        private Tuplet beamedTuplet(Line line, boolean upper) {
+            var note1 = createNote(0, upper);
+            var note2 = createNote(0, upper);
+            line.addElement(note1);
+            line.addElement(note2);
+            line.addRangeElement(new Beam(note1, note2));
+
+            var tuplet = new Tuplet(note1, note2, TRIPLET_GRADE);
+            line.addRangeElement(tuplet);
+            return tuplet;
+        }
+
+        @Test
+        void testTrueWhenBeamedAtBothEndsWithUpwardStems() {
+            var line = detachedLine();
+            var tuplet = beamedTuplet(line, true);
+
+            assertThat(tuplet.isNumberOnly(line)).isTrue();
+        }
+
+        @Test
+        void testFalseWhenBeamedButStemsDown() {
+            var line = detachedLine();
+            var tuplet = beamedTuplet(line, false);
+
+            assertThat(tuplet.isNumberOnly(line)).isFalse();
+        }
+
+        @Test
+        void testFalseWhenNotBeamed() {
+            var line = detachedLine();
+            var note1 = createNote(0, true);
+            var note2 = createNote(0, true);
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var tuplet = new Tuplet(note1, note2, TRIPLET_GRADE);
+            line.addRangeElement(tuplet);
+
+            assertThat(tuplet.isNumberOnly(line)).isFalse();
+        }
+
+        @Test
+        void testFalseWhenEndNotBeamed() {
+            var line = detachedLine();
+            var note1 = createNote(0, true);
+            var note2 = createNote(0, true);
+            var note3 = createNote(0, true);
+            line.addElement(note1);
+            line.addElement(note2);
+            line.addElement(note3);
+
+            // Beam covers the anchor (index 0) but not the tuplet end (index 2).
+            line.addRangeElement(new Beam(note1, note2));
+
+            var tuplet = new Tuplet(note1, note3, TRIPLET_GRADE);
+            line.addRangeElement(tuplet);
+
+            assertThat(tuplet.isNumberOnly(line)).isFalse();
+        }
+
+        @Test
+        void testFalseWhenAnchorMissing() {
+            var tuplet = new Tuplet(null, null, TRIPLET_GRADE);
+
+            assertThat(tuplet.isNumberOnly(detachedLine())).isFalse();
         }
     }
 }

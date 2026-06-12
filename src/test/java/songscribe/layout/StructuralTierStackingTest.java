@@ -35,6 +35,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.Beam;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 
@@ -368,6 +369,50 @@ class StructuralTierStackingTest extends UnitTest {
                 - tuplet.getContentHeightSs();
             var layout = require(result.getDecorationLayout(tuplet), "tuplet layout");
             assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testBracketedTupletReservesBracketedHeight() {
+            // Non-beamed tuplet → bracketed. Y placement is covered by
+            // testTupletYEqualsAnchorCeilingMinusMarginMinusHeight; this asserts the stacker
+            // selected the bracketed height and not the number-only height.
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+
+            var result = stackDirectly(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
+
+            var layout = require(result.getDecorationLayout(tuplet), "tuplet layout");
+            assertThat(layout.heightSs()).isCloseTo(Tuplet.bracketedHeightSs(), within(TOLERANCE));
+            assertThat(layout.heightSs()).isNotCloseTo(Tuplet.numberOnlyHeightSs(), within(TOLERANCE));
+        }
+
+        @Test
+        void testNumberOnlyTupletReservesNumberOnlyHeight() {
+            // Beamed, stems-up notes → numberOnly. Asserts the stacker selected the
+            // number-only height and not the bracketed height.
+            var note1 = createNote(0, true);
+            var note2 = createNote(0, true);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+            line.addRangeElement(new Beam(note1, note2));
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+
+            var result = stackDirectly(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
+
+            var layout = require(result.getDecorationLayout(tuplet), "tuplet layout");
+            assertThat(layout.heightSs()).isCloseTo(Tuplet.numberOnlyHeightSs(), within(TOLERANCE));
+            assertThat(layout.heightSs()).isNotCloseTo(Tuplet.bracketedHeightSs(), within(TOLERANCE));
         }
 
     }

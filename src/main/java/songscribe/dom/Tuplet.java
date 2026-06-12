@@ -20,6 +20,11 @@
 
 package songscribe.dom;
 
+import module java.desktop;
+
+import songscribe.util.GraphicUtils;
+import songscribe.util.MyFontUtils;
+
 /**
  * Represents a tuplet grouping (triplet, quintuplet, etc.).
  * <p>
@@ -34,11 +39,30 @@ public class Tuplet extends RangeElement {
 
     /** Inward shortening at each bracket endpoint (LilyPond: -0.2ss). */
     public static final double ARM_EXTENSION_SS = 0.2;  // 1.6px
-    /**
-     * Total vertical extent of a tuplet bracket (arms + number label).
-     * Engraving convention, not measured.
-     */
-    public static final double TUPLET_BRACKET_HEIGHT_SS = 1.5;  // 12px
+
+    /** Italic serif font for tuplet numbers (font size in staff-spaces). */
+    public static final float TUPLET_FONT_SIZE_SS = 1.8f;
+
+    /** Italic serif font for tuplet numbers. */
+    public static final Font TUPLET_FONT = MyFontUtils.getLocalFont("C059-Italic.otf", TUPLET_FONT_SIZE_SS);
+
+    /** Vertical arm height of bracket endpoints (LilyPond: 0.7ss). */
+    public static final double BRACKET_ARM_HEIGHT_SS = 0.7;  // 5.6px
+
+    /** Measured ink height of a tuplet number in staff-spaces (representative digit "3"). */
+    public static final double TUPLET_NUMBER_INK_HEIGHT_SS = measureNumberInkHeightSs();
+
+    private static double measureNumberInkHeightSs() {
+        var inkHeightSs = GraphicUtils.inkHeight(
+            TUPLET_FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, "3").getVisualBounds());
+
+        if (inkHeightSs <= 0) {
+            throw new IllegalStateException(
+                "Tuplet number font produced zero ink height; the font may have failed to load");
+        }
+
+        return inkHeightSs;
+    }
 
     private int grade;
     private int verticalPositionSs = 0;
@@ -61,9 +85,55 @@ public class Tuplet extends RangeElement {
         return grade;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Returns the <em>bracketed</em> reserved height. A number-only tuplet
+     * (see {@link #isNumberOnly(Line)}) reserves {@link #numberOnlyHeightSs()}
+     * instead. Because that distinction requires a {@link Line}, callers laying
+     * out tuplets must branch on {@code isNumberOnly} rather than rely on this
+     * context-free value.
+     */
     @Override
     public double getContentHeightSs() {
-        return TUPLET_BRACKET_HEIGHT_SS;
+        return bracketedHeightSs();
+    }
+
+    /**
+     * Reserved vertical height for a bracketed tuplet (bracket line + arm).
+     */
+    public static double bracketedHeightSs() {
+        return TUPLET_NUMBER_INK_HEIGHT_SS / 2.0 + BRACKET_ARM_HEIGHT_SS;
+    }
+
+    /**
+     * Reserved vertical height for a number-only tuplet (beamed, stems up).
+     */
+    public static double numberOnlyHeightSs() {
+        return TUPLET_NUMBER_INK_HEIGHT_SS;
+    }
+
+    /**
+     * Offset from the box top to the bracket line center in staff-spaces.
+     */
+    public static double bracketLineOffsetSs() {
+        return TUPLET_NUMBER_INK_HEIGHT_SS / 2.0;
+    }
+
+    /**
+     * Returns true when only the number is drawn (no bracket): the tuplet is beamed
+     * at both its anchor and end index and its anchor note has upward stems.
+     */
+    public boolean isNumberOnly(Line line) {
+        var anchor = getAnchorElement();
+
+        if (anchor == null) {
+            return false;
+        }
+
+        return line.findBeamAt(getAnchorElementIndex()) != null
+            && line.findBeamAt(getEndElementIndex()) != null
+            && anchor.isUpper();
     }
 
     @Override
@@ -102,9 +172,11 @@ public class Tuplet extends RangeElement {
     @Override
     public String toIndexString() {
         var base = getAnchorElementIndex() + "," + getEndElementIndex() + "," + grade;
+
         if (verticalPositionSs != 0) {
             return base + "," + verticalPositionSs + ";";
         }
+
         return base + ";";
     }
 }

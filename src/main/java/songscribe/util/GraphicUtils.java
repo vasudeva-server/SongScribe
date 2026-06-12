@@ -455,4 +455,15 @@ public final class GraphicUtils {
     public static Shape glyphOutline(Font font, FontRenderContext frc, SMuFLGlyph glyph) {
         return font.createGlyphVector(frc, glyph.asString()).getOutline();
     }
+
+    /**
+     * Returns the ink height above the baseline for a glyph's visual bounds.
+     * <p>
+     * Visual bounds extend upward from the baseline into negative Y, so the
+     * top must be negated to yield a positive height. The result is in the
+     * same units the font was sized in.
+     */
+    public static double inkHeight(Rectangle2D visualBounds) {
+        return -visualBounds.getY();
+    }
 }
