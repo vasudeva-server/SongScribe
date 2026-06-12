@@ -605,6 +605,12 @@ public class SongSettingsDialog extends StandardDialog {
         );
         private final AttributionPaneWidget attributionPreview = new AttributionPaneWidget();
 
+        // Non-shared font-name displays for the font rows. Mirror the shared font
+        // previews owned by FontTab so the rows show the current font without
+        // duplicating FontTab's data wiring.
+        private final JTextField wordsMusicFontField = new JTextField(31);
+        private final JTextField datePlaceFontField = new JTextField(31);
+
         // Set while the year focus listener programmatically resets the month/day
         // combos, so their action listeners skip the work that reset triggers.
         private boolean adjustingDateFields;
@@ -632,6 +638,28 @@ public class SongSettingsDialog extends StandardDialog {
                 FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND)
             );
 
+            wordsMusicFontField.setEditable(false);
+            wordsMusicFontField.setFocusable(false);
+            datePlaceFontField.setEditable(false);
+            datePlaceFontField.setFocusable(false);
+
+            // The attribution and sub-attribution fonts are edited via the shared
+            // font previews (this tab's font rows and the Fonts tab both target
+            // them); mirror their descriptions onto the read-only fields and
+            // refresh the live preview as the fonts change, before commit.
+            fontTab.attributionFontPreview.addPropertyChangeListener("font", e -> {
+                wordsMusicFontField.setText(
+                    MyFontUtils.getFullFontDescription(fontTab.attributionFontPreview.getFont())
+                );
+                refreshPreview();
+            });
+            fontTab.subAttributionFontPreview.addPropertyChangeListener("font", e -> {
+                datePlaceFontField.setText(
+                    MyFontUtils.getFullFontDescription(fontTab.subAttributionFontPreview.getFont())
+                );
+                refreshPreview();
+            });
+
             build();
         }
 
@@ -640,6 +668,8 @@ public class SongSettingsDialog extends StandardDialog {
             add(createWordsSection());
             addSectionSeparator(this);
             add(createMusicSection());
+            addSectionSeparator(this);
+            add(createFontsSection());
             addSectionSeparator(this);
             add(createPreviewSection(attributionPreview));
         }
@@ -651,11 +681,18 @@ public class SongSettingsDialog extends StandardDialog {
 
             var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
 
+            var wordsLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_WORDS));
+            wordsLabel.setLabelFor(lyricistField);
+            var sourceLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_SOURCE));
+            sourceLabel.setLabelFor(sourceCombo);
+
             // Words label + lyricist field, with the field filling the full row.
             var lyricistRow = new JPanel(new BorderLayout(horizontalGap, 0));
             lyricistRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-            var wordsLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_WORDS));
-            wordsLabel.setLabelFor(lyricistField);
+            // Carry the leading gap on the row rather than the label so the label's
+            // width stays exactly the shared column width (it lines up with the
+            // FlowLayout leading gap of the source row below).
+            lyricistRow.setBorder(BorderFactory.createEmptyBorder(0, horizontalGap, 0, 0));
             var lyricistScroll = new JScrollPane(lyricistField);
 
             // BorderLayout.WEST stretches the label to the full height of the
@@ -664,8 +701,12 @@ public class SongSettingsDialog extends StandardDialog {
             // text area's own top inset.
             wordsLabel.setVerticalAlignment(SwingConstants.TOP);
             wordsLabel.setBorder(BorderFactory.createEmptyBorder(
-                lyricistScroll.getInsets().top + lyricistField.getInsets().top, horizontalGap, 0, 0
+                lyricistScroll.getInsets().top + lyricistField.getInsets().top, 0, 0, 0
             ));
+
+            // Line up the lyricist field and the source dropdown in one column.
+            alignLabelWidths(wordsLabel, sourceLabel);
+
             lyricistRow.add(wordsLabel, BorderLayout.WEST);
             lyricistRow.add(lyricistScroll, BorderLayout.CENTER);
             section.add(lyricistRow);
@@ -675,8 +716,6 @@ public class SongSettingsDialog extends StandardDialog {
             // Source label + dropdown, left-aligned below the lyricist field.
             var sourceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, horizontalGap, 0));
             sourceRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-            var sourceLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_SOURCE));
-            sourceLabel.setLabelFor(sourceCombo);
             sourceRow.add(sourceLabel);
             sourceRow.add(sourceCombo);
             section.add(sourceRow);
@@ -737,16 +776,20 @@ public class SongSettingsDialog extends StandardDialog {
             section.add(separator);
             addLargeSeparator(section);
 
+            var yearLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_YEAR));
+            yearLabel.setLabelFor(yearField);
+            var placeLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_PLACE));
+            placeLabel.setLabelFor(placeField);
+
+            // Line up the year field (first in the date row) and the place field
+            // in one column.
+            alignLabelWidths(yearLabel, placeLabel);
+
             var datePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
             datePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
             section.add(datePanel);
 
-            addLabeledField(
-                datePanel,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_YEAR),
-                yearField,
-                BaseDialog.LabelPosition.LEFT
-            );
+            datePanel.add(leftLabeledRow(yearLabel, yearField));
 
             addLabeledField(
                 datePanel,
@@ -764,12 +807,7 @@ public class SongSettingsDialog extends StandardDialog {
 
             addSeparator(section);
 
-            addLabeledField(
-                section,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_PLACE),
-                placeField,
-                BaseDialog.LabelPosition.LEFT
-            );
+            section.add(leftLabeledRow(placeLabel, placeField));
 
             composerField.addFocusListener(new FocusAdapter() {
                 @Override
@@ -844,11 +882,103 @@ public class SongSettingsDialog extends StandardDialog {
             return section;
         }
 
+        private JPanel createFontsSection() {
+            var section = new BaseDialog.TitledSection(
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_FONTS)
+            );
+
+            var wordsMusicLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_WORDS_MUSIC));
+            var datePlaceLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_DATE_PLACE));
+            alignLabelWidths(wordsMusicLabel, datePlaceLabel);
+
+            section.add(createFontRow(
+                wordsMusicLabel,
+                wordsMusicFontField,
+                FontKey.ATTRIBUTION,
+                fontTab.attributionFontLabel,
+                fontTab.attributionFontPreview
+            ));
+
+            addSeparator(section);
+
+            section.add(createFontRow(
+                datePlaceLabel,
+                datePlaceFontField,
+                FontKey.SUB_ATTRIBUTION,
+                fontTab.subAttributionFontLabel,
+                fontTab.subAttributionFontPreview
+            ));
+
+            UIUtils.setFlexibleWidth(section);
+            return section;
+        }
+
+        private JPanel createFontRow(
+            JLabel rowLabel,
+            JTextField fontField,
+            FontKey fontKey,
+            JLabel fontLabel,
+            JComponent preview
+        ) {
+            rowLabel.setLabelFor(fontField);
+            var row = leftLabeledRow(rowLabel, fontField);
+
+            var mainFrame = getMainFrame();
+            var buttons = new JPanel();
+            buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
+            buttons.add(new JButton(new FontTab.ChooseFontAction(mainFrame, fontLabel, preview)));
+            addLargeSeparator(buttons);
+            buttons.add(new JButton(new FontTab.ResetFontAction(mainFrame, fontKey, fontLabel, preview)));
+            row.add(buttons);
+
+            UIUtils.setFlexibleWidth(row);
+            return row;
+        }
+
+        /**
+         * A left-aligned {@code label + field} row, matching the structure that
+         * {@link #addLabeledField} produces for {@link LabelPosition#LEFT}, so a
+         * caller can hand in a pre-sized label to column-align the field.
+         */
+        private static JPanel leftLabeledRow(JLabel label, JComponent field) {
+            var row = new JPanel(new FlowLayout(
+                FlowLayout.LEFT,
+                FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP),
+                0
+            ));
+            row.setBorder(BorderFactory.createEmptyBorder());
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            row.add(label);
+            row.add(field);
+            return row;
+        }
+
+        /**
+         * Forces every label to the widest label's preferred width so the fields
+         * that follow them line up in a column. Each label keeps its own height;
+         * only the width is unified.
+         */
+        private static void alignLabelWidths(JLabel... labels) {
+            var width = 0;
+
+            for (var label : labels) {
+                width = Math.max(width, label.getPreferredSize().width);
+            }
+
+            for (var label : labels) {
+                var fixed = new Dimension(width, label.getPreferredSize().height);
+                label.setPreferredSize(fixed);
+                label.setMinimumSize(fixed);
+            }
+        }
+
         private void refreshPreview() {
-            var fonts = requireScoreView().getDocumentFonts();
+            // Read the in-progress fonts from FontTab's shared previews (not the
+            // committed document fonts) so the preview reflects font edits made
+            // in this tab's font rows before the dialog is committed.
             attributionPreview.setPreviewState(
-                fonts.getFont(FontKey.ATTRIBUTION),
-                fonts.getFont(FontKey.SUB_ATTRIBUTION),
+                fontTab.attributionFontPreview.getFont(),
+                fontTab.subAttributionFontPreview.getFont(),
                 buildPreviewLines()
             );
 
@@ -1321,26 +1451,6 @@ public class SongSettingsDialog extends StandardDialog {
                 )
             );
             tabbedPane.addTab(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_ATTRIBUTION),
-                createFontSection(
-                    mainFrame,
-                    "Attribution (tempo, beat change, attribution)",
-                    attributionFontLabel,
-                    attributionFontPreview,
-                    false
-                )
-            );
-            tabbedPane.addTab(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_SUB_ATTRIBUTION),
-                createFontSection(
-                    mainFrame,
-                    "Sub-attribution (date and place)",
-                    subAttributionFontLabel,
-                    subAttributionFontPreview,
-                    false
-                )
-            );
-            tabbedPane.addTab(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_ANNOTATION),
                 createFontSection(
                     mainFrame,
@@ -1477,6 +1587,40 @@ public class SongSettingsDialog extends StandardDialog {
                     MyFontUtils.getFullFontDescription(selectedFont)
                 );
                 preview.setFont(selectedFont);
+                preview.revalidate();
+                preview.repaint();
+            }
+        }
+
+        private static final class ResetFontAction extends UIAction {
+
+            private final FontKey fontKey;
+            private final JLabel fontDescription;
+            private final JComponent preview;
+
+            private ResetFontAction(
+                MainFrame mainFrame,
+                FontKey fontKey,
+                JLabel fontDescription,
+                JComponent preview
+            ) {
+                super(
+                    mainFrame,
+                    Strings.get(Strings.DIALOG_SONG_SETTINGS_RESET),
+                    "reset-font"
+                );
+                this.fontKey = fontKey;
+                this.fontDescription = fontDescription;
+                this.preview = preview;
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                applyFont(
+                    DocumentFonts.defaultsFromPrefs().getFont(fontKey),
+                    fontDescription,
+                    preview
+                );
                 preview.revalidate();
                 preview.repaint();
             }
