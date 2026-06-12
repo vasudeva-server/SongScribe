@@ -66,6 +66,10 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-console:1.11.4")
     testImplementation("org.assertj:assertj-core:3.27.7")
     testImplementation("org.assertj:assertj-swing-junit:3.17.1")
+    // Logback is runtimeOnly for the app (which codes against the SLF4J API), but
+    // log-capture tests reference logback types directly, so it must also be on
+    // the test compile classpath.
+    testImplementation("ch.qos.logback:logback-classic:1.5.32")
     runtimeOnly("ch.qos.logback:logback-classic:1.5.32")
 
     errorprone("com.google.guava:guava:33.5.0-jre")

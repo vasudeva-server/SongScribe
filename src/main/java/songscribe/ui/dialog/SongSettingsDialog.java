@@ -86,6 +86,8 @@ public class SongSettingsDialog extends StandardDialog {
     private static final int TAKE_FIRST_WORDS_MIN = 1;
     private static final int TAKE_FIRST_WORDS_MAX = 10;
     private static final int DAYS_IN_MONTH_MAX = 31;
+    private static final int LYRICIST_ROWS = 2;
+    private static final int LYRICIST_COLUMNS = 20;
 
     private final FontTab fontTab = new FontTab();
     private final TitleTab textTab = new TitleTab();
@@ -586,7 +588,7 @@ public class SongSettingsDialog extends StandardDialog {
 
         // Attribution panel
         private final MyJTextField composerField = new MyJTextField(27);
-        private final MyJTextField lyricistField = new MyJTextField(20);
+        private final MyJTextArea lyricistField = new MyJTextArea(LYRICIST_ROWS, LYRICIST_COLUMNS);
         private final JComboBox<Song.LyricsSource> sourceCombo =
             new JComboBox<>(Song.LyricsSource.values());
         private final JCheckBox unofficialTranslationCheck = new JCheckBox(
@@ -613,6 +615,8 @@ public class SongSettingsDialog extends StandardDialog {
             sourceCombo.setEditable(false);
             composerField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
             lyricistField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
+            lyricistField.setLineWrap(true);
+            lyricistField.setWrapStyleWord(true);
             attributionPreview.setOpaque(true);
             attributionPreview.setBackground(
                 FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND)
@@ -635,43 +639,66 @@ public class SongSettingsDialog extends StandardDialog {
 
             var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
 
-            // Use a zero gap on the row's own FlowLayout: each labeled field is
-            // itself wrapped in a FlowLayout that already contributes the leading
-            // gap, so a nonzero row gap would double it and push the first label
-            // out of alignment with the single-field rows.
-            var wordsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            // Stretch the words row to the full section width: the lyricist
+            // field fills the available space on the left while the Source label
+            // and dropdown stay right-aligned.
+            var wordsRow = new JPanel(new BorderLayout(horizontalGap, 0));
             wordsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-            addLabeledField(
-                wordsRow,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_WORDS),
-                lyricistField,
-                BaseDialog.LabelPosition.LEFT
-            );
+            // Words label + lyricist field, with the field filling the row.
+            var wordsField = new JPanel(new BorderLayout(horizontalGap, 0));
+            var wordsLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_WORDS));
+            wordsLabel.setLabelFor(lyricistField);
 
-            addLabeledField(
-                wordsRow,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_SOURCE),
-                sourceCombo,
-                BaseDialog.LabelPosition.LEFT
-            );
+            var lyricistScroll = new JScrollPane(lyricistField);
+
+            // BorderLayout.WEST stretches the label to the full height of the
+            // two-row field, so top-align it and nudge it down to sit on the
+            // first text line's baseline: past the scroll pane's border and the
+            // text area's own top inset. The left inset matches the FlowLayout
+            // leading gap of the single-field rows below.
+            wordsLabel.setVerticalAlignment(SwingConstants.TOP);
+            wordsLabel.setBorder(BorderFactory.createEmptyBorder(
+                lyricistScroll.getInsets().top + lyricistField.getInsets().top, horizontalGap, 0, 0
+            ));
+            wordsField.add(wordsLabel, BorderLayout.WEST);
+            wordsField.add(lyricistScroll, BorderLayout.CENTER);
+            wordsRow.add(wordsField, BorderLayout.CENTER);
+
+            // Source label + dropdown, anchored to the right. A FlowLayout
+            // wrapper keeps the dropdown at its natural height (vertically
+            // centered) rather than stretching it to the taller field's height.
+            var sourceField = new JPanel(new FlowLayout(FlowLayout.LEFT, horizontalGap, 0));
+            var sourceLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_SOURCE));
+            sourceLabel.setLabelFor(sourceCombo);
+            sourceField.add(sourceLabel);
+            sourceField.add(sourceCombo);
+            wordsRow.add(sourceField, BorderLayout.EAST);
 
             section.add(wordsRow);
             addSeparator(section);
 
-            var musicRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            // Lay out the music row like the words row: the composer field
+            // fills the available space while the arrangement checkbox stays
+            // right-aligned.
+            var musicRow = new JPanel(new BorderLayout(horizontalGap, 0));
             musicRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-            addLabeledField(
-                musicRow,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_MUSIC),
-                composerField,
-                BaseDialog.LabelPosition.LEFT
-            );
+            // Music label + composer field, with the field filling the row.
+            var musicField = new JPanel(new BorderLayout(horizontalGap, 0));
+            var musicLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_MUSIC));
+            musicLabel.setLabelFor(composerField);
 
-            // Match the gap between the Words field and the Source label.
-            musicRow.add(Box.createHorizontalStrut(horizontalGap));
-            musicRow.add(arrangementCheck);
+            // Match the FlowLayout leading gap of the single-field rows below.
+            musicLabel.setBorder(BorderFactory.createEmptyBorder(0, horizontalGap, 0, 0));
+            musicField.add(musicLabel, BorderLayout.WEST);
+            musicField.add(composerField, BorderLayout.CENTER);
+            musicRow.add(musicField, BorderLayout.CENTER);
+
+            // Arrangement checkbox, anchored to the right. BorderLayout.EAST
+            // stretches it to the field's height; the checkbox centers its own
+            // content vertically.
+            musicRow.add(arrangementCheck, BorderLayout.EAST);
             section.add(musicRow);
 
             var song = getSong();
@@ -947,7 +974,7 @@ public class SongSettingsDialog extends StandardDialog {
          * stores the current fonts so {@link #getPreferredSize()} and
          * {@link #paintComponent} can pass them through.
          */
-        private final class AttributionPaneWidget extends JComponent {
+        private static final class AttributionPaneWidget extends JComponent {
 
             private final AttributionPane pane = new AttributionPane();
 

@@ -25,6 +25,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.font.FontKey;
 
@@ -41,9 +43,10 @@ import songscribe.font.FontKey;
  *      └──► buildCredits(data, showTranslation)
  *               (assign connector per person/lyricsSource; emit roles in
  *                canonical order: Words, Music, [Arrangement], [Translation])
- *      └──► groupCreditsToLines(credits)
+ *      └──► groupCreditsToLines(credits, sharedAuthor)
  *               (stable group by (person, connector) via LinkedHashMap;
- *                Oxford-join roles within each group)
+ *                Oxford-join roles within each group; when the lyricist and
+ *                composer are the same person, render that name on its own line)
  *      └──► buildSubAttributionLines(data)
  *               (date line: [Month [Day, ]] year; place line)
  *      └──► List&lt;AttributionLine&gt;
@@ -97,9 +100,52 @@ public final class AttributionFormatter {
      */
     public static List<AttributionLine> lines(SongMetadata data, boolean showTranslation) {
         var credits = buildCredits(data, showTranslation);
-        var lines = groupCreditsToLines(credits);
+        var lines = groupCreditsToLines(credits, sharedAuthor(data));
         lines.addAll(buildSubAttributionLines(data));
-        return lines;
+        return splitEmbeddedNewlines(lines);
+    }
+
+    /**
+     * Returns the person credited for both words and music when the lyricist and
+     * composer are the same non-empty person, otherwise {@code null}. Such a
+     * shared author is rendered on its own line, below the merged
+     * "Words and Music by" credit.
+     */
+    @Nullable
+    private static String sharedAuthor(SongMetadata data) {
+        var lyricist = data.lyricist();
+        var composer = data.composer();
+
+        if (!lyricist.isEmpty() && lyricist.equals(composer)) {
+            return lyricist;
+        }
+
+        return null;
+    }
+
+    /**
+     * Expands any line whose text carries embedded newlines into one display
+     * line per physical line, keeping the original font. A multi-line credit
+     * (e.g. a lyricist entered as several lines) must render as several centered
+     * lines; otherwise the newline is swallowed by a single {@code drawString}.
+     */
+    private static List<AttributionLine> splitEmbeddedNewlines(List<AttributionLine> lines) {
+        var expanded = new ArrayList<AttributionLine>();
+
+        for (var line : lines) {
+            var text = line.text();
+
+            if (text.indexOf('\n') < 0) {
+                expanded.add(line);
+                continue;
+            }
+
+            for (var part : text.split("\n", -1)) {
+                expanded.add(new AttributionLine(part, line.font()));
+            }
+        }
+
+        return expanded;
     }
 
     /**
@@ -141,17 +187,17 @@ public final class AttributionFormatter {
         var lyricist = data.lyricist();
         var composer = data.composer();
 
-        credits.add(new Credit("Words", lyricist, data.connectorFor(lyricist)));
-        credits.add(new Credit("Music", composer, data.connectorFor(composer)));
+        credits.add(new Credit(Strings.get(Strings.ATTRIBUTION_ROLE_WORDS), lyricist, data.connectorFor(lyricist)));
+        credits.add(new Credit(Strings.get(Strings.ATTRIBUTION_ROLE_MUSIC), composer, data.connectorFor(composer)));
 
         // Arrangement and Translation are always credited to Sri Chinmoy; route
         // them through connectorFor so the " by " connector has a single owner.
         if (data.arrangement()) {
-            credits.add(new Credit("Arrangement", Song.SRI_CHINMOY, data.connectorFor(Song.SRI_CHINMOY)));
+            credits.add(new Credit(Strings.get(Strings.ATTRIBUTION_ROLE_ARRANGEMENT), Song.SRI_CHINMOY, data.connectorFor(Song.SRI_CHINMOY)));
         }
 
         if (showTranslation) {
-            credits.add(new Credit("Translation", Song.SRI_CHINMOY, data.connectorFor(Song.SRI_CHINMOY)));
+            credits.add(new Credit(Strings.get(Strings.ATTRIBUTION_ROLE_TRANSLATION), Song.SRI_CHINMOY, data.connectorFor(Song.SRI_CHINMOY)));
         }
 
         return credits;
@@ -164,7 +210,7 @@ public final class AttributionFormatter {
      * {@link LinkedHashMap} preserves first-appearance order so lines appear in
      * canonical role order.
      */
-    private static List<AttributionLine> groupCreditsToLines(List<Credit> credits) {
+    private static List<AttributionLine> groupCreditsToLines(List<Credit> credits, @Nullable String sharedAuthor) {
         var groups = new LinkedHashMap<String, CreditGroup>();
 
         for (var credit : credits) {
@@ -176,8 +222,19 @@ public final class AttributionFormatter {
         var lines = new ArrayList<AttributionLine>();
 
         for (var group : groups.values()) {
+            var roles = oxfordJoin(group.roles());
+
+            // When the lyricist and composer are the same person, the words and
+            // music credits merge into this group; put the shared name on its own
+            // line so the credit reads "Words and Music by" / "<name>".
+            if (group.person().equals(sharedAuthor)) {
+                lines.add(new AttributionLine((roles + group.connector()).stripTrailing(), FontKey.ATTRIBUTION));
+                lines.add(new AttributionLine(group.person(), FontKey.ATTRIBUTION));
+                continue;
+            }
+
             lines.add(new AttributionLine(
-                oxfordJoin(group.roles()) + group.connector() + group.person(),
+                roles + group.connector() + group.person(),
                 FontKey.ATTRIBUTION
             ));
         }

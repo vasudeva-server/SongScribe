@@ -242,7 +242,7 @@ public class AttributionPane {
             g2.setColor(Color.BLACK);
             var y = (float) (yPx + marginTop);
 
-            for (int i = 0; i < lines.size(); i++) {
+            for (var i = 0; i < lines.size(); i++) {
                 var line = lines.get(i);
                 var font = line.font() == FontKey.ATTRIBUTION ? attributionFont : subAttributionFont;
                 g2.setFont(font);
@@ -279,10 +279,10 @@ public class AttributionPane {
             })
             .toList();
 
-        int maxWidth = 0;
-        int totalHeight = marginTop;
+        var maxWidth = 0;
+        var totalHeight = marginTop;
 
-        for (int i = 0; i < lines.size(); i++) {
+        for (var i = 0; i < lines.size(); i++) {
             var metrics = lineMetrics.get(i);
             maxWidth = Math.max(maxWidth, metrics.stringWidth(lines.get(i).text()));
             totalHeight += metrics.getHeight();

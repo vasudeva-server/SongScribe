@@ -18,7 +18,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.ui.component.score;
+package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,10 +27,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.AttributionFormatter;
-import songscribe.dom.AttributionLine;
-import songscribe.dom.Song;
-import songscribe.dom.SongMetadata;
 import songscribe.font.FontKey;
 
 /**
@@ -39,7 +35,7 @@ import songscribe.font.FontKey;
  * All tested methods are {@code static}; no Song or Swing instances are needed
  * for the formatter tests.
  */
-class AttributionPaneTest extends UnitTest {
+class AttributionFormatterTest extends UnitTest {
 
     // -------------------------------------------------------------------------
     // §2.2 worked acceptance examples
@@ -47,7 +43,9 @@ class AttributionPaneTest extends UnitTest {
 
     /**
      * Example 1: composer = lyricist = Sri Chinmoy, LYRICIST source, official translation.
-     * All four credits share (Sri Chinmoy, " by "), collapsing to one line.
+     * All credits share (Sri Chinmoy, " by ") and merge into one credit; because
+     * the lyricist and composer are the same person, the shared name drops to its
+     * own line.
      */
     @Test
     void testExample1AllSriChinmoyWithTranslation() {
@@ -55,12 +53,13 @@ class AttributionPaneTest extends UnitTest {
 
         var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
-        assertAttributionLines(lines, List.of("Words, Music and Translation by Sri Chinmoy"));
+        assertAttributionLines(lines, List.of("Words, Music and Translation by", "Sri Chinmoy"));
     }
 
     /**
      * Example 2: same as example 1, with arrangement added.
-     * All four credits (Words, Music, Arrangement, Translation) collapse to one line.
+     * All four credits (Words, Music, Arrangement, Translation) merge; the shared
+     * Sri Chinmoy name still drops to its own line.
      */
     @Test
     void testExample2AllSriChinmoyWithArrangementAndTranslation() {
@@ -68,7 +67,7 @@ class AttributionPaneTest extends UnitTest {
 
         var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
-        assertAttributionLines(lines, List.of("Words, Music, Arrangement and Translation by Sri Chinmoy"));
+        assertAttributionLines(lines, List.of("Words, Music, Arrangement and Translation by", "Sri Chinmoy"));
     }
 
     /**
@@ -129,7 +128,7 @@ class AttributionPaneTest extends UnitTest {
     /**
      * Music and Words group together when they share the same (person, connector).
      * Default song (both = Sri Chinmoy, LYRICIST, no translation, no arrangement) →
-     * one line: "Words and Music by Sri Chinmoy".
+     * the merged credit "Words and Music by" with the shared name on its own line.
      */
     @Test
     void testDefaultSongGroupsWordsAndMusic() {
@@ -137,7 +136,7 @@ class AttributionPaneTest extends UnitTest {
 
         var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
-        assertAttributionLines(lines, List.of("Words and Music by Sri Chinmoy"));
+        assertAttributionLines(lines, List.of("Words and Music by", "Sri Chinmoy"));
     }
 
     /**
@@ -177,16 +176,17 @@ class AttributionPaneTest extends UnitTest {
     }
 
     /**
-     * When lyricist and composer are both Sri Chinmoy and no translation or arrangement
-     * is present, the two credits collapse to a single two-item group.
+     * When lyricist and composer are both Sri Chinmoy, the Words and Music credits
+     * merge into one group; because they are the same person, the shared name is
+     * rendered on its own line below the "Words and Music by" credit.
      */
     @Test
-    void testBothSriChinmoyNoExtrasCollapseToTwoItems() {
+    void testSharedComposerAndLyricistRenderNameOnSeparateLine() {
         var song = songWith(Song.SRI_CHINMOY, Song.SRI_CHINMOY, Song.LyricsSource.LYRICIST, false, "");
 
         var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
-        assertAttributionLines(lines, List.of("Words and Music by Sri Chinmoy"));
+        assertAttributionLines(lines, List.of("Words and Music by", "Sri Chinmoy"));
     }
 
     /**
@@ -208,7 +208,7 @@ class AttributionPaneTest extends UnitTest {
 
         var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
-        assertAttributionLines(lines, List.of("Words and Music by Sri Chinmoy"));
+        assertAttributionLines(lines, List.of("Words and Music by", "Sri Chinmoy"));
     }
 
     // -------------------------------------------------------------------------
@@ -386,17 +386,16 @@ class AttributionPaneTest extends UnitTest {
 
         var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
 
-        var attributionLines = lines.stream()
+        var attributionTexts = lines.stream()
             .filter(l -> l.font() == FontKey.ATTRIBUTION)
+            .map(AttributionLine::text)
             .toList();
 
-        assertThat(attributionLines)
-            .as("at least one ATTRIBUTION line for a default song")
-            .isNotEmpty();
-
-        assertThat(attributionLines.get(0).text())
-            .as("first ATTRIBUTION line contains 'Sri Chinmoy'")
-            .contains("Sri Chinmoy");
+        // The default song's credit splits into the merged role line and the
+        // shared name line, both tagged ATTRIBUTION.
+        assertThat(attributionTexts)
+            .as("ATTRIBUTION lines for a default song")
+            .containsExactly("Words and Music by", "Sri Chinmoy");
     }
 
     /**
