@@ -482,11 +482,21 @@ public class SongSettingsDialog extends StandardDialog {
 
             addLabeledField(row, "Font:", titleFontField, BaseDialog.LabelPosition.LEFT);
 
-            row.add(new JButton(new FontTab.ChooseFontAction(
+            var buttons = new JPanel();
+            buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
+            buttons.add(new JButton(new FontTab.ChooseFontAction(
                 mainFrame,
                 fontTab.titleFontLabel,
                 fontTab.titleFontPreview
             )));
+            addLargeSeparator(buttons);
+            buttons.add(new JButton(new FontTab.ResetFontAction(
+                mainFrame,
+                FontKey.TITLE,
+                fontTab.titleFontLabel,
+                fontTab.titleFontPreview
+            )));
+            row.add(buttons);
 
             UIUtils.setFlexibleWidth(row);
             return row;
