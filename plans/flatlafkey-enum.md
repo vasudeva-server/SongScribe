@@ -43,9 +43,11 @@ public enum FlatLafKey {
   ```
   
 - Audit — update **both** `FlatLafKeys` references, not just the regex, or the lookup never matches, every key is reported dead, and the generator throws:
-  - the match regex (`-o 'FlatLafKeys\\.[A-Z][A-Z0-9_]+'`) → `FlatLafKey\\.[A-Z][A-Z0-9_]+`
-  - the `deadKeys` lookup string `"FlatLafKeys.${constant}"` → `"FlatLafKey.${constant}"`
   
+  - the match regex (`-o 'FlatLafKeys\\.[A-Z][A-Z0-9_]+'`) → `FlatLafKey\\.[A-Z][A-Z0-9_]+`
+    
+  - the `deadKeys` lookup string `"FlatLafKeys.${constant}"` → `"FlatLafKey.${constant}"`
+    
 - Delete stale generated class: at the **top of the script, before the freshness-check early return**, delete any pre-existing `FlatLafKeys.java` from `OUT_DIR`. It must precede the early return — otherwise an up-to-date run skips generation and leaves the stale file (and its dead class) behind:
   
   ```groovy
