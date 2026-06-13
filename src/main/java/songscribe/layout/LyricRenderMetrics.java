@@ -46,12 +46,6 @@ public record LyricRenderMetrics(
     double spaceWidthSs
 ) {
 
-    /**
-     * Minimum horizontal gap between syllables.
-     * Note: This value will be tuned empirically during implementation.
-     */
-    public static final double MIN_SYLLABLE_GAP_SS = 0.25;  // 2px (TBD)
-
     /** Absolute minimum syllable gap during line-justification compression. */
     public static final double COMPRESSED_MIN_SYLLABLE_GAP_SS = 0.125;  // 1px
 

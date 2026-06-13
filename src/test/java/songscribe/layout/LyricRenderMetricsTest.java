@@ -177,16 +177,6 @@ class LyricRenderMetricsTest extends UnitTest {
             .isCloseTo(expectedWidthSs, within(TOLERANCE));
     }
 
-    // -----------------------------------------------------------------------
-    // Row 13: COMPRESSED_MIN_SYLLABLE_GAP_SS < MIN_SYLLABLE_GAP_SS invariant
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testCompressedGapIsStrictlyLessThanNormalGap() {
-        assertThat(LyricRenderMetrics.COMPRESSED_MIN_SYLLABLE_GAP_SS)
-            .isLessThan(LyricRenderMetrics.MIN_SYLLABLE_GAP_SS);
-    }
-
     // ==========================================================================
     // Helpers
     // ==========================================================================

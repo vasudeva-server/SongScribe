@@ -261,7 +261,7 @@ public class HorizontalSpacingCalculator {
     /**
      * Calculates spacing requirement driven by lyric syllables.
      * <p>
-     * Formula: (prevSyllableWidth / 2) + MIN_SYLLABLE_GAP + (currSyllableWidth / 2)
+     * Formula: (prevSyllableWidth / 2) + prevColumn.minGapToNextSyllable + (currSyllableWidth / 2)
      *
      * @param prevColumn Previous column
      * @param currColumn Current column
@@ -277,9 +277,10 @@ public class HorizontalSpacingCalculator {
 
         var prevHalfWidthSs = prevColumn.hasSyllable() ? prevColumn.getSyllableWidthSs() / 2.0 : 0;
         var currHalfWidthSs = currColumn.hasSyllable() ? currColumn.getSyllableWidthSs() / 2.0 : 0;
-        var gapSs = prevColumn.hasSyllable()
-            ? prevColumn.getMinGapToNextSyllableSs()
-            : LyricRenderMetrics.MIN_SYLLABLE_GAP_SS;
+        // Every column reserves a gap to the next syllable (the lyric space width, or the hyphen
+        // cell width for hyphenated syllables), so this holds even when the previous element
+        // carries no lyric of its own.
+        var gapSs = prevColumn.getMinGapToNextSyllableSs();
 
         return prevHalfWidthSs + gapSs + currHalfWidthSs;
     }

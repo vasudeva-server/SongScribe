@@ -45,6 +45,8 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     private static final double PLAIN_RIGHT_EXTENT_SS = 2.0;
     private static final double NEGATIVE_LEFT_EXTENT_SS = -0.5;
     private static final double WIDE_SYLLABLE_WIDTH_SS = 8.0;
+    // The gap a column reserves to the next syllable (lyric space width), as ElementColumnBuilder sets it.
+    private static final double SYLLABLE_GAP_SS = 0.5;
     private static final double ACCIDENTAL_LEFT_EXTENT_SS = -0.625;
     private static final double GRACE_RIGHT_EXTENT_SS = 1.0;
     private static final double BEAM_RIGHT_EXTENT_SS = 2.0;
@@ -154,17 +156,40 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, "re", WIDE_SYLLABLE_WIDTH_SS, false
         );
         prevColumn.setXSs(PREV_COLUMN_X_SS);
+        prevColumn.setMinGapToNextSyllableSs(SYLLABLE_GAP_SS);
 
         var result = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, currColumn);
 
-        // lyricSpacing = prevHalfWidth + MIN_SYLLABLE_GAP + currHalfWidth
-        //              = WIDE/2 + MIN_SYLLABLE_GAP + WIDE/2 = WIDE + MIN_SYLLABLE_GAP
-        var expectedLyricSpacing = WIDE_SYLLABLE_WIDTH_SS + LyricRenderMetrics.MIN_SYLLABLE_GAP_SS;
+        // lyricSpacing = prevHalfWidth + prev gap-to-next + currHalfWidth
+        //              = WIDE/2 + SYLLABLE_GAP + WIDE/2 = WIDE + SYLLABLE_GAP
+        var expectedLyricSpacing = WIDE_SYLLABLE_WIDTH_SS + SYLLABLE_GAP_SS;
         var expectedXSs = PREV_COLUMN_X_SS + expectedLyricSpacing;
         var wouldBeWithDefault = PREV_COLUMN_X_SS + Engraving.NOTE_HEAD_WIDTH_SS
             + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
         assertThat(result).isEqualTo(expectedXSs);
         assertThat(result).isGreaterThan(wouldBeWithDefault);
+    }
+
+    // A syllable following a lyric-less element clears it by the previous column's reserved
+    // space-width gap rather than an arbitrary minimum (#430 follow-up).
+    @Test
+    void testLyricSpacingUsesPrevColumnGapWhenPrevHasNoLyric() {
+        var prevColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var currColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, "re", WIDE_SYLLABLE_WIDTH_SS, false
+        );
+        prevColumn.setXSs(PREV_COLUMN_X_SS);
+        prevColumn.setMinGapToNextSyllableSs(SYLLABLE_GAP_SS);
+
+        var result = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, currColumn);
+
+        // prev has no syllable → prevHalfWidth = 0; gap = prev column's reserved space-width gap.
+        var expectedLyricSpacing = SYLLABLE_GAP_SS + WIDE_SYLLABLE_WIDTH_SS / 2.0;
+        assertThat(result).isEqualTo(PREV_COLUMN_X_SS + expectedLyricSpacing);
     }
 
     // Row 28: accidental clearance is satisfied by default gap (no extra push needed)
@@ -307,10 +332,12 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, "re", WIDE_SYLLABLE_WIDTH_SS, true
         );
 
+        col1.setMinGapToNextSyllableSs(SYLLABLE_GAP_SS);
+
         calculator.calculatePositions(List.of(col0, col1, col2), line);
 
-        // Lyric spacing = WIDE/2 + MIN_GAP + WIDE/2 = WIDE + MIN_GAP > tight beam spacing
-        var lyricSpacing = WIDE_SYLLABLE_WIDTH_SS + LyricRenderMetrics.MIN_SYLLABLE_GAP_SS;
+        // Lyric spacing = WIDE/2 + SYLLABLE_GAP + WIDE/2 = WIDE + SYLLABLE_GAP > tight beam spacing
+        var lyricSpacing = WIDE_SYLLABLE_WIDTH_SS + SYLLABLE_GAP_SS;
         assertThat(col2.getXSs() - col1.getXSs()).isCloseTo(lyricSpacing, within(TOLERANCE));
         // Lyric expansion exceeds tight beam spacing
         assertThat(col2.getXSs() - col1.getXSs())

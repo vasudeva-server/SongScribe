@@ -135,14 +135,6 @@ class ElementColumnTest extends UnitTest {
     }
 
     @Test
-    void testMinGapToNextSyllableDefaultsToMetricConstant() {
-        var column = columnFor(element(ElementType.CROTCHET));
-
-        assertThat(column.getMinGapToNextSyllableSs())
-            .isEqualTo(LyricRenderMetrics.MIN_SYLLABLE_GAP_SS);
-    }
-
-    @Test
     void testMinGapToNextSyllableSetterRoundTrips() {
         var column = columnFor(element(ElementType.CROTCHET));
 

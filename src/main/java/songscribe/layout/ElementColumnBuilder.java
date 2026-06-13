@@ -152,14 +152,14 @@ public class ElementColumnBuilder {
         );
 
         var mainLyric = element.getMainLyric();
-
-        if (mainLyric != null) {
-            var syllabic = mainLyric.syllabic();
-            var isHyphenated = syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE;
-            column.setMinGapToNextSyllableSs(isHyphenated
-                ? lyricRenderMetrics.preferredHyphenCellWidthSs()
-                : lyricRenderMetrics.spaceWidthSs());
-        }
+        var syllabic = mainLyric != null ? mainLyric.syllabic() : null;
+        var isHyphenated = syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE;
+        // Every column reserves a gap to the next syllable, so a syllable that follows a
+        // lyric-less element still clears it by the lyric space width. Hyphenated syllables
+        // reserve the hyphen cell width instead.
+        column.setMinGapToNextSyllableSs(isHyphenated
+            ? lyricRenderMetrics.preferredHyphenCellWidthSs()
+            : lyricRenderMetrics.spaceWidthSs());
 
         return column;
     }

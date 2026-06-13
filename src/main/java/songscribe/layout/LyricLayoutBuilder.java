@@ -248,7 +248,72 @@ public final class LyricLayoutBuilder {
             emitDanglingHyphen(connectors, columns, state, verse);
         }
 
+        clampExtendersToFollowingSyllable(connectors, boxesByElement, lyricRenderMetrics.spaceWidthSs());
+
         return new VerseResult(boxesByElement, connectors, hasTrailingContinuation);
+    }
+
+    /**
+     * Pulls back any extender that would otherwise run within {@code gapSs} of the syllable that
+     * follows it, so a melisma keeps the same gap from the next syllable that separates adjacent
+     * words. An extender closed by a STOP carrier ends a fixed overshoot past that carrier and the
+     * next syllable's box is not known at that point, so the clamp has to run once the whole verse
+     * is laid out. DANGLING_EXTENDER connectors have no following syllable on this line and are
+     * left untouched.
+     */
+    private static void clampExtendersToFollowingSyllable(
+        List<LyricConnectorLayout> connectors,
+        Map<StaffElement, List<LyricBoxLayout>> boxesByElement,
+        double gapSs) {
+
+        for (var i = 0; i < connectors.size(); i++) {
+            var connector = connectors.get(i);
+
+            if (connector.kind() != LyricConnectorLayout.Kind.EXTENDER) {
+                continue;
+            }
+
+            var nextSyllableLeftXSs = firstBoxLeftXSsAfter(boxesByElement, connector.startXSs());
+
+            if (Double.isNaN(nextSyllableLeftXSs)) {
+                continue;
+            }
+
+            var maxEndXSs = nextSyllableLeftXSs - gapSs;
+
+            if (connector.endXSs() > maxEndXSs) {
+                connectors.set(i, new LyricConnectorLayout(
+                    connector.startXSs(),
+                    maxEndXSs,
+                    connector.verseIndex(),
+                    connector.kind(),
+                    connector.sourceElementIndex()));
+            }
+        }
+    }
+
+    /**
+     * Returns the left edge of the leftmost lyric box that starts to the right of {@code xSs},
+     * or {@link Double#NaN} if there is none. The extender's own source syllable sits to the left
+     * of its start, so it is naturally excluded.
+     */
+    private static double firstBoxLeftXSsAfter(
+        Map<StaffElement, List<LyricBoxLayout>> boxesByElement,
+        double xSs) {
+
+        var nextLeftXSs = Double.NaN;
+
+        for (var boxes : boxesByElement.values()) {
+            for (var box : boxes) {
+                var boxLeftXSs = box.xSs();
+
+                if (boxLeftXSs > xSs && (Double.isNaN(nextLeftXSs) || boxLeftXSs < nextLeftXSs)) {
+                    nextLeftXSs = boxLeftXSs;
+                }
+            }
+        }
+
+        return nextLeftXSs;
     }
 
     /**

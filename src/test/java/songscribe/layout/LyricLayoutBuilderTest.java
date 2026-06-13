@@ -59,6 +59,10 @@ class LyricLayoutBuilderTest extends UnitTest {
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final LyricRenderMetrics LYRIC_METRICS =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+    // Non-zero space width so melisma trailing-gap assertions verify a real gap rather than 0.
+    private static final double EXTENDER_SPACE_WIDTH_SS = 0.5;
+    private static final LyricRenderMetrics LYRIC_METRICS_WITH_SPACE =
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, EXTENDER_SPACE_WIDTH_SS);
 
     private Song song;
     private Line line;
@@ -287,7 +291,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n3, 5 + 2 * COLUMN_SPACING_SS),
             columnAt(n4, 5 + 3 * COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes()).hasSize(2);
         assertThat(boxesOf(result.boxes(), n1).getFirst().text()).isEqualTo("heart");
@@ -297,6 +301,13 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(extenders).hasSize(1);
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN)).isEmpty();
         assertThat(result.hasTrailingContinuation()).isFalse();
+
+        // The extender stops one word-space short of "garden", preserving the same gap kept
+        // between adjacent words rather than running flush into the next syllable (#430).
+        var gardenBoxXSs = boxesOf(result.boxes(), n4).getFirst().xSs();
+        assertThat(extenders.getFirst().endXSs())
+            .as("extender ends one word-space before 'garden'")
+            .isCloseTo(gardenBoxXSs - EXTENDER_SPACE_WIDTH_SS, within(TOLERANCE));
     }
 
     // heart(extend=true) [continuation] (rest) [continuation] garden → two EXTENDER spans (rest breaks)
@@ -417,7 +428,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             .as("trailing stub ends at last note's right edge")
             .isCloseTo(columnsA.getFirst().getRightEdgeXSs(), within(TOLERANCE));
 
-        var resultB = LyricLayoutBuilder.build(columnsB, LYRIC_METRICS, true, LINE_WIDTH_SS);
+        var resultB = LyricLayoutBuilder.build(columnsB, LYRIC_METRICS_WITH_SPACE, true, LINE_WIDTH_SS);
 
         var leadingExtenders = connectorsOfKind(resultB.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(leadingExtenders).hasSize(1);
@@ -425,8 +436,10 @@ class LyricLayoutBuilderTest extends UnitTest {
             .as("leading stub starts at line left edge")
             .isCloseTo(0.0, within(TOLERANCE));
         assertThat(leadingExtenders.getFirst().endXSs())
-            .as("leading stub ends at garden's left edge")
-            .isEqualTo(boxesOf(resultB.boxes(), n3).getFirst().xSs(), within(TOLERANCE));
+            .as("leading stub ends one word-space before garden's left edge")
+            .isCloseTo(
+                boxesOf(resultB.boxes(), n3).getFirst().xSs() - EXTENDER_SPACE_WIDTH_SS,
+                within(TOLERANCE));
     }
 
     // Dangling extender: note with extend=START followed only by bare notes with no lyrics →
@@ -569,6 +582,40 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(result.hasTrailingContinuation())
             .as("stop terminates melisma — no trailing continuation")
             .isFalse();
+    }
+
+    // STOP-terminated melisma followed by a nearby syllable: the extender's overshoot past the
+    // STOP carrier is pulled back so it keeps the lyric space-width gap from the next syllable (#430).
+    @Test
+    void testStopCarrierExtenderClampedToFollowingSyllableGap() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "two", Lyric.Extend.START);
+        var n2 = note();
+        setLyric(n2, null, false, "", Lyric.Extend.STOP);
+        var n3 = note();
+        setLyric(n3, Lyric.Syllabic.SINGLE, false, "three", Lyric.Extend.NONE);
+        addToLine(n1, n2, n3);
+
+        // n3 sits close behind the STOP carrier so the raw overshoot would crowd "three".
+        var columns = List.of(
+            columnAt(n1, 5),
+            columnAt(n2, 9),
+            columnAt(n3, 10));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
+
+        var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
+        assertThat(extenders).hasSize(1);
+
+        var threeBoxXSs = boxesOf(result.boxes(), n3).getFirst().xSs();
+        var unclampedStopEndXSs = columns.get(1).getRightEdgeXSs() + LyricLayoutBuilder.STOP_MELISMA_OVERSHOOT_SS;
+
+        assertThat(extenders.getFirst().endXSs())
+            .as("STOP-melisma extender is clamped to one space-width before 'three'")
+            .isCloseTo(threeBoxXSs - EXTENDER_SPACE_WIDTH_SS, within(TOLERANCE));
+        assertThat(extenders.getFirst().endXSs())
+            .as("clamped end is shorter than the raw STOP overshoot")
+            .isLessThan(unclampedStopEndXSs);
     }
 
     // CONTINUE carrier on a mid-line note — extender passes through silently, same
