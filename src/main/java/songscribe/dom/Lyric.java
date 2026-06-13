@@ -73,6 +73,15 @@ public record Lyric(int verse, String text, Extend extend,
     }
 
     /**
+     * Whether {@code syllabic} continues into the following syllable with a hyphen — true for
+     * {@link Syllabic#BEGIN} and {@link Syllabic#MIDDLE}, false otherwise (including {@code null}
+     * carrier lyrics).
+     */
+    public static boolean syllabicContinues(@Nullable Syllabic syllabic) {
+        return syllabic == Syllabic.BEGIN || syllabic == Syllabic.MIDDLE;
+    }
+
+    /**
      * Melisma extender state for a {@link Lyric}, aligned with MusicXML {@code <extend>} types.
      * <ul>
      *   <li>{@link #NONE} — no extender on this syllable.</li>

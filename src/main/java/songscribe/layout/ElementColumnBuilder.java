@@ -153,7 +153,7 @@ public class ElementColumnBuilder {
 
         var mainLyric = element.getMainLyric();
         var syllabic = mainLyric != null ? mainLyric.syllabic() : null;
-        var isHyphenated = syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE;
+        var isHyphenated = Lyric.syllabicContinues(syllabic);
         // Every column reserves a gap to the next syllable, so a syllable that follows a
         // lyric-less element still clears it by the lyric space width. Hyphenated syllables
         // reserve the hyphen cell width instead.
@@ -182,7 +182,7 @@ public class ElementColumnBuilder {
 
         // Add accidental width if present
         if (element.getAccidental() != null) {
-            double accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(element);
+            var accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(element);
             extentSs -= (accidentalWidthSs + ACCIDENTAL_GAP_SS);
         }
 

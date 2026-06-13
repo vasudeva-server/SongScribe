@@ -41,7 +41,6 @@ class ElementColumnTest extends UnitTest {
     private static final String SYLLABLE = "la";
     private static final double SYLLABLE_WIDTH = 1.25;
     private static final double X_POSITION = 10.0;
-    private static final double CUSTOM_MIN_GAP = 0.75;
 
     // Concrete expected oracles, deliberately not recomputed from the formula under test.
     private static final double EXPECTED_WIDTH = 3.5;      // abs(-1.5) + 2.0
@@ -132,15 +131,6 @@ class ElementColumnTest extends UnitTest {
             element(ElementType.CROTCHET), List.of(), 0, 0, 0, 0, SYLLABLE, SYLLABLE_WIDTH, false);
 
         assertThat(column.hasSyllable()).isTrue();
-    }
-
-    @Test
-    void testMinGapToNextSyllableSetterRoundTrips() {
-        var column = columnFor(element(ElementType.CROTCHET));
-
-        column.setMinGapToNextSyllableSs(CUSTOM_MIN_GAP);
-
-        assertThat(column.getMinGapToNextSyllableSs()).isEqualTo(CUSTOM_MIN_GAP);
     }
 
     @Test

@@ -145,13 +145,14 @@ public final class ExportABCAction extends UIAction {
         if (maxValueEntry.getValue() == Integer.MIN_VALUE) {
             return MidiSequenceBuilder.PPQ * 4;
         }
+
         return maxValueEntry.getKey();
     }
 
     private static Map<Integer, Integer> getUnitLengthMap(
         Song song
     ) {
-        Map<Integer, Integer> unitLengths = new HashMap<>();
+        var unitLengths = new HashMap<Integer, Integer>();
 
         for (
             var lineIndex = 0;
@@ -164,11 +165,12 @@ public final class ExportABCAction extends UIAction {
                 var note = line.getElement(noteIndex);
 
                 if (note.getType().isPitchedNote()) {
-                    Integer defaultDuration = note.getDefaultDuration();
+                    var defaultDuration = note.getDefaultDuration();
                     unitLengths.merge(defaultDuration, 1, Integer::sum);
                 }
             }
         }
+
         return unitLengths;
     }
 
@@ -255,11 +257,11 @@ public final class ExportABCAction extends UIAction {
         var letter = (char) (pitch + ((staffPosition >= 0) ? 'A' : 'a'));
         sb.append(letter);
 
-        for (var y = staffPosition; y >= 7; y -= 7) {
+        for (var pos = staffPosition; pos >= 7; pos -= 7) {
             sb.append(',');
         }
 
-        for (var y = staffPosition; y < -7; y += 7) {
+        for (var pos = staffPosition; pos < -7; pos += 7) {
             sb.append('\'');
         }
 
@@ -336,9 +338,9 @@ public final class ExportABCAction extends UIAction {
             if (noteIndex >= 0) {
                 var hasTrill = noteLine.findRangeElements(Trill.class).stream()
                     .anyMatch(t -> {
-                        var a = t.getAnchorElementIndex();
-                        var e = t.getEndElementIndex();
-                        return noteIndex >= a && noteIndex <= e;
+                        var anchorIndex = t.getAnchorElementIndex();
+                        var endIndex = t.getEndElementIndex();
+                        return noteIndex >= anchorIndex && noteIndex <= endIndex;
                     });
 
                 if (hasTrill) {
@@ -459,10 +461,11 @@ public final class ExportABCAction extends UIAction {
                 sb.append('(');
             }
 
-            sb.append(translateNote(line.getElement(i), songUnitLength));
+            var element = line.getElement(i);
+            sb.append(translateNote(element, songUnitLength));
 
             if (
-                (line.getElement(i).getType() == ElementType.REPEAT_RIGHT) &&
+                (element.getType() == ElementType.REPEAT_RIGHT) &&
                     LineEndingSupport.isInsideAnyEnding(endings, i)
             ) {
                 sb.append("[2 ");
@@ -502,10 +505,11 @@ public final class ExportABCAction extends UIAction {
     static String translateLyrics(Line line) {
         var sb = new StringBuilder(270);
 
-        for (var n = 0; n < line.effectiveElementCount(); n++) {
-            var note = line.getElement(n);
+        for (var noteIndex = 0; noteIndex < line.effectiveElementCount(); noteIndex++) {
+            var note = line.getElement(noteIndex);
+            var noteType = note.getType();
 
-            if (!note.getType().isNote()) {
+            if (!noteType.isNote()) {
                 continue;
             }
 
@@ -523,15 +527,14 @@ public final class ExportABCAction extends UIAction {
 
             // TODO: syllables under gracenotes are not supported in abc therefore me must put
             //  together with the next note
-            if (note.getType().isGraceNote()) {
+            if (noteType.isGraceNote()) {
                 sb.append('\\');
             }
 
             if (lyric.extend() == Lyric.Extend.START) {
                 sb.append('_');
             } else {
-                var syllabic = lyric.syllabic();
-                sb.append(syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE ? '-' : ' ');
+                sb.append(Lyric.syllabicContinues(lyric.syllabic()) ? '-' : ' ');
             }
         }
 
@@ -558,8 +561,8 @@ public final class ExportABCAction extends UIAction {
         Song song,
         int songUnitLength
     ) {
-        for (var l = 0; l < song.lineCount(); l++) {
-            var line = song.getLine(l);
+        for (var lineIndex = 0; lineIndex < song.lineCount(); lineIndex++) {
+            var line = song.getLine(lineIndex);
             writer.println(translateLine(line, songUnitLength));
             writer.println("w:" + translateLyrics(line));
         }

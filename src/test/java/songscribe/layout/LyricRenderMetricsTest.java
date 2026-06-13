@@ -111,8 +111,8 @@ class LyricRenderMetricsTest extends UnitTest {
         // utility the production delegates to) rather than lyricBoxWidthSs itself.
         // This is NOT f(x)≈f(x) — it catches any divergence if the production method
         // switches to a different width-computation path.
-        final String text = "do";
-        final double expectedWidthSs = ScaleContext.textWidthSs(LYRICS_FONT, text);
+        final var text = "do";
+        final var expectedWidthSs = ScaleContext.textWidthSs(LYRICS_FONT, text);
         assertThat(LYRIC_METRICS.lyricBoxWidthSs(text)).isCloseTo(expectedWidthSs, within(TOLERANCE));
     }
 
@@ -153,7 +153,7 @@ class LyricRenderMetricsTest extends UnitTest {
 
     @Test
     void testLyricBoxHeightSsIsPositiveAndEqualsAscentPlusDescent() {
-        final double expectedHeightSs =
+        final var expectedHeightSs =
             ScaleContext.fontAscentSs(LYRICS_FONT) + ScaleContext.fontDescentSs(LYRICS_FONT);
         assertAll(
             () -> assertThat(LYRIC_METRICS.lyricBoxHeightSs())
@@ -170,8 +170,8 @@ class LyricRenderMetricsTest extends UnitTest {
 
     @Test
     void testPreferredHyphenCellWidthSsEqualsFactorTimesHyphenWidth() {
-        final double hyphenWidthSs = 1.5;
-        final double expectedWidthSs = LyricRenderMetrics.HYPHEN_WIDENING_FACTOR * hyphenWidthSs;
+        final var hyphenWidthSs = 1.5;
+        final var expectedWidthSs = LyricRenderMetrics.HYPHEN_WIDENING_FACTOR * hyphenWidthSs;
         var metricsWithHyphen = new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, hyphenWidthSs, 0.0);
         assertThat(metricsWithHyphen.preferredHyphenCellWidthSs())
             .isCloseTo(expectedWidthSs, within(TOLERANCE));

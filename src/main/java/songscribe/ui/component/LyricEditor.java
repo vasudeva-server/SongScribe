@@ -902,7 +902,7 @@ public final class LyricEditor extends MyJTextField {
 
         var backSyllabic = backLyric.syllabic();
 
-        if (backSyllabic != Lyric.Syllabic.BEGIN && backSyllabic != Lyric.Syllabic.MIDDLE) {
+        if (!Lyric.syllabicContinues(backSyllabic)) {
             UIUtils.beep();
             return;
         }

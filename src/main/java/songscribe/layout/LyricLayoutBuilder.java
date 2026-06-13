@@ -220,8 +220,7 @@ public final class LyricLayoutBuilder {
             state.closeExtender(connectors, verse, boxXSs);
 
             var syllableEndXSs = boxXSs + widthSs;
-            var syllabic = lyric.syllabic();
-            var opensHyphen = syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE;
+            var opensHyphen = Lyric.syllabicContinues(lyric.syllabic());
 
             if (opensHyphen) {
                 state.pendingHyphenStartXSs = syllableEndXSs;
@@ -248,6 +247,8 @@ public final class LyricLayoutBuilder {
             emitDanglingHyphen(connectors, columns, state, verse);
         }
 
+        // Always the lyric space width: a melisma is sung on a single (non-hyphenated) syllable,
+        // so the gap before the following word is a word space, never a hyphen cell.
         clampExtendersToFollowingSyllable(connectors, boxesByElement, lyricRenderMetrics.spaceWidthSs());
 
         return new VerseResult(boxesByElement, connectors, hasTrailingContinuation);

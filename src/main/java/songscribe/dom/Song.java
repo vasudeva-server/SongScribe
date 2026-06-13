@@ -379,11 +379,11 @@ public final class Song {
             var currentLine = lines.get(i);
 
             for (
-                var n = lastLine ? noteIndex : (currentLine.elementCount() - 1);
-                n >= 0;
-                n--
+                var elementIndex = lastLine ? noteIndex : (currentLine.elementCount() - 1);
+                elementIndex >= 0;
+                elementIndex--
             ) {
-                var attachment = currentLine.getElement(n).findAttachment(TempoChangeAttachment.class);
+                var attachment = currentLine.getElement(elementIndex).findAttachment(TempoChangeAttachment.class);
 
                 if (attachment != null) {
                     return attachment.getTempo();
@@ -489,9 +489,7 @@ public final class Song {
                     if (lyric.compound()) {
                         sb.append("--");
                     } else {
-                        var syllabic = lyric.syllabic();
-                        sb.append(syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE
-                            ? '-' : ' ');
+                        sb.append(Lyric.syllabicContinues(lyric.syllabic()) ? '-' : ' ');
                     }
                 }
             }

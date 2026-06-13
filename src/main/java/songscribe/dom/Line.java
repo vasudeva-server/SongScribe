@@ -331,7 +331,7 @@ public class Line {
             var lyric = lyrics.get(j);
             var syllabic = lyric.syllabic();
 
-            if (syllabic != Lyric.Syllabic.BEGIN && syllabic != Lyric.Syllabic.MIDDLE) {
+            if (!Lyric.syllabicContinues(syllabic)) {
                 continue;
             }
 
@@ -345,7 +345,7 @@ public class Line {
 
                 var deletedSyllabic = matchingDeletedLyric != null ? matchingDeletedLyric.syllabic() : null;
 
-                if (deletedSyllabic != Lyric.Syllabic.BEGIN && deletedSyllabic != Lyric.Syllabic.MIDDLE) {
+                if (!Lyric.syllabicContinues(deletedSyllabic)) {
                     indicesToClear.add(j);
                 }
             }
@@ -603,13 +603,13 @@ public class Line {
 
             if (prevLyric != null) {
                 var prevSyllabic = prevLyric.syllabic();
-                prevContinues = syllabicContinues(prevSyllabic);
+                prevContinues = Lyric.syllabicContinues(prevSyllabic);
                 break;
             }
         }
 
         // BEGIN was assigned by best-guess load to signal "this syllable continues to the next".
-        var derived = deriveSyllabic(prevContinues, syllabicContinues(lyric.syllabic()));
+        var derived = deriveSyllabic(prevContinues, Lyric.syllabicContinues(lyric.syllabic()));
 
         if (derived == lyric.syllabic()) {
             return;
@@ -687,7 +687,7 @@ public class Line {
             return;
         }
 
-        var newSyllabic = deriveSyllabic(predecessorContinues, syllabicContinues(nextLyric.syllabic()));
+        var newSyllabic = deriveSyllabic(predecessorContinues, Lyric.syllabicContinues(nextLyric.syllabic()));
 
         if (newSyllabic != nextLyric.syllabic()) {
             modifyElement(nextIndex, ElementField.LYRIC, () ->
@@ -709,7 +709,7 @@ public class Line {
             var prevLyric = elements.get(i).getLyricForVerse(verse);
 
             if (prevLyric != null && prevLyric.syllabic() != null) {
-                return syllabicContinues(prevLyric.syllabic());
+                return Lyric.syllabicContinues(prevLyric.syllabic());
             }
         }
 
@@ -799,10 +799,6 @@ public class Line {
         }
 
         return -1;
-    }
-
-    private static boolean syllabicContinues(Lyric.@Nullable Syllabic syllabic) {
-        return syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE;
     }
 
     private static Lyric.Syllabic deriveSyllabic(boolean prevContinues, boolean thisContinues) {
@@ -987,9 +983,9 @@ public class Line {
             return false;
         }
 
-        var kt = keyType;
+        var nonNullKeyType = keyType;
         return IntStream.range(0, keys).anyMatch(
-            i -> FLAT_SHARP_ORDINAL[kt.ordinal() - 1][i] == pitchType
+            i -> FLAT_SHARP_ORDINAL[nonNullKeyType.ordinal() - 1][i] == pitchType
         );
     }
 

@@ -39,7 +39,10 @@ import songscribe.dom.StaffElement;
  *   <li>Beam membership flag (for internal spacing coordination)</li>
  * </ul>
  * <p>
- * This class is immutable after construction. Use {@link ElementColumnBuilder} to create instances.
+ * Construction is two-phase: {@link ElementColumnBuilder} creates the column and immediately sets
+ * {@link #minGapToNextSyllableSs}, then {@link HorizontalSpacingCalculator} sets {@link #xSs} once
+ * positions are computed. Every other field is immutable. Use {@link ElementColumnBuilder} to create
+ * instances.
  */
 public final class ElementColumn {
 

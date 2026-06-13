@@ -376,9 +376,9 @@ public class HorizontalSpacingCalculator {
     // ==========================================================================
 
     /**
-         * Represents a range of columns that form a beam group.
-         */
-        private record BeamGroupRange(int start, int end) {
+     * Represents a range of columns that form a beam group.
+     */
+    private record BeamGroupRange(int start, int end) {
     }
 
     /**
@@ -496,7 +496,7 @@ public class HorizontalSpacingCalculator {
         var tightTotalWidthSs = currentXSs - startXSs;
 
         // Step 2: Calculate lyric-driven width requirement
-        double lyricRequiredWidthSs = 0;
+        var lyricRequiredWidthSs = 0.0;
 
         for (var i = 1; i < columnCount; i++) {
             var prev = beamColumns.get(i - 1);

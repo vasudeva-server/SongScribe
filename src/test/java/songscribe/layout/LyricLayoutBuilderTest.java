@@ -63,6 +63,9 @@ class LyricLayoutBuilderTest extends UnitTest {
     private static final double EXTENDER_SPACE_WIDTH_SS = 0.5;
     private static final LyricRenderMetrics LYRIC_METRICS_WITH_SPACE =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, EXTENDER_SPACE_WIDTH_SS);
+    // Distance from the STOP carrier to the following syllable that leaves the raw extender
+    // overshoot well within the gap, so the clamp must leave the extender untouched.
+    private static final double FAR_FOLLOWING_SYLLABLE_GAP_SS = 20.0;
 
     private Song song;
     private Line line;
@@ -608,14 +611,67 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(extenders).hasSize(1);
 
         var threeBoxXSs = boxesOf(result.boxes(), n3).getFirst().xSs();
-        var unclampedStopEndXSs = columns.get(1).getRightEdgeXSs() + LyricLayoutBuilder.STOP_MELISMA_OVERSHOOT_SS;
 
         assertThat(extenders.getFirst().endXSs())
             .as("STOP-melisma extender is clamped to one space-width before 'three'")
             .isCloseTo(threeBoxXSs - EXTENDER_SPACE_WIDTH_SS, within(TOLERANCE));
+    }
+
+    // STOP-melisma extender whose overshoot already clears the following syllable by more than the
+    // space-width gap: the clamp only pulls extenders back, so it must leave this one at its raw
+    // overshoot (guards the "endXSs > maxEndXSs" branch in clampExtendersToFollowingSyllable, #430).
+    @Test
+    void testStopCarrierExtenderNotClampedWhenFollowingSyllableIsFar() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "two", Lyric.Extend.START);
+        var n2 = note();
+        setLyric(n2, null, false, "", Lyric.Extend.STOP);
+        var n3 = note();
+        setLyric(n3, Lyric.Syllabic.SINGLE, false, "three", Lyric.Extend.NONE);
+        addToLine(n1, n2, n3);
+
+        // n3 sits far past the STOP carrier, so the raw overshoot already keeps more than a
+        // space-width gap and the clamp must not fire.
+        var columns = List.of(
+            columnAt(n1, 5),
+            columnAt(n2, 9),
+            columnAt(n3, 9 + FAR_FOLLOWING_SYLLABLE_GAP_SS));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
+
+        var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
+        assertThat(extenders).hasSize(1);
+
+        var unclampedStopEndXSs = columns.get(1).getRightEdgeXSs() + LyricLayoutBuilder.STOP_MELISMA_OVERSHOOT_SS;
+
         assertThat(extenders.getFirst().endXSs())
-            .as("clamped end is shorter than the raw STOP overshoot")
-            .isLessThan(unclampedStopEndXSs);
+            .as("extender already clears 'three' by more than a space width, so it keeps its raw overshoot")
+            .isCloseTo(unclampedStopEndXSs, within(TOLERANCE));
+    }
+
+    // The clamp pass only pulls back EXTENDER connectors. A HYPHEN run already ends exactly at the
+    // following syllable's left edge and must keep that endpoint — it must not be shortened by the
+    // space-width gap (guards the kind check in clampExtendersToFollowingSyllable, #430).
+    @Test
+    void testHyphenRunNotClampedToFollowingSyllableGap() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.BEGIN, false, "con", false);
+        var n2 = note();
+        setLyric(n2, Lyric.Syllabic.END, false, "tinue", false);
+        addToLine(n1, n2);
+
+        var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
+
+        var hyphens = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN);
+        assertThat(hyphens).hasSize(1);
+
+        var tinueBoxXSs = boxesOf(result.boxes(), n2).getFirst().xSs();
+
+        assertThat(hyphens.getFirst().endXSs())
+            .as("hyphen ends at the following syllable's left edge, unaffected by the extender clamp")
+            .isCloseTo(tinueBoxXSs, within(TOLERANCE));
     }
 
     // CONTINUE carrier on a mid-line note — extender passes through silently, same
