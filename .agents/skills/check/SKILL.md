@@ -133,9 +133,3 @@ Wait for Phase 2 (and Phase 2b, if it ran) to complete, then choose the path bas
 4. **Approval.** Once all questions are resolved, use AskUserQuestion to present the final list of issues to fix and ask for approval to proceed (or for further discussion).
 
 5. **Fix.** After approval, fix the approved issues. Briefly summarize what was fixed when done.
-
-## Phase 4: Format
-
-As the final step, after all fixes are applied, run the format workflow over **all files in the review scope** — the complete format scope resolved in Phase 1 (production *and* test files), not just the ones changed during the review.
-
-Invoke the Workflow tool with `{scriptPath: ".claude/workflows/format.js", args: <file-paths>}`, where `<file-paths>` is the **array of repo-relative file paths** in the format scope. Passing the explicit array works uniformly across all modes — including Mode C, where the changes are already committed and so would not appear in the working-tree resolution the workflow does on its own.
