@@ -188,10 +188,6 @@ public final class MyFontUtils {
         return font.deriveFont(transform);
     }
 
-    public static Font getLocalFont(String filename) {
-        return getLocalFont(filename, 0);
-    }
-
     /**
      * Loads but does not register a local font. If size == 0, the default 1pt size is returned.
      */
