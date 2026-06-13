@@ -125,8 +125,8 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        // drawTupletNumber calls g2.drawString()
-        verify(g2, times(1)).drawString(any(String.class), any(float.class), any(float.class));
+        // The number is drawn via a shaped glyph vector
+        verify(g2, times(1)).drawGlyphVector(any(GlyphVector.class), any(float.class), any(float.class));
     }
 
     @Test

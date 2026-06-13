@@ -360,8 +360,8 @@ class BeamGroupRendererTest extends UnitTest {
     }
 
     @Test
-    void testGetBeamHighlightColor_hoveredNote_oneBeamableRemaining_returnsPreviewColor() {
-        // One note hovered (not selected), one beamable remaining → preview (insertion) color
+    void testGetBeamHighlightColor_hoveredNote_oneBeamableRemaining_returnsReplacedElementColor() {
+        // One note hovered (not selected), one beamable remaining → replaced-element color
         var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
         var invariants = editModeInvariants(line);
 
@@ -372,7 +372,7 @@ class BeamGroupRendererTest extends UnitTest {
 
             var result = RENDERER.getBeamHighlightColor(invariants, 0, 1);
 
-            assertThat(result).isEqualTo(ScoreView.getPreviewElementColor());
+            assertThat(result).isEqualTo(LineInvariants.REPLACED_ELEMENT_COLOR);
         }
     }
 
