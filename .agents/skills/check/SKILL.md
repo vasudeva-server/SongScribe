@@ -26,14 +26,13 @@ If `$ARGUMENTS` is empty or not provided, review changed files from git:
 - Run `/opt/homebrew/bin/git diff` (or `/opt/homebrew/bin/git diff HEAD` if there are staged changes) to get the diff.
 - If there are no git changes, review the most recently modified files that the user mentioned or edited earlier in this conversation.
 - The diff output is the **review target** passed to agents in Phase 2.
-- The set of changed file paths is the **format scope** used in Phase 4.
 
 ### Mode C: Commit Review
 
 If `$ARGUMENTS` is a commit-ish (resolved as above), review the changes introduced by that commit:
 
 - Run `/opt/homebrew/bin/git show <commit>` to get the diff for the review target.
-- Run `/opt/homebrew/bin/git diff-tree --no-commit-id --name-only -r <commit>` to get the list of changed file paths. These are the **review target** (their diff) and the **format scope** used in Phase 4. Exclude deleted files.
+- Run `/opt/homebrew/bin/git diff-tree --no-commit-id --name-only -r <commit>` to get the list of changed file paths. These are the **review target** (their diff). Exclude deleted files.
 
 ### Mode B: Package or File Review
 
@@ -48,7 +47,7 @@ Resolution steps:
 2. If the path is a directory, collect all source files (`.java`, `.kt`) recursively.
 3. If the path is a file, use just that file.
 4. Read the full content of each file using Serena's `jet_brains_get_symbols_overview` (depth=2) for an efficient overview, then read specific symbol bodies only as needed for the review.
-5. The collected code is the **review target** passed to agents in Phase 2. The collected file paths are the **format scope** used in Phase 4.
+5. The collected code is the **review target** passed to agents in Phase 2.
 6. If there are many files, process them in batches of ~5-8 files per agent invocation to stay within context limits. Run multiple rounds of Phase 2 if needed.
 
 ### Flags
