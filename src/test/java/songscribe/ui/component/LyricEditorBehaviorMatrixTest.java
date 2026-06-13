@@ -934,6 +934,34 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             verify(score, never()).addOverlay(any());
         }
+
+        // The '+' key is an alias for '=': it commits the same compound boundary
+        // and advances, so a hyphenated word can be entered with either key.
+        @Test
+        void e7_plusKeyCommitsCompoundLikeEquals() {
+            var element = crotchet();
+            var nextNote = crotchet();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(element));
+            song.withoutMutationTracking(() -> line.addElement(nextNote));
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, line, element);
+            editor.setText("Su");
+            editor.setCaretPosition(editor.getText().length());
+            editor.attachListeners();
+            firePlus(editor);
+
+            var notification = captureSingleDidChange();
+            assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(1);
+            assertThat(element.getMainLyric())
+                .extracting(Lyric::compound, Lyric::extend)
+                .containsExactly(true, Lyric.Extend.NONE);
+
+            var captor = ArgumentCaptor.forClass(LyricEditor.class);
+            verify(score, atLeastOnce()).addOverlay(captor.capture());
+            assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(nextNote);
+        }
     }
 
     // -----------------------------------------------------------------------

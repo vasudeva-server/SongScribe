@@ -579,6 +579,52 @@ class SongIOTest extends UnitTest {
                 .containsExactly(new Lyric(1, "garden", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
         }
 
+        // Issue #420: a compound syllable serializes its boundary as a non-breaking
+        // hyphen (U+2011), never the legacy zero-width space (U+200B).
+        @Test
+        void testCompoundSyllableWritesNonBreakingHyphenMarker() throws Exception {
+            var song = parseXml(threeNoteXml());
+            var line = song.getLine(0);
+
+            line.getElement(0).lyrics.add(
+                new Lyric(1, "heart", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, true)
+            );
+            line.getElement(2).lyrics.add(
+                new Lyric(1, "garden", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)
+            );
+
+            var xml = writeSongToString(song);
+
+            assertThat(xml)
+                .as("compound boundary written as U+2011")
+                .contains("<text>heart\u2011</text>");
+        }
+
+        // Issue #420: existing files that marked the compound boundary with the old
+        // zero-width space (U+200B) still load as compound; the marker is stripped.
+        @Test
+        void testLegacyZeroWidthSpaceMarkerReadsAsCompound() throws Exception {
+            var song = parseXml(perNoteCompoundXml("\u200B"));
+            var line = song.getLine(0);
+
+            assertThat(line.getElement(0).lyrics)
+                .as("legacy U+200B marker recognized as compound boundary")
+                .containsExactly(new Lyric(1, "heart", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, true));
+        }
+
+        // Issue #420: the compound marker is only honored on BEGIN/MIDDLE syllables.
+        // A SINGLE syllable whose text legitimately ends with U+2011 must be left
+        // intact — not stripped, not flagged compound.
+        @Test
+        void testSingleSyllableEndingWithMarkerIsNotCompound() throws Exception {
+            var song = parseXml(singleLyricXml("single", "hello\u2011"));
+            var line = song.getLine(0);
+
+            assertThat(line.getElement(0).lyrics)
+                .as("U+2011 on a non-BEGIN/MIDDLE syllable is preserved, not a compound marker")
+                .containsExactly(new Lyric(1, "hello\u2011", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        }
+
         // T41: Legacy load — a pre-v2.6 fixture with <lyrics>heart--garden</lyrics>
         // populates per-note Lyric records on load.
         @Test
@@ -1082,6 +1128,81 @@ class SongIOTest extends UnitTest {
               <view/>
             </composition>
             """;
+    }
+
+    /**
+     * A v2.6 composition with two per-note lyrics forming the compound word
+     * "heart-garden", where {@code marker} is appended to the first syllable's
+     * {@code <text>} to flag the compound boundary.
+     */
+    private static String perNoteCompoundXml(String marker) {
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="2.6">
+              <keys>0</keys>
+              <rightinfostarty>0.0</rightinfostarty>
+              <linewidth>200.0</linewidth>
+              <lines>
+                <line>
+                  <lyricsypos>5.0</lyricsypos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                      <lyric number="1">
+                        <syllabic>begin</syllabic>
+                        <text>heart%s</text>
+                      </lyric>
+                    </note>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                      <lyric number="1">
+                        <syllabic>end</syllabic>
+                        <text>garden</text>
+                      </lyric>
+                    </note>
+                    <note type="SINGLE_BARLINE">
+                      <staffposition>0</staffposition>
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """.formatted(marker);
+    }
+
+    /**
+     * A v2.6 composition with a single note carrying one lyric of the given
+     * {@code syllabic} and {@code text}, used to verify how the reader treats a
+     * marker character on a non-compound syllable.
+     */
+    private static String singleLyricXml(String syllabic, String text) {
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="2.6">
+              <keys>0</keys>
+              <rightinfostarty>0.0</rightinfostarty>
+              <linewidth>200.0</linewidth>
+              <lines>
+                <line>
+                  <lyricsypos>5.0</lyricsypos>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                      <lyric number="1">
+                        <syllabic>%s</syllabic>
+                        <text>%s</text>
+                      </lyric>
+                    </note>
+                    <note type="SINGLE_BARLINE">
+                      <staffposition>0</staffposition>
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """.formatted(syllabic, text);
     }
 
     /**

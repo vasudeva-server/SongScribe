@@ -553,7 +553,7 @@ public final class ExportABCAction extends UIAction {
             return "";
         }
 
-        return syllable.replace(Constants.NON_BREAKING_HYPHEN, "\\-");
+        return syllable.replace(Constants.SOFT_HYPHEN, "\\-");
     }
 
     static void translateSong(

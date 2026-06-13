@@ -86,9 +86,9 @@ import songscribe.util.UIUtils;
  *  │   │  │ -      │ non-empty     │ commit as     │ │         │
  *  │   │  │        │               │ syllable →adv │ │         │
  *  │   │  │ -      │ empty         │ advance only  │ │         │
- *  │   │  │ =      │ non-empty,    │ commit as     │ │         │
+ *  │   │  │ =, +   │ non-empty,    │ commit as     │ │         │
  *  │   │  │        │ caret-at-end  │ compound →adv │ │         │
- *  │   │  │ =      │ empty or mid  │ beep, stay    │ │         │
+ *  │   │  │ =, +   │ empty or mid  │ beep, stay    │ │         │
  *  │   │  │        │               │ open          │ │         │
  *  │   │  │ _      │ non-empty,    │ commit as     │ │         │
  *  │   │  │        │ caret-at-end  │ START → adv   │ │         │
@@ -503,7 +503,7 @@ public final class LyricEditor extends MyJTextField {
                         breakChainCommitAndAdvance(CommitKind.WORD_FINAL, findNextEligibleIndex());
                     }
                     case '-' -> { e.consume(); handleHyphen(); }
-                    case '=' -> { e.consume(); handleEquals(); }
+                    case '=', '+' -> { e.consume(); handleCompound(); }
                     case '_' -> { e.consume(); handleUnderscore(); }
                 }
             }
@@ -921,7 +921,7 @@ public final class LyricEditor extends MyJTextField {
         return getCaretPosition() == getText().length();
     }
 
-    private void handleEquals() {
+    private void handleCompound() {
         if (getText().isEmpty() || !isCaretAtEnd()) {
             UIUtils.beep();
             return;

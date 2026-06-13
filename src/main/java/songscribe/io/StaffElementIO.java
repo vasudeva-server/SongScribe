@@ -21,6 +21,7 @@ package songscribe.io;
 
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
@@ -43,6 +44,7 @@ import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.ui.Constants;
 
 public final class StaffElementIO {
 
@@ -94,12 +96,19 @@ public final class StaffElementIO {
     private static final String XML_EXTEND_TAG = "extend";
 
     /**
-     * Compound-word boundary marker: a zero-width space (U+200B) appended to a
+     * Compound-word boundary marker: a non-breaking hyphen (U+2011) appended to a
      * syllable's {@code <text>} content signals that the syllable joins the next
-     * via SongScribe's {@code =} operator. Standard MusicXML readers ignore the
-     * invisible character and render the text normally.
+     * via SongScribe's {@code =}/{@code +} operator. Standard MusicXML readers
+     * render it as an ordinary hyphen.
      */
-    private static final String COMPOUND_WORD_MARKER = "​";
+    private static final String COMPOUND_WORD_MARKER = Constants.NON_BREAKING_HYPHEN;
+
+    /** Pre-#420 compound marker (zero-width space, U+200B); still recognized on load. */
+    private static final String LEGACY_COMPOUND_WORD_MARKER = "\u200B";
+
+    /** Compound markers recognized on load, in preference order (current first). */
+    private static final List<String> COMPOUND_WORD_MARKERS =
+        List.of(COMPOUND_WORD_MARKER, LEGACY_COMPOUND_WORD_MARKER);
 
     private static final Map<String, StaffElement.Accidental> ACCIDENTAL_MAP =
         new HashMap<>();
@@ -513,12 +522,20 @@ public final class StaffElementIO {
                     var syllabic = getSyllabic();
                     var isCompoundEligible = syllabic == Lyric.Syllabic.BEGIN
                         || syllabic == Lyric.Syllabic.MIDDLE;
-                    var compound = isCompoundEligible && lyricText.endsWith(COMPOUND_WORD_MARKER);
 
-                    if (compound) {
-                        lyricText = lyricText.substring(
-                            0, lyricText.length() - COMPOUND_WORD_MARKER.length());
+                    var compound = false;
+
+                    if (isCompoundEligible) {
+                        for (var marker : COMPOUND_WORD_MARKERS) {
+                            if (lyricText.endsWith(marker)) {
+                                compound = true;
+                                lyricText = lyricText.substring(
+                                    0, lyricText.length() - marker.length());
+                                break;
+                            }
+                        }
                     }
+
                     element.lyrics.add(
                         new Lyric(lyricNumber, lyricText, lyricExtend, syllabic, compound)
                     );

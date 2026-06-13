@@ -172,6 +172,14 @@ abstract class LyricEditorTestSupport extends UnitTest {
         }
     }
 
+    protected void firePlus(LyricEditor editor) {
+        var event = new KeyEvent(editor, KeyEvent.KEY_TYPED, 0L, 0, KeyEvent.VK_UNDEFINED, '+');
+
+        for (var listener : editor.getKeyListeners()) {
+            listener.keyTyped(event);
+        }
+    }
+
     protected void fireUnderscore(LyricEditor editor) {
         var event = new KeyEvent(editor, KeyEvent.KEY_TYPED, 0L, 0, KeyEvent.VK_UNDEFINED, '_');
 
