@@ -126,22 +126,22 @@ public final class GraphicUtils {
         if (GraphicsEnvironment.isHeadless()) {
             isRetina = false;
             dpi = HEADLESS_DPI;
-            var g2d = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
-            setRenderingHints(g2d);
-            SCREEN_FRC = g2d.getFontRenderContext();
-            g2d.dispose();
+            var graphics = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
+            setRenderingHints(graphics);
+            SCREEN_FRC = graphics.getFontRenderContext();
+            graphics.dispose();
         } else {
-            var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            var gd = ge.getDefaultScreenDevice();
-            var config = gd.getDefaultConfiguration();
+            var graphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            var graphicsDevice = graphicsEnvironment.getDefaultScreenDevice();
+            var config = graphicsDevice.getDefaultConfiguration();
             isRetina = config.getDefaultTransform().getScaleX() > 1;
-            dpi = computePhysicalDpi(gd);
+            dpi = computePhysicalDpi(graphicsDevice);
 
             var image = config.createCompatibleImage(1, 1);
-            var g2d = image.createGraphics();
-            setRenderingHints(g2d);
-            SCREEN_FRC = g2d.getFontRenderContext();
-            g2d.dispose();
+            var graphics = image.createGraphics();
+            setRenderingHints(graphics);
+            SCREEN_FRC = graphics.getFontRenderContext();
+            graphics.dispose();
             image.flush();
         }
     }
@@ -267,24 +267,24 @@ public final class GraphicUtils {
 
     @Nullable
     public static Image getImage(String fileName) {
-        var lowRes = readImage(fileName);
+        var lowResolution = readImage(fileName);
 
-        if (lowRes == null) {
+        if (lowResolution == null) {
             return null;
         }
 
-        var hiRes = readImage(getScaledImagePath(fileName));
+        var highResolution = readImage(getScaledImagePath(fileName));
 
-        var img = hiRes != null
-            ? new BaseMultiResolutionImage(lowRes, hiRes)
-            : (Image) lowRes;
+        var image = highResolution != null
+            ? new BaseMultiResolutionImage(lowResolution, highResolution)
+            : (Image) lowResolution;
 
         try {
-            mediaTracker.addImage(img, 0);
+            mediaTracker.addImage(image, 0);
             mediaTracker.waitForID(0);
         } catch (InterruptedException ignored) {}
 
-        return img;
+        return image;
     }
 
     public static FlatSVGIcon getScaledSVGIcon(String filename, int size) {
@@ -402,10 +402,10 @@ public final class GraphicUtils {
      * on-screen.
      */
     public static Rectangle clampToScreen(Rectangle bounds) {
-        var env = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        var screen = env.getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+        var graphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        var screen = graphicsEnvironment.getDefaultScreenDevice().getDefaultConfiguration().getBounds();
 
-        for (var device : env.getScreenDevices()) {
+        for (var device : graphicsEnvironment.getScreenDevices()) {
             var deviceBounds = device.getDefaultConfiguration().getBounds();
 
             if (deviceBounds.contains(bounds.getLocation())) {
@@ -416,10 +416,10 @@ public final class GraphicUtils {
 
         var width = Math.min(bounds.width, screen.width);
         var height = Math.min(bounds.height, screen.height);
-        var x = Math.clamp(bounds.x, screen.x, screen.x + screen.width - width);
-        var y = Math.clamp(bounds.y, screen.y, screen.y + screen.height - height);
+        var clampedX = Math.clamp(bounds.x, screen.x, screen.x + screen.width - width);
+        var clampedY = Math.clamp(bounds.y, screen.y, screen.y + screen.height - height);
 
-        return new Rectangle(x, y, width, height);
+        return new Rectangle(clampedX, clampedY, width, height);
     }
 
     /**
@@ -465,5 +465,25 @@ public final class GraphicUtils {
      */
     public static double inkHeight(Rectangle2D visualBounds) {
         return -visualBounds.getY();
+    }
+
+    /**
+     * Returns the ink pixel bounds of {@code text} rendered in {@code font} under
+     * {@link #SCREEN_FRC}, or {@code null} if the text is empty.
+     * <p>
+     * Uses {@link GlyphVector#getPixelBounds} rather than
+     * {@link FontMetrics#stringWidth}, because advance width alone does not account
+     * for glyphs whose ink extends past their advance (e.g. italic descenders) or
+     * before the drawing origin (the negative left bearing of a "W"). The returned
+     * rectangle's {@code width} is the full ink span, and {@code x} is the ink's
+     * offset from the origin.
+     */
+    @Nullable
+    public static Rectangle inkBounds(String text, Font font) {
+        if (text.isEmpty()) {
+            return null;
+        }
+
+        return font.createGlyphVector(SCREEN_FRC, text).getPixelBounds(SCREEN_FRC, 0, 0);
     }
 }

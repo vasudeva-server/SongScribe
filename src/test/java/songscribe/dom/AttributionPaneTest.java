@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.font.FontKey;
-import songscribe.util.MyFontUtils;
+import songscribe.util.GraphicUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,9 +36,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * resolution. Lines are injected via {@link AttributionPane#setOverrideLines}
  * so the measurement contract can be exercised without the Song model.
  * <p>
- * Expected widths/heights are derived from {@link MyFontUtils#getFontMetrics}
- * — the same source the production code measures with — so the assertions pin
- * the reduction/summation logic without hardcoding platform-specific pixels.
+ * Expected heights and widths are both derived from {@code getPixelBounds} under
+ * {@link GraphicUtils#SCREEN_FRC} — the same source the production code measures
+ * with — so the assertions pin the reduction/summation logic without hardcoding
+ * platform-specific pixels.
  */
 class AttributionPaneTest extends UnitTest {
 
@@ -56,18 +57,50 @@ class AttributionPaneTest extends UnitTest {
     private static final String LONG_TEXT = "A much longer attribution line";
     private static final String WORDS_AND_MUSIC_BY = "Words and Music by";
     private static final String YEAR_TEXT = "1975";
+    private static final String SECOND_YEAR_TEXT = "1980";
 
     private static final AttributionLine ATTRIBUTION_LINE =
         new AttributionLine(WORDS_AND_MUSIC_BY, FontKey.ATTRIBUTION);
     private static final AttributionLine SUB_ATTRIBUTION_LINE =
         new AttributionLine(YEAR_TEXT, FontKey.SUB_ATTRIBUTION);
+    private static final AttributionLine SECOND_SUB_ATTRIBUTION_LINE =
+        new AttributionLine(SECOND_YEAR_TEXT, FontKey.SUB_ATTRIBUTION);
 
+    // Mirrors AttributionPane's ink-based width measurement: the rendered ink span
+    // under GraphicUtils.SCREEN_FRC, not the glyph advance. Callers pass non-empty
+    // text; the guard documents that and satisfies the nullness checker.
     private static int widthOf(Font font, String text) {
-        return MyFontUtils.getFontMetrics(font).stringWidth(text);
+        var bounds = GraphicUtils.inkBounds(text, font);
+
+        if (bounds == null) {
+            throw new AssertionError("test text must be non-empty: " + text);
+        }
+
+        return bounds.width;
     }
 
+    // Mirrors AttributionPane's leading: a fixed gap, in staff spaces, between the
+    // descender of one line and the ascender of the next. Lines are boxed to the
+    // rendered height of AttributionPane.LINE_BOX_REFERENCE, separated only by this gap.
+    private static final double LEADING_SS = 0.5;
+    private static final int LEADING_PX = ScaleContext.ssToRoundedPx(LEADING_SS);
+
+    // Mirrors AttributionPane.SUB_ATTRIBUTION_GAP_SS: an extra gap, in staff
+    // spaces, added above the first sub-attribution line — at the transition from
+    // attribution to sub-attribution lines — on top of the normal leading.
+    private static final double SUB_ATTRIBUTION_GAP_SS = 0.5;
+    private static final int SUB_ATTRIBUTION_GAP_PX = ScaleContext.ssToRoundedPx(SUB_ATTRIBUTION_GAP_SS);
+
+    // A line's height is the rendered ink height of AttributionPane.LINE_BOX_REFERENCE
+    // in its font; leading is added separately, only between consecutive lines.
     private static int heightOf(Font font) {
-        return MyFontUtils.getFontMetrics(font).getHeight();
+        var bounds = GraphicUtils.inkBounds(AttributionPane.LINE_BOX_REFERENCE, font);
+
+        if (bounds == null) {
+            throw new AssertionError("line-box reference must be non-empty");
+        }
+
+        return bounds.height;
     }
 
     @Test
@@ -113,14 +146,19 @@ class AttributionPaneTest extends UnitTest {
 
         var heightWithoutMargins = pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT);
         var widthWithoutMargins = pane.getContentWidthPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT);
-        assertThat(heightWithoutMargins).isEqualTo(attributionHeight + subAttributionHeight);
+
+        // Two lines: their natural heights plus a single leading gap between them,
+        // plus the extra sub-attribution gap above the sub-attribution line.
+        assertThat(heightWithoutMargins)
+            .isEqualTo(attributionHeight + subAttributionHeight + LEADING_PX + SUB_ATTRIBUTION_GAP_PX);
 
         pane.setMarginTop(MARGIN_TOP);
         pane.setMarginBottom(MARGIN_BOTTOM);
 
         // Margins add to height once each, and do not affect width.
         assertThat(pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
-            .isEqualTo(attributionHeight + subAttributionHeight + MARGIN_TOP + MARGIN_BOTTOM);
+            .isEqualTo(attributionHeight + subAttributionHeight + LEADING_PX + SUB_ATTRIBUTION_GAP_PX
+                + MARGIN_TOP + MARGIN_BOTTOM);
         assertThat(pane.getContentWidthPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
             .isEqualTo(widthWithoutMargins);
     }
@@ -136,6 +174,86 @@ class AttributionPaneTest extends UnitTest {
 
         // If the cache were not invalidated, the second measure would still
         // report the first (short) width.
-        assertThat(longWidth).isGreaterThan(shortWidth);
+        assertThat(longWidth)
+            .describedAs("changing override lines must invalidate the cache and re-measure")
+            .isGreaterThan(shortWidth);
+    }
+
+    @Test
+    void testSubAttributionGapAddedOnceForMultipleSubLines() {
+        var pane = new AttributionPane();
+        pane.setOverrideLines(List.of(
+            ATTRIBUTION_LINE, SUB_ATTRIBUTION_LINE, SECOND_SUB_ATTRIBUTION_LINE));
+
+        var attributionHeight = heightOf(ATTRIBUTION_FONT);
+        var subAttributionHeight = heightOf(SUB_ATTRIBUTION_FONT);
+
+        // One attribution line then two sub-attribution lines: three line boxes,
+        // two (n-1) leading gaps, and the sub-attribution gap exactly once — above
+        // the first sub line, not before the second.
+        var expectedHeight = attributionHeight + 2 * subAttributionHeight
+            + 2 * LEADING_PX + SUB_ATTRIBUTION_GAP_PX;
+        assertThat(pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
+            .describedAs("sub-attribution gap must be added once, not before every sub line")
+            .isEqualTo(expectedHeight);
+    }
+
+    @Test
+    void testNoSubAttributionGapWhenNoAttributionPrecedes() {
+        var pane = new AttributionPane();
+        pane.setOverrideLines(List.of(SUB_ATTRIBUTION_LINE, SECOND_SUB_ATTRIBUTION_LINE));
+
+        var subAttributionHeight = heightOf(SUB_ATTRIBUTION_FONT);
+
+        // Both lines are sub-attribution with no attribution line above, so there is
+        // no attribution→sub transition: only the inter-line leading applies and the
+        // extra gap is not added.
+        assertThat(pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
+            .describedAs("gap must not be added when no attribution line precedes the sub lines")
+            .isEqualTo(2 * subAttributionHeight + LEADING_PX);
+    }
+
+    @Test
+    void testLeadingAppliedBetweenEachConsecutiveLine() {
+        var pane = new AttributionPane();
+        pane.setOverrideLines(List.of(
+            new AttributionLine(SHORT_TEXT, FontKey.ATTRIBUTION),
+            new AttributionLine(LONG_TEXT, FontKey.ATTRIBUTION),
+            new AttributionLine(WORDS_AND_MUSIC_BY, FontKey.ATTRIBUTION)
+        ));
+
+        var attributionHeight = heightOf(ATTRIBUTION_FONT);
+
+        // Three attribution lines: three line boxes and exactly n-1 leading gaps, and
+        // no sub-attribution gap since every line shares the attribution role. A
+        // fence-post error producing n gaps would change this total.
+        var lineCount = 3;
+        var gapCount = lineCount - 1;
+        var expectedHeight = lineCount * attributionHeight + gapCount * LEADING_PX;
+        assertThat(pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
+            .describedAs("leading must apply between each consecutive pair, i.e. n-1 times")
+            .isEqualTo(expectedHeight);
+    }
+
+    @Test
+    void testEmptyTextLineContributesNoWidthButOccupiesHeight() {
+        var pane = new AttributionPane();
+        pane.setOverrideLines(List.of(
+            new AttributionLine(WORDS_AND_MUSIC_BY, FontKey.ATTRIBUTION),
+            new AttributionLine("", FontKey.ATTRIBUTION)
+        ));
+
+        var attributionHeight = heightOf(ATTRIBUTION_FONT);
+        var nonEmptyWidth = widthOf(ATTRIBUTION_FONT, WORDS_AND_MUSIC_BY);
+
+        // The empty line has no ink, so it adds nothing to the content width...
+        assertThat(pane.getContentWidthPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
+            .describedAs("empty-text line must not contribute to content width")
+            .isEqualTo(nonEmptyWidth);
+
+        // ...but it is still boxed to the full line height and separated by leading.
+        assertThat(pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
+            .describedAs("empty-text line must still occupy a full line box")
+            .isEqualTo(2 * attributionHeight + LEADING_PX);
     }
 }

@@ -23,6 +23,7 @@ package songscribe.layout;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.awt.Font;
 import java.util.List;
 
 import songscribe.UnitTest;
@@ -37,7 +38,7 @@ import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.stacking.VerticalStackingCalculator;
-import songscribe.util.MyFontUtils;
+import songscribe.util.GraphicUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -46,6 +47,19 @@ import static org.mockito.Mockito.mock;
 class AttributionTest extends UnitTest {
 
     private static final double EPSILON = 1e-10;
+
+    // Mirrors AttributionPane's ink-based width measurement: the rendered ink span
+    // under GraphicUtils.SCREEN_FRC, not the glyph advance. Callers pass non-empty
+    // text; the guard documents that and satisfies the nullness checker.
+    private static int inkWidthOf(Font font, String text) {
+        var bounds = GraphicUtils.inkBounds(text, font);
+
+        if (bounds == null) {
+            throw new AssertionError("test text must be non-empty: " + text);
+        }
+
+        return bounds.width;
+    }
 
     @Test
     void testCtorSetsAttributionMarginBottomSs() {
@@ -122,8 +136,8 @@ class AttributionTest extends UnitTest {
         @Test
         void testContentWidthSsMatchesPaneMeasurement() {
             var fonts = DocumentFonts.defaultsFromPrefs();
-            var aFont = fonts.getFont(FontKey.ATTRIBUTION);
-            var saFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
+            var attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
+            var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
 
             var song = new Song();
             var pane = song.getAttributionPane();
@@ -136,17 +150,17 @@ class AttributionTest extends UnitTest {
             var expectedWidthPx = 0;
 
             for (var line : lines) {
-                var font = line.font() == FontKey.ATTRIBUTION ? aFont : saFont;
+                var font = line.font() == FontKey.ATTRIBUTION ? attributionFont : subAttributionFont;
                 expectedWidthPx = Math.max(
                     expectedWidthPx,
-                    MyFontUtils.getFontMetrics(font).stringWidth(line.text()));
+                    inkWidthOf(font, line.text()));
             }
 
             assertThat(expectedWidthPx)
                 .describedAs("default song must produce at least one non-empty attribution line")
                 .isPositive();
 
-            var widthPx = pane.getContentWidthPx(aFont, saFont);
+            var widthPx = pane.getContentWidthPx(attributionFont, subAttributionFont);
             assertThat(widthPx)
                 .describedAs("pane width must equal the natural max width of the formatter lines")
                 .isEqualTo(expectedWidthPx);
@@ -154,7 +168,7 @@ class AttributionTest extends UnitTest {
             var attribution = new Attribution();
             attribution.setDimensionsSs(
                 ScaleContext.pxToSs(widthPx),
-                ScaleContext.pxToSs(pane.getContentHeightPx(aFont, saFont)));
+                ScaleContext.pxToSs(pane.getContentHeightPx(attributionFont, subAttributionFont)));
 
             assertThat(attribution.getContentWidthSs())
                 .describedAs("attribution width in Ss must match the px→Ss conversion of the independent width")
@@ -168,8 +182,8 @@ class AttributionTest extends UnitTest {
         @Test
         void testOverrideLinesAreUsedForMeasurement() {
             var fonts = DocumentFonts.defaultsFromPrefs();
-            var aFont = fonts.getFont(FontKey.ATTRIBUTION);
-            var saFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
+            var attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
+            var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
 
             var overrideText = "Words and Music by Sri Chinmoy";
             var overrideLines = List.of(new AttributionLine(overrideText, FontKey.ATTRIBUTION));
@@ -177,12 +191,12 @@ class AttributionTest extends UnitTest {
             var pane = new AttributionPane();
             pane.setOverrideLines(overrideLines);
 
-            var widthPx = pane.getContentWidthPx(aFont, saFont);
+            var widthPx = pane.getContentWidthPx(attributionFont, subAttributionFont);
 
-            // The content width must be the string width of the override line's text.
-            var expectedWidthPx = MyFontUtils.getFontMetrics(aFont).stringWidth(overrideText);
+            // The content width must be the ink width of the override line's text.
+            var expectedWidthPx = inkWidthOf(attributionFont, overrideText);
             assertThat(widthPx)
-                .describedAs("pane content width must equal string width of the override line text")
+                .describedAs("pane content width must equal ink width of the override line text")
                 .isEqualTo(expectedWidthPx);
         }
 
@@ -193,15 +207,15 @@ class AttributionTest extends UnitTest {
         @Test
         void testPaneDerivedDimensionsProduceDecorationLayout() {
             var fonts = DocumentFonts.defaultsFromPrefs();
-            var aFont = fonts.getFont(FontKey.ATTRIBUTION);
-            var saFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
+            var attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
+            var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
 
             var song = new Song();
             var pane = song.getAttributionPane();
             pane.setSong(song);
 
-            var widthPx = pane.getContentWidthPx(aFont, saFont);
-            var heightPx = pane.getContentHeightPx(aFont, saFont);
+            var widthPx = pane.getContentWidthPx(attributionFont, subAttributionFont);
+            var heightPx = pane.getContentHeightPx(attributionFont, subAttributionFont);
 
             var attribution = new Attribution();
             attribution.setDimensionsSs(ScaleContext.pxToSs(widthPx), ScaleContext.pxToSs(heightPx));
@@ -247,8 +261,8 @@ class AttributionTest extends UnitTest {
         @Test
         void testContentWidthIsNaturalMaxLineWidth() {
             var fonts = DocumentFonts.defaultsFromPrefs();
-            var aFont = fonts.getFont(FontKey.ATTRIBUTION);
-            var saFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
+            var attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
+            var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
 
             // Two lines: first is the wide ATTRIBUTION line; second is the narrow SUB_ATTRIBUTION
             var wideText = "Words and Music by Sri Chinmoy";
@@ -262,14 +276,12 @@ class AttributionTest extends UnitTest {
             var pane = new AttributionPane();
             pane.setOverrideLines(overrideLines);
 
-            var paneMeasuredWidth = pane.getContentWidthPx(aFont, saFont);
+            var paneMeasuredWidth = pane.getContentWidthPx(attributionFont, subAttributionFont);
 
-            // The expected natural width is the max of the two string widths.
-            var aMetrics = MyFontUtils.getFontMetrics(aFont);
-            var saMetrics = MyFontUtils.getFontMetrics(saFont);
+            // The expected natural width is the max of the two ink widths.
             var expectedNaturalWidth = Math.max(
-                aMetrics.stringWidth(wideText),
-                saMetrics.stringWidth(narrowText)
+                inkWidthOf(attributionFont, wideText),
+                inkWidthOf(subAttributionFont, narrowText)
             );
 
             assertThat(paneMeasuredWidth)
@@ -285,8 +297,8 @@ class AttributionTest extends UnitTest {
         @Test
         void testContentWidthSsIsBelowWideStaffWidth() {
             var fonts = DocumentFonts.defaultsFromPrefs();
-            var aFont = fonts.getFont(FontKey.ATTRIBUTION);
-            var saFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
+            var attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
+            var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
 
             // Short single line — cannot fill a 120ss staff.
             var lineText = "Sri Chinmoy";
@@ -297,11 +309,10 @@ class AttributionTest extends UnitTest {
             var pane = new AttributionPane();
             pane.setOverrideLines(overrideLines);
 
-            var widthSs = ScaleContext.pxToSs(pane.getContentWidthPx(aFont, saFont));
+            var widthSs = ScaleContext.pxToSs(pane.getContentWidthPx(attributionFont, subAttributionFont));
 
             // The width must equal the exact natural width of the single line...
-            var expectedWidthSs = ScaleContext.pxToSs(
-                MyFontUtils.getFontMetrics(aFont).stringWidth(lineText));
+            var expectedWidthSs = ScaleContext.pxToSs(inkWidthOf(attributionFont, lineText));
             assertThat(widthSs)
                 .describedAs("content width must equal the exact natural line width in Ss")
                 .isCloseTo(expectedWidthSs, within(EPSILON));
