@@ -80,7 +80,7 @@ public final class MyFontUtils {
     private MyFontUtils() {}
 
     // Clears the lazy font cache so tests can install fonts before the first load.
-    static void resetFontCache() {
+    public static void resetFontCache() {
         allFonts = List.of();
         psFonts.clear();
         familyNames.clear();

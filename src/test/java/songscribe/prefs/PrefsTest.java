@@ -48,7 +48,7 @@ class PrefsTest extends UnitTest {
     private static final int STORED_EXPORT_DPI = 300;
     private static final long STORED_WHATS_NEW_VERSION = 20240101L;
     private static final int DEFAULT_EXPORT_DPI = 600;
-    private static final String DEFAULT_TITLE_FONT = "SourceSans3-SemiBold";
+    private static final String DEFAULT_TITLE_FONT = "SourceSansProSongScribe-Semibold";
     private static final boolean STORED_LOOP_PLAYBACK = true;
     private static final String RECENT_FILE_A = "song_a.mssw";
     private static final String RECENT_FILE_B = "song_b.mssw";

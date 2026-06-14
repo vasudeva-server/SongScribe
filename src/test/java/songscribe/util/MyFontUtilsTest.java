@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.font.SourceSansProFont;
 
 class MyFontUtilsTest extends UnitTest {
 
@@ -38,10 +39,7 @@ class MyFontUtilsTest extends UnitTest {
     static void installBundledFonts() {
         // Reset the lazy font cache so we can install bundled fonts before the first load.
         MyFontUtils.resetFontCache();
-        MyFontUtils.installLocalFont("LatoPlus-Regular.otf");
-        MyFontUtils.installLocalFont("LatoPlus-Bold.otf");
-        MyFontUtils.installLocalFont("LatoPlus-Italic.otf");
-        MyFontUtils.installLocalFont("LatoPlus-BoldItalic.otf");
+        SourceSansProFont.installBasic();
     }
 
     @Nested
@@ -117,7 +115,7 @@ class MyFontUtilsTest extends UnitTest {
 
         @Test
         void testBundledBoldFontReturnsBold() {
-            var font = MyFontUtils.createFont("LatoPlus-Bold", 12);
+            var font = MyFontUtils.createFont("SourceSansProSongScribe-Bold", 12);
             assertThat(MyFontUtils.getStyleDescription(font)).isEqualTo("Bold");
         }
 
@@ -145,7 +143,7 @@ class MyFontUtilsTest extends UnitTest {
 
         @Test
         void testFormatsAsFamilyStyleSizePt() {
-            var font = MyFontUtils.createFont("LatoPlus-Bold", 12);
+            var font = MyFontUtils.createFont("SourceSansProSongScribe-Bold", 12);
             assertThat(MyFontUtils.getFullFontDescription(font))
                 .isEqualTo(font.getFamily() + " Bold 12 pt");
         }
@@ -156,10 +154,10 @@ class MyFontUtilsTest extends UnitTest {
 
         @Test
         void testKnownPsNameReturnsMatchingFont() {
-            var font = MyFontUtils.createFont("LatoPlus-Bold", 24);
+            var font = MyFontUtils.createFont("SourceSansProSongScribe-Bold", 24);
             assertThat(font).isNotNull();
             assertThat(font.getSize()).isEqualTo(24);
-            assertThat(font.getPSName()).isEqualTo("LatoPlus-Bold");
+            assertThat(font.getPSName()).isEqualTo("SourceSansProSongScribe-Bold");
         }
 
         @Test

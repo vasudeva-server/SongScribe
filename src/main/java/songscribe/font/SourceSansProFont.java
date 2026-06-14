@@ -25,60 +25,52 @@ import com.formdev.flatlaf.util.FontUtils;
 import songscribe.util.MyFontUtils;
 
 /**
- * The Source Sans 3 font family. This is used as the UI font in SongScribe.
+ * The Source Sans Pro font family. This is used as the UI font in SongScribe.
+ *
+ * <p>The family and PostScript names are namespaced with {@code SongScribe} so the
+ * bundled faces never collide with a copy of Source Sans Pro installed on the
+ * host system (a PostScript-name collision makes {@code registerFont} silently
+ * reject the bundled face).
+ *
+ * <p>The regular, italic, bold and bold-italic faces form the RIBI family
+ * {@link #FAMILY}. The semibold faces ({@link #STYLE_SEMIBOLD},
+ * {@link #STYLE_SEMIBOLD_ITALIC}) carry no legacy family name, so they are not part
+ * of that family; they are registered as additional document weights and resolved
+ * by their PostScript names ({@code SourceSansProSongScribe-Semibold},
+ * {@code SourceSansProSongScribe-SemiboldIt}) rather than by family and style.
  */
-public final class SourceSans3Font {
+public final class SourceSansProFont {
 
     /**
-     * Family name for basic styles (regular, italic and bold).
+     * Family name for basic styles (regular and italic).
      * <p>
      * Usage:
      * <pre>{@code
-     * new Font( SourceSans3Font.FAMILY, Font.PLAIN, 12 );
-     * new Font( SourceSans3Font.FAMILY, Font.ITALIC, 12 );
-     * new Font( SourceSans3Font.FAMILY, Font.BOLD, 12 );
-     * new Font( SourceSans3Font.FAMILY, Font.BOLD | Font.ITALIC, 12 );
+     * new Font( SourceSansProFont.FAMILY, Font.PLAIN, 12 );
+     * new Font( SourceSansProFont.FAMILY, Font.ITALIC, 12 );
      * }</pre>
      */
-    public static final String FAMILY = "Source Sans 3";
-
-    // We don't use this, but it's here for completeness.
-    public static final String FAMILY_LIGHT = "Source Sans 3";
-
-    /**
-     * Family name for semibold styles.
-     * <p>
-     * Usage:
-     * <pre>{@code
-     * new Font( SourceSans3Font.FAMILY_SEMIBOLD, Font.PLAIN, 12 );
-     * new Font( SourceSans3Font.FAMILY_SEMIBOLD, Font.ITALIC, 12 );
-     * }</pre>
-     */
-    public static final String FAMILY_SEMIBOLD = "Source Sans 3";
-
-    /**
-     * Family name for bold styles.
-     * <p>
-     * Usage:
-     * <pre>{@code
-     * new Font( SourceSans3Font.FAMILY_BOLD, Font.PLAIN, 12 );
-     * new Font( SourceSans3Font.FAMILY_BOLD, Font.ITALIC, 12 );
-     * }</pre>
-     */
-    public static final String FAMILY_BOLD = "Source Sans 3";
+    public static final String FAMILY = "Source Sans Pro SongScribe";
 
     /**
      * Use for MyFontUtils.installLocalFont to install single font style.
      */
-    public static final String STYLE_REGULAR = "SourceSans3-Regular.ttf";
-    public static final String STYLE_ITALIC = "SourceSans3-Italic.ttf";
-    public static final String STYLE_SEMIBOLD = "SourceSans3-SemiBold.ttf";
-    public static final String STYLE_SEMIBOLD_ITALIC =
-        "SourceSans3-SemiBoldItalic.ttf";
-    public static final String STYLE_BOLD = "SourceSans3-Bold.ttf";
-    public static final String STYLE_BOLD_ITALIC = "SourceSans3-BoldItalic.ttf";
+    public static final String STYLE_REGULAR = "SourceSansProSongScribe-Regular.ttf";
+    public static final String STYLE_ITALIC = "SourceSansProSongScribe-Italic.ttf";
+    public static final String STYLE_BOLD = "SourceSansProSongScribe-Bold.ttf";
+    public static final String STYLE_BOLD_ITALIC =
+        "SourceSansProSongScribe-BoldItalic.ttf";
 
-    private SourceSans3Font() {}
+    /**
+     * Semibold faces. These are not part of the RIBI {@link #FAMILY} (they carry no
+     * legacy family name); they are registered so they are available as document
+     * fonts, resolved by their PostScript names.
+     */
+    public static final String STYLE_SEMIBOLD = "SourceSansProSongScribe-Semibold.ttf";
+    public static final String STYLE_SEMIBOLD_ITALIC =
+        "SourceSansProSongScribe-SemiboldItalic.ttf";
+
+    private SourceSansProFont() {}
 
     /**
      * Registers the fonts for lazy loading via
@@ -96,7 +88,7 @@ public final class SourceSans3Font {
     public static void installLazy() {
         FontUtils.registerFontFamilyLoader(
             FAMILY,
-            SourceSans3Font::installBasic
+            SourceSansProFont::installBasic
         );
     }
 
@@ -110,16 +102,17 @@ public final class SourceSans3Font {
     }
 
     /**
-     * Creates and registers the fonts for basic styles (regular, italic and bold).
+     * Creates and registers the regular, italic, bold and bold-italic faces of
+     * {@link #FAMILY}, plus the semibold document faces.
      * <p>
      * When using FlatLaf, consider using {@link #installLazy()}.
      */
     public static void installBasic() {
         MyFontUtils.installLocalFont(STYLE_REGULAR);
         MyFontUtils.installLocalFont(STYLE_ITALIC);
-        MyFontUtils.installLocalFont(STYLE_SEMIBOLD);
-        MyFontUtils.installLocalFont(STYLE_SEMIBOLD_ITALIC);
         MyFontUtils.installLocalFont(STYLE_BOLD);
         MyFontUtils.installLocalFont(STYLE_BOLD_ITALIC);
+        MyFontUtils.installLocalFont(STYLE_SEMIBOLD);
+        MyFontUtils.installLocalFont(STYLE_SEMIBOLD_ITALIC);
     }
 }

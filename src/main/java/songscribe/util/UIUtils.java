@@ -43,7 +43,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 
-import songscribe.font.SourceSans3Font;
+import songscribe.font.SourceSansProFont;
 import songscribe.ui.renderer.RenderingUtils;
 import songscribe.ui.action.UIAction;
 
@@ -448,20 +448,13 @@ public final class UIUtils {
             System.setProperty("swing.aatext", "true");
             System.setProperty("awt.useSystemAAFontSettings", "lcd");
 
-            SourceSans3Font.install();
-
-            for (var style : new String[]{"Regular", "Italic", "Bold", "BoldItalic"}) {
-                MyFontUtils.installLocalFont("LatoPlus-" + style + ".otf");
-            }
+            SourceSansProFont.install();
 
             MyFontUtils.installLocalFont("Poetica-SuppOrnaments.otf");
             MyFontUtils.installLocalFont("TiroBangla-Regular.ttf");
 
-            // Set up the base font families for FlatLaf
-            FlatLaf.setPreferredFontFamily(SourceSans3Font.FAMILY);
-            FlatLaf.setPreferredSemiboldFontFamily(
-                SourceSans3Font.FAMILY_SEMIBOLD
-            );
+            // Set up the base font family for FlatLaf
+            FlatLaf.setPreferredFontFamily(SourceSansProFont.FAMILY);
 
             FlatLaf.registerCustomDefaultsSource("songscribe");
 
