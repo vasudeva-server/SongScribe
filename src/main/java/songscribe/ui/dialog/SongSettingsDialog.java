@@ -1627,7 +1627,7 @@ public class SongSettingsDialog extends StandardDialog {
             @Override
             public void actionPerformed(ActionEvent e) {
                 applyFont(
-                    DocumentFonts.defaultsFromPrefs().getFont(fontKey),
+                    DocumentFonts.defaultsFromSystemDefaults().getFont(fontKey),
                     fontDescription,
                     preview
                 );
@@ -1655,7 +1655,7 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private void applyDefaultFonts() {
-            var defaults = DocumentFonts.defaultsFromPrefs();
+            var defaults = DocumentFonts.defaultsFromSystemDefaults();
             applyFont(defaults.getFont(FontKey.TITLE),           titleFontLabel,           titleFontPreview);
             applyFont(defaults.getFont(FontKey.LYRICS),          lyricsFontLabel,          lyricsFontPreview);
             applyFont(defaults.getFont(FontKey.ATTRIBUTION),     attributionFontLabel,     attributionFontPreview);

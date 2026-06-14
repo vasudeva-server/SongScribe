@@ -120,6 +120,14 @@ public final class Prefs {
         return (Boolean) getOrDefault(key);
     }
 
+    public static String getDefaultString(PrefsKey key) {
+        return INSTANCE.getDefault(key).toString();
+    }
+
+    public static int getDefaultInt(PrefsKey key) {
+        return ((Number) INSTANCE.getDefault(key)).intValue();
+    }
+
     /** Returns the raw value stored in the store for the given key, or {@code null} if absent.
      *  Package-private for test use only — do not call from production code. */
     static @Nullable Object getRawStored(PrefsKey key) {

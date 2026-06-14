@@ -84,6 +84,22 @@ public final class DocumentFonts implements DocumentFontsHolder {
         return result;
     }
 
+    /**
+     * Builds a {@code DocumentFonts} populated from the bundled {@code defaults.json},
+     * ignoring any user preference overrides. Used by reset actions in settings dialogs.
+     */
+    public static DocumentFonts defaultsFromSystemDefaults() {
+        var result = new DocumentFonts();
+        result.setFont(FontKey.TITLE,       Prefs.getDefaultString(PrefsKey.TITLE_FONT),       Prefs.getDefaultInt(PrefsKey.TITLE_FONT_SIZE));
+        result.setFont(FontKey.LYRICS,      Prefs.getDefaultString(PrefsKey.LYRICS_FONT),      Prefs.getDefaultInt(PrefsKey.LYRICS_FONT_SIZE));
+        result.setFont(FontKey.ATTRIBUTION,     Prefs.getDefaultString(PrefsKey.ATTRIBUTION_FONT),     Prefs.getDefaultInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
+        result.setFont(FontKey.SUB_ATTRIBUTION, Prefs.getDefaultString(PrefsKey.SUB_ATTRIBUTION_FONT), Prefs.getDefaultInt(PrefsKey.SUB_ATTRIBUTION_FONT_SIZE));
+        result.setFont(FontKey.ANNOTATION,      Prefs.getDefaultString(PrefsKey.ANNOTATION_FONT),      Prefs.getDefaultInt(PrefsKey.ANNOTATION_FONT_SIZE));
+        result.setFont(FontKey.FOOTNOTE,    Prefs.getDefaultString(PrefsKey.FOOTNOTE_FONT),    Prefs.getDefaultInt(PrefsKey.FOOTNOTE_FONT_SIZE));
+        result.setFont(FontKey.BANGLA,      Prefs.getDefaultString(PrefsKey.BANGLA_FONT),      Prefs.getDefaultInt(PrefsKey.BANGLA_FONT_SIZE));
+        return result;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
