@@ -30,10 +30,6 @@ import static org.mockito.Mockito.when;
 
 import module java.desktop;
 
-import java.awt.event.KeyEvent;
-
-import javax.swing.KeyStroke;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -45,22 +41,6 @@ import songscribe.ui.renderer.RenderingUtils;
 
 @SuppressWarnings("PackageVisibleInnerClass")
 class UIUtilsTest extends UnitTest {
-
-    @Nested
-    class MakeTooltipWithKeystroke {
-
-        @Test
-        void testMakeTooltipWithNullAcceleratorReturnsNameUnchanged() {
-            assertThat(UIUtils.makeTooltipWithKeystroke("Undo", null)).isEqualTo("Undo");
-        }
-
-        @Test
-        void testMakeTooltipWithAcceleratorAppendsFormattedKeystroke() {
-            var keystroke = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
-            var expected = "Action (" + Utils.getPlatformKeyStrokeString(keystroke) + ")";
-            assertThat(UIUtils.makeTooltipWithKeystroke("Action", keystroke)).isEqualTo(expected);
-        }
-    }
 
     @Nested
     class PositionDialog {

@@ -61,6 +61,12 @@ public final class UIUtils {
 
     static final int SCREEN_MARGIN_PX = 20;
 
+    // Tooltips render keyboard modifier symbols (⌘, ⇧, …) with DejaVu Sans, since
+    // the UI font does not include them. The file is bundled in resources/fonts and
+    // loaded at startup in initLaf().
+    private static final String KEYSTROKE_TOOLTIP_FONT_FILE = "DejaVuSans.ttf";
+    private static final String KEYSTROKE_TOOLTIP_FONT_FAMILY = "DejaVu Sans";
+
     private UIUtils() {
     }
 
@@ -68,20 +74,13 @@ public final class UIUtils {
     // Tooltips
     //
 
-    public static String makeTooltipWithKeystroke(
-        String name,
-        @Nullable KeyStroke acceleratorKey
-    ) {
-        var result = name;
-
-        if (acceleratorKey != null) {
-            result +=
-                " (" +
-                Utils.getPlatformKeyStrokeString(acceleratorKey) +
-                ')';
-        }
-
-        return result;
+    private static String inKeystrokeFont(String text) {
+        return
+            "<font face=\"" +
+            KEYSTROKE_TOOLTIP_FONT_FAMILY +
+            "\">" +
+            text +
+            "</font>";
     }
 
     public static void setToolTipText(JComponent component, @Nullable Action action) {
@@ -98,8 +97,15 @@ public final class UIUtils {
             var accelerator = (KeyStroke) action.getValue(Action.ACCELERATOR_KEY);
 
             if (accelerator != null) {
-                var keyStrokeString = Utils.getPlatformKeyStrokeString(accelerator);
-                html += "&nbsp;&nbsp;(" + keyStrokeString + ')';
+                // Render symbol glyphs (the modifiers, and symbol keys like ↩︎) in
+                // DejaVu Sans, since the UI font lacks them. A plain letter key stays
+                // in the UI font.
+                var modifiers = Utils.getPlatformModifiersString(accelerator);
+                var keyName = Utils.getPlatformKeyString(accelerator);
+                var keyHtml = Utils.isPlatformKeySymbol(accelerator)
+                    ? inKeystrokeFont(keyName)
+                    : keyName;
+                html += "&nbsp;&nbsp;(" + inKeystrokeFont(modifiers) + keyHtml + ')';
             }
 
             tip = html + "<br>" + tip + "</html>";
@@ -452,6 +458,7 @@ public final class UIUtils {
 
             MyFontUtils.installLocalFont("Poetica-SuppOrnaments.otf");
             MyFontUtils.installLocalFont("TiroBangla-Regular.ttf");
+            MyFontUtils.installLocalFont(KEYSTROKE_TOOLTIP_FONT_FILE);
 
             // Set up the base font family for FlatLaf
             FlatLaf.setPreferredFontFamily(SourceSansProFont.FAMILY);

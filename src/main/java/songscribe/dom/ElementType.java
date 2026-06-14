@@ -229,14 +229,6 @@ public enum ElementType {
         return name;
     }
 
-    public @Nullable String getTip() {
-        if (name == null) {
-            return null;
-        }
-
-        return UIUtils.makeTooltipWithKeystroke(name, acceleratorKey);
-    }
-
     public @Nullable KeyStroke getAcceleratorKey() {
         return acceleratorKey;
     }

@@ -25,6 +25,7 @@ import module java.desktop;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Calendar;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 
@@ -41,6 +42,16 @@ public final class Utils {
         InputEvent.META_DOWN_MASK,
         InputEvent.SHIFT_DOWN_MASK,
     };
+
+    // Keys that {@link #getPlatformKeyString} renders as a symbol glyph (rather than a
+    // letter or word), so callers can render them in a font that includes the glyph.
+    private static final Set<Integer> SYMBOL_KEY_CODES = Set.of(
+        KeyEvent.VK_ENTER,
+        KeyEvent.VK_BACK_SPACE,
+        KeyEvent.VK_DELETE,
+        KeyEvent.VK_ESCAPE,
+        KeyEvent.VK_TAB
+    );
 
     private Utils() {}
 
@@ -116,7 +127,16 @@ public final class Utils {
     }
 
     public static String getPlatformKeyStrokeString(KeyStroke key) {
-        var sb = new StringBuilder(20);
+        return getPlatformModifiersString(key) + getPlatformKeyString(key);
+    }
+
+    /**
+     * Returns just the modifier portion of the keystroke (e.g. {@code ⌘⇧} on macOS,
+     * {@code Ctrl+Shift+} elsewhere). On macOS these are symbol glyphs that the UI
+     * font may lack, so callers can render this part in a font that includes them.
+     */
+    public static String getPlatformModifiersString(KeyStroke key) {
+        var sb = new StringBuilder();
         var modifiers = key.getModifiers();
         var isMac = SystemInfo.isMacOS;
 
@@ -147,6 +167,16 @@ public final class Utils {
             }
         }
 
+        return sb.toString();
+    }
+
+    /**
+     * Returns just the key portion of the keystroke (e.g. {@code S}, or a special-key
+     * symbol such as {@code ↩︎} for Enter).
+     */
+    public static String getPlatformKeyString(KeyStroke key) {
+        var sb = new StringBuilder();
+
         switch (key.getKeyCode()) {
             case KeyEvent.VK_ENTER -> sb.append("↩︎");
             case KeyEvent.VK_BACK_SPACE -> sb.append('⌫');
@@ -164,6 +194,14 @@ public final class Utils {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * Returns whether {@link #getPlatformKeyString} renders this key as a symbol glyph
+     * (e.g. Enter, Backspace, Delete, Escape, Tab) rather than a letter or word.
+     */
+    public static boolean isPlatformKeySymbol(KeyStroke key) {
+        return SYMBOL_KEY_CODES.contains(key.getKeyCode());
     }
 
     public static String getResourcePath(String resourcePath) {
