@@ -351,6 +351,19 @@ public class SongSettingsDialog extends StandardDialog {
         return section;
     }
 
+    /**
+     * Creates the boxed label used to display a font's description, matching
+     * the style the Fonts tab uses for its font-name labels.
+     */
+    private static JLabel createFontDescriptionLabel() {
+        var label = new JLabel();
+        label.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UIManager.getColor("Component.borderColor")),
+            UIUtils.spacingBorder(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_LABEL_PADDING)
+        ));
+        return label;
+    }
+
     private final class TitleTab extends BaseDialog.Tab {
 
         // Title of song panel
@@ -361,7 +374,7 @@ public class SongSettingsDialog extends StandardDialog {
         // Non-shared font-name display for the title font row. Mirrors the
         // shared font preview so we can prototype the new layout without
         // touching FontTab's data wiring (refactor later).
-        private final JTextField titleFontField = new JTextField(31);
+        private final JLabel titleFontDisplay = createFontDescriptionLabel();
         private final SpinnerModel takeFirstWordsSpinnerModel =
             new SpinnerNumberModel(TAKE_FIRST_WORDS_DEFAULT, TAKE_FIRST_WORDS_MIN, TAKE_FIRST_WORDS_MAX, 1);
         private final TakeFirstLyricsWordAction takeAction =
@@ -378,9 +391,6 @@ public class SongSettingsDialog extends StandardDialog {
                 Strings.DIALOG_SONG_SETTINGS_USE_UNTITLED,
                 Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
             ));
-
-            titleFontField.setEditable(false);
-            titleFontField.setFocusable(false);
 
             titlePreview.setOpaque(true);
             titlePreview.setBackground(
@@ -413,7 +423,7 @@ public class SongSettingsDialog extends StandardDialog {
             // the preview so font changes show immediately, before commit.
             fontTab.titleFontPreview.addPropertyChangeListener("font", e -> {
                 var font = fontTab.titleFontPreview.getFont();
-                titleFontField.setText(MyFontUtils.getFullFontDescription(font));
+                titleFontDisplay.setText(MyFontUtils.getFullFontDescription(font));
                 titlePreview.setFont(font);
                 titlePreview.revalidate();
                 titlePreview.repaint();
@@ -470,18 +480,28 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private JPanel createTitleFontRow() {
-            var mainFrame = getMainFrame();
-
-            var row = new JPanel(new FlowLayout(
-                FlowLayout.LEFT,
-                FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP),
-                0
-            ));
-            row.setBorder(BorderFactory.createEmptyBorder());
+            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
+            var row = new JPanel(new GridBagLayout());
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-            addLabeledField(row, "Font:", titleFontField, BaseDialog.LabelPosition.LEFT);
+            var gbc = new GridBagConstraints();
+            gbc.gridy = 0;
+            gbc.anchor = GridBagConstraints.WEST;
 
+            var fontLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT));
+            fontLabel.setLabelFor(titleFontDisplay);
+            gbc.gridx = 0;
+            gbc.weightx = 0;
+            gbc.fill = GridBagConstraints.NONE;
+            gbc.insets = new Insets(0, 0, 0, gap);
+            row.add(fontLabel, gbc);
+
+            gbc.gridx = 1;
+            gbc.weightx = 1;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            row.add(titleFontDisplay, gbc);
+
+            var mainFrame = getMainFrame();
             var buttons = new JPanel();
             buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
             buttons.add(new JButton(new FontTab.ChooseFontAction(
@@ -496,7 +516,12 @@ public class SongSettingsDialog extends StandardDialog {
                 fontTab.titleFontLabel,
                 fontTab.titleFontPreview
             )));
-            row.add(buttons);
+
+            gbc.gridx = 2;
+            gbc.weightx = 0;
+            gbc.fill = GridBagConstraints.NONE;
+            gbc.insets = new Insets(0, gap, 0, 0);
+            row.add(buttons, gbc);
 
             UIUtils.setFlexibleWidth(row);
             return row;
@@ -618,8 +643,8 @@ public class SongSettingsDialog extends StandardDialog {
         // Non-shared font-name displays for the font rows. Mirror the shared font
         // previews owned by FontTab so the rows show the current font without
         // duplicating FontTab's data wiring.
-        private final JTextField wordsMusicFontField = new JTextField(31);
-        private final JTextField datePlaceFontField = new JTextField(31);
+        private final JLabel wordsMusicFontDisplay = createFontDescriptionLabel();
+        private final JLabel datePlaceFontDisplay = createFontDescriptionLabel();
 
         // Set while the year focus listener programmatically resets the month/day
         // combos, so their action listeners skip the work that reset triggers.
@@ -648,23 +673,18 @@ public class SongSettingsDialog extends StandardDialog {
                 FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND)
             );
 
-            wordsMusicFontField.setEditable(false);
-            wordsMusicFontField.setFocusable(false);
-            datePlaceFontField.setEditable(false);
-            datePlaceFontField.setFocusable(false);
-
             // The attribution and sub-attribution fonts are edited via the shared
             // font previews (this tab's font rows and the Fonts tab both target
-            // them); mirror their descriptions onto the read-only fields and
+            // them); mirror their descriptions onto the read-only displays and
             // refresh the live preview as the fonts change, before commit.
             fontTab.attributionFontPreview.addPropertyChangeListener("font", e -> {
-                wordsMusicFontField.setText(
+                wordsMusicFontDisplay.setText(
                     MyFontUtils.getFullFontDescription(fontTab.attributionFontPreview.getFont())
                 );
                 refreshPreview();
             });
             fontTab.subAttributionFontPreview.addPropertyChangeListener("font", e -> {
-                datePlaceFontField.setText(
+                datePlaceFontDisplay.setText(
                     MyFontUtils.getFullFontDescription(fontTab.subAttributionFontPreview.getFont())
                 );
                 refreshPreview();
@@ -903,7 +923,7 @@ public class SongSettingsDialog extends StandardDialog {
 
             section.add(createFontRow(
                 wordsMusicLabel,
-                wordsMusicFontField,
+                wordsMusicFontDisplay,
                 FontKey.ATTRIBUTION,
                 fontTab.attributionFontLabel,
                 fontTab.attributionFontPreview
@@ -913,7 +933,7 @@ public class SongSettingsDialog extends StandardDialog {
 
             section.add(createFontRow(
                 datePlaceLabel,
-                datePlaceFontField,
+                datePlaceFontDisplay,
                 FontKey.SUB_ATTRIBUTION,
                 fontTab.subAttributionFontLabel,
                 fontTab.subAttributionFontPreview
@@ -925,13 +945,29 @@ public class SongSettingsDialog extends StandardDialog {
 
         private JPanel createFontRow(
             JLabel rowLabel,
-            JTextField fontField,
+            JLabel fontDisplay,
             FontKey fontKey,
             JLabel fontLabel,
             JComponent preview
         ) {
-            rowLabel.setLabelFor(fontField);
-            var row = leftLabeledRow(rowLabel, fontField);
+            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
+            var row = new JPanel(new GridBagLayout());
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            var gbc = new GridBagConstraints();
+            gbc.gridy = 0;
+            gbc.anchor = GridBagConstraints.WEST;
+
+            gbc.gridx = 0;
+            gbc.weightx = 0;
+            gbc.fill = GridBagConstraints.NONE;
+            gbc.insets = new Insets(0, 0, 0, gap);
+            row.add(rowLabel, gbc);
+
+            gbc.gridx = 1;
+            gbc.weightx = 1;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            row.add(fontDisplay, gbc);
 
             var mainFrame = getMainFrame();
             var buttons = new JPanel();
@@ -939,7 +975,12 @@ public class SongSettingsDialog extends StandardDialog {
             buttons.add(new JButton(new FontTab.ChooseFontAction(mainFrame, fontLabel, preview)));
             addLargeSeparator(buttons);
             buttons.add(new JButton(new FontTab.ResetFontAction(mainFrame, fontKey, fontLabel, preview)));
-            row.add(buttons);
+
+            gbc.gridx = 2;
+            gbc.weightx = 0;
+            gbc.fill = GridBagConstraints.NONE;
+            gbc.insets = new Insets(0, gap, 0, 0);
+            row.add(buttons, gbc);
 
             UIUtils.setFlexibleWidth(row);
             return row;
@@ -1393,7 +1434,7 @@ public class SongSettingsDialog extends StandardDialog {
             "Āmār Prāner Bijoye Mā"
         );
 
-        private final JLabel lyricsFontLabel = new JLabel();
+        private final JLabel lyricsFontLabel = createFontDescriptionLabel();
         private final JLabel lyricsFontPreview = new JLabel(
             """
                 <html>I shall bind myself at Your Feet.<br>
@@ -1418,7 +1459,7 @@ public class SongSettingsDialog extends StandardDialog {
                 New York, USA"""
         );
 
-        private final JLabel annotationFontLabel = new JLabel();
+        private final JLabel annotationFontLabel = createFontDescriptionLabel();
         private final JComponent annotationFontPreview = new JLabel(
             "D.C. al fine (a tempo)"
         );
@@ -1512,18 +1553,6 @@ public class SongSettingsDialog extends StandardDialog {
             gbc.fill = GridBagConstraints.HORIZONTAL;
             gbc.weightx = 1.0;
             gbc.weighty = 0.0;
-
-            // Add a border around the font name label with inner padding
-            var labelOuterBorder = BorderFactory.createLineBorder(
-                UIManager.getColor("Component.borderColor")
-            );
-            var labelInnerBorder = UIUtils.spacingBorder(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_LABEL_PADDING);
-            fontLabel.setBorder(
-                BorderFactory.createCompoundBorder(
-                    labelOuterBorder,
-                    labelInnerBorder
-                )
-            );
 
             contents.add(fontLabel, gbc);
 
