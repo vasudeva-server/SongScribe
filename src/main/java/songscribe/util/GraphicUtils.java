@@ -50,7 +50,7 @@ public final class GraphicUtils {
      * A {@link FontRenderContext} derived from the default screen device with the
      * application's standard rendering hints applied. Use for layout-time glyph
      * measurement so that text advances match what is actually rendered on screen.
-     * Initialised in the static block below alongside {@code isRetina} and {@code dpi}.
+     * Initialised in the static block below alongside {@code dpi}.
      */
     public static final FontRenderContext SCREEN_FRC;
 
@@ -115,16 +115,12 @@ public final class GraphicUtils {
     // Standard non-HiDPI resolution; used in headless environments where the screen device is unavailable
     private static final int HEADLESS_DPI = 96;
 
-    // Since querying for Retina displays happens a lot, cache the result
-    private static final boolean isRetina;
-
     private static final int dpi;
 
     private static MediaTracker mediaTracker = new MediaTracker(new JLabel());
 
     static {
         if (GraphicsEnvironment.isHeadless()) {
-            isRetina = false;
             dpi = HEADLESS_DPI;
             var graphics = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
             setRenderingHints(graphics);
@@ -134,7 +130,6 @@ public final class GraphicUtils {
             var graphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment();
             var graphicsDevice = graphicsEnvironment.getDefaultScreenDevice();
             var config = graphicsDevice.getDefaultConfiguration();
-            isRetina = config.getDefaultTransform().getScaleX() > 1;
             dpi = computePhysicalDpi(graphicsDevice);
 
             var image = config.createCompatibleImage(1, 1);
@@ -242,22 +237,20 @@ public final class GraphicUtils {
         );
         g2.setRenderingHint(
             RenderingHints.KEY_TEXT_ANTIALIASING,
-            RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON
         );
 
         g2.setRenderingHint(
             RenderingHints.KEY_STROKE_CONTROL,
-            isRetina
-                ? RenderingHints.VALUE_STROKE_PURE
-                : RenderingHints.VALUE_STROKE_NORMALIZE
+            RenderingHints.VALUE_STROKE_NORMALIZE
         );
 
-        if (isRetina) {
-            g2.setRenderingHint(
-                RenderingHints.KEY_FRACTIONALMETRICS,
-                RenderingHints.VALUE_FRACTIONALMETRICS_ON
-            );
-        }
+        // Always on, matching the score's drawing hints (ScoreComponent.initGraphics)
+        // so that layout-time measurement via SCREEN_FRC agrees with what is drawn.
+        g2.setRenderingHint(
+            RenderingHints.KEY_FRACTIONALMETRICS,
+            RenderingHints.VALUE_FRACTIONALMETRICS_ON
+        );
     }
 
     @Nullable

@@ -208,24 +208,7 @@ public abstract class ScoreComponent extends JComponent {
      */
     protected Graphics2D initGraphics(Graphics g) {
         var g2 = (Graphics2D) g;
-
-        g2.setRenderingHint(
-            RenderingHints.KEY_ANTIALIASING,
-            RenderingHints.VALUE_ANTIALIAS_ON
-        );
-        g2.setRenderingHint(
-            RenderingHints.KEY_TEXT_ANTIALIASING,
-            RenderingHints.VALUE_TEXT_ANTIALIAS_ON
-        );
-        g2.setRenderingHint(
-            RenderingHints.KEY_FRACTIONALMETRICS,
-            RenderingHints.VALUE_FRACTIONALMETRICS_ON
-        );
-        g2.setRenderingHint(
-            RenderingHints.KEY_STROKE_CONTROL,
-            RenderingHints.VALUE_STROKE_NORMALIZE
-        );
-
+        GraphicUtils.setRenderingHints(g2);
         return g2;
     }
 
