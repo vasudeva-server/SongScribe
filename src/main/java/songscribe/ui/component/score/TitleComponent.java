@@ -30,12 +30,9 @@ import songscribe.util.StringUtils;
  * Component that renders the song title.
  * <p>
  * The title is centered horizontally and may wrap to multiple lines
- * if it exceeds 75% of the line width. Uses the song's title font.
+ * if it exceeds the line width. Uses the song's title font.
  */
 public class TitleComponent extends ScoreComponent {
-
-    /** Maximum percentage of line width the title can occupy before wrapping. */
-    private static final double TITLE_MAX_WIDTH_PERCENTAGE = 0.9;
 
     /**
      * When non-null, overrides the title text drawn by the component. Lets the
@@ -91,9 +88,9 @@ public class TitleComponent extends ScoreComponent {
             g2.setColor(Color.BLACK);
             var metrics = g2.getFontMetrics();
 
-        // Wrap the title to fit in the maximum width
-        var maxWidth = (int) (song.getLineWidthPx() * TITLE_MAX_WIDTH_PERCENTAGE);
-        var titleLines = StringUtils.wrapText(title, metrics, maxWidth);
+        // Wrap the title to fit in the line width
+        var lineWidth = song.getLineWidthPx();
+        var titleLines = StringUtils.wrapText(title, metrics, lineWidth);
 
         // Calculate max width of wrapped lines for centering
         var actualMaxWidth = 0;
@@ -103,7 +100,6 @@ public class TitleComponent extends ScoreComponent {
         }
 
         // Center the title horizontally within the component
-        var lineWidth = song.getLineWidthPx();
         var startX = (lineWidth - actualMaxWidth) / 2;
 
             // Draw each line
@@ -135,8 +131,7 @@ public class TitleComponent extends ScoreComponent {
         var metrics = getFontMetrics(font);
 
         // Wrap the title to calculate height
-        var maxWidth = (int) (song.getLineWidthPx() * TITLE_MAX_WIDTH_PERCENTAGE);
-        var titleLines = StringUtils.wrapText(title, metrics, maxWidth);
+        var titleLines = StringUtils.wrapText(title, metrics, song.getLineWidthPx());
 
         // Tight bounding box: each line is ascent + descent tall, with the font's
         // leading inserted only *between* lines, never below the last descender.
