@@ -153,11 +153,15 @@ public class Ending extends RangeElement {
     }
 
     /**
-     * Returns the element index of the REPEAT_RIGHT barline that separates the
-     * first and second endings, or -1 if no repeat was found.
+     * Returns the element index of the REPEAT_RIGHT or REPEAT_LEFT_RIGHT that separates
+     * the first and second sub-spans of this ending, computed live from the line, or -1
+     * if there is no split element (degenerate single-bracket ending).
+     * <p>
+     * This recomputes from the current line state rather than relying on a value cached
+     * during layout, so it is reliable during MIDI generation.
      */
-    public int getRepeatSplitIndex() {
-        return repeatSplitIndex;
+    public int getSplitIndex(Line line) {
+        return findRepeatSplitIndex(line);
     }
 
     /**
@@ -583,20 +587,32 @@ public class Ending extends RangeElement {
      * Shared by {@link #isInvalidatedByDeletion} and the replacement/insertion checks.
      */
     public @Nullable StaffElement findRepeatSplitElement(Line line) {
+        var splitIndex = findRepeatSplitIndex(line);
+
+        return splitIndex < 0 ? null : line.getElement(splitIndex);
+    }
+
+    /**
+     * Finds the live element index of the repeat element (REPEAT_RIGHT or REPEAT_LEFT_RIGHT)
+     * that splits the first and second sub-spans, scanning between anchor and end. Returns
+     * the index directly so callers avoid a second {@code getElementIndex} lookup.
+     * <p>
+     * Returns -1 if no such element exists or the anchor/end indices are invalid.
+     */
+    private int findRepeatSplitIndex(Line line) {
         var anchorIndex = getAnchorElementIndex();
         var endIndex = getEndElementIndex();
 
         if (anchorIndex < 0 || endIndex < 0) {
-            return null;
+            return -1;
         }
 
         return IntStream.range(anchorIndex + 1, endIndex)
-            .mapToObj(line::getElement)
-            .filter(el -> {
-                var type = el.getType();
+            .filter(i -> {
+                var type = line.getElement(i).getType();
                 return type == ElementType.REPEAT_RIGHT || type == ElementType.REPEAT_LEFT_RIGHT;
             })
             .findFirst()
-            .orElse(null);
+            .orElse(-1);
     }
 }

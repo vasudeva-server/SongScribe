@@ -22,10 +22,15 @@ package songscribe.midi;
 
 import module java.desktop;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.Tempo;
+import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
@@ -130,11 +135,22 @@ public class MidiSequenceBuilder {
                 var lineEnd = (i == endLine && endNote >= 0) ? endNote : line.effectiveElementCount() - 1;
 
                 var builder = new LineTrackBuilder(line);
-                var result = (lineStart > 0 || lineEnd < line.effectiveElementCount() - 1)
-                    ? builder.addToTrack(track, i, ticks, currentTempo, settings,
-                        lineStart, lineEnd, velocityMap)
-                    : builder.addToTrack(track, i, ticks, currentTempo, settings,
-                        velocityMap);
+                var endings = LineEndingSupport.findEndings(line);
+                TrackPosition result;
+
+                if (endings.isEmpty()) {
+                    result = (lineStart > 0 || lineEnd < line.effectiveElementCount() - 1)
+                        ? builder.addToTrack(track, i, ticks, currentTempo, settings,
+                            lineStart, lineEnd, velocityMap)
+                        : builder.addToTrack(track, i, ticks, currentTempo, settings,
+                            velocityMap);
+                } else {
+                    // With repeats off, skip each first-ending span and play only the
+                    // common section plus the second ending.
+                    result = addLineSkippingFirstEndings(
+                        track, builder, line, i, lineStart, lineEnd,
+                        new TrackPosition(ticks, currentTempo), endings, velocityMap);
+                }
 
                 ticks = result.ticks();
                 currentTempo = result.tempo();
@@ -190,13 +206,25 @@ public class MidiSequenceBuilder {
             var line = lines.get(lineIndex);
             var noteCount = line.elementCount();
             var builder = new LineTrackBuilder(line);
+            var endings = LineEndingSupport.findEndings(line);
 
             for (var noteIndex = (lineIndex == startLine ? startNote : 0); noteIndex < noteCount; noteIndex++) {
                 var note = line.getElement(noteIndex);
                 var noteType = note.getType();
 
+                // Resolve the ending covering this element once; reused below.
+                var ending = LineEndingSupport.findEndingAt(endings, noteIndex);
+
+                // The closing REPEAT_RIGHT of a secondary (REPEAT_LEFT_RIGHT-split) ending
+                // must not start a spurious third pass, so exclude it from the repeat-marker
+                // handler below.
+                var isEndingClosingMarker = ending != null
+                    && noteIndex == ending.getEndElementIndex()
+                    && (noteType == ElementType.REPEAT_RIGHT || noteType == ElementType.REPEAT_LEFT_RIGHT);
+
                 // Handle repeat markers
-                if (noteType == ElementType.REPEAT_RIGHT || noteType == ElementType.REPEAT_LEFT_RIGHT) {
+                if (!isEndingClosingMarker
+                    && (noteType == ElementType.REPEAT_RIGHT || noteType == ElementType.REPEAT_LEFT_RIGHT)) {
                     if (repeating) {
                         // Second time through: exit the repeat
                         repeating = false;
@@ -237,28 +265,25 @@ public class MidiSequenceBuilder {
                     }
                 }
 
-                // Handle first-second endings
-                var ending = LineEndingSupport.findEndingAt(line, noteIndex);
-
+                // Handle first-second endings. On the replay pass, skip the entire first
+                // ending and resume at the second ending without repeating again. On the
+                // first pass the split marker triggers the backward jump above before the
+                // second ending is reached, so no early-skip handling is needed there.
                 if (repeating && ending != null) {
-                    // During repeat: skip first ending, play only on second pass
-                    var foundRepeatRight = false;
-                    for (var i = noteIndex; i <= ending.getEndElementIndex() && i < noteCount; i++) {
-                        if (line.getElement(i).getType() == ElementType.REPEAT_RIGHT) {
-                            foundRepeatRight = true;
-                            noteIndex = i - 1; // Will be incremented in the loop
-                            break;
-                        }
-                    }
-                    if (foundRepeatRight) {
+                    var splitIndex = ending.getSplitIndex(line);
+
+                    if (splitIndex >= 0) {
+                        // splitIndex names the split marker itself, already handled above as
+                        // the repeat trigger. Jump there so the loop's noteIndex++ lands on
+                        // the first element of the second ending. Clear repeating so we don't
+                        // jump back again.
+                        noteIndex = splitIndex;
+                        repeating = false;
                         continue;
                     }
-                }
 
-                if (!repeating && ending != null && noteType == ElementType.REPEAT_RIGHT) {
-                    // Not repeating and at end of first-second ending: skip to end
-                    noteIndex = ending.getEndElementIndex();
-                    continue;
+                    // splitIndex == -1: degenerate single-bracket ending with no split —
+                    // fall through and play normally.
                 }
 
                 // Add the note to the track (one note at a time), sharing the
@@ -283,6 +308,98 @@ public class MidiSequenceBuilder {
 
         return new TrackPosition(ticks, currentTempo);
     }
+
+    /**
+     * Adds a line to the track with repeats off, skipping each first-ending span so only
+     * the common section and the second ending are played.
+     *
+     * <pre>
+     *   line:     common | [anchor .. split] (1st ending) | 2nd ending
+     *   emitted:  common |          (skipped)              | 2nd ending
+     * </pre>
+     *
+     * A single {@link GlissandoMidiHelper} is shared across all emitted segments so
+     * grace-note/glissando state survives the skipped gaps; pending resets are flushed
+     * once at the end. Endings with no split element ({@code splitIndex == -1}) are not
+     * skipped (degenerate single-bracket ending plays normally).
+     *
+     * @param track The MIDI track to add to
+     * @param builder The track builder for this line
+     * @param line The line being emitted
+     * @param lineIndex This line's index in the song
+     * @param lineStart Index of the first element to consider
+     * @param lineEnd Index of the last element to consider
+     * @param startPosition Tick position and tempo at the start of this line
+     * @param endings The endings on this line
+     * @param velocityMap Dynamic-aware velocities
+     * @return Pair of (ending tick position, ending tempo)
+     * @throws InvalidMidiDataException if MIDI data is invalid
+     */
+    private TrackPosition addLineSkippingFirstEndings(
+        Track track,
+        LineTrackBuilder builder,
+        Line line,
+        int lineIndex,
+        int lineStart,
+        int lineEnd,
+        TrackPosition startPosition,
+        List<Ending> endings,
+        VelocityMap velocityMap
+    ) throws InvalidMidiDataException {
+        var skipSpans = new ArrayList<SkipSpan>();
+
+        for (var ending : endings) {
+            var splitIndex = ending.getSplitIndex(line);
+
+            if (splitIndex >= 0) {
+                var spanStart = Math.max(ending.getAnchorElementIndex(), lineStart);
+                var spanEnd = Math.min(splitIndex, lineEnd);
+
+                if (spanStart <= spanEnd) {
+                    skipSpans.add(new SkipSpan(spanStart, spanEnd));
+                }
+            }
+        }
+
+        skipSpans.sort(Comparator.comparingInt(SkipSpan::start));
+
+        var ticks = startPosition.ticks();
+        var currentTempo = startPosition.tempo();
+        var glissandoHelper = new GlissandoMidiHelper();
+        var segmentStart = lineStart;
+
+        for (var span : skipSpans) {
+            if (span.start() > segmentStart) {
+                var result = builder.addToTrack(
+                    track, lineIndex, ticks, currentTempo, settings,
+                    segmentStart, span.start() - 1, glissandoHelper, velocityMap
+                );
+                ticks = result.ticks();
+                currentTempo = result.tempo();
+            }
+
+            segmentStart = Math.max(segmentStart, span.end() + 1);
+        }
+
+        if (segmentStart <= lineEnd) {
+            var result = builder.addToTrack(
+                track, lineIndex, ticks, currentTempo, settings,
+                segmentStart, lineEnd, glissandoHelper, velocityMap
+            );
+            ticks = result.ticks();
+            currentTempo = result.tempo();
+        }
+
+        glissandoHelper.createPendingResets(track, ticks, 0);
+
+        return new TrackPosition(ticks, currentTempo);
+    }
+
+    /**
+     * A contiguous element-index span of a first ending to skip during repeats-off playback,
+     * inclusive of both endpoints.
+     */
+    private record SkipSpan(int start, int end) {}
 
     /**
      * Adds a program change (instrument selection) to the track.
