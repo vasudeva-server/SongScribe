@@ -493,7 +493,10 @@ public class SongSettingsDialog extends StandardDialog {
             gbc.gridx = 0;
             gbc.weightx = 0;
             gbc.fill = GridBagConstraints.NONE;
-            gbc.insets = new Insets(0, 0, 0, gap);
+            // Lead with the horizontal gap so the label indents to match the
+            // FlowLayout-based rows in the other sections (which carry the gap
+            // either as the layout's leading hgap or a leading empty border).
+            gbc.insets = new Insets(0, gap, 0, gap);
             row.add(fontLabel, gbc);
 
             gbc.gridx = 1;
@@ -961,7 +964,10 @@ public class SongSettingsDialog extends StandardDialog {
             gbc.gridx = 0;
             gbc.weightx = 0;
             gbc.fill = GridBagConstraints.NONE;
-            gbc.insets = new Insets(0, 0, 0, gap);
+            // Lead with the horizontal gap so the label indents to match the
+            // FlowLayout-based rows in the other sections (which carry the gap
+            // either as the layout's leading hgap or a leading empty border).
+            gbc.insets = new Insets(0, gap, 0, gap);
             row.add(rowLabel, gbc);
 
             gbc.gridx = 1;
