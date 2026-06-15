@@ -336,7 +336,11 @@ public class SongSettingsDialog extends StandardDialog {
         var section = new BaseDialog.TitledSection(
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_PREVIEW)
         );
+        section.add(createPreviewWrapper(preview));
+        return section;
+    }
 
+    private static JPanel createPreviewWrapper(JComponent preview) {
         var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
         var backgroundColor = preview.getBackground();
         var previewWrapper = new JPanel();
@@ -346,9 +350,7 @@ public class SongSettingsDialog extends StandardDialog {
         previewWrapper.setLayout(new BorderLayout());
         previewWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
         previewWrapper.add(preview, BorderLayout.CENTER);
-        section.add(previewWrapper);
-
-        return section;
+        return previewWrapper;
     }
 
     /**
@@ -1452,16 +1454,14 @@ public class SongSettingsDialog extends StandardDialog {
         );
 
         private final JLabel lyricsFontLabel = createFontDescriptionLabel();
-        private final JLabel lyricsFontPreview = new JLabel(
-            """
-                <html>I shall bind myself at Your Feet.<br>
-                With this hope I have come to You<br>
-                &nbsp;&nbsp;&nbsp;With tear-filled eyes.<br>
-                I shall worship You within the tumult<br>
-                &nbsp;&nbsp;&nbsp;Of this life.<br>
-                I shall satisfy You on the strength<br>
-                &nbsp;&nbsp;&nbsp;Of my surrender.</html>
-                """
+        private final ScoreTextPreview lyricsFontPreview = new ScoreTextPreview(
+            "I shall bind myself at Your Feet.",
+            "With this hope I have come to You",
+            "   With tear-filled eyes.",
+            "I shall worship You within the tumult",
+            "   Of this life.",
+            "I shall satisfy You on the strength",
+            "   Of my surrender."
         );
 
         private final JLabel attributionFontLabel = new JLabel();
@@ -1477,7 +1477,7 @@ public class SongSettingsDialog extends StandardDialog {
         );
 
         private final JLabel annotationFontLabel = createFontDescriptionLabel();
-        private final JComponent annotationFontPreview = new JLabel(
+        private final ScoreTextPreview annotationFontPreview = new ScoreTextPreview(
             "D.C. al fine (a tempo)"
         );
 
@@ -1499,122 +1499,168 @@ public class SongSettingsDialog extends StandardDialog {
                 }
             }
 
+            var pageBackground = FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND);
+
+            for (var preview : new JComponent[]{ lyricsFontPreview, annotationFontPreview }) {
+                preview.setBackground(pageBackground);
+                preview.setForeground(Color.BLACK);
+            }
+
             build();
         }
 
         @Override
         protected void initContents() {
             var mainFrame = SongSettingsDialog.this.getMainFrame();
-            var tabbedPane = createTabbedPane();
-            tabbedPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
-            tabbedPane.addTab(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_LYRICS),
-                createFontSection(
-                    mainFrame,
-                    "Lyrics",
-                    lyricsFontLabel,
-                    lyricsFontPreview,
-                    false
-                )
+            var lyricsSection = new BaseDialog.TitledSection(
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_LYRICS_TRANSLATION)
             );
-            tabbedPane.addTab(
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_ANNOTATION),
-                createFontSection(
-                    mainFrame,
-                    "Annotation",
-                    annotationFontLabel,
-                    annotationFontPreview,
-                    false
-                )
-            );
-            add(tabbedPane);
+            lyricsSection.add(createFontRow(mainFrame, FontKey.LYRICS, lyricsFontLabel, lyricsFontPreview));
+            addLargeSeparator(lyricsSection);
+            lyricsSection.add(createFontPreviewWrapper(lyricsFontPreview));
+            UIUtils.setFlexibleWidth(lyricsSection);
+            add(lyricsSection);
+
             addSectionSeparator(this);
 
-            constraints.fill = GridBagConstraints.NONE;
-            add(new JButton(new ResetFontsAction(mainFrame)));
+            var annotationSection = new BaseDialog.TitledSection(
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ANNOTATION)
+            );
+            annotationSection.add(createFontRow(mainFrame, FontKey.ANNOTATION, annotationFontLabel, annotationFontPreview));
+            addLargeSeparator(annotationSection);
+            annotationSection.add(createFontPreviewWrapper(annotationFontPreview));
+            UIUtils.setFlexibleWidth(annotationSection);
+            add(annotationSection);
+
         }
 
-        private static JPanel createFontSection(
+        private static JPanel createFontRow(
             MainFrame mainFrame,
-            String title,
-            JLabel fontLabel,
-            JComponent preview,
-            boolean isLarge
+            FontKey fontKey,
+            JLabel fontDisplay,
+            JComponent fontPreview
         ) {
-            var container = new JPanel();
-            container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
-            var outerBorder = BorderFactory.createMatteBorder(
-                0,
-                1,
-                1,
-                1,
-                UIManager.getColor("Component.borderColor")
-            );
-            var innerBorder = UIUtils.spacingBorder(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_CONTAINER_PADDING);
-            container.setBorder(
-                BorderFactory.createCompoundBorder(outerBorder, innerBorder)
-            );
+            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
+            var row = new JPanel(new GridBagLayout());
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-            var contents = new JPanel(new GridBagLayout());
-            contents.setAlignmentX(Component.LEFT_ALIGNMENT);
-            contents.setAlignmentY(Component.TOP_ALIGNMENT);
-            var tabsMarginTop = FlatLafProps.getInt(FlatLafKey.DIALOG_TABS_MARGIN_TOP);
-            contents.setBorder(BorderFactory.createEmptyBorder(tabsMarginTop, 0, 0, 0));
-
-            // Font name label
             var gbc = new GridBagConstraints();
-            gbc.gridx = 0;
-            gbc.gridy = GridBagConstraints.RELATIVE;
-            gbc.anchor = GridBagConstraints.WEST;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            gbc.weightx = 1.0;
-            gbc.weighty = 0.0;
-
-            contents.add(fontLabel, gbc);
-
-            // Preview
-            gbc.gridwidth = 2;
-            gbc.insets = new Insets(FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP), 0, 0, 0);
-
-            // Create padding around the preview by giving it a border and wrapping
-            // it in a panel
-            contents.add(
-                UIUtils.padComponent(
-                    preview,
-                    FlatLafProps.getInsets(
-                        isLarge
-                            ? FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PREVIEW_LARGE_PADDING
-                            : FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PREVIEW_SMALL_PADDING
-                    )
-                ),
-                gbc
-            );
-
-            // Choose button
-            gbc.gridx = GridBagConstraints.RELATIVE;
             gbc.gridy = 0;
-            gbc.anchor = GridBagConstraints.EAST;
-            gbc.fill = GridBagConstraints.NONE;
-            gbc.weightx = 0.0;
-            gbc.insets = new Insets(0, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP), 0, 0);
-            contents.add(
-                new JButton(new ChooseFontAction(mainFrame, fontLabel, preview)),
-                gbc
-            );
+            gbc.anchor = GridBagConstraints.WEST;
 
-            // Add glue at the bottom to push the contents to the top
+            var fontLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT));
+            fontLabel.setLabelFor(fontDisplay);
             gbc.gridx = 0;
-            gbc.gridy = 2;
-            gbc.weightx = 1.0;
-            gbc.weighty = 1.0;
-            gbc.fill = GridBagConstraints.BOTH;
-            gbc.insets = new Insets(0, 0, 0, 0);
-            contents.add(Box.createGlue(), gbc);
+            gbc.weightx = 0;
+            gbc.fill = GridBagConstraints.NONE;
+            gbc.insets = new Insets(0, gap, 0, gap);
+            row.add(fontLabel, gbc);
 
-            container.add(contents);
-            UIUtils.setFlexibleWidth(container);
-            return container;
+            gbc.gridx = 1;
+            gbc.weightx = 1;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            row.add(fontDisplay, gbc);
+
+            var buttons = new JPanel();
+            buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
+            buttons.add(new JButton(new ChooseFontAction(mainFrame, fontDisplay, fontPreview)));
+            addLargeSeparator(buttons);
+            buttons.add(new JButton(new ResetFontAction(mainFrame, fontKey, fontDisplay, fontPreview)));
+
+            gbc.gridx = 2;
+            gbc.weightx = 0;
+            gbc.fill = GridBagConstraints.NONE;
+            gbc.insets = new Insets(0, gap, 0, 0);
+            row.add(buttons, gbc);
+
+            UIUtils.setFlexibleWidth(row);
+            return row;
+        }
+
+        private static JPanel createFontPreviewWrapper(JComponent preview) {
+            var padding = FlatLafProps.getInsets(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PREVIEW_PADDING);
+            var backgroundColor = preview.getBackground();
+            var wrapper = new JPanel();
+            wrapper.setOpaque(true);
+            wrapper.setBackground(backgroundColor);
+            wrapper.setBorder(BorderFactory.createMatteBorder(
+                padding.top, padding.left, padding.bottom, padding.right, backgroundColor
+            ));
+            wrapper.setLayout(new BorderLayout());
+            wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+            wrapper.add(preview, BorderLayout.CENTER);
+            return wrapper;
+        }
+
+        /**
+         * Renders sample lines by hand with {@link GraphicUtils#setRenderingHints},
+         * the same way the score draws its text. A {@link JLabel} can't be used
+         * here: its UI re-imposes the platform text-antialiasing hint (LCD
+         * subpixel on macOS) over any hint set on the graphics, which fringes
+         * against the off-white page background and looks unlike the score.
+         */
+        private static final class ScoreTextPreview extends JComponent {
+
+            private final List<String> lines;
+
+            private ScoreTextPreview(String... lines) {
+                this.lines = List.of(lines);
+            }
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                var g2 = (Graphics2D) g;
+
+                if (isOpaque()) {
+                    g2.setColor(getBackground());
+                    g2.fillRect(0, 0, getWidth(), getHeight());
+                }
+
+                GraphicUtils.setRenderingHints(g2);
+                g2.setFont(getFont());
+                g2.setColor(getForeground());
+
+                var metrics = g2.getFontMetrics();
+                var lineHeight = metrics.getHeight();
+                var y = metrics.getAscent();
+
+                for (var line : lines) {
+                    g2.drawString(line, 0, y);
+                    y += lineHeight;
+                }
+            }
+
+            @Override
+            public void setFont(Font font) {
+                super.setFont(font);
+                revalidate();
+                repaint();
+            }
+
+            @Override
+            public Dimension getPreferredSize() {
+                var font = getFont();
+
+                if (font == null) {
+                    return new Dimension(0, 0);
+                }
+
+                var metrics = getFontMetrics(font);
+                var width = 0;
+
+                for (var line : lines) {
+                    width = Math.max(width, metrics.stringWidth(line));
+                }
+
+                // Tight box: ascent + descent per line, with the font's leading
+                // inserted only between lines, never below the last descender.
+                var lineCount = lines.size();
+                var glyphHeight = metrics.getAscent() + metrics.getDescent();
+                var height = lineCount * glyphHeight + (lineCount - 1) * metrics.getLeading();
+
+                return new Dimension(width, height);
+            }
         }
 
         private static final class ChooseFontAction extends UIAction {
@@ -1682,33 +1728,6 @@ public class SongSettingsDialog extends StandardDialog {
             }
         }
 
-        private final class ResetFontsAction extends UIAction {
-
-            private ResetFontsAction(MainFrame mainFrame) {
-                super(
-                    mainFrame,
-                    Strings.get(Strings.DIALOG_SONG_SETTINGS_RESET_TO_DEFAULTS),
-                    "reset-fonts"
-                );
-            }
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                applyDefaultFonts();
-                revalidate();
-                repaint();
-            }
-        }
-
-        private void applyDefaultFonts() {
-            var defaults = DocumentFonts.defaultsFromSystemDefaults();
-            applyFont(defaults.getFont(FontKey.TITLE),           titleFontLabel,           titleFontPreview);
-            applyFont(defaults.getFont(FontKey.LYRICS),          lyricsFontLabel,          lyricsFontPreview);
-            applyFont(defaults.getFont(FontKey.ATTRIBUTION),     attributionFontLabel,     attributionFontPreview);
-            applyFont(defaults.getFont(FontKey.SUB_ATTRIBUTION), subAttributionFontLabel,  subAttributionFontPreview);
-            applyFont(defaults.getFont(FontKey.ANNOTATION),      annotationFontLabel,      annotationFontPreview);
-        }
-
         private static void applyFont(Font font, JLabel label, JComponent preview) {
             label.setText(MyFontUtils.getFullFontDescription(font));
             preview.setFont(font);
@@ -1729,7 +1748,7 @@ public class SongSettingsDialog extends StandardDialog {
         protected void setData() {
             // Bangla and footnote fonts are document-level but this dialog only
             // exposes the five primary fonts; preserve them by copying the current state.
-            // TODO: add bangla and footnote font rows here and to ResetFontsAction.
+            // TODO: add bangla and footnote font rows here.
             var newFonts = new DocumentFonts(requireScoreView().getDocumentFonts());
             newFonts.setFont(FontKey.TITLE,           titleFontPreview.getFont());
             newFonts.setFont(FontKey.LYRICS,          lyricsFontPreview.getFont());
