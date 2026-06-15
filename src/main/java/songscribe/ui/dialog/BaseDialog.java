@@ -190,17 +190,7 @@ public abstract class BaseDialog {
         LabelPosition labelPosition
     ) {
         if (labelPosition == LabelPosition.LEFT) {
-            var panel = new JPanel(
-                new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP), 0)
-            );
-            panel.setBorder(BorderFactory.createEmptyBorder());
-            panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            var label = new JLabel(labelText);
-            label.setLabelFor(field);
-            panel.add(label);
-            panel.add(field);
-            container.add(panel);
+            addLabeledField(container, new JLabel(labelText), field);
         } else {
             var label = new JLabel(labelText);
             label.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -212,6 +202,25 @@ public abstract class BaseDialog {
             field.setAlignmentX(Component.LEFT_ALIGNMENT);
             container.add(field);
         }
+    }
+
+    /**
+     * Adds a left-positioned {@code label + field} row to {@code container},
+     * like {@link #addLabeledField} with {@link LabelPosition#LEFT} but taking a
+     * pre-built label so the caller can column-align it (e.g. a fixed width set
+     * by a shared measuring pass) before it is laid out.
+     */
+    public static void addLabeledField(JComponent container, JLabel label, JComponent field) {
+        var panel = new JPanel(
+            new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP), 0)
+        );
+        panel.setBorder(BorderFactory.createEmptyBorder());
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        label.setLabelFor(field);
+        panel.add(label);
+        panel.add(field);
+        container.add(panel);
     }
 
     protected static void addLabelToBox(

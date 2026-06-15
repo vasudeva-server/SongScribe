@@ -58,7 +58,11 @@ public class FontDialog extends StandardDialog {
     }
 
     public static Font showDialog(Component component) {
-        var dialog = new FontDialog(component.getFont());
+        return showDialog(component.getFont());
+    }
+
+    public static Font showDialog(Font initialFont) {
+        var dialog = new FontDialog(initialFont);
         dialog.setVisible(true);
         return dialog.selectedFont;
     }

@@ -21,6 +21,11 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
@@ -32,54 +37,69 @@ import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 
 /**
- * Factory for the "font setting" row shared by the Song Settings tabs: a leading
- * label, a stretchy font-description display, and a Choose / Reset button pair.
+ * Factory for the reusable "font setting" row: a leading label, a stretchy
+ * font-description display, and a Choose / Reset button pair. The row is a pure
+ * font chooser — it knows nothing about any particular tab or document font.
  * <p>
- * The row also owns the actions that rewrite the target label and restyle the
- * preview, plus the {@link #applyFont} helper they share with the Font tab.
+ * The owning tab supplies a {@code currentFont} supplier (read to seed the
+ * chooser) and an {@code onFontChosen} callback (invoked with the new font);
+ * the row keeps the description label in sync. Each tab decides what choosing a
+ * font means for its own context.
  */
 final class FontSettingRow {
+
+    private static final String CHOOSE_FONT_COMMAND = "choose-font";
+    private static final String RESET_FONT_COMMAND = "reset-font";
+
+    // FlatLaf's standard border color key, used to box the description label so
+    // it matches the Fonts tab's font-name fields.
+    private static final String COMPONENT_BORDER_COLOR_KEY = "Component.borderColor";
+
+    // The system defaults never change at runtime, so build them once and read
+    // each Reset's font from the shared instance rather than rebuilding all
+    // fonts on every Reset click.
+    @Nullable
+    private static DocumentFonts systemDefaultFonts;
 
     private FontSettingRow() {
     }
 
     /**
      * Builds a row whose leading label is the standard "Font" label, associated
-     * with {@code fontDisplay}.
+     * with {@code fontDescription}.
      */
     static JPanel create(
         MainFrame mainFrame,
-        JComponent fontDisplay,
+        JLabel fontDescription,
         FontKey fontKey,
-        JLabel targetLabel,
-        JComponent preview
+        Supplier<Font> currentFont,
+        Consumer<Font> onFontChosen
     ) {
         return create(
             mainFrame,
             new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT)),
-            fontDisplay,
+            fontDescription,
             fontKey,
-            targetLabel,
-            preview
+            currentFont,
+            onFontChosen
         );
     }
 
     /**
      * Builds a row with a caller-supplied leading label.
      *
-     * @param rowLabel    the leading label (column 0)
-     * @param fontDisplay the stretchy display in the middle column
-     * @param targetLabel the label the Choose/Reset actions rewrite; may be the
-     *                    same instance as {@code fontDisplay}
-     * @param preview     the preview the actions restyle
+     * @param rowLabel        the leading label (column 0)
+     * @param fontDescription the stretchy description display in the middle column
+     * @param currentFont     supplies the font that seeds the chooser
+     * @param onFontChosen    notified with the font chosen (or reset to default)
      */
     static JPanel create(
         MainFrame mainFrame,
         JLabel rowLabel,
-        JComponent fontDisplay,
+        JLabel fontDescription,
         FontKey fontKey,
-        JLabel targetLabel,
-        JComponent preview
+        Supplier<Font> currentFont,
+        Consumer<Font> onFontChosen
     ) {
         var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
         var row = new JPanel(new GridBagLayout());
@@ -89,7 +109,7 @@ final class FontSettingRow {
         constraints.gridy = 0;
         constraints.anchor = GridBagConstraints.WEST;
 
-        rowLabel.setLabelFor(fontDisplay);
+        rowLabel.setLabelFor(fontDescription);
         constraints.gridx = 0;
         constraints.weightx = 0;
         constraints.fill = GridBagConstraints.NONE;
@@ -102,13 +122,13 @@ final class FontSettingRow {
         constraints.gridx = 1;
         constraints.weightx = 1;
         constraints.fill = GridBagConstraints.HORIZONTAL;
-        row.add(fontDisplay, constraints);
+        row.add(fontDescription, constraints);
 
         var buttons = new JPanel();
         buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
-        buttons.add(new JButton(new ChooseFontAction(mainFrame, targetLabel, preview)));
+        buttons.add(new JButton(new ChooseFontAction(mainFrame, fontDescription, currentFont, onFontChosen)));
         BaseDialog.addLargeSeparator(buttons);
-        buttons.add(new JButton(new ResetFontAction(mainFrame, fontKey, targetLabel, preview)));
+        buttons.add(new JButton(new ResetFontAction(mainFrame, fontKey, fontDescription, onFontChosen)));
 
         constraints.gridx = 2;
         constraints.weightx = 0;
@@ -120,39 +140,62 @@ final class FontSettingRow {
         return row;
     }
 
-    static void applyFont(Font font, JLabel label, JComponent preview) {
-        label.setText(MyFontUtils.getFullFontDescription(font));
-        preview.setFont(font);
+    /**
+     * Creates the boxed label used to display a font's description, matching
+     * the style the Fonts tab uses for its font-name labels.
+     */
+    static JLabel createFontDescriptionLabel() {
+        var label = new JLabel();
+        label.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UIManager.getColor(COMPONENT_BORDER_COLOR_KEY)),
+            UIUtils.spacingBorder(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_LABEL_PADDING)
+        ));
+        return label;
+    }
+
+    /**
+     * Writes {@code font}'s description into the row's display label and notifies
+     * the owner. Shared by the Choose / Reset actions and by each tab's initial
+     * {@code getData()} so the row, label, and the tab's preview start in sync.
+     */
+    static void applyFont(Font font, JLabel fontDescription, Consumer<Font> onFontChosen) {
+        fontDescription.setText(MyFontUtils.getFullFontDescription(font));
+        onFontChosen.accept(font);
+    }
+
+    private static Font defaultFont(FontKey fontKey) {
+        if (systemDefaultFonts == null) {
+            systemDefaultFonts = DocumentFonts.defaultsFromSystemDefaults();
+        }
+
+        return systemDefaultFonts.getFont(fontKey);
     }
 
     private static final class ChooseFontAction extends UIAction {
 
         private final JLabel fontDescription;
-        private final JComponent preview;
+        private final Supplier<Font> currentFont;
+        private final Consumer<Font> onFontChosen;
 
         private ChooseFontAction(
             MainFrame mainFrame,
             JLabel fontDescription,
-            JComponent preview
+            Supplier<Font> currentFont,
+            Consumer<Font> onFontChosen
         ) {
             super(
                 mainFrame,
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_CHOOSE),
-                "choose-font"
+                CHOOSE_FONT_COMMAND
             );
             this.fontDescription = fontDescription;
-            this.preview = preview;
+            this.currentFont = currentFont;
+            this.onFontChosen = onFontChosen;
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            var selectedFont = FontDialog.showDialog(preview);
-            fontDescription.setText(
-                MyFontUtils.getFullFontDescription(selectedFont)
-            );
-            preview.setFont(selectedFont);
-            preview.revalidate();
-            preview.repaint();
+            applyFont(FontDialog.showDialog(currentFont.get()), fontDescription, onFontChosen);
         }
     }
 
@@ -160,33 +203,27 @@ final class FontSettingRow {
 
         private final FontKey fontKey;
         private final JLabel fontDescription;
-        private final JComponent preview;
+        private final Consumer<Font> onFontChosen;
 
         private ResetFontAction(
             MainFrame mainFrame,
             FontKey fontKey,
             JLabel fontDescription,
-            JComponent preview
+            Consumer<Font> onFontChosen
         ) {
             super(
                 mainFrame,
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_RESET),
-                "reset-font"
+                RESET_FONT_COMMAND
             );
             this.fontKey = fontKey;
             this.fontDescription = fontDescription;
-            this.preview = preview;
+            this.onFontChosen = onFontChosen;
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            applyFont(
-                DocumentFonts.defaultsFromSystemDefaults().getFont(fontKey),
-                fontDescription,
-                preview
-            );
-            preview.revalidate();
-            preview.repaint();
+            applyFont(defaultFont(fontKey), fontDescription, onFontChosen);
         }
     }
 }
