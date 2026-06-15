@@ -107,7 +107,7 @@ class PlayThreadTest extends UnitTest {
 
             assertThat(noteOn.getCommand()).isEqualTo(ShortMessage.NOTE_ON);
             assertThat(noteOn.getData1()).isEqualTo(pitch);
-            assertThat(noteOn.getData2()).isEqualTo(PlaybackController.NOTE_VELOCITY);
+            assertThat(noteOn.getData2()).isEqualTo(PlaybackController.SELECTED_NOTE_VELOCITY);
 
             assertThat(noteOff.getCommand()).isEqualTo(ShortMessage.NOTE_OFF);
             assertThat(noteOff.getData1()).isEqualTo(pitch);
@@ -201,7 +201,7 @@ class PlayThreadTest extends UnitTest {
             assertThat(noteOn.getCommand()).isEqualTo(ShortMessage.NOTE_ON);
             assertThat(noteOn.getChannel()).isEqualTo(MIDI_CHANNEL);
             assertThat(noteOn.getData1()).isEqualTo(pitch);
-            assertThat(noteOn.getData2()).isEqualTo(PlaybackController.NOTE_VELOCITY);
+            assertThat(noteOn.getData2()).isEqualTo(PlaybackController.SELECTED_NOTE_VELOCITY);
         }
     }
 

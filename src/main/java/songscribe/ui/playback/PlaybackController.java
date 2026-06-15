@@ -54,6 +54,11 @@ public final class PlaybackController {
     public static final int NOTE_VELOCITY = 100;
     public static final int ACCENTED_NOTE_VELOCITY = 127;
 
+    // Fraction of NOTE_VELOCITY used when previewing a selected note — the "Soft" stop (75%) on the Prefs volume slider
+    private static final double SELECTED_NOTE_VOLUME_FRACTION = 0.75;
+    public static final int SELECTED_NOTE_VELOCITY =
+        (int) Math.round(NOTE_VELOCITY * SELECTED_NOTE_VOLUME_FRACTION);
+
     // Resolved once at class load and injected into every action below, so individual
     // actions no longer call MainFrame.getInstance() themselves. Assumes the MainFrame
     // singleton is already constructed before this holder class is first referenced.

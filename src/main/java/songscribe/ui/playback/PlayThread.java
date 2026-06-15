@@ -96,7 +96,7 @@ public class PlayThread extends Thread {
         try {
             setupInstrument();
             var on = new ShortMessage();
-            on.setMessage(ShortMessage.NOTE_ON, 0, pitch, PlaybackController.NOTE_VELOCITY);
+            on.setMessage(ShortMessage.NOTE_ON, 0, pitch, PlaybackController.SELECTED_NOTE_VELOCITY);
             MidiController.midiReceiver.send(on, -1);
         } catch (InvalidMidiDataException e) {
             // Ignore
