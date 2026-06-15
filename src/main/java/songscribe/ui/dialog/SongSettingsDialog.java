@@ -461,12 +461,21 @@ public class SongSettingsDialog extends StandardDialog {
 
             addSeparator(section);
 
-            addLabeledField(
-                section,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE),
-                titleField,
-                BaseDialog.LabelPosition.TOP
-            );
+            // Build the title row by hand so the field stretches to fill the
+            // remaining width. addLabeledField uses a FlowLayout, which would
+            // pin the field to its fixed column width instead.
+            var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
+            var titleRow = new JPanel(new BorderLayout(horizontalGap, 0));
+            // Match the leading inset addLabeledField's FlowLayout gives the
+            // number row, whose hgap also pads before the label.
+            titleRow.setBorder(BorderFactory.createEmptyBorder(0, horizontalGap, 0, 0));
+            titleRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            var titleLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE));
+            titleLabel.setLabelFor(titleField);
+            titleRow.add(titleLabel, BorderLayout.WEST);
+            titleRow.add(titleField, BorderLayout.CENTER);
+            section.add(titleRow);
 
             addLargeSeparator(section);
             section.add(createTakePanel());
