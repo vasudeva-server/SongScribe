@@ -1010,10 +1010,21 @@ public class SongSettingsDialog extends StandardDialog {
          * only the width is unified.
          */
         private static void alignLabelWidths(JLabel... labels) {
+            // Measure the text width with antialiasing and fractional metrics
+            // enabled, matching how FlatLaf actually paints it. This runs at
+            // build time, before the labels are in a realized window, where the
+            // default getPreferredSize() measures without those hints and rounds
+            // down — leaving the widest label ~1px short of its locked width and
+            // triggering an ellipsis ("Place:" -> "Pla...").
+            var frc = new FontRenderContext(null, true, true);
             var width = 0;
 
             for (var label : labels) {
-                width = Math.max(width, label.getPreferredSize().width);
+                var insets = label.getInsets();
+                var textWidth = (int) Math.ceil(
+                    label.getFont().getStringBounds(label.getText(), frc).getWidth()
+                );
+                width = Math.max(width, textWidth + insets.left + insets.right);
             }
 
             for (var label : labels) {
