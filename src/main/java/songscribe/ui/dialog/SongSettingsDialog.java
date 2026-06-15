@@ -470,7 +470,13 @@ public class SongSettingsDialog extends StandardDialog {
             section.add(separator);
             addSectionSeparator(section);
 
-            section.add(createTitleFontRow());
+            section.add(FontSettingRow.create(
+                getMainFrame(),
+                titleFontDisplay,
+                FontKey.TITLE,
+                fontTab.titleFontLabel,
+                fontTab.titleFontPreview
+            ));
             UIUtils.setFlexibleWidth(section);
             return section;
         }
@@ -479,57 +485,6 @@ public class SongSettingsDialog extends StandardDialog {
             titlePreview.setPreviewTitle(
                 Song.numberedTitle(numberField.getText(), titleField.getText())
             );
-        }
-
-        private JPanel createTitleFontRow() {
-            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
-            var row = new JPanel(new GridBagLayout());
-            row.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            var gbc = new GridBagConstraints();
-            gbc.gridy = 0;
-            gbc.anchor = GridBagConstraints.WEST;
-
-            var fontLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT));
-            fontLabel.setLabelFor(titleFontDisplay);
-            gbc.gridx = 0;
-            gbc.weightx = 0;
-            gbc.fill = GridBagConstraints.NONE;
-            // Lead with the horizontal gap so the label indents to match the
-            // FlowLayout-based rows in the other sections (which carry the gap
-            // either as the layout's leading hgap or a leading empty border).
-            gbc.insets = new Insets(0, gap, 0, gap);
-            row.add(fontLabel, gbc);
-
-            gbc.gridx = 1;
-            gbc.weightx = 1;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            row.add(titleFontDisplay, gbc);
-
-            var mainFrame = getMainFrame();
-            var buttons = new JPanel();
-            buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
-            buttons.add(new JButton(new FontTab.ChooseFontAction(
-                mainFrame,
-                fontTab.titleFontLabel,
-                fontTab.titleFontPreview
-            )));
-            addLargeSeparator(buttons);
-            buttons.add(new JButton(new FontTab.ResetFontAction(
-                mainFrame,
-                FontKey.TITLE,
-                fontTab.titleFontLabel,
-                fontTab.titleFontPreview
-            )));
-
-            gbc.gridx = 2;
-            gbc.weightx = 0;
-            gbc.fill = GridBagConstraints.NONE;
-            gbc.insets = new Insets(0, gap, 0, 0);
-            row.add(buttons, gbc);
-
-            UIUtils.setFlexibleWidth(row);
-            return row;
         }
 
         private JPanel createTakePanel() {
@@ -926,7 +881,10 @@ public class SongSettingsDialog extends StandardDialog {
             var datePlaceLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_DATE_PLACE));
             alignLabelWidths(wordsMusicLabel, datePlaceLabel);
 
-            section.add(createFontRow(
+            var mainFrame = getMainFrame();
+
+            section.add(FontSettingRow.create(
+                mainFrame,
                 wordsMusicLabel,
                 wordsMusicFontDisplay,
                 FontKey.ATTRIBUTION,
@@ -936,7 +894,8 @@ public class SongSettingsDialog extends StandardDialog {
 
             addSeparator(section);
 
-            section.add(createFontRow(
+            section.add(FontSettingRow.create(
+                mainFrame,
                 datePlaceLabel,
                 datePlaceFontDisplay,
                 FontKey.SUB_ATTRIBUTION,
@@ -946,52 +905,6 @@ public class SongSettingsDialog extends StandardDialog {
 
             UIUtils.setFlexibleWidth(section);
             return section;
-        }
-
-        private JPanel createFontRow(
-            JLabel rowLabel,
-            JLabel fontDisplay,
-            FontKey fontKey,
-            JLabel fontLabel,
-            JComponent preview
-        ) {
-            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
-            var row = new JPanel(new GridBagLayout());
-            row.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            var gbc = new GridBagConstraints();
-            gbc.gridy = 0;
-            gbc.anchor = GridBagConstraints.WEST;
-
-            gbc.gridx = 0;
-            gbc.weightx = 0;
-            gbc.fill = GridBagConstraints.NONE;
-            // Lead with the horizontal gap so the label indents to match the
-            // FlowLayout-based rows in the other sections (which carry the gap
-            // either as the layout's leading hgap or a leading empty border).
-            gbc.insets = new Insets(0, gap, 0, gap);
-            row.add(rowLabel, gbc);
-
-            gbc.gridx = 1;
-            gbc.weightx = 1;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            row.add(fontDisplay, gbc);
-
-            var mainFrame = getMainFrame();
-            var buttons = new JPanel();
-            buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
-            buttons.add(new JButton(new FontTab.ChooseFontAction(mainFrame, fontLabel, preview)));
-            addLargeSeparator(buttons);
-            buttons.add(new JButton(new FontTab.ResetFontAction(mainFrame, fontKey, fontLabel, preview)));
-
-            gbc.gridx = 2;
-            gbc.weightx = 0;
-            gbc.fill = GridBagConstraints.NONE;
-            gbc.insets = new Insets(0, gap, 0, 0);
-            row.add(buttons, gbc);
-
-            UIUtils.setFlexibleWidth(row);
-            return row;
         }
 
         /**
@@ -1024,13 +937,13 @@ public class SongSettingsDialog extends StandardDialog {
             // default getPreferredSize() measures without those hints and rounds
             // down — leaving the widest label ~1px short of its locked width and
             // triggering an ellipsis ("Place:" -> "Pla...").
-            var frc = new FontRenderContext(null, true, true);
+            var fontRenderContext = new FontRenderContext(null, true, true);
             var width = 0;
 
             for (var label : labels) {
                 var insets = label.getInsets();
                 var textWidth = (int) Math.ceil(
-                    label.getFont().getStringBounds(label.getText(), frc).getWidth()
+                    label.getFont().getStringBounds(label.getText(), fontRenderContext).getWidth()
                 );
                 width = Math.max(width, textWidth + insets.left + insets.right);
             }
@@ -1516,7 +1429,7 @@ public class SongSettingsDialog extends StandardDialog {
             var lyricsSection = new BaseDialog.TitledSection(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_LYRICS_TRANSLATION)
             );
-            lyricsSection.add(createFontRow(mainFrame, FontKey.LYRICS, lyricsFontLabel, lyricsFontPreview));
+            lyricsSection.add(FontSettingRow.create(mainFrame, lyricsFontLabel, FontKey.LYRICS, lyricsFontLabel, lyricsFontPreview));
             addLargeSeparator(lyricsSection);
             lyricsSection.add(createFontPreviewWrapper(lyricsFontPreview));
             UIUtils.setFlexibleWidth(lyricsSection);
@@ -1527,55 +1440,12 @@ public class SongSettingsDialog extends StandardDialog {
             var annotationSection = new BaseDialog.TitledSection(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ANNOTATION)
             );
-            annotationSection.add(createFontRow(mainFrame, FontKey.ANNOTATION, annotationFontLabel, annotationFontPreview));
+            annotationSection.add(FontSettingRow.create(mainFrame, annotationFontLabel, FontKey.ANNOTATION, annotationFontLabel, annotationFontPreview));
             addLargeSeparator(annotationSection);
             annotationSection.add(createFontPreviewWrapper(annotationFontPreview));
             UIUtils.setFlexibleWidth(annotationSection);
             add(annotationSection);
 
-        }
-
-        private static JPanel createFontRow(
-            MainFrame mainFrame,
-            FontKey fontKey,
-            JLabel fontDisplay,
-            JComponent fontPreview
-        ) {
-            var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
-            var row = new JPanel(new GridBagLayout());
-            row.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            var gbc = new GridBagConstraints();
-            gbc.gridy = 0;
-            gbc.anchor = GridBagConstraints.WEST;
-
-            var fontLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT));
-            fontLabel.setLabelFor(fontDisplay);
-            gbc.gridx = 0;
-            gbc.weightx = 0;
-            gbc.fill = GridBagConstraints.NONE;
-            gbc.insets = new Insets(0, gap, 0, gap);
-            row.add(fontLabel, gbc);
-
-            gbc.gridx = 1;
-            gbc.weightx = 1;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            row.add(fontDisplay, gbc);
-
-            var buttons = new JPanel();
-            buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
-            buttons.add(new JButton(new ChooseFontAction(mainFrame, fontDisplay, fontPreview)));
-            addLargeSeparator(buttons);
-            buttons.add(new JButton(new ResetFontAction(mainFrame, fontKey, fontDisplay, fontPreview)));
-
-            gbc.gridx = 2;
-            gbc.weightx = 0;
-            gbc.fill = GridBagConstraints.NONE;
-            gbc.insets = new Insets(0, gap, 0, 0);
-            row.add(buttons, gbc);
-
-            UIUtils.setFlexibleWidth(row);
-            return row;
         }
 
         private static JPanel createFontPreviewWrapper(JComponent preview) {
@@ -1623,11 +1493,11 @@ public class SongSettingsDialog extends StandardDialog {
 
                 var metrics = g2.getFontMetrics();
                 var lineHeight = metrics.getHeight();
-                var y = metrics.getAscent();
+                var baselineY = metrics.getAscent();
 
                 for (var line : lines) {
-                    g2.drawString(line, 0, y);
-                    y += lineHeight;
+                    g2.drawString(line, 0, baselineY);
+                    baselineY += lineHeight;
                 }
             }
 
@@ -1663,84 +1533,14 @@ public class SongSettingsDialog extends StandardDialog {
             }
         }
 
-        private static final class ChooseFontAction extends UIAction {
-
-            private final JLabel fontDescription;
-            private final JComponent preview;
-
-            private ChooseFontAction(
-                MainFrame mainFrame,
-                JLabel fontDescription,
-                JComponent preview
-            ) {
-                super(
-                    mainFrame,
-                    Strings.get(Strings.DIALOG_SONG_SETTINGS_CHOOSE),
-                    "choose-font"
-                );
-                this.fontDescription = fontDescription;
-                this.preview = preview;
-            }
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                var selectedFont = FontDialog.showDialog(preview);
-                fontDescription.setText(
-                    MyFontUtils.getFullFontDescription(selectedFont)
-                );
-                preview.setFont(selectedFont);
-                preview.revalidate();
-                preview.repaint();
-            }
-        }
-
-        private static final class ResetFontAction extends UIAction {
-
-            private final FontKey fontKey;
-            private final JLabel fontDescription;
-            private final JComponent preview;
-
-            private ResetFontAction(
-                MainFrame mainFrame,
-                FontKey fontKey,
-                JLabel fontDescription,
-                JComponent preview
-            ) {
-                super(
-                    mainFrame,
-                    Strings.get(Strings.DIALOG_SONG_SETTINGS_RESET),
-                    "reset-font"
-                );
-                this.fontKey = fontKey;
-                this.fontDescription = fontDescription;
-                this.preview = preview;
-            }
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                applyFont(
-                    DocumentFonts.defaultsFromSystemDefaults().getFont(fontKey),
-                    fontDescription,
-                    preview
-                );
-                preview.revalidate();
-                preview.repaint();
-            }
-        }
-
-        private static void applyFont(Font font, JLabel label, JComponent preview) {
-            label.setText(MyFontUtils.getFullFontDescription(font));
-            preview.setFont(font);
-        }
-
         @Override
         protected boolean getData() {
             var fonts = requireScoreView().getDocumentFonts();
-            applyFont(fonts.getFont(FontKey.TITLE),           titleFontLabel,           titleFontPreview);
-            applyFont(fonts.getFont(FontKey.LYRICS),          lyricsFontLabel,          lyricsFontPreview);
-            applyFont(fonts.getFont(FontKey.ATTRIBUTION),     attributionFontLabel,     attributionFontPreview);
-            applyFont(fonts.getFont(FontKey.SUB_ATTRIBUTION), subAttributionFontLabel,  subAttributionFontPreview);
-            applyFont(fonts.getFont(FontKey.ANNOTATION),      annotationFontLabel,      annotationFontPreview);
+            FontSettingRow.applyFont(fonts.getFont(FontKey.TITLE),           titleFontLabel,           titleFontPreview);
+            FontSettingRow.applyFont(fonts.getFont(FontKey.LYRICS),          lyricsFontLabel,          lyricsFontPreview);
+            FontSettingRow.applyFont(fonts.getFont(FontKey.ATTRIBUTION),     attributionFontLabel,     attributionFontPreview);
+            FontSettingRow.applyFont(fonts.getFont(FontKey.SUB_ATTRIBUTION), subAttributionFontLabel,  subAttributionFontPreview);
+            FontSettingRow.applyFont(fonts.getFont(FontKey.ANNOTATION),      annotationFontLabel,      annotationFontPreview);
             return true;
         }
 
@@ -1789,9 +1589,9 @@ public class SongSettingsDialog extends StandardDialog {
             };
 
             for (var i = 0; i < MAX_ACCIDENTAL_COUNT; i++) {
-                var sel = new KeySelection(KeyType.FLATS, i + 1);
-                selections.add(sel);
-                glyphs.put(sel, flatGlyphs[i]);
+                var flatSelection = new KeySelection(KeyType.FLATS, i + 1);
+                selections.add(flatSelection);
+                glyphs.put(flatSelection, flatGlyphs[i]);
             }
 
             var sharpGlyphs = new String[]{
@@ -1799,9 +1599,9 @@ public class SongSettingsDialog extends StandardDialog {
             };
 
             for (var i = 0; i < MAX_ACCIDENTAL_COUNT; i++) {
-                var sel = new KeySelection(KeyType.SHARPS, i + 1);
-                selections.add(sel);
-                glyphs.put(sel, sharpGlyphs[i]);
+                var sharpSelection = new KeySelection(KeyType.SHARPS, i + 1);
+                selections.add(sharpSelection);
+                glyphs.put(sharpSelection, sharpGlyphs[i]);
             }
 
             SELECTIONS = List.copyOf(selections);
@@ -1889,9 +1689,9 @@ public class SongSettingsDialog extends StandardDialog {
                 );
                 LABEL_WIDTH_PX = maxLabelWidth;
 
-                var w = GLYPH_BOX_WIDTH_PX + LABEL_GAP_PX + LABEL_WIDTH_PX;
-                var h = GLYPH_BOX_HEIGHT_PX + 2 * CELL_PADDING_Y_PX;
-                CELL_SIZE = new Dimension(w, h);
+                var cellWidth = GLYPH_BOX_WIDTH_PX + LABEL_GAP_PX + LABEL_WIDTH_PX;
+                var cellHeight = GLYPH_BOX_HEIGHT_PX + 2 * CELL_PADDING_Y_PX;
+                CELL_SIZE = new Dimension(cellWidth, cellHeight);
             }
 
             private final GlyphVector glyphVector;
