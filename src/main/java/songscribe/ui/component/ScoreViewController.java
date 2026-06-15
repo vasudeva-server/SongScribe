@@ -314,7 +314,10 @@ public final class ScoreViewController {
             return;
         }
 
-        if (message.hasMutationOf(FontChange.class)) {
+        // Font, metadata, and layout changes (e.g. a Song Settings commit) all
+        // require re-laying out every line, not just repainting: invalidating each
+        // line clears its cached LayoutResult so positions are recomputed.
+        if (hasFullRelayoutMutation(message)) {
             for (var linePanel : mainPanel.getStaffPanel().getLinePanels()) {
                 linePanel.getLineComponent().invalidateLayout();
             }
@@ -333,7 +336,7 @@ public final class ScoreViewController {
             }
         }
 
-        // Font, metadata, and layout changes require a full relayout.
+        // Re-sync derived layout coordinates from the (now invalidated) components.
         if (hasFullRelayoutMutation(message)) {
             score.viewChanged();
         }
