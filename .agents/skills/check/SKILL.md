@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 ## Check: Code Review and Cleanup
 
-Review code for reuse, quality, and efficiency. Fix any issues found.
+Review code for reuse, quality, and efficiency. This is an adversarial review, the code may have been written by a human or different LLM. Fix any issues found.
 
 IMPORTANT: All reviews MUST apply the rules in .agents/guides/java.md in addition to the criteria below.
 
