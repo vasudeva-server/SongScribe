@@ -137,7 +137,7 @@ class UtilsTest extends UnitTest {
         @Test
         void testGetPlatformKeyStrokeStringEnterKey() {
             var key = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
-            assertThat(Utils.getPlatformKeyStrokeString(key)).isEqualTo("↩︎");
+            assertThat(Utils.getPlatformKeyStrokeString(key)).isEqualTo("Enter");
         }
 
         @Test
@@ -155,13 +155,13 @@ class UtilsTest extends UnitTest {
         @Test
         void testGetPlatformKeyStrokeStringEscapeKey() {
             var key = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
-            assertThat(Utils.getPlatformKeyStrokeString(key)).isEqualTo("⎋");
+            assertThat(Utils.getPlatformKeyStrokeString(key)).isEqualTo("Esc");
         }
 
         @Test
         void testGetPlatformKeyStrokeStringTabKey() {
             var key = KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0);
-            assertThat(Utils.getPlatformKeyStrokeString(key)).isEqualTo("⇥");
+            assertThat(Utils.getPlatformKeyStrokeString(key)).isEqualTo("Tab");
         }
 
         @Test

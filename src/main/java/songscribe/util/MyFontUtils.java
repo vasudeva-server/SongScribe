@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.util.FontUtils;
 import songscribe.error.RuntimeError;
+import songscribe.font.SourceSans3Font;
 
 public final class MyFontUtils {
 
@@ -127,27 +128,73 @@ public final class MyFontUtils {
 
     /*
       This method attempts to create a font from the given PS name and size. If the font is
-      not found, the method will return the label font.
+      not found, the method tries to find the closest Source Sans 3 SongScribe weight based
+      on the requested name (preserving weight and italic). If that also fails, the label font
+      is returned as the last resort.
     */
     public static Font createFont(String psName, int size) {
-        return createFont(psName, size, "Label.font");
+        var font = getPSFonts().get(psName);
+
+        if (font == null) {
+            font = findClosestSourceSans3Font(psName);
+        }
+
+        if (font == null) {
+            font = getUIFont("Label.font");
+        }
+
+        return font.deriveFont((float) size);
     }
 
     /*
-      This method attempts to create a font from the given PS name. If the font is not found,
-      the method will return the font with the given UIManager key. If no font with that key
-      exists, the default JLabel font is returned.
+      Derives the closest Source Sans 3 SongScribe PostScript name from an arbitrary
+      font name that was not found in the PS fonts map. The style is normalized via
+      parsePSName + parseStyle so that abbreviations like "It" become "Italic".
+      Returns null if no Source Sans 3 SongScribe face is registered (e.g. during tests
+      before install() has been called).
     */
-    public static Font createFont(
-        String psName,
-        int size,
-        String fallbackKey
-    ) {
-        // Is it a known PostScript name?
-        var font = getPSFonts().get(psName);
+    @Nullable
+    private static Font findClosestSourceSans3Font(String psName) {
+        var parsed = parsePSName(psName);
+        var normalizedStyle = parseStyle(parsed.style()).toLowerCase();
+        var suffix = resolveSourceSans3Suffix(normalizedStyle);
+        return getPSFonts().get(SourceSans3Font.PS_PREFIX + suffix);
+    }
 
-        return (font != null ? font : getUIFont(fallbackKey))
-            .deriveFont((float) size);
+    /*
+      Maps a normalized (lower-case) style description to the appropriate
+      Source Sans 3 SongScribe PostScript suffix. Weight precedence: semibold >
+      medium > bold > italic-only > regular. When italic is present alongside a
+      weight, "Italic" is appended.
+    */
+    private static String resolveSourceSans3Suffix(String normalizedStyle) {
+        var isSemiBold = normalizedStyle.contains("semibold");
+        var isMedium = normalizedStyle.contains("medium");
+        // "semibold" also contains "bold", so exclude it to keep the flags independent
+        // of the branch order below.
+        var isBold = normalizedStyle.contains("bold") && !isSemiBold;
+        var isItalic = normalizedStyle.contains("italic");
+
+        String weightSuffix;
+
+        if (isSemiBold) {
+            weightSuffix = "SemiBold";
+        } else if (isMedium) {
+            weightSuffix = "Medium";
+        } else if (isBold) {
+            weightSuffix = "Bold";
+        } else if (isItalic) {
+            // Italic with no weight variant maps to the Italic face.
+            return "Italic";
+        } else {
+            weightSuffix = "Regular";
+        }
+
+        if (isItalic) {
+            return weightSuffix + "Italic";
+        }
+
+        return weightSuffix;
     }
 
     public static Font deriveKernedFont(Font font) {
@@ -316,8 +363,8 @@ public final class MyFontUtils {
         var styles = parseStyle(psStyle);
 
         // Deal with the case where the last word of the family is the first word
-        // of the style, e.g. the family is "Source Sans Pro Semibold" and the style is
-        // "Semibold" or "Semibold Italic".
+        // of the style, e.g. the family is "Source Sans 3 SemiBold" and the style is
+        // "SemiBold" or "SemiBold Italic".
         var familyWords = font.getFamily().split(" ");
         var styleWords = styles.split(" ");
 

@@ -29,9 +29,11 @@ import java.awt.Font;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import songscribe.UnitTest;
-import songscribe.font.SourceSansProFont;
+import songscribe.font.SourceSans3Font;
 
 class MyFontUtilsTest extends UnitTest {
 
@@ -39,7 +41,7 @@ class MyFontUtilsTest extends UnitTest {
     static void installBundledFonts() {
         // Reset the lazy font cache so we can install bundled fonts before the first load.
         MyFontUtils.resetFontCache();
-        SourceSansProFont.installBasic();
+        SourceSans3Font.install();
     }
 
     @Nested
@@ -115,7 +117,7 @@ class MyFontUtilsTest extends UnitTest {
 
         @Test
         void testBundledBoldFontReturnsBold() {
-            var font = MyFontUtils.createFont("SourceSansProSongScribe-Bold", 12);
+            var font = MyFontUtils.createFont("SourceSans3SongScribe-Bold", 12);
             assertThat(MyFontUtils.getStyleDescription(font)).isEqualTo("Bold");
         }
 
@@ -143,30 +145,74 @@ class MyFontUtilsTest extends UnitTest {
 
         @Test
         void testFormatsAsFamilyStyleSizePt() {
-            var font = MyFontUtils.createFont("SourceSansProSongScribe-Bold", 12);
+            var font = MyFontUtils.createFont("SourceSans3SongScribe-Bold", 12);
             assertThat(MyFontUtils.getFullFontDescription(font))
-                .isEqualTo(font.getFamily() + " Bold 12 pt");
+                .isEqualTo(SourceSans3Font.FAMILY + " Bold 12 pt");
         }
     }
 
     @Nested
     class CreateFont {
 
+        // Arbitrary size; these tests assert PS-name resolution, not the size.
+        private static final int FALLBACK_FONT_SIZE = 14;
+
         @Test
         void testKnownPsNameReturnsMatchingFont() {
-            var font = MyFontUtils.createFont("SourceSansProSongScribe-Bold", 24);
+            var font = MyFontUtils.createFont("SourceSans3SongScribe-Bold", 24);
             assertThat(font).isNotNull();
             assertThat(font.getSize()).isEqualTo(24);
-            assertThat(font.getPSName()).isEqualTo("SourceSansProSongScribe-Bold");
+            assertThat(font.getPSName()).isEqualTo("SourceSans3SongScribe-Bold");
         }
 
         @Test
-        void testUnknownPsNameReturnsFallbackFont() {
+        void testUnknownPsNameWithNoWeightResolvesToSourceSans3Regular() {
+            // The weight-matched fallback maps any unrecognized PS name to the closest
+            // Source Sans 3 SongScribe face by weight. When the style token contains no
+            // weight/italic keyword, the fallback resolves to Regular.
             var font = MyFontUtils.createFont("NonExistent-BogusFont-12345", 16);
             assertThat(font).isNotNull();
             assertThat(font.getSize()).isEqualTo(16);
-            var fallback = MyFontUtils.getUIFont("Label.font");
-            assertThat(font.getPSName()).isEqualTo(fallback.getPSName());
+            assertThat(font.getPSName()).isEqualTo("SourceSans3SongScribe-Regular");
+        }
+
+        @Test
+        void testOldSemiboldNameResolvesToSourceSans3SemiBold() {
+            // Old documents may reference SourceSansProSongScribe-Semibold, which is no longer
+            // registered. The weight-matched fallback must map it to the closest Source Sans 3
+            // SongScribe face by weight: Semibold → SourceSans3SongScribe-SemiBold.
+            var font = MyFontUtils.createFont("SourceSansProSongScribe-Semibold", 14);
+            assertThat(font).isNotNull();
+            assertThat(font.getPSName()).isEqualTo("SourceSans3SongScribe-SemiBold");
+        }
+
+        @Test
+        void testOldItalicSuffixResolvesToSourceSans3Italic() {
+            // Old documents may use the "-It" abbreviation for italic, e.g.
+            // SourceSansProSongScribe-It. The weight-matched fallback normalizes "It" → "Italic"
+            // and maps it to SourceSans3SongScribe-Italic.
+            var font = MyFontUtils.createFont("SourceSansProSongScribe-It", 14);
+            assertThat(font).isNotNull();
+            assertThat(font.getPSName()).isEqualTo("SourceSans3SongScribe-Italic");
+        }
+
+        @ParameterizedTest
+        @CsvSource({
+            // An unregistered name carrying each weight (and combined weight+italic)
+            // exercises every branch of the weight-matched fallback.
+            "Unregistered-Medium,         SourceSans3SongScribe-Medium",
+            "Unregistered-Bold,           SourceSans3SongScribe-Bold",
+            "Unregistered-MediumItalic,   SourceSans3SongScribe-MediumItalic",
+            "Unregistered-SemiboldItalic, SourceSans3SongScribe-SemiBoldItalic",
+            "Unregistered-BoldItalic,     SourceSans3SongScribe-BoldItalic",
+        })
+        void testUnregisteredWeightResolvesToClosestSourceSans3Face(
+            String psName,
+            String expectedPsName
+        ) {
+            var font = MyFontUtils.createFont(psName, FALLBACK_FONT_SIZE);
+            assertThat(font).isNotNull();
+            assertThat(font.getPSName()).isEqualTo(expectedPsName);
         }
     }
 }

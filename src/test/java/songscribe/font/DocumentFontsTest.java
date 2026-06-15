@@ -167,11 +167,11 @@ class DocumentFontsTest extends UnitTest {
         @BeforeAll
         static void installFonts() {
             // Reset the lazy font cache so we can install bundled fonts before the first
-            // load, then install Source Sans Pro SongScribe so that setFont(key, psName,
+            // load, then install Source Sans 3 SongScribe so that setFont(key, psName,
             // size) resolves real PS names from the bundled font files rather than falling
             // back to a UI font.
             MyFontUtils.resetFontCache();
-            SourceSansProFont.installBasic();
+            SourceSans3Font.install();
         }
 
         @ParameterizedTest
@@ -204,19 +204,19 @@ class DocumentFontsTest extends UnitTest {
         @ParameterizedTest
         @EnumSource(FontKey.class)
         void testSetFontByPsNameResolvesCorrectFamily(FontKey key) {
-            // When the PS name is a registered Source Sans Pro SongScribe name the
-            // resolved font's family must be SourceSansProFont.FAMILY, not a fallback
-            // system font.
+            // An old Source Sans Pro SongScribe PS name is no longer registered, so it
+            // resolves through the weight-matched fallback. The result must still be the
+            // Source Sans 3 SongScribe family, not a fallback system font.
             var fonts = new DocumentFonts();
             fonts.setFont(key, "SourceSansProSongScribe-Regular", BASE_SIZE);
             var font = fonts.getFont(key);
             assertThat(font.getSize()).isEqualTo(BASE_SIZE);
-            assertThat(font.getFamily()).isEqualTo(SourceSansProFont.FAMILY);
+            assertThat(font.getFamily()).isEqualTo(SourceSans3Font.FAMILY);
         }
     }
 
     @Nested
-    class SourceSansProFontConstants {
+    class SourceSans3FontConstants {
 
         @Test
         void testStyleConstantsMatchBundledFontFiles() {
@@ -224,12 +224,14 @@ class DocumentFontsTest extends UnitTest {
             // classpath at /fonts/<name>. A typo in any constant silently falls back to
             // a system font at runtime; this test verifies the resource actually exists.
             assertAll(
-                () -> assertFontResourceExists(SourceSansProFont.STYLE_REGULAR),
-                () -> assertFontResourceExists(SourceSansProFont.STYLE_ITALIC),
-                () -> assertFontResourceExists(SourceSansProFont.STYLE_SEMIBOLD),
-                () -> assertFontResourceExists(SourceSansProFont.STYLE_SEMIBOLD_ITALIC),
-                () -> assertFontResourceExists(SourceSansProFont.STYLE_BOLD),
-                () -> assertFontResourceExists(SourceSansProFont.STYLE_BOLD_ITALIC)
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_REGULAR),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_ITALIC),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_MEDIUM),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_MEDIUM_ITALIC),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_SEMIBOLD),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_SEMIBOLD_ITALIC),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_BOLD),
+                () -> assertFontResourceExists(SourceSans3Font.STYLE_BOLD_ITALIC)
             );
         }
 
@@ -241,7 +243,7 @@ class DocumentFontsTest extends UnitTest {
          */
         private void assertFontResourceExists(String filename) throws IOException {
             var resourcePath = "/fonts/" + filename;
-            try (var stream = SourceSansProFont.class.getResourceAsStream(resourcePath)) {
+            try (var stream = SourceSans3Font.class.getResourceAsStream(resourcePath)) {
                 assertThat(stream).as("font resource %s must exist", resourcePath).isNotNull();
             }
         }

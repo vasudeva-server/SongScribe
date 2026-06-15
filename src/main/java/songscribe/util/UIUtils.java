@@ -43,7 +43,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 
-import songscribe.font.SourceSansProFont;
+import songscribe.font.SourceSans3Font;
 import songscribe.ui.renderer.RenderingUtils;
 import songscribe.ui.action.UIAction;
 
@@ -61,27 +61,12 @@ public final class UIUtils {
 
     static final int SCREEN_MARGIN_PX = 20;
 
-    // Tooltips render keyboard modifier symbols (⌘, ⇧, …) with DejaVu Sans, since
-    // the UI font does not include them. The file is bundled in resources/fonts and
-    // loaded at startup in initLaf().
-    private static final String KEYSTROKE_TOOLTIP_FONT_FILE = "DejaVuSans.ttf";
-    private static final String KEYSTROKE_TOOLTIP_FONT_FAMILY = "DejaVu Sans";
-
     private UIUtils() {
     }
 
     //
     // Tooltips
     //
-
-    private static String inKeystrokeFont(String text) {
-        return
-            "<font face=\"" +
-            KEYSTROKE_TOOLTIP_FONT_FAMILY +
-            "\">" +
-            text +
-            "</font>";
-    }
 
     public static void setToolTipText(JComponent component, @Nullable Action action) {
         if (action == null) {
@@ -97,15 +82,9 @@ public final class UIUtils {
             var accelerator = (KeyStroke) action.getValue(Action.ACCELERATOR_KEY);
 
             if (accelerator != null) {
-                // Render symbol glyphs (the modifiers, and symbol keys like ↩︎) in
-                // DejaVu Sans, since the UI font lacks them. A plain letter key stays
-                // in the UI font.
                 var modifiers = Utils.getPlatformModifiersString(accelerator);
                 var keyName = Utils.getPlatformKeyString(accelerator);
-                var keyHtml = Utils.isPlatformKeySymbol(accelerator)
-                    ? inKeystrokeFont(keyName)
-                    : keyName;
-                html += "&nbsp;&nbsp;(" + inKeystrokeFont(modifiers) + keyHtml + ')';
+                html += "&nbsp;&nbsp;(" + modifiers + keyName + ')';
             }
 
             tip = html + "<br>" + tip + "</html>";
@@ -454,14 +433,13 @@ public final class UIUtils {
             System.setProperty("swing.aatext", "true");
             System.setProperty("awt.useSystemAAFontSettings", "lcd");
 
-            SourceSansProFont.install();
+            SourceSans3Font.install();
 
             MyFontUtils.installLocalFont("Poetica-SuppOrnaments.otf");
             MyFontUtils.installLocalFont("TiroBangla-Regular.ttf");
-            MyFontUtils.installLocalFont(KEYSTROKE_TOOLTIP_FONT_FILE);
 
             // Set up the base font family for FlatLaf
-            FlatLaf.setPreferredFontFamily(SourceSansProFont.FAMILY);
+            FlatLaf.setPreferredFontFamily(SourceSans3Font.FAMILY);
 
             FlatLaf.registerCustomDefaultsSource("songscribe");
 
