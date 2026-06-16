@@ -348,11 +348,9 @@ public final class LyricEditor extends MyJTextField {
         }
 
         @Override
-        @SuppressWarnings("NullAway")  // keepAllocationAtContentOrigin may return null in edge cases
-        protected Shape adjustAllocation(Shape a) {
+        protected @Nullable Shape adjustAllocation(@Nullable Shape a) {
             Shape adjusted;
 
-            //noinspection ConstantValue -- overridden method may be called with null Shape
             if (paintingWithLeadingSlack && a != null) {
                 var textAllocation = a.getBounds();
                 textAllocation.x += LEADING_PAINT_SLACK_PX;

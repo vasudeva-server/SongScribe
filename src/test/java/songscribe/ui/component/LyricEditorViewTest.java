@@ -123,7 +123,10 @@ class LyricEditorViewTest extends LyricEditorTestSupport {
             var result = view.adjustAllocation(allocation);
 
             // The x coordinate must NOT have been shifted by LEADING_PAINT_SLACK_PX.
-            assertThat(result).isNotNull();
+            if (result == null) {
+                throw new AssertionError("adjustAllocation must not return null for a non-null allocation");
+            }
+
             assertThat(result.getBounds().x).isEqualTo(20);
         }
 
@@ -147,7 +150,10 @@ class LyricEditorViewTest extends LyricEditorTestSupport {
 
             // The x passed to super.adjustAllocation was 20 + 1 = 21;
             // keepAllocationAtContentOrigin ensures the result x is >= 21.
-            assertThat(result).isNotNull();
+            if (result == null) {
+                throw new AssertionError("adjustAllocation must not return null for a non-null allocation");
+            }
+
             assertThat(result.getBounds().x).isGreaterThanOrEqualTo(20 + LyricEditor.LEADING_PAINT_SLACK_PX);
         }
     }
