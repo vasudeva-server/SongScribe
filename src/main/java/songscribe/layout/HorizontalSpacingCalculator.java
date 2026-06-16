@@ -522,7 +522,6 @@ public class HorizontalSpacingCalculator {
         // per-gap values (not just their sum) lets Step 3 guarantee that every gap individually
         // clears its own syllables, rather than trusting an even share of the total (refs #445).
         var lyricRequiredPerGapSs = new ArrayList<Double>();
-        var lyricRequiredWidthSs = 0.0;
 
         for (var i = 1; i < columnCount; i++) {
             var prev = beamColumns.get(i - 1);
@@ -534,8 +533,9 @@ public class HorizontalSpacingCalculator {
                 : calculateMinimumColumnSpacingSs(prev, curr);
 
             lyricRequiredPerGapSs.add(gapRequirementSs);
-            lyricRequiredWidthSs += gapRequirementSs;
         }
+
+        var lyricRequiredWidthSs = lyricRequiredPerGapSs.stream().mapToDouble(Double::doubleValue).sum();
 
         // Step 3: Determine final positions. Distribute any total expansion evenly to keep the
         // beam looking regular, but never let a gap fall below its own lyric requirement —

@@ -678,16 +678,73 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             .as("wide semiquaver-to-semiquaver gap must not overlap its lyrics")
             .isGreaterThanOrEqualTo(semiquaverPairLyricSpacingSs - TOLERANCE);
 
-        // Guard against regressing to even distribution: an even split of the total expansion would
-        // have placed this gap below its own lyric requirement, overlapping the syllables.
-        var tightGap1Ss = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
-        var tightGap2Ss = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        // The closing gap must clear its own (narrower) lyrics too: WIDE/2 + GAP + NARROW/2. Without
+        // this, a regression that dumped all expansion into the first gap could starve this one.
         var gap2LyricSpacingSs = WIDE_SYLLABLE_WIDTH_SS / 2.0 + SYLLABLE_GAP_SS + NARROW_SYLLABLE_WIDTH_SS / 2.0;
-        var totalExpansionSs = (semiquaverPairLyricSpacingSs + gap2LyricSpacingSs) - (tightGap1Ss + tightGap2Ss);
-        var evenlyDistributedGap1Ss = tightGap1Ss + totalExpansionSs / 2.0;
-        assertThat(evenlyDistributedGap1Ss)
-            .as("test is only meaningful if even distribution would have starved this gap")
-            .isLessThan(semiquaverPairLyricSpacingSs);
+        assertThat(col3.getXSs() - col2.getXSs())
+            .as("semiquaver-to-quaver gap must not overlap its lyrics")
+            .isGreaterThanOrEqualTo(gap2LyricSpacingSs - TOLERANCE);
+
+        // Precondition (depends only on the test constants, so it is documented rather than
+        // asserted): this scenario is discriminating because an even split of the total expansion
+        // would place the semiquaver pair's gap at tightGap1 + totalExpansion/2 = 3.5 + 3.0 = 6.5 ss,
+        // below its 8.5 ss lyric requirement — overlapping the syllables. The per-gap clamp prevents
+        // that. tightGap1 = BEAM_RIGHT_EXTENT + BEAM_GROUP_MIN_INTERNAL_GAP; totalExpansion =
+        // (8.5 + gap2 5.5) - (tightGap1 3.5 + tightGap2 4.5).
+    }
+
+    // #445: in a beam group that mixes a gap carrying lyrics with a gap carrying none, the
+    // lyric-free gap still shares the group's even expansion. Its geometric minimum is counted in
+    // the total lyric budget (the lyricSpacingSs > 0 fallback), so dropping that fallback would
+    // starve the lyric-free gap back to its tight spacing instead of keeping the beam regular.
+    @Test
+    void testBeamGroupLyricFreeGapSharesEvenExpansion() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        // Wide lyric on the first beamed note: its gap needs expansion beyond the tight beam gap.
+        var col1 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, "la", WIDE_SYLLABLE_WIDTH_SS, true
+        );
+        // The remaining two beamed notes carry no lyric, so the gap between them is lyric-free.
+        var col2 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col3 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        col1.setMinGapToNextSyllableSs(SYLLABLE_GAP_SS);
+
+        calculator.calculatePositions(List.of(col0, col1, col2, col3), line);
+
+        // All three notes are semiquavers, so every gap shares the same tight beam-internal spacing.
+        var tightGapSs = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+        // The lyric gap requires WIDE/2 + GAP; the lyric-free gap falls back to the geometric minimum.
+        var lyricGapRequirementSs = WIDE_SYLLABLE_WIDTH_SS / 2.0 + SYLLABLE_GAP_SS;
+        var lyricFreeGapRequirementSs =
+            BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+        var gapCount = 2;
+        var totalExpansionSs =
+            (lyricGapRequirementSs + lyricFreeGapRequirementSs) - (tightGapSs + tightGapSs);
+        var expansionPerGapSs = totalExpansionSs / gapCount;
+        var expectedLyricFreeGapSs = tightGapSs + expansionPerGapSs;
+
+        // The lyric-free gap is widened by its even share of the expansion, not collapsed to the
+        // tight spacing — only because its minimum was counted in the total budget.
+        assertThat(col3.getXSs() - col2.getXSs())
+            .as("lyric-free gap must share the beam group's even expansion")
+            .isCloseTo(expectedLyricFreeGapSs, within(TOLERANCE));
+        assertThat(col3.getXSs() - col2.getXSs())
+            .as("lyric-free gap must be wider than the unexpanded tight gap")
+            .isGreaterThan(tightGapSs + TOLERANCE);
     }
 
     // Row 33: single-column beam group receives normal (DEFAULT_COLUMN_GAP_SS) spacing
