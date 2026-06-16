@@ -46,6 +46,8 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -66,6 +68,9 @@ abstract class LyricEditorTestSupport extends UnitTest {
         song = new Song();
         score = mock(ScoreView.class);
         when(score.getLyricRenderMetrics()).thenReturn(LYRIC_METRICS);
+        var documentFonts = new DocumentFonts();
+        documentFonts.setFont(FontKey.LYRICS, LYRICS_FONT);
+        when(score.getDocumentFonts()).thenReturn(documentFonts);
         when(score.getSong()).thenReturn(song);
         when(score.getLineComponent(anyInt())).thenReturn(null);
         when(score.getLayout()).thenReturn(new BorderLayout());

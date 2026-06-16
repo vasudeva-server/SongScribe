@@ -45,6 +45,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
@@ -67,6 +69,9 @@ class LyricEditorTest extends LyricEditorTestSupport {
         song = new Song();
         score = mock(ScoreView.class);
         when(score.getLyricRenderMetrics()).thenReturn(LYRIC_METRICS);
+        var documentFonts = new DocumentFonts();
+        documentFonts.setFont(FontKey.LYRICS, LYRICS_FONT);
+        when(score.getDocumentFonts()).thenReturn(documentFonts);
         when(score.getSong()).thenReturn(song);
         when(score.getLineComponent(anyInt())).thenReturn(null);
         when(score.getLayout()).thenReturn(new BorderLayout());
