@@ -533,7 +533,8 @@ class MutationRecordsTest extends UnitTest {
             Song.SRI_CHINMOY,
             Song.LyricsSource.LYRICIST,
             false,
-            false
+            false,
+            ""
         );
     }
 }

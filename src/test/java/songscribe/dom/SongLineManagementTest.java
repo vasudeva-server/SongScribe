@@ -53,7 +53,8 @@ class SongLineManagementTest extends UnitTest {
                 "My Song", "",
                 current.place(), current.year(), current.month(), current.day(),
                 current.composer(), current.lyricist(),
-                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                current.subtitle()
             ));
 
             assertThat(song.getNumberedTitle()).isEqualTo("My Song");
@@ -68,7 +69,8 @@ class SongLineManagementTest extends UnitTest {
                 "My Song", "5",
                 current.place(), current.year(), current.month(), current.day(),
                 current.composer(), current.lyricist(),
-                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                current.subtitle()
             ));
 
             assertThat(song.getNumberedTitle()).isEqualTo("5. My Song");

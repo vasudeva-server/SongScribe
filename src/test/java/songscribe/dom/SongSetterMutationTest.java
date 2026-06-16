@@ -77,7 +77,7 @@ class SongSetterMutationTest extends UnitTest {
                 oldMetadata.month(), oldMetadata.day(),
                 oldMetadata.composer(), oldMetadata.lyricist(),
                 oldMetadata.lyricsSource(), oldMetadata.arrangement(),
-                oldMetadata.unofficialTranslation()
+                oldMetadata.unofficialTranslation(), oldMetadata.subtitle()
             );
             song.setMetadata(newMetadata);
 
@@ -106,7 +106,7 @@ class SongSetterMutationTest extends UnitTest {
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(),
-                current.unofficialTranslation()
+                current.unofficialTranslation(), current.subtitle()
             );
             // Precondition: normalization made the textually-different record equal.
             assertThat(normalizedEqual).isEqualTo(current);
@@ -127,7 +127,8 @@ class SongSetterMutationTest extends UnitTest {
             song.setMetadata(new SongMetadata(
                 "My Title", "42", "Jamaica, NY", "1984", month, day,
                 "Composer Name", "Lyricist Name",
-                Song.LyricsSource.TEXT, true, true
+                Song.LyricsSource.TEXT, true, true,
+                ""
             ));
 
             assertThat(song.getTitle()).isEqualTo("My Title");

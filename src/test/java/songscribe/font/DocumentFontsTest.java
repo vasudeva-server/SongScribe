@@ -94,6 +94,7 @@ class DocumentFontsTest extends UnitTest {
             // would produce from the corresponding prefs pair — verified role by role.
             var expected = new DocumentFonts();
             expected.setFont(FontKey.TITLE,           Prefs.getString(PrefsKey.TITLE_FONT),           Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+            expected.setFont(FontKey.SUBTITLE,        Prefs.getString(PrefsKey.SUBTITLE_FONT),        Prefs.getInt(PrefsKey.SUBTITLE_FONT_SIZE));
             expected.setFont(FontKey.LYRICS,          Prefs.getString(PrefsKey.LYRICS_FONT),          Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
             expected.setFont(FontKey.ATTRIBUTION,     Prefs.getString(PrefsKey.ATTRIBUTION_FONT),     Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
             expected.setFont(FontKey.SUB_ATTRIBUTION, Prefs.getString(PrefsKey.SUB_ATTRIBUTION_FONT), Prefs.getInt(PrefsKey.SUB_ATTRIBUTION_FONT_SIZE));
@@ -102,6 +103,44 @@ class DocumentFontsTest extends UnitTest {
             expected.setFont(FontKey.BANGLA,          Prefs.getString(PrefsKey.BANGLA_FONT),          Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
 
             assertThat(fonts).isEqualTo(expected);
+        }
+    }
+
+    /**
+     * T4: The built-in subtitle default is {@code SourceSans3SongScribe-Medium} at 24 pt,
+     * the value an old file that lacks a {@code <subtitlefont>} tag falls back to. This
+     * pins the value declared in {@code defaults.json} via
+     * {@link DocumentFonts#defaultsFromSystemDefaults()}, which reads the built-in
+     * defaults only — independent of any user-preference override — so a regression in
+     * {@code defaults.json} or the {@code PrefsKey} mapping is caught on every machine.
+     */
+    @Nested
+    class SubtitleDefault {
+
+        private static final int SUBTITLE_DEFAULT_SIZE = 24;
+        private static final String SUBTITLE_DEFAULT_PS_NAME = "SourceSans3SongScribe-Medium";
+
+        @BeforeAll
+        static void installFonts() {
+            // Source Sans 3 SongScribe must be registered for setFont(key, psName, size)
+            // to resolve the Medium face by PostScript name instead of falling back.
+            MyFontUtils.resetFontCache();
+            SourceSans3Font.install();
+        }
+
+        @Test
+        void testSubtitleDefaultsToMedium24() {
+            // Read the built-in (non-overridable) default, the value used when an old
+            // file has no <subtitlefont> tag. Assert it is exactly Medium 24.
+            var fonts = DocumentFonts.defaultsFromSystemDefaults();
+            var subtitleFont = fonts.getFont(FontKey.SUBTITLE);
+
+            assertThat(subtitleFont.getSize())
+                .as("SUBTITLE built-in default size must be 24")
+                .isEqualTo(SUBTITLE_DEFAULT_SIZE);
+            assertThat(subtitleFont.getPSName())
+                .as("SUBTITLE built-in default must be the Medium weight")
+                .isEqualTo(SUBTITLE_DEFAULT_PS_NAME);
         }
     }
 

@@ -35,13 +35,16 @@ import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
 
 /**
- * Unit tests for {@link TitleComponent}, {@link FootnotesComponent}, and
- * {@link LyricsComponent} (via its concrete subclass {@link UnderLyricsComponent}).
+ * Unit tests for {@link TitleComponent}, {@link SubtitleComponent},
+ * {@link FootnotesComponent}, and {@link LyricsComponent} (via its concrete
+ * subclass {@link UnderLyricsComponent}).
  *
  * <p>Covers:
  * <ul>
  *   <li>7F rows 5-7 — {@link TitleComponent#getPreferredSize()} null/empty guards,
  *       wrapping formula, and number-prefix routing</li>
+ *   <li>T7 — {@link SubtitleComponent#getPreferredSize()} empty-collapse, gap formula,
+ *       {@link TitleComponent#topGapPx()} == 0, and full-width span</li>
  *   <li>7F rows 9-10 — {@link FootnotesComponent#getPreferredSize()} null/empty/non-empty,
  *       and {@link FootnotesComponent#calculateRenderX(double)} width-cap invariant</li>
  *   <li>7F rows 14-15 — {@link LyricsComponent#getTextWidth(java.awt.Graphics2D)} null/empty guards
@@ -96,7 +99,8 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 "", "",
                 current.place(), current.year(), current.month(), current.day(),
                 current.composer(), current.lyricist(),
-                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                current.subtitle()
             ));
             var component = new TitleComponent();
             component.setSong(song);
@@ -122,7 +126,8 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 "Ode", current.number(), current.place(), current.year(),
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
-                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                current.subtitle()
             ));
             var component = new TitleComponent();
             component.setFont(TEST_FONT);
@@ -154,7 +159,8 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 "A", current.number(), current.place(), current.year(),
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
-                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                current.subtitle()
             ));
             var component = new TitleComponent();
             component.setFont(TEST_FONT);
@@ -167,7 +173,8 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 current.number(), current.place(), current.year(),
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
-                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                current.subtitle()
             ));
             var longHeight = component.getPreferredSize().height;
 
@@ -192,7 +199,8 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 "", "5",
                 current.place(), current.year(), current.month(), current.day(),
                 current.composer(), current.lyricist(),
-                current.lyricsSource(), current.arrangement(), current.unofficialTranslation()
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                current.subtitle()
             ));
             // getNumberedTitle() → "5. " (non-empty); getTitle() → "" (empty).
             var component = new TitleComponent();
@@ -203,6 +211,114 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
             assertThat(size.height)
                 .as("number prefix in getNumberedTitle() causes non-zero height even when title is empty")
                 .isGreaterThan(0);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // SubtitleComponent and TitleComponent topGapPx — T7
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SubtitleComponentPreferredSize {
+
+        /**
+         * T7: When subtitle text is empty, {@link SubtitleComponent#getPreferredSize()}
+         * returns {@code (0, 0)} — no gap is emitted when the subtitle is absent.
+         */
+        @Test
+        void testEmptySubtitleReturnsDimensionZero() {
+            var song = new Song();
+            // song.getSubtitle() returns "" by default — no setter needed.
+            var component = new SubtitleComponent();
+            component.setSong(song);
+
+            assertThat(component.getPreferredSize())
+                .as("empty subtitle → Dimension(0, 0)")
+                .isEqualTo(new Dimension(0, 0));
+        }
+
+        /**
+         * T7: When subtitle text is non-empty, height = textBlock + topGapPx,
+         * so height &gt; topGapPx(), which itself is positive. Width equals the
+         * full line width ({@code song.getLineWidthPx()}).
+         */
+        @Test
+        void testNonEmptySubtitleReturnsLineWidthAndHeightAboveTopGap() {
+            var song = new Song();
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                current.title(), current.number(), current.place(), current.year(),
+                current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                "A Song Subtitle"
+            ));
+            var component = new SubtitleComponent();
+            component.setFont(TEST_FONT);
+            component.setSong(song);
+
+            var size = component.getPreferredSize();
+            var topGap = component.topGapPx();
+
+            assertThat(size.width)
+                .as("subtitle width must equal song.getLineWidthPx()")
+                .isEqualTo(song.getLineWidthPx());
+            // topGapPx() is positive for SubtitleComponent (derived from FlatLaf property).
+            assertThat(topGap)
+                .as("subtitle topGapPx() must be > 0 (derived from FlatLaf subtitle gap)")
+                .isGreaterThan(0);
+            assertThat(size.height)
+                .as("subtitle height = textBlock + topGapPx > topGapPx alone")
+                .isGreaterThan(topGap);
+        }
+
+        /**
+         * T7: {@link TitleComponent#topGapPx()} returns 0 — the title owns no leading
+         * gap (the subtitle gap lives in {@link SubtitleComponent#topGapPx()}).
+         */
+        @Test
+        void testTitleComponentTopGapIsZero() {
+            var component = new TitleComponent();
+            assertThat(component.topGapPx())
+                .as("TitleComponent.topGapPx() must be 0")
+                .isEqualTo(0);
+        }
+
+        /**
+         * T7: A subtitle long enough to wrap across multiple lines produces a strictly
+         * greater height than a short one, exercising the shared
+         * {@code lineCount * glyphHeight + (lineCount - 1) * leading} wrap formula on
+         * the subtitle path (not just the title path).
+         */
+        @Test
+        void testHeightGrowsWhenSubtitleWraps() {
+            var song = new Song();
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                current.title(), current.number(), current.place(), current.year(),
+                current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                "Short"
+            ));
+            var component = new SubtitleComponent();
+            component.setFont(TEST_FONT);
+            component.setSong(song);
+            var shortHeight = component.getPreferredSize().height;
+
+            song.setMetadata(new SongMetadata(
+                current.title(), current.number(), current.place(), current.year(),
+                current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                "This Is A Very Long Subtitle That Should Definitely Wrap To Multiple Lines When Laid Out"
+            ));
+            var longHeight = component.getPreferredSize().height;
+
+            assertThat(longHeight)
+                .as("a long subtitle that wraps must produce a strictly greater height than a short one")
+                .isGreaterThan(shortHeight);
         }
     }
 

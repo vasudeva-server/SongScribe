@@ -180,12 +180,16 @@ annotations, and the residual `<miscellaneous>` extension fields.
   lyrics date (when distinct) → `<misc-field name="lyrics-date">`, place →
   `<misc-field name="place">`, unofficial-translation flag → `<misc-field>`.
 - Credits (after `<defaults>`): title (text from `getNumberedTitle()` — title
-  with movement-number prefix) + each attribution role (composer,
-  lyricist, arranger, composition date, lyrics date, rights, place) → first-page
-  `<credit>` with `<credit-type>` + `<credit-words>` (font + position attributes);
-  underlyrics/Bangla/translated lyrics/footnotes → last-page `<credit page="N">`
-  (their canonical home). The `TITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE`
-  fonts ride in the `<credit-words>` attributes — no `font-...` misc-fields.
+  with movement-number prefix) + subtitle (`getSubtitle()`, `<credit-type>` =
+  `subtitle`, font role `SUBTITLE`, **canonical/read-write** — no
+  `<movement-*>` equivalent exists, so the credit is the source of truth;
+  emitted only when non-empty) + each attribution role (composer,
+  lyricist, arranger, composition date, lyrics date, rights, place) →
+  first-page `<credit>` with `<credit-type>` + `<credit-words>` (font + position
+  attributes); underlyrics/Bangla/translated lyrics/footnotes → last-page
+  `<credit page="N">` (their canonical home). The `TITLE` / `SUBTITLE` /
+  `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` fonts ride in the `<credit-words>`
+  attributes — no `font-...` misc-fields.
 - Layout: line width → `<scaling>` + `<system-layout>`; fonts → `<music-font>` /
   `<lyric-font>` / `<word-font>`; paddings/distances → system-layout fields;
   spacing factors → `<misc-field>`.

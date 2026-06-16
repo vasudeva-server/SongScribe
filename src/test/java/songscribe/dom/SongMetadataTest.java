@@ -60,7 +60,8 @@ class SongMetadataTest extends UnitTest {
         return new SongMetadata(
             title, "", "", "", 0, 0,
             Song.SRI_CHINMOY, Song.SRI_CHINMOY,
-            Song.LyricsSource.LYRICIST, false, false
+            Song.LyricsSource.LYRICIST, false, false,
+            ""
         );
     }
 
@@ -69,7 +70,8 @@ class SongMetadataTest extends UnitTest {
         return new SongMetadata(
             "", "", place, "", 0, 0,
             Song.SRI_CHINMOY, Song.SRI_CHINMOY,
-            Song.LyricsSource.LYRICIST, false, false
+            Song.LyricsSource.LYRICIST, false, false,
+            ""
         );
     }
 
@@ -78,7 +80,8 @@ class SongMetadataTest extends UnitTest {
         return new SongMetadata(
             "", "", "", year, 0, 0,
             Song.SRI_CHINMOY, Song.SRI_CHINMOY,
-            Song.LyricsSource.LYRICIST, false, false
+            Song.LyricsSource.LYRICIST, false, false,
+            ""
         );
     }
 
@@ -87,7 +90,8 @@ class SongMetadataTest extends UnitTest {
         return new SongMetadata(
             "", number, "", "", 0, 0,
             Song.SRI_CHINMOY, Song.SRI_CHINMOY,
-            Song.LyricsSource.LYRICIST, false, false
+            Song.LyricsSource.LYRICIST, false, false,
+            ""
         );
     }
 
@@ -96,7 +100,8 @@ class SongMetadataTest extends UnitTest {
         return new SongMetadata(
             "", "", "", "", 0, 0,
             composer, lyricist,
-            Song.LyricsSource.LYRICIST, false, false
+            Song.LyricsSource.LYRICIST, false, false,
+            ""
         );
     }
 
@@ -314,7 +319,7 @@ class SongMetadataTest extends UnitTest {
                 original.month(), original.day(),
                 original.composer(), original.lyricist(),
                 original.lyricsSource(), original.arrangement(),
-                original.unofficialTranslation()
+                original.unofficialTranslation(), original.subtitle()
             );
             assertThat(copy)
                 .as("round-tripping default metadata through the constructor is a no-op")
@@ -338,7 +343,8 @@ class SongMetadataTest extends UnitTest {
                 var m = new SongMetadata(
                     "", "", "", "", 0, 0,
                     Song.SRI_CHINMOY, Song.SRI_CHINMOY,
-                    source, false, false
+                    source, false, false,
+                    ""
                 );
                 assertThat(m.connectorFor(Song.SRI_CHINMOY))
                     .as("connectorFor SriChinmoy with source %s", source)
@@ -356,7 +362,8 @@ class SongMetadataTest extends UnitTest {
             var mLyricist = new SongMetadata(
                 "", "", "", "", 0, 0,
                 "Bach", Song.SRI_CHINMOY,
-                Song.LyricsSource.LYRICIST, false, false
+                Song.LyricsSource.LYRICIST, false, false,
+                ""
             );
             assertThat(mLyricist.connectorFor("Bach"))
                 .as("LYRICIST connector comes from lyricsSource")
@@ -365,7 +372,8 @@ class SongMetadataTest extends UnitTest {
             var mText = new SongMetadata(
                 "", "", "", "", 0, 0,
                 "Bach", Song.SRI_CHINMOY,
-                Song.LyricsSource.TEXT, false, false
+                Song.LyricsSource.TEXT, false, false,
+                ""
             );
             assertThat(mText.connectorFor("Bach"))
                 .as("TEXT connector")
@@ -374,7 +382,8 @@ class SongMetadataTest extends UnitTest {
             var mOther = new SongMetadata(
                 "", "", "", "", 0, 0,
                 "Bach", Song.SRI_CHINMOY,
-                Song.LyricsSource.OTHER, false, false
+                Song.LyricsSource.OTHER, false, false,
+                ""
             );
             assertThat(mOther.connectorFor("Bach"))
                 .as("OTHER connector")
@@ -402,7 +411,7 @@ class SongMetadataTest extends UnitTest {
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(),
-                unofficialTranslation
+                unofficialTranslation, current.subtitle()
             ));
             song.setTranslatedLyrics(translatedLyrics);
             return song;
@@ -443,6 +452,107 @@ class SongMetadataTest extends UnitTest {
             assertThat(song.showTranslation())
                 .as("unofficial=true, translatedLyrics=non-empty → false")
                 .isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // §7 Subtitle normalization (T5)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SubtitleNormalization {
+
+        /** T5: subtitle passes through normalizeTitle — linefeeds are replaced with spaces. */
+        @Test
+        void testSubtitleLinefeeds() {
+            var metadata = new SongMetadata(
+                "", "", "", "", 0, 0,
+                Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+                Song.LyricsSource.LYRICIST, false, false,
+                "Hello\nWorld"
+            );
+            assertThat(metadata.subtitle())
+                .as("linefeed in subtitle becomes space")
+                .isEqualTo("Hello World");
+        }
+
+        /** T5: subtitle passes through normalizeTitle — multiple spaces collapsed. */
+        @Test
+        void testSubtitleMultipleSpacesCollapsed() {
+            var metadata = new SongMetadata(
+                "", "", "", "", 0, 0,
+                Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+                Song.LyricsSource.LYRICIST, false, false,
+                "Hello  World"
+            );
+            assertThat(metadata.subtitle())
+                .as("multiple spaces in subtitle collapsed to one")
+                .isEqualTo("Hello World");
+        }
+
+        /** T5: subtitle passes through normalizeTitle — leading/trailing whitespace trimmed. */
+        @Test
+        void testSubtitleTrimmed() {
+            var metadata = new SongMetadata(
+                "", "", "", "", 0, 0,
+                Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+                Song.LyricsSource.LYRICIST, false, false,
+                "  trimmed  "
+            );
+            assertThat(metadata.subtitle())
+                .as("subtitle is trimmed")
+                .isEqualTo("trimmed");
+        }
+
+        /**
+         * T5: subtitle runs the same processText branch as the title, so ă/Ă are
+         * replaced when STRIP_SHORT_A is enabled — a regression that skipped the
+         * subtitle would leave the short-a uncoerced.
+         */
+        @Test
+        void testSubtitleStripsShortAWhenEnabled() {
+            Prefs.put(PrefsKey.STRIP_SHORT_A, true);
+            var metadata = new SongMetadata(
+                "", "", "", "", 0, 0,
+                Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+                Song.LyricsSource.LYRICIST, false, false,
+                "ăĂ"
+            );
+            assertThat(metadata.subtitle())
+                .as("ă/Ă in subtitle replaced with a/A when STRIP_SHORT_A=true")
+                .isEqualTo("aA");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // §8 withTitle preserves subtitle (T6)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class WithTitlePreservesSubtitle {
+
+        /**
+         * T6: {@link SongMetadata#withTitle(String)} must pass the existing subtitle
+         * through as the trailing arg of the new record. An accidental append-at-end
+         * omission would silently drop the subtitle to "".
+         */
+        @Test
+        void testWithTitlePreservesNonEmptySubtitle() {
+            var original = new SongMetadata(
+                "Old Title", "", "", "", 0, 0,
+                Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+                Song.LyricsSource.LYRICIST, false, false,
+                "My Subtitle"
+            );
+            var updated = original.withTitle("New Title");
+            assertThat(updated.title())
+                .as("withTitle updates the title")
+                .isEqualTo("New Title");
+            assertThat(updated.subtitle())
+                .as("withTitle must preserve the existing subtitle")
+                .isEqualTo("My Subtitle");
         }
     }
 }

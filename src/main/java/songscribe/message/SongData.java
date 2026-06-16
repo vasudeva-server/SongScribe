@@ -69,5 +69,6 @@ public record SongData(
     double lineWidthSs,
     List<Line> lines,
     boolean hasBeenDynamicallyLaidOut,
-    int formatVersion
+    int formatVersion,
+    String subtitle
 ) {}

@@ -59,6 +59,8 @@ public enum PrefsKey {
     STRIP_SHORT_A("stripShortA"),
     SUB_ATTRIBUTION_FONT("subAttributionFont"),
     SUB_ATTRIBUTION_FONT_SIZE("subAttributionFontSize"),
+    SUBTITLE_FONT("subtitleFont"),
+    SUBTITLE_FONT_SIZE("subtitleFontSize"),
     TEMPO_CHANGE_PERCENT("tempoChangePercent"),
     TIP_INDEX("tipIndex"),
     TITLE_FONT("titleFont"),

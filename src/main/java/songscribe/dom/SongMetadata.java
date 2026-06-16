@@ -62,7 +62,8 @@ public record SongMetadata(
     String lyricist,
     Song.LyricsSource lyricsSource,
     boolean arrangement,
-    boolean unofficialTranslation
+    boolean unofficialTranslation,
+    String subtitle
 ) {
 
     // Used to replace the characters "ă" and "Ă" with "a" and "A" respectively
@@ -79,6 +80,8 @@ public record SongMetadata(
         composer = Song.coercePerson(composer);
         lyricist = Song.coercePerson(lyricist);
         // month, day, lyricsSource, arrangement, unofficialTranslation: as-is
+        // subtitle: normalized like the title (strip linefeeds, collapse spaces, trim)
+        subtitle = normalizeTitle(subtitle);
     }
 
     /**
@@ -89,7 +92,8 @@ public record SongMetadata(
     public SongMetadata withTitle(String newTitle) {
         return new SongMetadata(
             newTitle, number, place, year, month, day,
-            composer, lyricist, lyricsSource, arrangement, unofficialTranslation
+            composer, lyricist, lyricsSource, arrangement, unofficialTranslation,
+            subtitle
         );
     }
 

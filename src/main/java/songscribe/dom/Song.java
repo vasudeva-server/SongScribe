@@ -126,7 +126,8 @@ public final class Song {
         SRI_CHINMOY,           // lyricist
         LyricsSource.LYRICIST, // lyricsSource
         false,  // arrangement
-        false   // unofficialTranslation
+        false,  // unofficialTranslation
+        ""      // subtitle
     );
 
     // The language of the song
@@ -292,7 +293,8 @@ public final class Song {
             data.lyricist(),
             data.lyricsSource(),
             data.arrangement(),
-            data.unofficialTranslation()
+            data.unofficialTranslation(),
+            data.subtitle()
         );
 
         // Apply remaining scalar fields
@@ -418,6 +420,10 @@ public final class Song {
 
     public String getTitle() {
         return metadata.title();
+    }
+
+    public String getSubtitle() {
+        return metadata.subtitle();
     }
 
     /**

@@ -71,6 +71,11 @@ This table covers only the **metadata** that lives in the score head
 carry the same information in both places (metadata for consumers, credits for
 rendering); the two are intentional duplicates.
 
+**Subtitle is not in this table.** MusicXML has no `<movement-subtitle>` or
+`<identification>` equivalent for a subtitle. The subtitle's canonical home is
+its `subtitle` `<credit>` element (see § "Credits"); there is no head-metadata
+duplicate. SongScribe both writes and reads the subtitle from that credit.
+
 | SongScribe field | MusicXML target | Bucket |
 |---|---|---|
 | `title` (`XML_TITLE`) | `<movement-title>` (bare title; display also as a `title` `<credit>` using `getNumberedTitle()` — title with movement-number prefix) | Native |
@@ -115,7 +120,7 @@ emit it only when the two dates are distinct.
 |---|---|---|
 | line width (`XML_LINE_WIDTH`, ss) | `<scaling>` + `<system-layout>` (ss → tenths, ×10) | Native+conv |
 | view fonts: music / lyric / word roles (`LYRICS` / `ANNOTATION`) | `<music-font>`, `<lyric-font>`, `<word-font>` | Native |
-| view fonts: `TITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` roles | carried in the `font-family` / `font-size` / `font-weight` attributes of the corresponding `<credit-words>` (see § "Credits") | Native |
+| view fonts: `TITLE` / `SUBTITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` roles | carried in the `font-family` / `font-size` / `font-weight` attributes of the corresponding `<credit-words>` (see § "Credits") — `SUBTITLE` rides on the `subtitle` `<credit-words>`, which is also its canonical storage (no separate font misc-field) | Native |
 | top padding (`XML_TOP_SPACE`, ss) | `<top-system-distance>` (or `<misc-field>` if exact) | Native+conv |
 | attribution start Y (`XML_INFO_STARTY`, ss) | `default-y` on the attribution `<credit-words>` (ss → tenths) | Native+conv |
 | row-height adjustment (`XML_ROW_HEIGHT`, ss) | `<system-distance>` (or `<misc-field>`) | Native+conv |
@@ -154,6 +159,7 @@ display string (for dates, the formatted string such as `December 1, 1987`).
 | Role | `<credit-type>` | Display text source | Font role |
 |---|---|---|---|
 | title | `title` | `getNumberedTitle()` (title with movement-number prefix) | `TITLE` |
+| subtitle | `subtitle` | `getSubtitle()` | `SUBTITLE` |
 | composer | `composer` | composer field | `ATTRIBUTION` |
 | lyricist | `lyricist` | lyricist field | `ATTRIBUTION` |
 | arranger | `arranger` | arranger field | `ATTRIBUTION` |
@@ -162,10 +168,18 @@ display string (for dates, the formatted string such as `December 1, 1987`).
 | rights | `rights` | copyright string | `ATTRIBUTION` |
 | place | `place` | place field | `ATTRIBUTION` |
 
-These credits are **display-only on read**: their canonical source of truth is
-the head metadata (`<movement-title>`, `<creator>`, `<rights>`) and the
-`composition-date` / `lyrics-date` / `place` misc-fields. SongScribe re-derives
-each credit from those on write and ignores the credit text on read.
+The subtitle credit is the **canonical home** for the subtitle text. Unlike
+the title and attribution credits (which are display-only on read, with their
+canonical source of truth in the head metadata), subtitle has **no**
+`<movement-*>` or `<identification>` equivalent in MusicXML. The `subtitle`
+credit is therefore both **written and read** by SongScribe. It is emitted only
+when `getSubtitle()` returns a non-empty string.
+
+The remaining credits in this table are **display-only on read**: their
+canonical source of truth is the head metadata (`<movement-title>`,
+`<creator>`, `<rights>`) and the `composition-date` / `lyrics-date` / `place`
+misc-fields. SongScribe re-derives each credit from those on write and ignores
+the credit text on read.
 
 ### Score-below credits (last page)
 
@@ -275,14 +289,16 @@ information per note. Bijective: expand on write, re-collapse on read.
 Every persisted field has a home. Native+conv cases are bijective:
 staff-space ↔ tenths (×10); staff position + key + clef ↔ step/octave/alter;
 line-range spans ↔ per-note markers; line breaks ↔ invisible-barline-at-system-break.
-The on-page text and its fonts (title, attribution roles, underlyrics,
+The on-page text and its fonts (title, subtitle, attribution roles, underlyrics,
 Bangla/translated lyrics, footnotes) all live in native `<credit>` elements,
-which also absorb the `TITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` view-font
-roles via their `<credit-words>` attributes. The only `<miscellaneous>` residents
-that remain are genuinely SongScribe-specific score-level data — the structured
-ISO composition/lyrics dates, place, the `unofficial-translation` flag, and two
-layout factors — exactly what `<miscellaneous>` exists for, stored verbatim and
-reloaded exactly.
+which also absorb the `TITLE` / `SUBTITLE` / `ATTRIBUTION` / `BANGLA` /
+`FOOTNOTE` view-font roles via their `<credit-words>` attributes. The subtitle
+credit is the **canonical home** for the subtitle (no `<movement-*>` equivalent
+exists in MusicXML), so SongScribe reads as well as writes it. The only
+`<miscellaneous>` residents that remain are genuinely SongScribe-specific
+score-level data — the structured ISO composition/lyrics dates, place, the
+`unofficial-translation` flag, and two layout factors — exactly what
+`<miscellaneous>` exists for, stored verbatim and reloaded exactly.
 
 ### Legacy read-only fields
 

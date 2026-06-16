@@ -192,7 +192,8 @@ class SongDidChangeNotificationTest extends UnitTest {
             oldMeta.lyricist(),
             oldMeta.lyricsSource(),
             oldMeta.arrangement(),
-            oldMeta.unofficialTranslation()
+            oldMeta.unofficialTranslation(),
+            oldMeta.subtitle()
         );
         return new MetadataChange(MetadataField.ATTRIBUTION, oldMeta, newMeta);
     }

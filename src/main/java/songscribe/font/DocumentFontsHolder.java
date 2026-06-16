@@ -22,7 +22,7 @@ package songscribe.font;
 
 import java.awt.Font;
 
-/** Read interface for the seven document-level font roles. */
+/** Read interface for the eight document-level font roles. */
 @FunctionalInterface
 public interface DocumentFontsHolder {
 
@@ -30,6 +30,10 @@ public interface DocumentFontsHolder {
 
     default Font getTitleFont() {
         return getFont(FontKey.TITLE);
+    }
+
+    default Font getSubtitleFont() {
+        return getFont(FontKey.SUBTITLE);
     }
 
     default Font getLyricsFont() {

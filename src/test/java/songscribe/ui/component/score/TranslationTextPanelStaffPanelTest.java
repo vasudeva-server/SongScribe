@@ -136,7 +136,8 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
                 var m = song.getMetadata();
                 song.setMetadata(new SongMetadata(
                     m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
-                    m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), false
+                    m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), false,
+                    m.subtitle()
                 ));
             }
             component.setSong(song);
@@ -155,7 +156,8 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
                 var m = song.getMetadata();
                 song.setMetadata(new SongMetadata(
                     m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
-                    m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true
+                    m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true,
+                    m.subtitle()
                 ));
             }
             var g2b = createOffscreenGraphics();
@@ -969,7 +971,8 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
                 var m = song.getMetadata();
                 song.setMetadata(new SongMetadata(
                     "", "", m.place(), m.year(), m.month(), m.day(),
-                    m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation()
+                    m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
+                    m.subtitle()
                 ));
             });
 

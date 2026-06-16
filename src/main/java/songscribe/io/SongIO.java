@@ -51,7 +51,7 @@ import songscribe.dom.TempoChangeAttachment;
 public final class SongIO {
 
     public static final int IO_MAJOR_VERSION = 2;
-    public static final int IO_MINOR_VERSION = 8;
+    public static final int IO_MINOR_VERSION = 9;
 
     // version 1.0
     private static final String XML_SONG = "song";
@@ -95,6 +95,9 @@ public final class SongIO {
     private static final String XML_ARRANGEMENT = "arrangement";
     private static final String XML_ATTRIBUTION_Y_OFFSET = "attributionyoffset";
 
+    // version 2.9 — subtitle
+    private static final String XML_SUBTITLE = "subtitle";
+
     private SongIO() {
     }
 
@@ -132,6 +135,10 @@ public final class SongIO {
 
         if (!c.getTitle().isEmpty()) {
             XML.writeValue(pw, XML_TITLE, c.getTitle());
+        }
+
+        if (!c.getSubtitle().isEmpty()) {
+            XML.writeValue(pw, XML_SUBTITLE, c.getSubtitle());
         }
 
         if (!c.getPlace().isEmpty()) {
@@ -274,6 +281,7 @@ public final class SongIO {
         private String lyricist = Song.SRI_CHINMOY;
         private LyricsSource lyricsSource = LyricsSource.LYRICIST;
         private boolean arrangement = false;
+        private String subtitle = "";
         private String attribution = "";
         private String footnotes = "";
         private boolean unofficialTranslation = false;
@@ -315,7 +323,7 @@ public final class SongIO {
                         } else if (
                             (majorVersion == 1 && minorVersion >= 1) ||
                             // Hard-coded to IO_MINOR_VERSION; bump when the reader is updated.
-                            (majorVersion == 2 && minorVersion <= 8)
+                            (majorVersion == 2 && minorVersion <= 9)
                         ) {
                             lineReader = new LineIO.LineReader(parsingSong);
                             viewReader = new ViewIO.ViewReader();
@@ -570,6 +578,7 @@ public final class SongIO {
                         case XML_NUMBER -> number = str;
                         case XML_TITLE -> title =
                             str.isEmpty() ? "Untitled" : str;
+                        case XML_SUBTITLE -> subtitle = str;
                         case XML_PLACE -> place = str;
                         case XML_YEAR -> year = str;
                         case XML_MONTH -> {
@@ -715,7 +724,8 @@ public final class SongIO {
                 ctx.lineWidthSs,
                 ctx.lines,
                 hasBeenDynamicallyLaidOut,
-                formatVersion
+                formatVersion,
+                subtitle
             );
 
             // Repopulate the stub Song that was created at <song> startElement

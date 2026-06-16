@@ -91,7 +91,8 @@ class SongMetadataDialogFlowTest extends UnitTest {
                 "Mozart",
                 Song.LyricsSource.TEXT,
                 true,
-                false
+                false,
+                ""
             );
 
             song.metadataDidChange(new SongMetadataDidChangeNotification(newMetadata));
@@ -119,7 +120,8 @@ class SongMetadataDialogFlowTest extends UnitTest {
                 "Beethoven",
                 Song.LyricsSource.LYRICIST,
                 false,
-                false
+                false,
+                ""
             );
 
             song.metadataDidChange(new SongMetadataDidChangeNotification(newMetadata));
@@ -171,7 +173,8 @@ class SongMetadataDialogFlowTest extends UnitTest {
                 Song.SRI_CHINMOY,
                 Song.LyricsSource.LYRICIST,
                 false,
-                false
+                false,
+                ""
             );
 
             song.withModification(() ->

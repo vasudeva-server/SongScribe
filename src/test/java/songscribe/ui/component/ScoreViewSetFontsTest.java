@@ -27,6 +27,7 @@ import java.awt.Font;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
@@ -39,6 +40,8 @@ import songscribe.message.MessageCenter;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Song;
+import songscribe.ui.component.score.MainPanel;
+import songscribe.ui.component.score.SubtitleComponent;
 
 /**
  * Verifies that {@link ScoreView#setFonts(DocumentFonts)} is the single, undo-bracketed
@@ -150,6 +153,47 @@ class ScoreViewSetFontsTest extends UnitTest {
         assertThat(scoreView.getDocumentFonts()).isSameAs(snapshotBefore);
         assertThat(scoreView.getFont(FontKey.TITLE))
             .isEqualTo(before.getFont(FontKey.TITLE));
+    }
+
+    // -------------------------------------------------------------------------
+    // T8: applyDocumentFonts applies the SUBTITLE font to SubtitleComponent
+    // -------------------------------------------------------------------------
+
+    /**
+     * T8: {@link ScoreView#applyDocumentFonts()} must propagate the {@link FontKey#SUBTITLE}
+     * font to the {@link SubtitleComponent}. Verified by injecting a real
+     * {@link MainPanel} via the package-private {@code setMainPanel} so that
+     * {@code applyDocumentFonts} does not short-circuit at its {@code mainPanel == null}
+     * guard, then calling {@code installDocumentFonts} which invokes it.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ApplyDocumentFonts {
+
+        private static final int SUBTITLE_TEST_SIZE = 20;
+        private static final String SUBTITLE_TEST_FAMILY = "Serif";
+
+        @Test
+        void testApplyDocumentFontsAppliesSubtitleFontToSubtitleComponent() {
+            // Inject a real MainPanel so applyDocumentFonts does not short-circuit.
+            var mainPanel = new MainPanel();
+            mainPanel.setSong(song);
+            scoreView.setMainPanel(mainPanel);
+
+            // Build a custom DocumentFonts with a non-default SUBTITLE font.
+            var defaults = DocumentFonts.defaultsFromPrefs();
+            var customFonts = new DocumentFonts(defaults);
+            var expectedFont = new Font(SUBTITLE_TEST_FAMILY, Font.ITALIC, SUBTITLE_TEST_SIZE);
+            customFonts.setFont(FontKey.SUBTITLE, expectedFont);
+
+            // installDocumentFonts sets documentFonts and calls applyDocumentFonts().
+            scoreView.installDocumentFonts(customFonts);
+
+            var subtitleComponent = mainPanel.getSubtitleComponent();
+            assertThat(subtitleComponent.getFont())
+                .as("applyDocumentFonts must set the SUBTITLE font on SubtitleComponent")
+                .isEqualTo(expectedFont);
+        }
     }
 
     private SongDidChangeNotification captureSingleDidChange() {

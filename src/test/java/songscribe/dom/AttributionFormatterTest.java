@@ -189,7 +189,8 @@ class AttributionFormatterTest extends UnitTest {
             current.month(), current.day(),
             current.composer(), current.lyricist(),
             current.lyricsSource(), current.arrangement(),
-            true // unofficialTranslation
+            true, // unofficialTranslation
+            current.subtitle()
         ));
 
         var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
@@ -459,7 +460,7 @@ class AttributionFormatterTest extends UnitTest {
             current.title(), current.number(), current.place(), current.year(),
             current.month(), current.day(),
             composer, lyricist, source, arrangement,
-            current.unofficialTranslation()
+            current.unofficialTranslation(), current.subtitle()
         ));
         song.setTranslatedLyrics(translatedLyrics);
         return song;
@@ -472,7 +473,8 @@ class AttributionFormatterTest extends UnitTest {
         return new SongMetadata(
             title, "", place, year, month, day,
             Song.SRI_CHINMOY, Song.SRI_CHINMOY,
-            Song.LyricsSource.LYRICIST, false, false
+            Song.LyricsSource.LYRICIST, false, false,
+            ""
         );
     }
 

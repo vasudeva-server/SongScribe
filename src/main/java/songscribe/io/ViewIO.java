@@ -49,11 +49,14 @@ public final class ViewIO {
     private static final String XML_FOOTNOTE_FONT_SIZE = "footnoteFontSize";
     private static final String XML_SUB_ATTRIBUTION_FONT = "subAttributionFont";
     private static final String XML_SUB_ATTRIBUTION_FONT_SIZE = "subAttributionFontSize";
+    private static final String XML_SUBTITLE_FONT = "subtitleFont";
+    private static final String XML_SUBTITLE_FONT_SIZE = "subtitleFontSize";
 
     private record FontTags(FontKey key, String nameTag, String sizeTag) {}
 
     private static final FontTags[] FONT_TAGS = {
         new FontTags(FontKey.TITLE,           XML_TITLE_FONT,           XML_TITLE_FONT_SIZE),
+        new FontTags(FontKey.SUBTITLE,        XML_SUBTITLE_FONT,        XML_SUBTITLE_FONT_SIZE),
         new FontTags(FontKey.LYRICS,          XML_LYRICS_FONT,          XML_LYRICS_FONT_SIZE),
         new FontTags(FontKey.ATTRIBUTION,     XML_GENERAL_FONT,         XML_GENERAL_FONT_SIZE),
         new FontTags(FontKey.SUB_ATTRIBUTION, XML_SUB_ATTRIBUTION_FONT, XML_SUB_ATTRIBUTION_FONT_SIZE),

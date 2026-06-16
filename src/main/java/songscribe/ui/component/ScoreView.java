@@ -1087,6 +1087,7 @@ public final class ScoreView
         var textPanel = mainPanel.getTextPanel();
         var lyricsFont = documentFonts.getLyricsFont();
         mainPanel.getTitleComponent().setFont(documentFonts.getTitleFont());
+        mainPanel.getSubtitleComponent().setFont(documentFonts.getSubtitleFont());
         textPanel.getUnderLyricsComponent().setFont(lyricsFont);
         textPanel.getBanglaLyricsComponent().setFont(documentFonts.getBanglaFont());
         textPanel.getTranslationComponent().setFont(lyricsFont);

@@ -57,6 +57,7 @@ import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
+import songscribe.ui.component.score.SubtitleComponent;
 import songscribe.ui.component.score.TitleComponent;
 import songscribe.dom.AttributionFormatter;
 import songscribe.dom.AttributionLine;
@@ -156,6 +157,7 @@ public class SongSettingsDialog extends StandardDialog {
     private void commitFonts() {
         var newFonts = new DocumentFonts(requireScoreView().getDocumentFonts());
         newFonts.setFont(FontKey.TITLE,           textTab.getTitleFont());
+        newFonts.setFont(FontKey.SUBTITLE,        textTab.getSubtitleFont());
         newFonts.setFont(FontKey.ATTRIBUTION,     attributionTab.getAttributionFont());
         newFonts.setFont(FontKey.SUB_ATTRIBUTION, attributionTab.getSubAttributionFont());
         newFonts.setFont(FontKey.LYRICS,          fontTab.getLyricsFont());
@@ -193,7 +195,8 @@ public class SongSettingsDialog extends StandardDialog {
             lyricistText,
             lyricsSource,
             arrangement,
-            unofficialTranslation
+            unofficialTranslation,
+            textTab.getSubtitleText()
         );
         song.postWithModification(new SongMetadataDidChangeNotification(newMetadata));
     }
@@ -261,7 +264,7 @@ public class SongSettingsDialog extends StandardDialog {
         // Lyrics made up only of separators (e.g. all underscores) leave the
         // buffer empty; guard before indexing the last character so the trim
         // does not throw on an empty buffer.
-        if (words.length() > 0 && !Character.isLetter(words.charAt(words.length() - 1))) {
+        if (!words.isEmpty() && !Character.isLetter(words.charAt(words.length() - 1))) {
             words.deleteCharAt(words.length() - 1);
         }
 
@@ -385,6 +388,24 @@ public class SongSettingsDialog extends StandardDialog {
         return previewWrapper;
     }
 
+    /**
+     * Wraps a score preview component in a full-width {@link BorderLayout} row.
+     * <p>
+     * Score components cap their maximum size at their preferred size
+     * ({@code lineWidthPx}); a vertical {@link BoxLayout} would honor that and
+     * clamp the component below the section width, clipping the centered text.
+     * BorderLayout's {@code CENTER} ignores the maximum and stretches the preview
+     * to the row's full width, matching the score's full-line-width centering.
+     */
+    private static JPanel createFullWidthPreviewRow(JComponent preview, Color background) {
+        var row = new JPanel(new BorderLayout());
+        row.setOpaque(true);
+        row.setBackground(background);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.add(preview, BorderLayout.CENTER);
+        return row;
+    }
+
     private final class TitleTab extends BaseDialog.Tab {
 
         // Title of song panel
@@ -398,8 +419,18 @@ public class SongSettingsDialog extends StandardDialog {
         private final SpinnerModel takeFirstWordsSpinnerModel =
             new SpinnerNumberModel(TAKE_FIRST_WORDS_DEFAULT, TAKE_FIRST_WORDS_MIN, TAKE_FIRST_WORDS_MAX, 1);
         private final TakeFirstLyricsWordAction takeAction =
-            new TakeFirstLyricsWordAction(SongSettingsDialog.this.getMainFrame());
+            new TakeFirstLyricsWordAction(getMainFrame());
         private final TitleComponent titlePreview = new TitleComponent();
+
+        // Subtitle section — field, font-description label, and preview component.
+        private final MyJTextField subtitleField = new MyJTextField(TITLE_FIELD_COLUMNS);
+        private final JLabel subtitleFontLabel = FontSettingRow.createFontDescriptionLabel();
+        private final SubtitleComponent subtitlePreview = new SubtitleComponent();
+
+        // Tracks whether the subtitle preview is currently collapsed (empty), so
+        // the dialog is re-packed only on the empty <-> non-empty transition that
+        // actually changes the tab's height.
+        private boolean subtitlePreviewEmpty = true;
 
         private TitleTab() {
             titleField.setInputVerifier(new NonEmptyGuard(
@@ -412,14 +443,15 @@ public class SongSettingsDialog extends StandardDialog {
                 Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
             ));
 
+            var pageBackground = FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND);
             titlePreview.setOpaque(true);
-            titlePreview.setBackground(
-                FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND)
-            );
+            titlePreview.setBackground(pageBackground);
+            subtitlePreview.setOpaque(true);
+            subtitlePreview.setBackground(pageBackground);
 
-            // Keep the preview in sync as the user edits the number/title, which
-            // together form the numbered title the score actually renders.
-            var previewUpdater = new DocumentListener() {
+            // Keep the title preview in sync as the user edits the number/title,
+            // which together form the numbered title the score actually renders.
+            var titlePreviewUpdater = new DocumentListener() {
                 @Override
                 public void insertUpdate(DocumentEvent e) {
                     updateTitlePreview();
@@ -435,8 +467,28 @@ public class SongSettingsDialog extends StandardDialog {
                     updateTitlePreview();
                 }
             };
-            numberField.getDocument().addDocumentListener(previewUpdater);
-            titleField.getDocument().addDocumentListener(previewUpdater);
+            numberField.getDocument().addDocumentListener(titlePreviewUpdater);
+            titleField.getDocument().addDocumentListener(titlePreviewUpdater);
+
+            // The subtitle preview depends only on the subtitle field, so update it
+            // separately rather than firing it on every number/title keystroke.
+            var subtitlePreviewUpdater = new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    updateSubtitlePreview();
+                }
+
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    updateSubtitlePreview();
+                }
+
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    updateSubtitlePreview();
+                }
+            };
+            subtitleField.getDocument().addDocumentListener(subtitlePreviewUpdater);
 
             build();
         }
@@ -445,7 +497,29 @@ public class SongSettingsDialog extends StandardDialog {
         protected void initContents() {
             add(createTitleSection());
             addSectionSeparator(this);
-            add(createPreviewSection(titlePreview));
+            add(createSubtitleSection());
+            addSectionSeparator(this);
+
+            // Stack title and subtitle previews in a vertical panel so the preview
+            // section mirrors the actual score layout (title above subtitle with gap).
+            // The background must match the page color so createPreviewSection's matte
+            // border bleeds correctly into the section border.
+            //
+            // Each preview is a ScoreComponent whose maximum size equals its
+            // preferred size (lineWidthPx). A BoxLayout would honor that maximum
+            // and clamp the component below the section width, clipping the
+            // centered text. Wrapping each preview in a BorderLayout row stretches
+            // it to the full section width (BorderLayout ignores maximum size), so
+            // the text — centered internally within lineWidthPx — is never clipped.
+            var pageBackground = FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND);
+            var stackedPreview = new JPanel();
+            stackedPreview.setLayout(new BoxLayout(stackedPreview, BoxLayout.Y_AXIS));
+            stackedPreview.setOpaque(true);
+            stackedPreview.setBackground(pageBackground);
+            stackedPreview.add(createFullWidthPreviewRow(titlePreview, pageBackground));
+            stackedPreview.add(createFullWidthPreviewRow(subtitlePreview, pageBackground));
+
+            add(createPreviewSection(stackedPreview));
         }
 
         private JPanel createTitleSection() {
@@ -461,30 +535,13 @@ public class SongSettingsDialog extends StandardDialog {
 
             addSeparator(section);
 
-            // Build the title row by hand so the field stretches to fill the
-            // remaining width. addLabeledField uses a FlowLayout, which would
-            // pin the field to its fixed column width instead.
-            var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
-            var titleRow = new JPanel(new BorderLayout(horizontalGap, 0));
-            // Match the leading inset addLabeledField's FlowLayout gives the
-            // number row, whose hgap also pads before the label.
-            titleRow.setBorder(BorderFactory.createEmptyBorder(0, horizontalGap, 0, 0));
-            titleRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+            addFilledFieldRow(
+                section,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE),
+                titleField
+            );
 
-            var titleLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE));
-            titleLabel.setLabelFor(titleField);
-            titleRow.add(titleLabel, BorderLayout.WEST);
-            titleRow.add(titleField, BorderLayout.CENTER);
-            section.add(titleRow);
-
-            addLargeSeparator(section);
-            section.add(createTakePanel());
-
-            addSectionSeparator(section);
-            var separator = new JSeparator();
-            separator.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(separator);
-            addSectionSeparator(section);
+            addSeparator(section);
 
             section.add(FontSettingRow.create(
                 getMainFrame(),
@@ -493,8 +550,55 @@ public class SongSettingsDialog extends StandardDialog {
                 titlePreview::getFont,
                 this::applyTitleFont
             ));
+
+            addLargeSeparator(section);
+            section.add(createTakePanel());
+
             UIUtils.setFlexibleWidth(section);
             return section;
+        }
+
+        private JPanel createSubtitleSection() {
+            var section = new BaseDialog.TitledSection(
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_SUBTITLE)
+            );
+
+            addFilledFieldRow(
+                section,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SUBTITLE),
+                subtitleField
+            );
+
+            addSeparator(section);
+            section.add(FontSettingRow.create(
+                getMainFrame(),
+                subtitleFontLabel,
+                FontKey.SUBTITLE,
+                subtitlePreview::getFont,
+                this::applySubtitleFont
+            ));
+
+            UIUtils.setFlexibleWidth(section);
+            return section;
+        }
+
+        // Build the field row by hand so the field stretches to fill the
+        // remaining width. addLabeledField uses a FlowLayout, which would
+        // pin the field to its fixed column width instead.
+        private void addFilledFieldRow(JPanel section, String labelText, JComponent field) {
+            var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
+            var row = new JPanel(new BorderLayout(horizontalGap, 0));
+
+            // Match the leading inset addLabeledField's FlowLayout gives the
+            // number row, whose hgap also pads before the label.
+            row.setBorder(BorderFactory.createEmptyBorder(0, horizontalGap, 0, 0));
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            var label = new JLabel(labelText);
+            label.setLabelFor(field);
+            row.add(label, BorderLayout.WEST);
+            row.add(field, BorderLayout.CENTER);
+            section.add(row);
         }
 
         private void applyTitleFont(Font font) {
@@ -503,14 +607,43 @@ public class SongSettingsDialog extends StandardDialog {
             titlePreview.repaint();
         }
 
+        private void applySubtitleFont(Font font) {
+            subtitlePreview.setFont(font);
+            subtitlePreview.revalidate();
+            subtitlePreview.repaint();
+        }
+
         Font getTitleFont() {
             return titlePreview.getFont();
         }
 
+        Font getSubtitleFont() {
+            return subtitlePreview.getFont();
+        }
+
+        String getSubtitleText() {
+            return subtitleField.getText();
+        }
+
         private void updateTitlePreview() {
-            titlePreview.setPreviewTitle(
+            titlePreview.setPreviewText(
                 Song.numberedTitle(numberField.getText(), titleField.getText())
             );
+        }
+
+        private void updateSubtitlePreview() {
+            var text = subtitleField.getText();
+            subtitlePreview.setPreviewText(text);
+
+            // The subtitle preview collapses to zero height when empty and expands
+            // when non-empty. The dialog is packed to a fixed height at show time,
+            // so re-pack on the empty <-> non-empty transition to fit the new height.
+            var empty = text.isEmpty();
+
+            if (empty != subtitlePreviewEmpty) {
+                subtitlePreviewEmpty = empty;
+                repackToContent();
+            }
         }
 
         private JPanel createTakePanel() {
@@ -548,14 +681,22 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected boolean getData() {
             var song = getSong();
+            var fonts = requireScoreView().getDocumentFonts();
             titlePreview.setSong(song);
+            subtitlePreview.setSong(song);
             FontSettingRow.applyFont(
-                requireScoreView().getDocumentFonts().getFont(FontKey.TITLE),
+                fonts.getFont(FontKey.TITLE),
                 titleFontLabel,
                 this::applyTitleFont
             );
+            FontSettingRow.applyFont(
+                fonts.getFont(FontKey.SUBTITLE),
+                subtitleFontLabel,
+                this::applySubtitleFont
+            );
             numberField.setText(song.getNumber());
             titleField.setText(song.getTitle());
+            subtitleField.setText(song.getSubtitle());
             takeAction.updateEnabledState();
             updateTitlePreview();
             return true;
@@ -778,11 +919,7 @@ public class SongSettingsDialog extends StandardDialog {
                 section.add(unofficialTranslationCheck);
             }
 
-            addLargeSeparator(section);
-            var separator = new JSeparator();
-            separator.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(separator);
-            addLargeSeparator(section);
+            addHorizontalDivider(section);
 
             // addLabeledField wires setLabelFor for each row below.
             var yearLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_YEAR));
@@ -1025,7 +1162,8 @@ public class SongSettingsDialog extends StandardDialog {
                 lyricistText,
                 lyricsSource,
                 arrangement,
-                unofficialTranslation
+                unofficialTranslation,
+                textTab.getSubtitleText()
             );
             var showTranslation = !unofficialTranslation && !song.getTranslatedLyrics().isEmpty();
             return AttributionFormatter.lines(metadata, showTranslation);
@@ -1159,6 +1297,14 @@ public class SongSettingsDialog extends StandardDialog {
             }
         }
 
+    }
+
+    private static void addHorizontalDivider(TitledSection section) {
+        addLargeSeparator(section);
+        var separator = new JSeparator();
+        separator.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.add(separator);
+        addLargeSeparator(section);
     }
 
     private final class MusicTab extends BaseDialog.Tab {
@@ -1418,7 +1564,7 @@ public class SongSettingsDialog extends StandardDialog {
 
         @Override
         protected void initContents() {
-            var mainFrame = SongSettingsDialog.this.getMainFrame();
+            var mainFrame = getMainFrame();
 
             var previewPadding = FlatLafProps.getInsets(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PREVIEW_PADDING);
 

@@ -166,7 +166,8 @@ class SongIOTest extends UnitTest {
             var m = song.getMetadata();
             song.setMetadata(new SongMetadata(
                 "", m.number(), "", "", m.month(), m.day(),
-                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation()
+                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
+                ""
             ));
         }
         song.setUnderLyrics("");
@@ -194,7 +195,8 @@ class SongIOTest extends UnitTest {
             var m = song.getMetadata();
             song.setMetadata(new SongMetadata(
                 m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
-                m.composer(), m.lyricist(), m.lyricsSource(), true, m.unofficialTranslation()
+                m.composer(), m.lyricist(), m.lyricsSource(), true, m.unofficialTranslation(),
+                ""
             ));
         }
         var xml = writeSongToString(song);
@@ -211,7 +213,8 @@ class SongIOTest extends UnitTest {
             var m = song.getMetadata();
             song.setMetadata(new SongMetadata(
                 "Heart & Soul", m.number(), "New York", "2024", m.month(), m.day(),
-                "Composer <Name>", m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation()
+                "Composer <Name>", m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
+                ""
             ));
         }
         song.setUnderLyrics("under");
@@ -249,7 +252,8 @@ class SongIOTest extends UnitTest {
             var m = song.getMetadata();
             song.setMetadata(new SongMetadata(
                 m.title(), m.number(), m.place(), m.year(), 3, 15,
-                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation()
+                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
+                ""
             ));
         }
         var xml = writeSongToString(song);
@@ -294,7 +298,8 @@ class SongIOTest extends UnitTest {
             var m = song.getMetadata();
             song.setMetadata(new SongMetadata(
                 m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
-                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true
+                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true,
+                ""
             ));
         }
         var xml = writeSongToString(song);
@@ -765,7 +770,8 @@ class SongIOTest extends UnitTest {
             song.setMetadata(new SongMetadata(
                 "My Song", String.valueOf(NON_DEFAULT_NUMBER), "London", "2024",
                 NON_DEFAULT_MONTH, NON_DEFAULT_DAY,
-                "Bach", Song.SRI_CHINMOY, Song.LyricsSource.TEXT, true, true
+                "Bach", Song.SRI_CHINMOY, Song.LyricsSource.TEXT, true, true,
+                ""
             ));
             song.setUnderLyrics("under");
             song.setBanglaLyrics("bangla");
@@ -1740,6 +1746,60 @@ class SongIOTest extends UnitTest {
                   </notes>
                 </song>
                 """.formatted(blob);
+        }
+    }
+
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
+    @Nested
+    class SubtitleRoundTrip {
+
+        // T1: subtitle text survives save → load and is distinct from title and number.
+        // This closes the silent positional-swap risk: all three fields are String, so
+        // a mid-record insert of subtitle could silently swap values. The test uses
+        // three distinct values and asserts each is routed to the correct accessor.
+        @Test
+        void testSubtitleSurvivesRoundTripAndIsDistinctFromTitleAndNumber() throws Exception {
+            var song = new Song();
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                "My Title", "42", current.place(), current.year(),
+                current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                "My Subtitle"
+            ));
+
+            var reloaded = roundTrip(song);
+
+            assertThat(reloaded.getTitle())
+                .as("title must survive round-trip and not be confused with subtitle")
+                .isEqualTo("My Title");
+            assertThat(reloaded.getNumber())
+                .as("number must survive round-trip and not be confused with subtitle")
+                .isEqualTo("42");
+            assertThat(reloaded.getSubtitle())
+                .as("subtitle must survive round-trip")
+                .isEqualTo("My Subtitle");
+        }
+
+        // T2: an empty subtitle is omitted from the written XML (no <subtitle> tag).
+        // The reload side — a tag-less file yielding an empty subtitle — is covered by
+        // the populated round-trip test exercising the same load path.
+        @Test
+        void testEmptySubtitleOmitsTag() throws Exception {
+            var song = new Song();
+            // subtitle defaults to "" in a new Song — no explicit set needed.
+            assertThat(song.getSubtitle()).isEmpty();
+
+            var sw = new StringWriter();
+            var pw = new PrintWriter(sw);
+            SongIO.writeSong(song, DocumentFonts.defaultsFromPrefs(), pw);
+            pw.flush();
+            var xml = sw.toString();
+
+            assertThat(xml)
+                .as("empty subtitle must not produce a <subtitle> tag in the XML")
+                .doesNotContain("<subtitle>");
         }
     }
 }

@@ -77,7 +77,7 @@ class SongTextProcessingTest extends UnitTest {
             current.month(), current.day(),
             current.composer(), current.lyricist(),
             current.lyricsSource(), current.arrangement(),
-            current.unofficialTranslation()
+            current.unofficialTranslation(), current.subtitle()
         ));
 
         assertThat(song.getTitle()).isEqualTo("hello world a");

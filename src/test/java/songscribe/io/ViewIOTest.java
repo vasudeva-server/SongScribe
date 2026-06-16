@@ -96,10 +96,10 @@ class ViewIOTest extends UnitTest {
     class WriteView {
 
         // The number of font roles serialized by writeView (one per FontKey value).
-        private static final int FONT_ROLE_COUNT = 7;
+        private static final int FONT_ROLE_COUNT = 8;
 
         @Test
-        void testWriteViewSerializesAllSevenFontRoles() {
+        void testWriteViewSerializesAllEightFontRoles() {
             // Ensure every role's name and size survive the write path.
             var fonts = DocumentFonts.defaultsFromPrefs();
             var output = captureWriteView(fonts);
@@ -204,7 +204,9 @@ class ViewIOTest extends UnitTest {
             assertThat(fonts.getFont(FontKey.TITLE).getPSName()).isEqualTo(expectedTitle.getPSName());
             assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(CUSTOM_TITLE_FONT_SIZE);
 
-            // Remaining roles fall through to prefs defaults.
+            // Remaining roles fall through to prefs defaults — including SUBTITLE (T4:
+            // old file lacking <subtitlefont> tag must fall back to the prefs default).
+            assertRoleMatchesPrefs(fonts, FontKey.SUBTITLE,        PrefsKey.SUBTITLE_FONT,         PrefsKey.SUBTITLE_FONT_SIZE);
             assertRoleMatchesPrefs(fonts, FontKey.LYRICS,          PrefsKey.LYRICS_FONT,           PrefsKey.LYRICS_FONT_SIZE);
             assertRoleMatchesPrefs(fonts, FontKey.ATTRIBUTION,     PrefsKey.ATTRIBUTION_FONT,      PrefsKey.ATTRIBUTION_FONT_SIZE);
             assertRoleMatchesPrefs(fonts, FontKey.SUB_ATTRIBUTION, PrefsKey.SUB_ATTRIBUTION_FONT,  PrefsKey.SUB_ATTRIBUTION_FONT_SIZE);
@@ -244,7 +246,7 @@ class ViewIOTest extends UnitTest {
     class RoundTrip {
 
         @Test
-        void testWriteViewAndViewReaderPreserveAllSevenRoles() {
+        void testWriteViewAndViewReaderPreserveAllEightRoles() {
             // This is the primary correctness guarantee for the write path: every font
             // role written by writeView must survive a ViewReader parse unchanged.
             var original = buildAllRolesFonts();
@@ -266,6 +268,7 @@ class ViewIOTest extends UnitTest {
         private static DocumentFonts buildAllRolesFonts() {
             var fonts = new DocumentFonts();
             fonts.setFont(FontKey.TITLE,           "LatoPlus-Bold",    ROUND_TRIP_TITLE_SIZE);
+            fonts.setFont(FontKey.SUBTITLE,        "LatoPlus-Regular", ROUND_TRIP_SUBTITLE_SIZE);
             fonts.setFont(FontKey.LYRICS,          "LatoPlus-Regular", ROUND_TRIP_LYRICS_SIZE);
             fonts.setFont(FontKey.ATTRIBUTION,     "LatoPlus-Regular", ROUND_TRIP_ATTRIBUTION_SIZE);
             fonts.setFont(FontKey.SUB_ATTRIBUTION, "LatoPlus-Regular", ROUND_TRIP_SUB_ATTRIBUTION_SIZE);
@@ -431,6 +434,7 @@ class ViewIOTest extends UnitTest {
 
     // Distinct sizes used for round-trip testing so each role is individually verifiable.
     private static final int ROUND_TRIP_TITLE_SIZE = 32;
+    private static final int ROUND_TRIP_SUBTITLE_SIZE = 28;
     private static final int ROUND_TRIP_LYRICS_SIZE = 18;
     private static final int ROUND_TRIP_ATTRIBUTION_SIZE = 16;
     private static final int ROUND_TRIP_SUB_ATTRIBUTION_SIZE = 15;

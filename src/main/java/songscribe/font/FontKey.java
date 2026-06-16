@@ -20,9 +20,10 @@
 
 package songscribe.font;
 
-/** The seven document-level font roles managed by {@link DocumentFonts}. */
+/** The eight document-level font roles managed by {@link DocumentFonts}. */
 public enum FontKey {
     TITLE,
+    SUBTITLE,
     LYRICS,
     ATTRIBUTION,
     SUB_ATTRIBUTION,

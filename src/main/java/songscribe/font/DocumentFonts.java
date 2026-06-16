@@ -24,19 +24,39 @@ import java.awt.Font;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.util.MyFontUtils;
 
 /**
- * Mutable holder for the seven document-level font roles.
+ * Mutable holder for the eight document-level font roles.
  *
  * <p>Only {@code ScoreView} and the load path retain a reference to this object.
  * External code receives individual {@link Font} instances or reads through
  * the {@link DocumentFontsHolder} interface.
  */
 public final class DocumentFonts implements DocumentFontsHolder {
+
+    /**
+     * Maps each font role to its corresponding name and size {@link PrefsKey} pair.
+     * Declared once here; both {@link #defaultsFromPrefs()} and
+     * {@link #defaultsFromSystemDefaults()} iterate over this table.
+     */
+    private record FontPrefsKeys(FontKey key, PrefsKey nameKey, PrefsKey sizeKey) {}
+
+    private static final FontPrefsKeys[] FONT_PREFS_KEYS = {
+        new FontPrefsKeys(FontKey.TITLE,           PrefsKey.TITLE_FONT,           PrefsKey.TITLE_FONT_SIZE),
+        new FontPrefsKeys(FontKey.SUBTITLE,        PrefsKey.SUBTITLE_FONT,        PrefsKey.SUBTITLE_FONT_SIZE),
+        new FontPrefsKeys(FontKey.LYRICS,          PrefsKey.LYRICS_FONT,          PrefsKey.LYRICS_FONT_SIZE),
+        new FontPrefsKeys(FontKey.ATTRIBUTION,     PrefsKey.ATTRIBUTION_FONT,     PrefsKey.ATTRIBUTION_FONT_SIZE),
+        new FontPrefsKeys(FontKey.SUB_ATTRIBUTION, PrefsKey.SUB_ATTRIBUTION_FONT, PrefsKey.SUB_ATTRIBUTION_FONT_SIZE),
+        new FontPrefsKeys(FontKey.ANNOTATION,      PrefsKey.ANNOTATION_FONT,      PrefsKey.ANNOTATION_FONT_SIZE),
+        new FontPrefsKeys(FontKey.FOOTNOTE,        PrefsKey.FOOTNOTE_FONT,        PrefsKey.FOOTNOTE_FONT_SIZE),
+        new FontPrefsKeys(FontKey.BANGLA,          PrefsKey.BANGLA_FONT,          PrefsKey.BANGLA_FONT_SIZE),
+    };
 
     private final EnumMap<FontKey, Font> fonts = new EnumMap<>(FontKey.class);
 
@@ -73,15 +93,7 @@ public final class DocumentFonts implements DocumentFontsHolder {
      * {@link FontKey} to {@link PrefsKey}.
      */
     public static DocumentFonts defaultsFromPrefs() {
-        var result = new DocumentFonts();
-        result.setFont(FontKey.TITLE,       Prefs.getString(PrefsKey.TITLE_FONT),       Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
-        result.setFont(FontKey.LYRICS,      Prefs.getString(PrefsKey.LYRICS_FONT),      Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
-        result.setFont(FontKey.ATTRIBUTION,     Prefs.getString(PrefsKey.ATTRIBUTION_FONT),     Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
-        result.setFont(FontKey.SUB_ATTRIBUTION, Prefs.getString(PrefsKey.SUB_ATTRIBUTION_FONT), Prefs.getInt(PrefsKey.SUB_ATTRIBUTION_FONT_SIZE));
-        result.setFont(FontKey.ANNOTATION,      Prefs.getString(PrefsKey.ANNOTATION_FONT),      Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
-        result.setFont(FontKey.FOOTNOTE,    Prefs.getString(PrefsKey.FOOTNOTE_FONT),    Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
-        result.setFont(FontKey.BANGLA,      Prefs.getString(PrefsKey.BANGLA_FONT),      Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
-        return result;
+        return buildFrom(Prefs::getString, Prefs::getInt);
     }
 
     /**
@@ -89,14 +101,24 @@ public final class DocumentFonts implements DocumentFontsHolder {
      * ignoring any user preference overrides. Used by reset actions in settings dialogs.
      */
     public static DocumentFonts defaultsFromSystemDefaults() {
+        return buildFrom(Prefs::getDefaultString, Prefs::getDefaultInt);
+    }
+
+    /**
+     * Table-driven builder: iterates {@link #FONT_PREFS_KEYS} and calls the supplied
+     * value-source functions to resolve each font name and size. Callers pass either
+     * the user-preference accessors or the system-default accessors.
+     */
+    private static DocumentFonts buildFrom(
+        Function<PrefsKey, String> nameSource,
+        ToIntFunction<PrefsKey> sizeSource
+    ) {
         var result = new DocumentFonts();
-        result.setFont(FontKey.TITLE,       Prefs.getDefaultString(PrefsKey.TITLE_FONT),       Prefs.getDefaultInt(PrefsKey.TITLE_FONT_SIZE));
-        result.setFont(FontKey.LYRICS,      Prefs.getDefaultString(PrefsKey.LYRICS_FONT),      Prefs.getDefaultInt(PrefsKey.LYRICS_FONT_SIZE));
-        result.setFont(FontKey.ATTRIBUTION,     Prefs.getDefaultString(PrefsKey.ATTRIBUTION_FONT),     Prefs.getDefaultInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
-        result.setFont(FontKey.SUB_ATTRIBUTION, Prefs.getDefaultString(PrefsKey.SUB_ATTRIBUTION_FONT), Prefs.getDefaultInt(PrefsKey.SUB_ATTRIBUTION_FONT_SIZE));
-        result.setFont(FontKey.ANNOTATION,      Prefs.getDefaultString(PrefsKey.ANNOTATION_FONT),      Prefs.getDefaultInt(PrefsKey.ANNOTATION_FONT_SIZE));
-        result.setFont(FontKey.FOOTNOTE,    Prefs.getDefaultString(PrefsKey.FOOTNOTE_FONT),    Prefs.getDefaultInt(PrefsKey.FOOTNOTE_FONT_SIZE));
-        result.setFont(FontKey.BANGLA,      Prefs.getDefaultString(PrefsKey.BANGLA_FONT),      Prefs.getDefaultInt(PrefsKey.BANGLA_FONT_SIZE));
+
+        for (var entry : FONT_PREFS_KEYS) {
+            result.setFont(entry.key(), nameSource.apply(entry.nameKey()), sizeSource.applyAsInt(entry.sizeKey()));
+        }
+
         return result;
     }
 

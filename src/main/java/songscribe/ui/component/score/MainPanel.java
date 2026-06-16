@@ -35,6 +35,7 @@ import songscribe.dom.ScaleContext;
  * Contains:
  * <ul>
  *   <li>{@link TitleComponent} - song title</li>
+ *   <li>{@link SubtitleComponent} - song subtitle (collapses when empty)</li>
  *   <li>{@link StaffPanel} - all staff lines</li>
  *   <li>{@link TextPanel} - under-lyrics sections (lyrics, Bangla, translation)</li>
  *   <li>{@link FootnotesComponent} - footnotes</li>
@@ -50,8 +51,20 @@ public class MainPanel extends JPanel {
      * Margin from previous section to score top
      */
     public static final double SCORE_MARGIN_TOP_SS = 1.5;  // 12px
+
+    // BoxLayout Y_AXIS sibling stack order (top to bottom):
+    //   titleComponent
+    //   subtitleComponent   (zero height when subtitle is empty)
+    //   scoreMarginTop strut
+    //   staffPanel
+    //   textPanel
+    //   footnotesComponent
+
     /** Title component. */
     private final TitleComponent titleComponent;
+
+    /** Subtitle component (collapses to (0,0) when subtitle is empty). */
+    private final SubtitleComponent subtitleComponent;
 
     /** Staff panel containing all staff lines. */
     private final StaffPanel staffPanel;
@@ -81,6 +94,9 @@ public class MainPanel extends JPanel {
         titleComponent = new TitleComponent();
         titleComponent.setAlignmentX(LEFT_ALIGNMENT);
 
+        subtitleComponent = new SubtitleComponent();
+        subtitleComponent.setAlignmentX(LEFT_ALIGNMENT);
+
         staffPanel = new StaffPanel();
         staffPanel.setAlignmentX(LEFT_ALIGNMENT);
 
@@ -91,6 +107,7 @@ public class MainPanel extends JPanel {
         footnotesComponent.setAlignmentX(LEFT_ALIGNMENT);
 
         add(titleComponent);
+        add(subtitleComponent);
         add(Box.createVerticalStrut(scoreMarginTop));
         add(staffPanel);
         add(textPanel);
@@ -105,6 +122,7 @@ public class MainPanel extends JPanel {
     public void setSong(Song song) {
         this.song = song;
         titleComponent.setSong(song);
+        subtitleComponent.setSong(song);
         staffPanel.setSong(song);
         textPanel.setSong(song);
         footnotesComponent.setSong(song);
@@ -128,6 +146,13 @@ public class MainPanel extends JPanel {
      */
     public TitleComponent getTitleComponent() {
         return titleComponent;
+    }
+
+    /**
+     * Returns the subtitle component.
+     */
+    public SubtitleComponent getSubtitleComponent() {
+        return subtitleComponent;
     }
 
     /**
@@ -201,6 +226,7 @@ public class MainPanel extends JPanel {
         }
 
         var titleSize = titleComponent.getPreferredSize();
+        var subtitleSize = subtitleComponent.getPreferredSize();
         var scoreSize = staffPanel.getPreferredSize();
         var textSize = textPanel.getPreferredSize();
         var footnotesSize = footnotesComponent.getPreferredSize();
@@ -209,9 +235,9 @@ public class MainPanel extends JPanel {
             titleSize.width,
             Math.max(scoreSize.width, Math.max(textSize.width, footnotesSize.width))
         );
-        var height = titleSize.height;
+        var height = titleSize.height + subtitleSize.height;
 
-        if (titleSize.height > 0 && scoreSize.height > 0) {
+        if (height > 0 && scoreSize.height > 0) {
             height += scoreMarginTop;
         }
 

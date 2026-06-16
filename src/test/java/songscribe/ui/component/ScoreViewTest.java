@@ -201,7 +201,8 @@ class ScoreViewTest extends UnitTest {
                 "Mélodie", "3",
                 current3.place(), current3.year(), current3.month(), current3.day(),
                 current3.composer(), current3.lyricist(),
-                current3.lyricsSource(), current3.arrangement(), current3.unofficialTranslation()
+                current3.lyricsSource(), current3.arrangement(), current3.unofficialTranslation(),
+                current3.subtitle()
             ));
             scoreView.setSong(song);
 
@@ -218,7 +219,8 @@ class ScoreViewTest extends UnitTest {
                 "Title", "A",
                 currentA.place(), currentA.year(), currentA.month(), currentA.day(),
                 currentA.composer(), currentA.lyricist(),
-                currentA.lyricsSource(), currentA.arrangement(), currentA.unofficialTranslation()
+                currentA.lyricsSource(), currentA.arrangement(), currentA.unofficialTranslation(),
+                currentA.subtitle()
             ));
             scoreView.setSong(song);
 
@@ -235,7 +237,8 @@ class ScoreViewTest extends UnitTest {
                 "Mélodie", "",
                 currentEmpty.place(), currentEmpty.year(), currentEmpty.month(), currentEmpty.day(),
                 currentEmpty.composer(), currentEmpty.lyricist(),
-                currentEmpty.lyricsSource(), currentEmpty.arrangement(), currentEmpty.unofficialTranslation()
+                currentEmpty.lyricsSource(), currentEmpty.arrangement(), currentEmpty.unofficialTranslation(),
+                currentEmpty.subtitle()
             ));
             scoreView.setSong(song);
 
