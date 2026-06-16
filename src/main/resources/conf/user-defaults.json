@@ -1,6 +1,5 @@
 {
   "appearance": "system",
-  "autoSaveAfterStripShortA": true,
   "control": "MOUSE",
   "dialogGeometry": {},
   "exportDpi": 600,
@@ -19,7 +18,6 @@
   "recentFiles": [],
   "showTips": true,
   "startupAction": "DO_NOTHING",
-  "stripShortA": true,
   "tempoChangePercent": 100,
   "tipIndex": 0
 }

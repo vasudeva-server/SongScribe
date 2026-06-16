@@ -64,8 +64,6 @@ public final class Prefs {
         Map.entry("playinsertingnote", PrefsKey.PLAY_INSERTED_NOTE),
         Map.entry("playInsertingNote", PrefsKey.PLAY_INSERTED_NOTE),
         Map.entry("withrepeat", PrefsKey.PLAY_WITH_REPEATS),
-        Map.entry("strip-short-a", PrefsKey.STRIP_SHORT_A),
-        Map.entry("autosave-after-strip-short-a", PrefsKey.AUTO_SAVE_AFTER_STRIP_SHORT_A),
         Map.entry("tipindex", PrefsKey.TIP_INDEX),
         Map.entry("tempochange", PrefsKey.TEMPO_CHANGE_PERCENT),
         Map.entry("dpi", PrefsKey.EXPORT_DPI),
@@ -79,7 +77,9 @@ public final class Prefs {
         Map.entry("firstrun", PrefsKey.FIRST_RUN)
     );
 
-    private static final List<String> OBSOLETE_KEYS = List.of("colorizeNote", "defaultProfile");
+    private static final List<String> OBSOLETE_KEYS = List.of(
+        "autoSaveAfterStripShortA", "colorizeNote", "defaultProfile", "stripShortA"
+    );
 
     // Initialized last to ensure all static fields above are ready before the constructor runs.
     private static final Prefs INSTANCE = new Prefs();

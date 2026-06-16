@@ -29,7 +29,6 @@ package songscribe.prefs;
 public enum PrefsKey {
     ALL("all"),
     APPEARANCE("appearance"),
-    AUTO_SAVE_AFTER_STRIP_SHORT_A("autoSaveAfterStripShortA"),
     CONTROL("control"),
     DIALOG_GEOMETRY("dialogGeometry"),
     EXPORT_DPI("exportDpi"),
@@ -48,7 +47,6 @@ public enum PrefsKey {
     RECENT_FILES("recentFiles"),
     SHOW_TIPS("showTips"),
     STARTUP_ACTION("startupAction"),
-    STRIP_SHORT_A("stripShortA"),
     TEMPO_CHANGE_PERCENT("tempoChangePercent"),
     TIP_INDEX("tipIndex");
 
