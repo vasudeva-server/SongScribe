@@ -144,9 +144,12 @@ public class HorizontalSpacingCalculator {
         // Pre-process: identify beam groups and their column ranges
         var beamGroupRanges = identifyBeamGroupRanges(columns);
 
-        // Calculate first note position
+        // Calculate first note position, anchoring the column's left edge — not just the note
+        // head — at FIRST_NOTE_OFFSET from the header, so accidentals don't crowd the key signature.
         var firstXSs = calculateFirstNoteXSs(line);
-        columns.getFirst().setXSs(firstXSs);
+        var firstColumn = columns.getFirst();
+        firstXSs -= firstColumn.getLeftExtentSs();
+        firstColumn.setXSs(firstXSs);
 
         var startIndex = 1;
 

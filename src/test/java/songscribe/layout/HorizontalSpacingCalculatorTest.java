@@ -49,6 +49,8 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     private static final double NARROW_SYLLABLE_WIDTH_SS = 2.0;
     // The gap a column reserves to the next syllable (lyric space width), as ElementColumnBuilder sets it.
     private static final double SYLLABLE_GAP_SS = 0.5;
+    // Wider than any real accidental; lets tests exercise the accidental-present path without
+    // needing SMuFL font metrics (which require NoteGeometry.initializeAccidentalWidths()).
     private static final double ACCIDENTAL_LEFT_EXTENT_SS = -0.625;
     private static final double GRACE_RIGHT_EXTENT_SS = 1.0;
     private static final double BEAM_RIGHT_EXTENT_SS = 2.0;
@@ -79,6 +81,32 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             + line.getKeyAccidentalCount() * HorizontalSpacingCalculator.KEY_ACCIDENTAL_WIDTH_SS
             + HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS;
         assertThat(column.getXSs()).isCloseTo(expectedXSs, within(TOLERANCE));
+    }
+
+    // #121: first note with an accidental must have its column's left edge (not its note head)
+    // placed at FIRST_NOTE_OFFSET from the header, so the accidental doesn't crowd the key signature.
+    @Test
+    void testFirstNoteWithAccidentalHasColumnLeftEdgeAtOffset() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine(); // C major, 0 accidentals
+        var element = ElementType.CROTCHET.newInstance();
+        element.setAccidental(StaffElement.Accidental.FLAT);
+        var column = new ElementColumn(
+            element,
+            Collections.emptyList(),
+            ACCIDENTAL_LEFT_EXTENT_SS,
+            Engraving.NOTE_HEAD_WIDTH_SS,
+            0.0, 0.0, null, 0.0, false
+        );
+
+        calculator.calculatePositions(List.of(column), line);
+
+        var headerRightEdgeSs = HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line.getKeyAccidentalCount());
+        var expectedLeftEdgeSs = headerRightEdgeSs + HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS;
+        assertThat(column.getLeftEdgeXSs()).isCloseTo(expectedLeftEdgeSs, within(TOLERANCE));
+        // The note head sits one accidental-width right of the offset, so the accidental fills the gap.
+        var expectedHeadXSs = expectedLeftEdgeSs + Math.abs(ACCIDENTAL_LEFT_EXTENT_SS);
+        assertThat(column.getXSs()).isCloseTo(expectedHeadXSs, within(TOLERANCE));
     }
 
     // Row 24: calculateHeaderRightEdgeSs(n) = G_CLEF_WIDTH_SS + n * KEY_ACCIDENTAL_WIDTH_SS
@@ -403,6 +431,28 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             .doesNotThrowAnyException();
     }
 
+    // calculatePositions: two plain non-beamed columns — second column gets the normal
+    // column-to-column spacing (exercises the else branch of the beam-group dispatch).
+    @Test
+    void testCalculatePositionsTwoPlainColumnsUsesDefaultSpacing() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+
+        calculator.calculatePositions(List.of(col0, col1), line);
+
+        var expectedCol1XSs = col0.getXSs() + PLAIN_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        assertThat(col1.getXSs()).isCloseTo(expectedCol1XSs, within(TOLERANCE));
+    }
+
     // #418 (without lyrics): a beam group of eighth notes packs at the same default gap as
     // unbeamed notes.
     @Test
@@ -605,6 +655,34 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         // Tight beam gap is smaller than the default note-to-note gap
         assertThat(col1.getXSs() - col0.getXSs())
             .isLessThan(BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS);
+    }
+
+    // #121: a first note that is both beamed and carries an accidental must also have its column's
+    // left edge (not its note head) at FIRST_NOTE_OFFSET from the header. The first-column beam
+    // path routes the adjusted firstXSs through handleBeamGroup, which re-sets the first column — so
+    // a regression there (e.g. passing the unadjusted header offset) would crowd the key signature
+    // even though the non-beamed path stays correct.
+    @Test
+    void testFirstBeamedNoteWithAccidentalHasColumnLeftEdgeAtOffset() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine(); // C major, 0 accidentals
+
+        var accidentalElement = ElementType.SEMIQUAVER.newInstance();
+        accidentalElement.setAccidental(StaffElement.Accidental.FLAT);
+        var col0 = new ElementColumn(
+            accidentalElement, Collections.emptyList(),
+            ACCIDENTAL_LEFT_EXTENT_SS, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col1 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1), line);
+
+        var headerRightEdgeSs = HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line.getKeyAccidentalCount());
+        var expectedLeftEdgeSs = headerRightEdgeSs + HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS;
+        assertThat(col0.getLeftEdgeXSs()).isCloseTo(expectedLeftEdgeSs, within(TOLERANCE));
     }
 
     // Row 32 (with lyrics): beam-group expands evenly when lyric spacing exceeds tight spacing
