@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -254,6 +255,40 @@ class ElementColumnBuilderTest extends UnitTest {
         var line = detachedLine();
 
         assertThat(builder.buildColumns(line)).isEmpty();
+    }
+
+    // #418 builder tagging (end-to-end): buildColumns tags each column with its beam group via
+    // a real Line + Beam range elements, and two adjacent beam groups receive distinct ids so
+    // the spacing calculator keeps them apart.
+    @Test
+    void testBuildColumnsTagsAdjacentBeamGroupsWithDistinctIds() {
+        var line = lineWith(
+            ElementType.CROTCHET,
+            ElementType.QUAVER, ElementType.QUAVER,
+            ElementType.SEMIQUAVER, ElementType.SEMIQUAVER
+        );
+        // Two separate beam groups: the quavers and, immediately after, the semiquavers
+        line.addBeaming(new Beam(line.getElement(1), line.getElement(2)));
+        line.addBeaming(new Beam(line.getElement(3), line.getElement(4)));
+
+        var columns = new ElementColumnBuilder(mock(LyricRenderMetrics.class)).buildColumns(line);
+
+        // Unbeamed crotchet has no beam group
+        assertThat(columns.get(0).isBeamed()).isFalse();
+        assertThat(columns.get(0).getBeamGroupId()).isEqualTo(ElementColumn.NO_BEAM_GROUP);
+
+        // First group: both quavers beamed and share one id
+        assertThat(columns.get(1).isBeamed()).isTrue();
+        assertThat(columns.get(2).isBeamed()).isTrue();
+        assertThat(columns.get(2).getBeamGroupId()).isEqualTo(columns.get(1).getBeamGroupId());
+
+        // Second group: both semiquavers beamed and share one id
+        assertThat(columns.get(3).isBeamed()).isTrue();
+        assertThat(columns.get(4).isBeamed()).isTrue();
+        assertThat(columns.get(4).getBeamGroupId()).isEqualTo(columns.get(3).getBeamGroupId());
+
+        // The two groups are distinct, so the calculator will not merge them
+        assertThat(columns.get(3).getBeamGroupId()).isNotEqualTo(columns.get(1).getBeamGroupId());
     }
 
     // Row 22: calculateStemTop/BottomSs for stem-up, stem-down, and stemless elements

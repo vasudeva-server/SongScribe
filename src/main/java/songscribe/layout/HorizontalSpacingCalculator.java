@@ -36,7 +36,7 @@ import songscribe.smufl.Engraving;
  * <ul>
  *   <li>Non-proportional spacing - rhythmic value does not determine horizontal distance</li>
  *   <li>Lyric-driven spacing - syllable widths determine column gaps</li>
- *   <li>Minimum clearance for accidentals - only increases spacing when needed</li>
+ *   <li>Minimum gap measured to a column's leftmost glyph - a note shifts for an accidental only when needed</li>
  *   <li>Beam group coordination - tight internal spacing unless lyrics force expansion</li>
  * </ul>
  * <p>
@@ -48,7 +48,6 @@ import songscribe.smufl.Engraving;
  *       <li>Calculate minimum spacing based on previous column's right extent</li>
  *       <li>Calculate lyric spacing requirement (syllable widths + gap)</li>
  *       <li>Take maximum of minimum and lyric spacing</li>
- *       <li>Check accidental clearance and push right if needed</li>
  *     </ul>
  *   </li>
  *   <li>Special handling for beam groups:
@@ -70,26 +69,28 @@ import songscribe.smufl.Engraving;
 public class HorizontalSpacingCalculator {
 
     /**
-     * Minimum horizontal gap between adjacent note columns.
-     * This is the absolute minimum; lyric spacing may require more.
+     * Minimum horizontal gap between adjacent note columns — the single minimum gap
+     * applied wherever a gap can be squeezed (normal spacing and justification alike).
+     * A column's left extent includes its accidental, so the minimum spacing is measured
+     * to the leftmost glyph (the accidental when one is present); this is what makes a
+     * note shift right only when the accidental would otherwise come closer than this gap
+     * to the previous element. Lyric spacing may require more.
      */
-    public static final double MIN_COLUMN_GAP_SS = 0.125;  // 1px
+    public static final double MIN_COLUMN_GAP_SS = 1.0;  // 8px
     /**
      * Default horizontal gap between adjacent note columns when no lyrics are present.
      * Provides comfortable spacing for music without lyrics.
      */
     public static final double DEFAULT_COLUMN_GAP_SS = 2.5;  // 20px
     /**
-     * Minimum clearance for accidentals from previous column's right extent.
-     * Accidentals only push spacing when this minimum would be violated.
-     */
-    public static final double ACCIDENTAL_CLEARANCE_SS = 0.125;  // 1px
-    /**
      * Gap between a grace note and its host note.
      */
     public static final double GRACE_NOTE_GAP_SS = 2.0;  // 16px
     /**
-     * Minimum internal spacing within a beam group (tight, regular spacing).
+     * Tight internal spacing within a beam group, used between two beamed notes that are both
+     * shorter than an eighth note (sixteenths and faster). A pair touching an eighth note (or
+     * longer) instead packs at {@link #DEFAULT_COLUMN_GAP_SS}, the same gap as unbeamed notes;
+     * the longer note of the pair governs (refs #418).
      * Beam groups may widen if lyrics under them require it.
      */
     public static final double BEAM_GROUP_MIN_INTERNAL_GAP_SS = 1.5;  // 12px
@@ -199,11 +200,14 @@ public class HorizontalSpacingCalculator {
         ElementColumn prevColumn,
         ElementColumn currColumn) {
 
-        // Grace note → host note: use tight grace note spacing
+        // Grace note → host note: use tight grace note spacing. The comfortable gap is measured
+        // to the host note head — the accidental is excluded so it does not widen the gap — while
+        // the geometric minimum, which does use the full left extent, acts as a hard floor to
+        // ensure no overlap (refs #418).
         if (prevColumn.getElement().getType().isGraceNote()) {
-            var spacingSs = prevColumn.getRightExtentSs()
-                + GRACE_NOTE_GAP_SS
-                + Math.abs(currColumn.getLeftExtentSs());
+            var comfortableSpacingSs = prevColumn.getRightExtentSs() + GRACE_NOTE_GAP_SS;
+            var minimumSpacingSs = calculateMinimumColumnSpacingSs(prevColumn, currColumn);
+            var spacingSs = Math.max(comfortableSpacingSs, minimumSpacingSs);
             return prevColumn.getXSs() + spacingSs;
         }
 
@@ -216,23 +220,14 @@ public class HorizontalSpacingCalculator {
         // Use default comfortable spacing as a floor, then expand further if lyrics require it.
         // This prevents the case where only one side has a lyric from producing
         // tighter-than-default note-head-to-note-head spacing.
-        var defaultSpacingSs = calculateDefaultColumnSpacingSs(prevColumn, currColumn);
+        var defaultSpacingSs = calculateDefaultColumnSpacingSs(prevColumn);
         var requiredSpacingSs = Math.max(minimumSpacingSs, Math.max(defaultSpacingSs, lyricSpacingSs));
 
-        // Calculate tentative X position
+        // Calculate tentative X position. The minimum-spacing floor (which uses the full
+        // left extent, accidental included) already keeps MIN_COLUMN_GAP to the current
+        // column's leftmost glyph, so a note shifts right only when its accidental would
+        // otherwise crowd the previous element — no separate accidental push is needed.
         var nextXSs = prevColumn.getXSs() + requiredSpacingSs;
-
-        // Check accidental clearance and push right if needed
-        if (needsAccidentalPush(currColumn)) {
-            var accidentalClearanceSs = ACCIDENTAL_CLEARANCE_SS;
-            var prevRightEdgeSs = prevColumn.getRightEdgeXSs();
-            var currAccidentalLeftSs = nextXSs + currColumn.getLeftExtentSs();
-            var neededPushSs = prevRightEdgeSs + accidentalClearanceSs - currAccidentalLeftSs;
-
-            if (neededPushSs > 0) {
-                nextXSs += neededPushSs;
-            }
-        }
 
         // Check glissando spacing: ensure enough horizontal room for the glissando
         var spacingSs = nextXSs - prevColumn.getXSs();
@@ -288,30 +283,18 @@ public class HorizontalSpacingCalculator {
     /**
      * Calculates default spacing for columns when no lyrics are present.
      * <p>
-     * Uses DEFAULT_COLUMN_GAP to provide comfortable spacing without lyrics.
+     * Uses DEFAULT_COLUMN_GAP to provide comfortable spacing without lyrics. The comfortable
+     * gap is measured to the current note head, not to its accidental, so a note with an
+     * accidental does not widen the gap beyond the comfortable default. The minimum-spacing
+     * floor — which does use the full left extent — takes over and shifts the note only when
+     * the accidental would otherwise come closer than {@link #MIN_COLUMN_GAP_SS} to the
+     * previous element (refs #418).
      *
      * @param prevColumn Previous column
-     * @param currColumn Current column
      * @return Default spacing in ss
      */
-    private static double calculateDefaultColumnSpacingSs(
-        ElementColumn prevColumn,
-        ElementColumn currColumn) {
-
-        return prevColumn.getRightExtentSs() + DEFAULT_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
-    }
-
-    /**
-     * Returns {@code true} iff the current column's element has an accidental.
-     * The caller is responsible for computing whether actual clearance is violated
-     * and pushing the column right if needed.
-     *
-     * @param currColumn Current column
-     * @return true if the current column's element has an accidental
-     */
-    private static boolean needsAccidentalPush(ElementColumn currColumn) {
-        // Only check if current note has an accidental
-        return currColumn.getElement().getAccidental() != null;
+    private static double calculateDefaultColumnSpacingSs(ElementColumn prevColumn) {
+        return prevColumn.getRightExtentSs() + DEFAULT_COLUMN_GAP_SS;
     }
 
     /**
@@ -394,16 +377,24 @@ public class HorizontalSpacingCalculator {
         var ranges = new ArrayList<BeamGroupRange>();
 
         for (var i = 0; i < columns.size(); i++) {
-            if (!columns.get(i).isBeamed()) {
+            var startColumn = columns.get(i);
+
+            if (!startColumn.isBeamed()) {
                 continue;
             }
 
-            // Find the end of this consecutive beamed run
+            // Extend the run only while consecutive columns belong to the SAME beam group.
+            // Two adjacent beam groups (e.g. a quaver group followed by a semiquaver group)
+            // must not be merged, or the first note of the next group would be spaced as if
+            // it continued the previous beam (refs #418).
             var start = i;
             var end = i;
+            var beamGroupId = startColumn.getBeamGroupId();
 
             for (var j = i + 1; j < columns.size(); j++) {
-                if (columns.get(j).isBeamed()) {
+                var nextColumn = columns.get(j);
+
+                if (nextColumn.isBeamed() && nextColumn.getBeamGroupId() == beamGroupId) {
                     end = j;
                 } else {
                     break;
@@ -435,6 +426,24 @@ public class HorizontalSpacingCalculator {
         }
 
         return null;
+    }
+
+    /**
+     * Returns the comfortable internal gap between two adjacent beamed columns.
+     * The longer note of the pair governs the gap: a pair touching an eighth note (or longer)
+     * packs at the default note-to-note gap, while the tighter beam-internal gap applies only
+     * when both notes are shorter than an eighth (sixteenths or faster). {@link LayoutEngine#beamCount}
+     * returns 1 for an eighth note (quaver) and a larger value for shorter notes (refs #418).
+     *
+     * @param prev Previous beamed column
+     * @param curr Current beamed column
+     * @return Internal gap in ss
+     */
+    private static double beamInternalGapSs(ElementColumn prev, ElementColumn curr) {
+        var bothShorterThanEighth = LayoutEngine.beamCount(prev.getElement()) > 1
+            && LayoutEngine.beamCount(curr.getElement()) > 1;
+
+        return bothShorterThanEighth ? BEAM_GROUP_MIN_INTERNAL_GAP_SS : DEFAULT_COLUMN_GAP_SS;
     }
 
     /**
@@ -475,8 +484,7 @@ public class HorizontalSpacingCalculator {
             return;
         }
 
-        // Step 1: Calculate tight internal spacing
-        var tightGapSs = BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+        // Step 1: Calculate baseline internal spacing (before any lyric expansion)
         var tightPositions = new ArrayList<Double>();
         var currentXSs = startXSs;
 
@@ -486,8 +494,14 @@ public class HorizontalSpacingCalculator {
             var prev = beamColumns.get(i - 1);
             var curr = beamColumns.get(i);
 
-            // Use tight gap, ignoring syllables
-            var spacingSs = prev.getRightExtentSs() + tightGapSs + Math.abs(curr.getLeftExtentSs());
+            // Use the per-pair beam-internal gap, ignoring syllables. The comfortable gap is
+            // measured to the note head — the accidental is excluded so it does not inflate
+            // beam-internal spacing — while the minimum, which uses the full left extent, is a
+            // hard geometric floor (refs #418).
+            var internalGapSs = beamInternalGapSs(prev, curr);
+            var comfortableSpacingSs = prev.getRightExtentSs() + internalGapSs;
+            var minimumSpacingSs = calculateMinimumColumnSpacingSs(prev, curr);
+            var spacingSs = Math.max(comfortableSpacingSs, minimumSpacingSs);
             spacingSs = ensureGlissandoSpacing(prev, curr, spacingSs);
             currentXSs += spacingSs;
             tightPositions.add(currentXSs);

@@ -122,7 +122,8 @@ public class ElementColumnBuilder {
     public ElementColumn buildColumn(StaffElement element, Line line) {
         // Determine beam membership first — needed for right extent calculation
         var elementIndex = line.getElementIndex(element);
-        var beamed = line.findBeamAt(elementIndex) != null;
+        var beam = line.findBeamAt(elementIndex);
+        var beamed = beam != null;
 
         // Calculate horizontal extents
         var leftExtentSs = calculateLeftExtentSs(element);
@@ -160,6 +161,9 @@ public class ElementColumnBuilder {
         column.setMinGapToNextSyllableSs(isHyphenated
             ? lyricRenderMetrics.preferredHyphenCellWidthSs()
             : lyricRenderMetrics.spaceWidthSs());
+        // Tag the column with its beam group (anchor index) so adjacent beam groups stay
+        // distinct and the spacing calculator does not merge them.
+        column.setBeamGroupId(beam != null ? beam.getAnchorElementIndex() : ElementColumn.NO_BEAM_GROUP);
 
         return column;
     }
@@ -177,10 +181,10 @@ public class ElementColumnBuilder {
      *         0.0 with no accidental, negative when an accidental is present
      */
     public static double calculateLeftExtentSs(StaffElement element) {
-        // Element head left edge is at xSs (the glyph origin), so the base extent is 0
+        // Element head left edge is at xSs (the glyph origin), so the extent starts at 0
         var extentSs = 0.0;
 
-        // Add accidental width if present
+        // Subtract accidental width if present
         if (element.getAccidental() != null) {
             var accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(element);
             extentSs -= (accidentalWidthSs + ACCIDENTAL_GAP_SS);

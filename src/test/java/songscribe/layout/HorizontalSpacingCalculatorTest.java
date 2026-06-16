@@ -50,6 +50,9 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     private static final double ACCIDENTAL_LEFT_EXTENT_SS = -0.625;
     private static final double GRACE_RIGHT_EXTENT_SS = 1.0;
     private static final double BEAM_RIGHT_EXTENT_SS = 2.0;
+    // A deliberately wide accidental left extent, chosen so the geometric minimum spacing
+    // exceeds the comfortable gap and therefore governs (shifting the note head).
+    private static final double WIDE_ACCIDENTAL_LEFT_EXTENT_SS = -3.0;
 
     // Row 23 (strengthened): calculatePositions places first column at clef+keyAccidentals+firstNoteOffset
     // (pinned concrete value — not self-referential against calculateFirstElementXSs)
@@ -135,11 +138,12 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
 
         var result = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, currColumn);
 
-        var absLeft = Math.abs(NEGATIVE_LEFT_EXTENT_SS);
+        // Comfortable spacing measures to the note head, so the left extent does not widen it.
         var expectedWithDefault = PREV_COLUMN_X_SS + PLAIN_RIGHT_EXTENT_SS
-            + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS + absLeft;
+            + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        // The minimum-spacing floor does include the full left extent.
         var wouldBeWithMin = PREV_COLUMN_X_SS + PLAIN_RIGHT_EXTENT_SS
-            + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS + absLeft;
+            + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS + Math.abs(NEGATIVE_LEFT_EXTENT_SS);
         assertThat(result).isEqualTo(expectedWithDefault);
         assertThat(result).isGreaterThan(wouldBeWithMin);
     }
@@ -192,7 +196,8 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         assertThat(result).isEqualTo(PREV_COLUMN_X_SS + expectedLyricSpacing);
     }
 
-    // Row 28: accidental clearance is satisfied by default gap (no extra push needed)
+    // Row 28: the comfortable gap is measured to the note head, so an accidental does not inflate
+    // default spacing. The geometric minimum (full left extent) is still a hard floor.
     @Test
     void testAccidentalClearanceSatisfiedByDefaultGap() {
         var currElement = ElementType.CROTCHET.newInstance();
@@ -209,15 +214,125 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
 
         var result = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, currColumn);
 
-        // Default gap already provides clearance — no extra push applied
+        // Comfortable spacing measures to the note head, not the accidental; the minimum uses the
+        // full extent. Comfortable dominates here: prevRight + DEFAULT_GAP.
         var expectedXSs = PREV_COLUMN_X_SS + PLAIN_RIGHT_EXTENT_SS
-            + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS + Math.abs(ACCIDENTAL_LEFT_EXTENT_SS);
+            + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
         assertThat(result).isEqualTo(expectedXSs);
-        // Invariant: accidental left edge >= prevRightEdge + ACCIDENTAL_CLEARANCE
+        // Invariant: accidental left edge >= prevRightEdge + the minimum column gap
         var prevRightEdge = PREV_COLUMN_X_SS + PLAIN_RIGHT_EXTENT_SS;
         var accidentalLeft = result + ACCIDENTAL_LEFT_EXTENT_SS;
         assertThat(accidentalLeft).isGreaterThanOrEqualTo(
-            prevRightEdge + HorizontalSpacingCalculator.ACCIDENTAL_CLEARANCE_SS
+            prevRightEdge + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS
+        );
+    }
+
+    // #418: a normal accidental that fits within the default gap must not shift the head.
+    // The column with an accidental has the same xSs as one without — comfortable spacing
+    // (measured to the note head) dominates over minimum spacing for both.
+    @Test
+    void testAccidentalWithinDefaultGapDoesNotShiftHead() {
+        var prevColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        // Column without accidental: leftExtent = 0.0
+        var plainColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        // Column with accidental: leftExtent = ACCIDENTAL_LEFT_EXTENT_SS
+        var accidentalElement = ElementType.CROTCHET.newInstance();
+        accidentalElement.setAccidental(StaffElement.Accidental.SHARP);
+        var accidentalColumn = new ElementColumn(
+            accidentalElement, Collections.emptyList(),
+            ACCIDENTAL_LEFT_EXTENT_SS, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        prevColumn.setXSs(PREV_COLUMN_X_SS);
+
+        var plainXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, plainColumn);
+        var accidentalXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, accidentalColumn);
+
+        // Both must land at the comfortable default-gap position (refs #418)
+        assertThat(accidentalXSs)
+            .as("accidental head x should match plain head x (no shift)")
+            .isCloseTo(plainXSs, within(TOLERANCE));
+    }
+
+    // #418: a very wide accidental (minimum spacing dominates) shifts the head by exactly the
+    // minimum-space overflow, and the accidental's left edge is MIN_COLUMN_GAP_SS clear
+    // of the previous column's right edge.
+    @Test
+    void testWideAccidentalMinimumSpacingDominatesAndLeavesAccidentalClear() {
+        // leftExtentSs wide enough that min spacing > comfortable spacing:
+        // min = prevRight + MIN_GAP + 3.0 = 2.0 + 1.0 + 3.0 = 6.0
+        // comfortable = prevRight + DEFAULT_GAP = 2.0 + 2.5 = 4.5
+        // so minimum dominates.
+        var wideLeftExtentSs = WIDE_ACCIDENTAL_LEFT_EXTENT_SS;
+        var prevColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var wideColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            wideLeftExtentSs, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var plainColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        prevColumn.setXSs(PREV_COLUMN_X_SS);
+
+        var wideXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, wideColumn);
+        var plainXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, plainColumn);
+
+        var comfortableSpacingSs = PLAIN_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        var minimumSpacingSs = PLAIN_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS
+            + Math.abs(wideLeftExtentSs);
+        var expectedShiftSs = minimumSpacingSs - comfortableSpacingSs;
+
+        // Head shifts by exactly the minimum-space overflow (refs #418)
+        assertThat(wideXSs).isEqualTo(plainXSs + expectedShiftSs);
+        // Accidental left edge is exactly MIN_COLUMN_GAP_SS clear of the previous right edge
+        var prevRightEdgeSs = PREV_COLUMN_X_SS + PLAIN_RIGHT_EXTENT_SS;
+        var accidentalLeftEdgeSs = wideXSs + wideLeftExtentSs;
+        assertThat(accidentalLeftEdgeSs).isCloseTo(
+            prevRightEdgeSs + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS,
+            within(TOLERANCE)
+        );
+    }
+
+    // #418 boundary: at the exact crossover where comfortable spacing equals minimum spacing,
+    // the head still lands at the comfortable default-gap position and the accidental's left edge
+    // is exactly MIN_COLUMN_GAP_SS clear of the previous column's right edge. Pins the
+    // Math.max(comfortable, minimum) decision at its tipping point.
+    @Test
+    void testAccidentalAtComfortableMinimumBoundaryLeavesAccidentalExactlyClear() {
+        // abs(leftExtent) = DEFAULT_GAP - MIN_GAP makes minimum spacing equal comfortable spacing.
+        var boundaryLeftExtentSs = -(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS
+            - HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS);
+        var prevColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var boundaryColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            boundaryLeftExtentSs, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        prevColumn.setXSs(PREV_COLUMN_X_SS);
+
+        var result = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, boundaryColumn);
+
+        // Comfortable and minimum coincide: head lands at the comfortable default-gap position.
+        var expectedXSs = PREV_COLUMN_X_SS + PLAIN_RIGHT_EXTENT_SS
+            + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        assertThat(result).isCloseTo(expectedXSs, within(TOLERANCE));
+        // The accidental's left edge is exactly MIN_COLUMN_GAP_SS clear of the previous right edge.
+        var prevRightEdgeSs = PREV_COLUMN_X_SS + PLAIN_RIGHT_EXTENT_SS;
+        var accidentalLeftEdgeSs = result + boundaryLeftExtentSs;
+        assertThat(accidentalLeftEdgeSs).isCloseTo(
+            prevRightEdgeSs + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS,
+            within(TOLERANCE)
         );
     }
 
@@ -243,15 +358,16 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             .isLessThan(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS);
     }
 
-    // Row 30: glissando spacing is enforced within beam group (tight gap < MIN_GLISSANDO_RESERVATION_SS)
-    // In a beam group the tight internal gap (1.5ss) < MIN_GLISSANDO_RESERVATION_SS (1.6ss),
-    // so a glissando on the prev column forces extra spacing.
+    // Row 30: glissando spacing is enforced within beam group (tight gap < MIN_GLISSANDO_RESERVATION_SS).
+    // Two beamed semiquavers (both shorter than an eighth) take the tight internal gap (1.5ss),
+    // which is < MIN_GLISSANDO_RESERVATION_SS (1.6ss), so a glissando on the prev column forces
+    // extra spacing.
     @Test
     void testGlissandoSpacingEnforcedInBeamGroup() {
         var calculator = new HorizontalSpacingCalculator();
         var line = detachedLine();
 
-        var glissandoElement = ElementType.CROTCHET.newInstance();
+        var glissandoElement = ElementType.SEMIQUAVER.newInstance();
         glissandoElement.setGlissando(StaffElement.Glissando.Type.CONNECTED);
 
         var col0 = new ElementColumn(
@@ -263,7 +379,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
         );
         var col2 = new ElementColumn(
-            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
             0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
         );
 
@@ -285,9 +401,10 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             .doesNotThrowAnyException();
     }
 
-    // Row 32 (without lyrics): beam-group gets tight internal spacing < DEFAULT_COLUMN_GAP_SS
+    // #418 (without lyrics): a beam group of eighth notes packs at the same default gap as
+    // unbeamed notes.
     @Test
-    void testBeamGroupTightSpacingWithoutLyrics() {
+    void testBeamGroupEighthNotesUseDefaultGap() {
         var calculator = new HorizontalSpacingCalculator();
         var line = detachedLine();
 
@@ -306,11 +423,159 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
 
         calculator.calculatePositions(List.of(col0, col1, col2), line);
 
+        var defaultSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        assertThat(col2.getXSs() - col1.getXSs()).isCloseTo(defaultSpacing, within(TOLERANCE));
+    }
+
+    // #418 (without lyrics): a beam group of notes shorter than an eighth (e.g. sixteenths)
+    // keeps the tighter beam-internal gap, smaller than the default note-to-note gap.
+    @Test
+    void testBeamGroupShorterThanEighthUsesTightGap() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col2 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1, col2), line);
+
         var tightSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
         assertThat(col2.getXSs() - col1.getXSs()).isCloseTo(tightSpacing, within(TOLERANCE));
         // Tight beam gap is smaller than the default note-to-note gap
         assertThat(col2.getXSs() - col1.getXSs())
             .isLessThan(BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS);
+    }
+
+    // #418 (without lyrics): in a mixed beam group the LONGER note of each pair governs the gap.
+    // Quaver → semiquaver uses the default gap (the quaver governs); semiquaver → semiquaver uses
+    // the tight gap (both shorter than an eighth). Mirrors the issue example "quaver, semiquaver,
+    // semiquaver — the space between the quaver and the semiquaver should be the normal space".
+    @Test
+    void testBeamGroupQuaverThenSemiquaversSpacesQuaverPairNormally() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col2 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col3 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1, col2, col3), line);
+
+        // Quaver → semiquaver: the longer note (quaver) governs → default gap
+        var defaultSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        assertThat(col2.getXSs() - col1.getXSs()).isCloseTo(defaultSpacing, within(TOLERANCE));
+        // Semiquaver → semiquaver: both shorter than an eighth → tight gap
+        var tightSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+        assertThat(col3.getXSs() - col2.getXSs()).isCloseTo(tightSpacing, within(TOLERANCE));
+    }
+
+    // #418 (without lyrics): the LONGER note governs regardless of order — the quaver wins even
+    // when it is the second note of the pair. Semiquaver → semiquaver uses the tight gap;
+    // semiquaver → quaver uses the default gap. Mirrors the issue example "two semiquavers
+    // followed by a quaver".
+    @Test
+    void testBeamGroupSemiquaversThenQuaverSpacesQuaverPairNormally() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col2 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col3 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1, col2, col3), line);
+
+        // Semiquaver → semiquaver: both shorter than an eighth → tight gap
+        var tightSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+        assertThat(col2.getXSs() - col1.getXSs()).isCloseTo(tightSpacing, within(TOLERANCE));
+        // Semiquaver → quaver: the longer note (quaver) governs → default gap
+        var defaultSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        assertThat(col3.getXSs() - col2.getXSs()).isCloseTo(defaultSpacing, within(TOLERANCE));
+    }
+
+    // #418: two adjacent beam groups must not be merged. A quaver group followed by a separate
+    // semiquaver group: the first note of the second group is spaced from the previous group
+    // with the normal note-to-note gap, not a (tight) beam-internal gap.
+    @Test
+    void testAdjacentBeamGroupsAreNotMerged() {
+        var firstBeamGroupId = 0;
+        var secondBeamGroupId = 1;
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        // Group A: two beamed quavers
+        var colA1 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        colA1.setBeamGroupId(firstBeamGroupId);
+        var colA2 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        colA2.setBeamGroupId(firstBeamGroupId);
+        // Group B: two beamed semiquavers, a separate beam group
+        var colB1 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        colB1.setBeamGroupId(secondBeamGroupId);
+        var colB2 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        colB2.setBeamGroupId(secondBeamGroupId);
+
+        calculator.calculatePositions(List.of(col0, colA1, colA2, colB1, colB2), line);
+
+        var defaultSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        var tightSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+
+        // Within group A (both quavers): default gap
+        assertThat(colA2.getXSs() - colA1.getXSs()).isCloseTo(defaultSpacing, within(TOLERANCE));
+        // Boundary between the two groups: normal note-to-note spacing, NOT a tight beam gap
+        assertThat(colB1.getXSs() - colA2.getXSs()).isCloseTo(defaultSpacing, within(TOLERANCE));
+        // Within group B (both semiquavers): tight beam gap
+        assertThat(colB2.getXSs() - colB1.getXSs()).isCloseTo(tightSpacing, within(TOLERANCE));
     }
 
     // Row 32 (with lyrics): beam-group expands evenly when lyric spacing exceeds tight spacing
@@ -364,5 +629,202 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         // handleBeamGroup with columnCount=1 falls back to calculateNextColumnXSs → default spacing
         var expectedSpacing = PLAIN_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
         assertThat(col1.getXSs() - col0.getXSs()).isCloseTo(expectedSpacing, within(TOLERANCE));
+    }
+
+    // #418 beam path: a beamed eighth note with a normal accidental must not shift its head — the
+    // eighth-note beam gap (the default note-to-note gap) absorbs the accidental (comfortable
+    // spacing is measured to the note head and dominates over minimum spacing for a normal-width
+    // accidental).
+    @Test
+    void testBeamNoteWithNormalAccidentalDoesNotShiftHead() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var accidentalElement = ElementType.QUAVER.newInstance();
+        accidentalElement.setAccidental(StaffElement.Accidental.SHARP);
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        // First beam column: plain, no accidental
+        var col1Plain = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        // Second beam column: plain, no accidental (reference)
+        var col2Plain = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        // Second beam column: normal accidental (leftExtent negative, head still at origin)
+        var col2Accidental = new ElementColumn(
+            accidentalElement, Collections.emptyList(),
+            ACCIDENTAL_LEFT_EXTENT_SS, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1Plain, col2Plain), line);
+        var plainXSs = col2Plain.getXSs();
+
+        // Reset col0 and col1 positions (calculatePositions overwrites them)
+        col0.setXSs(0.0);
+        col1Plain.setXSs(0.0);
+        calculator.calculatePositions(List.of(col0, col1Plain, col2Accidental), line);
+        var accidentalXSs = col2Accidental.getXSs();
+
+        // Normal accidental is absorbed by the beam gap — head must not shift (refs #418)
+        assertThat(accidentalXSs).isCloseTo(plainXSs, within(TOLERANCE));
+    }
+
+    // #418 beam path: a beamed note with a wide accidental (minimum spacing dominates) shifts by
+    // exactly the minimum-space overflow, leaving the accidental MIN_COLUMN_GAP_SS clear of
+    // the previous beamed note's right edge.
+    @Test
+    void testBeamNoteWithWideAccidentalShiftsByMinimumSpaceOverflow() {
+        // wideLeftExtentSs = -3.0 → minimum = BEAM_RIGHT + MIN_GAP + 3.0 = 6.0
+        //                            comfortable = BEAM_RIGHT + DEFAULT_GAP = 4.5
+        //                            minimum dominates; shift = 6.0 - 4.5 = 1.5
+        var wideLeftExtentSs = WIDE_ACCIDENTAL_LEFT_EXTENT_SS;
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var wideElement = ElementType.QUAVER.newInstance();
+        wideElement.setAccidental(StaffElement.Accidental.SHARP);
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        // Wide accidental: leftExtentSs = wideLeftExtentSs (head still at origin)
+        var col2Wide = new ElementColumn(
+            wideElement, Collections.emptyList(),
+            wideLeftExtentSs, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col2Plain = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1, col2Plain), line);
+        var plainXSs = col2Plain.getXSs();
+
+        col0.setXSs(0.0);
+        col1.setXSs(0.0);
+        calculator.calculatePositions(List.of(col0, col1, col2Wide), line);
+        var wideXSs = col2Wide.getXSs();
+
+        var comfortableSpacingSs = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        var minimumSpacingSs = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS
+            + Math.abs(wideLeftExtentSs);
+        var expectedShiftSs = minimumSpacingSs - comfortableSpacingSs;
+
+        // Head shifts by exactly the minimum-space overflow (refs #418)
+        assertThat(wideXSs).isCloseTo(plainXSs + expectedShiftSs, within(TOLERANCE));
+        // Accidental left edge is exactly MIN_COLUMN_GAP_SS clear of the previous beam column's right edge
+        var col1RightEdgeSs = col1.getXSs() + BEAM_RIGHT_EXTENT_SS;
+        var accidentalLeftEdgeSs = wideXSs + wideLeftExtentSs;
+        assertThat(accidentalLeftEdgeSs).isCloseTo(
+            col1RightEdgeSs + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS,
+            within(TOLERANCE)
+        );
+    }
+
+    // #418 grace → host: a host note with a normal accidental must not shift — the grace gap
+    // absorbs the accidental (comfortable is measured to the head and dominates over minimum).
+    @Test
+    void testGraceToHostWithNormalAccidentalDoesNotShiftHead() {
+        var prevColumn = new ElementColumn(
+            ElementType.GRACE_QUAVER.newInstance(), Collections.emptyList(),
+            0.0, GRACE_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var hostPlain = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var accidentalElement = ElementType.CROTCHET.newInstance();
+        accidentalElement.setAccidental(StaffElement.Accidental.SHARP);
+        // Normal accidental: leftExtentSs = ACCIDENTAL_LEFT_EXTENT_SS (head still at origin)
+        var hostAccidental = new ElementColumn(
+            accidentalElement, Collections.emptyList(),
+            ACCIDENTAL_LEFT_EXTENT_SS, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+        );
+        prevColumn.setXSs(PREV_COLUMN_X_SS);
+
+        var plainXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, hostPlain);
+        var accidentalXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, hostAccidental);
+
+        // Normal accidental fits within the grace gap — host head must not shift (refs #418)
+        assertThat(accidentalXSs).isCloseTo(plainXSs, within(TOLERANCE));
+    }
+
+    // #418 grace → host: a host note with a wide accidental (minimum spacing dominates) shifts by
+    // exactly the minimum-space overflow.
+    @Test
+    void testGraceToHostWithWideAccidentalShiftsByMinimumSpaceOverflow() {
+        // wideLeftExtentSs = -3.0 → minimum = GRACE_RIGHT + MIN_GAP + 3.0 = 5.0
+        //                            comfortable = GRACE_RIGHT + GRACE_GAP = 3.0
+        //                            minimum dominates; shift = 5.0 - 3.0 = 2.0
+        var wideLeftExtentSs = WIDE_ACCIDENTAL_LEFT_EXTENT_SS;
+        var prevColumn = new ElementColumn(
+            ElementType.GRACE_QUAVER.newInstance(), Collections.emptyList(),
+            0.0, GRACE_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var hostPlain = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var wideElement = ElementType.CROTCHET.newInstance();
+        wideElement.setAccidental(StaffElement.Accidental.SHARP);
+        // Wide accidental: leftExtentSs = wideLeftExtentSs (head still at origin)
+        var hostWide = new ElementColumn(
+            wideElement, Collections.emptyList(),
+            wideLeftExtentSs, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+        );
+        prevColumn.setXSs(PREV_COLUMN_X_SS);
+
+        var plainXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, hostPlain);
+        var wideXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, hostWide);
+
+        var comfortableSpacingSs = GRACE_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.GRACE_NOTE_GAP_SS;
+        var minimumSpacingSs = GRACE_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS
+            + Math.abs(wideLeftExtentSs);
+        var expectedShiftSs = minimumSpacingSs - comfortableSpacingSs;
+
+        // Head shifts by exactly the minimum-space overflow (refs #418)
+        assertThat(wideXSs).isCloseTo(plainXSs + expectedShiftSs, within(TOLERANCE));
+    }
+
+    // #418 regular → grace: a grace note carrying its own accidental (after a regular note)
+    // uses the default path (prev is not a grace note). The comfortable gap is measured to the
+    // note head, so the head lands at the same xSs as a plain grace note.
+    @Test
+    void testRegularToGraceWithAccidentalDoesNotShiftHead() {
+        var prevColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var gracePlain = new ElementColumn(
+            ElementType.GRACE_QUAVER.newInstance(), Collections.emptyList(),
+            0.0, GRACE_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var accidentalElement = ElementType.GRACE_QUAVER.newInstance();
+        accidentalElement.setAccidental(StaffElement.Accidental.SHARP);
+        // Grace note with normal accidental: leftExtentSs = ACCIDENTAL_LEFT_EXTENT_SS
+        // (the head itself is still at the glyph origin)
+        var graceAccidental = new ElementColumn(
+            accidentalElement, Collections.emptyList(),
+            ACCIDENTAL_LEFT_EXTENT_SS, GRACE_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        prevColumn.setXSs(PREV_COLUMN_X_SS);
+
+        var plainXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, gracePlain);
+        var accidentalXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, graceAccidental);
+
+        // Accidental on grace note is absorbed by the default gap — head must not shift (refs #418)
+        assertThat(accidentalXSs).isCloseTo(plainXSs, within(TOLERANCE));
     }
 }

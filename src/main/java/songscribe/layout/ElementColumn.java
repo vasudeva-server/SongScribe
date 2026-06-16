@@ -40,11 +40,14 @@ import songscribe.dom.StaffElement;
  * </ul>
  * <p>
  * Construction is two-phase: {@link ElementColumnBuilder} creates the column and immediately sets
- * {@link #minGapToNextSyllableSs}, then {@link HorizontalSpacingCalculator} sets {@link #xSs} once
- * positions are computed. Every other field is immutable. Use {@link ElementColumnBuilder} to create
- * instances.
+ * {@link #minGapToNextSyllableSs} and {@link #beamGroupId}, then
+ * {@link HorizontalSpacingCalculator} sets {@link #xSs} once positions are computed.
+ * Every other field is immutable. Use {@link ElementColumnBuilder} to create instances.
  */
 public final class ElementColumn {
+
+    /** Beam-group id for a column that is not part of any beam group. */
+    public static final int NO_BEAM_GROUP = -1;
 
     private final StaffElement element;
     private final List<StaffElement> graceNotes;
@@ -59,6 +62,10 @@ public final class ElementColumn {
     // left edge. Always set by ElementColumnBuilder: lyric space width for non-hyphenated or
     // lyric-less columns, hyphen cell width for hyphenated ones.
     private double minGapToNextSyllableSs;
+    // Identifies which beam group this column belongs to (the beam's anchor element index),
+    // or NO_BEAM_GROUP when not beamed. Set by ElementColumnBuilder so the spacing calculator
+    // can keep adjacent beam groups separate rather than merging them.
+    private int beamGroupId = NO_BEAM_GROUP;
     // Computed X position of element head left edge (set by HorizontalSpacingCalculator)
     private double xSs = 0;
 
@@ -258,6 +265,19 @@ public final class ElementColumn {
      */
     public boolean isBeamed() {
         return beamed;
+    }
+
+    /**
+     * Returns the identifier of the beam group this column belongs to, or
+     * {@link #NO_BEAM_GROUP} if it is not beamed. Adjacent beam groups have distinct ids so
+     * the spacing calculator keeps them separate.
+     */
+    public int getBeamGroupId() {
+        return beamGroupId;
+    }
+
+    void setBeamGroupId(int beamGroupId) {
+        this.beamGroupId = beamGroupId;
     }
 
     /**
