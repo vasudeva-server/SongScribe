@@ -612,7 +612,7 @@ public class MainFrame extends JFrame implements Printable {
 
         if (scoreView != null) {
             scoreView.setSong(new Song());
-            scoreView.installDocumentFonts(DocumentFonts.defaultsFromPrefs());
+            scoreView.installDocumentFonts(DocumentFonts.defaultFonts());
             scoreView.requestFocusInWindow();
         }
 

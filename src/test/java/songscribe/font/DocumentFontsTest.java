@@ -35,7 +35,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import songscribe.UnitTest;
 import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
+import songscribe.prefs.SystemPrefsKey;
 import songscribe.util.MyFontUtils;
 
 class DocumentFontsTest extends UnitTest {
@@ -80,27 +80,29 @@ class DocumentFontsTest extends UnitTest {
     }
 
     @Nested
-    class DefaultsFromPrefs {
+    class DefaultFonts {
 
         @Test
         void testAllRolesMappedToCorrectPrefsKey() {
-            // Build fonts via defaultsFromPrefs() and verify that each FontKey reads
-            // the expected PrefsKey pair. This catches a cut-paste bug where, e.g.,
+            // Build fonts via defaultFonts() and verify that each FontKey reads
+            // the expected SystemPrefsKey pair. This catches a cut-paste bug where, e.g.,
             // TITLE uses LYRICS_FONT_SIZE or LYRICS uses TITLE_FONT — bugs the size-only
             // test cannot catch when sizes happen to differ only slightly.
-            var fonts = DocumentFonts.defaultsFromPrefs();
+            // defaultFonts() reads system defaults only, so the expected side uses
+            // getDefaultString/getDefaultInt — not the store-aware getString/getInt.
+            var fonts = DocumentFonts.defaultFonts();
 
             // Each role must produce the exact same font that setFont(key, psName, size)
             // would produce from the corresponding prefs pair — verified role by role.
             var expected = new DocumentFonts();
-            expected.setFont(FontKey.TITLE,           Prefs.getString(PrefsKey.TITLE_FONT),           Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
-            expected.setFont(FontKey.SUBTITLE,        Prefs.getString(PrefsKey.SUBTITLE_FONT),        Prefs.getInt(PrefsKey.SUBTITLE_FONT_SIZE));
-            expected.setFont(FontKey.LYRICS,          Prefs.getString(PrefsKey.LYRICS_FONT),          Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
-            expected.setFont(FontKey.ATTRIBUTION,     Prefs.getString(PrefsKey.ATTRIBUTION_FONT),     Prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
-            expected.setFont(FontKey.SUB_ATTRIBUTION, Prefs.getString(PrefsKey.SUB_ATTRIBUTION_FONT), Prefs.getInt(PrefsKey.SUB_ATTRIBUTION_FONT_SIZE));
-            expected.setFont(FontKey.ANNOTATION,      Prefs.getString(PrefsKey.ANNOTATION_FONT),      Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
-            expected.setFont(FontKey.FOOTNOTE,        Prefs.getString(PrefsKey.FOOTNOTE_FONT),        Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
-            expected.setFont(FontKey.BANGLA,          Prefs.getString(PrefsKey.BANGLA_FONT),          Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
+            expected.setFont(FontKey.TITLE,           Prefs.getDefaultString(SystemPrefsKey.TITLE_FONT),           Prefs.getDefaultInt(SystemPrefsKey.TITLE_FONT_SIZE));
+            expected.setFont(FontKey.SUBTITLE,        Prefs.getDefaultString(SystemPrefsKey.SUBTITLE_FONT),        Prefs.getDefaultInt(SystemPrefsKey.SUBTITLE_FONT_SIZE));
+            expected.setFont(FontKey.LYRICS,          Prefs.getDefaultString(SystemPrefsKey.LYRICS_FONT),          Prefs.getDefaultInt(SystemPrefsKey.LYRICS_FONT_SIZE));
+            expected.setFont(FontKey.ATTRIBUTION,     Prefs.getDefaultString(SystemPrefsKey.ATTRIBUTION_FONT),     Prefs.getDefaultInt(SystemPrefsKey.ATTRIBUTION_FONT_SIZE));
+            expected.setFont(FontKey.SUB_ATTRIBUTION, Prefs.getDefaultString(SystemPrefsKey.SUB_ATTRIBUTION_FONT), Prefs.getDefaultInt(SystemPrefsKey.SUB_ATTRIBUTION_FONT_SIZE));
+            expected.setFont(FontKey.ANNOTATION,      Prefs.getDefaultString(SystemPrefsKey.ANNOTATION_FONT),      Prefs.getDefaultInt(SystemPrefsKey.ANNOTATION_FONT_SIZE));
+            expected.setFont(FontKey.FOOTNOTE,        Prefs.getDefaultString(SystemPrefsKey.FOOTNOTE_FONT),        Prefs.getDefaultInt(SystemPrefsKey.FOOTNOTE_FONT_SIZE));
+            expected.setFont(FontKey.BANGLA,          Prefs.getDefaultString(SystemPrefsKey.BANGLA_FONT),          Prefs.getDefaultInt(SystemPrefsKey.BANGLA_FONT_SIZE));
 
             assertThat(fonts).isEqualTo(expected);
         }
@@ -109,10 +111,10 @@ class DocumentFontsTest extends UnitTest {
     /**
      * T4: The built-in subtitle default is {@code SourceSans3SongScribe-Medium} at 24 pt,
      * the value an old file that lacks a {@code <subtitlefont>} tag falls back to. This
-     * pins the value declared in {@code defaults.json} via
-     * {@link DocumentFonts#defaultsFromSystemDefaults()}, which reads the built-in
+     * pins the value declared in {@code system-defaults.json} via
+     * {@link DocumentFonts#defaultFonts()}, which reads the built-in
      * defaults only — independent of any user-preference override — so a regression in
-     * {@code defaults.json} or the {@code PrefsKey} mapping is caught on every machine.
+     * {@code system-defaults.json} or the {@code PrefsKey} mapping is caught on every machine.
      */
     @Nested
     class SubtitleDefault {
@@ -132,7 +134,7 @@ class DocumentFontsTest extends UnitTest {
         void testSubtitleDefaultsToMedium24() {
             // Read the built-in (non-overridable) default, the value used when an old
             // file has no <subtitlefont> tag. Assert it is exactly Medium 24.
-            var fonts = DocumentFonts.defaultsFromSystemDefaults();
+            var fonts = DocumentFonts.defaultFonts();
             var subtitleFont = fonts.getFont(FontKey.SUBTITLE);
 
             assertThat(subtitleFont.getSize())

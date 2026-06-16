@@ -93,7 +93,7 @@ class LineRendererTest extends UnitTest {
      * so each test only configures the state it cares about.
      */
     private static LineInvariants.Builder seededBuilder() {
-        return LineInvariants.builder(new Song(), DocumentFonts.defaultsFromPrefs())
+        return LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
             .setLayoutResult(LayoutResult.builder().build())
             .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
             .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0));
@@ -593,7 +593,7 @@ class LineRendererTest extends UnitTest {
 
         /** Builds a minimal {@link LineInvariants} for line 0 of the given song. */
         private LineInvariants invariantsFor(Song song) {
-            return LineInvariants.builder(song, DocumentFonts.defaultsFromPrefs())
+            return LineInvariants.builder(song, DocumentFonts.defaultFonts())
                 .setLayoutResult(LayoutResult.builder().build())
                 .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
                 .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0))

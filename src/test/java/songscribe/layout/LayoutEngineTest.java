@@ -135,7 +135,7 @@ class LayoutEngineTest extends UnitTest {
         var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ");
         var metrics = new LyricRenderMetrics(
             lyricsFont, ScaleContext.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
-        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultsFromPrefs());
+        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
     }
 
     /** Asserts value is not null and returns it non-null for NullAway. */

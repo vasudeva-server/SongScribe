@@ -72,7 +72,7 @@ class ScoreViewSetFontsTest extends UnitTest {
         song = new Song();
         scoreView.setSong(song);
         // Bootstrap documentFonts from prefs (mirrors the new-document path).
-        scoreView.installDocumentFonts(DocumentFonts.defaultsFromPrefs());
+        scoreView.installDocumentFonts(DocumentFonts.defaultFonts());
 
         messageCenterMock = mockStatic(MessageCenter.class);
     }
@@ -181,7 +181,7 @@ class ScoreViewSetFontsTest extends UnitTest {
             scoreView.setMainPanel(mainPanel);
 
             // Build a custom DocumentFonts with a non-default SUBTITLE font.
-            var defaults = DocumentFonts.defaultsFromPrefs();
+            var defaults = DocumentFonts.defaultFonts();
             var customFonts = new DocumentFonts(defaults);
             var expectedFont = new Font(SUBTITLE_TEST_FAMILY, Font.ITALIC, SUBTITLE_TEST_SIZE);
             customFonts.setFont(FontKey.SUBTITLE, expectedFont);

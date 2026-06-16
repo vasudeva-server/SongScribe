@@ -20,32 +20,24 @@
 package songscribe.prefs;
 
 /**
- * Type-safe enumeration of all preference keys stored in {@code defaults.json}.
+ * Type-safe enumeration of the global preference keys stored in {@code user-defaults.json}
+ * and persisted to the user's {@code prefs.json}. Per-song document settings (font names and
+ * sizes) live in the separate {@link SystemPrefsKey} enum and are never persisted.
  * {@link #ALL} is a sentinel used in notifications to indicate that multiple keys changed;
- * it does not correspond to a key in {@code defaults.json}.
+ * it does not correspond to a key in any defaults file.
  */
 public enum PrefsKey {
     ALL("all"),
-    ANNOTATION_FONT("annotationFont"),
-    ANNOTATION_FONT_SIZE("annotationFontSize"),
     APPEARANCE("appearance"),
-    ATTRIBUTION_FONT("attributionFont"),
-    ATTRIBUTION_FONT_SIZE("attributionFontSize"),
     AUTO_SAVE_AFTER_STRIP_SHORT_A("autoSaveAfterStripShortA"),
-    BANGLA_FONT("banglaFont"),
-    BANGLA_FONT_SIZE("banglaFontSize"),
     CONTROL("control"),
     DIALOG_GEOMETRY("dialogGeometry"),
     EXPORT_DPI("exportDpi"),
     FIRST_RUN("firstRun"),
-    FOOTNOTE_FONT("footnoteFont"),
-    FOOTNOTE_FONT_SIZE("footnoteFontSize"),
     IMAGE_EXPORT_FILTER("imageExportFilter"),
     INSTRUMENT("instrument"),
     LAST_SEEN_WHATS_NEW_VERSION("lastSeenWhatsNewVersion"),
     LOOP_PLAYBACK("loopPlayback"),
-    LYRICS_FONT("lyricsFont"),
-    LYRICS_FONT_SIZE("lyricsFontSize"),
     METRIC("metric"),
     PAGE_SIZE("pageSize"),
     PLAY_INSERTED_NOTE("playInsertedNote"),
@@ -57,14 +49,8 @@ public enum PrefsKey {
     SHOW_TIPS("showTips"),
     STARTUP_ACTION("startupAction"),
     STRIP_SHORT_A("stripShortA"),
-    SUB_ATTRIBUTION_FONT("subAttributionFont"),
-    SUB_ATTRIBUTION_FONT_SIZE("subAttributionFontSize"),
-    SUBTITLE_FONT("subtitleFont"),
-    SUBTITLE_FONT_SIZE("subtitleFontSize"),
     TEMPO_CHANGE_PERCENT("tempoChangePercent"),
-    TIP_INDEX("tipIndex"),
-    TITLE_FONT("titleFont"),
-    TITLE_FONT_SIZE("titleFontSize");
+    TIP_INDEX("tipIndex");
 
     private final String key;
 
@@ -72,7 +58,7 @@ public enum PrefsKey {
         this.key = key;
     }
 
-    /** Returns the JSON key string as stored in {@code defaults.json} and {@code prefs.json}. */
+    /** Returns the JSON key string as stored in {@code user-defaults.json} and {@code prefs.json}. */
     public String key() {
         return key;
     }

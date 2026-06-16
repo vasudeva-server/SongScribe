@@ -141,7 +141,7 @@ public abstract class UnitTest {
      * Serializes a song to XML and parses it back, verifying round-trip fidelity.
      */
     public static Song roundTrip(Song original) throws Exception {
-        var fonts = DocumentFonts.defaultsFromPrefs();
+        var fonts = DocumentFonts.defaultFonts();
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
         SongIO.writeSong(original, fonts, pw);

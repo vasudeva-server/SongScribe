@@ -88,7 +88,7 @@ class ArticulationStackingTest extends UnitTest {
     private static LayoutResult stackColumns(List<ElementColumn> columns) {
         var builder = new LayoutResult.Builder();
         var calculator = new VerticalStackingCalculator();
-        calculator.calculate(columns, detachedLine(), builder, LINE_WIDTH_SS, DocumentFonts.defaultsFromPrefs());
+        calculator.calculate(columns, detachedLine(), builder, LINE_WIDTH_SS, DocumentFonts.defaultFonts());
         return builder.build();
     }
 
@@ -203,7 +203,7 @@ class ArticulationStackingTest extends UnitTest {
                 new LayoutResult.StemLayout(stemTopSs, 0.0, 0.0, false));
 
             var calculator = new VerticalStackingCalculator();
-            calculator.calculate(List.of(column), detachedLine(), builder, LINE_WIDTH_SS, DocumentFonts.defaultsFromPrefs());
+            calculator.calculate(List.of(column), detachedLine(), builder, LINE_WIDTH_SS, DocumentFonts.defaultFonts());
             var result = builder.build();
 
             var layout = require(

@@ -143,7 +143,7 @@ public abstract class E2ETest {
         GuiActionRunner.execute(() -> {
             var song = new Song();
             scoreView().setSong(song);
-            scoreView().installDocumentFonts(DocumentFonts.defaultsFromPrefs());
+            scoreView().installDocumentFonts(DocumentFonts.defaultFonts());
         });
     }
 
@@ -734,7 +734,7 @@ public abstract class E2ETest {
     // -- Save/load round-trip --
 
     protected Song roundTrip(Song original) throws IOException, SAXException, ParserConfigurationException {
-        var fonts = DocumentFonts.defaultsFromPrefs();
+        var fonts = DocumentFonts.defaultFonts();
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
         SongIO.writeSong(original, fonts, pw);

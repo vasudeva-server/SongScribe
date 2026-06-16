@@ -102,7 +102,7 @@ class ScoreViewTest extends UnitTest {
         @Test
         void testInstallDocumentFontsSetsFontsFieldWithoutPostingFontChange() {
             var scoreView = new ScoreView(null);
-            var fonts = DocumentFonts.defaultsFromPrefs();
+            var fonts = DocumentFonts.defaultFonts();
 
             scoreView.installDocumentFonts(fonts);
 
@@ -124,7 +124,7 @@ class ScoreViewTest extends UnitTest {
         void testRebuildLyricRenderMetricsIsNoOpWhenSongIsNull() {
             // song == null: early return must not throw.
             var scoreView = new ScoreView(null);
-            scoreView.installDocumentFonts(DocumentFonts.defaultsFromPrefs());
+            scoreView.installDocumentFonts(DocumentFonts.defaultFonts());
 
             // documentFonts is set but song is null — must return silently.
             scoreView.rebuildLyricRenderMetrics();
@@ -153,7 +153,7 @@ class ScoreViewTest extends UnitTest {
         void testRebuildLyricRenderMetricsIsIdempotentWhenLyricsFontUnchanged() {
             var scoreView = new ScoreView(null);
             scoreView.setSong(new Song());
-            scoreView.installDocumentFonts(DocumentFonts.defaultsFromPrefs());
+            scoreView.installDocumentFonts(DocumentFonts.defaultFonts());
 
             scoreView.rebuildLyricRenderMetrics();
             var firstMetrics = scoreView.getLyricRenderMetrics();
@@ -170,7 +170,7 @@ class ScoreViewTest extends UnitTest {
             var scoreView = new ScoreView(null);
             scoreView.setSong(new Song());
 
-            var initialFonts = DocumentFonts.defaultsFromPrefs();
+            var initialFonts = DocumentFonts.defaultFonts();
             scoreView.installDocumentFonts(initialFonts);
             scoreView.rebuildLyricRenderMetrics();
             var firstMetrics = scoreView.getLyricRenderMetrics();
@@ -557,7 +557,7 @@ class ScoreViewTest extends UnitTest {
             // value large enough that any reasonable DPI pushes it past the max.
             var hugeLineWidthSs = 100_000.0;
             when(songMock.getLineWidthSs()).thenReturn(hugeLineWidthSs);
-            var fonts = DocumentFonts.defaultsFromPrefs();
+            var fonts = DocumentFonts.defaultFonts();
             try (var mock = mockStatic(SongLoader.class)) {
                 mock.when(() -> SongLoader.load(STUB_FILE))
                     .thenReturn(new SongLoadResult.Success(songMock, fonts));

@@ -135,7 +135,7 @@ class AttributionTest extends UnitTest {
          */
         @Test
         void testContentWidthSsMatchesPaneMeasurement() {
-            var fonts = DocumentFonts.defaultsFromPrefs();
+            var fonts = DocumentFonts.defaultFonts();
             var attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
             var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
 
@@ -181,7 +181,7 @@ class AttributionTest extends UnitTest {
          */
         @Test
         void testOverrideLinesAreUsedForMeasurement() {
-            var fonts = DocumentFonts.defaultsFromPrefs();
+            var fonts = DocumentFonts.defaultFonts();
             var attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
             var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
 
@@ -206,7 +206,7 @@ class AttributionTest extends UnitTest {
          */
         @Test
         void testPaneDerivedDimensionsProduceDecorationLayout() {
-            var fonts = DocumentFonts.defaultsFromPrefs();
+            var fonts = DocumentFonts.defaultFonts();
             var attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
             var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
 
@@ -260,7 +260,7 @@ class AttributionTest extends UnitTest {
          */
         @Test
         void testContentWidthIsNaturalMaxLineWidth() {
-            var fonts = DocumentFonts.defaultsFromPrefs();
+            var fonts = DocumentFonts.defaultFonts();
             var attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
             var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
 
@@ -296,7 +296,7 @@ class AttributionTest extends UnitTest {
          */
         @Test
         void testContentWidthSsIsBelowWideStaffWidth() {
-            var fonts = DocumentFonts.defaultsFromPrefs();
+            var fonts = DocumentFonts.defaultFonts();
             var attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
             var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
 

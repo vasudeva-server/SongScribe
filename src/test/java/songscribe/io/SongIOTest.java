@@ -88,7 +88,7 @@ class SongIOTest extends UnitTest {
             .hasCauseInstanceOf(NumberFormatException.class);
     }
 
-    // row 31: v1.0 document (no <view> block) → getDocumentFonts() returns defaultsFromPrefs().
+    // row 31: v1.0 document (no <view> block) → getDocumentFonts() returns defaultFonts().
     @Test
     void testGetDocumentFontsReturnsDefaultsForV10Document() throws Exception {
         var xml = """
@@ -104,8 +104,8 @@ class SongIOTest extends UnitTest {
         parser.parse(new InputSource(new StringReader(xml)), reader);
 
         assertThat(reader.getDocumentFonts())
-            .as("v1.0 doc has no <view> block; must return defaultsFromPrefs()")
-            .isEqualTo(DocumentFonts.defaultsFromPrefs());
+            .as("v1.0 doc has no <view> block; must return defaultFonts()")
+            .isEqualTo(DocumentFonts.defaultFonts());
     }
 
     @Test
@@ -540,7 +540,7 @@ class SongIOTest extends UnitTest {
     // -- helpers --
 
     private static String writeSongToString(Song song) {
-        var fonts = DocumentFonts.defaultsFromPrefs();
+        var fonts = DocumentFonts.defaultFonts();
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
         SongIO.writeSong(song, fonts, pw);
@@ -1793,7 +1793,7 @@ class SongIOTest extends UnitTest {
 
             var sw = new StringWriter();
             var pw = new PrintWriter(sw);
-            SongIO.writeSong(song, DocumentFonts.defaultsFromPrefs(), pw);
+            SongIO.writeSong(song, DocumentFonts.defaultFonts(), pw);
             pw.flush();
             var xml = sw.toString();
 

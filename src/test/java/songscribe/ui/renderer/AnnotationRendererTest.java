@@ -71,7 +71,7 @@ class AnnotationRendererTest extends UnitTest {
      * so the expected ascent value can be computed independently of the renderer.
      */
     private static Font annotationFont() {
-        return DocumentFonts.defaultsFromPrefs().getFont(FontKey.ANNOTATION);
+        return DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
     }
 
     /**

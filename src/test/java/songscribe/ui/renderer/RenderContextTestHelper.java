@@ -57,7 +57,7 @@ final class RenderContextTestHelper {
      * override the layout setters with real values.
      */
     static LineInvariants.Builder newContext(Song song) {
-        var fonts = DocumentFonts.defaultsFromPrefs();
+        var fonts = DocumentFonts.defaultFonts();
         var lyricFont = fonts.getFont(FontKey.LYRICS);
         return LineInvariants.builder(song, fonts)
             .setLayoutResult(LayoutResult.builder().build())

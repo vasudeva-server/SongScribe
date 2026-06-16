@@ -144,7 +144,7 @@ class LayoutResultTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         song.withoutMutationTracking(() -> line.addElement(0, element));
         var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
-        var lyricsFont = DocumentFonts.defaultsFromPrefs().getLyricsFont();
+        var lyricsFont = DocumentFonts.defaultFonts().getLyricsFont();
         var baselineYSs = 1.0 + StaffExtents.STAFF_HEIGHT_SS + 0.5
             + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
             + ScaleContext.fontAscentSs(lyricsFont);
@@ -182,7 +182,7 @@ class LayoutResultTest extends UnitTest {
             .addLyricBox(element, box)
             .build();
 
-        var lyricsFont = DocumentFonts.defaultsFromPrefs().getLyricsFont();
+        var lyricsFont = DocumentFonts.defaultFonts().getLyricsFont();
         var lyricRenderMetrics = new LyricRenderMetrics(lyricsFont, lyricsFont, 0.0, 0.0);
         var hit = layoutResult.hitTestLyric(
             lyricRenderMetrics,

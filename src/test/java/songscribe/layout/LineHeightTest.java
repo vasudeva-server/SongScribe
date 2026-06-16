@@ -69,7 +69,7 @@ class LineHeightTest extends UnitTest {
         var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ");
         var metrics = new LyricRenderMetrics(
             lyricsFont, ScaleContext.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
-        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultsFromPrefs());
+        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
     }
 
     @SuppressWarnings("NullAway")

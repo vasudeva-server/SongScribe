@@ -165,7 +165,7 @@ final class FontSettingRow {
 
     private static Font defaultFont(FontKey fontKey) {
         if (systemDefaultFonts == null) {
-            systemDefaultFonts = DocumentFonts.defaultsFromSystemDefaults();
+            systemDefaultFonts = DocumentFonts.defaultFonts();
         }
 
         return systemDefaultFonts.getFont(fontKey);

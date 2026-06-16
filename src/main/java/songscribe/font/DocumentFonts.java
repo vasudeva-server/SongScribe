@@ -22,13 +22,12 @@ package songscribe.font;
 
 import java.awt.Font;
 import java.util.EnumMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
 import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
+import songscribe.prefs.SystemPrefsKey;
 import songscribe.util.MyFontUtils;
 
 /**
@@ -41,21 +40,20 @@ import songscribe.util.MyFontUtils;
 public final class DocumentFonts implements DocumentFontsHolder {
 
     /**
-     * Maps each font role to its corresponding name and size {@link PrefsKey} pair.
-     * Declared once here; both {@link #defaultsFromPrefs()} and
-     * {@link #defaultsFromSystemDefaults()} iterate over this table.
+     * Maps each font role to its corresponding name and size {@link SystemPrefsKey} pair.
+     * Declared once here; {@link #defaultFonts()} iterates over this table.
      */
-    private record FontPrefsKeys(FontKey key, PrefsKey nameKey, PrefsKey sizeKey) {}
+    private record FontPrefsKeys(FontKey key, SystemPrefsKey nameKey, SystemPrefsKey sizeKey) {}
 
     private static final FontPrefsKeys[] FONT_PREFS_KEYS = {
-        new FontPrefsKeys(FontKey.TITLE,           PrefsKey.TITLE_FONT,           PrefsKey.TITLE_FONT_SIZE),
-        new FontPrefsKeys(FontKey.SUBTITLE,        PrefsKey.SUBTITLE_FONT,        PrefsKey.SUBTITLE_FONT_SIZE),
-        new FontPrefsKeys(FontKey.LYRICS,          PrefsKey.LYRICS_FONT,          PrefsKey.LYRICS_FONT_SIZE),
-        new FontPrefsKeys(FontKey.ATTRIBUTION,     PrefsKey.ATTRIBUTION_FONT,     PrefsKey.ATTRIBUTION_FONT_SIZE),
-        new FontPrefsKeys(FontKey.SUB_ATTRIBUTION, PrefsKey.SUB_ATTRIBUTION_FONT, PrefsKey.SUB_ATTRIBUTION_FONT_SIZE),
-        new FontPrefsKeys(FontKey.ANNOTATION,      PrefsKey.ANNOTATION_FONT,      PrefsKey.ANNOTATION_FONT_SIZE),
-        new FontPrefsKeys(FontKey.FOOTNOTE,        PrefsKey.FOOTNOTE_FONT,        PrefsKey.FOOTNOTE_FONT_SIZE),
-        new FontPrefsKeys(FontKey.BANGLA,          PrefsKey.BANGLA_FONT,          PrefsKey.BANGLA_FONT_SIZE),
+        new FontPrefsKeys(FontKey.TITLE,           SystemPrefsKey.TITLE_FONT,           SystemPrefsKey.TITLE_FONT_SIZE),
+        new FontPrefsKeys(FontKey.SUBTITLE,        SystemPrefsKey.SUBTITLE_FONT,        SystemPrefsKey.SUBTITLE_FONT_SIZE),
+        new FontPrefsKeys(FontKey.LYRICS,          SystemPrefsKey.LYRICS_FONT,          SystemPrefsKey.LYRICS_FONT_SIZE),
+        new FontPrefsKeys(FontKey.ATTRIBUTION,     SystemPrefsKey.ATTRIBUTION_FONT,     SystemPrefsKey.ATTRIBUTION_FONT_SIZE),
+        new FontPrefsKeys(FontKey.SUB_ATTRIBUTION, SystemPrefsKey.SUB_ATTRIBUTION_FONT, SystemPrefsKey.SUB_ATTRIBUTION_FONT_SIZE),
+        new FontPrefsKeys(FontKey.ANNOTATION,      SystemPrefsKey.ANNOTATION_FONT,      SystemPrefsKey.ANNOTATION_FONT_SIZE),
+        new FontPrefsKeys(FontKey.FOOTNOTE,        SystemPrefsKey.FOOTNOTE_FONT,        SystemPrefsKey.FOOTNOTE_FONT_SIZE),
+        new FontPrefsKeys(FontKey.BANGLA,          SystemPrefsKey.BANGLA_FONT,          SystemPrefsKey.BANGLA_FONT_SIZE),
     };
 
     private final EnumMap<FontKey, Font> fonts = new EnumMap<>(FontKey.class);
@@ -88,30 +86,21 @@ public final class DocumentFonts implements DocumentFontsHolder {
     }
 
     /**
-     * Builds a {@code DocumentFonts} populated from the current user preferences,
-     * one entry per role. This is the single authoritative mapping from
-     * {@link FontKey} to {@link PrefsKey}.
+     * Builds a {@code DocumentFonts} populated from the bundled {@code system-defaults.json},
+     * ignoring any user preference overrides. Used wherever a fresh document or reset action
+     * needs the canonical font set.
      */
-    public static DocumentFonts defaultsFromPrefs() {
-        return buildFrom(Prefs::getString, Prefs::getInt);
-    }
-
-    /**
-     * Builds a {@code DocumentFonts} populated from the bundled {@code defaults.json},
-     * ignoring any user preference overrides. Used by reset actions in settings dialogs.
-     */
-    public static DocumentFonts defaultsFromSystemDefaults() {
+    public static DocumentFonts defaultFonts() {
         return buildFrom(Prefs::getDefaultString, Prefs::getDefaultInt);
     }
 
     /**
      * Table-driven builder: iterates {@link #FONT_PREFS_KEYS} and calls the supplied
-     * value-source functions to resolve each font name and size. Callers pass either
-     * the user-preference accessors or the system-default accessors.
+     * value-source functions to resolve each font name and size from the system defaults.
      */
     private static DocumentFonts buildFrom(
-        Function<PrefsKey, String> nameSource,
-        ToIntFunction<PrefsKey> sizeSource
+        Function<SystemPrefsKey, String> nameSource,
+        ToIntFunction<SystemPrefsKey> sizeSource
     ) {
         var result = new DocumentFonts();
 

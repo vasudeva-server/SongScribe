@@ -105,7 +105,7 @@ class MetronomeRendererTest extends UnitTest {
     void testDrawDurationEqualsForUndottedNoteCallsTwoDrawStrings() {
         // Undotted note: draws (1) duration glyph, (2) "=" string — no dot glyph
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        var attrFont = DocumentFonts.defaultsFromPrefs().getFont(FontKey.ANNOTATION);
+        var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
         final double startXSs = 2.0;
         final double ySs = 0.0;
 
@@ -118,7 +118,7 @@ class MetronomeRendererTest extends UnitTest {
     void testDrawDurationEqualsForDottedNoteCallsThreeDrawStrings() {
         // Dotted note: draws (1) duration glyph, (2) augmentation dot glyph, (3) "=" string
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        var attrFont = DocumentFonts.defaultsFromPrefs().getFont(FontKey.ANNOTATION);
+        var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
         final double startXSs = 2.0;
         final double ySs = 0.0;
 
@@ -131,7 +131,7 @@ class MetronomeRendererTest extends UnitTest {
     void testDrawDurationEqualsReturnsXGreaterThanStart() {
         // The returned X must be further right than the start, regardless of scale or font.
         var g2 = RenderContextTestHelper.realG2();
-        var attrFont = DocumentFonts.defaultsFromPrefs().getFont(FontKey.ANNOTATION);
+        var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
         final double startXSs = 2.0;
         final double ySs = 0.0;
 
@@ -144,7 +144,7 @@ class MetronomeRendererTest extends UnitTest {
     void testDrawDurationEqualsForDottedNoteReturnsFurtherThanUndotted() {
         // dotted return − undotted return ≈ dotAdvanceWidthSs() (one extra dot advance)
         var g2 = RenderContextTestHelper.realG2();
-        var attrFont = DocumentFonts.defaultsFromPrefs().getFont(FontKey.ANNOTATION);
+        var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
         final double startXSs = 2.0;
         final double ySs = 0.0;
         final double dotAdvance = MetronomeAttachment.dotAdvanceWidthSs();

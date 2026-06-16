@@ -88,7 +88,7 @@ public final class ViewIO {
         private final Map<String, Consumer<String>> setters = new HashMap<>();
 
         public ViewReader() {
-            var defaults = DocumentFonts.defaultsFromPrefs();
+            var defaults = DocumentFonts.defaultFonts();
             for (var t : FONT_TAGS) {
                 var sf = StringFont.from(defaults, t.key);
                 var sizeTag = t.sizeTag;
@@ -130,10 +130,11 @@ public final class ViewIO {
 
         /**
          * Builds a {@link DocumentFonts} from the parsed {@code <view>} block. Roles
-         * absent from the block fall through to the {@link Prefs} defaults the
-         * reader was constructed with — so partial blocks and v1.1+ files without
+         * absent from the block fall through to the system-default fonts
+         * ({@link DocumentFonts#defaultFonts()}) the reader was seeded with — so
+         * partial blocks and v1.1+ files without
          * a full font set produce the same result as a missing {@code <view>}
-         * (handled by {@code SongIO} returning {@link DocumentFonts#defaultsFromPrefs}).
+         * (handled by {@code SongIO} returning {@link DocumentFonts#defaultFonts()}).
          */
         public DocumentFonts getDocumentFonts() {
             var fonts = new DocumentFonts();

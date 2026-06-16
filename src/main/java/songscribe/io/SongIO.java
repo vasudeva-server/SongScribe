@@ -760,7 +760,7 @@ public final class SongIO {
          * Returns the document fonts parsed from the file's {@code <view>} block.
          * For v1.0 files (which have no {@code <view>} section) and v1.1+ files
          * whose block omits a role, the missing roles fall through to
-         * {@link DocumentFonts#defaultsFromPrefs()}.
+         * {@link DocumentFonts#defaultFonts()}.
          * <p>
          * Must be called after parsing completes; the result is independent of
          * {@link #getSong()} and is the authoritative font source for the
@@ -769,7 +769,7 @@ public final class SongIO {
         public DocumentFonts getDocumentFonts() {
             return viewReader != null
                 ? viewReader.getDocumentFonts()
-                : DocumentFonts.defaultsFromPrefs();
+                : DocumentFonts.defaultFonts();
         }
 
         /**

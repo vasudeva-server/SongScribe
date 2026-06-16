@@ -75,7 +75,7 @@ class AnnotationAttachmentTest extends UnitTest {
             note.addAttachment(attachment);
             song.withoutMutationTracking(() -> line.addElement(note));
 
-            var font = DocumentFonts.defaultsFromPrefs().getAnnotationFont();
+            var font = DocumentFonts.defaultFonts().getAnnotationFont();
             var expected = ScaleContext.textHeightSs(font);
 
             assertThat(attachment.computeContentHeightSs(font)).isCloseTo(expected, within(EPSILON));
@@ -102,7 +102,7 @@ class AnnotationAttachmentTest extends UnitTest {
 
         @Test
         void testReturnsTextAdvanceInStaffSpaces() {
-            var font = DocumentFonts.defaultsFromPrefs().getAnnotationFont();
+            var font = DocumentFonts.defaultFonts().getAnnotationFont();
             var attachment = new AnnotationAttachment(ANNOTATION_TEXT);
 
             // Compute expected width from the raw AWT text advance converted to

@@ -29,13 +29,16 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import com.formdev.flatlaf.util.SystemInfo;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import org.slf4j.Logger;
@@ -50,7 +53,8 @@ public final class Prefs {
 
     private static final Logger LOG = LoggerFactory.getLogger(Prefs.class);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final String DEFAULTS_RESOURCE = "/conf/defaults.json";
+    private static final String USER_DEFAULTS_RESOURCE = "/conf/user-defaults.json";
+    private static final String SYSTEM_DEFAULTS_RESOURCE = "/conf/system-defaults.json";
     private static final File OLD_PROPS_FILE =
             new File(System.getProperty("user.home"), ".songscribe/props");
 
@@ -83,6 +87,7 @@ public final class Prefs {
     private final Path prefsFile;
     private final Map<String, Object> defaults;
     private final Map<String, Object> store;
+    private final Set<String> systemDefaultKeys;
 
     private Prefs() {
         prefsFile = resolvePrefsFile();
@@ -93,9 +98,22 @@ public final class Prefs {
             LOG.warn("Failed to create preferences directory: {}", prefsFile.getParent(), e);
         }
 
-        defaults = loadDefaults();
+        var userDefaults = loadDefaultsResource(USER_DEFAULTS_RESOURCE);
+        var systemDefaults = loadDefaultsResource(SYSTEM_DEFAULTS_RESOURCE);
+
+        if (!Collections.disjoint(userDefaults.keySet(), systemDefaults.keySet())) {
+            var overlap = new HashSet<>(userDefaults.keySet());
+            overlap.retainAll(systemDefaults.keySet());
+            LOG.error("Keys appear in both user-defaults and system-defaults (system wins): {}", overlap);
+        }
+
+        defaults = new HashMap<>();
+        defaults.putAll(userDefaults);
+        defaults.putAll(systemDefaults);
+        systemDefaultKeys = Set.copyOf(systemDefaults.keySet());
         store = loadStore();
         removeObsoleteKeys();
+        removeSystemDefaultKeysFromStore();
         migrate();
     }
 
@@ -120,11 +138,11 @@ public final class Prefs {
         return (Boolean) getOrDefault(key);
     }
 
-    public static String getDefaultString(PrefsKey key) {
+    public static String getDefaultString(SystemPrefsKey key) {
         return INSTANCE.getDefault(key).toString();
     }
 
-    public static int getDefaultInt(PrefsKey key) {
+    public static int getDefaultInt(SystemPrefsKey key) {
         return ((Number) INSTANCE.getDefault(key)).intValue();
     }
 
@@ -160,6 +178,14 @@ public final class Prefs {
      */
     static void removeObsoleteKeysForTest() {
         INSTANCE.removeObsoleteKeys();
+    }
+
+    /**
+     * Exposes {@link #removeSystemDefaultKeysFromStore()} for direct invocation in tests.
+     * Package-private for test use only — do not call from production code.
+     */
+    static void removeSystemDefaultKeysFromStoreForTest() {
+        INSTANCE.removeSystemDefaultKeysFromStore();
     }
 
     /**
@@ -271,9 +297,17 @@ public final class Prefs {
     }
 
     private void removeObsoleteKeys() {
+        removeKeysFromStore(OBSOLETE_KEYS);
+    }
+
+    private void removeSystemDefaultKeysFromStore() {
+        removeKeysFromStore(systemDefaultKeys);
+    }
+
+    private void removeKeysFromStore(Iterable<String> keys) {
         var removed = false;
 
-        for (var key : OBSOLETE_KEYS) {
+        for (var key : keys) {
             if (store.remove(key) != null) {
                 removed = true;
             }
@@ -307,56 +341,48 @@ public final class Prefs {
         return dir.resolve("prefs.json");
     }
 
-    private Map<String, Object> loadDefaults() {
-        var result = new HashMap<String, Object>();
-        var stream = Prefs.class.getResourceAsStream(DEFAULTS_RESOURCE);
+    private Map<String, Object> loadDefaultsResource(String resource) {
+        var stream = Prefs.class.getResourceAsStream(resource);
 
         if (stream == null) {
-            LOG.error("Missing defaults resource: {}", DEFAULTS_RESOURCE);
-            return result;
+            LOG.error("Missing defaults resource: {}", resource);
+            return new HashMap<>();
         }
 
         try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
-            var json = JsonParser.parseReader(reader).getAsJsonObject();
-
-            for (var entry : json.entrySet()) {
-                var value = parseJsonValue(entry.getValue());
-
-                if (value != null) {
-                    result.put(entry.getKey(), value);
-                }
-            }
-
-            LOG.info("Default preferences loaded");
+            var result = parseJsonObject(JsonParser.parseReader(reader).getAsJsonObject());
+            LOG.info("Default preferences loaded from: {}", resource);
+            return result;
         } catch (IOException e) {
-            LOG.error("Failed to load defaults", e);
+            LOG.error("Failed to load defaults from: {}", resource, e);
+            return new HashMap<>();
         }
-
-        return result;
     }
 
     private Map<String, Object> loadStore() {
-        var result = new HashMap<String, Object>();
-
         if (!Files.exists(prefsFile)) {
-            return result;
+            return new HashMap<>();
         }
 
         try (var reader = Files.newBufferedReader(prefsFile, StandardCharsets.UTF_8)) {
-            var json = JsonParser.parseReader(reader).getAsJsonObject();
-
-            for (var entry : json.entrySet()) {
-                var element = entry.getValue();
-                var value = parseJsonValue(element);
-
-                if (value != null) {
-                    result.put(entry.getKey(), value);
-                }
-            }
-
+            var result = parseJsonObject(JsonParser.parseReader(reader).getAsJsonObject());
             LOG.info("Preferences loaded from: {}", prefsFile);
+            return result;
         } catch (IOException e) {
             LOG.warn("Failed to load preferences from {}", prefsFile, e);
+            return new HashMap<>();
+        }
+    }
+
+    private Map<String, Object> parseJsonObject(JsonObject json) {
+        var result = new HashMap<String, Object>();
+
+        for (var entry : json.entrySet()) {
+            var value = parseJsonValue(entry.getValue());
+
+            if (value != null) {
+                result.put(entry.getKey(), value);
+            }
         }
 
         return result;
@@ -377,6 +403,7 @@ public final class Prefs {
         try {
             var merged = new HashMap<>(defaults);
             merged.putAll(store);
+            merged.keySet().removeAll(systemDefaultKeys);
             Files.writeString(prefsFile, GSON.toJson(merged), StandardCharsets.UTF_8);
         } catch (IOException e) {
             LOG.warn("Failed to save preferences to {}", prefsFile, e);
@@ -417,10 +444,18 @@ public final class Prefs {
     }
 
     private Object getDefault(PrefsKey key) {
-        var value = defaults.get(key.key());
+        return lookupDefault(key.key());
+    }
+
+    private Object getDefault(SystemPrefsKey key) {
+        return lookupDefault(key.key());
+    }
+
+    private Object lookupDefault(String jsonKey) {
+        var value = defaults.get(jsonKey);
 
         if (value == null) {
-            throw new IllegalArgumentException("Unknown preference key: " + key.key());
+            throw new IllegalArgumentException("Unknown preference key: " + jsonKey);
         }
 
         return value;

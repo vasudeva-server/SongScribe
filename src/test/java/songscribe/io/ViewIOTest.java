@@ -47,7 +47,7 @@ import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
+import songscribe.prefs.SystemPrefsKey;
 import songscribe.util.MyFontUtils;
 
 import static org.assertj.core.api.Assertions.within;
@@ -71,23 +71,23 @@ class ViewIOTest extends UnitTest {
             reader.getSong();
 
             var fonts = reader.getDocumentFonts();
-            var expectedTitle = MyFontUtils.createFont(Prefs.getString(PrefsKey.TITLE_FONT), Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+            var expectedTitle = MyFontUtils.createFont(Prefs.getDefaultString(SystemPrefsKey.TITLE_FONT), Prefs.getDefaultInt(SystemPrefsKey.TITLE_FONT_SIZE));
             assertThat(fonts.getFont(FontKey.TITLE).getPSName()).isEqualTo(expectedTitle.getPSName());
-            assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.TITLE).getSize()).isEqualTo(Prefs.getDefaultInt(SystemPrefsKey.TITLE_FONT_SIZE));
 
-            var expectedLyrics = MyFontUtils.createFont(Prefs.getString(PrefsKey.LYRICS_FONT), Prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
+            var expectedLyrics = MyFontUtils.createFont(Prefs.getDefaultString(SystemPrefsKey.LYRICS_FONT), Prefs.getDefaultInt(SystemPrefsKey.LYRICS_FONT_SIZE));
             assertThat(fonts.getFont(FontKey.LYRICS).getPSName()).isEqualTo(expectedLyrics.getPSName());
 
-            var expectedAnnotation = MyFontUtils.createFont(Prefs.getString(PrefsKey.ANNOTATION_FONT), Prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
+            var expectedAnnotation = MyFontUtils.createFont(Prefs.getDefaultString(SystemPrefsKey.ANNOTATION_FONT), Prefs.getDefaultInt(SystemPrefsKey.ANNOTATION_FONT_SIZE));
             assertThat(fonts.getFont(FontKey.ANNOTATION).getPSName()).isEqualTo(expectedAnnotation.getPSName());
 
-            var expectedBangla = MyFontUtils.createFont(Prefs.getString(PrefsKey.BANGLA_FONT), Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
+            var expectedBangla = MyFontUtils.createFont(Prefs.getDefaultString(SystemPrefsKey.BANGLA_FONT), Prefs.getDefaultInt(SystemPrefsKey.BANGLA_FONT_SIZE));
             assertThat(fonts.getFont(FontKey.BANGLA).getPSName()).isEqualTo(expectedBangla.getPSName());
-            assertThat(fonts.getFont(FontKey.BANGLA).getSize()).isEqualTo(Prefs.getInt(PrefsKey.BANGLA_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.BANGLA).getSize()).isEqualTo(Prefs.getDefaultInt(SystemPrefsKey.BANGLA_FONT_SIZE));
 
-            var expectedFootnote = MyFontUtils.createFont(Prefs.getString(PrefsKey.FOOTNOTE_FONT), Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
+            var expectedFootnote = MyFontUtils.createFont(Prefs.getDefaultString(SystemPrefsKey.FOOTNOTE_FONT), Prefs.getDefaultInt(SystemPrefsKey.FOOTNOTE_FONT_SIZE));
             assertThat(fonts.getFont(FontKey.FOOTNOTE).getPSName()).isEqualTo(expectedFootnote.getPSName());
-            assertThat(fonts.getFont(FontKey.FOOTNOTE).getSize()).isEqualTo(Prefs.getInt(PrefsKey.FOOTNOTE_FONT_SIZE));
+            assertThat(fonts.getFont(FontKey.FOOTNOTE).getSize()).isEqualTo(Prefs.getDefaultInt(SystemPrefsKey.FOOTNOTE_FONT_SIZE));
         }
     }
 
@@ -101,7 +101,7 @@ class ViewIOTest extends UnitTest {
         @Test
         void testWriteViewSerializesAllEightFontRoles() {
             // Ensure every role's name and size survive the write path.
-            var fonts = DocumentFonts.defaultsFromPrefs();
+            var fonts = DocumentFonts.defaultFonts();
             var output = captureWriteView(fonts);
 
             // Every FontKey must contribute exactly one name tag and one size tag.
@@ -123,9 +123,9 @@ class ViewIOTest extends UnitTest {
             // LatoPlus-Bold has PSName "LatoPlus-Bold" but family name "LatoPlus".
             // writeView must emit the PSName so round-trip parsing resolves the exact face.
             var fonts = new DocumentFonts();
-            fonts.setFont(FontKey.TITLE, "LatoPlus-Bold", Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+            fonts.setFont(FontKey.TITLE, "LatoPlus-Bold", Prefs.getDefaultInt(SystemPrefsKey.TITLE_FONT_SIZE));
             // Populate the remaining roles with defaults so writeView iterates all 7 cleanly.
-            var defaults = DocumentFonts.defaultsFromPrefs();
+            var defaults = DocumentFonts.defaultFonts();
             for (var key : FontKey.values()) {
                 if (key != FontKey.TITLE) {
                     fonts.setFont(key, defaults.getFont(key));
@@ -193,7 +193,7 @@ class ViewIOTest extends UnitTest {
         void testV10FallbackUsesDefaultsForAllRoles() throws Exception {
             var fonts = parseAndGetDocumentFonts(buildV10Xml());
 
-            assertThat(fonts).isEqualTo(DocumentFonts.defaultsFromPrefs());
+            assertThat(fonts).isEqualTo(DocumentFonts.defaultFonts());
         }
 
         @Test
@@ -206,22 +206,22 @@ class ViewIOTest extends UnitTest {
 
             // Remaining roles fall through to prefs defaults — including SUBTITLE (T4:
             // old file lacking <subtitlefont> tag must fall back to the prefs default).
-            assertRoleMatchesPrefs(fonts, FontKey.SUBTITLE,        PrefsKey.SUBTITLE_FONT,         PrefsKey.SUBTITLE_FONT_SIZE);
-            assertRoleMatchesPrefs(fonts, FontKey.LYRICS,          PrefsKey.LYRICS_FONT,           PrefsKey.LYRICS_FONT_SIZE);
-            assertRoleMatchesPrefs(fonts, FontKey.ATTRIBUTION,     PrefsKey.ATTRIBUTION_FONT,      PrefsKey.ATTRIBUTION_FONT_SIZE);
-            assertRoleMatchesPrefs(fonts, FontKey.SUB_ATTRIBUTION, PrefsKey.SUB_ATTRIBUTION_FONT,  PrefsKey.SUB_ATTRIBUTION_FONT_SIZE);
-            assertRoleMatchesPrefs(fonts, FontKey.ANNOTATION,      PrefsKey.ANNOTATION_FONT,       PrefsKey.ANNOTATION_FONT_SIZE);
-            assertRoleMatchesPrefs(fonts, FontKey.BANGLA,          PrefsKey.BANGLA_FONT,           PrefsKey.BANGLA_FONT_SIZE);
-            assertRoleMatchesPrefs(fonts, FontKey.FOOTNOTE,        PrefsKey.FOOTNOTE_FONT,         PrefsKey.FOOTNOTE_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.SUBTITLE,        SystemPrefsKey.SUBTITLE_FONT,         SystemPrefsKey.SUBTITLE_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.LYRICS,          SystemPrefsKey.LYRICS_FONT,           SystemPrefsKey.LYRICS_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.ATTRIBUTION,     SystemPrefsKey.ATTRIBUTION_FONT,      SystemPrefsKey.ATTRIBUTION_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.SUB_ATTRIBUTION, SystemPrefsKey.SUB_ATTRIBUTION_FONT,  SystemPrefsKey.SUB_ATTRIBUTION_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.ANNOTATION,      SystemPrefsKey.ANNOTATION_FONT,       SystemPrefsKey.ANNOTATION_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.BANGLA,          SystemPrefsKey.BANGLA_FONT,           SystemPrefsKey.BANGLA_FONT_SIZE);
+            assertRoleMatchesPrefs(fonts, FontKey.FOOTNOTE,        SystemPrefsKey.FOOTNOTE_FONT,         SystemPrefsKey.FOOTNOTE_FONT_SIZE);
         }
 
         @Test
         void testDefaultsFromPrefsIsDeterministic() {
             // Two independent calls must return equal results so that new-document creation
-            // is idempotent — if defaultsFromPrefs() were stateful or random, every new
+            // is idempotent — if defaultFonts() were stateful or random, every new
             // document would silently start with different fonts.
-            var first = DocumentFonts.defaultsFromPrefs();
-            var second = DocumentFonts.defaultsFromPrefs();
+            var first = DocumentFonts.defaultFonts();
+            var second = DocumentFonts.defaultFonts();
             assertThat(first).isEqualTo(second);
         }
 
@@ -234,10 +234,10 @@ class ViewIOTest extends UnitTest {
             return reader.getDocumentFonts();
         }
 
-        private static void assertRoleMatchesPrefs(DocumentFonts fonts, FontKey key, PrefsKey nameKey, PrefsKey sizeKey) {
-            var expected = MyFontUtils.createFont(Prefs.getString(nameKey), Prefs.getInt(sizeKey));
+        private static void assertRoleMatchesPrefs(DocumentFonts fonts, FontKey key, SystemPrefsKey nameKey, SystemPrefsKey sizeKey) {
+            var expected = MyFontUtils.createFont(Prefs.getDefaultString(nameKey), Prefs.getDefaultInt(sizeKey));
             assertThat(fonts.getFont(key).getPSName()).isEqualTo(expected.getPSName());
-            assertThat(fonts.getFont(key).getSize()).isEqualTo(Prefs.getInt(sizeKey));
+            assertThat(fonts.getFont(key).getSize()).isEqualTo(Prefs.getDefaultInt(sizeKey));
         }
     }
 
@@ -358,7 +358,7 @@ class ViewIOTest extends UnitTest {
             var fonts = viewReader.getDocumentFonts();
             assertThat(fonts.getFont(FontKey.TITLE).getSize())
                 .as("corrupt font size must fall back to prefs default")
-                .isEqualTo(Prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
+                .isEqualTo(Prefs.getDefaultInt(SystemPrefsKey.TITLE_FONT_SIZE));
         }
     }
 

@@ -105,7 +105,7 @@ class SystemTierStackingTest extends UnitTest {
     private static LayoutResult stackColumns(List<ElementColumn> columns, Line line) {
         var builder = new LayoutResult.Builder();
         var calculator = new VerticalStackingCalculator();
-        calculator.calculate(columns, line, builder, LINE_WIDTH_SS, DocumentFonts.defaultsFromPrefs());
+        calculator.calculate(columns, line, builder, LINE_WIDTH_SS, DocumentFonts.defaultFonts());
         return builder.build();
     }
 
@@ -221,7 +221,7 @@ class SystemTierStackingTest extends UnitTest {
             // Oracle: for fresh extents (yGet = 0.0) and a note on the middle line (staffPosition=0),
             // anchorCeilingSs = STAFF_TOP_Y_SS < 0, so regionCeilingSs = anchorCeilingSs.
             // elementY = min over regions of (anchorSs - marginSs - yOffsetSs - heightSs).
-            var attrFont = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var attrFont = DocumentFonts.defaultFonts().getAttributionFont();
             var metrics = tempo.computeContentMetrics(attrFont);
             var anchorSs = StackingUtils.anchorCeilingSs(note);
             var expectedYSs = Double.MAX_VALUE;
@@ -358,7 +358,7 @@ class SystemTierStackingTest extends UnitTest {
 
         @Test
         void testAnnotationXAlignmentProducesFormulaPositions() {
-            var fonts = DocumentFonts.defaultsFromPrefs();
+            var fonts = DocumentFonts.defaultFonts();
             var noteLeft = createNote(0, false);
             var noteCenter = createNote(0, false);
             var noteRight = createNote(0, false);

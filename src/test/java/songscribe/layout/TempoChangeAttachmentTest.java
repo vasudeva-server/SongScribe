@@ -46,7 +46,7 @@ class TempoChangeAttachmentTest extends UnitTest {
         void testShowTempoTrueProducesNonZeroGlyphAndTextWidths() {
             var tempo = new Tempo(120, Duration.CROTCHET, "Allegro", true);
             var attachment = new TempoChangeAttachment(tempo);
-            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var font = DocumentFonts.defaultFonts().getAttributionFont();
 
             var metrics = attachment.computeContentMetrics(font);
 
@@ -72,7 +72,7 @@ class TempoChangeAttachmentTest extends UnitTest {
         void testShowTempoFalseWithDescriptionProducesTextOnlyRegion() {
             var tempo = new Tempo(120, Duration.CROTCHET, "Andante", false);
             var attachment = new TempoChangeAttachment(tempo);
-            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var font = DocumentFonts.defaultFonts().getAttributionFont();
 
             var metrics = attachment.computeContentMetrics(font);
 
@@ -95,7 +95,7 @@ class TempoChangeAttachmentTest extends UnitTest {
         void testShowTempoFalseWithEmptyDescriptionProducesZeroWidthAndNoRegions() {
             var tempo = new Tempo(120, Duration.CROTCHET, "", false);
             var attachment = new TempoChangeAttachment(tempo);
-            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var font = DocumentFonts.defaultFonts().getAttributionFont();
 
             var metrics = attachment.computeContentMetrics(font);
 

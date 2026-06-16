@@ -178,7 +178,7 @@ class MutationRecordsTest extends UnitTest {
                 .isNotInstanceOf(LineScopedMutation.class);
             assertThat(new LyricsChange(LyricsField.UNDER, "a", "b"))
                 .isNotInstanceOf(LineScopedMutation.class);
-            assertThat(new FontChange(DocumentFonts.defaultsFromPrefs(), DocumentFonts.defaultsFromPrefs()))
+            assertThat(new FontChange(DocumentFonts.defaultFonts(), DocumentFonts.defaultFonts()))
                 .isNotInstanceOf(LineScopedMutation.class);
             assertThat(new LineInsertion(0, detachedLine()))
                 .isNotInstanceOf(LineScopedMutation.class);
@@ -272,8 +272,8 @@ class MutationRecordsTest extends UnitTest {
 
         @Test
         void testFontChangeExposesFields() {
-            var oldFonts = DocumentFonts.defaultsFromPrefs();
-            var newFonts = DocumentFonts.defaultsFromPrefs();
+            var oldFonts = DocumentFonts.defaultFonts();
+            var newFonts = DocumentFonts.defaultFonts();
             var mutation = new FontChange(oldFonts, newFonts);
 
             assertThat(mutation.oldFonts()).isSameAs(oldFonts);

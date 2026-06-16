@@ -29,8 +29,10 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.gson.JsonNull;
 import com.google.gson.JsonParser;
@@ -45,10 +47,11 @@ import songscribe.UnitTest;
 class PrefsTest extends UnitTest {
 
     private static final String STORED_TITLE_FONT = "MyFont-Bold";
+    private static final String STORED_APPEARANCE = "dark";
+    private static final String DEFAULT_APPEARANCE = "system";
     private static final int STORED_EXPORT_DPI = 300;
     private static final long STORED_WHATS_NEW_VERSION = 20240101L;
     private static final int DEFAULT_EXPORT_DPI = 600;
-    private static final String DEFAULT_TITLE_FONT = "SourceSans3SongScribe-SemiBold";
     private static final boolean STORED_LOOP_PLAYBACK = true;
     private static final String RECENT_FILE_A = "song_a.mssw";
     private static final String RECENT_FILE_B = "song_b.mssw";
@@ -69,35 +72,106 @@ class PrefsTest extends UnitTest {
     @AfterEach
     void tearDown() {
         Prefs.reset(PrefsKey.DIALOG_GEOMETRY);
-        Prefs.reset(PrefsKey.TITLE_FONT);
+        Prefs.reset(PrefsKey.APPEARANCE);
         Prefs.reset(PrefsKey.EXPORT_DPI);
         Prefs.reset(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION);
         Prefs.reset(PrefsKey.LOOP_PLAYBACK);
         Prefs.reset(PrefsKey.RECENT_FILES);
-        // Defensive cleanup for raw keys seeded by testRemoveObsoleteKeysStripsObsoleteKeysFromStore.
-        // removeObsoleteKeysForTest() removes them on the happy path, but if the test fails
-        // early the raw keys would leak into subsequent tests.
+        // Defensive cleanup for raw keys seeded by tests that bypass the public API.
+        // The happy paths remove them, but a test that fails early would otherwise
+        // leak obsolete keys or system-default (font) keys into subsequent tests.
         Prefs.removeObsoleteKeysForTest();
+        Prefs.removeSystemDefaultKeysFromStoreForTest();
     }
 
     @Test
     void testAllKeysExistInDefaults() throws IOException {
-        var stream = Prefs.class.getResourceAsStream("/conf/defaults.json");
-        assertThat(stream).isNotNull();
+        // Each enum maps to exactly one defaults file: every PrefsKey (except ALL) must
+        // appear in user-defaults.json, every SystemPrefsKey in system-defaults.json, and
+        // the two files' key sets must be disjoint.
+        var userDefaultsStream = Prefs.class.getResourceAsStream("/conf/user-defaults.json");
+        var systemDefaultsStream = Prefs.class.getResourceAsStream("/conf/system-defaults.json");
+        assertThat(userDefaultsStream).as("user-defaults.json resource must exist").isNotNull();
+        assertThat(systemDefaultsStream).as("system-defaults.json resource must exist").isNotNull();
 
-        try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
-            var defaults = JsonParser.parseReader(reader).getAsJsonObject();
+        Set<String> userKeys;
+        Set<String> systemKeys;
 
-            for (var key : PrefsKey.values()) {
-                if (key == PrefsKey.ALL) {
-                    continue;
-                }
-
-                assertThat(defaults.has(key.key()))
-                    .as("'%s' missing from defaults.json", key.key())
-                    .isTrue();
-            }
+        try (var reader = new InputStreamReader(userDefaultsStream, StandardCharsets.UTF_8)) {
+            userKeys = JsonParser.parseReader(reader).getAsJsonObject().keySet();
         }
+
+        try (var reader = new InputStreamReader(systemDefaultsStream, StandardCharsets.UTF_8)) {
+            systemKeys = JsonParser.parseReader(reader).getAsJsonObject().keySet();
+        }
+
+        for (var key : PrefsKey.values()) {
+            if (key == PrefsKey.ALL) {
+                continue;
+            }
+
+            assertThat(userKeys)
+                .as("'%s' missing from user-defaults.json", key.key())
+                .contains(key.key());
+        }
+
+        for (var key : SystemPrefsKey.values()) {
+            assertThat(systemKeys)
+                .as("'%s' missing from system-defaults.json", key.key())
+                .contains(key.key());
+        }
+
+        assertThat(userKeys)
+            .as("Keys must not appear in both user-defaults.json and system-defaults.json")
+            .doesNotContainAnyElementsOf(systemKeys);
+    }
+
+    @Test
+    void testSaveWritesGlobalKeyAndOmitsFontKey() throws IOException {
+        // The merged defaults always include the system-default (font) keys, so writeToFile()
+        // must strip them before writing prefs.json — even when the store never held them.
+        // Putting a global key triggers the write; a font key must be absent and the global
+        // key present. Asserting both sides proves the filter is surgical: an over-eager
+        // implementation that drops global keys too would still fail the positive assertion.
+        Prefs.put(PrefsKey.EXPORT_DPI, STORED_EXPORT_DPI);
+
+        var prefsDirOverride = System.getProperty("songscribe.prefsDir");
+        assertThat(prefsDirOverride)
+            .as("songscribe.prefsDir system property must be set during tests")
+            .isNotNull();
+
+        var prefsPath = Path.of(prefsDirOverride, "prefs.json");
+        var contents = Files.readString(prefsPath, StandardCharsets.UTF_8);
+        var written = JsonParser.parseString(contents).getAsJsonObject();
+
+        assertThat(written.keySet())
+            .as("font key '%s' must be absent from written prefs.json", SystemPrefsKey.TITLE_FONT.key())
+            .doesNotContain(SystemPrefsKey.TITLE_FONT.key());
+        assertThat(written.keySet())
+            .as("global key '%s' must be present in written prefs.json", PrefsKey.EXPORT_DPI.key())
+            .contains(PrefsKey.EXPORT_DPI.key());
+        assertThat(written.get(PrefsKey.EXPORT_DPI.key()).getAsLong())
+            .as("global key '%s' must have the stored value", PrefsKey.EXPORT_DPI.key())
+            .isEqualTo(STORED_EXPORT_DPI);
+    }
+
+    @Test
+    void testRemoveSystemDefaultKeysFromStoreRemovesFontKeys() {
+        // Seed a system-default (font) key directly into the raw store (the public API cannot
+        // write it) and one live global key. removeSystemDefaultKeysFromStoreForTest() must
+        // strip the font key without disturbing the global key — it is surgical, not a
+        // wholesale clear, so the global key must retain its exact stored value.
+        Prefs.putRawStored(SystemPrefsKey.TITLE_FONT.key(), STORED_TITLE_FONT);
+        Prefs.put(PrefsKey.EXPORT_DPI, STORED_EXPORT_DPI);
+
+        Prefs.removeSystemDefaultKeysFromStoreForTest();
+
+        assertThat(Prefs.getRawStored(SystemPrefsKey.TITLE_FONT.key()))
+            .as("font key must be absent from store after removeSystemDefaultKeysFromStore")
+            .isNull();
+        assertThat(Prefs.getRawStored(PrefsKey.EXPORT_DPI))
+            .as("global key must survive removeSystemDefaultKeysFromStore with its value intact")
+            .isEqualTo((long) STORED_EXPORT_DPI);
     }
 
     // --- getMap ---
@@ -105,7 +179,7 @@ class PrefsTest extends UnitTest {
     @Test
     void testGetMapStoreValueTakesPrecedenceOverDefault() {
         // Path (a): store value present → returns that map with correct content.
-        // DIALOG_GEOMETRY has default {} in defaults.json; the stored value must win.
+        // DIALOG_GEOMETRY has default {} in user-defaults.json; the stored value must win.
         var entries = Map.<String, Object>of(TEST_DIALOG_NAME, Map.of("x", TEST_DIALOG_X, "y", TEST_DIALOG_Y));
         Prefs.putMap(PrefsKey.DIALOG_GEOMETRY, entries);
 
@@ -119,7 +193,7 @@ class PrefsTest extends UnitTest {
 
     @Test
     void testGetMapReturnsDefaultMapWhenStoreAbsent() {
-        // Path (b): key absent from store but has a default in defaults.json.
+        // Path (b): key absent from store but has a default in user-defaults.json.
         // DIALOG_GEOMETRY defaults to {} (empty map). Assert the default is returned
         // exactly — an empty map — confirming the fallback path is exercised.
         var result = Prefs.getMap(PrefsKey.DIALOG_GEOMETRY);
@@ -129,8 +203,8 @@ class PrefsTest extends UnitTest {
     @Test
     void testGetMapReturnsEmptyMapWhenAbsentAndNoMapDefault() {
         // Path (c): key absent from store AND has no map-typed default.
-        // TITLE_FONT has a String default, so getMap must degrade to an empty map.
-        var result = Prefs.getMap(PrefsKey.TITLE_FONT);
+        // APPEARANCE has a String default, so getMap must degrade to an empty map.
+        var result = Prefs.getMap(PrefsKey.APPEARANCE);
         assertThat(result).isEmpty();
     }
 
@@ -198,21 +272,21 @@ class PrefsTest extends UnitTest {
 
     @Test
     void testGetOrDefaultReturnsStoredValueWhenPresent() {
-        Prefs.put(PrefsKey.TITLE_FONT, STORED_TITLE_FONT);
-        assertThat(Prefs.getString(PrefsKey.TITLE_FONT)).isEqualTo(STORED_TITLE_FONT);
+        Prefs.put(PrefsKey.APPEARANCE, STORED_APPEARANCE);
+        assertThat(Prefs.getString(PrefsKey.APPEARANCE)).isEqualTo(STORED_APPEARANCE);
     }
 
     @Test
     void testGetOrDefaultFallsBackToDefaultWhenAbsent() {
-        // No put — store has no override; must return the defaults.json value.
-        assertThat(Prefs.getString(PrefsKey.TITLE_FONT)).isEqualTo(DEFAULT_TITLE_FONT);
+        // No put — store has no override; must return the user-defaults.json value.
+        assertThat(Prefs.getString(PrefsKey.APPEARANCE)).isEqualTo(DEFAULT_APPEARANCE);
     }
 
     // --- getDefault ---
 
     @Test
     void testGetDefaultThrowsForUnknownKey() {
-        // PrefsKey.ALL has no entry in defaults.json; any scalar getter must propagate
+        // PrefsKey.ALL has no entry in either defaults file; any scalar getter must propagate
         // the IllegalArgumentException thrown by getDefault.
         assertThatThrownBy(() -> Prefs.getString(PrefsKey.ALL))
             .isInstanceOf(IllegalArgumentException.class);
@@ -222,8 +296,8 @@ class PrefsTest extends UnitTest {
 
     @Test
     void testGetStringRoundTrip() {
-        Prefs.put(PrefsKey.TITLE_FONT, STORED_TITLE_FONT);
-        assertThat(Prefs.getString(PrefsKey.TITLE_FONT)).isEqualTo(STORED_TITLE_FONT);
+        Prefs.put(PrefsKey.APPEARANCE, STORED_APPEARANCE);
+        assertThat(Prefs.getString(PrefsKey.APPEARANCE)).isEqualTo(STORED_APPEARANCE);
     }
 
     // --- getInt ---
@@ -244,7 +318,7 @@ class PrefsTest extends UnitTest {
 
     @Test
     void testGetIntFallsBackToDefault() {
-        // No put — must return the defaults.json value cast through Number.intValue().
+        // No put — must return the user-defaults.json value cast through Number.intValue().
         assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(DEFAULT_EXPORT_DPI);
     }
 
@@ -275,16 +349,16 @@ class PrefsTest extends UnitTest {
 
     @Test
     void testGetStringListReturnsEmptyListWhenAbsent() {
-        // TITLE_FONT has a String default, not a list. Neither the store nor the
+        // APPEARANCE has a String default, not a list. Neither the store nor the
         // defaults hold a List value, so getStringList must return an empty list
         // rather than throwing — verifying the graceful-degradation contract that
         // distinguishes collection getters from scalar getters.
-        assertThat(Prefs.getStringList(PrefsKey.TITLE_FONT)).isEmpty();
+        assertThat(Prefs.getStringList(PrefsKey.APPEARANCE)).isEmpty();
     }
 
     @Test
     void testGetStringListWithListDefaultReturnsEmptyListWhenStoreAbsent() {
-        // RECENT_FILES has a list-typed default (empty array []) in defaults.json.
+        // RECENT_FILES has a list-typed default (empty array []) in user-defaults.json.
         // getStringList falls back to the defaults layer when the store has no value,
         // so with no store entry the empty-list default is returned — not a stored list.
         // This documents that getStringList consults defaults (unlike the row's claim
@@ -302,8 +376,8 @@ class PrefsTest extends UnitTest {
         // (save() also posts PrefsDidChangeNotification synchronously, but verifying
         // the bus side-effect would require subscribing a listener — the stored-value
         // assertion is sufficient to confirm the write path executed.)
-        Prefs.put(PrefsKey.TITLE_FONT, STORED_TITLE_FONT);
-        assertThat(Prefs.getString(PrefsKey.TITLE_FONT)).isEqualTo(STORED_TITLE_FONT);
+        Prefs.put(PrefsKey.APPEARANCE, STORED_APPEARANCE);
+        assertThat(Prefs.getString(PrefsKey.APPEARANCE)).isEqualTo(STORED_APPEARANCE);
     }
 
     // --- put(PrefsKey, int) ---
@@ -343,7 +417,7 @@ class PrefsTest extends UnitTest {
     @Test
     void testResetRemovesOverrideAndRestoresDefault() {
         // Store a non-default value, then reset the key and verify that the getter
-        // returns the defaults.json value — confirming the override is removed, not
+        // returns the user-defaults.json value — confirming the override is removed, not
         // merely zeroed.
         Prefs.put(PrefsKey.EXPORT_DPI, STORED_EXPORT_DPI);
         assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(STORED_EXPORT_DPI);
@@ -357,16 +431,16 @@ class PrefsTest extends UnitTest {
     @Test
     void testResetAllClearsAllOverrides() {
         // Seed non-default values on two distinct keys, call resetAll, and verify
-        // that both keys revert to their defaults.json values. resetAll clears the
+        // that both keys revert to their defaults-file values. resetAll clears the
         // entire store, so no individual reset is needed afterward — @AfterEach
         // resets are harmless no-ops when the store is already empty.
         Prefs.put(PrefsKey.EXPORT_DPI, STORED_EXPORT_DPI);
-        Prefs.put(PrefsKey.TITLE_FONT, STORED_TITLE_FONT);
+        Prefs.put(PrefsKey.APPEARANCE, STORED_APPEARANCE);
 
         Prefs.resetAll();
 
         assertThat(Prefs.getInt(PrefsKey.EXPORT_DPI)).isEqualTo(DEFAULT_EXPORT_DPI);
-        assertThat(Prefs.getString(PrefsKey.TITLE_FONT)).isEqualTo(DEFAULT_TITLE_FONT);
+        assertThat(Prefs.getString(PrefsKey.APPEARANCE)).isEqualTo(DEFAULT_APPEARANCE);
     }
 
     // --- removeObsoleteKeys ---
@@ -378,7 +452,7 @@ class PrefsTest extends UnitTest {
         // Also seed a live key to confirm it survives the call untouched.
         Prefs.putRawStored(OBSOLETE_KEY_COLORIZE_NOTE, OBSOLETE_KEY_VALUE);
         Prefs.putRawStored(OBSOLETE_KEY_DEFAULT_PROFILE, OBSOLETE_KEY_VALUE);
-        Prefs.put(PrefsKey.TITLE_FONT, STORED_TITLE_FONT);
+        Prefs.put(PrefsKey.APPEARANCE, STORED_APPEARANCE);
 
         Prefs.removeObsoleteKeysForTest();
 
@@ -387,7 +461,7 @@ class PrefsTest extends UnitTest {
         assertThat(Prefs.getRawStored(OBSOLETE_KEY_DEFAULT_PROFILE)).isNull();
 
         // The non-obsolete live key must be intact — removeObsoleteKeys is surgical.
-        assertThat(Prefs.getRawStored(PrefsKey.TITLE_FONT)).isEqualTo(STORED_TITLE_FONT);
+        assertThat(Prefs.getRawStored(PrefsKey.APPEARANCE)).isEqualTo(STORED_APPEARANCE);
     }
 
     // --- parseJsonValue ---
@@ -459,7 +533,7 @@ class PrefsTest extends UnitTest {
         void tearDown() {
             Prefs.reset(PrefsKey.FIRST_RUN);
             Prefs.reset(PrefsKey.EXPORT_DPI);
-            Prefs.reset(PrefsKey.TITLE_FONT);
+            Prefs.reset(PrefsKey.APPEARANCE);
         }
 
         @Test
@@ -493,8 +567,8 @@ class PrefsTest extends UnitTest {
         void testOtherDefaultStoresStringAsIs() {
             // When the default is a String (or any non-Boolean/non-Long type),
             // the value is stored verbatim as a String.
-            Prefs.writeTypedForTest(PrefsKey.TITLE_FONT.key(), "MyFont-Regular", "default");
-            assertThat(Prefs.getRawStored(PrefsKey.TITLE_FONT)).isInstanceOf(String.class).isEqualTo("MyFont-Regular");
+            Prefs.writeTypedForTest(PrefsKey.APPEARANCE.key(), "MyFont-Regular", "default");
+            assertThat(Prefs.getRawStored(PrefsKey.APPEARANCE)).isInstanceOf(String.class).isEqualTo("MyFont-Regular");
         }
     }
 

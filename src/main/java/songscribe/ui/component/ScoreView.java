@@ -264,7 +264,7 @@ public final class ScoreView
 
         // Create initial song
         song = new Song();
-        documentFonts = DocumentFonts.defaultsFromPrefs();
+        documentFonts = DocumentFonts.defaultFonts();
 
         // Initialize UI components
         initView();

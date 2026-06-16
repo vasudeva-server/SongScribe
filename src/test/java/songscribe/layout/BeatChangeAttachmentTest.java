@@ -74,7 +74,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testProducesThreeRegions() {
-            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var font = DocumentFonts.defaultFonts().getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
 
             assertThat(metrics.regions()).hasSize(3);
@@ -82,7 +82,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testLeftNoteRegionStartsAtOrigin() {
-            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var font = DocumentFonts.defaultFonts().getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var leftNote = metrics.regions().getFirst();
 
@@ -94,7 +94,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testEqualsRegionFollowsLeftNoteWithGap() {
-            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var font = DocumentFonts.defaultFonts().getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var leftNote = metrics.regions().get(0);
             var equals = metrics.regions().get(1);
@@ -106,7 +106,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testRightNoteRegionFollowsEqualsWithGap() {
-            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var font = DocumentFonts.defaultFonts().getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
             var rightNote = metrics.regions().get(2);
@@ -120,7 +120,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testTotalWidthIsSumOfRegionsAndGaps() {
-            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var font = DocumentFonts.defaultFonts().getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var regions = metrics.regions();
 
@@ -138,7 +138,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testEqualsSignDescentExtendsBelow_QUARTER_NOTE_HEIGHT_SS() {
-            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var font = DocumentFonts.defaultFonts().getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
 
@@ -153,7 +153,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testEqualsDescentIsPositive() {
-            var font = DocumentFonts.defaultsFromPrefs().getAttributionFont();
+            var font = DocumentFonts.defaultFonts().getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
 

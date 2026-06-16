@@ -58,7 +58,7 @@ class LineInvariantsTest extends UnitTest {
      * color/playing logic never reads) so each test only configures the state it cares about.
      */
     private static LineInvariants.Builder seededBuilder() {
-        return LineInvariants.builder(new Song(), DocumentFonts.defaultsFromPrefs())
+        return LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
             .setLayoutResult(LayoutResult.builder().build())
             .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
             .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0));
@@ -192,7 +192,7 @@ class LineInvariantsTest extends UnitTest {
     // Builder.build() — throws IllegalStateException when layoutResult is null
     @Test
     void testBuildThrowsWhenLayoutResultNull() {
-        var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultsFromPrefs())
+        var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
             .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
             .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0));
 
@@ -204,7 +204,7 @@ class LineInvariantsTest extends UnitTest {
     // Builder.build() — throws IllegalStateException when songLayoutMetrics is null
     @Test
     void testBuildThrowsWhenSongLayoutMetricsNull() {
-        var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultsFromPrefs())
+        var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
             .setLayoutResult(LayoutResult.builder().build())
             .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0));
 
@@ -216,7 +216,7 @@ class LineInvariantsTest extends UnitTest {
     // Builder.build() — throws IllegalStateException when lyricRenderMetrics is null
     @Test
     void testBuildThrowsWhenLyricRenderMetricsNull() {
-        var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultsFromPrefs())
+        var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
             .setLayoutResult(LayoutResult.builder().build())
             .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0));
 
