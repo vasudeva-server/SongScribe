@@ -212,14 +212,14 @@ class KeySignatureDisplayTest extends UnitTest {
 
     @Test
     void testSuffixForSharpsCount1ContainsSingularSharp() {
-        // suffix = " ・ 1 sharp"
+        // suffix = " · 1 sharp"
         var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 1));
         assertThat(result).contains("1").contains("sharp");
     }
 
     @Test
     void testSuffixForSharpsCount2ContainsPluralSharps() {
-        // suffix = " ・ 2 sharps"
+        // suffix = " · 2 sharps"
         var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 2));
         assertThat(result).contains("2").contains("sharps");
     }
@@ -240,14 +240,14 @@ class KeySignatureDisplayTest extends UnitTest {
 
     @Test
     void testSuffixForFlatsCount1ContainsSingularFlat() {
-        // suffix = " ・ 1 flat"
+        // suffix = " · 1 flat"
         var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 1));
         assertThat(result).contains("1").contains("flat");
     }
 
     @Test
     void testSuffixForFlatsCount2ContainsPluralFlats() {
-        // suffix = " ・ 2 flats"
+        // suffix = " · 2 flats"
         var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 2));
         assertThat(result).contains("2").contains("flats");
     }
@@ -343,7 +343,7 @@ class KeySignatureDisplayTest extends UnitTest {
 
     @Test
     void testGetDisplayNameNoAccidentalAppliesSingleLabelFont() {
-        // SHARPS/1: tonic="G" (no accidental), suffix=" ・ 1 sharp"
+        // SHARPS/1: tonic="G" (no accidental), suffix=" · 1 sharp"
         // All characters should have the same font (labelFont); no TRACKING attribute anywhere.
         var attributed = KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 1);
         var text = textOf(attributed);
