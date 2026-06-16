@@ -22,9 +22,6 @@ package songscribe;
 public final class FileExtensions {
 
     public static final String SONGWRITER = "mssw";
-    public static final String SONGSHOW = "msss";
-    public static final String SONGBOOK = "mssb";
-    public static final String SBPORTABLE = "msbp";
 
     private FileExtensions() {}
 }
