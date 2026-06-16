@@ -281,8 +281,8 @@ public class MainFrame extends JFrame implements Printable {
         initContent();
         updateTitle();
 
-        MenuController.init(this);
         installDesktopHandlers();
+        MenuController.init(this);
 
         Actions.CONTROL_ACTION_GROUP.selectNext();
 

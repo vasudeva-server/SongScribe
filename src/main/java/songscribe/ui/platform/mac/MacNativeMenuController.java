@@ -50,7 +50,7 @@ public class MacNativeMenuController {
 
     private static final Logger LOG = LoggerFactory.getLogger(MacNativeMenuController.class);
 
-    private final List<NSMenuItem> managedItems;
+    private final List<? extends NSMenuItem> managedItems;
 
     public MacNativeMenuController() {
         managedItems = discoverNativeItems();
@@ -61,7 +61,7 @@ public class MacNativeMenuController {
      * Package-private constructor for testing: accepts a pre-built managed-item
      * list and subscribes to the message bus, bypassing the native discovery chain.
      */
-    MacNativeMenuController(List<NSMenuItem> managedItems) {
+    MacNativeMenuController(List<? extends NSMenuItem> managedItems) {
         this.managedItems = managedItems;
         MessageCenter.subscribe(this);
     }
@@ -100,8 +100,7 @@ public class MacNativeMenuController {
                     var item = appMenu.itemAtIndex(new NSInteger(i));
                     var title = item.title();
 
-                    //noinspection ConstantValue -- need for NullAway
-                    if (title != null && title.startsWith(action.getNativeMenuTitle())) {
+                    if (title.startsWith(action.getNativeMenuTitle())) {
                         items.add(item);
                         matched = true;
                         break;
