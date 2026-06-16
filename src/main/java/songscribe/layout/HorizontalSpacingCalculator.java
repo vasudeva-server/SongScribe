@@ -466,8 +466,9 @@ public class HorizontalSpacingCalculator {
      * <ol>
      *   <li>Place the first column at the caller-supplied start position</li>
      *   <li>Calculate tight internal spacing (ignore lyrics)</li>
-     *   <li>Check if lyrics under beam group require expansion</li>
-     *   <li>If expansion needed, distribute evenly across columns</li>
+     *   <li>Calculate each gap's lyric-driven spacing requirement</li>
+     *   <li>Distribute any total expansion evenly to keep the beam regular, while clamping each
+     *       gap up to its own lyric requirement so wide syllables never overlap (refs #445)</li>
      * </ol>
      *
      * @param columns        All columns
@@ -517,43 +518,41 @@ public class HorizontalSpacingCalculator {
 
         var tightTotalWidthSs = currentXSs - startXSs;
 
-        // Step 2: Calculate lyric-driven width requirement
+        // Step 2: Calculate the lyric-driven spacing requirement for each gap. Keeping the
+        // per-gap values (not just their sum) lets Step 3 guarantee that every gap individually
+        // clears its own syllables, rather than trusting an even share of the total (refs #445).
+        var lyricRequiredPerGapSs = new ArrayList<Double>();
         var lyricRequiredWidthSs = 0.0;
 
         for (var i = 1; i < columnCount; i++) {
             var prev = beamColumns.get(i - 1);
             var curr = beamColumns.get(i);
             var lyricSpacingSs = calculateLyricSpacingSs(prev, curr);
+            // No lyrics under this gap, fall back to the geometric minimum.
+            var gapRequirementSs = lyricSpacingSs > 0
+                ? lyricSpacingSs
+                : calculateMinimumColumnSpacingSs(prev, curr);
 
-            if (lyricSpacingSs > 0) {
-                lyricRequiredWidthSs += lyricSpacingSs;
-            } else {
-                // No lyrics, use minimum spacing
-                lyricRequiredWidthSs += calculateMinimumColumnSpacingSs(prev, curr);
-            }
+            lyricRequiredPerGapSs.add(gapRequirementSs);
+            lyricRequiredWidthSs += gapRequirementSs;
         }
 
-        // Step 3: Determine final positions
-        if (lyricRequiredWidthSs <= tightTotalWidthSs) {
-            // Tight spacing is sufficient
-            for (var i = 0; i < columnCount; i++) {
-                beamColumns.get(i).setXSs(tightPositions.get(i));
-            }
-        } else {
-            // Need to expand - distribute expansion evenly
-            var expansionNeededSs = lyricRequiredWidthSs - tightTotalWidthSs;
-            var expansionPerGapSs = expansionNeededSs / (columnCount - 1);
+        // Step 3: Determine final positions. Distribute any total expansion evenly to keep the
+        // beam looking regular, but never let a gap fall below its own lyric requirement —
+        // distributing only the total can starve a gap whose syllables are wider than average
+        // (the narrow semiquaver-to-semiquaver gap), which is what made lyrics overlap (refs #445).
+        var expansionNeededSs = lyricRequiredWidthSs - tightTotalWidthSs;
+        var expansionPerGapSs = expansionNeededSs > 0 ? expansionNeededSs / (columnCount - 1) : 0;
 
-            beamColumns.getFirst().setXSs(startXSs);
-            currentXSs = startXSs;
+        beamColumns.getFirst().setXSs(startXSs);
+        currentXSs = startXSs;
 
-            for (var i = 1; i < columnCount; i++) {
-                var tightSpacingSs = tightPositions.get(i) - tightPositions.get(i - 1);
-                var expandedSpacingSs = tightSpacingSs + expansionPerGapSs;
+        for (var i = 1; i < columnCount; i++) {
+            var tightSpacingSs = tightPositions.get(i) - tightPositions.get(i - 1);
+            var spacingSs = Math.max(tightSpacingSs + expansionPerGapSs, lyricRequiredPerGapSs.get(i - 1));
 
-                currentXSs += expandedSpacingSs;
-                beamColumns.get(i).setXSs(currentXSs);
-            }
+            currentXSs += spacingSs;
+            beamColumns.get(i).setXSs(currentXSs);
         }
     }
 }

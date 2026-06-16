@@ -45,6 +45,8 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     private static final double PLAIN_RIGHT_EXTENT_SS = 2.0;
     private static final double NEGATIVE_LEFT_EXTENT_SS = -0.5;
     private static final double WIDE_SYLLABLE_WIDTH_SS = 8.0;
+    // A narrow syllable, so a gap carrying it needs less room than one between two wide syllables.
+    private static final double NARROW_SYLLABLE_WIDTH_SS = 2.0;
     // The gap a column reserves to the next syllable (lyric space width), as ElementColumnBuilder sets it.
     private static final double SYLLABLE_GAP_SS = 0.5;
     private static final double ACCIDENTAL_LEFT_EXTENT_SS = -0.625;
@@ -634,6 +636,58 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         // Lyric expansion exceeds tight beam spacing
         assertThat(col2.getXSs() - col1.getXSs())
             .isGreaterThan(BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS);
+    }
+
+    // #445: within a beam group, a gap whose two syllables are wide must keep enough room for them
+    // even when other gaps in the group need less. This mirrors the bug's third beam group —
+    // [semiquaver, semiquaver, quaver] with wide lyrics on the two semiquavers — where distributing
+    // the expansion evenly starved the narrow semiquaver-to-semiquaver gap and overlapped the lyrics.
+    @Test
+    void testBeamGroupGapHonorsItsOwnWideSyllablesNotJustEvenShare() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        // Two semiquavers with wide lyrics: their shared gap takes the tight beam-internal gap
+        // yet must hold both wide syllables.
+        var col1 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, "c", WIDE_SYLLABLE_WIDTH_SS, true
+        );
+        var col2 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, "a", WIDE_SYLLABLE_WIDTH_SS, true
+        );
+        // Closing quaver with a narrow lyric: its gap needs less room than the semiquaver pair's.
+        var col3 = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, "b", NARROW_SYLLABLE_WIDTH_SS, true
+        );
+
+        col1.setMinGapToNextSyllableSs(SYLLABLE_GAP_SS);
+        col2.setMinGapToNextSyllableSs(SYLLABLE_GAP_SS);
+
+        calculator.calculatePositions(List.of(col0, col1, col2, col3), line);
+
+        // Gap between the two wide semiquavers must clear both syllables: WIDE/2 + GAP + WIDE/2.
+        var semiquaverPairLyricSpacingSs = WIDE_SYLLABLE_WIDTH_SS + SYLLABLE_GAP_SS;
+        assertThat(col2.getXSs() - col1.getXSs())
+            .as("wide semiquaver-to-semiquaver gap must not overlap its lyrics")
+            .isGreaterThanOrEqualTo(semiquaverPairLyricSpacingSs - TOLERANCE);
+
+        // Guard against regressing to even distribution: an even split of the total expansion would
+        // have placed this gap below its own lyric requirement, overlapping the syllables.
+        var tightGap1Ss = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+        var tightGap2Ss = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        var gap2LyricSpacingSs = WIDE_SYLLABLE_WIDTH_SS / 2.0 + SYLLABLE_GAP_SS + NARROW_SYLLABLE_WIDTH_SS / 2.0;
+        var totalExpansionSs = (semiquaverPairLyricSpacingSs + gap2LyricSpacingSs) - (tightGap1Ss + tightGap2Ss);
+        var evenlyDistributedGap1Ss = tightGap1Ss + totalExpansionSs / 2.0;
+        assertThat(evenlyDistributedGap1Ss)
+            .as("test is only meaningful if even distribution would have starved this gap")
+            .isLessThan(semiquaverPairLyricSpacingSs);
     }
 
     // Row 33: single-column beam group receives normal (DEFAULT_COLUMN_GAP_SS) spacing
