@@ -22,6 +22,7 @@ package songscribe.ui;
 
 import module java.desktop;
 
+import java.util.Locale;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -40,6 +41,10 @@ import songscribe.util.UIUtils;
 public final class OptionDialogs {
 
     private static final Logger LOG = LoggerFactory.getLogger(OptionDialogs.class);
+
+    // Extra width added to each JOptionPane message label so FlatLaf's fractional/LCD
+    // glyph ink, which extends past the integer advance width, is never clipped (#440).
+    private static final int MESSAGE_LABEL_CLIP_PAD = 8;
 
     private static boolean suppressDialogs = false;
 
@@ -250,11 +255,56 @@ public final class OptionDialogs {
 
     private static void showOptionPane(JOptionPane pane, @Nullable Component parent, String title) {
         var dialog = pane.createDialog(parent, title);
+
+        // createDialog has already laid out and packed the pane; widen the message
+        // labels and re-pack so the dialog grows to the corrected width.
+        padMessageLabels(pane);
+        dialog.pack();
+
         UIUtils.addStandardDialogKeyBindings(dialog);
         UIUtils.positionDialog(dialog, parent);
-        dialog.validate();
         dialog.setVisible(true);
         dialog.dispose();
+    }
+
+    /**
+     * Pads each message label's width so the final glyph is never clipped.
+     *
+     * <p>JOptionPane bursts a plain-text message into JLabels that BasicLabelUI
+     * sizes to the integer advance width. FlatLaf paints with fractional/LCD
+     * subpixel metrics whose glyph ink extends a couple pixels past that advance,
+     * clipping the last character (issue #440). A render-context measurement can't
+     * reliably recover that overhang on a HiDPI screen (the realized context is 2x,
+     * so its pixel bounds are device pixels), so instead pad by a small fixed
+     * amount — the slack is invisible trailing space on left-aligned message text.
+     */
+    private static void padMessageLabels(Container container) {
+        for (var component : container.getComponents()) {
+            if (component instanceof JLabel label) {
+                var text = label.getText();
+
+                // Skip icon-only labels (null/empty text) and HTML labels, which
+                // wrap and measure themselves correctly and need no padding.
+                if (text != null && !text.isEmpty() && !text.toLowerCase(Locale.ROOT).startsWith("<html")) {
+                    var current = label.getPreferredSize();
+                    var padded = new Dimension(current.width + MESSAGE_LABEL_CLIP_PAD, current.height);
+
+                    label.setPreferredSize(padded);
+                    label.setMinimumSize(padded);
+
+                    // The message area is a vertical BoxLayout, which clamps each child's
+                    // width to its maximum size; without this the label stays at its old
+                    // width even though the Box grew. invalidate busts the layout's cached
+                    // sizes so the subsequent pack picks up the new width.
+                    label.setMaximumSize(padded);
+                    label.invalidate();
+                }
+            }
+
+            if (component instanceof Container child) {
+                padMessageLabels(child);
+            }
+        }
     }
 
     private static int getOptionPaneResult(JOptionPane pane, Object @Nullable [] options) {
