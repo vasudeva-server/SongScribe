@@ -101,7 +101,7 @@ public class MenuController {
         menuBar.add(initEditMenu());
         menuBar.add(new NotationMenu(mainFrame));
         menuBar.add(initSongMenu());
-        menuBar.add(initModeMenu());
+        //        menuBar.add(initModeMenu());
         //        menuBar.add(launchMenu);
         //        menuBar.add(initHelpMenu());
         //        var launchMenu = initLaunchMenu();
@@ -302,14 +302,14 @@ public class MenuController {
         return menu;
     }
 
-    private static JMenu initModeMenu() {
-        var menu = new JMenu(Strings.get(Strings.MENU_ADJUSTMENT));
-
-        menu.add(new JRadioButtonMenuItem(Actions.ADJUST_MUSIC_MODE_ACTION));
-        menu.add(new JRadioButtonMenuItem(Actions.ADJUST_VERTICAL_MODE_ACTION));
-
-        return menu;
-    }
+//    private static JMenu initModeMenu() {
+//        var menu = new JMenu(Strings.get(Strings.MENU_ADJUSTMENT));
+//
+//        menu.add(new JRadioButtonMenuItem(Actions.ADJUST_MUSIC_MODE_ACTION));
+//        menu.add(new JRadioButtonMenuItem(Actions.ADJUST_VERTICAL_MODE_ACTION));
+//
+//        return menu;
+//    }
 
     private JMenu initSongMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_SONG));
