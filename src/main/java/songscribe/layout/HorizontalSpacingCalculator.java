@@ -148,15 +148,28 @@ public class HorizontalSpacingCalculator {
         var firstXSs = calculateFirstNoteXSs(line);
         columns.getFirst().setXSs(firstXSs);
 
+        var startIndex = 1;
+
+        // A beam group anchored at the very first column must still get beam-internal spacing.
+        // The main loop starts at index 1, so it would never see a group that starts at column 0;
+        // handle that group here, anchoring it at the already-positioned first note.
+        var firstBeamGroupRange = findBeamGroupStartingAt(beamGroupRanges, 0);
+
+        if (firstBeamGroupRange != null) {
+            handleBeamGroup(columns, firstBeamGroupRange, firstXSs);
+            startIndex = firstBeamGroupRange.end + 1;
+        }
+
         // Process remaining columns
-        for (var i = 1; i < columns.size(); i++) {
+        for (var i = startIndex; i < columns.size(); i++) {
             // Check if we're starting a beam group
             var beamGroupRange = findBeamGroupStartingAt(beamGroupRanges, i);
 
             if (beamGroupRange != null) {
                 // Process entire beam group
                 var prevColumn = columns.get(i - 1);
-                handleBeamGroup(columns, beamGroupRange, prevColumn.getXSs());
+                var startXSs = calculateNextColumnXSs(prevColumn, columns.get(beamGroupRange.start));
+                handleBeamGroup(columns, beamGroupRange, startXSs);
                 i = beamGroupRange.end; // Skip to end of beam group
             } else {
                 // Normal column-to-column spacing
@@ -451,7 +464,7 @@ public class HorizontalSpacingCalculator {
      * <p>
      * Algorithm:
      * <ol>
-     *   <li>Calculate where beam group should start (based on previous column)</li>
+     *   <li>Place the first column at the caller-supplied start position</li>
      *   <li>Calculate tight internal spacing (ignore lyrics)</li>
      *   <li>Check if lyrics under beam group require expansion</li>
      *   <li>If expansion needed, distribute evenly across columns</li>
@@ -459,12 +472,12 @@ public class HorizontalSpacingCalculator {
      *
      * @param columns        All columns
      * @param range          Beam group range
-     * @param prevColumnXSs  X position in staff spaces of the column before the beam group
+     * @param startXSs       X position in staff spaces of the beam group's first column
      */
     private void handleBeamGroup(
         List<ElementColumn> columns,
         BeamGroupRange range,
-        double prevColumnXSs) {
+        double startXSs) {
 
         var beamColumns = columns.subList(range.start, range.end + 1);
         var columnCount = beamColumns.size();
@@ -472,11 +485,6 @@ public class HorizontalSpacingCalculator {
         if (columnCount == 0) {
             return;
         }
-
-        // Calculate where first column of beam group should go
-        var prevColumn = columns.get(range.start - 1);
-        var firstBeamColumn = beamColumns.getFirst();
-        var startXSs = calculateNextColumnXSs(prevColumn, firstBeamColumn);
 
         if (columnCount == 1) {
             // Single column "beam group" - just use normal spacing

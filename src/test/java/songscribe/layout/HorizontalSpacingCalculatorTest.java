@@ -578,6 +578,33 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         assertThat(colB2.getXSs() - colB1.getXSs()).isCloseTo(tightSpacing, within(TOLERANCE));
     }
 
+    // #444: a beam group anchored at the very first column on a line must still get beam-internal
+    // spacing. The main positioning loop starts at the second column, so a group starting at column
+    // 0 would otherwise never be treated as a beam group and its notes would fall back to the
+    // default note-to-note gap instead of the tight beam gap.
+    @Test
+    void testFirstColumnBeamGroupGetsBeamInternalSpacing() {
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var col0 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var col1 = new ElementColumn(
+            ElementType.SEMIQUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, col1), line);
+
+        var tightSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+        assertThat(col1.getXSs() - col0.getXSs()).isCloseTo(tightSpacing, within(TOLERANCE));
+        // Tight beam gap is smaller than the default note-to-note gap
+        assertThat(col1.getXSs() - col0.getXSs())
+            .isLessThan(BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS);
+    }
+
     // Row 32 (with lyrics): beam-group expands evenly when lyric spacing exceeds tight spacing
     @Test
     void testBeamGroupExpandsEvenlyForWideSyllables() {
