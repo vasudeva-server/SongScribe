@@ -1,4 +1,8 @@
-MANDATORY: Use `serena` `jet_brains_*` tools for all Java exploration and refactoring. Fall back to Grep/Read/Glob only when a `jet_brains_*` tool returns no results, the file is not Java, or the IDE connection is unavailable. When spawning a fresh subagent (with `subagent_type`), add this at top of its prompt:
+MANDATORY: Use `serena` `jet_brains_*` tools for all Java exploration and refactoring. Fall back to Grep/Read/Glob only when a `jet_brains_*` tool returns no results, the file is not Java, or the IDE connection is unavailable.
+
+Finding callers/usages is covered by this rule: any "who calls X", "where is X used", "find references to X" task MUST start with `jet_brains_find_referencing_symbols`, never `grep`/`rg`.
+
+When spawning a fresh subagent (with `subagent_type`), add this at top of its prompt:
 
 > MANDATORY: Read .agents/rules/serena.md
 
@@ -22,7 +26,7 @@ Symbols are addressed by **name path** + **relative_path** (the file).
   - `max_matches=1` when expecting a unique symbol; raise it to refine a noisy search.
   - `search_deps=true` to inspect third-party/library code — prefer this over web search. Pass the returned `<ext...>` identifier as `relative_path` for follow-up queries.
 - **`jet_brains_find_declaration`** — jump from a usage to its declaration. Takes a `regex` with one capture group around the symbol; include surrounding context so the match is unambiguous.
-- **`jet_brains_find_referencing_symbols`** — find callers/usages of a symbol. Requires `name_path` + the file that defines it. Use before changing a signature or deleting.
+- **`jet_brains_find_referencing_symbols`** — the first-choice tool whenever you need a symbol's callers/usages (impact list, before a signature change, before deleting), not only "before changing." Requires `name_path` + the defining file. **Never** use `grep`/`rg "foo("` to find callers — it's not type-aware and counts comments/strings as calls. Caveat: it finds *code* references, not mentions in comments/Javadoc/string literals; when a refactor must update those too, run this **first** for the authoritative caller list, then a separate text search **only** for prose mentions.
 - **`jet_brains_find_implementations`** — implementations of an interface/abstract method.
 - **`jet_brains_type_hierarchy`** — supertypes/subtypes of a class. `hierarchy_type` = `super` | `sub` | `both`; `depth=0` for unlimited.
 - **`search_for_pattern`** — use before Grep when the name is unknown.
