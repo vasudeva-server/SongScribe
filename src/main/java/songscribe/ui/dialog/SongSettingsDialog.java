@@ -67,6 +67,7 @@ import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
+import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
 import songscribe.util.Utils;
 
@@ -490,6 +491,23 @@ public class SongSettingsDialog extends StandardDialog {
             };
             subtitleField.getDocument().addDocumentListener(subtitlePreviewUpdater);
 
+            // When a field loses focus, replace its text with the normalized
+            // (typographically substituted, trimmed) version so the field shows
+            // exactly what the commit will save. The substitution is idempotent,
+            // so re-firing the preview updater on setText is harmless.
+            titleField.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    titleField.setText(SongMetadata.normalizeTitle(titleField.getText()));
+                }
+            });
+            subtitleField.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    subtitleField.setText(SongMetadata.normalizeTitle(subtitleField.getText()));
+                }
+            });
+
             build();
         }
 
@@ -626,13 +644,15 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         private void updateTitlePreview() {
+            // Normalize through the same seam the commit uses so the preview shows
+            // the typographic substitution (and trimming) the score will render.
             titlePreview.setPreviewText(
-                Song.numberedTitle(numberField.getText(), titleField.getText())
+                Song.numberedTitle(numberField.getText(), SongMetadata.normalizeTitle(titleField.getText()))
             );
         }
 
         private void updateSubtitlePreview() {
-            var text = subtitleField.getText();
+            var text = SongMetadata.normalizeTitle(subtitleField.getText());
             subtitlePreview.setPreviewText(text);
 
             // The subtitle preview collapses to zero height when empty and expands
@@ -872,6 +892,17 @@ public class SongSettingsDialog extends StandardDialog {
             lyricistField.addFocusListener(new FocusAdapter() {
                 @Override
                 public void focusLost(FocusEvent e) {
+                    // An empty lyricist inherits the composer (Sri Chinmoy when the
+                    // composer is itself empty); otherwise show the committed value
+                    // with typographic substitution applied.
+                    if (lyricistField.getText().trim().isEmpty()) {
+                        lyricistField.setText(
+                            Song.coercePerson(StringUtils.processText(composerField.getText(), false))
+                        );
+                    } else {
+                        lyricistField.setText(StringUtils.processText(lyricistField.getText(), false));
+                    }
+
                     refreshPreview();
                 }
             });
@@ -956,7 +987,15 @@ public class SongSettingsDialog extends StandardDialog {
             composerField.addFocusListener(new FocusAdapter() {
                 @Override
                 public void focusLost(FocusEvent e) {
-                    if (lyricistField.getText().isEmpty()) {
+                    // Show the committed value: typographic substitution applied,
+                    // an empty field coerced to Sri Chinmoy.
+                    composerField.setText(
+                        Song.coercePerson(StringUtils.processText(composerField.getText(), false))
+                    );
+
+                    // An empty (or whitespace-only) lyricist inherits the
+                    // composer, so mirror the normalized composer into it.
+                    if (lyricistField.getText().trim().isEmpty()) {
                         lyricistField.setText(composerField.getText());
                     }
 
@@ -967,13 +1006,13 @@ public class SongSettingsDialog extends StandardDialog {
             unofficialTranslationCheck.addActionListener(e -> refreshPreview());
             arrangementCheck.addActionListener(e -> refreshPreview());
 
-            var previewOnFocusLost = new FocusAdapter() {
+            placeField.addFocusListener(new FocusAdapter() {
                 @Override
                 public void focusLost(FocusEvent e) {
+                    placeField.setText(StringUtils.processText(placeField.getText(), false));
                     refreshPreview();
                 }
-            };
-            placeField.addFocusListener(previewOnFocusLost);
+            });
             yearField.addFocusListener(new FocusAdapter() {
                 @Override
                 public void focusLost(FocusEvent e) {

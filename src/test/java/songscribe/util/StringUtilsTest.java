@@ -170,6 +170,222 @@ class StringUtilsTest extends UnitTest {
     }
 
     @Nested
+    class ToTypographic {
+
+        // -- Double quotes --
+
+        @Test
+        void testToTypographicConvertsDoubleQuotedPhrase() {
+            var input = "\"hi\"";
+            var expected = "“hi”";
+            assertThat(StringUtils.toTypographic(input)).isEqualTo(expected);
+        }
+
+        @Test
+        void testToTypographicDoubleQuoteIsIdempotent() {
+            var input = "\"hi\"";
+            var once = StringUtils.toTypographic(input);
+            assertThat(StringUtils.toTypographic(once)).isEqualTo(once);
+        }
+
+        // -- Single quotes --
+
+        @Test
+        void testToTypographicConvertsSingleQuotedPhrase() {
+            var input = "'hello'";
+            var expected = "‘hello’";
+            assertThat(StringUtils.toTypographic(input)).isEqualTo(expected);
+        }
+
+        @Test
+        void testToTypographicSingleQuotedPhraseIsIdempotent() {
+            var input = "'hello'";
+            var once = StringUtils.toTypographic(input);
+            assertThat(StringUtils.toTypographic(once)).isEqualTo(once);
+        }
+
+        // -- Apostrophes (contractions & possessives) --
+
+        @Test
+        void testToTypographicConvertsContraction() {
+            var input = "don't";
+            var expected = "don’t";
+            assertThat(StringUtils.toTypographic(input)).isEqualTo(expected);
+        }
+
+        @Test
+        void testToTypographicContractionIsIdempotent() {
+            var input = "don't";
+            var once = StringUtils.toTypographic(input);
+            assertThat(StringUtils.toTypographic(once)).isEqualTo(once);
+        }
+
+        @Test
+        void testToTypographicConvertsPossessive() {
+            var input = "God's";
+            var expected = "God’s";
+            assertThat(StringUtils.toTypographic(input)).isEqualTo(expected);
+        }
+
+        @Test
+        void testToTypographicPossessiveIsIdempotent() {
+            var input = "God's";
+            var once = StringUtils.toTypographic(input);
+            assertThat(StringUtils.toTypographic(once)).isEqualTo(once);
+        }
+
+        // -- Em dash (greedy collapse) --
+
+        @Test
+        void testToTypographicConvertsDoubleDashToEmDash() {
+            var expected = "—";
+            assertThat(StringUtils.toTypographic("--")).isEqualTo(expected);
+        }
+
+        @Test
+        void testToTypographicConvertsTripleDashToSingleEmDash() {
+            var expected = "—";
+            assertThat(StringUtils.toTypographic("---")).isEqualTo(expected);
+        }
+
+        @Test
+        void testToTypographicConvertsQuadrupleDashToSingleEmDash() {
+            var expected = "—";
+            assertThat(StringUtils.toTypographic("----")).isEqualTo(expected);
+        }
+
+        @Test
+        void testToTypographicPreservesSingleDash() {
+            assertThat(StringUtils.toTypographic("-")).isEqualTo("-");
+        }
+
+        @Test
+        void testToTypographicEmDashIsIdempotent() {
+            var input = "--";
+            var once = StringUtils.toTypographic(input);
+            assertThat(StringUtils.toTypographic(once)).isEqualTo(once);
+        }
+
+        // -- Ellipsis (greedy collapse) --
+
+        @Test
+        void testToTypographicConvertsThreeDotsToEllipsis() {
+            var expected = "…";
+            assertThat(StringUtils.toTypographic("...")).isEqualTo(expected);
+        }
+
+        @Test
+        void testToTypographicConvertsFourDotsToSingleEllipsis() {
+            var expected = "…";
+            assertThat(StringUtils.toTypographic("....")).isEqualTo(expected);
+        }
+
+        @Test
+        void testToTypographicPreservesSpacedDots() {
+            assertThat(StringUtils.toTypographic(". . .")).isEqualTo(". . .");
+        }
+
+        @Test
+        void testToTypographicEllipsisIsIdempotent() {
+            var input = "...";
+            var once = StringUtils.toTypographic(input);
+            assertThat(StringUtils.toTypographic(once)).isEqualTo(once);
+        }
+
+        // -- Closing-before-punctuation lookaheads --
+
+        @Test
+        void testToTypographicClosingDoubleQuoteBeforePunctuation() {
+            // The closing double-quote pattern's [.,!?;:"] lookahead fires before a period.
+            assertThat(StringUtils.toTypographic("\"hi\".")).isEqualTo("“hi”.");
+        }
+
+        @Test
+        void testToTypographicClosingSingleQuoteBeforePunctuation() {
+            // The closing single-quote pattern's [.,!?;:"] lookahead fires before a comma.
+            assertThat(StringUtils.toTypographic("'word',")).isEqualTo("‘word’,");
+        }
+
+        // -- Fallback replacements (no contextual match) --
+
+        @Test
+        void testToTypographicLoneDoubleQuoteUsesClosingFallback() {
+            // A double quote with no opening/closing context falls back to closing.
+            assertThat(StringUtils.toTypographic("a\"b")).isEqualTo("a”b");
+        }
+
+        @Test
+        void testToTypographicLoneSingleQuoteUsesApostropheFallback() {
+            // A word-interior apostrophe (not a contraction lookahead) falls back to ’.
+            assertThat(StringUtils.toTypographic("O'clock")).isEqualTo("O’clock");
+        }
+
+        // -- ll/ve/re contraction lookaheads --
+
+        @Test
+        void testToTypographicConvertsWillContraction() {
+            assertThat(StringUtils.toTypographic("we'll")).isEqualTo("we’ll");
+        }
+
+        @Test
+        void testToTypographicConvertsHaveContraction() {
+            assertThat(StringUtils.toTypographic("we've")).isEqualTo("we’ve");
+        }
+
+        @Test
+        void testToTypographicConvertsAreContraction() {
+            assertThat(StringUtils.toTypographic("we're")).isEqualTo("we’re");
+        }
+
+        // -- Nested single quote inside double quote (regression) --
+
+        @Test
+        void testToTypographicNestedSingleQuoteInsideDoubleQuote() {
+            // The double-quote pass converts the outer " to a curly “ first, so the
+            // opening single-quote lookbehind must accept “ to open the inner ‘.
+            assertThat(StringUtils.toTypographic("\"'word'\"")).isEqualTo("“‘word’”");
+        }
+
+        // -- Combined input (all substitution types in one string) --
+
+        @Test
+        void testToTypographicConvertsCombinedInput() {
+            assertThat(StringUtils.toTypographic("\"don't\" -- yes...")).isEqualTo("“don’t” — yes…");
+        }
+
+        @Test
+        void testToTypographicCombinedInputIsIdempotent() {
+            var once = StringUtils.toTypographic("\"don't\" -- yes...");
+            assertThat(StringUtils.toTypographic(once)).isEqualTo(once);
+        }
+
+        // -- Multiline opening quote --
+
+        @Test
+        void testToTypographicOpensQuoteOnInteriorLine() {
+            // The MULTILINE flag makes ^ match interior line starts, so the opening
+            // double quote after \n is treated as an opening curly quote.
+            var input = "a\n\"hi\"";
+            var expected = "a\n“hi”";
+            assertThat(StringUtils.toTypographic(input)).isEqualTo(expected);
+        }
+
+        @Test
+        void testToTypographicMultilineIsIdempotent() {
+            var input = "a\n\"hi\"";
+            var once = StringUtils.toTypographic(input);
+            assertThat(StringUtils.toTypographic(once)).isEqualTo(once);
+        }
+
+        // -- Empty string --
+
+        @Test
+        void testToTypographicEmptyStringPassesThrough() {
+            assertThat(StringUtils.toTypographic("")).isEqualTo("");
+        }
+    }
+
+    @Nested
     class WrapText {
         private static final int WORD_WIDTH = 3;
         private static final int SPACE_WIDTH = 1;

@@ -23,12 +23,28 @@ package songscribe.dom;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** Tests record equality, field semantics, and the canonical-constructor invariant for {@link Lyric}. */
-class LyricTest {
+import songscribe.UnitTest;
+import songscribe.io.LegacyLyricsImporter;
+
+/**
+ * Tests record equality, field semantics, and the canonical-constructor invariant for {@link Lyric}.
+ * Also covers the typographic-normalization seam added in Phase 3.
+ */
+class LyricTest extends UnitTest {
 
     private static final Lyric SINGLE = new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+
+    private Song song;
+
+    @BeforeEach
+    void setUp() {
+        song = new Song();
+    }
 
     @Test
     void testEqualityRequiresSameSyllabic() {
@@ -103,6 +119,82 @@ class LyricTest {
     void testInvariantRejectsCompoundOnContinueCarrier() {
         assertThatThrownBy(() -> new Lyric(1, "", Lyric.Extend.CONTINUE, null, true))
             .isInstanceOf(IllegalStateException.class);
+    }
+
+    // --- Phase 7: typographic normalization seam ---
+
+    @Test
+    void testConstructorAppliesTypographicSubstitution() {
+        // Straight apostrophe in "don't" must become a right single quotation mark (U+2019).
+        var lyric = new Lyric(1, "don't", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+
+        assertThat(lyric.text()).isEqualTo("don’t");
+    }
+
+    @Test
+    void testConstructorStripsShortA() {
+        // ă in a syllable must be replaced with a (unconditional short-A stripping).
+        var lyric = new Lyric(1, "băiat", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+
+        assertThat(lyric.text()).isEqualTo("baiat");
+    }
+
+    @Test
+    void testConstructorNormalizationIsIdempotent() {
+        // Constructing a Lyric from the already-normalized text of another Lyric is a no-op.
+        var first = new Lyric(1, "don't", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+        var second = new Lyric(1, first.text(), Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+
+        assertThat(second.text()).isEqualTo(first.text());
+    }
+
+    @Test
+    void testCarrierLyricWithEmptyTextIsUnchanged() {
+        // Empty text must survive normalization unchanged; carrier-lyric validation must pass.
+        var carrier = new Lyric(1, "", Lyric.Extend.CONTINUE, null, false);
+
+        assertThat(carrier.text()).isEmpty();
+    }
+
+    @SuppressWarnings("NullAway")
+    @Test
+    void testLegacyImportDoubleHyphenCompoundMarkerIsNotCorruptedToEmDash() {
+        // The "--" compound-word marker in legacy lyric blobs is consumed by the parser
+        // before new Lyric(...) is called, so the toTypographic "-- → —" rule must
+        // never corrupt the syllable texts.
+        var line = lineWithNotes(2);
+
+        LegacyLyricsImporter.importLegacyLyrics(List.of(line), "heart--garden");
+
+        var heartLyric = line.getElement(0).getMainLyric();
+        var gardenLyric = line.getElement(1).getMainLyric();
+
+        assertThat(heartLyric).isNotNull();
+        assertThat(gardenLyric).isNotNull();
+
+        if (heartLyric == null || gardenLyric == null) {
+            return; // unreachable — satisfies NullAway after the assertThat above
+        }
+
+        // syllabic: heart=BEGIN compound, garden=END; texts must not contain an em-dash.
+        assertThat(heartLyric.text()).isEqualTo("heart");
+        assertThat(heartLyric.syllabic()).isEqualTo(Lyric.Syllabic.BEGIN);
+        assertThat(heartLyric.compound()).isTrue();
+        assertThat(gardenLyric.text()).isEqualTo("garden");
+        assertThat(gardenLyric.syllabic()).isEqualTo(Lyric.Syllabic.END);
+        assertThat(gardenLyric.compound()).isFalse();
+    }
+
+    private Line lineWithNotes(int count) {
+        var line = new Line(song);
+
+        song.withoutMutationTracking(() -> {
+            for (var i = 0; i < count; i++) {
+                line.addElement(ElementType.CROTCHET.newInstance());
+            }
+        });
+
+        return line;
     }
 
     private record Variant(Lyric.Syllabic syllabic, boolean compound) {}

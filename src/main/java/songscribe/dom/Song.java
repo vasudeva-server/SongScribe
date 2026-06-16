@@ -50,6 +50,7 @@ import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.notification.SongMetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
+import songscribe.util.StringUtils;
 
 /**
  * This class serves as the model for data that is read from and written to
@@ -673,7 +674,7 @@ public final class Song {
     }
 
     public void setUnderLyrics(String text) {
-        var newLyrics = SongMetadata.processText(text);
+        var newLyrics = StringUtils.processText(text, true);
         mutateLyrics(LyricsField.UNDER, underLyrics, newLyrics, () -> underLyrics = newLyrics);
     }
 
@@ -683,7 +684,7 @@ public final class Song {
     }
 
     public void setTranslatedLyrics(String text) {
-        var newLyrics = text.trim();
+        var newLyrics = StringUtils.processText(text, false);
         // showTranslation() — and thus the attribution's translation credit —
         // is derived from translatedLyrics, so invalidate the pane's measure
         // cache when the value actually changes.
@@ -694,7 +695,7 @@ public final class Song {
     }
 
     public void setFootnotes(String text) {
-        var newFootnotes = text.trim();
+        var newFootnotes = StringUtils.processText(text, false);
         mutateMetadata(MetadataField.FOOTNOTES, footnotes, newFootnotes, () -> footnotes = newFootnotes);
     }
 
@@ -1360,7 +1361,7 @@ public final class Song {
     // -- Apply methods (field mutation only, no side effects) --
 
     private void applyUnderLyrics(String text) {
-        underLyrics = SongMetadata.processText(text);
+        underLyrics = StringUtils.processText(text, true);
     }
 
     private void applyBanglaLyrics(String text) {
@@ -1368,11 +1369,11 @@ public final class Song {
     }
 
     private void applyTranslatedLyrics(String text) {
-        translatedLyrics = text.trim();
+        translatedLyrics = StringUtils.processText(text, false);
     }
 
     private void applyFootnotes(String text) {
-        footnotes = text.trim();
+        footnotes = StringUtils.processText(text, false);
     }
 
     private void applyDefaultKeyType(KeyType keyType) {

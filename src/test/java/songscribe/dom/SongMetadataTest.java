@@ -21,13 +21,10 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
 
 /**
  * Unit tests for {@link SongMetadata} compact-constructor normalization,
@@ -35,21 +32,16 @@ import songscribe.prefs.PrefsKey;
  * <p>
  * The normalization pipeline (from the class-level comment) is:
  * <pre>
- *   title    : stripLinefeeds -> collapseMultipleSpaces -> processText
- *   place    : trim
+ *   title    : stripLinefeeds -> processText(…, true)  (trim + collapse-spaces + toTypographic + ă->a)
+ *   place    : processText(…, false)  (trim + toTypographic; no ă->a)
  *   year     : trim
  *   number   : trim
- *   composer : coercePerson  (trim; empty -> SRI_CHINMOY)
- *   lyricist : coercePerson  (trim; empty -> SRI_CHINMOY)
+ *   composer : coercePerson(processText(…, false))  (trim + toTypographic; empty -> SRI_CHINMOY)
+ *   lyricist : coercePerson(processText(…, false))  (trim + toTypographic; empty -> SRI_CHINMOY)
  *   month / day / lyricsSource / arrangement / unofficialTranslation : as-is
  * </pre>
  */
 class SongMetadataTest extends UnitTest {
-
-    @AfterEach
-    void restorePrefs() {
-        Prefs.reset(PrefsKey.STRIP_SHORT_A);
-    }
 
     // -----------------------------------------------------------------------
     // Convenience factory
@@ -132,44 +124,33 @@ class SongMetadataTest extends UnitTest {
         }
 
         @Test
-        void testProcessTextTrimsWhenStripShortAFalse() {
-            Prefs.put(PrefsKey.STRIP_SHORT_A, false);
+        void testProcessTextTrims() {
+            // processText always trims, regardless of short-A content.
             var m = withTitle("  trimmed  ");
             assertThat(m.title())
-                .as("processText trims when STRIP_SHORT_A=false")
+                .as("processText always trims")
                 .isEqualTo("trimmed");
         }
 
         @Test
-        void testProcessTextReplacesShortAWhenPrefTrue() {
-            Prefs.put(PrefsKey.STRIP_SHORT_A, true);
-            // ă and Ă are replaced; whitespace is NOT trimmed when replacement fires.
-            var m = withTitle("ăĂ");
+        void testProcessTextReplacesShortA() {
+            // ă and Ă are unconditionally replaced with a/A in title (no pref gate).
+            // Trim is also applied: whitespace is stripped even when replacement fires.
+            var m = withTitle("  ăĂ  ");
             assertThat(m.title())
-                .as("ă/Ă replaced with a/A when STRIP_SHORT_A=true")
+                .as("ă/Ă always replaced with a/A, whitespace trimmed")
                 .isEqualTo("aA");
         }
 
         @Test
-        void testProcessTextPreservesShortAWhenPrefFalse() {
-            Prefs.put(PrefsKey.STRIP_SHORT_A, false);
-            // With replacement off, ă/Ă must be preserved verbatim.
-            var m = withTitle("ăĂ");
-            assertThat(m.title())
-                .as("ă/Ă preserved when STRIP_SHORT_A=false")
-                .isEqualTo("ăĂ");
-        }
-
-        @Test
         void testAllThreePhasesApplied() {
-            // Exercises all three pipeline stages with a single input:
-            //   "hello\nworld  ă" → strip-LF → "hello world  ă"
-            //                     → collapse  → "hello world ă"
-            //                     → processText (STRIP_SHORT_A=true) → "hello world a"
-            Prefs.put(PrefsKey.STRIP_SHORT_A, true);
+            // Exercises the full pipeline with a single input:
+            //   "hello\nworld  ă" → strip-LF   → "hello world  ă"
+            //                     → processText → "hello world a"
+            //   (processText trims, collapses the double space, and strips ă→a)
             var m = withTitle("hello\nworld  ă");
             assertThat(m.title())
-                .as("full pipeline: strip-LF + collapse + replaceShortA")
+                .as("full pipeline: strip-LF + collapse + trim + replaceShortA")
                 .isEqualTo("hello world a");
         }
     }
@@ -276,7 +257,6 @@ class SongMetadataTest extends UnitTest {
             // (contains ă) so the first pass transforms it; the second pass over
             // the already-normalized result must be a no-op (the ă→a replacement
             // must not re-fire or otherwise change the title).
-            Prefs.put(PrefsKey.STRIP_SHORT_A, true);
             var first = withTitle("hello world ă");
             assertThat(first.title())
                 .as("first pass strips ă to a")
@@ -507,12 +487,11 @@ class SongMetadataTest extends UnitTest {
 
         /**
          * T5: subtitle runs the same processText branch as the title, so ă/Ă are
-         * replaced when STRIP_SHORT_A is enabled — a regression that skipped the
-         * subtitle would leave the short-a uncoerced.
+         * unconditionally replaced — a regression that skipped the subtitle would
+         * leave the short-a uncoerced.
          */
         @Test
-        void testSubtitleStripsShortAWhenEnabled() {
-            Prefs.put(PrefsKey.STRIP_SHORT_A, true);
+        void testSubtitleStripsShortA() {
             var metadata = new SongMetadata(
                 "", "", "", "", 0, 0,
                 Song.SRI_CHINMOY, Song.SRI_CHINMOY,
@@ -520,7 +499,7 @@ class SongMetadataTest extends UnitTest {
                 "ăĂ"
             );
             assertThat(metadata.subtitle())
-                .as("ă/Ă in subtitle replaced with a/A when STRIP_SHORT_A=true")
+                .as("ă/Ă in subtitle unconditionally replaced with a/A")
                 .isEqualTo("aA");
         }
     }
@@ -553,6 +532,153 @@ class SongMetadataTest extends UnitTest {
             assertThat(updated.subtitle())
                 .as("withTitle must preserve the existing subtitle")
                 .isEqualTo("My Subtitle");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // §9 Typographic normalization in constructor (Phase 6)
+    // These tests do NOT use Prefs.put(STRIP_SHORT_A); the behavior is unconditional.
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TypographicNormalization {
+
+        @Test
+        void testTitleStraightDoubleQuotesBecomeCurly() {
+            var metadata = withTitle("\"hello\"");
+            assertThat(metadata.title())
+                .as("straight double quotes in title become curly")
+                .isEqualTo("“hello”");
+        }
+
+        @Test
+        void testTitleStraightSingleQuoteBecomesApostrophe() {
+            var metadata = withTitle("don't");
+            assertThat(metadata.title())
+                .as("straight apostrophe in title becomes typographic")
+                .isEqualTo("don’t");
+        }
+
+        @Test
+        void testTitleDashRunBecomesEmDash() {
+            var metadata = withTitle("yes -- no");
+            assertThat(metadata.title())
+                .as("double dash in title becomes em dash")
+                .isEqualTo("yes — no");
+        }
+
+        @Test
+        void testTitleEllipsisRunBecomesEllipsis() {
+            var metadata = withTitle("wait...");
+            assertThat(metadata.title())
+                .as("triple dot in title becomes ellipsis character")
+                .isEqualTo("wait…");
+        }
+
+        @Test
+        void testTitleTypographicNormalizationIsIdempotent() {
+            // Construct once to get a typographically normalized title.
+            var first = withTitle("It's a \"test\"... -- really");
+            var normalizedTitle = first.title();
+
+            // Constructing again from the already-normalized title must be a no-op.
+            var second = withTitle(normalizedTitle);
+            assertThat(second.title())
+                .as("typographic normalization of title is idempotent")
+                .isEqualTo(normalizedTitle);
+        }
+
+        @Test
+        void testSubtitleStraightDoubleQuotesBecomeCurly() {
+            var metadata = new SongMetadata(
+                "", "", "", "", 0, 0,
+                Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+                Song.LyricsSource.LYRICIST, false, false,
+                "\"hello\""
+            );
+            assertThat(metadata.subtitle())
+                .as("straight double quotes in subtitle become curly")
+                .isEqualTo("“hello”");
+        }
+
+        @Test
+        void testSubtitleTypographicNormalizationIsIdempotent() {
+            var firstSubtitle = new SongMetadata(
+                "", "", "", "", 0, 0,
+                Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+                Song.LyricsSource.LYRICIST, false, false,
+                "don't say \"no\"... -- ever"
+            ).subtitle();
+
+            var second = new SongMetadata(
+                "", "", "", "", 0, 0,
+                Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+                Song.LyricsSource.LYRICIST, false, false,
+                firstSubtitle
+            );
+            assertThat(second.subtitle())
+                .as("typographic normalization of subtitle is idempotent")
+                .isEqualTo(firstSubtitle);
+        }
+
+        @Test
+        void testPlaceIsTypographicallyNormalized() {
+            // place runs processText(…, false): typographic substitution, no short-A.
+            var metadata = withPlace("\"New York\"");
+            assertThat(metadata.place())
+                .as("straight double quotes in place become curly")
+                .isEqualTo("“New York”");
+        }
+
+        @Test
+        void testComposerIsTypographicallyNormalized() {
+            // composer runs coercePerson(processText(…, false)); a non-empty value
+            // keeps its typographic substitution and is not coerced to Sri Chinmoy.
+            var metadata = withPersons("don't", Song.SRI_CHINMOY);
+            assertThat(metadata.composer())
+                .as("straight apostrophe in composer becomes typographic")
+                .isEqualTo("don’t");
+        }
+
+        @Test
+        void testLyricistIsTypographicallyNormalized() {
+            var metadata = withPersons(Song.SRI_CHINMOY, "don't");
+            assertThat(metadata.lyricist())
+                .as("straight apostrophe in lyricist becomes typographic")
+                .isEqualTo("don’t");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // §10 Short-A × typographic interaction in constructor (Phase 6)
+    // No Prefs.put(STRIP_SHORT_A) needed — short-A stripping is unconditional
+    // for title/subtitle.
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ShortAAndTypographic {
+
+        @Test
+        void testTitleIsTrimmedAndTypographicAndShortAStripped() {
+            // All three pipeline stages: trim ("  "), typographic ("don't" → "don’t"),
+            // short-A ("ă" → "a"). The trim step is exercised here to cover the
+            // formerly-missing trim in the old short-A branch.
+            var metadata = withTitle("  don't ă  ");
+            assertThat(metadata.title())
+                .as("title is trimmed, typographically normalized, and short-A stripped")
+                .isEqualTo("don’t a");
+        }
+
+        @Test
+        void testTitleShortAStrippedAlongWithTypographic() {
+            // Input contains both characters requiring typographic substitution
+            // and short-A characters; both must be applied.
+            var metadata = withTitle("\"ă\" and Ă");
+            assertThat(metadata.title())
+                .as("both typographic substitution and short-A stripping applied to title")
+                .isEqualTo("“a” and A");
         }
     }
 }

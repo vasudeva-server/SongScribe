@@ -169,6 +169,24 @@ class SongSetterMutationTest extends UnitTest {
             song.setFootnotes(song.getFootnotes());
             verifyNoNotificationPosted();
         }
+
+        // Phase-6: setFootnotes must apply typographic substitution but NOT short-A stripping.
+        @Test
+        void testSetFootnotesAppliesTypographicSubstitution() {
+            song.setFootnotes("It's a \"note\"... -- see below");
+            assertThat(song.getFootnotes())
+                .as("setFootnotes converts to typographic quotes, ellipsis, and em dash")
+                .isEqualTo("It\u2019s a \u201Cnote\u201D\u2026 \u2014 see below");
+        }
+
+        @Test
+        void testSetFootnotesDoesNotStripShortA() {
+            // setFootnotes uses stripShortA=false; \u0103/\u0102 (short-A chars) must be preserved.
+            song.setFootnotes("note \u0103 and \u0102");
+            assertThat(song.getFootnotes())
+                .as("setFootnotes does not strip short-A")
+                .isEqualTo("note \u0103 and \u0102");
+        }
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -251,18 +269,28 @@ class SongSetterMutationTest extends UnitTest {
             assertThat(mutation.newText()).isEqualTo("under text");
         }
 
-        // setUnderLyrics delegates to processText before storing. STRIP_SHORT_A
-        // defaults to true, so a string containing ă is stored with ă→a substitution.
+        // setUnderLyrics delegates to processText(text, true) before storing.
+        // Short-A stripping is unconditional for underlyrics, so ă is always stored as a.
         @Test
         void testSetUnderLyricsAppliesProcessTextTransformation() {
             song.setUnderLyrics("ă text");
 
-            // processText replaces ă with a (STRIP_SHORT_A=true by default).
+            // processText unconditionally replaces ă with a for underlyrics.
             assertThat(song.getUnderLyrics()).isEqualTo("a text");
 
             // The mutation record carries the processed value, not the raw input.
             var mutation = captureSingleLyricsChange();
             assertThat(mutation.newText()).isEqualTo("a text");
+        }
+
+        // setUnderLyrics uses stripShortA=true, but typographic substitution applies
+        // regardless of the short-A flag; assert it fires on the underlyrics setter.
+        @Test
+        void testSetUnderLyricsAppliesTypographicSubstitution() {
+            song.setUnderLyrics("It's a \"line\"... -- here");
+            assertThat(song.getUnderLyrics())
+                .as("setUnderLyrics converts to typographic quotes, ellipsis, and em dash")
+                .isEqualTo("It’s a “line”… — here");
         }
 
         @Test
@@ -303,6 +331,24 @@ class SongSetterMutationTest extends UnitTest {
         void testSetTranslatedLyricsSameValuePostsNothing() {
             song.setTranslatedLyrics(song.getTranslatedLyrics());
             verifyNoNotificationPosted();
+        }
+
+        // Phase-6: setTranslatedLyrics must apply typographic substitution but NOT short-A stripping.
+        @Test
+        void testSetTranslatedLyricsAppliesTypographicSubstitution() {
+            song.setTranslatedLyrics("It's a \"translation\"... -- see note");
+            assertThat(song.getTranslatedLyrics())
+                .as("setTranslatedLyrics converts to typographic quotes, ellipsis, and em dash")
+                .isEqualTo("It\u2019s a \u201Ctranslation\u201D\u2026 \u2014 see note");
+        }
+
+        @Test
+        void testSetTranslatedLyricsDoesNotStripShortA() {
+            // setTranslatedLyrics uses stripShortA=false; \u0103/\u0102 (short-A chars) must be preserved.
+            song.setTranslatedLyrics("translation \u0103 and \u0102");
+            assertThat(song.getTranslatedLyrics())
+                .as("setTranslatedLyrics does not strip short-A")
+                .isEqualTo("translation \u0103 and \u0102");
         }
     }
 

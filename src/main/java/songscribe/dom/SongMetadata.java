@@ -20,10 +20,6 @@
 
 package songscribe.dom;
 
-import java.util.regex.Pattern;
-
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
 import songscribe.util.StringUtils;
 
 /**
@@ -38,13 +34,13 @@ import songscribe.util.StringUtils;
  * <pre>
  *  raw widget text / SongData ──► SongMetadata(compact constructor) ──► cleaned, canonical record
  *
- *     title    : stripLinefeeds -> collapseMultipleSpaces -> processText
- *                  (processText = trim + optional ă->a replacement per STRIP_SHORT_A pref)
- *     place    : trim
+ *     title    : stripLinefeeds -> processText(…, true)
+ *                  (processText = trim + collapse-spaces + toTypographic + unconditional ă->a)
+ *     place    : processText(…, false)  (trim + toTypographic; no ă->a)
  *     year     : trim
  *     number   : trim
- *     composer : coercePerson  (trim; empty -> SRI_CHINMOY)
- *     lyricist : coercePerson  (trim; empty -> SRI_CHINMOY)
+ *     composer : coercePerson(processText(…, false))  (trim + toTypographic; empty -> SRI_CHINMOY)
+ *     lyricist : coercePerson(processText(…, false))  (trim + toTypographic; empty -> SRI_CHINMOY)
  *     month / day / lyricsSource / arrangement / unofficialTranslation : as-is
  *
  *  Same factory feeds: dialog commit, dialog PREVIEW, loadFrom, Converter
@@ -66,19 +62,18 @@ public record SongMetadata(
     String subtitle
 ) {
 
-    // Used to replace the characters "ă" and "Ă" with "a" and "A" respectively
-    private static final Pattern SHORT_A_PATTERN = Pattern.compile("[ăĂ]");
-
     /**
      * Compact constructor — normalizes all fields on construction.
      */
     public SongMetadata {
         title = normalizeTitle(title);
         number = number.trim();
-        place = place.trim();
+        // place/composer/lyricist get trim + typographic substitution but no
+        // short-A stripping (that is reserved for title/subtitle/lyrics).
+        place = StringUtils.processText(place, false);
         year = year.trim();
-        composer = Song.coercePerson(composer);
-        lyricist = Song.coercePerson(lyricist);
+        composer = Song.coercePerson(StringUtils.processText(composer, false));
+        lyricist = Song.coercePerson(StringUtils.processText(lyricist, false));
         // month, day, lyricsSource, arrangement, unofficialTranslation: as-is
         // subtitle: normalized like the title (strip linefeeds, collapse spaces, trim)
         subtitle = normalizeTitle(subtitle);
@@ -115,27 +110,16 @@ public record SongMetadata(
     // -------------------------------------------------------------------------
 
     /**
-     * Normalizes a title string: strips linefeeds, collapses multiple spaces,
-     * then applies {@link #processText}.
-     */
-    static String normalizeTitle(String text) {
-        return processText(StringUtils.collapseMultipleSpaces(StringUtils.stripLinefeeds(text)));
-    }
-
-    /**
-     * Trims the text and, when the {@link PrefsKey#STRIP_SHORT_A} preference is
-     * set, replaces {@code ă}/{@code Ă} with {@code a}/{@code A}.
+     * Normalizes a title string: strips linefeeds, then applies
+     * {@link StringUtils#processText} (which trims, collapses runs of multiple
+     * spaces, substitutes typographic characters, and strips short-A).
      * <p>
-     * Package-visible so {@link Song} can share this single copy for its
-     * under-lyrics normalization.
+     * Public so the song settings dialog can run its live title/subtitle preview
+     * (and its focus-lost field normalization) through the same normalization the
+     * compact constructor applies on commit, preserving preview == render parity.
      */
-    static String processText(String text) {
-        var strip = Prefs.getBoolean(PrefsKey.STRIP_SHORT_A);
-
-        if (strip && SHORT_A_PATTERN.matcher(text).find()) {
-            return text.replace("ă", "a").replace("Ă", "A");
-        }
-
-        return text.trim();
+    public static String normalizeTitle(String text) {
+        return StringUtils.processText(StringUtils.stripLinefeeds(text), true);
     }
+
 }

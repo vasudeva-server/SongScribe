@@ -251,4 +251,86 @@ class SongLoadingTest extends UnitTest {
             .as("selection2 fixture element count")
             .isEqualTo(SELECTION2_ELEMENT_COUNT);
     }
+
+    /**
+     * Asserts that all six text fields (title, subtitle, underlyrics, translation, footnotes,
+     * per-note lyrics) load with typographic substitutes applied: straight quotes become curly,
+     * "--" becomes an em dash. Also asserts the short-A asymmetry: underLyrics and per-note
+     * lyrics have ă→a applied (stripShortA=true), while translation and footnotes do not.
+     */
+    @Test
+    @SuppressWarnings("OverlyLongMethod")
+    void testTypographicSubstitutionAppliedOnLoad() throws Exception {
+        var xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <composition version="2.9">
+              <keys>0</keys>
+              <keytype>SHARPS</keytype>
+              <tempo>
+                <visibletempo>120</visibletempo>
+                <tempotype>CROTCHET</tempotype>
+                <tempodescription></tempodescription>
+              </tempo>
+              <songtitle>It's a "test" -- really</songtitle>
+              <subtitle>A "sub" -- title</subtitle>
+              <underlyrics>Don't băiat -- well</underlyrics>
+              <translatedlyrics>It's "great" -- ăla</translatedlyrics>
+              <footnotes>See "note 1" -- here</footnotes>
+              <lyricssource>LYRICIST</lyricssource>
+              <lines>
+                <line>
+                  <notes>
+                    <note type="CROTCHET">
+                      <staffposition>0</staffposition>
+                      <lyric number="1">
+                        <syllabic>single</syllabic>
+                        <text>don't băiat</text>
+                      </lyric>
+                    </note>
+                  </notes>
+                </line>
+              </lines>
+              <view/>
+            </composition>
+            """;
+
+        var loaded = parseXml(xml);
+
+        // Title: straight quote and -- become typographic; ă is stripped (processText with true).
+        assertThat(loaded.getTitle())
+            .as("title")
+            .isEqualTo("It’s a “test” — really");
+
+        // Subtitle: same pipeline as title (normalizeTitle -> processText with true).
+        assertThat(loaded.getSubtitle())
+            .as("subtitle")
+            .isEqualTo("A “sub” — title");
+
+        // UnderLyrics: typographic + short-A (processText with true).
+        assertThat(loaded.getUnderLyrics())
+            .as("underlyrics")
+            .isEqualTo("Don’t baiat — well");
+
+        // Translation: typographic only, ă preserved (processText with false).
+        assertThat(loaded.getTranslatedLyrics())
+            .as("translatedlyrics — ă must be preserved")
+            .isEqualTo("It’s “great” — ăla");
+
+        // Footnotes: typographic only, ă preserved (processText with false).
+        assertThat(loaded.getFootnotes())
+            .as("footnotes — ă must be preserved")
+            .isEqualTo("See “note 1” — here");
+
+        // Per-note lyric: typographic + short-A (Lyric compact constructor, processText with true).
+        var lyric = loaded.getLine(0).getElement(0).getMainLyric();
+        assertThat(lyric).isNotNull();
+
+        if (lyric == null) {
+            return; // unreachable — satisfies NullAway after the assertThat above
+        }
+
+        assertThat(lyric.text())
+            .as("per-note lyric — straight quote and -- become typographic; ă stripped")
+            .isEqualTo("don’t baiat");
+    }
 }

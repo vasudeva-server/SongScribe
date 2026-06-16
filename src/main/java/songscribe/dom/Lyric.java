@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import org.jspecify.annotations.Nullable;
+import songscribe.util.StringUtils;
 
 /**
  * A per-note lyric syllable, representing one of the four MusicXML 4.0 {@code <lyric>} forms:
@@ -52,6 +53,11 @@ public record Lyric(int verse, String text, Extend extend,
 
     /** Validates structural carrier vs. text-bearing constraints. */
     public Lyric {
+        // Apply typographic substitution + short-A (idempotent; Line.java reconstructions
+        // re-run harmlessly; carrier lyrics with text="" are unaffected since processText
+        // returns "" unchanged).
+        text = StringUtils.processText(text, true);
+
         var isCarrier = extend == Extend.STOP || extend == Extend.CONTINUE;
 
         if (isCarrier) {

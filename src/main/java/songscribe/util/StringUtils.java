@@ -57,6 +57,42 @@ public final class StringUtils {
     // When wrapping text, we want each line to have at least this many words
     public static final int MINIMUM_WRAPPED_WORD_COUNT = 3;
 
+    // -- Typographic substitution (issue #436) --
+
+    // Smart double quotes. Opening after whitespace / line start / a quote;
+    // closing before whitespace / line end / closing punctuation; fallback = closing.
+    //   "hi" → "hi"
+    private static final Pattern OPENING_DOUBLE_QUOTE_PATTERN =
+        Pattern.compile("(?<=\\s|^|\")\"", Pattern.MULTILINE);
+    private static final Pattern CLOSING_DOUBLE_QUOTE_PATTERN =
+        Pattern.compile("\"(?=\\s|$|[.,!?;:\"])", Pattern.MULTILINE);
+
+    // Smart single quotes / apostrophes. Opening after whitespace / line start / a
+    // quote; closing/apostrophe before whitespace / line end / closing punctuation
+    // or an s/t/ll/ve/re contraction; fallback = apostrophe.
+    //   'hello' → 'hello'    don't → don't    God's → God's
+    // The lookbehind also accepts the curly left double quote (U+201C): the
+    // double-quote pass runs first, so a single quote nested inside double quotes
+    // ("'word'") sees a curly “ before it and must still open as ‘.
+    private static final Pattern OPENING_SINGLE_QUOTE_PATTERN =
+        Pattern.compile("(?<=\\s|^|\"|“)'", Pattern.MULTILINE);
+    private static final Pattern CLOSING_SINGLE_QUOTE_PATTERN =
+        Pattern.compile("'(?=\\s|$|[.,!?;:\"]|s\\b|t\\b|ll\\b|ve\\b|re\\b)", Pattern.MULTILINE);
+
+    // Greedy collapse: two-or-more hyphens → one em dash; three-or-more dots → one ellipsis.
+    //   -- / --- / ---- → —      ... / .... → …      (single "-" and spaced ". . ." untouched)
+    private static final Pattern EM_DASH_PATTERN = Pattern.compile("-{2,}");
+    private static final Pattern ELLIPSIS_PATTERN = Pattern.compile("\\.{3,}");
+
+    private static final String OPENING_DOUBLE_QUOTE = "“";  // U+201C
+    private static final String CLOSING_DOUBLE_QUOTE = "”";  // U+201D
+    private static final String OPENING_SINGLE_QUOTE = "‘";  // U+2018
+    private static final String CLOSING_SINGLE_QUOTE = "’";  // U+2019
+    private static final String EM_DASH = "—";               // U+2014
+    private static final String ELLIPSIS = "…";              // U+2026
+    // Matches the short-A characters that are stripped when stripShortA is true.
+    private static final Pattern SHORT_A_PATTERN = Pattern.compile("[ăĂ]");
+
     private StringUtils() {}
 
     public static String capitalizeSentence(String input) {
@@ -94,6 +130,34 @@ public final class StringUtils {
 
     public static String collapseMultipleSpaces(String str) {
         return MULTIPLE_SPACES_PATTERN.matcher(str).replaceAll(" ");
+    }
+
+    /**
+     * Applies typographic substitution: straight quotes → curly, {@code --} runs →
+     * em dash, {@code ...} runs → ellipsis. Pure substitution only — does not trim.
+     * Idempotent: only straight quotes and runs of straight {@code -}/{@code .} are
+     * matched, so already-curly text and existing em dashes/ellipses pass through.
+     */
+    public static String toTypographic(String text) {
+        if (text.isEmpty()) {
+            return text;
+        }
+
+        // No leading-apostrophe (elision) disambiguation: a corpus check found no
+        // 'tis / '90s / rock 'n' roll, so the contextual rules below are exact for
+        // this corpus; GIGO accepted for malformed input. (see plan §"Why no disambiguation")
+        var result = OPENING_DOUBLE_QUOTE_PATTERN.matcher(text).replaceAll(OPENING_DOUBLE_QUOTE);
+        result = CLOSING_DOUBLE_QUOTE_PATTERN.matcher(result).replaceAll(CLOSING_DOUBLE_QUOTE);
+        result = result.replace("\"", CLOSING_DOUBLE_QUOTE);  // fallback
+
+        result = OPENING_SINGLE_QUOTE_PATTERN.matcher(result).replaceAll(OPENING_SINGLE_QUOTE);
+        result = CLOSING_SINGLE_QUOTE_PATTERN.matcher(result).replaceAll(CLOSING_SINGLE_QUOTE);
+        result = result.replace("'", CLOSING_SINGLE_QUOTE);   // fallback
+
+        result = EM_DASH_PATTERN.matcher(result).replaceAll(EM_DASH);
+        result = ELLIPSIS_PATTERN.matcher(result).replaceAll(ELLIPSIS);
+
+        return result;
     }
 
     public static List<String> wrapText(
@@ -165,5 +229,38 @@ public final class StringUtils {
             .stream()
             .map(line -> String.join(" ", line))
             .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    /**
+     * Normalizes text through a fixed pipeline: trim, then typographic
+     * substitution (smart quotes, em dash, ellipsis), then collapse runs of two
+     * or more spaces to a single space, and — when {@code stripShortA} is
+     * {@code true} — replace {@code ă}/{@code Ă} with {@code a}/{@code A}.
+     * <p>
+     * {@code stripShortA} is the sole gate for short-A stripping; the caller
+     * decides whether to apply it (pass {@code true} for title/subtitle/
+     * underlyrics; {@code false} for translation/footnotes and for the
+     * place/composer/lyricist fields).
+     * <p>
+     * Idempotent, so song-model construction and the song settings dialog's
+     * focus-lost field normalization can share this single copy.
+     *
+     * @param text       the raw text to normalize
+     * @param stripShortA whether to replace {@code ă}/{@code Ă} with {@code a}/{@code A}
+     */
+    public static String processText(String text, boolean stripShortA) {
+        var trimmed = text.trim();
+
+        if (trimmed.isEmpty()) {
+            return trimmed;
+        }
+
+        var result = collapseMultipleSpaces(toTypographic(trimmed));
+
+        if (stripShortA && SHORT_A_PATTERN.matcher(result).find()) {
+            result = result.replace("ă", "a").replace("Ă", "A");
+        }
+
+        return result;
     }
 }

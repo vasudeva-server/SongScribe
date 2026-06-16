@@ -21,18 +21,21 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.SongMetadata;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
 
 /**
  * Tests for Song text-processing methods: normalizeTitle and processText (exercised
  * through the public setters that delegate to them).
+ * <p>
+ * processText now applies a single unconditional pipeline: trim → collapse
+ * multiple spaces → typographic substitution → short-A stripping when the
+ * caller requests it. The old STRIP_SHORT_A preference gate has been removed;
+ * short-A stripping is decided by the caller (title/subtitle/underlyrics strip;
+ * translation/footnotes do not).
  */
 class SongTextProcessingTest extends UnitTest {
 
@@ -43,34 +46,25 @@ class SongTextProcessingTest extends UnitTest {
         song = new Song();
     }
 
-    @AfterEach
-    void tearDown() {
-        // Restore the STRIP_SHORT_A pref to its default so other tests are not affected.
-        Prefs.reset(PrefsKey.STRIP_SHORT_A);
-    }
-
     // -----------------------------------------------------------------------
     // normalizeTitle (tested via setTitle / getTitle)
     // -----------------------------------------------------------------------
 
-    // normalizeTitle applies three transformations in sequence:
-    //   1. stripLinefeeds  — replaces '\n' with a space
-    //   2. collapseMultipleSpaces — collapses runs of spaces that follow a non-space char
-    //   3. processText     — if STRIP_SHORT_A: replaces ă/Ă with a/A; else: trims
+    // normalizeTitle applies two transformations in sequence:
+    //   1. stripLinefeeds    — replaces '\n' with a space
+    //   2. processText(true) — trims, collapses runs of multiple spaces, applies
+    //                          typographic substitution, replaces ă/Ă with a/A
     //
-    // A single input can exercise all three branches at once:
-    //   "hello\nworld  ă" → strip-LF → "hello world  ă"
-    //                     → collapse  → "hello world ă"
-    //                     → processText (STRIP_SHORT_A=true, has ă) → "hello world a"
+    // A single input exercises all stages at once:
+    //   "hello\nworld  ă" → strip-LF   → "hello world  ă"
+    //                     → processText → "hello world a"
 
     @Test
     void testNormalizeTitleStripsLinefeedsCollapsesSpacesAndReplacesShortA() {
-        // Ensure STRIP_SHORT_A is true so all three transformations are exercised.
-        Prefs.put(PrefsKey.STRIP_SHORT_A, true);
-
         // "hello\nworld  ă": has linefeed, double-space before ă, and a short-ă char.
         // Normalization is performed by the SongMetadata compact constructor.
         var current = song.getMetadata();
+
         song.setMetadata(new SongMetadata(
             "hello\nworld  ă",
             current.number(), current.place(), current.year(),
@@ -87,35 +81,23 @@ class SongTextProcessingTest extends UnitTest {
     // processText (tested via setUnderLyrics / getUnderLyrics)
     // -----------------------------------------------------------------------
 
-    // Branch 1: STRIP_SHORT_A=true AND text contains ă/Ă → replace, no trim.
-    @Test
-    void testProcessTextReplacesShortAWhenPrefIsTrue() {
-        Prefs.put(PrefsKey.STRIP_SHORT_A, true);
+    // processText always: trims, collapses runs of multiple spaces, applies
+    // typographic substitution, then replaces ă/Ă with a/A when stripShortA=true
+    // (the case for underlyrics).
 
+    @Test
+    void testProcessTextReplacesShortAAndTrims() {
         // Text has both lowercase ă and uppercase Ă with leading/trailing whitespace.
-        // When replacement fires, trim is skipped — whitespace is preserved.
+        // trim is always applied, so the result has no surrounding whitespace.
         song.setUnderLyrics(" ăĂ ");
 
-        assertThat(song.getUnderLyrics()).isEqualTo(" aA ");
+        assertThat(song.getUnderLyrics()).isEqualTo("aA");
     }
 
-    // Branch 2: STRIP_SHORT_A=false (or text has no ă) → return text.trim().
     @Test
-    void testProcessTextTrimsWhenPrefIsFalse() {
-        Prefs.put(PrefsKey.STRIP_SHORT_A, false);
-
+    void testProcessTextTrimsTextWithoutShortA() {
         song.setUnderLyrics("  trim me  ");
 
         assertThat(song.getUnderLyrics()).isEqualTo("trim me");
-    }
-
-    // Branch 2 variant: STRIP_SHORT_A=true but text contains no ă → trim only.
-    @Test
-    void testProcessTextTrimsWhenStripPrefTrueButNoShortA() {
-        Prefs.put(PrefsKey.STRIP_SHORT_A, true);
-
-        song.setUnderLyrics("  no special chars  ");
-
-        assertThat(song.getUnderLyrics()).isEqualTo("no special chars");
     }
 }
