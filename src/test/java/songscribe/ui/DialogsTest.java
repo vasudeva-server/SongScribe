@@ -91,8 +91,10 @@ class DialogsTest extends UnitTest {
             try (
                 var tkMock = mockStatic(Toolkit.class);
                 var geMock = mockStatic(GraphicsEnvironment.class);
-                var paneConstruction = mockConstruction(JOptionPane.class, (pane, ctx) ->
-                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
+                var paneConstruction = mockConstruction(JOptionPane.class, (pane, ctx) -> {
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getComponents()).thenReturn(new Component[0]);
+                })
             ) {
                 tkMock.when(Toolkit::getDefaultToolkit).thenReturn(toolkit);
                 stubScreenBounds(geMock);
@@ -111,8 +113,10 @@ class DialogsTest extends UnitTest {
 
             try (
                 var geMock = mockStatic(GraphicsEnvironment.class);
-                var paneConstruction = mockConstruction(JOptionPane.class, (pane, ctx) ->
-                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
+                var paneConstruction = mockConstruction(JOptionPane.class, (pane, ctx) -> {
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getComponents()).thenReturn(new Component[0]);
+                })
             ) {
                 stubScreenBounds(geMock);
 
@@ -131,6 +135,7 @@ class DialogsTest extends UnitTest {
                 var geMock = mockStatic(GraphicsEnvironment.class);
                 var ignored = mockConstruction(JOptionPane.class, (pane, ctx) -> {
                     when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getComponents()).thenReturn(new Component[0]);
                     when(pane.getInputValue()).thenReturn("user input");
                 })
             ) {
@@ -150,6 +155,7 @@ class DialogsTest extends UnitTest {
                 var geMock = mockStatic(GraphicsEnvironment.class);
                 var ignored = mockConstruction(JOptionPane.class, (pane, ctx) -> {
                     when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getComponents()).thenReturn(new Component[0]);
                     when(pane.getInputValue()).thenReturn(JOptionPane.UNINITIALIZED_VALUE);
                 })
             ) {
@@ -169,6 +175,7 @@ class DialogsTest extends UnitTest {
                 var geMock = mockStatic(GraphicsEnvironment.class);
                 var ignored = mockConstruction(JOptionPane.class, (pane, ctx) -> {
                     when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getComponents()).thenReturn(new Component[0]);
                     when(pane.getValue()).thenReturn(JOptionPane.YES_OPTION);
                 })
             ) {
@@ -189,8 +196,10 @@ class DialogsTest extends UnitTest {
 
             try (
                 var geMock = mockStatic(GraphicsEnvironment.class);
-                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) ->
-                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
+                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) -> {
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getComponents()).thenReturn(new Component[0]);
+                })
             ) {
                 stubScreenBounds(geMock);
 
@@ -209,8 +218,10 @@ class DialogsTest extends UnitTest {
 
             try (
                 var geMock = mockStatic(GraphicsEnvironment.class);
-                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) ->
-                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
+                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) -> {
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getComponents()).thenReturn(new Component[0]);
+                })
             ) {
                 stubScreenBounds(geMock);
 
