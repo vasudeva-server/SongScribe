@@ -10,7 +10,7 @@
 | 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ⏳ Pending | — |
 | 5 | [Per-Measure Attributes (Key, Tempo)](#-phase-5-per-measure-attributes-key-tempo) | ⏳ Pending | — |
 | 6 | [Lyrics](#-phase-6-lyrics) | ⏳ Pending | — |
-| 7 | [Header, Layout & Extension Fields](#️-phase-7-header-layout--extension-fields) | ⏸️ Blocked | — |
+| 7 | [Header, Layout & Extension Fields](#️-phase-7-header-layout--extension-fields) | ⏳ Pending | — |
 | 8 | [Losslessness Gate & Cutover](#-phase-8-losslessness-gate--cutover) | ⏳ Pending | — |
 
 ## Context
@@ -38,13 +38,10 @@ comes first after the scaffold.
 
 ### Dependencies
 
-- **Attribution rework (external).** The header mapping in musicxml.md assumes the
-  *post-rework* attribution shape — discrete composer / lyricist / date / place
-  fields replacing today's single attribution text blob (`XML_INFO`,
-  `Song.getAttribution()`). That rework is **not yet done**. Phase 7 (header) is
-  **blocked** on it: `<creator type="composer">` / `type="lyricist">` cannot be
-  emitted natively until composer/lyricist are discrete fields. All other phases
-  are independent of it.
+- **Attribution rework (external).** ✅ Complete (commit `692b527a`). Discrete
+  composer / lyricist / `lyricsSource` / `isArrangement()` / `attributionYOffset`
+  fields replaced the single attribution text blob; `SUB_ATTRIBUTION` font role
+  added. Phase 7 is no longer blocked.
 
 ### Legacy fields
 
@@ -164,35 +161,35 @@ and extenders.
 
 ---
 
-## ⏸️ Phase 7: Header, Layout & Extension Fields
-
-**Status**: **Blocked** by the external attribution rework (see § Dependencies).
-The layout and Ext-field portions are *not* blocked and could be split out if the
-rework lags.
+## ⏳ Phase 7: Header, Layout & Extension Fields
 
 **Goal**: Score head, `<defaults>`/`<print>` layout, `<credit>` elements,
 annotations, and the residual `<miscellaneous>` extension fields.
 
 **Mapping** (musicxml.md §§ "Song header", "Layout", "Credits", "Annotations", "Losslessness"):
 - Header (metadata): title → `<movement-title>`, number → `<movement-number>`,
-  composer/lyricist/arranger → `<creator>` and rights → `<rights>` **(needs
-  reworked attribution)**, date → ISO 8601 `<misc-field name="composition-date">`,
-  lyrics date (when distinct) → `<misc-field name="lyrics-date">`, place →
-  `<misc-field name="place">`, unofficial-translation flag → `<misc-field>`.
+  composer/lyricist → `<creator type="composer|lyricist">`, `isArrangement()=true`
+  → `<creator type="arranger">Sri Chinmoy</creator>` (omit when false), rights →
+  `<rights>`, date → ISO 8601 `<misc-field name="composition-date">`, lyrics date
+  (when distinct) → `<misc-field name="lyrics-date">`, place →
+  `<misc-field name="composition-place">`, `lyricsSource` (LYRICIST/TEXT/OTHER) →
+  `<misc-field name="lyrics-source">`, unofficial-translation flag → `<misc-field>`.
 - Credits (after `<defaults>`): title (text from `getNumberedTitle()` — title
   with movement-number prefix) + subtitle (`getSubtitle()`, `<credit-type>` =
   `subtitle`, font role `SUBTITLE`, **canonical/read-write** — no
   `<movement-*>` equivalent exists, so the credit is the source of truth;
-  emitted only when non-empty) + each attribution role (composer,
-  lyricist, arranger, composition date, lyrics date, rights, place) →
-  first-page `<credit>` with `<credit-type>` + `<credit-words>` (font + position
-  attributes); underlyrics/Bangla/translated lyrics/footnotes → last-page
-  `<credit page="N">` (their canonical home). The `TITLE` / `SUBTITLE` /
-  `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` fonts ride in the `<credit-words>`
-  attributes — no `font-...` misc-fields.
+  emitted only when non-empty) + each attribution role (composer, lyricist,
+  arranger when `isArrangement()=true`, composition date, lyrics date, rights,
+  place) → first-page `<credit>` with `<credit-type>` + `<credit-words>` (font
+  + position attributes); underlyrics/Bangla/translated lyrics/footnotes →
+  last-page `<credit page="N">` (their canonical home). The `TITLE` / `SUBTITLE`
+  / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` fonts ride in the `<credit-words>`
+  attributes — no `font-...` misc-fields. `SUB_ATTRIBUTION` font stored as
+  `<misc-field name="sub-attribution-font">` / `<misc-field name="sub-attribution-font-size">`.
 - Layout: line width → `<scaling>` + `<system-layout>`; fonts → `<music-font>` /
   `<lyric-font>` / `<word-font>`; paddings/distances → system-layout fields;
-  spacing factors → `<misc-field>`.
+  attribution user Y offset (`XML_ATTRIBUTION_Y_OFFSET`) → `relative-y` on
+  attribution `<credit-words>` (ss → tenths); spacing factors → `<misc-field>`.
 - Annotations → `<direction><words>` with halign/justify, default-y, relative-y.
 
 **Verify**: Round-trip a fully-populated header + layout + credits + annotations;
@@ -232,7 +229,7 @@ Phase 2 (Line <-> Measure)
   |
   +--> Phase 6 (Lyrics)
   |
-  +--> Phase 7 (Header/Layout/Ext)   [BLOCKED: attribution rework]
+  +--> Phase 7 (Header/Layout/Ext)
   |
   v
 Phase 8 (Losslessness Gate + Cutover)   [requires 2-7 complete]

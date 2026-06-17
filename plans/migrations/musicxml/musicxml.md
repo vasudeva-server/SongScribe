@@ -82,12 +82,13 @@ duplicate. SongScribe both writes and reads the subtitle from that credit.
 | `number` (`XML_NUMBER`) | `<movement-number>` | Native |
 | composer (from reworked attribution) | `<identification><creator type="composer">` (display also as a `composer` `<credit>`) | Native |
 | lyricist (from reworked attribution) | `<identification><creator type="lyricist">` (display also as a `lyricist` `<credit>`) | Native |
-| arranger (from reworked attribution) | `<identification><creator type="arranger">` (display also as an `arranger` `<credit>`) | Native |
+| `isArrangement()` flag (`XML_ARRANGEMENT`) | when `true`: `<identification><creator type="arranger">Sri Chinmoy</creator>` (arranger is always Sri Chinmoy; display also as an `arranger` `<credit>`); when `false`: omit | Native |
+| `lyricsSource` (`XML_LYRICS_SOURCE`) — `LyricsSource` enum: `LYRICIST` / `TEXT` / `OTHER` | `<misc-field name="lyrics-source">` storing the enum name; determines the connector used when rendering the lyricist credit ("by" / "from" / ": ") | Ext |
 | rights / copyright (from reworked attribution) | `<identification><rights>` (display also as a `rights` `<credit>`) | Native |
 | format version (`XML_VERSION`) | `<encoding><software>SongScribe x.y</software>` | Native+conv |
 | date — structured y/m/d | `<misc-field name="composition-date">` as ISO 8601 (`1987-12-01`, partial OK); display string as a `composition date` `<credit>` | Ext |
 | lyrics date — structured y/m/d | `<misc-field name="lyrics-date">` as ISO 8601 (same partial-date rules; omitted when equal to composition date); display string as a `lyrics date` `<credit>` | Ext |
-| place (`XML_PLACE`) | `<misc-field name="place">` (display also as a `place` `<credit>`) | Ext |
+| place (`XML_PLACE`) | `<misc-field name="composition-place">` (display also as a `place` `<credit>`) | Ext |
 | unofficial-translation flag (`XML_UNOFFICIAL_TRANSLATION`) | `<misc-field name="unofficial-translation">` | Ext |
 
 The score-below text blocks — underlyrics, Bangla lyrics, translated lyrics, and
@@ -121,8 +122,9 @@ emit it only when the two dates are distinct.
 | line width (`XML_LINE_WIDTH`, ss) | `<scaling>` + `<system-layout>` (ss → tenths, ×10) | Native+conv |
 | view fonts: music / lyric / word roles (`LYRICS` / `ANNOTATION`) | `<music-font>`, `<lyric-font>`, `<word-font>` | Native |
 | view fonts: `TITLE` / `SUBTITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` roles | carried in the `font-family` / `font-size` / `font-weight` attributes of the corresponding `<credit-words>` (see § "Credits") — `SUBTITLE` rides on the `subtitle` `<credit-words>`, which is also its canonical storage (no separate font misc-field) | Native |
+| view font: `SUB_ATTRIBUTION` role (secondary attribution lines, e.g., lyrics-source connector) | `font-family` / `font-size` / `font-weight` on the `<credit-words>` elements that render sub-attribution text; stored as `<misc-field name="sub-attribution-font">` and `<misc-field name="sub-attribution-font-size">` for round-trip fidelity | Ext |
 | top padding (`XML_TOP_SPACE`, ss) | `<top-system-distance>` (or `<misc-field>` if exact) | Native+conv |
-| attribution start Y (`XML_INFO_STARTY`, ss) | `default-y` on the attribution `<credit-words>` (ss → tenths) | Native+conv |
+| attribution user Y offset (`XML_ATTRIBUTION_Y_OFFSET`, ss) — user-supplied shift from computed position | `relative-y` on every attribution `<credit-words>` (ss → tenths); `XML_INFO_STARTY` (absolute start Y) is legacy read-only, written by older files only | Native+conv |
 | row-height adjustment (`XML_ROW_HEIGHT`, ss) | `<system-distance>` (or `<misc-field>`) | Native+conv |
 | lyrics Y position (`XML_LYRICS_YPOS`, ss) | per-`<lyric>` `default-y` | Native+conv |
 | element spacing ratio (`XML_NOTE_DIST_CHANGE`) | `<misc-field>` (system-level spacing factor) | Ext |
@@ -162,7 +164,7 @@ display string (for dates, the formatted string such as `December 1, 1987`).
 | subtitle | `subtitle` | `getSubtitle()` | `SUBTITLE` |
 | composer | `composer` | composer field | `ATTRIBUTION` |
 | lyricist | `lyricist` | lyricist field | `ATTRIBUTION` |
-| arranger | `arranger` | arranger field | `ATTRIBUTION` |
+| arranger (only when `isArrangement()=true`; arranger is always Sri Chinmoy) | `arranger` | `Song.SRI_CHINMOY` (hardcoded) | `ATTRIBUTION` |
 | composition date | `composition date` | formatted date string | `ATTRIBUTION` |
 | lyrics date | `lyrics date` | formatted lyrics-date string (only when distinct from composition date) | `ATTRIBUTION` |
 | rights | `rights` | copyright string | `ATTRIBUTION` |
@@ -177,7 +179,7 @@ when `getSubtitle()` returns a non-empty string.
 
 The remaining credits in this table are **display-only on read**: their
 canonical source of truth is the head metadata (`<movement-title>`,
-`<creator>`, `<rights>`) and the `composition-date` / `lyrics-date` / `place`
+`<creator>`, `<rights>`) and the `composition-date` / `lyrics-date` / `composition-place`
 misc-fields. SongScribe re-derives each credit from those on write and ignores
 the credit text on read.
 
@@ -296,7 +298,7 @@ which also absorb the `TITLE` / `SUBTITLE` / `ATTRIBUTION` / `BANGLA` /
 credit is the **canonical home** for the subtitle (no `<movement-*>` equivalent
 exists in MusicXML), so SongScribe reads as well as writes it. The only
 `<miscellaneous>` residents that remain are genuinely SongScribe-specific
-score-level data — the structured ISO composition/lyrics dates, place, the
+score-level data — the structured ISO composition/lyrics dates, composition-place, the
 `unofficial-translation` flag, and two layout factors — exactly what
 `<miscellaneous>` exists for, stored verbatim and reloaded exactly.
 
@@ -306,6 +308,8 @@ These `*IO` constants exist for reading old `.mssw` files and are **not** part o
 the current write schema, so they need no MusicXML mapping (they vanish on
 migration): per-element `XML_VOLUME`, `XML_TRILL` (trills are now line-level
 ranges), `XML_SYLLABLE_MOVEMENT`, `XML_SYLLABLE_RELATION_MOVEMENT`,
-`XML_FORCE_SYLLABLE`, `XML_INVERT_FRACTION_BEAM_ORIENTATION`, and the line-level
+`XML_FORCE_SYLLABLE`, `XML_INVERT_FRACTION_BEAM_ORIENTATION`, the line-level
 Y-position fields (`tempoChangeYPos`, `beatChangeYPos`, `firstSecondEndingYPos`,
-`trillYPos`) superseded by per-instance offsets.
+`trillYPos`) superseded by per-instance offsets, and `XML_INFO_STARTY`
+(`"rightinfostarty"`) — the old absolute attribution start Y, replaced by
+`XML_ATTRIBUTION_Y_OFFSET` as a user offset from the computed position.
