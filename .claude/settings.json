@@ -24,6 +24,7 @@
       "Bash(javap:*)",
       "Bash(mvn:*)",
       "Bash(pkill -f*)",
+      "Bash(roughdraft open *)",
       "Bash(wc:*)",
       "Bash(xargs:*)",
       "Edit(.claude/commands/*)",
