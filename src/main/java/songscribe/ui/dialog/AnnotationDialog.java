@@ -34,7 +34,7 @@ import songscribe.dom.AnnotationAttachment;
 
 public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
-    static final String DEFAULT_ANNOTATION = "fine";
+    static final String DEFAULT_ANNOTATION = "Fine";
     private static final String ANNOTATION_FILE = "annotations";
 
     final JComboBox<String> annotationCombo = new JComboBox<>();
