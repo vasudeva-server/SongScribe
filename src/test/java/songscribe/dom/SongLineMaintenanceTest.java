@@ -27,7 +27,6 @@ import static org.mockito.Mockito.mockStatic;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -510,13 +509,6 @@ class SongLineMaintenanceTest extends UnitTest {
     // -----------------------------------------------------------------------
     // Single-step undo is pending issue #14 (undo grouping).
     // -----------------------------------------------------------------------
-
-    @Test
-    @Disabled("pending #14 — undo grouping collapses trigger + auto-maintenance into one step")
-    void testCoalescedMutationsRevertInSingleUndoStep() {
-        // Will exercise undo once Song.beginModification snapshots for undo grouping
-        // (see TODO at Song.java beginModification).
-    }
 
     // -----------------------------------------------------------------------
     // Helpers
