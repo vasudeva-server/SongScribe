@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Review code for reuse, quality, and efficiency. This is an adversarial review, the code may have been written by a human or different LLM. Fix any issues found.
 
-IMPORTANT: All reviews MUST apply the rules in .agents/guides/java.md in addition to the criteria below. When the review is done and fixes are applied, DO NOT run any other commands or skills (e.g. /format) on your own volition.
+IMPORTANT: All reviews MUST apply the Java style rules in addition to the criteria below. When the review is done and fixes are applied, DO NOT run any other commands or skills on your own volition.
 
 
 ## Phase 1: Determine Scope
