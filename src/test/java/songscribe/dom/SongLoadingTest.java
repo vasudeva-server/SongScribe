@@ -62,7 +62,7 @@ class SongLoadingTest extends UnitTest {
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
             0.0, 0.0,
             List.of(dataLine), false, 1,
-            ""
+            "", "", 0, 0
         );
 
         var loaded = new Song(data);
@@ -117,7 +117,7 @@ class SongLoadingTest extends UnitTest {
             List.of(lineWithTempo),
             true,
             2,
-            ""
+            "", "", 0, 0
         );
 
         song.withoutMutationTracking(() -> song.loadFrom(data));
@@ -184,7 +184,7 @@ class SongLoadingTest extends UnitTest {
             List.of(newLine),
             false,
             1,
-            ""
+            "", "", 0, 0
         );
 
         song.withoutMutationTracking(() -> song.loadFrom(data));
@@ -231,7 +231,7 @@ class SongLoadingTest extends UnitTest {
             List.of(lineWithNote),
             false,
             1,
-            ""
+            "", "", 0, 0
         );
 
         song.withoutMutationTracking(() -> song.loadFrom(data));

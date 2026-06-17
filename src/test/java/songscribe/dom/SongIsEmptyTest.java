@@ -41,7 +41,7 @@ class SongIsEmptyTest extends UnitTest {
             "", false,
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
             0.0, 0.0, List.of(), false, 1,
-            ""
+            "", "", 0, 0
         );
         song.withoutMutationTracking(() -> song.loadFrom(data));
 
@@ -59,7 +59,7 @@ class SongIsEmptyTest extends UnitTest {
             "", false,
             Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
             0.0, 0.0, List.of(emptyLine), false, 1,
-            ""
+            "", "", 0, 0
         );
         song.withoutMutationTracking(() -> song.loadFrom(data));
 

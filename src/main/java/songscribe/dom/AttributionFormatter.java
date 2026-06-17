@@ -263,26 +263,21 @@ public final class AttributionFormatter {
      */
     private static List<AttributionLine> buildSubAttributionLines(SongMetadata data) {
         var lines = new ArrayList<AttributionLine>();
-        var year = data.year();
+        var musicDate = formatDate(data.year(), data.month(), data.day());
+        var wordsDate = formatDate(data.wordsYear(), data.wordsMonth(), data.wordsDay());
 
-        if (!year.isEmpty()) {
-            var sb = new StringBuilder();
-            var month = data.month();
-
-            if (month > 0) {
-                sb.append(Strings.get(MONTH_KEYS[month]));
-                var day = data.day();
-
-                if (day > 0) {
-                    sb.append(' ');
-                    sb.append(day);
-                }
-
-                sb.append(", ");
-            }
-
-            sb.append(year);
-            lines.add(new AttributionLine(sb.toString(), FontKey.SUB_ATTRIBUTION));
+        if (wordsDate.isEmpty() && !musicDate.isEmpty()) {
+            lines.add(new AttributionLine(musicDate, FontKey.SUB_ATTRIBUTION));
+        } else if (!wordsDate.isEmpty() && musicDate.isEmpty()) {
+            lines.add(new AttributionLine(
+                Strings.get(Strings.ATTRIBUTION_DATE_WORDS, wordsDate),
+                FontKey.SUB_ATTRIBUTION
+            ));
+        } else if (!wordsDate.isEmpty()) {
+            lines.add(new AttributionLine(
+                Strings.get(Strings.ATTRIBUTION_DATE_BOTH, wordsDate, musicDate),
+                FontKey.SUB_ATTRIBUTION
+            ));
         }
 
         var place = data.place();
@@ -292,6 +287,32 @@ public final class AttributionFormatter {
         }
 
         return lines;
+    }
+
+    /**
+     * Formats a date from year, month, and day into a display string.
+     * Returns {@code ""} when {@code year} is empty.
+     */
+    private static String formatDate(String year, int month, int day) {
+        if (year.isEmpty()) {
+            return "";
+        }
+
+        var sb = new StringBuilder();
+
+        if (month > 0) {
+            sb.append(Strings.get(MONTH_KEYS[month]));
+
+            if (day > 0) {
+                sb.append(' ');
+                sb.append(day);
+            }
+
+            sb.append(", ");
+        }
+
+        sb.append(year);
+        return sb.toString();
     }
 
     /**

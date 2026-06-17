@@ -202,7 +202,7 @@ class ScoreViewTest extends UnitTest {
                 current3.place(), current3.year(), current3.month(), current3.day(),
                 current3.composer(), current3.lyricist(),
                 current3.lyricsSource(), current3.arrangement(), current3.unofficialTranslation(),
-                current3.subtitle()
+                current3.subtitle(), "", 0, 0
             ));
             scoreView.setSong(song);
 
@@ -220,7 +220,7 @@ class ScoreViewTest extends UnitTest {
                 currentA.place(), currentA.year(), currentA.month(), currentA.day(),
                 currentA.composer(), currentA.lyricist(),
                 currentA.lyricsSource(), currentA.arrangement(), currentA.unofficialTranslation(),
-                currentA.subtitle()
+                currentA.subtitle(), "", 0, 0
             ));
             scoreView.setSong(song);
 
@@ -238,7 +238,7 @@ class ScoreViewTest extends UnitTest {
                 currentEmpty.place(), currentEmpty.year(), currentEmpty.month(), currentEmpty.day(),
                 currentEmpty.composer(), currentEmpty.lyricist(),
                 currentEmpty.lyricsSource(), currentEmpty.arrangement(), currentEmpty.unofficialTranslation(),
-                currentEmpty.subtitle()
+                currentEmpty.subtitle(), "", 0, 0
             ));
             scoreView.setSong(song);
 
@@ -560,7 +560,7 @@ class ScoreViewTest extends UnitTest {
             var fonts = DocumentFonts.defaultFonts();
             try (var mock = mockStatic(SongLoader.class)) {
                 mock.when(() -> SongLoader.load(STUB_FILE))
-                    .thenReturn(new SongLoadResult.Success(songMock, fonts));
+                    .thenReturn(new SongLoadResult.Success(songMock, fonts, null));
 
                 var scoreView = new ScoreView(null);
                 assertThat(scoreView.openFile(STUB_FILE, false)).isFalse();

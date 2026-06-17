@@ -70,5 +70,8 @@ public record SongData(
     List<Line> lines,
     boolean hasBeenDynamicallyLaidOut,
     int formatVersion,
-    String subtitle
+    String subtitle,
+    String wordsYear,
+    int wordsMonth,
+    int wordsDay
 ) {}

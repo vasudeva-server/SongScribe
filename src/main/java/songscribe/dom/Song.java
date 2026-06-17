@@ -128,7 +128,10 @@ public final class Song {
         LyricsSource.LYRICIST, // lyricsSource
         false,  // arrangement
         false,  // unofficialTranslation
-        ""      // subtitle
+        "",     // subtitle
+        "",     // wordsYear
+        0,      // wordsMonth
+        0       // wordsDay
     );
 
     // The language of the song
@@ -295,7 +298,10 @@ public final class Song {
             data.lyricsSource(),
             data.arrangement(),
             data.unofficialTranslation(),
-            data.subtitle()
+            data.subtitle(),
+            data.wordsYear(),
+            data.wordsMonth(),
+            data.wordsDay()
         );
 
         // Apply remaining scalar fields
@@ -465,6 +471,18 @@ public final class Song {
 
     public int getDay() {
         return metadata.day();
+    }
+
+    public String getWordsYear() {
+        return metadata.wordsYear();
+    }
+
+    public int getWordsMonth() {
+        return metadata.wordsMonth();
+    }
+
+    public int getWordsDay() {
+        return metadata.wordsDay();
     }
 
     public LANGUAGE getLanguage() {

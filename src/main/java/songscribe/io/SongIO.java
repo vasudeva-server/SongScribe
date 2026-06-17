@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -51,7 +52,7 @@ import songscribe.dom.TempoChangeAttachment;
 public final class SongIO {
 
     public static final int IO_MAJOR_VERSION = 2;
-    public static final int IO_MINOR_VERSION = 9;
+    public static final int IO_MINOR_VERSION = 10;
 
     // version 1.0
     private static final String XML_SONG = "song";
@@ -79,6 +80,7 @@ public final class SongIO {
     private static final String XML_YEAR = "year";
     private static final String XML_MONTH = "month";
     private static final String XML_DAY = "day";
+    private static final String XML_LYRICS_DATE = "lyricsDate";
     private static final String XML_INFO_STARTY = "rightinfostarty";
 
     // version 1.3
@@ -99,6 +101,29 @@ public final class SongIO {
     private static final String XML_SUBTITLE = "subtitle";
 
     private SongIO() {
+    }
+
+    /**
+     * Formats a words date as a reduced-precision ISO 8601 string.
+     * Returns {@code ""} when {@code year} is blank.
+     * Appends {@code -MM} when {@code month > 0}, and {@code -DD} when both
+     * {@code month > 0} and {@code day > 0} (day without month is impossible
+     * by the dialog's enable rules).
+     */
+    private static String toIsoDate(String year, int month, int day) {
+        if (year.isEmpty()) {
+            return "";
+        }
+
+        if (month <= 0) {
+            return year;
+        }
+
+        if (day <= 0) {
+            return String.format("%s-%02d", year, month);
+        }
+
+        return String.format("%s-%02d-%02d", year, month, day);
     }
 
     public static void writeSong(Song c, DocumentFontsHolder fonts, PrintWriter pw) {
@@ -155,6 +180,12 @@ public final class SongIO {
 
         if (c.getDay() > 0) {
             XML.writeValue(pw, XML_DAY, Integer.toString(c.getDay()));
+        }
+
+        var lyricsDateStr = toIsoDate(c.getWordsYear(), c.getWordsMonth(), c.getWordsDay());
+
+        if (!lyricsDateStr.isEmpty()) {
+            XML.writeValue(pw, XML_LYRICS_DATE, lyricsDateStr);
         }
 
         if (!c.getUnderLyrics().isEmpty()) {
@@ -243,6 +274,8 @@ public final class SongIO {
         private static final int MAX_DAY = 31;
         private static final String BY_PREFIX = "by ";
         private static final int CURRENT_FORMAT_VERSION = 3;
+        private static final Pattern ISO_DATE_PATTERN =
+            Pattern.compile("^(\\d{4})(?:-(\\d{2})(?:-(\\d{2}))?)?$");
 
         @Nullable
         private Where where = null;
@@ -285,6 +318,11 @@ public final class SongIO {
         private String attribution = "";
         private String footnotes = "";
         private boolean unofficialTranslation = false;
+        private String wordsYear = "";
+        private int wordsMonth = 0;
+        private int wordsDay = 0;
+        @Nullable
+        private String invalidLyricsDate = null;
         private int defaultKeyAccidentalCount = Song.DEFAULT_KEY_ACCIDENTAL_COUNT;
         private KeyType defaultKeyType = Song.DEFAULT_KEY_TYPE;
         private double attributionStartYSs = 0;
@@ -323,7 +361,7 @@ public final class SongIO {
                         } else if (
                             (majorVersion == 1 && minorVersion >= 1) ||
                             // Hard-coded to IO_MINOR_VERSION; bump when the reader is updated.
-                            (majorVersion == 2 && minorVersion <= 9)
+                            (majorVersion == 2 && minorVersion <= 10)
                         ) {
                             lineReader = new LineIO.LineReader(parsingSong);
                             viewReader = new ViewIO.ViewReader();
@@ -635,6 +673,7 @@ public final class SongIO {
                                 LOG.warn("Corrupt document: malformed attributionyoffset: '{}', using default", str);
                             }
                         }
+                        case XML_LYRICS_DATE -> parseLyricsDate(str);
                     }
                 }
             } else if (where == Where.VIEW) {
@@ -725,7 +764,10 @@ public final class SongIO {
                 ctx.lines,
                 hasBeenDynamicallyLaidOut,
                 formatVersion,
-                subtitle
+                subtitle,
+                wordsYear,
+                wordsMonth,
+                wordsDay
             );
 
             // Repopulate the stub Song that was created at <song> startElement
@@ -770,6 +812,16 @@ public final class SongIO {
             return viewReader != null
                 ? viewReader.getDocumentFonts()
                 : DocumentFonts.defaultFonts();
+        }
+
+        /**
+         * Returns the raw {@code lyricsDate} string from the file when it was
+         * present but could not be parsed, or {@code null} when the tag was
+         * absent or valid.  Phase 3 uses this to show a warning to the user.
+         */
+        @Nullable
+        public String getInvalidLyricsDate() {
+            return invalidLyricsDate;
         }
 
         /**
@@ -908,6 +960,60 @@ public final class SongIO {
 
             // Fall back: treat the whole line as a year
             year = dateLine.trim();
+        }
+
+        /**
+         * Parses a reduced-precision ISO 8601 lyrics date string into the
+         * {@code wordsYear}, {@code wordsMonth}, and {@code wordsDay} fields.
+         *
+         * <p>Accepts the forms {@code YYYY}, {@code YYYY-MM}, and {@code YYYY-MM-DD}.
+         * On any parse or range failure, logs a warning and leaves the fields at
+         * their defaults (blank/zero); also sets {@link #invalidLyricsDate} to
+         * the raw string for Phase 3 to surface to the user.
+         *
+         * <p>This method deliberately does not throw — a bad {@code lyricsDate}
+         * must not abort the whole document load.
+         */
+        private void parseLyricsDate(String str) {
+            var matcher = ISO_DATE_PATTERN.matcher(str);
+
+            if (!matcher.matches()) {
+                LOG.warn("Corrupt document: malformed lyricsDate: '{}'", str);
+                invalidLyricsDate = str;
+                return;
+            }
+
+            // Group 1 is always present (4 digits); parseInt cannot throw.
+            var parsedWordsYear = matcher.group(1);
+            var monthGroup = matcher.group(2);
+            var dayGroup = matcher.group(3);
+
+            var parsedWordsMonth = 0;
+            var parsedWordsDay = 0;
+
+            if (monthGroup != null) {
+                parsedWordsMonth = Integer.parseInt(monthGroup);
+
+                if (parsedWordsMonth < 1 || parsedWordsMonth > MAX_MONTH) {
+                    LOG.warn("Corrupt document: lyricsDate month out of range: '{}'", str);
+                    invalidLyricsDate = str;
+                    return;
+                }
+            }
+
+            if (dayGroup != null) {
+                parsedWordsDay = Integer.parseInt(dayGroup);
+
+                if (parsedWordsDay < 1 || parsedWordsDay > MAX_DAY) {
+                    LOG.warn("Corrupt document: lyricsDate day out of range: '{}'", str);
+                    invalidLyricsDate = str;
+                    return;
+                }
+            }
+
+            wordsYear = parsedWordsYear;
+            wordsMonth = parsedWordsMonth;
+            wordsDay = parsedWordsDay;
         }
 
         private enum Where {

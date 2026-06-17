@@ -59,7 +59,10 @@ public record SongMetadata(
     Song.LyricsSource lyricsSource,
     boolean arrangement,
     boolean unofficialTranslation,
-    String subtitle
+    String subtitle,
+    String wordsYear,
+    int wordsMonth,
+    int wordsDay
 ) {
 
     /**
@@ -77,6 +80,8 @@ public record SongMetadata(
         // month, day, lyricsSource, arrangement, unofficialTranslation: as-is
         // subtitle: normalized like the title (strip linefeeds, collapse spaces, trim)
         subtitle = normalizeTitle(subtitle);
+        wordsYear = wordsYear.trim();
+        // wordsMonth, wordsDay: as-is
     }
 
     /**
@@ -88,7 +93,7 @@ public record SongMetadata(
         return new SongMetadata(
             newTitle, number, place, year, month, day,
             composer, lyricist, lyricsSource, arrangement, unofficialTranslation,
-            subtitle
+            subtitle, wordsYear, wordsMonth, wordsDay
         );
     }
 

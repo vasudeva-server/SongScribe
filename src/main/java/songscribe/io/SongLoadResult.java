@@ -24,11 +24,12 @@ import songscribe.font.DocumentFonts;
 
 import java.io.File;
 import java.io.IOException;
+import org.jspecify.annotations.Nullable;
 import org.xml.sax.SAXException;
 
 public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadResult.Failure {
 
-    record Success(Song song, DocumentFonts fonts) implements SongLoadResult {}
+    record Success(Song song, DocumentFonts fonts, @Nullable LoadWarning warning) implements SongLoadResult {}
 
     sealed interface Failure extends SongLoadResult permits
             SongLoadResult.IoError,

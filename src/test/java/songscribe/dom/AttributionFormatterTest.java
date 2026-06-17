@@ -190,7 +190,7 @@ class AttributionFormatterTest extends UnitTest {
             current.composer(), current.lyricist(),
             current.lyricsSource(), current.arrangement(),
             true, // unofficialTranslation
-            current.subtitle()
+            current.subtitle(), "", 0, 0
         ));
 
         var lines = AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
@@ -306,6 +306,103 @@ class AttributionFormatterTest extends UnitTest {
         var lines = AttributionFormatter.lines(metadataWith("", 5, 0, "", ""), false);
 
         assertSubAttributionLines(lines, List.of());
+    }
+
+    // -------------------------------------------------------------------------
+    // Words date sub-lines (music date only / words date only / both / neither)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Music date only (no words date): rendered plain, without a "(music)" suffix,
+     * so the existing music-date display is unchanged when there is no words date.
+     */
+    @Test
+    void testWordDateMusicOnlyProducesPlainDateLine() {
+        // wordsYear = "" → no words date; musicYear = "1984" → music date present.
+        var metadata = metadataWith("", 0, 0, "1984", "", 0, 0);
+
+        var lines = AttributionFormatter.lines(metadata, false);
+
+        assertSubAttributionLines(lines, List.of("1984"));
+    }
+
+    /**
+     * Music date only, with month and day: rendered plain ("MMMM D, YYYY") and
+     * without a "(music)" suffix. Exercises formatDate's month/day branch on the
+     * music path, which the year-only music-only case never reaches.
+     */
+    @Test
+    void testWordDateMusicOnlyWithMonthAndDayProducesPlainDateLine() {
+        // music month/day are the 2nd/3rd args; no words date.
+        var metadata = metadataWith("", 6, 27, "1984", "", 0, 0);
+
+        var lines = AttributionFormatter.lines(metadata, false);
+
+        assertSubAttributionLines(lines, List.of("June 27, 1984"));
+    }
+
+    /**
+     * Words date only (no music date): rendered with a "(words)" suffix.
+     */
+    @Test
+    void testWordDateWordsOnlyProducesWordsSuffixedLine() {
+        // wordsYear = "1984" → words date present; musicYear = "" → no music date.
+        var metadata = metadataWith("", 0, 0, "", "1984", 0, 0);
+
+        var lines = AttributionFormatter.lines(metadata, false);
+
+        assertSubAttributionLines(lines, List.of("1984 (words)"));
+    }
+
+    /**
+     * Both words and music dates: rendered as "{words} (words) / {music} (music)".
+     */
+    @Test
+    void testWordDateBothProducesCombinedLine() {
+        // wordsYear = "1976", musicYear = "1984"
+        var metadata = metadataWith("", 0, 0, "1984", "1976", 0, 0);
+
+        var lines = AttributionFormatter.lines(metadata, false);
+
+        assertSubAttributionLines(lines, List.of("1976 (words) / 1984 (music)"));
+    }
+
+    /**
+     * Neither words nor music date: no sub-attribution lines produced.
+     * Regression guard — this path must stay empty even when the words-date
+     * branch is added.
+     */
+    @Test
+    void testWordDateNeitherProducesNoDateLine() {
+        var metadata = metadataWith("", 0, 0, "", "", 0, 0);
+
+        var lines = AttributionFormatter.lines(metadata, false);
+
+        assertSubAttributionLines(lines, List.of());
+    }
+
+    /**
+     * Words date with year+month precision: formatted as "MMMM, YYYY (words)".
+     */
+    @Test
+    void testWordDateWordsYearMonthPrecision() {
+        var metadata = metadataWith("", 0, 0, "", "1984", 6, 0);
+
+        var lines = AttributionFormatter.lines(metadata, false);
+
+        assertSubAttributionLines(lines, List.of("June, 1984 (words)"));
+    }
+
+    /**
+     * Words date with year+month+day precision: formatted as "MMMM D, YYYY (words)".
+     */
+    @Test
+    void testWordDateWordsYearMonthDayPrecision() {
+        var metadata = metadataWith("", 0, 0, "", "1984", 6, 27);
+
+        var lines = AttributionFormatter.lines(metadata, false);
+
+        assertSubAttributionLines(lines, List.of("June 27, 1984 (words)"));
     }
 
     // -------------------------------------------------------------------------
@@ -460,7 +557,7 @@ class AttributionFormatterTest extends UnitTest {
             current.title(), current.number(), current.place(), current.year(),
             current.month(), current.day(),
             composer, lyricist, source, arrangement,
-            current.unofficialTranslation(), current.subtitle()
+            current.unofficialTranslation(), current.subtitle(), "", 0, 0
         ));
         song.setTranslatedLyrics(translatedLyrics);
         return song;
@@ -468,13 +565,40 @@ class AttributionFormatterTest extends UnitTest {
 
     /**
      * Constructs a {@link SongMetadata} for testing sub-attribution (date/place) lines.
+     * Words-date fields default to empty/zero.
      */
     private static SongMetadata metadataWith(String place, int month, int day, String year, String title) {
         return new SongMetadata(
             title, "", place, year, month, day,
             Song.SRI_CHINMOY, Song.SRI_CHINMOY,
             Song.LyricsSource.LYRICIST, false, false,
-            ""
+            "", "", 0, 0
+        );
+    }
+
+    /**
+     * Constructs a {@link SongMetadata} for testing sub-attribution lines that include
+     * a words date in addition to a music date. Place is always empty in these tests.
+     *
+     * @param musicYear   music composition year (empty = no music date)
+     * @param wordsYear   lyrics/words year (empty = no words date)
+     * @param wordsMonth  words month (0 = absent)
+     * @param wordsDay    words day (0 = absent)
+     */
+    private static SongMetadata metadataWith(
+        String place,
+        int month,
+        int day,
+        String musicYear,
+        String wordsYear,
+        int wordsMonth,
+        int wordsDay
+    ) {
+        return new SongMetadata(
+            "", "", place, musicYear, month, day,
+            Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+            Song.LyricsSource.LYRICIST, false, false,
+            "", wordsYear, wordsMonth, wordsDay
         );
     }
 

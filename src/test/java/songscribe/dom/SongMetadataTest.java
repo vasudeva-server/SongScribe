@@ -53,7 +53,7 @@ class SongMetadataTest extends UnitTest {
             title, "", "", "", 0, 0,
             Song.SRI_CHINMOY, Song.SRI_CHINMOY,
             Song.LyricsSource.LYRICIST, false, false,
-            ""
+            "", "", 0, 0
         );
     }
 
@@ -63,7 +63,7 @@ class SongMetadataTest extends UnitTest {
             "", "", place, "", 0, 0,
             Song.SRI_CHINMOY, Song.SRI_CHINMOY,
             Song.LyricsSource.LYRICIST, false, false,
-            ""
+            "", "", 0, 0
         );
     }
 
@@ -73,7 +73,7 @@ class SongMetadataTest extends UnitTest {
             "", "", "", year, 0, 0,
             Song.SRI_CHINMOY, Song.SRI_CHINMOY,
             Song.LyricsSource.LYRICIST, false, false,
-            ""
+            "", "", 0, 0
         );
     }
 
@@ -83,7 +83,17 @@ class SongMetadataTest extends UnitTest {
             "", number, "", "", 0, 0,
             Song.SRI_CHINMOY, Song.SRI_CHINMOY,
             Song.LyricsSource.LYRICIST, false, false,
-            ""
+            "", "", 0, 0
+        );
+    }
+
+    /** Builds a {@link SongMetadata} with only wordsYear set; all other fields at canonical defaults. */
+    private static SongMetadata withWordsYear(String wordsYear) {
+        return new SongMetadata(
+            "", "", "", "", 0, 0,
+            Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+            Song.LyricsSource.LYRICIST, false, false,
+            "", wordsYear, 0, 0
         );
     }
 
@@ -93,7 +103,7 @@ class SongMetadataTest extends UnitTest {
             "", "", "", "", 0, 0,
             composer, lyricist,
             Song.LyricsSource.LYRICIST, false, false,
-            ""
+            "", "", 0, 0
         );
     }
 
@@ -179,6 +189,12 @@ class SongMetadataTest extends UnitTest {
         void testNumberTrimmed() {
             var m = withNumber("  42  ");
             assertThat(m.number()).as("number is trimmed").isEqualTo("42");
+        }
+
+        @Test
+        void testWordsYearTrimmed() {
+            var m = withWordsYear("  1984  ");
+            assertThat(m.wordsYear()).as("wordsYear is trimmed").isEqualTo("1984");
         }
 
         @Test
@@ -299,7 +315,7 @@ class SongMetadataTest extends UnitTest {
                 original.month(), original.day(),
                 original.composer(), original.lyricist(),
                 original.lyricsSource(), original.arrangement(),
-                original.unofficialTranslation(), original.subtitle()
+                original.unofficialTranslation(), original.subtitle(), "", 0, 0
             );
             assertThat(copy)
                 .as("round-tripping default metadata through the constructor is a no-op")
@@ -324,7 +340,7 @@ class SongMetadataTest extends UnitTest {
                     "", "", "", "", 0, 0,
                     Song.SRI_CHINMOY, Song.SRI_CHINMOY,
                     source, false, false,
-                    ""
+                    "", "", 0, 0
                 );
                 assertThat(m.connectorFor(Song.SRI_CHINMOY))
                     .as("connectorFor SriChinmoy with source %s", source)
@@ -343,7 +359,7 @@ class SongMetadataTest extends UnitTest {
                 "", "", "", "", 0, 0,
                 "Bach", Song.SRI_CHINMOY,
                 Song.LyricsSource.LYRICIST, false, false,
-                ""
+                "", "", 0, 0
             );
             assertThat(mLyricist.connectorFor("Bach"))
                 .as("LYRICIST connector comes from lyricsSource")
@@ -353,7 +369,7 @@ class SongMetadataTest extends UnitTest {
                 "", "", "", "", 0, 0,
                 "Bach", Song.SRI_CHINMOY,
                 Song.LyricsSource.TEXT, false, false,
-                ""
+                "", "", 0, 0
             );
             assertThat(mText.connectorFor("Bach"))
                 .as("TEXT connector")
@@ -363,7 +379,7 @@ class SongMetadataTest extends UnitTest {
                 "", "", "", "", 0, 0,
                 "Bach", Song.SRI_CHINMOY,
                 Song.LyricsSource.OTHER, false, false,
-                ""
+                "", "", 0, 0
             );
             assertThat(mOther.connectorFor("Bach"))
                 .as("OTHER connector")
@@ -391,7 +407,7 @@ class SongMetadataTest extends UnitTest {
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(),
-                unofficialTranslation, current.subtitle()
+                unofficialTranslation, current.subtitle(), "", 0, 0
             ));
             song.setTranslatedLyrics(translatedLyrics);
             return song;
@@ -450,7 +466,7 @@ class SongMetadataTest extends UnitTest {
                 "", "", "", "", 0, 0,
                 Song.SRI_CHINMOY, Song.SRI_CHINMOY,
                 Song.LyricsSource.LYRICIST, false, false,
-                "Hello\nWorld"
+                "Hello\nWorld", "", 0, 0
             );
             assertThat(metadata.subtitle())
                 .as("linefeed in subtitle becomes space")
@@ -464,7 +480,7 @@ class SongMetadataTest extends UnitTest {
                 "", "", "", "", 0, 0,
                 Song.SRI_CHINMOY, Song.SRI_CHINMOY,
                 Song.LyricsSource.LYRICIST, false, false,
-                "Hello  World"
+                "Hello  World", "", 0, 0
             );
             assertThat(metadata.subtitle())
                 .as("multiple spaces in subtitle collapsed to one")
@@ -478,7 +494,7 @@ class SongMetadataTest extends UnitTest {
                 "", "", "", "", 0, 0,
                 Song.SRI_CHINMOY, Song.SRI_CHINMOY,
                 Song.LyricsSource.LYRICIST, false, false,
-                "  trimmed  "
+                "  trimmed  ", "", 0, 0
             );
             assertThat(metadata.subtitle())
                 .as("subtitle is trimmed")
@@ -496,7 +512,7 @@ class SongMetadataTest extends UnitTest {
                 "", "", "", "", 0, 0,
                 Song.SRI_CHINMOY, Song.SRI_CHINMOY,
                 Song.LyricsSource.LYRICIST, false, false,
-                "ăĂ"
+                "ăĂ", "", 0, 0
             );
             assertThat(metadata.subtitle())
                 .as("ă/Ă in subtitle unconditionally replaced with a/A")
@@ -523,7 +539,7 @@ class SongMetadataTest extends UnitTest {
                 "Old Title", "", "", "", 0, 0,
                 Song.SRI_CHINMOY, Song.SRI_CHINMOY,
                 Song.LyricsSource.LYRICIST, false, false,
-                "My Subtitle"
+                "My Subtitle", "", 0, 0
             );
             var updated = original.withTitle("New Title");
             assertThat(updated.title())
@@ -595,7 +611,7 @@ class SongMetadataTest extends UnitTest {
                 "", "", "", "", 0, 0,
                 Song.SRI_CHINMOY, Song.SRI_CHINMOY,
                 Song.LyricsSource.LYRICIST, false, false,
-                "\"hello\""
+                "\"hello\"", "", 0, 0
             );
             assertThat(metadata.subtitle())
                 .as("straight double quotes in subtitle become curly")
@@ -608,14 +624,14 @@ class SongMetadataTest extends UnitTest {
                 "", "", "", "", 0, 0,
                 Song.SRI_CHINMOY, Song.SRI_CHINMOY,
                 Song.LyricsSource.LYRICIST, false, false,
-                "don't say \"no\"... -- ever"
+                "don't say \"no\"... -- ever", "", 0, 0
             ).subtitle();
 
             var second = new SongMetadata(
                 "", "", "", "", 0, 0,
                 Song.SRI_CHINMOY, Song.SRI_CHINMOY,
                 Song.LyricsSource.LYRICIST, false, false,
-                firstSubtitle
+                firstSubtitle, "", 0, 0
             );
             assertThat(second.subtitle())
                 .as("typographic normalization of subtitle is idempotent")

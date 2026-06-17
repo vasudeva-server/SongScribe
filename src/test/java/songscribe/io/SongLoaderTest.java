@@ -86,4 +86,84 @@ class SongLoaderTest extends UnitTest {
             .as("title font size from <view> block")
             .isEqualTo(30);
     }
+
+    // ── lyricsDate warning tests ──
+
+    /**
+     * Loading the lyrics-date-invalid fixture (whose {@code <lyricsDate>} is
+     * {@code 1984-13}) must succeed — the load must not abort — and the
+     * {@link SongLoadResult.Success#warning()} must carry an
+     * {@code INVALID_LYRICS_DATE} warning whose description is the raw invalid
+     * string. The {@code io} layer reports only the kind and the offending text;
+     * mapping to a user-facing dialog is the UI layer's job.
+     */
+    @Test
+    void testLoadInvalidLyricsDateFileReturnsSuccessWithWarning() throws Exception {
+        var result = SongLoader.load(fixtureFile("lyrics-date-invalid"));
+
+        assertThat(result)
+            .as("invalid lyricsDate must not abort the load")
+            .isInstanceOf(SongLoadResult.Success.class);
+
+        var success = (SongLoadResult.Success) result;
+        var warning = success.warning();
+
+        assertThat(warning)
+            .as("invalid lyricsDate must produce a non-null warning")
+            .isNotNull();
+
+        //noinspection ConstantValue -- NullAway guard after isNotNull assertion
+        if (warning == null) {
+            return;
+        }
+
+        assertThat(warning.type())
+            .as("warning type must be INVALID_LYRICS_DATE")
+            .isEqualTo(LoadWarning.Type.INVALID_LYRICS_DATE);
+        assertThat(warning.description())
+            .as("warning description must be the raw invalid string")
+            .isEqualTo("1984-13");
+    }
+
+    /**
+     * The words-date parts of the song loaded from the invalid fixture must be
+     * blank/zero (the parser leaves fields at their defaults on malformed input).
+     */
+    @Test
+    void testLoadInvalidLyricsDateFileHasBlankWordsDate() throws Exception {
+        var result = SongLoader.load(fixtureFile("lyrics-date-invalid"));
+
+        assertThat(result)
+            .as("invalid lyricsDate must not abort the load")
+            .isInstanceOf(SongLoadResult.Success.class);
+
+        var success = (SongLoadResult.Success) result;
+
+        assertThat(success.song().getWordsYear())
+            .as("invalid lyricsDate: wordsYear must be empty")
+            .isEmpty();
+        assertThat(success.song().getWordsMonth())
+            .as("invalid lyricsDate: wordsMonth must be 0")
+            .isZero();
+        assertThat(success.song().getWordsDay())
+            .as("invalid lyricsDate: wordsDay must be 0")
+            .isZero();
+    }
+
+    /**
+     * Loading a valid fixture (full-line) must produce a Success with a
+     * {@code null} warning — no spurious warning for a good file.
+     */
+    @Test
+    void testLoadValidFixtureProducesNullWarning() throws Exception {
+        var result = SongLoader.load(fixtureFile("full-line"));
+
+        assertThat(result).isInstanceOf(SongLoadResult.Success.class);
+
+        var success = (SongLoadResult.Success) result;
+
+        assertThat(success.warning())
+            .as("valid fixture must not produce a warning")
+            .isNull();
+    }
 }

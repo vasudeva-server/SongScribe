@@ -403,6 +403,127 @@ class SongSettingsDialogTest extends UnitTest {
         }
     }
 
+    // ── gatedWordsDate — pure gating helper ──
+
+    @Nested
+    class GatedWordsDate {
+
+        private static final String WORDS_YEAR = "1984";
+        private static final int WORDS_MONTH = 6;
+        private static final int WORDS_DAY = 27;
+
+        /**
+         * When the "Different date" checkbox is not selected, gatedWordsDate
+         * must return ("", 0, 0) regardless of the input values, so an unchecked
+         * box never contributes a date to the commit or preview.
+         */
+        @Test
+        void testUnselectedReturnsEmptyDate() {
+            var result = SongSettingsDialog.gatedWordsDate(false, WORDS_YEAR, WORDS_MONTH, WORDS_DAY);
+
+            assertThat(result.year())
+                .as("unselected: year must be empty")
+                .isEmpty();
+            assertThat(result.month())
+                .as("unselected: month must be 0")
+                .isZero();
+            assertThat(result.day())
+                .as("unselected: day must be 0")
+                .isZero();
+        }
+
+        /**
+         * When the checkbox is not selected and inputs are themselves empty/zero,
+         * the result is still ("", 0, 0) — the gate fires unconditionally.
+         */
+        @Test
+        void testUnselectedWithEmptyInputsStillReturnsEmptyDate() {
+            var result = SongSettingsDialog.gatedWordsDate(false, "", 0, 0);
+
+            assertThat(result.year()).isEmpty();
+            assertThat(result.month()).isZero();
+            assertThat(result.day()).isZero();
+        }
+
+        /**
+         * When selected, the three inputs pass through unchanged.
+         */
+        @Test
+        void testSelectedPassesInputsThrough() {
+            var result = SongSettingsDialog.gatedWordsDate(true, WORDS_YEAR, WORDS_MONTH, WORDS_DAY);
+
+            assertThat(result.year())
+                .as("selected: year passes through")
+                .isEqualTo(WORDS_YEAR);
+            assertThat(result.month())
+                .as("selected: month passes through")
+                .isEqualTo(WORDS_MONTH);
+            assertThat(result.day())
+                .as("selected: day passes through")
+                .isEqualTo(WORDS_DAY);
+        }
+
+        /**
+         * When selected with empty/zero inputs, the empty/zero values pass through
+         * — gatedWordsDate does not apply any default.
+         */
+        @Test
+        void testSelectedWithEmptyInputsPassesEmptyThrough() {
+            var result = SongSettingsDialog.gatedWordsDate(true, "", 0, 0);
+
+            assertThat(result.year()).isEmpty();
+            assertThat(result.month()).isZero();
+            assertThat(result.day()).isZero();
+        }
+    }
+
+    // ── DateInputRow pure-logic — enable/disable predicates ──
+
+    @Nested
+    class DateInputRowLogic {
+
+        /**
+         * dayEnabled returns false when the year is invalid, regardless of month.
+         */
+        @Test
+        void testDayDisabledWhenYearInvalid() {
+            assertThat(SongSettingsDialog.DateInputRow.dayEnabled(false, 6))
+                .as("day disabled when year is invalid")
+                .isFalse();
+        }
+
+        /**
+         * dayEnabled returns false when month == 0 (no month selected), even if
+         * the year is valid.
+         */
+        @Test
+        void testDayDisabledWhenMonthIsZero() {
+            assertThat(SongSettingsDialog.DateInputRow.dayEnabled(true, 0))
+                .as("day disabled when month is 0")
+                .isFalse();
+        }
+
+        /**
+         * dayEnabled returns true only when the year is valid AND a month is selected.
+         */
+        @Test
+        void testDayEnabledWhenYearValidAndMonthSelected() {
+            assertThat(SongSettingsDialog.DateInputRow.dayEnabled(true, 6))
+                .as("day enabled when year valid and month selected")
+                .isTrue();
+        }
+
+        /**
+         * dayEnabled is false for year-invalid + month-zero (most restrictive case).
+         */
+        @Test
+        void testDayDisabledWhenBothYearInvalidAndMonthZero() {
+            assertThat(SongSettingsDialog.DateInputRow.dayEnabled(false, 0))
+                .as("day disabled when year invalid and month 0")
+                .isFalse();
+        }
+    }
+
     // ── Row 19: KeyCellRenderer.SELECTIONS — 15 entries, canonical order ──
 
     @Nested

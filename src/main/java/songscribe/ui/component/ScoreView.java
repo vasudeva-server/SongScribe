@@ -446,6 +446,19 @@ public final class ScoreView
                     onFileOpened.accept(file);
                 }
 
+                var warning = success.warning();
+
+                if (warning != null) {
+                    switch (warning.type()) {
+                        case INVALID_LYRICS_DATE -> OptionDialogs.showWarningMessage(
+                            null,
+                            Strings.ALERT_TITLE_LYRICS_DATE,
+                            Strings.ALERT_LYRICS_DATE_INVALID,
+                            warning.description()
+                        );
+                    }
+                }
+
                 LOG.info("Song loaded: {}", file.getName());
                 yield true;
             }

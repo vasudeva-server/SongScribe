@@ -534,7 +534,7 @@ class MutationRecordsTest extends UnitTest {
             Song.LyricsSource.LYRICIST,
             false,
             false,
-            ""
+            "", "", 0, 0
         );
     }
 }

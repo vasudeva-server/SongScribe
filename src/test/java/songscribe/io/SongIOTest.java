@@ -167,7 +167,7 @@ class SongIOTest extends UnitTest {
             song.setMetadata(new SongMetadata(
                 "", m.number(), "", "", m.month(), m.day(),
                 m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
-                ""
+                "", "", 0, 0
             ));
         }
         song.setUnderLyrics("");
@@ -196,7 +196,7 @@ class SongIOTest extends UnitTest {
             song.setMetadata(new SongMetadata(
                 m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
                 m.composer(), m.lyricist(), m.lyricsSource(), true, m.unofficialTranslation(),
-                ""
+                "", "", 0, 0
             ));
         }
         var xml = writeSongToString(song);
@@ -214,7 +214,7 @@ class SongIOTest extends UnitTest {
             song.setMetadata(new SongMetadata(
                 "Heart & Soul", m.number(), "New York", "2024", m.month(), m.day(),
                 "Composer <Name>", m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
-                ""
+                "", "", 0, 0
             ));
         }
         song.setUnderLyrics("under");
@@ -253,7 +253,7 @@ class SongIOTest extends UnitTest {
             song.setMetadata(new SongMetadata(
                 m.title(), m.number(), m.place(), m.year(), 3, 15,
                 m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
-                ""
+                "", "", 0, 0
             ));
         }
         var xml = writeSongToString(song);
@@ -299,7 +299,7 @@ class SongIOTest extends UnitTest {
             song.setMetadata(new SongMetadata(
                 m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
                 m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true,
-                ""
+                "", "", 0, 0
             ));
         }
         var xml = writeSongToString(song);
@@ -771,7 +771,7 @@ class SongIOTest extends UnitTest {
                 "My Song", String.valueOf(NON_DEFAULT_NUMBER), "London", "2024",
                 NON_DEFAULT_MONTH, NON_DEFAULT_DAY,
                 "Bach", Song.SRI_CHINMOY, Song.LyricsSource.TEXT, true, true,
-                ""
+                "", "", 0, 0
             ));
             song.setUnderLyrics("under");
             song.setBanglaLyrics("bangla");
@@ -1749,6 +1749,261 @@ class SongIOTest extends UnitTest {
         }
     }
 
+    /**
+     * Tests for the {@code lyricsDate} tag: round-trip fidelity, ISO precision
+     * variants, zero-padding, old-file absence, and malformed-value handling.
+     */
+    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
+    @Nested
+    class LyricsDateIO {
+
+        private static final String WORDS_YEAR = "1984";
+        private static final int WORDS_MONTH = 6;
+        private static final int WORDS_DAY = 27;
+
+        // ISO precision YYYY: only year is present; month and day survive as 0.
+        @Test
+        void testYearOnlyIsoDateRoundTrips() throws Exception {
+            var song = songWithWordsDate(WORDS_YEAR, 0, 0);
+
+            var reloaded = roundTrip(song);
+
+            assertThat(reloaded.getWordsYear()).isEqualTo(WORDS_YEAR);
+            assertThat(reloaded.getWordsMonth()).isZero();
+            assertThat(reloaded.getWordsDay()).isZero();
+        }
+
+        // ISO precision YYYY-MM: year+month; day survives as 0.
+        @Test
+        void testYearMonthIsoDateRoundTrips() throws Exception {
+            var song = songWithWordsDate(WORDS_YEAR, WORDS_MONTH, 0);
+
+            var reloaded = roundTrip(song);
+
+            assertThat(reloaded.getWordsYear()).isEqualTo(WORDS_YEAR);
+            assertThat(reloaded.getWordsMonth()).isEqualTo(WORDS_MONTH);
+            assertThat(reloaded.getWordsDay()).isZero();
+        }
+
+        // ISO precision YYYY-MM-DD: all three components survive.
+        @Test
+        void testYearMonthDayIsoDateRoundTrips() throws Exception {
+            var song = songWithWordsDate(WORDS_YEAR, WORDS_MONTH, WORDS_DAY);
+
+            var reloaded = roundTrip(song);
+
+            assertThat(reloaded.getWordsYear()).isEqualTo(WORDS_YEAR);
+            assertThat(reloaded.getWordsMonth()).isEqualTo(WORDS_MONTH);
+            assertThat(reloaded.getWordsDay()).isEqualTo(WORDS_DAY);
+        }
+
+        // The on-disk tag is the single ISO string <lyricsDate>; month 6 writes as "06".
+        @Test
+        void testOnDiskTagIsLyricsDateWithZeroPaddedMonth() {
+            var song = songWithWordsDate(WORDS_YEAR, WORDS_MONTH, 0);
+            var xml = writeSongToString(song);
+
+            assertThat(xml)
+                .as("tag name must be lyricsDate with zero-padded month")
+                .contains("<lyricsDate>1984-06</lyricsDate>");
+        }
+
+        // Year-only precision writes the bare year, with no separators.
+        @Test
+        void testOnDiskTagIsYearOnly() {
+            var song = songWithWordsDate(WORDS_YEAR, 0, 0);
+            var xml = writeSongToString(song);
+
+            assertThat(xml)
+                .as("year-only lyricsDate writes the bare year")
+                .contains("<lyricsDate>1984</lyricsDate>");
+        }
+
+        // Day is also zero-padded in the full YYYY-MM-DD form.
+        @Test
+        void testOnDiskTagHasZeroPaddedDay() {
+            var song = songWithWordsDate(WORDS_YEAR, WORDS_MONTH, WORDS_DAY);
+            var xml = writeSongToString(song);
+
+            assertThat(xml)
+                .as("lyricsDate day must be zero-padded")
+                .contains("<lyricsDate>1984-06-27</lyricsDate>");
+        }
+
+        // An old file with no <lyricsDate> tag loads with all three words-date parts empty/zero.
+        @Test
+        void testOldFileWithNoLyricsDateTagLoadsWithEmptyWordsDate() throws Exception {
+            var song = parseXml(compositionXmlWithoutLyricsDate());
+
+            assertThat(song.getWordsYear())
+                .as("old file: wordsYear must be empty when tag absent")
+                .isEmpty();
+            assertThat(song.getWordsMonth())
+                .as("old file: wordsMonth must be 0 when tag absent")
+                .isZero();
+            assertThat(song.getWordsDay())
+                .as("old file: wordsDay must be 0 when tag absent")
+                .isZero();
+        }
+
+        // ── Malformed lyricsDate values — no exception, fields blank/zero, invalidLyricsDate set ──
+
+        // 1984-13: month 13 is out of range
+        @Test
+        void testMalformedMonthOutOfRangeDoesNotThrow() {
+            assertMalformedLyricsDateIsRejectedGracefully("1984-13");
+        }
+
+        // 1984--6: double-dash is not a valid ISO separator
+        @Test
+        void testMalformedDoubleHyphenDoesNotThrow() {
+            assertMalformedLyricsDateIsRejectedGracefully("1984--6");
+        }
+
+        // 1984-6-: trailing hyphen is not a valid ISO date
+        @Test
+        void testMalformedTrailingHyphenDoesNotThrow() {
+            assertMalformedLyricsDateIsRejectedGracefully("1984-6-");
+        }
+
+        // 1984-06-27-01: four-part value exceeds the ISO_DATE_PATTERN
+        @Test
+        void testMalformedFourPartValueDoesNotThrow() {
+            assertMalformedLyricsDateIsRejectedGracefully("1984-06-27-01");
+        }
+
+        // 1984-XX: non-numeric month component
+        @Test
+        void testMalformedNonNumericMonthDoesNotThrow() {
+            assertMalformedLyricsDateIsRejectedGracefully("1984-XX");
+        }
+
+        // 1984-06-32: day 32 is out of range (the symmetric counterpart to month 13)
+        @Test
+        void testMalformedDayOutOfRangeDoesNotThrow() {
+            assertMalformedLyricsDateIsRejectedGracefully("1984-06-32");
+        }
+
+        // 1984-00: month 0 is below range (exercises the month < 1 guard)
+        @Test
+        void testMalformedMonthZeroDoesNotThrow() {
+            assertMalformedLyricsDateIsRejectedGracefully("1984-00");
+        }
+
+        // 1984-06-00: day 0 is below range (exercises the day < 1 guard)
+        @Test
+        void testMalformedDayZeroDoesNotThrow() {
+            assertMalformedLyricsDateIsRejectedGracefully("1984-06-00");
+        }
+
+        // 1984-6: a single-digit month is not zero-padded and fails the pattern
+        @Test
+        void testMalformedSingleDigitMonthDoesNotThrow() {
+            assertMalformedLyricsDateIsRejectedGracefully("1984-6");
+        }
+
+        /**
+         * Drives a malformed {@code lyricsDate} value through the SAX reader inline
+         * (no file needed). Asserts: no exception, wordsYear blank, wordsMonth and
+         * wordsDay zero, and {@code getInvalidLyricsDate()} returns the raw string.
+         */
+        private static void assertMalformedLyricsDateIsRejectedGracefully(String rawValue) {
+            var xml = minimalCompositionXmlWithLyricsDate(rawValue);
+
+            try {
+                var parser = SAXParserFactory.newInstance().newSAXParser();
+                var reader = new SongIO.DocumentReader();
+                parser.parse(new InputSource(new StringReader(xml)), reader);
+                var song = reader.getSong();
+
+                assertThat(song.getWordsYear())
+                    .as("malformed lyricsDate '%s': wordsYear must be empty", rawValue)
+                    .isEmpty();
+                assertThat(song.getWordsMonth())
+                    .as("malformed lyricsDate '%s': wordsMonth must be 0", rawValue)
+                    .isZero();
+                assertThat(song.getWordsDay())
+                    .as("malformed lyricsDate '%s': wordsDay must be 0", rawValue)
+                    .isZero();
+                assertThat(reader.getInvalidLyricsDate())
+                    .as("malformed lyricsDate '%s': getInvalidLyricsDate must return raw string", rawValue)
+                    .isEqualTo(rawValue);
+            } catch (Exception e) {
+                throw new AssertionError(
+                    "Expected no exception for malformed lyricsDate '" + rawValue +
+                        "' but got: " + e, e
+                );
+            }
+        }
+
+        // ── XML builders ──
+
+        private static Song songWithWordsDate(String year, int month, int day) {
+            var song = new Song();
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                current.title(), current.number(), current.place(), current.year(),
+                current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                current.subtitle(), year, month, day
+            ));
+            return song;
+        }
+
+        private static String compositionXmlWithoutLyricsDate() {
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <composition version="2.7">
+                  <keys>0</keys>
+                  <rightinfostarty>0.0</rightinfostarty>
+                  <linewidth>200.0</linewidth>
+                  <dynamicLayout>true</dynamicLayout>
+                  <lines>
+                    <line>
+                      <lyricsypos>5.0</lyricsypos>
+                      <notes>
+                        <note type="CROTCHET">
+                          <staffposition>0</staffposition>
+                        </note>
+                        <note type="FINAL_DOUBLE_BARLINE">
+                          <staffposition>0</staffposition>
+                        </note>
+                      </notes>
+                    </line>
+                  </lines>
+                  <view/>
+                </composition>
+                """;
+        }
+
+        private static String minimalCompositionXmlWithLyricsDate(String lyricsDate) {
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <composition version="2.10">
+                  <keys>0</keys>
+                  <lyricsDate>%s</lyricsDate>
+                  <linewidth>200.0</linewidth>
+                  <dynamicLayout>true</dynamicLayout>
+                  <lines>
+                    <line>
+                      <lyricsypos>5.0</lyricsypos>
+                      <notes>
+                        <note type="CROTCHET">
+                          <staffposition>0</staffposition>
+                        </note>
+                        <note type="FINAL_DOUBLE_BARLINE">
+                          <staffposition>0</staffposition>
+                        </note>
+                      </notes>
+                    </line>
+                  </lines>
+                  <view/>
+                </composition>
+                """.formatted(lyricsDate);
+        }
+    }
+
     @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
     class SubtitleRoundTrip {
@@ -1766,7 +2021,7 @@ class SongIOTest extends UnitTest {
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
-                "My Subtitle"
+                "My Subtitle", "", 0, 0
             ));
 
             var reloaded = roundTrip(song);

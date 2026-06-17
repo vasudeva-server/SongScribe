@@ -100,7 +100,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 current.place(), current.year(), current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
-                current.subtitle()
+                current.subtitle(), "", 0, 0
             ));
             var component = new TitleComponent();
             component.setSong(song);
@@ -127,7 +127,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
-                current.subtitle()
+                current.subtitle(), "", 0, 0
             ));
             var component = new TitleComponent();
             component.setFont(TEST_FONT);
@@ -160,7 +160,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
-                current.subtitle()
+                current.subtitle(), "", 0, 0
             ));
             var component = new TitleComponent();
             component.setFont(TEST_FONT);
@@ -174,7 +174,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
-                current.subtitle()
+                current.subtitle(), "", 0, 0
             ));
             var longHeight = component.getPreferredSize().height;
 
@@ -200,7 +200,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 current.place(), current.year(), current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
-                current.subtitle()
+                current.subtitle(), "", 0, 0
             ));
             // getNumberedTitle() → "5. " (non-empty); getTitle() → "" (empty).
             var component = new TitleComponent();
@@ -252,7 +252,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
-                "A Song Subtitle"
+                "A Song Subtitle", "", 0, 0
             ));
             var component = new SubtitleComponent();
             component.setFont(TEST_FONT);
@@ -300,7 +300,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
-                "Short"
+                "Short", "", 0, 0
             ));
             var component = new SubtitleComponent();
             component.setFont(TEST_FONT);
@@ -312,7 +312,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
                 current.month(), current.day(),
                 current.composer(), current.lyricist(),
                 current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
-                "This Is A Very Long Subtitle That Should Definitely Wrap To Multiple Lines When Laid Out"
+                "This Is A Very Long Subtitle That Should Definitely Wrap To Multiple Lines When Laid Out", "", 0, 0
             ));
             var longHeight = component.getPreferredSize().height;
 

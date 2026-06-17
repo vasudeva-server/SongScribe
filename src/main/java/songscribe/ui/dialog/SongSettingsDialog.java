@@ -181,6 +181,12 @@ public class SongSettingsDialog extends StandardDialog {
         var lyricsSource = attributionTab.getLyricsSource();
         var arrangement = attributionTab.isArrangement();
         var unofficialTranslation = attributionTab.isUnofficialTranslation();
+        var wordsDate = gatedWordsDate(
+            attributionTab.isDifferentDate(),
+            attributionTab.getWordsYearText(),
+            attributionTab.getWordsMonth(),
+            attributionTab.getWordsDay()
+        );
 
         // No change-detection here: Song.setMetadata short-circuits on an equal
         // record, so an unchanged commit produces an empty (no-op) modification
@@ -197,7 +203,10 @@ public class SongSettingsDialog extends StandardDialog {
             lyricsSource,
             arrangement,
             unofficialTranslation,
-            textTab.getSubtitleText()
+            textTab.getSubtitleText(),
+            wordsDate.year(),
+            wordsDate.month(),
+            wordsDate.day()
         );
         song.postWithModification(new SongMetadataDidChangeNotification(newMetadata));
     }
@@ -208,6 +217,24 @@ public class SongSettingsDialog extends StandardDialog {
     // methods at their call sites. Per "Testability Over Encapsulation" they live
     // here as self-contained, directly unit-testable helpers, and the inner
     // classes delegate to them.
+
+    /**
+     * Carries the three components of the words date for commit and preview.
+     */
+    record WordsDate(String year, int month, int day) {}
+
+    /**
+     * Returns the words date triple when the "Different date" checkbox is selected,
+     * or {@code ("", 0, 0)} when it is not, so an unchecked box never contributes
+     * a date to either the commit or the preview.
+     */
+    static WordsDate gatedWordsDate(boolean selected, String year, int month, int day) {
+        if (selected) {
+            return new WordsDate(year, month, day);
+        }
+
+        return new WordsDate("", 0, 0);
+    }
 
     private static final int LYRICS_TITLE_BUFFER_CAPACITY = 50;
 
@@ -755,32 +782,18 @@ public class SongSettingsDialog extends StandardDialog {
 
         // Place and date panel
         private final MyJTextField placeField = new MyJTextField(PLACE_FIELD_COLUMNS);
-        private final JComboBox<String> monthCombo = new JComboBox<>(
-            new String[]{
-                "",
-                Strings.get(Strings.MONTH_JANUARY),
-                Strings.get(Strings.MONTH_FEBRUARY),
-                Strings.get(Strings.MONTH_MARCH),
-                Strings.get(Strings.MONTH_APRIL),
-                Strings.get(Strings.MONTH_MAY),
-                Strings.get(Strings.MONTH_JUNE),
-                Strings.get(Strings.MONTH_JULY),
-                Strings.get(Strings.MONTH_AUGUST),
-                Strings.get(Strings.MONTH_SEPTEMBER),
-                Strings.get(Strings.MONTH_OCTOBER),
-                Strings.get(Strings.MONTH_NOVEMBER),
-                Strings.get(Strings.MONTH_DECEMBER),
-            }
-        );
-        private final JComboBox<String> dayCombo;
-        private final NumericTextField yearField =
-            new NumericTextField(YEAR_FIELD_COLUMNS, YEAR_MIN, YEAR_MAX, true, MAX_YEAR_CHARS);
+        private final DateInputRow musicDate = new DateInputRow(this::refreshPreview);
 
         // Attribution panel
         private final MyJTextField composerField = new MyJTextField(COMPOSER_FIELD_COLUMNS);
         private final MyJTextArea lyricistField = new MyJTextArea(LYRICIST_ROWS, LYRICIST_COLUMNS);
         private final JComboBox<Song.LyricsSource> sourceCombo =
             new JComboBox<>(Song.LyricsSource.values());
+        private final JCheckBox differentDateCheckbox = new JCheckBox(
+            Strings.get(Strings.DIALOG_SONG_SETTINGS_DIFFERENT_DATE)
+        );
+        private final DateInputRow wordsDate = new DateInputRow(this::refreshPreview);
+        private final JPanel wordsDatePanel = new JPanel();
         private final JCheckBox unofficialTranslationCheck = new JCheckBox(
             Strings.get(Strings.DIALOG_SONG_SETTINGS_UNOFFICIAL_TRANSLATION)
         );
@@ -798,23 +811,7 @@ public class SongSettingsDialog extends StandardDialog {
         private Font attributionFont;
         private Font subAttributionFont;
 
-        // Set while the year focus listener programmatically resets the month/day
-        // combos, so their action listeners skip the work that reset triggers.
-        private boolean adjustingDateFields;
-
         private AttributionTab() {
-            monthCombo.setEditable(false);
-
-            var days = new String[DAYS_IN_MONTH_MAX + 1];
-            days[0] = "";
-
-            for (var i = 1; i <= DAYS_IN_MONTH_MAX; i++) {
-                days[i] = Integer.toString(i);
-            }
-
-            dayCombo = new JComboBox<>(days);
-            dayCombo.setEditable(false);
-
             sourceCombo.setEditable(false);
             composerField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
             lyricistField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
@@ -882,12 +879,28 @@ public class SongSettingsDialog extends StandardDialog {
 
             addSeparator(section);
 
-            // Source label + dropdown, left-aligned below the lyricist field.
+            // Source row: source label + dropdown, different date checkbox.
             var sourceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, horizontalGap, 0));
             sourceRow.setAlignmentX(Component.LEFT_ALIGNMENT);
             sourceRow.add(sourceLabel);
             sourceRow.add(sourceCombo);
+            addLargeSeparator(sourceRow);
+            addLargeSeparator(sourceRow);
+            sourceRow.add(differentDateCheckbox);
             section.add(sourceRow);
+
+            // Collapsible words-date panel, hidden by default.
+            wordsDatePanel.setLayout(new BoxLayout(wordsDatePanel, BoxLayout.Y_AXIS));
+            wordsDatePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            wordsDatePanel.setVisible(false);
+            addHorizontalDivider(wordsDatePanel);
+
+            var wordsYearLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_YEAR));
+            var wordsDateRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            wordsDateRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+            wordsDate.addTo(wordsDateRow, wordsYearLabel);
+            wordsDatePanel.add(wordsDateRow);
+            section.add(wordsDatePanel);
 
             lyricistField.addFocusListener(new FocusAdapter() {
                 @Override
@@ -908,6 +921,11 @@ public class SongSettingsDialog extends StandardDialog {
             });
 
             sourceCombo.addActionListener(e -> refreshPreview());
+
+            differentDateCheckbox.addActionListener(e -> {
+                syncWordsDatePanel();
+                refreshPreview();
+            });
 
             // Don't let the section grow vertically
             UIUtils.setFlexibleWidth(section);
@@ -964,21 +982,7 @@ public class SongSettingsDialog extends StandardDialog {
             datePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
             section.add(datePanel);
 
-            addLabeledField(datePanel, yearLabel, yearField);
-
-            addLabeledField(
-                datePanel,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_MONTH),
-                monthCombo,
-                BaseDialog.LabelPosition.LEFT
-            );
-
-            addLabeledField(
-                datePanel,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_DAY),
-                dayCombo,
-                BaseDialog.LabelPosition.LEFT
-            );
+            musicDate.addTo(datePanel, yearLabel);
 
             addSeparator(section);
 
@@ -1010,52 +1014,6 @@ public class SongSettingsDialog extends StandardDialog {
                 @Override
                 public void focusLost(FocusEvent e) {
                     placeField.setText(StringUtils.processText(placeField.getText(), false));
-                    refreshPreview();
-                }
-            });
-            yearField.addFocusListener(new FocusAdapter() {
-                @Override
-                public void focusLost(FocusEvent e) {
-                    var yearValid = yearField.hasValidValue();
-
-                    if (!yearValid) {
-                        // Reset month/day programmatically; the guard keeps the
-                        // combos' listeners from re-running this same validation.
-                        adjustingDateFields = true;
-                        monthCombo.setSelectedIndex(0);
-                        dayCombo.setSelectedIndex(0);
-                        adjustingDateFields = false;
-                    }
-
-                    updateDateFieldStates(yearValid);
-
-                    if (yearValid) {
-                        refreshPreview();
-                    }
-                }
-            });
-            monthCombo.addActionListener(e -> {
-                if (adjustingDateFields) {
-                    return;
-                }
-
-                if (monthCombo.getSelectedIndex() == 0) {
-                    dayCombo.setSelectedIndex(0);
-                }
-
-                var yearValid = yearField.hasValidValue();
-                updateDateFieldStates(yearValid);
-
-                if (yearValid) {
-                    refreshPreview();
-                }
-            });
-            dayCombo.addActionListener(e -> {
-                if (adjustingDateFields) {
-                    return;
-                }
-
-                if (yearField.hasValidValue()) {
                     refreshPreview();
                 }
             });
@@ -1165,6 +1123,12 @@ public class SongSettingsDialog extends StandardDialog {
             repackToContent();
         }
 
+        // The words-date panel is visible exactly when the "different date"
+        // checkbox is selected; both the listener and getData() derive it here.
+        private void syncWordsDatePanel() {
+            wordsDatePanel.setVisible(differentDateCheckbox.isSelected());
+        }
+
         /**
          * Resolves the lyricist credit from the widgets: the trimmed lyricist
          * field, or the composer credit when the lyricist field is blank
@@ -1190,6 +1154,12 @@ public class SongSettingsDialog extends StandardDialog {
 
             var arrangement = arrangementCheck.isSelected();
             var unofficialTranslation = unofficialTranslationCheck.isSelected();
+            var gatedDate = gatedWordsDate(
+                differentDateCheckbox.isSelected(),
+                wordsDate.getYear(),
+                wordsDate.getMonth(),
+                wordsDate.getDay()
+            );
             var metadata = new SongMetadata(
                 textTab.getTitleText(),
                 textTab.getNumberText(),
@@ -1202,7 +1172,10 @@ public class SongSettingsDialog extends StandardDialog {
                 lyricsSource,
                 arrangement,
                 unofficialTranslation,
-                textTab.getSubtitleText()
+                textTab.getSubtitleText(),
+                gatedDate.year(),
+                gatedDate.month(),
+                gatedDate.day()
             );
             var showTranslation = !unofficialTranslation && !song.getTranslatedLyrics().isEmpty();
             return AttributionFormatter.lines(metadata, showTranslation);
@@ -1213,20 +1186,15 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         String getYearText() {
-            return yearField.getText();
+            return musicDate.getYear();
         }
 
         int getMonth() {
-            return monthCombo.getSelectedIndex();
+            return musicDate.getMonth();
         }
 
         int getDay() {
-            return dayCombo.getSelectedIndex();
-        }
-
-        private void updateDateFieldStates(boolean yearValid) {
-            monthCombo.setEnabled(yearValid);
-            dayCombo.setEnabled(yearValid && monthCombo.getSelectedIndex() != 0);
+            return musicDate.getDay();
         }
 
         String getComposerText() {
@@ -1250,19 +1218,38 @@ public class SongSettingsDialog extends StandardDialog {
             return unofficialTranslationCheck.isSelected();
         }
 
+        boolean isDifferentDate() {
+            return differentDateCheckbox.isSelected();
+        }
+
+        String getWordsYearText() {
+            return wordsDate.getYear();
+        }
+
+        int getWordsMonth() {
+            return wordsDate.getMonth();
+        }
+
+        int getWordsDay() {
+            return wordsDate.getDay();
+        }
+
         @Override
         protected boolean getData() {
             var song = getSong();
             placeField.setText(song.getPlace());
-            monthCombo.setSelectedIndex(song.getMonth());
-            dayCombo.setSelectedIndex(song.getDay());
-            yearField.setText(song.getYear());
-            updateDateFieldStates(yearField.hasValidValue());
+            musicDate.setValues(song.getYear(), song.getMonth(), song.getDay());
             composerField.setText(song.getComposer());
             lyricistField.setText(song.getLyricist());
             sourceCombo.setSelectedItem(song.getLyricsSource());
             arrangementCheck.setSelected(song.isArrangement());
             unofficialTranslationCheck.setSelected(song.isUnofficialTranslation());
+
+            var wordsYear = song.getWordsYear();
+            wordsDate.setValues(wordsYear, song.getWordsMonth(), song.getWordsDay());
+            differentDateCheckbox.setSelected(!wordsYear.isEmpty());
+            syncWordsDatePanel();
+            wordsDate.updateFieldStates();
 
             // Populate both font rows' description labels from the document and
             // refresh the preview with the current fonts.
@@ -1338,12 +1325,181 @@ public class SongSettingsDialog extends StandardDialog {
 
     }
 
-    private static void addHorizontalDivider(TitledSection section) {
-        addLargeSeparator(section);
+    /**
+     * A self-contained date-input row (year, month, day) that can be embedded
+     * in any dialog panel. Owns its three widgets, wires their listeners, and
+     * exposes pure predicate methods so callers can unit-test the enable/reset
+     * logic without driving Swing.
+     */
+    static final class DateInputRow {
+
+        private final NumericTextField yearField =
+            new NumericTextField(YEAR_FIELD_COLUMNS, YEAR_MIN, YEAR_MAX, true, MAX_YEAR_CHARS);
+        private final JComboBox<String> monthCombo = new JComboBox<>(
+            new String[]{
+                "",
+                Strings.get(Strings.MONTH_JANUARY),
+                Strings.get(Strings.MONTH_FEBRUARY),
+                Strings.get(Strings.MONTH_MARCH),
+                Strings.get(Strings.MONTH_APRIL),
+                Strings.get(Strings.MONTH_MAY),
+                Strings.get(Strings.MONTH_JUNE),
+                Strings.get(Strings.MONTH_JULY),
+                Strings.get(Strings.MONTH_AUGUST),
+                Strings.get(Strings.MONTH_SEPTEMBER),
+                Strings.get(Strings.MONTH_OCTOBER),
+                Strings.get(Strings.MONTH_NOVEMBER),
+                Strings.get(Strings.MONTH_DECEMBER),
+            }
+        );
+        private final JComboBox<String> dayCombo;
+
+        // Set while month/day combos are changed programmatically — by the year
+        // focus listener's reset and by setValues' seeding — so their action
+        // listeners skip the work (and the onChange callback) those changes trigger.
+        private boolean adjustingDateFields;
+
+        DateInputRow(Runnable onChange) {
+            monthCombo.setEditable(false);
+
+            var days = new String[DAYS_IN_MONTH_MAX + 1];
+            days[0] = "";
+
+            for (var i = 1; i <= DAYS_IN_MONTH_MAX; i++) {
+                days[i] = Integer.toString(i);
+            }
+
+            dayCombo = new JComboBox<>(days);
+            dayCombo.setEditable(false);
+
+            yearField.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    var yearValid = yearField.hasValidValue();
+
+                    if (!yearValid) {
+                        // Reset month/day programmatically; the guard keeps the
+                        // combos' listeners from re-running this same validation.
+                        adjustingDateFields = true;
+                        monthCombo.setSelectedIndex(0);
+                        dayCombo.setSelectedIndex(0);
+                        adjustingDateFields = false;
+                    }
+
+                    updateFieldStates(yearValid);
+
+                    if (yearValid) {
+                        onChange.run();
+                    }
+                }
+            });
+            monthCombo.addActionListener(e -> {
+                if (adjustingDateFields) {
+                    return;
+                }
+
+                if (monthCombo.getSelectedIndex() == 0) {
+                    dayCombo.setSelectedIndex(0);
+                }
+
+                var yearValid = yearField.hasValidValue();
+                updateFieldStates(yearValid);
+
+                if (yearValid) {
+                    onChange.run();
+                }
+            });
+            dayCombo.addActionListener(e -> {
+                if (adjustingDateFields) {
+                    return;
+                }
+
+                if (yearField.hasValidValue()) {
+                    onChange.run();
+                }
+            });
+        }
+
+        /**
+         * Returns true when the day combo should be enabled.
+         * Pure: no side effects, safe to call from tests.
+         */
+        static boolean dayEnabled(boolean yearValid, int month) {
+            return yearValid && month != 0;
+        }
+
+        /**
+         * Appends the three labeled date fields (year, month, day) to {@code panel}.
+         * The year field is added using the pre-built {@code yearLabel} so the caller
+         * can column-align it before layout; month and day use inline left-position labels.
+         */
+        void addTo(JComponent panel, JLabel yearLabel) {
+            BaseDialog.addLabeledField(panel, yearLabel, yearField);
+
+            BaseDialog.addLabeledField(
+                panel,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_MONTH),
+                monthCombo,
+                BaseDialog.LabelPosition.LEFT
+            );
+
+            BaseDialog.addLabeledField(
+                panel,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_DAY),
+                dayCombo,
+                BaseDialog.LabelPosition.LEFT
+            );
+        }
+
+        /**
+         * Seeds the three widgets from stored song data and refreshes the
+         * enable states to match. Seeding is guarded so the combos' listeners
+         * do not fire the onChange callback once per field during population;
+         * the caller refreshes the preview a single time afterward.
+         */
+        void setValues(String year, int month, int day) {
+            adjustingDateFields = true;
+            yearField.setText(year);
+            monthCombo.setSelectedIndex(month);
+            dayCombo.setSelectedIndex(day);
+            adjustingDateFields = false;
+            updateFieldStates(yearField.hasValidValue());
+        }
+
+        String getYear() {
+            return yearField.getText();
+        }
+
+        int getMonth() {
+            return monthCombo.getSelectedIndex();
+        }
+
+        int getDay() {
+            return dayCombo.getSelectedIndex();
+        }
+
+        /**
+         * Refreshes the enabled states of the month and day combos based on the
+         * current year validity and month selection.
+         */
+        void updateFieldStates() {
+            updateFieldStates(yearField.hasValidValue());
+        }
+
+        private void updateFieldStates(boolean yearValid) {
+            // The month combo is enabled exactly when the year is valid.
+            monthCombo.setEnabled(yearValid);
+            dayCombo.setEnabled(dayEnabled(yearValid, monthCombo.getSelectedIndex()));
+        }
+
+    }
+
+    private static void addHorizontalDivider(JComponent container) {
+        addLargeSeparator(container);
         var separator = new JSeparator();
         separator.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(separator);
-        addLargeSeparator(section);
+        container.add(separator);
+        addLargeSeparator(container);
     }
 
     private final class MusicTab extends BaseDialog.Tab {

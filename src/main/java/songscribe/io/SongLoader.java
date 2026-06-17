@@ -52,7 +52,14 @@ public final class SongLoader {
             var parser = PARSER_FACTORY.newSAXParser();
             var reader = new SongIO.DocumentReader();
             parser.parse(file, reader);
-            return new SongLoadResult.Success(reader.getSong(), reader.getDocumentFonts());
+            var invalidLyricsDate = reader.getInvalidLyricsDate();
+            LoadWarning warning = null;
+
+            if (invalidLyricsDate != null) {
+                warning = new LoadWarning(LoadWarning.Type.INVALID_LYRICS_DATE, invalidLyricsDate);
+            }
+
+            return new SongLoadResult.Success(reader.getSong(), reader.getDocumentFonts(), warning);
         } catch (SongIO.NewerVersionException e) {
             return new SongLoadResult.NewerVersion(file, e);
         } catch (SAXException e) {

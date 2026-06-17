@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<composition version="2.10">
+  <keys>0</keys>
+  <keytype>FLATS</keytype>
+  <songtitle>Untitled</songtitle>
+  <lyricsDate>1984-13</lyricsDate>
+  <composer>Sri Chinmoy</composer>
+  <lyricist>Sri Chinmoy</lyricist>
+  <lyricssource>LYRICIST</lyricssource>
+  <rightinfo>Words and Music by
+Sri Chinmoy</rightinfo>
+  <linewidth>94.5</linewidth>
+  <dynamicLayout>true</dynamicLayout>
+  <lines>
+    <line>
+      <lyricsypos>5.0</lyricsypos>
+      <notes>
+        <note type="CROTCHET">
+          <staffposition>0</staffposition>
+        </note>
+        <note type="FINAL_DOUBLE_BARLINE">
+          <staffposition>0</staffposition>
+        </note>
+      </notes>
+    </line>
+  </lines>
+  <view/>
+</composition>
