@@ -321,7 +321,8 @@ public final class LyricLayoutBuilder {
      * Returns the left-edge X (staff spaces) at which to place a syllable's lyric box.
      * <p>
      * Normal notes / rests: centre the entire syllable's advance width on the column's
-     * right-extent centre (the established Gould/Ross rule).
+     * right-extent centre, excluding augmentation dots (the established Gould/Ross rule —
+     * dots are not part of the notehead and must not shift the lyric position).
      * <p>
      * Grace notes: centre only the <strong>first grapheme cluster</strong> of the syllable
      * on the grace note's notehead centre. This deliberately differs from the normal-note
@@ -348,7 +349,7 @@ public final class LyricLayoutBuilder {
             return noteheadCenterXSs - firstGlyphWidthSs / 2.0;
         }
 
-        var centerXSs = column.getXSs() + column.getRightExtentSs() / 2.0;
+        var centerXSs = column.getNoteheadCenterXSs();
         return centerXSs - widthSs / 2.0;
     }
 

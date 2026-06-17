@@ -228,6 +228,15 @@ public final class ElementColumn {
         return xSs + rightExtentSs;
     }
 
+    /**
+     * Returns the absolute X of the notehead centre, excluding augmentation dots.
+     * Used to horizontally anchor lyrics so dots do not shift the lyric position.
+     * Only valid after X position has been set by the spacing calculator.
+     */
+    public double getNoteheadCenterXSs() {
+        return xSs + rightExtentExcludingDotsSs / 2.0;
+    }
+
     // ==========================================================================
     // Stem Information
     // ==========================================================================

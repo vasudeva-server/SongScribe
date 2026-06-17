@@ -112,6 +112,22 @@ class LayoutResultTest extends UnitTest {
         assertThat(anchor.baselineYSs()).isCloseTo(metrics.verseYSsInLine(1), within(TOLERANCE));
     }
 
+    // T2b: column-anchored getLyricAnchor centres on the notehead extent (excluding dots),
+    // so the editor cursor on a dotted note matches where the committed lyric box lands (#451).
+    @Test
+    void testGetLyricAnchorColumnAnchoredIgnoresDots() {
+        var element = ElementType.CROTCHET.newInstance();
+        var column = testDottedColumnAt(element, 5.0);
+        var layoutResult = LayoutResult.builder().putElementColumn(element, column).build();
+        var metrics = testSongMetrics();
+        var anchor = layoutResult.getLyricAnchor(element, metrics);
+
+        // Centred on the notehead (excluding the dot), not the full extent that includes it.
+        assertThat(anchor.centerXSs())
+            .as("dotted note: anchor must be centred on the notehead, not shifted right by the dot")
+            .isCloseTo(5.0 + Engraving.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
+    }
+
     // T3: getLyricAnchor Y matches verseYSsInLine(1) exactly
     @Test
     void testGetLyricAnchorYMatchesVerseBaseline() {
@@ -654,6 +670,9 @@ class LayoutResultTest extends UnitTest {
 
     private static final double TOLERANCE = 0.0001;
 
+    // Arbitrary dot width used in tests that need rightExtentSs > rightExtentExcludingDotsSs.
+    private static final double FAKE_DOT_EXTENT_SS = 2.0;
+
     private static final double ABOVE_STAFF_SS = 1.5;
     private static final double BELOW_CONTENT_SS = 0.75;
     private static final double ABOVE_STAFF_DELTA_SS = 2.0;
@@ -701,6 +720,17 @@ class LayoutResultTest extends UnitTest {
     private static ElementColumn testColumnAt(StaffElement element, double xSs) {
         var column = new ElementColumn(
             element, Collections.emptyList(), 0.0, Engraving.NOTE_HEAD_WIDTH_SS,
+            0.0, 0.0, null, 0.0, false);
+        column.setXSs(xSs);
+        return column;
+    }
+
+    // A dotted column: rightExtentSs includes the dot, rightExtentExcludingDotsSs does not.
+    private static ElementColumn testDottedColumnAt(StaffElement element, double xSs) {
+        var column = new ElementColumn(
+            element, Collections.emptyList(), 0.0,
+            Engraving.NOTE_HEAD_WIDTH_SS + FAKE_DOT_EXTENT_SS,
+            Engraving.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false);
         column.setXSs(xSs);
         return column;

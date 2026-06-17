@@ -673,7 +673,7 @@ public final class LayoutResult {
                 "getLyricAnchor: no lyric box and no column for element " + element);
         }
 
-        var centerXSs = column.getXSs() + column.getRightExtentSs() / 2.0;
+        var centerXSs = column.getNoteheadCenterXSs();
         return new LyricAnchor(centerXSs, baselineYSs);
     }
 
