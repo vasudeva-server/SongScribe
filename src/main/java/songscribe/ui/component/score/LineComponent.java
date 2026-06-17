@@ -26,8 +26,10 @@ import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.dom.*;
 import songscribe.ui.Mode;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;
 import songscribe.ui.component.LyricEditor;
@@ -134,6 +136,23 @@ public class LineComponent extends ScoreComponent
     /** Whether layout needs to be recalculated. Package-private for test inspection. */
     boolean layoutDirty = true;
 
+    /**
+     * True when the most recent layout attempt could not fit this line's content
+     * within the staff while maintaining minimum spacing.
+     * <p>
+     * Interim handling for issue #449: rather than the fatal crash, the app keeps
+     * the last good layout (if any) and warns non-fatally. The proper fix — undo
+     * the offending edit — is blocked on the undo system being implemented.
+     */
+    private boolean lineDoesNotFit;
+
+    /**
+     * Guards the non-fatal "line too full" warning so a single dialog is shown per
+     * failure episode, not once per failing line per paint. Reset after the deferred
+     * dialog is dismissed. EDT-only, so a plain static boolean is safe.
+     */
+    private static boolean lineDoesNotFitWarningScheduled;
+
     /** True when the previous line's lyric extender continues into this line. */
     private boolean hasLeadingLyricContinuation;
 
@@ -171,6 +190,7 @@ public class LineComponent extends ScoreComponent
         lineSelectionState = new LineSelectionState(line);
         layoutDirty = true;
         layoutResult = null;
+        lineDoesNotFit = false;
 
         // Register with coordinator if score is available
         if (scoreView != null) {
@@ -312,6 +332,7 @@ public class LineComponent extends ScoreComponent
     public void invalidateLayout() {
         layoutDirty = true;
         layoutResult = null;
+        lineDoesNotFit = false;
         revalidate();
         repaint();
     }
@@ -336,7 +357,7 @@ public class LineComponent extends ScoreComponent
      * all layout results to build {@link SongLayoutMetrics}.
      */
     public void ensureLayout() {
-        if (song != null && line != null && (layoutResult == null || layoutDirty)) {
+        if (song != null && line != null && (layoutDirty || (layoutResult == null && !lineDoesNotFit))) {
             performLayout();
         }
     }
@@ -382,16 +403,44 @@ public class LineComponent extends ScoreComponent
                 ScaleContext.pxToSs(sizePx.height));
         }
 
-        layoutResult = layoutEngine.layout(
+        var result = layoutEngine.layout(
             line, isLastLine, hasLeadingLyricContinuation, attribution);
 
-        if (layoutResult == null) {
-            throw RuntimeError.exit(
-                "layout failed for line " + lineIndex + ": "
-                + layoutEngine.getLastError());
+        if (result == null) {
+            // Issue #449 interim handling: the content cannot fit while maintaining
+            // minimum spacing. Crashing is not acceptable, and overflowing the margin
+            // is not either, so keep the last good layout (if any) and warn the user
+            // non-fatally. The proper fix — undo the offending edit — awaits the undo
+            // system. layoutResult is intentionally left unchanged.
+            lineDoesNotFit = true;
+            layoutDirty = false;
+            warnLineDoesNotFit();
+            return;
         }
 
+        lineDoesNotFit = false;
+        layoutResult = result;
         layoutDirty = false;
+    }
+
+    /**
+     * Shows the non-fatal "line too full" warning once per failure episode.
+     * <p>
+     * Deferred to a later EDT cycle because layout runs during paint; showing a
+     * modal dialog synchronously would re-enter painting. See issue #449.
+     */
+    private static void warnLineDoesNotFit() {
+        if (lineDoesNotFitWarningScheduled) {
+            return;
+        }
+
+        lineDoesNotFitWarningScheduled = true;
+
+        SwingUtilities.invokeLater(() -> {
+            OptionDialogs.showWarningMessage(
+                null, Strings.ALERT_TITLE_LINE_TOO_FULL, Strings.ALERT_LINE_TOO_FULL);
+            lineDoesNotFitWarningScheduled = false;
+        });
     }
 
     @Override
@@ -401,7 +450,7 @@ public class LineComponent extends ScoreComponent
         }
 
         // Perform layout if dirty
-        if (layoutDirty || layoutResult == null) {
+        if (layoutDirty || (layoutResult == null && !lineDoesNotFit)) {
             performLayout();
         }
 
@@ -411,9 +460,14 @@ public class LineComponent extends ScoreComponent
         // All downstream drawing uses staff-space coordinates.
         var scale = ScaleContext.getPixelsPerStaffSpace();
 
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
-            g2.scale(scale, scale);
-            lineRenderer.render(g2);
+        // layoutResult is null only when the very first layout could not fit the
+        // content (issue #449); with no prior layout to fall back on, skip drawing
+        // the staff content rather than crash. Recovers on the next layout that fits.
+        if (layoutResult != null) {
+            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+                g2.scale(scale, scale);
+                lineRenderer.render(g2);
+            }
         }
 
         // Render the attribution pane directly in pixel space (first line only).
@@ -447,17 +501,24 @@ public class LineComponent extends ScoreComponent
             return new Dimension(0, 0);
         }
 
-        if (layoutResult == null || layoutDirty) {
+        if (layoutDirty || (layoutResult == null && !lineDoesNotFit)) {
             performLayout();
         }
 
         var result = layoutResult;
+        var metrics = getScoreView().getSongLayoutMetrics();
 
         if (result == null) {
-            throw RuntimeError.exit("layout result is null after layout for line " + lineIndex);
-        }
+            if (lineDoesNotFit) {
+                // First layout could not fit the content (issue #449) and there is no
+                // prior layout to size from. Report a zero-width line of the normal
+                // height so the scroll pane stays sane until a later layout fits.
+                return new Dimension(
+                    0, (int) Math.ceil(ScaleContext.ssToPx(metrics.totalLineHeightSs())));
+            }
 
-        var metrics = getScoreView().getSongLayoutMetrics();
+            throw unexpectedNullLayout();
+        }
 
         return new Dimension(
             (int) Math.ceil(ScaleContext.ssToPx(result.getLineWidthSs())),
@@ -465,17 +526,31 @@ public class LineComponent extends ScoreComponent
     }
 
     private double calculateMiddleLineYSs() {
-        if (layoutResult == null || layoutDirty) {
+        if (layoutDirty || (layoutResult == null && !lineDoesNotFit)) {
             performLayout();
         }
 
         var result = layoutResult;
 
         if (result == null) {
-            throw RuntimeError.exit("layout result is null after layout for line " + lineIndex);
+            if (lineDoesNotFit) {
+                // First layout could not fit the content (issue #449); fall back to the
+                // minimum above-staff space so the staff still positions sensibly.
+                return StaffExtents.MIN_ABOVE_STAFF_SS + StaffExtents.STAFF_HALF_SS;
+            }
+
+            throw unexpectedNullLayout();
         }
 
         return result.getAboveStaffSs() + StaffExtents.STAFF_HALF_SS;
+    }
+
+    /**
+     * Builds the error for the unexpected case where layout ran but produced no
+     * result and the line is not in the known does-not-fit state (issue #449).
+     */
+    private RuntimeException unexpectedNullLayout() {
+        return RuntimeError.exit("layout result is null after layout for line " + lineIndex);
     }
 
     // ==========================================================================
