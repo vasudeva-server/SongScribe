@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 
 import org.assertj.swing.edt.GuiActionRunner;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.dom.Lyric;
@@ -42,6 +43,11 @@ import songscribe.ui.action.Actions;
 class LyricLayoutTest extends E2ETest {
 
     private static final String SYLLABLE = "la";
+
+    @BeforeEach
+    void resetState() {
+        resetSong();
+    }
 
     @Test
     void testLyricBoxAppearsAfterInsertion() {
