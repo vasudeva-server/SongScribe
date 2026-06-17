@@ -315,11 +315,10 @@ public abstract class E2ETest {
         clickToolbarButton(action);
     }
 
-    /**
-     * Clicks the rest mode toggle button.
-     */
     protected void enableRestMode() {
-        clickToolbarButton(Actions.REST_ACTION);
+        if (!Actions.REST_ACTION.isSelected()) {
+            clickToolbarButton(Actions.REST_ACTION);
+        }
     }
 
     /**
