@@ -925,6 +925,7 @@ public final class LayoutResult {
                 Collections.emptyList(),
                 ElementColumnBuilder.calculateLeftExtentSs(previewElement),
                 ElementColumnBuilder.calculateRightExtentSs(previewElement, false, true),
+                ElementColumnBuilder.calculateRightExtentExcludingDotsSs(previewElement, false, true),
                 0,
                 0,
                 null,

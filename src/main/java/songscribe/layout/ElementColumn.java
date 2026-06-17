@@ -33,7 +33,7 @@ import songscribe.dom.StaffElement;
  * <ul>
  *   <li>A primary element (note, rest, or barline)</li>
  *   <li>Optional grace notes (which borrow space from the left)</li>
- *   <li>Horizontal extents (left edge including accidentals/grace notes, right edge including dots)</li>
+ *   <li>Horizontal extents (left edge including accidentals/grace notes; right edge including dots for minimum spacing, excluding dots for comfortable spacing)</li>
  *   <li>Stem information (top/bottom for beam group coordination)</li>
  *   <li>Associated lyric syllable (which drives horizontal spacing per Gould/Ross)</li>
  *   <li>Beam membership flag (for internal spacing coordination)</li>
@@ -53,6 +53,7 @@ public final class ElementColumn {
     private final List<StaffElement> graceNotes;
     private final double leftExtentSs;
     private final double rightExtentSs;
+    private final double rightExtentExcludingDotsSs;
     private final double stemTopSs;
     private final double stemBottomSs;
     private final @Nullable String syllable;
@@ -74,21 +75,23 @@ public final class ElementColumn {
      * <p>
      * Use {@link ElementColumnBuilder} rather than calling this constructor directly.
      *
-     * @param element         The primary element (note, rest, barline, etc.)
-     * @param graceNotes      Grace notes anchored to this element (empty list if none)
-     * @param leftExtentSs    Left extent relative to element head left edge; 0.0 without accidental, negative with one
-     * @param rightExtentSs   Right extent relative to element head left edge; equals element head width, plus dots if any
-     * @param stemTopSs       Top of stem (if stem up), or element head top if no stem
-     * @param stemBottomSs    Bottom of stem (if stem down), or element head bottom if no stem
-     * @param syllable        Associated lyric syllable text (null if none)
-     * @param syllableWidthSs Measured width of syllable text in staff spaces (0 if no syllable)
-     * @param beamed          Whether this element is part of a beam group
+     * @param element                    The primary element (note, rest, barline, etc.)
+     * @param graceNotes                 Grace notes anchored to this element (empty list if none)
+     * @param leftExtentSs               Left extent relative to element head left edge; 0.0 without accidental, negative with one
+     * @param rightExtentSs              Right extent relative to element head left edge; equals element head width, plus dots if any
+     * @param rightExtentExcludingDotsSs Right extent excluding augmentation dots; used for comfortable spacing
+     * @param stemTopSs                  Top of stem (if stem up), or element head top if no stem
+     * @param stemBottomSs               Bottom of stem (if stem down), or element head bottom if no stem
+     * @param syllable                   Associated lyric syllable text (null if none)
+     * @param syllableWidthSs            Measured width of syllable text in staff spaces (0 if no syllable)
+     * @param beamed                     Whether this element is part of a beam group
      */
     public ElementColumn(
         StaffElement element,
         List<StaffElement> graceNotes,
         double leftExtentSs,
         double rightExtentSs,
+        double rightExtentExcludingDotsSs,
         double stemTopSs,
         double stemBottomSs,
         @Nullable String syllable,
@@ -98,11 +101,33 @@ public final class ElementColumn {
         this.graceNotes = List.copyOf(graceNotes);
         this.leftExtentSs = leftExtentSs;
         this.rightExtentSs = rightExtentSs;
+        this.rightExtentExcludingDotsSs = rightExtentExcludingDotsSs;
         this.stemTopSs = stemTopSs;
         this.stemBottomSs = stemBottomSs;
         this.syllable = syllable;
         this.syllableWidthSs = syllableWidthSs;
         this.beamed = beamed;
+    }
+
+    /**
+     * Creates a new ElementColumn where the right extent excluding dots equals the right extent.
+     * <p>
+     * Package-private so it is reachable only from tests that do not care about dot-driven
+     * spacing. Production callers must use the full constructor and pass the correct
+     * {@code rightExtentExcludingDotsSs}.
+     */
+    ElementColumn(
+        StaffElement element,
+        List<StaffElement> graceNotes,
+        double leftExtentSs,
+        double rightExtentSs,
+        double stemTopSs,
+        double stemBottomSs,
+        @Nullable String syllable,
+        double syllableWidthSs,
+        boolean beamed) {
+        this(element, graceNotes, leftExtentSs, rightExtentSs, rightExtentSs,
+            stemTopSs, stemBottomSs, syllable, syllableWidthSs, beamed);
     }
 
     // ==========================================================================
@@ -169,6 +194,15 @@ public final class ElementColumn {
      */
     public double getRightExtentSs() {
         return rightExtentSs;
+    }
+
+    /**
+     * Returns the right extent excluding augmentation dots.
+     * Used for comfortable (default) spacing so dots do not push the next element unless
+     * the minimum gap would otherwise be violated.
+     */
+    public double getRightExtentExcludingDotsSs() {
+        return rightExtentExcludingDotsSs;
     }
 
     /**

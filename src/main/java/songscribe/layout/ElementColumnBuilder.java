@@ -128,6 +128,7 @@ public class ElementColumnBuilder {
         // Calculate horizontal extents
         var leftExtentSs = calculateLeftExtentSs(element);
         var rightExtentSs = calculateRightExtentSs(element, beamed, element.isUpper());
+        var rightExtentExcludingDotsSs = calculateRightExtentExcludingDotsSs(element, beamed, element.isUpper());
 
         // Calculate stem positions
         var stemTopSs = calculateStemTopSs(element);
@@ -145,6 +146,7 @@ public class ElementColumnBuilder {
             graceNotes,
             leftExtentSs,
             rightExtentSs,
+            rightExtentExcludingDotsSs,
             stemTopSs,
             stemBottomSs,
             syllable,
@@ -197,6 +199,8 @@ public class ElementColumnBuilder {
      * Calculates the right extent of an element column.
      * This includes the element head right edge, any dots, and the flag extent for unbeamed
      * flagged elements (8th, 16th, 32nd, grace quaver).
+     * <p>
+     * Used for minimum spacing calculations, which must account for dots to prevent overlap.
      *
      * @param element The element
      * @param beamed  {@code true} if the element is part of a beam group (flags are suppressed)
@@ -204,6 +208,31 @@ public class ElementColumnBuilder {
      * @return Right extent in ss relative to element head left edge (glyph origin)
      */
     public static double calculateRightExtentSs(StaffElement element, boolean beamed, boolean upper) {
+        return calculateRightExtentInternal(element, beamed, upper, true);
+    }
+
+    /**
+     * Calculates the right extent of an element column, excluding augmentation dots.
+     * <p>
+     * Used for comfortable (default) spacing so dots do not push the next element
+     * unless the minimum gap would otherwise be violated — mirroring how accidentals
+     * on the left do not widen the gap beyond the comfortable default (refs #441).
+     *
+     * @param element The element
+     * @param beamed  {@code true} if the element is part of a beam group (flags are suppressed)
+     * @param upper   {@code true} if the stem goes up; affects which stem anchor is used
+     * @return Right extent in ss relative to element head left edge (glyph origin), dots excluded
+     */
+    public static double calculateRightExtentExcludingDotsSs(StaffElement element, boolean beamed, boolean upper) {
+        return calculateRightExtentInternal(element, beamed, upper, false);
+    }
+
+    private static double calculateRightExtentInternal(
+        StaffElement element,
+        boolean beamed,
+        boolean upper,
+        boolean includeDots) {
+
         var type = element.getType();
 
         // Non-note elements (rests, barlines, breath marks, repeats) use their
@@ -213,7 +242,7 @@ public class ElementColumnBuilder {
         }
 
         // Element head right edge: use small notehead width for grace notes
-        var noteheadRightExtent = getNoteheadRightExtent(element, type);
+        var noteheadRightExtent = getNoteheadRightExtent(element, type, includeDots);
 
         // Flag extent: only for unbeamed elements that have a flag
         var flagGlyph = type.getFlagGlyph(upper);
@@ -240,22 +269,14 @@ public class ElementColumnBuilder {
         return Math.max(noteheadRightExtent, flagRightExtent);
     }
 
-    private static double getNoteheadRightExtent(StaffElement element, ElementType type) {
+    private static double getNoteheadRightExtent(StaffElement element, ElementType type, boolean includeDots) {
         var noteheadRightExtent = type.isGraceNote()
             ? NOTE_HEAD_SMALL_WIDTH_SS
             : Engraving.NOTE_HEAD_WIDTH_SS;
 
-        // Add dot widths if present
-        var dotCount = element.getDotCount();
-
-        if (dotCount > 0) {
-            // First dot: gap + dot
-            noteheadRightExtent += DOT_GAP_SS + DOT_WIDTH_SS;
-
-            // Additional dots: gap + dot each
-            for (var i = 1; i < dotCount; i++) {
-                noteheadRightExtent += DOT_GAP_SS + DOT_WIDTH_SS;
-            }
+        if (includeDots) {
+            // Each dot contributes an equal gap + dot width
+            noteheadRightExtent += element.getDotCount() * (DOT_GAP_SS + DOT_WIDTH_SS);
         }
 
         return noteheadRightExtent;

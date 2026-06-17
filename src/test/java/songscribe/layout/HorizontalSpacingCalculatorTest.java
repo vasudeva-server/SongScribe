@@ -1043,4 +1043,116 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         // Accidental on grace note is absorbed by the default gap — head must not shift (refs #418)
         assertThat(accidentalXSs).isCloseTo(plainXSs, within(TOLERANCE));
     }
+
+    // #441: a dotted note where the dot fits within the default gap must not shift the next
+    // note head. Comfortable spacing (notehead only, excluding dots) dominates over minimum
+    // spacing (which includes dots), so a dotted-prev column produces the same next-head
+    // position as a plain-prev column.
+    @Test
+    void testDotWithinDefaultGapDoesNotShiftNextHead() {
+        // prevColumn without dots: both extents equal PLAIN_RIGHT_EXTENT_SS
+        var plainPrevColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        // prevColumn with 1 dot: rightExtentSs includes the dot; rightExtentExcludingDotsSs does not
+        var dotRightExtentSs = PLAIN_RIGHT_EXTENT_SS + ElementColumnBuilder.DOT_GAP_SS + ElementColumnBuilder.DOT_WIDTH_SS;
+        var dottedPrevColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, dotRightExtentSs, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var currColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        plainPrevColumn.setXSs(PREV_COLUMN_X_SS);
+        dottedPrevColumn.setXSs(PREV_COLUMN_X_SS);
+
+        var plainXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(plainPrevColumn, currColumn);
+        var dottedXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(dottedPrevColumn, currColumn);
+
+        // Dot absorbed by default gap — next head must not shift (refs #441)
+        assertThat(dottedXSs)
+            .as("dot within default gap must not shift next head")
+            .isCloseTo(plainXSs, within(TOLERANCE));
+    }
+
+    // #441: when the dot right edge is far enough right that minimum spacing (dot + MIN_GAP)
+    // exceeds comfortable spacing (notehead + DEFAULT_GAP), the next note shifts by exactly
+    // the overflow, and the dot right edge is MIN_COLUMN_GAP_SS clear of the next element.
+    @Test
+    void testWideDotMinimumSpacingDominatesAndShiftsNextHead() {
+        // Wide dot right extent chosen so minimum spacing overflows comfortable by MIN_COLUMN_GAP_SS:
+        //   comfortable = PLAIN_RIGHT_EXTENT + DEFAULT_GAP
+        //   minimum     = wideDot + MIN_GAP = (PLAIN_RIGHT_EXTENT + DEFAULT_GAP) + MIN_GAP
+        var wideDotRightExtentSs = PLAIN_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        var prevColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, wideDotRightExtentSs, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var plainPrevColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var currColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        prevColumn.setXSs(PREV_COLUMN_X_SS);
+        plainPrevColumn.setXSs(PREV_COLUMN_X_SS);
+
+        var dottedXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, currColumn);
+        var plainXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(plainPrevColumn, currColumn);
+
+        var comfortableSpacingSs = PLAIN_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        var minimumSpacingSs = wideDotRightExtentSs + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+
+        // Next head shifts by exactly the minimum-space overflow (refs #441)
+        assertThat(dottedXSs).isCloseTo(
+            plainXSs + (minimumSpacingSs - comfortableSpacingSs),
+            within(TOLERANCE)
+        );
+        // Dot right edge is MIN_COLUMN_GAP_SS clear of the next element's left edge
+        var dotRightEdgeSs = PREV_COLUMN_X_SS + wideDotRightExtentSs;
+        var nextLeftEdgeSs = dottedXSs; // leftExtentSs = 0.0
+        assertThat(nextLeftEdgeSs).isCloseTo(
+            dotRightEdgeSs + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS,
+            within(TOLERANCE)
+        );
+    }
+
+    // #441 boundary: at the exact crossover where minimum spacing (dots included) equals comfortable
+    // spacing (dots excluded), the next head still lands at the comfortable default-gap position and
+    // the dot's right edge is exactly MIN_COLUMN_GAP_SS clear of it. Pins the comfortable-vs-minimum
+    // tipping point on the dot side, mirroring the accidental boundary test.
+    @Test
+    void testDotAtComfortableMinimumBoundaryLeavesDotExactlyClear() {
+        // dotWidth = DEFAULT_GAP - MIN_GAP makes minimum spacing exactly equal comfortable spacing.
+        var dotWidthSs = HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS
+            - HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+        var dotRightExtentSs = PLAIN_RIGHT_EXTENT_SS + dotWidthSs;
+        var prevColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, dotRightExtentSs, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var currColumn = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        prevColumn.setXSs(PREV_COLUMN_X_SS);
+
+        var result = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, currColumn);
+
+        // Comfortable and minimum coincide: next head lands at the comfortable default-gap position.
+        var expectedXSs = PREV_COLUMN_X_SS + PLAIN_RIGHT_EXTENT_SS
+            + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        assertThat(result).isCloseTo(expectedXSs, within(TOLERANCE));
+        // The dot's right edge is exactly MIN_COLUMN_GAP_SS clear of the next column's left edge.
+        var dotRightEdgeSs = PREV_COLUMN_X_SS + dotRightExtentSs;
+        var nextLeftEdgeSs = result; // currColumn leftExtentSs = 0.0
+        assertThat(nextLeftEdgeSs).isCloseTo(
+            dotRightEdgeSs + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS,
+            within(TOLERANCE)
+        );
+    }
 }

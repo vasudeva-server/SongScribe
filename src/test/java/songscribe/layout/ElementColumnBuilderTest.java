@@ -101,6 +101,69 @@ class ElementColumnBuilderTest extends UnitTest {
         assertThat(actual).isEqualTo(expected);
     }
 
+    // #441: excluding dots on a dotted FLAGGED note must strip the dot yet still account for the
+    // flag via Math.max — the extent equals the undotted quaver's flag-driven extent and still
+    // exceeds the bare notehead, proving the dot path is suppressed without discarding the flag.
+    @Test
+    void testRightExtentExcludingDotsStripsDotButKeepsFlagForDottedQuaver() {
+        var dottedQuaver = element(ElementType.QUAVER);
+        dottedQuaver.setDotCount(1);
+
+        var flagExtent =
+            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() + SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_UP);
+        var expectedExcludingDots = Math.max(Engraving.NOTE_HEAD_WIDTH_SS, flagExtent);
+
+        var excludingDots = ElementColumnBuilder.calculateRightExtentExcludingDotsSs(dottedQuaver, false, true);
+
+        assertThat(excludingDots).isEqualTo(expectedExcludingDots);
+        // Flag still wins the Math.max — the extent is more than the bare notehead alone
+        assertThat(excludingDots).isGreaterThan(Engraving.NOTE_HEAD_WIDTH_SS);
+    }
+
+    // #441: calculateRightExtentExcludingDotsSs for a dotted note equals the undotted right extent
+    @Test
+    void testRightExtentExcludingDotsEqualsUndottedExtentForDottedCrotchet() {
+        var plain = element(ElementType.CROTCHET);
+        var dotted = element(ElementType.CROTCHET);
+        dotted.setDotCount(1);
+
+        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
+        var dottedExcludingDots = ElementColumnBuilder.calculateRightExtentExcludingDotsSs(dotted, false, true);
+
+        // Excluding dots must match the plain (undotted) right extent
+        assertThat(dottedExcludingDots).isEqualTo(plainExtent);
+    }
+
+    // #441: dot exclusion must be unconditional, not gated on dotCount == 1 — a double-dotted
+    // note's excluding-dots extent must still equal the undotted extent.
+    @Test
+    void testRightExtentExcludingDotsIgnoresAllDotsForDoubleDottedCrotchet() {
+        var plain = element(ElementType.CROTCHET);
+        var doubleDotted = element(ElementType.CROTCHET);
+        doubleDotted.setDotCount(DOUBLE_DOT_COUNT);
+
+        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
+        var excludingDots =
+            ElementColumnBuilder.calculateRightExtentExcludingDotsSs(doubleDotted, false, true);
+
+        assertThat(excludingDots).isEqualTo(plainExtent);
+    }
+
+    // #441: dot exclusion must also apply to the small-notehead grace-note path — a dotted grace
+    // quaver's excluding-dots extent must equal the undotted grace quaver's extent.
+    @Test
+    void testRightExtentExcludingDotsStripsDotForDottedGraceQuaver() {
+        var plainGrace = element(ElementType.GRACE_QUAVER);
+        var dottedGrace = element(ElementType.GRACE_QUAVER);
+        dottedGrace.setDotCount(1);
+
+        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plainGrace, false, true);
+        var excludingDots =
+            ElementColumnBuilder.calculateRightExtentExcludingDotsSs(dottedGrace, false, true);
+
+        assertThat(excludingDots).isEqualTo(plainExtent);
+    }
+
     // T5: Grace quaver uses the small notehead + small-stem anchor, regular uses full-size — exact values
     @Test
     void testGraceQuaverExtentSmallerThanRegularQuaver() {

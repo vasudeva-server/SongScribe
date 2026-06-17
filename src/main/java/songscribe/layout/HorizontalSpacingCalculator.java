@@ -300,17 +300,17 @@ public class HorizontalSpacingCalculator {
      * Calculates default spacing for columns when no lyrics are present.
      * <p>
      * Uses DEFAULT_COLUMN_GAP to provide comfortable spacing without lyrics. The comfortable
-     * gap is measured to the current note head, not to its accidental, so a note with an
-     * accidental does not widen the gap beyond the comfortable default. The minimum-spacing
-     * floor — which does use the full left extent — takes over and shifts the note only when
-     * the accidental would otherwise come closer than {@link #MIN_COLUMN_GAP_SS} to the
-     * previous element (refs #418).
+     * gap is measured to the current note head, not to its accidental or augmentation dots,
+     * so neither pushes the next element beyond the comfortable default. The minimum-spacing
+     * floor — which uses the full right extent including dots — takes over and shifts the
+     * next element only when the dot would otherwise come closer than {@link #MIN_COLUMN_GAP_SS}
+     * to it. This mirrors how accidentals on the left are handled (refs #418, #441).
      *
      * @param prevColumn Previous column
      * @return Default spacing in ss
      */
     private static double calculateDefaultColumnSpacingSs(ElementColumn prevColumn) {
-        return prevColumn.getRightExtentSs() + DEFAULT_COLUMN_GAP_SS;
+        return prevColumn.getRightExtentExcludingDotsSs() + DEFAULT_COLUMN_GAP_SS;
     }
 
     /**
