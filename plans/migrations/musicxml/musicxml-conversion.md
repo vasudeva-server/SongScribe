@@ -190,7 +190,11 @@ annotations, and the residual `<miscellaneous>` extension fields.
   `<lyric-font>` / `<word-font>`; paddings/distances → system-layout fields;
   attribution user Y offset (`XML_ATTRIBUTION_Y_OFFSET`) → `relative-y` on
   attribution `<credit-words>` (ss → tenths); spacing factors → `<misc-field>`.
-- Annotations → `<direction><words>` with halign/justify, default-y, relative-y.
+- Annotations → `<direction placement="above|below">` (the `Placement` enum — see
+  [annotation-placement-refactor.md](./annotation-placement-refactor.md), a
+  prerequisite model change) `<direction-type><words>` with halign/justify;
+  `userYOffsetSs` → `relative-y`; computed base Y → `default-y` (write-forward,
+  ignored on read).
 
 **Verify**: Round-trip a fully-populated header + layout + credits + annotations;
 attribution credits re-derive from head metadata, score-below credits reload

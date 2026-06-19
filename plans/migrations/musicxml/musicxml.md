@@ -1,80 +1,56 @@
 # SongScribe → MusicXML Format Mapping
-
-**Type:** Reference (format mapping)  <br>
-**Created:** 2026-05-19  <br>
-**Status:** Draft  <br>
-**Issue:** [#288](https://github.com/vasudeva-server/SongScribe/issues/288)  <br>
+**Type:** Reference (format mapping)  
+**Created:** 2026-05-19  
+**Status:** Draft  
+**Issue:** [#288](https://github.com/vasudeva-server/SongScribe/issues/288)  
 **Schema:** [docs/musicxml-4.0-schema/](../../../docs/musicxml-4.0-schema/) — MusicXML 4.0 (`score-partwise`)
 
----
-
+* * *
 ## Purpose
-
-Inventory of every field SongScribe persists and where it maps in MusicXML 4.0,
-to support converting the document format to MusicXML for interoperability and
-archival (issue #288). The goal is a **lossless** mapping: MusicXML becomes the
-canonical on-disk format with zero information loss.
+Inventory of every field SongScribe persists and where it maps in MusicXML 4.0, to support converting the document format to MusicXML for interoperability and archival (issue #288). The goal is a **lossless** mapping: MusicXML becomes the canonical on-disk format with zero information loss.
 
 Each row is tagged with a bucket:
 
 - **Native** — direct MusicXML element, read by any MusicXML consumer.
-- **Native+conv** — native element, but requires a unit or data-shape
-  conversion (staff-space ↔ tenths, line-range ↔ per-note marker, etc.). Bijective.
-- **Ext** — extension point (`<miscellaneous-field>` or `<other-*>`). Stores the
-  value verbatim; lossless round-trip; not semantically understood by other apps.
+  
+- **Native+conv** — native element, but requires a unit or data-shape conversion (staff-space ↔ tenths, line-range ↔ per-note marker, etc.). Bijective.
+  
+- **Ext** — extension point (`<miscellaneous-field>` or `<other-*>`). Stores the value verbatim; lossless round-trip; not semantically understood by other apps.
+  
 
-Source of the inventory: `io/SongIO`, `io/LineIO`, `io/StaffElementIO`,
-`io/TempoIO`, `io/AnnotationIO`, `io/ViewIO`, and the `model` enums
-(`ElementType`, `Duration`, `KeyType`, `BeatChange`, `Lyric`).
+Source of the inventory: `io/SongIO`, `io/LineIO`, `io/StaffElementIO`, `io/TempoIO`, `io/AnnotationIO`, `io/ViewIO`, and the `model` enums (`ElementType`, `Duration`, `KeyType`, `BeatChange`, `Lyric`).
 
----
-
+* * *
 ## Structural model
-
-SongScribe is **line-centric** with **inline barline/repeat elements**; MusicXML
-requires `<measure>` containers and is **measure-centric**. The reversible mapping:
+SongScribe is **line-centric** with **inline barline/repeat elements**; MusicXML requires `<measure>` containers and is **measure-centric**. The reversible mapping:
 
 - One `<part>` (`<part-list>` with a single `<score-part>`), root `score-partwise`.
-- **Insert a `<measure>` boundary at (a) every SongScribe barline element and
-  (b) every line break.** Each SongScribe line becomes one or more measures.
-  - A real barline element → `<barline>` with the matching `<bar-style>`
-    (+ `<repeat>` for repeats).
-  - A forced boundary at a line break with no barline →
-    `<barline><bar-style>none</bar-style></barline>` (invisible).
-- Line (system) breaks → `<print new-system="yes"/>` on the measure that starts
-  the line. Because every line break is forced to coincide with a measure
-  boundary, this round-trips: on read, an invisible barline coinciding with a
-  system break = line break; a visible one = a real barline element.
-- Meterless flow → `<attributes><time print-object="no"><senza-misura/></time>`.
-  Choose `<divisions>` to express the dot/duration set.
-- No clef concept → emit treble `<clef><sign>G</sign><line>2</line></clef>`;
-  ignore on read (treble is the only clef).
+  
+- **Insert a** `<measure>` **boundary at (a) every SongScribe barline element and (b) every line break.** Each SongScribe line becomes one or more measures.
+  
+  - A real barline element → `<barline>` with the matching `<bar-style>` (+ `<repeat>` for repeats).
+    
+  - A forced boundary at a line break with no barline → `<barline><bar-style>none</bar-style></barline>` (invisible).
+    
+- Line (system) breaks → `<print new-system="yes"/>` on the measure that starts the line. Because every line break is forced to coincide with a measure boundary, this round-trips: on read, an invisible barline coinciding with a system break = line break; a visible one = a real barline element.
+  
+- Meterless flow → `<attributes><time print-object="no"><senza-misura/></time>`. Choose `<divisions>` to express the dot/duration set.
+  
+- No clef concept → emit treble `<clef><sign>G</sign><line>2</line></clef>`; ignore on read (treble is the only clef).
+  
 
-This corrects two earlier mistaken assumptions: SongScribe **does** model barlines
-and repeats (as inline `ElementType` values), and note pitch **is** fully derivable
-(`StaffElement.getPitch()` yields a concrete pitch from staff position + accidental
-+ key), so `<step>/<octave>/<alter>` is a clean equivalent, not a lossy guess.
+This corrects two earlier mistaken assumptions: SongScribe **does** model barlines and repeats (as inline `ElementType` values), and note pitch **is** fully derivable (`StaffElement.getPitch()` yields a concrete pitch from staff position + accidental
 
----
+- key), so `<step>/<octave>/<alter>` is a clean equivalent, not a lossy guess.
+  
 
+* * *
 ## Song header → `<score-partwise>` head
+Attribution is being reworked from a single text blob into discrete fields (composer, lyricist, arranger, date, lyrics date, rights, place). The mapping below reflects the **post-rework** shape: composer/lyricist/arranger become native `<creator>` entries and rights becomes a native `<rights>` entry.
 
-Attribution is being reworked from a single text blob into discrete fields
-(composer, lyricist, arranger, date, lyrics date, rights, place). The mapping
-below reflects the **post-rework** shape: composer/lyricist/arranger become
-native `<creator>` entries and rights becomes a native `<rights>` entry.
+This table covers only the **metadata** that lives in the score head (`<movement-title>` / `<movement-number>` / `<identification>`). The on-page **display** of the title and every attribution role is emitted separately as `<credit>` elements — see § "Credits". MusicXML's recommended practice is to carry the same information in both places (metadata for consumers, credits for rendering); the two are intentional duplicates.
 
-This table covers only the **metadata** that lives in the score head
-(`<movement-title>` / `<movement-number>` / `<identification>`). The on-page
-**display** of the title and every attribution role is emitted separately as
-`<credit>` elements — see § "Credits". MusicXML's recommended practice is to
-carry the same information in both places (metadata for consumers, credits for
-rendering); the two are intentional duplicates.
-
-**Subtitle is not in this table.** MusicXML has no `<movement-subtitle>` or
-`<identification>` equivalent for a subtitle. The subtitle's canonical home is
-its `subtitle` `<credit>` element (see § "Credits"); there is no head-metadata
-duplicate. SongScribe both writes and reads the subtitle from that credit.
+**Subtitle is not in this table.** MusicXML has no `<movement-subtitle>` or `<identification>` equivalent for a subtitle. The subtitle's canonical home is its `subtitle` `<credit>` element (see § "Credits"); there is no head-metadata duplicate. SongScribe both writes and reads the subtitle from that credit.
 
 | SongScribe field | MusicXML target | Bucket |
 |---|---|---|
@@ -91,32 +67,14 @@ duplicate. SongScribe both writes and reads the subtitle from that credit.
 | place (`XML_PLACE`) | `<misc-field name="composition-place">` (display also as a `place` `<credit>`) | Ext |
 | unofficial-translation flag (`XML_UNOFFICIAL_TRANSLATION`) | `<misc-field name="unofficial-translation">` | Ext |
 
-The score-below text blocks — underlyrics, Bangla lyrics, translated lyrics, and
-footnotes — are **not** stored in `<miscellaneous>`. They are emitted as
-last-page `<credit>` elements (see § "Credits"), which serve as their canonical
-on-disk home.
-
+The score-below text blocks — underlyrics, Bangla lyrics, translated lyrics, and footnotes — are **not** stored in `<miscellaneous>`. They are emitted as last-page `<credit>` elements (see § "Credits"), which serve as their canonical on-disk home.
 ### Date handling
+The structured year/month/day is the **source of truth**; the formatted string ("December 1, 1987") is **derived** at render time and must not be the stored value (it is locale/format-dependent and ambiguous to parse back). Store one ISO 8601 `<misc-field>` — fully decomposable to y/m/d, and ISO partial forms (`1987`, `1987-12`, `1987-12-01`) cover SongScribe's existing partial dates (the code gates on `month > 0` / `day > 0`). The formatted display string is also emitted as the `composition date` / `lyrics date` `<credit>` (see § "Credits"); SongScribe ignores those credits on read and reloads the structured date from the ISO misc-field.
 
-The structured year/month/day is the **source of truth**; the formatted string
-("December 1, 1987") is **derived** at render time and must not be the stored
-value (it is locale/format-dependent and ambiguous to parse back). Store one
-ISO 8601 `<misc-field>` — fully decomposable to y/m/d, and ISO partial forms
-(`1987`, `1987-12`, `1987-12-01`) cover SongScribe's existing partial dates
-(the code gates on `month > 0` / `day > 0`). The formatted display string is
-also emitted as the `composition date` / `lyrics date` `<credit>` (see
-§ "Credits"); SongScribe ignores those credits on read and reloads the structured
-date from the ISO misc-field.
+The same ISO 8601 rules apply to `<misc-field name="lyrics-date">`, which records when the lyrics were written independently of the music. Omit the field when the lyrics date equals (or is unknown relative to) the composition date; emit it only when the two dates are distinct.
 
-The same ISO 8601 rules apply to `<misc-field name="lyrics-date">`, which
-records when the lyrics were written independently of the music. Omit the field
-when the lyrics date equals (or is unknown relative to) the composition date;
-emit it only when the two dates are distinct.
-
----
-
+* * *
 ## Layout → `<defaults>` / `<print>`
-
 | SongScribe field | MusicXML target | Bucket |
 |---|---|---|
 | line width (`XML_LINE_WIDTH`, ss) | `<scaling>` + `<system-layout>` (ss → tenths, ×10) | Native+conv |
@@ -130,19 +88,11 @@ emit it only when the two dates are distinct.
 | element spacing ratio (`XML_NOTE_DIST_CHANGE`) | `<misc-field>` (system-level spacing factor) | Ext |
 | dynamic-layout flag (`XML_DYNAMIC_LAYOUT`, always true) | drop, or `<misc-field>` | Ext |
 
----
-
+* * *
 ## Credits → `<credit>`
+All on-page text that is not part of the staff — the title, every attribution role, and the score-below text blocks — is emitted as `<credit>` elements, which appear **after** `<defaults>` **and before** `<part-list>`. Each credit carries its own font and position, so the `TITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` view-font roles need no separate storage: their `font-family` / `font-size` / `font-weight` ride directly on the `<credit-words>`.
 
-All on-page text that is not part of the staff — the title, every attribution
-role, and the score-below text blocks — is emitted as `<credit>` elements, which
-appear **after `<defaults>` and before `<part-list>`**. Each credit carries its
-own font and position, so the `TITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE`
-view-font roles need no separate storage: their `font-family` / `font-size` /
-`font-weight` ride directly on the `<credit-words>`.
-
-Shape (title shown; every other role is identical except `<credit-type>` and the
-text):
+Shape (title shown; every other role is identical except `<credit-type>` and the text):
 
 ```xml
 <credit>
@@ -151,12 +101,8 @@ text):
                 justify="center" default-x="…" default-y="…">The Title</credit-words>
 </credit>
 ```
-
 ### Attribution credits (first page, top)
-
-One credit per populated role; emitted only when the field has a value. The
-`<credit-type>` is the role name; the `<credit-words>` text is the rendered
-display string (for dates, the formatted string such as `December 1, 1987`).
+One credit per populated role; emitted only when the field has a value. The `<credit-type>` is the role name; the `<credit-words>` text is the rendered display string (for dates, the formatted string such as `December 1, 1987`).
 
 | Role | `<credit-type>` | Display text source | Font role |
 |---|---|---|---|
@@ -170,29 +116,11 @@ display string (for dates, the formatted string such as `December 1, 1987`).
 | rights | `rights` | copyright string | `ATTRIBUTION` |
 | place | `place` | place field | `ATTRIBUTION` |
 
-The subtitle credit is the **canonical home** for the subtitle text. Unlike
-the title and attribution credits (which are display-only on read, with their
-canonical source of truth in the head metadata), subtitle has **no**
-`<movement-*>` or `<identification>` equivalent in MusicXML. The `subtitle`
-credit is therefore both **written and read** by SongScribe. It is emitted only
-when `getSubtitle()` returns a non-empty string.
+The subtitle credit is the **canonical home** for the subtitle text. Unlike the title and attribution credits (which are display-only on read, with their canonical source of truth in the head metadata), subtitle has **no**`<movement-*>` or `<identification>` equivalent in MusicXML. The `subtitle` credit is therefore both **written and read** by SongScribe. It is emitted only when `getSubtitle()` returns a non-empty string.
 
-The remaining credits in this table are **display-only on read**: their
-canonical source of truth is the head metadata (`<movement-title>`,
-`<creator>`, `<rights>`) and the `composition-date` / `lyrics-date` / `composition-place`
-misc-fields. SongScribe re-derives each credit from those on write and ignores
-the credit text on read.
-
+The remaining credits in this table are **display-only on read**: their canonical source of truth is the head metadata (`<movement-title>`, `<creator>`, `<rights>`) and the `composition-date` / `lyrics-date` / `composition-place` misc-fields. SongScribe re-derives each credit from those on write and ignores the credit text on read.
 ### Score-below credits (last page)
-
-The text blocks rendered below the score carry a `page` attribute pointing at the
-last page. SongScribe currently renders a **single page**
-(`ScoreView.updatePageLayout`), so the last page is page 1 and `page` is always
-`1`; the attribute generalizes to successive last pages if a multi-page layout is
-ever added. Unlike the attribution credits, **these credits are the canonical
-home** for their text — there is no parallel metadata element — so SongScribe both
-writes and reads them. Their on-page positions come from the rendered component
-geometry (see the Phase 7 sub-plan, § "Credit positions").
+The text blocks rendered below the score carry a `page` attribute pointing at the last page. SongScribe currently renders a **single page** (`ScoreView.updatePageLayout`), so the last page is page 1 and `page` is always `1`; the attribute generalizes to successive last pages if a multi-page layout is ever added. Unlike the attribution credits, **these credits are the canonical home** for their text — there is no parallel metadata element — so SongScribe both writes and reads them. Their on-page positions come from the rendered component geometry (see the Phase 7 sub-plan, § "Credit positions").
 
 | SongScribe field | `<credit-type>` | Font role | Bucket |
 |---|---|---|---|
@@ -201,14 +129,10 @@ geometry (see the Phase 7 sub-plan, § "Credit positions").
 | translated lyrics (`XML_TRANSLATED_LYRICS`) | `translation` | `LYRICS` | Native |
 | footnotes (`XML_FOOTNOTES`) | `footnotes` | `FOOTNOTE` | Native |
 
-The `unofficial-translation` flag qualifies the translated lyrics but is not
-display text, so it stays a `<misc-field name="unofficial-translation">` rather
-than a credit.
+The `unofficial-translation` flag qualifies the translated lyrics but is not display text, so it stays a `<misc-field name="unofficial-translation">` rather than a credit.
 
----
-
+* * *
 ## Per-measure attributes
-
 | SongScribe field | MusicXML target | Bucket |
 |---|---|---|
 | key accidental count + type (`XML_KEYS` + `XML_KEYTYPE`) | `<key><fifths>` — FLATS → −n, SHARPS → +n, NONE → 0 | Native+conv |
@@ -219,10 +143,8 @@ than a credit.
 | ↳ hide tempo (`shouldShowTempo=false`) | `print-object="no"` on the direction-type | Native |
 | metric modulation (`BeatChange` = duration/beat) | `<metronome>` with two `<metronome-note>` + `<metronome-relation>` | Native |
 
----
-
+* * *
 ## Note / element → `<note>`
-
 | SongScribe field | MusicXML target | Bucket |
 |---|---|---|
 | durations (SEMIBREVE…DEMI_SEMIQUAVER) | `<type>` (whole…32nd) + `<duration>` | Native |
@@ -237,18 +159,16 @@ than a credit.
 | fermata (`XML_FERMATA`) | `<notations><fermata>` | Native |
 | dynamic marking (`XML_DYNAMIC`) | `<direction><dynamics>` or `<notations><dynamics>` | Native |
 | stem up flag (`XML_UPPER`) + manual flag (`XML_STEM_DIRECTION_AUTO`) | `<stem>up\|down`; auto/manual override flag → note `<other-*>` | Native (+Ext flag) |
-| X offset (`XML_XPOS`, px) | `<note default-x>` (px → tenths) | Native+conv |
+| X offset (`XML_XPOS`, px) — user shift from the computed X | offset → `<note relative-x>` (px → tenths); computed base X → `<note default-x>`, write-forward only and ignored on read (see § "Position offsets vs. absolute positions") | Native+conv |
 | glissando attachment type (CONNECTED / SLIDE_OUT) | `<notations><slide>` / `<glissando>` start/stop | Native |
-| ↳ x1/x2 translate (`XML_GLISSANDO_X1/X2_TRANSLATE`) | `default-x` on slide/glissando, or `<other-notation>` | Native+conv |
+| ↳ x1/x2 translate (`XML_GLISSANDO_X1/X2_TRANSLATE`) | computed `default-x`/`default-y` on `<slide>`/`<falloff>` (write-forward, external fidelity only) | Native+conv |
 | standalone glissando element (`ElementType.GLISSANDO`) | `<glissando>` line notation | Native |
 | breath mark (`BREATH_MARK`) | `<articulations><breath-mark>` on preceding note | Native |
 | barlines (SINGLE / DOUBLE / FINAL_DOUBLE) | `<barline><bar-style>` regular / light-light / light-heavy | Native |
 | repeats (REPEAT_LEFT / RIGHT / LEFT_RIGHT) | `<barline><repeat direction="forward\|backward">` | Native |
 
----
-
+* * *
 ## Lyrics (per verse) → `<lyric>`
-
 | SongScribe field | MusicXML target | Bucket |
 |---|---|---|
 | verse number (`XML_LYRIC_NUMBER`) | `<lyric number="N">` | Native |
@@ -257,12 +177,9 @@ than a credit.
 | compound-word marker (`COMPOUND_WORD_MARKER`) | `<elision>` (native compound-syllable mechanism) | Native |
 | extender (start/stop/continue) (`XML_EXTEND_TAG`) | `<extend type="...">` | Native |
 
----
-
+* * *
 ## Line-level range spans (index pairs → per-note distribution)
-
-These are stored on `Line` as index-pair spans; MusicXML distributes the same
-information per note. Bijective: expand on write, re-collapse on read.
+These are stored on `Line` as index-pair spans; MusicXML distributes the same information per note. Bijective: expand on write, re-collapse on read.
 
 | SongScribe field | MusicXML target | Bucket |
 |---|---|---|
@@ -273,43 +190,38 @@ information per note. Bijective: expand on write, re-collapse on read.
 | trills (`XML_TRILLS`) | `<ornaments><trill-mark>` + `<wavy-line>` start/stop | Native+conv |
 | first/second endings (`XML_FSENDINGS`) | `<barline><ending number type="start\|stop">` | Native+conv |
 
----
-
+* * *
 ## Annotations → `<direction>`
-
 | SongScribe field | MusicXML target | Bucket |
 |---|---|---|
 | text (`name`) | `<direction-type><words>` | Native |
 | horizontal alignment (`alignment` / `xAlignment`) | `<words halign>` / `justify` | Native |
-| Y position (`yPosPx`) | `<words default-y>` (px → tenths) | Native+conv |
-| user Y offset (`userYOffsetSs`) | `<words relative-y>` | Native+conv |
+| placement above/below (`Placement` enum) | `<direction placement="above\|below">` (see [annotation-placement-refactor.md](./annotation-placement-refactor.md)) | Native |
+| user Y offset (`userYOffsetSs`) | `<words relative-y>` (the offset, read back) | Native+conv |
+| computed base Y | `<words default-y>` — write-forward, ignored on read | Native+conv |
 
----
-
+* * *
 ## Losslessness
+Every persisted field has a home. Native+conv cases are bijective: staff-space ↔ tenths (×10); staff position + key + clef ↔ step/octave/alter; line-range spans ↔ per-note markers; line breaks ↔ invisible-barline-at-system-break. The on-page text and its fonts (title, subtitle, attribution roles, underlyrics, Bangla/translated lyrics, footnotes) all live in native `<credit>` elements, which also absorb the `TITLE` / `SUBTITLE` / `ATTRIBUTION` / `BANGLA` / `FOOTNOTE` view-font roles via their `<credit-words>` attributes. The subtitle credit is the **canonical home** for the subtitle (no `<movement-*>` equivalent exists in MusicXML), so SongScribe reads as well as writes it. The only `<miscellaneous>` residents that remain are genuinely SongScribe-specific score-level data — the structured ISO composition/lyrics dates, composition-place, the `unofficial-translation` flag, and two layout factors — exactly what `<miscellaneous>` exists for, stored verbatim and reloaded exactly.
+### Position offsets vs. absolute positions
+Some user-adjustable positions are stored in the model as an **offset from a dynamically computed base**, not as an absolute coordinate — a note's `XML_XPOS` (`final = layout.calculateBaseX(note) + xOffset`) and the attribution `XML_ATTRIBUTION_Y_OFFSET` (a shift from the computed attribution start). The base is recomputed by layout on every load; only the offset is persisted.
 
-Every persisted field has a home. Native+conv cases are bijective:
-staff-space ↔ tenths (×10); staff position + key + clef ↔ step/octave/alter;
-line-range spans ↔ per-note markers; line breaks ↔ invisible-barline-at-system-break.
-The on-page text and its fonts (title, subtitle, attribution roles, underlyrics,
-Bangla/translated lyrics, footnotes) all live in native `<credit>` elements,
-which also absorb the `TITLE` / `SUBTITLE` / `ATTRIBUTION` / `BANGLA` /
-`FOOTNOTE` view-font roles via their `<credit-words>` attributes. The subtitle
-credit is the **canonical home** for the subtitle (no `<movement-*>` equivalent
-exists in MusicXML), so SongScribe reads as well as writes it. The only
-`<miscellaneous>` residents that remain are genuinely SongScribe-specific
-score-level data — the structured ISO composition/lyrics dates, composition-place, the
-`unofficial-translation` flag, and two layout factors — exactly what
-`<miscellaneous>` exists for, stored verbatim and reloaded exactly.
+MusicXML's `default-x`/`default-y` are **absolute** (measure- or page-relative), and `relative-x`/`relative-y` are added on top of them — the rendered position is `default + relative` (`docs/musicxml-4.0-schema/common.mod:304-307`). So for these offset-only fields:
 
+- `relative-x`**/**`relative-y` **carry the offset** — the sole position datum SongScribe reads back.
+  
+- `default-x`**/**`default-y` **carry the computed base** (the laid-out position _minus_ the offset, so `default + relative` reproduces the on-screen position for external renderers). They are **write-forward only and ignored on read**; SongScribe recomputes the base via layout. This is the same write-forward-only treatment already used for glissando endpoint coordinates.
+  
+
+Annotations follow this same rule. `userYOffsetSs` is exactly such an offset (its
+Javadoc: *Final Y = calculated position + userYOffsetSs*), so it maps to
+`relative-y`, and the computed base maps to `default-y` (ignored on read).
+Annotations additionally carry a discrete **above/below** anchor — formerly the
+sign of the `yPosPx` `int`, now a `Placement` enum (see
+[annotation-placement-refactor.md](./annotation-placement-refactor.md)) — which is
+not a position offset and so gets its own native home, `<direction
+placement="above|below">`. The old `yPosPx` magnitude beyond that sign was
+vestigial: screen layout never read it.
 ### Legacy read-only fields
+These `*IO` constants exist for reading old `.mssw` files and are **not** part of the current write schema, so they need no MusicXML mapping (they vanish on migration): per-element `XML_VOLUME`, `XML_TRILL` (trills are now line-level ranges), `XML_SYLLABLE_MOVEMENT`, `XML_SYLLABLE_RELATION_MOVEMENT`, `XML_FORCE_SYLLABLE`, `XML_INVERT_FRACTION_BEAM_ORIENTATION`, the line-level Y-position fields (`tempoChangeYPos`, `beatChangeYPos`, `firstSecondEndingYPos`, `trillYPos`) superseded by per-instance offsets, and `XML_INFO_STARTY` (`"rightinfostarty"`) — the old absolute attribution start Y, replaced by `XML_ATTRIBUTION_Y_OFFSET` as a user offset from the computed position.
 
-These `*IO` constants exist for reading old `.mssw` files and are **not** part of
-the current write schema, so they need no MusicXML mapping (they vanish on
-migration): per-element `XML_VOLUME`, `XML_TRILL` (trills are now line-level
-ranges), `XML_SYLLABLE_MOVEMENT`, `XML_SYLLABLE_RELATION_MOVEMENT`,
-`XML_FORCE_SYLLABLE`, `XML_INVERT_FRACTION_BEAM_ORIENTATION`, the line-level
-Y-position fields (`tempoChangeYPos`, `beatChangeYPos`, `firstSecondEndingYPos`,
-`trillYPos`) superseded by per-instance offsets, and `XML_INFO_STARTY`
-(`"rightinfostarty"`) — the old absolute attribution start Y, replaced by
-`XML_ATTRIBUTION_Y_OFFSET` as a user offset from the computed position.
