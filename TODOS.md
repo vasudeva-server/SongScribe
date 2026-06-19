@@ -21,20 +21,22 @@ paths (`MAIN` is removed). After Issue #289, UNDER/BANGLA/TRANSLATED remain on
 
 **Depends on:** Issue #289 (per-note lyrics migration).
 
-## Wire `Composition.lyricLanguages` into CompositionIO
+## Add `Song.lyricLanguages` and wire it into SongIO
 
-**What:** Serialize and deserialize `Composition.lyricLanguages`
-(`Map<Integer, Locale>`) in `CompositionIO`, mirroring MusicXML
+**What:** Add a `lyricLanguages` field (`Map<Integer, Locale>`) to `Song`, then
+serialize and deserialize it in `SongIO`, mirroring MusicXML
 `<lyric-language number="N">`.
 
-**Why:** The field is currently reserved but never serialized. When multi-verse
-or multi-language lyric support lands, the per-verse locale needs to round-trip
-through the `.mssw` (and eventually MusicXML) file format.
+**Why:** The field does not exist yet. When multi-verse or multi-language lyric
+support lands, the per-verse locale needs to round-trip through the `.mssw` (and
+eventually MusicXML) file format.
 
 **Context:** Field was originally in the Issue #289 plan but deferred during
 scope review. Signature: `Map<Integer, Locale>` keyed by verse number. MusicXML
 attaches `<lyric-language>` to `<score-part>`; importer/exporter needs to bridge
-that to the per-verse map.
+that to the per-verse map. Note: the domain model class is `Song` (not
+`Composition`) and its IO class is `SongIO` (not `CompositionIO`) — the original
+TODO predated those names.
 
 **Depends on:** Multi-verse lyric editing (follow-up to Issue #289) needing
 language metadata.
@@ -126,9 +128,13 @@ action-level unit tests no longer need `mockStatic(MainFrame.class)`.
 
 **Why:** Commit f59f21f3 (#375) injected `MainFrame` into `UIAction` constructors,
 but `getInstance()` is still reached indirectly (e.g. via `doActionPerformed`
-touching the score view / selection coordinator). Evidence: 18 of 26 migrated test
-files still require `mockStatic(MainFrame.class)`. The constructor injection is
-therefore only a partial decoupling — construction is clean, behavior paths are not.
+touching the score view / selection coordinator). Evidence (as of 2026-06-19):
+`mockStatic(MainFrame.class)` still appears in 5 test files (10 occurrences) —
+`MainFrameMockTest` (base-class `@BeforeEach`), `SongScribeTest`, `MainFrameTest`,
+`MenuControllerTest`, and `GraceModeManagerTest` (6 of the 10). The constructor
+injection is therefore only a partial decoupling — construction is clean, behavior
+paths are not. Main-source `getInstance()` calls also persist transitively via the
+`BaseDialog` constructor and `EndingConfirms.showEndingConfirm()`.
 
 **Context:** Start by tracing which collaborators action `doActionPerformed`
 implementations pull from `MainFrame.getInstance()` (score view, selection
@@ -137,38 +143,33 @@ stubs, so that helper is a map of the transitive surface. Inject those collabora
 rather than fetching the singleton. Once a code path no longer calls `getInstance()`,
 its test can drop to a plain injected mock (no static mock).
 
-**Depends on / blocked by:** Easiest after the centralized `MainFrameMockTest` lands
-(Phase 2 of plans/issue-375-review-followups.md), so per-test cleanup happens in one
-place. Larger effort; do incrementally, one action family at a time.
+**Depends on / blocked by:** The centralized `MainFrameMockTest` base class has
+landed (Phase 2 of plans/issue-375-review-followups.md). Larger effort remaining;
+do incrementally, one action family at a time.
 
-## Undo/redo (#14) must replay the new attribution mutations
+## Undo/redo (#14) must replay the new attribution mutation
 
 **What:** When undo/redo (#14) is implemented, its replay engine must handle the
-two new mutation types introduced by the attribution refactor: the coarse
-`MetadataChange(MetadataField.ATTRIBUTION, oldSongMetadata, newSongMetadata)`
-record-swap, and the cross-line attribution-migration mutation emitted by
-`Song.addLine(0, …)` / `Song.removeLine(0)`.
+coarse `MetadataChange(MetadataField.ATTRIBUTION, oldSongMetadata,
+newSongMetadata)` record-swap introduced by the attribution refactor.
 
-**Why:** Both mutations are pure groundwork — they are emitted and validated
-today but nothing consumes them, because no replay engine exists yet. They are
-easy to overlook when #14 lands: the metadata one collapses 11 former per-field
-changes into a single record swap (so a naive replay that diffs scalar fields
-will mishandle it), and the migration one moves the `Attribution` element
-between `Line`s (so replaying a `LineInsertion`/`LineDeletion` alone will leave
-the attribution on the wrong line — desyncing its geometry and `userYOffsetSs`
-after undo). The whole reason the migration was modeled as a recorded mutation
-(review decision 1C) rather than an imperative side effect was to make this
-replay correct; that intent is lost if #14 doesn't wire it up.
+**Why:** The mutation is pure groundwork — it is emitted (from
+`Song.setMetadata()`) and validated today but nothing consumes it, because no
+replay engine exists yet. It is easy to overlook when #14 lands: the metadata
+change collapses 11 former per-field changes into a single record swap, so a
+naive replay that diffs scalar fields will mishandle it.
 
 **Context:** `MetadataChange` lives in `songscribe.message.mutation`; its
 canonical constructor validates `oldValue`/`newValue` against
 `MetadataField.getExpectedType()` (= `SongMetadata.class` for `ATTRIBUTION`).
-The migration mutation is emitted inside the same `withModification` /
-`applyChange` brackets that already carry the last-line terminal-invariant
-maintenance in `addLine`/`removeLine` — model the replay symmetrically to how
-terminal maintenance replays. `Song.getFirstLineAttribution()` is the
-invariant-enforcement point (asserts the first line owns the attribution);
-replay must keep that invariant true.
+
+NOTE (corrected 2026-06-19): An earlier version of this TODO also described a
+"cross-line attribution-migration mutation emitted by `Song.addLine(0, …)` /
+`Song.removeLine(0)`". That mutation does not exist in the code — `addLine` /
+`removeLine` emit only `LineInsertion` / `LineDeletion`, and the only ATTRIBUTION
+mutation is the `MetadataChange` from `setMetadata()`. If first-line attribution
+ownership needs to survive line insert/delete under undo, modeling that as a
+recorded mutation is unfinished design work, not existing groundwork.
 
 **Depends on / blocked by:** Issue #14 (undo/redo) — not started; this refactor
 is the groundwork.
@@ -198,28 +199,3 @@ elements as appropriate.
 **Depends on / blocked by:** MusicXML export path existing (see the lyrics
 MusicXML TODO above); `AttributionFormatter` + `SongMetadata` shipped by this
 refactor.
-
-## De-Swing the Song Settings attribution preview
-
-**What:** Replace the interim `JComponent` wrapper added in the attribution
-refactor (`SongSettingsDialog.TextTab`) with a preview that renders the bare
-`AttributionPane` directly, once the pane's measure/render API has settled.
-
-**Why:** The refactor made `AttributionPane` a UI-free rendering surface in
-`songscribe.dom` (no longer a `JComponent`), so the dialog needs a small Swing
-adapter to host the live preview. That wrapper was explicitly scoped as
-"interim" — it re-introduces Swing glue the refactor otherwise removed. Once the
-pane API is stable, the preview can paint the pane without a bespoke wrapper.
-
-**Context:** The interim wrapper's `getPreferredSize()` returns the pane's
-measured size (passing the dialog's fonts) and `paintComponent` calls
-`pane.render(g2, 0, 0, getWidth(), attributionFont, subAttributionFont)`;
-`refreshPreview()` builds a `SongMetadata` from widget state and feeds the
-formatter via `setOverrideLines(...)`. A cleaner end state is a reusable
-pane-hosting Swing component (not dialog-private) that any panel can drop in,
-or a small canvas that delegates straight to `AttributionPane.render`. Revisit
-after the pane's caching (review decision P1A) and font-parameter signatures
-have proven stable across the score and dialog call sites.
-
-**Depends on / blocked by:** Attribution refactor shipped; pane measure/render
-API stable.
