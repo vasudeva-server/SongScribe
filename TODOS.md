@@ -223,27 +223,3 @@ have proven stable across the score and dialog call sites.
 
 **Depends on / blocked by:** Attribution refactor shipped; pane measure/render
 API stable.
-
-## Consolidate `MusicXmlWriterSchemaTest` into `MusicXmlRoundTripTest`
-
-**What:** `MusicXmlWriterSchemaTest` has become mostly redundant — its only case
-(`testEmptyDefaultSongIsSchemaValid`) duplicates
-`testEmptySongWriterOutputIsSchemaValid` in `MusicXmlRoundTripTest`, and every
-Phase 2+ scenario already pairs its round-trip with an inline
-`MusicXmlSchemaValidator` `doesNotThrowAnyException()` check in
-`MusicXmlRoundTripTest`. Fold the lone case in and delete the separate class (or
-keep it only if a clear write-only-schema scope emerges).
-
-**Why:** Two test classes asserting the same thing drift apart and dilute intent;
-a single home for "writer output is schema-valid" keeps the suite DRY and makes
-it obvious where to add new schema assertions.
-
-**Context:** `MusicXmlSchemaValidator` (the reusable XSD validator) is unaffected
-and stays — only the thin `MusicXmlWriterSchemaTest` wrapper is the redundancy.
-The MusicXML Phase 3 plan already routes new note-output schema checks through
-`MusicXmlRoundTripTest`'s inline pattern, so this consolidation aligns the
-existing empty-song case with that convention.
-
-**Depends on / blocked by:** Best done after MusicXML Phase 3 lands (it adds the
-note-output schema cases that make the consolidation worthwhile); no hard
-blocker.
