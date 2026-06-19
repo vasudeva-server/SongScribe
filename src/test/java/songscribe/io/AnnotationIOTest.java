@@ -129,22 +129,33 @@ class AnnotationIOTest extends UnitTest {
     @Nested
     class WriteAnnotationSerialization {
 
-        private static final int SAMPLE_Y_POS_PX = 42;
         private static final float CENTER_ALIGNMENT = Component.CENTER_ALIGNMENT;
 
-        // Row 50: writeAnnotation emits <name>, <alignment>, <ypos>
+        // Row 50: writeAnnotation emits <name>, <alignment>, <placement> (new format, not <ypos>)
         @Test
-        void testWritesNameAlignmentAndYPos() {
+        void testWritesNameAlignmentAndPlacement() {
             var annotation = new Annotation("Hello");
             annotation.setXAlignment(CENTER_ALIGNMENT);
-            annotation.setYPosPx(SAMPLE_Y_POS_PX);
+            annotation.setPlacement(Annotation.Placement.BELOW);
 
             var output = writeAnnotation(annotation);
 
             assertThat(output)
                 .contains("<" + AnnotationIO.XML_NAME + ">Hello</" + AnnotationIO.XML_NAME + ">")
                 .contains("<" + AnnotationIO.XML_ALIGNMENT + ">" + CENTER_ALIGNMENT + "</" + AnnotationIO.XML_ALIGNMENT + ">")
-                .contains("<" + AnnotationIO.XML_YPOS + ">" + SAMPLE_Y_POS_PX + "</" + AnnotationIO.XML_YPOS + ">");
+                .contains("<" + AnnotationIO.XML_PLACEMENT + ">BELOW</" + AnnotationIO.XML_PLACEMENT + ">")
+                .doesNotContain(AnnotationIO.XML_YPOS);
+        }
+
+        @Test
+        void testWritesAbovePlacement() {
+            var annotation = new Annotation("Test");
+            annotation.setPlacement(Annotation.Placement.ABOVE);
+
+            var output = writeAnnotation(annotation);
+
+            assertThat(output)
+                .contains("<" + AnnotationIO.XML_PLACEMENT + ">ABOVE</" + AnnotationIO.XML_PLACEMENT + ">");
         }
 
         // Row 51 (branch 1): userYOffsetSs == 0 → <useryoffset> element absent
@@ -176,35 +187,32 @@ class AnnotationIOTest extends UnitTest {
     @Nested
     class RoundTripPerField {
 
-        private static final float LEFT_ALIGNMENT = Component.LEFT_ALIGNMENT;
-        private static final float CENTER_ALIGNMENT = Component.CENTER_ALIGNMENT;
-        private static final float RIGHT_ALIGNMENT = Component.RIGHT_ALIGNMENT;
-
         // Row 52 + Row 54: write → AnnotationReader round-trip preserves each field
-        @ParameterizedTest(name = "name=\"{0}\", alignment={1}, yPosPx={2}, userYOffsetSs={3}")
+        @ParameterizedTest(name = "name=\"{0}\", alignment={1}, placement={2}, userYOffsetSs={3}")
         @CsvSource({
-            "Hello,  0.0,  10, 0.0",
-            "World,  0.5,  -5, 0.0",
-            "Foo,    1.0,  99, 0.0",
-            "Bar,    0.0,  42, 1.5",
-            "Baz,    0.5,   0, -2.25",
+            "Hello,  0.0,  ABOVE,  0.0",
+            "World,  0.5,  BELOW,  0.0",
+            "Foo,    1.0,  ABOVE,  0.0",
+            "Bar,    0.0,  BELOW,  1.5",
+            "Baz,    0.5,  ABOVE, -2.25",
         })
         void testRoundTripPreservesAllFields(
             String text,
             float alignment,
-            int yPosPx,
+            String placementName,
             double userYOffsetSs
         ) {
+            var placement = Annotation.Placement.valueOf(placementName);
             var original = new Annotation(text);
             original.setXAlignment(alignment);
-            original.setYPosPx(yPosPx);
+            original.setPlacement(placement);
             original.setUserYOffsetSs(userYOffsetSs);
 
             var restored = roundTripAnnotation(original);
 
             assertThat(restored.getAnnotation()).isEqualTo(text);
             assertThat(restored.getXAlignment()).isEqualTo(alignment);
-            assertThat(restored.getYPosPx()).isEqualTo(yPosPx);
+            assertThat(restored.getPlacement()).isEqualTo(placement);
             assertThat(restored.getUserYOffsetSs()).isEqualTo(userYOffsetSs);
         }
     }
@@ -218,7 +226,6 @@ class AnnotationIOTest extends UnitTest {
     class MalformedNumericFields {
 
         private static final float DEFAULT_ALIGNMENT = Component.LEFT_ALIGNMENT;
-        private static final int DEFAULT_YPOS = Annotation.ABOVE;
         private static final double DEFAULT_USER_Y_OFFSET = 0.0;
 
         // I-2: non-numeric alignment → WARN logged
@@ -278,7 +285,38 @@ class AnnotationIOTest extends UnitTest {
                 return;
             }
 
-            assertThat(annotation.getYPosPx()).isEqualTo(DEFAULT_YPOS);
+            assertThat(annotation.getPlacement()).isEqualTo(Annotation.Placement.ABOVE);
+        }
+
+        // Unknown placement enum value → WARN logged
+        @Test
+        void testMalformedPlacementLogsWarn() {
+            var appender = attachAnnotationLogAppender();
+
+            try {
+                readAnnotationWithMalformedField(AnnotationIO.XML_PLACEMENT, "DIAGONAL");
+                assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("placement"));
+            } finally {
+                detachAnnotationLogAppender(appender);
+            }
+        }
+
+        // Unknown placement enum value → default ABOVE retained
+        @Test
+        void testMalformedPlacementRetainsDefault() {
+            var annotation = readAnnotationWithMalformedField(
+                AnnotationIO.XML_PLACEMENT, "DIAGONAL"
+            );
+            assertThat(annotation).isNotNull();
+
+            //noinspection ConstantValue -- NullAway guard
+            if (annotation == null) {
+                return;
+            }
+
+            assertThat(annotation.getPlacement()).isEqualTo(Annotation.Placement.ABOVE);
         }
 
         // I-2: non-numeric userYOffset → WARN logged
@@ -344,6 +382,64 @@ class AnnotationIOTest extends UnitTest {
         private static void detachAnnotationLogAppender(ListAppender<ILoggingEvent> appender) {
             var logger = (Logger) LoggerFactory.getLogger(AnnotationIO.AnnotationReader.class);
             logger.detachAppender(appender);
+        }
+    }
+
+    @Nested
+    class LegacyYposRead {
+
+        // A below-staff legacy ypos in pixels; any positive value triggers the fold.
+        private static final int LEGACY_BELOW_YPOS = 40;
+
+        // Expected folded offset, pinned to a literal so the test cannot silently track a change
+        // in the production formula's shape. The fold is userYOffsetSs += ypos - LEGACY_ABOVE_PX,
+        // where LEGACY_ABOVE_PX = 8.0 px/ss * -2.0 ss = -16.0; so 40 - (-16.0) = 56.0.
+        private static final double EXPECTED_FOLDED_OFFSET = 56.0;
+
+        // Legacy ypos > 0 (below staff): placement stays ABOVE, userYOffsetSs absorbs the delta.
+        @Test
+        void testLegacyBelowYposFoldsOffsetAndKeepsAbove() {
+            var annotation = readWithLegacyYpos(LEGACY_BELOW_YPOS);
+
+            assertThat(annotation.getPlacement()).isEqualTo(Annotation.Placement.ABOVE);
+            assertThat(annotation.getUserYOffsetSs()).isEqualTo(EXPECTED_FOLDED_OFFSET);
+        }
+
+        // Legacy ypos < 0 (above staff): no offset change, placement stays ABOVE.
+        @Test
+        void testLegacyAboveYposIsNoOp() {
+            var annotation = readWithLegacyYpos(-30);
+
+            assertThat(annotation.getPlacement()).isEqualTo(Annotation.Placement.ABOVE);
+            assertThat(annotation.getUserYOffsetSs()).isEqualTo(0.0);
+        }
+
+        // Legacy ypos == 0: no offset change, placement stays ABOVE.
+        @Test
+        void testLegacyZeroYposIsNoOp() {
+            var annotation = readWithLegacyYpos(0);
+
+            assertThat(annotation.getPlacement()).isEqualTo(Annotation.Placement.ABOVE);
+            assertThat(annotation.getUserYOffsetSs()).isEqualTo(0.0);
+        }
+
+        private static Annotation readWithLegacyYpos(int ypos) {
+            var reader = new AnnotationIO.AnnotationReader();
+            reader.startElement11(AnnotationIO.XML_ANNOTATION);
+            reader.startElement11(AnnotationIO.XML_NAME);
+            reader.characters("test".toCharArray(), 0, "test".length());
+            reader.endElement11(AnnotationIO.XML_NAME);
+            var str = Integer.toString(ypos);
+            reader.startElement11(AnnotationIO.XML_YPOS);
+            reader.characters(str.toCharArray(), 0, str.length());
+            reader.endElement11(AnnotationIO.XML_YPOS);
+            var annotation = reader.endElement11(AnnotationIO.XML_ANNOTATION);
+
+            if (annotation == null) {
+                throw new AssertionError("AnnotationReader returned null for legacy ypos=" + ypos);
+            }
+
+            return annotation;
         }
     }
 }

@@ -91,12 +91,12 @@ class AnnotationDialogTest extends MainFrameMockTest {
             .isFalse();
     }
 
-    // ── Row 2: populateControls(existing) — alignment and yPosPx mapping ──
+    // ── Row 2: populateControls(existing) — alignment and placement mapping ──
 
     @Test
     void testPopulateControlsExistingMapsCenterAlignmentToCenterRadio() {
         var annotation = new Annotation("dolce", Component.CENTER_ALIGNMENT);
-        annotation.setYPosPx(Annotation.BELOW);
+        annotation.setPlacement(Annotation.Placement.BELOW);
 
         dialog.populateControls(annotation);
 
@@ -107,14 +107,14 @@ class AnnotationDialogTest extends MainFrameMockTest {
             .as("CENTER_ALIGNMENT maps to centerRadio")
             .isTrue();
         assertThat(dialog.belowRadio.isSelected())
-            .as("non-negative yPosPx maps to belowRadio")
+            .as("BELOW placement maps to belowRadio")
             .isTrue();
     }
 
     @Test
     void testPopulateControlsExistingMapsRightAlignmentToRightRadio() {
         var annotation = new Annotation("cresc.", Component.RIGHT_ALIGNMENT);
-        annotation.setYPosPx(Annotation.ABOVE);
+        annotation.setPlacement(Annotation.Placement.ABOVE);
 
         dialog.populateControls(annotation);
 
@@ -122,7 +122,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
             .as("RIGHT_ALIGNMENT maps to rightRadio")
             .isTrue();
         assertThat(dialog.aboveRadio.isSelected())
-            .as("negative yPosPx maps to aboveRadio")
+            .as("ABOVE placement maps to aboveRadio")
             .isTrue();
     }
 
@@ -130,7 +130,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
     void testPopulateControlsExistingMapsOtherAlignmentToLeftRadio() {
         // Any alignment that is neither CENTER nor RIGHT falls through to leftRadio
         var annotation = new Annotation("fine", Component.LEFT_ALIGNMENT);
-        annotation.setYPosPx(Annotation.ABOVE);
+        annotation.setPlacement(Annotation.Placement.ABOVE);
 
         dialog.populateControls(annotation);
 
@@ -168,7 +168,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
             .isNull();
     }
 
-    // ── Row 4: applyChange — builds Annotation with correct alignment float and yPosPx ──
+    // ── Row 4: applyChange — builds Annotation with correct alignment float and placement ──
 
     @Test
     @SuppressWarnings("DataFlowIssue")
@@ -187,9 +187,9 @@ class AnnotationDialogTest extends MainFrameMockTest {
             .as("CENTER_ALIGNMENT stored in annotation")
             .isEqualTo(Component.CENTER_ALIGNMENT);
         //noinspection ConstantValue -- need for NullAway
-        assertThat(added == null ? 0 : added.getAnnotation().getYPosPx())
+        assertThat(added == null ? null : added.getAnnotation().getPlacement())
             .as("ABOVE stored in annotation")
-            .isEqualTo(Annotation.ABOVE);
+            .isEqualTo(Annotation.Placement.ABOVE);
     }
 
     @Test
@@ -209,9 +209,9 @@ class AnnotationDialogTest extends MainFrameMockTest {
             .as("RIGHT_ALIGNMENT stored in annotation")
             .isEqualTo(Component.RIGHT_ALIGNMENT);
         //noinspection ConstantValue -- need for NullAway
-        assertThat(added == null ? 0 : added.getAnnotation().getYPosPx())
+        assertThat(added == null ? null : added.getAnnotation().getPlacement())
             .as("BELOW stored in annotation")
-            .isEqualTo(Annotation.BELOW);
+            .isEqualTo(Annotation.Placement.BELOW);
     }
 
     @Test

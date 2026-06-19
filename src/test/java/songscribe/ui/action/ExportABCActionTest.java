@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Annotation;
 import songscribe.dom.Duration;
 import songscribe.dom.Tempo;
 
@@ -41,5 +42,24 @@ class ExportABCActionTest extends UnitTest {
         var tempo = new Tempo(120, Duration.CROTCHET, "Allegro", true);
         var result = ExportABCAction.translateTempo(tempo);
         assertThat(result).endsWith(" \"Allegro\"");
+    }
+
+    @Test
+    void testTranslateAnnotationNullReturnsEmpty() {
+        assertThat(ExportABCAction.translateAnnotation(null)).isEmpty();
+    }
+
+    @Test
+    void testTranslateAnnotationAboveUsesCaretMarker() {
+        var annotation = new Annotation("dolce");
+        annotation.setPlacement(Annotation.Placement.ABOVE);
+        assertThat(ExportABCAction.translateAnnotation(annotation)).isEqualTo("\"^dolce\"");
+    }
+
+    @Test
+    void testTranslateAnnotationBelowUsesUnderscoreMarker() {
+        var annotation = new Annotation("cresc.");
+        annotation.setPlacement(Annotation.Placement.BELOW);
+        assertThat(ExportABCAction.translateAnnotation(annotation)).isEqualTo("\"_cresc.\"");
     }
 }

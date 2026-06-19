@@ -210,8 +210,6 @@ public class VerticalAdjustment extends Adjustment {
             var annotation = attachment.getAnnotation();
             // Update user offset (delta from calculated position)
             annotation.setUserYOffsetSs(annotation.getUserYOffsetSs() + diffY);
-            // Also update legacy yPos for backward compatibility
-            annotation.setYPosPx(annotation.getYPosPx() + diffY);
         }
     }
 

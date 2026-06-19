@@ -135,7 +135,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
             leftRadio.setSelected(true);
         }
 
-        if (annotation.getYPosPx() < 0) {
+        if (annotation.getPlacement() == Annotation.Placement.ABOVE) {
             aboveRadio.setSelected(true);
         } else {
             belowRadio.setSelected(true);
@@ -167,7 +167,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         }
 
         var annotation = new Annotation(annotationText, alignment);
-        annotation.setYPosPx(aboveRadio.isSelected() ? Annotation.ABOVE : Annotation.BELOW);
+        annotation.setPlacement(aboveRadio.isSelected() ? Annotation.Placement.ABOVE : Annotation.Placement.BELOW);
 
         var existing = element.findAttachment(AnnotationAttachment.class);
 

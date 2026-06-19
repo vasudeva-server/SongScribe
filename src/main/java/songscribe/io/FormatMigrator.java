@@ -255,43 +255,6 @@ public final class FormatMigrator {
                 }
             }
         }
-
-        // Migrate below-staff annotations to above-staff with userYOffset
-        migrateAnnotationPositions(line);
-    }
-
-    /**
-     * Migrates below-staff annotations to above-staff positioning.
-     * <p>
-     * Legacy documents may have annotations positioned below the staff using
-     * the BELOW constant. The new layout system always positions annotations
-     * above the staff, so we migrate below-staff annotations by:
-     * 1. Setting yPosPx to ABOVE (the new default)
-     * 2. Adding a userYOffset to preserve the visual position
-     *
-     * @param line The line containing annotations to migrate
-     */
-    private static void migrateAnnotationPositions(Line line) {
-        for (var i = 0; i < line.elementCount(); i++) {
-            var attachment = line.getElement(i).findAttachment(AnnotationAttachment.class);
-
-            if (attachment == null) {
-                continue;
-            }
-
-            var annotation = attachment.getAnnotation();
-
-            // Check if annotation is below staff (legacy positioning)
-            var yPosPx = annotation.getYPosPx();
-
-            if (yPosPx > 0) {
-                // Below-staff annotation: convert to above-staff with offset
-                // The visual position difference is: BELOW - ABOVE = yPosPx - ABOVE
-                double offset = yPosPx - Annotation.ABOVE;
-                annotation.setUserYOffsetSs(annotation.getUserYOffsetSs() + offset);
-                annotation.setYPosPx(Annotation.ABOVE);
-            }
-        }
     }
 
     /**

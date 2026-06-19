@@ -255,69 +255,6 @@ class FormatMigratorTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Rows 11 & 12 — migrateAnnotationPositions()
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class MigrateAnnotationPositions {
-
-        // Row 11: yPosPx > 0 (below staff) → yPosPx set to ABOVE constant;
-        // userYOffsetSs adjusted to preserve visual position.
-        @Test
-        void testBelowStaffAnnotationMovedAboveWithOffsetAdjusted() {
-            var line = lineWithAnnotation("text");
-            var note = line.getElement(0);
-            var attachment = note.findAttachment(AnnotationAttachment.class);
-            assertThat(attachment).isNotNull();
-
-            //noinspection ConstantValue -- needed for NullAway
-            if (attachment == null) {
-                return;
-            }
-
-            var annotation = attachment.getAnnotation();
-            // Set a positive yPosPx to simulate a below-staff legacy annotation.
-            annotation.setYPosPx(BELOW_STAFF_Y_POS_PX);
-
-            FormatMigrator.migrate(List.of(line), Map.of(), FORMAT_VERSION_LEGACY);
-
-            // After migration, yPosPx must be the ABOVE constant.
-            assertThat(annotation.getYPosPx()).isEqualTo(Annotation.ABOVE);
-
-            // userYOffsetSs absorbs the positional difference so the visual position is preserved.
-            // offset = oldYPosPx - ABOVE; initial userYOffsetSs was 0.
-            var expectedOffset = (double) (BELOW_STAFF_Y_POS_PX - Annotation.ABOVE);
-            assertThat(annotation.getUserYOffsetSs()).isEqualTo(expectedOffset);
-        }
-
-        // Row 12: yPosPx <= 0 (already above staff) → no change; position and offset unchanged.
-        @Test
-        void testAboveStaffAnnotationIsNoOp() {
-            var line = lineWithAnnotation("text");
-            var note = line.getElement(0);
-            var attachment = note.findAttachment(AnnotationAttachment.class);
-            assertThat(attachment).isNotNull();
-
-            //noinspection ConstantValue -- needed for NullAway
-            if (attachment == null) {
-                return;
-            }
-
-            var annotation = attachment.getAnnotation();
-            // Default yPosPx is ABOVE (negative), which satisfies yPosPx <= 0; no migration needed.
-            var originalYPosPx = annotation.getYPosPx();
-            var originalOffset = annotation.getUserYOffsetSs();
-
-            FormatMigrator.migrate(List.of(line), Map.of(), FORMAT_VERSION_LEGACY);
-
-            // Neither field must change — above-staff annotations are already in the correct form.
-            assertThat(annotation.getYPosPx()).isEqualTo(originalYPosPx);
-            assertThat(annotation.getUserYOffsetSs()).isEqualTo(originalOffset);
-        }
-    }
-
-    // -----------------------------------------------------------------------
     // Rows 13–16 — migratePixelsToStaffSpace()
     // -----------------------------------------------------------------------
 
@@ -524,12 +461,6 @@ class FormatMigratorTest extends UnitTest {
      * Must be non-zero to enter the trill migration branch.
      */
     private static final int TRILL_OFFSET_DELTA_PX = 4;
-
-    /**
-     * A positive yPosPx value representing a below-staff annotation (legacy positioning).
-     * Must be positive to trigger the below-staff migration branch in migrateAnnotationPositions.
-     */
-    private static final int BELOW_STAFF_Y_POS_PX = Annotation.BELOW;
 
     /**
      * Non-zero lyricsYPosSs value used to verify division by pps in migratePixelsToStaffSpace.

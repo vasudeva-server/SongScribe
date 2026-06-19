@@ -23,10 +23,9 @@ import module java.desktop;
 
 public class Annotation {
 
-    // -4 staff positions (2 ss) above the staff centre; 8 staff positions (4 ss) below
-    public static final int ABOVE = (int) ScaleContext.ssToPx(-2.0);
-    private int yPosPx = ABOVE;
-    public static final int BELOW = (int) ScaleContext.ssToPx(4.0);
+    public enum Placement { ABOVE, BELOW }
+
+    private Placement placement = Placement.ABOVE;
     private String annotation;
     private float xAlignment = Component.LEFT_ALIGNMENT;
 
@@ -64,12 +63,12 @@ public class Annotation {
         xAlignment = alignment;
     }
 
-    public int getYPosPx() {
-        return yPosPx;
+    public Placement getPlacement() {
+        return placement;
     }
 
-    public void setYPosPx(int yPosPx) {
-        this.yPosPx = yPosPx;
+    public void setPlacement(Placement placement) {
+        this.placement = placement;
     }
 
     public double getUserYOffsetSs() {

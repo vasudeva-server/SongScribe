@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Annotation;
+import songscribe.dom.ScaleContext;
 
 public final class AnnotationIO {
 
@@ -37,6 +38,9 @@ public final class AnnotationIO {
 
     // version 2.1 (Phase 11)
     public static final String XML_USER_Y_OFFSET = "useryoffset";
+
+    // version 2.5 (annotation-placement-refactor)
+    public static final String XML_PLACEMENT = "placement";
 
     private AnnotationIO() {}
 
@@ -50,7 +54,7 @@ public final class AnnotationIO {
         XML.setIndent(indent + 2);
         XML.writeValue(pw, XML_NAME, a.getAnnotation());
         XML.writeValue(pw, XML_ALIGNMENT, Float.toString(a.getXAlignment()));
-        XML.writeValue(pw, XML_YPOS, Integer.toString(a.getYPosPx()));
+        XML.writeValue(pw, XML_PLACEMENT, a.getPlacement().name());
 
         // Write userYOffset if non-zero (Phase 11)
         if (a.getUserYOffsetSs() != 0) {
@@ -64,6 +68,10 @@ public final class AnnotationIO {
     public static class AnnotationReader {
 
         private static final Logger LOG = LoggerFactory.getLogger(AnnotationReader.class);
+
+        // Staff-space coordinate of the legacy Annotation.ABOVE pixel constant (before Phase 1 refactor)
+        private static final double LEGACY_ABOVE_SS = -2.0;
+        private static final double LEGACY_ABOVE_PX = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE * LEGACY_ABOVE_SS;
 
         @Nullable
         private Annotation annotation = null;
@@ -103,9 +111,27 @@ public final class AnnotationIO {
                             LOG.warn("Corrupt document: malformed alignment: '{}', using default", str);
                         }
                     }
-                    case XML_YPOS -> {
+                    case XML_PLACEMENT -> {
                         try {
-                            annotation.setYPosPx(Integer.parseInt(str));
+                            annotation.setPlacement(Annotation.Placement.valueOf(str));
+                        } catch (IllegalArgumentException e) {
+                            LOG.warn("Corrupt document: malformed placement: '{}', using default", str);
+                        }
+                    }
+                    case XML_YPOS -> {
+                        // Legacy int pixel field — fold the old migrator arithmetic at read time.
+                        // ypos > 0 was below staff: absorb the offset delta into userYOffsetSs.
+                        // ypos <= 0 was above staff: placement already defaults to ABOVE.
+                        // Note: ypos and LEGACY_ABOVE_PX are both pixels; the pixel delta is
+                        // intentionally stored into the staff-space userYOffsetSs field to
+                        // reproduce the old migrator's behavior exactly (changing the units here
+                        // would shift legacy documents that previously ran through that migrator).
+                        try {
+                            var ypos = Integer.parseInt(str);
+
+                            if (ypos > 0) {
+                                annotation.setUserYOffsetSs(annotation.getUserYOffsetSs() + ypos - LEGACY_ABOVE_PX);
+                            }
                         } catch (NumberFormatException e) {
                             LOG.warn("Corrupt document: malformed ypos: '{}', using default", str);
                         }

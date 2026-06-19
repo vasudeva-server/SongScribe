@@ -354,14 +354,8 @@ public final class ExportABCAction extends UIAction {
 
     static String translateAnnotation(@Nullable Annotation annotation) {
         if (annotation != null) {
-            var aboveDiff = Math.abs(annotation.getYPosPx() - Annotation.ABOVE);
-            var belowDiff = Math.abs(annotation.getYPosPx() - Annotation.BELOW);
-            return (
-                '"' +
-                    ((aboveDiff < belowDiff) ? "^" : "_") +
-                    annotation.getAnnotation() +
-                    '"'
-            );
+            var marker = annotation.getPlacement() == Annotation.Placement.ABOVE ? "^" : "_";
+            return '"' + marker + annotation.getAnnotation() + '"';
         }
 
         return "";
