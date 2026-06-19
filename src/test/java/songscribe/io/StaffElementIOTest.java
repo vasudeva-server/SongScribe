@@ -479,56 +479,6 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testX1TranslateAbsentWhenZero() {
-            var note = ElementType.CROTCHET.newInstance();
-            note.setGlissando(Glissando.Type.CONNECTED);
-
-            var output = writeNote(note);
-
-            assertThat(output).doesNotContain("<glissandox1translate>");
-        }
-
-        @Test
-        void testX1TranslatePresentWhenNonZero() {
-            var note = ElementType.CROTCHET.newInstance();
-            note.setGlissando(Glissando.Type.CONNECTED);
-            var glissando = note.getGlissando();
-            assertThat(glissando).isNotNull();
-            if (glissando != null) {
-                glissando.x1Translate = 5.0;
-            }
-
-            var output = writeNote(note);
-
-            assertThat(output).contains("<glissandox1translate>5.0</glissandox1translate>");
-        }
-
-        @Test
-        void testX2TranslateAbsentWhenZero() {
-            var note = ElementType.CROTCHET.newInstance();
-            note.setGlissando(Glissando.Type.CONNECTED);
-
-            var output = writeNote(note);
-
-            assertThat(output).doesNotContain("<glissandox2translate>");
-        }
-
-        @Test
-        void testX2TranslatePresentWhenNonZero() {
-            var note = ElementType.CROTCHET.newInstance();
-            note.setGlissando(Glissando.Type.CONNECTED);
-            var glissando = note.getGlissando();
-            assertThat(glissando).isNotNull();
-            if (glissando != null) {
-                glissando.x2Translate = 3.5;
-            }
-
-            var output = writeNote(note);
-
-            assertThat(output).contains("<glissandox2translate>3.5</glissandox2translate>");
-        }
-
-        @Test
         void testLegacyNumericGlissandoYieldsConnected() throws Exception {
             var song = parseXml(buildXmlWithNoteContent("<glissando>5</glissando>"));
             var note = song.getLine(0).getElement(0);
@@ -540,15 +490,24 @@ class StaffElementIOTest extends UnitTest {
         }
 
         @Test
-        void testX1TranslateSurvivesWhenGlissandoPresent() throws Exception {
-            var song = parseXml(buildXmlWithNoteContent(
-                "<glissando>CONNECTED</glissando><glissandox1translate>7.5</glissandox1translate>"
-            ));
-            var glissando = song.getLine(0).getElement(0).getGlissando();
-            assertThat(glissando).isNotNull();
-            if (glissando != null) {
-                assertThat(glissando.x1Translate).isNotZero();
-            }
+        void testLegacyTranslateTagsAreIgnoredSilently() {
+            // The legacy translate tags must be recognized and discarded without
+            // error, leaving the glissando itself intact (issue #455).
+            var xml = buildXmlWithNoteContent(
+                "<glissando>CONNECTED</glissando>"
+                    + "<glissandox1translate>7.5</glissandox1translate>"
+                    + "<glissandox2translate>3.0</glissandox2translate>"
+            );
+
+            assertThatCode(() -> {
+                var glissando =
+                    parseXml(xml).getLine(0).getElement(0).getGlissando();
+                assertThat(glissando).isNotNull();
+
+                if (glissando != null) {
+                    assertThat(glissando.type).isEqualTo(Glissando.Type.CONNECTED);
+                }
+            }).doesNotThrowAnyException();
         }
 
         @Test

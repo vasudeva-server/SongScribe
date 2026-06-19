@@ -26,13 +26,11 @@ import java.util.ArrayList;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
 import songscribe.ui.component.ScoreView;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
 import songscribe.dom.ScaleContext;
-import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.util.GraphicsState;
 
 public class HorizontalAdjustment extends Adjustment {
@@ -143,28 +141,6 @@ public class HorizontalAdjustment extends Adjustment {
                 draggingRect.rect.y
             );
         } else if (
-            draggingRect.horizontalAdjustmentType ==
-                HorizontalAdjustmentType.GLISSANDO_START
-        ) {
-            topLeftDragBounds.setLocation(
-                line.getElement(draggingRect.xIndex).getXOffsetPx(),
-                draggingRect.rect.y
-            );
-            bottomRightDragBounds.setLocation(
-                adjustRects.get(adjustRects.indexOf(draggingRect) + 1).rect.x,
-                draggingRect.rect.y
-            );
-        } else if (
-            draggingRect.horizontalAdjustmentType ==
-                HorizontalAdjustmentType.GLISSANDO_END
-        ) {
-            topLeftDragBounds.setLocation(
-                adjustRects.get(adjustRects.indexOf(draggingRect) - 1).rect.x +
-                    draggingRect.rect.width,
-                draggingRect.rect.y
-            );
-            bottomRightDragBounds.setLocation(lineWidth, draggingRect.rect.y);
-        } else if (
             (draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.CRESCENDO_START) ||
                 (draggingRect.horizontalAdjustmentType ==
@@ -258,24 +234,6 @@ public class HorizontalAdjustment extends Adjustment {
                 }
             }
         } else if (
-            draggingRect.horizontalAdjustmentType ==
-                HorizontalAdjustmentType.GLISSANDO_START
-        ) {
-            var glissando = note.getGlissando();
-
-            if (glissando != null) {
-                glissando.x1Translate += endPoint.x - diffX;
-            }
-        } else if (
-            draggingRect.horizontalAdjustmentType ==
-                HorizontalAdjustmentType.GLISSANDO_END
-        ) {
-            var glissando = note.getGlissando();
-
-            if (glissando != null) {
-                glissando.x2Translate += endPoint.x - diffX;
-            }
-        } else if (
             (draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.CRESCENDO_START) ||
                 (draggingRect.horizontalAdjustmentType ==
@@ -360,32 +318,6 @@ public class HorizontalAdjustment extends Adjustment {
                     );
                 }
 
-                // Add special adjustment rects for glissandos
-                for (var i = 0; i < line.effectiveElementCount(); i++) {
-                    var note = line.getElement(i);
-
-                    if (note.getGlissando() != null) {
-                        adjustRects.add(
-                            new AdjustRect(
-                                lineIndex,
-                                i,
-                                HorizontalAdjustmentType.GLISSANDO_START
-                            )
-                        );
-
-                        // SLIDE_OUT glissandos have a fixed endpoint; x2Translate has no effect
-                        if (note.getGlissando().type == StaffElement.Glissando.Type.CONNECTED) {
-                            adjustRects.add(
-                                new AdjustRect(
-                                    lineIndex,
-                                    i,
-                                    HorizontalAdjustmentType.GLISSANDO_END
-                                )
-                            );
-                        }
-                    }
-                }
-
                 // Add STRETCH
                 if (line.effectiveElementCount() > 0) {
                     adjustRects.add(
@@ -455,42 +387,6 @@ public class HorizontalAdjustment extends Adjustment {
         var layoutResult = lineComponent.getLayoutResult();
 
         switch (rect.horizontalAdjustmentType) {
-            case GLISSANDO_START -> {
-                var glissando = note.getGlissando();
-
-                if (layoutResult != null && glissando != null) {
-                    rect.rect.x = (int) Math.round(
-                        ScaleContext.ssToPx(
-                            GlissandoRenderer.getGlissandoX1Ss(
-                                rect.xIndex,
-                                glissando,
-                                rect.line,
-                                scoreView.getSong(),
-                                layoutResult,
-                                lineComponent.getMiddleLineYSs()
-                            )
-                        )
-                    ) - 4;
-                }
-            }
-            case GLISSANDO_END -> {
-                var glissando = note.getGlissando();
-
-                if (layoutResult != null && glissando != null) {
-                    rect.rect.x = (int) Math.round(
-                        ScaleContext.ssToPx(
-                            GlissandoRenderer.getGlissandoX2Ss(
-                                rect.xIndex,
-                                glissando,
-                                rect.line,
-                                scoreView.getSong(),
-                                layoutResult,
-                                lineComponent.getMiddleLineYSs()
-                            )
-                        )
-                    ) - 4;
-                }
-            }
             case CRESCENDO_START, DIMINUENDO_START -> {
                 var hairpin = findHairpinByAnchor(line, rect);
 
@@ -565,10 +461,6 @@ public class HorizontalAdjustment extends Adjustment {
 
         // The starting position for the first note on all lines is being shifted
         START_OF_LINE(Color.green, -4),
-
-        // The start/end of a glissando is being shifted
-        GLISSANDO_START(Color.magenta, -2),
-        GLISSANDO_END(Color.magenta, -2),
 
         // The start/end of a crescendo/diminuendo is being shifted
         CRESCENDO_START(Color.orange, 6),

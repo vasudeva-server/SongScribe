@@ -333,31 +333,6 @@ class FormatMigratorTest extends UnitTest {
             assertThat(hairpin.getYShiftSs()).isEqualTo(NON_ZERO_HAIRPIN_Y_SHIFT_SS / pps);
         }
 
-        // Row 16: Note with a Glissando → x1Translate and x2Translate divided by pps.
-        @Test
-        void testGlissandoTranslatesDividedByPps() {
-            var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
-            line.addElement(note);
-            note.setGlissando(StaffElement.Glissando.Type.CONNECTED);
-
-            var glissando = note.getGlissando();
-            assertThat(glissando).isNotNull();
-
-            //noinspection ConstantValue -- needed for NullAway
-            if (glissando == null) {
-                return;
-            }
-
-            glissando.x1Translate = NON_ZERO_GLISSANDO_X1_TRANSLATE;
-            glissando.x2Translate = NON_ZERO_GLISSANDO_X2_TRANSLATE;
-
-            FormatMigrator.migratePixelsToStaffSpace(List.of(line));
-
-            var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
-            assertThat(glissando.x1Translate).isEqualTo(NON_ZERO_GLISSANDO_X1_TRANSLATE / pps);
-            assertThat(glissando.x2Translate).isEqualTo(NON_ZERO_GLISSANDO_X2_TRANSLATE / pps);
-        }
 
         // Row 17: Note with a non-zero attachment userYOffsetSs → divided by pps.
         @Test
@@ -494,16 +469,6 @@ class FormatMigratorTest extends UnitTest {
      * Non-zero yShiftSs for hairpin shift migration test.
      */
     private static final double NON_ZERO_HAIRPIN_Y_SHIFT_SS = 8.0;
-
-    /**
-     * Non-zero x1Translate for glissando migration test.
-     */
-    private static final double NON_ZERO_GLISSANDO_X1_TRANSLATE = 8.0;
-
-    /**
-     * Non-zero x2Translate for glissando migration test.
-     */
-    private static final double NON_ZERO_GLISSANDO_X2_TRANSLATE = 16.0;
 
     /**
      * Non-zero attachment userYOffsetSs (in pixels pre-migration) used to verify

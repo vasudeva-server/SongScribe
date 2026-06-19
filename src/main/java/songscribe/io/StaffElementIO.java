@@ -77,6 +77,8 @@ public final class StaffElementIO {
     private static final String XML_BEAT_CHANGE = "beatchange";
     private static final String XML_BEAT_CHANGE_DURATION = "duration";
     private static final String XML_BEAT_CHANGE_BEAT = "beat";
+    // Both translate tags are retained for legacy-read compatibility only —
+    // recognized on read but no longer written (issue #455).
     private static final String XML_GLISSANDO_X1_TRANSLATE =
         "glissandox1translate";
     private static final String XML_GLISSANDO_X2_TRANSLATE =
@@ -215,22 +217,6 @@ public final class StaffElementIO {
 
         if (glissando != null) {
             XML.writeValue(writer, XML_GLISSANDO, glissando.type.name());
-
-            if (glissando.x1Translate != 0) {
-                XML.writeValue(
-                    writer,
-                    XML_GLISSANDO_X1_TRANSLATE,
-                    Double.toString(glissando.x1Translate)
-                );
-            }
-
-            if (glissando.x2Translate != 0) {
-                XML.writeValue(
-                    writer,
-                    XML_GLISSANDO_X2_TRANSLATE,
-                    Double.toString(glissando.x2Translate)
-                );
-            }
         }
 
         if (!element.isStemDirectionAuto()) {
@@ -604,18 +590,9 @@ public final class StaffElementIO {
                         }
 
                         element.setGlissando(type);
-                    } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)) {
-                        var glissando = element.getGlissando();
-
-                        if (glissando != null) {
-                            glissando.x1Translate = Double.parseDouble(str);
-                        }
-                    } else if (lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
-                        var glissando = element.getGlissando();
-
-                        if (glissando != null) {
-                            glissando.x2Translate = Double.parseDouble(str);
-                        }
+                    } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)
+                        || lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
+                        // Legacy manual-adjustment offsets — no longer supported; ignore (issue #455).
                     } else if (lastTag.equals(XML_UPPER)) {
                         element.setUpper(true);
                     } else if (lastTag.equals(XML_SYLLABLE_MOVEMENT)

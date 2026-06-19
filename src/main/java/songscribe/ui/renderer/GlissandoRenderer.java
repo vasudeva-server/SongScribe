@@ -27,7 +27,6 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Song;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
@@ -93,85 +92,6 @@ public final class GlissandoRenderer {
      */
     public static GlissandoRenderer getInstance() {
         return INSTANCE;
-    }
-
-    // ==========================================================================
-    // Public Position Methods (for HorizontalAdjustment)
-    // ==========================================================================
-
-    /**
-     * Calculates the starting X position for a glissando (public static version).
-     * <p>
-     * Returns the actual glissando start X after area exit and gap computation,
-     * not the notehead center. Used by HorizontalAdjustment to position UI handles
-     * at the glissando endpoints.
-     *
-     * @param xIndex        Index of the source note in the line
-     * @param glissando     The glissando data
-     * @param lineIndex     Index of the line in the song
-     * @param song   The song containing the line
-     * @param layoutResult  Layout result for resolving note positions
-     * @param middleLineYSs Y position of the middle staff line in staff spaces
-     * @return X coordinate for glissando start in staff spaces
-     */
-    public static double getGlissandoX1Ss(
-        int xIndex,
-        StaffElement.Glissando glissando,
-        int lineIndex,
-        Song song,
-        LayoutResult layoutResult,
-        double middleLineYSs
-    ) {
-        var endpoints = INSTANCE.computeEndpointsForNote(
-            xIndex, glissando, lineIndex, song, layoutResult, middleLineYSs);
-
-        if (endpoints != null) {
-            return endpoints.startXSs;
-        }
-
-        // Fallback to notehead center if glissando cannot render
-        var note = song.getLine(lineIndex).getElement(xIndex);
-        return noteheadCenterXSs(note, layoutResult);
-    }
-
-    /**
-     * Calculates the ending X position for a glissando (public static version).
-     * <p>
-     * Returns the actual glissando end X after area exit and gap computation,
-     * not the notehead center. Used by HorizontalAdjustment to position UI handles
-     * at the glissando endpoints.
-     *
-     * @param xIndex        Index of the source note in the line
-     * @param glissando     The glissando data
-     * @param lineIndex     Index of the line in the song
-     * @param song   The song containing the line
-     * @param layoutResult  Layout result for resolving note positions
-     * @param middleLineYSs Y position of the middle staff line in staff spaces
-     * @return X coordinate for glissando end in staff spaces
-     */
-    public static double getGlissandoX2Ss(
-        int xIndex,
-        StaffElement.Glissando glissando,
-        int lineIndex,
-        Song song,
-        LayoutResult layoutResult,
-        double middleLineYSs
-    ) {
-        var endpoints = INSTANCE.computeEndpointsForNote(
-            xIndex, glissando, lineIndex, song, layoutResult, middleLineYSs);
-
-        if (endpoints != null) {
-            return endpoints.endXSs;
-        }
-
-        // Fallback to notehead center if glissando cannot render
-        var line = song.getLine(lineIndex);
-
-        if (glissando.type == StaffElement.Glissando.Type.CONNECTED) {
-            return noteheadCenterXSs(line.getElement(xIndex + 1), layoutResult);
-        }
-
-        return noteheadCenterXSs(line.getElement(xIndex), layoutResult);
     }
 
     // ==========================================================================
@@ -251,7 +171,7 @@ public final class GlissandoRenderer {
 
         var color = determineGlissandoColor(noteIndex, glissando.type, invariants);
 
-        render(g2, src, tgt, glissando.x1Translate, glissando.type == StaffElement.Glissando.Type.CONNECTED ? glissando.x2Translate : 0, glissando, color);
+        render(g2, src, tgt, glissando, color);
     }
 
     /**
@@ -324,7 +244,7 @@ public final class GlissandoRenderer {
         var src = resolveNoteContext(note, sourceIndex, line, layoutResult, middleLineYSs);
         var tgt = resolveTargetContext(type, sourceIndex, line, layoutResult, middleLineYSs);
 
-        render(g2, src, tgt, 0, 0, null, g2.getColor());
+        render(g2, src, tgt, null, g2.getColor());
     }
 
     /**
@@ -373,30 +293,6 @@ public final class GlissandoRenderer {
         return layoutResult.getElementXSs(note) + NoteGeometry.getNoteheadRightEdgeSs(note) / 2.0;
     }
 
-    /**
-     * Computes the glissando endpoints for a note, building areas and
-     * delegating to {@link #computeEndpoints}. Used by the public static
-     * endpoint methods.
-     *
-     * @return The glissando endpoints, or null if the glissando cannot render
-     */
-    private GlissandoRenderer.@Nullable Endpoints computeEndpointsForNote(
-        int xIndex,
-        StaffElement.Glissando glissando,
-        int lineIndex,
-        Song song,
-        LayoutResult layoutResult,
-        double middleLineYSs
-    ) {
-        var line = song.getLine(lineIndex);
-        var note = line.getElement(xIndex);
-        var src = resolveNoteContext(note, xIndex, line, layoutResult, middleLineYSs);
-        var tgt = resolveTargetContext(glissando.type, xIndex, line, layoutResult, middleLineYSs);
-
-        return computeEndpoints(src, tgt,
-            glissando.x1Translate, glissando.type == StaffElement.Glissando.Type.CONNECTED ? glissando.x2Translate : 0);
-    }
-
     // ==========================================================================
     // Endpoint Computation and Rendering
     // ==========================================================================
@@ -412,9 +308,13 @@ public final class GlissandoRenderer {
     ) {}
 
     /**
-     * Immutable record holding the computed glissando endpoint positions in layout space.
+     * Immutable record holding the computed glissando endpoint positions in layout space,
+     * plus the derived angle and length so callers need not recompute them.
      */
-    record Endpoints(double startXSs, double startYSs, double endXSs, double endYSs, double angle) {}
+    record Endpoints(
+        double startXSs, double startYSs, double endXSs, double endYSs,
+        double angle, double length
+    ) {}
 
     /**
      * Resolves the geometry context for a note at the given index: notehead center
@@ -459,13 +359,10 @@ public final class GlissandoRenderer {
      *
      * @param src          Source note context
      * @param tgt          Target note context, or null for SLIDE_OUT
-     * @param x1Translate  User drag offset for source endpoint
-     * @param x2Translate  User drag offset for target endpoint
      * @return The glissando endpoints, or null if the glissando cannot render
      */
     static GlissandoRenderer.@Nullable Endpoints computeEndpoints(
-        NoteContext src, @Nullable NoteContext tgt,
-        double x1Translate, double x2Translate
+        NoteContext src, @Nullable NoteContext tgt
     ) {
         // Tangent direction in layout space
         double dx, dy;
@@ -500,9 +397,8 @@ public final class GlissandoRenderer {
         var stepSs = ScaleContext.pxToSs(1.0);
         var entry1 = findNoteAreaEntryPoint(src.offsetArea, src.offsetBounds, localCx1, 0, nx, ny, stepSs);
 
-        var effectiveX1Translate = Math.max(x1Translate, -NoteAreaBuilder.MIN_GAP_SS);
-        var startX = entry1.x + offset1X + nx * effectiveX1Translate;
-        var startY = entry1.y + offset1Y + ny * effectiveX1Translate;
+        var startX = entry1.x + offset1X;
+        var startY = entry1.y + offset1Y;
 
         double endX, endY;
 
@@ -517,9 +413,8 @@ public final class GlissandoRenderer {
 
             var entry2 = findNoteAreaEntryPoint(tgt.offsetArea, tgt.offsetBounds, localCx2, 0, -nx, -ny, stepSs);
 
-            var effectiveX2Translate = Math.max(x2Translate, -NoteAreaBuilder.MIN_GAP_SS);
-            endX = entry2.x + offset2X - nx * effectiveX2Translate;
-            endY = entry2.y + offset2Y - ny * effectiveX2Translate;
+            endX = entry2.x + offset2X;
+            endY = entry2.y + offset2Y;
         }
 
         // Compute glissando length
@@ -532,7 +427,7 @@ public final class GlissandoRenderer {
             return null;
         }
 
-        return new Endpoints(startX, startY, endX, endY, Math.atan2(ny, nx));
+        return new Endpoints(startX, startY, endX, endY, Math.atan2(ny, nx), length);
     }
 
     /**
@@ -546,25 +441,23 @@ public final class GlissandoRenderer {
      * @param g2           Graphics context (staff-space coordinate system)
      * @param src          Source note context
      * @param tgt          Target note context, or null for SLIDE_OUT
-     * @param x1Translate  User drag offset for source endpoint
-     * @param x2Translate  User drag offset for target endpoint
+     * @param glissando    Glissando whose cached geometry is populated for
+     *                     hit-testing; null for preview renders
+     * @param color        Fill color for the glissando rectangle
      */
     private void render(
         Graphics2D g2,
         NoteContext src, @Nullable NoteContext tgt,
-        double x1Translate, double x2Translate,
         StaffElement.@Nullable Glissando glissando,
         Color color
     ) {
-        var endpoints = computeEndpoints(src, tgt, x1Translate, x2Translate);
+        var endpoints = computeEndpoints(src, tgt);
 
         if (endpoints == null) {
             return;
         }
 
-        var dx = endpoints.endXSs() - endpoints.startXSs();
-        var dy = endpoints.endYSs() - endpoints.startYSs();
-        var length = Math.sqrt(dx * dx + dy * dy);
+        var length = endpoints.length();
 
         if (glissando != null) {
             glissando.cachedStartX = endpoints.startXSs();

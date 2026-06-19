@@ -137,14 +137,9 @@ public final class FormatMigrator {
                 }
             }
 
-            // Glissando translates and per-instance attachment offsets
+            // Per-instance attachment offsets
             for (var i = 0; i < line.elementCount(); i++) {
                 var note = line.getElement(i);
-
-                if (note.getGlissando() != null) {
-                    note.getGlissando().x1Translate /= pps;
-                    note.getGlissando().x2Translate /= pps;
-                }
 
                 // Convert per-instance attachment offsets created by migrateLineLevelOffsets()
                 for (var attachment : note.getAttachments()) {

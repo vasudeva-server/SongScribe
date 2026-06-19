@@ -729,8 +729,6 @@ public class StaffElement extends LineElement implements Cloneable {
         public enum Type {CONNECTED, SLIDE_OUT}
 
         public Type type;
-        public double x1Translate = 0;
-        public double x2Translate = 0;
 
         // Transient cached geometry populated during the render pass, used for hit-testing
         public transient double cachedStartX;

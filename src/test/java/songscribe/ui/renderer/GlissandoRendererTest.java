@@ -414,63 +414,6 @@ class GlissandoRendererTest extends UnitTest {
     }
 
     // ======================================================================
-    // getGlissandoX1Ss / getGlissandoX2Ss — fallback to notehead center
-    // when computeEndpoints returns null (Row 22)
-    // ======================================================================
-
-    /**
-     * Creates a detached two-note line whose backing song mock returns the line at index 0.
-     * Both notes are at layout X=0 (empty LayoutResult), so computeEndpointsForNote
-     * returns null (zero-length direction) and the fallback path fires.
-     */
-    private Line twoNoteLineWithMockSong() {
-        var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
-        note1.setUpper(true);
-        note1.setGlissando(StaffElement.Glissando.Type.CONNECTED);
-        var note2 = ElementType.CROTCHET.newInstance();
-        note2.setUpper(true);
-        line.addElement(note1);
-        line.addElement(note2);
-        // Wire the mock song so song.getLine(0) returns this line
-        when(line.getSong().getLine(0)).thenReturn(line);
-        return line;
-    }
-
-    @Test
-    void testGetGlissandoX1Ss_fallbackToNoteheadCenter_whenEndpointsNull() {
-        // Both notes at layout X=0 → zero-length direction → computeEndpoints returns null
-        // → fallback returns noteheadCenter = 0 + halfRightEdge
-        var line = twoNoteLineWithMockSong();
-        var note0 = line.getElement(0);
-        var glissando = Objects.requireNonNull(note0.getGlissando());
-        var layoutResult = LayoutResult.builder().build();
-
-        var x1 = GlissandoRenderer.getGlissandoX1Ss(
-            0, glissando, 0, line.getSong(), layoutResult, 0.0);
-
-        // Fallback: noteheadCenterXSs = layoutXSs(0) + halfRightEdge
-        var noteheadCenter = songscribe.layout.NoteGeometry.getNoteheadRightEdgeSs(note0) / 2.0;
-        assertThat(x1).isCloseTo(noteheadCenter, within(0.001));
-    }
-
-    @Test
-    void testGetGlissandoX2Ss_connectedFallback_returnsTargetNoteheadCenter() {
-        // CONNECTED glissando: x2 fallback uses note at index+1
-        var line = twoNoteLineWithMockSong();
-        var note0 = line.getElement(0);
-        var note1 = line.getElement(1);
-        var glissando = Objects.requireNonNull(note0.getGlissando());
-        var layoutResult = LayoutResult.builder().build();
-
-        var x2 = GlissandoRenderer.getGlissandoX2Ss(
-            0, glissando, 0, line.getSong(), layoutResult, 0.0);
-
-        var targetNoteheadCenter = songscribe.layout.NoteGeometry.getNoteheadRightEdgeSs(note1) / 2.0;
-        assertThat(x2).isCloseTo(targetNoteheadCenter, within(0.001));
-    }
-
-    // ======================================================================
     // computeEndpoints — direct tests (Row 23)
     // ======================================================================
 
@@ -492,44 +435,17 @@ class GlissandoRendererTest extends UnitTest {
         // src and tgt at identical positions → direction vector is zero → null
         var src = noteContextAt(5.0, 0.0);
         var tgt = noteContextAt(5.0, 0.0);
-        assertThat(GlissandoRenderer.computeEndpoints(src, tgt, 0, 0)).isNull();
+        assertThat(GlissandoRenderer.computeEndpoints(src, tgt)).isNull();
     }
 
     @Test
     void testComputeEndpoints_slideOut_returnsNonNull_withCorrectAngle() {
         // SLIDE_OUT (tgt=null): direction is fixed at SLIDE_OUT_ANGLE_DEG = 30°
         var src = noteContextAt(0.0, 0.0);
-        var result = GlissandoRenderer.computeEndpoints(src, null, 0, 0);
+        var result = GlissandoRenderer.computeEndpoints(src, null);
         assertThat(result).isNotNull();
         // The angle stored in Endpoints is atan2(ny, nx) = 30° in radians
         assertThat(Objects.requireNonNull(result).angle()).isCloseTo(Math.toRadians(30.0), within(0.01));
-    }
-
-    @Test
-    void testComputeEndpoints_x1TranslateClamped_sameResultAsBoundary() {
-        // A very negative x1Translate is clamped to -MIN_GAP_SS.
-        // Both calls should produce the same startX.
-        var src = noteContextAt(0.0, 0.0);
-        var clamped = GlissandoRenderer.computeEndpoints(src, null, -NoteAreaBuilder.MIN_GAP_SS, 0);
-        var veryNegative = GlissandoRenderer.computeEndpoints(src, null, -1000.0, 0);
-        assertThat(clamped).isNotNull();
-        assertThat(veryNegative).isNotNull();
-        assertThat(Objects.requireNonNull(veryNegative).startXSs())
-            .isCloseTo(Objects.requireNonNull(clamped).startXSs(), within(0.001));
-    }
-
-    @Test
-    void testComputeEndpoints_x2TranslateClamped_sameResultAsBoundary() {
-        // A very negative x2Translate is clamped to -MIN_GAP_SS (symmetric to x1 clamping).
-        // Use notes far enough apart (10 ss) so both clamped and very-negative calls return non-null.
-        var src = noteContextAt(0.0, 0.0);
-        var tgt = noteContextAt(10.0, 0.0);
-        var clamped = GlissandoRenderer.computeEndpoints(src, tgt, 0, -NoteAreaBuilder.MIN_GAP_SS);
-        var veryNegative = GlissandoRenderer.computeEndpoints(src, tgt, 0, -1000.0);
-        assertThat(clamped).isNotNull();
-        assertThat(veryNegative).isNotNull();
-        assertThat(Objects.requireNonNull(veryNegative).endXSs())
-            .isCloseTo(Objects.requireNonNull(clamped).endXSs(), within(0.001));
     }
 
     @Test
@@ -538,6 +454,27 @@ class GlissandoRendererTest extends UnitTest {
         // The offset areas overlap; after finding entry points the net length < 1.0 → null
         var src = noteContextAt(0.0, 0.0);
         var tgt = noteContextAt(0.1, 0.0);
-        assertThat(GlissandoRenderer.computeEndpoints(src, tgt, 0, 0)).isNull();
+        assertThat(GlissandoRenderer.computeEndpoints(src, tgt)).isNull();
+    }
+
+    @Test
+    void testComputeEndpoints_connected_returnsHorizontalEndpoints() {
+        // Two notes 10 ss apart on the same staff line → a horizontal CONNECTED
+        // glissando. Guards the simplified endpoint math after manual translate
+        // removal (issue #455): the source endpoint precedes the target, the run
+        // is horizontal, and the cached length matches the X span.
+        var src = noteContextAt(0.0, 0.0);
+        var tgt = noteContextAt(10.0, 0.0);
+
+        var result = GlissandoRenderer.computeEndpoints(src, tgt);
+        assertThat(result).isNotNull();
+
+        var endpoints = Objects.requireNonNull(result);
+        assertThat(endpoints.angle()).isCloseTo(0.0, within(0.01));
+        assertThat(endpoints.startXSs()).isLessThan(endpoints.endXSs());
+        assertThat(endpoints.startYSs()).isCloseTo(0.0, within(0.01));
+        assertThat(endpoints.endYSs()).isCloseTo(0.0, within(0.01));
+        assertThat(endpoints.length())
+            .isCloseTo(endpoints.endXSs() - endpoints.startXSs(), within(0.01));
     }
 }
