@@ -511,6 +511,17 @@ public final class ScoreViewController {
             if (line.isHostOfPairedGraceNote(begin)) {
                 song.withModification(() -> deleteSelection(begin, end, line));
             } else {
+                // A breath mark immediately after the selection is positionally attached
+                // to the last selected element, so include it in the range to delete.
+                final int rangeEnd;
+
+                if (end + 1 < line.effectiveElementCount()
+                        && line.getElement(end + 1).getType().isBreathMark()) {
+                    rangeEnd = end + 1;
+                } else {
+                    rangeEnd = end;
+                }
+
                 // Contiguous range: clean up the element before the range, then batch-remove.
                 if (begin > 0) {
                     var prevElement = line.getElement(begin - 1);
@@ -522,10 +533,10 @@ public final class ScoreViewController {
 
                 // Shift elements after the selection to fill the gap, mirroring the
                 // per-element xPos adjustment that deleteNote performs.
-                if (end < line.effectiveElementCount() - 1) {
-                    var shift = line.getElement(begin).getXOffsetPx() - line.getElement(end + 1).getXOffsetPx();
+                if (rangeEnd < line.effectiveElementCount() - 1) {
+                    var shift = line.getElement(begin).getXOffsetPx() - line.getElement(rangeEnd + 1).getXOffsetPx();
 
-                    for (var i = end + 1; i < line.effectiveElementCount(); i++) {
+                    for (var i = rangeEnd + 1; i < line.effectiveElementCount(); i++) {
                         line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
                     }
                 }
@@ -536,11 +547,14 @@ public final class ScoreViewController {
                     // elements to still be present in the list.
                     line.adjustSyllablesForNeighborChange(begin - 1, line.getElement(begin));
 
-                    for (var i = begin; i <= end; i++) {
+                    // When rangeEnd was extended to include a trailing breath mark, this
+                    // loop also runs over that breath mark. Breath marks carry no lyrics,
+                    // so adjustExtendsForDeletion is a harmless no-op for it.
+                    for (var i = begin; i <= rangeEnd; i++) {
                         line.adjustExtendsForDeletion(i);
                     }
 
-                    line.removeRange(begin, end);
+                    line.removeRange(begin, rangeEnd);
                 });
             }
         } else if (state != null && state.hasGlissandoSelection()) {
@@ -596,9 +610,13 @@ public final class ScoreViewController {
 
     /**
      * Deletes the element at {@code xIndex} and, if the preceding element is a
-     * paired grace note, removes that as well.
+     * paired grace note, removes that as well. After the primary removal, if the
+     * surviving element at {@code firstDeletedIndex} is a breath mark, it is
+     * cascade-deleted via a recursive call so all gap-fill, glissando, and
+     * syllable/extend logic is reused.
      *
-     * @return the number of elements removed (1 or 2)
+     * @return the number of elements removed (1 or 2), not counting any
+     *         cascade-deleted trailing breath mark
      */
     static int deleteNote(int xIndex, Line line) {
         // If the preceding note is a paired grace note, it becomes orphaned when
@@ -639,11 +657,27 @@ public final class ScoreViewController {
         // Removing the higher index first keeps xIndex - 1 valid.
         line.removeElement(xIndex);
 
+        int removed;
+
         if (hasPrecedingPairedGraceNote) {
             line.removeElement(xIndex - 1);
-            return 2;
+            removed = 2;
+        } else {
+            removed = 1;
         }
 
-        return 1;
+        // Cascade-delete a breath mark that immediately follows the deleted element.
+        // After removal the successor lands at firstDeletedIndex. Recurse through
+        // deleteNote (not a bare removeElement) so gap-fill, glissando strip, and
+        // syllable/extend adjustments are reused. The cascade is excluded from
+        // `removed` because deleteSelection's caller loop counts down, so the breath
+        // mark (a higher index, visited on an earlier iteration) is already accounted
+        // for and must not shift the loop's index a second time.
+        if (firstDeletedIndex < line.effectiveElementCount() &&
+                line.getElement(firstDeletedIndex).getType().isBreathMark()) {
+            deleteNote(firstDeletedIndex, line);
+        }
+
+        return removed;
     }
 }

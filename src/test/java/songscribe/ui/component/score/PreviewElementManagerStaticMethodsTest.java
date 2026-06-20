@@ -33,11 +33,163 @@ import songscribe.layout.StaffExtents;
 /**
  * Unit tests for the pure-logic static methods in {@link PreviewElementManager}:
  * {@link PreviewElementManager#calculateStaffPositionFromMouse},
- * {@link PreviewElementManager#isValidStaffPosition}, and
- * {@link PreviewElementManager#applyStaffPosition}.
+ * {@link PreviewElementManager#isValidStaffPosition},
+ * {@link PreviewElementManager#applyStaffPosition}, and
+ * {@link PreviewElementManager#isBreathMarkInsertionBlocked}.
  * None of these methods touch UI or messaging state.
  */
 class PreviewElementManagerStaticMethodsTest extends UnitTest {
+
+    // -----------------------------------------------------------------------
+    // isBreathMarkInsertionBlocked
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class IsBreathMarkInsertionBlocked {
+
+        /** BREATH_MARK preview at index 0 must be blocked — there is no preceding element. */
+        @Test
+        void testBreathMarkAtIndexZeroIsBlocked() {
+            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var line = lineWith(ElementType.CROTCHET);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 0, line, false))
+                .as("breath mark at xIndex 0 is blocked")
+                .isTrue();
+        }
+
+        /** BREATH_MARK preview after a non-grace note is allowed. */
+        @Test
+        void testBreathMarkAfterNonGraceNoteIsNotBlocked() {
+            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var line = lineWith(ElementType.CROTCHET);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
+                .as("breath mark after a non-grace note is not blocked")
+                .isFalse();
+        }
+
+        /** BREATH_MARK preview after a rest is allowed. */
+        @Test
+        void testBreathMarkAfterRestIsNotBlocked() {
+            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var line = lineWith(ElementType.CROTCHET_REST);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
+                .as("breath mark after a rest is not blocked")
+                .isFalse();
+        }
+
+        /** BREATH_MARK preview directly after a grace note must be blocked. */
+        @Test
+        void testBreathMarkAfterGraceNoteIsBlocked() {
+            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var line = lineWith(ElementType.GRACE_QUAVER);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
+                .as("breath mark directly after a grace note is blocked")
+                .isTrue();
+        }
+
+        /** BREATH_MARK preview directly after another breath mark must be blocked. */
+        @Test
+        void testBreathMarkAfterBreathMarkIsBlocked() {
+            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var line = lineWith(ElementType.CROTCHET, ElementType.BREATH_MARK);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 2, line, false))
+                .as("breath mark directly after another breath mark is blocked")
+                .isTrue();
+        }
+
+        /** BREATH_MARK preview directly before an existing breath mark must be blocked. */
+        @Test
+        void testBreathMarkBeforeBreathMarkIsBlocked() {
+            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var line = lineWith(ElementType.CROTCHET, ElementType.BREATH_MARK);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
+                .as("breath mark directly before an existing breath mark is blocked")
+                .isTrue();
+        }
+
+        /**
+         * A breath mark over an existing element must be blocked even when the preceding
+         * element is a valid note — a breath mark never replaces an element.
+         */
+        @Test
+        void testBreathMarkOverExistingElementIsBlocked() {
+            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, true))
+                .as("breath mark over an existing element is blocked")
+                .isTrue();
+        }
+
+        /** A non-breath-mark type at index 0 must not be blocked. */
+        @Test
+        void testNonBreathMarkAtIndexZeroIsNotBlocked() {
+            var crotchet = ElementType.CROTCHET.newInstance();
+            var line = lineWith(ElementType.CROTCHET);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(crotchet, 0, line, false))
+                .as("non-breath-mark at xIndex 0 is not blocked")
+                .isFalse();
+        }
+
+        /** A non-breath-mark type over an existing element is not blocked (it may replace). */
+        @Test
+        void testNonBreathMarkOverExistingElementIsNotBlocked() {
+            var crotchet = ElementType.CROTCHET.newInstance();
+            var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(crotchet, 1, line, true))
+                .as("non-breath-mark over an existing element is not blocked")
+                .isFalse();
+        }
+
+        /** A null preview element must never be blocked regardless of index. */
+        @Test
+        void testNullPreviewElementIsNotBlocked() {
+            var line = lineWith(ElementType.CROTCHET);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(null, 0, line, false))
+                .as("null preview element is not blocked")
+                .isFalse();
+        }
+
+        /**
+         * A breath mark inserted between two notes — preceding element valid, the
+         * following element is not a breath mark — is the allowed happy path.
+         */
+        @Test
+        void testBreathMarkBetweenTwoNotesIsNotBlocked() {
+            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
+                .as("breath mark between two notes is not blocked")
+                .isFalse();
+        }
+
+        /**
+         * A breath mark appended at the very end of the line ({@code xIndex} equals the
+         * effective element count) is not blocked: the consecutive-breath-mark guard
+         * short-circuits on the bounds check rather than reading past the end.
+         */
+        @Test
+        void testBreathMarkAppendedAtEndIsNotBlocked() {
+            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(
+                breathMark, line.effectiveElementCount(), line, false))
+                .as("breath mark appended at the end of the line is not blocked")
+                .isFalse();
+        }
+    }
 
     // -----------------------------------------------------------------------
     // calculateStaffPositionFromMouse

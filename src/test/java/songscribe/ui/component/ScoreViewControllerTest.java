@@ -33,6 +33,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -77,6 +78,7 @@ import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.DurationActionGroup;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.action.ModeAction;
@@ -204,6 +206,134 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(noteD.getXOffsetPx()).isEqualTo(10);
         }
 
+        // Issue #456: the contiguous-range path (which bypasses deleteNote) must also
+        // cascade-delete a breath mark immediately following the selection.
+        @Test
+        void testHandleDeleteContiguousRangeAlsoRemovesTrailingBreathMark() {
+            // [A, breath, B] — select [A] (index 0). Expected: A and the breath mark
+            // removed; B remains (shifted), plus the terminal barline.
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            noteA.setXOffsetPx(0);
+            var breath = ElementType.BREATH_MARK.newInstance();
+            breath.setXOffsetPx(10);
+            var noteB = crotchet();
+            noteB.setXOffsetPx(20);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(breath);
+                line.addElement(noteB);
+            });
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            // noteA and the breath mark are gone; noteB remains (plus terminal barline = 2 total).
+            assertThat(line.elementCount()).isEqualTo(2);
+            assertThat(line.getElement(0)).isSameAs(noteB);
+        }
+
+        // Issue #456: a breath mark that does not immediately follow the selection
+        // must be left intact by the contiguous-range path.
+        @Test
+        void testHandleDeleteContiguousRangeLeavesNonAdjacentBreathMark() {
+            // [A, B, breath] — select [A] (index 0). Only A is removed; B and the
+            // breath mark remain (plus the terminal barline).
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            var noteB = crotchet();
+            var breath = ElementType.BREATH_MARK.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+                line.addElement(breath);
+            });
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            // noteB and the breath mark remain (plus terminal barline = 3 total).
+            assertThat(line.elementCount()).isEqualTo(3);
+            assertThat(line.getElement(0)).isSameAs(noteB);
+            assertThat(line.getElement(1)).isSameAs(breath);
+        }
+
+        // Issue #456: a multi-element contiguous selection (begin != end) followed by a
+        // breath mark must extend the range to the breath mark, not just for a single cell.
+        @Test
+        void testHandleDeleteMultiElementRangeRemovesTrailingBreathMark() {
+            // [A, B, breath, C] — select [A, B] (indices 0..1). Expected: A, B, and the
+            // breath mark removed; C remains (plus the terminal barline).
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            var noteB = crotchet();
+            var breath = ElementType.BREATH_MARK.newInstance();
+            var noteC = crotchet();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+                line.addElement(breath);
+                line.addElement(noteC);
+            });
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            // Only noteC remains (plus terminal barline = 2 total).
+            assertThat(line.elementCount()).isEqualTo(2);
+            assertThat(line.getElement(0)).isSameAs(noteC);
+        }
+
+        // Issue #456: when the trailing breath mark is the last effective element, the
+        // gap-fill shift loop is skipped (no element follows it); the breath mark must
+        // still be removed.
+        @Test
+        void testHandleDeleteRemovesTrailingBreathMarkWhenItIsLastElement() {
+            // [A, breath] — select [A] (index 0). Both A and the breath mark are removed,
+            // leaving only the terminal barline.
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            var breath = ElementType.BREATH_MARK.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(breath);
+            });
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            // Nothing but the terminal barline remains.
+            assertThat(line.effectiveElementCount()).isEqualTo(0);
+        }
+
         // Row 17: paired-grace-note at selection start falls back to deleteSelection
         @Test
         void testHandleDeleteFallsBackToDeleteSelectionWhenPairedGraceNotePrecedesSelection() {
@@ -235,6 +365,43 @@ class ScoreViewControllerTest extends UnitTest {
             controller.handleDelete();
 
             // G (paired), B, and C all removed; A and terminal barline remain
+            assertThat(line.elementCount()).isEqualTo(2);
+            assertThat(line.getElement(0)).isSameAs(noteA);
+        }
+
+        // Issue #456: the deleteSelection fallback path (taken when the selection starts
+        // on the host of a paired grace note) must also cascade-delete a trailing breath
+        // mark, via deleteNote's recursion.
+        @Test
+        void testHandleDeleteDeleteSelectionPathCascadesTrailingBreathMark() {
+            // [A, G(paired), B, breath] — select [B] (index 2); index 2 hosts the paired
+            // grace note G at index 1. The fallback deleteSelection loop removes G+B, and
+            // deleteNote's recursion cascades to the breath mark. Only A and the terminal
+            // barline remain.
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var noteB = crotchet();
+            var breath = ElementType.BREATH_MARK.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(grace);
+                line.addElement(noteB);
+                line.addElement(breath);
+            });
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 2, 2);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            // G (paired), B, and the breath mark all removed; A and terminal barline remain.
             assertThat(line.elementCount()).isEqualTo(2);
             assertThat(line.getElement(0)).isSameAs(noteA);
         }
@@ -824,6 +991,82 @@ class ScoreViewControllerTest extends UnitTest {
                 .isEqualTo(Lyric.Syllabic.BEGIN);
         }
 
+        // -------------------------------------------------------------------
+        // Breath-mark cascade tests
+        // -------------------------------------------------------------------
+
+        /**
+         * (a) A note followed immediately by a breath mark: deleting the note cascades
+         * to also remove the breath mark, but deleteNote still returns 1 (the cascade
+         * is excluded from the count).
+         */
+        @Test
+        void testDeleteNoteFollowedByBreathMarkRemovesBothButReturnsOne() {
+            var note = crotchet();
+            var breathMark = breathMark();
+            var line = lineWith(note, breathMark);
+
+            var removed = ScoreViewController.deleteNote(0, line);
+
+            // Both note and breath mark removed — only the terminal barline remains.
+            assertThat(removed).isEqualTo(1);
+            assertThat(line.effectiveElementCount()).isEqualTo(0);
+        }
+
+        /**
+         * (b) A note NOT followed by a breath mark: the breath mark further along must
+         * be retained after the deletion.
+         */
+        @Test
+        void testDeleteNoteNotFollowedByBreathMarkLeavesBreathMarkIntact() {
+            var noteA = crotchet();
+            var noteB = crotchet();
+            var breathMark = breathMark();
+            var line = lineWith(noteA, noteB, breathMark);
+
+            ScoreViewController.deleteNote(0, line);
+
+            // noteA deleted; noteB and breathMark remain.
+            assertThat(line.effectiveElementCount()).isEqualTo(2);
+            assertThat(line.getElement(0)).isSameAs(noteB);
+            assertThat(line.getElement(1)).isSameAs(breathMark);
+        }
+
+        /**
+         * (c) Host note with a preceding paired grace note AND a trailing breath mark:
+         * all three are gone; the return value is 2 (grace + host), not 3.
+         */
+        @Test
+        void testDeleteNoteWithPrecedingGraceNoteAndTrailingBreathMarkRemovesAllThreeReturnsTwo() {
+            var grace = pairedGraceNote();
+            var host = crotchet();
+            var breathMark = breathMark();
+            var line = lineWith(grace, host, breathMark);
+
+            var removed = ScoreViewController.deleteNote(1, line);
+
+            // Grace note, host note, and breath mark all removed.
+            assertThat(removed).isEqualTo(2);
+            assertThat(line.effectiveElementCount()).isEqualTo(0);
+        }
+
+        /**
+         * (d) Deleting a lone breath mark must not trigger any spurious extra removal.
+         */
+        @Test
+        void testDeleteLoneBreathMarkRemovesOnlyTheBreathMark() {
+            var breathMark = breathMark();
+            var noteAfter = crotchet();
+            var line = lineWith(breathMark, noteAfter);
+
+            var removed = ScoreViewController.deleteNote(0, line);
+
+            // Only the breath mark is removed; the note after stays.
+            assertThat(removed).isEqualTo(1);
+            assertThat(line.effectiveElementCount()).isEqualTo(1);
+            assertThat(line.getElement(0)).isSameAs(noteAfter);
+        }
+
         private StaffElement crotchet() {
             return ElementType.CROTCHET.newInstance();
         }
@@ -832,6 +1075,10 @@ class ScoreViewControllerTest extends UnitTest {
             var grace = ElementType.GRACE_QUAVER.newInstance();
             grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
             return grace;
+        }
+
+        private StaffElement breathMark() {
+            return ElementType.BREATH_MARK.newInstance();
         }
 
         private Line lineWith(StaffElement... elements) {
@@ -986,10 +1233,17 @@ class ScoreViewControllerTest extends UnitTest {
         private SelectionCoordinator coordinatorMock;
         private ScoreViewController controller;
 
+        // Actions.DURATION_ACTION_GROUP is a public static field. These tests swap in a
+        // mock, so the original must be restored in tearDown to avoid leaking the mock
+        // into other tests that share the JVM.
+        private @org.jspecify.annotations.Nullable DurationActionGroup originalDurationActionGroup;
+
         @BeforeEach
         void setUp() {
             scoreMock = mock(ScoreView.class);
             coordinatorMock = mock(SelectionCoordinator.class);
+            originalDurationActionGroup = Actions.DURATION_ACTION_GROUP;
+            Actions.DURATION_ACTION_GROUP = mock(DurationActionGroup.class);
 
             controller = new ScoreViewController(
                 scoreMock,
@@ -997,6 +1251,15 @@ class ScoreViewControllerTest extends UnitTest {
                 coordinatorMock,
                 mock(ClipboardManager.class)
             );
+        }
+
+        // DURATION_ACTION_GROUP lacks a @Nullable annotation but is null until
+        // Actions.initialize() runs (and after resetForTest()), so restoring the saved
+        // original — null in a unit-test JVM — requires suppressing NullAway.
+        @SuppressWarnings("NullAway")
+        @AfterEach
+        void tearDown() {
+            Actions.DURATION_ACTION_GROUP = originalDurationActionGroup;
         }
 
         private ModeDidChangeNotification notificationFor(Mode mode) {
@@ -1021,11 +1284,9 @@ class ScoreViewControllerTest extends UnitTest {
 
         @Test
         void testModeDidChangeSyncsPreviewElementOnEditEntry() {
-            // When a duration action is selected, EDIT entry must call score.setPreviewElement.
-            // Inject a mock ElementTypeAction into the DURATION_ACTION_GROUP's selected field
-            // via reflection, bypassing the real UIAction constructor chain.
             var mockAction = mock(ElementTypeAction.class);
             when(mockAction.getType()).thenReturn(ElementType.CROTCHET);
+            when(Actions.DURATION_ACTION_GROUP.getSelected()).thenReturn(mockAction);
 
             var mockPreviewElement = mock(StaffElement.class);
 
@@ -1033,12 +1294,7 @@ class ScoreViewControllerTest extends UnitTest {
                 emm.when(() -> EditModeManager.makePreviewElement(ElementType.CROTCHET))
                     .thenReturn(mockPreviewElement);
 
-                setDurationGroupSelected(mockAction);
-                try {
-                    controller.modeDidChange(notificationFor(Mode.EDIT));
-                } finally {
-                    setDurationGroupSelected(null);
-                }
+                controller.modeDidChange(notificationFor(Mode.EDIT));
             }
 
             verify(scoreMock).setPreviewElement(mockPreviewElement);
@@ -1070,20 +1326,6 @@ class ScoreViewControllerTest extends UnitTest {
             verify(va).setEnabled(true);
         }
 
-        /**
-         * Sets the {@code selected} field on {@link Actions#DURATION_ACTION_GROUP}
-         * via reflection. Pass {@code null} to clear the selection.
-         */
-        @SuppressWarnings("SameParameterValue")
-        private static void setDurationGroupSelected(@org.jspecify.annotations.Nullable ElementTypeAction value) {
-            try {
-                var field = Actions.DURATION_ACTION_GROUP.getClass().getSuperclass().getDeclaredField("selected");
-                field.setAccessible(true);
-                field.set(Actions.DURATION_ACTION_GROUP, value);
-            } catch (ReflectiveOperationException e) {
-                throw new RuntimeException("Failed to set DURATION_ACTION_GROUP.selected", e);
-            }
-        }
     }
 
     /**

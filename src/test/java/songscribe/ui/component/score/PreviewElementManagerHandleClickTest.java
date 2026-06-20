@@ -24,13 +24,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
+import songscribe.Strings;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.edit.EditModeManager;
 
 /**
@@ -166,6 +172,46 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
             assertThat(line.getElement(1).getType())
                 .as("element at index 1 replaced with preview type")
                 .isEqualTo(ElementType.QUAVER);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Breath mark over an existing element — blocked (issue #456)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BreathMarkOverExistingElement {
+
+        /**
+         * Clicking a breath mark over an existing element must neither replace nor insert:
+         * a breath mark never replaces an element, and being over one is a blocked position,
+         * so the click only shows the alert and leaves the line intact. The alert call is
+         * verified through a static mock so that removing it would fail the test.
+         */
+        @Test
+        void testBreathMarkOverExistingElementDoesNotReplaceOrInsert() {
+            addNotes(2, ElementType.CROTCHET);
+
+            setPreviewElement(ElementType.BREATH_MARK.newInstance());
+            PreviewElementManager.setCurrentXIndex(1);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+
+            var countBefore = line.effectiveElementCount();
+
+            try (MockedStatic<OptionDialogs> optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                PreviewElementManager.handleClick(lc);
+
+                optionDialogsMock.verify(() -> OptionDialogs.showErrorMessage(
+                    isNull(), eq(Strings.ALERT_TITLE_BREATH_MARK), eq(Strings.ALERT_BREATH_MARK_POSITION)));
+            }
+
+            assertThat(line.effectiveElementCount())
+                .as("blocked position: no element inserted or removed")
+                .isEqualTo(countBefore);
+            assertThat(line.getElement(1).getType())
+                .as("element under the cursor is not replaced by the breath mark")
+                .isEqualTo(ElementType.CROTCHET);
         }
     }
 

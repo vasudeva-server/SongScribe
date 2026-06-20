@@ -396,11 +396,15 @@ public enum ElementType {
     }
 
     public boolean isNonDuration() {
-        return isBarLine() || isRepeat() || this == BREATH_MARK;
+        return isBarLine() || isRepeat() || isBreathMark();
     }
 
     public boolean isGraceNote() {
         return this == GRACE_QUAVER;
+    }
+
+    public boolean isBreathMark() {
+        return this == BREATH_MARK;
     }
 
     /**

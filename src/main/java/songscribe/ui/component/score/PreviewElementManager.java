@@ -214,6 +214,14 @@ public final class PreviewElementManager {
      */
     @Nullable
     public static ElementLocation getHoveredElementLocation() {
+        // A breath mark never replaces an existing element, so it never highlights one
+        // as a replacement target.
+        var previewElement = EditModeManager.getPreviewElement();
+
+        if (previewElement != null && previewElement.getType().isBreathMark()) {
+            return null;
+        }
+
         return (xPosSsMatchesElement && currentPreviewLine != null)
             ? new ElementLocation(currentPreviewLine.getLineIndex(), currentXIndex)
             : null;
@@ -469,6 +477,13 @@ public final class PreviewElementManager {
         var newYMatch = newXMatch
             && Math.abs(staffPosition - line.getElement(elementAtX).getStaffPosition()) <= 1;
 
+        // A breath mark must be inserted between or after a note or rest; it may not sit at
+        // index 0 or over an existing element (it never replaces one). At any such position
+        // the ghost preview is hidden, and clicking there shows an alert. The red "will be
+        // replaced" highlight is separately suppressed for breath marks in
+        // getHoveredElementLocation, so newXMatch stays raw for the over-element-head check.
+        var breathMarkBlocked = isBreathMarkInsertionBlocked(previewElement, xIndex, line, newXMatch);
+
         // Compute glissando zone before change detection so zone changes trigger repaints.
         // Only compute when not over an element head (elementAtX < 0), as hovering over an
         // element head means there is no valid glissando target to the left.
@@ -511,7 +526,9 @@ public final class PreviewElementManager {
 
         // Always show the ghost preview — even when hovering over an existing element head.
         // The preview shows the user what pitch/type will replace the existing element.
-        EditModeManager.setPreviewElementVisible(true);
+        // Exception: breath marks must follow a note or rest, so suppress the ghost
+        // wherever that is not the case.
+        EditModeManager.setPreviewElementVisible(!breathMarkBlocked);
 
         // Rests snap to their default staff position; pitched notes follow the mouse Y
         if (previewElement != null) {
@@ -589,6 +606,11 @@ public final class PreviewElementManager {
                     return;
                 }
             }
+        }
+
+        if (isBreathMarkInsertionBlocked(previewElement, currentXIndex, line, xPosSsMatchesElement)) {
+            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_BREATH_MARK, Strings.ALERT_BREATH_MARK_POSITION);
+            return;
         }
 
         var wasFirstLineEmpty = song.indexOfLine(line) == 0
@@ -690,6 +712,35 @@ public final class PreviewElementManager {
 
         // Mouse is at the append slot immediately after the terminal — always blocked.
         return xIndex == elementCount;
+    }
+
+    /**
+     * Returns {@code true} when inserting a breath mark at {@code xIndex} should be
+     * blocked. A breath mark attaches to the element immediately before it, which must
+     * be a pitched note or a rest, and it never replaces an existing element. So it is
+     * blocked at index 0 (no preceding element), directly after anything other than a
+     * note or rest, while the cursor is over an existing element
+     * ({@code overExistingElement}), or when the following element is already a breath
+     * mark (consecutive breath marks are forbidden).
+     */
+    static boolean isBreathMarkInsertionBlocked(
+        @Nullable StaffElement previewElement, int xIndex, Line line, boolean overExistingElement
+    ) {
+        if (previewElement == null || !previewElement.getType().isBreathMark()) {
+            return false;
+        }
+
+        if (overExistingElement || xIndex == 0) {
+            return true;
+        }
+
+        var precedingType = line.getElement(xIndex - 1).getType();
+
+        if (!precedingType.isDuration()) {
+            return true;
+        }
+
+        return xIndex < line.effectiveElementCount() && line.getElement(xIndex).getType().isBreathMark();
     }
 
     /**
@@ -887,6 +938,19 @@ public final class PreviewElementManager {
         line.adjustExtendsForInsertion(xIndex);
         line.addElement(xIndex, previewElement);
         line.adjustSyllablesForSuccessorAfterInsertion(xIndex);
+
+        // A connecting glissando joins a note to the note that immediately follows it.
+        // Inserting another pitched note simply re-targets it, but inserting anything else
+        // (rest, breath mark, grace note) leaves it with no valid target, so remove it from
+        // the preceding note.
+        if (!previewElement.getType().isPitchedNote() && xIndex > 0) {
+            var precedingElement = line.getElement(xIndex - 1);
+            var glissando = precedingElement.getGlissando();
+
+            if (glissando != null && glissando.type == StaffElement.Glissando.Type.CONNECTED) {
+                precedingElement.removeGlissando();
+            }
+        }
         var shift = ScaleContext.ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
 
         for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {

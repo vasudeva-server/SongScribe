@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 
 /**
  * Unit tests covering behaviors from e2e rows that exercise pure-model logic
@@ -177,6 +178,135 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         assertThat(line.getElement(2).getType())
             .as("previously-at-index-1 MINIM shifted to index 2")
             .isEqualTo(ElementType.MINIM);
+    }
+
+    // -----------------------------------------------------------------------
+    // insertElement — connecting-glissando removal (issue #456)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ConnectingGlissandoRemoval {
+
+        /**
+         * Inserts the given preview type at index 1 of a two-note line whose first note
+         * carries a CONNECTED glissando, and returns that first note for assertions.
+         */
+        private StaffElement insertBetweenConnectedNotes(ElementType insertedType) {
+            song.setLineWidthSs(WIDE_LINE_SS);
+
+            song.withoutMutationTracking(() -> {
+                var noteA = ElementType.CROTCHET.newInstance();
+                noteA.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+                line.addElement(noteA);  // index 0
+                line.addElement(ElementType.CROTCHET.newInstance());  // index 1
+            });
+
+            var noteA = line.getElement(0);
+            assertThat(noteA.getGlissando())
+                .as("pre-condition: noteA has a connected glissando")
+                .isNotNull();
+
+            setPreviewElement(insertedType.newInstance());
+            PreviewElementManager.setCurrentXIndex(1);
+            PreviewElementManager.setXPosSsMatchesElement(false);
+
+            PreviewElementManager.handleClick(lc);
+
+            assertThat(line.getElement(1).getType())
+                .as("element inserted at index 1")
+                .isEqualTo(insertedType);
+
+            return noteA;
+        }
+
+        /** A breath mark between connected notes removes the glissando. */
+        @Test
+        void testInsertingBreathMarkRemovesConnectingGlissando() {
+            var noteA = insertBetweenConnectedNotes(ElementType.BREATH_MARK);
+
+            assertThat(noteA.getGlissando())
+                .as("connected glissando removed when a breath mark is inserted")
+                .isNull();
+        }
+
+        /** A rest between connected notes removes the glissando. */
+        @Test
+        void testInsertingRestRemovesConnectingGlissando() {
+            var noteA = insertBetweenConnectedNotes(ElementType.CROTCHET_REST);
+
+            assertThat(noteA.getGlissando())
+                .as("connected glissando removed when a rest is inserted")
+                .isNull();
+        }
+
+        /** A pitched note between connected notes re-targets the glissando, leaving it intact. */
+        @Test
+        void testInsertingPitchedNoteKeepsConnectingGlissando() {
+            var noteA = insertBetweenConnectedNotes(ElementType.MINIM);
+
+            assertThat(noteA.getGlissando())
+                .as("connected glissando retained when a pitched note is inserted")
+                .isNotNull();
+        }
+
+        /**
+         * A SLIDE_OUT glissando does not connect to the following note, so inserting a
+         * breath mark after it must leave it intact.
+         */
+        @Test
+        void testInsertingBreathMarkLeavesSlideOutGlissando() {
+            song.setLineWidthSs(WIDE_LINE_SS);
+
+            song.withoutMutationTracking(() -> {
+                var noteA = ElementType.CROTCHET.newInstance();
+                noteA.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+                line.addElement(noteA);
+                line.addElement(ElementType.CROTCHET.newInstance());
+            });
+
+            var noteA = line.getElement(0);
+
+            setPreviewElement(ElementType.BREATH_MARK.newInstance());
+            PreviewElementManager.setCurrentXIndex(1);
+            PreviewElementManager.setXPosSsMatchesElement(false);
+
+            PreviewElementManager.handleClick(lc);
+
+            assertThat(noteA.getGlissando())
+                .as("slide-out glissando retained")
+                .isNotNull();
+        }
+
+        /**
+         * Inserting a breath mark after a note that has no glissando is a no-op for the
+         * glissando-removal branch: the null guard is exercised, no exception is thrown,
+         * and the breath mark is still inserted.
+         */
+        @Test
+        void testInsertingBreathMarkAfterNoteWithoutGlissandoIsNoOp() {
+            song.setLineWidthSs(WIDE_LINE_SS);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(ElementType.CROTCHET.newInstance());
+            });
+
+            var noteA = line.getElement(0);
+
+            setPreviewElement(ElementType.BREATH_MARK.newInstance());
+            PreviewElementManager.setCurrentXIndex(1);
+            PreviewElementManager.setXPosSsMatchesElement(false);
+
+            PreviewElementManager.handleClick(lc);
+
+            assertThat(noteA.getGlissando())
+                .as("note without a glissando is left untouched")
+                .isNull();
+            assertThat(line.getElement(1).getType())
+                .as("breath mark still inserted at index 1")
+                .isEqualTo(ElementType.BREATH_MARK);
+        }
     }
 
     // -----------------------------------------------------------------------
