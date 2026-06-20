@@ -19,10 +19,12 @@
  */
 package songscribe.ui.dialog;
 
+import songscribe.ui.component.MainFrame;
+
 public class TutorialDialog extends HelpDialog {
 
-    public TutorialDialog() {
-        super("Tutorial", false);
+    public TutorialDialog(MainFrame mainFrame) {
+        super(mainFrame, "Tutorial", false);
         addToList("Preparations", "Preparations.html");
         addToList("Typing with mouse", "Mouse.html");
         addToList("Typing with keyboard", "Keyboard.html");

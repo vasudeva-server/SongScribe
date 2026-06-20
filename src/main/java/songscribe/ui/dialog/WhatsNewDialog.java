@@ -26,6 +26,7 @@ import java.io.IOException;
 import songscribe.Strings;
 import songscribe.Version;
 import songscribe.ui.FlatLafKey;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
 
 public class WhatsNewDialog extends StandardDialog {
@@ -35,8 +36,8 @@ public class WhatsNewDialog extends StandardDialog {
     );
     private boolean noReleaseNotes = false;
 
-    public WhatsNewDialog() {
-        super(Strings.get(Strings.DIALOG_WHATS_NEW_TITLE), true, DialogCategory.INFORMATIONAL);
+    public WhatsNewDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_WHATS_NEW_TITLE), true, DialogCategory.INFORMATIONAL);
         try {
             contentPanel.add(
                 BorderLayout.CENTER,

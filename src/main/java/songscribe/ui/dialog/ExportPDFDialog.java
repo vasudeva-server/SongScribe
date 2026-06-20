@@ -25,14 +25,16 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.export.PageLayoutData;
+import songscribe.ui.component.MainFrame;
+
 public class ExportPDFDialog extends StandardDialog {
 
     private final PaperSizeStep paperSizePanel;
     private final PageLayoutData paperSizePageLayoutDataPrivate;
     private @Nullable PageLayoutData paperSizePageLayoutData = null;
 
-    public ExportPDFDialog() {
-        super(Strings.get(Strings.DIALOG_EXPORT_PDF_TITLE));
+    public ExportPDFDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_EXPORT_PDF_TITLE));
         paperSizePageLayoutDataPrivate = new PageLayoutData();
         paperSizePageLayoutDataPrivate.scoreView = requireScoreView();
         paperSizePanel = new PaperSizeStep(paperSizePageLayoutDataPrivate);

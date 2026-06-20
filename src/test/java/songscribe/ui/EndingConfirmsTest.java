@@ -22,18 +22,25 @@ package songscribe.ui;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.awt.Component;
 import java.util.ArrayList;
+
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.JRootPane;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.MockedStatic;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.MainFrameMockTest;
+import songscribe.UnitTest;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.PasteboardOpCommand;
@@ -45,6 +52,7 @@ import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.PasteboardAction;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 
@@ -70,7 +78,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  *        (anchor)                       (split)                               (end)
  * </pre>
  */
-class EndingConfirmsTest extends MainFrameMockTest {
+class EndingConfirmsTest extends UnitTest {
 
     private static final int ANCHOR_INDEX = 0;
     private static final int SPLIT_INDEX = 3;
@@ -85,11 +93,16 @@ class EndingConfirmsTest extends MainFrameMockTest {
 
     @BeforeEach
     void createActions() {
-        DOUBLE_BARLINE_ACTION = ElementTypeAction.createDoubleBarlineAction(mainFrame());
-        LEFT_REPEAT_ACTION = ElementTypeAction.createLeftRepeatAction(mainFrame());
-        RIGHT_REPEAT_ACTION = ElementTypeAction.createRightRepeatAction(mainFrame());
-        LEFT_RIGHT_REPEAT_ACTION = ElementTypeAction.createLeftRightRepeatAction(mainFrame());
-        SINGLE_BARLINE_ACTION = ElementTypeAction.createSingleBarlineAction(mainFrame());
+        var mainFrame = mock(MainFrame.class);
+        var rootPane = mock(JRootPane.class);
+        when(rootPane.getInputMap(anyInt())).thenReturn(new InputMap());
+        when(rootPane.getActionMap()).thenReturn(new ActionMap());
+        when(mainFrame.getRootPane()).thenReturn(rootPane);
+        DOUBLE_BARLINE_ACTION = ElementTypeAction.createDoubleBarlineAction(mainFrame);
+        LEFT_REPEAT_ACTION = ElementTypeAction.createLeftRepeatAction(mainFrame);
+        RIGHT_REPEAT_ACTION = ElementTypeAction.createRightRepeatAction(mainFrame);
+        LEFT_RIGHT_REPEAT_ACTION = ElementTypeAction.createLeftRightRepeatAction(mainFrame);
+        SINGLE_BARLINE_ACTION = ElementTypeAction.createSingleBarlineAction(mainFrame);
     }
 
     // -----------------------------------------------------------------------
@@ -189,7 +202,7 @@ class EndingConfirmsTest extends MainFrameMockTest {
         void testReplaceAnchorWithDoubleBarlineAbortsWhenUserDeclines() {
             var env = setupPrimaryLine();
             ReflectionTestHelper.selectNote(env.coordinator(), ANCHOR_INDEX);
-            env.coordinator().applyActionToSelection(DOUBLE_BARLINE_ACTION, true);
+            env.coordinator().applyActionToSelection(DOUBLE_BARLINE_ACTION, true, null);
 
             assertThat(env.line().getElement(ANCHOR_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
             assertThat(env.line().getRangeElements()).contains(env.ending());
@@ -226,7 +239,7 @@ class EndingConfirmsTest extends MainFrameMockTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), ANCHOR_INDEX);
-                env.coordinator().applyActionToSelection(DOUBLE_BARLINE_ACTION, true);
+                env.coordinator().applyActionToSelection(DOUBLE_BARLINE_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(ANCHOR_INDEX).getType()).isEqualTo(ElementType.DOUBLE_BARLINE);
@@ -247,7 +260,7 @@ class EndingConfirmsTest extends MainFrameMockTest {
             // split=REPEAT_RIGHT; changing end to REPEAT_RIGHT requires split → REPEAT_LEFT_RIGHT
             var env = setupPrimaryLine();
             ReflectionTestHelper.selectNote(env.coordinator(), END_INDEX);
-            env.coordinator().applyActionToSelection(RIGHT_REPEAT_ACTION, true);
+            env.coordinator().applyActionToSelection(RIGHT_REPEAT_ACTION, true, null);
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
@@ -259,7 +272,7 @@ class EndingConfirmsTest extends MainFrameMockTest {
             // split=REPEAT_RIGHT → REPEAT_LEFT_RIGHT requires end → REPEAT_RIGHT
             var env = setupPrimaryLine();
             ReflectionTestHelper.selectNote(env.coordinator(), SPLIT_INDEX);
-            env.coordinator().applyActionToSelection(LEFT_RIGHT_REPEAT_ACTION, true);
+            env.coordinator().applyActionToSelection(LEFT_RIGHT_REPEAT_ACTION, true, null);
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
@@ -282,7 +295,7 @@ class EndingConfirmsTest extends MainFrameMockTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), END_INDEX);
-                env.coordinator().applyActionToSelection(LEFT_REPEAT_ACTION, true);
+                env.coordinator().applyActionToSelection(LEFT_REPEAT_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
@@ -297,7 +310,7 @@ class EndingConfirmsTest extends MainFrameMockTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), END_INDEX);
-                env.coordinator().applyActionToSelection(RIGHT_REPEAT_ACTION, true);
+                env.coordinator().applyActionToSelection(RIGHT_REPEAT_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT_RIGHT);
@@ -312,7 +325,7 @@ class EndingConfirmsTest extends MainFrameMockTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), END_INDEX);
-                env.coordinator().applyActionToSelection(SINGLE_BARLINE_ACTION, true);
+                env.coordinator().applyActionToSelection(SINGLE_BARLINE_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
@@ -327,7 +340,7 @@ class EndingConfirmsTest extends MainFrameMockTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), SPLIT_INDEX);
-                env.coordinator().applyActionToSelection(RIGHT_REPEAT_ACTION, true);
+                env.coordinator().applyActionToSelection(RIGHT_REPEAT_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
@@ -342,12 +355,74 @@ class EndingConfirmsTest extends MainFrameMockTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), SPLIT_INDEX);
-                env.coordinator().applyActionToSelection(LEFT_RIGHT_REPEAT_ACTION, true);
+                env.coordinator().applyActionToSelection(LEFT_RIGHT_REPEAT_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getRangeElements()).contains(env.ending());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Parent-forwarding assertion (decision 11A): verify that the Component
+    // passed to the public confirm methods is forwarded to showOptionDialog.
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ParentForwarding {
+
+        @Test
+        void testConfirmInvalidationForwardsParentToOptionDialog() {
+            var parent = mock(Component.class);
+
+            try (var od = mockStatic(OptionDialogs.class)) {
+                od.when(() -> OptionDialogs.showOptionDialog(any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenReturn(0);
+
+                EndingConfirms.confirmInvalidation(parent);
+
+                od.verify(() -> OptionDialogs.showOptionDialog(
+                    eq(parent), any(), any(), anyInt(), anyInt(), any(), any(), any()
+                ));
+            }
+        }
+
+        @Test
+        void testConfirmCompensateEndForwardsParentToOptionDialog() {
+            var parent = mock(Component.class);
+            var fixture = EndingLineFixture.primary();
+            var ce = new Ending.EndingEffect.CompensateEnd(fixture.ending(), ElementType.REPEAT_RIGHT);
+
+            try (var od = mockStatic(OptionDialogs.class)) {
+                od.when(() -> OptionDialogs.showOptionDialog(any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenReturn(0);
+
+                EndingConfirms.confirmCompensateEnd(parent, ce);
+
+                od.verify(() -> OptionDialogs.showOptionDialog(
+                    eq(parent), any(), any(), anyInt(), anyInt(), any(), any(), any()
+                ));
+            }
+        }
+
+        @Test
+        void testConfirmCompensateSplitForwardsParentToOptionDialog() {
+            var parent = mock(Component.class);
+            var fixture = EndingLineFixture.primary();
+            var cs = new Ending.EndingEffect.CompensateSplit(fixture.ending(), ElementType.REPEAT_LEFT_RIGHT);
+
+            try (var od = mockStatic(OptionDialogs.class)) {
+                od.when(() -> OptionDialogs.showOptionDialog(any(), any(), any(), anyInt(), anyInt(), any(), any(), any(), any()))
+                    .thenReturn(0);
+
+                EndingConfirms.confirmCompensateSplit(parent, cs, ElementType.REPEAT_RIGHT);
+
+                od.verify(() -> OptionDialogs.showOptionDialog(
+                    eq(parent), any(), any(), anyInt(), anyInt(), any(), any(), any(), any()
+                ));
+            }
         }
     }
 

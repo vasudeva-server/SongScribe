@@ -47,96 +47,198 @@ import songscribe.ui.dialog.SongSettingsDialog;
 /**
  * This class serves as a repository for global action-related constants and action groups.
  * Playback actions are in the playback package.
+ *
+ * <p>Constants are populated by {@link #initialize(MainFrame)}, which must be called
+ * before any constant is first read. The expected call sequence is:
+ *
+ * <pre>
+ * MainFrame.getInstance()
+ *   └─► MainFrame.initFrame()
+ *         └─► Actions.initialize(this)
+ *               └─► first constant use (e.g. CONTROL_ACTION_GROUP.selectNext())
+ * </pre>
  */
+// The action constants are @NonNull but populated lazily by initialize() (which needs
+// the MainFrame, unavailable at class-load), not at declaration. NullAway.Init suppresses
+// the "uninitialized field" check for them; keeping them non-null avoids poisoning the
+// ~70 call sites across the codebase with nullability.
+@SuppressWarnings("NullAway.Init")
 public final class Actions {
 
-    // Resolved once at class load and injected into every action below, so individual
-    // actions no longer call MainFrame.getInstance() themselves. Assumes the MainFrame
-    // singleton is already constructed before this holder class is first referenced.
-    private static final MainFrame MAIN_FRAME = MainFrame.getInstance();
+    // Injected by initialize() before any constant is referenced.
+    // Null until initialize() is called; null again after resetForTest().
+    @Nullable
+    private static MainFrame mainFrame;
 
     private static final Logger LOG = LoggerFactory.getLogger(Actions.class);
 
     //
     // Control actions
     //
-    public static final ControlAction MOUSE_CONTROL_ACTION =
-        ControlAction.createMouseControlAction(MAIN_FRAME);
-
-    public static final ControlAction KEYBOARD_CONTROL_ACTION =
-        ControlAction.createKeyboardControlAction(MAIN_FRAME);
-
-    public static final ActionGroup<ControlAction> CONTROL_ACTION_GROUP =
-        new ActionGroup<>(MOUSE_CONTROL_ACTION, KEYBOARD_CONTROL_ACTION);
+    public static ControlAction MOUSE_CONTROL_ACTION;
+    public static ControlAction KEYBOARD_CONTROL_ACTION;
+    public static ActionGroup<ControlAction> CONTROL_ACTION_GROUP;
 
     //
     // Mode actions
     //
-    public static final ModeAction SELECT_MODE_ACTION =
-        ModeAction.createSelectModeAction(MAIN_FRAME);
+    public static ModeAction SELECT_MODE_ACTION;
+    public static ModeAction EDIT_MODE_ACTION;
+    public static CycleModeAction CYCLE_MODE_ACTION;
+    public static ModeAction ADJUST_MUSIC_MODE_ACTION;
+    public static ModeAction ADJUST_VERTICAL_MODE_ACTION;
+    public static ActionGroup<ModeAction> MODE_ACTION_GROUP;
 
-    public static final ModeAction EDIT_MODE_ACTION =
-        ModeAction.createEditModeAction(MAIN_FRAME);
+    //
+    // Duration actions
+    //
+    public static ElementTypeAction GRACE_EIGHTH_NOTE_ACTION;
+    public static ElementTypeAction THIRTY_SECOND_NOTE_ACTION;
+    public static ElementTypeAction SIXTEENTH_NOTE_ACTION;
+    public static ElementTypeAction EIGHTH_NOTE_ACTION;
+    public static ElementTypeAction QUARTER_NOTE_ACTION;
+    public static ElementTypeAction HALF_NOTE_ACTION;
+    public static ElementTypeAction WHOLE_NOTE_ACTION;
+    public static ElementTypeAction GLISSANDO_ACTION;
+    public static ElementTypeAction SLIDE_OUT_ACTION;
 
-    public static final CycleModeAction CYCLE_MODE_ACTION =
-        CycleModeAction.createAction(MAIN_FRAME);
+    public static List<ElementTypeAction> NOTE_DURATION_ACTIONS;
+    public static DurationActionGroup DURATION_ACTION_GROUP;
 
-    public static final ModeAction ADJUST_MUSIC_MODE_ACTION =
-        ModeAction.createAdjustMusicModeAction(MAIN_FRAME);
+    public static DotAction DOT_ACTION;
+    public static DotAction DOUBLE_DOT_ACTION;
+    public static ActionGroup<DotAction> DOT_ACTION_GROUP;
 
-    public static final ModeAction ADJUST_VERTICAL_MODE_ACTION =
-        ModeAction.createAdjustVerticalModeAction(MAIN_FRAME);
+    public static RestModeAction REST_ACTION;
 
-    public static final ActionGroup<ModeAction> MODE_ACTION_GROUP =
-        new ActionGroup<>(
+    public static AccidentalAction FLAT_ACTION;
+    public static AccidentalAction DOUBLE_FLAT_ACTION;
+    public static AccidentalAction NATURAL_FLAT_ACTION;
+    public static AccidentalAction NATURAL_ACTION;
+    public static AccidentalAction SHARP_ACTION;
+    public static AccidentalAction DOUBLE_SHARP_ACTION;
+    public static AccidentalAction NATURAL_SHARP_ACTION;
+    public static AccidentalInParensAction ACCIDENTAL_IN_PARENS_ACTION;
+
+    public static ActionGroup<AccidentalAction> ACCIDENTAL_ACTION_GROUP;
+
+    public static ElementTypeAction[] REPEAT_ACTIONS;
+    public static ElementTypeAction[] BARLINE_ACTIONS;
+    public static ElementTypeAction BREATH_MARK_ACTION;
+    public static ActionGroup<ElementTypeAction> NON_DURATION_ACTION_GROUP;
+
+    public static FirstSecondEndingAction MAKE_ENDING_ACTION;
+    public static ForceArticulationAction ACCENT_ACTION;
+    public static DurationArticulationAction STACCATO_ACTION;
+    public static ActionGroup<DurationArticulationAction> ARTICULATION_ACTION_GROUP;
+
+    public static ToggleNotationAction TOGGLE_BEAM_ACTION;
+    public static ToggleNotationAction TOGGLE_TIE_ACTION;
+
+    public static List<TupletAction> TOGGLE_TUPLET_ACTIONS;
+    public static TupletAction REMOVE_TUPLET_ACTION;
+
+    public static FlipStemDirectionAction FLIP_STEM_DIRECTION_ACTION;
+    public static EditLyricAction EDIT_LYRIC_ACTION;
+    public static ToggleTrillAction TOGGLE_TRILL_ACTION;
+
+    public static AddDynamicsAction ADD_CRESCENDO_ACTION;
+    public static AddDynamicsAction ADD_DIMINUENDO_ACTION;
+    public static RemoveDynamicsAction REMOVE_DYNAMICS_ACTION;
+
+    public static DynamicMarkingAction DYNAMIC_PP_ACTION;
+    public static DynamicMarkingAction DYNAMIC_P_ACTION;
+    public static DynamicMarkingAction DYNAMIC_MP_ACTION;
+    public static DynamicMarkingAction DYNAMIC_MF_ACTION;
+    public static DynamicMarkingAction DYNAMIC_F_ACTION;
+    public static DynamicMarkingAction DYNAMIC_FF_ACTION;
+    public static ActionGroup<DynamicMarkingAction> DYNAMIC_MARKING_ACTION_GROUP;
+
+    public static TempoChangeAction TEMPO_CHANGE_ACTION;
+    public static BeatChangeAction BEAT_CHANGE_ACTION;
+    public static AnnotationAction ANNOTATION_ACTION;
+    public static KeySignatureChangeAction KEY_SIGNATURE_CHANGE_ACTION;
+
+    public static List<UIAction> STAFF_ANNOTATION_ACTIONS;
+    public static FermataAction FERMATA_ACTION;
+
+    public static PreferencesOpenAction PREFERENCES_ACTION;
+    public static DialogOpenAction<SongSettingsDialog> SONG_SETTINGS_ACTION;
+    public static AboutOpenAction ABOUT_ACTION;
+
+    public static PrintAction PRINT_ACTION;
+    public static QuitAction QUIT_ACTION;
+
+    public static CutAction CUT_ACTION;
+    public static CopyAction COPY_ACTION;
+    public static PasteAction PASTE_ACTION;
+    public static DeleteAction DELETE_ACTION;
+    public static SelectLineAction SELECT_LINE_ACTION;
+    public static DeselectAction DESELECT_ACTION;
+
+    // Strong reference prevents GC (mbassy uses weak references)
+    private static final ResetHandler RESET_HANDLER = new ResetHandler();
+
+    static {
+        MessageCenter.subscribe(RESET_HANDLER);
+    }
+
+    /**
+     * Initializes all action constants using {@code mainFrame} as the owner.
+     *
+     * <p>Must be called once at the top of {@link MainFrame#initFrame()} before any
+     * constant in this class is first referenced. Calling this method again (e.g. in
+     * tests) replaces all constants with freshly constructed instances.
+     */
+    public static void initialize(MainFrame mainFrame) {
+        Actions.mainFrame = mainFrame;
+
+        //
+        // Control actions
+        //
+        MOUSE_CONTROL_ACTION = ControlAction.createMouseControlAction(mainFrame);
+        KEYBOARD_CONTROL_ACTION = ControlAction.createKeyboardControlAction(mainFrame);
+        CONTROL_ACTION_GROUP = new ActionGroup<>(MOUSE_CONTROL_ACTION, KEYBOARD_CONTROL_ACTION);
+
+        //
+        // Mode actions
+        //
+        SELECT_MODE_ACTION = ModeAction.createSelectModeAction(mainFrame);
+        EDIT_MODE_ACTION = ModeAction.createEditModeAction(mainFrame);
+        CYCLE_MODE_ACTION = CycleModeAction.createAction(mainFrame);
+        ADJUST_MUSIC_MODE_ACTION = ModeAction.createAdjustMusicModeAction(mainFrame);
+        ADJUST_VERTICAL_MODE_ACTION = ModeAction.createAdjustVerticalModeAction(mainFrame);
+        MODE_ACTION_GROUP = new ActionGroup<>(
             SELECT_MODE_ACTION,
             EDIT_MODE_ACTION,
             ADJUST_MUSIC_MODE_ACTION,
             ADJUST_VERTICAL_MODE_ACTION
         );
 
-    //
-    // Duration actions
-    //
-    public static final ElementTypeAction GRACE_EIGHTH_NOTE_ACTION =
-        ElementTypeAction.createGraceEighthNoteAction(MAIN_FRAME);
+        //
+        // Duration actions
+        //
+        GRACE_EIGHTH_NOTE_ACTION = ElementTypeAction.createGraceEighthNoteAction(mainFrame);
+        THIRTY_SECOND_NOTE_ACTION = ElementTypeAction.createThirtySecondNoteAction(mainFrame);
+        SIXTEENTH_NOTE_ACTION = ElementTypeAction.createSixteenthNoteAction(mainFrame);
+        EIGHTH_NOTE_ACTION = ElementTypeAction.createEighthNoteAction(mainFrame);
+        QUARTER_NOTE_ACTION = ElementTypeAction.createQuarterNoteAction(mainFrame);
+        HALF_NOTE_ACTION = ElementTypeAction.createHalfNoteAction(mainFrame);
+        WHOLE_NOTE_ACTION = ElementTypeAction.createWholeNoteAction(mainFrame);
+        GLISSANDO_ACTION = ElementTypeAction.createGlissandoAction(mainFrame);
+        SLIDE_OUT_ACTION = ElementTypeAction.createSlideOutAction(mainFrame);
 
-    public static final ElementTypeAction THIRTY_SECOND_NOTE_ACTION =
-        ElementTypeAction.createThirtySecondNoteAction(MAIN_FRAME);
+        NOTE_DURATION_ACTIONS = List.of(
+            GRACE_EIGHTH_NOTE_ACTION,
+            THIRTY_SECOND_NOTE_ACTION,
+            SIXTEENTH_NOTE_ACTION,
+            EIGHTH_NOTE_ACTION,
+            QUARTER_NOTE_ACTION,
+            HALF_NOTE_ACTION,
+            WHOLE_NOTE_ACTION
+        );
 
-    public static final ElementTypeAction SIXTEENTH_NOTE_ACTION =
-        ElementTypeAction.createSixteenthNoteAction(MAIN_FRAME);
-
-    public static final ElementTypeAction EIGHTH_NOTE_ACTION =
-        ElementTypeAction.createEighthNoteAction(MAIN_FRAME);
-
-    public static final ElementTypeAction QUARTER_NOTE_ACTION =
-        ElementTypeAction.createQuarterNoteAction(MAIN_FRAME);
-
-    public static final ElementTypeAction HALF_NOTE_ACTION =
-        ElementTypeAction.createHalfNoteAction(MAIN_FRAME);
-
-    public static final ElementTypeAction WHOLE_NOTE_ACTION =
-        ElementTypeAction.createWholeNoteAction(MAIN_FRAME);
-
-    public static final ElementTypeAction GLISSANDO_ACTION =
-        ElementTypeAction.createGlissandoAction(MAIN_FRAME);
-
-    public static final ElementTypeAction SLIDE_OUT_ACTION =
-        ElementTypeAction.createSlideOutAction(MAIN_FRAME);
-
-    public static final List<ElementTypeAction> NOTE_DURATION_ACTIONS = List.of(
-        GRACE_EIGHTH_NOTE_ACTION,
-        THIRTY_SECOND_NOTE_ACTION,
-        SIXTEENTH_NOTE_ACTION,
-        EIGHTH_NOTE_ACTION,
-        QUARTER_NOTE_ACTION,
-        HALF_NOTE_ACTION,
-        WHOLE_NOTE_ACTION
-    );
-
-    public static final DurationActionGroup DURATION_ACTION_GROUP =
-        new DurationActionGroup(
+        DURATION_ACTION_GROUP = new DurationActionGroup(
             GRACE_EIGHTH_NOTE_ACTION,
             THIRTY_SECOND_NOTE_ACTION,
             SIXTEENTH_NOTE_ACTION,
@@ -147,44 +249,23 @@ public final class Actions {
             GLISSANDO_ACTION,
             SLIDE_OUT_ACTION
         );
+        DURATION_ACTION_GROUP.setDefaultAction(QUARTER_NOTE_ACTION);
 
-    public static final DotAction DOT_ACTION = DotAction.createDotAction(MAIN_FRAME);
+        DOT_ACTION = DotAction.createDotAction(mainFrame);
+        DOUBLE_DOT_ACTION = DotAction.createDoubleDotAction(mainFrame);
+        DOT_ACTION_GROUP = new ActionGroup<>(DOT_ACTION, DOUBLE_DOT_ACTION);
 
-    public static final DotAction DOUBLE_DOT_ACTION =
-        DotAction.createDoubleDotAction(MAIN_FRAME);
+        REST_ACTION = RestModeAction.createAction(mainFrame);
 
-    public static final ActionGroup<DotAction> DOT_ACTION_GROUP =
-        new ActionGroup<>(DOT_ACTION, DOUBLE_DOT_ACTION);
-
-    public static final RestModeAction REST_ACTION =
-        RestModeAction.createAction(MAIN_FRAME);
-
-    public static final AccidentalAction FLAT_ACTION =
-        AccidentalAction.createFlatAction(MAIN_FRAME);
-
-    public static final AccidentalAction DOUBLE_FLAT_ACTION =
-        AccidentalAction.createDoubleFlatAction(MAIN_FRAME);
-
-    public static final AccidentalAction NATURAL_FLAT_ACTION =
-        AccidentalAction.createNaturalFlatAction(MAIN_FRAME);
-
-    public static final AccidentalAction NATURAL_ACTION =
-        AccidentalAction.createNaturalAction(MAIN_FRAME);
-
-    public static final AccidentalAction SHARP_ACTION =
-        AccidentalAction.createSharpAction(MAIN_FRAME);
-
-    public static final AccidentalAction DOUBLE_SHARP_ACTION =
-        AccidentalAction.createDoubleSharpAction(MAIN_FRAME);
-
-    public static final AccidentalAction NATURAL_SHARP_ACTION =
-        AccidentalAction.createNaturalSharpAction(MAIN_FRAME);
-
-    public static final AccidentalInParensAction ACCIDENTAL_IN_PARENS_ACTION =
-        AccidentalInParensAction.createAction(MAIN_FRAME);
-
-    public static final ActionGroup<AccidentalAction> ACCIDENTAL_ACTION_GROUP =
-        new ActionGroup<>(
+        FLAT_ACTION = AccidentalAction.createFlatAction(mainFrame);
+        DOUBLE_FLAT_ACTION = AccidentalAction.createDoubleFlatAction(mainFrame);
+        NATURAL_FLAT_ACTION = AccidentalAction.createNaturalFlatAction(mainFrame);
+        NATURAL_ACTION = AccidentalAction.createNaturalAction(mainFrame);
+        SHARP_ACTION = AccidentalAction.createSharpAction(mainFrame);
+        DOUBLE_SHARP_ACTION = AccidentalAction.createDoubleSharpAction(mainFrame);
+        NATURAL_SHARP_ACTION = AccidentalAction.createNaturalSharpAction(mainFrame);
+        ACCIDENTAL_IN_PARENS_ACTION = AccidentalInParensAction.createAction(mainFrame);
+        ACCIDENTAL_ACTION_GROUP = new ActionGroup<>(
             FLAT_ACTION,
             DOUBLE_FLAT_ACTION,
             NATURAL_FLAT_ACTION,
@@ -194,93 +275,51 @@ public final class Actions {
             NATURAL_SHARP_ACTION
         );
 
-    public static final ElementTypeAction[] REPEAT_ACTIONS = new ElementTypeAction[]{
-        ElementTypeAction.createLeftRepeatAction(MAIN_FRAME),
-        ElementTypeAction.createRightRepeatAction(MAIN_FRAME),
-        ElementTypeAction.createLeftRightRepeatAction(MAIN_FRAME),
-    };
+        REPEAT_ACTIONS = new ElementTypeAction[]{
+            ElementTypeAction.createLeftRepeatAction(mainFrame),
+            ElementTypeAction.createRightRepeatAction(mainFrame),
+            ElementTypeAction.createLeftRightRepeatAction(mainFrame),
+        };
+        BARLINE_ACTIONS = new ElementTypeAction[]{
+            ElementTypeAction.createDoubleBarlineAction(mainFrame),
+            ElementTypeAction.createSingleBarlineAction(mainFrame),
+        };
+        BREATH_MARK_ACTION = ElementTypeAction.createBreathMarkAction(mainFrame);
+        NON_DURATION_ACTION_GROUP = new NonDurationActionGroup();
 
-    public static final ElementTypeAction[] BARLINE_ACTIONS = new ElementTypeAction[]{
-        ElementTypeAction.createDoubleBarlineAction(MAIN_FRAME),
-        ElementTypeAction.createSingleBarlineAction(MAIN_FRAME),
-    };
+        MAKE_ENDING_ACTION = new FirstSecondEndingAction(mainFrame);
+        ACCENT_ACTION = ForceArticulationAction.createAccentAction(mainFrame);
+        STACCATO_ACTION = DurationArticulationAction.createStaccatoAction(mainFrame);
+        ARTICULATION_ACTION_GROUP = new ActionGroup<>(STACCATO_ACTION);
 
-    public static final ElementTypeAction BREATH_MARK_ACTION =
-        ElementTypeAction.createBreathMarkAction(MAIN_FRAME);
+        TOGGLE_BEAM_ACTION = ToggleNotationAction.createBeamAction(mainFrame);
+        TOGGLE_TIE_ACTION = ToggleNotationAction.createTieAction(mainFrame);
 
-    public static final ActionGroup<ElementTypeAction> NON_DURATION_ACTION_GROUP =
-        new NonDurationActionGroup();
-
-    public static final FirstSecondEndingAction MAKE_ENDING_ACTION =
-        new FirstSecondEndingAction(MAIN_FRAME);
-
-    public static final ForceArticulationAction ACCENT_ACTION =
-        ForceArticulationAction.createAccentAction(MAIN_FRAME);
-
-    public static final DurationArticulationAction STACCATO_ACTION =
-        DurationArticulationAction.createStaccatoAction(MAIN_FRAME);
-
-    public static final ActionGroup<
-        DurationArticulationAction
-        > ARTICULATION_ACTION_GROUP = new ActionGroup<>(
-        STACCATO_ACTION
-    );
-
-    public static final ToggleNotationAction TOGGLE_BEAM_ACTION =
-        ToggleNotationAction.createBeamAction(MAIN_FRAME);
-
-    public static final ToggleNotationAction TOGGLE_TIE_ACTION =
-        ToggleNotationAction.createTieAction(MAIN_FRAME);
-
-    public static final List<TupletAction> TOGGLE_TUPLET_ACTIONS =
-        List.of(
-            TupletAction.createDupletAction(MAIN_FRAME),
-            TupletAction.createTripletAction(MAIN_FRAME),
-            TupletAction.createQuadrupletAction(MAIN_FRAME),
-            TupletAction.createQuintupletAction(MAIN_FRAME),
-            TupletAction.createSextupletAction(MAIN_FRAME),
-            TupletAction.createSeptupletAction(MAIN_FRAME)
+        TOGGLE_TUPLET_ACTIONS = List.of(
+            TupletAction.createDupletAction(mainFrame),
+            TupletAction.createTripletAction(mainFrame),
+            TupletAction.createQuadrupletAction(mainFrame),
+            TupletAction.createQuintupletAction(mainFrame),
+            TupletAction.createSextupletAction(mainFrame),
+            TupletAction.createSeptupletAction(mainFrame)
         );
+        REMOVE_TUPLET_ACTION = TupletAction.createRemoveAction(mainFrame);
 
-    public static final TupletAction REMOVE_TUPLET_ACTION =
-        TupletAction.createRemoveAction(MAIN_FRAME);
+        FLIP_STEM_DIRECTION_ACTION = FlipStemDirectionAction.createAction(mainFrame);
+        EDIT_LYRIC_ACTION = EditLyricAction.createAction(mainFrame);
+        TOGGLE_TRILL_ACTION = ToggleTrillAction.createAction(mainFrame);
 
-    public static final FlipStemDirectionAction FLIP_STEM_DIRECTION_ACTION =
-        FlipStemDirectionAction.createAction(MAIN_FRAME);
+        ADD_CRESCENDO_ACTION = AddDynamicsAction.createCrescendoAction(mainFrame);
+        ADD_DIMINUENDO_ACTION = AddDynamicsAction.createDiminuendoAction(mainFrame);
+        REMOVE_DYNAMICS_ACTION = RemoveDynamicsAction.createAction(mainFrame);
 
-    public static final EditLyricAction EDIT_LYRIC_ACTION = EditLyricAction.createAction(MAIN_FRAME);
-
-    public static final ToggleTrillAction TOGGLE_TRILL_ACTION = ToggleTrillAction.createAction(MAIN_FRAME);
-
-    public static final AddDynamicsAction ADD_CRESCENDO_ACTION =
-        AddDynamicsAction.createCrescendoAction(MAIN_FRAME);
-
-    public static final AddDynamicsAction ADD_DIMINUENDO_ACTION =
-        AddDynamicsAction.createDiminuendoAction(MAIN_FRAME);
-
-    public static final RemoveDynamicsAction REMOVE_DYNAMICS_ACTION =
-        RemoveDynamicsAction.createAction(MAIN_FRAME);
-
-    public static final DynamicMarkingAction DYNAMIC_PP_ACTION =
-        DynamicMarkingAction.createPianissimoAction(MAIN_FRAME);
-
-    public static final DynamicMarkingAction DYNAMIC_P_ACTION =
-        DynamicMarkingAction.createPianoAction(MAIN_FRAME);
-
-    public static final DynamicMarkingAction DYNAMIC_MP_ACTION =
-        DynamicMarkingAction.createMezzoPianoAction(MAIN_FRAME);
-
-    public static final DynamicMarkingAction DYNAMIC_MF_ACTION =
-        DynamicMarkingAction.createMezzoForteAction(MAIN_FRAME);
-
-    public static final DynamicMarkingAction DYNAMIC_F_ACTION =
-        DynamicMarkingAction.createForteAction(MAIN_FRAME);
-
-    public static final DynamicMarkingAction DYNAMIC_FF_ACTION =
-        DynamicMarkingAction.createFortissimoAction(MAIN_FRAME);
-
-    public static final ActionGroup<DynamicMarkingAction> DYNAMIC_MARKING_ACTION_GROUP =
-        new ActionGroup<>(
+        DYNAMIC_PP_ACTION = DynamicMarkingAction.createPianissimoAction(mainFrame);
+        DYNAMIC_P_ACTION = DynamicMarkingAction.createPianoAction(mainFrame);
+        DYNAMIC_MP_ACTION = DynamicMarkingAction.createMezzoPianoAction(mainFrame);
+        DYNAMIC_MF_ACTION = DynamicMarkingAction.createMezzoForteAction(mainFrame);
+        DYNAMIC_F_ACTION = DynamicMarkingAction.createForteAction(mainFrame);
+        DYNAMIC_FF_ACTION = DynamicMarkingAction.createFortissimoAction(mainFrame);
+        DYNAMIC_MARKING_ACTION_GROUP = new ActionGroup<>(
             DYNAMIC_PP_ACTION,
             DYNAMIC_P_ACTION,
             DYNAMIC_MP_ACTION,
@@ -289,59 +328,54 @@ public final class Actions {
             DYNAMIC_FF_ACTION
         );
 
-    public static final TempoChangeAction TEMPO_CHANGE_ACTION =
-        TempoChangeAction.createAction(MAIN_FRAME);
+        TEMPO_CHANGE_ACTION = TempoChangeAction.createAction(mainFrame);
+        BEAT_CHANGE_ACTION = BeatChangeAction.createAction(mainFrame);
+        ANNOTATION_ACTION = AnnotationAction.createAction(mainFrame);
+        KEY_SIGNATURE_CHANGE_ACTION = KeySignatureChangeAction.createAction(mainFrame);
+        STAFF_ANNOTATION_ACTIONS = List.of(
+            TEMPO_CHANGE_ACTION,
+            BEAT_CHANGE_ACTION,
+            ANNOTATION_ACTION,
+            KEY_SIGNATURE_CHANGE_ACTION
+        );
 
-    public static final BeatChangeAction BEAT_CHANGE_ACTION =
-        BeatChangeAction.createAction(MAIN_FRAME);
+        FERMATA_ACTION = FermataAction.createAction(mainFrame);
+        PREFERENCES_ACTION = new PreferencesOpenAction(mainFrame);
+        SONG_SETTINGS_ACTION = new DialogOpenAction<>(
+            mainFrame,
+            Strings.get(Strings.ACTION_SONG_SETTINGS),
+            KeyEvent.VK_G,
+            MENU_SHORTCUT_MASK,
+            SongSettingsDialog::new,
+            Flag.DISABLE_WHEN_PLAYING
+        );
+        ABOUT_ACTION = new AboutOpenAction(mainFrame);
+        PRINT_ACTION = PrintAction.createAction(mainFrame);
+        QUIT_ACTION = QuitAction.createAction(mainFrame);
 
-    public static final AnnotationAction ANNOTATION_ACTION =
-        AnnotationAction.createAction(MAIN_FRAME);
+        CUT_ACTION = CutAction.createAction(mainFrame);
+        COPY_ACTION = CopyAction.createAction(mainFrame);
+        PASTE_ACTION = PasteAction.createAction(mainFrame);
+        DELETE_ACTION = DeleteAction.createAction(mainFrame);
+        SELECT_LINE_ACTION = SelectLineAction.createAction(mainFrame);
+        DESELECT_ACTION = DeselectAction.createAction(mainFrame);
 
-    public static final KeySignatureChangeAction KEY_SIGNATURE_CHANGE_ACTION =
-        KeySignatureChangeAction.createAction(MAIN_FRAME);
+        // Invalidate the cached reflection list so it is rebuilt with the new instances.
+        appMenuActions = null;
+    }
 
-    public static final List<UIAction> STAFF_ANNOTATION_ACTIONS = List.of(
-        TEMPO_CHANGE_ACTION,
-        BEAT_CHANGE_ACTION,
-        ANNOTATION_ACTION,
-        KEY_SIGNATURE_CHANGE_ACTION
-    );
-
-    public static final FermataAction FERMATA_ACTION =
-        FermataAction.createAction(MAIN_FRAME);
-
-    public static final PreferencesOpenAction PREFERENCES_ACTION = new PreferencesOpenAction(MAIN_FRAME);
-
-    public static final DialogOpenAction<
-        SongSettingsDialog
-        > SONG_SETTINGS_ACTION = new DialogOpenAction<>(
-        MAIN_FRAME,
-        Strings.get(Strings.ACTION_SONG_SETTINGS),
-        KeyEvent.VK_G,
-        MENU_SHORTCUT_MASK,
-        SongSettingsDialog.class,
-        Flag.DISABLE_WHEN_PLAYING
-    );
-
-    public static final AboutOpenAction ABOUT_ACTION = new AboutOpenAction(MAIN_FRAME);
-
-    public static final PrintAction PRINT_ACTION = PrintAction.createAction(MAIN_FRAME);
-    public static final QuitAction QUIT_ACTION = QuitAction.createAction(MAIN_FRAME);
-
-    public static final CutAction CUT_ACTION = CutAction.createAction(MAIN_FRAME);
-    public static final CopyAction COPY_ACTION = CopyAction.createAction(MAIN_FRAME);
-    public static final PasteAction PASTE_ACTION = PasteAction.createAction(MAIN_FRAME);
-    public static final DeleteAction DELETE_ACTION = DeleteAction.createAction(MAIN_FRAME);
-    public static final SelectLineAction SELECT_LINE_ACTION = SelectLineAction.createAction(MAIN_FRAME);
-    public static final DeselectAction DESELECT_ACTION = DeselectAction.createAction(MAIN_FRAME);
-
-    // Strong reference prevents GC (mbassy uses weak references)
-    private static final ResetHandler RESET_HANDLER = new ResetHandler();
-
-    static {
-        DURATION_ACTION_GROUP.setDefaultAction(QUARTER_NOTE_ACTION);
-        MessageCenter.subscribe(RESET_HANDLER);
+    /**
+     * Resets the injected {@link MainFrame} (and the derived app-menu cache) to {@code null}
+     * so a test that reads a constant without first calling {@link #initialize} observes a
+     * cleared owner rather than a prior test's mock. The action constants themselves are
+     * {@code @NonNull} (NullAway), so they are not nulled here; every test re-populates them
+     * via {@link #initialize} in setup.
+     *
+     * <p>Call from {@code @AfterEach} in test base classes that own the mock lifecycle.
+     */
+    public static void resetForTest() {
+        mainFrame = null;
+        appMenuActions = null;
     }
 
     private static void resetToDefaults() {
@@ -369,8 +403,8 @@ public final class Actions {
 
     /**
      * Returns all actions that implement {@link AppMenuAction}, discovered
-     * via reflection over the {@code public static final} fields of this class.
-     * The result is cached after the first call.
+     * via reflection over the {@code public static} fields of this class.
+     * The result is cached after the first call and invalidated by {@link #initialize}.
      */
     public static List<AppMenuAction> getAppMenuActions() {
         if (appMenuActions != null) {
@@ -378,7 +412,7 @@ public final class Actions {
         }
 
         var result = new ArrayList<AppMenuAction>();
-        var requiredModifiers = Modifier.PUBLIC | Modifier.STATIC | Modifier.FINAL;
+        var requiredModifiers = Modifier.PUBLIC | Modifier.STATIC;
 
         for (var field : Actions.class.getDeclaredFields()) {
             if ((field.getModifiers() & requiredModifiers) != requiredModifiers) {
@@ -396,6 +430,46 @@ public final class Actions {
 
         appMenuActions = Collections.unmodifiableList(result);
         return appMenuActions;
+    }
+
+    /**
+     * Unsubscribes every action constant from the message bus.
+     *
+     * <p>Test-support only. Because {@link #initialize} reassigns the constants on every
+     * call (once per test), the previous test's action objects would otherwise linger as
+     * weakly-held zombie subscribers and fire their {@code @Handler} logic against a stale
+     * mock the next time a message is posted — surfacing as a spurious
+     * {@code RuntimeError} during an unrelated test. Call from {@code @AfterEach} in test
+     * base classes that own the mock lifecycle, before the next test re-initializes.
+     */
+    public static void unsubscribeForTest() {
+        var requiredModifiers = Modifier.PUBLIC | Modifier.STATIC;
+
+        for (var field : Actions.class.getDeclaredFields()) {
+            if ((field.getModifiers() & requiredModifiers) != requiredModifiers) {
+                continue;
+            }
+
+            try {
+                unsubscribeValue(field.get(null));
+            } catch (IllegalAccessException e) {
+                LOG.warn("Cannot access field '{}'", field.getName(), e);
+            }
+        }
+    }
+
+    private static void unsubscribeValue(@Nullable Object value) {
+        if (value instanceof UIAction action) {
+            MessageCenter.unsubscribe(action);
+        } else if (value instanceof Iterable<?> items) {
+            for (var item : items) {
+                unsubscribeValue(item);
+            }
+        } else if (value instanceof Object[] array) {
+            for (var item : array) {
+                unsubscribeValue(item);
+            }
+        }
     }
 
     private Actions() {

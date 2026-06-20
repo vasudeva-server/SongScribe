@@ -20,20 +20,25 @@
 
 package songscribe.ui.action;
 
+import java.util.ArrayList;
+
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.BaseDialog;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.mockito.Mockito.mock;
 
 class DialogOpenActionTest extends MainFrameMockTest {
 
-    // Minimal concrete BaseDialog for testing the happy-path getDialog() caching
+    // Minimal concrete BaseDialog for testing the happy-path getDialog() caching.
     static class StubDialog extends BaseDialog {
-        public StubDialog() {
-            super("Stub");
+
+        public StubDialog(MainFrame mainFrame) {
+            super(mainFrame, "Stub");
         }
     }
 
@@ -41,7 +46,7 @@ class DialogOpenActionTest extends MainFrameMockTest {
 
     @Test
     void testConstructorDerivesActionCommandFromName() {
-        var action = new DialogOpenAction<>(mainFrame(), "Song Settings", BaseDialog.class);
+        var action = new DialogOpenAction<>(mainFrame(), "Song Settings", frame -> new StubDialog(frame));
         assertThat(action.getActionCommand()).isEqualTo("song-settings");
     }
 
@@ -49,7 +54,7 @@ class DialogOpenActionTest extends MainFrameMockTest {
 
     @Test
     void testGetDialogLazyInitializesAndCachesInstance() {
-        var action = new DialogOpenAction<>(mainFrame(), "Stub", StubDialog.class);
+        var action = new DialogOpenAction<>(mainFrame(), "Stub", StubDialog::new);
 
         var first = action.getDialog();
         var second = action.getDialog();
@@ -60,10 +65,29 @@ class DialogOpenActionTest extends MainFrameMockTest {
         );
     }
 
+    // Decision 10A: getDialog() builds the dialog via the INJECTED MainFrame (not getInstance()),
+    // and the factory receives exactly the frame that was passed to DialogOpenAction's constructor.
+
     @Test
-    void testGetDialogReturnsNullWhenDialogClassHasNoNoArgConstructor() {
-        // BaseDialog has no no-arg constructor; getConstructor() throws NoSuchMethodException
-        var action = new DialogOpenAction<>(mainFrame(), "Test", BaseDialog.class);
-        assertThat(action.getDialog()).isNull();
+    void testGetDialogBuildsViaInjectedMainFrameNotGetInstance() {
+        // Capture the MainFrame the factory receives — it must be the injected frame,
+        // not whatever MainFrame.getInstance() might return.
+        var capturedFrames = new ArrayList<MainFrame>();
+        var injectedFrame = mainFrame();
+
+        var action = new DialogOpenAction<BaseDialog>(injectedFrame, "Stub", frame -> {
+            capturedFrames.add(frame);
+            return new StubDialog(frame);
+        });
+
+        var dialog = action.getDialog();
+
+        assertAll(
+            () -> assertThat(capturedFrames).as("factory called exactly once").hasSize(1),
+            () -> assertThat(capturedFrames.get(0))
+                .as("factory receives the injected MainFrame, not a different frame")
+                .isSameAs(injectedFrame),
+            () -> assertThat(dialog).as("dialog is non-null").isNotNull()
+        );
     }
 }

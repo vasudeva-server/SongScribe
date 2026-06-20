@@ -35,6 +35,7 @@ import org.mockito.Mockito;
 
 import songscribe.MainFrameMockTest;
 import songscribe.prefs.Prefs;
+import songscribe.ui.component.MainFrame;
 import songscribe.prefs.PrefsKey;
 import songscribe.util.UIUtils;
 
@@ -78,7 +79,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
     @Test
     void testFirstOpenUsesDefaultPosition() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
-            new TestDialog().setVisible(true);
+            new TestDialog(mainFrame()).setVisible(true);
 
             uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
         }
@@ -87,11 +88,11 @@ class BaseDialogPositionTest extends MainFrameMockTest {
     @Test
     void testSecondOpenRestoresSavedLocation() {
         try (var construction = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
-            var first = new TestDialog();
+            var first = new TestDialog(mainFrame());
             first.setVisible(true);
             first.setVisible(false);
 
-            new TestDialog().setVisible(true);
+            new TestDialog(mainFrame()).setVisible(true);
 
             // positionDialog must only have been called for the first open
             uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
@@ -106,10 +107,10 @@ class BaseDialogPositionTest extends MainFrameMockTest {
     void testPositionNotRestoredIfNeverClosed() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
             // Open first instance but never close it — nothing is saved
-            new TestDialog().setVisible(true);
+            new TestDialog(mainFrame()).setVisible(true);
 
             // Open a second instance; no saved position exists, so default positioning applies
-            new TestDialog().setVisible(true);
+            new TestDialog(mainFrame()).setVisible(true);
 
             uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()), Mockito.times(2));
         }
@@ -125,17 +126,17 @@ class BaseDialogPositionTest extends MainFrameMockTest {
         try (var construction = mockConstruction(JDialog.class, (d, ctx) ->
             configureMockDialog(d, counter.getAndIncrement() % 2 == 0 ? DIALOG_POSITION : DIALOG2_POSITION)
         )) {
-            var dialog1 = new TestDialog();
+            var dialog1 = new TestDialog(mainFrame());
             dialog1.setVisible(true);
             dialog1.setVisible(false);
 
-            var dialog2 = new TestDialog2();
+            var dialog2 = new TestDialog2(mainFrame());
             dialog2.setVisible(true);
             dialog2.setVisible(false);
 
             // Open fresh instances — each should restore its own class's saved position
-            new TestDialog().setVisible(true);
-            new TestDialog2().setVisible(true);
+            new TestDialog(mainFrame()).setVisible(true);
+            new TestDialog2(mainFrame()).setVisible(true);
 
             // positionDialog called only for the two first opens
             uiUtilsMock.verify(
@@ -160,22 +161,22 @@ class BaseDialogPositionTest extends MainFrameMockTest {
 
     private static class TestDialog extends BaseDialog {
 
-        TestDialog() {
-            super("Test Dialog", false);
+        TestDialog(MainFrame mainFrame) {
+            super(mainFrame, "Test Dialog", false);
         }
     }
 
     private static class TestDialog2 extends BaseDialog {
 
-        TestDialog2() {
-            super("Test Dialog 2", false);
+        TestDialog2(MainFrame mainFrame) {
+            super(mainFrame, "Test Dialog 2", false);
         }
     }
 
     private static class TestResizableDialog extends BaseDialog {
 
-        TestResizableDialog() {
-            super("Test Resizable Dialog", false);
+        TestResizableDialog(MainFrame mainFrame) {
+            super(mainFrame, "Test Resizable Dialog", false);
         }
 
         @Override
@@ -200,7 +201,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
         @Test
         void testPersistOnCloseNonResizable() {
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
-                var dialog = new TestDialog();
+                var dialog = new TestDialog(mainFrame());
                 dialog.setVisible(true);
                 dialog.setVisible(false);
 
@@ -216,7 +217,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
         @Test
         void testPersistOnCloseResizable() {
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
-                var dialog = new TestResizableDialog();
+                var dialog = new TestResizableDialog(mainFrame());
                 dialog.setVisible(true);
                 dialog.setVisible(false);
 
@@ -234,7 +235,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
             );
 
             try (var construction = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
-                new TestDialog().setVisible(true);
+                new TestDialog(mainFrame()).setVisible(true);
 
                 // Should not call positionDialog since prefs had geometry
                 uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()), never());
@@ -250,7 +251,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
             prefsMock.when(() -> Prefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(Collections.emptyMap());
 
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
-                new TestDialog().setVisible(true);
+                new TestDialog(mainFrame()).setVisible(true);
 
                 uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
             }
@@ -264,7 +265,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
             );
 
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
-                new TestDialog().setVisible(true);
+                new TestDialog(mainFrame()).setVisible(true);
 
                 uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
             }
@@ -278,7 +279,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
             );
 
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
-                new TestDialog().setVisible(true);
+                new TestDialog(mainFrame()).setVisible(true);
 
                 uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
             }
@@ -300,7 +301,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
             );
 
             try (var construction = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, restoredLocation))) {
-                new TestResizableDialog().setVisible(true);
+                new TestResizableDialog(mainFrame()).setVisible(true);
 
                 // setBounds must be called (not setLocation) with floor'd dimensions
                 var dialog = construction.constructed().getFirst();
@@ -331,7 +332,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
             );
 
             try (var construction = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, restoredLocation))) {
-                new TestResizableDialog().setVisible(true);
+                new TestResizableDialog(mainFrame()).setVisible(true);
 
                 var dialog = construction.constructed().getFirst();
                 verify(dialog).setBounds(any(Rectangle.class));

@@ -61,7 +61,7 @@ class FontDialogTest extends MainFrameMockTest {
         BaseDialogTestHelper.configureMockFrame(mainFrame());
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedGeometry();
-        dialog = new FontDialog(new Font(Font.SANS_SERIF, Font.PLAIN, INITIAL_FONT_SIZE));
+        dialog = new FontDialog(mainFrame(), new Font(Font.SANS_SERIF, Font.PLAIN, INITIAL_FONT_SIZE));
     }
 
     @AfterEach
@@ -111,10 +111,7 @@ class FontDialogTest extends MainFrameMockTest {
         // retains its initial value.
         try (var ignored = mockConstruction(JDialog.class,
                 (d, ctx) -> BaseDialogTestHelper.configureMockDialog(d, new Point(0, 0)))) {
-            var mockComponent = new java.awt.Label();
-            mockComponent.setFont(initialFont);
-
-            var returned = FontDialog.showDialog(mockComponent);
+            var returned = FontDialog.showDialog(mainFrame(), initialFont);
 
             assertThat(returned)
                 .as("showDialog returns the initial font unchanged when dialog is not confirmed")

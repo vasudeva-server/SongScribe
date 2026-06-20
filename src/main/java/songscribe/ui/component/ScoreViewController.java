@@ -500,7 +500,7 @@ public final class ScoreViewController {
             var end = state.getSelectionEnd();
 
             if (line.hasEndingInvalidatedByDeletion(line.getElements(begin, end))) {
-                if (!EndingConfirms.confirmInvalidation()) {
+                if (!EndingConfirms.confirmInvalidation(score)) {
                     return;
                 }
             }

@@ -26,14 +26,15 @@ import java.io.IOException;
 import songscribe.Strings;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
 
 public class HTMLDialog extends StandardDialog {
 
     private final JEditorPane editorPane;
 
-    public HTMLDialog(String title) {
-        super(title, false, DialogCategory.INFORMATIONAL);
+    public HTMLDialog(MainFrame mainFrame, String title) {
+        super(mainFrame, title, false, DialogCategory.INFORMATIONAL);
         editorPane = new JEditorPane();
         editorPane.setEditable(false);
         editorPane.setBackground(contentPanel.getBackground());
@@ -45,8 +46,8 @@ public class HTMLDialog extends StandardDialog {
         contentPanel.add(BorderLayout.CENTER, editorScrollPane);
     }
 
-    public HTMLDialog(String dialogTitle, String htmlPage) {
-        this(dialogTitle);
+    public HTMLDialog(MainFrame mainFrame, String dialogTitle, String htmlPage) {
+        this(mainFrame, dialogTitle);
         setPage(htmlPage);
     }
 

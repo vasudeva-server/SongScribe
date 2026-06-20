@@ -31,7 +31,7 @@ public class AboutOpenAction
     private static final String NATIVE_MENU_TITLE = "About";
 
     public AboutOpenAction(MainFrame mainFrame) {
-        super(mainFrame, Strings.get(Strings.ACTION_ABOUT), AboutDialog.class);
+        super(mainFrame, Strings.get(Strings.ACTION_ABOUT), AboutDialog::new);
     }
 
     @Override

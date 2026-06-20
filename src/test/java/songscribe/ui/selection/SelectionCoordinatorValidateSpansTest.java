@@ -125,7 +125,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 1);
-        coordinator.applyActionToSelection(SIXTEENTH_ACTION, true);
+        coordinator.applyActionToSelection(SIXTEENTH_ACTION, true, null);
 
         assertThat(mutationsOfType(BeamingRemoval.class)).isEmpty();
         assertThat(mutationsOfType(BeamingAddition.class)).isEmpty();
@@ -147,7 +147,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
@@ -175,7 +175,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 2);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
@@ -205,7 +205,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 2);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
@@ -231,7 +231,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
@@ -268,7 +268,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectRange(coordinator, 0, 4);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
         var removals = mutationsOfType(TupletRemoval.class);
         assertThat(removals).hasSize(2);
@@ -293,7 +293,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
         assertThat(mutationsOfType(TupletRemoval.class)).isEmpty();
     }
@@ -317,7 +317,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 1);
-        coordinator.applyActionToSelection(dotAction, true);
+        coordinator.applyActionToSelection(dotAction, true, null);
 
         var removals = mutationsOfType(TupletRemoval.class);
         assertThat(removals).hasSize(1);

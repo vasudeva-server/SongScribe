@@ -23,6 +23,8 @@ import module java.desktop;
 
 import java.util.prefs.Preferences;
 
+import songscribe.ui.component.MainFrame;
+
 public class DoNotShowMessage extends StandardDialog {
 
     final JCheckBox dontShowCheck = new JCheckBox(
@@ -31,11 +33,12 @@ public class DoNotShowMessage extends StandardDialog {
     private final String propName;
 
     public DoNotShowMessage(
+        MainFrame mainFrame,
         String title,
         String info,
         String propName
     ) {
-        super(title, true, DialogCategory.INFORMATIONAL);
+        super(mainFrame, title, true, DialogCategory.INFORMATIONAL);
         this.propName = propName;
         contentPanel.add(BorderLayout.NORTH, new JLabel(info));
         contentPanel.add(BorderLayout.CENTER, dontShowCheck);

@@ -329,10 +329,10 @@ public class MenuController {
         // TODO: Help needs updating for the new app
         var menu = new JMenu(Strings.get(Strings.MENU_HELP));
         menu.add(
-            new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_TUTORIAL), TutorialDialog.class)
+            new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_TUTORIAL), TutorialDialog::new)
         );
         menu.add(new TipAction(mainFrame));
-        menu.add(new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_KEYMAP), KeyMapDialog.class));
+        menu.add(new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_KEYMAP), KeyMapDialog::new));
 
         menu.addSeparator();
 
@@ -341,14 +341,14 @@ public class MenuController {
     }
 
     protected void addCommonHelpItems(JMenu menu) {
-        menu.add(new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_REPORT_BUG), ReportBugDialog.class));
+        menu.add(new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_REPORT_BUG), ReportBugDialog::new));
 
         if (new File(WhatsNewDialog.WHATS_NEW_FILE).exists()) {
             menu.add(
                 new DialogOpenAction<>(
                     mainFrame,
                     Strings.get(Strings.ACTION_HELP_WHATS_NEW, Version.PUBLIC_VERSION),
-                    WhatsNewDialog.class
+                    WhatsNewDialog::new
                 )
             );
         }

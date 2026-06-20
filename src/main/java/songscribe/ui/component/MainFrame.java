@@ -186,7 +186,7 @@ public class MainFrame extends JFrame implements Printable {
                     PrefsKey.LAST_SEEN_WHATS_NEW_VERSION,
                     Version.PUBLIC_VERSION
                 );
-                new WhatsNewDialog().setVisible(true);
+                new WhatsNewDialog(instance).setVisible(true);
             }
 
             if (args.length == 0) {
@@ -269,6 +269,15 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     public void initFrame() {
+        // Initialize action constants before anything else in this method uses them.
+        //
+        // Startup sequence:
+        //   MainFrame.getInstance()        — constructs the singleton via InstanceHolder
+        //     └─► MainFrame.initFrame()    — wires the UI; called from main()
+        //           └─► Actions.initialize(this)  — populates all Actions.* constants
+        //                 └─► first constant use  — Actions.CONTROL_ACTION_GROUP.selectNext()
+        Actions.initialize(this);
+        PlaybackController.initialize(this);
 
         setTitle(appName);
         setAppIcon();

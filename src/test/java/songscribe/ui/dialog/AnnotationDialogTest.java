@@ -56,7 +56,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
         BaseDialogTestHelper.configureMockFrame(mainFrame());
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedGeometry();
-        dialog = new AnnotationDialog();
+        dialog = new AnnotationDialog(mainFrame());
     }
 
     @AfterEach

@@ -327,7 +327,7 @@ class ScoreViewControllerTest extends UnitTest {
             );
 
             try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
-                endingConfirmsMock.when(EndingConfirms::confirmInvalidation).thenReturn(false);
+                endingConfirmsMock.when(() -> EndingConfirms.confirmInvalidation(any())).thenReturn(false);
 
                 controller.handleDelete();
 

@@ -31,7 +31,7 @@ public class PreferencesOpenAction
     private static final String NATIVE_MENU_TITLE = "Settings";
 
     public PreferencesOpenAction(MainFrame mainFrame) {
-        super(mainFrame, Strings.get(Strings.ACTION_SETTINGS), PreferencesDialog.class);
+        super(mainFrame, Strings.get(Strings.ACTION_SETTINGS), PreferencesDialog::new);
     }
 
     @Override

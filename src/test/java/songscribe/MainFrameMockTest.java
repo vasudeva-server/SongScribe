@@ -24,6 +24,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.MockedStatic;
 
+import songscribe.ui.action.Actions;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.component.MainFrame;
 
@@ -36,6 +38,19 @@ import static org.mockito.Mockito.mockStatic;
  * exposes the same mock via {@link #mainFrame()} for constructor injection, so
  * tests have a single, consistent way to obtain a MainFrame regardless of whether
  * the code under test reaches the singleton transitively.
+ *
+ * <p>Also calls {@link Actions#initialize} (and {@link PlaybackController#initialize})
+ * with the mock frame so that the {@code Actions.*} / {@code PlaybackController.*}
+ * constants are populated for each test, and clears the injected frame in teardown
+ * via {@link Actions#resetForTest()}. The constants are {@code @NonNull}, so they are
+ * not nulled individually; the per-test {@code initialize} call in setup guarantees
+ * fresh state.
+ *
+ * <p>The {@code mockStatic(MainFrame.class)} stub is retained even though the four
+ * action/dialog routes were decoupled (#375 follow-up): the deliberately out-of-scope
+ * non-action paths still call {@code MainFrame.getInstance()} — {@code PreviewElementManager}
+ * (preview-element insert/modify mouse handlers) and {@code uiconverter.ConvertAction} —
+ * and subclass tests that reach them rely on the stub returning the mock frame.
  */
 public abstract class MainFrameMockTest extends UnitTest {
 
@@ -46,11 +61,18 @@ public abstract class MainFrameMockTest extends UnitTest {
     void setUpMainFrameMock() {
         mainFrameMock = mockStatic(MainFrame.class);
         env = MockEnvHelper.setupMockEnv(mainFrameMock);
+        Actions.initialize(env.frame());
+        PlaybackController.initialize(env.frame());
     }
 
     @AfterEach
     void tearDownMainFrameMock() {
+        // Unsubscribe this test's action objects so they don't linger as zombie bus
+        // subscribers once the next test's initialize() reassigns the constants.
+        Actions.unsubscribeForTest();
+        PlaybackController.unsubscribeForTest();
         mainFrameMock.close();
+        Actions.resetForTest();
     }
 
     /** The injected mock MainFrame; identical to {@code MainFrame.getInstance()} under the mock. */

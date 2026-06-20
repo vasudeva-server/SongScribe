@@ -38,4 +38,8 @@ public final class MessageCenter {
     public static void subscribe(Object listener) {
         eventBus.subscribe(listener);
     }
+
+    public static void unsubscribe(Object listener) {
+        eventBus.unsubscribe(listener);
+    }
 }

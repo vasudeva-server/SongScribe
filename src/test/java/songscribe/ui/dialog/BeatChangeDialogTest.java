@@ -58,7 +58,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
         BaseDialogTestHelper.configureMockFrame(mainFrame());
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedGeometry();
-        dialog = new BeatChangeDialog();
+        dialog = new BeatChangeDialog(mainFrame());
     }
 
     @AfterEach

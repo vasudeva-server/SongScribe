@@ -399,30 +399,29 @@ class GraceModeManagerTest extends UnitTest {
         private MockedStatic<MessageCenter> messageCenterMock;
         // EditModeManager.getPreviewElement() is static; must mock statically for all paths.
         private MockedStatic<EditModeManager> editModeManagerMock;
-        // enterGraceNote triggers Actions.DURATION_ACTION_GROUP.select() → applyToSelectionIfActive()
-        // which calls MainFrame.getInstance().requireScoreView(). Mock the singleton chain.
-        private MockedStatic<MainFrame> mainFrameMock;
 
         @BeforeEach
         void setUp() {
             messageCenterMock = mockStatic(MessageCenter.class);
             editModeManagerMock = mockStatic(EditModeManager.class);
-            mainFrameMock = mockStatic(MainFrame.class);
+            // enterGraceNote triggers Actions.DURATION_ACTION_GROUP.select() →
+            // applyToSelectionIfActive() → mainFrame.requireScoreView(). Actions are
+            // initialized with mockFrame so they call it directly — no static mock needed.
             var mockFrame = mock(MainFrame.class);
             var mockScore = mock(ScoreView.class);
             var mockRootPane = mock(JRootPane.class);
             when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
             when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
             when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            Actions.initialize(mockFrame);
         }
 
         @AfterEach
         void tearDown() {
-            mainFrameMock.close();
+            Actions.resetForTest();
             editModeManagerMock.close();
             messageCenterMock.close();
         }
@@ -943,32 +942,31 @@ class GraceModeManagerTest extends UnitTest {
         private MockedStatic<MessageCenter> messageCenterMock;
         private MockedStatic<EditModeManager> editModeManagerMock;
         private MockedStatic<InsertionSpacingCalculator> calcMock;
-        private MockedStatic<MainFrame> mainFrameMock;
 
         @BeforeEach
         void setUp() {
             messageCenterMock = mockStatic(MessageCenter.class);
             editModeManagerMock = mockStatic(EditModeManager.class);
             calcMock = mockStatic(InsertionSpacingCalculator.class);
-            mainFrameMock = mockStatic(MainFrame.class);
             var mockFrame = mock(MainFrame.class);
             var mockScore = mock(ScoreView.class);
             var mockRootPane = mock(JRootPane.class);
             when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
             when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
             when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            Actions.initialize(mockFrame);
         }
 
         @AfterEach
         void tearDown() throws Exception {
-            // Drain pending invokeLater tasks (e.g. Actions init) while mock is active,
-            // preventing Actions from initializing with the real MainFrame.
+            // Drain pending invokeLater tasks (finish() posts invokeLater to re-enable
+            // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
+            // live action object rather than null.
             javax.swing.SwingUtilities.invokeAndWait(() -> {});
-            mainFrameMock.close();
+            Actions.resetForTest();
             calcMock.close();
             editModeManagerMock.close();
             messageCenterMock.close();
@@ -1028,30 +1026,29 @@ class GraceModeManagerTest extends UnitTest {
     class FinishCancel {
 
         private MockedStatic<MessageCenter> messageCenterMock;
-        private MockedStatic<MainFrame> mainFrameMock;
 
         @BeforeEach
         void setUp() {
             messageCenterMock = mockStatic(MessageCenter.class);
-            mainFrameMock = mockStatic(MainFrame.class);
             var mockFrame = mock(MainFrame.class);
             var mockScore = mock(ScoreView.class);
             var mockRootPane = mock(JRootPane.class);
             when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
             when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
             when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            Actions.initialize(mockFrame);
         }
 
         @AfterEach
         void tearDown() throws Exception {
-            // Drain pending invokeLater tasks (e.g. Actions init) while mock is active,
-            // preventing Actions from initializing with the real MainFrame.
+            // Drain pending invokeLater tasks (finish() posts invokeLater to re-enable
+            // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
+            // live action object rather than null.
             javax.swing.SwingUtilities.invokeAndWait(() -> {});
-            mainFrameMock.close();
+            Actions.resetForTest();
             messageCenterMock.close();
         }
 
@@ -1106,30 +1103,29 @@ class GraceModeManagerTest extends UnitTest {
     class FinishResetsState {
 
         private MockedStatic<MessageCenter> messageCenterMock;
-        private MockedStatic<MainFrame> mainFrameMock;
 
         @BeforeEach
         void setUp() {
             messageCenterMock = mockStatic(MessageCenter.class);
-            mainFrameMock = mockStatic(MainFrame.class);
             var mockFrame = mock(MainFrame.class);
             var mockScore = mock(ScoreView.class);
             var mockRootPane = mock(JRootPane.class);
             when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
             when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
             when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            Actions.initialize(mockFrame);
         }
 
         @AfterEach
         void tearDown() throws Exception {
-            // Drain pending invokeLater tasks (e.g. Actions init) while mock is active,
-            // preventing Actions from initializing with the real MainFrame.
+            // Drain pending invokeLater tasks (finish() posts invokeLater to re-enable
+            // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
+            // live action object rather than null.
             javax.swing.SwingUtilities.invokeAndWait(() -> {});
-            mainFrameMock.close();
+            Actions.resetForTest();
             messageCenterMock.close();
         }
 
@@ -1320,34 +1316,31 @@ class GraceModeManagerTest extends UnitTest {
         private MockedStatic<MessageCenter> messageCenterMock;
         private MockedStatic<PreviewElementManager> previewMock;
         private MockedStatic<EditModeManager> editModeManagerMock;
-        private MockedStatic<MainFrame> mainFrameMock;
 
         @BeforeEach
         void setUp() {
             messageCenterMock = mockStatic(MessageCenter.class);
             previewMock = mockStatic(PreviewElementManager.class);
             editModeManagerMock = mockStatic(EditModeManager.class);
-            mainFrameMock = mockStatic(MainFrame.class);
             var mockFrame = mock(MainFrame.class);
             var mockScore = mock(ScoreView.class);
             var mockRootPane = mock(JRootPane.class);
             when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
             when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
             when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            Actions.initialize(mockFrame);
         }
 
         @AfterEach
         void tearDown() throws Exception {
-            // Drain any pending invokeLater tasks (e.g., Actions.GRACE_EIGHTH_NOTE_ACTION
-            // initialization triggered by finish()) while the MainFrame mock is still
-            // active. Without this, Actions may initialize with the real MainFrame after
-            // teardown, causing requireScoreView() to throw RuntimeError in later tests.
+            // Drain pending invokeLater tasks (finish() posts invokeLater to re-enable
+            // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
+            // live action object rather than null.
             javax.swing.SwingUtilities.invokeAndWait(() -> {});
-            mainFrameMock.close();
+            Actions.resetForTest();
             editModeManagerMock.close();
             previewMock.close();
             messageCenterMock.close();
@@ -1360,16 +1353,8 @@ class GraceModeManagerTest extends UnitTest {
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
             previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
 
-            // Actions.QUARTER_NOTE_ACTION was constructed during Actions class-load with the
-            // real MainFrame singleton, so its private mainFrame field bypasses the static
-            // mock installed in setUp(). enterGraceNote() selects the crotchet duration via
-            // DURATION_ACTION_GROUP.select(), whose perform() calls requireScoreView() — on the
-            // real frame that resolves to a null scoreView and System.exit()s the test JVM.
-            // Pin the action's frame to the mock for the duration of the call, then restore it
-            // so the shared static action is not left pointing at a closed mock.
-            var originalActionFrame = getField(Actions.QUARTER_NOTE_ACTION, "mainFrame");
-            setField(Actions.QUARTER_NOTE_ACTION, "mainFrame", MainFrame.getInstance());
-
+            // Actions.initialize(mockFrame) was called in setUp, so QUARTER_NOTE_ACTION.mainFrame
+            // already points at the mock. No save/restore needed.
             try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
                 calcMock.when(
                     () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any())
@@ -1383,9 +1368,6 @@ class GraceModeManagerTest extends UnitTest {
 
                 manager.mousePressed(lineComponent, e);
 
-                // Capture ALL MessageCenter.post calls; enterGraceNote may trigger
-                // secondary posts (e.g. DurationWasSelectedNotification from Actions init).
-                // Filter for the GraceModeStateDidChangeNotification.
                 var captor = ArgumentCaptor.forClass(Message.class);
                 messageCenterMock.verify(() -> MessageCenter.post(captor.capture()),
                     org.mockito.Mockito.atLeastOnce());
@@ -1395,8 +1377,6 @@ class GraceModeManagerTest extends UnitTest {
                     .findFirst();
                 assertThat(graceModeNotification).isPresent();
                 assertThat(graceModeNotification.get().isActive()).isTrue();
-            } finally {
-                setField(Actions.QUARTER_NOTE_ACTION, "mainFrame", originalActionFrame);
             }
         }
 
@@ -1434,39 +1414,35 @@ class GraceModeManagerTest extends UnitTest {
         private MockedStatic<MessageCenter> messageCenterMock;
         private MockedStatic<PreviewElementManager> previewMock;
         private MockedStatic<EditModeManager> editModeManagerMock;
-        private MockedStatic<MainFrame> mainFrameMock;
 
         @BeforeEach
         void setUp() {
             messageCenterMock = mockStatic(MessageCenter.class);
             previewMock = mockStatic(PreviewElementManager.class);
             editModeManagerMock = mockStatic(EditModeManager.class);
-            mainFrameMock = mockStatic(MainFrame.class);
             var mockFrame = mock(MainFrame.class);
             var mockScore = mock(ScoreView.class);
             var mockRootPane = mock(JRootPane.class);
             when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
             when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-            mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
             when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            Actions.initialize(mockFrame);
         }
 
         @AfterEach
         void tearDown() throws Exception {
-            // Drain pending invokeLater tasks (e.g. Actions init) while mock is active.
+            // Drain pending invokeLater tasks (finish() posts invokeLater to re-enable
+            // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
+            // live action object rather than null. resetForTest() also prevents action-group
+            // selection state from bleeding into subsequent tests.
             javax.swing.SwingUtilities.invokeAndWait(() -> {});
-            mainFrameMock.close();
+            Actions.resetForTest();
             editModeManagerMock.close();
             previewMock.close();
             messageCenterMock.close();
-            // Restore action selections to avoid bleeding into other tests
-            Actions.DOT_ACTION_GROUP.clearSelection();
-            Actions.ACCIDENTAL_ACTION_GROUP.clearSelection();
-            Actions.ARTICULATION_ACTION_GROUP.clearSelection();
-            Actions.FERMATA_ACTION.setSelected(false);
         }
 
         @Test
@@ -1476,15 +1452,14 @@ class GraceModeManagerTest extends UnitTest {
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
             previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
 
-            // Pre-select a non-quarter duration and embellishments
+            // Pre-select a non-quarter duration and embellishments.
+            // Actions.initialize(mockFrame) was called in setUp, so all actions reference
+            // mockFrame — QUARTER_NOTE_ACTION.perform() calls mockFrame.requireScoreView()
+            // which is already stubbed. No save/restore dance needed.
             Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
             Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
             Actions.FERMATA_ACTION.setSelected(true);
-
-            // Wire QUARTER_NOTE_ACTION to the mock frame so its perform() doesn't blow up
-            var originalActionFrame = getField(Actions.QUARTER_NOTE_ACTION, "mainFrame");
-            setField(Actions.QUARTER_NOTE_ACTION, "mainFrame", MainFrame.getInstance());
 
             try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
                 calcMock.when(
@@ -1498,8 +1473,6 @@ class GraceModeManagerTest extends UnitTest {
                 var e = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 50, 60, MouseEvent.BUTTON1);
 
                 manager.mousePressed(lineComponent, e);
-            } finally {
-                setField(Actions.QUARTER_NOTE_ACTION, "mainFrame", originalActionFrame);
             }
 
             // enterGraceNote must have selected QUARTER_NOTE_ACTION

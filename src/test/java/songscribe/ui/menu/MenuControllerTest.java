@@ -183,16 +183,20 @@ class MenuControllerTest extends UnitTest {
     @Nested
     class WithController {
 
-        private MockedStatic<MainFrame> mainFrameMock;
         private MockedStatic<RecentDocumentsManager> recentManagerMock;
         private MainFrame mockFrame;
         private MenuController controller;
 
         @BeforeEach
         void setUp() {
-            mainFrameMock = mockStatic(MainFrame.class);
-            var env = MockEnvHelper.setupMockEnv(mainFrameMock);
+            // MenuController uses the injected frame directly, not MainFrame.getInstance(),
+            // so no static mock of MainFrame is needed.
+            var env = MockEnvHelper.setupMockEnv();
             mockFrame = env.frame();
+
+            // Initialize Actions with the mock frame so constants are non-null when
+            // MenuController's initFileMenu() accesses Actions.PRINT_ACTION etc.
+            Actions.initialize(mockFrame);
 
             // Default: empty recents so construction initialises cleanly.
             recentManagerMock = mockStatic(RecentDocumentsManager.class);
@@ -204,7 +208,7 @@ class MenuControllerTest extends UnitTest {
         @AfterEach
         void tearDown() {
             recentManagerMock.close();
-            mainFrameMock.close();
+            Actions.resetForTest();
         }
 
         // -------------------------------------------------------------------------

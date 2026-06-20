@@ -92,7 +92,7 @@ public final class ExportImageAction extends UIAction {
             }
 
             if (resolutionDialog == null) {
-                resolutionDialog = new ResolutionDialog();
+                resolutionDialog = new ResolutionDialog(getMainFrame());
             }
 
             resolutionDialog.setVisible(true);

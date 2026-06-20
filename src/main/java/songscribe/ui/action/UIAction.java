@@ -600,7 +600,7 @@ public class UIAction extends AbstractAction {
             return false;
         }
 
-        coordinator.applyActionToSelection(reflectable, reflectable.isSelected());
+        coordinator.applyActionToSelection(reflectable, reflectable.isSelected(), score);
         return true;
     }
 

@@ -120,32 +120,42 @@ observed.
 
 **Depends on:** Shutdown registry shipped (`specs/shutdown-registry.md`).
 
-## Finish decoupling actions from the MainFrame singleton
+## Finish decoupling actions from the MainFrame singleton — RESOLVED (2026-06-19)
 
-**What:** Thread `MainFrame` (or narrower collaborators) through the call sites that
-still reach `MainFrame.getInstance()` *transitively* from action code paths, so
-action-level unit tests no longer need `mockStatic(MainFrame.class)`.
+**Resolved by** `plans/finish-mainframe-decoupling.md`. The four transitive
+`MainFrame.getInstance()` routes reachable from action `doActionPerformed` paths
+were cut:
 
-**Why:** Commit f59f21f3 (#375) injected `MainFrame` into `UIAction` constructors,
-but `getInstance()` is still reached indirectly (e.g. via `doActionPerformed`
-touching the score view / selection coordinator). Evidence (as of 2026-06-19):
-`mockStatic(MainFrame.class)` still appears in 5 test files (10 occurrences) —
-`MainFrameMockTest` (base-class `@BeforeEach`), `SongScribeTest`, `MainFrameTest`,
-`MenuControllerTest`, and `GraceModeManagerTest` (6 of the 10). The constructor
-injection is therefore only a partial decoupling — construction is clean, behavior
-paths are not. Main-source `getInstance()` calls also persist transitively via the
-`BaseDialog` constructor and `EndingConfirms.showEndingConfirm()`.
+- **Route C** — `Actions` no longer resolves `MainFrame.getInstance()` at class
+  load; constants are populated by `Actions.initialize(MainFrame)`, called at the
+  top of `MainFrame.initFrame()`.
+- **Route D** — `PlaybackController` mirrors the same `initialize(MainFrame)`
+  holder pattern.
+- **Route A** — `BaseDialog`/`StandardDialog`/`AttachmentDialog` constructors take
+  a `MainFrame`; `DialogOpenAction` builds via a `Function<MainFrame, T>` factory
+  instead of reflection.
+- **Route B** — `EndingConfirms` takes a `Component parent` instead of fetching the
+  singleton.
 
-**Context:** Start by tracing which collaborators action `doActionPerformed`
-implementations pull from `MainFrame.getInstance()` (score view, selection
-coordinator, controller). These are the same objects `MockEnvHelper.setupMockEnv`
-stubs, so that helper is a map of the transitive surface. Inject those collaborators
-rather than fetching the singleton. Once a code path no longer calls `getInstance()`,
-its test can drop to a plain injected mock (no static mock).
+**Deliberately out of scope (remaining `getInstance()` callers, non-action paths):**
+- `PreviewElementManager` (preview-element insert/modify mouse handlers).
+- `uiconverter.ConvertAction` (standalone converter utility, `extends AbstractAction`).
 
-**Depends on / blocked by:** The centralized `MainFrameMockTest` base class has
-landed (Phase 2 of plans/issue-375-review-followups.md). Larger effort remaining;
-do incrementally, one action family at a time.
+Both pass `MainFrame.getInstance()` at the call site into the new required
+dialog constructors (decision 4A). Because these paths remain, the shared
+`MainFrameMockTest` `mockStatic(MainFrame.class)` is retained (and documented in
+that class); `SongScribeTest` and `MainFrameTest` keep their two legitimate
+bootstrap mocks. Action-level tests no longer require the static mock.
+
+**Note (NullAway deviation from plan decision 3A):** the `Actions.*` /
+`PlaybackController.*` constants are `@NonNull` with class-level
+`@SuppressWarnings("NullAway.Init")`, not `@Nullable`. Making them `@Nullable`
+(as 3A's "null all constants in teardown" implied) would poison ~70 call sites
+under NullAway. Teardown therefore clears only the injected frame holder; the
+per-test `initialize()` call guarantees fresh constants.
+
+See the "Automated guard" TODO below for turning the manual verification greps into
+an enforced test.
 
 ## Undo/redo (#14) must replay the new attribution mutation
 
@@ -199,3 +209,39 @@ elements as appropriate.
 **Depends on / blocked by:** MusicXML export path existing (see the lyrics
 MusicXML TODO above); `AttributionFormatter` + `SongMetadata` shipped by this
 refactor.
+
+## Automated guard: no action path may reach `MainFrame.getInstance()`
+
+**What:** Add a test (ArchUnit-style, or a focused reflection/source scan test)
+that fails the build if any `doActionPerformed` path — directly or transitively
+through `Actions`, `PlaybackController`, `BaseDialog`, or `EndingConfirms` —
+reaches `MainFrame.getInstance()`. The only permitted callers are the
+`MainFrame` definition itself and the deliberately out-of-scope non-action
+click-handler paths.
+
+**Why:** The "finish decoupling actions from the MainFrame singleton" work
+(plan `plans/finish-mainframe-decoupling.md`) enforces this invariant today only
+via two manual `rg` checks in the plan's verification checklist
+(`rg "MainFrame.getInstance\(\)"` and `rg "mockStatic\(MainFrame.class\)"`). A
+manual grep is not run on CI and silently rots: the moment someone reintroduces
+a transitive `getInstance()` in an action path, every unit test still passes
+(they self-inject via `Actions.initialize(mockFrame)`), so the regression is
+invisible until it surfaces as a hard-to-mock test or a startup NPE. An
+automated guard makes the decoupling a permanent, enforced property instead of a
+point-in-time cleanup.
+
+**Context:** The decoupling reduces `mockStatic(MainFrame.class)` to exactly two
+legitimate bootstrap mocks (`SongScribeTest`, `MainFrameTest`); everything else
+was cut by Routes A–D. The guard should encode both invariants: (1) no
+action-reachable `getInstance()`, and (2) no `mockStatic(MainFrame.class)`
+outside the two bootstrap tests. ArchUnit can express (1) as a "no classes in
+`songscribe.ui.action..` should call method `MainFrame.getInstance()`" rule plus
+the transitive-dependency variant; (2) is simpler as a source-scan test over
+`src/test`. Start from the plan's two `rg` patterns — they already define the
+exact allow-list. Check whether the project already has an ArchUnit dependency
+before adding one; if not, a lightweight source-scan unit test may be the
+lower-friction first cut.
+
+**Depends on / blocked by:** Completion of
+`plans/finish-mainframe-decoupling.md` (the invariant must actually hold before a
+guard can be made green).

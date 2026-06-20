@@ -82,16 +82,16 @@ public abstract class BaseDialog {
     @SuppressWarnings("NullAway.Init")
     private JDialog dialog;
 
-    protected BaseDialog(String title) {
-        this(title, true);
+    protected BaseDialog(MainFrame mainFrame, String title) {
+        this(mainFrame, title, true);
     }
 
-    protected BaseDialog(String title, boolean isModal) {
-        this(title, isModal, DialogCategory.OPERATIONAL);
+    protected BaseDialog(MainFrame mainFrame, String title, boolean isModal) {
+        this(mainFrame, title, isModal, DialogCategory.OPERATIONAL);
     }
 
-    protected BaseDialog(String title, boolean isModal, DialogCategory category) {
-        mainFrame = MainFrame.getInstance();
+    protected BaseDialog(MainFrame mainFrame, String title, boolean isModal, DialogCategory category) {
+        this.mainFrame = mainFrame;
         dialogTitle = title;
         this.isModal = isModal;
         this.category = category;

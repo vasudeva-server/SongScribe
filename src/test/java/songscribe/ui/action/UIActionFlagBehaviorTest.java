@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.MainFrameMockTest;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.BaseDialog;
+import songscribe.ui.action.DialogOpenActionTest.StubDialog;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.playback.PlaybackController;
 
@@ -104,7 +105,7 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
     @Test
     void testDialogOpenActionAutoSetsOpensDialogFlag() {
-        var action = new DialogOpenAction<>(mainFrame(), "Test Dialog", BaseDialog.class);
+        var action = new DialogOpenAction<>(mainFrame(), "Test Dialog", StubDialog::new);
 
         assertThat(action.hasFlag(UIAction.Flag.OPENS_DIALOG)).isTrue();
     }

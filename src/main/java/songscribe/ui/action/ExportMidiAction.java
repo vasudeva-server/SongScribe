@@ -53,6 +53,6 @@ public final class ExportMidiAction extends UIAction {
             return;
         }
 
-        new ExportMidiDialog(saveFile).setVisible(true);
+        new ExportMidiDialog(getMainFrame(), saveFile).setVisible(true);
     }
 }

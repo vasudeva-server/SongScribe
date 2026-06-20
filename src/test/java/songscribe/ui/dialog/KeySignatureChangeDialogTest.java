@@ -65,7 +65,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
         BaseDialogTestHelper.configureMockFrame(mainFrame());
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedGeometry();
-        dialog = new KeySignatureChangeDialog();
+        dialog = new KeySignatureChangeDialog(mainFrame());
     }
 
     @AfterEach

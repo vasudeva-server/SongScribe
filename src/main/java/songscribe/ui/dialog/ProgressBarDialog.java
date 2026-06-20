@@ -22,6 +22,7 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 
 public class ProgressBarDialog extends BaseDialog {
 
@@ -30,8 +31,8 @@ public class ProgressBarDialog extends BaseDialog {
 
     private final JProgressBar progressBar = new JProgressBar();
 
-    public ProgressBarDialog(String label, int maximum) {
-        super(Strings.get(Strings.DIALOG_PROGRESS_TITLE), true, DialogCategory.INFORMATIONAL);
+    public ProgressBarDialog(MainFrame mainFrame, String label, int maximum) {
+        super(mainFrame, Strings.get(Strings.DIALOG_PROGRESS_TITLE), true, DialogCategory.INFORMATIONAL);
 
         progressBar.setMaximum(maximum);
 

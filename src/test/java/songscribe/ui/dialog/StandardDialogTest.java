@@ -31,6 +31,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.prefs.Prefs;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.FlatLafKey;
 import songscribe.util.UIUtils;
 
@@ -69,14 +70,14 @@ class StandardDialogTest extends MainFrameMockTest {
 
     @Test
     void testOkClickWhenIsValidDataFalseDoesNotCallSetData() {
-        var dialog = new TrackingDialog(false);
+        var dialog = new TrackingDialog(mainFrame(), false);
         fireOkAction(dialog);
         assertThat(dialog.setDataCallCount).as("setData not called when isValidData returns false").isZero();
     }
 
     @Test
     void testOkClickWhenIsValidDataFalseDoesNotCloseDialog() {
-        var dialog = new TrackingDialog(false);
+        var dialog = new TrackingDialog(mainFrame(), false);
         fireOkAction(dialog);
         assertThat(dialog.closeCallCount).as("setVisible(false) not called when isValidData returns false").isZero();
     }
@@ -85,14 +86,14 @@ class StandardDialogTest extends MainFrameMockTest {
 
     @Test
     void testOkClickWhenIsValidDataTrueCallsSetData() {
-        var dialog = new TrackingDialog(true);
+        var dialog = new TrackingDialog(mainFrame(), true);
         fireOkAction(dialog);
         assertThat(dialog.setDataCallCount).as("setData called when isValidData returns true").isEqualTo(1);
     }
 
     @Test
     void testOkClickWhenIsValidDataTrueClosesDialog() {
-        var dialog = new TrackingDialog(true);
+        var dialog = new TrackingDialog(mainFrame(), true);
         fireOkAction(dialog);
         assertThat(dialog.closeCallCount).as("setVisible(false) called after setData on OK click").isEqualTo(1);
     }
@@ -101,14 +102,14 @@ class StandardDialogTest extends MainFrameMockTest {
 
     @Test
     void testCancelClickDoesNotCallSetData() {
-        var dialog = new TrackingDialog(true);
+        var dialog = new TrackingDialog(mainFrame(), true);
         fireCancelAction(dialog);
         assertThat(dialog.setDataCallCount).as("setData not called on Cancel click").isZero();
     }
 
     @Test
     void testCancelClickClosesDialog() {
-        var dialog = new TrackingDialog(true);
+        var dialog = new TrackingDialog(mainFrame(), true);
         fireCancelAction(dialog);
         assertThat(dialog.closeCallCount).as("setVisible(false) called on Cancel click").isEqualTo(1);
     }
@@ -119,7 +120,7 @@ class StandardDialogTest extends MainFrameMockTest {
     void testModifyButtonPanelCalledOnlyOnFirstShow() {
         try (var ignored = mockConstruction(JDialog.class,
                 (d, ctx) -> BaseDialogTestHelper.configureMockDialog(d, new Point(100, 100)))) {
-            var dialog = new ModifyButtonPanelCountingDialog();
+            var dialog = new ModifyButtonPanelCountingDialog(mainFrame());
             dialog.setVisible(true);
             dialog.setVisible(false);
             dialog.setVisible(true);
@@ -133,7 +134,7 @@ class StandardDialogTest extends MainFrameMockTest {
 
     @Test
     void testIsValidDataTabIterationShortCircuitsOnFirstInvalidTab() {
-        var dialog = new TabbedStandardDialog();
+        var dialog = new TabbedStandardDialog(mainFrame());
         var tab0 = dialog.new ValidationTab(false);
         var tab1 = dialog.new ValidationTab(true);
         dialog.registerTab(tab0);
@@ -150,7 +151,7 @@ class StandardDialogTest extends MainFrameMockTest {
 
     @Test
     void testSetDataIteratesAllRegisteredTabs() {
-        var dialog = new TabbedStandardDialog();
+        var dialog = new TabbedStandardDialog(mainFrame());
         var tab0 = dialog.new ValidationTab(true);
         var tab1 = dialog.new ValidationTab(true);
         dialog.registerTab(tab0);
@@ -167,7 +168,7 @@ class StandardDialogTest extends MainFrameMockTest {
     @Test
     void testRepaintScoreIsNullSafeWhenScoreViewIsNull() {
         when(mainFrame().getScoreView()).thenReturn(null);
-        var dialog = new TrackingDialog(true);
+        var dialog = new TrackingDialog(mainFrame(), true);
 
         assertThatNoException()
             .as("OK click with null scoreView must not throw")
@@ -206,8 +207,8 @@ class StandardDialogTest extends MainFrameMockTest {
         int setDataCallCount = 0;
         int closeCallCount = 0;
 
-        TrackingDialog(boolean validData) {
-            super("Tracking Dialog");
+        TrackingDialog(MainFrame mainFrame, boolean validData) {
+            super(mainFrame, "Tracking Dialog");
             this.validData = validData;
         }
 
@@ -241,8 +242,8 @@ class StandardDialogTest extends MainFrameMockTest {
 
         int modifyButtonPanelCallCount = 0;
 
-        ModifyButtonPanelCountingDialog() {
-            super("ModifyButtonPanel Dialog");
+        ModifyButtonPanelCountingDialog(MainFrame mainFrame) {
+            super(mainFrame, "ModifyButtonPanel Dialog");
         }
 
         @Override
@@ -270,8 +271,8 @@ class StandardDialogTest extends MainFrameMockTest {
 
         int setDataCallCount = 0;
 
-        TabbedStandardDialog() {
-            super("Tabbed Standard Dialog");
+        TabbedStandardDialog(MainFrame mainFrame) {
+            super(mainFrame, "Tabbed Standard Dialog");
         }
 
         @Override

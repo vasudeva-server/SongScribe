@@ -27,6 +27,7 @@ import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.ui.component.MainFrame;
 
 /**
  * Base dialog for adding, editing, or removing an attachment on a staff element
@@ -38,8 +39,8 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
     protected @Nullable Line selectedLine = null;
     protected final JButton removeButton;
 
-    protected AttachmentDialog(String title) {
-        super(title);
+    protected AttachmentDialog(MainFrame mainFrame, String title) {
+        super(mainFrame, title);
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
             var element = selectedElement;

@@ -24,6 +24,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Annotation;
@@ -49,8 +50,8 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     final JRadioButton belowRadio =
         new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
 
-    public AnnotationDialog() {
-        super(Strings.get(Strings.DIALOG_ANNOTATION_TITLE));
+    public AnnotationDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_ANNOTATION_TITLE));
 
         annotationCombo.setEditable(true);
         UIUtils.readComboValuesFromFile(annotationCombo, ANNOTATION_FILE);

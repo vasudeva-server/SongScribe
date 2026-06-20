@@ -25,6 +25,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.dom.KeyType;
+import songscribe.ui.component.MainFrame;
 
 public class KeySignatureChangeDialog extends StandardDialog {
 
@@ -32,8 +33,8 @@ public class KeySignatureChangeDialog extends StandardDialog {
     final JComboBox<KeyType> keysCombo;
     final SpinnerModel keysSpinner = new SpinnerNumberModel(4, 0, 7, 1);
 
-    public KeySignatureChangeDialog() {
-        super(Strings.get(Strings.DIALOG_KEY_SIGNATURE_CHANGE_TITLE));
+    public KeySignatureChangeDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_KEY_SIGNATURE_CHANGE_TITLE));
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
 

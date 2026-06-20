@@ -51,12 +51,23 @@ public final class MockEnvHelper {
     ) {}
 
     public static MockEnv setupMockEnv(MockedStatic<MainFrame> mainFrameMock) {
+        var env = setupMockEnv();
+        mainFrameMock.when(MainFrame::getInstance).thenReturn(env.frame());
+        return env;
+    }
+
+    /**
+     * Creates a mock MainFrame environment without stubbing {@code MainFrame.getInstance()}.
+     *
+     * <p>Use this when the code under test uses an injected {@code MainFrame} directly
+     * (e.g. via constructor injection) and never calls {@code MainFrame.getInstance()}.
+     */
+    public static MockEnv setupMockEnv() {
         var mockFrame = mock(MainFrame.class);
         var mockScore = mock(ScoreView.class);
         var mockCoordinator = mock(SelectionCoordinator.class);
         var mockCtrl = mock(ScoreViewController.class);
 
-        mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
         when(mockFrame.getRootPane()).thenReturn(mock(JRootPane.class, RETURNS_DEEP_STUBS));
         when(mockFrame.getScoreView()).thenReturn(mockScore);
         when(mockFrame.requireScoreView()).thenReturn(mockScore);

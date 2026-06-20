@@ -68,7 +68,7 @@ public final class ExportPDFAction extends UIAction {
         }
 
         if (exportPDFDialog == null) {
-            exportPDFDialog = new ExportPDFDialog();
+            exportPDFDialog = new ExportPDFDialog(getMainFrame());
         }
 
         exportPDFDialog.setVisible(true);

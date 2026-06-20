@@ -31,6 +31,7 @@ import songscribe.Strings;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.prefs.StartupAction;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.TickSlider;
 import songscribe.ui.Appearance;
 import songscribe.ui.FlatLafKey;
@@ -59,8 +60,8 @@ public class PreferencesDialog extends BaseDialog {
     static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
     private static final int VOLUME_STOP_COUNT = VALID_VOLUME_STOPS.length;
 
-    public PreferencesDialog() {
-        super(Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false, DialogCategory.EXCLUSIVE);
+    public PreferencesDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false, DialogCategory.EXCLUSIVE);
 
         var tabbedPane = createTabbedPane();
         addTab(

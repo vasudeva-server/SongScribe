@@ -30,6 +30,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
+import songscribe.ui.component.MainFrame;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.ui.FlatLafKey;
 
@@ -58,7 +59,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testIsAnyBlockingDialogVisibleFalseAfterClose() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TestDialog();
+            var dialog = new TestDialog(mainFrame());
             dialog.setVisible(true);
             dialog.setVisible(false);
             assertThat(BaseDialog.isAnyBlockingDialogVisible()).isFalse();
@@ -73,7 +74,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testIsAnyBlockingDialogVisibleTrueAfterOpen() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TestDialog();
+            var dialog = new TestDialog(mainFrame());
             dialog.setVisible(true);
             assertThat(BaseDialog.isAnyBlockingDialogVisible()).isTrue();
         }
@@ -84,8 +85,8 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testNestedDialogsCounterTracksAllLevels() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialogA = new TestDialog();
-            var dialogB = new TestDialog();
+            var dialogA = new TestDialog(mainFrame());
+            var dialogB = new TestDialog(mainFrame());
 
             dialogA.setVisible(true);
             assertThat(BaseDialog.isAnyBlockingDialogVisible()).isTrue();
@@ -106,7 +107,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testResetVisibleBlockingDialogCountResetsToZero() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TestDialog();
+            var dialog = new TestDialog(mainFrame());
             dialog.setVisible(true);
             assertThat(BaseDialog.isAnyBlockingDialogVisible()).isTrue();
 
@@ -137,7 +138,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
         @Test
         void testNotificationPostedOnFirstDialogOpen() {
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-                new TestDialog().setVisible(true);
+                new TestDialog(mainFrame()).setVisible(true);
 
                 messageCenterMock.verify(() -> MessageCenter.post(
                     argThat(m -> m instanceof DialogVisibilityDidChangeNotification n && n.isVisible())
@@ -148,8 +149,8 @@ class BaseDialogCounterTest extends MainFrameMockTest {
         @Test
         void testNotificationNotPostedOnSecondDialogOpen() {
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-                var dialogA = new TestDialog();
-                var dialogB = new TestDialog();
+                var dialogA = new TestDialog(mainFrame());
+                var dialogB = new TestDialog(mainFrame());
                 dialogA.setVisible(true);
                 dialogB.setVisible(true);
 
@@ -163,7 +164,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
         @Test
         void testNotificationPostedWhenLastDialogCloses() {
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-                var dialog = new TestDialog();
+                var dialog = new TestDialog(mainFrame());
                 dialog.setVisible(true);
                 dialog.setVisible(false);
 
@@ -176,8 +177,8 @@ class BaseDialogCounterTest extends MainFrameMockTest {
         @Test
         void testNotificationNotPostedWhenNestedDialogCloses() {
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-                var dialogA = new TestDialog();
-                var dialogB = new TestDialog();
+                var dialogA = new TestDialog(mainFrame());
+                var dialogB = new TestDialog(mainFrame());
                 dialogA.setVisible(true);
                 dialogB.setVisible(true);
                 dialogB.setVisible(false);
@@ -198,7 +199,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testExclusiveDialogIncrementsCounter() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TestExclusiveDialog();
+            var dialog = new TestExclusiveDialog(mainFrame());
             dialog.setVisible(true);
             assertThat(BaseDialog.isAnyBlockingDialogVisible()).isTrue();
         }
@@ -207,7 +208,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testExclusiveDialogDecrementsCounterOnClose() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TestExclusiveDialog();
+            var dialog = new TestExclusiveDialog(mainFrame());
             dialog.setVisible(true);
             dialog.setVisible(false);
             assertThat(BaseDialog.isAnyBlockingDialogVisible()).isFalse();
@@ -219,7 +220,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testGetDataFalseDialogNotShownAndCounterNotIncremented() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new CancellingDialog();
+            var dialog = new CancellingDialog(mainFrame());
             dialog.setVisible(true);
             assertThat(BaseDialog.isAnyBlockingDialogVisible()).isFalse();
         }
@@ -230,7 +231,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testGetDataTabIterationShortCircuitsOnFirstFalse() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TwoTabDialog();
+            var dialog = new TwoTabDialog(mainFrame());
             var failingTab = dialog.new FailingTab();
             var secondTab = dialog.new SecondTab();
             dialog.registerTab(failingTab);
@@ -253,29 +254,29 @@ class BaseDialogCounterTest extends MainFrameMockTest {
 
     private static class TestDialog extends BaseDialog {
 
-        TestDialog() {
-            super("Test Dialog", false);
+        TestDialog(MainFrame mainFrame) {
+            super(mainFrame, "Test Dialog", false);
         }
     }
 
     private static class TestInformationalDialog extends BaseDialog {
 
-        TestInformationalDialog() {
-            super("Info Dialog", false, DialogCategory.INFORMATIONAL);
+        TestInformationalDialog(MainFrame mainFrame) {
+            super(mainFrame, "Info Dialog", false, DialogCategory.INFORMATIONAL);
         }
     }
 
     private static class TestExclusiveDialog extends BaseDialog {
 
-        TestExclusiveDialog() {
-            super("Exclusive Dialog", false, DialogCategory.EXCLUSIVE);
+        TestExclusiveDialog(MainFrame mainFrame) {
+            super(mainFrame, "Exclusive Dialog", false, DialogCategory.EXCLUSIVE);
         }
     }
 
     private static class CancellingDialog extends BaseDialog {
 
-        CancellingDialog() {
-            super("Cancelling Dialog", false);
+        CancellingDialog(MainFrame mainFrame) {
+            super(mainFrame, "Cancelling Dialog", false);
         }
 
         @Override
@@ -290,8 +291,8 @@ class BaseDialogCounterTest extends MainFrameMockTest {
 
         private final boolean[] getDataCalled = new boolean[TAB_COUNT];
 
-        TwoTabDialog() {
-            super("Two Tab Dialog", false);
+        TwoTabDialog(MainFrame mainFrame) {
+            super(mainFrame, "Two Tab Dialog", false);
         }
 
         boolean wasGetDataCalledOnTab(int index) {
@@ -336,7 +337,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testInformationalDialogDoesNotIncrementCounter() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TestInformationalDialog();
+            var dialog = new TestInformationalDialog(mainFrame());
             dialog.setVisible(true);
             assertThat(BaseDialog.isAnyBlockingDialogVisible()).isFalse();
         }
@@ -345,7 +346,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testInformationalDialogDoesNotDecrementCounter() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TestInformationalDialog();
+            var dialog = new TestInformationalDialog(mainFrame());
             dialog.setVisible(true);
             dialog.setVisible(false);
             assertThat(BaseDialog.isAnyBlockingDialogVisible()).isFalse();
@@ -357,8 +358,8 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     @Test
     void testMixedDialogsOnlyBlockingAffectsCounter() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var infoDialog = new TestInformationalDialog();
-            var blockingDialog = new TestDialog();
+            var infoDialog = new TestInformationalDialog(mainFrame());
+            var blockingDialog = new TestDialog(mainFrame());
 
             infoDialog.setVisible(true);
             assertThat(BaseDialog.isAnyBlockingDialogVisible()).isFalse();
@@ -393,7 +394,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
         @Test
         void testInformationalDialogDoesNotPostNotification() {
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-                var dialog = new TestInformationalDialog();
+                var dialog = new TestInformationalDialog(mainFrame());
                 dialog.setVisible(true);
                 dialog.setVisible(false);
 

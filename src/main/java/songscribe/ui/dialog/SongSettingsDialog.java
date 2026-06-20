@@ -102,8 +102,8 @@ public class SongSettingsDialog extends StandardDialog {
     private final TitleTab textTab = new TitleTab();
     private final AttributionTab attributionTab = new AttributionTab();
 
-    public SongSettingsDialog() {
-        super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
+    public SongSettingsDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
 
         var tabbedPane = createTabbedPane();
         addTab(

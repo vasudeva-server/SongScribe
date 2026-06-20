@@ -65,7 +65,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         BaseDialogTestHelper.configureMockFrame(mainFrame());
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedGeometry();
-        dialog = new TempoChangeDialog();
+        dialog = new TempoChangeDialog(mainFrame());
     }
 
     @AfterEach
@@ -258,7 +258,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         var line = detachedLine();
 
         try (MockedConstruction<TempoChangeDialog> construction = mockConstruction(TempoChangeDialog.class)) {
-            TempoChangeDialog.showForElement(element, line);
+            TempoChangeDialog.showForElement(mainFrame(), element, line);
 
             assertThat(construction.constructed())
                 .as("exactly one TempoChangeDialog was created")

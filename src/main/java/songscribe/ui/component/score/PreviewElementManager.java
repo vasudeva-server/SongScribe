@@ -40,6 +40,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.EndingConfirms;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.TempoChangeDialog;
 import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
@@ -608,7 +609,7 @@ public final class PreviewElementManager {
         });
 
         if (wasFirstLineEmpty && line.effectiveElementCount() == 1) {
-            TempoChangeDialog.showForElement(line.getElement(0), line);
+            TempoChangeDialog.showForElement(MainFrame.getInstance(), line.getElement(0), line);
         }
     }
 
@@ -877,7 +878,7 @@ public final class PreviewElementManager {
         previewElement.setXOffsetPx(ScaleContext.ssToRoundedPx(insertion.insertedElementXSs()));
 
         if (line.hasEndingInvalidatedByInsertion(xIndex, previewElement.getType())) {
-            if (!EndingConfirms.confirmInvalidation()) {
+            if (!EndingConfirms.confirmInvalidation(lc)) {
                 return;
             }
         }
@@ -1034,19 +1035,19 @@ public final class PreviewElementManager {
 
         switch (endingEffect) {
             case Ending.EndingEffect.Invalidate _ -> {
-                if (!EndingConfirms.confirmInvalidation()) {
+                if (!EndingConfirms.confirmInvalidation(lc)) {
                     return;
                 }
                 // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
             }
             case Ending.EndingEffect.CompensateEnd ce -> {
-                if (!EndingConfirms.confirmCompensateEnd(ce)) {
+                if (!EndingConfirms.confirmCompensateEnd(lc, ce)) {
                     return;
                 }
                 EndingConfirms.applyCompensatingEndChange(line, ce);
             }
             case Ending.EndingEffect.CompensateSplit cs -> {
-                if (!EndingConfirms.confirmCompensateSplit(cs, previewType)) {
+                if (!EndingConfirms.confirmCompensateSplit(lc, cs, previewType)) {
                     return;
                 }
                 EndingConfirms.applyCompensatingSplitChange(line, cs);

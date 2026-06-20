@@ -195,7 +195,7 @@ final class FontSettingRow {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            applyFont(FontDialog.showDialog(currentFont.get()), fontDescription, onFontChosen);
+            applyFont(FontDialog.showDialog(getMainFrame(), currentFont.get()), fontDescription, onFontChosen);
         }
     }
 

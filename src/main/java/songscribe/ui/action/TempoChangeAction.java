@@ -67,6 +67,6 @@ public final class TempoChangeAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        new TempoChangeDialog().setVisible(true);
+        new TempoChangeDialog(getMainFrame()).setVisible(true);
     }
 }

@@ -64,7 +64,7 @@ class DoNotShowMessageTest extends MainFrameMockTest {
         // Always start with pref cleared
         Preferences.userRoot().node("songscribe").remove(PROP_NAME);
 
-        dialog = new DoNotShowMessage("Test Title", "Test message.", PROP_NAME);
+        dialog = new DoNotShowMessage(mainFrame(), "Test Title", "Test message.", PROP_NAME);
     }
 
     @AfterEach

@@ -47,6 +47,6 @@ public final class BeatChangeAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        new BeatChangeDialog().setVisible(true);
+        new BeatChangeDialog(getMainFrame()).setVisible(true);
     }
 }

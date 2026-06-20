@@ -20,10 +20,11 @@
 package songscribe.ui.dialog;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 
 public class KeyMapDialog extends HTMLDialog {
 
-    public KeyMapDialog() {
-        super(Strings.get(Strings.DIALOG_KEYMAP_TITLE), "Keymap.html");
+    public KeyMapDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_KEYMAP_TITLE), "Keymap.html");
     }
 }

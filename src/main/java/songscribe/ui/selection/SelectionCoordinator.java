@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import java.awt.AWTEvent;
+import java.awt.Component;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.MouseEvent;
@@ -609,8 +610,9 @@ public final class SelectionCoordinator {
      * mutations coalesce into one {@code SongDidChangeNotification}.
      * @param action   the reflectable action to apply
      * @param selected true to apply the attribute, false to remove it
+     * @param parent   the component to use as the dialog parent for any ending-confirm dialogs
      */
-    public void applyActionToSelection(UIAction.Reflectable action, boolean selected) {
+    public void applyActionToSelection(UIAction.Reflectable action, boolean selected, @Nullable Component parent) {
         var selection = getSelection();
 
         if (selection == null) {
@@ -640,19 +642,19 @@ public final class SelectionCoordinator {
 
                     switch (effect) {
                         case Ending.EndingEffect.Invalidate _ -> {
-                            if (!EndingConfirms.confirmInvalidation()) {
+                            if (!EndingConfirms.confirmInvalidation(parent)) {
                                 continue;
                             }
                             // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
                         }
                         case Ending.EndingEffect.CompensateEnd ce -> {
-                            if (!EndingConfirms.confirmCompensateEnd(ce)) {
+                            if (!EndingConfirms.confirmCompensateEnd(parent, ce)) {
                                 continue;
                             }
                             EndingConfirms.applyCompensatingEndChange(line, ce);
                         }
                         case Ending.EndingEffect.CompensateSplit cs -> {
-                            if (!EndingConfirms.confirmCompensateSplit(cs, replacement.getType())) {
+                            if (!EndingConfirms.confirmCompensateSplit(parent, cs, replacement.getType())) {
                                 continue;
                             }
                             EndingConfirms.applyCompensatingSplitChange(line, cs);

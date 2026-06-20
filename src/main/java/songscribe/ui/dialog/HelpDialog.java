@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
 
 public class HelpDialog
@@ -38,12 +39,12 @@ public class HelpDialog
         new DefaultListModel<>();
     private final JEditorPane editorPane = new JEditorPane();
 
-    public HelpDialog(String title) {
-        this(title, true);
+    public HelpDialog(MainFrame mainFrame, String title) {
+        this(mainFrame, title, true);
     }
 
-    public HelpDialog(String title, boolean isModal) {
-        super(title, isModal, DialogCategory.INFORMATIONAL);
+    public HelpDialog(MainFrame mainFrame, String title, boolean isModal) {
+        super(mainFrame, title, isModal, DialogCategory.INFORMATIONAL);
         var leftList = new JList<>(defaultListModel);
         leftList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         leftList.setCellRenderer(this);

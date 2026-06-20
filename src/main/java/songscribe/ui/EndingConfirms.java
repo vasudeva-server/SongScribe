@@ -28,7 +28,6 @@ import songscribe.Strings;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.ui.component.MainFrame;
 import songscribe.layout.Ending;
 
 /**
@@ -39,24 +38,24 @@ public final class EndingConfirms {
 
     private EndingConfirms() {}
 
-    public static boolean confirmInvalidation() {
-        return showEndingConfirm(Strings.CONFIRM_ENDING_WILL_BE_REMOVED);
+    public static boolean confirmInvalidation(@Nullable Component parent) {
+        return showEndingConfirm(parent, Strings.CONFIRM_ENDING_WILL_BE_REMOVED);
     }
 
-    public static boolean confirmCompensateEnd(Ending.EndingEffect.CompensateEnd ce) {
+    public static boolean confirmCompensateEnd(@Nullable Component parent, Ending.EndingEffect.CompensateEnd ce) {
         var key = ce.newEndType() == ElementType.REPEAT_RIGHT
             ? Strings.CONFIRM_ENDING_SPLIT_RIGHT_TO_LEFT_RIGHT
             : Strings.CONFIRM_ENDING_SPLIT_LEFT_RIGHT_TO_RIGHT;
-        return showEndingConfirm(key);
+        return showEndingConfirm(parent, key);
     }
 
     public static boolean confirmCompensateSplit(
-        Ending.EndingEffect.CompensateSplit cs, ElementType primaryNewType
+        @Nullable Component parent, Ending.EndingEffect.CompensateSplit cs, ElementType primaryNewType
     ) {
         var key = cs.newSplitType() == ElementType.REPEAT_LEFT_RIGHT
             ? Strings.CONFIRM_ENDING_END_TO_REPEAT_REQUIRES_LEFT_RIGHT_SPLIT
             : Strings.CONFIRM_ENDING_END_TO_BARLINE_REQUIRES_RIGHT_SPLIT;
-        return showEndingConfirm(key, typeNameFor(primaryNewType));
+        return showEndingConfirm(parent, key, typeNameFor(primaryNewType));
     }
 
     /**
@@ -92,9 +91,9 @@ public final class EndingConfirms {
         line.setElement(index, newEl);
     }
 
-    private static boolean showEndingConfirm(String messageKey, Object... args) {
+    private static boolean showEndingConfirm(@Nullable Component parent, String messageKey, Object... args) {
         var result = OptionDialogs.showOptionDialog(
-            MainFrame.getInstance(),
+            parent,
             Strings.CONFIRM_TITLE_FIRST_SECOND_ENDING,
             messageKey,
             JOptionPane.DEFAULT_OPTION,

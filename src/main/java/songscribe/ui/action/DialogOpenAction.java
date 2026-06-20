@@ -23,25 +23,29 @@ import static songscribe.util.StringUtils.toKebabCase;
 
 import module java.desktop;
 
+import java.util.function.Function;
+
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.BaseDialog;
 
 /**
  * An action that opens a dialog.
+ *
+ * <p>The dialog is created lazily on first use via a {@code dialogFactory} function. The factory
+ * accepts the {@link MainFrame} and returns a fresh dialog instance. Passing a constructor
+ * reference ({@code MyDialog::new}) against a {@code (MainFrame)} constructor gives a
+ * compiler-checked factory contract: the dialog class must expose a {@code (MainFrame)}
+ * constructor, which is verified at compile time rather than at runtime via reflection.
  */
 public class DialogOpenAction<T extends BaseDialog> extends UIAction {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DialogOpenAction.class);
-
     private @Nullable T dialog = null;
-    private final Class<? extends T> dialogClass;
+    private final Function<MainFrame, T> dialogFactory;
 
-    public DialogOpenAction(MainFrame mainFrame, String name, Class<? extends T> dialogClass, Flag... flags) {
-        this(mainFrame, name, 0, 0, dialogClass, flags);
+    public DialogOpenAction(MainFrame mainFrame, String name, Function<MainFrame, T> dialogFactory, Flag... flags) {
+        this(mainFrame, name, 0, 0, dialogFactory, flags);
     }
 
     public DialogOpenAction(
@@ -49,30 +53,22 @@ public class DialogOpenAction<T extends BaseDialog> extends UIAction {
         String name,
         int virtualKey,
         int modifiers,
-        Class<? extends T> dialogClass,
+        Function<MainFrame, T> dialogFactory,
         Flag... flags
     ) {
         super(mainFrame, name, toKebabCase(name), virtualKey, modifiers, flags);
-        this.dialogClass = dialogClass;
+        this.dialogFactory = dialogFactory;
         setFlags(Flag.OPENS_DIALOG);
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var d = getDialog();
-
-        if (d != null) {
-            d.setVisible(true);
-        }
+        getDialog().setVisible(true);
     }
 
-    public @Nullable T getDialog() {
+    public T getDialog() {
         if (dialog == null) {
-            try {
-                dialog = dialogClass.getConstructor().newInstance();
-            } catch (Exception error) {
-                LOG.error("Error creating dialog", error);
-            }
+            dialog = dialogFactory.apply(getMainFrame());
         }
 
         return dialog;

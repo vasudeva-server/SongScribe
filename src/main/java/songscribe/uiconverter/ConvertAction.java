@@ -32,6 +32,7 @@ import songscribe.Strings;
 import songscribe.export.ExportOptions;
 import songscribe.io.SongIO;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.dialog.ProgressBarDialog;
 import songscribe.ui.playback.PlaybackController;
@@ -80,6 +81,7 @@ public class ConvertAction extends AbstractAction {
         }
 
         var pd = new ProgressBarDialog(
+            MainFrame.getInstance(),
             Strings.get(Strings.DIALOG_CONVERTER_CONVERTING),
             songFiles.length * (3 + (IMAGE_WIDTH.length * 2))
         );

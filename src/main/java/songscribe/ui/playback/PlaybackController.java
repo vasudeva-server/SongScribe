@@ -42,6 +42,10 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.selection.ElementSelection;
 
+// The playback action constants are @NonNull but populated lazily by initialize() (which
+// needs the MainFrame, unavailable at class-load), mirroring the Actions holder. NullAway.Init
+// suppresses the "uninitialized field" check; keeping them non-null avoids poisoning call sites.
+@SuppressWarnings("NullAway.Init")
 public final class PlaybackController {
 
     public enum PlaybackState {
@@ -59,10 +63,6 @@ public final class PlaybackController {
     public static final int SELECTED_NOTE_VELOCITY =
         (int) Math.round(NOTE_VELOCITY * SELECTED_NOTE_VOLUME_FRACTION);
 
-    // Resolved once at class load and injected into every action below, so individual
-    // actions no longer call MainFrame.getInstance() themselves. Assumes the MainFrame
-    // singleton is already constructed before this holder class is first referenced.
-    private static final MainFrame MAIN_FRAME = MainFrame.getInstance();
     private static final Logger LOG = LoggerFactory.getLogger(PlaybackController.class);
 
     @Nullable
@@ -80,18 +80,41 @@ public final class PlaybackController {
     @Nullable
     private static ElementSelection activeSelection = null;
 
-    public static final PlayPauseAction PLAY_PAUSE_ACTION =
-        PlayPauseAction.createAction(MAIN_FRAME);
-
-    public static final RewindAction REWIND_ACTION = RewindAction.createAction(MAIN_FRAME);
-
-    public static final PlayWithRepeatsAction PLAY_WITH_REPEATS_ACTION =
-        PlayWithRepeatsAction.createAction(MAIN_FRAME);
-
-    public static final LoopPlaybackAction LOOP_PLAYBACK_ACTION =
-        LoopPlaybackAction.createAction(MAIN_FRAME);
+    public static PlayPauseAction PLAY_PAUSE_ACTION;
+    public static RewindAction REWIND_ACTION;
+    public static PlayWithRepeatsAction PLAY_WITH_REPEATS_ACTION;
+    public static LoopPlaybackAction LOOP_PLAYBACK_ACTION;
 
     private PlaybackController() {
+    }
+
+    /**
+     * Populates the playback action constants using {@code mainFrame} as the owner, so the
+     * actions no longer call {@link MainFrame#getInstance()} themselves.
+     *
+     * <p>Must be called once at the top of {@link MainFrame#initFrame()} — adjacent to
+     * {@code Actions.initialize(this)} — before any constant in this class is first
+     * referenced. Calling it again (e.g. in tests) replaces the constants with freshly
+     * constructed instances.
+     */
+    public static void initialize(MainFrame mainFrame) {
+        PLAY_PAUSE_ACTION = PlayPauseAction.createAction(mainFrame);
+        REWIND_ACTION = RewindAction.createAction(mainFrame);
+        PLAY_WITH_REPEATS_ACTION = PlayWithRepeatsAction.createAction(mainFrame);
+        LOOP_PLAYBACK_ACTION = LoopPlaybackAction.createAction(mainFrame);
+    }
+
+    /**
+     * Unsubscribes the playback action constants from the message bus. Test-support only,
+     * mirroring {@code Actions.unsubscribeForTest()}: {@link #initialize} reassigns these
+     * each test, so the previous test's actions must be unsubscribed to avoid lingering as
+     * zombie subscribers. Call from {@code @AfterEach} in test base classes.
+     */
+    public static void unsubscribeForTest() {
+        MessageCenter.unsubscribe(PLAY_PAUSE_ACTION);
+        MessageCenter.unsubscribe(REWIND_ACTION);
+        MessageCenter.unsubscribe(PLAY_WITH_REPEATS_ACTION);
+        MessageCenter.unsubscribe(LOOP_PLAYBACK_ACTION);
     }
 
     public static void register(ScoreView score) {

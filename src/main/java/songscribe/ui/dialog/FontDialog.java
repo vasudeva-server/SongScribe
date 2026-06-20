@@ -26,6 +26,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.fontchooser.FontChooser;
 import songscribe.util.UIUtils;
 
@@ -37,8 +38,8 @@ public class FontDialog extends StandardDialog {
     final FontChooser chooser = new FontChooser();
     private Font selectedFont;
 
-    public FontDialog(Font initialFont) {
-        super(Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE));
+    public FontDialog(MainFrame mainFrame, Font initialFont) {
+        super(mainFrame, Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE));
         selectedFont = initialFont;
 
         // Padding applied here rather than via getContentPaddingKey() so the button
@@ -57,12 +58,8 @@ public class FontDialog extends StandardDialog {
         return BorderLayout.PAGE_END;
     }
 
-    public static Font showDialog(Component component) {
-        return showDialog(component.getFont());
-    }
-
-    public static Font showDialog(Font initialFont) {
-        var dialog = new FontDialog(initialFont);
+    public static Font showDialog(MainFrame mainFrame, Font initialFont) {
+        var dialog = new FontDialog(mainFrame, initialFont);
         dialog.setVisible(true);
         return dialog.selectedFont;
     }

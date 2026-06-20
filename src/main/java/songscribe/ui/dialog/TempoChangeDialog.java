@@ -30,6 +30,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.ui.component.MainFrame;
 
 public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
 
@@ -39,13 +40,13 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
         "tempochanges", "tempos"
     );
 
-    public TempoChangeDialog() {
-        super(Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE));
+    public TempoChangeDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE));
         contentPanel.add(BorderLayout.CENTER, tempoSection);
     }
 
-    public static void showForElement(StaffElement element, Line line) {
-        var dialog = new TempoChangeDialog();
+    public static void showForElement(MainFrame mainFrame, StaffElement element, Line line) {
+        var dialog = new TempoChangeDialog(mainFrame);
         dialog.selectedElement = element;
         dialog.selectedLine = line;
         dialog.setVisible(true);

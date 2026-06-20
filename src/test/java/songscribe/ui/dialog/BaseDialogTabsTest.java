@@ -31,6 +31,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.Song;
+import songscribe.ui.component.MainFrame;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.prefs.Prefs;
@@ -89,7 +90,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
         void testDialogGeometryKeyClearsSavedGeometry() {
             // Establish saved geometry by opening and closing a dialog
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-                var dialog = new TestDialog();
+                var dialog = new TestDialog(mainFrame());
                 dialog.setVisible(true);
                 dialog.setVisible(false);
             }
@@ -102,7 +103,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
 
             // Reopen — saved geometry is gone, so positionDialog must be called
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-                new TestDialog().setVisible(true);
+                new TestDialog(mainFrame()).setVisible(true);
                 uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
             }
         }
@@ -111,7 +112,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
         void testAllKeyClearsSavedGeometry() {
             // Establish saved geometry by opening and closing a dialog
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-                var dialog = new TestDialog();
+                var dialog = new TestDialog(mainFrame());
                 dialog.setVisible(true);
                 dialog.setVisible(false);
             }
@@ -124,7 +125,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
 
             // Reopen — no saved geometry, so positionDialog must be called
             try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-                new TestDialog().setVisible(true);
+                new TestDialog(mainFrame()).setVisible(true);
                 uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
             }
         }
@@ -134,7 +135,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
 
     @Test
     void testCreateTabbedPaneFirstCallRegistersTopLevelPane() {
-        var dialog = new TabbedTestDialog();
+        var dialog = new TabbedTestDialog(mainFrame());
         var firstPane = dialog.createTabbedPane();
 
         // The first call must assign the dialog's top-level tabbedPane field
@@ -143,7 +144,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
 
     @Test
     void testCreateTabbedPaneSecondCallDoesNotOverwriteFirstPane() {
-        var dialog = new TabbedTestDialog();
+        var dialog = new TabbedTestDialog(mainFrame());
         var firstPane = dialog.createTabbedPane();
         var secondPane = dialog.createTabbedPane();
 
@@ -156,7 +157,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
 
     @Test
     void testTabWillShowAndTabWillHideFiredOnTabSwitch() {
-        var dialog = new TabbedTestDialog();
+        var dialog = new TabbedTestDialog(mainFrame());
         var tabbedPane = dialog.createTabbedPane();
 
         var tab0 = dialog.new TrackingTab();
@@ -178,7 +179,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
     @Test
     void testTabWillShowFiredForInitiallySelectedTabOnShow() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TabbedTestDialog();
+            var dialog = new TabbedTestDialog(mainFrame());
             var tabbedPane = dialog.createTabbedPane();
 
             var tab0 = dialog.new TrackingTab();
@@ -203,7 +204,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
     @Test
     void testTabWillHideCalledForAllTabsOnHide() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TabbedTestDialog();
+            var dialog = new TabbedTestDialog(mainFrame());
             var tabbedPane = dialog.createTabbedPane();
 
             var tab0 = dialog.new TrackingTab();
@@ -228,13 +229,13 @@ class BaseDialogTabsTest extends MainFrameMockTest {
 
     @Test
     void testGetContentPaddingKeyReturnButtonsPaddingWhenHasButtons() {
-        var dialog = new ButtonsDialog();
+        var dialog = new ButtonsDialog(mainFrame());
         assertThat(dialog.getContentPaddingKey()).isEqualTo(FlatLafKey.DIALOG_STD_BUTTONS_PADDING);
     }
 
     @Test
     void testGetContentPaddingKeyReturnsStdPaddingWhenNoButtons() {
-        var dialog = new TestDialog();
+        var dialog = new TestDialog(mainFrame());
         assertThat(dialog.getContentPaddingKey()).isEqualTo(FlatLafKey.DIALOG_STD_PADDING);
     }
 
@@ -243,14 +244,14 @@ class BaseDialogTabsTest extends MainFrameMockTest {
     @Test
     void testGetScoreViewReturnsNullWhenMainFrameHasNoScoreView() {
         when(mainFrame().getScoreView()).thenReturn(null);
-        var dialog = new AccessorDialog();
+        var dialog = new AccessorDialog(mainFrame());
         assertThat(dialog.scoreView()).isNull();
     }
 
     @Test
     void testRequireScoreViewPropagatesExceptionFromMainFrame() {
         when(mainFrame().requireScoreView()).thenThrow(new RuntimeException("scoreView not initialized"));
-        var dialog = new AccessorDialog();
+        var dialog = new AccessorDialog(mainFrame());
         assertThatThrownBy(dialog::scoreViewRequired)
             .isInstanceOf(RuntimeException.class)
             .hasMessage("scoreView not initialized");
@@ -262,7 +263,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
         var mockScoreView = mock(ScoreView.class);
         when(mainFrame().requireScoreView()).thenReturn(mockScoreView);
         when(mockScoreView.getSong()).thenReturn(mockSong);
-        var dialog = new AccessorDialog();
+        var dialog = new AccessorDialog(mainFrame());
         assertThat(dialog.song()).isSameAs(mockSong);
     }
 
@@ -300,15 +301,15 @@ class BaseDialogTabsTest extends MainFrameMockTest {
 
     private static class TestDialog extends BaseDialog {
 
-        TestDialog() {
-            super("Test Dialog", false);
+        TestDialog(MainFrame mainFrame) {
+            super(mainFrame, "Test Dialog", false);
         }
     }
 
     private static class ButtonsDialog extends BaseDialog {
 
-        ButtonsDialog() {
-            super("Buttons Dialog", false);
+        ButtonsDialog(MainFrame mainFrame) {
+            super(mainFrame, "Buttons Dialog", false);
         }
 
         @Override
@@ -319,8 +320,8 @@ class BaseDialogTabsTest extends MainFrameMockTest {
 
     private static class TabbedTestDialog extends BaseDialog {
 
-        TabbedTestDialog() {
-            super("Tabbed Dialog", false);
+        TabbedTestDialog(MainFrame mainFrame) {
+            super(mainFrame, "Tabbed Dialog", false);
         }
 
         /**
@@ -360,8 +361,8 @@ class BaseDialogTabsTest extends MainFrameMockTest {
      */
     private static class AccessorDialog extends BaseDialog {
 
-        AccessorDialog() {
-            super("Accessor Dialog", false);
+        AccessorDialog(MainFrame mainFrame) {
+            super(mainFrame, "Accessor Dialog", false);
         }
 
         @Nullable ScoreView scoreView() {

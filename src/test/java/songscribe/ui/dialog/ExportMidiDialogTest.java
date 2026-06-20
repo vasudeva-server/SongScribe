@@ -81,7 +81,7 @@ class ExportMidiDialogTest extends MainFrameMockTest {
         when(mainFrame().requireScoreView()).thenReturn(scoreView);
         when(scoreView.getSong()).thenReturn(mock(Song.class));
 
-        dialog = new ExportMidiDialog(new File("test-export.mid"));
+        dialog = new ExportMidiDialog(mainFrame(), new File("test-export.mid"));
     }
 
     @AfterEach

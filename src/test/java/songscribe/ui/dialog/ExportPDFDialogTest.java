@@ -64,7 +64,7 @@ class ExportPDFDialogTest extends MainFrameMockTest {
         var scoreView = mock(ScoreView.class);
         when(mainFrame().requireScoreView()).thenReturn(scoreView);
 
-        dialog = new ExportPDFDialog();
+        dialog = new ExportPDFDialog(mainFrame());
     }
 
     @AfterEach

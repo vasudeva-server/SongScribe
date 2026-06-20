@@ -31,6 +31,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -90,7 +91,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
         when(score.getSingleSelectedElement()).thenReturn(element);
         when(score.getSong()).thenReturn(song);
 
-        var dialog = new ControlDialog(/* existingChange= */ null);
+        var dialog = new ControlDialog(mainFrame(), /* existingChange= */ null);
         dialog.getData();
 
         assertThat(dialog.selectedElement)
@@ -106,7 +107,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
         var element = ElementType.CROTCHET.newInstance();
         var line = lineWith(ElementType.CROTCHET);
 
-        var dialog = new ControlDialog(/* existingChange= */ null);
+        var dialog = new ControlDialog(mainFrame(), /* existingChange= */ null);
         // Pre-set fields — simulates what showForElement would do
         dialog.selectedElement = element;
         dialog.selectedLine = line;
@@ -128,7 +129,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
         when(score.getSingleSelectedElement()).thenReturn(null);
         when(score.getSong()).thenReturn(song);
 
-        var dialog = new ControlDialog(/* existingChange= */ null);
+        var dialog = new ControlDialog(mainFrame(), /* existingChange= */ null);
         var result = dialog.getData();
 
         assertThat(dialog.selectedElement)
@@ -144,7 +145,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
     @Test
     void testGetDataWhenNoExistingChangeSetsAddTextAndHidesRemoveButton() {
         setupScoreWithElement(ElementType.CROTCHET);
-        var dialog = new ControlDialog(/* existingChange= */ null);
+        var dialog = new ControlDialog(mainFrame(), /* existingChange= */ null);
         dialog.getData();
 
         assertThat(dialog.okButton.getText())
@@ -159,7 +160,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
     void testGetDataWhenExistingChangeSetsSetsModifyTextAndShowsRemoveButton() {
         var element = setupScoreWithElement(ElementType.CROTCHET);
         // existingChange is non-null → modify branch
-        var dialog = new ControlDialog(/* existingChange= */ element);
+        var dialog = new ControlDialog(mainFrame(), /* existingChange= */ element);
         dialog.getData();
 
         assertThat(dialog.okButton.getText())
@@ -175,7 +176,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
     @Test
     void testGetDataReturnsTrueUnconditionally() {
         setupScoreWithElement(ElementType.CROTCHET);
-        var dialog = new ControlDialog(null);
+        var dialog = new ControlDialog(mainFrame(), null);
 
         assertThat(dialog.getData())
             .as("getData() always returns true")
@@ -190,7 +191,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
         var line = spy(detachedLine());
         line.addElement(element);
 
-        var dialog = new ControlDialog(null);
+        var dialog = new ControlDialog(mainFrame(), null);
         dialog.selectedElement = element;
         dialog.selectedLine = line;
 
@@ -211,7 +212,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
         var line = spy(detachedLine());
         line.addElement(element);
 
-        var dialog = new ControlDialog(null);
+        var dialog = new ControlDialog(mainFrame(), null);
         dialog.selectedElement = element;
         dialog.selectedLine = line;
 
@@ -230,7 +231,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
 
     @Test
     void testSetDataThrowsWhenSelectedElementIsNull() {
-        var dialog = new ControlDialog(null);
+        var dialog = new ControlDialog(mainFrame(), null);
         // leave selectedElement and selectedLine null
         assertThatThrownBy(dialog::setData)
             .as("setData throws when element is null")
@@ -240,7 +241,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
     @Test
     void testSetDataThrowsWhenSelectedLineIsNull() {
         var element = ElementType.CROTCHET.newInstance();
-        var dialog = new ControlDialog(null);
+        var dialog = new ControlDialog(mainFrame(), null);
         dialog.selectedElement = element;
         // leave selectedLine null
         assertThatThrownBy(dialog::setData)
@@ -250,7 +251,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
 
     @Test
     void testRemoveButtonThrowsWhenSelectedElementIsNull() {
-        var dialog = new ControlDialog(null);
+        var dialog = new ControlDialog(mainFrame(), null);
         assertThatThrownBy(() -> fireRemoveAction(dialog))
             .as("remove action throws when element is null")
             .isInstanceOf(IllegalStateException.class);
@@ -259,7 +260,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
     @Test
     void testRemoveButtonThrowsWhenSelectedLineIsNull() {
         var element = ElementType.CROTCHET.newInstance();
-        var dialog = new ControlDialog(null);
+        var dialog = new ControlDialog(mainFrame(), null);
         dialog.selectedElement = element;
         assertThatThrownBy(() -> fireRemoveAction(dialog))
             .as("remove action throws when line is null")
@@ -309,8 +310,8 @@ class AttachmentDialogTest extends MainFrameMockTest {
         int clearChangeCallCount = 0;
         int closeCallCount = 0;
 
-        ControlDialog(@Nullable StaffElement existingChange) {
-            super("Control Dialog");
+        ControlDialog(MainFrame mainFrame, @Nullable StaffElement existingChange) {
+            super(mainFrame, "Control Dialog");
             this.existingChange = existingChange;
         }
 

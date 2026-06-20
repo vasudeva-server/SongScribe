@@ -33,6 +33,7 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
 import songscribe.ui.component.BorderPanel;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.component.MyJTextField;
 import songscribe.util.GraphicUtils;
@@ -68,8 +69,8 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     private int sheetHeightWithoutLyricsPx = 0;
     private int sheetHeightWithoutTitlePx = 0;
 
-    public ResolutionDialog() {
-        super(Strings.get(Strings.DIALOG_RESOLUTION_TITLE));
+    public ResolutionDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_RESOLUTION_TITLE));
         borderPanel.setPackListener(_ -> pack());
         borderPanel.addChangeListener(this);
         resolutionSpinner.addChangeListener(this);

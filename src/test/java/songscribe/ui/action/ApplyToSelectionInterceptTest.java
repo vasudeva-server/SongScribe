@@ -56,7 +56,8 @@ class ApplyToSelectionInterceptTest extends MainFrameMockTest {
         assertThat(action.applyToSelectionIfActive()).isFalse();
         verify(mockEnv().coordinator(), never()).applyActionToSelection(
             ArgumentMatchers.any(),
-            ArgumentMatchers.anyBoolean()
+            ArgumentMatchers.anyBoolean(),
+            ArgumentMatchers.any()
         );
     }
 
@@ -71,7 +72,7 @@ class ApplyToSelectionInterceptTest extends MainFrameMockTest {
         action.setSelected(false);
 
         assertThat(action.applyToSelectionIfActive()).isTrue();
-        verify(mockEnv().coordinator()).applyActionToSelection(action, false);
+        verify(mockEnv().coordinator()).applyActionToSelection(action, false, mockEnv().score());
     }
 
     @Test
@@ -83,6 +84,6 @@ class ApplyToSelectionInterceptTest extends MainFrameMockTest {
         action.setSelected(true);
 
         assertThat(action.applyToSelectionIfActive()).isTrue();
-        verify(mockEnv().coordinator()).applyActionToSelection(action, true);
+        verify(mockEnv().coordinator()).applyActionToSelection(action, true, mockEnv().score());
     }
 }

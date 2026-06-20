@@ -24,6 +24,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.ui.component.MainFrame;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.BeatChange;
 import songscribe.dom.Duration;
@@ -40,8 +41,8 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
     final JComboBox<Duration> beatCombo =
         DurationListCellRenderer.createCombo(Duration.values());
 
-    public BeatChangeDialog() {
-        super(Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE));
+    public BeatChangeDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE));
 
         var row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));

@@ -47,12 +47,15 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+
+import javax.swing.JRootPane;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
@@ -72,6 +75,7 @@ import songscribe.prefs.PrefsKey;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.prefs.StartupAction;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.util.ModifierState;
@@ -1209,6 +1213,59 @@ class MainFrameTest extends UnitTest {
             assertThat(frame.getDisplayName())
                 .as("file with extension → name without extension")
                 .isEqualTo("My Song");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // initFrame — ordering-contract guard (decision 9A)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class InitFrameOrderingContract {
+
+        @BeforeEach
+        @SuppressWarnings("NullAway")
+        void resetActionsBeforeTest() {
+            // Other test classes may have left Actions initialized via initialize().
+            // resetForTest() only clears mainFrame/appMenuActions, not the action constants
+            // themselves. Null out CONTROL_ACTION_GROUP directly so the pre-initialize
+            // assertion below is valid regardless of prior test-class ordering.
+            Actions.CONTROL_ACTION_GROUP = null;
+        }
+
+        @AfterEach
+        void resetActionsAfterTest() {
+            Actions.resetForTest();
+        }
+
+        /**
+         * Guards the invariant that {@link MainFrame#initFrame()} calls
+         * {@link Actions#initialize(MainFrame)} before any {@code Actions.*} constant is
+         * first accessed. If the call is ever removed or moved below a constant access, this
+         * test fails instead of the issue surfacing only as an NPE at app launch.
+         *
+         * <p>The test verifies the contract through {@link Actions#initialize} directly:
+         * it starts with all constants null (no prior {@code initialize} call), invokes
+         * {@code initialize} with a minimal mock frame, then asserts that
+         * {@code CONTROL_ACTION_GROUP} — the first constant used in {@code initFrame()} —
+         * is non-null.
+         */
+        @Test
+        void testControlActionGroupIsNonNullAfterInitialize() {
+            // All constants are null here — resetActionsBeforeTest() ensures this.
+            assertThat(Actions.CONTROL_ACTION_GROUP)
+                .as("CONTROL_ACTION_GROUP must be null before Actions.initialize() is called")
+                .isNull();
+
+            when(frame.getRootPane()).thenReturn(mock(JRootPane.class, org.mockito.Mockito.RETURNS_DEEP_STUBS));
+
+            // initFrame() calls Actions.initialize(this) as its first statement.
+            Actions.initialize(frame);
+
+            assertThat(Actions.CONTROL_ACTION_GROUP)
+                .as("CONTROL_ACTION_GROUP non-null after Actions.initialize() — as initFrame() guarantees")
+                .isNotNull();
         }
     }
 

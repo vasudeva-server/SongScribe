@@ -29,6 +29,7 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.export.ExportUtils;
 
@@ -38,8 +39,8 @@ public class ExportMidiDialog extends StandardDialog {
     private final JCheckBox withRepeatCheck;
     private final File saveFile;
 
-    public ExportMidiDialog(File saveFile) {
-        super(Strings.get(Strings.DIALOG_EXPORT_MIDI_TITLE));
+    public ExportMidiDialog(MainFrame mainFrame, File saveFile) {
+        super(mainFrame, Strings.get(Strings.DIALOG_EXPORT_MIDI_TITLE));
         this.saveFile = saveFile;
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));

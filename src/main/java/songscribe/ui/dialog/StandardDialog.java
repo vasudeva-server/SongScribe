@@ -24,6 +24,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 /**
@@ -39,16 +40,16 @@ public abstract class StandardDialog extends BaseDialog {
     protected final JButton cancelButton;
     private boolean buttonPanelAttached = false;
 
-    protected StandardDialog(String title) {
-        this(title, true);
+    protected StandardDialog(MainFrame mainFrame, String title) {
+        this(mainFrame, title, true);
     }
 
-    protected StandardDialog(String title, boolean isModal) {
-        this(title, isModal, DialogCategory.OPERATIONAL);
+    protected StandardDialog(MainFrame mainFrame, String title, boolean isModal) {
+        this(mainFrame, title, isModal, DialogCategory.OPERATIONAL);
     }
 
-    protected StandardDialog(String title, boolean isModal, DialogCategory category) {
-        super(title, isModal, category);
+    protected StandardDialog(MainFrame mainFrame, String title, boolean isModal, DialogCategory category) {
+        super(mainFrame, title, isModal, category);
 
         okButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_OK));
         okButton.addActionListener(_ -> {

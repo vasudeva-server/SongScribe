@@ -26,6 +26,7 @@ import java.awt.event.MouseEvent;
 import songscribe.Strings;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.SplashWindow;
 import songscribe.util.DesktopUtils;
 import songscribe.util.Utils;
@@ -36,8 +37,8 @@ public class AboutDialog extends BaseDialog {
     private static final String ACKNOWLEDGEMENTS_URL =
         "https://github.com/vasudeva-server/SongScribe/blob/main/THIRD_PARTY_LICENSES.txt";
 
-    public AboutDialog() {
-        super(Strings.get(Strings.DIALOG_ABOUT_TITLE), true, DialogCategory.INFORMATIONAL);
+    public AboutDialog(MainFrame mainFrame) {
+        super(mainFrame, Strings.get(Strings.DIALOG_ABOUT_TITLE), true, DialogCategory.INFORMATIONAL);
 
         var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
 
