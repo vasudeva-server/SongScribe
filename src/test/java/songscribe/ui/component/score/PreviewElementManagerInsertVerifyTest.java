@@ -181,7 +181,7 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
     }
 
     // -----------------------------------------------------------------------
-    // insertElement — connecting-glissando removal (issue #456)
+    // insertElement — connecting-glissando removal (issues #456, #457)
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -237,6 +237,26 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
 
             assertThat(noteA.getGlissando())
                 .as("connected glissando removed when a rest is inserted")
+                .isNull();
+        }
+
+        /** A grace note between connected notes removes the glissando (issue #457). */
+        @Test
+        void testInsertingGraceNoteRemovesConnectingGlissando() {
+            var noteA = insertBetweenConnectedNotes(ElementType.GRACE_QUAVER);
+
+            assertThat(noteA.getGlissando())
+                .as("connected glissando removed when a grace note is inserted")
+                .isNull();
+        }
+
+        /** A bar line between connected notes removes the glissando (issue #457). */
+        @Test
+        void testInsertingBarLineRemovesConnectingGlissando() {
+            var noteA = insertBetweenConnectedNotes(ElementType.SINGLE_BARLINE);
+
+            assertThat(noteA.getGlissando())
+                .as("connected glissando removed when a bar line is inserted")
                 .isNull();
         }
 
