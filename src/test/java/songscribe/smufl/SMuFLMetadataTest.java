@@ -214,7 +214,6 @@ class SMuFLMetadataTest extends UnitTest {
     //
     // Bravura JSON: bBoxSW=[0.0, -1.392], bBoxNE=[0.996, 1.4]
     // fromSMuFL → left=0.0, top=-1.4, right=0.996, bottom=1.392, height=2.792
-    // This pins the value used by NoteAreaBuilder.ACCIDENTAL_HEIGHT_SS.
     // -------------------------------------------------------------------------
     private static final double ACCIDENTAL_SHARP_EXPECTED_HEIGHT = 2.792;
 

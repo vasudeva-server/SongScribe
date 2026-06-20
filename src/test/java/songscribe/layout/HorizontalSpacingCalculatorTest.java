@@ -1014,6 +1014,47 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         assertThat(wideXSs).isCloseTo(plainXSs + expectedShiftSs, within(TOLERANCE));
     }
 
+    // #443 grace → host: when the grace note carries a connecting glissando and the host has an
+    // accidental, the gap must widen so the glissando still reaches its minimum visible length.
+    // The glissando ends at the host accidental's rendered left edge, which sits
+    // (ACCIDENTAL_PADDING_SS - ACCIDENTAL_GAP_SS) further left than the layout left extent.
+    @Test
+    void testGraceWithGlissandoToHostWithAccidentalReservesGlissandoSpacing() {
+        var grace = ElementType.GRACE_QUAVER.newInstance();
+        grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        var graceColumn = new ElementColumn(
+            grace, Collections.emptyList(),
+            0.0, GRACE_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var host = ElementType.CROTCHET.newInstance();
+        host.setAccidental(StaffElement.Accidental.SHARP);
+        var hostColumn = new ElementColumn(
+            host, Collections.emptyList(),
+            ACCIDENTAL_LEFT_EXTENT_SS, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+        );
+        graceColumn.setXSs(PREV_COLUMN_X_SS);
+
+        // Same grace/host pair but with no glissando, for comparison.
+        var gracePlain = ElementType.GRACE_QUAVER.newInstance();
+        var gracePlainColumn = new ElementColumn(
+            gracePlain, Collections.emptyList(),
+            0.0, GRACE_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        gracePlainColumn.setXSs(PREV_COLUMN_X_SS);
+
+        var hostXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(graceColumn, hostColumn);
+        var hostNoGlissXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(gracePlainColumn, hostColumn);
+
+        var accidentalRenderedLeftSs = ACCIDENTAL_LEFT_EXTENT_SS
+            - (NoteGeometry.ACCIDENTAL_PADDING_SS - ElementColumnBuilder.ACCIDENTAL_GAP_SS);
+        var reservedGapSs = (hostXSs - PREV_COLUMN_X_SS) + accidentalRenderedLeftSs - GRACE_RIGHT_EXTENT_SS;
+
+        // The reserved gap clears the minimum glissando reservation, measured to the rendered edge.
+        assertThat(reservedGapSs).isGreaterThanOrEqualTo(NoteGeometry.MIN_GLISSANDO_RESERVATION_SS - TOLERANCE);
+        // The glissando is what widens the gap — without it the host sits tighter.
+        assertThat(hostXSs).isGreaterThan(hostNoGlissXSs);
+    }
+
     // #418 regular → grace: a grace note carrying its own accidental (after a regular note)
     // uses the default path (prev is not a grace note). The comfortable gap is measured to the
     // note head, so the head lands at the same xSs as a plain grace note.

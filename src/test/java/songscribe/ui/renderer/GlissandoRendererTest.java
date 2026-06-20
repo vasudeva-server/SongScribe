@@ -34,12 +34,18 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.layout.ElementColumn;
+import songscribe.layout.ElementColumnBuilder;
+import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.NoteGeometry;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 
@@ -142,6 +148,68 @@ class GlissandoRendererTest extends UnitTest {
 
         assertThat(endpoint.x).isCloseTo(0.0, within(STEP_SS));
         assertThat(endpoint.y).isCloseTo(0.0, within(STEP_SS));
+    }
+
+    // ======================================================================
+    // Connecting glissando with an accidental on the target (issue #443)
+    // ======================================================================
+
+    /**
+     * Builds a real source→target note pair, positions them with the production spacing calculator,
+     * builds their real note areas, and returns the computed glissando endpoints (null if the line
+     * would be too short to draw). This exercises the full layout→render geometry end-to-end so the
+     * reserved spacing is validated against where the line actually ends.
+     */
+    private GlissandoRenderer.@Nullable Endpoints computeConnectingGlissando(
+        ElementType sourceType, boolean targetHasAccidental) {
+        NoteGeometry.initializeAccidentalWidths();
+        var builder = new NoteAreaBuilder();
+
+        var source = sourceType.newInstance();
+        source.setUpper(true);
+        source.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        var target = ElementType.CROTCHET.newInstance();
+        target.setUpper(true);
+
+        if (targetHasAccidental) {
+            target.setAccidental(StaffElement.Accidental.SHARP);
+        }
+
+        // Same staff position for both → horizontal line, the shortest (worst) case for the length check.
+        var sourceRightSs = ElementColumnBuilder.calculateRightExtentSs(source, false, true);
+        var targetRightSs = ElementColumnBuilder.calculateRightExtentSs(target, false, true);
+        var targetLeftSs = ElementColumnBuilder.calculateLeftExtentSs(target);
+        var sourceColumn = new ElementColumn(source, List.of(), 0.0, sourceRightSs, sourceRightSs, 0, 0, null, 0, false);
+        var targetColumn = new ElementColumn(target, List.of(), targetLeftSs, targetRightSs, targetRightSs, 0, 0, null, 0, false);
+        var targetXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(sourceColumn, targetColumn);
+
+        var sourceArea = builder.getOrBuildArea(source, false);
+        var targetArea = builder.getOrBuildArea(target, false);
+        var sourceCenterXSs = NoteGeometry.getNoteheadRightEdgeSs(source) / 2.0;
+        var targetCenterXSs = targetXSs + NoteGeometry.getNoteheadRightEdgeSs(target) / 2.0;
+        var src = new GlissandoRenderer.NoteContext(source, sourceCenterXSs, 0, sourceArea.offsetArea(), sourceArea.offsetBounds());
+        var tgt = new GlissandoRenderer.NoteContext(target, targetCenterXSs, 0, targetArea.offsetArea(), targetArea.offsetBounds());
+
+        return GlissandoRenderer.computeEndpoints(src, tgt);
+    }
+
+    // #443: a regular note→note connecting glissando must still draw when the target has an
+    // accidental — the reserved spacing has to leave room for the line's minimum visible length.
+    @Test
+    void testConnectingGlissandoDrawsWhenTargetNoteHasAccidental() {
+        // computeEndpoints returns null when the line would be shorter than its minimum visible
+        // length, so a non-null result means the glissando draws.
+        var endpoints = computeConnectingGlissando(ElementType.CROTCHET, true);
+
+        assertThat(endpoints).as("regular note glissando draws with an accidental on the target").isNotNull();
+    }
+
+    // #443: the same must hold for a grace→host glissando, the issue's reproduction.
+    @Test
+    void testConnectingGlissandoDrawsForGraceWhenHostHasAccidental() {
+        var endpoints = computeConnectingGlissando(ElementType.GRACE_QUAVER, true);
+
+        assertThat(endpoints).as("grace→host glissando draws with an accidental on the host").isNotNull();
     }
 
     // ======================================================================

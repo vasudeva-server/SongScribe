@@ -56,9 +56,19 @@ public final class NoteGeometry {
     private static final double GLISSANDO_MIN_LENGTH_SS = 1.0;
     private static final double GLISSANDO_NOTEHEAD_GAP_SS = 0.3;
 
+    /**
+     * Extra clearance reserved on each side of a glissando beyond the visible gap. The renderer
+     * finds each endpoint by stepping inward in ~1px increments and stops one step <em>outside</em>
+     * the note area, which shortens the drawn line by up to one step per side. Round-cap stroking of
+     * the note area and glyph-outline slack add a little more. Without this, a tightly-spaced
+     * glissando (notably one whose target carries an accidental) reserves just too little room and
+     * falls below {@link #GLISSANDO_MIN_LENGTH_SS}, so it is not drawn (refs #443).
+     */
+    private static final double GLISSANDO_ENDPOINT_CLEARANCE_SS = 0.2;
+
     /** Minimum horizontal distance between note origins required for a glissando, in staff spaces. */
     public static final double MIN_GLISSANDO_RESERVATION_SS =
-        GLISSANDO_MIN_LENGTH_SS + 2 * GLISSANDO_NOTEHEAD_GAP_SS;
+        GLISSANDO_MIN_LENGTH_SS + 2 * (GLISSANDO_NOTEHEAD_GAP_SS + GLISSANDO_ENDPOINT_CLEARANCE_SS);
 
     /**
      * Stem anchor point for small black noteheads (stem-up, south-east corner).

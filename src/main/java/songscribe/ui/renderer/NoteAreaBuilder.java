@@ -64,14 +64,22 @@ class NoteAreaBuilder {
     /** Cached glyph outline for grace noteheads. */
     private static final Shape NOTEHEAD_GRACE_SHAPE;
 
-    /** Height of the sharp accidental glyph, used as the bounding-box height for all accidentals. */
-    private static final double ACCIDENTAL_HEIGHT_SS;
-
     /** Cached glyph outlines for flag glyphs at standard size. */
     private static final Map<SMuFLGlyph, Shape> FLAG_SHAPES;
 
     /** Cached glyph outline for the grace note flag (FLAG_8TH_UP at grace scale). */
     private static final Shape FLAG_8TH_UP_GRACE_SHAPE;
+
+    /**
+     * Cached accidental glyph outlines at the note origin, keyed by glyph.
+     * Populated lazily because the set of accidental glyphs in use (components,
+     * parentheses, small variants) is not known at static-init time. The cached
+     * outlines are position-independent; each use translates them to the pen X.
+     */
+    private static final Map<SMuFLGlyph, Shape> ACCIDENTAL_SHAPES = new EnumMap<>(SMuFLGlyph.class);
+
+    /** Grace-scale counterpart of {@link #ACCIDENTAL_SHAPES}. */
+    private static final Map<SMuFLGlyph, Shape> ACCIDENTAL_GRACE_SHAPES = new EnumMap<>(SMuFLGlyph.class);
 
     static {
         var frc = GraphicUtils.SCREEN_FRC;
@@ -82,8 +90,6 @@ class NoteAreaBuilder {
         NOTEHEAD_HALF_SHAPE = GraphicUtils.glyphOutline(font, frc, SMuFLGlyph.NOTEHEAD_HALF);
         NOTEHEAD_WHOLE_SHAPE = GraphicUtils.glyphOutline(font, frc, SMuFLGlyph.NOTEHEAD_WHOLE);
         NOTEHEAD_GRACE_SHAPE = GraphicUtils.glyphOutline(graceFont, frc, SMuFLGlyph.NOTEHEAD_BLACK);
-
-        ACCIDENTAL_HEIGHT_SS = SMuFLMetadata.requireBBox(SMuFLGlyph.ACCIDENTAL_SHARP).height();
 
         var flagGlyphs = new SMuFLGlyph[]{
             SMuFLGlyph.FLAG_8TH_UP, SMuFLGlyph.FLAG_8TH_DOWN,
@@ -252,11 +258,18 @@ class NoteAreaBuilder {
     }
 
     /**
-     * Adds an accidental bounding rectangle to the area.
+     * Adds the accidental glyph outlines to the area.
      * Mirrors the positioning logic in {@link NoteRenderer#renderAccidental}.
+     * <p>
+     * A rectangular bounding box would over-reserve in the corners yet still
+     * under-reserve where the glyph ink is tallest (accidentals are not centered
+     * on the note: a flat extends well above the note center and barely below it).
+     * Adding the real glyph outlines makes the glissando clearance follow the ink.
      */
     private void addAccidentalToArea(Area area, StaffElement note) {
-        if (note.getAccidental() == null) {
+        var accidental = note.getAccidental();
+
+        if (accidental == null) {
             return;
         }
 
@@ -266,19 +279,25 @@ class NoteAreaBuilder {
             return;
         }
 
-        // Accidental X position mirrors NoteRenderer: -(padding + width)
-        // For grace notes, accWidth already reflects the small glyph size.
-        double xSs = -NoteGeometry.ACCIDENTAL_PADDING_SS - accWidth;
+        var isGrace = note.getType().isGraceNote();
+        var font = isGrace ? RenderingUtils.GRACE_NOTE_FONT : RenderingUtils.MUSIC_FONT;
+        var components = NoteGeometry.getAccidentalComponents(accidental, isGrace);
 
-        // Use the sharp accidental height (see ACCIDENTAL_HEIGHT_SS) as a bounding-box approximation.
-        // The actual accidental may be shorter, but this gives a safe bounding area.
-        var heightSs = ACCIDENTAL_HEIGHT_SS;
-        var halfHeightSs = heightSs / 2.0;
+        // Accidental X position mirrors NoteRenderer: -(padding + width).
+        var startX = -NoteGeometry.ACCIDENTAL_PADDING_SS - accWidth;
 
-        area.add(new Area(new Rectangle2D.Double(
-            xSs, -halfHeightSs,
-            accWidth, heightSs
-        )));
+        var cache = isGrace ? ACCIDENTAL_GRACE_SHAPES : ACCIDENTAL_SHAPES;
+
+        NoteGeometry.walkAccidentalGlyphs(
+            components,
+            note.isAccidentalInParentheses(),
+            startX,
+            (glyph, xSs) -> {
+                var outline = cache.computeIfAbsent(
+                    glyph, g -> GraphicUtils.glyphOutline(font, GraphicUtils.SCREEN_FRC, g));
+                area.add(new Area(
+                    AffineTransform.getTranslateInstance(xSs, 0).createTransformedShape(outline)));
+            });
     }
 
     /**

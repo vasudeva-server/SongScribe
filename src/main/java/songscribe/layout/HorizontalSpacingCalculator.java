@@ -216,41 +216,39 @@ public class HorizontalSpacingCalculator {
         ElementColumn prevColumn,
         ElementColumn currColumn) {
 
-        // Grace note → host note: use tight grace note spacing. The comfortable gap is measured
-        // to the host note head — the accidental is excluded so it does not widen the gap — while
-        // the geometric minimum, which does use the full left extent, acts as a hard floor to
-        // ensure no overlap (refs #418).
+        double spacingSs;
+
         if (prevColumn.getElement().getType().isGraceNote()) {
+            // Grace note → host note: use tight grace note spacing. The comfortable gap is measured
+            // to the host note head — the accidental is excluded so it does not widen the gap — while
+            // the geometric minimum, which does use the full left extent, acts as a hard floor to
+            // ensure no overlap (refs #418).
             var comfortableSpacingSs = prevColumn.getRightExtentSs() + GRACE_NOTE_GAP_SS;
             var minimumSpacingSs = calculateMinimumColumnSpacingSs(prevColumn, currColumn);
-            var spacingSs = Math.max(comfortableSpacingSs, minimumSpacingSs);
-            return prevColumn.getXSs() + spacingSs;
+            spacingSs = Math.max(comfortableSpacingSs, minimumSpacingSs);
+        } else {
+            // Calculate minimum spacing (from previous column's right extent)
+            var minimumSpacingSs = calculateMinimumColumnSpacingSs(prevColumn, currColumn);
+
+            // Calculate lyric-driven spacing requirement
+            var lyricSpacingSs = calculateLyricSpacingSs(prevColumn, currColumn);
+
+            // Use default comfortable spacing as a floor, then expand further if lyrics require it.
+            // This prevents the case where only one side has a lyric from producing
+            // tighter-than-default note-head-to-note-head spacing. The minimum-spacing floor (which
+            // uses the full left extent, accidental included) already keeps MIN_COLUMN_GAP to the
+            // current column's leftmost glyph, so a note shifts right only when its accidental would
+            // otherwise crowd the previous element — no separate accidental push is needed.
+            var defaultSpacingSs = calculateDefaultColumnSpacingSs(prevColumn);
+            spacingSs = Math.max(minimumSpacingSs, Math.max(defaultSpacingSs, lyricSpacingSs));
         }
 
-        // Calculate minimum spacing (from previous column's right extent)
-        var minimumSpacingSs = calculateMinimumColumnSpacingSs(prevColumn, currColumn);
-
-        // Calculate lyric-driven spacing requirement
-        var lyricSpacingSs = calculateLyricSpacingSs(prevColumn, currColumn);
-
-        // Use default comfortable spacing as a floor, then expand further if lyrics require it.
-        // This prevents the case where only one side has a lyric from producing
-        // tighter-than-default note-head-to-note-head spacing.
-        var defaultSpacingSs = calculateDefaultColumnSpacingSs(prevColumn);
-        var requiredSpacingSs = Math.max(minimumSpacingSs, Math.max(defaultSpacingSs, lyricSpacingSs));
-
-        // Calculate tentative X position. The minimum-spacing floor (which uses the full
-        // left extent, accidental included) already keeps MIN_COLUMN_GAP to the current
-        // column's leftmost glyph, so a note shifts right only when its accidental would
-        // otherwise crowd the previous element — no separate accidental push is needed.
-        var nextXSs = prevColumn.getXSs() + requiredSpacingSs;
-
-        // Check glissando spacing: ensure enough horizontal room for the glissando
-        var spacingSs = nextXSs - prevColumn.getXSs();
+        // Ensure enough horizontal room for a connecting glissando. This applies to both grace→host
+        // and regular note→note pairs: a glissando on the previous note must clear the next note's
+        // left-side glyphs (accidental included) and still keep its minimum visible length (refs #443).
         spacingSs = ensureGlissandoSpacing(prevColumn, currColumn, spacingSs);
-        nextXSs = prevColumn.getXSs() + spacingSs;
 
-        return nextXSs;
+        return prevColumn.getXSs() + spacingSs;
     }
 
     /**
@@ -353,8 +351,19 @@ public class HorizontalSpacingCalculator {
             prevGlissRight = Math.max(prevGlissRight, noteheadWidthSs + prevOverhang);
         }
 
-        var currOverhang = NoteGeometry.getLedgerLineOverhangSs(curr.getElement());
+        var currElement = curr.getElement();
         var currGlissLeft = curr.getLeftExtentSs();
+
+        // The glissando line ends at the next note's left-side area edge. The renderer's note area
+        // places the accidental slightly further left than the layout left extent does
+        // (NoteGeometry.ACCIDENTAL_PADDING_SS vs ElementColumnBuilder.ACCIDENTAL_GAP_SS), so reserve
+        // against the renderer's edge — otherwise the reserved gap is too small and the line falls
+        // just below its minimum visible length (refs #443).
+        if (currElement.getAccidental() != null) {
+            currGlissLeft -= NoteGeometry.ACCIDENTAL_PADDING_SS - ElementColumnBuilder.ACCIDENTAL_GAP_SS;
+        }
+
+        var currOverhang = NoteGeometry.getLedgerLineOverhangSs(currElement);
 
         if (currOverhang > 0) {
             currGlissLeft = Math.min(currGlissLeft, -currOverhang);
