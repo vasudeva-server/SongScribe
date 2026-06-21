@@ -94,7 +94,7 @@ class GlissandoRendererTest extends UnitTest {
 
         // Direction: right (nx=1, ny=0)
         var endpoint = GlissandoRenderer.findNoteAreaEntryPoint(
-            offsetArea, offsetBounds, 0, 0, 1, 0, STEP_SS);
+            circle, offsetArea, offsetBounds, 0, 0, 1, 0, STEP_SS, offsetSs);
 
         // Endpoint should be just past the offset area boundary (radius + offsetSs)
         assertThat(endpoint.x).isGreaterThanOrEqualTo(2.0 + offsetSs - STEP_SS);
@@ -112,7 +112,7 @@ class GlissandoRendererTest extends UnitTest {
 
         // Direction: right from center (2, 1)
         var endpoint = GlissandoRenderer.findNoteAreaEntryPoint(
-            offsetArea, offsetBounds, 2, 1, 1, 0, STEP_SS);
+            composite, offsetArea, offsetBounds, 2, 1, 1, 0, STEP_SS, offsetSs);
 
         // The circle extends to x=7, offset boundary ~7+offsetSs; endpoint just past that
         assertThat(endpoint.x).isGreaterThanOrEqualTo(7.0);
@@ -128,7 +128,7 @@ class GlissandoRendererTest extends UnitTest {
         var offsetBounds = offsetArea.getBounds2D();
 
         var endpoint = GlissandoRenderer.findNoteAreaEntryPoint(
-            offsetArea, offsetBounds, 0, 0, 1, 0, STEP_SS);
+            farRect, offsetArea, offsetBounds, 0, 0, 1, 0, STEP_SS, offsetSs);
 
         // Fallback: center returned
         assertThat(endpoint.x).isCloseTo(0.0, within(STEP_SS));
@@ -144,7 +144,7 @@ class GlissandoRendererTest extends UnitTest {
 
         // nx=ny=0 should trigger the zero-direction guard and return center
         var endpoint = GlissandoRenderer.findNoteAreaEntryPoint(
-            offsetArea, offsetBounds, 0, 0, 0, 0, STEP_SS);
+            rect, offsetArea, offsetBounds, 0, 0, 0, 0, STEP_SS, offsetSs);
 
         assertThat(endpoint.x).isCloseTo(0.0, within(STEP_SS));
         assertThat(endpoint.y).isCloseTo(0.0, within(STEP_SS));
@@ -187,8 +187,12 @@ class GlissandoRendererTest extends UnitTest {
         var targetArea = builder.getOrBuildArea(target, false);
         var sourceCenterXSs = NoteGeometry.getNoteheadRightEdgeSs(source) / 2.0;
         var targetCenterXSs = targetXSs + NoteGeometry.getNoteheadRightEdgeSs(target) / 2.0;
-        var src = new GlissandoRenderer.NoteContext(source, sourceCenterXSs, 0, sourceArea.offsetArea(), sourceArea.offsetBounds());
-        var tgt = new GlissandoRenderer.NoteContext(target, targetCenterXSs, 0, targetArea.offsetArea(), targetArea.offsetBounds());
+        var src = new GlissandoRenderer.NoteContext(
+            source, sourceCenterXSs, 0,
+            sourceArea.area(), sourceArea.bounds(), sourceArea.offsetArea(), sourceArea.offsetBounds());
+        var tgt = new GlissandoRenderer.NoteContext(
+            target, targetCenterXSs, 0,
+            targetArea.area(), targetArea.bounds(), targetArea.offsetArea(), targetArea.offsetBounds());
 
         return GlissandoRenderer.computeEndpoints(src, tgt);
     }
@@ -491,11 +495,11 @@ class GlissandoRendererTest extends UnitTest {
     private static GlissandoRenderer.NoteContext noteContextAt(double cxSs, double cySs) {
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
-        var area = NoteAreaBuilder.createOffsetArea(
-            new Area(new Rectangle2D.Double(-0.5, -0.5, 1.0, 1.0)),
-            (float) NoteAreaBuilder.MIN_GAP_SS);
+        var area = new Area(new Rectangle2D.Double(-0.5, -0.5, 1.0, 1.0));
         var bounds = area.getBounds2D();
-        return new GlissandoRenderer.NoteContext(note, cxSs, cySs, area, bounds);
+        var offsetArea = NoteAreaBuilder.createOffsetArea(area, (float) NoteAreaBuilder.MIN_GAP_SS);
+        var offsetBounds = offsetArea.getBounds2D();
+        return new GlissandoRenderer.NoteContext(note, cxSs, cySs, area, bounds, offsetArea, offsetBounds);
     }
 
     @Test

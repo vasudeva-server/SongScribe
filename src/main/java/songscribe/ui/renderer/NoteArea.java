@@ -24,6 +24,9 @@ import java.awt.geom.Area;
 import java.awt.geom.Rectangle2D;
 
 /**
- * The offset (pre-expanded) note area and its bounding box, ready for glissando endpoint search.
+ * A note's geometry for glissando endpoint search: the base ink {@code area} (notehead,
+ * stem, flags, …) used to find where the ray exits the note, and the {@code offsetArea}
+ * (ink pre-expanded by the gap) used to clamp the endpoint away from the stem, each with
+ * its bounding box.
  */
-record NoteArea(Area offsetArea, Rectangle2D offsetBounds) {}
+record NoteArea(Area area, Rectangle2D bounds, Area offsetArea, Rectangle2D offsetBounds) {}

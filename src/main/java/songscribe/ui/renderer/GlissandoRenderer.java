@@ -54,10 +54,10 @@ public final class GlissandoRenderer {
     // ==========================================================================
 
     /** Minimum rendered glissando length in staff spaces. Glissandos shorter than this are not drawn. */
-    private static final double MIN_RECT_LENGTH_SS = 1.0;
+    private static final double MIN_RECT_LENGTH_SS = 0.75;
 
     /** Length of a slide-out glissando in staff spaces. */
-    private static final double SLIDE_OUT_LENGTH_SS = 1.75;
+    private static final double SLIDE_OUT_LENGTH_SS = 1.0;
 
     /** Angle of a slide-out glissando below horizontal, in degrees. */
     private static final double SLIDE_OUT_ANGLE_DEG = 30.0;
@@ -156,11 +156,13 @@ public final class GlissandoRenderer {
             var shiftSs = frame.previewShiftSs();
 
             if (noteIndex >= shiftFromIndex) {
-                src = new NoteContext(src.note(), src.cxSs() + shiftSs, src.cySs(), src.offsetArea(), src.offsetBounds());
+                src = new NoteContext(src.note(), src.cxSs() + shiftSs, src.cySs(),
+                    src.area(), src.bounds(), src.offsetArea(), src.offsetBounds());
             }
 
             if (tgt != null && noteIndex + 1 >= shiftFromIndex) {
-                tgt = new NoteContext(tgt.note(), tgt.cxSs() + shiftSs, tgt.cySs(), tgt.offsetArea(), tgt.offsetBounds());
+                tgt = new NoteContext(tgt.note(), tgt.cxSs() + shiftSs, tgt.cySs(),
+                    tgt.area(), tgt.bounds(), tgt.offsetArea(), tgt.offsetBounds());
             }
         }
 
@@ -298,11 +300,14 @@ public final class GlissandoRenderer {
     // ==========================================================================
 
     /**
-     * Resolved geometry for a single note: center position, offset area, and note reference.
+     * Resolved geometry for a single note: center position, base ink area, offset area, and
+     * note reference.
      */
     record NoteContext(
         StaffElement note,
         double cxSs, double cySs,
+        Area area,
+        Rectangle2D bounds,
         Area offsetArea,
         Rectangle2D offsetBounds
     ) {}
@@ -329,7 +334,7 @@ public final class GlissandoRenderer {
         var cy = RenderingUtils.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
         var entry = noteAreaBuilder.getOrBuildArea(note, beamed);
 
-        return new NoteContext(note, cx, cy, entry.offsetArea(), entry.offsetBounds());
+        return new NoteContext(note, cx, cy, entry.area(), entry.bounds(), entry.offsetArea(), entry.offsetBounds());
     }
 
     /**
@@ -389,13 +394,14 @@ public final class GlissandoRenderer {
         // Layout offset from local origin: (cx - localCenterX, cy).
         // Exit points found in local space are translated to layout space by adding the offset.
 
-        // Source: find entry point on offset area in local space
+        // Source: find the exit point on the note ink in local space
         var localCx1 = NoteGeometry.getNoteheadRightEdgeSs(src.note) / 2.0;
         var offset1X = src.cxSs - localCx1;
         var offset1Y = src.cySs;
 
         var stepSs = ScaleContext.pxToSs(1.0);
-        var entry1 = findNoteAreaEntryPoint(src.offsetArea, src.offsetBounds, localCx1, 0, nx, ny, stepSs);
+        var entry1 = findNoteAreaEntryPoint(
+            src.area, src.offsetArea, src.offsetBounds, localCx1, 0, nx, ny, stepSs, NoteAreaBuilder.MIN_GAP_SS);
 
         var startX = entry1.x + offset1X;
         var startY = entry1.y + offset1Y;
@@ -406,12 +412,13 @@ public final class GlissandoRenderer {
             endX = startX + nx * SLIDE_OUT_LENGTH_SS;
             endY = startY + ny * SLIDE_OUT_LENGTH_SS;
         } else {
-            // Target: find entry point on offset area in local space (reverse direction)
+            // Target: find the exit point on the note ink in local space (reverse direction)
             var localCx2 = NoteGeometry.getNoteheadRightEdgeSs(tgt.note) / 2.0;
             var offset2X = tgt.cxSs - localCx2;
             var offset2Y = tgt.cySs;
 
-            var entry2 = findNoteAreaEntryPoint(tgt.offsetArea, tgt.offsetBounds, localCx2, 0, -nx, -ny, stepSs);
+            var entry2 = findNoteAreaEntryPoint(
+                tgt.area, tgt.offsetArea, tgt.offsetBounds, localCx2, 0, -nx, -ny, stepSs, NoteAreaBuilder.MIN_GAP_SS);
 
             endX = entry2.x + offset2X;
             endY = entry2.y + offset2Y;
@@ -487,66 +494,86 @@ public final class GlissandoRenderer {
     // ==========================================================================
 
     /**
-     * Finds the glissando endpoint on the boundary of an offset (pre-expanded) note area,
-     * by stepping inward from the bounding box edge until the first intersection.
-     * The gap is already baked into the offset area, so no additional gap is needed here.
+     * Finds the glissando endpoint near a note, with a gap that stays visually consistent
+     * across glissando angles while never crowding the stem or flags.
      * <p>
-     * The algorithm inverts the classic outward-sweep: instead of starting at the center
-     * and sweeping out, it starts at the bounding box edge and steps inward ~1 px at a time:
+     * The ray starts at the notehead center and runs outward along the glissando direction.
+     * The endpoint is computed in three steps:
+     * <ol>
+     *   <li><b>Exit the ink.</b> Step inward from the bounding-box edge until the centerline
+     *       first enters the bare note ink — where the ray leaves the note.</li>
+     *   <li><b>Back off along the ray.</b> Place the endpoint {@code gapSs} further out along
+     *       the ray. Measuring the gap <em>along the line</em> (rather than perpendicular to the
+     *       ink) keeps the visible gap constant for every angle: a ray from the center exits a
+     *       convex notehead almost perpendicular, so along-line and perpendicular coincide there.</li>
+     *   <li><b>Clamp.</b> If that endpoint still lies inside the offset area — i.e. within
+     *       {@code gapSs} of any ink — step outward until it clears. This is a no-op for notehead
+     *       exits and engages only where the ray grazes the stem or a flag obliquely, preventing
+     *       the line from running too close to them at steep angles.</li>
+     * </ol>
      *
      * <pre>
-     *   bbox edge         offset area boundary     notehead center
+     *   bbox edge          ink boundary          notehead center
      *       |                    |                      |
      *       v                    v                      v
-     *       * ← ← ← ← ← * ← ← * ← ← ← ← ← ← ← ← ← *
-     *       ^             ^
-     *       startT        endpoint (one step past first intersect)
+     *       * ← ← ← ← ← ← ← ← ← *  ← ← ← ← ← ← ← ← ← ← *
+     *                    ^       ^
+     *                  endpoint  crossing (endpoint = crossing + gap, then clamped)
      * </pre>
      *
-     * @param offsetArea   The pre-expanded note area (includes gap)
-     * @param offsetBounds Bounding box of the offset area
+     * @param area         The bare note ink area (notehead, stem, flags, …)
+     * @param offsetArea   The note ink pre-expanded by the gap, used only for the clamp
+     * @param offsetBounds Bounding box of the offset area (encloses the search range)
      * @param cx           Notehead center X in local space
      * @param cy           Notehead center Y in local space
      * @param nx           Normalized X component of the glissando direction
      * @param ny           Normalized Y component of the glissando direction
      * @param stepSs       Step size in staff spaces (typically 1px)
-     * @return The endpoint just outside the offset area boundary
+     * @param gapSs        Gap between the note ink and the endpoint, measured along the ray
+     * @return The endpoint, or the center if the ray never meets the ink
      */
     static Point2D.Double findNoteAreaEntryPoint(
+        Area area,
         Area offsetArea,
         Rectangle2D offsetBounds,
         double cx, double cy,
         double nx, double ny,
-        double stepSs
+        double stepSs, double gapSs
     ) {
         // Zero-direction guard
         if (nx == 0 && ny == 0) {
             return new Point2D.Double(cx, cy);
         }
 
-        // Precompute bounding-box half-dimensions of the rotated tip rectangle
-        var halfStep = stepSs / 2.0;
-        var halfThickness = ScaleContext.pxToSs(RECT_THICKNESS_PX) / 2.0;
-        var halfW = halfStep * Math.abs(nx) + halfThickness * Math.abs(ny);
-        var halfH = halfStep * Math.abs(ny) + halfThickness * Math.abs(nx);
-
         // Start at the point where the outward ray exits the bounding box
         var startT = computeFarBoundsT(offsetBounds, cx, cy, nx, ny);
 
-        // Step inward; return the last non-intersecting position
-        for (var t = startT; t >= 0; t -= stepSs) {
-            var px = cx + nx * t;
-            var py = cy + ny * t;
-            var tipRect = new Rectangle2D.Double(px - halfW, py - halfH, halfW * 2, halfH * 2);
+        // Step 1: find where the ray exits the bare note ink.
+        double crossingT = -1;
 
-            if (offsetArea.intersects(tipRect)) {
-                var endT = t + stepSs;
-                return new Point2D.Double(cx + nx * endT, cy + ny * endT);
+        for (var t = startT; t >= 0; t -= stepSs) {
+            if (area.contains(cx + nx * t, cy + ny * t)) {
+                crossingT = t;
+                break;
             }
         }
 
-        // Fallback: center is outside the area
-        return new Point2D.Double(cx, cy);
+        // Fallback: the ray never meets the ink (center outside the area)
+        if (crossingT < 0) {
+            return new Point2D.Double(cx, cy);
+        }
+
+        // Step 2: back off a constant gap along the ray for a consistent visual gap.
+        var endT = crossingT + gapSs;
+
+        // Step 3: clamp so the endpoint never sits within the gap of any ink (stem/flag safety).
+        // offsetArea.contains(p) is exactly "distance to ink <= gap"; the loop terminates once
+        // the point leaves the offset area, which it must do before reaching the bounding box edge.
+        while (endT < startT && offsetArea.contains(cx + nx * endT, cy + ny * endT)) {
+            endT += stepSs;
+        }
+
+        return new Point2D.Double(cx + nx * endT, cy + ny * endT);
     }
 
     static double computeFarBoundsT(

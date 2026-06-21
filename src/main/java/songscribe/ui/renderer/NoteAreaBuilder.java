@@ -50,7 +50,7 @@ class NoteAreaBuilder {
 
 
     /** Minimum gap between the note area exit point and the glissando endpoint, in staff spaces. */
-    static final double MIN_GAP_SS = 0.3;
+    static final double MIN_GAP_SS = 0.25;
 
     /** Cached glyph outline for filled (black) noteheads (quarter, eighth, etc.). */
     private static final Shape NOTEHEAD_BLACK_SHAPE;
@@ -159,8 +159,9 @@ class NoteAreaBuilder {
             return cached.noteArea;
         }
 
-        var offsetArea = createOffsetArea(buildNoteArea(note, beamed), (float) MIN_GAP_SS);
-        var noteArea = new NoteArea(offsetArea, offsetArea.getBounds2D());
+        var area = buildNoteArea(note, beamed);
+        var offsetArea = createOffsetArea(area, (float) MIN_GAP_SS);
+        var noteArea = new NoteArea(area, area.getBounds2D(), offsetArea, offsetArea.getBounds2D());
         areaCache.put(note, new AreaCacheEntry(key, noteArea));
 
         return noteArea;
