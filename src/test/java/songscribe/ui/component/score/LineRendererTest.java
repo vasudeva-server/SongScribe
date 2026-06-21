@@ -390,6 +390,60 @@ class LineRendererTest extends UnitTest {
                 .as("non-pending-cancel element with BLACK invariant should remain BLACK")
                 .isEqualTo(Color.BLACK);
         }
+
+        /**
+         * When {@code invariants.getElementColor} returns BLACK and the element is one a
+         * previewed glissando would connect to, {@code getElementColor} returns the preview
+         * color so the note glyph (and only the note glyph) is highlighted.
+         */
+        @Test
+        void testGlissandoPreviewNoteReturnsPreviewColor() {
+            try (var previewMock = mockStatic(PreviewElementManager.class)) {
+                previewMock.when(PreviewElementManager::getGlissandoPreviewNotes)
+                    .thenReturn(new PreviewElementManager.GlissandoPreviewNotes(0, 0, -1));
+
+                var invariants = seededBuilder()
+                    .setEditMode(true)
+                    .build();
+
+                var color = renderer.getElementColor(0, invariants);
+
+                assertThat(color)
+                    .as("glissando-preview note glyph should use the preview color")
+                    .isEqualTo(ScoreView.getPreviewElementColor());
+            }
+        }
+
+        /**
+         * The glissando-preview highlight takes precedence over the grace-cancel RED override:
+         * a note that is both a glissando-preview target and pending cancellation renders in the
+         * preview color, not RED.
+         */
+        @Test
+        void testGlissandoPreviewTakesPrecedenceOverPendingCancel() {
+            var line = detachedLine();
+            var element = ElementType.CROTCHET.newInstance();
+            line.addElement(element);
+
+            when(lc.getLine()).thenReturn(line);
+            when(lc.isPendingCancelElement(element)).thenReturn(true);
+
+            try (var previewMock = mockStatic(PreviewElementManager.class)) {
+                previewMock.when(PreviewElementManager::getGlissandoPreviewNotes)
+                    .thenReturn(new PreviewElementManager.GlissandoPreviewNotes(0, 0, -1));
+
+                var invariants = seededBuilder()
+                    .setCurrentLine(line)
+                    .setEditMode(true)
+                    .build();
+
+                var color = renderer.getElementColor(0, invariants);
+
+                assertThat(color)
+                    .as("glissando-preview highlight should win over the grace-cancel RED override")
+                    .isEqualTo(ScoreView.getPreviewElementColor());
+            }
+        }
     }
 
     // -------------------------------------------------------------------------

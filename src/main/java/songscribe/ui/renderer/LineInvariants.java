@@ -348,18 +348,18 @@ public final class LineInvariants {
             return REPLACED_ELEMENT_COLOR;
         }
 
-        if (isGlissandoPreviewNote(elementIndex)) {
-            return ScoreView.getPreviewElementColor();
-        }
-
         return Color.BLACK;
     }
 
     /**
-     * Returns whether the element at {@code elementIndex} on this line is highlighted by the active
-     * glissando preview, reusing the per-line resolution computed at construction.
+     * Returns whether the element at {@code elementIndex} on this line is one the active glissando
+     * preview would connect to, reusing the per-line resolution computed at construction.
+     * <p>
+     * The highlight applies only to the note glyph (notehead, stem, flag, accidentals, dots) and is
+     * therefore applied by {@code LineRenderer.getElementColor}, not by {@link #getElementColor},
+     * so it does not leak onto the note's decorations, attachments, ties, or lyrics.
      */
-    boolean isGlissandoPreviewNote(int elementIndex) {
+    public boolean isGlissandoPreviewNote(int elementIndex) {
         return glissandoPreviewNotes.highlights(lineIndex, elementIndex);
     }
 

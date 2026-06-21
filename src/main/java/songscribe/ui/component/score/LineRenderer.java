@@ -281,8 +281,8 @@ class LineRenderer {
      * Determines the color for rendering an element.
      * <p>
      * Delegates edit mode, playback, selection, and hover logic to
-     * {@link LineInvariants#getElementColor}. Adds grace-cancel coloring on top.
-     * Package-private for testing.
+     * {@link LineInvariants#getElementColor}. Adds the glissando-preview highlight and
+     * grace-cancel coloring on top. Package-private for testing.
      *
      * @param elementIndex The index of the element within this line
      * @param invariants          The per-line invariants
@@ -293,6 +293,14 @@ class LineRenderer {
 
         if (color != Color.BLACK) {
             return color;
+        }
+
+        // The glissando-preview highlight marks only the note glyph (notehead, stem, flag,
+        // accidentals, dots) of the notes a previewed glissando would connect to. It is applied
+        // here, on the note's own color, so it does not leak onto the note's decorations,
+        // attachments, ties, or lyrics, which each resolve their color independently.
+        if (invariants.isGlissandoPreviewNote(elementIndex)) {
+            return ScoreView.getPreviewElementColor();
         }
 
         var line = lc.getLine();
