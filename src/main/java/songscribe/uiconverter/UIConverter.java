@@ -35,7 +35,6 @@ import songscribe.SongScribe;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.playback.MidiController;
 import songscribe.util.GraphicUtils;
 
 import org.jspecify.annotations.Nullable;
@@ -120,7 +119,6 @@ public class UIConverter extends JFrame {
 
     public static void main(String[] args) {
         SongScribe.configureLogging();
-        MidiController.openMidi();
         new UIConverter();
     }
 
