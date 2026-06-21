@@ -214,6 +214,10 @@ public final class PreviewElementManager {
      */
     @Nullable
     public static ElementLocation getHoveredElementLocation() {
+        if (!xPosSsMatchesElement || currentPreviewLine == null) {
+            return null;
+        }
+
         // A breath mark never replaces an existing element, so it never highlights one
         // as a replacement target.
         var previewElement = EditModeManager.getPreviewElement();
@@ -222,9 +226,7 @@ public final class PreviewElementManager {
             return null;
         }
 
-        return (xPosSsMatchesElement && currentPreviewLine != null)
-            ? new ElementLocation(currentPreviewLine.getLineIndex(), currentXIndex)
-            : null;
+        return new ElementLocation(currentPreviewLine.getLineIndex(), currentXIndex);
     }
 
     /**
