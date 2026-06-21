@@ -21,6 +21,7 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import java.util.ArrayList;
@@ -58,7 +59,7 @@ class NoteGeometryTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Row 22: getAccidentalWidthSs — dispatches small/base/parens; 0 for none
+    // Row 22: getAccidentalWidthSs — base/parens, grace scaling; 0 for none
     // -----------------------------------------------------------------------
 
     @Nested
@@ -86,11 +87,39 @@ class NoteGeometryTest extends UnitTest {
         }
 
         @Test
-        void testGraceNoteUsesSmallGlyphWidth() {
-            final float expectedWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_SHARP_SMALL);
+        void testGraceNoteScalesRegularGlyphWidth() {
+            // Grace accidentals draw the regular glyph with a scaled-down font, so the grace width is
+            // the regular (non-grace) width of the same accidental scaled by GRACE_NOTE_SCALE — and
+            // therefore strictly smaller, which also guards the scale factor against regressing to >= 1.
+            var regularWidthSs = NoteGeometry.getAccidentalWidthSs(crotchetWithAccidental(Accidental.SHARP));
+
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             graceNote.setAccidental(Accidental.SHARP);
-            assertThat(NoteGeometry.getAccidentalWidthSs(graceNote)).isEqualTo(expectedWidthSs);
+            var graceWidthSs = NoteGeometry.getAccidentalWidthSs(graceNote);
+
+            assertThat(graceWidthSs)
+                .as("grace width is the regular width scaled by GRACE_NOTE_SCALE")
+                .isEqualTo(ElementType.GRACE_NOTE_SCALE * regularWidthSs);
+            assertThat(graceWidthSs)
+                .as("grace accidental is smaller than the regular accidental")
+                .isLessThan(regularWidthSs);
+        }
+
+        @Test
+        void testGraceNoteScalesParenthesizedWidth() {
+            // The grace scale is applied after the parenthesis-vs-base width selection, so a
+            // parenthesized grace accidental is the parenthesized regular width scaled.
+            var regular = crotchetWithAccidental(Accidental.DOUBLE_SHARP);
+            regular.setAccidentalInParentheses(true);
+            var regularParenWidthSs = NoteGeometry.getAccidentalWidthSs(regular);
+
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setAccidental(Accidental.DOUBLE_SHARP);
+            grace.setAccidentalInParentheses(true);
+
+            assertThat(NoteGeometry.getAccidentalWidthSs(grace))
+                .as("parenthesized grace width is the parenthesized regular width scaled")
+                .isEqualTo(ElementType.GRACE_NOTE_SCALE * regularParenWidthSs);
         }
 
         @Test
@@ -312,7 +341,7 @@ class NoteGeometryTest extends UnitTest {
 
             NoteGeometry.walkAccidentalGlyphs(
                 new SMuFLGlyph[]{SMuFLGlyph.ACCIDENTAL_SHARP},
-                false, startX,
+                false, startX, 1f,
                 (g, x) -> { glyphs.add(g); positions.add(x); });
 
             assertAll(
@@ -329,7 +358,7 @@ class NoteGeometryTest extends UnitTest {
 
             NoteGeometry.walkAccidentalGlyphs(
                 new SMuFLGlyph[]{SMuFLGlyph.ACCIDENTAL_NATURAL, SMuFLGlyph.ACCIDENTAL_FLAT},
-                false, startX,
+                false, startX, 1f,
                 (g, x) -> positions.add(x));
 
             final float expectedFlatX = startX + naturalAdvanceSs + NoteGeometry.SPACE_BETWEEN_TWO_ACCIDENTALS_SS;
@@ -353,7 +382,7 @@ class NoteGeometryTest extends UnitTest {
 
             NoteGeometry.walkAccidentalGlyphs(
                 new SMuFLGlyph[]{SMuFLGlyph.ACCIDENTAL_SHARP},
-                true, startX,
+                true, startX, 1f,
                 (g, x) -> { glyphs.add(g); positions.add(x); });
 
             final float expectedSharpX = startX + parenLeftAdvanceSs + sharpLeftKerningSs;
@@ -379,7 +408,7 @@ class NoteGeometryTest extends UnitTest {
 
             NoteGeometry.walkAccidentalGlyphs(
                 new SMuFLGlyph[]{SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP},
-                true, startX,
+                true, startX, 1f,
                 (g, x) -> positions.add(x));
 
             final float expectedDsX = startX + parenLeftAdvanceSs;  // zero left kerning
@@ -389,6 +418,85 @@ class NoteGeometryTest extends UnitTest {
                 () -> assertThat(positions.get(1)).isEqualTo(expectedDsX),
                 () -> assertThat(positions.get(2)).isEqualTo(expectedParenRightX)
             );
+        }
+
+        @Test
+        void testScaleMultipliesAdvanceAndGap() {
+            // A scale != 1f must multiply both each glyph advance and the inter-component gap, so the
+            // second component lands at startX + scale*advance + scale*gap (grace-note layout).
+            final float startX = 0.0f;
+            final float scale = ElementType.GRACE_NOTE_SCALE;
+            final float naturalAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_NATURAL);
+            var positions = new ArrayList<Float>();
+
+            NoteGeometry.walkAccidentalGlyphs(
+                new SMuFLGlyph[]{SMuFLGlyph.ACCIDENTAL_NATURAL, SMuFLGlyph.ACCIDENTAL_FLAT},
+                false, startX, scale,
+                (g, x) -> positions.add(x));
+
+            // Accumulate in the same left-to-right order the production walk uses, so the float
+            // comparison stays exact.
+            final float expectedFlatX =
+                startX + scale * naturalAdvanceSs + scale * NoteGeometry.SPACE_BETWEEN_TWO_ACCIDENTALS_SS;
+            assertAll(
+                () -> assertThat(positions.get(0)).isEqualTo(startX),
+                () -> assertThat(positions.get(1)).isEqualTo(expectedFlatX)
+            );
+        }
+
+        @Test
+        void testScaleMultipliesParenAdvanceAndKerning() {
+            // A scale != 1f must also multiply the parenthesis advance and the kerning around the
+            // glyph, so the inner glyph lands at startX + scale*parenAdvance + scale*kerning.
+            final float startX = 0.0f;
+            final float scale = ElementType.GRACE_NOTE_SCALE;
+            final float parenLeftAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+            // SHARP is in PAREN_LEFT_KERNING with value 0.125f (see testParenthesizedSharp...).
+            final float sharpLeftKerningSs = 0.125f;
+            var positions = new ArrayList<Float>();
+
+            NoteGeometry.walkAccidentalGlyphs(
+                new SMuFLGlyph[]{SMuFLGlyph.ACCIDENTAL_SHARP},
+                true, startX, scale,
+                (g, x) -> positions.add(x));
+
+            final float expectedSharpX = startX + scale * parenLeftAdvanceSs + scale * sharpLeftKerningSs;
+            assertThat(positions.get(1)).isEqualTo(expectedSharpX);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // getAccidentalStartXSs — accidental right edge sits one (grace-scaled) padding left of origin
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class AccidentalStartX {
+
+        // Tolerance absorbing the float round-trip of -padding - width + width back to -padding.
+        private static final float RIGHT_EDGE_TOLERANCE_SS = 1e-4f;
+
+        @Test
+        void testRegularAccidentalRightEdgeIsOnePaddingLeftOfOrigin() {
+            var note = crotchetWithAccidental(Accidental.SHARP);
+            var rightEdgeSs = NoteGeometry.getAccidentalStartXSs(note) + NoteGeometry.getAccidentalWidthSs(note);
+
+            assertThat(rightEdgeSs)
+                .as("regular accidental right edge sits one padding left of the notehead origin")
+                .isCloseTo(-NoteGeometry.ACCIDENTAL_PADDING_SS, within(RIGHT_EDGE_TOLERANCE_SS));
+        }
+
+        @Test
+        void testGraceAccidentalUsesScaledPadding() {
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setAccidental(Accidental.SHARP);
+            var rightEdgeSs = NoteGeometry.getAccidentalStartXSs(grace) + NoteGeometry.getAccidentalWidthSs(grace);
+
+            assertThat(rightEdgeSs)
+                .as("grace accidental right edge sits one grace-scaled padding left of the origin")
+                .isCloseTo(-NoteGeometry.GRACE_ACCIDENTAL_PADDING_SS, within(RIGHT_EDGE_TOLERANCE_SS));
+            assertThat(NoteGeometry.GRACE_ACCIDENTAL_PADDING_SS)
+                .as("grace padding is proportionally smaller than the regular padding")
+                .isLessThan(NoteGeometry.ACCIDENTAL_PADDING_SS);
         }
     }
 }

@@ -71,13 +71,7 @@ public final class RenderingUtils {
     public static final Font MUSIC_FONT;
 
     /**
-     * Scale factor applied to grace notes relative to regular notes.
-     * Grace notes use the regular glyphs drawn with a scaled-down Bravura font.
-     */
-    public static final float GRACE_NOTE_SCALE = 0.75f;
-
-    /**
-     * The music font scaled for grace note rendering ({@link #GRACE_NOTE_SCALE}).
+     * The music font scaled for grace note rendering ({@link ElementType#GRACE_NOTE_SCALE}).
      */
     public static final Font GRACE_NOTE_FONT;
 
@@ -100,10 +94,19 @@ public final class RenderingUtils {
     static {
         try {
             MUSIC_FONT = getMusicFont();
-            GRACE_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * GRACE_NOTE_SCALE);
+            GRACE_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * ElementType.GRACE_NOTE_SCALE);
         } catch (Exception e) {
             throw new RuntimeException("Cannot load required fonts for rendering.", e);
         }
+    }
+
+    /**
+     * Returns the music font to draw {@code note}'s glyphs: {@link #GRACE_NOTE_FONT} for grace notes,
+     * else {@link #MUSIC_FONT}. Pair with {@link NoteGeometry#getGlyphScale} so the font and the pen
+     * advances stay in step.
+     */
+    public static Font getGlyphFont(StaffElement note) {
+        return note.getType().isGraceNote() ? GRACE_NOTE_FONT : MUSIC_FONT;
     }
 
     // ==========================================================================

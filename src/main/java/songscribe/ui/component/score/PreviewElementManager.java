@@ -237,52 +237,68 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Returns whether the note at {@code (lineIndex, elementIndex)} is one the currently
-     * previewed glissando would connect to, and therefore should render in the preview
-     * color. For a connecting glissando both the source note and the target note to its
-     * right qualify; for a slide-out only the source note qualifies.
-     * <p>
-     * Returns false when no glissando preview is being shown. The conditions mirror those
-     * in {@link LineRenderer#renderPreviewElement}: the highlight is only shown when the
-     * preview glissando itself is drawn, which excludes the case where the source note
-     * already carries this glissando type.
+     * The notes a previewed glissando would connect to, and the line they live on. A connecting
+     * glissando highlights both the source note and the target note to its right; a slide-out
+     * highlights only the source, so {@code targetIndex} is -1. {@link #NONE} means no preview.
      */
-    public static boolean isGlissandoPreviewNote(int lineIndex, int elementIndex) {
+    public record GlissandoPreviewNotes(int lineIndex, int sourceIndex, int targetIndex) {
+        public static final GlissandoPreviewNotes NONE = new GlissandoPreviewNotes(-1, -1, -1);
+
+        /** Returns whether the element at {@code (atLineIndex, atElementIndex)} is highlighted. */
+        public boolean highlights(int atLineIndex, int atElementIndex) {
+            if (atLineIndex != lineIndex) {
+                return false;
+            }
+
+            // sourceIndex/targetIndex are -1 when absent (a slide-out has no target; NONE has
+            // neither). Guard so a negative query index never matches an absent endpoint.
+            return (sourceIndex >= 0 && atElementIndex == sourceIndex)
+                || (targetIndex >= 0 && atElementIndex == targetIndex);
+        }
+    }
+
+    /**
+     * Resolves which notes the currently previewed glissando would connect to. Computed once so a
+     * caller can reuse it across every element on a line instead of re-resolving per element.
+     * <p>
+     * Returns {@link GlissandoPreviewNotes#NONE} when no glissando preview is being shown. The
+     * conditions mirror those in {@link LineRenderer#renderPreviewElement}: the highlight is only
+     * shown when the preview glissando itself is drawn, which excludes the case where the source
+     * note already carries this glissando type.
+     */
+    public static GlissandoPreviewNotes getGlissandoPreviewNotes() {
         if (!shouldShowGlissandoPreview() || currentPreviewLine == null) {
-            return false;
+            return GlissandoPreviewNotes.NONE;
         }
 
-        if (currentPreviewLine.getLineIndex() != lineIndex) {
-            return false;
-        }
-
+        // shouldShowGlissandoPreview() above already guarantees the zone is non-null.
         var type = currentGlissandoZone;
-
-        if (type == null) {
-            return false;
-        }
-
         var line = currentPreviewLine.getLine();
         var sourceIndex = currentXIndex - 1;
 
         if (line == null || sourceIndex < 0) {
-            return false;
+            return GlissandoPreviewNotes.NONE;
         }
 
         // No preview line is drawn (and thus no highlight) when the source note already
         // carries this glissando type.
-        var sourceGlissando = line.getElement(sourceIndex).getGlissando();
-
-        if (sourceGlissando != null && sourceGlissando.type == type) {
-            return false;
-        }
-
-        if (elementIndex == sourceIndex) {
-            return true;
+        if (sourceAlreadyHasGlissando(line, sourceIndex, type)) {
+            return GlissandoPreviewNotes.NONE;
         }
 
         // A connecting glissando also highlights the target note immediately to the right.
-        return type == StaffElement.Glissando.Type.CONNECTED && elementIndex == currentXIndex;
+        var targetIndex = type == StaffElement.Glissando.Type.CONNECTED ? currentXIndex : -1;
+
+        return new GlissandoPreviewNotes(currentPreviewLine.getLineIndex(), sourceIndex, targetIndex);
+    }
+
+    /**
+     * Returns whether the note at {@code (lineIndex, elementIndex)} is one the currently previewed
+     * glissando would connect to. Prefer {@link #getGlissandoPreviewNotes()} when checking several
+     * elements on the same line so the resolution runs only once.
+     */
+    public static boolean isGlissandoPreviewNote(int lineIndex, int elementIndex) {
+        return getGlissandoPreviewNotes().highlights(lineIndex, elementIndex);
     }
 
     /**
@@ -369,6 +385,19 @@ public final class PreviewElementManager {
      */
     static boolean isGlissandoPlaceholder(@Nullable StaffElement element) {
         return element != null && element.getType() == ElementType.GLISSANDO;
+    }
+
+    /**
+     * Returns whether the source note at {@code sourceIndex} on {@code line} already carries a
+     * glissando of {@code type}. When it does, no preview glissando is drawn (and thus no preview
+     * highlight) — the note already has what the tool would add. A null {@code type} (no zone)
+     * trivially matches nothing.
+     */
+    static boolean sourceAlreadyHasGlissando(
+        Line line, int sourceIndex, StaffElement.Glissando.@Nullable Type type
+    ) {
+        var glissando = line.getElement(sourceIndex).getGlissando();
+        return glissando != null && glissando.type == type;
     }
 
     /**

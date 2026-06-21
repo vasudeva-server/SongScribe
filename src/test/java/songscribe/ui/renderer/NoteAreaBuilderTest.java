@@ -21,6 +21,7 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import module java.desktop;
 
@@ -187,6 +188,34 @@ class NoteAreaBuilderTest extends UnitTest {
 
         assertThat(areaWithAcc.getBounds2D().getMinX())
             .isLessThan(areaNoAcc.getBounds2D().getMinX());
+    }
+
+    @Test
+    void testBuildNoteAreaPlacesAccidentalAtReservedLeftEdge() {
+        NoteGeometry.initializeAccidentalWidths();
+
+        var noteNoAcc = ElementType.CROTCHET.newInstance();
+        noteNoAcc.setUpper(true);
+        var leftWithoutAccidental = BUILDER.buildNoteArea(noteNoAcc, false).getBounds2D().getMinX();
+
+        var noteWithAcc = ElementType.CROTCHET.newInstance();
+        noteWithAcc.setUpper(true);
+        noteWithAcc.setAccidental(StaffElement.Accidental.SHARP);
+        var leftWithAccidental = BUILDER.buildNoteArea(noteWithAcc, false).getBounds2D().getMinX();
+
+        var accWidthSs = (double) NoteGeometry.getAccidentalWidthSs(noteWithAcc);
+        var expectedLeftSs = -NoteGeometry.ACCIDENTAL_PADDING_SS - accWidthSs;
+
+        // The accidental glyph outline is placed with its box starting at -(padding + width); its
+        // left ink edge sits within half a glyph-width of that origin. A regression in the X
+        // positioning (wrong sign or magnitude) moves the ink away from this reserved edge, which
+        // the earlier directional-only check ("extends left") would not catch.
+        assertThat(leftWithAccidental)
+            .as("accidental ink starts at its reserved left edge")
+            .isCloseTo(expectedLeftSs, within(accWidthSs / 2));
+        assertThat(leftWithAccidental)
+            .as("accidental extends left of the bare notehead")
+            .isLessThan(leftWithoutAccidental);
     }
 
     @Test

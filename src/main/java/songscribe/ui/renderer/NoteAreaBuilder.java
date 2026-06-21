@@ -161,7 +161,7 @@ class NoteAreaBuilder {
 
         var area = buildNoteArea(note, beamed);
         var offsetArea = createOffsetArea(area, (float) MIN_GAP_SS);
-        var noteArea = new NoteArea(area, area.getBounds2D(), offsetArea, offsetArea.getBounds2D());
+        var noteArea = new NoteArea(area, offsetArea, offsetArea.getBounds2D());
         areaCache.put(note, new AreaCacheEntry(key, noteArea));
 
         return noteArea;
@@ -274,18 +274,13 @@ class NoteAreaBuilder {
             return;
         }
 
-        var accWidth = NoteGeometry.getAccidentalWidthSs(note);
-
-        if (accWidth <= 0) {
-            return;
-        }
-
         var isGrace = note.getType().isGraceNote();
-        var font = isGrace ? RenderingUtils.GRACE_NOTE_FONT : RenderingUtils.MUSIC_FONT;
-        var components = NoteGeometry.getAccidentalComponents(accidental, isGrace);
+        var font = RenderingUtils.getGlyphFont(note);
+        var components = NoteGeometry.getAccidentalComponents(accidental);
+        var scale = NoteGeometry.getGlyphScale(note);
 
-        // Accidental X position mirrors NoteRenderer: -(padding + width).
-        var startX = -NoteGeometry.ACCIDENTAL_PADDING_SS - accWidth;
+        // Accidental X position mirrors NoteRenderer (grace-scaled padding included).
+        var startX = NoteGeometry.getAccidentalStartXSs(note);
 
         var cache = isGrace ? ACCIDENTAL_GRACE_SHAPES : ACCIDENTAL_SHAPES;
 
@@ -293,6 +288,7 @@ class NoteAreaBuilder {
             components,
             note.isAccidentalInParentheses(),
             startX,
+            scale,
             (glyph, xSs) -> {
                 var outline = cache.computeIfAbsent(
                     glyph, g -> GraphicUtils.glyphOutline(font, GraphicUtils.SCREEN_FRC, g));

@@ -105,6 +105,15 @@ public class HorizontalSpacingCalculator {
     public static final double KEY_ACCIDENTAL_WIDTH_SS = 1.0;  // 8px
 
     /**
+     * How much further left the renderer places an accidental than the layout's left extent does.
+     * The renderer pads by {@link NoteGeometry#ACCIDENTAL_PADDING_SS} while the layout's left
+     * extent uses the smaller {@link ElementColumnBuilder#ACCIDENTAL_GAP_SS}. A glissando reserves
+     * against the renderer's edge, so this delta is added to the reserved gap (refs #443).
+     */
+    private static final double ACCIDENTAL_RENDER_LEFT_DELTA_SS =
+        NoteGeometry.ACCIDENTAL_PADDING_SS - ElementColumnBuilder.ACCIDENTAL_GAP_SS;
+
+    /**
      * Calculates the X position of the first note in a line, in staff-space units.
      * <p>
      * Formula: clefWidth + keySignatureWidth + FIRST_NOTE_OFFSET
@@ -354,13 +363,12 @@ public class HorizontalSpacingCalculator {
         var currElement = curr.getElement();
         var currGlissLeft = curr.getLeftExtentSs();
 
-        // The glissando line ends at the next note's left-side area edge. The renderer's note area
-        // places the accidental slightly further left than the layout left extent does
-        // (NoteGeometry.ACCIDENTAL_PADDING_SS vs ElementColumnBuilder.ACCIDENTAL_GAP_SS), so reserve
-        // against the renderer's edge — otherwise the reserved gap is too small and the line falls
-        // just below its minimum visible length (refs #443).
+        // The glissando line ends at the next note's left-side area edge. The renderer places the
+        // accidental slightly further left than the layout left extent does, so reserve against the
+        // renderer's edge — otherwise the reserved gap is too small and the line falls just below
+        // its minimum visible length (refs #443).
         if (currElement.getAccidental() != null) {
-            currGlissLeft -= NoteGeometry.ACCIDENTAL_PADDING_SS - ElementColumnBuilder.ACCIDENTAL_GAP_SS;
+            currGlissLeft -= ACCIDENTAL_RENDER_LEFT_DELTA_SS;
         }
 
         var currOverhang = NoteGeometry.getLedgerLineOverhangSs(currElement);

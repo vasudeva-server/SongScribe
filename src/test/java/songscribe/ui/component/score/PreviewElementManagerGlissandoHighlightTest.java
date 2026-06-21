@@ -60,6 +60,18 @@ class PreviewElementManagerGlissandoHighlightTest extends PreviewElementManagerT
     }
 
     @Test
+    void testNoHighlightWhenSourceIndexNegative() {
+        addTwoNotes();
+        when(lc.getLineIndex()).thenReturn(LINE_INDEX);
+        // Insertion point left of every note: sourceIndex = currentXIndex - 1 = -1.
+        PreviewElementManager.setCurrentXIndex(0);
+        PreviewElementManager.setCurrentGlissandoZone(CONNECTED);
+
+        assertThat(PreviewElementManager.isGlissandoPreviewNote(LINE_INDEX, 0))
+            .as("no highlight when the insertion point is left of all notes").isFalse();
+    }
+
+    @Test
     void testConnectedHighlightsSourceAndTarget() {
         addTwoNotes();
         primeGlissandoPreview(CONNECTED);
@@ -107,5 +119,67 @@ class PreviewElementManagerGlissandoHighlightTest extends PreviewElementManagerT
 
         assertThat(PreviewElementManager.isGlissandoPreviewNote(LINE_INDEX, 0))
             .as("no highlight when source already carries this glissando").isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // GlissandoPreviewNotes.highlights — pure record logic, no preview state
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testHighlightsMatchesSourceAndTargetOnSameLineOnly() {
+        var notes = new PreviewElementManager.GlissandoPreviewNotes(LINE_INDEX, 0, X_INDEX_BETWEEN);
+
+        assertThat(notes.highlights(LINE_INDEX, 0)).as("source highlighted").isTrue();
+        assertThat(notes.highlights(LINE_INDEX, X_INDEX_BETWEEN)).as("target highlighted").isTrue();
+        assertThat(notes.highlights(LINE_INDEX, X_INDEX_BETWEEN + 1))
+            .as("an element that is neither source nor target is not highlighted").isFalse();
+        assertThat(notes.highlights(OTHER_LINE_INDEX, 0))
+            .as("the source index on a different line is not highlighted").isFalse();
+    }
+
+    @Test
+    void testHighlightsSlideOutNeverMatchesAbsentTarget() {
+        // A slide-out carries no target (targetIndex == -1). A -1 element query must not match it.
+        var slideOut = new PreviewElementManager.GlissandoPreviewNotes(LINE_INDEX, 0, -1);
+
+        assertThat(slideOut.highlights(LINE_INDEX, 0)).as("source highlighted").isTrue();
+        assertThat(slideOut.highlights(LINE_INDEX, -1))
+            .as("a -1 query must not match the absent slide-out target").isFalse();
+    }
+
+    @Test
+    void testNoneHighlightsNothing() {
+        var none = PreviewElementManager.GlissandoPreviewNotes.NONE;
+
+        assertThat(none.highlights(0, 0)).as("NONE never highlights a real element").isFalse();
+        assertThat(none.highlights(-1, -1))
+            .as("NONE never highlights even a query matching its own sentinels").isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // sourceAlreadyHasGlissando
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testSourceAlreadyHasGlissandoMatchesOnlySameType() {
+        addTwoNotes();
+        line.getElement(0).setGlissando(CONNECTED);
+
+        assertThat(PreviewElementManager.sourceAlreadyHasGlissando(line, 0, CONNECTED))
+            .as("matches when the source carries the same glissando type").isTrue();
+        assertThat(PreviewElementManager.sourceAlreadyHasGlissando(line, 0, SLIDE_OUT))
+            .as("does not match a different glissando type").isFalse();
+        assertThat(PreviewElementManager.sourceAlreadyHasGlissando(line, 1, CONNECTED))
+            .as("does not match a source with no glissando").isFalse();
+    }
+
+    @Test
+    void testSourceAlreadyHasGlissandoNullTypeMatchesNothing() {
+        addTwoNotes();
+        line.getElement(0).setGlissando(CONNECTED);
+
+        // A null type (no active zone) trivially matches nothing, even when the source has one.
+        assertThat(PreviewElementManager.sourceAlreadyHasGlissando(line, 0, null))
+            .as("a null query type never matches an existing glissando").isFalse();
     }
 }

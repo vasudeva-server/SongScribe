@@ -33,7 +33,6 @@ import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.dom.ScaleContext;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.util.GraphicsState;
 
 /**
@@ -55,10 +54,18 @@ public final class GlissandoRenderer {
     // Constants
     // ==========================================================================
 
-    /** Minimum rendered glissando length in staff spaces. Glissandos shorter than this are not drawn. */
+    /**
+     * Minimum rendered glissando length in staff spaces. Glissandos shorter than this are not drawn.
+     * Lowered from 1.0: the endpoint search now measures the gap from the bare ink exit rather than
+     * the pre-expanded area, yielding a slightly shorter drawn line, and 0.75 ss stays clearly
+     * visible at tight spacing (notably a target carrying an accidental) (refs #443).
+     */
     private static final double MIN_RECT_LENGTH_SS = 0.75;
 
-    /** Length of a slide-out glissando in staff spaces. */
+    /**
+     * Length of a slide-out glissando in staff spaces. Lowered from 1.75 to match the shorter, more
+     * consistent connecting-glissando lengths produced by the gap rework (refs #443).
+     */
     private static final double SLIDE_OUT_LENGTH_SS = 1.0;
 
     /** Angle of a slide-out glissando below horizontal, in degrees. */
@@ -158,13 +165,11 @@ public final class GlissandoRenderer {
             var shiftSs = frame.previewShiftSs();
 
             if (noteIndex >= shiftFromIndex) {
-                src = new NoteContext(src.note(), src.cxSs() + shiftSs, src.cySs(),
-                    src.area(), src.bounds(), src.offsetArea(), src.offsetBounds());
+                src = src.shiftedX(shiftSs);
             }
 
             if (tgt != null && noteIndex + 1 >= shiftFromIndex) {
-                tgt = new NoteContext(tgt.note(), tgt.cxSs() + shiftSs, tgt.cySs(),
-                    tgt.area(), tgt.bounds(), tgt.offsetArea(), tgt.offsetBounds());
+                tgt = tgt.shiftedX(shiftSs);
             }
         }
 
@@ -198,7 +203,7 @@ public final class GlissandoRenderer {
         // of a glissando being previewed. That highlight marks the note itself, not an existing
         // glissando line on it: previewing a different glissando type over a note that already
         // has one must leave the old line at its normal color, so ignore that one highlight here.
-        if (PreviewElementManager.isGlissandoPreviewNote(lineIndex, noteIndex)
+        if (invariants.isGlissandoPreviewNote(noteIndex)
             && color.equals(ScoreView.getPreviewElementColor())) {
             color = Color.BLACK;
         }
@@ -317,10 +322,15 @@ public final class GlissandoRenderer {
         StaffElement note,
         double cxSs, double cySs,
         Area area,
-        Rectangle2D bounds,
         Area offsetArea,
         Rectangle2D offsetBounds
-    ) {}
+    ) {
+
+        /** Returns a copy shifted right by {@code shiftSs} along X, leaving geometry otherwise intact. */
+        NoteContext shiftedX(double shiftSs) {
+            return new NoteContext(note, cxSs + shiftSs, cySs, area, offsetArea, offsetBounds);
+        }
+    }
 
     /**
      * Immutable record holding the computed glissando endpoint positions in layout space,
@@ -344,7 +354,7 @@ public final class GlissandoRenderer {
         var cy = RenderingUtils.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
         var entry = noteAreaBuilder.getOrBuildArea(note, beamed);
 
-        return new NoteContext(note, cx, cy, entry.area(), entry.bounds(), entry.offsetArea(), entry.offsetBounds());
+        return new NoteContext(note, cx, cy, entry.area(), entry.offsetArea(), entry.offsetBounds());
     }
 
     /**

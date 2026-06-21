@@ -152,6 +152,29 @@ class GlissandoRendererTest extends UnitTest {
         assertThat(endpoint.y).isCloseTo(0.0, within(STEP_SS));
     }
 
+    @Test
+    void testFindEntryPoint_clampsAwayFromNearbyInk() {
+        // A plus/cross shape. A diagonal ray exits the central overlap at its corner, but the naive
+        // "crossing + gap" point still lies within the gap of the horizontal arm. Step 3 of the
+        // algorithm (the clamp) must push the endpoint out until it clears every arm's offset
+        // region — without it the endpoint would sit inside the offset area.
+        var armHalfThicknessSs = 0.2;
+        var gapSs = 0.25f;
+        var horizontal = new Area(new Rectangle2D.Double(-2, -armHalfThicknessSs, 4, 2 * armHalfThicknessSs));
+        var ink = new Area(horizontal);
+        ink.add(new Area(new Rectangle2D.Double(-armHalfThicknessSs, -2, 2 * armHalfThicknessSs, 4)));
+        var offsetArea = NoteAreaBuilder.createOffsetArea(ink, gapSs);
+        var offsetBounds = offsetArea.getBounds2D();
+
+        var diagonal = 1.0 / Math.sqrt(2);
+        var endpoint = GlissandoRenderer.findNoteAreaEntryPoint(
+            ink, offsetArea, offsetBounds, 0, 0, diagonal, -diagonal, STEP_SS, gapSs);
+
+        assertThat(offsetArea.contains(endpoint.x, endpoint.y))
+            .as("clamp must push endpoint (%s, %s) clear of every nearby ink", endpoint.x, endpoint.y)
+            .isFalse();
+    }
+
     // ======================================================================
     // Connecting glissando with an accidental on the target (issue #443)
     // ======================================================================
@@ -191,10 +214,10 @@ class GlissandoRendererTest extends UnitTest {
         var targetCenterXSs = targetXSs + NoteGeometry.getNoteheadRightEdgeSs(target) / 2.0;
         var src = new GlissandoRenderer.NoteContext(
             source, sourceCenterXSs, 0,
-            sourceArea.area(), sourceArea.bounds(), sourceArea.offsetArea(), sourceArea.offsetBounds());
+            sourceArea.area(), sourceArea.offsetArea(), sourceArea.offsetBounds());
         var tgt = new GlissandoRenderer.NoteContext(
             target, targetCenterXSs, 0,
-            targetArea.area(), targetArea.bounds(), targetArea.offsetArea(), targetArea.offsetBounds());
+            targetArea.area(), targetArea.offsetArea(), targetArea.offsetBounds());
 
         return GlissandoRenderer.computeEndpoints(src, tgt);
     }
@@ -492,16 +515,32 @@ class GlissandoRendererTest extends UnitTest {
         // A note marked as a glissando-preview note renders its notehead in the preview
         // color (getElementColor), but its existing glissando line must stay black so that
         // previewing a different glissando type over it does not recolor the old line.
-        var invariants = editModeBuilder().build();
-
         try (var previewMock = mockStatic(PreviewElementManager.class)) {
-            previewMock.when(() -> PreviewElementManager.isGlissandoPreviewNote(0, 0))
-                .thenReturn(true);
+            previewMock.when(PreviewElementManager::getGlissandoPreviewNotes)
+                .thenReturn(new PreviewElementManager.GlissandoPreviewNotes(0, 0, -1));
 
+            var invariants = editModeBuilder().build();
             var color = RENDERER.determineGlissandoColor(
                 0, StaffElement.Glissando.Type.CONNECTED, invariants);
 
             assertThat(color).isEqualTo(Color.BLACK);
+        }
+    }
+
+    @Test
+    void testDetermineGlissandoColor_previewNoteButPlaying_keepsPlayingColor() {
+        // The preview-to-black override only fires when the note's color IS the preview color.
+        // A preview note that is also playing resolves to the playing color (higher priority), so
+        // the override must be a no-op and the glissando line keeps the playing color.
+        try (var previewMock = mockStatic(PreviewElementManager.class)) {
+            previewMock.when(PreviewElementManager::getGlissandoPreviewNotes)
+                .thenReturn(new PreviewElementManager.GlissandoPreviewNotes(0, 0, -1));
+
+            var invariants = editModeBuilder().setPlayingNoteIndex(0).build();
+            var color = RENDERER.determineGlissandoColor(
+                0, StaffElement.Glissando.Type.CONNECTED, invariants);
+
+            assertThat(color).isEqualTo(ScoreView.getPlayingNoteColor());
         }
     }
 
@@ -516,10 +555,9 @@ class GlissandoRendererTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         var area = new Area(new Rectangle2D.Double(-0.5, -0.5, 1.0, 1.0));
-        var bounds = area.getBounds2D();
         var offsetArea = NoteAreaBuilder.createOffsetArea(area, (float) NoteAreaBuilder.MIN_GAP_SS);
         var offsetBounds = offsetArea.getBounds2D();
-        return new GlissandoRenderer.NoteContext(note, cxSs, cySs, area, bounds, offsetArea, offsetBounds);
+        return new GlissandoRenderer.NoteContext(note, cxSs, cySs, area, offsetArea, offsetBounds);
     }
 
     @Test
@@ -542,8 +580,8 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testComputeEndpoints_shortConnected_returnsNull() {
-        // Notes placed only 0.1 ss apart → glissando too short to render (< MIN_RECT_LENGTH_SS = 1.0)
-        // The offset areas overlap; after finding entry points the net length < 1.0 → null
+        // Notes placed only 0.1 ss apart → glissando too short to render (< MIN_RECT_LENGTH_SS = 0.75)
+        // The offset areas overlap; after finding entry points the net length < 0.75 → null
         var src = noteContextAt(0.0, 0.0);
         var tgt = noteContextAt(0.1, 0.0);
         assertThat(GlissandoRenderer.computeEndpoints(src, tgt)).isNull();

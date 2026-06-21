@@ -418,7 +418,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             flagFont = RenderingUtils.GRACE_NOTE_FONT;
             // The scaled flag glyph's internal stem connection is 65% of the full stem width.
             // Shift right to visually center the flag on the actual stem.
-            flagX += (float) (NoteGeometry.STEM_WIDTH_SS * (1 - RenderingUtils.GRACE_NOTE_SCALE) / 2);
+            flagX += (float) (NoteGeometry.STEM_WIDTH_SS * (1 - ElementType.GRACE_NOTE_SCALE) / 2);
         } else {
             flagFont = RenderingUtils.MUSIC_FONT;
         }
@@ -520,16 +520,23 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
-        var components = NoteGeometry.getAccidentalComponents(accidental, note.getType().isGraceNote());
+        var components = NoteGeometry.getAccidentalComponents(accidental);
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(RenderingUtils.MUSIC_FONT);
+            // Grace-note accidentals are drawn at grace scale, matching the clearance reserved
+            // in NoteAreaBuilder.addAccidentalToArea (the two must agree or the glissando gap is
+            // computed against the wrong glyph size). The same scale feeds walkAccidentalGlyphs so
+            // the pen advances track the scaled-down glyphs and the right edge sits flush against
+            // the notehead padding.
+            g2.setFont(RenderingUtils.getGlyphFont(note));
+            var scale = NoteGeometry.getGlyphScale(note);
 
-            var startX = -NoteGeometry.ACCIDENTAL_PADDING_SS - NoteGeometry.getAccidentalWidthSs(note);
+            var startX = NoteGeometry.getAccidentalStartXSs(note);
             NoteGeometry.walkAccidentalGlyphs(
                 components,
                 note.isAccidentalInParentheses(),
                 startX,
+                scale,
                 (glyph, x) -> g2.drawString(glyph.asString(), x, 0f));
         }
     }

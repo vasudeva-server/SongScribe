@@ -97,6 +97,9 @@ public final class LineInvariants {
     @Nullable
     private final Tie playingTieSpan;
 
+    /** Notes highlighted by the active glissando preview, resolved once per line. */
+    private final PreviewElementManager.GlissandoPreviewNotes glissandoPreviewNotes;
+
     private LineInvariants(
         Builder b,
         LayoutResult layoutResult,
@@ -122,6 +125,7 @@ public final class LineInvariants {
         playingTieSpan = (b.playingNoteIndex >= 0 && b.currentLine != null)
             ? b.currentLine.findTieAt(b.playingNoteIndex)
             : null;
+        glissandoPreviewNotes = PreviewElementManager.getGlissandoPreviewNotes();
     }
 
     /** Returns a new builder for invariants describing the given song. */
@@ -344,11 +348,19 @@ public final class LineInvariants {
             return REPLACED_ELEMENT_COLOR;
         }
 
-        if (PreviewElementManager.isGlissandoPreviewNote(lineIndex, elementIndex)) {
+        if (isGlissandoPreviewNote(elementIndex)) {
             return ScoreView.getPreviewElementColor();
         }
 
         return Color.BLACK;
+    }
+
+    /**
+     * Returns whether the element at {@code elementIndex} on this line is highlighted by the active
+     * glissando preview, reusing the per-line resolution computed at construction.
+     */
+    boolean isGlissandoPreviewNote(int elementIndex) {
+        return glissandoPreviewNotes.highlights(lineIndex, elementIndex);
     }
 
     /**
