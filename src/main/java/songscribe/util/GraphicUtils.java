@@ -24,20 +24,23 @@ import module java.desktop;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.SymbolLookup;
+import java.lang.foreign.ValueLayout;
 import java.net.URL;
 import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
-
-import oshi.SystemInfo;
-import oshi.util.EdidUtil;
+import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.smufl.SMuFLGlyph;
 
@@ -109,8 +112,7 @@ public final class GraphicUtils {
 
     public static final double CM_PER_INCH = 2.54;
 
-    // Oshi display enumeration can hang in headless/sandboxed JVMs (e.g. PIT minions)
-    private static final int DPI_QUERY_TIMEOUT_SECONDS = 3;
+    private static final double MILLIMETERS_PER_INCH = 25.4;
 
     // Standard non-HiDPI resolution; used in headless environments where the screen device is unavailable
     private static final int HEADLESS_DPI = 96;
@@ -142,33 +144,64 @@ public final class GraphicUtils {
     }
 
     /**
-     * Computes the physical DPI of the default screen using EDID data.
-     * Falls back to {@link Toolkit#getScreenResolution()} if EDID is unavailable
-     * or the oshi query exceeds {@link #DPI_QUERY_TIMEOUT_SECONDS} (e.g. in headless/sandboxed JVMs).
+     * Computes the physical DPI of the default screen.
+     * <p>
+     * On macOS this reads the main display's physical width directly from
+     * CoreGraphics. On other platforms, or when the physical size is unavailable,
+     * it falls back to {@link Toolkit#getScreenResolution()}.
      */
     private static int computePhysicalDpi(GraphicsDevice gd) {
-        try {
-            var displays = CompletableFuture
-                .supplyAsync(() -> new SystemInfo().getHardware().getDisplays())
-                .get(DPI_QUERY_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        var bounds = gd.getDefaultConfiguration().getBounds();
 
-            if (!displays.isEmpty()) {
-                var edid = displays.getFirst().getEdid();
-                var widthCm = EdidUtil.getHcm(edid);
+        if (SystemInfo.isMacOS) {
+            var widthMm = macPhysicalWidthMm();
 
-                if (widthCm > 0) {
-                    var widthInches = widthCm / CM_PER_INCH;
-                    var logicalPixelWidth = gd.getDefaultConfiguration().getBounds().width;
-                    return (int) Math.round(logicalPixelWidth / widthInches);
-                }
+            if (widthMm > 0) {
+                var widthInches = widthMm / MILLIMETERS_PER_INCH;
+                var computedDpi = (int) Math.round(bounds.width / widthInches);
+                LOG.info("Screen: {}x{} px, physical width {} mm, DPI {}",
+                    bounds.width, bounds.height, String.format("%.1f", widthMm), computedDpi);
+                return computedDpi;
             }
-        } catch (TimeoutException e) {
-            LOG.warn("EDID display query timed out after {} s, using system default DPI", DPI_QUERY_TIMEOUT_SECONDS);
-        } catch (Exception e) {
-            LOG.warn("Could not determine physical DPI from EDID, using system default", e);
         }
 
-        return Toolkit.getDefaultToolkit().getScreenResolution();
+        var fallbackDpi = Toolkit.getDefaultToolkit().getScreenResolution();
+        LOG.info("Screen: {}x{} px, DPI {} (system fallback)", bounds.width, bounds.height, fallbackDpi);
+        return fallbackDpi;
+    }
+
+    /**
+     * Reads the main display's physical width in millimetres directly from
+     * CoreGraphics ({@code CGDisplayScreenSize(CGMainDisplayID())}) via the FFM
+     * API. Returns {@code 0} if the value is unavailable for any reason (missing
+     * symbols, native error, or a non-macOS host).
+     */
+    private static double macPhysicalWidthMm() {
+        try (var arena = Arena.ofConfined()) {
+            var linker = Linker.nativeLinker();
+            var coreGraphics = SymbolLookup.libraryLookup(
+                "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", arena);
+
+            var mainDisplayId = linker.downcallHandle(
+                coreGraphics.find("CGMainDisplayID").orElseThrow(),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT));
+
+            var cgSizeLayout = MemoryLayout.structLayout(
+                ValueLayout.JAVA_DOUBLE.withName("width"),
+                ValueLayout.JAVA_DOUBLE.withName("height"));
+
+            var screenSize = linker.downcallHandle(
+                coreGraphics.find("CGDisplayScreenSize").orElseThrow(),
+                FunctionDescriptor.of(cgSizeLayout, ValueLayout.JAVA_INT));
+
+            var displayId = (int) mainDisplayId.invoke();
+            var size = (MemorySegment) screenSize.invoke((SegmentAllocator) arena, displayId);
+
+            // width is the first field of the CGSize struct (offset 0).
+            return size.get(ValueLayout.JAVA_DOUBLE, 0);
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     private GraphicUtils() {}

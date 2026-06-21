@@ -27,11 +27,11 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import com.formdev.flatlaf.themes.FlatMacLightLaf;
 import com.formdev.flatlaf.util.SystemInfo;
-import com.jthemedetecor.OsThemeDetector;
 
 import songscribe.UnitTest;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
+import songscribe.util.SystemThemeDetector;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,24 +49,19 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 class AppearanceManagerTest extends UnitTest {
 
     private MockedStatic<Prefs> prefsMock;
-    private MockedStatic<OsThemeDetector> detectorMock;
-    private OsThemeDetector mockDetector;
+    private MockedStatic<SystemThemeDetector> detectorMock;
     private LafOperations mockLafOps;
 
     @BeforeEach
     void setUp() {
         prefsMock = mockStatic(Prefs.class);
-        detectorMock = mockStatic(OsThemeDetector.class);
+        detectorMock = mockStatic(SystemThemeDetector.class);
 
-        mockDetector = mock(OsThemeDetector.class);
         mockLafOps = mock(LafOperations.class);
-
-        detectorMock.when(OsThemeDetector::getDetector).thenReturn(mockDetector);
 
         AppearanceManager.setLafOperations(mockLafOps);
     }
@@ -121,12 +116,12 @@ class AppearanceManagerTest extends UnitTest {
         @Test
         void testInitRegistersOsListenerForSystemPreference() throws Exception {
             prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.SYSTEM.key());
-            when(mockDetector.isDark()).thenReturn(false);
+            detectorMock.when(SystemThemeDetector::isDark).thenReturn(false);
 
             AppearanceManager.init();
 
             verify(mockLafOps).installLaf(any(LookAndFeel.class));
-            verify(mockDetector).registerListener(any());
+            detectorMock.verify(() -> SystemThemeDetector.registerListener(any()));
         }
 
         @Test
@@ -136,7 +131,7 @@ class AppearanceManagerTest extends UnitTest {
             AppearanceManager.init();
 
             verify(mockLafOps).installLaf(any(LookAndFeel.class));
-            verify(mockDetector, never()).registerListener(any());
+            detectorMock.verify(() -> SystemThemeDetector.registerListener(any()), never());
         }
 
         @Test
@@ -167,21 +162,13 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testSystemPreferenceDelegatesToOsDetector() {
-            when(mockDetector.isDark()).thenReturn(true);
+            detectorMock.when(SystemThemeDetector::isDark).thenReturn(true);
             assertThat(AppearanceManager.resolveIsDark(Appearance.SYSTEM)).isTrue();
 
-            when(mockDetector.isDark()).thenReturn(false);
+            detectorMock.when(SystemThemeDetector::isDark).thenReturn(false);
             assertThat(AppearanceManager.resolveIsDark(Appearance.SYSTEM)).isFalse();
         }
 
-        @Test
-        void testSystemPreferenceFallsBackToLightOnDetectorFailure() {
-            detectorMock.when(OsThemeDetector::getDetector).thenThrow(
-                new RuntimeException("Detection unavailable")
-            );
-
-            assertThat(AppearanceManager.resolveIsDark(Appearance.SYSTEM)).isFalse();
-        }
     }
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
@@ -215,15 +202,15 @@ class AppearanceManagerTest extends UnitTest {
         void testSwitchFromSystemUnregistersOsListener() {
             // First set up as system to register the listener
             prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
-            when(mockDetector.isDark()).thenReturn(false);
+            detectorMock.when(SystemThemeDetector::isDark).thenReturn(false);
             AppearanceManager.switchTheme(Appearance.SYSTEM);
-            verify(mockDetector).registerListener(any());
+            detectorMock.verify(() -> SystemThemeDetector.registerListener(any()));
 
             // Now switch away from system
             prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.SYSTEM.key());
             AppearanceManager.switchTheme(Appearance.DARK);
 
-            verify(mockDetector).removeListener(any());
+            detectorMock.verify(() -> SystemThemeDetector.removeListener(any()));
         }
 
         @Test
@@ -238,11 +225,11 @@ class AppearanceManagerTest extends UnitTest {
         @Test
         void testSwitchToSystemRegistersOsListener() {
             prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
-            when(mockDetector.isDark()).thenReturn(false);
+            detectorMock.when(SystemThemeDetector::isDark).thenReturn(false);
 
             AppearanceManager.switchTheme(Appearance.SYSTEM);
 
-            verify(mockDetector).registerListener(any());
+            detectorMock.verify(() -> SystemThemeDetector.registerListener(any()));
         }
 
         @Test
@@ -263,7 +250,7 @@ class AppearanceManagerTest extends UnitTest {
         @Test
         void testRegisterOsListenerCalledOnlyOnceOnRepeatedSwitchToSystem() {
             prefsMock.when(() -> Prefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
-            when(mockDetector.isDark()).thenReturn(false);
+            detectorMock.when(SystemThemeDetector::isDark).thenReturn(false);
 
             // First switch: LIGHT → SYSTEM — listener is registered and listenerRegistered = true
             AppearanceManager.switchTheme(Appearance.SYSTEM);
@@ -275,7 +262,7 @@ class AppearanceManagerTest extends UnitTest {
 
             // registerListener must have been called exactly once — the guard in
             // registerOsListener() blocks the second registration
-            verify(mockDetector, times(1)).registerListener(any());
+            detectorMock.verify(() -> SystemThemeDetector.registerListener(any()), times(1));
         }
     }
 }

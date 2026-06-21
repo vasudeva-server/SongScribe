@@ -15,9 +15,6 @@
         </encoder>
     </appender>
 
-    <!-- Suppress noisy OS-detection fallback warnings from jSystemThemeDetector -->
-    <logger name="oshi.software.os.mac.MacOperatingSystem" level="ERROR"/>
-
     <root level="${songscribe.log.level:-INFO}">
         <appender-ref ref="FILE"/>
     </root>

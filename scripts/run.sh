@@ -41,6 +41,5 @@ done
 java --enable-native-access=ALL-UNNAMED \
   -XX:+UseZGC \
   "${jvm_args[@]}" \
-  -Djna.library.path="$PROJECT_DIR/build/native" \
   -cp "$("$SCRIPT_DIR/../gradlew" -q printClasspath --project-dir "$PROJECT_DIR")" \
   songscribe.SongScribe "${java_args[@]}"

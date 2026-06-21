@@ -35,10 +35,10 @@ import com.formdev.flatlaf.extras.FlatAnimatedLafChange;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import com.formdev.flatlaf.themes.FlatMacLightLaf;
 import com.formdev.flatlaf.util.SystemInfo;
-import com.jthemedetecor.OsThemeDetector;
 
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
+import songscribe.util.SystemThemeDetector;
 
 /**
  * Manages application appearance (light/dark theme) based on user preference
@@ -138,12 +138,7 @@ public final class AppearanceManager {
     }
 
     private static boolean detectSystemDark() {
-        try {
-            return OsThemeDetector.getDetector().isDark();
-        } catch (Exception e) {
-            LOG.warn("OS theme detection unavailable, falling back to light: {}", e.getMessage());
-            return false;
-        }
+        return SystemThemeDetector.isDark();
     }
 
     static LookAndFeel createLaf(boolean isDark) {
@@ -175,26 +170,26 @@ public final class AppearanceManager {
         }
 
         try {
-            var detector = OsThemeDetector.getDetector();
             osThemeListener = isDark -> SwingUtilities.invokeLater(() -> applyTheme(isDark));
-            detector.registerListener(osThemeListener);
+            SystemThemeDetector.registerListener(osThemeListener);
             listenerRegistered = true;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             LOG.warn("Failed to register OS theme listener: {}", e.getMessage());
         }
     }
 
     private static void unregisterOsListener() {
-        if (!listenerRegistered) {
+        var listener = osThemeListener;
+
+        if (!listenerRegistered || listener == null) {
             return;
         }
 
         try {
-            var detector = OsThemeDetector.getDetector();
-            detector.removeListener(osThemeListener);
+            SystemThemeDetector.removeListener(listener);
             osThemeListener = null;
             listenerRegistered = false;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             LOG.warn("Failed to unregister OS theme listener: {}", e.getMessage());
         }
     }

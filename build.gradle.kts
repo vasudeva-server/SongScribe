@@ -33,22 +33,13 @@ sourceSets {
 repositories {
     mavenCentral()
     maven("https://jitpack.io")
-    maven("https://s3.eu-west-1.amazonaws.com/repo.maven.cyberduck.io/releases")
-}
-
-val nativeLibs by configurations.creating {
-    isCanBeResolved = true
-    isCanBeConsumed = false
 }
 
 dependencies {
     implementation("org.slf4j:slf4j-api:2.0.17")
     implementation("org.swinglabs:swing-layout:1.0.3")
-    implementation("com.github.Dansoftowner:jSystemThemeDetector:3.6")
-    implementation("com.github.oshi:oshi-core:6.10.0")
     implementation("net.java.dev.jna:jna:5.18.1")
     implementation("net.java.dev.jna:jna-platform:5.18.1")
-    implementation("org.rococoa:rococoa-core:0.10.0")
     implementation("com.formdev:flatlaf:3.7.1")
     implementation("com.formdev:flatlaf-extras:3.7.1")
     implementation("com.intellij:forms_rt:7.0.3")
@@ -57,8 +48,6 @@ dependencies {
     compileOnly("com.uber.nullaway:nullaway-annotations:0.12.11")
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("net.engio:mbassador:1.3.2")
-
-    nativeLibs("org.rococoa:librococoa:0.10.0@dylib")
 
     testImplementation("org.mockito:mockito-core:5.21.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
@@ -126,17 +115,8 @@ val generateFlatLafKeys by tasks.registering {
     }
 }
 
-// -- Native libs --
-
-val copyNativeLibs by tasks.registering(Copy::class) {
-    description = "Copies native libraries to a directory where they can be loaded at runtime"
-    from(nativeLibs)
-    into(layout.buildDirectory.dir("native"))
-    rename { "librococoa.dylib" }
-}
-
 tasks.named("compileJava") {
-    dependsOn(generateVersion, generateStrings, generateFlatLafKeys, copyNativeLibs)
+    dependsOn(generateVersion, generateStrings, generateFlatLafKeys)
 }
 
 // -- Compiler configuration --
@@ -191,7 +171,6 @@ fun Test.applyCommonTestConfig() {
         jvmArgs(
             "-Dapple.laf.useScreenMenuBar=true",
             "-Dapple.awt.application.appearance=system",
-            "-Djna.library.path=$projectDir/build/native",
         )
     }
 
@@ -307,8 +286,6 @@ pitest {
         "--enable-native-access=ALL-UNNAMED",
         "-XX:+EnableDynamicAgentLoading",
         "-Xshare:off",
-        // rococoa native library — same path that test.sh sets via -Djna.library.path
-        "-Djna.library.path=${projectDir.absolutePath}/build/native",
         "-Dapple.laf.useScreenMenuBar=true",
         "-Dapple.awt.application.appearance=system",
     ))
