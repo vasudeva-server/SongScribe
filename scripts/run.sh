@@ -3,6 +3,9 @@
 # Options:
 #   --log-level=<level>   Override the log level (trace, debug, info, warn, error)
 #   --truncate-log        Delete the log file before starting so the session begins fresh
+#   --profile             Attach async-profiler in wall-clock mode; the flame graph
+#                         is written to build/songscribe-profile.html when you quit
+#                         (requires: brew install async-profiler)
 #
 # Any other arguments are passed through to the application.
 # To enable UI debug features (FlatLaf inspector, debug drawing): DEBUG=1 ./scripts/run.sh
@@ -12,17 +15,32 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/set-java-home.sh"
 java_args=()
+jvm_args=()
 
 for arg in "$@"; do
   case "$arg" in
     --truncate-log) export TRUNCATE_LOG=1 ;;
     --log-level=*) export LOG_LEVEL="${arg#--log-level=}" ;;
+    --profile)
+      profiler_lib="$(brew --prefix async-profiler 2>/dev/null)/lib/libasyncProfiler.dylib"
+
+      if [[ ! -f "$profiler_lib" ]]; then
+        echo "error: async-profiler not found. Install it with: brew install async-profiler" >&2
+        exit 1
+      fi
+
+      profile_output="$PROJECT_DIR/build/songscribe-profile.html"
+      # Attach to the app JVM only — not the gradlew classpath subprocess below.
+      jvm_args+=("-agentpath:$profiler_lib=start,event=wall,interval=1ms,file=$profile_output,title=SongScribe")
+      echo "Profiling (wall-clock); flame graph written to $profile_output on quit"
+      ;;
     *) java_args+=("$arg") ;;
   esac
 done
 
 java --enable-native-access=ALL-UNNAMED \
   -XX:+UseZGC \
+  "${jvm_args[@]}" \
   -Djna.library.path="$PROJECT_DIR/build/native" \
   -cp "$("$SCRIPT_DIR/../gradlew" -q printClasspath --project-dir "$PROJECT_DIR")" \
   songscribe.SongScribe "${java_args[@]}"
