@@ -344,6 +344,10 @@ public final class LineInvariants {
             return REPLACED_ELEMENT_COLOR;
         }
 
+        if (PreviewElementManager.isGlissandoPreviewNote(lineIndex, elementIndex)) {
+            return ScoreView.getPreviewElementColor();
+        }
+
         return Color.BLACK;
     }
 

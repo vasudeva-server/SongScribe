@@ -32,6 +32,8 @@ import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.dom.ScaleContext;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.util.GraphicsState;
 
 /**
@@ -189,7 +191,17 @@ public final class GlissandoRenderer {
         StaffElement.Glissando.Type type,
         LineInvariants invariants
     ) {
+        var lineIndex = invariants.getLineIndex();
         var color = invariants.getElementColor(noteIndex);
+
+        // getElementColor highlights a note in the preview color when it is a connected note
+        // of a glissando being previewed. That highlight marks the note itself, not an existing
+        // glissando line on it: previewing a different glissando type over a note that already
+        // has one must leave the old line at its normal color, so ignore that one highlight here.
+        if (PreviewElementManager.isGlissandoPreviewNote(lineIndex, noteIndex)
+            && color.equals(ScoreView.getPreviewElementColor())) {
+            color = Color.BLACK;
+        }
 
         if (color != Color.BLACK) {
             return color;
@@ -200,8 +212,6 @@ public final class GlissandoRenderer {
         if (selectionProvider == null) {
             return Color.BLACK;
         }
-
-        var lineIndex = invariants.getLineIndex();
 
         // Standalone glissando selection
         if (selectionProvider.isGlissandoSelected(noteIndex, lineIndex)) {

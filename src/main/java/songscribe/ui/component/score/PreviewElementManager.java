@@ -226,7 +226,63 @@ public final class PreviewElementManager {
             return null;
         }
 
+        // A glissando tool never replaces an existing element either — it attaches a
+        // glissando to a note. Instead of the red replacement highlight, the connected
+        // notes are drawn in the preview color (see isGlissandoPreviewNote).
+        if (isGlissandoPlaceholder(previewElement)) {
+            return null;
+        }
+
         return new ElementLocation(currentPreviewLine.getLineIndex(), currentXIndex);
+    }
+
+    /**
+     * Returns whether the note at {@code (lineIndex, elementIndex)} is one the currently
+     * previewed glissando would connect to, and therefore should render in the preview
+     * color. For a connecting glissando both the source note and the target note to its
+     * right qualify; for a slide-out only the source note qualifies.
+     * <p>
+     * Returns false when no glissando preview is being shown. The conditions mirror those
+     * in {@link LineRenderer#renderPreviewElement}: the highlight is only shown when the
+     * preview glissando itself is drawn, which excludes the case where the source note
+     * already carries this glissando type.
+     */
+    public static boolean isGlissandoPreviewNote(int lineIndex, int elementIndex) {
+        if (!shouldShowGlissandoPreview() || currentPreviewLine == null) {
+            return false;
+        }
+
+        if (currentPreviewLine.getLineIndex() != lineIndex) {
+            return false;
+        }
+
+        var type = currentGlissandoZone;
+
+        if (type == null) {
+            return false;
+        }
+
+        var line = currentPreviewLine.getLine();
+        var sourceIndex = currentXIndex - 1;
+
+        if (line == null || sourceIndex < 0) {
+            return false;
+        }
+
+        // No preview line is drawn (and thus no highlight) when the source note already
+        // carries this glissando type.
+        var sourceGlissando = line.getElement(sourceIndex).getGlissando();
+
+        if (sourceGlissando != null && sourceGlissando.type == type) {
+            return false;
+        }
+
+        if (elementIndex == sourceIndex) {
+            return true;
+        }
+
+        // A connecting glissando also highlights the target note immediately to the right.
+        return type == StaffElement.Glissando.Type.CONNECTED && elementIndex == currentXIndex;
     }
 
     /**

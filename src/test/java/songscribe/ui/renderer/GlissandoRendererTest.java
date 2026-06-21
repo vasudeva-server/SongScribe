@@ -23,6 +23,7 @@ package songscribe.ui.renderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -48,6 +49,7 @@ import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.component.score.PreviewElementManager;
 
 class GlissandoRendererTest extends UnitTest {
 
@@ -483,6 +485,24 @@ class GlissandoRendererTest extends UnitTest {
             0, StaffElement.Glissando.Type.CONNECTED, invariants);
 
         assertThat(color).isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    @Test
+    void testDetermineGlissandoColor_glissandoPreviewNote_returnsBlack() {
+        // A note marked as a glissando-preview note renders its notehead in the preview
+        // color (getElementColor), but its existing glissando line must stay black so that
+        // previewing a different glissando type over it does not recolor the old line.
+        var invariants = editModeBuilder().build();
+
+        try (var previewMock = mockStatic(PreviewElementManager.class)) {
+            previewMock.when(() -> PreviewElementManager.isGlissandoPreviewNote(0, 0))
+                .thenReturn(true);
+
+            var color = RENDERER.determineGlissandoColor(
+                0, StaffElement.Glissando.Type.CONNECTED, invariants);
+
+            assertThat(color).isEqualTo(Color.BLACK);
+        }
     }
 
     // ======================================================================
