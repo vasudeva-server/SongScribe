@@ -74,6 +74,14 @@ class PreviewElementManagerGlissandoZoneTest extends UnitTest {
         return ElementType.CROTCHET_REST.newInstance();
     }
 
+    private StaffElement barLine() {
+        return ElementType.SINGLE_BARLINE.newInstance();
+    }
+
+    private StaffElement graceNote() {
+        return ElementType.GRACE_QUAVER.newInstance();
+    }
+
     private void addElements(StaffElement... elements) {
         song.withoutMutationTracking(() -> {
             for (var element : elements) {
@@ -115,6 +123,34 @@ class PreviewElementManagerGlissandoZoneTest extends UnitTest {
     void testSlideOutSuppressedWhenSourceIsRest() {
         addElements(rest());
         assertThat(zone(1, SLIDE_OUT)).as("source is rest").isNull();
+    }
+
+    // -----------------------------------------------------------------------
+    // Source/target non-pitched suppression (issue #464)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testConnectedGlissandoSuppressedWhenTargetIsBarLine() {
+        addElements(note(), barLine());
+        assertThat(zone(1, CONNECTED)).as("target is bar line").isNull();
+    }
+
+    @Test
+    void testConnectedGlissandoSuppressedWhenTargetIsGraceNote() {
+        addElements(note(), graceNote());
+        assertThat(zone(1, CONNECTED)).as("target is grace note").isNull();
+    }
+
+    @Test
+    void testConnectedGlissandoSuppressedWhenSourceIsBarLine() {
+        addElements(barLine(), note());
+        assertThat(zone(1, CONNECTED)).as("source is bar line").isNull();
+    }
+
+    @Test
+    void testSlideOutSuppressedWhenSourceIsBarLine() {
+        addElements(barLine());
+        assertThat(zone(1, SLIDE_OUT)).as("source is bar line").isNull();
     }
 
     // -----------------------------------------------------------------------

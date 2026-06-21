@@ -392,6 +392,8 @@ public final class PreviewElementManager {
      * or if {@code intendedType} is null. Otherwise validates whether the given type
      * can be inserted at the given index: CONNECTED requires a pitched note to the
      * right with a different pitch, SLIDE_OUT only requires a pitched source note.
+     * Only pitched notes can be a glissando source or target — bar lines, grace
+     * notes, rests, and other non-pitched elements are rejected.
      *
      * @param line         The line containing the notes
      * @param xIndex       Insertion index from {@link LayoutResult#findInsertionIndex}
@@ -411,10 +413,10 @@ public final class PreviewElementManager {
             return null;
         }
 
-        // Rests cannot be glissando source or target
+        // Only pitched notes can be a glissando source or target
         var sourceElement = line.getElement(xIndex - 1);
 
-        if (sourceElement.getType().isRest()) {
+        if (!sourceElement.getType().isPitchedNote()) {
             return null;
         }
 
@@ -426,8 +428,8 @@ public final class PreviewElementManager {
 
             var targetElement = line.getElement(xIndex);
 
-            // Target cannot be a rest
-            if (targetElement.getType().isRest()) {
+            // Target must be a pitched note (bar lines, grace notes, rests, etc. are invalid)
+            if (!targetElement.getType().isPitchedNote()) {
                 return null;
             }
 
