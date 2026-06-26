@@ -191,6 +191,13 @@ public final class SongScribe {
             app = (prop == null) ? "sw" : prop;
         }
 
+        // Enable anti-aliasing and sub-pixel rendering for fonts. Like the macOS
+        // properties above, these are read during AWT/Swing initialization, so they
+        // must be set on the main thread before the toolkit starts. macOS ignores
+        // them, but other platforms rely on them for quality text rendering.
+        System.setProperty("swing.aatext", "true");
+        System.setProperty("awt.useSystemAAFontSettings", "lcd");
+
         // Allow Swing components to handle a property change with a null property name,
         // which indicates more than one property has changed.
         System.setProperty("swing.actions.reconfigureOnNull", "true");
@@ -205,9 +212,9 @@ public final class SongScribe {
             case "ui_converter" -> UIConverter.main(args);
             case "abc_converter" -> AbcConverter.main(args);
             default -> {
-                // This has to be done before any Swing components are created
-                UIUtils.initLaf();
-                MainFrame.main(args);
+                // macOS system properties are already set above on the main thread.
+                // Bootstrap the UI on the EDT so the splash can appear immediately.
+                SwingUtilities.invokeLater(() -> MainFrame.main(args));
             }
         }
     }

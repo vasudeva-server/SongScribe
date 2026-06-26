@@ -41,6 +41,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JOptionPane;
@@ -1266,6 +1267,204 @@ class MainFrameTest extends UnitTest {
             assertThat(Actions.CONTROL_ACTION_GROUP)
                 .as("CONTROL_ACTION_GROUP non-null after Actions.initialize() — as initFrame() guarantees")
                 .isNotNull();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // DrainStartupErrors
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class DrainStartupErrors {
+
+        @BeforeEach
+        void clearQueue() {
+            MainFrame.clearStartupErrorsForTest();
+        }
+
+        @AfterEach
+        void clearQueueAfter() {
+            MainFrame.clearStartupErrorsForTest();
+        }
+
+        /**
+         * When a fatal error is queued, drainStartupErrors() delegates to
+         * RuntimeError.exit() without showing any warning dialogs.
+         */
+        @Test
+        void testFatalErrorTriggersFatalPathWithNoWarnings() {
+            MainFrame.enqueueStartupError(
+                new MainFrame.StartupError("any title", "fatal message", true)
+            );
+
+            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                assertThatThrownBy(MainFrame::drainStartupErrors)
+                    .as("fatal error must invoke RuntimeError.exit(), triggering the test exit handler")
+                    .isInstanceOf(AssertionError.class)
+                    .hasMessageContaining("System.exit");
+
+                optionDialogsMock.verify(
+                    () -> OptionDialogs.showWarningMessage(any(), anyString(), anyString()),
+                    never()
+                );
+            }
+        }
+
+        /**
+         * When only non-fatal errors are queued, drainStartupErrors() shows each
+         * as a warning in enqueue order and returns normally.
+         */
+        @Test
+        void testNonFatalErrorsShownInOrderAndDrainReturnsNormally() {
+            MainFrame.enqueueStartupError(
+                new MainFrame.StartupError(
+                    Strings.ALERT_TITLE_SOUND, Strings.ALERT_SOUND_INIT_FAILED, false
+                )
+            );
+            MainFrame.enqueueStartupError(
+                new MainFrame.StartupError(
+                    Strings.ALERT_TITLE_PLAYBACK_ERROR, Strings.ALERT_TITLE_SOUND, false
+                )
+            );
+
+            var capturedTitles = new ArrayList<String>();
+
+            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                optionDialogsMock.when(
+                    () -> OptionDialogs.showWarningMessage(
+                        any(), anyString(), anyString()
+                    )
+                ).thenAnswer(invocation -> {
+                    capturedTitles.add(invocation.getArgument(1));
+                    return null;
+                });
+
+                // Must not throw — returns normally when no fatal error is present
+                MainFrame.drainStartupErrors();
+            }
+
+            assertThat(capturedTitles)
+                .as("warnings must be shown in enqueue order")
+                .containsExactly(Strings.ALERT_TITLE_SOUND, Strings.ALERT_TITLE_PLAYBACK_ERROR);
+        }
+
+        /**
+         * When the queue is empty (the startup happy path), drainStartupErrors()
+         * shows no dialogs and returns normally.
+         */
+        @Test
+        void testEmptyQueueShowsNoDialogsAndReturnsNormally() {
+            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                // Must not throw when there are no queued errors.
+                MainFrame.drainStartupErrors();
+
+                optionDialogsMock.verify(
+                    () -> OptionDialogs.showWarningMessage(any(), anyString(), anyString()),
+                    never()
+                );
+            }
+        }
+
+        /**
+         * When a fatal error follows non-fatal errors, drainStartupErrors() takes the
+         * fatal path and shows no warning dialogs — the fatal exit suppresses warnings
+         * regardless of the fatal error's position in the queue.
+         */
+        @Test
+        void testFatalAfterNonFatalSuppressesWarnings() {
+            MainFrame.enqueueStartupError(
+                new MainFrame.StartupError(
+                    Strings.ALERT_TITLE_SOUND, Strings.ALERT_SOUND_INIT_FAILED, false
+                )
+            );
+            MainFrame.enqueueStartupError(
+                new MainFrame.StartupError("any title", "fatal message", true)
+            );
+
+            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                assertThatThrownBy(MainFrame::drainStartupErrors)
+                    .as("a fatal error anywhere in the queue must invoke RuntimeError.exit()")
+                    .isInstanceOf(AssertionError.class)
+                    .hasMessageContaining("System.exit");
+
+                optionDialogsMock.verify(
+                    () -> OptionDialogs.showWarningMessage(any(), anyString(), anyString()),
+                    never()
+                );
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // SplashGateMath
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SplashGateMath {
+
+        // ---- remainingFloorMs ----
+
+        @Test
+        void testRemainingFloorMsIsFullWhenNoTimeElapsed() {
+            assertThat(MainFrame.remainingFloorMs(0))
+                .as("zero elapsed → full floor remaining")
+                .isEqualTo(MainFrame.MIN_SPLASH_DURATION_MS);
+        }
+
+        @Test
+        void testRemainingFloorMsIsPartialWhenSomeTimeElapsed() {
+            final var elapsed = MainFrame.MIN_SPLASH_DURATION_MS / 2;
+            assertThat(MainFrame.remainingFloorMs(elapsed))
+                .as("partial elapsed → floor minus elapsed")
+                .isEqualTo(MainFrame.MIN_SPLASH_DURATION_MS - elapsed);
+        }
+
+        @Test
+        void testRemainingFloorMsIsZeroWhenElapsedEqualsFloor() {
+            assertThat(MainFrame.remainingFloorMs(MainFrame.MIN_SPLASH_DURATION_MS))
+                .as("elapsed equals floor → exactly 0")
+                .isEqualTo(0);
+        }
+
+        @Test
+        void testRemainingFloorMsClampsToFloorWhenElapsedIsNegative() {
+            assertThat(MainFrame.remainingFloorMs(-1))
+                .as("negative elapsed → clamped up to the floor, never above it")
+                .isEqualTo(MainFrame.MIN_SPLASH_DURATION_MS);
+        }
+
+        // ---- remainingCapMs ----
+
+        @Test
+        void testRemainingCapMsIsPositiveBeforeCap() {
+            final var elapsed = MainFrame.MIDI_INIT_TIMEOUT_MS / 2;
+            assertThat(MainFrame.remainingCapMs(elapsed))
+                .as("elapsed well before cap → remaining cap is positive")
+                .isGreaterThan(0)
+                .isEqualTo(MainFrame.MIDI_INIT_TIMEOUT_MS - elapsed);
+        }
+
+        @Test
+        void testRemainingCapMsIsZeroAtCap() {
+            assertThat(MainFrame.remainingCapMs(MainFrame.MIDI_INIT_TIMEOUT_MS))
+                .as("elapsed equals cap → exactly 0")
+                .isEqualTo(0);
+        }
+
+        @Test
+        void testRemainingCapMsIsFullWhenNoTimeElapsed() {
+            assertThat(MainFrame.remainingCapMs(0))
+                .as("zero elapsed → full cap remaining")
+                .isEqualTo(MainFrame.MIDI_INIT_TIMEOUT_MS);
+        }
+
+        @Test
+        void testRemainingCapMsClampsToCapWhenElapsedIsNegative() {
+            assertThat(MainFrame.remainingCapMs(-1))
+                .as("negative elapsed → clamped down to the cap, never above it")
+                .isEqualTo(MainFrame.MIDI_INIT_TIMEOUT_MS);
         }
     }
 

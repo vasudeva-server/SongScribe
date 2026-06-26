@@ -20,6 +20,8 @@
 
 package songscribe.ui.playback;
 
+import module java.desktop;
+
 import java.awt.event.ActionEvent;
 
 import org.junit.jupiter.api.AfterEach;
@@ -31,6 +33,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.Strings;
+import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleLoopPlaybackCommand;
 import songscribe.message.command.TogglePlayWithRepeatsCommand;
@@ -40,7 +43,9 @@ import songscribe.ui.action.UIAction;
 import songscribe.ui.playback.PlaybackController.PlaybackState;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for PlayPauseAction, RewindAction, LoopPlaybackAction, and PlayWithRepeatsAction.
@@ -250,6 +255,59 @@ class PlaybackActionsTest extends MainFrameMockTest {
                 messageMock.verify(() -> MessageCenter.post(captor.capture()));
                 assertThat(captor.getValue().isSelected()).isFalse();
             }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // DISABLE_WHEN_MIDI_UNAVAILABLE flag
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class DisableWhenMidiUnavailable {
+
+        @BeforeEach
+        void setUpScoreView() {
+            // PlayPauseAction has DISABLE_WHEN_SONG_EMPTY, so requires the song to be non-empty
+            var mockSong = mock(Song.class);
+            when(mockSong.isEmpty()).thenReturn(false);
+            when(mockEnv().score().isInitialized()).thenReturn(true);
+            when(mockEnv().score().getSong()).thenReturn(mockSong);
+        }
+
+        @AfterEach
+        void resetSequencer() {
+            MidiController.sequencer = null;
+        }
+
+        /**
+         * When sequencer is null (MIDI unavailable) and the action carries
+         * DISABLE_WHEN_MIDI_UNAVAILABLE, updateEnabledState() must disable the action.
+         */
+        @Test
+        void testActionDisabledWhenSequencerIsNull() {
+            MidiController.sequencer = null;
+
+            PlaybackController.PLAY_PAUSE_ACTION.updateEnabledState();
+
+            assertThat(PlaybackController.PLAY_PAUSE_ACTION.isEnabled())
+                .as("PLAY_PAUSE_ACTION must be disabled when MIDI is unavailable")
+                .isFalse();
+        }
+
+        /**
+         * When sequencer is non-null (MIDI available), updateEnabledState() must enable
+         * the action (all other conditions satisfied by the mock score view setup).
+         */
+        @Test
+        void testActionEnabledWhenSequencerIsSet() {
+            MidiController.sequencer = mock(Sequencer.class);
+
+            PlaybackController.PLAY_PAUSE_ACTION.updateEnabledState();
+
+            assertThat(PlaybackController.PLAY_PAUSE_ACTION.isEnabled())
+                .as("PLAY_PAUSE_ACTION must be enabled when MIDI is available")
+                .isTrue();
         }
     }
 }

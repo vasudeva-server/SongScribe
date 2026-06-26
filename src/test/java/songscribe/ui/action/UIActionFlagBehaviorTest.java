@@ -31,6 +31,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.action.DialogOpenActionTest.StubDialog;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -356,6 +357,39 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
             var action = createActionWithFlag();
             assertThat(action.enableFromPlaybackState()).isTrue();
+        }
+    }
+
+    // -- enableFromMidiState --
+
+    @Test
+    void testDisableWhenMidiUnavailableFlagReturnsFalseWhenMidiUnavailable() {
+        try (var midiMock = mockStatic(MidiController.class)) {
+            midiMock.when(MidiController::isAvailable).thenReturn(false);
+
+            var action = createActionWithFlag(UIAction.Flag.DISABLE_WHEN_MIDI_UNAVAILABLE);
+            assertThat(action.enableFromMidiState()).isFalse();
+        }
+    }
+
+    @Test
+    void testDisableWhenMidiUnavailableFlagReturnsTrueWhenMidiAvailable() {
+        try (var midiMock = mockStatic(MidiController.class)) {
+            midiMock.when(MidiController::isAvailable).thenReturn(true);
+
+            var action = createActionWithFlag(UIAction.Flag.DISABLE_WHEN_MIDI_UNAVAILABLE);
+            assertThat(action.enableFromMidiState()).isTrue();
+        }
+    }
+
+    @Test
+    void testWithoutMidiFlagReturnsTrueWhenMidiUnavailable() {
+        // No DISABLE_WHEN_MIDI_UNAVAILABLE flag: always true regardless of MIDI availability.
+        try (var midiMock = mockStatic(MidiController.class)) {
+            midiMock.when(MidiController::isAvailable).thenReturn(false);
+
+            var action = createActionWithFlag();
+            assertThat(action.enableFromMidiState()).isTrue();
         }
     }
 

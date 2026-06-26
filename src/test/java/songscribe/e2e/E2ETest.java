@@ -125,7 +125,8 @@ public abstract class E2ETest {
             SongScribe.logBanner("SongScribe (E2E Tests)");
 
             GuiActionRunner.execute(() -> {
-                UIUtils.initLaf();
+                UIUtils.initMinimalTheme();
+                UIUtils.installEagerFonts();
 
                 var mainFrame = MainFrame.getInstance();
                 mainFrame.initFrame();

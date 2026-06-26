@@ -68,6 +68,15 @@ public class SplashWindow extends JWindow {
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);   // paints the background color first
 
+                // FlatLaf leaves AATextInfo null, so this window's default Graphics
+                // paints text with no antialiasing and integer metrics, making it wider
+                // than Swing measured the labels — clipping the last glyph. Apply the
+                // project's unified hints (same as the score) so painted text matches
+                // measurement; child labels inherit these hints from this Graphics.
+                if (g instanceof Graphics2D g2) {
+                    GraphicUtils.setRenderingHints(g2);
+                }
+
                 if (splashImage != null) {
                     // Center the image
                     var x = (getWidth() - splashImage.getWidth()) / 2;

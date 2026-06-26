@@ -20,8 +20,6 @@
 
 package songscribe.font;
 
-import com.formdev.flatlaf.util.FontUtils;
-
 import songscribe.util.MyFontUtils;
 
 /**
@@ -101,32 +99,31 @@ public final class SourceSans3Font {
     private SourceSans3Font() {}
 
     /**
-     * Registers the fonts for lazy loading via
-     * {@link FontUtils#registerFontFamilyLoader(String, Runnable)}.
-     * <p>
-     * This is the preferred method (when using FlatLaf) to avoid unnecessary loading of maybe
-     * unused fonts.
-     * <p>
-     * <strong>Note</strong>: When using '{@code new Font(...)}', you need to first invoke
-     * {@link FontUtils#loadFontFamily(String)} to ensure that the font family is loaded.
-     * When FlatLaf loads a font, or when using
-     * {@link FontUtils#getCompositeFont(String, int, int)},
-     * this is done automatically.
+     * Creates and registers all eight faces of {@link #FAMILY}.
      */
-    public static void installLazy() {
-        FontUtils.registerFontFamilyLoader(
-            FAMILY,
-            SourceSans3Font::install
-        );
+    public static void install() {
+        installRegular();
+        installRemaining();
     }
 
     /**
-     * Creates and registers all eight faces of {@link #FAMILY}.
+     * Registers only the Regular (plain) face of {@link #FAMILY}.
      * <p>
-     * When using FlatLaf, consider using {@link #installLazy()}.
+     * This is sufficient for plain {@code JLabel}s (e.g. during splash rendering).
+     * Call {@link #installRemaining()} afterwards to register the other seven faces.
      */
-    public static void install() {
+    public static void installRegular() {
         MyFontUtils.installLocalFont(STYLE_REGULAR);
+    }
+
+    /**
+     * Registers the seven non-Regular faces of {@link #FAMILY} (italic, medium,
+     * medium-italic, semibold, semibold-italic, bold, bold-italic).
+     * <p>
+     * Must be called after {@link #installRegular()} (or {@link #install()}) so that
+     * the family is already known to the graphics environment.
+     */
+    public static void installRemaining() {
         MyFontUtils.installLocalFont(STYLE_ITALIC);
         MyFontUtils.installLocalFont(STYLE_MEDIUM);
         MyFontUtils.installLocalFont(STYLE_MEDIUM_ITALIC);

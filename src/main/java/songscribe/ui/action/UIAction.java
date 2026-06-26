@@ -52,6 +52,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
@@ -75,7 +76,8 @@ public class UIAction extends AbstractAction {
         DISABLE_WHEN_SONG_EMPTY(1 << 12),
         DISABLE_IN_GRACE_MODE(1 << 13),
         DISABLE_IN_SELECT_MODE(1 << 14),
-        OPENS_DIALOG(1 << 15);
+        OPENS_DIALOG(1 << 15),
+        DISABLE_WHEN_MIDI_UNAVAILABLE(1 << 16);
 
         private final int value;
 
@@ -390,6 +392,7 @@ public class UIAction extends AbstractAction {
                 enableInSelectMode(scoreView) &&
                 enableFromTextEditingState() &&
                 enableFromPlaybackState() &&
+                enableFromMidiState() &&
                 enableFromDialogVisibility() &&
                 enableFromGraceModeState() &&
                 enableInRestMode() &&
@@ -479,6 +482,10 @@ public class UIAction extends AbstractAction {
 
     protected boolean enableFromPlaybackState() {
         return !hasFlag(Flag.DISABLE_WHEN_PLAYING) || !PlaybackController.isPlaying();
+    }
+
+    protected boolean enableFromMidiState() {
+        return !hasFlag(Flag.DISABLE_WHEN_MIDI_UNAVAILABLE) || MidiController.isAvailable();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

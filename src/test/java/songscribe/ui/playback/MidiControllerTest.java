@@ -22,17 +22,19 @@ package songscribe.ui.playback;
 
 import module java.desktop;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
+import songscribe.ui.component.MainFrame;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,6 +47,7 @@ class MidiControllerTest extends UnitTest {
         MidiController.midiReceiver = null;
         MidiController.synthesizer = null;
         MidiController.closed = false;
+        MidiController.failForTesting = false;
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -213,6 +216,63 @@ class MidiControllerTest extends UnitTest {
 
             // Despite two calls, midiReceiver.close() is invoked exactly once
             verify(mockReceiver, times(1)).close();
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class IsAvailable {
+
+        @Test
+        void testReturnsFalseWhenSequencerIsNull() {
+            // sequencer is null from tearDown; no setup needed
+            assertThat(MidiController.isAvailable())
+                .as("isAvailable() must be false when sequencer is null")
+                .isFalse();
+        }
+
+        @Test
+        void testReturnsTrueWhenSequencerIsSet() {
+            MidiController.sequencer = mock(Sequencer.class);
+
+            assertThat(MidiController.isAvailable())
+                .as("isAvailable() must be true when sequencer is set")
+                .isTrue();
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class OpenMidiAsync {
+
+        private static final long LATCH_TIMEOUT_SECONDS = 10;
+
+        @AfterEach
+        void clearStartupErrors() {
+            MainFrame.clearStartupErrorsForTest();
+        }
+
+        /**
+         * The latch must reach zero even when MIDI init throws. The finally block in
+         * openMidiAsync() guarantees countdown on any outcome.
+         *
+         * The success path is not unit-tested here because it depends on a real MIDI
+         * system and the bundled soundfont being present, which fails on headless CI.
+         * This forced-failure test already proves the {@code finally} countdown holds.
+         */
+        @Test
+        void testLatchReachesZeroOnForcedFailure() throws InterruptedException {
+            // Force openMidi() into the failure path via the package-private test flag.
+            MidiController.failForTesting = true;
+
+            var latch = MidiController.openMidiAsync();
+
+            assertThat(latch.await(LATCH_TIMEOUT_SECONDS, TimeUnit.SECONDS))
+                .as("latch must reach zero even after openMidi() fails")
+                .isTrue();
+            assertThat(MidiController.sequencer)
+                .as("sequencer must remain null after failed MIDI init")
+                .isNull();
         }
     }
 }

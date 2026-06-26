@@ -42,6 +42,7 @@ import songscribe.ui.AppearanceManager;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.component.MainFrame;
 
 import songscribe.font.SourceSans3Font;
 import songscribe.ui.renderer.RenderingUtils;
@@ -427,32 +428,38 @@ public final class UIUtils {
         return dummy;
     }
 
-    public static void initLaf() {
-        try {
-            // Enable anti-aliasing and sub-pixel rendering for fonts
-            System.setProperty("swing.aatext", "true");
-            System.setProperty("awt.useSystemAAFontSettings", "lcd");
+    /**
+     * Initializes the minimum theme state needed before the splash window paints:
+     * the Regular font face, the preferred font family, the custom defaults source,
+     * and the appearance manager. Also installs FlatLaf debug inspectors when running
+     * under {@code DEBUG=1}.
+     */
+    public static void initMinimalTheme() {
+        SourceSans3Font.installRegular();
 
-            SourceSans3Font.install();
+        // Set up the base font family for FlatLaf
+        FlatLaf.setPreferredFontFamily(SourceSans3Font.FAMILY);
 
-            MyFontUtils.installLocalFont("Poetica-SuppOrnaments.otf");
-            MyFontUtils.installLocalFont("TiroBangla-Regular.ttf");
+        FlatLaf.registerCustomDefaultsSource("songscribe");
 
-            // Set up the base font family for FlatLaf
-            FlatLaf.setPreferredFontFamily(SourceSans3Font.FAMILY);
+        AppearanceManager.init();
 
-            FlatLaf.registerCustomDefaultsSource("songscribe");
-
-            AppearanceManager.init();
-
-            // In DEBUG mode, install FlatLaf's inspectors
-            if (System.getenv("DEBUG") != null) {
-                FlatUIDefaultsInspector.install("ctrl shift alt Y");
-                FlatInspector.install("ctrl shift alt X");
-            }
-        } catch (Exception e) {
-            LOG.error("Error initializing laf", e);
+        // In DEBUG mode, install FlatLaf's inspectors
+        if (System.getenv("DEBUG") != null) {
+            FlatUIDefaultsInspector.install("ctrl shift alt Y");
+            FlatInspector.install("ctrl shift alt X");
         }
+    }
+
+    /**
+     * Installs the remaining (non-Regular) SourceSans3 faces plus the Poetica and
+     * TiroBangla fonts. Called eagerly after the splash is visible so that all faces
+     * are available before the main window opens.
+     */
+    public static void installEagerFonts() {
+        SourceSans3Font.installRemaining();
+        MyFontUtils.installLocalFont("Poetica-SuppOrnaments.otf");
+        MyFontUtils.installLocalFont("TiroBangla-Regular.ttf");
     }
 
     //
