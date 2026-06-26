@@ -103,13 +103,14 @@ class GlissandoRendererTest extends UnitTest {
 
         // Target note: elementXSs = targetXSs; translate the local flag bbox to layout space if present.
         var targetExtent = NoteColumnGeometry.extentSs(target, false);
+        var targetCySs = 0.0;
         Rectangle2D targetFlagBBoxLayout = null;
 
         if (targetExtent.flagBBoxLocal() != null) {
             var localFlag = targetExtent.flagBBoxLocal();
             targetFlagBBoxLayout = new Rectangle2D.Double(
                 localFlag.getX() + targetXSs,
-                localFlag.getY(),
+                localFlag.getY() + targetCySs,
                 localFlag.getWidth(),
                 localFlag.getHeight()
             );
@@ -117,7 +118,7 @@ class GlissandoRendererTest extends UnitTest {
 
         var tgt = new GlissandoRenderer.NoteContext(
             target,
-            0.0,
+            targetCySs,
             targetXSs + targetExtent.leftSs(),
             targetXSs + targetExtent.rightSs(),
             targetFlagBBoxLayout
