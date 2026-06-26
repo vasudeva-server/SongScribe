@@ -765,7 +765,11 @@ class SongScribeTest extends UnitTest {
         void testMainLogsBannerWithDefaultTitleForNonConverterApp() {
             try (
                 var uiUtilsMock = mockStatic(UIUtils.class);
-                var mainFrameMock = mockStatic(MainFrame.class)
+                var mainFrameMock = mockStatic(MainFrame.class);
+                // SwingUtilities is mocked so that invokeLater(() -> MainFrame.main()) is a
+                // no-op — mockStatic is thread-local, so the EDT would otherwise escape the
+                // mock and start the real app.
+                var swingUtilsMock = mockStatic(SwingUtilities.class)
             ) {
                 // "sw" (the default app key) does not contain "converter" so logBanner
                 // must receive "SongScribe", not "SongScribe Converter".
