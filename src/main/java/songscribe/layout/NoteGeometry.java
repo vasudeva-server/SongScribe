@@ -314,6 +314,19 @@ public final class NoteGeometry {
     }
 
     /**
+     * Returns the X origin for a grace note's flag glyph, given the stem's left edge X
+     * (both in staff spaces). SMuFL flag glyphs anchor at the stem's left edge, but the
+     * scaled grace glyph's internal stem connection is only {@link ElementType#GRACE_NOTE_SCALE}
+     * of the full stem width, so the flag is shifted right to stay centered on the actual stem.
+     *
+     * <p>Used by both flag rendering and glissando column-extent computation, which must agree
+     * on where the grace flag sits.
+     */
+    public static double getGraceFlagOriginXSs(double stemLeftXSs) {
+        return stemLeftXSs + STEM_WIDTH_SS * (1 - ElementType.GRACE_NOTE_SCALE) / 2;
+    }
+
+    /**
      * Returns the right edge of the notehead bounding box in staff spaces, relative to note X.
      *
      * <p>The value is read from bravura_metadata.json via SMuFLMetadata. For grace notes this

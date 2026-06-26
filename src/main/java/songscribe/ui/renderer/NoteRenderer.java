@@ -416,9 +416,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
         if (noteType.isGraceNote()) {
             flagFont = RenderingUtils.GRACE_NOTE_FONT;
-            // The scaled flag glyph's internal stem connection is 65% of the full stem width.
-            // Shift right to visually center the flag on the actual stem.
-            flagX += (float) (NoteGeometry.STEM_WIDTH_SS * (1 - ElementType.GRACE_NOTE_SCALE) / 2);
+            flagX = (float) NoteGeometry.getGraceFlagOriginXSs(stemTip.x);
         } else {
             flagFont = RenderingUtils.MUSIC_FONT;
         }

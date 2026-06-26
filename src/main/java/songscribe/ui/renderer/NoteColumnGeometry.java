@@ -155,11 +155,7 @@ final class NoteColumnGeometry {
                     double flagOriginX;
 
                     if (noteType.isGraceNote()) {
-                        // Mirror the grace X adjustment from NoteRenderer.renderFlags:
-                        // the scaled flag glyph's internal stem connection is 65% of the
-                        // full stem width, so we shift right to centre the flag on the stem.
-                        flagOriginX = stemLeftXSs
-                            + NoteGeometry.STEM_WIDTH_SS * (1 - ElementType.GRACE_NOTE_SCALE) / 2;
+                        flagOriginX = NoteGeometry.getGraceFlagOriginXSs(stemLeftXSs);
                         var scale = (double) ElementType.GRACE_NOTE_SCALE;
                         flagBBoxLocal = new Rectangle2D.Double(
                             flagOriginX + flagBBox.left() * scale,
