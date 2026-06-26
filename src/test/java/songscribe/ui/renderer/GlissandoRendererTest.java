@@ -27,14 +27,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Objects;
 
 import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
@@ -51,127 +50,13 @@ import songscribe.ui.component.score.LineComponent;
 
 class GlissandoRendererTest extends UnitTest {
 
-    /** Step size used as both the search step parameter and assertion tolerance basis. */
-    private static final double STEP_SS = 0.1;
+    /** Gap between column edge and glissando endpoint, mirroring GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS. */
+    private static final double GLISSANDO_DRAWN_GAP_SS = 0.25;
+
+    /** Half-width used to define synthetic column extents in noteContextAt(). */
+    private static final double HALF_COLUMN_SS = 0.5;
+
     private static final GlissandoRenderer RENDERER = GlissandoRenderer.getInstance();
-
-    // ======================================================================
-    // computeFarBoundsT tests
-    // ======================================================================
-
-    @Test
-    void testComputeFarBoundsTDiagonal() {
-        // Bounds from (0, 0) to (4, 2), center at (2, 1), going at 45° (nx=ny=1/√2)
-        // tx = (4-2) / (1/√2) = 2√2 ≈ 2.83
-        // ty = (2-1) / (1/√2) = √2 ≈ 1.41
-        // Expected: min = ty ≈ 1.41
-        var bounds = new Rectangle2D.Double(0, 0, 4, 2);
-        var invariants = 1.0 / Math.sqrt(2);
-        var t = GlissandoRenderer.computeFarBoundsT(bounds, 2, 1, invariants, invariants);
-        assertThat(t).isCloseTo(Math.sqrt(2), within(STEP_SS));
-    }
-
-    @Test
-    void testComputeFarBoundsTRightward() {
-        // Bounds from (-2, -1) to (3, 1), center at (0, 0), going right (nx=1, ny=0)
-        // Expected: t = (maxX - cx) / nx = (3 - 0) / 1 = 3.0
-        var bounds = new Rectangle2D.Double(-2, -1, 5, 2);
-        var t = GlissandoRenderer.computeFarBoundsT(bounds, 0, 0, 1, 0);
-        assertThat(t).isCloseTo(3.0, within(STEP_SS));
-    }
-
-    // ======================================================================
-    // findNoteAreaEntryPoint tests
-    // ======================================================================
-
-    @Test
-    void testFindEntryPoint_circle() {
-        // Circle centered at (0, 0) with radius 2; offsetSs baked into offset area
-        var circle = new Area(new Ellipse2D.Double(-2, -2, 4, 4));
-        var offsetSs = 0.3f;
-        var offsetArea = NoteAreaBuilder.createOffsetArea(circle, offsetSs);
-        var offsetBounds = offsetArea.getBounds2D();
-
-        // Direction: right (nx=1, ny=0)
-        var endpoint = GlissandoRenderer.findNoteAreaEntryPoint(
-            circle, offsetArea, offsetBounds, 0, 0, 1, 0, STEP_SS, offsetSs);
-
-        // Endpoint should be just past the offset area boundary (radius + offsetSs)
-        assertThat(endpoint.x).isGreaterThanOrEqualTo(2.0 + offsetSs - STEP_SS);
-        assertThat(endpoint.y).isCloseTo(0.0, within(STEP_SS * 2));
-    }
-
-    @Test
-    void testFindEntryPoint_compositeArea() {
-        // Rectangle + circle union; endpoint should be past the furthest component
-        var composite = new Area(new Rectangle2D.Double(0, 0, 4, 2));
-        composite.add(new Area(new Ellipse2D.Double(3, -1, 4, 4)));
-        var offsetSs = 0.3f;
-        var offsetArea = NoteAreaBuilder.createOffsetArea(composite, offsetSs);
-        var offsetBounds = offsetArea.getBounds2D();
-
-        // Direction: right from center (2, 1)
-        var endpoint = GlissandoRenderer.findNoteAreaEntryPoint(
-            composite, offsetArea, offsetBounds, 2, 1, 1, 0, STEP_SS, offsetSs);
-
-        // The circle extends to x=7, offset boundary ~7+offsetSs; endpoint just past that
-        assertThat(endpoint.x).isGreaterThanOrEqualTo(7.0);
-        assertThat(endpoint.y).isCloseTo(1.0, within(STEP_SS * 2));
-    }
-
-    @Test
-    void testFindEntryPoint_fallback() {
-        // Center is outside the offset area — should return center
-        var farRect = new Area(new Rectangle2D.Double(5, 5, 2, 2));
-        var offsetSs = 0.3f;
-        var offsetArea = NoteAreaBuilder.createOffsetArea(farRect, offsetSs);
-        var offsetBounds = offsetArea.getBounds2D();
-
-        var endpoint = GlissandoRenderer.findNoteAreaEntryPoint(
-            farRect, offsetArea, offsetBounds, 0, 0, 1, 0, STEP_SS, offsetSs);
-
-        // Fallback: center returned
-        assertThat(endpoint.x).isCloseTo(0.0, within(STEP_SS));
-        assertThat(endpoint.y).isCloseTo(0.0, within(STEP_SS));
-    }
-
-    @Test
-    void testFindEntryPoint_zeroDirection() {
-        var rect = new Area(new Rectangle2D.Double(-1, -1, 2, 2));
-        var offsetSs = 0.3f;
-        var offsetArea = NoteAreaBuilder.createOffsetArea(rect, offsetSs);
-        var offsetBounds = offsetArea.getBounds2D();
-
-        // nx=ny=0 should trigger the zero-direction guard and return center
-        var endpoint = GlissandoRenderer.findNoteAreaEntryPoint(
-            rect, offsetArea, offsetBounds, 0, 0, 0, 0, STEP_SS, offsetSs);
-
-        assertThat(endpoint.x).isCloseTo(0.0, within(STEP_SS));
-        assertThat(endpoint.y).isCloseTo(0.0, within(STEP_SS));
-    }
-
-    @Test
-    void testFindEntryPoint_clampsAwayFromNearbyInk() {
-        // A plus/cross shape. A diagonal ray exits the central overlap at its corner, but the naive
-        // "crossing + gap" point still lies within the gap of the horizontal arm. Step 3 of the
-        // algorithm (the clamp) must push the endpoint out until it clears every arm's offset
-        // region — without it the endpoint would sit inside the offset area.
-        var armHalfThicknessSs = 0.2;
-        var gapSs = 0.25f;
-        var horizontal = new Area(new Rectangle2D.Double(-2, -armHalfThicknessSs, 4, 2 * armHalfThicknessSs));
-        var ink = new Area(horizontal);
-        ink.add(new Area(new Rectangle2D.Double(-armHalfThicknessSs, -2, 2 * armHalfThicknessSs, 4)));
-        var offsetArea = NoteAreaBuilder.createOffsetArea(ink, gapSs);
-        var offsetBounds = offsetArea.getBounds2D();
-
-        var diagonal = 1.0 / Math.sqrt(2);
-        var endpoint = GlissandoRenderer.findNoteAreaEntryPoint(
-            ink, offsetArea, offsetBounds, 0, 0, diagonal, -diagonal, STEP_SS, gapSs);
-
-        assertThat(offsetArea.contains(endpoint.x, endpoint.y))
-            .as("clamp must push endpoint (%s, %s) clear of every nearby ink", endpoint.x, endpoint.y)
-            .isFalse();
-    }
 
     // ======================================================================
     // Connecting glissando with an accidental on the target (issue #443)
@@ -179,14 +64,14 @@ class GlissandoRendererTest extends UnitTest {
 
     /**
      * Builds a real source→target note pair, positions them with the production spacing calculator,
-     * builds their real note areas, and returns the computed glissando endpoints (null if the line
-     * would be too short to draw). This exercises the full layout→render geometry end-to-end so the
-     * reserved spacing is validated against where the line actually ends.
+     * computes their column extents via NoteColumnGeometry, and returns the computed glissando
+     * endpoints (null if the line would be too short to draw). This exercises the full
+     * layout→render geometry end-to-end so the reserved spacing is validated against where the
+     * line actually ends.
      */
     private GlissandoRenderer.@Nullable Endpoints computeConnectingGlissando(
         ElementType sourceType, boolean targetHasAccidental) {
         NoteGeometry.initializeAccidentalWidths();
-        var builder = new NoteAreaBuilder();
 
         var source = sourceType.newInstance();
         source.setUpper(true);
@@ -206,16 +91,37 @@ class GlissandoRendererTest extends UnitTest {
         var targetColumn = new ElementColumn(target, List.of(), targetLeftSs, targetRightSs, targetRightSs, 0, 0, null, 0, false);
         var targetXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(sourceColumn, targetColumn);
 
-        var sourceArea = builder.getOrBuildArea(source, false);
-        var targetArea = builder.getOrBuildArea(target, false);
-        var sourceCenterXSs = NoteGeometry.getNoteheadRightEdgeSs(source) / 2.0;
-        var targetCenterXSs = targetXSs + NoteGeometry.getNoteheadRightEdgeSs(target) / 2.0;
+        // Source note: elementXSs = 0 (LayoutResult returns 0 when not in the map)
+        var sourceExtent = NoteColumnGeometry.extentSs(source, false);
         var src = new GlissandoRenderer.NoteContext(
-            source, sourceCenterXSs, 0,
-            sourceArea.area(), sourceArea.offsetArea(), sourceArea.offsetBounds());
+            source,
+            0.0,
+            sourceExtent.leftSs(),
+            sourceExtent.rightSs(),
+            null
+        );
+
+        // Target note: elementXSs = targetXSs; translate the local flag bbox to layout space if present.
+        var targetExtent = NoteColumnGeometry.extentSs(target, false);
+        Rectangle2D targetFlagBBoxLayout = null;
+
+        if (targetExtent.flagBBoxLocal() != null) {
+            var localFlag = targetExtent.flagBBoxLocal();
+            targetFlagBBoxLayout = new Rectangle2D.Double(
+                localFlag.getX() + targetXSs,
+                localFlag.getY(),
+                localFlag.getWidth(),
+                localFlag.getHeight()
+            );
+        }
+
         var tgt = new GlissandoRenderer.NoteContext(
-            target, targetCenterXSs, 0,
-            targetArea.area(), targetArea.offsetArea(), targetArea.offsetBounds());
+            target,
+            0.0,
+            targetXSs + targetExtent.leftSs(),
+            targetXSs + targetExtent.rightSs(),
+            targetFlagBBoxLayout
+        );
 
         return GlissandoRenderer.computeEndpoints(src, tgt);
     }
@@ -509,24 +415,30 @@ class GlissandoRendererTest extends UnitTest {
     }
 
     // ======================================================================
-    // computeEndpoints — direct tests (Row 23)
+    // computeEndpoints — direct tests
     // ======================================================================
 
     /**
-     * Builds a NoteContext for a crotchet at the given layout-space center.
+     * Builds a NoteContext for a crotchet centred at (cxSs, cySs) with a symmetric
+     * half-column extent of HALF_COLUMN_SS on each side, no flag bbox.
+     * startX = cxSs + HALF_COLUMN_SS + GLISSANDO_DRAWN_GAP_SS
+     * endX   = cxSs - HALF_COLUMN_SS - GLISSANDO_DRAWN_GAP_SS
      */
     private static GlissandoRenderer.NoteContext noteContextAt(double cxSs, double cySs) {
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
-        var area = new Area(new Rectangle2D.Double(-0.5, -0.5, 1.0, 1.0));
-        var offsetArea = NoteAreaBuilder.createOffsetArea(area, (float) NoteAreaBuilder.MIN_GAP_SS);
-        var offsetBounds = offsetArea.getBounds2D();
-        return new GlissandoRenderer.NoteContext(note, cxSs, cySs, area, offsetArea, offsetBounds);
+        return new GlissandoRenderer.NoteContext(
+            note,
+            cySs,
+            cxSs - HALF_COLUMN_SS,
+            cxSs + HALF_COLUMN_SS,
+            null
+        );
     }
 
     @Test
     void testComputeEndpoints_zeroLengthConnected_returnsNull() {
-        // src and tgt at identical positions → direction vector is zero → null
+        // src and tgt at identical column edges → endX < startX → null
         var src = noteContextAt(5.0, 0.0);
         var tgt = noteContextAt(5.0, 0.0);
         assertThat(GlissandoRenderer.computeEndpoints(src, tgt)).isNull();
@@ -544,8 +456,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testComputeEndpoints_shortConnected_returnsNull() {
-        // Notes placed only 0.1 ss apart → glissando too short to render (< MIN_RECT_LENGTH_SS = 0.75)
-        // The offset areas overlap; after finding entry points the net length < 0.75 → null
+        // Notes placed only 0.1 ss apart: endX = 0.1 - 0.5 - 0.25 = -0.65 < startX = 0.5 + 0.25 = 0.75 → null
         var src = noteContextAt(0.0, 0.0);
         var tgt = noteContextAt(0.1, 0.0);
         assertThat(GlissandoRenderer.computeEndpoints(src, tgt)).isNull();
@@ -553,22 +464,191 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testComputeEndpoints_connected_returnsHorizontalEndpoints() {
-        // Two notes 10 ss apart on the same staff line → a horizontal CONNECTED
-        // glissando. Guards the simplified endpoint math after manual translate
-        // removal (issue #455): the source endpoint precedes the target, the run
-        // is horizontal, and the cached length matches the X span.
-        var src = noteContextAt(0.0, 0.0);
-        var tgt = noteContextAt(10.0, 0.0);
+        // Two notes 10 ss apart on the same staff line → a horizontal CONNECTED glissando.
+        // startX = 0.0 + 0.5 + 0.25 = 0.75, endX = 10.0 - 0.5 - 0.25 = 9.25
+        var srcCx = 0.0;
+        var tgtCx = 10.0;
+        var src = noteContextAt(srcCx, 0.0);
+        var tgt = noteContextAt(tgtCx, 0.0);
 
         var result = GlissandoRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
         var endpoints = Objects.requireNonNull(result);
-        assertThat(endpoints.angle()).isCloseTo(0.0, within(0.01));
-        assertThat(endpoints.startXSs()).isLessThan(endpoints.endXSs());
+        var expectedStartX = srcCx + HALF_COLUMN_SS + GLISSANDO_DRAWN_GAP_SS;
+        var expectedEndX = tgtCx - HALF_COLUMN_SS - GLISSANDO_DRAWN_GAP_SS;
+        assertThat(endpoints.startXSs()).isCloseTo(expectedStartX, within(0.01));
+        assertThat(endpoints.endXSs()).isCloseTo(expectedEndX, within(0.01));
         assertThat(endpoints.startYSs()).isCloseTo(0.0, within(0.01));
         assertThat(endpoints.endYSs()).isCloseTo(0.0, within(0.01));
-        assertThat(endpoints.length())
-            .isCloseTo(endpoints.endXSs() - endpoints.startXSs(), within(0.01));
+        assertThat(endpoints.angle()).isCloseTo(0.0, within(0.01));
+        assertThat(endpoints.length()).isCloseTo(expectedEndX - expectedStartX, within(0.01));
+    }
+
+    // ======================================================================
+    // computeEndpoints — conditional-flag matrix
+    // ======================================================================
+
+    /**
+     * Builds a NoteContext with explicit column edges and a flag bbox in layout space.
+     */
+    private static GlissandoRenderer.NoteContext noteContextWithFlag(
+        StaffElement note,
+        double columnLeftXSs, double columnRightXSs, double cySs,
+        Rectangle2D flagBBoxLayout
+    ) {
+        return new GlissandoRenderer.NoteContext(
+            note, cySs, columnLeftXSs, columnRightXSs, flagBBoxLayout
+        );
+    }
+
+    /**
+     * Creates an up-stem crotchet (leading note).
+     */
+    private static StaffElement upStemNote() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+        return note;
+    }
+
+    /**
+     * Creates a down-stem crotchet (trailing note).
+     */
+    private static StaffElement downStemNote() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(false);
+        return note;
+    }
+
+    @Test
+    void testComputeEndpoints_leadingUpStemFlagIntersectsLine_startXPushedToFlagRight() {
+        // Leading up-stem note, column X=[0, 1]. Flag bbox spans X=[0.5, 2.0], Y=[-1, 1].
+        // The nominal start (columnRight + gap = 1.25) and the horizontal line at Y=0 run
+        // through the flag, so startX is pushed past the flag's right edge to flagRight + gap.
+        var srcNote = upStemNote();
+        var columnLeft = 0.0;
+        var columnRight = 1.0;
+        var flagRight = 2.0;
+        var flagBBox = new Rectangle2D.Double(0.5, -1.0, flagRight - 0.5, 2.0);
+        var src = noteContextWithFlag(srcNote, columnLeft, columnRight, 0.0, flagBBox);
+
+        // Target note far to the right with no flag, at Y=0 (horizontal line)
+        var tgtNote = upStemNote();
+        var tgt = new GlissandoRenderer.NoteContext(tgtNote, 0.0, 9.0, 10.0, null);
+
+        var result = GlissandoRenderer.computeEndpoints(src, tgt);
+        assertThat(result).isNotNull();
+
+        var expectedStartX = flagRight + GLISSANDO_DRAWN_GAP_SS;
+        assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
+    }
+
+    @Test
+    void testComputeEndpoints_leadingUpStemFlagClearsLine_startXAtColumnRight() {
+        // Leading up-stem note; flag bbox is entirely above Y=0 so the horizontal line clears it.
+        var srcNote = upStemNote();
+        var columnLeft = 0.0;
+        var columnRight = 1.0;
+        // Flag bbox placed far above the notehead Y line: Y=[-5, -3]
+        var flagBBox = new Rectangle2D.Double(0.0, -5.0, 2.0, 2.0);
+        var src = noteContextWithFlag(srcNote, columnLeft, columnRight, 0.0, flagBBox);
+
+        var tgtNote = upStemNote();
+        var tgt = new GlissandoRenderer.NoteContext(tgtNote, 0.0, 9.0, 10.0, null);
+
+        var result = GlissandoRenderer.computeEndpoints(src, tgt);
+        assertThat(result).isNotNull();
+
+        var expectedStartX = columnRight + GLISSANDO_DRAWN_GAP_SS;
+        assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
+    }
+
+    @Test
+    void testComputeEndpoints_trailingDownStemFlagIntersectsLine_endXPushedToFlagLeft() {
+        // Trailing down-stem note; flag is on the left side.
+        // Source note at [0, 1]; target at [8, 9] with flag spanning [7.0, 8.5] in X and [-1, 1] in Y.
+        // The nominal endX = 8.0 - 0.25 = 7.75, which lands inside the flag [7.0, 8.5].
+        var srcNote = upStemNote();
+        var src = new GlissandoRenderer.NoteContext(srcNote, 0.0, 0.0, 1.0, null);
+
+        var tgtNote = downStemNote();
+        var flagLeft = 7.0;
+        var flagBBox = new Rectangle2D.Double(flagLeft, -1.0, 1.5, 2.0);
+        var tgt = noteContextWithFlag(tgtNote, 8.0, 9.0, 0.0, flagBBox);
+
+        var result = GlissandoRenderer.computeEndpoints(src, tgt);
+        assertThat(result).isNotNull();
+
+        var expectedEndX = flagLeft - GLISSANDO_DRAWN_GAP_SS;
+        assertThat(Objects.requireNonNull(result).endXSs()).isCloseTo(expectedEndX, within(0.01));
+    }
+
+    @Test
+    void testComputeEndpoints_trailingDownStemFlagClearsLine_endXAtColumnLeft() {
+        // Trailing down-stem note; flag bbox placed above Y=0 so the horizontal line clears it.
+        var srcNote = upStemNote();
+        var src = new GlissandoRenderer.NoteContext(srcNote, 0.0, 0.0, 1.0, null);
+
+        var tgtNote = downStemNote();
+        var columnLeft = 8.0;
+        // Flag bbox placed far above the notehead Y line: Y=[-5, -3]
+        var flagBBox = new Rectangle2D.Double(7.0, -5.0, 2.0, 2.0);
+        var tgt = noteContextWithFlag(tgtNote, columnLeft, 9.0, 0.0, flagBBox);
+
+        var result = GlissandoRenderer.computeEndpoints(src, tgt);
+        assertThat(result).isNotNull();
+
+        var expectedEndX = columnLeft - GLISSANDO_DRAWN_GAP_SS;
+        assertThat(Objects.requireNonNull(result).endXSs()).isCloseTo(expectedEndX, within(0.01));
+    }
+
+    @Test
+    void testComputeEndpoints_slideOutLeadingFlagIntersectsRay_startXPushedToFlagRight() {
+        // SLIDE_OUT (tgt=null) from an up-stem note whose flag bbox straddles the slide-out ray.
+        // The ray departs at SLIDE_OUT_ANGLE_DEG from the nominal start (columnRight + gap = 1.25);
+        // the flag spans X=[1.0, 2.5], Y=[-0.5, 1.0], so the ray origin sits inside it and startX
+        // is pushed past the flag's right edge to flagRight + gap.
+        var srcNote = upStemNote();
+        var columnRight = 1.0;
+        var flagRight = 2.5;
+        var flagBBox = new Rectangle2D.Double(1.0, -0.5, flagRight - 1.0, 1.5);
+        var src = noteContextWithFlag(srcNote, 0.0, columnRight, 0.0, flagBBox);
+
+        var result = GlissandoRenderer.computeEndpoints(src, null);
+        assertThat(result).isNotNull();
+
+        var expectedStartX = flagRight + GLISSANDO_DRAWN_GAP_SS;
+        assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
+    }
+
+    // ======================================================================
+    // NoteContext.shiftedX
+    // ======================================================================
+
+    @Test
+    void testShiftedX_shiftsColumnEdgesAndFlagBBoxX_leavesYUnchanged() {
+        var note = upStemNote();
+        var columnLeft = 1.0;
+        var columnRight = 3.0;
+        var flagX = 2.0;
+        var flagY = -4.0;
+        var flagW = 1.5;
+        var flagH = 1.0;
+        var cy = 2.5;
+        var flagBBox = new Rectangle2D.Double(flagX, flagY, flagW, flagH);
+        var ctx = new GlissandoRenderer.NoteContext(note, cy, columnLeft, columnRight, flagBBox);
+
+        var shift = 3.0;
+        var shifted = ctx.shiftedX(shift);
+
+        assertThat(shifted.columnLeftXSs()).isCloseTo(columnLeft + shift, within(0.001));
+        assertThat(shifted.columnRightXSs()).isCloseTo(columnRight + shift, within(0.001));
+        assertThat(shifted.cySs()).isCloseTo(cy, within(0.001));
+        assertThat(shifted.flagBBoxLayout()).isNotNull();
+        var shiftedFlag = Objects.requireNonNull(shifted.flagBBoxLayout());
+        assertThat(shiftedFlag.getX()).isCloseTo(flagX + shift, within(0.001));
+        assertThat(shiftedFlag.getY()).isCloseTo(flagY, within(0.001));
+        assertThat(shiftedFlag.getWidth()).isCloseTo(flagW, within(0.001));
+        assertThat(shiftedFlag.getHeight()).isCloseTo(flagH, within(0.001));
     }
 }

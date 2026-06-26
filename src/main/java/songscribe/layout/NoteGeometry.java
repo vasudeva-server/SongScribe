@@ -54,9 +54,9 @@ public final class NoteGeometry {
 
     /**
      * Layout-side gap reserved between a notehead and the glissando endpoint, per side. This is the
-     * spacing-reservation counterpart of the renderer's drawn gap
-     * ({@link songscribe.ui.renderer.NoteAreaBuilder#MIN_GAP_SS}); it is held slightly larger so the
-     * reservation never under-shoots the gap the renderer actually draws.
+     * spacing-reservation counterpart of the renderer's drawn gap (the per-side gap applied in
+     * {@code GlissandoRenderer}); it is held slightly larger so the reservation never under-shoots
+     * the gap the renderer actually draws.
      */
     private static final double GLISSANDO_NOTEHEAD_GAP_SS = 0.3;
 
@@ -234,8 +234,8 @@ public final class NoteGeometry {
      * ({@link ElementType#GRACE_NOTE_SCALE}) so the gap stays proportional to the smaller notehead
      * instead of looking oversized.
      *
-     * <p>The renderer and {@code NoteAreaBuilder} must share this so the drawn glyphs and the
-     * glissando-clearance area cannot drift apart.
+     * <p>The renderer and {@code NoteColumnGeometry} must share this so the drawn glyphs and the
+     * glissando-clearance geometry cannot drift apart.
      */
     public static float getAccidentalStartXSs(StaffElement note) {
         var paddingSs = note.getType().isGraceNote()

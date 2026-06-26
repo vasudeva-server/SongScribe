@@ -524,8 +524,8 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             // Grace-note accidentals are drawn at grace scale, matching the clearance reserved
-            // in NoteAreaBuilder.addAccidentalToArea (the two must agree or the glissando gap is
-            // computed against the wrong glyph size). The same scale feeds walkAccidentalGlyphs so
+            // by NoteColumnGeometry via getAccidentalStartXSs (the two must agree or the glissando
+            // gap is computed against the wrong glyph size). The same scale feeds walkAccidentalGlyphs so
             // the pen advances track the scaled-down glyphs and the right edge sits flush against
             // the notehead padding.
             g2.setFont(RenderingUtils.getGlyphFont(note));

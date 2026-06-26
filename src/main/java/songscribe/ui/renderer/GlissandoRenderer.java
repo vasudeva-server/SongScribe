@@ -30,7 +30,6 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.NoteGeometry;
 import songscribe.dom.ScaleContext;
 import songscribe.util.GraphicsState;
 
@@ -40,10 +39,11 @@ import songscribe.util.GraphicsState;
  * Two types are supported: CONNECTED (note to note) and SLIDE_OUT (short
  * diagonal extension past the last note at 30 degrees).
  * <p>
- * The glissando endpoints are computed using an inward-search algorithm that pre-expands
- * the note area by the gap distance, then steps inward from the bounding box edge until
- * the first intersection with the expanded area. A gap is baked into the offset area so
- * the glissando never overlaps any note element.
+ * Endpoints are placed at the trailing edge of the leading note's column and the leading
+ * edge of the trailing note's column, each offset outward by {@code GLISSANDO_DRAWN_GAP_SS}.
+ * Both endpoints sit at their own notehead-centre Y; the drawn line's angle is derived from
+ * those two points. When the straight line intersects a flag's bounding box, the relevant
+ * endpoint is pushed past the flag's far edge by the same gap.
  * <p>
  * Glissando data is stored on the source note via {@link StaffElement#getGlissando()}.
  */
@@ -55,9 +55,8 @@ public final class GlissandoRenderer {
 
     /**
      * Minimum rendered glissando length in staff spaces. Glissandos shorter than this are not drawn.
-     * Lowered from 1.0: the endpoint search now measures the gap from the bare ink exit rather than
-     * the pre-expanded area, yielding a slightly shorter drawn line, and 0.75 ss stays clearly
-     * visible at tight spacing (notably a target carrying an accidental) (refs #443).
+     * 0.75 ss stays clearly visible at tight spacing (notably a target carrying an accidental)
+     * (refs #443).
      */
     private static final double MIN_RECT_LENGTH_SS = 0.75;
 
@@ -71,12 +70,10 @@ public final class GlissandoRenderer {
     private static final double SLIDE_OUT_ANGLE_DEG = 30.0;
 
     /**
-     * Minimum horizontal distance (in staff spaces) that must be reserved between two
-     * note origins for a glissando to render. Equals the minimum glissando length plus
-     * the gap on each side.
+     * Gap between the note column edge and the glissando endpoint, in staff spaces.
+     * Keeps the drawn line clear of the note's ink on both ends.
      */
-    public static final double MIN_HORIZONTAL_RESERVATION_SS =
-        MIN_RECT_LENGTH_SS + 2 * NoteAreaBuilder.MIN_GAP_SS;
+    private static final double GLISSANDO_DRAWN_GAP_SS = 0.25;
 
     /** Glissando thickness in pixels. */
     private static final double RECT_THICKNESS_PX = 2.0;
@@ -89,8 +86,6 @@ public final class GlissandoRenderer {
     // ==========================================================================
 
     private static final GlissandoRenderer INSTANCE = new GlissandoRenderer();
-
-    private final NoteAreaBuilder noteAreaBuilder = new NoteAreaBuilder();
 
     private GlissandoRenderer() {
     }
@@ -287,38 +282,57 @@ public final class GlissandoRenderer {
     }
 
     // ==========================================================================
-    // Position Calculation
-    // ==========================================================================
-
-    /**
-     * Returns the notehead center X for a note, in staff spaces.
-     */
-    private static double noteheadCenterXSs(
-        StaffElement note,
-        LayoutResult layoutResult
-    ) {
-        return layoutResult.getElementXSs(note) + NoteGeometry.getNoteheadRightEdgeSs(note) / 2.0;
-    }
-
-    // ==========================================================================
     // Endpoint Computation and Rendering
     // ==========================================================================
 
     /**
-     * Resolved geometry for a single note: center position, base ink area, offset area, and
-     * note reference.
+     * Resolved geometry for a single note: notehead-centre Y, column edges in layout space,
+     * optional flag bounding box in layout space, and note reference.
      */
     record NoteContext(
         StaffElement note,
-        double cxSs, double cySs,
-        Area area,
-        Area offsetArea,
-        Rectangle2D offsetBounds
+        double cySs,
+        double columnLeftXSs,
+        double columnRightXSs,
+        @Nullable Rectangle2D flagBBoxLayout
     ) {
 
-        /** Returns a copy shifted right by {@code shiftSs} along X, leaving geometry otherwise intact. */
+        // Defensively copy the mutable flag bbox so the record owns its geometry and a
+        // caller retaining the original reference cannot mutate it out from under us.
+        NoteContext {
+            if (flagBBoxLayout != null) {
+                flagBBoxLayout = new Rectangle2D.Double(
+                    flagBBoxLayout.getX(),
+                    flagBBoxLayout.getY(),
+                    flagBBoxLayout.getWidth(),
+                    flagBBoxLayout.getHeight()
+                );
+            }
+        }
+
+        /**
+         * Returns a copy shifted right by {@code shiftSs} along X: both column edges are
+         * translated and the flag bbox's X is translated (when non-null), leaving Y intact.
+         */
         NoteContext shiftedX(double shiftSs) {
-            return new NoteContext(note, cxSs + shiftSs, cySs, area, offsetArea, offsetBounds);
+            Rectangle2D shiftedFlag = null;
+
+            if (flagBBoxLayout != null) {
+                shiftedFlag = new Rectangle2D.Double(
+                    flagBBoxLayout.getX() + shiftSs,
+                    flagBBoxLayout.getY(),
+                    flagBBoxLayout.getWidth(),
+                    flagBBoxLayout.getHeight()
+                );
+            }
+
+            return new NoteContext(
+                note,
+                cySs,
+                columnLeftXSs + shiftSs,
+                columnRightXSs + shiftSs,
+                shiftedFlag
+            );
         }
     }
 
@@ -332,19 +346,35 @@ public final class GlissandoRenderer {
     ) {}
 
     /**
-     * Resolves the geometry context for a note at the given index: notehead center
-     * position, staff-position Y coordinate, and composite area for gap calculation.
+     * Resolves the geometry context for a note at the given index: notehead-centre Y,
+     * column edges in layout space, and the optional flag bbox translated into layout space.
      */
-    private NoteContext resolveNoteContext(
+    private static NoteContext resolveNoteContext(
         StaffElement note, int noteIndex, Line line,
         LayoutResult layoutResult, double middleLineYSs
     ) {
         var beamed = line.findBeamAt(noteIndex) != null;
-        var cx = noteheadCenterXSs(note, layoutResult);
+        var elementXSs = layoutResult.getElementXSs(note);
         var cy = RenderingUtils.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
-        var entry = noteAreaBuilder.getOrBuildArea(note, beamed);
+        var extent = NoteColumnGeometry.extentSs(note, beamed);
 
-        return new NoteContext(note, cx, cy, entry.area(), entry.offsetArea(), entry.offsetBounds());
+        var columnLeftXSs = elementXSs + extent.leftSs();
+        var columnRightXSs = elementXSs + extent.rightSs();
+
+        // Translate the flag bbox from note-local space to layout space.
+        Rectangle2D flagBBoxLayout = null;
+        var flagBBoxLocal = extent.flagBBoxLocal();
+
+        if (flagBBoxLocal != null) {
+            flagBBoxLayout = new Rectangle2D.Double(
+                flagBBoxLocal.getX() + elementXSs,
+                flagBBoxLocal.getY() + cy,
+                flagBBoxLocal.getWidth(),
+                flagBBoxLocal.getHeight()
+            );
+        }
+
+        return new NoteContext(note, cy, columnLeftXSs, columnRightXSs, flagBBoxLayout);
     }
 
     /**
@@ -368,92 +398,116 @@ public final class GlissandoRenderer {
     /**
      * Computes the glissando start/end positions in layout space (staff-space coordinates).
      * Returns null if the glissando is too short to render (endpoints crossed or
-     * length < MIN_RECT_LENGTH_SS).
+     * length &lt; MIN_RECT_LENGTH_SS).
      * <p>
      * Both render() and the public endpoint methods delegate to this.
+     * <p>
+     * Conditional flag attachment logic (single-pass):
+     * <pre>
+     *   LEADING note (line departs from RIGHT edge):
+     *     up-stem   flag is RIGHT → push startX to flagMaxX + gap  IFF line ∩ flagBBox
+     *     down-stem flag is LEFT  → never near right edge           → ignore
      *
-     * @param src          Source note context
-     * @param tgt          Target note context, or null for SLIDE_OUT
-     * @return The glissando endpoints, or null if the glissando cannot render
+     *   TRAILING note (line arrives at LEFT edge):
+     *     down-stem flag is LEFT  → push endX to flagMinX − gap  IFF line ∩ flagBBox
+     *     up-stem   flag is RIGHT → never near left edge          → ignore
+     * </pre>
+     * Once an endpoint is pushed past the flag's far edge the line begins/ends clear of
+     * the flag and cannot re-enter it, so no re-test is needed.
+     *
+     * @param src Source note context
+     * @param tgt Target note context, or null for SLIDE_OUT
+     * @return the glissando endpoints, or null if the glissando cannot render
      */
     static GlissandoRenderer.@Nullable Endpoints computeEndpoints(
         NoteContext src, @Nullable NoteContext tgt
     ) {
-        // Tangent direction in layout space
-        double dx, dy;
+        // Base endpoints: column-edge ± gap at notehead-centre Y.
+        var startX = src.columnRightXSs() + GLISSANDO_DRAWN_GAP_SS;
+        var startY = src.cySs();
+
+        // Slide-out direction (only meaningful when tgt == null); computed once and shared
+        // between the leading-flag test and the final endpoint resolution below.
+        var slideOutCos = tgt == null ? Math.cos(Math.toRadians(SLIDE_OUT_ANGLE_DEG)) : 0.0;
+        var slideOutSin = tgt == null ? Math.sin(Math.toRadians(SLIDE_OUT_ANGLE_DEG)) : 0.0;
+
+        double endX;
+        double endY;
 
         if (tgt == null) {
-            dx = Math.cos(Math.toRadians(SLIDE_OUT_ANGLE_DEG));
-            dy = Math.sin(Math.toRadians(SLIDE_OUT_ANGLE_DEG));
+            // SLIDE_OUT: direction fixed by angle; endpoint resolved after the flag check below.
+            endX = Double.NaN;
+            endY = Double.NaN;
         } else {
-            dx = tgt.cxSs - src.cxSs;
-            dy = tgt.cySs - src.cySs;
+            endX = tgt.columnLeftXSs() - GLISSANDO_DRAWN_GAP_SS;
+            endY = tgt.cySs();
         }
 
-        var len = Math.sqrt(dx * dx + dy * dy);
+        // Conditional flag push — leading note (up-stem only).
+        // Grace notes always stem up and are treated the same as up-stem notes.
+        var srcNote = src.note();
 
-        if (tgt != null && len == 0) {
+        if ((srcNote.isUpper() || srcNote.getType().isGraceNote()) && src.flagBBoxLayout() != null) {
+            var flagBBox = src.flagBBoxLayout();
+
+            // For SLIDE_OUT, derive the nominal end point along the slide-out ray for the test.
+            double testEndX;
+            double testEndY;
+
+            if (tgt == null) {
+                testEndX = startX + slideOutCos * SLIDE_OUT_LENGTH_SS;
+                testEndY = startY + slideOutSin * SLIDE_OUT_LENGTH_SS;
+            } else {
+                testEndX = endX;
+                testEndY = endY;
+            }
+
+            if (flagBBox.intersectsLine(startX, startY, testEndX, testEndY)) {
+                startX = flagBBox.getMaxX() + GLISSANDO_DRAWN_GAP_SS;
+            }
+        }
+
+        // Conditional flag push — trailing note (down-stem only, CONNECTED only).
+        if (tgt != null && !tgt.note().isUpper() && tgt.flagBBoxLayout() != null) {
+            var flagBBox = tgt.flagBBoxLayout();
+
+            if (flagBBox.intersectsLine(startX, startY, endX, endY)) {
+                endX = flagBBox.getMinX() - GLISSANDO_DRAWN_GAP_SS;
+            }
+        }
+
+        // Resolve SLIDE_OUT endpoint from the (flag-adjusted) start.
+        if (tgt == null) {
+            endX = startX + slideOutCos * SLIDE_OUT_LENGTH_SS;
+            endY = startY + slideOutSin * SLIDE_OUT_LENGTH_SS;
+        }
+
+        // Reject crossed endpoints with the cheap comparison before computing the length.
+        if (tgt != null && endX <= startX) {
             return null;
         }
 
-        var nx = dx / len;
-        var ny = dy / len;
-
-        // Areas are in local coordinates (origin at notehead glyph origin).
-        // Local notehead center is at (noteheadRightEdge/2, 0).
-        // Layout offset from local origin: (cx - localCenterX, cy).
-        // Exit points found in local space are translated to layout space by adding the offset.
-
-        // Source: find the exit point on the note ink in local space
-        var localCx1 = NoteGeometry.getNoteheadRightEdgeSs(src.note) / 2.0;
-        var offset1X = src.cxSs - localCx1;
-        var offset1Y = src.cySs;
-
-        var stepSs = ScaleContext.pxToSs(1.0);
-        var entry1 = findNoteAreaEntryPoint(
-            src.area, src.offsetArea, src.offsetBounds, localCx1, 0, nx, ny, stepSs, NoteAreaBuilder.MIN_GAP_SS);
-
-        var startX = entry1.x + offset1X;
-        var startY = entry1.y + offset1Y;
-
-        double endX, endY;
-
-        if (tgt == null) {
-            endX = startX + nx * SLIDE_OUT_LENGTH_SS;
-            endY = startY + ny * SLIDE_OUT_LENGTH_SS;
-        } else {
-            // Target: find the exit point on the note ink in local space (reverse direction)
-            var localCx2 = NoteGeometry.getNoteheadRightEdgeSs(tgt.note) / 2.0;
-            var offset2X = tgt.cxSs - localCx2;
-            var offset2Y = tgt.cySs;
-
-            var entry2 = findNoteAreaEntryPoint(
-                tgt.area, tgt.offsetArea, tgt.offsetBounds, localCx2, 0, -nx, -ny, stepSs, NoteAreaBuilder.MIN_GAP_SS);
-
-            endX = entry2.x + offset2X;
-            endY = entry2.y + offset2Y;
-        }
-
-        // Compute glissando length
-        dx = endX - startX;
-        dy = endY - startY;
+        var dx = endX - startX;
+        var dy = endY - startY;
         var length = Math.sqrt(dx * dx + dy * dy);
 
-        // If the endpoints have crossed or the glissando is too short, skip rendering
-        if ((dx * nx + dy * ny) < 0 || length < MIN_RECT_LENGTH_SS) {
+        if (length < MIN_RECT_LENGTH_SS) {
             return null;
         }
 
-        return new Endpoints(startX, startY, endX, endY, Math.atan2(ny, nx), length);
+        var angle = Math.atan2(dy, dx);
+
+        return new Endpoints(startX, startY, endX, endY, angle, length);
     }
 
     /**
-     * Renders a filled rectangle between two note areas.
+     * Renders a filled rectangle between two note columns.
      * <p>
-     * For CONNECTED glissandos, the shape spans from the source note area exit
-     * to the target note area exit, with gaps on both sides. For SLIDE_OUT
-     * glissandos, it extends from the source area exit at a fixed 45-degree
-     * angle for {@link #MIN_RECT_LENGTH_SS}.
+     * For CONNECTED glissandos, the shape spans from the source column's right edge
+     * to the target column's left edge, each offset by {@code GLISSANDO_DRAWN_GAP_SS},
+     * with conditional flag-bbox avoidance on either end. For SLIDE_OUT glissandos,
+     * it extends from the source column's right edge at {@link #SLIDE_OUT_ANGLE_DEG}
+     * degrees for {@link #SLIDE_OUT_LENGTH_SS} staff spaces.
      *
      * @param g2           Graphics context (staff-space coordinate system)
      * @param src          Source note context
@@ -497,121 +551,6 @@ public final class GlissandoRenderer {
                 thicknessSs, thicknessSs
             ));
         }
-    }
-
-    // ==========================================================================
-    // Offset Area and Inward-Search for Tangent-Area Intersection
-    // ==========================================================================
-
-    /**
-     * Finds the glissando endpoint near a note, with a gap that stays visually consistent
-     * across glissando angles while never crowding the stem or flags.
-     * <p>
-     * The ray starts at the notehead center and runs outward along the glissando direction.
-     * The endpoint is computed in three steps:
-     * <ol>
-     *   <li><b>Exit the ink.</b> Step inward from the bounding-box edge until the centerline
-     *       first enters the bare note ink — where the ray leaves the note.</li>
-     *   <li><b>Back off along the ray.</b> Place the endpoint {@code gapSs} further out along
-     *       the ray. Measuring the gap <em>along the line</em> (rather than perpendicular to the
-     *       ink) keeps the visible gap constant for every angle: a ray from the center exits a
-     *       convex notehead almost perpendicular, so along-line and perpendicular coincide there.</li>
-     *   <li><b>Clamp.</b> If that endpoint still lies inside the offset area — i.e. within
-     *       {@code gapSs} of any ink — step outward until it clears. This is a no-op for notehead
-     *       exits and engages only where the ray grazes the stem or a flag obliquely, preventing
-     *       the line from running too close to them at steep angles.</li>
-     * </ol>
-     *
-     * <pre>
-     *   bbox edge          ink boundary          notehead center
-     *       |                    |                      |
-     *       v                    v                      v
-     *       * ← ← ← ← ← ← ← ← ← *  ← ← ← ← ← ← ← ← ← ← *
-     *                    ^       ^
-     *                  endpoint  crossing (endpoint = crossing + gap, then clamped)
-     * </pre>
-     *
-     * @param area         The bare note ink area (notehead, stem, flags, …)
-     * @param offsetArea   The note ink pre-expanded by the gap, used only for the clamp
-     * @param offsetBounds Bounding box of the offset area (encloses the search range)
-     * @param cx           Notehead center X in local space
-     * @param cy           Notehead center Y in local space
-     * @param nx           Normalized X component of the glissando direction
-     * @param ny           Normalized Y component of the glissando direction
-     * @param stepSs       Step size in staff spaces (typically 1px)
-     * @param gapSs        Gap between the note ink and the endpoint, measured along the ray
-     * @return The endpoint, or the center if the ray never meets the ink
-     */
-    static Point2D.Double findNoteAreaEntryPoint(
-        Area area,
-        Area offsetArea,
-        Rectangle2D offsetBounds,
-        double cx, double cy,
-        double nx, double ny,
-        double stepSs, double gapSs
-    ) {
-        // Zero-direction guard
-        if (nx == 0 && ny == 0) {
-            return new Point2D.Double(cx, cy);
-        }
-
-        // Start at the point where the outward ray exits the bounding box
-        var startT = computeFarBoundsT(offsetBounds, cx, cy, nx, ny);
-
-        // Step 1: find where the ray exits the bare note ink.
-        double crossingT = -1;
-
-        for (var t = startT; t >= 0; t -= stepSs) {
-            if (area.contains(cx + nx * t, cy + ny * t)) {
-                crossingT = t;
-                break;
-            }
-        }
-
-        // Fallback: the ray never meets the ink (center outside the area)
-        if (crossingT < 0) {
-            return new Point2D.Double(cx, cy);
-        }
-
-        // Step 2: back off a constant gap along the ray for a consistent visual gap.
-        var endT = crossingT + gapSs;
-
-        // Step 3: clamp so the endpoint never sits within the gap of any ink (stem/flag safety).
-        // offsetArea.contains(p) is exactly "distance to ink <= gap"; the loop terminates once
-        // the point leaves the offset area, which it must do before reaching the bounding box edge.
-        while (endT < startT && offsetArea.contains(cx + nx * endT, cy + ny * endT)) {
-            endT += stepSs;
-        }
-
-        return new Point2D.Double(cx + nx * endT, cy + ny * endT);
-    }
-
-    static double computeFarBoundsT(
-        Rectangle2D bounds,
-        double cx, double cy,
-        double nx, double ny
-    ) {
-        double tx;
-
-        if (nx > 0) {
-            tx = (bounds.getMaxX() - cx) / nx;
-        } else if (nx < 0) {
-            tx = (bounds.getMinX() - cx) / nx;
-        } else {
-            tx = Double.MAX_VALUE;
-        }
-
-        double ty;
-
-        if (ny > 0) {
-            ty = (bounds.getMaxY() - cy) / ny;
-        } else if (ny < 0) {
-            ty = (bounds.getMinY() - cy) / ny;
-        } else {
-            ty = Double.MAX_VALUE;
-        }
-
-        return Math.min(tx, ty);
     }
 
 }
