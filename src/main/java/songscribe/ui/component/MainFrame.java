@@ -27,6 +27,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
@@ -75,7 +78,6 @@ import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.ModifierState;
 import songscribe.util.UIUtils;
-import songscribe.util.Utils;
 
 public class MainFrame extends JFrame implements Printable {
 
@@ -88,6 +90,15 @@ public class MainFrame extends JFrame implements Printable {
     );
 
     public static final int MIN_WINDOW_HEIGHT = 500;
+
+    // Splash timing constants
+    static final long MIN_SPLASH_DURATION_MS = 2_000;
+    static final long MIDI_INIT_TIMEOUT_MS = 5_000;
+
+    // State shared between main(), the startup gate, and reveal()
+    private static long splashShownAtMs;
+    private static CountDownLatch midiReadyLatch = new CountDownLatch(0);
+    private static Runnable pendingStartupAction = () -> {};
 
     static {
         if (!SONGSCRIBE_DIR.exists() && !SONGSCRIBE_DIR.mkdir()) {
@@ -131,6 +142,41 @@ public class MainFrame extends JFrame implements Printable {
     @Nullable
     private PrinterJob printerJob = null;
 
+    /**
+     * A startup error collected before the main window is shown. Non-fatal errors are
+     * displayed as warnings after the window is revealed; a fatal error triggers
+     * {@link songscribe.error.RuntimeError#exit(String)} before the window appears.
+     */
+    public record StartupError(String title, String message, boolean fatal) {}
+
+    private static final ConcurrentLinkedQueue<StartupError> STARTUP_ERRORS =
+        new ConcurrentLinkedQueue<>();
+
+    /** Enqueues a startup error to be drained by {@link #drainStartupErrors()}. */
+    public static void enqueueStartupError(StartupError error) {
+        STARTUP_ERRORS.add(error);
+    }
+
+    /** Clears all enqueued startup errors. For use in tests only. */
+    public static void clearStartupErrorsForTest() {
+        STARTUP_ERRORS.clear();
+    }
+
+    /**
+     * Returns the first fatal {@link StartupError} in the queue, or {@code null} if
+     * none exists.
+     */
+    @Nullable
+    public static StartupError firstFatal() {
+        for (var error : STARTUP_ERRORS) {
+            if (error.fatal()) {
+                return error;
+            }
+        }
+
+        return null;
+    }
+
     public MainFrame() {
         // We would like the cool transparent title bar on macOS
         if (SystemInfo.isMacOS && SystemInfo.isMacFullWindowContentSupported) {
@@ -166,41 +212,207 @@ public class MainFrame extends JFrame implements Printable {
 
     public static void main(String[] args) {
         try {
+            // Initialize the minimal theme (Regular font face + preferred family)
+            // before showing the splash so it renders in Source Sans, not a fallback.
+            UIUtils.initMinimalTheme();
             showSplash();
 
-            MessageLogger.init();
-            MidiController.openMidi();
-            Song.setDefaultLineWidthProvider(PageModel::getDefaultLineWidthSs);
-            var instance = getInstance();
-            var recents = RecentDocumentsManager.getRecents();
-            var mostRecentPath = recents.isEmpty() ? null : recents.getFirst();
-            instance.initFrame();
+            // Force a synchronous first paint so the splash appears immediately.
+            var rawSplashContent = splashWindow != null ? splashWindow.getContentPane() : null;
 
-            if (
-                !Version.PUBLIC_VERSION.equals(
-                    Prefs.getString(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION)
-                ) &&
-                    new File(WhatsNewDialog.WHATS_NEW_FILE).exists()
-            ) {
-                Prefs.put(
-                    PrefsKey.LAST_SEEN_WHATS_NEW_VERSION,
-                    Version.PUBLIC_VERSION
-                );
-                new WhatsNewDialog(instance).setVisible(true);
+            if (rawSplashContent instanceof JComponent splashContent) {
+                splashContent.paintImmediately(0, 0, splashContent.getWidth(), splashContent.getHeight());
+                Toolkit.getDefaultToolkit().sync();
             }
 
+            // Record when the splash became visible so the gate can enforce the floor.
+            splashShownAtMs = System.currentTimeMillis();
+
+            // Start MIDI init on a daemon thread so it runs in parallel with font
+            // installation and window construction.
+            midiReadyLatch = MidiController.openMidiAsync();
+
+            // Install remaining fonts while MIDI initializes in the background.
+            UIUtils.installEagerFonts();
+
+            MessageLogger.init();
+            Song.setDefaultLineWidthProvider(PageModel::getDefaultLineWidthSs);
+
+            // Build the main window but do NOT show it — reveal() will show it
+            // after the gate fires on the EDT.
+            var instance = getInstance();
+            instance.initFrame();
+
+            // Capture the startup action to run after the window is shown.
+            var recents = RecentDocumentsManager.getRecents();
+            var mostRecentPath = recents.isEmpty() ? null : recents.getFirst();
+
             if (args.length == 0) {
-                SwingUtilities.invokeLater(() -> performStartupAction(mostRecentPath));
+                pendingStartupAction = () -> performStartupAction(mostRecentPath);
             } else {
                 var fileToOpen = new File(args[0]);
 
                 if (fileToOpen.exists()) {
-                    instance.handleOpenFile(fileToOpen);
+                    pendingStartupAction = () -> instance.handleOpenFile(fileToOpen);
                 }
             }
+
+            // All setup is done — start the gate, which will call reveal() on the EDT.
+            startStartupGate();
         } catch (Exception e) {
-            throw RuntimeError.exit("Application startup failed", e);
+            LOG.error("Application startup failed", e);
+            enqueueStartupError(new StartupError(
+                Strings.ALERT_TITLE_INITIALIZATION_ERROR,
+                "Application startup failed",
+                true
+            ));
+            drainStartupErrors();
         }
+    }
+
+    /**
+     * Drains the startup error queue. Must be called on the EDT.
+     * <p>
+     * The splash is always hidden before any dialog is shown. If a fatal error is present,
+     * {@link songscribe.error.RuntimeError#exit(String, String)} is called and the main window
+     * is not revealed. Otherwise each non-fatal error is shown as a warning dialog in queue order.
+     */
+    static void drainStartupErrors() {
+        var fatal = firstFatal();
+
+        if (fatal != null) {
+            hideSplash();
+            throw RuntimeError.exit("Fatal startup error", fatal.message());
+        }
+
+        if (!STARTUP_ERRORS.isEmpty()) {
+            hideSplash();
+
+            for (var error : STARTUP_ERRORS) {
+                OptionDialogs.showWarningMessage(null, error.title(), error.message());
+            }
+        }
+    }
+
+    /** Starts the {@code "startup-gate"} daemon thread, which calls {@link #runStartupGate()}. */
+    private static void startStartupGate() {
+        var thread = new Thread(() -> runStartupGate(), "startup-gate");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    /**
+     * Runs on the {@code "startup-gate"} thread. Waits for the minimum splash duration
+     * floor to pass, then waits for MIDI init (capped), then schedules reveal() on the EDT.
+     *
+     * Target startup sequence:
+     * <pre>
+     * [main thread]                          [EDT]                         [bg threads]
+     * SongScribe.main
+     *   set macOS props
+     *   invokeLater(MainFrame.main) ──────►  initMinimalTheme():
+     *                                          install Source Sans 3 Regular only
+     *                                          setPreferredFontFamily(FAMILY)
+     *                                          registerCustomDefaultsSource + AppearanceManager.init
+     *                                        showSplash(); force first paint
+     *                                          (splash JLabels now render in Source Sans, not fallback)
+     *                                        splashShownAtMs = now
+     *                                        midiReadyLatch =
+     *                                          openMidiAsync() ───────────► "midi-init":
+     *                                                                         openMidi() (capped via await)
+     *                                                                         finally latch.countDown()
+     *                                        installEagerFonts():
+     *                                          remaining Source Sans faces + Poetica + TiroBangla (~1.1 s)
+     *                                        build main window (initFrame, NOT shown)
+     *                                        pendingStartupAction = &lt;autoload|arg|select&gt;
+     *                                        startStartupGate() ──────────► "startup-gate":
+     *                                                                         sleep(remainingFloor)
+     *                                                                         latch.await(remainingCap)
+     *                                                                         invokeLater(reveal) ─┐
+     *                                                                                              │
+     *                             reveal (EDT): ◄──────────────────────────────────────────────────┘
+     *                               drainStartupErrors():
+     *                                 fatal present → throw RuntimeError.exit(fatal.message())
+     *                                                 (logs + shows fatal dialog over splash + System.exit;
+     *                                                  splash NOT hidden, window NOT revealed)
+     *                               hideSplash(); setVisible(true)
+     *                               preWarmDialogPeer / ActivationGate.install / requestFocusInWindow
+     *                               for each non-fatal: showWarning(...)
+     *                               maybeShowWhatsNew()
+     *                               pendingStartupAction.run()
+     * </pre>
+     */
+    private static void runStartupGate() {
+        var elapsedMs = System.currentTimeMillis() - splashShownAtMs;
+        var floorMs = remainingFloorMs(elapsedMs);
+
+        if (floorMs > 0) {
+            try {
+                Thread.sleep(floorMs);
+            } catch (InterruptedException ignored) {}
+        }
+
+        var elapsedAfterFloor = System.currentTimeMillis() - splashShownAtMs;
+        var capMs = remainingCapMs(elapsedAfterFloor);
+
+        try {
+            midiReadyLatch.await(capMs, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ignored) {}
+
+        SwingUtilities.invokeLater(() -> getInstance().reveal());
+    }
+
+    /**
+     * Reveals the main window on the EDT after the startup gate fires.
+     * Drains startup errors first — a fatal error exits before the window appears.
+     */
+    private void reveal() {
+        drainStartupErrors();
+
+        hideSplash();
+        setVisible(true);
+        UIUtils.preWarmDialogPeer(this);
+        ActivationGate.install(this);
+        LOG.info("Application UI ready");
+        requireScoreView().requestFocusInWindow();
+
+        maybeShowWhatsNew();
+        pendingStartupAction.run();
+    }
+
+    /**
+     * Shows the What's New dialog if the user has not seen it for the current version
+     * and the release notes file exists.
+     */
+    private void maybeShowWhatsNew() {
+        if (
+            !Version.PUBLIC_VERSION.equals(
+                Prefs.getString(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION)
+            ) &&
+                new File(WhatsNewDialog.WHATS_NEW_FILE).exists()
+        ) {
+            Prefs.put(
+                PrefsKey.LAST_SEEN_WHATS_NEW_VERSION,
+                Version.PUBLIC_VERSION
+            );
+            new WhatsNewDialog(this).setVisible(true);
+        }
+    }
+
+    /**
+     * Returns the remaining milliseconds to meet the minimum splash duration floor,
+     * clamped to {@code [0, MIN_SPLASH_DURATION_MS]}.
+     */
+    static long remainingFloorMs(long elapsedMs) {
+        return Math.max(0, Math.min(MIN_SPLASH_DURATION_MS, MIN_SPLASH_DURATION_MS - elapsedMs));
+    }
+
+    /**
+     * Returns the remaining milliseconds before the MIDI init timeout cap,
+     * clamped to {@code [0, MIDI_INIT_TIMEOUT_MS]}.
+     */
+    static long remainingCapMs(long elapsedMs) {
+        return Math.max(0, Math.min(MIDI_INIT_TIMEOUT_MS, MIDI_INIT_TIMEOUT_MS - elapsedMs));
     }
 
     static void performStartupAction(@Nullable Path mostRecentPath) {
@@ -337,14 +549,6 @@ public class MainFrame extends JFrame implements Printable {
         }
 
         setFrameSize();
-        hideSplash();
-        Utils.sleep(100);
-        setVisible(true);
-        UIUtils.preWarmDialogPeer(this);
-        ActivationGate.install(this);
-        LOG.info("Application UI ready");
-
-        scoreView.requestFocusInWindow();
     }
 
     private void hidePreviewNote() {

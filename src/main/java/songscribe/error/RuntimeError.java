@@ -70,7 +70,23 @@ public final class RuntimeError {
      */
     public static RuntimeException exit(String message, Throwable cause) {
         LOG.error(message, cause);
-        throw showDialogAndExit();
+        throw showDialogAndExit(FATAL_USER_MESSAGE);
+    }
+
+    /**
+     * Logs the log message and shows the given user-facing message in the error dialog, then exits.
+     * <p>
+     * Use this overload when the user-facing message differs from the internal log message.
+     * Always call as {@code throw RuntimeError.exit("log reason", "User-facing message.")} so the
+     * compiler and NullAway know the calling code is unreachable after this point.
+     *
+     * @param logMessage  Description of the violated invariant, written to the log
+     * @param userMessage Message shown to the user in the error dialog
+     * @return never returns; declared as RuntimeException for use in {@code throw} expressions
+     */
+    public static RuntimeException exit(String logMessage, String userMessage) {
+        LOG.error(logMessage);
+        throw showDialogAndExit(userMessage);
     }
 
     /**
@@ -83,12 +99,12 @@ public final class RuntimeError {
         }
     }
 
-    private static RuntimeException showDialogAndExit() {
+    private static RuntimeException showDialogAndExit(String userMessage) {
         if (!ALERT_SHOWN.compareAndSet(false, true)) {
             throw new ExitInProgressError();
         }
 
-        OptionDialogs.showErrorMessageWithString(null, FATAL_ALERT_TITLE, FATAL_USER_MESSAGE);
+        OptionDialogs.showErrorMessageWithString(null, FATAL_ALERT_TITLE, userMessage);
 
         exitHandler.accept(-1);
         throw new AssertionError("unreachable");

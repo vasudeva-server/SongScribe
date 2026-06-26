@@ -29,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -36,18 +37,21 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.lifecycle.Shutdown;
-import songscribe.ui.Constants;
-import songscribe.ui.OptionDialogs;
+import songscribe.ui.component.MainFrame;
+
 @SuppressWarnings("StaticNonFinalField")
 public final class MidiController {
 
     private static final Logger LOG = LoggerFactory.getLogger(MidiController.class);
 
     // MIDI
-    public static @Nullable Sequencer sequencer = null;
-    public static @Nullable Receiver midiReceiver = null;
-    public static @Nullable Synthesizer synthesizer = null;
+    public static volatile @Nullable Sequencer sequencer = null;
+    public static volatile @Nullable Receiver midiReceiver = null;
+    public static volatile @Nullable Synthesizer synthesizer = null;
     static boolean closed = false;
+
+    // Set to true in unit tests to force openMidi() into the failure path.
+    static boolean failForTesting = false;
 
     private MidiController() {}
 
@@ -55,8 +59,22 @@ public final class MidiController {
 
     // Set up MIDI to play back music
     public static void openMidi() {
+        var soundbank = loadBundledSoundbank();
+
+        if (soundbank == null) {
+            MainFrame.enqueueStartupError(new MainFrame.StartupError(
+                Strings.ALERT_TITLE_SOUND,
+                Strings.get(Strings.ALERT_SOUND_MISSING),
+                true
+            ));
+            return;
+        }
+
         try {
-            var soundbank = loadBundledSoundbank();
+            if (failForTesting) {
+                throw new MidiUnavailableException("forced failure for testing");
+            }
+
             synthesizer = openSynthesizerWithSoundbank(soundbank);
             midiReceiver = synthesizer.getReceiver();
             initChannels(midiReceiver);
@@ -70,12 +88,35 @@ public final class MidiController {
             Shutdown.registerJVMTask("midi", MidiController::closeMidi);
         } catch (Exception e) {
             LOG.warn("MIDI initialization failed", e);
-            OptionDialogs.showWarningMessage(
-                null,
-                Strings.ALERT_TITLE_PLAYBACK_ERROR,
-                Strings.ERROR_MIDI_INIT, Constants.PACKAGE_NAME
-            );
+            MainFrame.enqueueStartupError(new MainFrame.StartupError(
+                Strings.ALERT_TITLE_SOUND,
+                Strings.ALERT_SOUND_INIT_FAILED,
+                false
+            ));
         }
+    }
+
+    public static boolean isAvailable() {
+        return sequencer != null;
+    }
+
+    /**
+     * Starts MIDI initialization on a background daemon thread.
+     *
+     * @return a latch that reaches zero when initialization is complete (success or failure)
+     */
+    public static CountDownLatch openMidiAsync() {
+        var ready = new CountDownLatch(1);
+        var thread = new Thread(() -> {
+            try {
+                openMidi();
+            } finally {
+                ready.countDown();
+            }
+        }, "midi-init");
+        thread.setDaemon(true);
+        thread.start();
+        return ready;
     }
 
     /**
@@ -83,7 +124,7 @@ public final class MidiController {
      * Tries the default synthesizer first, then probes all available ones.
      */
     private static Synthesizer openSynthesizerWithSoundbank(
-            @Nullable Soundbank soundbank
+            Soundbank soundbank
     ) throws MidiUnavailableException {
         var candidates = new ArrayList<Synthesizer>();
         candidates.add(MidiSystem.getSynthesizer());
@@ -95,23 +136,21 @@ public final class MidiController {
             try {
                 synth.open();
 
-                if (soundbank != null) {
-                    // Unload default instruments to avoid mapping conflicts
-                    var defaultSb = synth.getDefaultSoundbank();
+                // Unload default instruments to avoid mapping conflicts
+                var defaultSb = synth.getDefaultSoundbank();
 
-                    if (defaultSb != null) {
-                        try {
-                            synth.unloadAllInstruments(defaultSb);
-                        } catch (Exception ignored) {}
-                    }
-
-                    if (!synth.loadAllInstruments(soundbank)) {
-                        throw new IllegalStateException("loadAllInstruments returned false");
-                    }
-
-                    LOG.info("Loaded soundfont: {} into synth: {}",
-                            soundbank.getName(), synth.getDeviceInfo().getName());
+                if (defaultSb != null) {
+                    try {
+                        synth.unloadAllInstruments(defaultSb);
+                    } catch (Exception ignored) {}
                 }
+
+                if (!synth.loadAllInstruments(soundbank)) {
+                    throw new IllegalStateException("loadAllInstruments returned false");
+                }
+
+                LOG.info("Loaded soundfont: {} into synth: {}",
+                        soundbank.getName(), synth.getDeviceInfo().getName());
 
                 return synth;
             } catch (Exception e) {
