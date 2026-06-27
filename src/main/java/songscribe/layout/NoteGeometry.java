@@ -58,7 +58,7 @@ public final class NoteGeometry {
      * {@code GlissandoRenderer}); it is held slightly larger so the reservation never under-shoots
      * the gap the renderer actually draws.
      */
-    private static final double GLISSANDO_NOTEHEAD_GAP_SS = 0.3;
+    private static final double GLISSANDO_NOTEHEAD_GAP_SS = 0.4;
 
     /**
      * Extra clearance reserved on each side of a glissando beyond the visible gap. The renderer
