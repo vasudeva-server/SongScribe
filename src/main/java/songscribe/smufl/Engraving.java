@@ -47,6 +47,13 @@ public final class Engraving {
     public static final GlyphAnchors.Anchor NOTEHEAD_HALF_STEM_UP_SE;
     public static final GlyphAnchors.Anchor NOTEHEAD_HALF_STEM_DOWN_NW;
 
+    // Stem lengths
+    /** SMuFL standard stem length in staff-space units. */
+    public static final double STEM_LENGTH_SS = 3.5;
+
+    /** Stem length for grace notes in staff-space units. */
+    public static final double GRACE_NOTE_STEM_LENGTH_SS = 2.5;
+
     static {
         var defaults = SMuFLMetadata.getEngravingDefaults();
 

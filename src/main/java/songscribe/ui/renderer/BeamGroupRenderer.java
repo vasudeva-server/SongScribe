@@ -399,8 +399,8 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         // Fallback: approximate from staff position + standard stem length
         var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
         return isUpper
-            ? elementYSs - NoteGeometry.STEM_LENGTH_SS
-            : elementYSs + NoteGeometry.STEM_LENGTH_SS;
+            ? elementYSs - Engraving.STEM_LENGTH_SS
+            : elementYSs + Engraving.STEM_LENGTH_SS;
     }
 
     /**

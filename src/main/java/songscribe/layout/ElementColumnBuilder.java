@@ -304,7 +304,7 @@ public class ElementColumnBuilder {
 
         // Stem up: stem extends upward
         if (!element.isUpper()) {
-            return -NoteGeometry.STEM_LENGTH_SS;
+            return -Engraving.STEM_LENGTH_SS;
         }
 
         // Stem down: top is just above element head
@@ -329,7 +329,7 @@ public class ElementColumnBuilder {
 
         // Stem down: stem extends downward
         if (element.isUpper()) {
-            return NoteGeometry.STEM_LENGTH_SS;
+            return Engraving.STEM_LENGTH_SS;
         }
 
         // Stem up: bottom is just below element head

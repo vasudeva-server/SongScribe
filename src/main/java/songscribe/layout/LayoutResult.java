@@ -1294,7 +1294,9 @@ public final class LayoutResult {
      *
      * @param topYSs       Y position of the top of the stem
      * @param bottomYSs    Y position of the bottom of the stem
-     * @param lengtheningSs Extra stem extension beyond the minimum required to reach the beam (≥ 0)
+     * @param lengtheningSs Extra stem extension beyond the natural minimum length (≥ 0): for a beamed
+     *                   note, the amount needed to reach the beam; for an unbeamed note, the amount
+     *                   needed to extend the tip to the staff center (Y=0)
      * @param stubRight  For partial-beam notes: true if the stub extends to the right, false to the left.
      *                   Meaningless for full-beam and unbeamed notes.
      */

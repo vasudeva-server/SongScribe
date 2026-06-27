@@ -36,8 +36,8 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
+import songscribe.smufl.Engraving;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
@@ -260,7 +260,7 @@ class BeamGroupRendererTest extends UnitTest {
         // staffPos=4 → elementYSs = 4 * 0.5 = 2.0; upper tip = 2.0 - STEM_LENGTH_SS
         var element = ElementType.QUAVER.newInstance();
         element.setStaffPosition(4);
-        var expectedYSs = StaffExtents.spToSs(4) - NoteGeometry.STEM_LENGTH_SS;
+        var expectedYSs = StaffExtents.spToSs(4) - Engraving.STEM_LENGTH_SS;
 
         var result = BeamGroupRenderer.stemTipYSsOffset(null, true, element);
 
@@ -271,7 +271,7 @@ class BeamGroupRendererTest extends UnitTest {
     void testStemTipYSsOffset_nullLayout_stemDown_usesStaffPositionPlusStemLength() {
         var element = ElementType.QUAVER.newInstance();
         element.setStaffPosition(-2);
-        var expectedYSs = StaffExtents.spToSs(-2) + NoteGeometry.STEM_LENGTH_SS;
+        var expectedYSs = StaffExtents.spToSs(-2) + Engraving.STEM_LENGTH_SS;
 
         var result = BeamGroupRenderer.stemTipYSsOffset(null, false, element);
 

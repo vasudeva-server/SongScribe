@@ -123,12 +123,6 @@ public enum ElementType {
     // Geometry constants — canonical definitions; layout/ui reference these
     // ========================================================================
 
-    /** Normal note stem length in staff spaces. */
-    public static final double STEM_LENGTH_SS = 3.5;
-
-    /** Grace note stem length in staff spaces. */
-    public static final double GRACE_NOTE_STEM_LENGTH_SS = 2.5;
-
     /** Uniform scale factor applied to grace note glyphs (75% of normal size). */
     public static final float GRACE_NOTE_SCALE = 0.75f;
 
@@ -601,12 +595,12 @@ public enum ElementType {
                 type.noteheadTopOffsetSs = headTop;
 
                 // Height up: from top of stem to bottom of notehead
-                var upTop = stemUpY - STEM_LENGTH_SS;
+                var upTop = stemUpY - Engraving.STEM_LENGTH_SS;
                 type.heightUpSs = headBottom - upTop;
                 type.topOffsetUpSs = upTop;    // stem tip above center (negative)
 
                 // Height down: from top of notehead to bottom of stem
-                var downBottom = stemDownY + STEM_LENGTH_SS;
+                var downBottom = stemDownY + Engraving.STEM_LENGTH_SS;
                 type.heightDownSs = downBottom - headTop;
                 type.topOffsetDownSs = headTop; // notehead top above center (negative)
             } else {
@@ -639,7 +633,7 @@ public enum ElementType {
         var stemUpX = anchors.stemUpSE().x() * scale;
         var stemUpY = anchors.stemUpSE().y() * scale;
 
-        var upTop = stemUpY - GRACE_NOTE_STEM_LENGTH_SS;
+        var upTop = stemUpY - Engraving.GRACE_NOTE_STEM_LENGTH_SS;
         var width = headRight;
 
         var flagBBox = requireBBox(SMuFLGlyph.FLAG_8TH_UP, type);

@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.within;
 import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -37,9 +38,6 @@ import songscribe.font.DocumentFonts;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
-import songscribe.layout.LayoutEngine;
-import songscribe.layout.LyricConnectorLayout;
-import songscribe.layout.LyricRenderMetrics;
 import songscribe.smufl.Engraving;
 
 @SuppressWarnings("DataFlowIssue")
@@ -122,6 +120,25 @@ class LayoutEngineTest extends UnitTest {
      * tieYAtElement (≈2.76) < elementYSs (5.0) → deflection < 0 → no collision avoidance.
      */
     private static final int SP_TIE_NO_COLLISION_INTERIOR = 10;
+
+    // Stem-lengthening constants — notes beyond MIN_STEM_SS (3.5 ss) from centre
+    /** Two ledger lines above the staff (sp < 0 → stems down); |spToSs(-8)| = 4.0 → lengtheningSs = 0.5. */
+    private static final int SP_LEDGER_ABOVE_2 = -8;
+
+    /** Three ledger lines above the staff (sp < 0 → stems down); |spToSs(-10)| = 5.0 → lengtheningSs = 1.5. */
+    private static final int SP_LEDGER_ABOVE_3 = -10;
+
+    /** Two ledger lines below the staff (sp > 0 → stems up); spToSs(8) = 4.0 → lengtheningSs = 0.5. */
+    private static final int SP_LEDGER_BELOW_2 = 8;
+
+    /** Lengthening threshold: spToSs(7) = 3.5 = MIN_STEM_SS exactly → lengtheningSs = 0 (last sp needing none). */
+    private static final int SP_LENGTHENING_THRESHOLD = 7;
+
+    /** Expected lengtheningSs at SP_LEDGER_ABOVE_2 / SP_LEDGER_BELOW_2: |4.0| - 3.5. */
+    private static final double LENGTHENING_TWO_LEDGER_LINES = 0.5;
+
+    /** Expected lengtheningSs at SP_LEDGER_ABOVE_3: |5.0| - 3.5. */
+    private static final double LENGTHENING_THREE_LEDGER_LINES = 1.5;
 
     // Row 30 — beam count (flag levels) per note type
     private static final int QUAVER_BEAMS = 1;
@@ -269,7 +286,7 @@ class LayoutEngineTest extends UnitTest {
         var stem = require(result.getStemLayout(element), "StemLayout");
 
         var elementYSs = StaffExtents.spToSs(SP_BELOW_MIDDLE);
-        assertThat(stem.topYSs()).describedAs("stem-up top Y").isCloseTo(elementYSs - NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
+        assertThat(stem.topYSs()).describedAs("stem-up top Y").isCloseTo(elementYSs - Engraving.STEM_LENGTH_SS, within(TOLERANCE));
         assertThat(stem.bottomYSs()).describedAs("stem-up bottom Y").isCloseTo(elementYSs, within(TOLERANCE));
     }
 
@@ -286,7 +303,7 @@ class LayoutEngineTest extends UnitTest {
 
         var elementYSs = StaffExtents.spToSs(SP_ABOVE_MIDDLE);
         assertThat(stem.topYSs()).describedAs("stem-down top Y").isCloseTo(elementYSs, within(TOLERANCE));
-        assertThat(stem.bottomYSs()).describedAs("stem-down bottom Y").isCloseTo(elementYSs + NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
+        assertThat(stem.bottomYSs()).describedAs("stem-down bottom Y").isCloseTo(elementYSs + Engraving.STEM_LENGTH_SS, within(TOLERANCE));
     }
 
     // T10: Unbeamed grace note always gets stem up, with grace-note stem length, even when above the middle line
@@ -301,7 +318,7 @@ class LayoutEngineTest extends UnitTest {
         var stem = require(result.getStemLayout(element), "StemLayout");
 
         var elementYSs = StaffExtents.spToSs(SP_ABOVE_MIDDLE_GRACE);
-        assertThat(stem.topYSs()).describedAs("grace stem-up top Y").isCloseTo(elementYSs - NoteGeometry.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
+        assertThat(stem.topYSs()).describedAs("grace stem-up top Y").isCloseTo(elementYSs - Engraving.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
         assertThat(stem.bottomYSs()).describedAs("grace stem-up bottom Y").isCloseTo(elementYSs, within(TOLERANCE));
     }
 
@@ -320,7 +337,7 @@ class LayoutEngineTest extends UnitTest {
 
         var elementYSs = StaffExtents.spToSs(SP_BELOW_MIDDLE_MANUAL);
         assertThat(stem.topYSs()).describedAs("manual stem-down top Y").isCloseTo(elementYSs, within(TOLERANCE));
-        assertThat(stem.bottomYSs()).describedAs("manual stem-down bottom Y").isCloseTo(elementYSs + NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
+        assertThat(stem.bottomYSs()).describedAs("manual stem-down bottom Y").isCloseTo(elementYSs + Engraving.STEM_LENGTH_SS, within(TOLERANCE));
     }
 
     // T12a: Beamed group with all notes above the middle line → auto stem direction is down (stemsUp=false)
@@ -425,7 +442,7 @@ class LayoutEngineTest extends UnitTest {
             var stem = require(result.getStemLayout(note), "StemLayout at sp=" + sp);
             assertThat(stem.bottomYSs() - stem.topYSs())
                 .describedAs("stem length at sp=%d must be ≥ minimum stem length".formatted(sp))
-                .isGreaterThanOrEqualTo(NoteGeometry.STEM_LENGTH_SS - TOLERANCE);
+                .isGreaterThanOrEqualTo(Engraving.STEM_LENGTH_SS - TOLERANCE);
         }
     }
 
@@ -672,5 +689,147 @@ class LayoutEngineTest extends UnitTest {
         assertThat(LayoutEngine.beamCount(ElementType.DEMI_SEMIQUAVER.newInstance()))
             .describedAs("DEMI_SEMIQUAVER has three flags")
             .isEqualTo(DEMI_SEMIQUAVER_BEAMS);
+    }
+
+    @Nested
+    class UnbeamedStemLengthening {
+
+        // T25a: Note within staff (|sp| ≤ 7): natural stem already clears centre → no lengthening
+        @Test
+        void testNoteWithinStaffHasNoLengthening() {
+            var line = detachedLine();
+            var element = ElementType.CROTCHET.newInstance();
+            element.setStaffPosition(SP_BELOW_MIDDLE);
+            line.addElement(element);
+
+            var result = require(engine().layout(line), "LayoutResult");
+            var stem = require(result.getStemLayout(element), "StemLayout");
+
+            assertThat(stem.lengtheningSs())
+                .describedAs("note within staff needs no stem lengthening")
+                .isCloseTo(0.0, within(TOLERANCE));
+        }
+
+        // T25b: Down-stem note 2 ledger lines above (sp=-8); lengtheningSs = 0.5, tip reaches Y=0
+        @Test
+        void testDownStemTwoLedgerLinesAboveHasLengthening() {
+            var line = detachedLine();
+            var element = ElementType.CROTCHET.newInstance();
+            element.setStaffPosition(SP_LEDGER_ABOVE_2);
+            line.addElement(element);
+
+            var result = require(engine().layout(line), "LayoutResult");
+            var stem = require(result.getStemLayout(element), "StemLayout");
+
+            assertThat(stem.lengtheningSs())
+                .describedAs("2 ledger lines above → lengtheningSs")
+                .isCloseTo(LENGTHENING_TWO_LEDGER_LINES, within(TOLERANCE));
+            assertThat(stem.bottomYSs())
+                .describedAs("extended down-stem tip must reach staff centre (Y=0)")
+                .isCloseTo(0.0, within(TOLERANCE));
+        }
+
+        // T25c: Down-stem note 3 ledger lines above (sp=-10); lengtheningSs = 1.5, tip reaches Y=0
+        @Test
+        void testDownStemThreeLedgerLinesAboveHasLengthening() {
+            var line = detachedLine();
+            var element = ElementType.CROTCHET.newInstance();
+            element.setStaffPosition(SP_LEDGER_ABOVE_3);
+            line.addElement(element);
+
+            var result = require(engine().layout(line), "LayoutResult");
+            var stem = require(result.getStemLayout(element), "StemLayout");
+
+            assertThat(stem.lengtheningSs())
+                .describedAs("3 ledger lines above → lengtheningSs")
+                .isCloseTo(LENGTHENING_THREE_LEDGER_LINES, within(TOLERANCE));
+            assertThat(stem.bottomYSs())
+                .describedAs("extended down-stem tip must reach staff centre (Y=0)")
+                .isCloseTo(0.0, within(TOLERANCE));
+        }
+
+        // T25d: Up-stem note 2 ledger lines below (sp=+8); lengtheningSs = 0.5, tip reaches Y=0
+        @Test
+        void testUpStemTwoLedgerLinesBelowHasLengthening() {
+            var line = detachedLine();
+            var element = ElementType.CROTCHET.newInstance();
+            element.setStaffPosition(SP_LEDGER_BELOW_2);
+            line.addElement(element);
+
+            var result = require(engine().layout(line), "LayoutResult");
+            var stem = require(result.getStemLayout(element), "StemLayout");
+
+            assertThat(stem.lengtheningSs())
+                .describedAs("2 ledger lines below → lengtheningSs")
+                .isCloseTo(LENGTHENING_TWO_LEDGER_LINES, within(TOLERANCE));
+            assertThat(stem.topYSs())
+                .describedAs("extended up-stem tip must reach staff centre (Y=0)")
+                .isCloseTo(0.0, within(TOLERANCE));
+        }
+
+        // T25e: Grace note at a ledger-line position; lengthening is always 0.0 and the stem keeps its grace length
+        @Test
+        void testGraceNoteAtLedgerLineHasNoLengthening() {
+            var line = detachedLine();
+            var element = ElementType.GRACE_QUAVER.newInstance();
+            element.setStaffPosition(SP_LEDGER_ABOVE_2);
+            line.addElement(element);
+
+            var result = require(engine().layout(line), "LayoutResult");
+            var stem = require(result.getStemLayout(element), "StemLayout");
+
+            assertThat(stem.lengtheningSs())
+                .describedAs("grace notes are exempt from stem lengthening")
+                .isCloseTo(0.0, within(TOLERANCE));
+
+            // Grace notes auto-direction to stem-up; an unextended grace stem keeps its grace length.
+            var elementYSs = StaffExtents.spToSs(SP_LEDGER_ABOVE_2);
+            assertThat(stem.topYSs())
+                .describedAs("grace stem-up top Y keeps grace length (no lengthening)")
+                .isCloseTo(elementYSs - Engraving.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(stem.bottomYSs())
+                .describedAs("grace stem-up bottom Y sits at the notehead")
+                .isCloseTo(elementYSs, within(TOLERANCE));
+        }
+
+        // T25f: At the exact threshold (sp=7 → |elementYSs| = MIN_STEM_SS), no lengthening is applied
+        @Test
+        void testNoteAtThresholdHasNoLengthening() {
+            var line = detachedLine();
+            var element = ElementType.CROTCHET.newInstance();
+            element.setStaffPosition(SP_LENGTHENING_THRESHOLD);
+            line.addElement(element);
+
+            var result = require(engine().layout(line), "LayoutResult");
+            var stem = require(result.getStemLayout(element), "StemLayout");
+
+            assertThat(stem.lengtheningSs())
+                .describedAs("note exactly MIN_STEM_SS from centre needs no lengthening")
+                .isCloseTo(0.0, within(TOLERANCE));
+        }
+
+        // T25g: A manual stem pointing AWAY from centre (forced up on a note above the staff) is never lengthened
+        @Test
+        void testManualStemAwayFromCentreIsNotLengthened() {
+            var line = detachedLine();
+            var element = ElementType.CROTCHET.newInstance();
+            element.setStaffPosition(SP_LEDGER_ABOVE_2);
+            element.setStemDirectionAuto(false);
+            element.setUpper(true);
+            line.addElement(element);
+
+            var result = require(engine().layout(line), "LayoutResult");
+            var stem = require(result.getStemLayout(element), "StemLayout");
+
+            assertThat(stem.lengtheningSs())
+                .describedAs("stem pointing away from centre is not lengthened")
+                .isCloseTo(0.0, within(TOLERANCE));
+
+            // Tip keeps the natural stem length, moving further from centre rather than toward it.
+            var elementYSs = StaffExtents.spToSs(SP_LEDGER_ABOVE_2);
+            assertThat(stem.topYSs())
+                .describedAs("away-from-centre up-stem keeps its natural length")
+                .isCloseTo(elementYSs - Engraving.STEM_LENGTH_SS, within(TOLERANCE));
+        }
     }
 }

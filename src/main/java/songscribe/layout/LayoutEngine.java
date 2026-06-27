@@ -75,7 +75,7 @@ public class LayoutEngine {
     static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
     private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
     static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
-    private static final double MIN_STEM_SS = NoteGeometry.STEM_LENGTH_SS;
+    private static final double MIN_STEM_SS = Engraving.STEM_LENGTH_SS;
 
     // Tie geometry constants (MuseScore port, staff-space units unless noted)
     private static final double TIE_SHOULDER_W = 0.6;                // shoulder width fraction of tie span
@@ -612,14 +612,23 @@ public class LayoutEngine {
             var stemsUp = element.isUpper();
             var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
             var stemLenSs = element.getType().isGraceNote()
-                ? NoteGeometry.GRACE_NOTE_STEM_LENGTH_SS
+                ? Engraving.GRACE_NOTE_STEM_LENGTH_SS
                 : MIN_STEM_SS;
 
-            // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
-            var topYSs = stemsUp ? elementYSs - stemLenSs : elementYSs;
-            var bottomYSs = stemsUp ? elementYSs : elementYSs + stemLenSs;
+            // Extend the stem tip to reach the staff center (Y=0) when the stem points toward
+            // center but the natural stem length falls short. The signed distance the tip must
+            // travel toward center is elementYSs for an up-stem and -elementYSs for a down-stem;
+            // a stem pointing away from center (only via a manual override) is never extended.
+            var distanceTowardCenterSs = stemsUp ? elementYSs : -elementYSs;
+            var lengtheningSs = element.getType().isGraceNote()
+                ? 0.0
+                : Math.max(0.0, distanceTowardCenterSs - MIN_STEM_SS);
 
-            builder.putStemLayout(element, new LayoutResult.StemLayout(topYSs, bottomYSs, 0.0, false));
+            // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
+            var topYSs = stemsUp ? elementYSs - (stemLenSs + lengtheningSs) : elementYSs;
+            var bottomYSs = stemsUp ? elementYSs : elementYSs + (stemLenSs + lengtheningSs);
+
+            builder.putStemLayout(element, new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, false));
         }
     }
 

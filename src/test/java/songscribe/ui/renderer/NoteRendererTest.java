@@ -138,7 +138,7 @@ class NoteRendererTest extends UnitTest {
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
-            assertThat(geom.lengthSs()).isCloseTo(NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(geom.lengthSs()).isCloseTo(Engraving.STEM_LENGTH_SS, within(TOLERANCE));
         }
 
         @Test
@@ -149,7 +149,7 @@ class NoteRendererTest extends UnitTest {
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
-            assertThat(geom.lengthSs()).isCloseTo(NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(geom.lengthSs()).isCloseTo(Engraving.STEM_LENGTH_SS, within(TOLERANCE));
         }
 
         @Test
@@ -160,7 +160,7 @@ class NoteRendererTest extends UnitTest {
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
-            assertThat(geom.lengthSs()).isCloseTo(NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(geom.lengthSs()).isCloseTo(Engraving.STEM_LENGTH_SS, within(TOLERANCE));
         }
 
         @Test
@@ -171,7 +171,7 @@ class NoteRendererTest extends UnitTest {
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
-            assertThat(geom.lengthSs()).isCloseTo(NoteGeometry.STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(geom.lengthSs()).isCloseTo(Engraving.STEM_LENGTH_SS, within(TOLERANCE));
         }
 
         @Test
@@ -182,7 +182,7 @@ class NoteRendererTest extends UnitTest {
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
-            assertThat(geom.lengthSs()).isCloseTo(NoteGeometry.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(geom.lengthSs()).isCloseTo(Engraving.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
         }
     }
 

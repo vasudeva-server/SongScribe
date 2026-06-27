@@ -32,10 +32,8 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
-import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
-import songscribe.layout.ElementColumnBuilder;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -364,7 +362,7 @@ class ElementColumnBuilderTest extends UnitTest {
         void testStemTopSsStemUp() {
             // isUpper=false (default) → stem extends upward: top = -STEM_LENGTH_SS
             var note = element(ElementType.CROTCHET);
-            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-NoteGeometry.STEM_LENGTH_SS);
+            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-Engraving.STEM_LENGTH_SS);
         }
 
         @Test
@@ -394,7 +392,7 @@ class ElementColumnBuilderTest extends UnitTest {
             // isUpper=true → stem extends downward: bottom = STEM_LENGTH_SS
             var note = element(ElementType.CROTCHET);
             note.setUpper(true);
-            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(NoteGeometry.STEM_LENGTH_SS);
+            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(Engraving.STEM_LENGTH_SS);
         }
 
         @Test

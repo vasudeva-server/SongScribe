@@ -31,12 +31,6 @@ public final class NoteGeometry {
     // Stem Constants
     // ==========================================================================
 
-    /** SMuFL standard stem length in staff-space units. */
-    public static final double STEM_LENGTH_SS = 3.5;
-
-    /** Stem length for grace notes in staff-space units. */
-    public static final double GRACE_NOTE_STEM_LENGTH_SS = 2.5;
-
     /** Stem width in staff-space units (LilyPond multiplier-derived). */
     public static final double STEM_WIDTH_SS = LineThickness.getInstance().stemSs();
 

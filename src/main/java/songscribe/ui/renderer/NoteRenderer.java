@@ -191,7 +191,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
         // left by STEM_WIDTH_SS/2, so we compensate.
         var stemLeftX = anchorX - (upper ? NoteGeometry.STEM_WIDTH_SS : NoteGeometry.STEM_WIDTH_SS / 2);
-        var stemLength = isGrace ? NoteGeometry.GRACE_NOTE_STEM_LENGTH_SS : NoteGeometry.STEM_LENGTH_SS;
+        var stemLength = isGrace ? Engraving.GRACE_NOTE_STEM_LENGTH_SS : Engraving.STEM_LENGTH_SS;
 
         return new StemGeometry(stemLeftX, anchor.y(), stemLength);
     }
