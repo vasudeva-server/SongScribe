@@ -349,6 +349,20 @@ public enum ElementType {
         return SMUFL_GLYPHS.get(this);
     }
 
+    /**
+     * Returns the SMuFL glyph for this element type, or exits the app if absent
+     * (indicating a broken install missing required metadata).
+     */
+    public SMuFLGlyph requireSMuFLGlyph() {
+        var glyph = SMUFL_GLYPHS.get(this);
+
+        if (glyph == null) {
+            throw RuntimeError.exit("Missing SMuFL glyph for element type " + this);
+        }
+
+        return glyph;
+    }
+
     public boolean isPitchedNote() {
         //noinspection ConstantValue
         return (

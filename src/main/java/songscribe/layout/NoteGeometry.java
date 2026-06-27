@@ -84,13 +84,6 @@ public final class NoteGeometry {
     );
 
     // ==========================================================================
-    // Notehead Fallback
-    // ==========================================================================
-
-    /** Fallback right-edge width (staff spaces) for noteheadBlack when SMuFL metadata is absent. */
-    static final double NOTEHEAD_BLACK_RIGHT_EDGE_SS = 1.18;
-
-    // ==========================================================================
     // Accidental Constants
     // ==========================================================================
 
@@ -333,13 +326,7 @@ public final class NoteGeometry {
      * returns the noteheadBlackSmall bbox, which is already at the correct size.
      */
     public static double getNoteheadRightEdgeSs(StaffElement note) {
-        var glyph = note.getType().getSMuFLGlyph();
-
-        if (glyph != null) {
-            return SMuFLMetadata.requireBBox(glyph).right();
-        }
-
-        return NOTEHEAD_BLACK_RIGHT_EDGE_SS;
+        return SMuFLMetadata.requireBBox(note.getType().requireSMuFLGlyph()).right();
     }
 
     // ==========================================================================
