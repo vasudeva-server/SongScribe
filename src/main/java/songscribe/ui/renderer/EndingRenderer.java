@@ -25,6 +25,9 @@ import static songscribe.util.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import songscribe.dom.Line;
 import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
@@ -118,15 +121,18 @@ public final class EndingRenderer {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(RenderingUtils.ELEMENT_COLOR);
 
-            // Horizontal top
-            GraphicUtils.drawRoundedLine(g2, x1, yTopSs, x2, yTopSs, thicknessSs);
-
-            // Left vertical leg — EXTEND tucks the top cap into the horizontal line
-            GraphicUtils.drawRoundedLine(g2, x1, yTopSs, x1, yBottomSs, thicknessSs, GraphicUtils.CapAdjustment.EXTEND);
+            // Bracket as a single path so the top corners join cleanly: up the left leg, across
+            // the top, and (when present) down the right leg.
+            var bracketPoints = new ArrayList<Point2D>(List.of(
+                new Point2D.Double(x1, yBottomSs),
+                new Point2D.Double(x1, yTopSs),
+                new Point2D.Double(x2, yTopSs)));
 
             if (bracket.hasClosingStroke()) {
-                GraphicUtils.drawRoundedLine(g2, x2, yTopSs, x2, yBottomSs, thicknessSs, GraphicUtils.CapAdjustment.EXTEND);
+                bracketPoints.add(new Point2D.Double(x2, yBottomSs));
             }
+
+            GraphicUtils.drawPath(g2, bracketPoints.toArray(new Point2D[0]), thicknessSs);
 
             // Draw ending label (e.g. "1." or "2.") using Bravura volta glyphs.
             // Baseline = bracket top + glyph height + visual offset below bracket.

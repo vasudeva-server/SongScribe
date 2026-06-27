@@ -25,18 +25,22 @@ import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.awt.Graphics2D;
 import java.awt.Shape;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.util.GraphicUtils.CapAdjustment;
 import songscribe.util.GraphicUtils.Unit;
 
 class GraphicUtilsTest extends UnitTest {
@@ -242,7 +246,7 @@ class GraphicUtilsTest extends UnitTest {
         }
 
         @Test
-        void testHorizontalLineNoneSpansExactlyEndpoints() {
+        void testHorizontalLineSpansExactlyEndpoints() {
             var bounds = capturePlacedBounds(g2 ->
                 GraphicUtils.drawRoundedLine(g2, X1, Y, X2, Y, THICKNESS_SS));
 
@@ -250,20 +254,6 @@ class GraphicUtilsTest extends UnitTest {
             assertThat(bounds.getMaxX()).as("right end at x2").isCloseTo(X2, within(TOLERANCE));
             assertThat(bounds.getCenterY()).as("centered on y").isCloseTo(Y, within(TOLERANCE));
             assertThat(bounds.getHeight()).as("height equals thickness").isCloseTo(THICKNESS_SS, within(TOLERANCE));
-        }
-
-        @Test
-        void testHorizontalLineExtendExtendsEachEndByHalfThickness() {
-            var bounds = capturePlacedBounds(g2 ->
-                GraphicUtils.drawRoundedLine(g2, X1, Y, X2, Y, THICKNESS_SS, CapAdjustment.EXTEND));
-
-            // EXTEND pushes each end out by half the thickness past the given coordinates.
-            assertThat(bounds.getMinX())
-                .as("left end extended by half thickness")
-                .isCloseTo(X1 - THICKNESS_SS / 2, within(TOLERANCE));
-            assertThat(bounds.getMaxX())
-                .as("right end extended by half thickness")
-                .isCloseTo(X2 + THICKNESS_SS / 2, within(TOLERANCE));
         }
 
         @Test
@@ -278,6 +268,238 @@ class GraphicUtilsTest extends UnitTest {
             assertThat(bounds.getCenterY()).isCloseTo(ANGLED_END / 2, within(TOLERANCE));
             // A 45° line's bounding box is square; a non-rotated fill would be wide and flat instead.
             assertThat(bounds.getWidth()).isCloseTo(bounds.getHeight(), within(TOLERANCE));
+        }
+    }
+
+    @Nested
+    class DrawPath {
+
+        private static final double TOLERANCE = 1e-6;
+        private static final int IMAGE_SIZE = 100;
+        private static final double THICKNESS_SS = 2.0;
+
+        // A horizontal segment, comfortably inside the image bounds.
+        private static final double X1 = 10.0;
+        private static final double X2 = 40.0;
+        private static final double Y = 25.0;
+
+        // Downward drop of the vertical arm for the L-shaped path.
+        private static final double CORNER_DROP = 15.0;
+
+        // Vertical component of the diagonal segment; with X2 - X1 it makes a non-axis-aligned line.
+        private static final double DIAGONAL_RISE = 20.0;
+
+        // PathIterator.currentSegment fills up to six coordinates (a cubic's three control points).
+        private static final int PATH_SEGMENT_COORDS = 6;
+
+        /**
+         * Captures the bounds of the stroked outline {@code drawPath} produces, by recording the
+         * path passed to {@code g2.draw} and stroking it with the stroke that was set. {@code drawPath}
+         * draws in device space (no transform), so these bounds are the on-screen geometry.
+         */
+        private static Rectangle2D captureStrokedBounds(Consumer<Graphics2D> draw) {
+            var image = new BufferedImage(IMAGE_SIZE, IMAGE_SIZE, BufferedImage.TYPE_INT_ARGB);
+            var g2 = spy(image.createGraphics());
+            var stroked = new Shape[]{null};
+
+            doAnswer(invocation -> {
+                Shape path = invocation.getArgument(0);
+                stroked[0] = g2.getStroke().createStrokedShape(path);
+                return null;
+            }).when(g2).draw(any(Shape.class));
+
+            try {
+                draw.accept(g2);
+            } finally {
+                g2.dispose();
+            }
+
+            verify(g2, times(1)).draw(any(Shape.class));
+
+            return stroked[0].getBounds2D();
+        }
+
+        @Test
+        void testStrokedPathSpansExactlyEndpoints() {
+            // Two-point horizontal path: the round caps must bring the stroked extent back to the
+            // given coordinates, despite each endpoint being pulled inward by half the thickness.
+            var bounds = captureStrokedBounds(g2 ->
+                GraphicUtils.drawPath(g2, new Point2D[]{
+                    new Point2D.Double(X1, Y),
+                    new Point2D.Double(X2, Y)
+                }, THICKNESS_SS));
+
+            assertThat(bounds.getMinX()).as("left end at x1").isCloseTo(X1, within(TOLERANCE));
+            assertThat(bounds.getMaxX()).as("right end at x2").isCloseTo(X2, within(TOLERANCE));
+            assertThat(bounds.getCenterY()).as("centered on y").isCloseTo(Y, within(TOLERANCE));
+            assertThat(bounds.getHeight()).as("height equals thickness").isCloseTo(THICKNESS_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testInteriorCornerNotInset() {
+            // An L-shaped path: only the two free ends are pulled inward; the interior corner is a
+            // join and stays put. So the rounded join still reaches half a thickness past the corner
+            // in x, while the vertical free end caps back to exactly the corner drop in y.
+            var bounds = captureStrokedBounds(g2 ->
+                GraphicUtils.drawPath(g2, new Point2D[]{
+                    new Point2D.Double(X1, Y),
+                    new Point2D.Double(X2, Y),
+                    new Point2D.Double(X2, Y + CORNER_DROP)
+                }, THICKNESS_SS));
+
+            assertThat(bounds.getMaxX())
+                .as("rounded join reaches half a thickness past the corner")
+                .isCloseTo(X2 + THICKNESS_SS / 2, within(TOLERANCE));
+            assertThat(bounds.getMaxY())
+                .as("vertical free end at corner drop")
+                .isCloseTo(Y + CORNER_DROP, within(TOLERANCE));
+        }
+
+        @Test
+        void testDiagonalSegmentInsetAlongItsOwnDirection() {
+            // A diagonal segment is the only case that exercises capInset's full 2-D normalization:
+            // both dx and dy are nonzero, so an inset that divided by a single axis instead of the
+            // true segment length would land off the line. Axis-aligned paths cannot catch that.
+            var start = new Point2D.Double(X1, Y);
+            var end = new Point2D.Double(X2, Y + DIAGONAL_RISE);
+            var halfWidthSs = THICKNESS_SS / 2.0;
+            var lengthSs = Math.hypot(end.x - start.x, end.y - start.y);
+            var unitXSs = (end.x - start.x) / lengthSs;
+            var unitYSs = (end.y - start.y) / lengthSs;
+
+            var points = capturePathPoints(g2 ->
+                GraphicUtils.drawPath(g2, new Point2D[]{start, end}, THICKNESS_SS));
+
+            assertThat(points).as("two-point path has two vertices").hasSize(2);
+            assertThat(points.get(0).getX())
+                .as("start inset along the segment direction in x")
+                .isCloseTo(start.x + unitXSs * halfWidthSs, within(TOLERANCE));
+            assertThat(points.get(0).getY())
+                .as("start inset along the segment direction in y")
+                .isCloseTo(start.y + unitYSs * halfWidthSs, within(TOLERANCE));
+            assertThat(points.get(1).getX())
+                .as("end inset back along the segment direction in x")
+                .isCloseTo(end.x - unitXSs * halfWidthSs, within(TOLERANCE));
+            assertThat(points.get(1).getY())
+                .as("end inset back along the segment direction in y")
+                .isCloseTo(end.y - unitYSs * halfWidthSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testCoincidentEndSegmentLeavesEndpointUninsetWithoutNaN() {
+            // A zero-length first/last segment has no direction to inset along. capInset must return
+            // the endpoint unchanged rather than dividing by zero and poisoning the path with NaN.
+            var points = capturePathPoints(g2 ->
+                GraphicUtils.drawPath(g2, new Point2D[]{
+                    new Point2D.Double(X1, Y),
+                    new Point2D.Double(X1, Y),
+                    new Point2D.Double(X2, Y)
+                }, THICKNESS_SS));
+
+            assertThat(points).as("no path vertex is NaN").allSatisfy(point -> {
+                assertThat(point.getX()).isNotNaN();
+                assertThat(point.getY()).isNotNaN();
+            });
+            assertThat(points.get(0))
+                .as("zero-length first segment leaves the start uninset")
+                .isEqualTo(new Point2D.Double(X1, Y));
+        }
+
+        @Test
+        void testClosingStrokeBracketFreeEndsCapToArmBottom() {
+            // The 4-point U of a closing-stroke ending bracket: both vertical free ends are inset
+            // upward and their round caps must land exactly on the arm bottom, while the two top
+            // corners are joins that bulge half a thickness outward.
+            var halfWidthSs = THICKNESS_SS / 2.0;
+
+            var bounds = captureStrokedBounds(g2 ->
+                GraphicUtils.drawPath(g2, new Point2D[]{
+                    new Point2D.Double(X1, Y + CORNER_DROP),
+                    new Point2D.Double(X1, Y),
+                    new Point2D.Double(X2, Y),
+                    new Point2D.Double(X2, Y + CORNER_DROP)
+                }, THICKNESS_SS));
+
+            assertThat(bounds.getMaxY())
+                .as("both free ends cap to exactly the arm bottom")
+                .isCloseTo(Y + CORNER_DROP, within(TOLERANCE));
+            assertThat(bounds.getMinY())
+                .as("top corners join half a thickness above the bracket line")
+                .isCloseTo(Y - halfWidthSs, within(TOLERANCE));
+            assertThat(bounds.getMinX())
+                .as("left arm spans half a thickness left of x1")
+                .isCloseTo(X1 - halfWidthSs, within(TOLERANCE));
+            assertThat(bounds.getMaxX())
+                .as("right arm spans half a thickness right of x2")
+                .isCloseTo(X2 + halfWidthSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testFewerThanTwoPointsDrawsNothing() {
+            // The contract requires at least two points; degenerate input must be a silent no-op
+            // rather than throwing an ArrayIndexOutOfBoundsException.
+            assertThat(countDraws(g2 ->
+                GraphicUtils.drawPath(g2, new Point2D[]{}, THICKNESS_SS)))
+                .as("empty path draws nothing")
+                .isZero();
+
+            assertThat(countDraws(g2 ->
+                GraphicUtils.drawPath(g2, new Point2D[]{new Point2D.Double(X1, Y)}, THICKNESS_SS)))
+                .as("single-point path draws nothing")
+                .isZero();
+        }
+
+        /**
+         * Captures the vertices of the {@link java.awt.geom.Path2D} {@code drawPath} builds, before
+         * it is stroked, so a test can assert the exact inset coordinates {@code capInset} produced.
+         */
+        private static List<Point2D> capturePathPoints(Consumer<Graphics2D> draw) {
+            var image = new BufferedImage(IMAGE_SIZE, IMAGE_SIZE, BufferedImage.TYPE_INT_ARGB);
+            var g2 = spy(image.createGraphics());
+            var captured = new Shape[]{null};
+
+            doAnswer(invocation -> {
+                captured[0] = invocation.getArgument(0);
+                return null;
+            }).when(g2).draw(any(Shape.class));
+
+            try {
+                draw.accept(g2);
+            } finally {
+                g2.dispose();
+            }
+
+            verify(g2, times(1)).draw(any(Shape.class));
+
+            var points = new ArrayList<Point2D>();
+            var coords = new double[PATH_SEGMENT_COORDS];
+
+            for (var iterator = captured[0].getPathIterator(null); !iterator.isDone(); iterator.next()) {
+                iterator.currentSegment(coords);
+                points.add(new Point2D.Double(coords[0], coords[1]));
+            }
+
+            return points;
+        }
+
+        /** Returns how many times {@code drawPath} invoked {@code g2.draw}. */
+        private static int countDraws(Consumer<Graphics2D> draw) {
+            var image = new BufferedImage(IMAGE_SIZE, IMAGE_SIZE, BufferedImage.TYPE_INT_ARGB);
+            var g2 = spy(image.createGraphics());
+            var drawCount = new int[]{0};
+
+            doAnswer(invocation -> {
+                drawCount[0]++;
+                return null;
+            }).when(g2).draw(any(Shape.class));
+
+            try {
+                draw.accept(g2);
+            } finally {
+                g2.dispose();
+            }
+
+            return drawCount[0];
         }
     }
 }

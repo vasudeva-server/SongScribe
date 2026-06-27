@@ -166,17 +166,22 @@ public final class TupletRenderer {
                 var gapLeftXSs = gapCenterXSs - halfGapSs;
                 var gapRightXSs = gapCenterXSs + halfGapSs;
 
-                // Left bracket arm (from left endpoint to gap)
-                GraphicUtils.drawRoundedLine(g2, leftXSs, bracketYSs, gapLeftXSs, bracketYSs, thicknessSs);
+                var armBottomYSs = bracketYSs + armHeightSs;
 
-                // Right bracket arm (from gap to right endpoint)
-                GraphicUtils.drawRoundedLine(g2, gapRightXSs, bracketYSs, rightXSs, bracketYSs, thicknessSs);
+                // Each side is a single path so its arm corner joins cleanly: down the vertical
+                // arm, up to the corner, then across to the number gap. The number gap splits the
+                // bracket into two separate paths.
+                GraphicUtils.drawPath(g2, new Point2D[]{
+                    new Point2D.Double(leftXSs, armBottomYSs),
+                    new Point2D.Double(leftXSs, bracketYSs),
+                    new Point2D.Double(gapLeftXSs, bracketYSs)
+                }, thicknessSs);
 
-                // Left vertical arm — EXTEND tucks the top cap into the horizontal line
-                GraphicUtils.drawRoundedLine(g2, leftXSs, bracketYSs, leftXSs, bracketYSs + armHeightSs, thicknessSs, GraphicUtils.CapAdjustment.EXTEND);
-
-                // Right vertical arm — EXTEND tucks the top cap into the horizontal line
-                GraphicUtils.drawRoundedLine(g2, rightXSs, bracketYSs, rightXSs, bracketYSs + armHeightSs, thicknessSs, GraphicUtils.CapAdjustment.EXTEND);
+                GraphicUtils.drawPath(g2, new Point2D[]{
+                    new Point2D.Double(gapRightXSs, bracketYSs),
+                    new Point2D.Double(rightXSs, bracketYSs),
+                    new Point2D.Double(rightXSs, armBottomYSs)
+                }, thicknessSs);
 
                 // Number is centered on the bracket line
                 numberBaselineYSs = bracketYSs - inkBounds.getCenterY();
