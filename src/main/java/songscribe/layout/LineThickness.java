@@ -23,7 +23,8 @@ public record LineThickness(
         double thickBarlineSs,
         double hairpinSs,
         double voltaBracketSs,
-        double tupletBracketSs
+        double tupletBracketSs,
+        double glissandoSs
 ) {
     // LilyPond multipliers relative to base staff-line thickness
     static final double STEM_MULTIPLIER = 1.3;
@@ -34,6 +35,7 @@ public record LineThickness(
     private static final double HAIRPIN_MULTIPLIER = 1.0;
     static final double VOLTA_BRACKET_MULTIPLIER = 1.61;
     static final double TUPLET_BRACKET_MULTIPLIER = 1.61;
+    private static final double GLISSANDO_MULTIPLIER = 1.75;
 
     /**
      * LilyPond base staff-line thickness in staff spaces. SMuFL Bravura uses 0.13,
@@ -54,7 +56,8 @@ public record LineThickness(
                 base * THICK_BARLINE_MULTIPLIER,
                 base * HAIRPIN_MULTIPLIER,
                 base * VOLTA_BRACKET_MULTIPLIER,
-                base * TUPLET_BRACKET_MULTIPLIER
+                base * TUPLET_BRACKET_MULTIPLIER,
+                base * GLISSANDO_MULTIPLIER
         );
     }
 

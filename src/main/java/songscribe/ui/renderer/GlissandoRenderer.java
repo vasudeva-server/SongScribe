@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.LineThickness;
 import songscribe.dom.ScaleContext;
 import songscribe.util.GraphicsState;
 
@@ -74,9 +75,6 @@ public final class GlissandoRenderer {
      * Keeps the drawn line clear of the note's ink on both ends.
      */
     private static final double GLISSANDO_DRAWN_GAP_SS = 0.25;
-
-    /** Glissando thickness in pixels. */
-    private static final double RECT_THICKNESS_PX = 2.0;
 
     /** Hit-test tolerance in pixels (wider than visual thickness for easier clicking). */
     private static final double HIT_THICKNESS_PX = 8.0;
@@ -544,7 +542,7 @@ public final class GlissandoRenderer {
             g2.setColor(color);
             g2.translate(endpoints.startXSs(), endpoints.startYSs());
             g2.rotate(endpoints.angle());
-            var thicknessSs = ScaleContext.pxToSs(RECT_THICKNESS_PX);
+            var thicknessSs = LineThickness.getInstance().glissandoSs();
             g2.fill(new RoundRectangle2D.Double(
                 0, -thicknessSs / 2.0,
                 length, thicknessSs,
