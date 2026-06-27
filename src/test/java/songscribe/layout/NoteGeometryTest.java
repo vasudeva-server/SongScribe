@@ -32,9 +32,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.AccidentalBounds;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
+import songscribe.layout.StaffExtents;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -222,52 +224,478 @@ class NoteGeometryTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Row 24: getLedgerLineOverhangSs — 0 in-staff / LEDGER_LINE_EXTENSION_SS out
+    // Row 24: noteNeedsLedgerLines — gating by staff position and note type
     // -----------------------------------------------------------------------
 
     @Nested
-    class LedgerLineOverhang {
+    class LedgerLineGating {
+
+        /** |sp| = 5 is the highest in-staff position — no ledger line needed. */
+        private static final int IN_STAFF_BOUNDARY_SP = 5;
+
+        /** First out-of-staff position. */
+        private static final int OUT_OF_STAFF_SP = 6;
 
         @Test
-        void testInStaffBoundaryPositionReturnsZero() {
-            // |sp| = 5 is the highest in-staff position → no ledger line needed
-            final int boundaryPositionSp = 5;
+        void testInStaffBoundaryPositionReturnsFalse() {
             var note = ElementType.CROTCHET.newInstance();
-            note.setStaffPosition(boundaryPositionSp);
-            assertThat(NoteGeometry.getLedgerLineOverhangSs(note)).isEqualTo(0.0);
+            note.setStaffPosition(IN_STAFF_BOUNDARY_SP);
+            assertThat(NoteGeometry.noteNeedsLedgerLines(note)).isFalse();
         }
 
         @Test
-        void testInStaffNegativeBoundaryPositionReturnsZero() {
-            final int boundaryPositionSp = -5;
+        void testInStaffNegativeBoundaryPositionReturnsFalse() {
             var note = ElementType.CROTCHET.newInstance();
-            note.setStaffPosition(boundaryPositionSp);
-            assertThat(NoteGeometry.getLedgerLineOverhangSs(note)).isEqualTo(0.0);
+            note.setStaffPosition(-IN_STAFF_BOUNDARY_SP);
+            assertThat(NoteGeometry.noteNeedsLedgerLines(note)).isFalse();
         }
 
         @Test
-        void testAboveStaffReturnsLedgerExtension() {
-            final int outOfStaffPositionSp = 6;
+        void testAboveStaffReturnsTrue() {
             var note = ElementType.CROTCHET.newInstance();
-            note.setStaffPosition(outOfStaffPositionSp);
-            assertThat(NoteGeometry.getLedgerLineOverhangSs(note)).isEqualTo(Engraving.LEDGER_LINE_EXTENSION_SS);
+            note.setStaffPosition(OUT_OF_STAFF_SP);
+            assertThat(NoteGeometry.noteNeedsLedgerLines(note)).isTrue();
         }
 
         @Test
-        void testBelowStaffReturnsLedgerExtension() {
-            final int outOfStaffPositionSp = -6;
+        void testBelowStaffReturnsTrue() {
             var note = ElementType.CROTCHET.newInstance();
-            note.setStaffPosition(outOfStaffPositionSp);
-            assertThat(NoteGeometry.getLedgerLineOverhangSs(note)).isEqualTo(Engraving.LEDGER_LINE_EXTENSION_SS);
+            note.setStaffPosition(-OUT_OF_STAFF_SP);
+            assertThat(NoteGeometry.noteNeedsLedgerLines(note)).isTrue();
         }
 
         @Test
-        void testBreathMarkReturnsZeroEvenOutOfStaff() {
-            // BREATH_MARK.drawStaveLongitude() == false → always 0 regardless of position
-            final int outOfStaffPositionSp = 6;
+        void testBreathMarkReturnsFalseEvenOutOfStaff() {
+            // BREATH_MARK.drawStaveLongitude() == false → always false regardless of position
             var note = ElementType.BREATH_MARK.newInstance();
-            note.setStaffPosition(outOfStaffPositionSp);
-            assertThat(NoteGeometry.getLedgerLineOverhangSs(note)).isEqualTo(0.0);
+            note.setStaffPosition(OUT_OF_STAFF_SP);
+            assertThat(NoteGeometry.noteNeedsLedgerLines(note)).isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 24b: getLedgerLineBaseExtentSs — proportional width from notehead bbox
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class LedgerLineBaseExtent {
+
+        private static final double TOLERANCE = 1e-9;
+
+        /** Staff position where ledger lines are needed (|pos| > 5). */
+        private static final int LEDGER_POSITION_SP = 6;
+
+        /**
+         * Asserts both of {@code actual}'s extensions beyond the notehead bbox are symmetric and each
+         * equal LENGTH_FRACTION × notehead width. This checks the defining proportional property
+         * rather than mirroring the production left/right assembly, so it catches a wrong multiplier
+         * base — e.g. {@code lf × headRight} instead of {@code lf × width}, which diverge once the
+         * notehead is X-offset (stem-down) — that a copied formula would silently reproduce.
+         */
+        private static void assertProportionalExtent(
+            NoteGeometry.LedgerExtentSs actual, ElementType noteType, boolean upper
+        ) {
+            var bbox = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph());
+            var offset = NoteGeometry.getNoteheadXOffsetSs(noteType, upper);
+            var headLeft = offset + bbox.left();
+            var headRight = offset + bbox.right();
+            var expectedExtension = Engraving.LEDGER_LINE_LENGTH_FRACTION * (headRight - headLeft);
+
+            var leftExtension = headLeft - actual.leftSs();
+            var rightExtension = actual.rightSs() - headRight;
+
+            assertAll(
+                () -> assertThat(leftExtension)
+                    .as("left extension = LENGTH_FRACTION × notehead width")
+                    .isCloseTo(expectedExtension, within(TOLERANCE)),
+                () -> assertThat(rightExtension)
+                    .as("right extension = LENGTH_FRACTION × notehead width")
+                    .isCloseTo(expectedExtension, within(TOLERANCE)),
+                () -> assertThat(leftExtension)
+                    .as("extensions are symmetric")
+                    .isCloseTo(rightExtension, within(TOLERANCE))
+            );
+        }
+
+        @Test
+        void testStemUpCrotchetExtentIsProportional() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(LEDGER_POSITION_SP);
+
+            assertProportionalExtent(
+                NoteGeometry.getLedgerLineBaseExtentSs(note), ElementType.CROTCHET, true);
+        }
+
+        @Test
+        void testStemDownCrotchetExtentAccountsForNoteheadOffset() {
+            // stem-down shifts the notehead left by STEM_WIDTH_SS/2, which displaces the whole extent
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(false);
+            note.setStaffPosition(LEDGER_POSITION_SP);
+
+            var actual = NoteGeometry.getLedgerLineBaseExtentSs(note);
+            assertProportionalExtent(actual, ElementType.CROTCHET, false);
+
+            // stem-down ledgerLeft is further left than stem-up, since the notehead is shifted left
+            var stemUpNote = ElementType.CROTCHET.newInstance();
+            stemUpNote.setUpper(true);
+            stemUpNote.setStaffPosition(LEDGER_POSITION_SP);
+            assertThat(actual.leftSs())
+                .isLessThan(NoteGeometry.getLedgerLineBaseExtentSs(stemUpNote).leftSs());
+        }
+
+        @Test
+        void testGraceNoteExtentIsProportionalAndStemUp() {
+            // Grace notes always treat upper=true; offset=0 since isGraceNote() forces stem-up logic
+            var note = ElementType.GRACE_QUAVER.newInstance();
+            note.setStaffPosition(LEDGER_POSITION_SP);
+
+            assertProportionalExtent(
+                NoteGeometry.getLedgerLineBaseExtentSs(note), ElementType.GRACE_QUAVER, true);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 24c: getLedgerLineExtentSs — accidental shortening per ledger Y
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class LedgerLineExtentWithAccidental {
+
+        private static final double TOLERANCE = 1e-9;
+
+        /** One ledger line below the staff (Y-down): ledger sits above note centre in Y-down. */
+        private static final int ONE_LEDGER_BELOW_SP = 7;
+
+        /** Staff position with 3 ledger lines; the farthest ledger Y exceeds the sharp bbox. */
+        private static final int THREE_LEDGERS_BELOW_SP = 11;
+
+        /**
+         * The sharp accidental spans the note centre vertically (typical bbox ≈ [-1.5, 1.5]).
+         * spToSs(-1) = -0.5 is well within that range.
+         */
+        private static final int LEDGER_WITHIN_ACC_RANGE_SP = -1;
+
+        /**
+         * spToSs(-5) = -2.5 is beyond the typical sharp bbox top (~-1.5), placing the ledger
+         * Y outside the accidental's vertical extent.
+         */
+        private static final int LEDGER_OUTSIDE_ACC_RANGE_SP = -5;
+
+        @SuppressWarnings("NullAway")
+        private static AccidentalBounds requireAccBounds(StaffElement note) {
+            var bounds = NoteGeometry.getAccidentalBoundsSs(note);
+            assertThat(bounds).as("accidental bounds must be non-null for this test").isNotNull();
+            return bounds;
+        }
+
+        // ---- test a: ledger Y in accidental range, midpoint right of base ledgerLeft ----
+
+        @Test
+        void testAccidentalInYRangeShortenedToMidpoint() {
+            // stem-up crotchet, SHARP, ledger Y within accidental's vertical extent.
+            // With Bravura metrics: accRight ≈ −ACCIDENTAL_PADDING_SS, headLeft = 0,
+            // midpoint ≈ −ACCIDENTAL_PADDING_SS/2, which sits right of ledgerLeft
+            // (≈ −lf·headRight), so the max returns midpoint (shortening applies).
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(ONE_LEDGER_BELOW_SP);
+            note.setAccidental(Accidental.SHARP);
+
+            var ledgerYSs = StaffExtents.spToSs(LEDGER_WITHIN_ACC_RANGE_SP);
+            var baseExtent = NoteGeometry.getLedgerLineBaseExtentSs(note);
+            var accBounds = requireAccBounds(note);
+
+            // Precondition: ledger Y is within the accidental's vertical range
+            assertThat(ledgerYSs)
+                .as("ledger Y must be within accidental's vertical extent for test a")
+                .isBetween(accBounds.topSs(), accBounds.botSs());
+
+            var accRight = accBounds.leftSs() + accBounds.widthSs();
+            var noteType = ElementType.CROTCHET;
+            var glyph = noteType.requireSMuFLGlyph();
+            var bbox = SMuFLMetadata.requireBBox(glyph);
+            var headLeft = NoteGeometry.getNoteheadXOffsetSs(noteType, true) + bbox.left();
+            var midpoint = (accRight + headLeft) / 2;
+
+            // Precondition: midpoint is right of base ledgerLeft (shortening applies)
+            assertThat(midpoint)
+                .as("midpoint must be right of base ledgerLeft for test a")
+                .isGreaterThan(baseExtent.leftSs());
+
+            var expected = midpoint;
+            var actual = NoteGeometry.getLedgerLineExtentSs(note, ledgerYSs);
+
+            assertThat(actual.leftSs()).isCloseTo(expected, within(TOLERANCE));
+            assertThat(actual.rightSs()).isCloseTo(baseExtent.rightSs(), within(TOLERANCE));
+        }
+
+        // ---- test b: ledger Y outside accidental's vertical extent → no shortening ----
+
+        @Test
+        void testAccidentalOutsideYRangeBaseExtentUnchanged() {
+            // Three ledgers below staff; the farthest ledger Y (spToSs(-5) = -2.5 in Y-down)
+            // falls above the typical sharp bbox top (≈ -1.5), placing it outside the accidental's
+            // vertical extent → no shortening; result equals base extent.
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(THREE_LEDGERS_BELOW_SP);
+            note.setAccidental(Accidental.SHARP);
+
+            var ledgerYSs = StaffExtents.spToSs(LEDGER_OUTSIDE_ACC_RANGE_SP);
+            var baseExtent = NoteGeometry.getLedgerLineBaseExtentSs(note);
+            var accBounds = requireAccBounds(note);
+
+            // Precondition: ledger Y is above (Y-down: less than) the accidental's top edge, hence
+            // outside its vertical range.
+            assertThat(ledgerYSs)
+                .as("ledger Y must be outside accidental's vertical extent for test b")
+                .isLessThan(accBounds.topSs());
+
+            var actual = NoteGeometry.getLedgerLineExtentSs(note, ledgerYSs);
+
+            assertThat(actual.leftSs()).isCloseTo(baseExtent.leftSs(), within(TOLERANCE));
+            assertThat(actual.rightSs()).isCloseTo(baseExtent.rightSs(), within(TOLERANCE));
+        }
+
+        // ---- test c: accRight < ledgerLeft yet shortening STILL applies (midpoint is the guard) ----
+
+        @Test
+        void testAccRightLeftOfBaseEdgeYetShorteningApplies() {
+            // With Bravura metrics, accRight ≈ -ACCIDENTAL_PADDING_SS ≈ -0.34, which is LEFT of the
+            // base ledgerLeft (≈ -0.25 × headRight ≈ -0.30). This demonstrates that accRight ≤ ledgerLeft
+            // is NOT the no-shortening guard: what matters is (accRight + headLeft)/2 vs ledgerLeft.
+            // Here midpoint ≈ accRight/2 ≈ -0.17, which is RIGHT of ledgerLeft (-0.30), so the
+            // max returns midpoint and shortening DOES apply even though accRight < ledgerLeft.
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(ONE_LEDGER_BELOW_SP);
+            note.setAccidental(Accidental.SHARP);
+
+            var ledgerYSs = StaffExtents.spToSs(LEDGER_WITHIN_ACC_RANGE_SP);
+            var baseExtent = NoteGeometry.getLedgerLineBaseExtentSs(note);
+            var accBounds = requireAccBounds(note);
+            var accRight = accBounds.leftSs() + accBounds.widthSs();
+            var noteType = ElementType.CROTCHET;
+            var glyph = noteType.requireSMuFLGlyph();
+            var bbox = SMuFLMetadata.requireBBox(glyph);
+            var headLeft = NoteGeometry.getNoteheadXOffsetSs(noteType, true) + bbox.left();
+            var midpoint = (accRight + headLeft) / 2;
+
+            // Show that accRight IS left of the base ledger left edge …
+            assertThat(accRight).isLessThan(baseExtent.leftSs());
+            // … yet midpoint is right of the base ledger left edge (the max picks midpoint)
+            assertThat(midpoint).isGreaterThan(baseExtent.leftSs());
+
+            var actual = NoteGeometry.getLedgerLineExtentSs(note, ledgerYSs);
+
+            // Shortening applies: leftSs == midpoint, not base ledgerLeft
+            assertThat(actual.leftSs()).isCloseTo(midpoint, within(TOLERANCE));
+            assertThat(actual.leftSs()).isGreaterThan(baseExtent.leftSs());
+        }
+
+        // ---- compound accidental: only the note-adjacent component (the flat) is checked ----
+
+        @Test
+        void testCompoundAccidentalChecksClosestComponentOnly() {
+            // natural-flat is laid out [natural][flat] with the notehead to the right, so the
+            // component nearest the notehead is the flat. Ledger shortening must use the flat's
+            // bounds alone, not the union of natural and flat.
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(ONE_LEDGER_BELOW_SP);
+            note.setAccidental(Accidental.NATURAL_FLAT);
+
+            var fullBounds = require(NoteGeometry.getAccidentalBoundsSs(note), "full natural-flat bounds");
+            var flatBounds = require(
+                NoteGeometry.getClosestAccidentalComponentBoundsSs(note), "flat-only bounds");
+
+            // The flat starts right of the union (which also covers the natural) but, being the
+            // rightmost component, shares the union's right edge.
+            assertThat(flatBounds.leftSs()).isGreaterThan(fullBounds.leftSs());
+            assertThat(flatBounds.leftSs() + flatBounds.widthSs())
+                .isCloseTo(fullBounds.leftSs() + fullBounds.widthSs(), within(TOLERANCE));
+
+            var ledgerYSs = StaffExtents.spToSs(LEDGER_WITHIN_ACC_RANGE_SP);
+
+            // Shortening only engages when the ledger Y sits within the flat's vertical extent.
+            assertThat(ledgerYSs)
+                .as("ledger Y must be within the flat's vertical extent")
+                .isBetween(flatBounds.topSs(), flatBounds.botSs());
+
+            var baseExtent = NoteGeometry.getLedgerLineBaseExtentSs(note);
+            var accRight = flatBounds.leftSs() + flatBounds.widthSs();
+            var noteType = ElementType.CROTCHET;
+            var bbox = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph());
+            var headLeft = NoteGeometry.getNoteheadXOffsetSs(noteType, true) + bbox.left();
+            var expectedLeft = Math.max(baseExtent.leftSs(), (accRight + headLeft) / 2);
+
+            var actual = NoteGeometry.getLedgerLineExtentSs(note, ledgerYSs);
+
+            assertThat(actual.leftSs()).isCloseTo(expectedLeft, within(TOLERANCE));
+            assertThat(actual.rightSs()).isCloseTo(baseExtent.rightSs(), within(TOLERANCE));
+        }
+
+        // ---- parenthesized accidental: only the right parenthesis matters ----
+
+        @Test
+        void testParenthesizedAccidentalChecksRightParenOnly() {
+            // The right parenthesis is the rightmost glyph, so for a parenthesized accidental it is
+            // the glyph nearest the notehead and the only one the ledger can collide with.
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(ONE_LEDGER_BELOW_SP);
+            note.setAccidental(Accidental.SHARP);
+            note.setAccidentalInParentheses(true);
+
+            var fullBounds = require(NoteGeometry.getAccidentalBoundsSs(note), "full parenthesized bounds");
+            var closestBounds = require(
+                NoteGeometry.getClosestAccidentalComponentBoundsSs(note), "right-paren bounds");
+
+            var rightParenBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
+
+            // The closest glyph is the right paren: its span and vertical extent match the paren
+            // glyph (translation leaves width/height unchanged), and it starts right of the full
+            // span (which also covers the left paren and the sharp) while sharing its right edge.
+            assertThat(closestBounds.widthSs())
+                .isCloseTo(rightParenBBox.width(), within(TOLERANCE));
+            assertThat(closestBounds.botSs() - closestBounds.topSs())
+                .isCloseTo(rightParenBBox.height(), within(TOLERANCE));
+            assertThat(closestBounds.leftSs()).isGreaterThan(fullBounds.leftSs());
+            assertThat(closestBounds.leftSs() + closestBounds.widthSs())
+                .isCloseTo(fullBounds.leftSs() + fullBounds.widthSs(), within(TOLERANCE));
+        }
+
+        // ---- no accidental: the public per-Y wrapper returns the base extent unchanged ----
+
+        @Test
+        void testNoAccidentalReturnsBaseExtent() {
+            // A note with no accidental has no closest-component bounds, so getLedgerLineExtentSs must
+            // return the base extent for any ledger Y (the accidentalBounds == null branch).
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(ONE_LEDGER_BELOW_SP);
+
+            var baseExtent = NoteGeometry.getLedgerLineBaseExtentSs(note);
+            var actual = NoteGeometry.getLedgerLineExtentSs(note, StaffExtents.spToSs(LEDGER_WITHIN_ACC_RANGE_SP));
+
+            assertThat(actual.leftSs()).isCloseTo(baseExtent.leftSs(), within(TOLERANCE));
+            assertThat(actual.rightSs()).isCloseTo(baseExtent.rightSs(), within(TOLERANCE));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Row 24d: LedgerLineGeometry.extentAtSs — clamp logic over synthetic geometry
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class LedgerLineGeometryClamp {
+
+        private static final double TOLERANCE = 1e-9;
+
+        private static final double BASE_LEFT_SS = -0.3;
+        private static final double BASE_RIGHT_SS = 1.5;
+        private static final double HEAD_LEFT_SS = 0.0;
+
+        private static final double ACC_TOP_SS = -1.0;
+        private static final double ACC_BOT_SS = 1.0;
+        private static final double Y_IN_RANGE_SS = 0.0;
+        private static final double OUT_OF_RANGE_DELTA_SS = 0.1;
+
+        // Accidental sitting just left of the notehead: its midpoint lands right of the base left
+        // edge, so the clamp pulls the ledger in to that midpoint.
+        private static final double NEAR_ACC_LEFT_SS = -0.2;
+        private static final double NEAR_ACC_WIDTH_SS = 0.1;
+
+        // Accidental reaching far left: its midpoint lands left of the base edge, so Math.max keeps
+        // the (further-right) base edge and no shortening occurs.
+        private static final double FAR_ACC_LEFT_SS = -1.0;
+        private static final double FAR_ACC_WIDTH_SS = 0.3;
+
+        private static final NoteGeometry.LedgerExtentSs BASE =
+            new NoteGeometry.LedgerExtentSs(BASE_LEFT_SS, BASE_RIGHT_SS);
+
+        private static NoteGeometry.LedgerLineGeometry geometry(@Nullable AccidentalBounds accidental) {
+            return new NoteGeometry.LedgerLineGeometry(BASE, accidental, HEAD_LEFT_SS);
+        }
+
+        private static AccidentalBounds accidental(double leftSs, double widthSs) {
+            return new AccidentalBounds(leftSs, widthSs, ACC_TOP_SS, ACC_BOT_SS);
+        }
+
+        private static double midpoint(double accLeftSs, double accWidthSs) {
+            return (accLeftSs + accWidthSs + HEAD_LEFT_SS) / 2;
+        }
+
+        @Test
+        void testNullAccidentalReturnsBase() {
+            var extent = geometry(null).extentAtSs(Y_IN_RANGE_SS);
+
+            assertThat(extent.leftSs()).isCloseTo(BASE_LEFT_SS, within(TOLERANCE));
+            assertThat(extent.rightSs()).isCloseTo(BASE_RIGHT_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testYInRangeShortensToMidpoint() {
+            var geom = geometry(accidental(NEAR_ACC_LEFT_SS, NEAR_ACC_WIDTH_SS));
+            var expectedMidpoint = midpoint(NEAR_ACC_LEFT_SS, NEAR_ACC_WIDTH_SS);
+
+            // Precondition: the midpoint is right of the base edge, so shortening genuinely applies.
+            assertThat(expectedMidpoint).isGreaterThan(BASE_LEFT_SS);
+
+            var extent = geom.extentAtSs(Y_IN_RANGE_SS);
+
+            assertThat(extent.leftSs()).isCloseTo(expectedMidpoint, within(TOLERANCE));
+            assertThat(extent.rightSs()).isCloseTo(BASE_RIGHT_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testMidpointLeftOfBaseKeepsBaseEdge() {
+            // Math.max guard: when the accidental midpoint is LEFT of the base edge, the base edge
+            // wins and the ledger is not shortened — even though the ledger Y is in the accidental's
+            // vertical range. Dropping the max would wrongly move the edge left to the midpoint.
+            var geom = geometry(accidental(FAR_ACC_LEFT_SS, FAR_ACC_WIDTH_SS));
+
+            // Precondition: the midpoint is left of the base edge (the branch the max must guard).
+            assertThat(midpoint(FAR_ACC_LEFT_SS, FAR_ACC_WIDTH_SS)).isLessThan(BASE_LEFT_SS);
+
+            var extent = geom.extentAtSs(Y_IN_RANGE_SS);
+
+            assertThat(extent.leftSs()).isCloseTo(BASE_LEFT_SS, within(TOLERANCE));
+            assertThat(extent.rightSs()).isCloseTo(BASE_RIGHT_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testYAtTopBoundaryIsInRange() {
+            // y exactly at the top edge is inclusive, so shortening applies (guards < vs <=).
+            var geom = geometry(accidental(NEAR_ACC_LEFT_SS, NEAR_ACC_WIDTH_SS));
+
+            var extent = geom.extentAtSs(ACC_TOP_SS);
+
+            assertThat(extent.leftSs())
+                .isCloseTo(midpoint(NEAR_ACC_LEFT_SS, NEAR_ACC_WIDTH_SS), within(TOLERANCE));
+        }
+
+        @Test
+        void testYAtBottomBoundaryIsInRange() {
+            // y exactly at the bottom edge is inclusive (guards > vs >=).
+            var geom = geometry(accidental(NEAR_ACC_LEFT_SS, NEAR_ACC_WIDTH_SS));
+
+            var extent = geom.extentAtSs(ACC_BOT_SS);
+
+            assertThat(extent.leftSs())
+                .isCloseTo(midpoint(NEAR_ACC_LEFT_SS, NEAR_ACC_WIDTH_SS), within(TOLERANCE));
+        }
+
+        @Test
+        void testYJustOutsideRangeReturnsBase() {
+            // Just above the top edge → out of range → no shortening.
+            var geom = geometry(accidental(NEAR_ACC_LEFT_SS, NEAR_ACC_WIDTH_SS));
+
+            var extent = geom.extentAtSs(ACC_TOP_SS - OUT_OF_RANGE_DELTA_SS);
+
+            assertThat(extent.leftSs()).isCloseTo(BASE_LEFT_SS, within(TOLERANCE));
         }
     }
 

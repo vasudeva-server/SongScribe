@@ -187,16 +187,15 @@ public final class RenderingUtils {
      * Draws a ledger line for a note above or below the staff.
      *
      * @param g2       Graphics context
-     * @param xSs      Center X position of the note in staff spaces
+     * @param leftXSs  Left edge X position of the ledger line in staff spaces
+     * @param rightXSs Right edge X position of the ledger line in staff spaces
      * @param ySs      Y position of the ledger line in staff spaces
-     * @param widthSs  Width of the ledger line in staff spaces
      */
-    static void drawLedgerLine(Graphics2D g2, double xSs, double ySs, double widthSs, LineInvariants invariants) {
+    static void drawLedgerLine(Graphics2D g2, double leftXSs, double rightXSs, double ySs, LineInvariants invariants) {
         // Color is intentionally not set — inherited from caller so insertion notes
         // draw ledger lines in their own color.
         var thicknessSs = invariants.getLineThickness().ledgerLineSs();
-        var halfWidth = widthSs / 2.0;
-        GraphicUtils.drawLine(g2, xSs - halfWidth, ySs, xSs + halfWidth, ySs, thicknessSs);
+        GraphicUtils.drawRoundedLine(g2, leftXSs, ySs, rightXSs, ySs, thicknessSs);
     }
 
     /**

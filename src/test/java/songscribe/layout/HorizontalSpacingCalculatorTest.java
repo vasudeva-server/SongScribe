@@ -34,6 +34,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.HorizontalSpacingCalculator;
+import songscribe.layout.NoteGeometry;
 import songscribe.smufl.Engraving;
 
 class HorizontalSpacingCalculatorTest extends UnitTest {
@@ -420,6 +421,99 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         assertThat(col2.getXSs() - col1.getXSs()).isCloseTo(expectedSpacing, within(TOLERANCE));
         assertThat(col2.getXSs() - col1.getXSs())
             .isGreaterThan(BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.BEAM_GROUP_MIN_INTERNAL_GAP_SS);
+    }
+
+    // Glissando + ledger note: the reserved right extent uses the ledger base extent,
+    // not just the column's right extent (which may be narrower when the note has ledger lines).
+    @Test
+    void testGlissandoOnLedgerNoteUsesLedgerBaseExtentForRightReservation() {
+        var twoLedgersBelowSp = 8;
+
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var ledgerElement = ElementType.CROTCHET.newInstance();
+        ledgerElement.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        ledgerElement.setStaffPosition(twoLedgersBelowSp);
+
+        // Compute the ledger's proportional right extent from the base formula.
+        var ledgerBaseExtent = NoteGeometry.getLedgerLineBaseExtentSs(ledgerElement);
+        var ledgerRightSs = ledgerBaseExtent.rightSs();
+
+        // A column right extent that is smaller than ledgerRightSs so that the ledger
+        // extent (not the column width) governs the glissando reservation.
+        // ledgerRightSs - 1.0 is guaranteed to be less than ledgerRightSs.
+        var columnRightExtentSs = ledgerRightSs - 1.0;
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            ledgerElement, Collections.emptyList(),
+            0.0, columnRightExtentSs, 0.0, 0.0, null, 0.0, false
+        );
+        var col2 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+
+        calculator.calculatePositions(List.of(col0, col1, col2), line);
+
+        // prevGlissRight = max(col1.rightExtent, ledgerRight) = ledgerRight (since col1 is narrow).
+        // gap = (col2.xSs - col1.xSs) + 0 - ledgerRight.
+        // Spacing must satisfy: gap >= MIN_GLISSANDO_RESERVATION_SS,
+        // i.e. (col2.xSs - col1.xSs) >= ledgerRight + MIN_GLISSANDO_RESERVATION_SS.
+        var minRequiredSpacing = ledgerRightSs + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
+        assertThat(col2.getXSs() - col1.getXSs())
+            .as("glissando on a ledger note must reserve against the ledger right extent")
+            .isGreaterThanOrEqualTo(minRequiredSpacing - TOLERANCE);
+    }
+
+    // Glissando into a ledger note: the current note's ledger base extent governs the left
+    // reservation, ensuring the glissando line does not overlap the ledger line on arrival.
+    @Test
+    void testGlissandoIntoLedgerNoteUsesLedgerBaseExtentForLeftReservation() {
+        var twoLedgersBelowSp = 8;
+
+        var calculator = new HorizontalSpacingCalculator();
+        var line = detachedLine();
+
+        var glissandoElement = ElementType.CROTCHET.newInstance();
+        glissandoElement.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+
+        var ledgerElement = ElementType.CROTCHET.newInstance();
+        ledgerElement.setStaffPosition(twoLedgersBelowSp);
+
+        // Compute the ledger's proportional left extent from the base formula.
+        var ledgerBaseExtent = NoteGeometry.getLedgerLineBaseExtentSs(ledgerElement);
+        var ledgerLeftSs = ledgerBaseExtent.leftSs();  // negative: extends left of notehead
+
+        // A column left extent less negative than the ledger left, so the ledger extent governs.
+        var columnLeftExtentSs = ledgerLeftSs + 1.0;  // less-left than ledger left
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col1 = new ElementColumn(
+            glissandoElement, Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var col2 = new ElementColumn(
+            ledgerElement, Collections.emptyList(),
+            columnLeftExtentSs, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+
+        calculator.calculatePositions(List.of(col0, col1, col2), line);
+
+        // currGlissLeft = min(col2.leftExtent, ledgerLeft) = ledgerLeft (more negative).
+        // gap = (col2.xSs - col1.xSs) + ledgerLeft - PLAIN_RIGHT_EXTENT_SS.
+        // Spacing must satisfy: gap >= MIN_GLISSANDO_RESERVATION_SS.
+        var minRequiredSpacing = PLAIN_RIGHT_EXTENT_SS - ledgerLeftSs + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
+        assertThat(col2.getXSs() - col1.getXSs())
+            .as("glissando into a ledger note must reserve against the ledger left extent")
+            .isGreaterThanOrEqualTo(minRequiredSpacing - TOLERANCE);
     }
 
     // Row 31: calculatePositions with empty list returns without exception

@@ -491,17 +491,18 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     // ==========================================================================
 
     private void renderLedgerLines(Graphics2D g2, StaffElement note, LineInvariants invariants) {
-        var extensionSs = NoteGeometry.getLedgerLineOverhangSs(note);
-
-        if (extensionSs == 0.0) {
+        if (!NoteGeometry.noteNeedsLedgerLines(note)) {
             return;
         }
 
-        var ledgerWidthSs = getLedgerLineWidthSs(note, extensionSs);
-        var centerXSs = getLedgerLineCenterXSs(note);
+        // The geometry is identical for all of a note's ledger lines; compute it once and apply only
+        // the per-line accidental clamp inside the loop.
+        var geometry = NoteGeometry.getLedgerLineGeometry(note);
 
-        RenderingUtils.forEachLedgerLineYSs(note.getStaffPosition(),
-            y -> RenderingUtils.drawLedgerLine(g2, centerXSs, y, ledgerWidthSs, invariants));
+        RenderingUtils.forEachLedgerLineYSs(note.getStaffPosition(), yOffsetSs -> {
+            var extent = geometry.extentAtSs(yOffsetSs);
+            RenderingUtils.drawLedgerLine(g2, extent.leftSs(), extent.rightSs(), yOffsetSs, invariants);
+        });
     }
 
     // ==========================================================================
@@ -548,25 +549,6 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         var noteIndex = line.getElementIndex(note);
         return line.findBeamAt(noteIndex) != null &&
             note.getType() != ElementType.GRACE_QUAVER;
-    }
-
-    /**
-     * Returns the X offset applied to the notehead glyph for stem-down notes.
-     * <p>
-     * Stem-down notes shift the notehead left by half the stem width so the stem
-     * aligns with the left edge of the notehead. This offset must be applied
-     * consistently in both rendering and area construction (for glissando collision).
-     *
-     * @param noteType The note type
-     * @param upper    Whether the stem points up
-     * @return The X offset in staff spaces (negative for stem-down, 0 otherwise)
-     */
-    static double getLedgerLineCenterXSs(StaffElement note) {
-        return NoteGeometry.getNoteheadRightEdgeSs(note) / 2.0;
-    }
-
-    static double getLedgerLineWidthSs(StaffElement note, double extensionSs) {
-        return NoteGeometry.getNoteheadRightEdgeSs(note) + 2 * extensionSs;
     }
 
     /**

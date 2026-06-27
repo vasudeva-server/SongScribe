@@ -23,6 +23,8 @@ package songscribe.ui.renderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -30,11 +32,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.awt.font.FontRenderContext;
+import java.util.ArrayList;
+import java.util.List;
 
 import module java.desktop;
 
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
@@ -64,6 +67,42 @@ class TupletRendererTest extends UnitTest {
         when(g2.getFontMetrics(any(Font.class))).thenReturn(fm);
         when(fm.stringWidth(any(String.class))).thenReturn(0);
         return g2;
+    }
+
+    /** A mock Graphics2D paired with the device-space shapes it filled. */
+    private record RecordingG2(Graphics2D g2, List<Shape> placedShapes) {}
+
+    /**
+     * Extends {@link #mockG2} with transform tracking so the shapes passed to {@code fill} can be
+     * recovered in device space. {@code drawRoundedLine} fills an untransformed round rect and places
+     * it via {@code translate}/{@code rotate} on the graphics context, so a plain mock (which ignores
+     * those calls) would only see the local-frame shape; this mock applies them.
+     */
+    private static RecordingG2 recordingG2() {
+        var g2 = mockG2();
+        var transform = new AffineTransform();
+        var placedShapes = new ArrayList<Shape>();
+
+        when(g2.getTransform()).thenAnswer(invocation -> new AffineTransform(transform));
+        doAnswer(invocation -> {
+            transform.translate(invocation.getArgument(0), invocation.getArgument(1));
+            return null;
+        }).when(g2).translate(anyDouble(), anyDouble());
+        doAnswer(invocation -> {
+            transform.rotate(invocation.getArgument(0));
+            return null;
+        }).when(g2).rotate(anyDouble());
+        doAnswer(invocation -> {
+            transform.setTransform(invocation.getArgument(0));
+            return null;
+        }).when(g2).setTransform(any(AffineTransform.class));
+        doAnswer(invocation -> {
+            Shape local = invocation.getArgument(0);
+            placedShapes.add(transform.createTransformedShape(local));
+            return null;
+        }).when(g2).fill(any(Shape.class));
+
+        return new RecordingG2(g2, placedShapes);
     }
 
     /**
@@ -112,8 +151,8 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        // drawLine calls g2.draw() — none should be called
-        verify(g2, never()).draw(any(Line2D.class));
+        // drawRoundedLine calls g2.fill() — none should be called
+        verify(g2, never()).fill(any(Shape.class));
     }
 
     @Test
@@ -138,8 +177,8 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        // 2 horizontal arms + 2 vertical arms = 4 draw() calls
-        verify(g2, times(4)).draw(any(Line2D.class));
+        // 2 horizontal arms + 2 vertical arms = 4 fill() calls
+        verify(g2, times(4)).fill(any(Shape.class));
     }
 
     @Test
@@ -151,7 +190,7 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        verify(g2, times(4)).draw(any(Line2D.class));
+        verify(g2, times(4)).fill(any(Shape.class));
     }
 
     // ======================================================================
@@ -163,52 +202,52 @@ class TupletRendererTest extends UnitTest {
         // isUpper=true, not beamed → full bracket drawn
         // leftXSs = anchorXSs(1.0) + NOTE_HEAD_WIDTH_SS - stemSs - ARM_EXTENSION_SS
         var invariants = buildInvariantsWithTuplet(true, false);
-        var g2 = mockG2();
+        var recording = recordingG2();
+        var g2 = recording.g2();
         var stemSs = LineThickness.getInstance().stemSs();
         var expectedLeftX = 1.0 + Engraving.NOTE_HEAD_WIDTH_SS - stemSs - Tuplet.ARM_EXTENSION_SS;
 
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        var lineCap = ArgumentCaptor.forClass(Shape.class);
-        verify(g2, times(4)).draw(lineCap.capture());
-        // First draw call is the left horizontal arm: x1 = leftXSs
-        var leftHorizontalArm = (Line2D.Double) lineCap.getAllValues().get(0);
-        assertThat(leftHorizontalArm.x1).isCloseTo(expectedLeftX, within(TOLERANCE));
+        verify(g2, times(4)).fill(any(Shape.class));
+        // First fill is the left horizontal arm: min X = leftXSs
+        var leftHorizontalArm = recording.placedShapes().get(0).getBounds2D();
+        assertThat(leftHorizontalArm.getMinX()).isCloseTo(expectedLeftX, within(TOLERANCE));
     }
 
     @Test
     void testRenderTupletsFromLine_stemDown_leftXSsCorrect() {
         // isUpper=false → leftXSs = anchorXSs(1.0) - ARM_EXTENSION_SS
         var invariants = buildInvariantsWithTuplet(false, false);
-        var g2 = mockG2();
+        var recording = recordingG2();
+        var g2 = recording.g2();
         var expectedLeftX = 1.0 - Tuplet.ARM_EXTENSION_SS;
 
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        var lineCap = ArgumentCaptor.forClass(Shape.class);
-        verify(g2, times(4)).draw(lineCap.capture());
-        var leftHorizontalArm = (Line2D.Double) lineCap.getAllValues().get(0);
-        assertThat(leftHorizontalArm.x1).isCloseTo(expectedLeftX, within(TOLERANCE));
+        verify(g2, times(4)).fill(any(Shape.class));
+        var leftHorizontalArm = recording.placedShapes().get(0).getBounds2D();
+        assertThat(leftHorizontalArm.getMinX()).isCloseTo(expectedLeftX, within(TOLERANCE));
     }
 
     @Test
     void testRenderTupletsFromLine_rightXSsCorrect() {
         // rightXSs = endXSs(1.0+4.0) + NOTE_HEAD_WIDTH_SS + ARM_EXTENSION_SS (same for both stem dirs)
         var invariants = buildInvariantsWithTuplet(true, false);
-        var g2 = mockG2();
+        var recording = recordingG2();
+        var g2 = recording.g2();
         var endXSs = 1.0 + 4.0;
         var expectedRightX = endXSs + Engraving.NOTE_HEAD_WIDTH_SS + Tuplet.ARM_EXTENSION_SS;
 
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        var lineCap = ArgumentCaptor.forClass(Shape.class);
-        verify(g2, times(4)).draw(lineCap.capture());
-        // Second draw call is the right horizontal arm: x2 = rightXSs
-        var rightHorizontalArm = (Line2D.Double) lineCap.getAllValues().get(1);
-        assertThat(rightHorizontalArm.x2).isCloseTo(expectedRightX, within(TOLERANCE));
+        verify(g2, times(4)).fill(any(Shape.class));
+        // Second fill is the right horizontal arm: max X = rightXSs
+        var rightHorizontalArm = recording.placedShapes().get(1).getBounds2D();
+        assertThat(rightHorizontalArm.getMaxX()).isCloseTo(expectedRightX, within(TOLERANCE));
     }
 
     // ======================================================================
@@ -237,7 +276,7 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, line, invariants, ElementFrame.LINE_LEVEL);
 
         // Nothing should be drawn since the tuplet's layout is absent
-        verify(g2, never()).draw(any(Shape.class));
+        verify(g2, never()).fill(any(Shape.class));
         verify(g2, never()).drawString(any(String.class), any(float.class), any(float.class));
     }
 
@@ -269,7 +308,7 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, line, invariants, ElementFrame.LINE_LEVEL);
 
         // Nothing should be drawn since anchor is null
-        verify(g2, never()).draw(any(Shape.class));
+        verify(g2, never()).fill(any(Shape.class));
         verify(g2, never()).drawString(any(String.class), any(float.class), any(float.class));
     }
 }

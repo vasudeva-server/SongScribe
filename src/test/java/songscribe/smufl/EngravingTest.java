@@ -82,11 +82,12 @@ class EngravingTest extends UnitTest {
                 .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
     }
 
+    /** LilyPond {@code length-fraction} default (dimensionless multiplier on notehead width). */
+    private static final double LILYPOND_LENGTH_FRACTION_DEFAULT = 0.25;
+
     @Test
-    void testLedgerLineExtensionIsPlausible() {
-        assertThat(Engraving.LEDGER_LINE_EXTENSION_SS)
-                .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
-                .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
+    void testLedgerLineLengthFractionIsLilyPondDefault() {
+        assertThat(Engraving.LEDGER_LINE_LENGTH_FRACTION).isEqualTo(LILYPOND_LENGTH_FRACTION_DEFAULT);
     }
 
     @Test

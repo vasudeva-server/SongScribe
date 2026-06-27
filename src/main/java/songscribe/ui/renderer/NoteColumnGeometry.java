@@ -186,22 +186,12 @@ final class NoteColumnGeometry {
         }
 
         // ---- ledger lines (extend both sides) ----
-        var overhangSs = NoteGeometry.getLedgerLineOverhangSs(note);
-
-        if (overhangSs != 0.0) {
-            var ledgerWidthSs = NoteRenderer.getLedgerLineWidthSs(note, overhangSs);
-            var centerXSs = NoteRenderer.getLedgerLineCenterXSs(note);
-            var halfWidthSs = ledgerWidthSs / 2;
-            var ledgerLeftSs = centerXSs - halfWidthSs;
-            var ledgerRightSs = centerXSs + halfWidthSs;
-
-            if (ledgerLeftSs < leftSs) {
-                leftSs = ledgerLeftSs;
-            }
-
-            if (ledgerRightSs > rightSs) {
-                rightSs = ledgerRightSs;
-            }
+        // Use the base extent (no accidental shortening) — the accidental's own left
+        // extent is already folded in above.
+        if (NoteGeometry.noteNeedsLedgerLines(note)) {
+            var extent = NoteGeometry.getLedgerLineBaseExtentSs(note);
+            leftSs = Math.min(leftSs, extent.leftSs());
+            rightSs = Math.max(rightSs, extent.rightSs());
         }
 
         return new ColumnExtent(leftSs, rightSs, flagBBoxLocal);

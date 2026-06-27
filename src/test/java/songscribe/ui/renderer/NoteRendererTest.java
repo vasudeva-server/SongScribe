@@ -317,31 +317,4 @@ class NoteRendererTest extends UnitTest {
         }
     }
 
-    // ==========================================================================
-    // getLedgerLineCenterXSs (row 6)
-    // ==========================================================================
-
-    @Test
-    void testGetLedgerLineCenterXSsIsHalfOfRightEdge() {
-        var note = ElementType.CROTCHET.newInstance();
-        var expectedCenter = NoteGeometry.getNoteheadRightEdgeSs(note) / 2.0;
-
-        assertThat(NoteRenderer.getLedgerLineCenterXSs(note))
-            .isCloseTo(expectedCenter, within(TOLERANCE));
-    }
-
-    // ==========================================================================
-    // getLedgerLineWidthSs (row 7)
-    // ==========================================================================
-
-    @Test
-    void testGetLedgerLineWidthSsIsRightEdgePlusTwoTimesExtension() {
-        var note = ElementType.CROTCHET.newInstance();
-        var extensionSs = 0.5;
-        var expectedWidth = NoteGeometry.getNoteheadRightEdgeSs(note) + 2 * extensionSs;
-
-        assertThat(NoteRenderer.getLedgerLineWidthSs(note, extensionSs))
-            .isCloseTo(expectedWidth, within(TOLERANCE));
-    }
-
 }

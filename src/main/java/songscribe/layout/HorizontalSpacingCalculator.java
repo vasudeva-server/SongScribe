@@ -352,12 +352,12 @@ public class HorizontalSpacingCalculator {
         }
 
         // Compute ledger-line-inclusive extents on-the-fly
-        var prevOverhang = NoteGeometry.getLedgerLineOverhangSs(prev.getElement());
+        var prevElement = prev.getElement();
         var prevGlissRight = prev.getRightExtentSs();
 
-        if (prevOverhang > 0) {
-            var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(prev.getElement());
-            prevGlissRight = Math.max(prevGlissRight, noteheadWidthSs + prevOverhang);
+        if (NoteGeometry.noteNeedsLedgerLines(prevElement)) {
+            var ledgerRightSs = NoteGeometry.getLedgerLineBaseExtentSs(prevElement).rightSs();
+            prevGlissRight = Math.max(prevGlissRight, ledgerRightSs);
         }
 
         var currElement = curr.getElement();
@@ -371,10 +371,9 @@ public class HorizontalSpacingCalculator {
             currGlissLeft -= ACCIDENTAL_RENDER_LEFT_DELTA_SS;
         }
 
-        var currOverhang = NoteGeometry.getLedgerLineOverhangSs(currElement);
-
-        if (currOverhang > 0) {
-            currGlissLeft = Math.min(currGlissLeft, -currOverhang);
+        if (NoteGeometry.noteNeedsLedgerLines(currElement)) {
+            var ledgerLeftSs = NoteGeometry.getLedgerLineBaseExtentSs(currElement).leftSs();
+            currGlissLeft = Math.min(currGlissLeft, ledgerLeftSs);
         }
 
         var gap = spacingSs + currGlissLeft - prevGlissRight;

@@ -172,6 +172,31 @@ class NoteColumnGeometryTest extends UnitTest {
     }
 
     @Test
+    void testLedgerNote_extentMatchesProportionalBaseExtent() {
+        // The column extent for a ledger note must exactly reflect getLedgerLineBaseExtentSs, not
+        // the old fixed 0.25 ss overhang. Verified for both stem-up and stem-down configurations.
+        var stemUpNote = ElementType.CROTCHET.newInstance();
+        stemUpNote.setUpper(true);
+        stemUpNote.setStaffPosition(TWO_LEDGERS_BELOW_SP);
+
+        var stemUpExtent = NoteColumnGeometry.extentSs(stemUpNote, false);
+        var stemUpLedger = NoteGeometry.getLedgerLineBaseExtentSs(stemUpNote);
+
+        assertThat(stemUpExtent.leftSs()).isCloseTo(stemUpLedger.leftSs(), within(TOLERANCE_SS));
+        assertThat(stemUpExtent.rightSs()).isCloseTo(stemUpLedger.rightSs(), within(TOLERANCE_SS));
+
+        var stemDownNote = ElementType.CROTCHET.newInstance();
+        stemDownNote.setUpper(false);
+        stemDownNote.setStaffPosition(TWO_LEDGERS_BELOW_SP);
+
+        var stemDownExtent = NoteColumnGeometry.extentSs(stemDownNote, false);
+        var stemDownLedger = NoteGeometry.getLedgerLineBaseExtentSs(stemDownNote);
+
+        assertThat(stemDownExtent.leftSs()).isCloseTo(stemDownLedger.leftSs(), within(TOLERANCE_SS));
+        assertThat(stemDownExtent.rightSs()).isCloseTo(stemDownLedger.rightSs(), within(TOLERANCE_SS));
+    }
+
+    @Test
     void testGraceNote_flagBBoxNarrowerThanFullNote() {
         // The grace flag bbox is scaled by GRACE_NOTE_SCALE; a full quaver's flag is at full size.
         var full = ElementType.QUAVER.newInstance();

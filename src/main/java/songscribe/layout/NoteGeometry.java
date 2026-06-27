@@ -2,6 +2,7 @@ package songscribe.layout;
 
 import java.util.EnumMap;
 import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
 
 import org.jspecify.annotations.Nullable;
 
@@ -149,6 +150,17 @@ public final class NoteGeometry {
     private static @Nullable AccidentalBounds @Nullable [] baseAccidentalBoundsSs = null;
     private static @Nullable AccidentalBounds @Nullable [] baseAccidentalParenthesisBoundsSs = null;
 
+    // Cached bounding boxes of only the note-adjacent (rightmost) glyph, indexed by
+    // Accidental.ordinal(). Used for ledger-line shortening, which checks only the glyph closest to
+    // the notehead: the right paren when parenthesized, else the last component (e.g. the flat of a
+    // natural-flat).
+    private static @Nullable AccidentalBounds @Nullable [] closestAccidentalBoundsSs = null;
+    private static @Nullable AccidentalBounds @Nullable [] closestAccidentalParenthesisBoundsSs = null;
+
+    // Accidental-bbox combiner that keeps the most recently visited (rightmost) glyph, isolating the
+    // note-adjacent glyph for ledger-line shortening. Contrast BBox::union, which keeps the full span.
+    private static final BinaryOperator<BBox> KEEP_RIGHTMOST = (previous, rightmost) -> rightmost;
+
     private NoteGeometry() {}
 
     // ==========================================================================
@@ -179,12 +191,18 @@ public final class NoteGeometry {
 
         baseAccidentalBoundsSs = new AccidentalBounds[ACCIDENTAL_COMPONENTS.length];
         baseAccidentalParenthesisBoundsSs = new AccidentalBounds[ACCIDENTAL_COMPONENTS.length];
+        closestAccidentalBoundsSs = new AccidentalBounds[ACCIDENTAL_COMPONENTS.length];
+        closestAccidentalParenthesisBoundsSs = new AccidentalBounds[ACCIDENTAL_COMPONENTS.length];
 
         for (var i = 0; i < ACCIDENTAL_COMPONENTS.length; i++) {
             baseAccidentalBoundsSs[i] = computeAccidentalBounds(
-                ACCIDENTAL_COMPONENTS[i], false, baseAccidentalWidthsSs[i]);
+                ACCIDENTAL_COMPONENTS[i], false, baseAccidentalWidthsSs[i], BBox::union);
             baseAccidentalParenthesisBoundsSs[i] = computeAccidentalBounds(
-                ACCIDENTAL_COMPONENTS[i], true, baseAccidentalParenthesisWidthsSs[i]);
+                ACCIDENTAL_COMPONENTS[i], true, baseAccidentalParenthesisWidthsSs[i], BBox::union);
+            closestAccidentalBoundsSs[i] = computeAccidentalBounds(
+                ACCIDENTAL_COMPONENTS[i], false, baseAccidentalWidthsSs[i], KEEP_RIGHTMOST);
+            closestAccidentalParenthesisBoundsSs[i] = computeAccidentalBounds(
+                ACCIDENTAL_COMPONENTS[i], true, baseAccidentalParenthesisWidthsSs[i], KEEP_RIGHTMOST);
         }
     }
 
@@ -259,6 +277,29 @@ public final class NoteGeometry {
      * bounds for them rather than scaled bounds.
      */
     public static @Nullable AccidentalBounds getAccidentalBoundsSs(StaffElement note) {
+        return accidentalBoundsFromTables(note, baseAccidentalBoundsSs, baseAccidentalParenthesisBoundsSs);
+    }
+
+    /**
+     * Returns the bounding box of only the glyph nearest the notehead, in staff-space units, using
+     * the same coordinate convention as {@link #getAccidentalBoundsSs}.
+     *
+     * <p>The accidental glyphs are laid out left to right with the notehead to the right, so the
+     * nearest glyph is the rightmost one: the right parenthesis for a parenthesized accidental,
+     * otherwise the last accidental component (e.g. the flat of a natural-flat). Ledger-line
+     * shortening checks only this glyph rather than the full accidental span.
+     *
+     * <p>Returns {@code null} under the same conditions as {@link #getAccidentalBoundsSs}.
+     */
+    public static @Nullable AccidentalBounds getClosestAccidentalComponentBoundsSs(StaffElement note) {
+        return accidentalBoundsFromTables(note, closestAccidentalBoundsSs, closestAccidentalParenthesisBoundsSs);
+    }
+
+    private static @Nullable AccidentalBounds accidentalBoundsFromTables(
+        StaffElement note,
+        @Nullable AccidentalBounds @Nullable [] baseTable,
+        @Nullable AccidentalBounds @Nullable [] parenthesisTable
+    ) {
         var accidental = note.getAccidental();
 
         if (accidental == null) {
@@ -270,12 +311,10 @@ public final class NoteGeometry {
             return null;
         }
 
-        var table = note.isAccidentalInParentheses()
-            ? baseAccidentalParenthesisBoundsSs
-            : baseAccidentalBoundsSs;
+        var table = note.isAccidentalInParentheses() ? parenthesisTable : baseTable;
 
         if (table == null) {
-            throw RuntimeError.exit("getAccidentalBoundsSs() called before initializeAccidentalWidths()");
+            throw RuntimeError.exit("accidentalBoundsFromTables() called before initializeAccidentalWidths()");
         }
 
         return table[accidental.ordinal()];
@@ -285,13 +324,122 @@ public final class NoteGeometry {
     // Notehead / Ledger Line Geometry
     // ==========================================================================
 
-    /** Returns the ledger line overhang in staff spaces, or 0 if the note needs no ledger lines. */
-    public static double getLedgerLineOverhangSs(StaffElement note) {
-        if (Math.abs(note.getStaffPosition()) <= 5 || !note.getType().drawStaveLongitude()) {
-            return 0.0;
-        }
+    /**
+     * Horizontal extent of a ledger line, in staff spaces relative to the note origin
+     * (X right-positive). {@code leftSs} and {@code rightSs} are the line's left and right edges.
+     */
+    public record LedgerExtentSs(double leftSs, double rightSs) {}
 
-        return Engraving.LEDGER_LINE_EXTENSION_SS;
+    /** Outermost staff-line position (top/bottom line); |position| beyond this needs ledger lines. */
+    private static final int OUTERMOST_STAFF_LINE_POSITION = 5;
+
+    /**
+     * Per-note ledger-line geometry: the y-invariant base extent plus the data needed to shorten any
+     * individual ledger line for the nearest accidental. This is identical for all of a note's ledger
+     * lines, so compute it once (via {@link #getLedgerLineGeometry}) and call {@link #extentAtSs} per
+     * line rather than recomputing the head/accidental geometry for each.
+     *
+     * <p>Coordinate convention (note-relative, X right-positive, Y down-positive):
+     *
+     * <pre>
+     *                       note origin (x = 0)
+     *                            |
+     *         headLeft           |          headRight
+     *            |               |              |
+     *    --------+---------------+--------------+--------   ← a ledger line (one of several),
+     *    |       |          width = headRight - headLeft    drawn at note-relative y = yOffsetSs
+     *    |       |                              |       |   (Y increases downward)
+     * ledgerLeft |                              |  ledgerRight
+     *    <-------->                             <-------->
+     *    lf · width                             lf · width
+     *
+     *    accidental clamp midpoint = (accRight + headLeft) / 2
+     *      lands between the accidental's right edge and headLeft, i.e. right of ledgerLeft;
+     *      extentAtSs() pulls ledgerLeft in to this midpoint where an accidental spans the ledger's y.
+     * </pre>
+     */
+    public record LedgerLineGeometry(
+        LedgerExtentSs baseExtentSs,
+        @Nullable AccidentalBounds closestAccidentalSs,
+        double headLeftSs
+    ) {
+        /**
+         * Extent of the ledger line at note-relative {@code yOffsetSs} (Y down-positive, note-center
+         * origin, matching {@link NoteGeometry#getAccidentalBoundsSs}). Where the nearest accidental
+         * spans this ledger's Y, pulls the left edge in to the midpoint between the accidental's right
+         * edge and the notehead's left edge (LilyPond's per-head accidental shortening); otherwise
+         * returns the base extent unchanged.
+         */
+        public LedgerExtentSs extentAtSs(double yOffsetSs) {
+            // closestAccidentalSs and yOffsetSs share the note-center, Y-down origin, so the closed
+            // vertical-range test needs no coordinate conversion. The max is the only guard (LilyPond
+            // left_shorten = max(dist - ledgerLeft, 0)); there is no accRight > ledgerLeft precondition.
+            if (closestAccidentalSs == null
+                || yOffsetSs < closestAccidentalSs.topSs()
+                || yOffsetSs > closestAccidentalSs.botSs()) {
+                return baseExtentSs;
+            }
+
+            var accidentalRightSs = closestAccidentalSs.leftSs() + closestAccidentalSs.widthSs();
+            var ledgerLeftSs = Math.max(baseExtentSs.leftSs(), (accidentalRightSs + headLeftSs) / 2);
+
+            return new LedgerExtentSs(ledgerLeftSs, baseExtentSs.rightSs());
+        }
+    }
+
+    /**
+     * Returns whether a note requires ledger lines: notes within the staff
+     * (|staffPosition| ≤ {@value #OUTERMOST_STAFF_LINE_POSITION}) or whose type does not draw staff
+     * longitude get no ledger lines.
+     */
+    public static boolean noteNeedsLedgerLines(StaffElement note) {
+        return Math.abs(note.getStaffPosition()) > OUTERMOST_STAFF_LINE_POSITION
+            && note.getType().drawStaveLongitude();
+    }
+
+    /**
+     * Returns the {@link LedgerLineGeometry} for {@code note}: its base ledger extent plus the data
+     * needed to shorten individual ledger lines for the nearest accidental. Compute this once per
+     * note and reuse it across the note's ledger lines.
+     *
+     * <p>Each side of the base extent runs beyond the notehead bbox by
+     * {@link Engraving#LEDGER_LINE_LENGTH_FRACTION} × notehead width (LilyPond's proportional rule).
+     *
+     * <p>Every note type passing {@link #noteNeedsLedgerLines} yields a non-null glyph via
+     * {@code requireSMuFLGlyph()}, and {@code bbox.left()} is {@code 0.0} for all noteheads, so no
+     * fallback or left-edge constant is needed.
+     */
+    public static LedgerLineGeometry getLedgerLineGeometry(StaffElement note) {
+        var noteType = note.getType();
+        var bbox = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph());
+        var upper = noteType.isGraceNote() || note.isUpper();
+        var offsetSs = getNoteheadXOffsetSs(noteType, upper);
+        var headLeftSs = offsetSs + bbox.left();
+        var headRightSs = offsetSs + bbox.right();
+        var widthSs = headRightSs - headLeftSs;
+        var extensionSs = Engraving.LEDGER_LINE_LENGTH_FRACTION * widthSs;
+        var baseExtentSs = new LedgerExtentSs(headLeftSs - extensionSs, headRightSs + extensionSs);
+
+        return new LedgerLineGeometry(baseExtentSs, getClosestAccidentalComponentBoundsSs(note), headLeftSs);
+    }
+
+    /**
+     * Returns the base horizontal extent of every ledger line for {@code note} (head geometry only —
+     * no accidental shortening), in staff spaces relative to the note origin. Convenience wrapper over
+     * {@link #getLedgerLineGeometry} for callers that need the base extent alone.
+     */
+    public static LedgerExtentSs getLedgerLineBaseExtentSs(StaffElement note) {
+        return getLedgerLineGeometry(note).baseExtentSs();
+    }
+
+    /**
+     * Returns the horizontal extent of the single ledger line at note-relative {@code yOffsetSs},
+     * applying per-head accidental shortening. Convenience wrapper over {@link #getLedgerLineGeometry}
+     * followed by {@link LedgerLineGeometry#extentAtSs}; callers drawing all of a note's ledger lines
+     * should reuse one {@link LedgerLineGeometry} instead of calling this per line.
+     */
+    public static LedgerExtentSs getLedgerLineExtentSs(StaffElement note, double yOffsetSs) {
+        return getLedgerLineGeometry(note).extentAtSs(yOffsetSs);
     }
 
     /**
@@ -392,19 +540,28 @@ public final class NoteGeometry {
             + PAREN_RIGHT_KERNING.getOrDefault(components[components.length - 1], 0f);
     }
 
+    /**
+     * Folds the bounding boxes of a note's accidental glyphs into a single {@link AccidentalBounds},
+     * combining successive (left-to-right) glyph boxes with {@code combine}.
+     *
+     * <p>{@code combine} selects what the result represents: {@link BBox#union} yields the full
+     * accidental span, while {@link #KEEP_RIGHTMOST} yields only the glyph nearest the notehead —
+     * the rightmost one (the right parenthesis when parenthesized, otherwise the last component such
+     * as the flat of a natural-flat), used for ledger-line shortening (see {@link #getLedgerLineExtentSs}).
+     */
     private static @Nullable AccidentalBounds computeAccidentalBounds(
         SMuFLGlyph[] components,
         boolean parenthesized,
-        float totalWidthSs
+        float totalWidthSs,
+        BinaryOperator<BBox> combine
     ) {
         var startX = -ACCIDENTAL_PADDING_SS - totalWidthSs;
         var accumulator = new BBox[]{null};
 
         // Base (non-grace) bounds: glyphs are laid out at full size.
         walkAccidentalGlyphs(components, parenthesized, startX, 1f, (glyph, xSs) -> {
-            var bbox = SMuFLMetadata.requireBBox(glyph);
-            var shifted = bbox.translateX(xSs);
-            accumulator[0] = (accumulator[0] == null) ? shifted : accumulator[0].union(shifted);
+            var shifted = SMuFLMetadata.requireBBox(glyph).translateX(xSs);
+            accumulator[0] = (accumulator[0] == null) ? shifted : combine.apply(accumulator[0], shifted);
         });
 
         var box = accumulator[0];

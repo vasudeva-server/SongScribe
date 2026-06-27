@@ -21,13 +21,22 @@
 package songscribe.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 
+import java.awt.Graphics2D;
+import java.awt.Shape;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.util.GraphicUtils.CapAdjustment;
 import songscribe.util.GraphicUtils.Unit;
 
 class GraphicUtilsTest extends UnitTest {
@@ -186,6 +195,89 @@ class GraphicUtilsTest extends UnitTest {
             } finally {
                 g2.dispose();
             }
+        }
+    }
+
+    @Nested
+    class DrawRoundedLine {
+
+        private static final double TOLERANCE = 1e-6;
+        private static final int IMAGE_SIZE = 100;
+        private static final double THICKNESS_SS = 2.0;
+
+        // A horizontal line, comfortably inside the image bounds.
+        private static final double X1 = 10.0;
+        private static final double X2 = 40.0;
+        private static final double Y = 25.0;
+
+        // A 45° line through the origin, for verifying angled placement.
+        private static final double ANGLED_END = 30.0;
+
+        /**
+         * Captures the single shape filled by {@code draw}, transformed back into device space.
+         * {@code drawRoundedLine} fills an axis-aligned round rect in the line's local frame and
+         * places it via the {@code g2} transform, so the captured local shape must be re-transformed
+         * by the transform that was active at fill time to recover the on-screen geometry.
+         */
+        private static Rectangle2D capturePlacedBounds(Consumer<Graphics2D> draw) {
+            var image = new BufferedImage(IMAGE_SIZE, IMAGE_SIZE, BufferedImage.TYPE_INT_ARGB);
+            var g2 = spy(image.createGraphics());
+            var placed = new Shape[]{null};
+
+            doAnswer(invocation -> {
+                Shape local = invocation.getArgument(0);
+                placed[0] = g2.getTransform().createTransformedShape(local);
+                return null;
+            }).when(g2).fill(any(Shape.class));
+
+            try {
+                draw.accept(g2);
+            } finally {
+                g2.dispose();
+            }
+
+            assertThat(placed[0]).as("drawRoundedLine must fill exactly one shape").isNotNull();
+
+            return placed[0].getBounds2D();
+        }
+
+        @Test
+        void testHorizontalLineNoneSpansExactlyEndpoints() {
+            var bounds = capturePlacedBounds(g2 ->
+                GraphicUtils.drawRoundedLine(g2, X1, Y, X2, Y, THICKNESS_SS));
+
+            assertThat(bounds.getMinX()).as("left end at x1").isCloseTo(X1, within(TOLERANCE));
+            assertThat(bounds.getMaxX()).as("right end at x2").isCloseTo(X2, within(TOLERANCE));
+            assertThat(bounds.getCenterY()).as("centered on y").isCloseTo(Y, within(TOLERANCE));
+            assertThat(bounds.getHeight()).as("height equals thickness").isCloseTo(THICKNESS_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testHorizontalLineExtendExtendsEachEndByHalfThickness() {
+            var bounds = capturePlacedBounds(g2 ->
+                GraphicUtils.drawRoundedLine(g2, X1, Y, X2, Y, THICKNESS_SS, CapAdjustment.EXTEND));
+
+            // EXTEND pushes each end out by half the thickness past the given coordinates.
+            assertThat(bounds.getMinX())
+                .as("left end extended by half thickness")
+                .isCloseTo(X1 - THICKNESS_SS / 2, within(TOLERANCE));
+            assertThat(bounds.getMaxX())
+                .as("right end extended by half thickness")
+                .isCloseTo(X2 + THICKNESS_SS / 2, within(TOLERANCE));
+        }
+
+        @Test
+        void testAngledLineCenteredOnMidpoint() {
+            // A line from the origin to (ANGLED_END, ANGLED_END): the placed shape must rotate to the
+            // 45° angle, so its bounds centre lands on the line midpoint (verifying rotation + placement
+            // for non-axis-aligned lines, the glissando case).
+            var bounds = capturePlacedBounds(g2 ->
+                GraphicUtils.drawRoundedLine(g2, 0, 0, ANGLED_END, ANGLED_END, THICKNESS_SS));
+
+            assertThat(bounds.getCenterX()).isCloseTo(ANGLED_END / 2, within(TOLERANCE));
+            assertThat(bounds.getCenterY()).isCloseTo(ANGLED_END / 2, within(TOLERANCE));
+            // A 45° line's bounding box is square; a non-rotated fill would be wide and flat instead.
+            assertThat(bounds.getWidth()).isCloseTo(bounds.getHeight(), within(TOLERANCE));
         }
     }
 }

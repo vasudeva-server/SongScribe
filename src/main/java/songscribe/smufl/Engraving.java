@@ -31,7 +31,9 @@ public final class Engraving {
     public static final double BEAM_SPACING_SS;
     public static final double REPEAT_BARLINE_DOT_SEPARATION_SS;
     public static final double LEDGER_LINE_THICKNESS_SS;
-    public static final double LEDGER_LINE_EXTENSION_SS = 0.25;
+    // LilyPond length-fraction default: a dimensionless multiplier on the notehead width that
+    // sets how far each ledger line extends beyond the notehead bbox on each side.
+    public static final double LEDGER_LINE_LENGTH_FRACTION = 0.25;
     public static final double TIE_MIDPOINT_THICKNESS_SS;
 
     // Glyph advance widths

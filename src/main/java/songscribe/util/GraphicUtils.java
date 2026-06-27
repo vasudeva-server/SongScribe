@@ -345,24 +345,66 @@ public final class GraphicUtils {
         mediaTracker = mt;
     }
 
+    /** Whether {@link #drawRoundedLine} extends the line's ends past the given endpoints. */
+    public enum CapAdjustment {
+        /** Ends stay within the endpoints; the line spans exactly {@code [start, end]}. */
+        NONE,
+
+        /**
+         * Each end extends by half the thickness past the endpoint (matching old {@code CAP_ROUND}
+         * stroking), so a perpendicular line tucks cleanly into a corner without a gap — e.g. the
+         * vertical arms of tuplet/ending brackets meeting the horizontal top.
+         */
+        EXTEND
+    }
+
     /**
-     * Draws a line with round end caps.
-     * All coordinates are in the current (local) coordinate system of {@code g2}.
-     *
-     * @param g2          graphics context
-     * @param x1          starting X
-     * @param y1          starting Y
-     * @param x2          ending X
-     * @param y2          ending Y
-     * @param thicknessSs line thickness in staff spaces
+     * Draws a line of the given thickness with fully rounded ends, at any angle, with ends contained
+     * within the endpoints. Delegates to
+     * {@link #drawRoundedLine(Graphics2D, double, double, double, double, double, CapAdjustment)}
+     * with {@link CapAdjustment#NONE}.
      */
-    public static void drawLine(
+    public static void drawRoundedLine(
         Graphics2D g2, double x1, double y1, double x2, double y2, double thicknessSs
     ) {
-        var oldStroke = g2.getStroke();
-        g2.setStroke(new BasicStroke((float) thicknessSs, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.draw(new Line2D.Double(x1, y1, x2, y2));
-        g2.setStroke(oldStroke);
+        drawRoundedLine(g2, x1, y1, x2, y2, thicknessSs, CapAdjustment.NONE);
+    }
+
+    /**
+     * Draws a line of the given thickness with fully rounded ends, at any angle.
+     *
+     * <p>This is the single rounded-line primitive — staff lines, ledger lines,
+     * tuplet/ending brackets, and glissandos all go through it. It fills a round rect
+     * rather than stroking a {@link Line2D} with {@code CAP_ROUND}: a round cap bulges
+     * half the thickness past each endpoint, making the line render longer than its
+     * coordinates. The round rect is built in the line's own frame and placed via the
+     * {@code g2} transform (translate to the start, rotate to the line angle), so it spans exactly
+     * {@code [start, end]} at any angle with the rounded ends contained within the endpoints
+     * ({@code arc == thickness}). Filling the untransformed rect this way avoids the per-call
+     * {@code Path2D} that {@code createTransformedShape} would otherwise allocate on a hot path.
+     *
+     * <p>Butt-capped lines (e.g. lyric connectors) must not use this method.
+     *
+     * @param capAdjustment {@link CapAdjustment#EXTEND} extends each end by {@code thicknessSs / 2}
+     *                      beyond the given coordinates; {@link CapAdjustment#NONE} keeps the ends
+     *                      within the endpoints.
+     */
+    public static void drawRoundedLine(
+        Graphics2D g2, double x1, double y1, double x2, double y2, double thicknessSs,
+        CapAdjustment capAdjustment
+    ) {
+        var dxSs = x2 - x1;
+        var dySs = y2 - y1;
+        var lengthSs = Math.hypot(dxSs, dySs);
+        var capSs = (capAdjustment == CapAdjustment.EXTEND) ? thicknessSs / 2.0 : 0;
+        var lineShape = new RoundRectangle2D.Double(
+            -capSs, -thicknessSs / 2.0, lengthSs + 2 * capSs, thicknessSs, thicknessSs, thicknessSs);
+
+        var savedTransform = g2.getTransform();
+        g2.translate(x1, y1);
+        g2.rotate(Math.atan2(dySs, dxSs));
+        g2.fill(lineShape);
+        g2.setTransform(savedTransform);
     }
 
     /**

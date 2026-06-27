@@ -21,7 +21,6 @@
 package songscribe.ui.renderer;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
@@ -32,6 +31,7 @@ import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LineThickness;
 import songscribe.dom.ScaleContext;
+import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 
 /**
@@ -538,16 +538,14 @@ public final class GlissandoRenderer {
             glissando.hasCachedGeometry = true;
         }
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
+        var thicknessSs = LineThickness.getInstance().glissandoSs();
+
+        try (var ignored = GraphicsState.save(g2, COLOR)) {
             g2.setColor(color);
-            g2.translate(endpoints.startXSs(), endpoints.startYSs());
-            g2.rotate(endpoints.angle());
-            var thicknessSs = LineThickness.getInstance().glissandoSs();
-            g2.fill(new RoundRectangle2D.Double(
-                0, -thicknessSs / 2.0,
-                length, thicknessSs,
-                thicknessSs, thicknessSs
-            ));
+            GraphicUtils.drawRoundedLine(g2,
+                endpoints.startXSs(), endpoints.startYSs(),
+                endpoints.endXSs(), endpoints.endYSs(),
+                thicknessSs);
         }
     }
 

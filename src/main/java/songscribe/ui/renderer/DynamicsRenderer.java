@@ -103,6 +103,9 @@ public final class DynamicsRenderer {
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
             g2.setColor(RenderingUtils.ELEMENT_COLOR);
+            // CAP_ROUND is intentional: its cap extends past the endpoint, so both lines
+            // overlap at the narrow tip and fill it solidly. GraphicUtils.drawRoundedLine
+            // keeps ends within endpoints, which leaves the tip visually unclosed.
             g2.setStroke(new BasicStroke(
                 (float) invariants.getLineThickness().hairpinSs(),
                 BasicStroke.CAP_ROUND,

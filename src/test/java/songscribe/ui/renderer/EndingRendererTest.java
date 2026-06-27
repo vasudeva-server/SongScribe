@@ -22,10 +22,13 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import java.util.ArrayList;
 import java.util.Objects;
 
 import module java.desktop;
@@ -131,22 +134,26 @@ class EndingRendererTest extends UnitTest {
 
         // Use a spy on a real Graphics2D so font/transform calls succeed
         var g2 = spy(realG2());
+
+        // drawRoundedLine fills an untransformed round rect and places it via the g2 transform, so
+        // record each shape transformed into device space at fill time.
+        var placedShapes = new ArrayList<Shape>();
+        doAnswer(invocation -> {
+            Shape local = invocation.getArgument(0);
+            placedShapes.add(g2.getTransform().createTransformedShape(local));
+            return null;
+        }).when(g2).fill(any(Shape.class));
+
         RENDERER.renderEndings(g2, line, 0, invariants);
 
-        // The horizontal bracket top is drawn via drawLine → g2.draw(Line2D)
-        // Capture the drawn shape and verify its Y matches the expected component Y
-        var shapeCap = org.mockito.ArgumentCaptor.forClass(Shape.class);
-        verify(g2, org.mockito.Mockito.atLeastOnce()).draw(shapeCap.capture());
-
-        var drawnLines = shapeCap.getAllValues().stream()
-            .filter(s -> s instanceof Line2D)
-            .map(s -> (Line2D) s)
+        // The horizontal bracket top is the wider-than-tall fill; its center Y = expectedTopYSs.
+        var horizontalBounds = placedShapes.stream()
+            .map(Shape::getBounds2D)
+            .filter(bounds -> bounds.getWidth() > bounds.getHeight())
             .toList();
 
-        assertThat(drawnLines).isNotEmpty();
-        // The first drawn line is the horizontal bracket top; its Y = expectedTopYSs
-        var topLine = drawnLines.getFirst();
-        assertThat(topLine.getY1()).isCloseTo(expectedTopYSs, within(TOLERANCE));
-        assertThat(topLine.getY2()).isCloseTo(expectedTopYSs, within(TOLERANCE));
+        assertThat(horizontalBounds).isNotEmpty();
+        var topBounds = horizontalBounds.getFirst();
+        assertThat(topBounds.getCenterY()).isCloseTo(expectedTopYSs, within(TOLERANCE));
     }
 }
