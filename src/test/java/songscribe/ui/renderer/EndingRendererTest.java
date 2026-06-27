@@ -133,7 +133,7 @@ class EndingRendererTest extends UnitTest {
         var g2 = spy(realG2());
         RENDERER.renderEndings(g2, line, 0, invariants);
 
-        // The horizontal bracket top is drawn via fillHorizontalLine → g2.draw(Line2D)
+        // The horizontal bracket top is drawn via drawLine → g2.draw(Line2D)
         // Capture the drawn shape and verify its Y matches the expected component Y
         var shapeCap = org.mockito.ArgumentCaptor.forClass(Shape.class);
         verify(g2, org.mockito.Mockito.atLeastOnce()).draw(shapeCap.capture());

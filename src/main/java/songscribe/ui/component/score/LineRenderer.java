@@ -189,7 +189,7 @@ class LineRenderer {
             //               middleLineYSs + 1, middleLineYSs + 2
             for (var i = -2; i <= 2; i++) {
                 var centerY = middleLineYSs + i;
-                GraphicUtils.fillHorizontalLine(g2, 0, lineWidth, centerY, staffLineThicknessSs);
+                GraphicUtils.drawLine(g2, 0, centerY, lineWidth, centerY, staffLineThicknessSs);
             }
         }
     }

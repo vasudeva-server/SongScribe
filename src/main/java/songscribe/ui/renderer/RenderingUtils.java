@@ -196,7 +196,7 @@ public final class RenderingUtils {
         // draw ledger lines in their own color.
         var thicknessSs = invariants.getLineThickness().ledgerLineSs();
         var halfWidth = widthSs / 2.0;
-        GraphicUtils.fillHorizontalLine(g2, xSs - halfWidth, xSs + halfWidth, ySs, thicknessSs);
+        GraphicUtils.drawLine(g2, xSs - halfWidth, ySs, xSs + halfWidth, ySs, thicknessSs);
     }
 
     /**

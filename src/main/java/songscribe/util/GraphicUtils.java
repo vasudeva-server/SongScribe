@@ -346,40 +346,22 @@ public final class GraphicUtils {
     }
 
     /**
-     * Draws a horizontal line with round end caps.
+     * Draws a line with round end caps.
      * All coordinates are in the current (local) coordinate system of {@code g2}.
      *
      * @param g2          graphics context
-     * @param x1          left X (center of left end cap)
-     * @param x2          right X (center of right end cap)
-     * @param centerY     vertical center of the line
+     * @param x1          starting X
+     * @param y1          starting Y
+     * @param x2          ending X
+     * @param y2          ending Y
      * @param thicknessSs line thickness in staff spaces
      */
-    public static void fillHorizontalLine(
-        Graphics2D g2, double x1, double x2, double centerY, double thicknessSs
+    public static void drawLine(
+        Graphics2D g2, double x1, double y1, double x2, double y2, double thicknessSs
     ) {
         var oldStroke = g2.getStroke();
         g2.setStroke(new BasicStroke((float) thicknessSs, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.draw(new Line2D.Double(x1, centerY, x2, centerY));
-        g2.setStroke(oldStroke);
-    }
-
-    /**
-     * Draws a vertical line with round end caps.
-     * All coordinates are in the current (local) coordinate system of {@code g2}.
-     *
-     * @param g2          graphics context
-     * @param centerX     horizontal center of the line
-     * @param y1          top Y (center of top end cap)
-     * @param y2          bottom Y (center of bottom end cap)
-     * @param thicknessSs line thickness in staff spaces
-     */
-    public static void fillVerticalLine(
-        Graphics2D g2, double centerX, double y1, double y2, double thicknessSs
-    ) {
-        var oldStroke = g2.getStroke();
-        g2.setStroke(new BasicStroke((float) thicknessSs, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.draw(new Line2D.Double(centerX, y1, centerX, y2));
+        g2.draw(new Line2D.Double(x1, y1, x2, y2));
         g2.setStroke(oldStroke);
     }
 

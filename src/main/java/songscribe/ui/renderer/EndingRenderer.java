@@ -119,13 +119,13 @@ public final class EndingRenderer {
             g2.setColor(RenderingUtils.ELEMENT_COLOR);
 
             // Horizontal top
-            GraphicUtils.fillHorizontalLine(g2, x1, x2, yTopSs, thicknessSs);
+            GraphicUtils.drawLine(g2, x1, yTopSs, x2, yTopSs, thicknessSs);
 
             // Left vertical leg — round cap at top tucks inside the horizontal line
-            GraphicUtils.fillVerticalLine(g2, x1, yTopSs, yBottomSs, thicknessSs);
+            GraphicUtils.drawLine(g2, x1, yTopSs, x1, yBottomSs, thicknessSs);
 
             if (bracket.hasClosingStroke()) {
-                GraphicUtils.fillVerticalLine(g2, x2, yTopSs, yBottomSs, thicknessSs);
+                GraphicUtils.drawLine(g2, x2, yTopSs, x2, yBottomSs, thicknessSs);
             }
 
             // Draw ending label (e.g. "1." or "2.") using Bravura volta glyphs.

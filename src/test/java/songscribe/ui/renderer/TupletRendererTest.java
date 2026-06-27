@@ -112,7 +112,7 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        // fillHorizontalLine and fillVerticalLine each call g2.draw() — none should be called
+        // drawLine calls g2.draw() — none should be called
         verify(g2, never()).draw(any(Line2D.class));
     }
 

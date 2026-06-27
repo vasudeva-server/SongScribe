@@ -167,18 +167,16 @@ public final class TupletRenderer {
                 var gapRightXSs = gapCenterXSs + halfGapSs;
 
                 // Left bracket arm (from left endpoint to gap)
-                GraphicUtils.fillHorizontalLine(g2, leftXSs, gapLeftXSs, bracketYSs, thicknessSs);
+                GraphicUtils.drawLine(g2, leftXSs, bracketYSs, gapLeftXSs, bracketYSs, thicknessSs);
 
                 // Right bracket arm (from gap to right endpoint)
-                GraphicUtils.fillHorizontalLine(g2, gapRightXSs, rightXSs, bracketYSs, thicknessSs);
+                GraphicUtils.drawLine(g2, gapRightXSs, bracketYSs, rightXSs, bracketYSs, thicknessSs);
 
                 // Left vertical arm — round cap at top tucks inside the horizontal line
-                GraphicUtils.fillVerticalLine(g2, leftXSs,
-                    bracketYSs, bracketYSs + armHeightSs, thicknessSs);
+                GraphicUtils.drawLine(g2, leftXSs, bracketYSs, leftXSs, bracketYSs + armHeightSs, thicknessSs);
 
                 // Right vertical arm — round cap at top tucks inside the horizontal line
-                GraphicUtils.fillVerticalLine(g2, rightXSs,
-                    bracketYSs, bracketYSs + armHeightSs, thicknessSs);
+                GraphicUtils.drawLine(g2, rightXSs, bracketYSs, rightXSs, bracketYSs + armHeightSs, thicknessSs);
 
                 // Number is centered on the bracket line
                 numberBaselineYSs = bracketYSs - inkBounds.getCenterY();
