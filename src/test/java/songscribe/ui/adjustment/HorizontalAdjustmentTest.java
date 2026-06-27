@@ -75,12 +75,6 @@ class HorizontalAdjustmentTest extends UnitTest {
 
     private static final int HANDLE = HorizontalAdjustment.HANDLE_SIZE_PX;
 
-    /**
-     * Distance threshold below which an interactable snap-to-end note is snapped.
-     * Mirrors {@code END_SNAP_LIMIT} in {@link HorizontalAdjustment}.
-     */
-    private static final int END_SNAP_LIMIT = 30;
-
     private MockedStatic<MessageCenter> messageCenterMock;
     private Song song;
     private Line line;
@@ -147,15 +141,15 @@ class HorizontalAdjustmentTest extends UnitTest {
          * Row 21: when the note is not interactable (auto-maintained terminal,
          * {@code FINAL_DOUBLE_BARLINE}), {@code drag()} must NOT adjust
          * {@code endPoint.x}, even when the note type has {@code snapToEnd=true} and
-         * the cursor is within {@code END_SNAP_LIMIT} of the line end.
+         * the cursor is within {@code HorizontalAdjustment.END_SNAP_LIMIT} of the line end.
          */
         @Test
         void testFinalDoubleBarlineTerminalSkipsSnap() {
             when(mockSong.isInteractable(any(), any())).thenReturn(false);
             when(mockType.snapToEnd()).thenReturn(true);
 
-            // endPoint.x within END_SNAP_LIMIT of lineWidth — would snap if interactable
-            var endX = LINE_WIDTH_PX - (END_SNAP_LIMIT - 1);
+            // endPoint.x within HorizontalAdjustment.END_SNAP_LIMIT of lineWidth — would snap if interactable
+            var endX = LINE_WIDTH_PX - (HorizontalAdjustment.END_SNAP_LIMIT - 1);
             setUpDragState(endX, endX);
 
             ha.drag();
@@ -174,7 +168,7 @@ class HorizontalAdjustmentTest extends UnitTest {
             when(mockSong.isInteractable(any(), any())).thenReturn(false);
             when(mockType.snapToEnd()).thenReturn(true);
 
-            var endX = LINE_WIDTH_PX - (END_SNAP_LIMIT - 1);
+            var endX = LINE_WIDTH_PX - (HorizontalAdjustment.END_SNAP_LIMIT - 1);
             setUpDragState(endX, endX);
 
             ha.drag();
@@ -186,7 +180,7 @@ class HorizontalAdjustmentTest extends UnitTest {
 
         /**
          * Row 23: for an interactable note with {@code snapToEnd=true} (e.g., a barline
-         * that is not the auto-maintained terminal) positioned within {@code END_SNAP_LIMIT}
+         * that is not the auto-maintained terminal) positioned within {@code HorizontalAdjustment.END_SNAP_LIMIT}
          * of the line end, {@code drag()} must adjust {@code endPoint.x} to
          * {@code lineWidth − note.contentWidthPx}.
          */
@@ -197,8 +191,8 @@ class HorizontalAdjustmentTest extends UnitTest {
             when(mockType.snapToEnd()).thenReturn(true);
             when(mockNote.getContentWidthPx()).thenReturn(contentWidthPx);
 
-            // endPoint.x within END_SNAP_LIMIT of lineWidth
-            var endX = LINE_WIDTH_PX - (END_SNAP_LIMIT - 1);
+            // endPoint.x within HorizontalAdjustment.END_SNAP_LIMIT of lineWidth
+            var endX = LINE_WIDTH_PX - (HorizontalAdjustment.END_SNAP_LIMIT - 1);
             setUpDragState(endX, endX);
 
             ha.drag();

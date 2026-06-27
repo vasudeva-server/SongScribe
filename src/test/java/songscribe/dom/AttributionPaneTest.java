@@ -79,17 +79,8 @@ class AttributionPaneTest extends UnitTest {
         return bounds.width;
     }
 
-    // Mirrors AttributionPane's leading: a fixed gap, in staff spaces, between the
-    // descender of one line and the ascender of the next. Lines are boxed to the
-    // rendered height of AttributionPane.LINE_BOX_REFERENCE, separated only by this gap.
-    private static final double LEADING_SS = 0.5;
-    private static final int LEADING_PX = ScaleContext.ssToRoundedPx(LEADING_SS);
-
-    // Mirrors AttributionPane.SUB_ATTRIBUTION_GAP_SS: an extra gap, in staff
-    // spaces, added above the first sub-attribution line — at the transition from
-    // attribution to sub-attribution lines — on top of the normal leading.
-    private static final double SUB_ATTRIBUTION_GAP_SS = 0.5;
-    private static final int SUB_ATTRIBUTION_GAP_PX = ScaleContext.ssToRoundedPx(SUB_ATTRIBUTION_GAP_SS);
+    private static final int LEADING_PX = ScaleContext.ssToRoundedPx(AttributionPane.LEADING_SS);
+    private static final int SUB_ATTRIBUTION_GAP_PX = ScaleContext.ssToRoundedPx(AttributionPane.SUB_ATTRIBUTION_GAP_SS);
 
     // A line's height is the rendered ink height of AttributionPane.LINE_BOX_REFERENCE
     // in its font; leading is added separately, only between consecutive lines.

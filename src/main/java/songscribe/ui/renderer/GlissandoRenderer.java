@@ -74,7 +74,7 @@ public final class GlissandoRenderer {
      * Gap between the note column edge and the glissando endpoint, in staff spaces.
      * Keeps the drawn line clear of the note's ink on both ends.
      */
-    private static final double GLISSANDO_DRAWN_GAP_SS = 0.33;
+    static final double GLISSANDO_DRAWN_GAP_SS = 0.33;
 
     /** Hit-test tolerance in pixels (wider than visual thickness for easier clicking). */
     private static final double HIT_THICKNESS_PX = 8.0;

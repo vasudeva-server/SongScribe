@@ -42,6 +42,7 @@ import songscribe.message.notification.SongMetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.dom.Song;
 import songscribe.dom.Duration;
+import songscribe.dom.KeySignature;
 import songscribe.dom.KeyType;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -1878,7 +1879,6 @@ public class SongSettingsDialog extends StandardDialog {
     public static class KeyCellRenderer implements ListCellRenderer<KeySelection> {
 
         private static final float FONT_SIZE_PT = 120f;
-        private static final int MAX_ACCIDENTAL_COUNT = 7;
 
         private static final Font FONT = MyFontUtils.getIconFont()
             .deriveFont(FONT_SIZE_PT);
@@ -1893,7 +1893,7 @@ public class SongSettingsDialog extends StandardDialog {
         private static final Map<KeySelection, String> GLYPHS;
 
         static {
-            var selections = new ArrayList<KeySelection>(1 + 2 * MAX_ACCIDENTAL_COUNT);
+            var selections = new ArrayList<KeySelection>(1 + 2 * KeySignature.MAX_ACCIDENTAL_COUNT);
             var glyphs = new HashMap<KeySelection, String>();
 
             var noAccidentals = new KeySelection(KeyType.FLATS, 0);
@@ -1904,7 +1904,7 @@ public class SongSettingsDialog extends StandardDialog {
                 "\uF37F", "\uF380", "\uF381", "\uF382", "\uF383", "\uF384", "\uF385"
             };
 
-            for (var i = 0; i < MAX_ACCIDENTAL_COUNT; i++) {
+            for (var i = 0; i < KeySignature.MAX_ACCIDENTAL_COUNT; i++) {
                 var flatSelection = new KeySelection(KeyType.FLATS, i + 1);
                 selections.add(flatSelection);
                 glyphs.put(flatSelection, flatGlyphs[i]);
@@ -1914,7 +1914,7 @@ public class SongSettingsDialog extends StandardDialog {
                 "\uF378", "\uF379", "\uF37A", "\uF37B", "\uF37C", "\uF37D", "\uF37E"
             };
 
-            for (var i = 0; i < MAX_ACCIDENTAL_COUNT; i++) {
+            for (var i = 0; i < KeySignature.MAX_ACCIDENTAL_COUNT; i++) {
                 var sharpSelection = new KeySelection(KeyType.SHARPS, i + 1);
                 selections.add(sharpSelection);
                 glyphs.put(sharpSelection, sharpGlyphs[i]);

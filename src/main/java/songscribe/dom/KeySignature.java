@@ -34,10 +34,13 @@ import songscribe.smufl.SMuFLMetadata;
  */
 public class KeySignature extends LineElement {
 
+    /** Maximum number of accidentals in any standard key signature (0–7). */
+    public static final int MAX_ACCIDENTAL_COUNT = 7;
+
     /** The type of key signature (sharps or flats). */
     private KeyType keyType;
 
-    /** Number of accidentals (0-7). */
+    /** Number of accidentals (0–{@link #MAX_ACCIDENTAL_COUNT}). */
     private int accidentalCount;
 
     /**
@@ -55,7 +58,7 @@ public class KeySignature extends LineElement {
      */
     public KeySignature(KeyType keyType, int accidentalCount) {
         this.keyType = keyType;
-        this.accidentalCount = Math.clamp(accidentalCount, 0, 7);
+        this.accidentalCount = Math.clamp(accidentalCount, 0, MAX_ACCIDENTAL_COUNT);
 
         // Default margin from key signature to first note
         setMarginRightSs(1.0);
@@ -88,7 +91,7 @@ public class KeySignature extends LineElement {
      * @param accidentalCount Number of accidentals (clamped to 0-7)
      */
     public void setAccidentalCount(int accidentalCount) {
-        this.accidentalCount = Math.clamp(accidentalCount, 0, 7);
+        this.accidentalCount = Math.clamp(accidentalCount, 0, MAX_ACCIDENTAL_COUNT);
     }
 
     /**

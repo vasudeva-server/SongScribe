@@ -54,7 +54,6 @@ class MidiSequenceBuilderTest extends UnitTest {
     private static final int TEMPO_PERCENT_NORMAL = 100;
     private static final int DURATION_PERCENT_NORMAL = 100;
     private static final int BPM_FAST = 180;
-    private static final int MICROSECONDS_PER_MINUTE = 60_000_000;
     private static final int MIDI_CC_BANK_SELECT_MSB = 0;
     private static final int MIDI_CC_BANK_SELECT_LSB = 32;
 
@@ -309,7 +308,7 @@ class MidiSequenceBuilderTest extends UnitTest {
             );
             assertThat(encodedMicroseconds)
                 .as("initial SET_TEMPO encodes the mid-line tempo, not the song default")
-                .isEqualTo(MICROSECONDS_PER_MINUTE / BPM_FAST);
+                .isEqualTo(MidiEventFactory.MICROSECONDS_PER_MINUTE / BPM_FAST);
         }
     }
 

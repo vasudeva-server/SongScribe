@@ -48,7 +48,6 @@ class VerticalStackingCalculatorTest extends UnitTest {
     private static final Offset<Double> EPSILON = within(1e-10);
 
     // Staff geometry constants for expected-value calculations
-    private static final double STAFF_HEIGHT_SS = StaffExtents.STAFF_HEIGHT_SS;         // 4.0
     private static final double STAFF_HALF_SS = StaffExtents.STAFF_HALF_SS;             // 2.0
     private static final double MIN_ABOVE_STAFF_SS = StaffExtents.MIN_ABOVE_STAFF_SS;
     private static final double MIN_BELOW_STAFF_SS = StaffExtents.MIN_BELOW_STAFF_SS;
@@ -198,8 +197,8 @@ class VerticalStackingCalculatorTest extends UnitTest {
         @Test
         void testLineHeightAtLeastMinimumForEmptyColumns() {
             // With no elements and no attribution, the computed lineHeightSs must be at
-            // least STAFF_HEIGHT_SS + MIN_ABOVE_STAFF_SS + MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS.
-            var expectedMinHeight = STAFF_HEIGHT_SS
+            // least StaffExtents.STAFF_HEIGHT_SS + MIN_ABOVE_STAFF_SS + MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS.
+            var expectedMinHeight = StaffExtents.STAFF_HEIGHT_SS
                 + MIN_ABOVE_STAFF_SS
                 + MIN_BELOW_STAFF_SS
                 + INTER_LINE_MARGIN_SS;

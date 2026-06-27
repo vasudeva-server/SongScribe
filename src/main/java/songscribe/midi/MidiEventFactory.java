@@ -30,7 +30,7 @@ import songscribe.ui.playback.MidiMetaMessageTypes;
  */
 public final class MidiEventFactory {
 
-    private static final int MICROSECONDS_PER_MINUTE = 60_000_000;
+    static final int MICROSECONDS_PER_MINUTE = 60_000_000;
     private static final int PERCENT = 100;
     private static final int TEMPO_MESSAGE_LENGTH = 3;
 

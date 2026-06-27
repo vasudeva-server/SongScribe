@@ -69,10 +69,7 @@ import songscribe.layout.stacking.VerticalStackingCalculator;
  */
 public class LayoutEngine {
 
-    // Staff height in staff-space units
-    private static final double STAFF_HEIGHT_SS = StaffExtents.STAFF_HEIGHT_SS;
-
-    private static final double CLEF_X_POSITION_SS = 0.625;  // 5px
+    static final double CLEF_X_POSITION_SS = 0.625;  // 5px
 
     // Beam geometry constants (staff-space units unless noted)
     static final double BEAM_DEPTH_SS = 0.4;        // beam thickness

@@ -74,14 +74,14 @@ public class AttributionPane {
      * boxed to the rendered height of {@link #LINE_BOX_REFERENCE}, separated only
      * by this gap. No leading is added before the first line or after the last.
      */
-    private static final double LEADING_SS = 0.5;
+    static final double LEADING_SS = 0.5;
 
     /**
      * Additional vertical gap, in staff spaces, inserted above the first
      * sub-attribution line — at the transition from attribution to
      * sub-attribution lines — on top of the normal {@link #LEADING_SS} leading.
      */
-    private static final double SUB_ATTRIBUTION_GAP_SS = 0.5;
+    static final double SUB_ATTRIBUTION_GAP_SS = 0.5;
 
     /**
      * Reference glyphs whose rendered ink defines the uniform line-box height.

@@ -44,21 +44,20 @@ class MidiEventFactoryTest extends UnitTest {
     private static final int BPM_240 = 240;
     private static final int FULL_TEMPO_PERCENT = 100;
     private static final int DOUBLE_TEMPO_PERCENT = 200;
-    private static final int MICROSECONDS_PER_MINUTE = 60_000_000;
     private static final int TEMPO_DATA_LENGTH = 3;
 
     // Precomputed expected bytes for common BPM values — derived, not magic
-    private static final int MICROSECONDS_AT_120_BPM = MICROSECONDS_PER_MINUTE / BPM_120;
+    private static final int MICROSECONDS_AT_120_BPM = MidiEventFactory.MICROSECONDS_PER_MINUTE / BPM_120;
     private static final byte TEMPO_BYTE_HIGH_120 = (byte) (MICROSECONDS_AT_120_BPM >> 16);
     private static final byte TEMPO_BYTE_MID_120 = (byte) (MICROSECONDS_AT_120_BPM >> 8);
     private static final byte TEMPO_BYTE_LOW_120 = (byte) MICROSECONDS_AT_120_BPM;
 
-    private static final int MICROSECONDS_AT_60_BPM = MICROSECONDS_PER_MINUTE / BPM_60;
+    private static final int MICROSECONDS_AT_60_BPM = MidiEventFactory.MICROSECONDS_PER_MINUTE / BPM_60;
     private static final byte TEMPO_BYTE_HIGH_60 = (byte) (MICROSECONDS_AT_60_BPM >> 16);
     private static final byte TEMPO_BYTE_MID_60 = (byte) (MICROSECONDS_AT_60_BPM >> 8);
     private static final byte TEMPO_BYTE_LOW_60 = (byte) MICROSECONDS_AT_60_BPM;
 
-    private static final int MICROSECONDS_AT_240_BPM = MICROSECONDS_PER_MINUTE / BPM_240;
+    private static final int MICROSECONDS_AT_240_BPM = MidiEventFactory.MICROSECONDS_PER_MINUTE / BPM_240;
     private static final byte TEMPO_BYTE_HIGH_240 = (byte) (MICROSECONDS_AT_240_BPM >> 16);
     private static final byte TEMPO_BYTE_MID_240 = (byte) (MICROSECONDS_AT_240_BPM >> 8);
     private static final byte TEMPO_BYTE_LOW_240 = (byte) MICROSECONDS_AT_240_BPM;

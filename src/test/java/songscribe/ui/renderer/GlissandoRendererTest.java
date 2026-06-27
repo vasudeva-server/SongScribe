@@ -50,9 +50,6 @@ import songscribe.ui.component.score.LineComponent;
 
 class GlissandoRendererTest extends UnitTest {
 
-    /** Gap between column edge and glissando endpoint, mirroring GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS. */
-    private static final double GLISSANDO_DRAWN_GAP_SS = 0.25;
-
     /** Half-width used to define synthetic column extents in noteContextAt(). */
     private static final double HALF_COLUMN_SS = 0.5;
 
@@ -422,8 +419,8 @@ class GlissandoRendererTest extends UnitTest {
     /**
      * Builds a NoteContext for a crotchet centred at (cxSs, cySs) with a symmetric
      * half-column extent of HALF_COLUMN_SS on each side, no flag bbox.
-     * startX = cxSs + HALF_COLUMN_SS + GLISSANDO_DRAWN_GAP_SS
-     * endX   = cxSs - HALF_COLUMN_SS - GLISSANDO_DRAWN_GAP_SS
+     * startX = cxSs + HALF_COLUMN_SS + GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS
+     * endX   = cxSs - HALF_COLUMN_SS - GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS
      */
     private static GlissandoRenderer.NoteContext noteContextAt(double cxSs, double cySs) {
         var note = ElementType.CROTCHET.newInstance();
@@ -476,8 +473,8 @@ class GlissandoRendererTest extends UnitTest {
         assertThat(result).isNotNull();
 
         var endpoints = Objects.requireNonNull(result);
-        var expectedStartX = srcCx + HALF_COLUMN_SS + GLISSANDO_DRAWN_GAP_SS;
-        var expectedEndX = tgtCx - HALF_COLUMN_SS - GLISSANDO_DRAWN_GAP_SS;
+        var expectedStartX = srcCx + HALF_COLUMN_SS + GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
+        var expectedEndX = tgtCx - HALF_COLUMN_SS - GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
         assertThat(endpoints.startXSs()).isCloseTo(expectedStartX, within(0.01));
         assertThat(endpoints.endXSs()).isCloseTo(expectedEndX, within(0.01));
         assertThat(endpoints.startYSs()).isCloseTo(0.0, within(0.01));
@@ -540,7 +537,7 @@ class GlissandoRendererTest extends UnitTest {
         var result = GlissandoRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
-        var expectedStartX = flagRight + GLISSANDO_DRAWN_GAP_SS;
+        var expectedStartX = flagRight + GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
         assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
     }
 
@@ -560,7 +557,7 @@ class GlissandoRendererTest extends UnitTest {
         var result = GlissandoRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
-        var expectedStartX = columnRight + GLISSANDO_DRAWN_GAP_SS;
+        var expectedStartX = columnRight + GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
         assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
     }
 
@@ -580,7 +577,7 @@ class GlissandoRendererTest extends UnitTest {
         var result = GlissandoRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
-        var expectedEndX = flagLeft - GLISSANDO_DRAWN_GAP_SS;
+        var expectedEndX = flagLeft - GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
         assertThat(Objects.requireNonNull(result).endXSs()).isCloseTo(expectedEndX, within(0.01));
     }
 
@@ -599,7 +596,7 @@ class GlissandoRendererTest extends UnitTest {
         var result = GlissandoRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
-        var expectedEndX = columnLeft - GLISSANDO_DRAWN_GAP_SS;
+        var expectedEndX = columnLeft - GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
         assertThat(Objects.requireNonNull(result).endXSs()).isCloseTo(expectedEndX, within(0.01));
     }
 
@@ -618,7 +615,7 @@ class GlissandoRendererTest extends UnitTest {
         var result = GlissandoRenderer.computeEndpoints(src, null);
         assertThat(result).isNotNull();
 
-        var expectedStartX = flagRight + GLISSANDO_DRAWN_GAP_SS;
+        var expectedStartX = flagRight + GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
         assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
     }
 

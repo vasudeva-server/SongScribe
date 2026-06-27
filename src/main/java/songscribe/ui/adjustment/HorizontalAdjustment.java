@@ -35,7 +35,7 @@ import songscribe.util.GraphicsState;
 
 public class HorizontalAdjustment extends Adjustment {
 
-    private static final int END_SNAP_LIMIT = 30;
+    static final int END_SNAP_LIMIT = 30;
 
     /** Side length (width and height) of each drag handle in pixels. */
     static final int HANDLE_SIZE_PX = 8;

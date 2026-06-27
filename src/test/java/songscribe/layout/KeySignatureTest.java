@@ -39,11 +39,10 @@ class KeySignatureTest extends UnitTest {
 
     // Clamp bounds for accidentalCount — mirror the production contract
     private static final int MIN_ACCIDENTAL_COUNT = 0;
-    private static final int MAX_ACCIDENTAL_COUNT = 7;
 
     // Sentinel values that lie one step outside the legal range
     private static final int BELOW_MIN_ACCIDENTAL_COUNT = -1;
-    private static final int ABOVE_MAX_ACCIDENTAL_COUNT = 8;
+    private static final int ABOVE_MAX_ACCIDENTAL_COUNT = KeySignature.MAX_ACCIDENTAL_COUNT + 1;
 
     // -----------------------------------------------------------------------
     // Row 37 + Row 42: constructor and setAccidentalCount clamp to 0–7
@@ -64,7 +63,7 @@ class KeySignatureTest extends UnitTest {
         void testConstructorClampsAboveMaxToMax() {
             var keySig = new KeySignature(KeyType.SHARPS, ABOVE_MAX_ACCIDENTAL_COUNT);
 
-            assertThat(keySig.getAccidentalCount()).isEqualTo(MAX_ACCIDENTAL_COUNT);
+            assertThat(keySig.getAccidentalCount()).isEqualTo(KeySignature.MAX_ACCIDENTAL_COUNT);
         }
 
         @Test
@@ -80,7 +79,7 @@ class KeySignatureTest extends UnitTest {
             var keySig = new KeySignature(KeyType.SHARPS, MIN_ACCIDENTAL_COUNT);
             keySig.setAccidentalCount(ABOVE_MAX_ACCIDENTAL_COUNT);
 
-            assertThat(keySig.getAccidentalCount()).isEqualTo(MAX_ACCIDENTAL_COUNT);
+            assertThat(keySig.getAccidentalCount()).isEqualTo(KeySignature.MAX_ACCIDENTAL_COUNT);
         }
     }
 
@@ -126,7 +125,7 @@ class KeySignatureTest extends UnitTest {
         // type NONE → false regardless of count
         @Test
         void testHasAccidentalsReturnsFalseWhenTypeIsNone() {
-            var keySig = new KeySignature(KeyType.NONE, MAX_ACCIDENTAL_COUNT);
+            var keySig = new KeySignature(KeyType.NONE, KeySignature.MAX_ACCIDENTAL_COUNT);
 
             assertThat(keySig.hasAccidentals()).isFalse();
         }
@@ -134,7 +133,7 @@ class KeySignatureTest extends UnitTest {
         // count > 0 and type != NONE → true
         @Test
         void testHasAccidentalsReturnsTrueWhenCountPositiveAndTypeNotNone() {
-            var keySig = new KeySignature(KeyType.SHARPS, MAX_ACCIDENTAL_COUNT);
+            var keySig = new KeySignature(KeyType.SHARPS, KeySignature.MAX_ACCIDENTAL_COUNT);
 
             assertThat(keySig.hasAccidentals()).isTrue();
         }
