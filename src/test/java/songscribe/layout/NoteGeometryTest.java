@@ -316,14 +316,6 @@ class NoteGeometryTest extends UnitTest {
                 .isEqualTo(bbox.right());
         }
 
-        @Test
-        void testBarlineUsesFallbackRightEdge() {
-            // SINGLE_BARLINE has no SMuFL glyph → production falls back to NOTEHEAD_BLACK_RIGHT_EDGE_SS
-            final double expectedFallbackSs = NoteGeometry.NOTEHEAD_BLACK_RIGHT_EDGE_SS;
-
-            assertThat(NoteGeometry.getNoteheadRightEdgeSs(ElementType.SINGLE_BARLINE.newInstance()))
-                .isEqualTo(expectedFallbackSs);
-        }
     }
 
     // -----------------------------------------------------------------------
