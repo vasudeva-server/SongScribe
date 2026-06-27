@@ -185,11 +185,6 @@ public final class RenderingUtils {
 
     /**
      * Draws a ledger line for a note above or below the staff.
-     * <p>
-     * Uses a filled rounded rectangle with pixel-snapped top/bottom edges
-     * (same technique as {@code LineRenderer.drawStaffLines()}) to avoid
-     * antialiasing fuzz. The semicircular ends come from setting the arc
-     * height equal to the snapped thickness.
      *
      * @param g2       Graphics context
      * @param xSs      Center X position of the note in staff spaces

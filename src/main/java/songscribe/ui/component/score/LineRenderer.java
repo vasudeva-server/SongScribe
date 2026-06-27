@@ -168,8 +168,7 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Draws the 5 staff lines as filled rounded rectangles snapped to device pixels.
-     * Package-private for testing.
+     * Draws the 5 staff lines. Package-private for testing.
      */
     void drawStaffLines(Graphics2D g2, LineInvariants invariants) {
         var selectionProvider = invariants.getSelectionProvider();
