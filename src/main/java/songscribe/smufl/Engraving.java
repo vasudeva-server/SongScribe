@@ -31,7 +31,7 @@ public final class Engraving {
     public static final double BEAM_SPACING_SS;
     public static final double REPEAT_BARLINE_DOT_SEPARATION_SS;
     public static final double LEDGER_LINE_THICKNESS_SS;
-    public static final double LEDGER_LINE_EXTENSION_SS;
+    public static final double LEDGER_LINE_EXTENSION_SS = 0.25;
     public static final double TIE_MIDPOINT_THICKNESS_SS;
 
     // Glyph advance widths
@@ -52,7 +52,6 @@ public final class Engraving {
         BEAM_SPACING_SS = defaults.beamSpacing();
         REPEAT_BARLINE_DOT_SEPARATION_SS = defaults.repeatBarlineDotSeparation();
         LEDGER_LINE_THICKNESS_SS = defaults.legerLineThickness();
-        LEDGER_LINE_EXTENSION_SS = defaults.legerLineExtension();
         TIE_MIDPOINT_THICKNESS_SS = defaults.tieMidpointThickness();
 
         NOTE_HEAD_WIDTH_SS = SMuFLMetadata.noteHeadWidthSs();
