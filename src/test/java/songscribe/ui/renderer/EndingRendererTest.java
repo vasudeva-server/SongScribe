@@ -135,25 +135,20 @@ class EndingRendererTest extends UnitTest {
         // Use a spy on a real Graphics2D so font/transform calls succeed
         var g2 = spy(realG2());
 
-        // drawRoundedLine fills an untransformed round rect and places it via the g2 transform, so
-        // record each shape transformed into device space at fill time.
+        // drawPath passes a Path2D directly to draw() without touching the graphics transform,
+        // so capture the path as-is.
         var placedShapes = new ArrayList<Shape>();
         doAnswer(invocation -> {
             Shape local = invocation.getArgument(0);
-            placedShapes.add(g2.getTransform().createTransformedShape(local));
+            placedShapes.add(local);
             return null;
-        }).when(g2).fill(any(Shape.class));
+        }).when(g2).draw(any(Shape.class));
 
         RENDERER.renderEndings(g2, line, 0, invariants);
 
-        // The horizontal bracket top is the wider-than-tall fill; its center Y = expectedTopYSs.
-        var horizontalBounds = placedShapes.stream()
-            .map(Shape::getBounds2D)
-            .filter(bounds -> bounds.getWidth() > bounds.getHeight())
-            .toList();
-
-        assertThat(horizontalBounds).isNotEmpty();
-        var topBounds = horizontalBounds.getFirst();
-        assertThat(topBounds.getCenterY()).isCloseTo(expectedTopYSs, within(TOLERANCE));
+        // The bracket path's minimum Y is the top of the bracket (the horizontal segment).
+        assertThat(placedShapes).isNotEmpty();
+        var bracketBounds = placedShapes.getFirst().getBounds2D();
+        assertThat(bracketBounds.getMinY()).isCloseTo(expectedTopYSs, within(TOLERANCE));
     }
 }

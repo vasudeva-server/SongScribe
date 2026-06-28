@@ -324,7 +324,7 @@ class SlideRendererTest extends UnitTest {
             .build();
 
         var color = RENDERER.determineSlideColor(
-            0, false, invariants);
+            0, true, invariants);
 
         assertThat(color).isEqualTo(ScoreView.getSelectionColor());
     }
@@ -341,7 +341,7 @@ class SlideRendererTest extends UnitTest {
             .build();
 
         var color = RENDERER.determineSlideColor(
-            0, true, invariants);
+            0, false, invariants);
 
         assertThat(color).isEqualTo(Color.BLACK);
     }

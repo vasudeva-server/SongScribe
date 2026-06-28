@@ -32,10 +32,12 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
+import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.NoteGeometry;
+import songscribe.layout.NoteGeometry.StemGeometry;
 import songscribe.util.GraphicsState;
 
 /**

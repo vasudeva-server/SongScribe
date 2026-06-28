@@ -73,10 +73,9 @@ class TupletRendererTest extends UnitTest {
     private record RecordingG2(Graphics2D g2, List<Shape> placedShapes) {}
 
     /**
-     * Extends {@link #mockG2} with transform tracking so the shapes passed to {@code fill} can be
-     * recovered in device space. {@code drawRoundedLine} fills an untransformed round rect and places
-     * it via {@code translate}/{@code rotate} on the graphics context, so a plain mock (which ignores
-     * those calls) would only see the local-frame shape; this mock applies them.
+     * Extends {@link #mockG2} with shape capture so the paths passed to {@code draw} can be
+     * inspected. {@code drawPath} passes a {@code Path2D} directly to {@code draw} without
+     * modifying the graphics transform, so no transform tracking is needed.
      */
     private static RecordingG2 recordingG2() {
         var g2 = mockG2();
@@ -100,7 +99,7 @@ class TupletRendererTest extends UnitTest {
             Shape local = invocation.getArgument(0);
             placedShapes.add(transform.createTransformedShape(local));
             return null;
-        }).when(g2).fill(any(Shape.class));
+        }).when(g2).draw(any(Shape.class));
 
         return new RecordingG2(g2, placedShapes);
     }
@@ -170,15 +169,15 @@ class TupletRendererTest extends UnitTest {
 
     @Test
     void testRenderTupletsFromLine_notBeamed_armsDrawn() {
-        // allBeamed=false → numberOnly=false → bracket arms ARE drawn (4 draw() calls)
+        // allBeamed=false → numberOnly=false → bracket arms ARE drawn (2 draw() calls)
         var invariants = buildInvariantsWithTuplet(true, false);
         var g2 = mockG2();
 
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        // 2 horizontal arms + 2 vertical arms = 4 fill() calls
-        verify(g2, times(4)).fill(any(Shape.class));
+        // left-side L-path + right-side L-path = 2 draw() calls
+        verify(g2, times(2)).draw(any(Shape.class));
     }
 
     @Test
@@ -190,7 +189,7 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        verify(g2, times(4)).fill(any(Shape.class));
+        verify(g2, times(2)).draw(any(Shape.class));
     }
 
     // ======================================================================
@@ -210,10 +209,10 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        verify(g2, times(4)).fill(any(Shape.class));
-        // First fill is the left horizontal arm: min X = leftXSs
-        var leftHorizontalArm = recording.placedShapes().get(0).getBounds2D();
-        assertThat(leftHorizontalArm.getMinX()).isCloseTo(expectedLeftX, within(TOLERANCE));
+        verify(g2, times(2)).draw(any(Shape.class));
+        // First draw is the left-side bracket path: min X = leftXSs
+        var leftPath = recording.placedShapes().get(0).getBounds2D();
+        assertThat(leftPath.getMinX()).isCloseTo(expectedLeftX, within(TOLERANCE));
     }
 
     @Test
@@ -227,9 +226,9 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        verify(g2, times(4)).fill(any(Shape.class));
-        var leftHorizontalArm = recording.placedShapes().get(0).getBounds2D();
-        assertThat(leftHorizontalArm.getMinX()).isCloseTo(expectedLeftX, within(TOLERANCE));
+        verify(g2, times(2)).draw(any(Shape.class));
+        var leftPath = recording.placedShapes().get(0).getBounds2D();
+        assertThat(leftPath.getMinX()).isCloseTo(expectedLeftX, within(TOLERANCE));
     }
 
     @Test
@@ -244,10 +243,10 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        verify(g2, times(4)).fill(any(Shape.class));
-        // Second fill is the right horizontal arm: max X = rightXSs
-        var rightHorizontalArm = recording.placedShapes().get(1).getBounds2D();
-        assertThat(rightHorizontalArm.getMaxX()).isCloseTo(expectedRightX, within(TOLERANCE));
+        verify(g2, times(2)).draw(any(Shape.class));
+        // Second draw is the right-side bracket path: max X = rightXSs
+        var rightPath = recording.placedShapes().get(1).getBounds2D();
+        assertThat(rightPath.getMaxX()).isCloseTo(expectedRightX, within(TOLERANCE));
     }
 
     // ======================================================================
