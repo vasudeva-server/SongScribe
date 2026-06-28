@@ -130,7 +130,7 @@ public final class SMuFLMetadata {
         var result = map.get(glyph);
 
         if (result == null) {
-            throw RuntimeError.exit("missing " + description + " for glyph: " + glyph);
+            throw RuntimeError.missingResource("missing " + description + " for glyph: " + glyph);
         }
 
         return result;

@@ -53,7 +53,7 @@ public class SplashWindow extends JWindow {
         if (image != null) {
             splashImage = image;
         } else {
-            throw RuntimeError.exit("Failed to load splash image");
+            throw RuntimeError.missingResource("Failed to load splash image");
         }
     }
 

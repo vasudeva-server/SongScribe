@@ -37,11 +37,15 @@ import ch.qos.logback.core.read.ListAppender;
 import org.slf4j.LoggerFactory;
 
 import songscribe.UnitTest;
+import songscribe.ui.OptionDialogs;
 
 class RuntimeErrorTest extends UnitTest {
 
     private ListAppender<ILoggingEvent> appender;
     private Logger logger;
+
+    private ListAppender<ILoggingEvent> optionDialogsAppender;
+    private Logger optionDialogsLogger;
 
     @BeforeEach
     void setUpLogCapture() {
@@ -55,6 +59,20 @@ class RuntimeErrorTest extends UnitTest {
     void tearDownLogCapture() {
         logger.detachAppender(appender);
         appender.stop();
+    }
+
+    @BeforeEach
+    void setUpOptionDialogsLogCapture() {
+        optionDialogsLogger = (Logger) LoggerFactory.getLogger(OptionDialogs.class);
+        optionDialogsAppender = new ListAppender<>();
+        optionDialogsAppender.start();
+        optionDialogsLogger.addAppender(optionDialogsAppender);
+    }
+
+    @AfterEach
+    void tearDownOptionDialogsLogCapture() {
+        optionDialogsLogger.detachAppender(optionDialogsAppender);
+        optionDialogsAppender.stop();
     }
 
     // Installs an exit handler that does NOT reset ALERT_SHOWN and does NOT throw,
@@ -151,5 +169,76 @@ class RuntimeErrorTest extends UnitTest {
         assertThat(thrown).isInstanceOf(Error.class);
         assertThat(thrown.getStackTrace()).isEmpty();
         assertThat(thrown.getSuppressed()).isEmpty();
+    }
+
+    // -------------------------------------------------------------------------
+    // missingResource(String) — log message on RuntimeError logger
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testMissingResourceLogsLogMessageAtErrorLevel() {
+        installNonResettingExitHandler();
+
+        catchThrowable(() -> RuntimeError.missingResource("missing X"));
+
+        assertThat(appender.list)
+            .anySatisfy(e -> {
+                assertThat(e.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(e.getFormattedMessage()).contains("missing X");
+            });
+    }
+
+    // -------------------------------------------------------------------------
+    // missingResource(String) — exit handler invoked with -1
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testMissingResourceInvokesExitHandler() {
+        var capturedStatus = installNonResettingExitHandler();
+
+        catchThrowable(() -> RuntimeError.missingResource("missing X"));
+
+        assertThat(capturedStatus.get()).isEqualTo(-1);
+    }
+
+    // -------------------------------------------------------------------------
+    // missingResource(String) — canned user message reaches OptionDialogs logger
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testMissingResourceShowsCannedUserMessage() {
+        installNonResettingExitHandler();
+
+        catchThrowable(() -> RuntimeError.missingResource("missing X"));
+
+        assertThat(optionDialogsAppender.list)
+            .anySatisfy(e -> {
+                assertThat(e.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(e.getFormattedMessage())
+                    .isEqualTo(RuntimeError.MISSING_RESOURCE_USER_MESSAGE);
+            });
+    }
+
+    // -------------------------------------------------------------------------
+    // exit(String, String) — custom user message reaches OptionDialogs logger,
+    // log message stays on RuntimeError logger
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testExitWithUserMessageShowsCustomUserMessage() {
+        installNonResettingExitHandler();
+
+        catchThrowable(() -> RuntimeError.exit("log reason", "Custom user copy."));
+
+        assertThat(optionDialogsAppender.list)
+            .anySatisfy(e -> {
+                assertThat(e.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(e.getFormattedMessage()).isEqualTo("Custom user copy.");
+            });
+        assertThat(appender.list)
+            .anySatisfy(e -> {
+                assertThat(e.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(e.getFormattedMessage()).contains("log reason");
+            });
     }
 }

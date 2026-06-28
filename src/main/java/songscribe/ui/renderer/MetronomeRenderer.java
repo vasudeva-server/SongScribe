@@ -55,7 +55,8 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         var glyph = MetronomeAttachment.metronomeGlyphFor(type);
 
         if (glyph == null) {
-            throw RuntimeError.exit("No metronome glyph for element type: " + type);
+            // glyph absent from the font => missing resource, not an unmapped-type bug
+            throw RuntimeError.missingResource("No metronome glyph for element type: " + type);
         }
 
         return glyph;

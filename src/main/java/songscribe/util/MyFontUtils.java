@@ -92,7 +92,10 @@ public final class MyFontUtils {
             var fonts = FontUtils.getAllFonts();
 
             if (fonts == null || fonts.length == 0) {
-                throw RuntimeError.exit("Could not load system fonts");
+                throw RuntimeError.exit(
+                    "Could not load system fonts",
+                    "SongScribe could not load the fonts installed on your system and must quit."
+                );
             }
 
             var attributes = new HashMap<TextAttribute, Object>();
@@ -244,7 +247,7 @@ public final class MyFontUtils {
                 MyFontUtils.class.getResourceAsStream("/fonts/" + filename)
         ) {
             if (stream == null) {
-                throw RuntimeError.exit("Font resource not found: " + filename);
+                throw RuntimeError.missingResource("Font resource not found: " + filename);
             }
 
             var font = deriveKernedFont(
@@ -257,7 +260,7 @@ public final class MyFontUtils {
 
             return font;
         } catch (Exception e) {
-            throw RuntimeError.exit("Could not load font: " + filename);
+            throw RuntimeError.missingResource("Could not load font: " + filename);
         }
     }
 

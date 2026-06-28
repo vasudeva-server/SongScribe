@@ -47,7 +47,7 @@ public record GlyphAnchors(
         var result = stemUpSE;
 
         if (result == null) {
-            throw RuntimeError.exit("missing stemUpSE anchor");
+            throw RuntimeError.missingResource("missing stemUpSE anchor");
 
         }
 
@@ -62,7 +62,7 @@ public record GlyphAnchors(
         var result = stemDownNW;
 
         if (result == null) {
-            throw RuntimeError.exit("missing stemDownNW anchor");
+            throw RuntimeError.missingResource("missing stemDownNW anchor");
 
         }
 

@@ -1967,7 +1967,8 @@ public class SongSettingsDialog extends StandardDialog {
                     var glyph = GLYPHS.get(selection);
 
                     if (glyph == null) {
-                        throw RuntimeError.exit(
+                        // glyph absent from the font => missing font resource, not a bad-selection bug
+                        throw RuntimeError.missingResource(
                             "Missing glyph for key selection: " + selection
                         );
                     }

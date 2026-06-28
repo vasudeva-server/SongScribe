@@ -48,7 +48,7 @@ public final class FlatLafProps {
         var value = UIManager.get(key.key());
 
         if (value == null) {
-            throw RuntimeError.exit("Missing required UI property: " + key.key());
+            throw RuntimeError.missingResource("Missing required UI property: " + key.key());
         }
 
         if (!type.isInstance(value)) {

@@ -38,6 +38,9 @@ public final class RuntimeError {
     private static final String FATAL_ALERT_TITLE = "Fatal Error";
     private static final String FATAL_USER_MESSAGE =
         "Sorry, but a fatal error has occurred and the application must quit.";
+    // Package-private so RuntimeErrorTest can assert against the wired value instead of a copy.
+    static final String MISSING_RESOURCE_USER_MESSAGE =
+        "A required resource is missing. Please reinstall the application.";
 
     // Guards against showing the alert more than once if exit() is called re-entrantly.
     private static final AtomicBoolean ALERT_SHOWN = new AtomicBoolean(false);
@@ -87,6 +90,24 @@ public final class RuntimeError {
     public static RuntimeException exit(String logMessage, String userMessage) {
         LOG.error(logMessage);
         throw showDialogAndExit(userMessage);
+    }
+
+    /**
+     * Logs the log message and shows a canned "missing resource, please reinstall" message in the
+     * error dialog, then exits.
+     * <p>
+     * Use this overload when a required application resource (font, glyph, image, etc.) is absent.
+     * The dynamic detail (glyph name, filename, etc.) goes to the log; the user sees a fixed,
+     * actionable message.
+     * <p>
+     * Always call as {@code throw RuntimeError.missingResource("reason")} so the compiler and
+     * NullAway know the calling code is unreachable after this point.
+     *
+     * @param logMessage Description of the missing resource, written to the log
+     * @return never returns; declared as RuntimeException for use in {@code throw} expressions
+     */
+    public static RuntimeException missingResource(String logMessage) {
+        return exit(logMessage, MISSING_RESOURCE_USER_MESSAGE);
     }
 
     /**
