@@ -58,14 +58,6 @@ import songscribe.smufl.SMuFLMetadata;
 public class ElementColumnBuilder {
 
     /**
-     * Augmentation dot width in staff-space units.
-     */
-    public static final double DOT_WIDTH_SS = 0.5;
-    /**
-     * Gap between the notehead right edge and the first augmentation dot, in staff-space units.
-     */
-    public static final double DOT_GAP_SS = 0.25;
-    /**
      * Gap between an accidental and the notehead, in staff-space units.
      */
     public static final double ACCIDENTAL_GAP_SS = 0.25;
@@ -242,44 +234,26 @@ public class ElementColumnBuilder {
         }
 
         // Element head right edge: use small notehead width for grace notes
-        var noteheadRightExtent = getNoteheadRightExtent(element, type, includeDots);
+        var noteheadRightExtent = getNoteheadRightExtent(type);
+
+        // Augmentation dots extend the right edge. Derived from the same positions the renderer
+        // draws (see NoteGeometry.dotsRightExtentSs), so spacing reserves exactly what is painted —
+        // the dots already clear the flag when an unbeamed up-stem one is present.
+        var rightExtent = includeDots
+            ? NoteGeometry.dotsRightExtentSs(element, beamed, upper, noteheadRightExtent)
+            : noteheadRightExtent;
 
         // Flag extent: only for unbeamed elements that have a flag
-        var flagGlyph = type.getFlagGlyph(upper);
-        var flagRightExtent = 0.0;
+        var flagBBox = NoteGeometry.flagBBoxLocalSs(type, upper, beamed);
+        var flagRightExtent = (flagBBox == null) ? 0.0 : flagBBox.getMaxX();
 
-        if (!beamed && flagGlyph != null) {
-            var flagAdvanceWidthSs = SMuFLMetadata.getAdvanceWidthOrZero(flagGlyph);
-
-            // Grace notes always stem up, use the small notehead anchor.
-            // Use explicit if/else instead of a nested ternary for clarity.
-            double stemAnchorX;
-
-            if (type.isGraceNote()) {
-                stemAnchorX = NoteGeometry.STEM_UP_SE_BLACK_SMALL.x();
-            } else if (upper) {
-                stemAnchorX = Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x();
-            } else {
-                stemAnchorX = Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x();
-            }
-
-            flagRightExtent = stemAnchorX + flagAdvanceWidthSs;
-        }
-
-        return Math.max(noteheadRightExtent, flagRightExtent);
+        return Math.max(rightExtent, flagRightExtent);
     }
 
-    private static double getNoteheadRightExtent(StaffElement element, ElementType type, boolean includeDots) {
-        var noteheadRightExtent = type.isGraceNote()
+    private static double getNoteheadRightExtent(ElementType type) {
+        return type.isGraceNote()
             ? NOTE_HEAD_SMALL_WIDTH_SS
             : Engraving.NOTE_HEAD_WIDTH_SS;
-
-        if (includeDots) {
-            // Each dot contributes an equal gap + dot width
-            noteheadRightExtent += element.getDotCount() * (DOT_GAP_SS + DOT_WIDTH_SS);
-        }
-
-        return noteheadRightExtent;
     }
 
     // ==========================================================================

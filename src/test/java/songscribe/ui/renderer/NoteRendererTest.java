@@ -35,6 +35,7 @@ import songscribe.dom.StaffElement;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 class NoteRendererTest extends UnitTest {
 
@@ -132,7 +133,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testBlackNoteHeadStemUpUsesBlackUpAnchor() {
-            var geom = NoteRenderer.computeBaseStemGeometry(ElementType.CROTCHET, true);
+            var geom = NoteGeometry.computeBaseStemGeometry(ElementType.CROTCHET, true);
             var anchor = Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
             var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS;
 
@@ -143,7 +144,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testBlackNoteHeadStemDownUsesBlackDownAnchor() {
-            var geom = NoteRenderer.computeBaseStemGeometry(ElementType.CROTCHET, false);
+            var geom = NoteGeometry.computeBaseStemGeometry(ElementType.CROTCHET, false);
             var anchor = Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
             var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS / 2;
 
@@ -154,7 +155,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testMinimStemUpUsesHalfUpAnchor() {
-            var geom = NoteRenderer.computeBaseStemGeometry(ElementType.MINIM, true);
+            var geom = NoteGeometry.computeBaseStemGeometry(ElementType.MINIM, true);
             var anchor = Engraving.NOTEHEAD_HALF_STEM_UP_SE;
             var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS;
 
@@ -165,7 +166,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testMinimStemDownUsesHalfDownAnchor() {
-            var geom = NoteRenderer.computeBaseStemGeometry(ElementType.MINIM, false);
+            var geom = NoteGeometry.computeBaseStemGeometry(ElementType.MINIM, false);
             var anchor = Engraving.NOTEHEAD_HALF_STEM_DOWN_NW;
             var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS / 2;
 
@@ -176,7 +177,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testGraceNoteUsesSmallAnchorAndGraceStemLength() {
-            var geom = NoteRenderer.computeBaseStemGeometry(ElementType.GRACE_QUAVER, true);
+            var geom = NoteGeometry.computeBaseStemGeometry(ElementType.GRACE_QUAVER, true);
             var anchor = NoteGeometry.STEM_UP_SE_BLACK_SMALL;
             var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS;
 
@@ -192,7 +193,7 @@ class NoteRendererTest extends UnitTest {
 
     @Test
     void testStemTipYSsUpIsAnchorMinusLength() {
-        var geom = new NoteRenderer.StemGeometry(0.5, 0.3, 3.5);
+        var geom = new NoteGeometry.StemGeometry(0.5, 0.3, 3.5);
         var expectedTip = 0.3 - 3.5;
 
         assertThat(geom.stemTipYSs(true)).isCloseTo(expectedTip, within(TOLERANCE));
@@ -200,7 +201,7 @@ class NoteRendererTest extends UnitTest {
 
     @Test
     void testStemTipYSsDownIsAnchorPlusLength() {
-        var geom = new NoteRenderer.StemGeometry(0.5, 0.3, 3.5);
+        var geom = new NoteGeometry.StemGeometry(0.5, 0.3, 3.5);
         var expectedTip = 0.3 + 3.5;
 
         assertThat(geom.stemTipYSs(false)).isCloseTo(expectedTip, within(TOLERANCE));
@@ -215,8 +216,35 @@ class NoteRendererTest extends UnitTest {
 
         private static List<double[]> collectDots(StaffElement note, boolean beamed, boolean upper) {
             var result = new ArrayList<double[]>();
-            NoteRenderer.forEachDotPosition(note, beamed, upper, (x, y) -> result.add(new double[]{x, y}));
+            NoteGeometry.forEachDotPosition(note, beamed, upper, (x, y) -> result.add(new double[]{x, y}));
             return result;
+        }
+
+        private static StaffElement dottedNote(ElementType type) {
+            var note = type.newInstance();
+            note.setDotCount(1);
+            note.setStaffPosition(IN_SPACE_STAFF_POSITION);
+            return note;
+        }
+
+        private static double dotXSs(ElementType type, boolean beamed, boolean upper) {
+            var dots = collectDots(dottedNote(type), beamed, upper);
+            assertThat(dots).hasSize(1);
+            return dots.get(0)[0];
+        }
+
+        // Expected first-dot X derived independently from SMuFL metadata: the notehead's right
+        // edge plus one augmentation-dot width (the LilyPond pad-by-one-dot-width gap).
+        private static double expectedNoteheadDotXSs(SMuFLGlyph noteheadGlyph) {
+            return SMuFLMetadata.requireBBox(noteheadGlyph).right() + Engraving.AUGMENTATION_DOT_WIDTH_SS;
+        }
+
+        // Expected first-dot X for an unbeamed up-stem flagged note: the flag's right edge (the
+        // flag clears the notehead) plus one dot width.
+        private static double expectedFlaggedDotXSs(SMuFLGlyph flagGlyph) {
+            var stemLeftXSs = NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, true).stemLeftXSs();
+            var flagRightSs = stemLeftXSs + SMuFLMetadata.requireBBox(flagGlyph).right();
+            return flagRightSs + Engraving.AUGMENTATION_DOT_WIDTH_SS;
         }
 
         @Test
@@ -229,55 +257,60 @@ class NoteRendererTest extends UnitTest {
         }
 
         @Test
-        void testSemibreveAppliesXOffset() {
-            var note = ElementType.SEMIBREVE.newInstance();
-            note.setDotCount(1);
-            note.setStaffPosition(IN_SPACE_STAFF_POSITION);
-
-            var dots = collectDots(note, false, true);
-            assertThat(dots).hasSize(1);
-
-            var expectedX = NoteRenderer.FIRST_DOT_X_SS + NoteRenderer.DOT_X_ADJUST_SEMIBREVE_SS;
-            assertThat(dots.get(0)[0]).isCloseTo(expectedX, within(TOLERANCE));
+        void testCrotchetDotSitsOneDotWidthRightOfNotehead() {
+            assertThat(dotXSs(ElementType.CROTCHET, false, true))
+                .isCloseTo(expectedNoteheadDotXSs(SMuFLGlyph.NOTEHEAD_BLACK), within(TOLERANCE));
         }
 
         @Test
-        void testMinimAppliesXOffset() {
-            var note = ElementType.MINIM.newInstance();
-            note.setDotCount(1);
-            note.setStaffPosition(IN_SPACE_STAFF_POSITION);
+        void testSemibreveDotClearsWiderNotehead() {
+            var semibreveX = dotXSs(ElementType.SEMIBREVE, false, true);
 
-            var dots = collectDots(note, false, true);
-            assertThat(dots).hasSize(1);
-
-            var expectedX = NoteRenderer.FIRST_DOT_X_SS + NoteRenderer.DOT_X_ADJUST_MINIM_SS;
-            assertThat(dots.get(0)[0]).isCloseTo(expectedX, within(TOLERANCE));
+            assertThat(semibreveX).isCloseTo(expectedNoteheadDotXSs(SMuFLGlyph.NOTEHEAD_WHOLE), within(TOLERANCE));
+            // The whole notehead is wider than a black one, so its dot sits further right.
+            assertThat(semibreveX).isGreaterThan(expectedNoteheadDotXSs(SMuFLGlyph.NOTEHEAD_BLACK));
         }
 
         @Test
-        void testBeamableUnbeamedUpperQuaverAppliesXOffset() {
-            var note = ElementType.QUAVER.newInstance();
-            note.setDotCount(1);
-            note.setStaffPosition(IN_SPACE_STAFF_POSITION);
-
-            var dots = collectDots(note, false, true);
-            assertThat(dots).hasSize(1);
-
-            var expectedX = NoteRenderer.FIRST_DOT_X_SS + NoteRenderer.DOT_X_ADJUST_QUAVER_SS;
-            assertThat(dots.get(0)[0]).isCloseTo(expectedX, within(TOLERANCE));
+        void testMinimDotMatchesCrotchet() {
+            // Half and black noteheads share the same right edge, so their dots align.
+            assertThat(dotXSs(ElementType.MINIM, false, true))
+                .isCloseTo(dotXSs(ElementType.CROTCHET, false, true), within(TOLERANCE));
         }
 
         @Test
-        void testBeamableUnbeamedUpperSemiquaverAppliesLargerXOffset() {
-            var note = ElementType.SEMIQUAVER.newInstance();
-            note.setDotCount(1);
-            note.setStaffPosition(IN_SPACE_STAFF_POSITION);
+        void testUnbeamedUpperQuaverDotClearsFlag() {
+            var quaverX = dotXSs(ElementType.QUAVER, false, true);
 
-            var dots = collectDots(note, false, true);
-            assertThat(dots).hasSize(1);
+            assertThat(quaverX).isCloseTo(expectedFlaggedDotXSs(SMuFLGlyph.FLAG_8TH_UP), within(TOLERANCE));
+            // The flag extends past the notehead, so the dot sits further right than a crotchet's.
+            assertThat(quaverX).isGreaterThan(dotXSs(ElementType.CROTCHET, false, true));
+        }
 
-            var expectedX = NoteRenderer.FIRST_DOT_X_SS + NoteRenderer.DOT_X_ADJUST_SEMIQUAVER_SS;
-            assertThat(dots.get(0)[0]).isCloseTo(expectedX, within(TOLERANCE));
+        @Test
+        void testUnbeamedUpperSemiquaverDotClearsFlag() {
+            assertThat(dotXSs(ElementType.SEMIQUAVER, false, true))
+                .isCloseTo(expectedFlaggedDotXSs(SMuFLGlyph.FLAG_16TH_UP), within(TOLERANCE));
+        }
+
+        @Test
+        void testUnbeamedUpperDemiSemiquaverDotClearsFlag() {
+            assertThat(dotXSs(ElementType.DEMI_SEMIQUAVER, false, true))
+                .isCloseTo(expectedFlaggedDotXSs(SMuFLGlyph.FLAG_32ND_UP), within(TOLERANCE));
+        }
+
+        @Test
+        void testBeamedQuaverDotIgnoresFlag() {
+            // A beamed note has no flag, so its dot sits at the notehead like a crotchet's.
+            assertThat(dotXSs(ElementType.QUAVER, true, true))
+                .isCloseTo(expectedNoteheadDotXSs(SMuFLGlyph.NOTEHEAD_BLACK), within(TOLERANCE));
+        }
+
+        @Test
+        void testLowerQuaverDotIgnoresFlag() {
+            // A down-stem flag is to the left of the notehead, so it never pushes the dot right.
+            assertThat(dotXSs(ElementType.QUAVER, false, false))
+                .isCloseTo(expectedNoteheadDotXSs(SMuFLGlyph.NOTEHEAD_BLACK), within(TOLERANCE));
         }
 
         @Test
@@ -288,7 +321,7 @@ class NoteRendererTest extends UnitTest {
 
             var dots = collectDots(note, false, true);
             assertThat(dots).hasSize(1);
-            assertThat(dots.get(0)[1]).isCloseTo(NoteRenderer.DOT_ON_LINE_Y_SHIFT_SS, within(TOLERANCE));
+            assertThat(dots.get(0)[1]).isCloseTo(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS, within(TOLERANCE));
         }
 
         @Test
@@ -313,7 +346,7 @@ class NoteRendererTest extends UnitTest {
 
             var firstX = dots.get(0)[0];
             var secondX = dots.get(1)[0];
-            assertThat(secondX - firstX).isCloseTo(NoteRenderer.DOT_SPACING_SS, within(TOLERANCE));
+            assertThat(secondX - firstX).isCloseTo(NoteGeometry.DOT_SPACING_SS, within(TOLERANCE));
         }
     }
 

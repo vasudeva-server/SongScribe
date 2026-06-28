@@ -65,34 +65,45 @@ class ElementColumnBuilderTest extends UnitTest {
         assertThat(extent).isEqualTo(noteheadOnly);
     }
 
-    // T6: Dotted quaver right extent is exactly max(notehead+dots, flag) extent
+    // Right-most edge of the augmentation dot glyph relative to its own origin (ss).
+    private static double dotGlyphRightSs() {
+        return SMuFLMetadata.requireBBox(SMuFLGlyph.AUGMENTATION_DOT).right();
+    }
+
+    // Flag right extent for an unbeamed up-stem quaver, computed as ElementColumnBuilder does.
+    private static double quaverFlagExtentSs() {
+        return NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, true).stemLeftXSs()
+            + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right();
+    }
+
+    // T6: Dotted quaver right extent is max(dot extent, flag) — the dot sits past the flag, so the
+    // dot extent (first-dot X + dot glyph right edge) wins. Derived from the same geometry the
+    // renderer draws (NoteGeometry.firstDotXSs), independently of ElementColumnBuilder.
     @Test
     void testDottedQuaverExtentIsMaxOfDotsAndFlag() {
         var dottedQuaver = element(ElementType.QUAVER);
         dottedQuaver.setDotCount(1);
 
-        var noteheadPlusDotsExtent =
-            Engraving.NOTE_HEAD_WIDTH_SS + (ElementColumnBuilder.DOT_GAP_SS + ElementColumnBuilder.DOT_WIDTH_SS);
-        var flagExtent =
-            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() + SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_UP);
-        var expected = Math.max(noteheadPlusDotsExtent, flagExtent);
+        var firstDotXSs = NoteGeometry.firstDotXSs(ElementType.QUAVER, false, true);
+        var dotsExtent = firstDotXSs + dotGlyphRightSs();
+        var expected = Math.max(dotsExtent, quaverFlagExtentSs());
 
         var actual = ElementColumnBuilder.calculateRightExtentSs(dottedQuaver, false, true);
 
         assertThat(actual).isEqualTo(expected);
     }
 
-    // Two-dot quaver right extent adds two (gap + dot) pairs to the notehead extent
+    // Two-dot quaver right extent reaches the last (second) dot: first-dot X plus one dot-spacing
+    // step, plus the dot glyph's right edge.
     @Test
     void testDoubleDottedQuaverExtentIncludesTwoDotPairs() {
         var doubleDottedQuaver = element(ElementType.QUAVER);
         doubleDottedQuaver.setDotCount(DOUBLE_DOT_COUNT);
 
-        var dotPairSs = ElementColumnBuilder.DOT_GAP_SS + ElementColumnBuilder.DOT_WIDTH_SS;
-        var noteheadPlusTwoDotsExtent = Engraving.NOTE_HEAD_WIDTH_SS + dotPairSs + dotPairSs;
-        var flagExtent =
-            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() + SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_UP);
-        var expected = Math.max(noteheadPlusTwoDotsExtent, flagExtent);
+        var firstDotXSs = NoteGeometry.firstDotXSs(ElementType.QUAVER, false, true);
+        var lastDotXSs = firstDotXSs + (DOUBLE_DOT_COUNT - 1) * NoteGeometry.DOT_SPACING_SS;
+        var dotsExtent = lastDotXSs + dotGlyphRightSs();
+        var expected = Math.max(dotsExtent, quaverFlagExtentSs());
 
         var actual = ElementColumnBuilder.calculateRightExtentSs(doubleDottedQuaver, false, true);
 
@@ -108,7 +119,8 @@ class ElementColumnBuilderTest extends UnitTest {
         dottedQuaver.setDotCount(1);
 
         var flagExtent =
-            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() + SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_UP);
+            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, true).stemLeftXSs()
+                + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right();
         var expectedExcludingDots = Math.max(Engraving.NOTE_HEAD_WIDTH_SS, flagExtent);
 
         var excludingDots = ElementColumnBuilder.calculateRightExtentExcludingDotsSs(dottedQuaver, false, true);
@@ -168,13 +180,14 @@ class ElementColumnBuilderTest extends UnitTest {
         var graceQuaver = element(ElementType.GRACE_QUAVER);
         var regularQuaver = element(ElementType.QUAVER);
 
-        var flagAdvanceSs = SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_UP);
+        var graceStemLeftXSs = NoteGeometry.computeBaseStemGeometry(ElementType.GRACE_QUAVER, true).stemLeftXSs();
+        var flagBBoxRight = SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right();
         var expectedGrace = Math.max(
             ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS,
-            NoteGeometry.STEM_UP_SE_BLACK_SMALL.x() + flagAdvanceSs);
+            NoteGeometry.getGraceFlagOriginXSs(graceStemLeftXSs) + ElementType.GRACE_NOTE_SCALE * flagBBoxRight);
         var expectedRegular = Math.max(
             Engraving.NOTE_HEAD_WIDTH_SS,
-            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() + flagAdvanceSs);
+            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, true).stemLeftXSs() + flagBBoxRight);
 
         var graceExtent = ElementColumnBuilder.calculateRightExtentSs(graceQuaver, false, true);
         var regularExtent = ElementColumnBuilder.calculateRightExtentSs(regularQuaver, false, true);
@@ -209,12 +222,12 @@ class ElementColumnBuilderTest extends UnitTest {
 
         var expectedUp = Math.max(
             Engraving.NOTE_HEAD_WIDTH_SS,
-            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x()
-                + SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_UP));
+            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, true).stemLeftXSs()
+                + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right());
         var expectedDown = Math.max(
             Engraving.NOTE_HEAD_WIDTH_SS,
-            Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x()
-                + SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.FLAG_8TH_DOWN));
+            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, false).stemLeftXSs()
+                + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_DOWN).right());
 
         var upExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
         var downExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, false);

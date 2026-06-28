@@ -526,9 +526,21 @@ public enum ElementType {
         };
     }
 
-    @Nullable
-    private static SMuFLGlyph getStemUpFlagGlyph(ElementType type) {
-        return type.getFlagGlyph(true);
+    /**
+     * Returns the SMuFL flag glyph for this note type and stem direction, or exits the app if this
+     * type carries no flag. Call only when the type is known to be flagged (e.g. a beamable note);
+     * a null result then indicates a broken install missing required metadata.
+     *
+     * @param upper {@code true} for stem-up (flag on right of stem); {@code false} for stem-down
+     */
+    public SMuFLGlyph requireFlagGlyph(boolean upper) {
+        var glyph = getFlagGlyph(upper);
+
+        if (glyph == null) {
+            throw RuntimeError.missingResource("Missing flag glyph for note type " + this);
+        }
+
+        return glyph;
     }
 
     // ========================================================================
@@ -582,7 +594,7 @@ public enum ElementType {
 
                 // Width: max of notehead and stem-up flag extent
                 var width = headRight;
-                var flagGlyph = getStemUpFlagGlyph(type);
+                var flagGlyph = type.getFlagGlyph(true);
 
                 if (flagGlyph != null) {
                     var flagBBox = requireBBox(flagGlyph, type);

@@ -1,5 +1,6 @@
 package songscribe.layout;
 
+import java.awt.geom.Rectangle2D;
 import java.util.EnumMap;
 import java.util.function.BiConsumer;
 import java.util.function.BinaryOperator;
@@ -77,6 +78,143 @@ public final class NoteGeometry {
         Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() * ElementType.GRACE_NOTE_SCALE,
         Engraving.NOTEHEAD_BLACK_STEM_UP_SE.y() * ElementType.GRACE_NOTE_SCALE
     );
+
+    // ==========================================================================
+    // Augmentation Dot Geometry
+    // ==========================================================================
+
+    // Augmentation dot Y shift (in ss) when the note sits on a staff line —
+    // moves the dot into the space above the line.
+    public static final double DOT_ON_LINE_Y_SHIFT_SS = -0.5;
+
+    // Center-to-center spacing between consecutive augmentation dots (in ss): one dot glyph
+    // plus a one-dot-width gap, following LilyPond's stack-by-one-dot-width convention.
+    public static final double DOT_SPACING_SS = Engraving.AUGMENTATION_DOT_WIDTH_SS * 2;
+
+    /**
+     * Returns the X position (in ss, from the note glyph origin) of the first augmentation dot,
+     * following LilyPond's pad-by-one-dot-width convention: the dot sits one augmentation-dot width
+     * to the right of the note's right-most obstruction. That obstruction is the notehead, unless an
+     * unbeamed up-stem flag extends further right.
+     */
+    public static double firstDotXSs(ElementType noteType, boolean beamed, boolean upper) {
+        var obstructionRightSs = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph()).right();
+
+        if (upper) {
+            var flagBBox = flagBBoxLocalSs(noteType, true, beamed);
+
+            if (flagBBox != null) {
+                obstructionRightSs = Math.max(obstructionRightSs, flagBBox.getMaxX());
+            }
+        }
+
+        return obstructionRightSs + Engraving.AUGMENTATION_DOT_WIDTH_SS;
+    }
+
+    /**
+     * Computes the position of each augmentation dot for a note and passes
+     * (dotX, yOffset) to the consumer. Both values are in staff spaces,
+     * relative to the note's glyph origin.
+     */
+    public static void forEachDotPosition(
+        StaffElement note, boolean beamed, boolean upper,
+        BiConsumer<? super Double, ? super Double> consumer
+    ) {
+        if (note.getDotCount() == 0) {
+            return;
+        }
+
+        var noteType = note.getType();
+
+        // Dots shift up when note is on a line (even staff position)
+        var yOffset = (note.getStaffPosition() % 2 == 0) ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
+
+        var dotX = firstDotXSs(noteType, beamed, upper);
+
+        for (var i = 0; i < note.getDotCount(); i++) {
+            consumer.accept(dotX, yOffset);
+            dotX += DOT_SPACING_SS;
+        }
+    }
+
+    /**
+     * Returns the right-most extent (in ss, from the note glyph origin) of a note's augmentation
+     * dots, or {@code baseRightSs} when the note has no dots. Derived from the same dot positions
+     * {@link #forEachDotPosition} feeds the renderer, so the space layout reserves matches the ink
+     * actually painted.
+     */
+    public static double dotsRightExtentSs(StaffElement note, boolean beamed, boolean upper, double baseRightSs) {
+        if (note.getDotCount() == 0) {
+            return baseRightSs;
+        }
+
+        var dotRightSs = SMuFLMetadata.requireBBox(SMuFLGlyph.AUGMENTATION_DOT).right();
+        var maxRightSs = new double[]{baseRightSs};
+
+        forEachDotPosition(note, beamed, upper, (dotX, yOffset) ->
+            maxRightSs[0] = Math.max(maxRightSs[0], dotX + dotRightSs));
+
+        return maxRightSs[0];
+    }
+
+    // ==========================================================================
+    // Stem Geometry
+    // ==========================================================================
+
+    /**
+     * Computes the base stem geometry for a note type and direction.
+     * This is the shared anchor selection and positioning logic used by both
+     * {@code NoteRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
+     *
+     * @param noteType The note type (determines anchor and stem length)
+     * @param upper    true for stem-up, false for stem-down
+     * @return The base stem geometry
+     */
+    public static StemGeometry computeBaseStemGeometry(ElementType noteType, boolean upper) {
+        var isMinim = noteType == ElementType.MINIM;
+        var isGrace = noteType.isGraceNote();
+
+        GlyphAnchors.Anchor anchor;
+
+        if (isGrace) {
+            anchor = STEM_UP_SE_BLACK_SMALL;
+        } else if (upper) {
+            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE : Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
+        } else {
+            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
+        }
+
+        var anchorX = anchor.x();
+
+        // Stem left edge: for up-stems, the anchor marks the RIGHT edge of the stem;
+        // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
+        // left by STEM_WIDTH_SS/2, so we compensate.
+        var stemLeftX = anchorX - (upper ? STEM_WIDTH_SS : STEM_WIDTH_SS / 2);
+        var stemLength = isGrace ? Engraving.GRACE_NOTE_STEM_LENGTH_SS : Engraving.STEM_LENGTH_SS;
+
+        return new StemGeometry(stemLeftX, anchor.y(), stemLength);
+    }
+
+    /**
+     * Base stem geometry computed from SMuFL anchor data, before any rendering-specific
+     * adjustments (device-pixel snapping, beam lengthening, etc.).
+     *
+     * @param stemLeftXSs Left edge of the stem in staff spaces (relative to notehead origin)
+     * @param anchorYSs   Y position where the stem meets the notehead
+     * @param lengthSs    Stem length in staff spaces (without beam lengthening)
+     */
+    public record StemGeometry(double stemLeftXSs, double anchorYSs, double lengthSs) {
+
+        /**
+         * Returns the Y position of the stem tip (the end away from the notehead).
+         *
+         * @param upper true for stem-up (tip above notehead), false for stem-down
+         * @return stem tip Y in staff spaces
+         */
+        public double stemTipYSs(boolean upper) {
+            return upper ? anchorYSs - lengthSs : anchorYSs + lengthSs;
+        }
+    }
 
     // ==========================================================================
     // Accidental Constants
@@ -459,6 +597,52 @@ public final class NoteGeometry {
      */
     public static double getGraceFlagOriginXSs(double stemLeftXSs) {
         return stemLeftXSs + STEM_WIDTH_SS * (1 - ElementType.GRACE_NOTE_SCALE) / 2;
+    }
+
+    /**
+     * Returns the flag glyph's bounding box in staff spaces, in the note's local coordinate
+     * space (relative to the notehead origin), or {@code null} when the note has no rendered
+     * flag (beamed, stemless, or no flag glyph for the type).
+     *
+     * <p>This is the single source of truth for where the flag sits, so that spacing
+     * reservation, augmentation-dot clearance, and column geometry never drift apart. The
+     * returned origin matches the renderer's paint origin: non-grace flags anchor at the stem's
+     * left edge, while grace flags use {@link #getGraceFlagOriginXSs} and are scaled by
+     * {@link ElementType#GRACE_NOTE_SCALE}.
+     */
+    @Nullable
+    public static Rectangle2D flagBBoxLocalSs(ElementType noteType, boolean upper, boolean beamed) {
+        if (beamed || !noteType.isNoteWithStem()) {
+            return null;
+        }
+
+        var flagGlyph = noteType.getFlagGlyph(upper);
+
+        if (flagGlyph == null) {
+            return null;
+        }
+
+        var stemGeom = computeBaseStemGeometry(noteType, upper);
+        var stemLeftXSs = stemGeom.stemLeftXSs();
+        var stemTipYSs = stemGeom.stemTipYSs(upper);
+        var flagBBox = SMuFLMetadata.requireBBox(flagGlyph);
+
+        if (noteType.isGraceNote()) {
+            var scale = (double) ElementType.GRACE_NOTE_SCALE;
+            var flagOriginX = getGraceFlagOriginXSs(stemLeftXSs);
+
+            return new Rectangle2D.Double(
+                flagOriginX + flagBBox.left() * scale,
+                stemTipYSs + flagBBox.top() * scale,
+                flagBBox.width() * scale,
+                flagBBox.height() * scale);
+        }
+
+        return new Rectangle2D.Double(
+            stemLeftXSs + flagBBox.left(),
+            stemTipYSs + flagBBox.top(),
+            flagBBox.width(),
+            flagBBox.height());
     }
 
     /**

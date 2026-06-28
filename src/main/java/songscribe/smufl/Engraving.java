@@ -40,6 +40,7 @@ public final class Engraving {
     public static final double NOTE_HEAD_WIDTH_SS;
     public static final double G_CLEF_WIDTH_SS;
     public static final double REPEAT_DOTS_ADVANCE_WIDTH_SS;
+    public static final double AUGMENTATION_DOT_WIDTH_SS;
 
     // Glyph anchors
     public static final GlyphAnchors.Anchor NOTEHEAD_BLACK_STEM_UP_SE;
@@ -66,6 +67,7 @@ public final class Engraving {
         NOTE_HEAD_WIDTH_SS = SMuFLMetadata.noteHeadWidthSs();
         G_CLEF_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.G_CLEF);
         REPEAT_DOTS_ADVANCE_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.REPEAT_DOTS);
+        AUGMENTATION_DOT_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
 
         var blackAnchors = SMuFLMetadata.requireAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
         var halfAnchors = SMuFLMetadata.requireAnchors(SMuFLGlyph.NOTEHEAD_HALF);

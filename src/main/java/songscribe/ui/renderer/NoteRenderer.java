@@ -27,13 +27,11 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
 import module java.desktop;
 
 import java.util.EnumMap;
-import java.util.function.BiConsumer;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLMetadata;
@@ -79,25 +77,6 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
     // Stem end-cap arc diameter as a fraction of stem width (from LilyPond print analysis)
     private static final double STEM_ARC_RATIO = 0.57;
-
-    // Dot positioning (using SMuFL augmentation dot glyph), in staff-space units
-    static final float FIRST_DOT_X_SS = 1.6375f; // 13.1px / 8 px/ss
-    static final float DOT_SPACING_SS;
-
-    // Augmentation dot Y shift (in ss) when the note sits on a staff line —
-    // moves the dot into the space above the line.
-    static final double DOT_ON_LINE_Y_SHIFT_SS = -0.5;
-
-    // X adjustments (in ss) added to FIRST_DOT_X_SS to clear wider noteheads
-    // or unbeamed flag tails.  Derived empirically from Bravura glyph metrics.
-    static final double DOT_X_ADJUST_SEMIBREVE_SS = 0.4375;
-    static final double DOT_X_ADJUST_MINIM_SS = 0.175;
-    static final double DOT_X_ADJUST_QUAVER_SS = 0.625;
-    static final double DOT_X_ADJUST_SEMIQUAVER_SS = 1.0;
-
-    static {
-        DOT_SPACING_SS = (float) SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT) + 0.35f;
-    }
 
     // Singleton instance
     private static final NoteRenderer INSTANCE = new NoteRenderer();
@@ -160,40 +139,6 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         }
 
         return noteX;
-    }
-
-    /**
-     * Computes the base stem geometry for a note type and direction.
-     * This is the shared anchor selection and positioning logic used by both
-     * {@code NoteRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
-     *
-     * @param noteType The note type (determines anchor and stem length)
-     * @param upper    true for stem-up, false for stem-down
-     * @return The base stem geometry
-     */
-    public static StemGeometry computeBaseStemGeometry(ElementType noteType, boolean upper) {
-        var isMinim = noteType == ElementType.MINIM;
-        var isGrace = noteType.isGraceNote();
-
-        GlyphAnchors.Anchor anchor;
-
-        if (isGrace) {
-            anchor = NoteGeometry.STEM_UP_SE_BLACK_SMALL;
-        } else if (upper) {
-            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE : Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
-        } else {
-            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
-        }
-
-        var anchorX = anchor.x();
-
-        // Stem left edge: for up-stems, the anchor marks the RIGHT edge of the stem;
-        // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
-        // left by STEM_WIDTH_SS/2, so we compensate.
-        var stemLeftX = anchorX - (upper ? NoteGeometry.STEM_WIDTH_SS : NoteGeometry.STEM_WIDTH_SS / 2);
-        var stemLength = isGrace ? Engraving.GRACE_NOTE_STEM_LENGTH_SS : Engraving.STEM_LENGTH_SS;
-
-        return new StemGeometry(stemLeftX, anchor.y(), stemLength);
     }
 
     @Override
@@ -323,7 +268,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             return null;
         }
 
-        var geom = computeBaseStemGeometry(noteType, upper);
+        var geom = NoteGeometry.computeBaseStemGeometry(noteType, upper);
         var stemWidthSs = invariants.getLineThickness().stemSs();
 
         // A down-stem sits flush with the notehead's LEFT edge, which is the glyph
@@ -480,45 +425,8 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
             var dotStr = SMuFLGlyph.AUGMENTATION_DOT.asString();
-            forEachDotPosition(note, beamed, upper, (dotX, yOffset) ->
+            NoteGeometry.forEachDotPosition(note, beamed, upper, (dotX, yOffset) ->
                 g2.drawString(dotStr, dotX.floatValue(), yOffset.floatValue()));
-        }
-    }
-
-    /**
-     * Computes the position of each augmentation dot for a note and passes
-     * (dotX, yOffset) to the consumer. Both values are in staff spaces,
-     * relative to the note's glyph origin.
-     */
-    static void forEachDotPosition(
-        StaffElement note, boolean beamed, boolean upper,
-        BiConsumer<? super Double, ? super Double> consumer
-    ) {
-        if (note.getDotCount() == 0) {
-            return;
-        }
-
-        var noteType = note.getType();
-
-        // Dots shift up when note is on a line (even staff position)
-        var yOffset = (note.getStaffPosition() % 2 == 0) ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
-
-        // X offset adjustments for wider noteheads and flags
-        var xAdjust = 0.0;
-
-        if (noteType == ElementType.SEMIBREVE) {
-            xAdjust = DOT_X_ADJUST_SEMIBREVE_SS;
-        } else if (noteType == ElementType.MINIM) {
-            xAdjust = DOT_X_ADJUST_MINIM_SS;
-        } else if (noteType.isBeamable() && !beamed && upper) {
-            xAdjust = (noteType == ElementType.QUAVER) ? DOT_X_ADJUST_QUAVER_SS : DOT_X_ADJUST_SEMIQUAVER_SS;
-        }
-
-        var dotX = FIRST_DOT_X_SS + xAdjust;
-
-        for (var i = 0; i < note.getDotCount(); i++) {
-            consumer.accept(dotX, yOffset);
-            dotX += DOT_SPACING_SS;
         }
     }
 
@@ -585,26 +493,5 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         var noteIndex = line.getElementIndex(note);
         return line.findBeamAt(noteIndex) != null &&
             note.getType() != ElementType.GRACE_QUAVER;
-    }
-
-    /**
-     * Base stem geometry computed from SMuFL anchor data, before any rendering-specific
-     * adjustments (device-pixel snapping, beam lengthening, etc.).
-     *
-     * @param stemLeftXSs Left edge of the stem in staff spaces (relative to notehead origin)
-     * @param anchorYSs   Y position where the stem meets the notehead
-     * @param lengthSs    Stem length in staff spaces (without beam lengthening)
-     */
-    public record StemGeometry(double stemLeftXSs, double anchorYSs, double lengthSs) {
-
-        /**
-         * Returns the Y position of the stem tip (the end away from the notehead).
-         *
-         * @param upper true for stem-up (tip above notehead), false for stem-down
-         * @return stem tip Y in staff spaces
-         */
-        public double stemTipYSs(boolean upper) {
-            return upper ? anchorYSs - lengthSs : anchorYSs + lengthSs;
-        }
     }
 }

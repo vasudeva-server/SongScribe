@@ -31,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
+import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.StaffExtents;
@@ -78,7 +79,8 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
             FIRST_DOT_X_SS.put(entry.getKey(), (float) (advanceWidth + DOT_GAP_SS));
         }
 
-        DOT_SPACING_SS = (float) SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT) + 0.35f;
+        // Center-to-center: one dot glyph plus a one-dot-width gap (LilyPond convention).
+        DOT_SPACING_SS = (float) (Engraving.AUGMENTATION_DOT_WIDTH_SS * 2);
     }
 
     // Singleton instance

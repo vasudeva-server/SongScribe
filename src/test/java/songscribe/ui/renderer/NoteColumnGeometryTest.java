@@ -57,7 +57,7 @@ class NoteColumnGeometryTest extends UnitTest {
         note.setUpper(true);
 
         var extent = NoteColumnGeometry.extentSs(note, false);
-        var stemGeom = NoteRenderer.computeBaseStemGeometry(ElementType.CROTCHET, true);
+        var stemGeom = NoteGeometry.computeBaseStemGeometry(ElementType.CROTCHET, true);
         var expectedRight = stemGeom.stemLeftXSs() + NoteGeometry.STEM_WIDTH_SS;
 
         assertThat(extent.rightSs()).isCloseTo(expectedRight, within(TOLERANCE_SS));
@@ -90,7 +90,7 @@ class NoteColumnGeometryTest extends UnitTest {
         note.setUpper(true);
 
         var extent = NoteColumnGeometry.extentSs(note, false);
-        var stemGeom = NoteRenderer.computeBaseStemGeometry(ElementType.MINIM, true);
+        var stemGeom = NoteGeometry.computeBaseStemGeometry(ElementType.MINIM, true);
         var expectedRight = stemGeom.stemLeftXSs() + NoteGeometry.STEM_WIDTH_SS;
 
         assertThat(extent.flagBBoxLocal()).isNull();

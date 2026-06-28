@@ -243,12 +243,11 @@ class SMuFLMetadataTest extends UnitTest {
     // Happy-path regression: requireAdvanceWidth returns correct value for AUGMENTATION_DOT
     //
     // Bravura JSON: glyphAdvanceWidths.augmentationDot = 0.4
-    // NoteRenderer.DOT_SPACING_SS = (float) requireAdvanceWidth(AUGMENTATION_DOT) + 0.35f
-    //                             = 0.4 + 0.35 = 0.75
+    // Augmentation dots are spaced center-to-center by one dot glyph plus a one-dot-width gap:
+    //   DOT_SPACING_SS = 2 * requireAdvanceWidth(AUGMENTATION_DOT) = 0.8
     // -------------------------------------------------------------------------
     private static final double AUGMENTATION_DOT_EXPECTED_ADVANCE_WIDTH = 0.4;
-    private static final double DOT_SPACING_SS_ADDEND = 0.35;
-    private static final double DOT_SPACING_SS_EXPECTED = AUGMENTATION_DOT_EXPECTED_ADVANCE_WIDTH + DOT_SPACING_SS_ADDEND;
+    private static final double DOT_SPACING_SS_EXPECTED = AUGMENTATION_DOT_EXPECTED_ADVANCE_WIDTH * 2;
 
     @Test
     void testRequireAdvanceWidthForAugmentationDotMatchesBravura() {
@@ -258,8 +257,8 @@ class SMuFLMetadataTest extends UnitTest {
     }
 
     @Test
-    void testDotSpacingSsMatchesBravuraAdvanceWidthPlusAddend() {
-        var dotSpacingSs = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT) + DOT_SPACING_SS_ADDEND;
+    void testDotSpacingSsIsTwoDotWidths() {
+        var dotSpacingSs = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT) * 2;
 
         assertThat(dotSpacingSs).isCloseTo(DOT_SPACING_SS_EXPECTED, within(TOLERANCE));
     }

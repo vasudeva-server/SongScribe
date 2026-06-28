@@ -24,10 +24,8 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.layout.NoteGeometry;
-import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
@@ -99,26 +97,13 @@ final class NoteColumnGeometry {
         var rightSs = NoteGeometry.getNoteheadRightEdgeSs(note);
 
         // ---- augmentation dots (extend right) ----
-        if (note.getDotCount() > 0) {
-            var dotBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.AUGMENTATION_DOT);
-            var maxDotRight = new double[]{rightSs};
-
-            NoteRenderer.forEachDotPosition(note, beamed, upper, (dotX, yOffset) -> {
-                var dotRight = dotX + dotBBox.right();
-
-                if (dotRight > maxDotRight[0]) {
-                    maxDotRight[0] = dotRight;
-                }
-            });
-
-            rightSs = maxDotRight[0];
-        }
+        rightSs = NoteGeometry.dotsRightExtentSs(note, beamed, upper, rightSs);
 
         // ---- stem and flag ----
         @Nullable Rectangle2D flagBBoxLocal = null;
 
         if (noteType.isNoteWithStem()) {
-            var stemGeom = NoteRenderer.computeBaseStemGeometry(noteType, upper);
+            var stemGeom = NoteGeometry.computeBaseStemGeometry(noteType, upper);
             var stemLeftXSs = stemGeom.stemLeftXSs();
 
             if (upper) {
@@ -135,36 +120,7 @@ final class NoteColumnGeometry {
                 }
             }
 
-            // ---- flag bbox (not beamed, flag glyph present) ----
-            if (!beamed) {
-                var flagGlyph = noteType.getFlagGlyph(upper);
-
-                if (flagGlyph != null) {
-                    var stemTipYSs = stemGeom.stemTipYSs(upper);
-                    var flagBBox = SMuFLMetadata.requireBBox(flagGlyph);
-
-                    double flagOriginX;
-
-                    if (noteType.isGraceNote()) {
-                        flagOriginX = NoteGeometry.getGraceFlagOriginXSs(stemLeftXSs);
-                        var scale = (double) ElementType.GRACE_NOTE_SCALE;
-                        flagBBoxLocal = new Rectangle2D.Double(
-                            flagOriginX + flagBBox.left() * scale,
-                            stemTipYSs + flagBBox.top() * scale,
-                            flagBBox.width() * scale,
-                            flagBBox.height() * scale
-                        );
-                    } else {
-                        flagOriginX = stemLeftXSs;
-                        flagBBoxLocal = new Rectangle2D.Double(
-                            flagOriginX + flagBBox.left(),
-                            stemTipYSs + flagBBox.top(),
-                            flagBBox.width(),
-                            flagBBox.height()
-                        );
-                    }
-                }
-            }
+            flagBBoxLocal = NoteGeometry.flagBBoxLocalSs(noteType, upper, beamed);
         }
 
         // ---- accidental (extend left only) ----

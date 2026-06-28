@@ -1190,8 +1190,9 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
             0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
         );
-        // prevColumn with 1 dot: rightExtentSs includes the dot; rightExtentExcludingDotsSs does not
-        var dotRightExtentSs = PLAIN_RIGHT_EXTENT_SS + ElementColumnBuilder.DOT_GAP_SS + ElementColumnBuilder.DOT_WIDTH_SS;
+        // prevColumn with 1 dot: rightExtentSs includes the dot's footprint (one dot-spacing step,
+        // the same per-dot stride the renderer uses); rightExtentExcludingDotsSs does not
+        var dotRightExtentSs = PLAIN_RIGHT_EXTENT_SS + NoteGeometry.DOT_SPACING_SS;
         var dottedPrevColumn = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
             0.0, dotRightExtentSs, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
