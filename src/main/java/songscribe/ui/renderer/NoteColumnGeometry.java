@@ -26,7 +26,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.error.RuntimeError;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -93,15 +92,7 @@ final class NoteColumnGeometry {
         }
 
         // ---- notehead ----
-        var glyph = noteType.getSMuFLGlyph();
-
-        // No null-glyph fallback: a null glyph means the note is not a renderable note
-        // type (e.g. a barline). Callers must not pass such types — this is a programming
-        // error, so exit fatally. requireBBox is similarly fatal on a missing glyph by design.
-        if (glyph == null) {
-            throw RuntimeError.exit("extentSs called on non-renderable note type: " + noteType);
-        }
-
+        var glyph = noteType.requireSMuFLGlyph();
         var noteheadBBox = SMuFLMetadata.requireBBox(glyph);
         var offsetX = NoteGeometry.getNoteheadXOffsetSs(noteType, upper);
         var leftSs = offsetX + noteheadBBox.left();

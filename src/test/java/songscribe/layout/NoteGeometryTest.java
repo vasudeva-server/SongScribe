@@ -737,8 +737,8 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testCrotchetRightEdgeMatchesSmuflBbox() {
-            var glyph = require(ElementType.CROTCHET.getSMuFLGlyph(), "CROTCHET SMuFL glyph");
-            var bbox = require(SMuFLMetadata.getBBox(glyph), "NOTEHEAD_BLACK bbox");
+            var glyph = ElementType.CROTCHET.requireSMuFLGlyph();
+            var bbox = SMuFLMetadata.requireBBox(glyph);
 
             assertThat(NoteGeometry.getNoteheadRightEdgeSs(ElementType.CROTCHET.newInstance()))
                 .isEqualTo(bbox.right());
