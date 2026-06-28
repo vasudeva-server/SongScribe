@@ -55,7 +55,7 @@ public final class AccidentalAction extends NoteOnlyAction {
             StaffElement.Accidental.DOUBLE_FLAT,
             Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_FLAT), "@\uF389", 18,
             "double-flat", Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_FLAT_TOOLTIP),
-            KeyEvent.VK_F, 0
+            KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK
         );
     }
 

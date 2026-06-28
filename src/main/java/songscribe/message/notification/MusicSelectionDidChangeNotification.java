@@ -30,14 +30,14 @@ import songscribe.ui.selection.SelectionCoordinator.LyricSelection;
 public class MusicSelectionDidChangeNotification extends Message {
 
     private final int selectionSize;
-    private final boolean hasGlissandoSelection;
+    private final boolean hasSlideSelection;
     @Nullable
     private final LyricSelection lyricSelection;
     private final ScoreView scoreView;
 
     public MusicSelectionDidChangeNotification(ScoreView scoreView) {
         selectionSize = scoreView.getSelectionSize();
-        hasGlissandoSelection = scoreView.getSelectionCoordinator().hasGlissandoSelection();
+        hasSlideSelection = scoreView.getSelectionCoordinator().hasSlideSelection();
         lyricSelection = scoreView.getSelectionCoordinator().getLyricSelection();
         this.scoreView = scoreView;
     }
@@ -46,8 +46,8 @@ public class MusicSelectionDidChangeNotification extends Message {
         return selectionSize;
     }
 
-    public boolean hasGlissandoSelection() {
-        return hasGlissandoSelection;
+    public boolean hasSlideSelection() {
+        return hasSlideSelection;
     }
 
     public boolean hasLyricSelection() {

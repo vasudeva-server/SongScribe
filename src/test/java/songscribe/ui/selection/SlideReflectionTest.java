@@ -30,7 +30,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
-import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
@@ -38,12 +37,12 @@ import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
 
-class GlissandoReflectionTest extends MainFrameMockTest {
+class SlideReflectionTest extends MainFrameMockTest {
 
     private ElementTypeAction crotchetAction;
     private ElementTypeAction minimAction;
     private ElementTypeAction glissandoAction;
-    private ElementTypeAction slideOutAction;
+    private ElementTypeAction fallAction;
     private AccidentalAction sharpAction;
     private DotAction dotAction;
     private FermataAction fermataAction;
@@ -55,7 +54,7 @@ class GlissandoReflectionTest extends MainFrameMockTest {
         crotchetAction = ElementTypeAction.createQuarterNoteAction(mainFrame);
         minimAction = ElementTypeAction.createHalfNoteAction(mainFrame);
         glissandoAction = ElementTypeAction.createGlissandoAction(mainFrame);
-        slideOutAction = ElementTypeAction.createSlideOutAction(mainFrame);
+        fallAction = ElementTypeAction.createFallAction(mainFrame);
         sharpAction = AccidentalAction.createSharpAction(mainFrame);
         dotAction = DotAction.createDotAction(mainFrame);
         fermataAction = FermataAction.createAction(mainFrame);
@@ -65,16 +64,26 @@ class GlissandoReflectionTest extends MainFrameMockTest {
     private List<UIAction.Reflectable> allActions() {
         return List.of(
             crotchetAction, minimAction,
-            glissandoAction, slideOutAction,
+            glissandoAction, fallAction,
             sharpAction, dotAction,
             fermataAction, staccatoAction
         );
     }
 
-    private SelectionCoordinator createCoordinatorWithGlissando(StaffElement.Glissando.Type type) {
+    private SelectionCoordinator createCoordinatorWithGlissando() {
         var note1 = ElementType.CROTCHET.newInstance();
         var note2 = ElementType.CROTCHET.newInstance();
-        note1.setGlissando(type);
+        note1.setGlissando();
+
+        return ReflectionTestHelper.createCoordinator(
+            List.of(note1, note2), allActions()
+        );
+    }
+
+    private SelectionCoordinator createCoordinatorWithFall() {
+        var note1 = ElementType.CROTCHET.newInstance();
+        var note2 = ElementType.CROTCHET.newInstance();
+        note1.setFall();
 
         return ReflectionTestHelper.createCoordinator(
             List.of(note1, note2), allActions()
@@ -95,7 +104,7 @@ class GlissandoReflectionTest extends MainFrameMockTest {
 
     @Test
     void testClearGlissandoSelectionRestoresState() {
-        var coordinator = createCoordinatorWithGlissando(StaffElement.Glissando.Type.CONNECTED);
+        var coordinator = createCoordinatorWithGlissando();
 
         // Set up a known pre-selection state: enable and select crotchet
         crotchetAction.setEnabled(true);
@@ -123,12 +132,12 @@ class GlissandoReflectionTest extends MainFrameMockTest {
 
     @Test
     void testConnectedGlissandoSelectedReflectsGlissandoAction() {
-        var coordinator = createCoordinatorWithGlissando(StaffElement.Glissando.Type.CONNECTED);
+        var coordinator = createCoordinatorWithGlissando();
         ReflectionTestHelper.selectGlissando(coordinator, 0);
         coordinator.triggerReflection();
 
         assertSelectedAndEnabled(glissandoAction, true, true);
-        assertSelectedAndEnabled(slideOutAction, false, false);
+        assertSelectedAndEnabled(fallAction, false, false);
         assertSelectedAndEnabled(crotchetAction, false, false);
         assertSelectedAndEnabled(minimAction, false, false);
         assertSelectedAndEnabled(sharpAction, false, false);
@@ -139,26 +148,26 @@ class GlissandoReflectionTest extends MainFrameMockTest {
 
     @Test
     void testNonMatchingGlissandoToolDisabled() {
-        // When CONNECTED is selected, SLIDE_OUT should be disabled
-        var coordinator = createCoordinatorWithGlissando(StaffElement.Glissando.Type.CONNECTED);
+        // When CONNECTED is selected, fall should be disabled
+        var coordinator = createCoordinatorWithGlissando();
         ReflectionTestHelper.selectGlissando(coordinator, 0);
         coordinator.triggerReflection();
 
         assertSelectedAndEnabled(glissandoAction, true, true);
-        assertSelectedAndEnabled(slideOutAction, false, false);
+        assertSelectedAndEnabled(fallAction, false, false);
 
         // And vice versa
-        var coordinator2 = createCoordinatorWithGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+        var coordinator2 = createCoordinatorWithFall();
         ReflectionTestHelper.selectGlissando(coordinator2, 0);
         coordinator2.triggerReflection();
 
-        assertSelectedAndEnabled(slideOutAction, true, true);
+        assertSelectedAndEnabled(fallAction, true, true);
         assertSelectedAndEnabled(glissandoAction, false, false);
     }
 
     @Test
     void testNoteWithGlissandoSelectedDoesNotTriggerGlissandoReflection() {
-        var coordinator = createCoordinatorWithGlissando(StaffElement.Glissando.Type.CONNECTED);
+        var coordinator = createCoordinatorWithGlissando();
 
         // Select the note itself, not its glissando
         ReflectionTestHelper.selectNote(coordinator, 0);
@@ -172,12 +181,12 @@ class GlissandoReflectionTest extends MainFrameMockTest {
     }
 
     @Test
-    void testSlideOutSelectedReflectsSlideOutAction() {
-        var coordinator = createCoordinatorWithGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+    void testFallSelectedReflectsFallAction() {
+        var coordinator = createCoordinatorWithFall();
         ReflectionTestHelper.selectGlissando(coordinator, 0);
         coordinator.triggerReflection();
 
-        assertSelectedAndEnabled(slideOutAction, true, true);
+        assertSelectedAndEnabled(fallAction, true, true);
         assertSelectedAndEnabled(glissandoAction, false, false);
         assertSelectedAndEnabled(crotchetAction, false, false);
         assertSelectedAndEnabled(minimAction, false, false);
@@ -193,7 +202,7 @@ class GlissandoReflectionTest extends MainFrameMockTest {
 
         @Test
         void testSaveOccursOnGlissandoSelection() {
-            var coordinator = createCoordinatorWithGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var coordinator = createCoordinatorWithGlissando();
 
             // Set a known state before selection
             fermataAction.setEnabled(true);

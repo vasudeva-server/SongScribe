@@ -169,7 +169,7 @@ class ElementColumnTest extends UnitTest {
     @Test
     void testHasGlissandoDelegatesToElement() {
         var glissandoNote = element(ElementType.CROTCHET);
-        glissandoNote.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        glissandoNote.setGlissando();
 
         assertThat(columnFor(glissandoNote).hasGlissando()).isTrue();
         assertThat(columnFor(element(ElementType.CROTCHET)).hasGlissando()).isFalse();

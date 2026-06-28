@@ -97,8 +97,8 @@ public final class LineInvariants {
     @Nullable
     private final Tie playingTieSpan;
 
-    /** Notes highlighted by the active glissando preview, resolved once per line. */
-    private final PreviewElementManager.GlissandoPreviewNotes glissandoPreviewNotes;
+    /** Notes highlighted by the active slide preview, resolved once per line. */
+    private final PreviewElementManager.SlidePreviewNotes slidePreviewNotes;
 
     private LineInvariants(
         Builder b,
@@ -125,7 +125,7 @@ public final class LineInvariants {
         playingTieSpan = (b.playingNoteIndex >= 0 && b.currentLine != null)
             ? b.currentLine.findTieAt(b.playingNoteIndex)
             : null;
-        glissandoPreviewNotes = PreviewElementManager.getGlissandoPreviewNotes();
+        slidePreviewNotes = PreviewElementManager.getSlidePreviewNotes();
     }
 
     /** Returns a new builder for invariants describing the given song. */
@@ -352,15 +352,15 @@ public final class LineInvariants {
     }
 
     /**
-     * Returns whether the element at {@code elementIndex} on this line is one the active glissando
+     * Returns whether the element at {@code elementIndex} on this line is one the active slide
      * preview would connect to, reusing the per-line resolution computed at construction.
      * <p>
      * The highlight applies only to the note glyph (notehead, stem, flag, accidentals, dots) and is
      * therefore applied by {@code LineRenderer.getElementColor}, not by {@link #getElementColor},
      * so it does not leak onto the note's decorations, attachments, ties, or lyrics.
      */
-    public boolean isGlissandoPreviewNote(int elementIndex) {
-        return glissandoPreviewNotes.highlights(lineIndex, elementIndex);
+    public boolean isSlidePreviewNote(int elementIndex) {
+        return slidePreviewNotes.highlights(lineIndex, elementIndex);
     }
 
     /**

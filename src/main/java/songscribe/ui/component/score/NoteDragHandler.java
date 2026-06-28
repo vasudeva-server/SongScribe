@@ -386,10 +386,9 @@ class NoteDragHandler {
         var glissando = element.getGlissando();
 
         if (glissando != null
-            && glissando.type == StaffElement.Glissando.Type.CONNECTED
             && elementIndex + 1 < line.elementCount()
             && element.getPitch() == line.getElement(elementIndex + 1).getPitch()) {
-            line.modifyElement(elementIndex, ElementField.GLISSANDO, element::removeGlissando);
+            line.modifyElement(elementIndex, ElementField.SLIDE, element::removeSlide);
         }
 
         // Glissando TO the dragged note from the previous note
@@ -398,9 +397,8 @@ class NoteDragHandler {
             var prevGlissando = prev.getGlissando();
 
             if (prevGlissando != null
-                && prevGlissando.type == StaffElement.Glissando.Type.CONNECTED
                 && prev.getPitch() == element.getPitch()) {
-                line.modifyElement(elementIndex - 1, ElementField.GLISSANDO, prev::removeGlissando);
+                line.modifyElement(elementIndex - 1, ElementField.SLIDE, prev::removeSlide);
             }
         }
     }

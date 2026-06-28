@@ -60,7 +60,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
         void testGraceNoteRemovedWhenHostReplacedWithRest() {
             song.withoutMutationTracking(() -> {
                 var grace = ElementType.GRACE_QUAVER.newInstance();
-                grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+                grace.setGlissando();
                 line.addElement(grace);
                 line.addElement(ElementType.CROTCHET.newInstance()); // host at index 1
             });
@@ -93,7 +93,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
         void testGraceNotePreservedWhenHostReplacedWithPitchedNote() {
             song.withoutMutationTracking(() -> {
                 var grace = ElementType.GRACE_QUAVER.newInstance();
-                grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+                grace.setGlissando();
                 line.addElement(grace);
                 line.addElement(ElementType.CROTCHET.newInstance()); // host at index 1
             });

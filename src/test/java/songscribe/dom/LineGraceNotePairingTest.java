@@ -32,7 +32,7 @@ class LineGraceNotePairingTest extends UnitTest {
     private Line pairedGraceLine() {
         var line = detachedLine();
         var grace = ElementType.GRACE_QUAVER.newInstance();
-        grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        grace.setGlissando();
         line.addElement(grace);
         line.addElement(ElementType.CROTCHET.newInstance());
         return line;

@@ -172,7 +172,7 @@ class ScoreViewControllerTest extends UnitTest {
             var song = new Song();
             var line = song.getLine(0);
             var noteA = crotchet();
-            noteA.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            noteA.setGlissando();
             noteA.setXOffsetPx(0);
             var noteB = crotchet();
             noteB.setXOffsetPx(10);
@@ -345,7 +345,7 @@ class ScoreViewControllerTest extends UnitTest {
             var noteA = crotchet();
             // Paired grace note: GRACE_QUAVER with CONNECTED glissando
             var grace = ElementType.GRACE_QUAVER.newInstance();
-            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            grace.setGlissando();
             var noteB = crotchet();
             var noteC = crotchet();
 
@@ -382,7 +382,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var noteA = crotchet();
             var grace = ElementType.GRACE_QUAVER.newInstance();
-            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            grace.setGlissando();
             var noteB = crotchet();
             var breath = ElementType.BREATH_MARK.newInstance();
 
@@ -412,7 +412,7 @@ class ScoreViewControllerTest extends UnitTest {
             var song = new Song();
             var line = song.getLine(0);
             var noteA = crotchet();
-            noteA.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            noteA.setFall();
             var noteB = crotchet();
 
             song.withoutMutationTracking(() -> {
@@ -428,9 +428,13 @@ class ScoreViewControllerTest extends UnitTest {
 
             controller.handleDelete();
 
-            assertThat(noteA.getGlissando()).isNull();
+            assertThat(noteA.hasFall()).isFalse();
             // Only the glissando is removed; elements are unchanged (noteA, noteB, barline)
             assertThat(line.elementCount()).isEqualTo(3);
+            // The removal must be recorded as a mutation so the resulting notification triggers a
+            // relayout — a fall occupies horizontal space, so deleting it must reflow the line. A
+            // bare removeSlide() leaves the song unmodified and the layout stale.
+            assertThat(song.isModified()).isTrue();
         }
 
         // Row 19: no element/glissando selection, canDeleteLine() true → removes line
@@ -875,7 +879,7 @@ class ScoreViewControllerTest extends UnitTest {
         @Test
         void testDeleteNoteRemovesGlissandoFromPreviousNote() {
             var prev = crotchet();
-            prev.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            prev.setGlissando();
             var line = lineWith(prev, crotchet());
             ScoreViewController.deleteNote(1, line);
 
@@ -1073,7 +1077,7 @@ class ScoreViewControllerTest extends UnitTest {
 
         private StaffElement pairedGraceNote() {
             var grace = ElementType.GRACE_QUAVER.newInstance();
-            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            grace.setGlissando();
             return grace;
         }
 

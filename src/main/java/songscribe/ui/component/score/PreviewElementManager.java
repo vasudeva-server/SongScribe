@@ -37,6 +37,7 @@ import songscribe.dom.ElementLocation;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
+import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.EndingConfirms;
@@ -96,8 +97,8 @@ public final class PreviewElementManager {
     /** Whether the mouse Y (staff position) is within the vertical bounds of that note head. */
     private static boolean yPosSpMatchesElement = false;
 
-    /** The glissando zone type determined by mouse position (null if no valid zone). */
-    private static StaffElement.Glissando.@Nullable Type currentGlissandoZone = null;
+    /** The slide zone determined by mouse position (null if no valid zone). */
+    private static @Nullable SlideZone currentSlideZone = null;
 
     /** Last tracked mouse X in staff-space units; used by LineRenderer to avoid Swing getMousePosition() returning null. */
     private static double currentMouseXSs = 0.0;
@@ -162,7 +163,7 @@ public final class PreviewElementManager {
             currentStaffPosition = 0;
             xPosSsMatchesElement = false;
             yPosSpMatchesElement = false;
-            currentGlissandoZone = null;
+            currentSlideZone = null;
             oldLine.repaint();
         }
     }
@@ -226,10 +227,10 @@ public final class PreviewElementManager {
             return null;
         }
 
-        // A glissando tool never replaces an existing element either — it attaches a
-        // glissando to a note. Instead of the red replacement highlight, the connected
-        // notes are drawn in the preview color (see isGlissandoPreviewNote).
-        if (isGlissandoPlaceholder(previewElement)) {
+        // A slide tool never replaces an existing element either — it attaches a
+        // slide to a note. Instead of the red replacement highlight, the connected
+        // notes are drawn in the preview color (see isSlidePreviewNote).
+        if (isSlidePlaceholder(previewElement)) {
             return null;
         }
 
@@ -237,12 +238,12 @@ public final class PreviewElementManager {
     }
 
     /**
-     * The notes a previewed glissando would connect to, and the line they live on. A connecting
-     * glissando highlights both the source note and the target note to its right; a slide-out
+     * The notes a previewed slide would connect to, and the line they live on. A connecting
+     * glissando highlights both the source note and the target note to its right; a fall
      * highlights only the source, so {@code targetIndex} is -1. {@link #NONE} means no preview.
      */
-    public record GlissandoPreviewNotes(int lineIndex, int sourceIndex, int targetIndex) {
-        public static final GlissandoPreviewNotes NONE = new GlissandoPreviewNotes(-1, -1, -1);
+    public record SlidePreviewNotes(int lineIndex, int sourceIndex, int targetIndex) {
+        public static final SlidePreviewNotes NONE = new SlidePreviewNotes(-1, -1, -1);
 
         /** Returns whether the element at {@code (atLineIndex, atElementIndex)} is highlighted. */
         public boolean highlights(int atLineIndex, int atElementIndex) {
@@ -250,7 +251,7 @@ public final class PreviewElementManager {
                 return false;
             }
 
-            // sourceIndex/targetIndex are -1 when absent (a slide-out has no target; NONE has
+            // sourceIndex/targetIndex are -1 when absent (a fall has no target; NONE has
             // neither). Guard so a negative query index never matches an absent endpoint.
             return (sourceIndex >= 0 && atElementIndex == sourceIndex)
                 || (targetIndex >= 0 && atElementIndex == targetIndex);
@@ -258,47 +259,47 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Resolves which notes the currently previewed glissando would connect to. Computed once so a
+     * Resolves which notes the currently previewed slide would connect to. Computed once so a
      * caller can reuse it across every element on a line instead of re-resolving per element.
      * <p>
-     * Returns {@link GlissandoPreviewNotes#NONE} when no glissando preview is being shown. The
+     * Returns {@link SlidePreviewNotes#NONE} when no slide preview is being shown. The
      * conditions mirror those in {@link LineRenderer#renderPreviewElement}: the highlight is only
-     * shown when the preview glissando itself is drawn, which excludes the case where the source
-     * note already carries this glissando type.
+     * shown when the preview slide itself is drawn, which excludes the case where the source
+     * note already carries this slide type.
      */
-    public static GlissandoPreviewNotes getGlissandoPreviewNotes() {
-        if (!shouldShowGlissandoPreview() || currentPreviewLine == null) {
-            return GlissandoPreviewNotes.NONE;
+    public static SlidePreviewNotes getSlidePreviewNotes() {
+        if (!shouldShowSlidePreview() || currentPreviewLine == null) {
+            return SlidePreviewNotes.NONE;
         }
 
-        // shouldShowGlissandoPreview() above already guarantees the zone is non-null.
-        var type = currentGlissandoZone;
+        // shouldShowSlidePreview() above already guarantees the zone is non-null.
+        var type = currentSlideZone;
         var line = currentPreviewLine.getLine();
         var sourceIndex = currentXIndex - 1;
 
         if (line == null || sourceIndex < 0) {
-            return GlissandoPreviewNotes.NONE;
+            return SlidePreviewNotes.NONE;
         }
 
         // No preview line is drawn (and thus no highlight) when the source note already
-        // carries this glissando type.
-        if (sourceAlreadyHasGlissando(line, sourceIndex, type)) {
-            return GlissandoPreviewNotes.NONE;
+        // carries this slide type.
+        if (sourceAlreadyHasSlide(line, sourceIndex, type)) {
+            return SlidePreviewNotes.NONE;
         }
 
         // A connecting glissando also highlights the target note immediately to the right.
-        var targetIndex = type == StaffElement.Glissando.Type.CONNECTED ? currentXIndex : -1;
+        var targetIndex = type == SlideZone.GLISSANDO ? currentXIndex : -1;
 
-        return new GlissandoPreviewNotes(currentPreviewLine.getLineIndex(), sourceIndex, targetIndex);
+        return new SlidePreviewNotes(currentPreviewLine.getLineIndex(), sourceIndex, targetIndex);
     }
 
     /**
      * Returns whether the note at {@code (lineIndex, elementIndex)} is one the currently previewed
-     * glissando would connect to. Prefer {@link #getGlissandoPreviewNotes()} when checking several
+     * slide would connect to. Prefer {@link #getSlidePreviewNotes()} when checking several
      * elements on the same line so the resolution runs only once.
      */
-    public static boolean isGlissandoPreviewNote(int lineIndex, int elementIndex) {
-        return getGlissandoPreviewNotes().highlights(lineIndex, elementIndex);
+    public static boolean isSlidePreviewNote(int lineIndex, int elementIndex) {
+        return getSlidePreviewNotes().highlights(lineIndex, elementIndex);
     }
 
     /**
@@ -317,20 +318,20 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Returns whether a glissando preview line should be drawn.
+     * Returns whether a slide preview line should be drawn.
      * <p>
-     * True when the mouse is in a valid glissando zone (not over a note head, not to the
+     * True when the mouse is in a valid slide zone (not over a note head, not to the
      * left of the first note). The preview is shown for both insertion and removal modes.
      */
-    public static boolean shouldShowGlissandoPreview() {
-        return currentGlissandoZone != null;
+    public static boolean shouldShowSlidePreview() {
+        return currentSlideZone != null;
     }
 
     /**
-     * Returns the current glissando zone type, or null if no valid zone exists.
+     * Returns the current slide zone type, or null if no valid zone exists.
      */
-    static StaffElement.Glissando.@Nullable Type getGlissandoZone() {
-        return currentGlissandoZone;
+    static @Nullable SlideZone getSlideZone() {
+        return currentSlideZone;
     }
 
     /**
@@ -369,10 +370,10 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Sets the current glissando zone type (package-private for test setup).
+     * Sets the current slide zone type (package-private for test setup).
      */
-    static void setCurrentGlissandoZone(StaffElement.Glissando.@Nullable Type zone) {
-        currentGlissandoZone = zone;
+    static void setCurrentSlideZone(@Nullable SlideZone zone) {
+        currentSlideZone = zone;
     }
 
     // ==========================================================================
@@ -380,77 +381,76 @@ public final class PreviewElementManager {
     // ==========================================================================
 
     /**
-     * Returns whether the given element is a glissando placeholder (the insertion
-     * element created when a glissando tool is selected).
+     * Returns whether the given element is a slide placeholder (the insertion
+     * element created when a slide tool is selected).
      */
-    static boolean isGlissandoPlaceholder(@Nullable StaffElement element) {
-        return element != null && element.getType() == ElementType.GLISSANDO;
+    static boolean isSlidePlaceholder(@Nullable StaffElement element) {
+        return element != null && element.getType() == ElementType.SLIDE;
     }
 
     /**
-     * Returns whether the source note at {@code sourceIndex} on {@code line} already carries a
-     * glissando of {@code type}. When it does, no preview glissando is drawn (and thus no preview
-     * highlight) — the note already has what the tool would add. A null {@code type} (no zone)
+     * Returns whether the source note at {@code sourceIndex} on {@code line} already carries the
+     * slide {@code zone} represents. When it does, no preview slide is drawn (and thus no preview
+     * highlight) — the note already has what the tool would add. A null {@code zone} (no zone)
      * trivially matches nothing.
      */
-    static boolean sourceAlreadyHasGlissando(
-        Line line, int sourceIndex, StaffElement.Glissando.@Nullable Type type
+    static boolean sourceAlreadyHasSlide(
+        Line line, int sourceIndex, @Nullable SlideZone zone
     ) {
-        var glissando = line.getElement(sourceIndex).getGlissando();
-        return glissando != null && glissando.type == type;
+        return zone != null && zone.matches(line.getElement(sourceIndex));
     }
 
     /**
-     * Returns the glissando type corresponding to the currently selected action,
-     * or null if neither glissando action is selected.
+     * Returns the slide zone corresponding to the currently selected action,
+     * or null if neither slide action is selected.
      */
-    private static StaffElement.Glissando.@Nullable Type getSelectedGlissandoType() {
+    private static @Nullable SlideZone getSelectedSlideZone() {
         var selected = Actions.DURATION_ACTION_GROUP.getSelected();
 
         if (selected instanceof ElementTypeAction eta) {
-            return eta.getGlissandoType();
+            return eta.getSlideZone();
         }
 
         return null;
     }
 
     /**
-     * Computes the glissando zone type for the given intended type.
+     * Computes the slide zone type for the given intended type.
      * <p>
      * Returns null if the mouse is to the left of the first note (no source note),
-     * or if {@code intendedType} is null. Otherwise validates whether the given type
-     * can be inserted at the given index: CONNECTED requires a pitched note to the
-     * right with a different pitch, SLIDE_OUT only requires a pitched source note.
-     * Only pitched notes can be a glissando source or target — bar lines, grace
+     * or if {@code intendedZone} is null. Otherwise validates whether the given zone
+     * can be inserted at the given index: {@code GLISSANDO} requires a pitched note to the
+     * right with a different pitch, {@code FALL} only requires a pitched source note.
+     * Only pitched notes can be a slide source or target — bar lines, grace
      * notes, rests, and other non-pitched elements are rejected.
      *
      * @param line         The line containing the notes
      * @param xIndex       Insertion index from {@link LayoutResult#findInsertionIndex}
-     * @param intendedType The glissando type to validate, or null
-     * @return The zone type, or null if no valid zone
+     * @param intendedZone The slide zone to validate, or null
+     * @return The zone, or null if no valid zone
      */
-    static StaffElement.Glissando.@Nullable Type computeGlissandoZone(
+    static @Nullable SlideZone computeSlideZone(
         Line line,
         int xIndex,
-        StaffElement.Glissando.@Nullable Type intendedType) {
+        @Nullable SlideZone intendedZone) {
         // xIndex=0 means to the left of the first note — no source note to draw from
         if (xIndex <= 0 || line.elementCount() == 0) {
             return null;
         }
 
-        if (intendedType == null) {
+        if (intendedZone == null) {
             return null;
         }
 
-        // Only pitched notes can be a glissando source or target
+        // Only pitched notes can be a slide source or target
         var sourceElement = line.getElement(xIndex - 1);
 
         if (!sourceElement.getType().isPitchedNote()) {
             return null;
         }
 
-        if (intendedType == StaffElement.Glissando.Type.CONNECTED) {
-            // Connected requires a note to the right
+        if (intendedZone == SlideZone.GLISSANDO) {
+            // A connecting glissando requires a note to the right
             if (xIndex >= line.elementCount()) {
                 return null;
             }
@@ -468,7 +468,7 @@ public final class PreviewElementManager {
             }
         }
 
-        return intendedType;
+        return intendedZone;
     }
 
     // ==========================================================================
@@ -573,16 +573,16 @@ public final class PreviewElementManager {
         // getHoveredElementLocation, so newXMatch stays raw for the over-element-head check.
         var breathMarkBlocked = isBreathMarkInsertionBlocked(previewElement, xIndex, line, newXMatch);
 
-        // Compute glissando zone before change detection so zone changes trigger repaints.
+        // Compute slide zone before change detection so zone changes trigger repaints.
         // Only compute when not over an element head (elementAtX < 0), as hovering over an
-        // element head means there is no valid glissando target to the left.
-        StaffElement.Glissando.Type newGlissandoZone = null;
+        // element head means there is no valid slide target to the left.
+        SlideZone newSlideZone = null;
 
-        if (isGlissandoPlaceholder(previewElement) && elementAtX < 0) {
-            var intendedType = getSelectedGlissandoType();
+        if (isSlidePlaceholder(previewElement) && elementAtX < 0) {
+            var intendedZone = getSelectedSlideZone();
 
-            if (intendedType != null) {
-                newGlissandoZone = computeGlissandoZone(line, xIndex, intendedType);
+            if (intendedZone != null) {
+                newSlideZone = computeSlideZone(line, xIndex, intendedZone);
             }
         }
 
@@ -590,7 +590,7 @@ public final class PreviewElementManager {
         if (lc == currentPreviewLine && xIndex == currentXIndex
             && staffPosition == currentStaffPosition
             && newXMatch == xPosSsMatchesElement && newYMatch == yPosSpMatchesElement
-            && newGlissandoZone == currentGlissandoZone) {
+            && newSlideZone == currentSlideZone) {
             return;  // No change, no repaint
         }
 
@@ -605,10 +605,10 @@ public final class PreviewElementManager {
         currentStaffPosition = staffPosition;
         xPosSsMatchesElement = newXMatch;
         yPosSpMatchesElement = newYMatch;
-        currentGlissandoZone = newGlissandoZone;
+        currentSlideZone = newSlideZone;
 
-        if (isGlissandoPlaceholder(previewElement)) {
-            // No note-head preview for glissando tool — renderPreviewElement draws the preview line.
+        if (isSlidePlaceholder(previewElement)) {
+            // No note-head preview for slide tool — renderPreviewElement draws the preview line.
             lc.repaint();
             return;
         }
@@ -656,10 +656,10 @@ public final class PreviewElementManager {
 
         var previewElement = EditModeManager.getPreviewElement();
 
-        if (isGlissandoPlaceholder(previewElement)) {
-            var zoneType = currentGlissandoZone;
+        if (isSlidePlaceholder(previewElement)) {
+            var zone = currentSlideZone;
 
-            if (zoneType == null) {
+            if (zone == null) {
                 return;  // No valid zone = click is a no-op
             }
 
@@ -668,11 +668,11 @@ public final class PreviewElementManager {
 
             line.withModification(() -> line.modifyElement(
                 noteIndex,
-                ElementField.GLISSANDO,
-                () -> sourceNote.setGlissando(zoneType)
+                ElementField.SLIDE,
+                () -> zone.applyTo(sourceNote)
             ));
             lc.repaint();
-            return;  // Stay in glissando mode
+            return;  // Stay in slide mode
         }
 
         // Belt-and-braces: block clicks that would try to insert past the auto-maintained
@@ -733,7 +733,7 @@ public final class PreviewElementManager {
         if (shouldHandlePreviewElement(lc)) {
             var previewElement = EditModeManager.getPreviewElement();
 
-            if (!isGlissandoPlaceholder(previewElement)) {
+            if (!isSlidePlaceholder(previewElement)) {
                 EditModeManager.setPreviewElementVisible(true);
             }
         }
@@ -1034,10 +1034,9 @@ public final class PreviewElementManager {
         // the preceding note.
         if (!previewElement.getType().isPitchedNote() && xIndex > 0) {
             var precedingElement = line.getElement(xIndex - 1);
-            var glissando = precedingElement.getGlissando();
 
-            if (glissando != null && glissando.type == StaffElement.Glissando.Type.CONNECTED) {
-                precedingElement.removeGlissando();
+            if (precedingElement.getGlissando() != null) {
+                precedingElement.removeSlide();
             }
         }
         var shift = ScaleContext.ssToRoundedPx(insertion.shiftForSubsequentElementsSs());

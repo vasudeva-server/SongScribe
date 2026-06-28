@@ -60,7 +60,7 @@ class EditLyricActionGraceNoteTest extends MainFrameMockTest {
         }
 
         var grace = ElementType.GRACE_QUAVER.newInstance();
-        grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        grace.setGlissando();
         line.addElement(grace);
         line.addElement(ElementType.CROTCHET.newInstance());
 
@@ -77,7 +77,7 @@ class EditLyricActionGraceNoteTest extends MainFrameMockTest {
         }
 
         var grace = ElementType.GRACE_QUAVER.newInstance();
-        grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        grace.setGlissando();
         line.addElement(grace);
         var host = ElementType.CROTCHET.newInstance();
         line.addElement(host);

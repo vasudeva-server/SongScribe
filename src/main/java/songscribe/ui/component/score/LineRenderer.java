@@ -30,6 +30,7 @@ import songscribe.layout.NoteGeometry;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Beam;
 import songscribe.dom.BeatChangeAttachment;
@@ -47,7 +48,7 @@ import songscribe.ui.renderer.DynamicsRenderer;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.EndingRenderer;
 import songscribe.ui.renderer.FermataRenderer;
-import songscribe.ui.renderer.GlissandoRenderer;
+import songscribe.ui.renderer.SlideRenderer;
 import songscribe.util.GraphicsState;
 import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.LineInvariants;
@@ -152,7 +153,7 @@ class LineRenderer {
         drawStaffLines(g2, invariants);
         renderLineBeginning(g2, invariants, lineFrame);
         renderElements(g2, invariants, lineFrame);
-        renderGlissandos(g2, invariants, lineFrame);
+        renderSlides(g2, invariants, lineFrame);
         renderBeams(g2, invariants, lineFrame);
         renderTies(g2, invariants, lineFrame);
         renderTuplets(g2, invariants, lineFrame);
@@ -280,7 +281,7 @@ class LineRenderer {
      * Determines the color for rendering an element.
      * <p>
      * Delegates edit mode, playback, selection, and hover logic to
-     * {@link LineInvariants#getElementColor}. Adds the glissando-preview highlight and
+     * {@link LineInvariants#getElementColor}. Adds the slide-preview highlight and
      * grace-cancel coloring on top. Package-private for testing.
      *
      * @param elementIndex The index of the element within this line
@@ -294,11 +295,11 @@ class LineRenderer {
             return color;
         }
 
-        // The glissando-preview highlight marks only the note glyph (notehead, stem, flag,
-        // accidentals, dots) of the notes a previewed glissando would connect to. It is applied
+        // The slide-preview highlight marks only the note glyph (notehead, stem, flag,
+        // accidentals, dots) of the notes a previewed slide would connect to. It is applied
         // here, on the note's own color, so it does not leak onto the note's decorations,
         // attachments, ties, or lyrics, which each resolve their color independently.
-        if (invariants.isGlissandoPreviewNote(elementIndex)) {
+        if (invariants.isSlidePreviewNote(elementIndex)) {
             return ScoreView.getPreviewElementColor();
         }
 
@@ -316,15 +317,15 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Renders glissandos (wavy ornament lines) for all notes in the line.
+     * Renders slides for all notes in the line.
      *
      * @param g2    Graphics context
      * @param invariants   Line invariants
      * @param frame Element frame
      */
-    private void renderGlissandos(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
+    private void renderSlides(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var line = invariants.requireCurrentLine();
-        GlissandoRenderer.getInstance().renderGlissandosFromLine(g2, line, invariants, frame);
+        SlideRenderer.getInstance().renderSlidesFromLine(g2, line, invariants, frame);
     }
 
     /**
@@ -578,17 +579,17 @@ class LineRenderer {
             return;
         }
 
-        // Glissando preview bypasses preview element visibility — it manages its own
-        // display logic via shouldShowGlissandoPreview() and never uses the note-head preview.
-        if (PreviewElementManager.isGlissandoPlaceholder(previewElement)) {
-            if (!PreviewElementManager.shouldShowGlissandoPreview()) {
+        // Slide preview bypasses preview element visibility — it manages its own
+        // display logic via shouldShowSlidePreview() and never uses the note-head preview.
+        if (PreviewElementManager.isSlidePlaceholder(previewElement)) {
+            if (!PreviewElementManager.shouldShowSlidePreview()) {
                 return;
             }
 
-            var type = PreviewElementManager.getGlissandoZone();
+            var zone = PreviewElementManager.getSlideZone();
 
-            if (type == null) {
-                return;  // Defensive: shouldShowGlissandoPreview() guards this
+            if (zone == null) {
+                return;  // Defensive: shouldShowSlidePreview() guards this
             }
 
             var line = lc.getLine();
@@ -599,14 +600,22 @@ class LineRenderer {
 
             var sourceIndex = PreviewElementManager.getCurrentXIndex() - 1;
 
-            if (PreviewElementManager.sourceAlreadyHasGlissando(line, sourceIndex, type)) {
-                return;  // Already has this glissando type — no preview needed
+            if (PreviewElementManager.sourceAlreadyHasSlide(line, sourceIndex, zone)) {
+                return;  // Already has this slide — no preview needed
             }
 
             try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
                 g2.setColor(ScoreView.getPreviewElementColor());
-                GlissandoRenderer.getInstance().renderPreviewGlissando(g2, sourceIndex, type, line, invariants);
+
+                var slideRenderer = SlideRenderer.getInstance();
+
+                if (zone == SlideZone.GLISSANDO) {
+                    slideRenderer.renderPreviewGlissando(g2, sourceIndex, line, invariants);
+                } else {
+                    slideRenderer.renderPreviewFall(g2, sourceIndex, line, invariants);
+                }
             }
+
             return;
         }
 

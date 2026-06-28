@@ -171,7 +171,7 @@ public final class ReflectionTestHelper {
     public static void selectGlissando(SelectionCoordinator coordinator, int elementIndex) {
         coordinator.saveActionStates();
         var state = Objects.requireNonNull(coordinator.getActiveSelection());
-        state.selectGlissando(elementIndex);
+        state.selectSlide(elementIndex);
     }
 
     /**

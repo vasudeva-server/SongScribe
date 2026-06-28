@@ -76,7 +76,7 @@ class LyricEditorActionAuditTest extends MainFrameMockTest {
             ElementTypeAction.createHalfNoteAction(mainFrame),
             ElementTypeAction.createWholeNoteAction(mainFrame),
             ElementTypeAction.createGlissandoAction(mainFrame),
-            ElementTypeAction.createSlideOutAction(mainFrame),
+            ElementTypeAction.createFallAction(mainFrame),
             // DotRestToolbar
             DotAction.createDotAction(mainFrame),
             DotAction.createDoubleDotAction(mainFrame),

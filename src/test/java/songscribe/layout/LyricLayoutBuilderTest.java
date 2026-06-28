@@ -805,7 +805,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         // Use a grace note element so that computeLyricBoxLeftXSs follows the grace path
         // and calls firstGraphemeClusterEndIndex on the lyric text.
         var grace = ElementType.GRACE_QUAVER.newInstance();
-        grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        grace.setGlissando();
         var host = note();
         addToLine(grace, host);
 

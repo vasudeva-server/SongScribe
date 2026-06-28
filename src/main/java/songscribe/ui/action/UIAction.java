@@ -126,10 +126,10 @@ public class UIAction extends AbstractAction {
         boolean matchesElement(StaffElement element);
 
         /**
-         * Whether this action matches the given glissando type.
-         * Only glissando/slide-out actions override this to return true.
+         * Whether this action matches the slide attached to the given element.
+         * Only glissando/fall actions override this to return true.
          */
-        default boolean matchesGlissandoType(StaffElement.Glissando.Type type) {
+        default boolean matchesSlide(StaffElement element) {
             return false;
         }
     }
@@ -575,7 +575,7 @@ public class UIAction extends AbstractAction {
         return (
             (duration != Actions.GRACE_EIGHTH_NOTE_ACTION) &&
                 (duration != Actions.GLISSANDO_ACTION) &&
-                (duration != Actions.SLIDE_OUT_ACTION)
+                (duration != Actions.FALL_ACTION)
         );
     }
 

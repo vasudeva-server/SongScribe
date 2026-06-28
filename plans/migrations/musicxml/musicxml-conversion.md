@@ -108,7 +108,9 @@ See [phase-2-structural-model.md](./phase-2-structural-model.md) for the detaile
 - Dots, accidentals (incl. cautionary/parenthesized), stems (up/down + manual
   override flag → `<other-*>`), X offset (px → tenths).
 - Per-note articulations/notations: accent, staccato, fermata, dynamics,
-  breath mark, glissando/slide (+ translate offsets).
+  breath mark, glissando (`CONNECTED` only → `<slide>` start/stop), and
+  fall (note attribute → `<notations><articulations><falloff>` on that note;
+  read: `<falloff>` → `setFall()`).
 - Inline barlines/repeats already handled in Phase 2.
 
 **Verify**: Round-trip notes across all durations, accidentals, articulations,

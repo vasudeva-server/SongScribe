@@ -527,7 +527,7 @@ public final class ScoreViewController {
                     var prevElement = line.getElement(begin - 1);
 
                     if (prevElement.getGlissando() != null) {
-                        prevElement.removeGlissando();
+                        prevElement.removeSlide();
                     }
                 }
 
@@ -557,9 +557,12 @@ public final class ScoreViewController {
                     line.removeRange(begin, rangeEnd);
                 });
             }
-        } else if (state != null && state.hasGlissandoSelection()) {
+        } else if (state != null && state.hasSlideSelection()) {
             var line = state.getLine();
-            line.getElement(state.getSelectedGlissandoElementIndex()).removeGlissando();
+            var elementIndex = state.getSelectedSlideElementIndex();
+
+            line.withModification(() -> line.modifyElement(
+                elementIndex, ElementField.SLIDE, line.getElement(elementIndex)::removeSlide));
         } else if (score.canDeleteLine()) {
             song.removeLine(selectionCoordinator.getSelectedLine());
         }
@@ -644,7 +647,7 @@ public final class ScoreViewController {
             var prevElement = line.getElement(xIndex - 1);
 
             if (prevElement.getGlissando() != null) {
-                prevElement.removeGlissando();
+                prevElement.removeSlide();
             }
         }
 

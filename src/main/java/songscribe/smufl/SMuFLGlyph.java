@@ -131,6 +131,9 @@ public enum SMuFLGlyph {
     GLISSANDO_UP("glissandoUp", '\uE585'),
     GLISSANDO_DOWN("glissandoDown", '\uE586'),
 
+    // Brass techniques (U+E5D0-U+E5EF)
+    BRASS_FALL_LIP_SHORT("brassFallLipShort", '\uE5D7'),
+
     // Trills and tremolos (U+EAA0-U+EAAF)
     WIGGLE_TRILL_FASTER("wiggleTrillFaster", '\uEAA2'),
     WIGGLE_TRILL("wiggleTrill", '\uEAA4'),

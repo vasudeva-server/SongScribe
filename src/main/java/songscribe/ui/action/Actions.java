@@ -100,7 +100,7 @@ public final class Actions {
     public static ElementTypeAction HALF_NOTE_ACTION;
     public static ElementTypeAction WHOLE_NOTE_ACTION;
     public static ElementTypeAction GLISSANDO_ACTION;
-    public static ElementTypeAction SLIDE_OUT_ACTION;
+    public static ElementTypeAction FALL_ACTION;
 
     public static List<ElementTypeAction> NOTE_DURATION_ACTIONS;
     public static DurationActionGroup DURATION_ACTION_GROUP;
@@ -226,7 +226,7 @@ public final class Actions {
         HALF_NOTE_ACTION = ElementTypeAction.createHalfNoteAction(mainFrame);
         WHOLE_NOTE_ACTION = ElementTypeAction.createWholeNoteAction(mainFrame);
         GLISSANDO_ACTION = ElementTypeAction.createGlissandoAction(mainFrame);
-        SLIDE_OUT_ACTION = ElementTypeAction.createSlideOutAction(mainFrame);
+        FALL_ACTION = ElementTypeAction.createFallAction(mainFrame);
 
         NOTE_DURATION_ACTIONS = List.of(
             GRACE_EIGHTH_NOTE_ACTION,
@@ -247,7 +247,7 @@ public final class Actions {
             HALF_NOTE_ACTION,
             WHOLE_NOTE_ACTION,
             GLISSANDO_ACTION,
-            SLIDE_OUT_ACTION
+            FALL_ACTION
         );
         DURATION_ACTION_GROUP.setDefaultAction(QUARTER_NOTE_ACTION);
 

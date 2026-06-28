@@ -42,7 +42,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import songscribe.dom.ElementType;
-import songscribe.dom.StaffElement;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -236,8 +235,8 @@ class ElementInsertionTest extends E2ETest {
                     .as("drag connect: count").isEqualTo(countBefore + 1),
                 () -> assertThat(line.getElement(graceIdx).getType())
                     .as("drag connect: grace type").isEqualTo(ElementType.GRACE_QUAVER),
-                () -> assertThat(Objects.requireNonNull(line.getElement(graceIdx).getGlissando()).type)
-                    .as("drag connect: glissando").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
+                () -> assertThat(line.getElement(graceIdx).getGlissando())
+                    .as("drag connect: glissando").isNotNull(),
                 () -> assertThat(isGraceModeActive())
                     .as("drag connect: mode inactive").isFalse()
             );
@@ -350,8 +349,8 @@ class ElementInsertionTest extends E2ETest {
                     .as("grace type").isEqualTo(ElementType.GRACE_QUAVER),
                 () -> assertThat(line.getElement(hostIdx).getType().isPitchedNote())
                     .as("host type").isTrue(),
-                () -> assertThat(Objects.requireNonNull(line.getElement(graceIdx).getGlissando()).type)
-                    .as("glissando").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
+                () -> assertThat(line.getElement(graceIdx).getGlissando())
+                    .as("glissando").isNotNull(),
                 () -> assertThat(isGraceModeActive())
                     .as("grace mode inactive").isFalse(),
                 () -> assertThat(isActionEnabled(Actions.GLISSANDO_ACTION)
@@ -384,8 +383,8 @@ class ElementInsertionTest extends E2ETest {
                     .as("grace is quaver").isEqualTo(ElementType.GRACE_QUAVER),
                 () -> assertThat(line.getElement(hostIdx).getType())
                     .as("host is minim").isEqualTo(ElementType.MINIM),
-                () -> assertThat(Objects.requireNonNull(line.getElement(graceIdx).getGlissando()).type)
-                    .as("glissando connected").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
+                () -> assertThat(line.getElement(graceIdx).getGlissando())
+                    .as("glissando connected").isNotNull(),
                 () -> assertThat(isActionSelected(Actions.HALF_NOTE_ACTION))
                     .as("half note selected").isTrue(),
                 () -> assertThat(isActionSelected(Actions.QUARTER_NOTE_ACTION))

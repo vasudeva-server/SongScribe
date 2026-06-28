@@ -88,7 +88,7 @@ class DeleteActionTest extends MainFrameMockTest {
 
     @Test
     void testDeleteEnabledForGlissandoSelection() {
-        when(mockEnv().coordinator().hasGlissandoSelection()).thenReturn(true);
+        when(mockEnv().coordinator().hasSlideSelection()).thenReturn(true);
 
         var action = DeleteAction.createAction(mainFrame());
         action.setEnabled(false);

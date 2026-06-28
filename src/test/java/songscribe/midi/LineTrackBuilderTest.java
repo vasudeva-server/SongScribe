@@ -42,7 +42,6 @@ import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
-import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Tie;
@@ -377,7 +376,7 @@ class LineTrackBuilderTest extends UnitTest {
         @Test
         void testGraceNoteEmitsNoNoteOn() throws Exception {
             var grace = ElementType.GRACE_QUAVER.newInstance();
-            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            grace.setGlissando();
             var host = ElementType.CROTCHET.newInstance();
             host.setStaffPosition(-2);
             var line = detachedLine();
@@ -396,7 +395,7 @@ class LineTrackBuilderTest extends UnitTest {
         void testGraceNoteStoresPitchForSlideIn() throws Exception {
             var grace = ElementType.GRACE_QUAVER.newInstance();
             grace.setStaffPosition(1);
-            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            grace.setGlissando();
             var host = ElementType.CROTCHET.newInstance();
             host.setStaffPosition(-2);
             var line = detachedLine();
@@ -411,7 +410,7 @@ class LineTrackBuilderTest extends UnitTest {
             // First bend value must not be center (i.e. there is a real offset)
             assertThat(bendValue(bendEvents.getFirst()))
                 .as("initial bend is not center — grace pitch offset applied")
-                .isNotEqualTo(GlissandoMidiHelper.PITCH_BEND_CENTER);
+                .isNotEqualTo(SlideMidiHelper.PITCH_BEND_CENTER);
         }
 
         @Test
@@ -487,7 +486,7 @@ class LineTrackBuilderTest extends UnitTest {
             var line = detachedLine();
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(-2);
-            note.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            note.setGlissando();
             var rest = ElementType.CROTCHET_REST.newInstance();
             line.addElement(note);
             line.addElement(rest);
@@ -518,7 +517,7 @@ class LineTrackBuilderTest extends UnitTest {
             var line = detachedLine();
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(-2);
-            note.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            note.setGlissando();
             var nextNote = ElementType.CROTCHET.newInstance();
             nextNote.setStaffPosition(-4);
             line.addElement(note);
@@ -541,7 +540,7 @@ class LineTrackBuilderTest extends UnitTest {
             var line = detachedLine();
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(-2);
-            note.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            note.setGlissando();
             line.addElement(note);
 
             var track = buildTrack(line, new Tempo());
@@ -561,7 +560,7 @@ class LineTrackBuilderTest extends UnitTest {
             var line = detachedLine();
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(-2);
-            note.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            note.setGlissando();
             line.addElement(note);
             line.addElement(ElementType.CROTCHET_REST.newInstance());
 
@@ -581,7 +580,7 @@ class LineTrackBuilderTest extends UnitTest {
             var line = detachedLine();
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(-2);
-            note.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            note.setFall();
             line.addElement(note);
 
             var track = buildTrack(line, new Tempo());
@@ -590,7 +589,7 @@ class LineTrackBuilderTest extends UnitTest {
             // Slide starts at sustainTicks into the note (halfway through full duration).
             // Events at the note-off tick (PPQ) are the deferred reset, not the fade.
             var noteOffTick = (long) MidiSequenceBuilder.PPQ;
-            var slideStartTick = GlissandoMidiHelper.calculateSustainTicks(MidiSequenceBuilder.PPQ);
+            var slideStartTick = SlideMidiHelper.calculateSustainTicks(MidiSequenceBuilder.PPQ);
 
             // Expression fade events are CC 11, emitted strictly before note-off tick
             var slideExpressionEvents = ccEvents.stream()
@@ -614,7 +613,7 @@ class LineTrackBuilderTest extends UnitTest {
             var line = detachedLine();
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(-2);
-            note.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            note.setFall();
             note.addArticulation(new Articulation(ArticulationType.STACCATO));
             line.addElement(note);
 
@@ -625,7 +624,7 @@ class LineTrackBuilderTest extends UnitTest {
             var lineNormal = detachedLine();
             var noteNormal = ElementType.CROTCHET.newInstance();
             noteNormal.setStaffPosition(-2);
-            noteNormal.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            noteNormal.setFall();
             lineNormal.addElement(noteNormal);
 
             var trackNormal = buildTrack(lineNormal, new Tempo());
@@ -649,7 +648,7 @@ class LineTrackBuilderTest extends UnitTest {
         void testNoteOnVelocityIsReducedByGraceRatio() throws Exception {
             var grace = ElementType.GRACE_QUAVER.newInstance();
             grace.setStaffPosition(1);
-            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            grace.setGlissando();
             var host = ElementType.CROTCHET.newInstance();
             host.setStaffPosition(-2);
             var line = detachedLine();
@@ -673,7 +672,7 @@ class LineTrackBuilderTest extends UnitTest {
         void testPitchBendResetAtEndOfSlide() throws Exception {
             var grace = ElementType.GRACE_QUAVER.newInstance();
             grace.setStaffPosition(1);
-            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            grace.setGlissando();
             var host = ElementType.CROTCHET.newInstance();
             host.setStaffPosition(-2);
             var line = detachedLine();
@@ -684,12 +683,12 @@ class LineTrackBuilderTest extends UnitTest {
             var bendEvents = eventsByCommand(track, ShortMessage.PITCH_BEND);
 
             // The last pitch bend event within the slide window must be center (reset)
-            var slideDuration = Math.min(GlissandoMidiHelper.GRACE_SLIDE_TICKS, MidiSequenceBuilder.PPQ);
+            var slideDuration = Math.min(SlideMidiHelper.GRACE_SLIDE_TICKS, MidiSequenceBuilder.PPQ);
             var resetTick = (long) slideDuration;
 
             var resetEvent = bendEvents.stream()
                 .filter(e -> e.getTick() == resetTick)
-                .filter(e -> bendValue(e) == GlissandoMidiHelper.PITCH_BEND_CENTER)
+                .filter(e -> bendValue(e) == SlideMidiHelper.PITCH_BEND_CENTER)
                 .findFirst();
 
             assertThat(resetEvent)
@@ -701,7 +700,7 @@ class LineTrackBuilderTest extends UnitTest {
         void testExpressionResetAtEndOfSlide() throws Exception {
             var grace = ElementType.GRACE_QUAVER.newInstance();
             grace.setStaffPosition(1);
-            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            grace.setGlissando();
             var host = ElementType.CROTCHET.newInstance();
             host.setStaffPosition(-2);
             var line = detachedLine();
@@ -711,7 +710,7 @@ class LineTrackBuilderTest extends UnitTest {
             var track = buildTrack(line, new Tempo());
             var ccEvents = eventsByCommand(track, ShortMessage.CONTROL_CHANGE);
 
-            var slideDuration = Math.min(GlissandoMidiHelper.GRACE_SLIDE_TICKS, MidiSequenceBuilder.PPQ);
+            var slideDuration = Math.min(SlideMidiHelper.GRACE_SLIDE_TICKS, MidiSequenceBuilder.PPQ);
             var resetTick = (long) slideDuration;
 
             // Expression reset = CC 11 = 127 at the slide-end tick
@@ -777,7 +776,7 @@ class LineTrackBuilderTest extends UnitTest {
             var line = detachedLine();
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(-2);
-            note.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            note.setFall();
             line.addElement(note);
 
             var track = newTrack();
@@ -806,11 +805,11 @@ class LineTrackBuilderTest extends UnitTest {
             var line = detachedLine();
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(-2);
-            note.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            note.setFall();
             line.addElement(note);
 
             var track = newTrack();
-            var helper = new GlissandoMidiHelper();
+            var helper = new SlideMidiHelper();
             // Overload[4]: takes startElement, endElement, glissandoHelper — no auto-flush
             new LineTrackBuilder(line).addToTrack(track, 0, 0, new Tempo(), DEFAULT_SETTINGS,
                 0, 0, helper);

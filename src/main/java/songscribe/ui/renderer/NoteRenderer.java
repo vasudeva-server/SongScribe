@@ -141,6 +141,41 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         return noteX;
     }
 
+    /**
+     * Computes the base stem geometry for a note type and direction.
+     * This is the shared anchor selection and positioning logic used by both
+     * {@code NoteRenderer} (for drawing) and {@code SlideRenderer} (for area building).
+     *
+     * @param noteType The note type (determines anchor and stem length)
+     * @param upper    true for stem-up, false for stem-down
+     * @return The base stem geometry
+     */
+    public static StemGeometry computeBaseStemGeometry(ElementType noteType, boolean upper) {
+        var isMinim = noteType == ElementType.MINIM;
+        var isGrace = noteType.isGraceNote();
+
+        GlyphAnchors.Anchor anchor;
+
+        if (isGrace) {
+            anchor = NoteGeometry.STEM_UP_SE_BLACK_SMALL;
+        } else if (upper) {
+            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE : Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
+        } else {
+            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
+        }
+
+        var anchorX = anchor.x();
+
+        // Stem left edge: for up-stems, the anchor marks the RIGHT edge of the stem;
+        // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
+        // left by STEM_WIDTH_SS/2, so we compensate.
+        var stemLeftX = anchorX - (upper ? NoteGeometry.STEM_WIDTH_SS : NoteGeometry.STEM_WIDTH_SS / 2);
+        var stemLength = isGrace ? Engraving.GRACE_NOTE_STEM_LENGTH_SS : Engraving.STEM_LENGTH_SS;
+
+        return new StemGeometry(stemLeftX, anchor.y(), stemLength);
+    }
+
+
     @Override
     public void render(
         LineInvariants invariants,

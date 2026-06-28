@@ -197,7 +197,7 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
 
             song.withoutMutationTracking(() -> {
                 var noteA = ElementType.CROTCHET.newInstance();
-                noteA.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+                noteA.setGlissando();
                 line.addElement(noteA);  // index 0
                 line.addElement(ElementType.CROTCHET.newInstance());  // index 1
             });
@@ -280,7 +280,7 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
 
             song.withoutMutationTracking(() -> {
                 var noteA = ElementType.CROTCHET.newInstance();
-                noteA.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+                noteA.setFall();
                 line.addElement(noteA);
                 line.addElement(ElementType.CROTCHET.newInstance());
             });
@@ -293,9 +293,9 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(noteA.getGlissando())
-                .as("slide-out glissando retained")
-                .isNotNull();
+            assertThat(noteA.hasFall())
+                .as("fall retained")
+                .isTrue();
         }
 
         /**

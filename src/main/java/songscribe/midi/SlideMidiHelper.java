@@ -22,15 +22,13 @@ package songscribe.midi;
 
 import module java.desktop;
 
-import songscribe.dom.StaffElement.Glissando;
-
 /**
- * Calculation and MIDI message generation methods for glissando playback.
+ * Calculation and MIDI message generation methods for slide playback.
  * <p>
  * Phase 1 methods (pure calculations) are static with no MIDI dependencies.
  * Phase 2 methods generate MIDI events on a {@link Track}.
  */
-public final class GlissandoMidiHelper {
+public final class SlideMidiHelper {
 
     /** Fraction of note duration spent sustaining at the original pitch. */
     public static final double SUSTAIN_RATIO = 0.5;
@@ -53,13 +51,13 @@ public final class GlissandoMidiHelper {
     /** Exponent for the connected glissando pitch bend curve (1.0 = linear). */
     public static final double CONNECTED_CURVE_EXPONENT = 1.0;
 
-    /** Exponent for the slide-out pitch bend curve (2.0 = quadratic ease-in). */
-    public static final double SLIDE_OUT_CURVE_EXPONENT = 2.0;
+    /** Exponent for the fall pitch bend curve (2.0 = quadratic ease-in). */
+    public static final double FALL_CURVE_EXPONENT = 2.0;
 
-    /** Fixed slide duration for grace note glissandos (16th note at 96 PPQ). */
+    /** Fixed slide duration for grace note slides (16th note at 96 PPQ). */
     public static final int GRACE_SLIDE_TICKS = 16;
 
-    /** Starting expression/velocity ratio for grace note slide-in glissandos. */
+    /** Starting expression/velocity ratio for grace note slide-ins. */
     public static final double GRACE_SLIDE_IN_START_RATIO = 0.25;
 
     /** MIDI CC number for Expression (per-note volume shaping). */
@@ -68,13 +66,13 @@ public final class GlissandoMidiHelper {
     /** Maximum Expression CC value. */
     static final int EXPRESSION_MAX = 127;
 
-    /** Number of semitones to slide down for SLIDE_OUT glissandos. */
-    public static final int SLIDE_OUT_SEMITONES = 4;
+    /** Number of semitones to bend down for falls. */
+    public static final int FALL_SEMITONES = 4;
 
     /** Current pitch bend sensitivity in semitones, -1 means unset. */
     private int currentSensitivity = -1;
 
-    /** Pending grace note pitch for slide-in glissando, -1 means none. */
+    /** Pending grace note pitch for a slide-in, -1 means none. */
     private int pendingGracePitch = -1;
 
     /** Whether pitch bend and/or expression need resetting before the next note. */
@@ -82,18 +80,13 @@ public final class GlissandoMidiHelper {
     private boolean needsExpressionReset;
 
     /**
-     * Returns the target MIDI pitch based on the glissando type.
+     * Returns the target MIDI pitch a fall bends down toward.
      *
-     * @param sourcePitch   the MIDI pitch of the note with the glissando
-     * @param type          the glissando type
-     * @param nextNotePitch the MIDI pitch of the next note (used only for CONNECTED)
+     * @param sourcePitch the MIDI pitch of the note with the fall
      * @return the target pitch to slide toward
      */
-    public static int resolveTargetPitch(int sourcePitch, Glissando.Type type, int nextNotePitch) {
-        return switch (type) {
-            case CONNECTED -> nextNotePitch;
-            case SLIDE_OUT -> sourcePitch - SLIDE_OUT_SEMITONES;
-        };
+    public static int resolveTargetPitch(int sourcePitch) {
+        return sourcePitch - FALL_SEMITONES;
     }
 
     /**
@@ -122,7 +115,7 @@ public final class GlissandoMidiHelper {
      */
     public static int calculateBendValue(double t, int sourcePitch, int targetPitch, int sensitivity,
             boolean linear) {
-        var effectiveT = Math.pow(t, linear ? CONNECTED_CURVE_EXPONENT : SLIDE_OUT_CURVE_EXPONENT);
+        var effectiveT = Math.pow(t, linear ? CONNECTED_CURVE_EXPONENT : FALL_CURVE_EXPONENT);
         var semitoneOffset = effectiveT * (targetPitch - sourcePitch);
         var bendFraction = semitoneOffset / sensitivity;
         var bendValue = (int) Math.round(PITCH_BEND_CENTER + bendFraction * PITCH_BEND_CENTER);
@@ -170,7 +163,7 @@ public final class GlissandoMidiHelper {
 
     /**
      * Emits any pending pitch bend and expression resets, then clears the flags.
-     * Call this before each note-on so the previous glissando's state doesn't
+     * Call this before each note-on so the previous slide's state doesn't
      * bleed into the next note.
      *
      * @param track   the MIDI track to add events to
@@ -202,7 +195,7 @@ public final class GlissandoMidiHelper {
     }
 
     /**
-     * Returns whether a grace note pitch is pending for a slide-in glissando.
+     * Returns whether a grace note pitch is pending for a slide-in.
      */
     public boolean hasPendingGracePitch() {
         return pendingGracePitch >= 0;
@@ -220,9 +213,9 @@ public final class GlissandoMidiHelper {
     }
 
     /**
-     * Calculates the MIDI pitch bend value for a slide-in (grace note glissando).
+     * Calculates the MIDI pitch bend value for a grace note slide-in.
      * The curve starts at the grace pitch (full offset) and eases toward the note's
-     * actual pitch (center). Uses the same quadratic curve as regular glissandos.
+     * actual pitch (center). Uses the same quadratic curve as connecting glissandos.
      *
      * @param t           normalized position along the slide (0.0 = start, 1.0 = end)
      * @param gracePitch  the starting MIDI pitch (from the grace note)
@@ -239,7 +232,7 @@ public final class GlissandoMidiHelper {
     }
 
     /**
-     * Generates pitch bend events for a slide-in glissando (grace note to regular note).
+     * Generates pitch bend events for a grace note slide-in (grace note to regular note).
      * The bend starts at the grace pitch offset and eases to center (no bend) over the
      * slide duration.
      *
@@ -346,7 +339,7 @@ public final class GlissandoMidiHelper {
     /**
      * Generates Expression CC messages that ramp from {@link #GRACE_SLIDE_IN_START_RATIO}
      * to max along the same quadratic ease-in curve as the pitch bend. Used for grace
-     * note slide-in glissandos so the volume swells with the pitch.
+     * note slide-ins so the volume swells with the pitch.
      *
      * @param track              the MIDI track to add events to
      * @param slideStartTick     the tick at which the slide begins
@@ -375,7 +368,7 @@ public final class GlissandoMidiHelper {
     /**
      * Generates Expression CC messages that fade from max to 0 along
      * the same quadratic ease-in curve as the pitch bend. Used for
-     * slide-out glissandos so the volume fades with the pitch.
+     * falls so the volume fades with the pitch.
      *
      * @param track              the MIDI track to add events to
      * @param slideStartTick     the tick at which the slide begins
@@ -383,7 +376,7 @@ public final class GlissandoMidiHelper {
      * @param channel            the MIDI channel
      * @throws InvalidMidiDataException if MIDI message creation fails
      */
-    public static void createSlideOutExpressionMessages(Track track, int slideStartTick,
+    public static void createFallExpressionMessages(Track track, int slideStartTick,
             int slideDurationTicks, int channel) throws InvalidMidiDataException {
         if (slideDurationTicks <= 0) {
             return;
@@ -391,7 +384,7 @@ public final class GlissandoMidiHelper {
 
         for (var elapsed = 0; elapsed <= slideDurationTicks; elapsed += BEND_STEP_TICKS) {
             var t = (double) elapsed / slideDurationTicks;
-            var curvedT = Math.pow(t, SLIDE_OUT_CURVE_EXPONENT);
+            var curvedT = Math.pow(t, FALL_CURVE_EXPONENT);
             var expression = (int) Math.round((1.0 - curvedT) * EXPRESSION_MAX);
             addControlChange(track, slideStartTick + elapsed, channel, EXPRESSION_CC,
                     Math.clamp(expression, 0, EXPRESSION_MAX));

@@ -24,11 +24,11 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.ui.action.Actions;
 
-public class GlissandoMenu extends JMenu {
+public class SlideMenu extends JMenu {
 
-    public GlissandoMenu() {
-        super(Strings.get(Strings.MENU_NOTATION_GLISSANDO));
+    public SlideMenu() {
+        super(Strings.get(Strings.MENU_NOTATION_SLIDE));
         add(new JRadioButtonMenuItem(Actions.GLISSANDO_ACTION));
-        add(new JRadioButtonMenuItem(Actions.SLIDE_OUT_ACTION));
+        add(new JRadioButtonMenuItem(Actions.FALL_ACTION));
     }
 }

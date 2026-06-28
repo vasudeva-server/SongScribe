@@ -44,7 +44,7 @@ public final class LineSelectionState {
     private int selectionEnd = -1;
     private int selectionAnchor = -1;
     private boolean lineSelected = false;
-    private int selectedGlissandoElementIndex = -1;
+    private int selectedSlideElementIndex = -1;
 
     @Nullable
     private Boolean canTie = null;
@@ -77,32 +77,32 @@ public final class LineSelectionState {
         this.lineSelected = lineSelected;
 
         if (lineSelected) {
-            selectedGlissandoElementIndex = -1;
+            selectedSlideElementIndex = -1;
         }
 
         selectionChangeCallback.run();
     }
 
     /**
-     * Returns whether a glissando is selected on this line.
+     * Returns whether a slide is selected on this line.
      */
-    public boolean hasGlissandoSelection() {
-        return selectedGlissandoElementIndex != -1;
+    public boolean hasSlideSelection() {
+        return selectedSlideElementIndex != -1;
     }
 
     /**
-     * Returns the element index of the selected glissando, or -1 if none.
+     * Returns the element index of the selected slide, or -1 if none.
      */
-    public int getSelectedGlissandoElementIndex() {
-        return selectedGlissandoElementIndex;
+    public int getSelectedSlideElementIndex() {
+        return selectedSlideElementIndex;
     }
 
     /**
-     * Selects the glissando owned by the element at the given index,
+     * Selects the slide owned by the element at the given index,
      * clearing any element or line selection.
      */
-    public void selectGlissando(int elementIndex) {
-        selectedGlissandoElementIndex = elementIndex;
+    public void selectSlide(int elementIndex) {
+        selectedSlideElementIndex = elementIndex;
         selectionBegin = -1;
         selectionEnd = -1;
         selectionAnchor = -1;
@@ -111,10 +111,10 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns whether the glissando at the given element index is selected.
+     * Returns whether the slide at the given element index is selected.
      */
-    public boolean isGlissandoSelected(int elementIndex) {
-        return selectedGlissandoElementIndex == elementIndex;
+    public boolean isSlideSelected(int elementIndex) {
+        return selectedSlideElementIndex == elementIndex;
     }
 
     @Nullable
@@ -158,7 +158,7 @@ public final class LineSelectionState {
         selectionEnd = -1;
         selectionAnchor = -1;
         lineSelected = false;
-        selectedGlissandoElementIndex = -1;
+        selectedSlideElementIndex = -1;
         selectionChangeCallback.run();
     }
 
@@ -176,7 +176,7 @@ public final class LineSelectionState {
         selectionBegin = 0;
         selectionEnd = end;
         selectionAnchor = 0;
-        selectedGlissandoElementIndex = -1;
+        selectedSlideElementIndex = -1;
         selectionChangeCallback.run();
     }
 
@@ -245,7 +245,7 @@ public final class LineSelectionState {
         selectionBegin = elementIndex;
         selectionEnd = elementIndex;
         selectionAnchor = elementIndex;
-        selectedGlissandoElementIndex = -1;
+        selectedSlideElementIndex = -1;
         selectionChangeCallback.run();
     }
 
@@ -274,7 +274,7 @@ public final class LineSelectionState {
 
         selectionBegin = Math.min(selectionAnchor, elementIndex);
         selectionEnd = Math.max(selectionAnchor, elementIndex);
-        selectedGlissandoElementIndex = -1;
+        selectedSlideElementIndex = -1;
         selectionChangeCallback.run();
     }
 
@@ -288,7 +288,7 @@ public final class LineSelectionState {
         }
 
         selectionEnd = elementIndex;
-        selectedGlissandoElementIndex = -1;
+        selectedSlideElementIndex = -1;
         selectionChangeCallback.run();
     }
 

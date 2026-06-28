@@ -28,11 +28,12 @@ phase, a `Song` whose lines contain notes (not just barlines) survives
   `relative-x`, so the offset must live in `relative-x`; the reader ignores
   `default-x`).
 - Per-note articulations / notations: accent, staccato, fermata, dynamics,
-  breath mark, and glissando carried on the note via the `StaffElement.glissando`
-  field — `CONNECTED` (→ `<slide>` start/stop) and `SLIDE_OUT` (→ `<falloff>`).
-  Each `<slide>`/`<falloff>` carries **computed** endpoint `default-x`/`default-y`
-  (write-forward only, for external rendering fidelity; the reader ignores them
-  and re-renders).
+  breath mark, glissando carried on the note via the `StaffElement.glissando`
+  field — `CONNECTED` only (→ `<slide>` start/stop), with each `<slide>` carrying
+  **computed** endpoint `default-x`/`default-y` (write-forward only, for external
+  rendering fidelity; the reader ignores them and re-renders); and fall as a note
+  attribute — `<notations><articulations><falloff>` on that note; read:
+  `<falloff>` → `setFall()`.
 
 **Explicitly out of scope** (deferred to later phases — do not implement here):
 
@@ -100,8 +101,8 @@ lean on it.
   `getPitchIndex`/`MIDI_PITCHES`/`MIDI_PITCH_ADJUSTMENT`/`findLastAccidental`.
   Inner enums: `StaffElement.Accidental` (NATURAL, FLAT, SHARP, DOUBLE_NATURAL,
   DOUBLE_FLAT, DOUBLE_SHARP, NATURAL_FLAT, NATURAL_SHARP) and
-  `StaffElement.Glissando` (`type` ∈ CONNECTED/SLIDE_OUT, `x1Translate`,
-  `x2Translate`).
+  `StaffElement.Glissando` (`type` ∈ CONNECTED only, `x1Translate`,
+  `x2Translate`). Fall is a separate note attribute accessed via `getFall()`/`setFall()`.
 - **Element types**: `dom/ElementType.java` note constants
   (`SEMIBREVE`…`DEMI_SEMIQUAVER`), rests (`*_REST`), `GRACE_QUAVER`,
   `BREATH_MARK`; `isBarLine()`/`isRepeat()` already used in Phase 2.
@@ -331,17 +332,17 @@ peek-ahead, whose rules are fixed in the Flagged Uncertainties.
    coordinates.)
 5. `<notations>` body: accent / staccato from `getArticulations()`; fermata from
    `FermataAttachment`; dynamics from `DynamicAttachment` (per Uncertainty #2).
-6. Glissando / breath-mark. The glissando lives on the note via the
+6. Glissando / fall / breath-mark. The glissando lives on the note via the
    `StaffElement.glissando` field: `CONNECTED` → `<slide type="start"
    line-shape="straight" line-type="solid"/>` on the first note and
-   `<slide type="stop" …/>` on the second; `SLIDE_OUT` → `<falloff
-   line-length="short" line-shape="straight" line-type="solid"/>` on the single
-   note. Each `<slide>`/`<falloff>` carries **computed** endpoint
-   `default-x`/`default-y` (in tenths) for external rendering fidelity — these are
-   write-forward only and not read back; layout always runs before export, so the
-   coordinates are valid. (`x1Translate`/`x2Translate` are ignored — being removed
-   from the model separately.) Breath-mark handling is **BlockedBy** the model
-   change (Uncertainty #3) and is finalized once that lands.
+   `<slide type="stop" …/>` on the second. Each `<slide>` carries **computed**
+   endpoint `default-x`/`default-y` (in tenths) for external rendering fidelity —
+   these are write-forward only and not read back; layout always runs before export,
+   so the coordinates are valid. (`x1Translate`/`x2Translate` are ignored — being
+   removed from the model separately.) Fall is a note attribute: emit
+   `<notations><articulations><falloff/>` when `getFall()` is true. Breath-mark
+   handling is **BlockedBy** the model change (Uncertainty #3) and is finalized
+   once that lands.
 7. Run `./scripts/compile.sh` → SUCCESS; spot-check one populated sample validates
    against `docs/musicxml-4.0-schema/`.
 
@@ -376,14 +377,15 @@ must reproduce the writer's choices exactly.
 4. Set `dotCount` from `<dot/>` count; when `<stem>` is present set `upper` from
    its value and `stemDirectionAuto = false`; when absent `stemDirectionAuto = true`.
 5. Rebuild articulations (`addArticulation`), fermata / dynamic attachments
-   (`addAttachment`), and the `StaffElement.glissando` field via `setGlissando`:
-   pair a `<slide type="start">` with the **next** note's `<slide type="stop">`
-   using a `pendingSlideStart` field (mirroring `pendingRepeatRight`; handle a
-   dangling start) → `CONNECTED`; `<falloff>` → `SLIDE_OUT`. **Ignore** each
-   slide/falloff's `default-x`/`default-y` (SongScribe re-renders the geometry).
-   Restore `xOffsetPx` from the **note's** `relative-x` tenths → ss → px
-   (`ScaleContext.ssToRoundedPx`); **ignore** the note's `default-x` (the
-   write-forward computed base, recomputed by layout on load).
+   (`addAttachment`), the `StaffElement.glissando` field via `setGlissando`, and
+   fall via `setFall()`: pair a `<slide type="start">` with the **next** note's
+   `<slide type="stop">` using a `pendingSlideStart` field (mirroring
+   `pendingRepeatRight`; handle a dangling start) → `CONNECTED`; `<falloff>` →
+   `setFall(true)` on that note. **Ignore** each slide's `default-x`/`default-y`
+   (SongScribe re-renders the geometry). Restore `xOffsetPx` from the **note's**
+   `relative-x` tenths → ss → px (`ScaleContext.ssToRoundedPx`); **ignore** the
+   note's `default-x` (the write-forward computed base, recomputed by layout on
+   load).
 6. Breath-mark read path is **BlockedBy** the model change (Uncertainty #3). Once
    breath marks become note-attached, restore them as a per-note attachment (no
    standalone re-collapse); the exact handling is finalized when that change lands.
@@ -415,10 +417,11 @@ new infrastructure.
    `equals()`/`hashCode()` to `StaffElement` — it breaks `Line.getElementIndex`
    (accidental lookup + tie/beam/tuplet/hairpin anchors), the layout/area-cache
    hash collections, and recurses via the `line`/parent back-references.
-3. Add round-trip cases for fermata, dynamics, accent, staccato, and the
-   glissando field — `CONNECTED` (slide start/stop across two notes) and
-   `SLIDE_OUT` (falloff); assert exact reload via `assertNoteEquals`. (Breath-mark
-   round-trip is deferred until its model change lands — see Uncertainty #3.)
+3. Add round-trip cases for fermata, dynamics, accent, staccato, the
+   glissando field — `CONNECTED` (slide start/stop across two notes), and fall
+   (note attribute → `<falloff>` and back); assert exact reload via
+   `assertNoteEquals`. (Breath-mark round-trip is deferred until its model change
+   lands — see Uncertainty #3.)
 4. Add a `NoteDuration.ticks` unit test over all 6 note types × 3 dot counts,
    asserting exact-integer results (no truncation) and the expected tick values.
 5. Add a writer-output test asserting `steal-time-following` for representative
@@ -451,8 +454,8 @@ new infrastructure.
 - `Song → MusicXML → Song` is lossless (verified via `assertNoteEquals`) for every
   duration, rest, grace, dot count, native accidental (incl.
   cautionary/parenthesized), stem state (incl. manual override), X offset,
-  articulation (accent/staccato), fermata, dynamics, and glissando
-  (`CONNECTED`/`SLIDE_OUT`). Breath-mark losslessness is deferred until its model
+  articulation (accent/staccato), fermata, dynamics, glissando (`CONNECTED`),
+  and fall (note attribute). Breath-mark losslessness is deferred until its model
   change lands (Uncertainty #3).
 - The `PitchSpelling` forward∘inverse identity holds across the full staff range.
 - The Phase 2 structural round-trip (multi-line, barlines, repeats) and the

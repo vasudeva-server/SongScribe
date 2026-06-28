@@ -925,7 +925,7 @@ public class Line {
 
     /**
      * Returns whether inserting at the given index would conflict with a paired grace note.
-     * A grace note is paired when it has a {@link StaffElement.Glissando.Type#CONNECTED} glissando
+     * A grace note is paired when it has a connecting {@link StaffElement.Glissando}
      * linking it to the following note.
      * <p>
      * This returns {@code true} in two cases:
@@ -963,9 +963,7 @@ public class Line {
             return false;
         }
 
-        var glissando = element.getGlissando();
-        return glissando != null
-            && glissando.type == StaffElement.Glissando.Type.CONNECTED;
+        return element.getGlissando() != null;
     }
 
     /** Returns true when the element at {@code index} is the host of a paired grace note. */

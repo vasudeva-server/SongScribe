@@ -160,8 +160,9 @@ The `unofficial-translation` flag qualifies the translated lyrics but is not dis
 | dynamic marking (`XML_DYNAMIC`) | `<direction><dynamics>` or `<notations><dynamics>` | Native |
 | stem up flag (`XML_UPPER`) + manual flag (`XML_STEM_DIRECTION_AUTO`) | `<stem>up\|down`; auto/manual override flag → note `<other-*>` | Native (+Ext flag) |
 | X offset (`XML_XPOS`, px) — user shift from the computed X | offset → `<note relative-x>` (px → tenths); computed base X → `<note default-x>`, write-forward only and ignored on read (see § "Position offsets vs. absolute positions") | Native+conv |
-| glissando attachment type (CONNECTED / SLIDE_OUT) | `<notations><slide>` / `<glissando>` start/stop | Native |
-| ↳ x1/x2 translate (`XML_GLISSANDO_X1/X2_TRANSLATE`) | computed `default-x`/`default-y` on `<slide>`/`<falloff>` (write-forward, external fidelity only) | Native+conv |
+| glissando attachment type (`CONNECTED` only) | `<slide>` start/stop | Native |
+| ↳ x1/x2 translate (`XML_GLISSANDO_X1/X2_TRANSLATE`) | computed `default-x`/`default-y` on `<slide>` (write-forward, external fidelity only) | Native+conv |
+| Fall (note attribute) | `<notations><articulations><falloff>` on that note; read: `<falloff>` → `setFall()` | Native |
 | standalone glissando element (`ElementType.GLISSANDO`) | `<glissando>` line notation | Native |
 | breath mark (`BREATH_MARK`) | `<articulations><breath-mark>` on preceding note | Native |
 | barlines (SINGLE / DOUBLE / FINAL_DOUBLE) | `<barline><bar-style>` regular / light-light / light-heavy | Native |

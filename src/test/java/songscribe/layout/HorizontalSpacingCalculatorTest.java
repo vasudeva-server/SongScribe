@@ -399,7 +399,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         var line = detachedLine();
 
         var glissandoElement = ElementType.SEMIQUAVER.newInstance();
-        glissandoElement.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        glissandoElement.setGlissando();
 
         var col0 = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
@@ -433,7 +433,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         var line = detachedLine();
 
         var ledgerElement = ElementType.CROTCHET.newInstance();
-        ledgerElement.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        ledgerElement.setGlissando();
         ledgerElement.setStaffPosition(twoLedgersBelowSp);
 
         // Compute the ledger's proportional right extent from the base formula.
@@ -480,7 +480,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         var line = detachedLine();
 
         var glissandoElement = ElementType.CROTCHET.newInstance();
-        glissandoElement.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        glissandoElement.setGlissando();
 
         var ledgerElement = ElementType.CROTCHET.newInstance();
         ledgerElement.setStaffPosition(twoLedgersBelowSp);
@@ -1115,7 +1115,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     @Test
     void testGraceWithGlissandoToHostWithAccidentalReservesGlissandoSpacing() {
         var grace = ElementType.GRACE_QUAVER.newInstance();
-        grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        grace.setGlissando();
         var graceColumn = new ElementColumn(
             grace, Collections.emptyList(),
             0.0, GRACE_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false

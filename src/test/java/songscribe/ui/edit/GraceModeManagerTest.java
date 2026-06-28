@@ -796,7 +796,7 @@ class GraceModeManagerTest extends UnitTest {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             // Pre-attach a glissando (as if drag-right had fired before)
-            graceNote.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            graceNote.setGlissando();
 
             var line = detachedLine();
             line.addElement(graceNote);

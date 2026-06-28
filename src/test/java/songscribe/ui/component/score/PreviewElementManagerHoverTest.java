@@ -52,7 +52,7 @@ class PreviewElementManagerHoverTest extends PreviewElementManagerTestBase {
     void testNullForGlissandoPlaceholder() {
         PreviewElementManager.setXPosSsMatchesElement(true);
         PreviewElementManager.setCurrentXIndex(X_INDEX);
-        setPreviewElement(ElementType.GLISSANDO.newInstance());
+        setPreviewElement(ElementType.SLIDE.newInstance());
 
         assertThat(PreviewElementManager.getHoveredElementLocation())
             .as("a glissando tool never highlights a replacement target").isNull();

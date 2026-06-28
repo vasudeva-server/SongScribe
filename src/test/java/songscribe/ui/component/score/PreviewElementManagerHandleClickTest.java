@@ -35,7 +35,7 @@ import org.mockito.MockedStatic;
 import songscribe.Strings;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
+import songscribe.dom.SlideZone;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.edit.EditModeManager;
 
@@ -82,10 +82,10 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
         void testValidZoneAppliesGlissandoToSourceNote() {
             addNotes(2, ElementType.CROTCHET);
 
-            // Preview element is a GLISSANDO placeholder, zone is set
-            setPreviewElement(ElementType.GLISSANDO.newInstance());
+            // Preview element is a SLIDE placeholder, zone is set
+            setPreviewElement(ElementType.SLIDE.newInstance());
             PreviewElementManager.setCurrentXIndex(1);
-            PreviewElementManager.setCurrentGlissandoZone(StaffElement.Glissando.Type.CONNECTED);
+            PreviewElementManager.setCurrentSlideZone(SlideZone.GLISSANDO);
 
             PreviewElementManager.handleClick(lc);
 
@@ -94,10 +94,6 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
             assertThat(glissando)
                 .as("glissando applied to source note at xIndex-1")
                 .isNotNull();
-            //noinspection ConstantValue -- need for NullAway
-            assertThat(glissando == null ? null : glissando.type)
-                .as("glissando type is CONNECTED")
-                .isEqualTo(StaffElement.Glissando.Type.CONNECTED);
         }
 
         /**
@@ -107,9 +103,9 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
         void testNullZoneIsNoOp() {
             addNotes(2, ElementType.CROTCHET);
 
-            setPreviewElement(ElementType.GLISSANDO.newInstance());
+            setPreviewElement(ElementType.SLIDE.newInstance());
             PreviewElementManager.setCurrentXIndex(1);
-            PreviewElementManager.setCurrentGlissandoZone(null);
+            PreviewElementManager.setCurrentSlideZone(null);
 
             PreviewElementManager.handleClick(lc);
 

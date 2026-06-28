@@ -570,8 +570,8 @@ public final class ScoreView
     }
 
     @Override
-    public boolean isGlissandoSelected(int elementIndex, int lineIndex) {
-        return selectionCoordinator.isGlissandoSelected(elementIndex, lineIndex);
+    public boolean isSlideSelected(int elementIndex, int lineIndex) {
+        return selectionCoordinator.isSlideSelected(elementIndex, lineIndex);
     }
 
     @Override

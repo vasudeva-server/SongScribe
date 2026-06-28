@@ -34,7 +34,7 @@ import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.dom.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
-import songscribe.ui.renderer.GlissandoRenderer;
+import songscribe.ui.renderer.SlideRenderer;
 
 /**
  * Handles selection, hit-testing, and drag logic for a {@link LineComponent}.
@@ -77,7 +77,7 @@ class LineSelectionHandler {
     /**
      * Hit-tests the given point against all selectable elements in this line.
      * <p>
-     * The cascade tests note heads first, then glissandos, then staff-line proximity.
+     * The cascade tests note heads first, then slides, then staff-line proximity.
      * If nothing is hit, {@link HitResult.Nothing} is returned.
      */
     HitResult hitTest(Point point) {
@@ -90,9 +90,9 @@ class LineSelectionHandler {
         var clickXSs = ScaleContext.pxToSs(point.x);
         var clickYSs = ScaleContext.pxToSs(point.y);
 
-        var glissandoIndex = hitTestGlissandoAtPoint(clickXSs, clickYSs);
+        var slideIndex = hitTestSlideAtPoint(clickXSs, clickYSs);
 
-        if (glissandoIndex != -1) {
+        if (slideIndex != -1) {
             var selState = lc.getLineSelectionState();
 
             if (selState == null) {
@@ -101,11 +101,11 @@ class LineSelectionHandler {
 
             var line = selState.getLine();
 
-            if (line.getElement(glissandoIndex).getType().isGraceNote()) {
+            if (line.getElement(slideIndex).getType().isGraceNote()) {
                 return new HitResult.GraceGlissando();
             }
 
-            return new HitResult.Glissando(glissandoIndex);
+            return new HitResult.Slide(slideIndex);
         }
 
         if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS
@@ -152,10 +152,10 @@ class LineSelectionHandler {
                 pressHandled = true;
             }
 
-            case HitResult.Glissando(var elementIndex) -> {
+            case HitResult.Slide(var elementIndex) -> {
                 if (lineSelectionState != null) {
                     prepareSelection();
-                    lineSelectionState.selectGlissando(elementIndex);
+                    lineSelectionState.selectSlide(elementIndex);
                     lc.getScoreView().selectionChanged();
                     pressHandled = true;
                 }
@@ -358,14 +358,14 @@ class LineSelectionHandler {
         return HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(keyAccidentalCount);
     }
 
-    private int hitTestGlissandoAtPoint(double clickXSs, double clickYSs) {
+    private int hitTestSlideAtPoint(double clickXSs, double clickYSs) {
         var selState = lc.getLineSelectionState();
 
         if (selState == null) {
             return -1;
         }
 
-        return GlissandoRenderer.getInstance().hitTestGlissando(
+        return SlideRenderer.getInstance().hitTestSlide(
             clickXSs, clickYSs, selState.getLine()
         );
     }

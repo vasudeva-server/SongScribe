@@ -21,9 +21,6 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
-
-import java.util.Objects;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -50,20 +47,13 @@ class GlissandoPersistenceTest extends UnitTest {
     @Test
     void testGlissandoPersistsThroughSaveLoad() throws Exception {
         var originalNote = song.getLine(0).getElement(PAIR_B_SRC);
-        var originalGlissando = originalNote.getGlissando();
-        assertThat(originalGlissando).as("fixture has glissando").isNotNull();
-        var originalType = Objects.requireNonNull(originalGlissando).type;
+        assertThat(originalNote.getGlissando()).as("fixture has glissando").isNotNull();
 
         var reloaded = roundTrip(song);
         var reloadedNote = reloaded.getLine(0).getElement(PAIR_B_SRC);
-        var reloadedGlissando = reloadedNote.getGlissando();
 
-        assertAll(
-            () -> assertThat(reloadedGlissando)
-                .as("save/load: glissando preserved").isNotNull(),
-            () -> assertThat(Objects.requireNonNull(reloadedGlissando).type)
-                .as("save/load: glissando type preserved").isEqualTo(originalType)
-        );
+        assertThat(reloadedNote.getGlissando())
+            .as("save/load: glissando preserved").isNotNull();
     }
 
 }

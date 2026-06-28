@@ -20,6 +20,7 @@
 
 package songscribe.dom;
 
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,7 +32,7 @@ import org.jspecify.annotations.Nullable;
 
 public class StaffElement extends LineElement implements Cloneable {
 
-    protected @Nullable Glissando glissando;
+    protected @Nullable Slide slide;
 
     // MIDI pitches B4..A5, corresponding to the index returned by getPitchIndex()
     private static final int[] MIDI_PITCHES = new int[]{
@@ -143,7 +144,7 @@ public class StaffElement extends LineElement implements Cloneable {
         if (targetType.isNote()) {
             accidental = source.accidental;
             isAccidentalInParentheses = source.isAccidentalInParentheses;
-            glissando = source.glissando;
+            slide = source.slide;
             upper = source.upper;
             stemDirectionAuto = source.stemDirectionAuto;
             staffPosition = source.staffPosition;
@@ -164,7 +165,7 @@ public class StaffElement extends LineElement implements Cloneable {
         isAccidentalInParentheses = note.isAccidentalInParentheses;
         line = note.line;
         upper = note.upper;
-        glissando = note.glissando;
+        slide = note.slide;
         stemDirectionAuto = note.stemDirectionAuto;
 
         // Copy LineElement hierarchy data
@@ -458,20 +459,28 @@ public class StaffElement extends LineElement implements Cloneable {
             accidentalInParenthesis;
     }
 
+    public @Nullable Slide getSlide() {
+        return slide;
+    }
+
+    public boolean hasFall() {
+        return slide instanceof Fall;
+    }
+
+    public void setFall() {
+        slide = new Fall();
+    }
+
+    public void removeSlide() {
+        slide = null;
+    }
+
     public @Nullable Glissando getGlissando() {
-        return glissando;
+        return slide instanceof Glissando glissando ? glissando : null;
     }
 
-    public void setGlissando(Glissando.Type type) {
-        if (glissando == null) {
-            glissando = new Glissando(type);
-        } else {
-            glissando.type = type;
-        }
-    }
-
-    public void removeGlissando() {
-        glissando = null;
+    public void setGlissando() {
+        slide = new Glissando();
     }
 
     public boolean isUpper() {
@@ -724,11 +733,11 @@ public class StaffElement extends LineElement implements Cloneable {
         }
     }
 
-    public static class Glissando {
+    // Marker base for a thing attached to a note (connecting glissando or trailing fall)
+    public abstract static sealed class Slide permits Glissando, Fall {
+    }
 
-        public enum Type {CONNECTED, SLIDE_OUT}
-
-        public Type type;
+    public static final class Glissando extends Slide {
 
         // Transient cached geometry populated during the render pass, used for hit-testing
         public transient double cachedStartX;
@@ -739,9 +748,12 @@ public class StaffElement extends LineElement implements Cloneable {
         public transient double cachedLength;
         public transient boolean hasCachedGeometry;
 
-        public Glissando(Type type) {
-            this.type = type;
-        }
+    }
+
+    public static final class Fall extends Slide {
+
+        // A fall is independently clickable, so it caches the glyph's drawn rect for hit-testing
+        public transient @Nullable Rectangle2D cachedHitBounds;
 
     }
 

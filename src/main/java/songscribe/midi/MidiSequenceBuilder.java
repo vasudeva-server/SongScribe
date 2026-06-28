@@ -199,7 +199,7 @@ public class MidiSequenceBuilder {
         var currentTempo = initialTempo;
         var lines = song.getLines();
         var repeating = false;
-        var glissandoHelper = new GlissandoMidiHelper();
+        var slideHelper = new SlideMidiHelper();
 
         var lineIndex = startLine;
         while (lineIndex < lines.size()) {
@@ -287,10 +287,10 @@ public class MidiSequenceBuilder {
                 }
 
                 // Add the note to the track (one note at a time), sharing the
-                // glissando helper so grace note state survives across calls.
+                // slide helper so grace note state survives across calls.
                 var result = builder.addToTrack(
                     track, lineIndex, ticks, currentTempo, settings,
-                    noteIndex, noteIndex, glissandoHelper, velocityMap
+                    noteIndex, noteIndex, slideHelper, velocityMap
                 );
                 ticks = result.ticks();
                 currentTempo = result.tempo();
@@ -304,7 +304,7 @@ public class MidiSequenceBuilder {
         }
 
         // Flush any pending pitch bend/expression resets at the end
-        glissandoHelper.createPendingResets(track, ticks, 0);
+        slideHelper.createPendingResets(track, ticks, 0);
 
         return new TrackPosition(ticks, currentTempo);
     }
@@ -318,8 +318,8 @@ public class MidiSequenceBuilder {
      *   emitted:  common |          (skipped)              | 2nd ending
      * </pre>
      *
-     * A single {@link GlissandoMidiHelper} is shared across all emitted segments so
-     * grace-note/glissando state survives the skipped gaps; pending resets are flushed
+     * A single {@link SlideMidiHelper} is shared across all emitted segments so
+     * grace-note/slide state survives the skipped gaps; pending resets are flushed
      * once at the end. Endings with no split element ({@code splitIndex == -1}) are not
      * skipped (degenerate single-bracket ending plays normally).
      *
@@ -365,14 +365,14 @@ public class MidiSequenceBuilder {
 
         var ticks = startPosition.ticks();
         var currentTempo = startPosition.tempo();
-        var glissandoHelper = new GlissandoMidiHelper();
+        var slideHelper = new SlideMidiHelper();
         var segmentStart = lineStart;
 
         for (var span : skipSpans) {
             if (span.start() > segmentStart) {
                 var result = builder.addToTrack(
                     track, lineIndex, ticks, currentTempo, settings,
-                    segmentStart, span.start() - 1, glissandoHelper, velocityMap
+                    segmentStart, span.start() - 1, slideHelper, velocityMap
                 );
                 ticks = result.ticks();
                 currentTempo = result.tempo();
@@ -384,13 +384,13 @@ public class MidiSequenceBuilder {
         if (segmentStart <= lineEnd) {
             var result = builder.addToTrack(
                 track, lineIndex, ticks, currentTempo, settings,
-                segmentStart, lineEnd, glissandoHelper, velocityMap
+                segmentStart, lineEnd, slideHelper, velocityMap
             );
             ticks = result.ticks();
             currentTempo = result.tempo();
         }
 
-        glissandoHelper.createPendingResets(track, ticks, 0);
+        slideHelper.createPendingResets(track, ticks, 0);
 
         return new TrackPosition(ticks, currentTempo);
     }

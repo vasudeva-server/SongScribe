@@ -33,7 +33,7 @@ import songscribe.dom.Line;
 /**
  * Unit tests for the cross-line guard logic and per-state delegation in
  * {@link SelectionCoordinator#isElementSelected}, {@link SelectionCoordinator#isLineSelected},
- * and {@link SelectionCoordinator#isGlissandoSelected}.
+ * and {@link SelectionCoordinator#isSlideSelected}.
  *
  * <p>These methods all share the same shape:
  * <ol>
@@ -179,7 +179,7 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
         ReflectionTestHelper.selectGlissando(coordinator, ELEMENT_0);
 
         // Query against line 1, which is not active.
-        assertThat(coordinator.isGlissandoSelected(ELEMENT_0, LINE_1))
+        assertThat(coordinator.isSlideSelected(ELEMENT_0, LINE_1))
             .as("isGlissandoSelected(0, line 1) when line 0 is active and has glissando selection")
             .isFalse();
     }
@@ -195,7 +195,7 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
         // Select the glissando on element 0 of the active line (line 0).
         ReflectionTestHelper.selectGlissando(coordinator, ELEMENT_0);
 
-        assertThat(coordinator.isGlissandoSelected(ELEMENT_0, LINE_0))
+        assertThat(coordinator.isSlideSelected(ELEMENT_0, LINE_0))
             .as("isGlissandoSelected(0, line 0) when glissando at element 0 is selected")
             .isTrue();
     }

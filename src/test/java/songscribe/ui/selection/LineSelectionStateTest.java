@@ -45,7 +45,7 @@ class LineSelectionStateTest extends UnitTest {
         state.setSelectionFromClick(0);
         state.extendSelectionTo(1);
         state.setLineSelected(true);
-        state.selectGlissando(0);
+        state.selectSlide(0);
 
         var callbackCount = new int[]{0};
         state.setSelectionChangeCallback(() -> callbackCount[0]++);
@@ -56,19 +56,19 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.getSelectionEnd()).isEqualTo(-1);
         assertThat(state.getSelectionAnchor()).isEqualTo(-1);
         assertThat(state.isLineSelected()).isFalse();
-        assertThat(state.hasGlissandoSelection()).isFalse();
+        assertThat(state.hasSlideSelection()).isFalse();
         assertThat(callbackCount[0]).isEqualTo(1);
     }
 
     // -- setLineSelected --
 
     @Test
-    void testSetLineSelectedTrueClearsGlissandoIndexAndFiresCallback() {
+    void testSetLineSelectedTrueClearsSlideIndexAndFiresCallback() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
-        state.selectGlissando(0);
-        assertThat(state.hasGlissandoSelection()).isTrue();
+        state.selectSlide(0);
+        assertThat(state.hasSlideSelection()).isTrue();
 
         var callbackCount = new int[]{0};
         state.setSelectionChangeCallback(() -> callbackCount[0]++);
@@ -76,7 +76,7 @@ class LineSelectionStateTest extends UnitTest {
         state.setLineSelected(true);
 
         assertThat(state.isLineSelected()).isTrue();
-        assertThat(state.hasGlissandoSelection()).isFalse();
+        assertThat(state.hasSlideSelection()).isFalse();
         assertThat(callbackCount[0]).isEqualTo(1);
     }
 
@@ -95,10 +95,10 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(callbackCount[0]).isEqualTo(1);
     }
 
-    // -- selectGlissando --
+    // -- selectSlide --
 
     @Test
-    void testSelectGlissandoClearsSelectionAndSetsIndexAndFiresCallback() {
+    void testSelectSlideClearsSelectionAndSetsIndexAndFiresCallback() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
@@ -110,59 +110,59 @@ class LineSelectionStateTest extends UnitTest {
         var callbackCount = new int[]{0};
         state.setSelectionChangeCallback(() -> callbackCount[0]++);
 
-        state.selectGlissando(1);
+        state.selectSlide(1);
 
         assertThat(state.getSelectionBegin()).isEqualTo(-1);
         assertThat(state.getSelectionEnd()).isEqualTo(-1);
         assertThat(state.getSelectionAnchor()).isEqualTo(-1);
         assertThat(state.isLineSelected()).isFalse();
-        assertThat(state.isGlissandoSelected(1)).isTrue();
+        assertThat(state.isSlideSelected(1)).isTrue();
         assertThat(callbackCount[0]).isEqualTo(1);
     }
 
-    // -- isGlissandoSelected --
+    // -- isSlideSelected --
 
     @Test
-    void testIsGlissandoSelectedReturnsTrueOnlyForMatchingIndex() {
+    void testIsSlideSelectedReturnsTrueOnlyForMatchingIndex() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
-        state.selectGlissando(1);
+        state.selectSlide(1);
 
-        assertThat(state.isGlissandoSelected(1)).isTrue();
-        assertThat(state.isGlissandoSelected(0)).isFalse();
+        assertThat(state.isSlideSelected(1)).isTrue();
+        assertThat(state.isSlideSelected(0)).isFalse();
     }
 
-    // -- getSelectedGlissandoElementIndex --
+    // -- getSelectedSlideElementIndex --
 
     @Test
-    void testGetSelectedGlissandoElementIndexReturnsMinusOneInitiallyAndIndexAfterSelectGlissando() {
+    void testGetSelectedSlideElementIndexReturnsMinusOneInitiallyAndIndexAfterSelectSlide() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
 
-        assertThat(state.getSelectedGlissandoElementIndex()).isEqualTo(-1);
+        assertThat(state.getSelectedSlideElementIndex()).isEqualTo(-1);
 
-        state.selectGlissando(1);
+        state.selectSlide(1);
 
-        assertThat(state.getSelectedGlissandoElementIndex()).isEqualTo(1);
+        assertThat(state.getSelectedSlideElementIndex()).isEqualTo(1);
     }
 
-    // -- hasGlissandoSelection --
+    // -- hasSlideSelection --
 
     @Test
-    void testHasGlissandoSelectionReturnsFalseInitiallyAndTrueAfterSelectGlissando() {
+    void testHasSlideSelectionReturnsFalseInitiallyAndTrueAfterSelectSlide() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
 
-        assertThat(state.hasGlissandoSelection()).isFalse();
+        assertThat(state.hasSlideSelection()).isFalse();
 
-        state.selectGlissando(0);
+        state.selectSlide(0);
 
-        assertThat(state.hasGlissandoSelection()).isTrue();
+        assertThat(state.hasSlideSelection()).isTrue();
     }
 
     // -- canToggleTuplet --
@@ -429,13 +429,13 @@ class LineSelectionStateTest extends UnitTest {
     // -- setSelectionFromClick --
 
     @Test
-    void testSetSelectionFromClickSetsAllFieldsAndClearsGlissandoAndFiresCallback() {
+    void testSetSelectionFromClickSetsAllFieldsAndClearsSlideAndFiresCallback() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
-        state.selectGlissando(0);
-        assertThat(state.hasGlissandoSelection()).isTrue();
+        state.selectSlide(0);
+        assertThat(state.hasSlideSelection()).isTrue();
 
         var callbackCount = new int[]{0};
         state.setSelectionChangeCallback(() -> callbackCount[0]++);
@@ -445,7 +445,7 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.getSelectionBegin()).isEqualTo(1);
         assertThat(state.getSelectionEnd()).isEqualTo(1);
         assertThat(state.getSelectionAnchor()).isEqualTo(1);
-        assertThat(state.hasGlissandoSelection()).isFalse();
+        assertThat(state.hasSlideSelection()).isFalse();
         assertThat(callbackCount[0]).isEqualTo(1);
     }
 
@@ -563,7 +563,7 @@ class LineSelectionStateTest extends UnitTest {
         state.setSelectionFromClick(0);
         state.extendSelectionTo(1);
         // Set lineSelected=true after all element-selection setup; note that setLineSelected(true)
-        // also clears selectedGlissandoElementIndex so glissando cannot be simultaneously active.
+        // also clears selectedSlideElementIndex so a slide cannot be simultaneously active.
         state.setLineSelected(true);
 
         var callbackCount = new int[]{0};
@@ -617,7 +617,7 @@ class LineSelectionStateTest extends UnitTest {
         state.setLineSelected(true);
         assertThat(callbackCount[0]).isEqualTo(4);
 
-        state.selectGlissando(0);
+        state.selectSlide(0);
         assertThat(callbackCount[0]).isEqualTo(5);
 
         state.resetElementSelection();

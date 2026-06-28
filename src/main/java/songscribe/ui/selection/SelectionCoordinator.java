@@ -289,16 +289,16 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Returns whether the glissando owned by the element at the given index
+     * Returns whether the slide owned by the element at the given index
      * on the given line is selected.
      */
-    public boolean isGlissandoSelected(int elementIndex, int lineIndex) {
+    public boolean isSlideSelected(int elementIndex, int lineIndex) {
         if (activeLineIndex != lineIndex) {
             return false;
         }
 
         var state = lineStates.get(lineIndex);
-        return (state != null) && state.isGlissandoSelected(elementIndex);
+        return (state != null) && state.isSlideSelected(elementIndex);
     }
 
     public boolean isLyricSelected(StaffElement element, int verse, int lineIndex) {
@@ -311,11 +311,11 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Returns whether any glissando is selected on the active line.
+     * Returns whether any slide is selected on the active line.
      */
-    public boolean hasGlissandoSelection() {
+    public boolean hasSlideSelection() {
         var state = getActiveSelection();
-        return (state != null) && state.hasGlissandoSelection();
+        return (state != null) && state.hasSlideSelection();
     }
 
     private int findLineIndex(Line line) {
@@ -888,7 +888,7 @@ public final class SelectionCoordinator {
         var selection = getSelection();
 
         if (selection == null) {
-            if (hasGlissandoSelection()) {
+            if (hasSlideSelection()) {
                 saveActionStates();
             } else {
                 restoreActionStates();
@@ -920,8 +920,8 @@ public final class SelectionCoordinator {
         if (selection == null) {
             lastReflectedSelection = null;
 
-            if (hasGlissandoSelection()) {
-                reflectGlissandoSelection();
+            if (hasSlideSelection()) {
+                reflectSlideSelection();
             }
 
             return;
@@ -968,28 +968,25 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Reflects a standalone glissando selection onto toolbar actions.
-     * The matching glissando action is selected and enabled; all others are disabled.
+     * Reflects a standalone slide selection onto toolbar actions.
+     * The matching slide action is selected and enabled; all others are disabled.
      */
-    private void reflectGlissandoSelection() {
+    private void reflectSlideSelection() {
         var state = getActiveSelection();
 
         if (state == null) {
             return;
         }
 
-        var elementIndex = state.getSelectedGlissandoElementIndex();
+        var elementIndex = state.getSelectedSlideElementIndex();
         var element = state.getLine().getElement(elementIndex);
-        var glissando = element.getGlissando();
 
-        if (glissando == null) {
+        if (element.getSlide() == null) {
             return;
         }
 
-        var glissandoType = glissando.type;
-
         for (var reflectable : getReflectableActions()) {
-            var matches = reflectable.matchesGlissandoType(glissandoType);
+            var matches = reflectable.matchesSlide(element);
             ((UIAction) reflectable).setEnabled(matches);
             reflectable.setSelected(matches);
         }

@@ -48,12 +48,12 @@ import songscribe.layout.NoteGeometry;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 
-class GlissandoRendererTest extends UnitTest {
+class SlideRendererTest extends UnitTest {
 
     /** Half-width used to define synthetic column extents in noteContextAt(). */
     private static final double HALF_COLUMN_SS = 0.5;
 
-    private static final GlissandoRenderer RENDERER = GlissandoRenderer.getInstance();
+    private static final SlideRenderer RENDERER = SlideRenderer.getInstance();
 
     // ======================================================================
     // Connecting glissando with an accidental on the target (issue #443)
@@ -66,13 +66,13 @@ class GlissandoRendererTest extends UnitTest {
      * layout→render geometry end-to-end so the reserved spacing is validated against where the
      * line actually ends.
      */
-    private GlissandoRenderer.@Nullable Endpoints computeConnectingGlissando(
+    private SlideRenderer.@Nullable Endpoints computeConnectingGlissando(
         ElementType sourceType, boolean targetHasAccidental) {
         NoteGeometry.initializeAccidentalWidths();
 
         var source = sourceType.newInstance();
         source.setUpper(true);
-        source.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        source.setGlissando();
         var target = ElementType.CROTCHET.newInstance();
         target.setUpper(true);
 
@@ -90,7 +90,7 @@ class GlissandoRendererTest extends UnitTest {
 
         // Source note: elementXSs = 0 (LayoutResult returns 0 when not in the map)
         var sourceExtent = NoteColumnGeometry.extentSs(source, false);
-        var src = new GlissandoRenderer.NoteContext(
+        var src = new SlideRenderer.NoteContext(
             source,
             0.0,
             sourceExtent.leftSs(),
@@ -113,7 +113,7 @@ class GlissandoRendererTest extends UnitTest {
             );
         }
 
-        var tgt = new GlissandoRenderer.NoteContext(
+        var tgt = new SlideRenderer.NoteContext(
             target,
             targetCySs,
             targetXSs + targetExtent.leftSs(),
@@ -121,7 +121,7 @@ class GlissandoRendererTest extends UnitTest {
             targetFlagBBoxLayout
         );
 
-        return GlissandoRenderer.computeEndpoints(src, tgt);
+        return SlideRenderer.computeEndpoints(src, tgt);
     }
 
     // #443: a regular note→note connecting glissando must still draw when the target has an
@@ -172,7 +172,7 @@ class GlissandoRendererTest extends UnitTest {
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 0.0, 0.0, 45.0, 10.0);
 
         var mid = 5.0 * Math.cos(Math.toRadians(45.0));
-        assertThat(RENDERER.hitTestGlissando(mid, mid, line)).isEqualTo(0);
+        assertThat(RENDERER.hitTestSlide(mid, mid, line)).isEqualTo(0);
     }
 
     @Test
@@ -180,7 +180,7 @@ class GlissandoRendererTest extends UnitTest {
         // Note has a Glissando object but hasCachedGeometry is false (default) — must be skipped
         var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
 
-        assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(-1);
+        assertThat(RENDERER.hitTestSlide(10.0, 3.0, line)).isEqualTo(-1);
     }
 
     @Test
@@ -189,7 +189,7 @@ class GlissandoRendererTest extends UnitTest {
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // localX = 15.1 - 5.0 = 10.1 > cachedLength (10.0)
-        assertThat(RENDERER.hitTestGlissando(15.1, 3.0, line)).isEqualTo(-1);
+        assertThat(RENDERER.hitTestSlide(15.1, 3.0, line)).isEqualTo(-1);
     }
 
     @Test
@@ -198,7 +198,7 @@ class GlissandoRendererTest extends UnitTest {
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // localX = 4.9 - 5.0 = -0.1 < 0
-        assertThat(RENDERER.hitTestGlissando(4.9, 3.0, line)).isEqualTo(-1);
+        assertThat(RENDERER.hitTestSlide(4.9, 3.0, line)).isEqualTo(-1);
     }
 
     @Test
@@ -207,7 +207,7 @@ class GlissandoRendererTest extends UnitTest {
         var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
-        assertThat(RENDERER.hitTestGlissando(10.0, 4.0, line)).isEqualTo(-1);
+        assertThat(RENDERER.hitTestSlide(10.0, 4.0, line)).isEqualTo(-1);
     }
 
     @Test
@@ -217,7 +217,7 @@ class GlissandoRendererTest extends UnitTest {
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // Click at the midpoint: localX=5, localY=0 — well within hit bounds
-        assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(0);
+        assertThat(RENDERER.hitTestSlide(10.0, 3.0, line)).isEqualTo(0);
     }
 
     @Test
@@ -227,7 +227,7 @@ class GlissandoRendererTest extends UnitTest {
         note0.setUpper(true);
         var note1 = ElementType.CROTCHET.newInstance();
         note1.setUpper(true);
-        note1.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        note1.setGlissando();
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setUpper(true);
 
@@ -238,15 +238,8 @@ class GlissandoRendererTest extends UnitTest {
 
         setCachedGeometry(Objects.requireNonNull(note1.getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
-        assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(1);
+        assertThat(RENDERER.hitTestSlide(10.0, 3.0, line)).isEqualTo(1);
     }
-
-    // ======================================================================
-    // Unison connected glissando tests
-    //
-    // These verify that getPitch() (MIDI pitch) — not staff position —
-    // governs whether a connected glissando is considered unison.
-    // ======================================================================
 
     /**
      * Creates a line with two notes at the given staff positions and accidentals.
@@ -258,7 +251,7 @@ class GlissandoRendererTest extends UnitTest {
         note1.setUpper(true);
         note1.setStaffPosition(staffPos1);
         note1.setAccidental(acc1);
-        note1.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        note1.setGlissando();
 
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setUpper(true);
@@ -272,41 +265,9 @@ class GlissandoRendererTest extends UnitTest {
         return line;
     }
 
-    @Test
-    void testNonUnisonConnectedGlissandoDifferentPosition() {
-        // Two notes at different staff positions — different MIDI pitch
-        var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
-        var note1 = line.getElement(0);
-        var note2 = line.getElement(1);
-
-        assertThat(note1.getPitch()).isNotEqualTo(note2.getPitch());
-    }
-
-    @Test
-    void testNonUnisonConnectedGlissandoSamePositionDifferentAccidental() {
-        // Same staff position but natural vs sharp — different MIDI pitch
-        // This confirms getPitch() is used, not getStaffPosition()
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NATURAL, 0, StaffElement.Accidental.SHARP);
-        var note1 = line.getElement(0);
-        var note2 = line.getElement(1);
-
-        assertThat(note1.getStaffPosition()).isEqualTo(note2.getStaffPosition());
-        assertThat(note1.getPitch()).isNotEqualTo(note2.getPitch());
-    }
-
-    @Test
-    void testUnisonConnectedGlissandoSamePitch() {
-        // Two notes at same staff position, no accidentals — same MIDI pitch
-        var line = makeTwoNoteLineWithGlissando(0, null, 0, null);
-        var note1 = line.getElement(0);
-        var note2 = line.getElement(1);
-
-        assertThat(note1.getPitch()).isEqualTo(note2.getPitch());
-    }
-
     // ======================================================================
     // Unison suppression — renderGlissando must not draw for same-pitch notes
-    // (Row 20: verify the CONNECTED same-pitch early-return path)
+    // (verify the connecting-glissando same-pitch early-return path)
     // ======================================================================
 
     @Test
@@ -321,7 +282,7 @@ class GlissandoRendererTest extends UnitTest {
 
         var g2 = mock(Graphics2D.class);
 
-        RENDERER.renderGlissando(g2, line, note, 0, invariants, ElementFrame.LINE_LEVEL);
+        RENDERER.renderSlide(g2, line, note, 0, invariants, ElementFrame.LINE_LEVEL);
 
         // Unison guard fires before render(); no fill/draw should reach g2
         verify(g2, never()).fill(org.mockito.ArgumentMatchers.any());
@@ -341,13 +302,13 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testDetermineGlissandoColor_standaloneGlissandoSelected_returnsSelectionColor() {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isGlissandoSelected(0, 0)).thenReturn(true);
+        when(selectionProvider.isSlideSelected(0, 0)).thenReturn(true);
         var invariants = editModeBuilder()
             .setSelectionProvider(selectionProvider)
             .build();
 
-        var color = RENDERER.determineGlissandoColor(
-            0, StaffElement.Glissando.Type.CONNECTED, invariants);
+        var color = RENDERER.determineSlideColor(
+            0, false, invariants);
 
         assertThat(color).isEqualTo(ScoreView.getSelectionColor());
     }
@@ -356,33 +317,48 @@ class GlissandoRendererTest extends UnitTest {
     void testDetermineGlissandoColor_connectedTargetNoteSelected_returnsSelectionColor() {
         // Implied target-note selection: index 0 source, index 1 is target
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isGlissandoSelected(0, 0)).thenReturn(false);
+        when(selectionProvider.isSlideSelected(0, 0)).thenReturn(false);
         when(selectionProvider.isElementSelected(1, 0)).thenReturn(true);
         var invariants = editModeBuilder()
             .setSelectionProvider(selectionProvider)
             .build();
 
-        var color = RENDERER.determineGlissandoColor(
-            0, StaffElement.Glissando.Type.CONNECTED, invariants);
+        var color = RENDERER.determineSlideColor(
+            0, false, invariants);
 
         assertThat(color).isEqualTo(ScoreView.getSelectionColor());
     }
 
     @Test
-    void testDetermineGlissandoColor_slideOutTargetNoteSelected_returnsBlack() {
-        // SLIDE_OUT does not imply target selection; even if isElementSelected(1) is true,
-        // the type guard prevents the implied-selection branch from firing.
+    void testDetermineGlissandoColor_fallNextElementSelected_returnsBlack() {
+        // A fall has no target note, so selecting the element after the fall's host note
+        // (index 1) must NOT highlight the fall.
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isGlissandoSelected(0, 0)).thenReturn(false);
+        when(selectionProvider.isSlideSelected(0, 0)).thenReturn(false);
         when(selectionProvider.isElementSelected(1, 0)).thenReturn(true);
         var invariants = editModeBuilder()
             .setSelectionProvider(selectionProvider)
             .build();
 
-        var color = RENDERER.determineGlissandoColor(
-            0, StaffElement.Glissando.Type.SLIDE_OUT, invariants);
+        var color = RENDERER.determineSlideColor(
+            0, true, invariants);
 
         assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    @Test
+    void testDetermineGlissandoColor_fallStandaloneSelected_returnsSelectionColor() {
+        // A fall directly selected as a standalone slide still highlights.
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSlideSelected(0, 0)).thenReturn(true);
+        var invariants = editModeBuilder()
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var color = RENDERER.determineSlideColor(
+            0, true, invariants);
+
+        assertThat(color).isEqualTo(ScoreView.getSelectionColor());
     }
 
     @Test
@@ -392,8 +368,8 @@ class GlissandoRendererTest extends UnitTest {
             .setSelectionProvider(null)
             .build();
 
-        var color = RENDERER.determineGlissandoColor(
-            0, StaffElement.Glissando.Type.CONNECTED, invariants);
+        var color = RENDERER.determineSlideColor(
+            0, false, invariants);
 
         assertThat(color).isEqualTo(Color.BLACK);
     }
@@ -406,8 +382,8 @@ class GlissandoRendererTest extends UnitTest {
             .setPlayingNoteIndex(0)
             .build();
 
-        var color = RENDERER.determineGlissandoColor(
-            0, StaffElement.Glissando.Type.CONNECTED, invariants);
+        var color = RENDERER.determineSlideColor(
+            0, false, invariants);
 
         assertThat(color).isEqualTo(ScoreView.getPlayingNoteColor());
     }
@@ -419,13 +395,13 @@ class GlissandoRendererTest extends UnitTest {
     /**
      * Builds a NoteContext for a crotchet centred at (cxSs, cySs) with a symmetric
      * half-column extent of HALF_COLUMN_SS on each side, no flag bbox.
-     * startX = cxSs + HALF_COLUMN_SS + GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS
-     * endX   = cxSs - HALF_COLUMN_SS - GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS
+     * startX = cxSs + HALF_COLUMN_SS + NoteGeometry.GLISSANDO_DRAWN_GAP_SS
+     * endX   = cxSs - HALF_COLUMN_SS - NoteGeometry.GLISSANDO_DRAWN_GAP_SS
      */
-    private static GlissandoRenderer.NoteContext noteContextAt(double cxSs, double cySs) {
+    private static SlideRenderer.NoteContext noteContextAt(double cxSs, double cySs) {
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
-        return new GlissandoRenderer.NoteContext(
+        return new SlideRenderer.NoteContext(
             note,
             cySs,
             cxSs - HALF_COLUMN_SS,
@@ -439,17 +415,7 @@ class GlissandoRendererTest extends UnitTest {
         // src and tgt at identical column edges → endX < startX → null
         var src = noteContextAt(5.0, 0.0);
         var tgt = noteContextAt(5.0, 0.0);
-        assertThat(GlissandoRenderer.computeEndpoints(src, tgt)).isNull();
-    }
-
-    @Test
-    void testComputeEndpoints_slideOut_returnsNonNull_withCorrectAngle() {
-        // SLIDE_OUT (tgt=null): direction is fixed at SLIDE_OUT_ANGLE_DEG = 30°
-        var src = noteContextAt(0.0, 0.0);
-        var result = GlissandoRenderer.computeEndpoints(src, null);
-        assertThat(result).isNotNull();
-        // The angle stored in Endpoints is atan2(ny, nx) = 30° in radians
-        assertThat(Objects.requireNonNull(result).angle()).isCloseTo(Math.toRadians(30.0), within(0.01));
+        assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
     }
 
     @Test
@@ -457,7 +423,7 @@ class GlissandoRendererTest extends UnitTest {
         // Notes placed only 0.1 ss apart: endX = 0.1 - 0.5 - 0.25 = -0.65 < startX = 0.5 + 0.25 = 0.75 → null
         var src = noteContextAt(0.0, 0.0);
         var tgt = noteContextAt(0.1, 0.0);
-        assertThat(GlissandoRenderer.computeEndpoints(src, tgt)).isNull();
+        assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
     }
 
     @Test
@@ -469,12 +435,12 @@ class GlissandoRendererTest extends UnitTest {
         var src = noteContextAt(srcCx, 0.0);
         var tgt = noteContextAt(tgtCx, 0.0);
 
-        var result = GlissandoRenderer.computeEndpoints(src, tgt);
+        var result = SlideRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
         var endpoints = Objects.requireNonNull(result);
-        var expectedStartX = srcCx + HALF_COLUMN_SS + GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
-        var expectedEndX = tgtCx - HALF_COLUMN_SS - GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
+        var expectedStartX = srcCx + HALF_COLUMN_SS + NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
+        var expectedEndX = tgtCx - HALF_COLUMN_SS - NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
         assertThat(endpoints.startXSs()).isCloseTo(expectedStartX, within(0.01));
         assertThat(endpoints.endXSs()).isCloseTo(expectedEndX, within(0.01));
         assertThat(endpoints.startYSs()).isCloseTo(0.0, within(0.01));
@@ -490,12 +456,12 @@ class GlissandoRendererTest extends UnitTest {
     /**
      * Builds a NoteContext with explicit column edges and a flag bbox in layout space.
      */
-    private static GlissandoRenderer.NoteContext noteContextWithFlag(
+    private static SlideRenderer.NoteContext noteContextWithFlag(
         StaffElement note,
         double columnLeftXSs, double columnRightXSs, double cySs,
         Rectangle2D flagBBoxLayout
     ) {
-        return new GlissandoRenderer.NoteContext(
+        return new SlideRenderer.NoteContext(
             note, cySs, columnLeftXSs, columnRightXSs, flagBBoxLayout
         );
     }
@@ -532,12 +498,12 @@ class GlissandoRendererTest extends UnitTest {
 
         // Target note far to the right with no flag, at Y=0 (horizontal line)
         var tgtNote = upStemNote();
-        var tgt = new GlissandoRenderer.NoteContext(tgtNote, 0.0, 9.0, 10.0, null);
+        var tgt = new SlideRenderer.NoteContext(tgtNote, 0.0, 9.0, 10.0, null);
 
-        var result = GlissandoRenderer.computeEndpoints(src, tgt);
+        var result = SlideRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
-        var expectedStartX = flagRight + GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
+        var expectedStartX = flagRight + NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
         assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
     }
 
@@ -552,12 +518,12 @@ class GlissandoRendererTest extends UnitTest {
         var src = noteContextWithFlag(srcNote, columnLeft, columnRight, 0.0, flagBBox);
 
         var tgtNote = upStemNote();
-        var tgt = new GlissandoRenderer.NoteContext(tgtNote, 0.0, 9.0, 10.0, null);
+        var tgt = new SlideRenderer.NoteContext(tgtNote, 0.0, 9.0, 10.0, null);
 
-        var result = GlissandoRenderer.computeEndpoints(src, tgt);
+        var result = SlideRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
-        var expectedStartX = columnRight + GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
+        var expectedStartX = columnRight + NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
         assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
     }
 
@@ -567,17 +533,17 @@ class GlissandoRendererTest extends UnitTest {
         // Source note at [0, 1]; target at [8, 9] with flag spanning [7.0, 8.5] in X and [-1, 1] in Y.
         // The nominal endX = 8.0 - 0.25 = 7.75, which lands inside the flag [7.0, 8.5].
         var srcNote = upStemNote();
-        var src = new GlissandoRenderer.NoteContext(srcNote, 0.0, 0.0, 1.0, null);
+        var src = new SlideRenderer.NoteContext(srcNote, 0.0, 0.0, 1.0, null);
 
         var tgtNote = downStemNote();
         var flagLeft = 7.0;
         var flagBBox = new Rectangle2D.Double(flagLeft, -1.0, 1.5, 2.0);
         var tgt = noteContextWithFlag(tgtNote, 8.0, 9.0, 0.0, flagBBox);
 
-        var result = GlissandoRenderer.computeEndpoints(src, tgt);
+        var result = SlideRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
-        var expectedEndX = flagLeft - GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
+        var expectedEndX = flagLeft - NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
         assertThat(Objects.requireNonNull(result).endXSs()).isCloseTo(expectedEndX, within(0.01));
     }
 
@@ -585,7 +551,7 @@ class GlissandoRendererTest extends UnitTest {
     void testComputeEndpoints_trailingDownStemFlagClearsLine_endXAtColumnLeft() {
         // Trailing down-stem note; flag bbox placed above Y=0 so the horizontal line clears it.
         var srcNote = upStemNote();
-        var src = new GlissandoRenderer.NoteContext(srcNote, 0.0, 0.0, 1.0, null);
+        var src = new SlideRenderer.NoteContext(srcNote, 0.0, 0.0, 1.0, null);
 
         var tgtNote = downStemNote();
         var columnLeft = 8.0;
@@ -593,30 +559,11 @@ class GlissandoRendererTest extends UnitTest {
         var flagBBox = new Rectangle2D.Double(7.0, -5.0, 2.0, 2.0);
         var tgt = noteContextWithFlag(tgtNote, columnLeft, 9.0, 0.0, flagBBox);
 
-        var result = GlissandoRenderer.computeEndpoints(src, tgt);
+        var result = SlideRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
-        var expectedEndX = columnLeft - GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
+        var expectedEndX = columnLeft - NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
         assertThat(Objects.requireNonNull(result).endXSs()).isCloseTo(expectedEndX, within(0.01));
-    }
-
-    @Test
-    void testComputeEndpoints_slideOutLeadingFlagIntersectsRay_startXPushedToFlagRight() {
-        // SLIDE_OUT (tgt=null) from an up-stem note whose flag bbox straddles the slide-out ray.
-        // The ray departs at SLIDE_OUT_ANGLE_DEG from the nominal start (columnRight + gap = 1.25);
-        // the flag spans X=[1.0, 2.5], Y=[-0.5, 1.0], so the ray origin sits inside it and startX
-        // is pushed past the flag's right edge to flagRight + gap.
-        var srcNote = upStemNote();
-        var columnRight = 1.0;
-        var flagRight = 2.5;
-        var flagBBox = new Rectangle2D.Double(1.0, -0.5, flagRight - 1.0, 1.5);
-        var src = noteContextWithFlag(srcNote, 0.0, columnRight, 0.0, flagBBox);
-
-        var result = GlissandoRenderer.computeEndpoints(src, null);
-        assertThat(result).isNotNull();
-
-        var expectedStartX = flagRight + GlissandoRenderer.GLISSANDO_DRAWN_GAP_SS;
-        assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
     }
 
     // ======================================================================
@@ -634,7 +581,7 @@ class GlissandoRendererTest extends UnitTest {
         var flagH = 1.0;
         var cy = 2.5;
         var flagBBox = new Rectangle2D.Double(flagX, flagY, flagW, flagH);
-        var ctx = new GlissandoRenderer.NoteContext(note, cy, columnLeft, columnRight, flagBBox);
+        var ctx = new SlideRenderer.NoteContext(note, cy, columnLeft, columnRight, flagBBox);
 
         var shift = 3.0;
         var shifted = ctx.shiftedX(shift);

@@ -28,6 +28,7 @@ import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.message.MessageCenter;
 import songscribe.dom.ElementType;
+import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.message.notification.BarWasSelectedNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
@@ -52,7 +53,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     private final ElementType type;
     private final Kind kind;
-    private final StaffElement.Glissando.@Nullable Type glissandoType;
+    private final @Nullable SlideZone slideZone;
 
     public static ElementTypeAction createGraceEighthNoteAction(MainFrame mainFrame) {
         return new ElementTypeAction(
@@ -134,7 +135,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
     public static ElementTypeAction createGlissandoAction(MainFrame mainFrame) {
         return new ElementTypeAction(
             mainFrame,
-            Kind.DURATION, ElementType.GLISSANDO, StaffElement.Glissando.Type.CONNECTED,
+            Kind.DURATION, ElementType.SLIDE, SlideZone.GLISSANDO,
             Strings.get(Strings.ACTION_DURATION_GLISSANDO), "connecting-glissando.svg", 26,
             "glissando", Strings.get(Strings.ACTION_DURATION_GLISSANDO_TOOLTIP),
             KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK,
@@ -142,14 +143,14 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createSlideOutAction(MainFrame mainFrame) {
+    public static ElementTypeAction createFallAction(MainFrame mainFrame) {
         return new ElementTypeAction(
             mainFrame,
-            Kind.DURATION, ElementType.GLISSANDO, StaffElement.Glissando.Type.SLIDE_OUT,
-            Strings.get(Strings.ACTION_DURATION_SLIDE_OUT), "slide-out.svg", 26,
-            "slide-out", Strings.get(Strings.ACTION_DURATION_SLIDE_OUT_TOOLTIP),
-            KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK | InputEvent.META_DOWN_MASK,
-            withFlags(NON_DURATION_FLAGS, Flag.DISABLE_IN_SELECT_MODE) // Glissandos do not have a duration
+            Kind.DURATION, ElementType.SLIDE, SlideZone.FALL,
+            Strings.get(Strings.ACTION_DURATION_FALL), "fall.svg", 26,
+            "fall", Strings.get(Strings.ACTION_DURATION_FALL_TOOLTIP),
+            KeyEvent.VK_F, 0,
+            withFlags(NON_DURATION_FLAGS, Flag.DISABLE_IN_SELECT_MODE) // Falls do not have a duration
         );
     }
 
@@ -239,7 +240,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         MainFrame mainFrame,
         Kind kind,
         ElementType type,
-        StaffElement.Glissando.@Nullable Type glissandoType,
+        @Nullable SlideZone slideZone,
         String name,
         @Nullable String icon,
         int size,
@@ -252,7 +253,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         super(mainFrame, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
         this.kind = kind;
         this.type = type;
-        this.glissandoType = glissandoType;
+        this.slideZone = slideZone;
     }
 
     public ElementType getType() {
@@ -263,13 +264,13 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         return kind;
     }
 
-    public StaffElement.Glissando.@Nullable Type getGlissandoType() {
-        return glissandoType;
+    public @Nullable SlideZone getSlideZone() {
+        return slideZone;
     }
 
     @Override
-    public boolean matchesGlissandoType(StaffElement.Glissando.Type type) {
-        return glissandoType == type;
+    public boolean matchesSlide(StaffElement element) {
+        return slideZone != null && slideZone.matches(element);
     }
 
     @Override

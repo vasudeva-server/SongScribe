@@ -119,7 +119,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK
+            ElementType.GRACE_QUAVER, ElementType.SLIDE, ElementType.BREATH_MARK
         }) {
             assertThat(type.endingAnchorXOffsetSs())
                 .as("endingAnchorXOffsetSs() of %s", type)
@@ -149,7 +149,7 @@ class ElementTypeTest extends UnitTest {
         for (var type : new ElementType[]{
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
-            ElementType.GLISSANDO
+            ElementType.SLIDE
         }) {
             assertThat(type.getSMuFLGlyph())
                 .as("getSMuFLGlyph() of %s should be null", type)
@@ -167,7 +167,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
@@ -192,7 +192,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.BREATH_MARK
         }) {
@@ -214,7 +214,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.BREATH_MARK,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
@@ -231,7 +231,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.BREATH_MARK,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
@@ -257,7 +257,7 @@ class ElementTypeTest extends UnitTest {
 
         // False set: grace notes, glissando, repeats, barlines
         for (var type : new ElementType[]{
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
@@ -276,7 +276,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.SLIDE, ElementType.BREATH_MARK,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
@@ -299,7 +299,7 @@ class ElementTypeTest extends UnitTest {
         for (var type : new ElementType[]{
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.SLIDE, ElementType.BREATH_MARK,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
@@ -323,7 +323,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.SEMIBREVE,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.SLIDE, ElementType.BREATH_MARK,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
@@ -345,7 +345,7 @@ class ElementTypeTest extends UnitTest {
         for (var type : new ElementType[]{
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE, ElementType.BREATH_MARK,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
@@ -357,7 +357,7 @@ class ElementTypeTest extends UnitTest {
     void testIsNonContentElementMembership() {
         // True set: grace notes and glissando
         assertThat(ElementType.GRACE_QUAVER.isNonContentElement()).isTrue();
-        assertThat(ElementType.GLISSANDO.isNonContentElement()).isTrue();
+        assertThat(ElementType.SLIDE.isNonContentElement()).isTrue();
 
         // False set: all other types
         for (var type : new ElementType[]{
@@ -384,14 +384,14 @@ class ElementTypeTest extends UnitTest {
             assertThat(type.isNonDuration()).as("%s.isNonDuration()", type).isTrue();
         }
 
-        // False set: notes, rests, grace notes; GLISSANDO is explicitly NOT a non-duration
+        // False set: notes, rests, grace notes; SLIDE is explicitly NOT a non-duration
         for (var type : new ElementType[]{
             ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
             ElementType.GRACE_QUAVER,
-            ElementType.GLISSANDO
+            ElementType.SLIDE
         }) {
             assertThat(type.isNonDuration()).as("%s.isNonDuration()", type).isFalse();
         }
@@ -399,9 +399,9 @@ class ElementTypeTest extends UnitTest {
 
     @Test
     void testIsNonDurationExcludesGlissando() {
-        // GLISSANDO is neither a duration nor a non-duration — it belongs to neither group
-        assertThat(ElementType.GLISSANDO.isNonDuration()).isFalse();
-        assertThat(ElementType.GLISSANDO.isDuration()).isFalse();
+        // SLIDE is neither a duration nor a non-duration — it belongs to neither group
+        assertThat(ElementType.SLIDE.isNonDuration()).isFalse();
+        assertThat(ElementType.SLIDE.isDuration()).isFalse();
     }
 
     @Test
@@ -419,7 +419,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE, ElementType.BREATH_MARK,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
             assertThat(type.isRepeat()).as("%s.isRepeat()", type).isFalse();
@@ -442,7 +442,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE, ElementType.BREATH_MARK,
             ElementType.FINAL_DOUBLE_BARLINE,
             ElementType.REPEAT_LEFT
         }) {
@@ -472,7 +472,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE, ElementType.BREATH_MARK,
             ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT
         }) {
             assertThat(type.isTerminal()).as("%s.isTerminal()", type).isFalse();
@@ -491,7 +491,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE, ElementType.BREATH_MARK,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE
         }) {
@@ -515,7 +515,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.GRACE_QUAVER, ElementType.GLISSANDO, ElementType.BREATH_MARK,
+            ElementType.GRACE_QUAVER, ElementType.SLIDE, ElementType.BREATH_MARK,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_LEFT_RIGHT
         }) {
             assertThat(type.snapToEnd()).as("%s.snapToEnd()", type).isFalse();
@@ -551,7 +551,7 @@ class ElementTypeTest extends UnitTest {
     @Test
     void testIsDurationExcludesNonDurations() {
         assertThat(ElementType.SINGLE_BARLINE.isDuration()).isFalse();
-        assertThat(ElementType.GLISSANDO.isDuration()).isFalse();
+        assertThat(ElementType.SLIDE.isDuration()).isFalse();
         assertThat(ElementType.BREATH_MARK.isDuration()).isFalse();
     }
 
@@ -582,7 +582,7 @@ class ElementTypeTest extends UnitTest {
     @Test
     void testToNoteReturnsSelfForNonPairedTypes() {
         assertThat(ElementType.GRACE_QUAVER.toNote()).isEqualTo(ElementType.GRACE_QUAVER);
-        assertThat(ElementType.GLISSANDO.toNote()).isEqualTo(ElementType.GLISSANDO);
+        assertThat(ElementType.SLIDE.toNote()).isEqualTo(ElementType.SLIDE);
         assertThat(ElementType.SINGLE_BARLINE.toNote()).isEqualTo(ElementType.SINGLE_BARLINE);
         assertThat(ElementType.DOUBLE_BARLINE.toNote()).isEqualTo(ElementType.DOUBLE_BARLINE);
         assertThat(ElementType.REPEAT_LEFT.toNote()).isEqualTo(ElementType.REPEAT_LEFT);
@@ -608,7 +608,7 @@ class ElementTypeTest extends UnitTest {
     @Test
     void testToRestReturnsSelfForNonPairedTypes() {
         assertThat(ElementType.GRACE_QUAVER.toRest()).isEqualTo(ElementType.GRACE_QUAVER);
-        assertThat(ElementType.GLISSANDO.toRest()).isEqualTo(ElementType.GLISSANDO);
+        assertThat(ElementType.SLIDE.toRest()).isEqualTo(ElementType.SLIDE);
         assertThat(ElementType.SINGLE_BARLINE.toRest()).isEqualTo(ElementType.SINGLE_BARLINE);
         assertThat(ElementType.DOUBLE_BARLINE.toRest()).isEqualTo(ElementType.DOUBLE_BARLINE);
         assertThat(ElementType.REPEAT_LEFT.toRest()).isEqualTo(ElementType.REPEAT_LEFT);

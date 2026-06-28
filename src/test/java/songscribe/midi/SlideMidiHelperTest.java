@@ -26,33 +26,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 import songscribe.UnitTest;
-import songscribe.dom.StaffElement.Glissando;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.midi.GlissandoMidiHelper.EXPRESSION_CC;
-import static songscribe.midi.GlissandoMidiHelper.EXPRESSION_MAX;
-import static songscribe.midi.GlissandoMidiHelper.GRACE_SLIDE_IN_START_RATIO;
-import static songscribe.midi.GlissandoMidiHelper.PITCH_BEND_CENTER;
-import static songscribe.midi.GlissandoMidiHelper.PITCH_BEND_MAX;
-import static songscribe.midi.GlissandoMidiHelper.calculateBendValue;
-import static songscribe.midi.GlissandoMidiHelper.calculateSensitivity;
-import static songscribe.midi.GlissandoMidiHelper.calculateSlideInBendValue;
-import static songscribe.midi.GlissandoMidiHelper.calculateSlideTicks;
-import static songscribe.midi.GlissandoMidiHelper.calculateSustainTicks;
-import static songscribe.midi.GlissandoMidiHelper.createPitchBendMessages;
-import static songscribe.midi.GlissandoMidiHelper.createPitchBendReset;
-import static songscribe.midi.GlissandoMidiHelper.createRpnMessages;
-import static songscribe.midi.GlissandoMidiHelper.createExpressionReset;
-import static songscribe.midi.GlissandoMidiHelper.createSlideInExpressionMessages;
-import static songscribe.midi.GlissandoMidiHelper.createSlideInPitchBendMessages;
-import static songscribe.midi.GlissandoMidiHelper.createSlideOutExpressionMessages;
-import static songscribe.midi.GlissandoMidiHelper.resolveTargetPitch;
+import static songscribe.midi.SlideMidiHelper.EXPRESSION_CC;
+import static songscribe.midi.SlideMidiHelper.EXPRESSION_MAX;
+import static songscribe.midi.SlideMidiHelper.GRACE_SLIDE_IN_START_RATIO;
+import static songscribe.midi.SlideMidiHelper.PITCH_BEND_CENTER;
+import static songscribe.midi.SlideMidiHelper.PITCH_BEND_MAX;
+import static songscribe.midi.SlideMidiHelper.calculateBendValue;
+import static songscribe.midi.SlideMidiHelper.calculateSensitivity;
+import static songscribe.midi.SlideMidiHelper.calculateSlideInBendValue;
+import static songscribe.midi.SlideMidiHelper.calculateSlideTicks;
+import static songscribe.midi.SlideMidiHelper.calculateSustainTicks;
+import static songscribe.midi.SlideMidiHelper.createPitchBendMessages;
+import static songscribe.midi.SlideMidiHelper.createPitchBendReset;
+import static songscribe.midi.SlideMidiHelper.createRpnMessages;
+import static songscribe.midi.SlideMidiHelper.createExpressionReset;
+import static songscribe.midi.SlideMidiHelper.createSlideInExpressionMessages;
+import static songscribe.midi.SlideMidiHelper.createSlideInPitchBendMessages;
+import static songscribe.midi.SlideMidiHelper.createFallExpressionMessages;
+import static songscribe.midi.SlideMidiHelper.resolveTargetPitch;
 
-class GlissandoMidiHelperTest extends UnitTest {
+class SlideMidiHelperTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -169,7 +168,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         void testProgressivelyIncreasingBend() throws InvalidMidiDataException {
             createPitchBendMessages(track, 0, 12, 0, 60, 72, 12, false);
             var events = getPitchBendEvents(track);
-            var bendValues = events.stream().map(GlissandoMidiHelperTest::getBendValue).toList();
+            var bendValues = events.stream().map(SlideMidiHelperTest::getBendValue).toList();
 
             // Each successive bend value should be >= the previous (monotonically increasing for upward slide)
             for (var i = 1; i < bendValues.size(); i++) {
@@ -286,13 +285,13 @@ class GlissandoMidiHelperTest extends UnitTest {
     class CreateRpnMessagesIfNeeded {
 
         private Track track;
-        private GlissandoMidiHelper helper;
+        private SlideMidiHelper helper;
 
         @BeforeEach
         void setUp() throws Exception {
             var sequence = new Sequence(Sequence.PPQ, 480);
             track = sequence.createTrack();
-            helper = new GlissandoMidiHelper();
+            helper = new SlideMidiHelper();
         }
 
         @Test
@@ -402,21 +401,15 @@ class GlissandoMidiHelperTest extends UnitTest {
     class ResolveTargetPitch {
 
         @Test
-        void testConnectedReturnsNextNotePitch() {
-            assertThat(resolveTargetPitch(60, Glissando.Type.CONNECTED, 67))
-                    .isEqualTo(67);
+        void testFallReturnsSourceMinusFallSemitones() {
+            assertThat(resolveTargetPitch(60))
+                    .isEqualTo(60 - SlideMidiHelper.FALL_SEMITONES);
         }
 
         @Test
-        void testSlideOutReturnsSourceMinusFour() {
-            assertThat(resolveTargetPitch(60, Glissando.Type.SLIDE_OUT, 67))
-                    .isEqualTo(56);
-        }
-
-        @Test
-        void testSlideOutIgnoresNextNotePitch() {
-            assertThat(resolveTargetPitch(72, Glissando.Type.SLIDE_OUT, 80))
-                    .isEqualTo(68);
+        void testFallReturnsSourceMinusFallSemitonesHigherPitch() {
+            assertThat(resolveTargetPitch(72))
+                    .isEqualTo(72 - SlideMidiHelper.FALL_SEMITONES);
         }
     }
 
@@ -425,13 +418,13 @@ class GlissandoMidiHelperTest extends UnitTest {
     class CreatePendingResets {
 
         private Track track;
-        private GlissandoMidiHelper helper;
+        private SlideMidiHelper helper;
 
         @BeforeEach
         void setUp() throws Exception {
             var sequence = new Sequence(Sequence.PPQ, 480);
             track = sequence.createTrack();
-            helper = new GlissandoMidiHelper();
+            helper = new SlideMidiHelper();
         }
 
         @Test
@@ -634,7 +627,7 @@ class GlissandoMidiHelperTest extends UnitTest {
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
     @Nested
-    class CreateSlideOutExpressionMessages {
+    class CreateFallExpressionMessages {
 
         private Track track;
 
@@ -647,14 +640,14 @@ class GlissandoMidiHelperTest extends UnitTest {
         @Test
         void testEventCount() throws InvalidMidiDataException {
             // duration=8, BEND_STEP_TICKS=2: elapsed 0,2,4,6,8 => 5 events
-            createSlideOutExpressionMessages(track, 0, 8, 0);
+            createFallExpressionMessages(track, 0, 8, 0);
             assertThat(getControlChangeEvents(track)).hasSize(5);
         }
 
         @Test
         void testFirstEventIsMax() throws InvalidMidiDataException {
             // elapsed=0, t=0, curvedT=0: expression = round((1-0)*127) = 127
-            createSlideOutExpressionMessages(track, 0, 8, 0);
+            createFallExpressionMessages(track, 0, 8, 0);
             var events = getControlChangeEvents(track);
             var firstValue = ((ShortMessage) events.getFirst().getMessage()).getData2();
             assertThat(firstValue).isEqualTo(EXPRESSION_MAX);
@@ -663,7 +656,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         @Test
         void testLastEventIsZero() throws InvalidMidiDataException {
             // elapsed=duration, t=1, curvedT=1: expression = round((1-1)*127) = 0
-            createSlideOutExpressionMessages(track, 0, 8, 0);
+            createFallExpressionMessages(track, 0, 8, 0);
             var events = getControlChangeEvents(track);
             var lastValue = ((ShortMessage) events.getLast().getMessage()).getData2();
             assertThat(lastValue).isEqualTo(0);
@@ -671,7 +664,7 @@ class GlissandoMidiHelperTest extends UnitTest {
 
         @Test
         void testAllEventsAreCC11() throws InvalidMidiDataException {
-            createSlideOutExpressionMessages(track, 0, 8, 0);
+            createFallExpressionMessages(track, 0, 8, 0);
             var events = getControlChangeEvents(track);
             assertThat(events).allSatisfy(e ->
                     assertThat(((ShortMessage) e.getMessage()).getData1()).isEqualTo(EXPRESSION_CC));
@@ -679,7 +672,7 @@ class GlissandoMidiHelperTest extends UnitTest {
 
         @Test
         void testNoEventsForZeroDuration() throws InvalidMidiDataException {
-            createSlideOutExpressionMessages(track, 0, 0, 0);
+            createFallExpressionMessages(track, 0, 0, 0);
             assertThat(getControlChangeEvents(track)).isEmpty();
         }
     }
@@ -716,11 +709,11 @@ class GlissandoMidiHelperTest extends UnitTest {
     @Nested
     class PendingGracePitch {
 
-        private GlissandoMidiHelper helper;
+        private SlideMidiHelper helper;
 
         @BeforeEach
         void setUp() {
-            helper = new GlissandoMidiHelper();
+            helper = new SlideMidiHelper();
         }
 
         @Test

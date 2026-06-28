@@ -54,7 +54,7 @@ class LyricEditorEligibilityTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
 
         var grace = ElementType.GRACE_QUAVER.newInstance();
-        grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        grace.setGlissando();
         line.addElement(grace);
 
         line.addElement(ElementType.CROTCHET.newInstance());

@@ -56,7 +56,7 @@ public enum ElementType {
     GRACE_QUAVER("Grace eighth", KeyEvent.VK_G, 0, 0, 0),
 
     // Other
-    GLISSANDO("Glissando", KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK, 0, 0),
+    SLIDE("Slide", 0, 0),
     REPEAT_LEFT("Repeat left", KeyEvent.VK_L, 0, 0, 0),
     REPEAT_RIGHT("Repeat right", KeyEvent.VK_R, 0, 0, 0),
     REPEAT_LEFT_RIGHT("Repeate left/right", 0, 0),
@@ -417,7 +417,7 @@ public enum ElementType {
 
     /**
      * A content element is a note, rest, or breath mark — elements that carry
-     * musical content. Grace notes and glissandos are non-content.
+     * musical content. Grace notes and slides are non-content.
      */
     public boolean isContentElement() {
         return isPitchedNote() || isRest() || this == BREATH_MARK;
@@ -428,7 +428,7 @@ public enum ElementType {
      * but are allowed to be present in the selection.
      */
     public boolean isNonContentElement() {
-        return isGraceNote() || this == GLISSANDO;
+        return isGraceNote() || this == SLIDE;
     }
 
     /**
@@ -561,11 +561,11 @@ public enum ElementType {
         computeBarlineBoundsSs();
         computeRepeatBoundsSs();
 
-        // Glissandos are rendered as lines between two notes — their actual visual
+        // Slides are rendered as lines between two notes — their actual visual
         // extent is context-dependent. These nominal bounds satisfy the non-zero
-        // contract without affecting layout (glissandos are decorations on notes,
+        // contract without affecting layout (slides are decorations on notes,
         // not standalone positioned elements).
-        GLISSANDO.setSymmetricBounds(1, 1, -0.5);  // widthSs=1, heightSs=1, topOffsetSs=-0.5
+        SLIDE.setSymmetricBounds(1, 1, -0.5);  // widthSs=1, heightSs=1, topOffsetSs=-0.5
 
         // Copy bounds to alias types
         for (var type : values()) {

@@ -30,18 +30,19 @@ import songscribe.UnitTest;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 
 /**
- * Unit tests for {@link PreviewElementManager#computeGlissandoZone} after the
+ * Unit tests for {@link PreviewElementManager#computeSlideZone} after the
  * method was widened to package-private and had its {@code intendedType}
  * parameter extracted from the caller. All cases exercise pure line/index logic
  * with no UI or Actions dependency.
  */
-class PreviewElementManagerGlissandoZoneTest extends UnitTest {
+class PreviewElementManagerSlideZoneTest extends UnitTest {
 
-    private static final StaffElement.Glissando.Type CONNECTED = StaffElement.Glissando.Type.CONNECTED;
-    private static final StaffElement.Glissando.Type SLIDE_OUT = StaffElement.Glissando.Type.SLIDE_OUT;
+    private static final SlideZone CONNECTING = SlideZone.GLISSANDO;
+    private static final SlideZone FALL = SlideZone.FALL;
 
     // Default and alternative staff positions that yield different pitches
     private static final int DEFAULT_POSITION_SP = 0;
@@ -90,11 +91,11 @@ class PreviewElementManagerGlissandoZoneTest extends UnitTest {
         });
     }
 
-    private StaffElement.Glissando.@Nullable Type zone(
+    private @Nullable SlideZone zone(
         int xIndex,
-        StaffElement.Glissando.@Nullable Type intendedType
+        @Nullable SlideZone intendedZone
     ) {
-        return PreviewElementManager.computeGlissandoZone(line, xIndex, intendedType);
+        return PreviewElementManager.computeSlideZone(line, xIndex, intendedZone);
     }
 
     // -----------------------------------------------------------------------
@@ -104,25 +105,25 @@ class PreviewElementManagerGlissandoZoneTest extends UnitTest {
     @Test
     void testConnectedGlissandoSuppressedWhenTargetIsRest() {
         addElements(note(), rest());
-        assertThat(zone(1, CONNECTED)).as("target is rest").isNull();
+        assertThat(zone(1, CONNECTING)).as("target is rest").isNull();
     }
 
     @Test
     void testConnectedGlissandoSuppressedWhenSourceIsRest() {
         addElements(rest(), note());
-        assertThat(zone(1, CONNECTED)).as("source is rest").isNull();
+        assertThat(zone(1, CONNECTING)).as("source is rest").isNull();
     }
 
     @Test
     void testConnectedGlissandoSuppressedWhenBothRests() {
         addElements(rest(), rest());
-        assertThat(zone(1, CONNECTED)).as("both rests").isNull();
+        assertThat(zone(1, CONNECTING)).as("both rests").isNull();
     }
 
     @Test
     void testSlideOutSuppressedWhenSourceIsRest() {
         addElements(rest());
-        assertThat(zone(1, SLIDE_OUT)).as("source is rest").isNull();
+        assertThat(zone(1, FALL)).as("source is rest").isNull();
     }
 
     // -----------------------------------------------------------------------
@@ -132,25 +133,25 @@ class PreviewElementManagerGlissandoZoneTest extends UnitTest {
     @Test
     void testConnectedGlissandoSuppressedWhenTargetIsBarLine() {
         addElements(note(), barLine());
-        assertThat(zone(1, CONNECTED)).as("target is bar line").isNull();
+        assertThat(zone(1, CONNECTING)).as("target is bar line").isNull();
     }
 
     @Test
     void testConnectedGlissandoSuppressedWhenTargetIsGraceNote() {
         addElements(note(), graceNote());
-        assertThat(zone(1, CONNECTED)).as("target is grace note").isNull();
+        assertThat(zone(1, CONNECTING)).as("target is grace note").isNull();
     }
 
     @Test
     void testConnectedGlissandoSuppressedWhenSourceIsBarLine() {
         addElements(barLine(), note());
-        assertThat(zone(1, CONNECTED)).as("source is bar line").isNull();
+        assertThat(zone(1, CONNECTING)).as("source is bar line").isNull();
     }
 
     @Test
     void testSlideOutSuppressedWhenSourceIsBarLine() {
         addElements(barLine());
-        assertThat(zone(1, SLIDE_OUT)).as("source is bar line").isNull();
+        assertThat(zone(1, FALL)).as("source is bar line").isNull();
     }
 
     // -----------------------------------------------------------------------
@@ -160,13 +161,13 @@ class PreviewElementManagerGlissandoZoneTest extends UnitTest {
     @Test
     void testConnectedGlissandoReturnsConnectedForValidPair() {
         addElements(note(DEFAULT_POSITION_SP), note(ALT_POSITION_SP));
-        assertThat(zone(1, CONNECTED)).as("valid note pair").isEqualTo(CONNECTED);
+        assertThat(zone(1, CONNECTING)).as("valid note pair").isEqualTo(CONNECTING);
     }
 
     @Test
     void testConnectedGlissandoSuppressedForSamePitch() {
         addElements(note(), note());
-        assertThat(zone(1, CONNECTED)).as("same pitch").isNull();
+        assertThat(zone(1, CONNECTING)).as("same pitch").isNull();
     }
 
     // -----------------------------------------------------------------------
@@ -176,7 +177,7 @@ class PreviewElementManagerGlissandoZoneTest extends UnitTest {
     @Test
     void testReturnsNullAtLineStart() {
         addElements(note());
-        assertThat(zone(0, CONNECTED)).as("line start").isNull();
+        assertThat(zone(0, CONNECTING)).as("line start").isNull();
     }
 
     @Test
@@ -184,14 +185,14 @@ class PreviewElementManagerGlissandoZoneTest extends UnitTest {
         addElements(note());
         // elementCount() includes the auto-maintained terminal; xIndex == elementCount
         // trips the "no element to the right" guard.
-        assertThat(zone(line.elementCount(), CONNECTED)).as("past end, CONNECTED").isNull();
+        assertThat(zone(line.elementCount(), CONNECTING)).as("past end, CONNECTING").isNull();
     }
 
     @Test
     void testSlideOutAllowedAtLineEnd() {
         addElements(note());
-        // xIndex = 1: source is the only note; SLIDE_OUT has no right-element requirement.
-        assertThat(zone(1, SLIDE_OUT)).as("at end of content, SLIDE_OUT").isEqualTo(SLIDE_OUT);
+        // xIndex = 1: source is the only note; FALL has no right-element requirement.
+        assertThat(zone(1, FALL)).as("at end of content, FALL").isEqualTo(FALL);
     }
 
     @Test

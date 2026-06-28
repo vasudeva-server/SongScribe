@@ -33,24 +33,29 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Integration tests for glissando MIDI generation using the {@code connections}
- * fixture. Verifies that connected glissandos and slide-outs produce correct
+ * Integration tests for slide MIDI generation using the {@code connections}
+ * fixture. Verifies that connecting glissandos and falls produce correct
  * pitch bend and RPN control change events when rendered to a MIDI track.
  */
 @SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized" })
-class GlissandoMidiIntegrationTest extends UnitTest {
+class SlideMidiIntegrationTest extends UnitTest {
 
     // Element indices in connections.mssw
     private static final int TEMPO_INDEX = 0;
 
     private static final int PLAIN_NOTE_STAFF_POS = -2;
+
+    /** CC number for RPN Data Entry MSB, which carries the pitch-bend sensitivity in semitones. */
+    private static final int RPN_DATA_ENTRY_MSB_CC = 6;
+
+    /** Bit shift to combine a 14-bit pitch-bend value from its 7-bit MSB and LSB bytes. */
+    private static final int PITCH_BEND_MSB_SHIFT = 7;
 
     private static final PlaybackSettings DEFAULT_SETTINGS = new PlaybackSettings(
         0, 100, 100, false
@@ -99,28 +104,55 @@ class GlissandoMidiIntegrationTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class SlideOut {
+    class Fall {
 
         @Test
         void testPitchBendEventsPresent() throws Exception {
             var track = buildMidiTrack(line, tempo);
             var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
 
-            assertThat(bendEvents).as("slide-out pitch bend present").isNotEmpty();
+            assertThat(bendEvents).as("fall pitch bend present").isNotEmpty();
         }
 
         @Test
-        void testRpnSensitivityIncludesSlideOutSemitones() throws Exception {
+        void testFallBendsDownward() throws Exception {
+            // Isolate a single note with a fall so the bend events come only from the fall,
+            // not the fixture's connecting glissandos (which can bend either direction).
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(PLAIN_NOTE_STAFF_POS);
+            note.setFall();
+            var fallLine = detachedLine();
+            fallLine.addElement(note);
+
+            var track = buildMidiTrack(fallLine, new Tempo());
+            var bendValues = getEventsByCommand(track, ShortMessage.PITCH_BEND).stream()
+                .map(e -> (ShortMessage) e.getMessage())
+                .map(sm -> (sm.getData2() << PITCH_BEND_MSB_SHIFT) | sm.getData1())
+                .toList();
+
+            // A fall bends down from the source pitch: every event stays at or below center,
+            // and at least one drops below it. An upward (or absent) bend would fail this.
+            assertThat(bendValues)
+                .as("fall pitch bend values stay at or below center")
+                .allMatch(value -> value <= SlideMidiHelper.PITCH_BEND_CENTER)
+                .as("fall pitch bend drops below center (downward)")
+                .anyMatch(value -> value < SlideMidiHelper.PITCH_BEND_CENTER);
+        }
+
+        @Test
+        void testRpnSensitivityIncludesFallSemitones() throws Exception {
             var track = buildMidiTrack(line, tempo);
             var ccEvents = getEventsByCommand(track, ShortMessage.CONTROL_CHANGE);
 
-            var hasSlideOutSensitivity = ccEvents.stream()
-                .filter(e -> ((ShortMessage) e.getMessage()).getData1() == 6)
-                .anyMatch(e -> ((ShortMessage) e.getMessage()).getData2()
-                    == GlissandoMidiHelper.SLIDE_OUT_SEMITONES);
+            var dataEntryMsbValues = ccEvents.stream()
+                .map(e -> (ShortMessage) e.getMessage())
+                .filter(sm -> sm.getData1() == RPN_DATA_ENTRY_MSB_CC)
+                .map(ShortMessage::getData2)
+                .toList();
 
-            assertThat(hasSlideOutSensitivity)
-                .as("RPN sensitivity includes slide-out semitones").isTrue();
+            assertThat(dataEntryMsbValues)
+                .as("RPN data-entry MSB includes the fall's pitch-bend sensitivity")
+                .contains(SlideMidiHelper.FALL_SEMITONES);
         }
     }
 
@@ -144,7 +176,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
         @Test
         void testNoteOnCountMatchesNonGracePitchedNotes() throws Exception {
             var grace = ElementType.GRACE_QUAVER.newInstance();
-            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            grace.setGlissando();
             var host = ElementType.CROTCHET.newInstance();
             host.setStaffPosition(-2);
             var graceHostLine = detachedLine();

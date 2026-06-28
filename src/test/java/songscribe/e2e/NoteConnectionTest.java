@@ -39,7 +39,6 @@ import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import songscribe.dom.StaffElement;
 import songscribe.ui.action.Actions;
 
 /**
@@ -98,9 +97,9 @@ class NoteConnectionTest extends E2ETest {
 
             var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
             assertAll(
-                () -> assertThat(Objects.requireNonNull(lss).hasGlissandoSelection())
+                () -> assertThat(Objects.requireNonNull(lss).hasSlideSelection())
                     .as("glissando selected by click").isTrue(),
-                () -> assertThat(Objects.requireNonNull(lss).getSelectedGlissandoElementIndex())
+                () -> assertThat(Objects.requireNonNull(lss).getSelectedSlideElementIndex())
                     .as("correct element index").isEqualTo(Element.PAIR_B_SRC.index)
             );
         }
@@ -128,9 +127,9 @@ class NoteConnectionTest extends E2ETest {
                 .as("target note selected").isTrue();
 
             var sourceNote = song().getLine(0).getElement(Element.PAIR_B_SRC.index);
-            assertThat(Objects.requireNonNull(sourceNote.getGlissando()).type)
+            assertThat(sourceNote.getGlissando())
                 .as("source has connected glissando pointing to target")
-                .isEqualTo(StaffElement.Glissando.Type.CONNECTED);
+                .isNotNull();
         }
 
     }
@@ -152,28 +151,18 @@ class NoteConnectionTest extends E2ETest {
             performLayout(0);
 
             var note = song().getLine(0).getElement(Element.PAIR_A_SRC.index);
-            var glissando = note.getGlissando();
-            assertAll(
-                () -> assertThat(glissando).as("has glissando").isNotNull(),
-                () -> assertThat(Objects.requireNonNull(glissando).type)
-                    .as("type is CONNECTED").isEqualTo(StaffElement.Glissando.Type.CONNECTED)
-            );
+            assertThat(note.getGlissando()).as("has glissando").isNotNull();
         }
 
         @Order(2)
         @Test
-        void testInsertSlideOut() {
-            selectDuration(Actions.SLIDE_OUT_ACTION);
+        void testInsertFall() {
+            selectDuration(Actions.FALL_ACTION);
             clickAt(midpoint(0, Element.PAIR_A_TGT.index, Element.PAIR_B_SRC.index));
             performLayout(0);
 
             var note = song().getLine(0).getElement(Element.PAIR_A_TGT.index);
-            var glissando = note.getGlissando();
-            assertAll(
-                () -> assertThat(glissando).as("has glissando").isNotNull(),
-                () -> assertThat(Objects.requireNonNull(glissando).type)
-                    .as("type is SLIDE_OUT").isEqualTo(StaffElement.Glissando.Type.SLIDE_OUT)
-            );
+            assertThat(note.hasFall()).as("has fall").isTrue();
         }
 
     }
@@ -193,7 +182,7 @@ class NoteConnectionTest extends E2ETest {
             clickAt(midpoint(0, Element.PAIR_D_SRC.index, Element.PAIR_D_TGT.index));
 
             var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
-            assertThat(Objects.requireNonNull(lss).hasGlissandoSelection()).as("glissando selected").isTrue();
+            assertThat(Objects.requireNonNull(lss).hasSlideSelection()).as("glissando selected").isTrue();
 
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);

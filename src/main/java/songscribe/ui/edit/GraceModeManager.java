@@ -397,9 +397,9 @@ public final class GraceModeManager {
             && graceNote.getGlissando() != null;
 
         if (pendingConnect && !hasGlissando && graceNote != null) {
-            graceNote.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            graceNote.setGlissando();
         } else if (!pendingConnect && hasGlissando && graceNote != null) {
-            graceNote.removeGlissando();
+            graceNote.removeSlide();
         }
 
         if ((pendingCancel != wasPendingCancel || pendingConnect != hasGlissando)
@@ -456,14 +456,14 @@ public final class GraceModeManager {
             // Insert the host note at the locked x position
             PreviewElementManager.handleClick(lineComponent, true);
 
-            // Connect grace note to host note with a CONNECTED glissando
+            // Connect grace note to host note with a connecting glissando
             var note = graceNote;
 
             if (note != null) {
                 line.modifyElement(
                     graceNoteIndex,
-                    ElementField.GLISSANDO,
-                    () -> note.setGlissando(StaffElement.Glissando.Type.CONNECTED)
+                    ElementField.SLIDE,
+                    note::setGlissando
                 );
             }
 
@@ -636,8 +636,8 @@ public final class GraceModeManager {
                 // When coming from GRACE_NOTE_INSERT, the glissando was already added in mouseClicked.
                 line.modifyElement(
                     graceNoteIndex,
-                    ElementField.GLISSANDO,
-                    () -> note.setGlissando(StaffElement.Glissando.Type.CONNECTED)
+                    ElementField.SLIDE,
+                    note::setGlissando
                 );
             }
 

@@ -23,13 +23,13 @@ package songscribe.ui.component.score;
 /**
  * Result of a hit test against selectable elements in a {@link LineComponent}.
  * <p>
- * The cascade tests note heads first, then glissandos, then staff-line proximity.
+ * The cascade tests note heads first, then slides, then staff-line proximity.
  * If nothing is hit, {@link Nothing} is returned.
  */
 sealed interface HitResult {
     record ElementHead(int index) implements HitResult {}
 
-    record Glissando(int elementIndex) implements HitResult {}
+    record Slide(int elementIndex) implements HitResult {}
 
     record GraceGlissando() implements HitResult {}
 

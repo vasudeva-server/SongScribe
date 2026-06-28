@@ -36,7 +36,6 @@ import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
-import songscribe.dom.StaffElement;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.BarWasSelectedNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
@@ -175,15 +174,19 @@ class ElementTypeActionTest extends MainFrameMockTest {
         assertThat(breathMarkAction.appliesTo(element)).isFalse();
     }
 
-    // Row 9: matchesGlissandoType — true when type matches, false when it differs
+    // Row 9: matchesSlide — true when element carries the matching slide, false otherwise
     @Test
-    void testMatchesGlissandoTypeWhenMatches() {
-        assertThat(glissandoAction.matchesGlissandoType(StaffElement.Glissando.Type.CONNECTED)).isTrue();
+    void testMatchesSlideWhenMatches() {
+        var noteWithGlissando = ElementType.CROTCHET.newInstance();
+        noteWithGlissando.setGlissando();
+        assertThat(glissandoAction.matchesSlide(noteWithGlissando)).isTrue();
     }
 
     @Test
-    void testMatchesGlissandoTypeWhenDiffers() {
-        assertThat(glissandoAction.matchesGlissandoType(StaffElement.Glissando.Type.SLIDE_OUT)).isFalse();
+    void testMatchesSlideWhenDiffers() {
+        var noteWithFall = ElementType.CROTCHET.newInstance();
+        noteWithFall.setFall();
+        assertThat(glissandoAction.matchesSlide(noteWithFall)).isFalse();
     }
 
     // Rows 11–12: actionPerformed posts the correct notification when no active selection

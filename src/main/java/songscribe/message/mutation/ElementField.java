@@ -27,8 +27,8 @@ import java.util.EnumSet;
  * Populated incrementally as {@link ElementModification} emitters are added.
  */
 public enum ElementField {
-    /** The element's glissando zone was set or cleared. */
-    GLISSANDO,
+    /** The element's slide (fall, glissando, or slide-out) was set or cleared. */
+    SLIDE,
 
     /**
      * The element's pitch (staff position and stem direction) was changed.

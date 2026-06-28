@@ -85,14 +85,14 @@ public class LineComponent extends ScoreComponent
         boolean isLineSelected(int lineIndex);
 
         /**
-         * Returns whether the glissando owned by the element at the given index
+         * Returns whether the slide owned by the element at the given index
          * is selected.
          *
          * @param elementIndex The element index within the line
          * @param lineIndex    The line index
-         * @return true if the glissando is selected
+         * @return true if the slide is selected
          */
-        boolean isGlissandoSelected(int elementIndex, int lineIndex);
+        boolean isSlideSelected(int elementIndex, int lineIndex);
 
         boolean isLyricSelected(StaffElement element, int verse, int lineIndex);
     }

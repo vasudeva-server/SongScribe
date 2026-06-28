@@ -91,7 +91,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
 
     private static StaffElement graceQuaver() {
         var grace = ElementType.GRACE_QUAVER.newInstance();
-        grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        grace.setGlissando();
         return grace;
     }
 

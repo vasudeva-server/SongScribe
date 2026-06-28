@@ -270,7 +270,7 @@ class NoteDragHandlerTest extends UnitTest {
             // [crotchet@0 (connected gliss), crotchet@4]
             // Drag index 1 by -4 → unison → remove glissando from index 0
             var line = createLine(0, 4);
-            line.getElement(0).setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            line.getElement(0).setGlissando();
             when(lc.getLine()).thenReturn(line);
 
             setupSingleSelection(1);
@@ -287,7 +287,7 @@ class NoteDragHandlerTest extends UnitTest {
             // [crotchet@4 (connected gliss), crotchet@0]
             // Drag index 0 by -4 → position becomes 0, matches index 1 → remove glissando
             var line = createLine(4, 0);
-            line.getElement(0).setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            line.getElement(0).setGlissando();
             when(lc.getLine()).thenReturn(line);
 
             setupSingleSelection(0);

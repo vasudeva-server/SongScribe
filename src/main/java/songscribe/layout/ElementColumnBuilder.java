@@ -247,7 +247,19 @@ public class ElementColumnBuilder {
         var flagBBox = NoteGeometry.flagBBoxLocalSs(type, upper, beamed);
         var flagRightExtent = (flagBBox == null) ? 0.0 : flagBBox.getMaxX();
 
-        return Math.max(rightExtent, flagRightExtent);
+        var rightExtentSs = Math.max(rightExtent, flagRightExtent);
+
+        // A fall's glyph hangs off the note's right edge, one gap past the column edge. Reserve that
+        // gap plus the glyph's advance width so the next element (or a barline / end-of-line) does
+        // not overlap it. Unlike a connecting glissando — whose room is reserved between two notes by
+        // HorizontalSpacingCalculator.ensureGlissandoSpacing — a fall has no following note, so its
+        // own column must carry the reservation.
+        if (element.hasFall()) {
+            var fallAdvanceWidthSs = SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
+            rightExtentSs += NoteGeometry.FALL_GAP_SS + fallAdvanceWidthSs;
+        }
+
+        return rightExtentSs;
     }
 
     private static double getNoteheadRightExtent(ElementType type) {

@@ -323,7 +323,7 @@ public class HorizontalSpacingCalculator {
     /**
      * Ensures minimum horizontal spacing for a glissando between two columns.
      * Computes ledger-line-inclusive extents on-the-fly via the shared helper
-     * on {@link GlissandoRenderer}. Returns the input spacing unchanged if no glissando
+     * on {@link songscribe.ui.renderer.SlideRenderer}. Returns the input spacing unchanged if no glissando
      * or if there is already enough room.
      * <p>
      * Geometry:

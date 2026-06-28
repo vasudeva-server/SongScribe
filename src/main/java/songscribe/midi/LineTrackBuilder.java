@@ -168,23 +168,23 @@ public class LineTrackBuilder {
         int endElement,
         @Nullable VelocityMap velocityMap
     ) throws InvalidMidiDataException {
-        var glissandoHelper = new GlissandoMidiHelper();
+        var slideHelper = new SlideMidiHelper();
         var result = addToTrack(
             track, lineIndex, startTicks, initialTempo, settings,
-            startElement, endElement, glissandoHelper, velocityMap
+            startElement, endElement, slideHelper, velocityMap
         );
 
         // Flush pending pitch bend/expression resets so the state
         // is clean when the sequence loops or the next line starts.
-        glissandoHelper.createPendingResets(track, result.ticks(), 0);
+        slideHelper.createPendingResets(track, result.ticks(), 0);
 
         return result;
     }
 
     /**
      * Adds a range of this line's elements to a MIDI track using an externally
-     * managed {@link GlissandoMidiHelper}. This overload is used by the repeat
-     * path, which processes notes one at a time but needs glissando state
+     * managed {@link SlideMidiHelper}. This overload is used by the repeat
+     * path, which processes notes one at a time but needs slide state
      * (e.g. pending grace pitch) to survive across calls. The caller is
      * responsible for flushing pending resets when done.
      *
@@ -195,7 +195,7 @@ public class LineTrackBuilder {
      * @param settings Playback settings
      * @param startElement Index of the first element to add
      * @param endElement Index of the last element to add
-     * @param glissandoHelper Shared glissando state across calls
+     * @param slideHelper Shared slide state across calls
      * @return Pair of (ending tick position, ending tempo)
      */
     public TrackPosition addToTrack(
@@ -206,17 +206,17 @@ public class LineTrackBuilder {
         PlaybackSettings settings,
         int startElement,
         int endElement,
-        GlissandoMidiHelper glissandoHelper
+        SlideMidiHelper slideHelper
     ) throws InvalidMidiDataException {
         return addToTrack(track, lineIndex, startTicks, initialTempo, settings,
-            startElement, endElement, glissandoHelper, null);
+            startElement, endElement, slideHelper, null);
     }
 
     /**
      * Adds a range of this line's elements to a MIDI track using an externally
-     * managed {@link GlissandoMidiHelper} and an optional {@link VelocityMap}
+     * managed {@link SlideMidiHelper} and an optional {@link VelocityMap}
      * for dynamic-aware note velocities. This overload is used by the repeat
-     * path, which processes notes one at a time but needs glissando state
+     * path, which processes notes one at a time but needs slide state
      * (e.g. pending grace pitch) to survive across calls. The caller is
      * responsible for flushing pending resets when done.
      */
@@ -228,7 +228,7 @@ public class LineTrackBuilder {
         PlaybackSettings settings,
         int startElement,
         int endElement,
-        GlissandoMidiHelper glissandoHelper,
+        SlideMidiHelper slideHelper,
         @Nullable VelocityMap velocityMap
     ) throws InvalidMidiDataException {
         var ticks = startTicks;
@@ -252,7 +252,7 @@ public class LineTrackBuilder {
 
             // Add note on/off messages and update ticks
             ticks = addNoteMessages(track, lineIndex, i, ticks, currentTempo, settings,
-                glissandoHelper, velocityMap);
+                slideHelper, velocityMap);
         }
 
         return new TrackPosition(ticks, currentTempo);
@@ -291,7 +291,7 @@ public class LineTrackBuilder {
         int ticks,
         Tempo currentTempo,
         PlaybackSettings settings,
-        GlissandoMidiHelper glissandoHelper,
+        SlideMidiHelper slideHelper,
         @Nullable VelocityMap velocityMap
     ) throws InvalidMidiDataException {
         var element = line.getElement(elementIndex);
@@ -301,7 +301,7 @@ public class LineTrackBuilder {
         if (type.isGraceNote()) {
             // Grace notes always have a connected glissando: zero duration,
             // just store the pitch for the next note's slide-in
-            glissandoHelper.setPendingGracePitch(element.getPitch());
+            slideHelper.setPendingGracePitch(element.getPitch());
         } else if (type.isNote() || type.isRest()) {
             var duration = getElementDurationWithTuplet(elementIndex, currentTempo);
 
@@ -310,11 +310,11 @@ public class LineTrackBuilder {
                 var velocity = noteVelocity(element, velocityMap, lineIndex, elementIndex);
 
                 if ((tieSpan == null) || (tieSpan.getAnchorElementIndex() == elementIndex)) {
-                    glissandoHelper.createPendingResets(track, trackTicks, 0);
+                    slideHelper.createPendingResets(track, trackTicks, 0);
 
-                    if (glissandoHelper.hasPendingGracePitch()) {
+                    if (slideHelper.hasPendingGracePitch()) {
                         addGraceGlissandoSlideIn(
-                            track, trackTicks, duration, element, velocity, glissandoHelper
+                            track, trackTicks, duration, element, velocity, slideHelper
                         );
                     } else {
                         addNoteOn(track, trackTicks, element, velocity);
@@ -322,12 +322,12 @@ public class LineTrackBuilder {
                 }
 
                 if ((tieSpan == null) || (tieSpan.getEndElementIndex() == elementIndex)) {
-                    var glissando = element.getGlissando();
+                    var slide = element.getSlide();
 
-                    if (glissando != null) {
-                        addGlissandoMessages(
+                    if (slide != null) {
+                        addSlideMessages(
                             track, trackTicks, duration, elementIndex,
-                            element, glissando, settings, glissandoHelper
+                            element, settings, slideHelper, slide instanceof StaffElement.Glissando
                         );
                     } else {
                         addNormalNoteOff(track, trackTicks, duration, element, settings);
@@ -342,26 +342,26 @@ public class LineTrackBuilder {
     }
 
     /**
-     * Adds glissando pitch bend messages and note-off for a note with a glissando.
-     * For CONNECTED glissandos, the note sustains for its full written duration (ignoring
-     * staccato) and slides toward the next note's pitch. For SLIDE_OUT, the sounding
+     * Adds slide pitch bend messages and note-off for a note with a slide.
+     * For connecting glissandos, the note sustains for its full written duration (ignoring
+     * staccato) and slides toward the next note's pitch. For a fall, the sounding
      * duration respects staccato/noteDurationPercent and the slide goes down.
      */
-    private void addGlissandoMessages(
+    private void addSlideMessages(
         Track track,
         int trackTicks,
         int duration,
         int elementIndex,
         StaffElement element,
-        StaffElement.Glissando glissando,
         PlaybackSettings settings,
-        GlissandoMidiHelper glissandoHelper
+        SlideMidiHelper slideHelper,
+        boolean connecting
     ) throws InvalidMidiDataException {
         var sourcePitch = element.getPitch();
         int targetPitch;
         int soundingDuration;
 
-        if (glissando.type == StaffElement.Glissando.Type.CONNECTED) {
+        if (connecting) {
             // Need the next note's pitch; fall back to normal note-off if unavailable
             if (elementIndex + 1 >= line.elementCount()) {
                 addNormalNoteOff(track, trackTicks, duration, element, settings);
@@ -378,39 +378,36 @@ public class LineTrackBuilder {
             targetPitch = nextElement.getPitch();
             soundingDuration = duration;
         } else {
-            targetPitch = GlissandoMidiHelper.resolveTargetPitch(
-                sourcePitch, glissando.type, 0
-            );
+            targetPitch = SlideMidiHelper.resolveTargetPitch(sourcePitch);
             soundingDuration = calculateSoundingDuration(duration, element, settings);
         }
 
-        var sustainTicks = GlissandoMidiHelper.calculateSustainTicks(soundingDuration);
-        var slideTicks = GlissandoMidiHelper.calculateSlideTicks(soundingDuration);
-        var sensitivity = GlissandoMidiHelper.calculateSensitivity(sourcePitch, targetPitch);
+        var sustainTicks = SlideMidiHelper.calculateSustainTicks(soundingDuration);
+        var slideTicks = SlideMidiHelper.calculateSlideTicks(soundingDuration);
+        var sensitivity = SlideMidiHelper.calculateSensitivity(sourcePitch, targetPitch);
 
-        glissandoHelper.createRpnMessagesIfNeeded(track, trackTicks, 0, sensitivity);
+        slideHelper.createRpnMessagesIfNeeded(track, trackTicks, 0, sensitivity);
 
         var slideStartTick = trackTicks + sustainTicks;
-        var linear = glissando.type == StaffElement.Glissando.Type.CONNECTED;
-        GlissandoMidiHelper.createPitchBendMessages(
-            track, slideStartTick, slideTicks, 0, sourcePitch, targetPitch, sensitivity, linear
+        SlideMidiHelper.createPitchBendMessages(
+            track, slideStartTick, slideTicks, 0, sourcePitch, targetPitch, sensitivity, connecting
         );
 
-        // For slide-out, fade expression along the same curve as the pitch
-        if (glissando.type == StaffElement.Glissando.Type.SLIDE_OUT) {
-            GlissandoMidiHelper.createSlideOutExpressionMessages(
+        // For a fall, fade expression along the same curve as the pitch
+        if (!connecting) {
+            SlideMidiHelper.createFallExpressionMessages(
                 track, slideStartTick, slideTicks, 0
             );
         }
 
-        // For CONNECTED glissandos, the note-off, pitch bend reset, and next
+        // For connecting glissandos, the note-off, pitch bend reset, and next
         // note-on all land on the same tick. MIDI event ordering within a tick
         // is indeterminate, so the reset can fire while this note is still
         // audible, causing a snap back to the original pitch. Offset the
         // note-off by 1 tick so this note is silenced before the reset.
         var noteOffTick = trackTicks + soundingDuration;
 
-        if (glissando.type == StaffElement.Glissando.Type.CONNECTED) {
+        if (connecting) {
             noteOffTick--;
         }
 
@@ -419,15 +416,15 @@ public class LineTrackBuilder {
         // Don't reset pitch bend/expression at note-off — MIDI event ordering
         // within a tick is indeterminate, so resets can fire before the note-off
         // and cause an audible blip. Instead, defer resets to the next note-on.
-        glissandoHelper.setNeedsPitchBendReset();
+        slideHelper.setNeedsPitchBendReset();
 
-        if (glissando.type == StaffElement.Glissando.Type.SLIDE_OUT) {
-            glissandoHelper.setNeedsExpressionReset();
+        if (!connecting) {
+            slideHelper.setNeedsExpressionReset();
         }
     }
 
     /**
-     * Adds slide-in pitch bend and expression messages for a grace note glissando.
+     * Adds slide-in pitch bend and expression messages for a grace note slide-in.
      * The note starts at half velocity with expression at zero, then both pitch
      * and volume ramp up over a fixed 16th-note duration.
      */
@@ -437,21 +434,21 @@ public class LineTrackBuilder {
         int duration,
         StaffElement element,
         int velocity,
-        GlissandoMidiHelper glissandoHelper
+        SlideMidiHelper slideHelper
     ) throws InvalidMidiDataException {
-        var gracePitch = glissandoHelper.consumePendingGracePitch();
+        var gracePitch = slideHelper.consumePendingGracePitch();
         var notePitch = element.getPitch();
-        var slideTicks = Math.min(GlissandoMidiHelper.GRACE_SLIDE_TICKS, duration);
-        var sensitivity = GlissandoMidiHelper.calculateSensitivity(gracePitch, notePitch);
+        var slideTicks = Math.min(SlideMidiHelper.GRACE_SLIDE_TICKS, duration);
+        var sensitivity = SlideMidiHelper.calculateSensitivity(gracePitch, notePitch);
 
         // Set pitch bend sensitivity and initial bend before NOTE_ON
-        glissandoHelper.createRpnMessagesIfNeeded(track, trackTicks, 0, sensitivity);
-        GlissandoMidiHelper.createSlideInPitchBendMessages(
+        slideHelper.createRpnMessagesIfNeeded(track, trackTicks, 0, sensitivity);
+        SlideMidiHelper.createSlideInPitchBendMessages(
             track, trackTicks, slideTicks, 0, gracePitch, notePitch, sensitivity
         );
 
         // Ramp expression up along the same curve as the pitch
-        GlissandoMidiHelper.createSlideInExpressionMessages(
+        SlideMidiHelper.createSlideInExpressionMessages(
             track, trackTicks, slideTicks, 0
         );
 
@@ -459,12 +456,12 @@ public class LineTrackBuilder {
         addNoteOn(track, trackTicks, element, (int) (velocity * GRACE_GLISSANDO_VELOCITY_RATIO));
 
         // Reset pitch bend and expression at end of slide
-        GlissandoMidiHelper.createPitchBendReset(track, trackTicks + slideTicks, 0);
-        GlissandoMidiHelper.createExpressionReset(track, trackTicks + slideTicks, 0);
+        SlideMidiHelper.createPitchBendReset(track, trackTicks + slideTicks, 0);
+        SlideMidiHelper.createExpressionReset(track, trackTicks + slideTicks, 0);
     }
 
     /**
-     * Adds a normal note-off (no glissando) respecting staccato and articulation overrides.
+     * Adds a normal note-off (no slide) respecting staccato and articulation overrides.
      */
     private void addNormalNoteOff(
         Track track,

@@ -56,7 +56,7 @@ import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
-import songscribe.dom.StaffElement.Glissando;
+
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 
@@ -471,22 +471,18 @@ class StaffElementIOTest extends UnitTest {
         @Test
         void testGlissandoTypeIsEmitted() {
             var note = ElementType.CROTCHET.newInstance();
-            note.setGlissando(Glissando.Type.CONNECTED);
+            note.setGlissando();
 
             var output = writeNote(note);
 
-            assertThat(output).contains("<glissando>CONNECTED</glissando>");
+            assertThat(output).contains("<glissando />");
         }
 
         @Test
         void testLegacyNumericGlissandoYieldsConnected() throws Exception {
             var song = parseXml(buildXmlWithNoteContent("<glissando>5</glissando>"));
             var note = song.getLine(0).getElement(0);
-            var glissando = note.getGlissando();
-            assertThat(glissando).isNotNull();
-            if (glissando != null) {
-                assertThat(glissando.type).isEqualTo(Glissando.Type.CONNECTED);
-            }
+            assertThat(note.getGlissando()).isNotNull();
         }
 
         @Test
@@ -503,10 +499,6 @@ class StaffElementIOTest extends UnitTest {
                 var glissando =
                     parseXml(xml).getLine(0).getElement(0).getGlissando();
                 assertThat(glissando).isNotNull();
-
-                if (glissando != null) {
-                    assertThat(glissando.type).isEqualTo(Glissando.Type.CONNECTED);
-                }
             }).doesNotThrowAnyException();
         }
 

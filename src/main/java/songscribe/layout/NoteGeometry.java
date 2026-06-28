@@ -46,12 +46,26 @@ public final class NoteGeometry {
     // Glissando Constants
     // ==========================================================================
 
+    /**
+     * Gap between the note column edge and the drawn slide line, in staff spaces. The connecting
+     * glissando uses it on both endpoints to keep the drawn line clear of the note's ink.
+     */
+    public static final double GLISSANDO_DRAWN_GAP_SS = 0.33;
+
+    /**
+     * Gap between the host note's column edge and a fall's glyph, in staff spaces. Mirrors the
+     * {@code padding} default LilyPond's {@code BendAfter} grob uses for falls and doits. Shared by
+     * {@code SlideRenderer} (the drawn gap) and {@code ElementColumnBuilder} (the layout reservation
+     * for a fall).
+     */
+    public static final double FALL_GAP_SS = 0.5;
+
     private static final double GLISSANDO_MIN_LENGTH_SS = 1.0;
 
     /**
      * Layout-side gap reserved between a notehead and the glissando endpoint, per side. This is the
      * spacing-reservation counterpart of the renderer's drawn gap (the per-side gap applied in
-     * {@code GlissandoRenderer}); it is held slightly larger so the reservation never under-shoots
+     * {@code SlideRenderer}); it is held slightly larger so the reservation never under-shoots
      * the gap the renderer actually draws.
      */
     private static final double GLISSANDO_NOTEHEAD_GAP_SS = 0.4;

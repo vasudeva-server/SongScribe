@@ -109,8 +109,8 @@ class EnableFromSelectionTest extends MainFrameMockTest {
     }
 
     @Test
-    void testEnableFromDurationSelectionReturnsFalseWhenSlideOutSelected() {
-        Actions.DURATION_ACTION_GROUP.setSelected(Actions.SLIDE_OUT_ACTION, true);
+    void testEnableFromDurationSelectionReturnsFalseWhenFallSelected() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.FALL_ACTION, true);
         try {
             var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
             action.setFlags(UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED);

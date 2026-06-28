@@ -59,6 +59,7 @@ public final class StaffElementIO {
     private static final String XML_PREFIX = "prefix";
     private static final String XML_VOLUME = "volume";
     private static final String XML_GLISSANDO = "glissando";
+    private static final String XML_FALL = "fall";
 
     // version 1.1
     private static final String XML_XPOS = "xpos";
@@ -213,10 +214,12 @@ public final class StaffElementIO {
             }
         }
 
-        var glissando = element.getGlissando();
+        var slide = element.getSlide();
 
-        if (glissando != null) {
-            XML.writeValue(writer, XML_GLISSANDO, glissando.type.name());
+        if (slide instanceof StaffElement.Fall) {
+            XML.writeEmptyTag(writer, XML_FALL);
+        } else if (slide instanceof StaffElement.Glissando) {
+            XML.writeEmptyTag(writer, XML_GLISSANDO);
         }
 
         if (!element.isStemDirectionAuto()) {
@@ -580,16 +583,16 @@ public final class StaffElementIO {
                             new Articulation(element, ArticulationType.STACCATO)
                         );
                     } else if (lastTag.equals(XML_GLISSANDO)) {
-                        // Legacy files stored an integer pitch; treat those as CONNECTED.
-                        StaffElement.Glissando.Type type;
-
-                        try {
-                            type = StaffElement.Glissando.Type.valueOf(str);
-                        } catch (IllegalArgumentException e) {
-                            type = StaffElement.Glissando.Type.CONNECTED;
+                        // Legacy fall glissandos (saved as "SLIDE_OUT") load as falls. Everything else —
+                        // "CONNECTED", an empty new-style <glissando/> tag, or a legacy
+                        // integer pitch — loads as a connecting glissando.
+                        if ("SLIDE_OUT".equals(str)) {
+                            element.setFall();
+                        } else {
+                            element.setGlissando();
                         }
-
-                        element.setGlissando(type);
+                    } else if (lastTag.equals(XML_FALL)) {
+                        element.setFall();
                     } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)
                         || lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
                         // Legacy manual-adjustment offsets — no longer supported; ignore (issue #455).

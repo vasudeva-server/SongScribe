@@ -43,14 +43,14 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.layout.LayoutResult;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.renderer.GlissandoRenderer;
+import songscribe.ui.renderer.SlideRenderer;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Unit tests for {@link LineSelectionHandler}.
  *
- * <p>{@code hitTest} tests mock {@link ElementHitTest} and {@link GlissandoRenderer} to control
+ * <p>{@code hitTest} tests mock {@link ElementHitTest} and {@link SlideRenderer} to control
  * which branch is taken without real geometry. {@code calculateLineSelectionFromDrag} is tested
  * through {@link LineSelectionHandler#handleDrag} (its only caller), using a real
  * {@link Song}/{@link Line} and an identity {@link ScaleContext} so the drag-rect/element-rect
@@ -59,7 +59,7 @@ import songscribe.ui.selection.SelectionCoordinator;
 class LineSelectionHandlerTest extends UnitTest {
 
     private MockedStatic<ElementHitTest> elementHitTestMock;
-    private MockedStatic<GlissandoRenderer> glissandoRendererMock;
+    private MockedStatic<SlideRenderer> slideRendererMock;
     private MockedStatic<ScaleContext> scaleContextMock;
 
     private LineComponent lc;
@@ -69,7 +69,7 @@ class LineSelectionHandlerTest extends UnitTest {
     @BeforeEach
     void setUp() {
         elementHitTestMock = mockStatic(ElementHitTest.class);
-        glissandoRendererMock = mockStatic(GlissandoRenderer.class);
+        slideRendererMock = mockStatic(SlideRenderer.class);
         scaleContextMock = mockStatic(ScaleContext.class);
 
         lc = mock(LineComponent.class);
@@ -85,7 +85,7 @@ class LineSelectionHandlerTest extends UnitTest {
     @AfterEach
     void tearDown() {
         scaleContextMock.close();
-        glissandoRendererMock.close();
+        slideRendererMock.close();
         elementHitTestMock.close();
     }
 
@@ -114,9 +114,9 @@ class LineSelectionHandlerTest extends UnitTest {
             when(lc.getMiddleLineYSs()).thenReturn(MIDDLE_LINE_Y_SS);
 
             // Default glissando renderer returns no hit
-            var mockRenderer = mock(GlissandoRenderer.class);
-            glissandoRendererMock.when(GlissandoRenderer::getInstance).thenReturn(mockRenderer);
-            when(mockRenderer.hitTestGlissando(anyDouble(), anyDouble(), any())).thenReturn(-1);
+            var mockRenderer = mock(SlideRenderer.class);
+            slideRendererMock.when(SlideRenderer::getInstance).thenReturn(mockRenderer);
+            when(mockRenderer.hitTestSlide(anyDouble(), anyDouble(), any())).thenReturn(-1);
         }
 
         @Test
@@ -142,14 +142,14 @@ class LineSelectionHandlerTest extends UnitTest {
             var selState = new LineSelectionState(line);
             when(lc.getLineSelectionState()).thenReturn(selState);
 
-            var mockRenderer = mock(GlissandoRenderer.class);
-            glissandoRendererMock.when(GlissandoRenderer::getInstance).thenReturn(mockRenderer);
-            when(mockRenderer.hitTestGlissando(anyDouble(), anyDouble(), any())).thenReturn(1);
+            var mockRenderer = mock(SlideRenderer.class);
+            slideRendererMock.when(SlideRenderer::getInstance).thenReturn(mockRenderer);
+            when(mockRenderer.hitTestSlide(anyDouble(), anyDouble(), any())).thenReturn(1);
 
             var result = handler.hitTest(new Point(0, 0));
 
-            assertThat(result).isInstanceOf(HitResult.Glissando.class);
-            assertThat(((HitResult.Glissando) result).elementIndex()).isEqualTo(1);
+            assertThat(result).isInstanceOf(HitResult.Slide.class);
+            assertThat(((HitResult.Slide) result).elementIndex()).isEqualTo(1);
         }
 
         @Test
@@ -164,9 +164,9 @@ class LineSelectionHandlerTest extends UnitTest {
             var selState = new LineSelectionState(line);
             when(lc.getLineSelectionState()).thenReturn(selState);
 
-            var mockRenderer = mock(GlissandoRenderer.class);
-            glissandoRendererMock.when(GlissandoRenderer::getInstance).thenReturn(mockRenderer);
-            when(mockRenderer.hitTestGlissando(anyDouble(), anyDouble(), any())).thenReturn(0);
+            var mockRenderer = mock(SlideRenderer.class);
+            slideRendererMock.when(SlideRenderer::getInstance).thenReturn(mockRenderer);
+            when(mockRenderer.hitTestSlide(anyDouble(), anyDouble(), any())).thenReturn(0);
 
             var result = handler.hitTest(new Point(0, 0));
 
@@ -280,9 +280,9 @@ class LineSelectionHandlerTest extends UnitTest {
             when(mockScoreView.getSelectionCoordinator()).thenReturn(mockCoordinator);
 
             // Glissando renderer: no hits
-            var mockRenderer = mock(GlissandoRenderer.class);
-            glissandoRendererMock.when(GlissandoRenderer::getInstance).thenReturn(mockRenderer);
-            when(mockRenderer.hitTestGlissando(anyDouble(), anyDouble(), any())).thenReturn(-1);
+            var mockRenderer = mock(SlideRenderer.class);
+            slideRendererMock.when(SlideRenderer::getInstance).thenReturn(mockRenderer);
+            when(mockRenderer.hitTestSlide(anyDouble(), anyDouble(), any())).thenReturn(-1);
 
             // Press at (0, PRESS_Y_OUTSIDE_RADIUS=0): |0 - MIDDLE_LINE_Y_SS(10)| = 10 > 2.0 →
             // hitTest → Nothing → pressHandled = false → handleDrag will proceed.
@@ -337,9 +337,9 @@ class LineSelectionHandlerTest extends UnitTest {
             var mockCoordinator = mock(SelectionCoordinator.class);
             when(mockScoreView.getSelectionCoordinator()).thenReturn(mockCoordinator);
 
-            var mockRenderer = mock(GlissandoRenderer.class);
-            glissandoRendererMock.when(GlissandoRenderer::getInstance).thenReturn(mockRenderer);
-            when(mockRenderer.hitTestGlissando(anyDouble(), anyDouble(), any())).thenReturn(-1);
+            var mockRenderer = mock(SlideRenderer.class);
+            slideRendererMock.when(SlideRenderer::getInstance).thenReturn(mockRenderer);
+            when(mockRenderer.hitTestSlide(anyDouble(), anyDouble(), any())).thenReturn(-1);
 
             handler.handlePress(pressEvent(0, PRESS_Y_OUTSIDE_RADIUS));
             handler.handleDrag(dragEvent(DRAG_END_X, DRAG_END_Y));

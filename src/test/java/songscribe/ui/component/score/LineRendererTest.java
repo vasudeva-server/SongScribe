@@ -399,8 +399,8 @@ class LineRendererTest extends UnitTest {
         @Test
         void testGlissandoPreviewNoteReturnsPreviewColor() {
             try (var previewMock = mockStatic(PreviewElementManager.class)) {
-                previewMock.when(PreviewElementManager::getGlissandoPreviewNotes)
-                    .thenReturn(new PreviewElementManager.GlissandoPreviewNotes(0, 0, -1));
+                previewMock.when(PreviewElementManager::getSlidePreviewNotes)
+                    .thenReturn(new PreviewElementManager.SlidePreviewNotes(0, 0, -1));
 
                 var invariants = seededBuilder()
                     .setEditMode(true)
@@ -429,8 +429,8 @@ class LineRendererTest extends UnitTest {
             when(lc.isPendingCancelElement(element)).thenReturn(true);
 
             try (var previewMock = mockStatic(PreviewElementManager.class)) {
-                previewMock.when(PreviewElementManager::getGlissandoPreviewNotes)
-                    .thenReturn(new PreviewElementManager.GlissandoPreviewNotes(0, 0, -1));
+                previewMock.when(PreviewElementManager::getSlidePreviewNotes)
+                    .thenReturn(new PreviewElementManager.SlidePreviewNotes(0, 0, -1));
 
                 var invariants = seededBuilder()
                     .setCurrentLine(line)
