@@ -604,7 +604,7 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (getScoreView().getMode() == Mode.EDIT && isYInLyricBounds(e.getY())) {
+        if (getScoreView().getMode() == Mode.EDIT && hitTestLyric(e.getPoint()) != null) {
             clearPreviewElement();
             setCursor(Cursor.getDefaultCursor());
             return;
@@ -799,12 +799,6 @@ public class LineComponent extends ScoreComponent
         return ready != null
             ? ready.layoutResult().hitTestLyric(getScoreView().getLyricRenderMetrics(), ready.line(), pointPx)
             : null;
-    }
-
-    boolean isYInLyricBounds(int pointYPx) {
-        var ready = readyLayout();
-        return ready != null
-            && ready.layoutResult().isYInLyricBounds(getScoreView().getLyricRenderMetrics(), pointYPx);
     }
 
     /** Package-private for testing. */

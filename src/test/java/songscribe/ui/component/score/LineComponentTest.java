@@ -22,7 +22,6 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -43,7 +42,6 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.layout.InsertionSpacingCalculator.InsertionResult;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.SongLayoutMetrics;
 import songscribe.layout.StaffExtents;
 import songscribe.ui.component.ScoreView;
@@ -406,63 +404,6 @@ class LineComponentTest extends UnitTest {
                 verify(mockCoordinator)
                     .registerLineState(0, lineSelectionState);
             }
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // isYInLyricBounds — null guard and layout delegation (row 11)
-    // -------------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class IsYInLyricBounds {
-
-        /**
-         * When {@code line} is null, {@code readyLayout()} returns null and
-         * {@code isYInLyricBounds} returns false without touching scoreView.
-         */
-        @Test
-        void testNullLineReturnsFalse() {
-            // line is null by default; scoreView is also null so getScoreView() would throw
-            // if reached — the null-line guard must fire first.
-            assertThat(lc.isYInLyricBounds(50))
-                .as("null line → isYInLyricBounds returns false without touching scoreView")
-                .isFalse();
-        }
-
-        /**
-         * When a layout result is present and the delegate returns {@code true},
-         * {@code isYInLyricBounds} propagates that result.
-         */
-        @Test
-        void testDelegatesToLayoutResultWhenLayoutIsReady() {
-            var song = new Song();
-            var line = song.getLine(0);
-            lc.song = song;
-            lc.setLine(line, 0);
-
-            var mockLayout = mock(LayoutResult.class);
-            var mockMetrics = mock(LyricRenderMetrics.class);
-            lc.layoutResult = mockLayout;
-            lc.layoutDirty = false;
-
-            var mockScoreView = mock(ScoreView.class);
-            var mockCoordinator = mock(SelectionCoordinator.class);
-            when(mockScoreView.getSelectionCoordinator()).thenReturn(mockCoordinator);
-            when(mockScoreView.getLyricRenderMetrics()).thenReturn(mockMetrics);
-            lc.setScoreView(mockScoreView);
-
-            // Delegate returns true
-            when(mockLayout.isYInLyricBounds(any(LyricRenderMetrics.class), anyDouble())).thenReturn(true);
-            assertThat(lc.isYInLyricBounds(50))
-                .as("non-null layout, delegate returns true → true")
-                .isTrue();
-
-            // Delegate returns false
-            when(mockLayout.isYInLyricBounds(any(LyricRenderMetrics.class), anyDouble())).thenReturn(false);
-            assertThat(lc.isYInLyricBounds(50))
-                .as("non-null layout, delegate returns false → false")
-                .isFalse();
         }
     }
 
