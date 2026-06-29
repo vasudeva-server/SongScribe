@@ -214,11 +214,9 @@ public final class StaffElementIO {
             }
         }
 
-        var slide = element.getSlide();
-
-        if (slide instanceof StaffElement.Fall) {
+        if (element.hasFall()) {
             XML.writeEmptyTag(writer, XML_FALL);
-        } else if (slide instanceof StaffElement.Glissando) {
+        } else if (element.hasGlissando()) {
             XML.writeEmptyTag(writer, XML_GLISSANDO);
         }
 
