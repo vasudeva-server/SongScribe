@@ -35,7 +35,12 @@ final class MusicXmlTags {
     /** Supported and emitted MusicXML schema version. */
     static final String VERSION_VALUE = "4.0";
 
-    // Element names.
+    // MusicXML's positional coordinate unit is the tenth: 1 staff space = 10
+    // tenths. Shared by both sides of the codec so the writer's px→tenths and the
+    // reader's tenths→px conversions cannot silently disagree.
+    static final int TENTHS_PER_STAFF_SPACE = 10;
+
+    // Element names — document structure.
     static final String SCORE_PARTWISE = "score-partwise";
     static final String PART_LIST      = "part-list";
     static final String SCORE_PART     = "score-part";
@@ -49,7 +54,30 @@ final class MusicXmlTags {
     static final String BAR_STYLE      = "bar-style";
     static final String REPEAT         = "repeat";
 
-    // Attribute names.
+    // Element names — note subtree.
+    static final String NOTE          = "note";
+    static final String PITCH         = "pitch";
+    static final String STEP          = "step";
+    static final String ALTER         = "alter";
+    static final String OCTAVE        = "octave";
+    static final String REST          = "rest";
+    static final String GRACE         = "grace";
+    static final String DURATION      = "duration";
+    static final String NOTE_TYPE     = "type";
+    static final String DOT           = "dot";
+    static final String ACCIDENTAL    = "accidental";
+    static final String STEM          = "stem";
+    static final String NOTATIONS     = "notations";
+    static final String ARTICULATIONS = "articulations";
+    static final String ACCENT        = "accent";
+    static final String STACCATO      = "staccato";
+    static final String FERMATA       = "fermata";
+    static final String DYNAMICS      = "dynamics";
+    static final String BREATH_MARK   = "breath-mark";
+    static final String SLIDE         = "slide";
+    static final String FALLOFF       = "falloff";
+
+    // Attribute names — document structure.
     static final String ATTR_VERSION    = "version";
     static final String ATTR_NEW_SYSTEM = "new-system";
     static final String ATTR_LOCATION   = "location";
@@ -57,7 +85,28 @@ final class MusicXmlTags {
     static final String ATTR_NUMBER     = "number";
     static final String ATTR_ID         = "id";
 
-    // Attribute values.
+    // Attribute names — note subtree.
+    static final String ATTR_SLASH       = "slash";
+    static final String ATTR_CAUTIONARY  = "cautionary";
+    static final String ATTR_PARENTHESES = "parentheses";
+    static final String ATTR_DEFAULT_X   = "default-x";
+    static final String ATTR_DEFAULT_Y   = "default-y";
+    static final String ATTR_RELATIVE_X  = "relative-x";
+    static final String ATTR_TYPE        = "type";
+    static final String ATTR_LINE_SHAPE  = "line-shape";
+    static final String ATTR_LINE_TYPE   = "line-type";
+    static final String ATTR_LINE_LENGTH = "line-length";
+
+    // Attribute values — document structure.
     static final String YES     = "yes";
     static final String PART_ID = "P1";
+
+    // Attribute values — note subtree.
+    static final String NO            = "no";
+    static final String STEM_UP       = "up";
+    static final String STEM_DOWN     = "down";
+    static final String SLIDE_START   = "start";
+    static final String SLIDE_STOP    = "stop";
+    static final String LINE_STRAIGHT = "straight";
+    static final String LINE_SOLID    = "solid";
 }

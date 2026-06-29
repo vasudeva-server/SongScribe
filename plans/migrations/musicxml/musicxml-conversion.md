@@ -6,7 +6,7 @@
 |-------|-------------|--------|----------|
 | 1 | [Conversion Scaffold + Round-Trip Harness](#-phase-1-conversion-scaffold--round-trip-harness) | ✅ Complete | [phase-1-scaffold.md](./phase-1-scaffold.md) |
 | 2 | [Structural Model (Line ↔ Measure)](#-phase-2-structural-model-line--measure) | ✅ Complete | [phase-2-structural-model.md](./phase-2-structural-model.md) |
-| 3 | [Notes & Per-Note Attachments](#-phase-3-notes--per-note-attachments) | ⏳ Pending | — |
+| 3 | [Notes & Per-Note Attachments](#-phase-3-notes--per-note-attachments) | ✅ Complete | [phase-3-notes.md](./phase-3-notes.md) |
 | 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ⏳ Pending | — |
 | 5 | [Per-Measure Attributes (Key, Tempo)](#-phase-5-per-measure-attributes-key-tempo) | ⏳ Pending | — |
 | 6 | [Lyrics](#-phase-6-lyrics) | ⏳ Pending | — |
@@ -98,23 +98,24 @@ See [phase-2-structural-model.md](./phase-2-structural-model.md) for the detaile
 
 ---
 
-## ⏳ Phase 3: Notes & Per-Note Attachments
+## ✅ Phase 3: Notes & Per-Note Attachments
 
-**Goal**: Core `<note>` content and everything attached to a single note.
+**Status**: ✅ Complete — see [phase-3-notes.md](./phase-3-notes.md)
 
-**Mapping** (musicxml.md § "Note / element → `<note>`"):
-- Durations → `<type>` + `<duration>`; rests → `<rest/>`; grace → `<grace/>`.
-- Pitch via `getPitch()` → `<step>/<octave>/<alter>`.
-- Dots, accidentals (incl. cautionary/parenthesized), stems (up/down + manual
-  override flag → `<other-*>`), X offset (px → tenths).
-- Per-note articulations/notations: accent, staccato, fermata, dynamics,
-  breath mark, glissando (`CONNECTED` only → `<slide>` start/stop), and
-  fall (note attribute → `<notations><articulations><falloff>` on that note;
-  read: `<falloff>` → `setFall()`).
-- Inline barlines/repeats already handled in Phase 2.
+Implemented full `<note>` content and per-note attachments in both directions.
+`NoteTypeMapping` owns the `ElementType` ↔ `<type>` token table and the exact
+`<duration>` tick math (DIVISIONS = 480); `PitchSpelling` provides the bijective
+`staffPosition` ↔ `<step>`/`<octave>` conversion plus the sounding `<alter>`
+(displayed glyph stays independent, recovered from `<accidental>`);
+`AccidentalMapping` covers the `Accidental` ↔ `<accidental>` glyph token
+(incl. cautionary/parenthesized). The writer emits rests (`<rest/>`), grace notes
+(`<grace slash="no"/>`, no `<duration>`), dots, stems (manual override + grace
+default), X offset (px ↔ tenths), and per-note `<notations>`: accent, staccato,
+fermata, dynamics, breath-mark, glissando (`<slide>` start/stop pairing), and fall
+(`<falloff>`). The reader reassembles each `<note>` back into a `StaffElement` with
+its attachments.
 
-**Verify**: Round-trip notes across all durations, accidentals, articulations,
-stem states; pitch and offsets bit-stable.
+See [phase-3-notes.md](./phase-3-notes.md) for the detailed implementation plan.
 
 ---
 

@@ -78,6 +78,21 @@ public class DynamicAttachment extends Attachment {
         }
 
         /**
+         * Returns the {@link DynamicType} whose {@link #getSymbol() symbol} equals
+         * {@code symbol}, or {@code null} if none matches. Inverse of
+         * {@link #getSymbol()}.
+         */
+        public static @Nullable DynamicType fromSymbol(String symbol) {
+            for (var type : values()) {
+                if (type.symbol.equals(symbol)) {
+                    return type;
+                }
+            }
+
+            return null;
+        }
+
+        /**
          * Returns the SMuFL glyph for rendering, or null for types without a UI glyph.
          */
         public @Nullable SMuFLGlyph getGlyph() {

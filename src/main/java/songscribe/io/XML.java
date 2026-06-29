@@ -131,6 +131,23 @@ public final class XML {
     }
 
     /**
+     * Write an element with both attributes and text content. {@code attrs} is a
+     * flat alternating key/value sequence: {@code "key1", "val1", ...}. Attribute
+     * values and the text content are XML-escaped automatically.
+     */
+    public static void writeValue(PrintWriter pw, String tag, String value, String... attrs) {
+        printIndent(pw);
+        pw.print('<');
+        pw.print(tag);
+        writeAttrs(pw, attrs);
+        pw.print('>');
+        pw.print(escapeXML(value));
+        pw.print("</");
+        pw.print(tag);
+        pw.println('>');
+    }
+
+    /**
      * Replace special characters with XML escapes:
      * <pre>
      * &amp; <small>(ampersand)</small> is replaced by &amp;amp;

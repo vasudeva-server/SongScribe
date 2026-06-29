@@ -647,7 +647,24 @@ public class StaffElement extends LineElement implements Cloneable {
       or the octave.
     */
     public int getPitchIndex() {
+        return getPitchIndex(staffPosition);
+    }
+
+    /*
+      Static form of {@link #getPitchIndex()} so callers that work with a raw
+      staff position (e.g. the MusicXML PitchSpelling helper) share the single
+      B4 = staffPosition 0 origin owned by MIDI_PITCHES, rather than re-deriving
+      the lattice.
+    */
+    public static int getPitchIndex(int staffPosition) {
         return (((staffPosition <= 0) ? -staffPosition : (7 - (staffPosition % 7))) % 7);
+    }
+
+    // The sounding alteration, in semitones, that this Accidental applies to the
+    // natural pitch. This is the same source the playback pitch (getPitch) uses,
+    // so a MusicXML <alter> derived from it sounds identical to playback.
+    public static int getPitchAdjustment(Accidental accidental) {
+        return MIDI_PITCH_ADJUSTMENT[accidental.ordinal()];
     }
 
     public int getDefaultDurationWithDots() {
