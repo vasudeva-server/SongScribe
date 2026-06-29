@@ -113,9 +113,9 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
                 .as("grace note still present at index 0")
                 .isEqualTo(ElementType.GRACE_QUAVER);
 
-            assertThat(line.getElement(0).getGlissando())
+            assertThat(line.getElement(0).hasGlissando())
                 .as("grace note's connected glissando is preserved after pitched replacement")
-                .isNotNull();
+                .isTrue();
         }
     }
 

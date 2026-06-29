@@ -90,7 +90,7 @@ class FallSerializationTest extends UnitTest {
         var note = firstElement("<glissando>SLIDE_OUT</glissando>");
 
         assertThat(note.hasFall()).as("legacy SLIDE_OUT loads as a fall").isTrue();
-        assertThat(note.getGlissando()).as("a fall is not a connecting glissando").isNull();
+        assertThat(note.hasGlissando()).as("a fall is not a connecting glissando").isFalse();
     }
 
     @Test
@@ -104,7 +104,7 @@ class FallSerializationTest extends UnitTest {
     void testConnectedGlissandoLoadsAsConnectingGlissando() throws Exception {
         var note = firstElement("<glissando>CONNECTED</glissando>");
 
-        assertThat(note.getGlissando()).as("CONNECTED loads as connecting").isNotNull();
+        assertThat(note.hasGlissando()).as("CONNECTED loads as connecting").isTrue();
         assertThat(note.hasFall()).as("CONNECTED is not a fall").isFalse();
     }
 
@@ -112,7 +112,7 @@ class FallSerializationTest extends UnitTest {
     void testLegacyNumericGlissandoLoadsAsConnectingGlissando() throws Exception {
         var note = firstElement("<glissando>5</glissando>");
 
-        assertThat(note.getGlissando()).as("legacy integer loads as connecting").isNotNull();
+        assertThat(note.hasGlissando()).as("legacy integer loads as connecting").isTrue();
         assertThat(note.hasFall()).as("legacy integer is not a fall").isFalse();
     }
 
@@ -141,7 +141,7 @@ class FallSerializationTest extends UnitTest {
                 fallCount++;
             }
 
-            if (element.getGlissando() != null) {
+            if (element.hasGlissando()) {
                 connectingCount++;
             }
         }

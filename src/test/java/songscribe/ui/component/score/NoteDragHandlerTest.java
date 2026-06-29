@@ -278,8 +278,8 @@ class NoteDragHandlerTest extends UnitTest {
             dragToPosition(0); // delta = 0 - 4 = -4
             handler.handleRelease();
 
-            assertThat(line.getElement(0).getGlissando())
-                .isNull();
+            assertThat(line.getElement(0).hasGlissando())
+                .isFalse();
         }
 
         @Test
@@ -295,8 +295,8 @@ class NoteDragHandlerTest extends UnitTest {
             dragToPosition(0); // delta = 0 - 4 = -4
             handler.handleRelease();
 
-            assertThat(line.getElement(0).getGlissando())
-                .isNull();
+            assertThat(line.getElement(0).hasGlissando())
+                .isFalse();
         }
     }
 

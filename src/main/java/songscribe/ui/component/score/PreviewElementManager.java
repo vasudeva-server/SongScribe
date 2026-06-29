@@ -1035,7 +1035,7 @@ public final class PreviewElementManager {
         if (!previewElement.getType().isPitchedNote() && xIndex > 0) {
             var precedingElement = line.getElement(xIndex - 1);
 
-            if (precedingElement.getGlissando() != null) {
+            if (precedingElement.hasGlissando()) {
                 precedingElement.removeSlide();
             }
         }

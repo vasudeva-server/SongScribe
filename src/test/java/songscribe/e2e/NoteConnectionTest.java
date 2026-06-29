@@ -114,7 +114,7 @@ class NoteConnectionTest extends E2ETest {
                 .as("source note selected").isTrue();
 
             var note = song().getLine(0).getElement(Element.PAIR_B_SRC.index);
-            assertThat(note.getGlissando()).as("source has glissando").isNotNull();
+            assertThat(note.hasGlissando()).as("source has glissando").isTrue();
         }
 
         @Test
@@ -127,9 +127,9 @@ class NoteConnectionTest extends E2ETest {
                 .as("target note selected").isTrue();
 
             var sourceNote = song().getLine(0).getElement(Element.PAIR_B_SRC.index);
-            assertThat(sourceNote.getGlissando())
+            assertThat(sourceNote.hasGlissando())
                 .as("source has connected glissando pointing to target")
-                .isNotNull();
+                .isTrue();
         }
 
     }
@@ -151,7 +151,7 @@ class NoteConnectionTest extends E2ETest {
             performLayout(0);
 
             var note = song().getLine(0).getElement(Element.PAIR_A_SRC.index);
-            assertThat(note.getGlissando()).as("has glissando").isNotNull();
+            assertThat(note.hasGlissando()).as("has glissando").isTrue();
         }
 
         @Order(2)
@@ -188,7 +188,7 @@ class NoteConnectionTest extends E2ETest {
             performLayout(0);
 
             var note = song().getLine(0).getElement(Element.PAIR_D_SRC.index);
-            assertThat(note.getGlissando()).as("delete selected glissando").isNull();
+            assertThat(note.hasGlissando()).as("delete selected glissando").isFalse();
         }
 
         @Order(2)
@@ -207,8 +207,8 @@ class NoteConnectionTest extends E2ETest {
             assertAll(
                 () -> assertThat(line.elementCount())
                     .as("element count decreased").isEqualTo(countBefore - 1),
-                () -> assertThat(line.getElement(Element.PAIR_E_TGT_SHIFTED.index).getGlissando())
-                    .as("remaining note has no glissando").isNull()
+                () -> assertThat(line.getElement(Element.PAIR_E_TGT_SHIFTED.index).hasGlissando())
+                    .as("remaining note has no glissando").isFalse()
             );
         }
 
@@ -229,8 +229,8 @@ class NoteConnectionTest extends E2ETest {
             assertAll(
                 () -> assertThat(line.elementCount())
                     .as("element count decreased").isEqualTo(countBefore - 1),
-                () -> assertThat(line.getElement(Element.PAIR_F_SRC_SHIFTED.index).getGlissando())
-                    .as("source glissando removed").isNull()
+                () -> assertThat(line.getElement(Element.PAIR_F_SRC_SHIFTED.index).hasGlissando())
+                    .as("source glissando removed").isFalse()
             );
         }
     }

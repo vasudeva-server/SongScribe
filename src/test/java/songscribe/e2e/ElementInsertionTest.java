@@ -235,8 +235,8 @@ class ElementInsertionTest extends E2ETest {
                     .as("drag connect: count").isEqualTo(countBefore + 1),
                 () -> assertThat(line.getElement(graceIdx).getType())
                     .as("drag connect: grace type").isEqualTo(ElementType.GRACE_QUAVER),
-                () -> assertThat(line.getElement(graceIdx).getGlissando())
-                    .as("drag connect: glissando").isNotNull(),
+                () -> assertThat(line.getElement(graceIdx).hasGlissando())
+                    .as("drag connect: glissando").isTrue(),
                 () -> assertThat(isGraceModeActive())
                     .as("drag connect: mode inactive").isFalse()
             );
@@ -349,8 +349,8 @@ class ElementInsertionTest extends E2ETest {
                     .as("grace type").isEqualTo(ElementType.GRACE_QUAVER),
                 () -> assertThat(line.getElement(hostIdx).getType().isPitchedNote())
                     .as("host type").isTrue(),
-                () -> assertThat(line.getElement(graceIdx).getGlissando())
-                    .as("glissando").isNotNull(),
+                () -> assertThat(line.getElement(graceIdx).hasGlissando())
+                    .as("glissando").isTrue(),
                 () -> assertThat(isGraceModeActive())
                     .as("grace mode inactive").isFalse(),
                 () -> assertThat(isActionEnabled(Actions.GLISSANDO_ACTION)
@@ -383,8 +383,8 @@ class ElementInsertionTest extends E2ETest {
                     .as("grace is quaver").isEqualTo(ElementType.GRACE_QUAVER),
                 () -> assertThat(line.getElement(hostIdx).getType())
                     .as("host is minim").isEqualTo(ElementType.MINIM),
-                () -> assertThat(line.getElement(graceIdx).getGlissando())
-                    .as("glissando connected").isNotNull(),
+                () -> assertThat(line.getElement(graceIdx).hasGlissando())
+                    .as("glissando connected").isTrue(),
                 () -> assertThat(isActionSelected(Actions.HALF_NOTE_ACTION))
                     .as("half note selected").isTrue(),
                 () -> assertThat(isActionSelected(Actions.QUARTER_NOTE_ACTION))

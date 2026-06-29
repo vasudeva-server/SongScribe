@@ -482,7 +482,7 @@ class StaffElementIOTest extends UnitTest {
         void testLegacyNumericGlissandoYieldsConnected() throws Exception {
             var song = parseXml(buildXmlWithNoteContent("<glissando>5</glissando>"));
             var note = song.getLine(0).getElement(0);
-            assertThat(note.getGlissando()).isNotNull();
+            assertThat(note.hasGlissando()).isTrue();
         }
 
         @Test
@@ -496,9 +496,7 @@ class StaffElementIOTest extends UnitTest {
             );
 
             assertThatCode(() -> {
-                var glissando =
-                    parseXml(xml).getLine(0).getElement(0).getGlissando();
-                assertThat(glissando).isNotNull();
+                assertThat(parseXml(xml).getLine(0).getElement(0).hasGlissando()).isTrue();
             }).doesNotThrowAnyException();
         }
 

@@ -394,7 +394,7 @@ public final class GraceModeManager {
             && isMouseRightOfGraceNote(e) && hasEligibleHostNote();
 
         var hasGlissando = graceNote != null
-            && graceNote.getGlissando() != null;
+            && graceNote.hasGlissando();
 
         if (pendingConnect && !hasGlissando && graceNote != null) {
             graceNote.setGlissando();

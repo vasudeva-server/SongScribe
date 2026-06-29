@@ -197,7 +197,7 @@ class ScoreViewControllerTest extends UnitTest {
             controller.handleDelete();
 
             // Glissando stripped from the note before the selection
-            assertThat(noteA.getGlissando()).isNull();
+            assertThat(noteA.hasGlissando()).isFalse();
             // B and C are gone; A and D remain (plus terminal barline = 3 total)
             assertThat(line.elementCount()).isEqualTo(3);
             assertThat(line.getElement(0)).isSameAs(noteA);
@@ -883,7 +883,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = lineWith(prev, crotchet());
             ScoreViewController.deleteNote(1, line);
 
-            assertThat(prev.getGlissando()).isNull();
+            assertThat(prev.hasGlissando()).isFalse();
         }
 
         @Test

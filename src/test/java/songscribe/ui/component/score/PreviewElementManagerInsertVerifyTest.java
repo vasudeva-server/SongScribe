@@ -203,9 +203,9 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
             });
 
             var noteA = line.getElement(0);
-            assertThat(noteA.getGlissando())
+            assertThat(noteA.hasGlissando())
                 .as("pre-condition: noteA has a connected glissando")
-                .isNotNull();
+                .isTrue();
 
             setPreviewElement(insertedType.newInstance());
             PreviewElementManager.setCurrentXIndex(1);
@@ -225,9 +225,9 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         void testInsertingBreathMarkRemovesConnectingGlissando() {
             var noteA = insertBetweenConnectedNotes(ElementType.BREATH_MARK);
 
-            assertThat(noteA.getGlissando())
+            assertThat(noteA.hasGlissando())
                 .as("connected glissando removed when a breath mark is inserted")
-                .isNull();
+                .isFalse();
         }
 
         /** A rest between connected notes removes the glissando. */
@@ -235,9 +235,9 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         void testInsertingRestRemovesConnectingGlissando() {
             var noteA = insertBetweenConnectedNotes(ElementType.CROTCHET_REST);
 
-            assertThat(noteA.getGlissando())
+            assertThat(noteA.hasGlissando())
                 .as("connected glissando removed when a rest is inserted")
-                .isNull();
+                .isFalse();
         }
 
         /** A grace note between connected notes removes the glissando (issue #457). */
@@ -245,9 +245,9 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         void testInsertingGraceNoteRemovesConnectingGlissando() {
             var noteA = insertBetweenConnectedNotes(ElementType.GRACE_QUAVER);
 
-            assertThat(noteA.getGlissando())
+            assertThat(noteA.hasGlissando())
                 .as("connected glissando removed when a grace note is inserted")
-                .isNull();
+                .isFalse();
         }
 
         /** A bar line between connected notes removes the glissando (issue #457). */
@@ -255,9 +255,9 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         void testInsertingBarLineRemovesConnectingGlissando() {
             var noteA = insertBetweenConnectedNotes(ElementType.SINGLE_BARLINE);
 
-            assertThat(noteA.getGlissando())
+            assertThat(noteA.hasGlissando())
                 .as("connected glissando removed when a bar line is inserted")
-                .isNull();
+                .isFalse();
         }
 
         /** A pitched note between connected notes re-targets the glissando, leaving it intact. */
@@ -265,9 +265,9 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         void testInsertingPitchedNoteKeepsConnectingGlissando() {
             var noteA = insertBetweenConnectedNotes(ElementType.MINIM);
 
-            assertThat(noteA.getGlissando())
+            assertThat(noteA.hasGlissando())
                 .as("connected glissando retained when a pitched note is inserted")
-                .isNotNull();
+                .isTrue();
         }
 
         /**
@@ -320,9 +320,9 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(noteA.getGlissando())
+            assertThat(noteA.hasGlissando())
                 .as("note without a glissando is left untouched")
-                .isNull();
+                .isFalse();
             assertThat(line.getElement(1).getType())
                 .as("breath mark still inserted at index 1")
                 .isEqualTo(ElementType.BREATH_MARK);

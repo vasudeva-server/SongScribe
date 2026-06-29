@@ -963,7 +963,7 @@ public class Line {
             return false;
         }
 
-        return element.getGlissando() != null;
+        return element.hasGlissando();
     }
 
     /** Returns true when the element at {@code index} is the host of a paired grace note. */

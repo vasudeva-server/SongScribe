@@ -479,6 +479,10 @@ public class StaffElement extends LineElement implements Cloneable {
         return slide instanceof Glissando glissando ? glissando : null;
     }
 
+    public boolean hasGlissando() {
+        return slide instanceof Glissando;
+    }
+
     public void setGlissando() {
         slide = new Glissando();
     }

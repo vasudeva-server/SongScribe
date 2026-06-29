@@ -788,7 +788,7 @@ class GraceModeManagerTest extends UnitTest {
             manager.mouseDragged(lineComponent, e);
 
             assertThat((Boolean) getField(manager, "pendingConnect")).isTrue();
-            assertThat(graceNote.getGlissando()).isNotNull();
+            assertThat(graceNote.hasGlissando()).isTrue();
         }
 
         @Test
@@ -824,7 +824,7 @@ class GraceModeManagerTest extends UnitTest {
             manager.mouseDragged(lineComponent, e);
 
             assertThat((Boolean) getField(manager, "pendingConnect")).isFalse();
-            assertThat(graceNote.getGlissando()).isNull();
+            assertThat(graceNote.hasGlissando()).isFalse();
         }
     }
 

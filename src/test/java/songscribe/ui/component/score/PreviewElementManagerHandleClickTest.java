@@ -90,10 +90,9 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
             PreviewElementManager.handleClick(lc);
 
             var sourceNote = line.getElement(0);
-            var glissando = sourceNote.getGlissando();
-            assertThat(glissando)
+            assertThat(sourceNote.hasGlissando())
                 .as("glissando applied to source note at xIndex-1")
-                .isNotNull();
+                .isTrue();
         }
 
         /**
@@ -109,9 +108,9 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.getElement(0).getGlissando())
+            assertThat(line.getElement(0).hasGlissando())
                 .as("no glissando set when zone is null")
-                .isNull();
+                .isFalse();
         }
     }
 

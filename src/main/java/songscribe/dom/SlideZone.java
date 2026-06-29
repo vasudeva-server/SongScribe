@@ -34,7 +34,7 @@ public enum SlideZone {
     /** Returns whether {@code element} already carries the slide this zone represents. */
     public boolean matches(StaffElement element) {
         return switch (this) {
-            case GLISSANDO -> element.getGlissando() != null;
+            case GLISSANDO -> element.hasGlissando();
             case FALL -> element.hasFall();
         };
     }

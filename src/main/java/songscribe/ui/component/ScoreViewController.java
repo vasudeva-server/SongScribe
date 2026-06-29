@@ -526,7 +526,7 @@ public final class ScoreViewController {
                 if (begin > 0) {
                     var prevElement = line.getElement(begin - 1);
 
-                    if (prevElement.getGlissando() != null) {
+                    if (prevElement.hasGlissando()) {
                         prevElement.removeSlide();
                     }
                 }
@@ -646,7 +646,7 @@ public final class ScoreViewController {
         if (!hasPrecedingPairedGraceNote && xIndex > 0) {
             var prevElement = line.getElement(xIndex - 1);
 
-            if (prevElement.getGlissando() != null) {
+            if (prevElement.hasGlissando()) {
                 prevElement.removeSlide();
             }
         }

@@ -47,13 +47,13 @@ class GlissandoPersistenceTest extends UnitTest {
     @Test
     void testGlissandoPersistsThroughSaveLoad() throws Exception {
         var originalNote = song.getLine(0).getElement(PAIR_B_SRC);
-        assertThat(originalNote.getGlissando()).as("fixture has glissando").isNotNull();
+        assertThat(originalNote.hasGlissando()).as("fixture has glissando").isTrue();
 
         var reloaded = roundTrip(song);
         var reloadedNote = reloaded.getLine(0).getElement(PAIR_B_SRC);
 
-        assertThat(reloadedNote.getGlissando())
-            .as("save/load: glissando preserved").isNotNull();
+        assertThat(reloadedNote.hasGlissando())
+            .as("save/load: glissando preserved").isTrue();
     }
 
 }

@@ -327,7 +327,7 @@ public final class ElementColumn {
      * Returns whether this element has an outgoing glissando.
      */
     public boolean hasGlissando() {
-        return element.getGlissando() != null;
+        return element.hasGlissando();
     }
 
     // ==========================================================================

@@ -42,7 +42,7 @@ class SlideMutualExclusivityTest extends UnitTest {
 
         assertThat(note.getSlide()).as("no slide by default").isNull();
         assertThat(note.hasFall()).as("no fall by default").isFalse();
-        assertThat(note.getGlissando()).as("no glissando by default").isNull();
+        assertThat(note.hasGlissando()).as("no glissando by default").isFalse();
     }
 
     @Test
@@ -52,7 +52,7 @@ class SlideMutualExclusivityTest extends UnitTest {
 
         assertThat(note.hasFall()).as("fall present").isTrue();
         assertThat(note.getSlide()).as("slide is a Fall").isInstanceOf(StaffElement.Fall.class);
-        assertThat(note.getGlissando()).as("a fall is not a connecting glissando").isNull();
+        assertThat(note.hasGlissando()).as("a fall is not a connecting glissando").isFalse();
     }
 
     @Test
@@ -60,7 +60,7 @@ class SlideMutualExclusivityTest extends UnitTest {
         var note = newNote();
         note.setGlissando();
 
-        assertThat(note.getGlissando()).as("connecting glissando present").isNotNull();
+        assertThat(note.hasGlissando()).as("connecting glissando present").isTrue();
         assertThat(note.getSlide()).as("slide is a Glissando").isInstanceOf(StaffElement.Glissando.class);
         assertThat(note.hasFall()).as("a connecting glissando is not a fall").isFalse();
     }
@@ -72,7 +72,7 @@ class SlideMutualExclusivityTest extends UnitTest {
         note.setFall();
 
         assertThat(note.hasFall()).as("fall replaced glissando").isTrue();
-        assertThat(note.getGlissando()).as("glissando cleared by fall").isNull();
+        assertThat(note.hasGlissando()).as("glissando cleared by fall").isFalse();
     }
 
     @Test
@@ -81,7 +81,7 @@ class SlideMutualExclusivityTest extends UnitTest {
         note.setFall();
         note.setGlissando();
 
-        assertThat(note.getGlissando()).as("glissando replaced fall").isNotNull();
+        assertThat(note.hasGlissando()).as("glissando replaced fall").isTrue();
         assertThat(note.hasFall()).as("fall cleared by glissando").isFalse();
     }
 
@@ -102,6 +102,6 @@ class SlideMutualExclusivityTest extends UnitTest {
         note.removeSlide();
 
         assertThat(note.getSlide()).as("slide removed").isNull();
-        assertThat(note.getGlissando()).as("glissando removed").isNull();
+        assertThat(note.hasGlissando()).as("glissando removed").isFalse();
     }
 }
