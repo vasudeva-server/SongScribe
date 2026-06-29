@@ -112,7 +112,7 @@ class LayoutResultTest extends UnitTest {
         assertThat(anchor.baselineYSs()).isCloseTo(metrics.verseYSsInLine(1), within(TOLERANCE));
     }
 
-    // T2b: column-anchored getLyricAnchor centres on the notehead extent (excluding dots),
+    // T2b: column-anchored getLyricAnchor centres on the notehead extent (excluding augmentation),
     // so the editor cursor on a dotted note matches where the committed lyric box lands (#451).
     @Test
     void testGetLyricAnchorColumnAnchoredIgnoresDots() {
@@ -670,7 +670,7 @@ class LayoutResultTest extends UnitTest {
 
     private static final double TOLERANCE = 0.0001;
 
-    // Arbitrary dot width used in tests that need rightExtentSs > rightExtentExcludingDotsSs.
+    // Arbitrary dot width used in tests that need rightExtentSs > rightExtentExcludingAugmentationSs.
     private static final double FAKE_DOT_EXTENT_SS = 2.0;
 
     private static final double ABOVE_STAFF_SS = 1.5;
@@ -725,7 +725,7 @@ class LayoutResultTest extends UnitTest {
         return column;
     }
 
-    // A dotted column: rightExtentSs includes the dot, rightExtentExcludingDotsSs does not.
+    // A dotted column: rightExtentSs includes the dot, rightExtentExcludingAugmentationSs does not.
     private static ElementColumn testDottedColumnAt(StaffElement element, double xSs) {
         var column = new ElementColumn(
             element, Collections.emptyList(), 0.0,

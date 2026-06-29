@@ -317,7 +317,7 @@ public class HorizontalSpacingCalculator {
      * @return Default spacing in ss
      */
     private static double calculateDefaultColumnSpacingSs(ElementColumn prevColumn) {
-        return prevColumn.getRightExtentExcludingDotsSs() + DEFAULT_COLUMN_GAP_SS;
+        return prevColumn.getRightExtentExcludingAugmentationSs() + DEFAULT_COLUMN_GAP_SS;
     }
 
     /**

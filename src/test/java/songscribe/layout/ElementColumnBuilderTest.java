@@ -110,68 +110,99 @@ class ElementColumnBuilderTest extends UnitTest {
         assertThat(actual).isEqualTo(expected);
     }
 
-    // #441: excluding dots on a dotted FLAGGED note must strip the dot yet still account for the
-    // flag via Math.max — the extent equals the undotted quaver's flag-driven extent and still
+    // #441: excluding augmentation on a dotted FLAGGED note must strip the dot yet still account for
+    // the flag via Math.max — the extent equals the undotted quaver's flag-driven extent and still
     // exceeds the bare notehead, proving the dot path is suppressed without discarding the flag.
     @Test
-    void testRightExtentExcludingDotsStripsDotButKeepsFlagForDottedQuaver() {
+    void testRightExtentExcludingAugmentationStripsDotButKeepsFlagForDottedQuaver() {
         var dottedQuaver = element(ElementType.QUAVER);
         dottedQuaver.setDotCount(1);
 
         var flagExtent =
             NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, true).stemLeftXSs()
                 + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right();
-        var expectedExcludingDots = Math.max(Engraving.NOTE_HEAD_WIDTH_SS, flagExtent);
+        var expectedExcludingAugmentation = Math.max(Engraving.NOTE_HEAD_WIDTH_SS, flagExtent);
 
-        var excludingDots = ElementColumnBuilder.calculateRightExtentExcludingDotsSs(dottedQuaver, false, true);
+        var excludingAugmentation = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(dottedQuaver, false, true);
 
-        assertThat(excludingDots).isEqualTo(expectedExcludingDots);
+        assertThat(excludingAugmentation).isEqualTo(expectedExcludingAugmentation);
         // Flag still wins the Math.max — the extent is more than the bare notehead alone
-        assertThat(excludingDots).isGreaterThan(Engraving.NOTE_HEAD_WIDTH_SS);
+        assertThat(excludingAugmentation).isGreaterThan(Engraving.NOTE_HEAD_WIDTH_SS);
     }
 
-    // #441: calculateRightExtentExcludingDotsSs for a dotted note equals the undotted right extent
+    // #441: calculateRightExtentExcludingAugmentationSs for a dotted note equals the undotted right extent
     @Test
-    void testRightExtentExcludingDotsEqualsUndottedExtentForDottedCrotchet() {
+    void testRightExtentExcludingAugmentationEqualsUndottedExtentForDottedCrotchet() {
         var plain = element(ElementType.CROTCHET);
         var dotted = element(ElementType.CROTCHET);
         dotted.setDotCount(1);
 
         var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
-        var dottedExcludingDots = ElementColumnBuilder.calculateRightExtentExcludingDotsSs(dotted, false, true);
+        var dottedExcludingAugmentation = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(dotted, false, true);
 
-        // Excluding dots must match the plain (undotted) right extent
-        assertThat(dottedExcludingDots).isEqualTo(plainExtent);
+        // Excluding augmentation must match the plain (undotted) right extent
+        assertThat(dottedExcludingAugmentation).isEqualTo(plainExtent);
     }
 
-    // #441: dot exclusion must be unconditional, not gated on dotCount == 1 — a double-dotted
-    // note's excluding-dots extent must still equal the undotted extent.
+    // #441: augmentation exclusion must be unconditional, not gated on dotCount == 1 — a
+    // double-dotted note's excluding-augmentation extent must still equal the undotted extent.
     @Test
-    void testRightExtentExcludingDotsIgnoresAllDotsForDoubleDottedCrotchet() {
+    void testRightExtentExcludingAugmentationIgnoresAllDotsForDoubleDottedCrotchet() {
         var plain = element(ElementType.CROTCHET);
         var doubleDotted = element(ElementType.CROTCHET);
         doubleDotted.setDotCount(DOUBLE_DOT_COUNT);
 
         var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
-        var excludingDots =
-            ElementColumnBuilder.calculateRightExtentExcludingDotsSs(doubleDotted, false, true);
+        var excludingAugmentation =
+            ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(doubleDotted, false, true);
 
-        assertThat(excludingDots).isEqualTo(plainExtent);
+        assertThat(excludingAugmentation).isEqualTo(plainExtent);
     }
 
-    // #441: dot exclusion must also apply to the small-notehead grace-note path — a dotted grace
-    // quaver's excluding-dots extent must equal the undotted grace quaver's extent.
+    // #441: augmentation exclusion must also apply to the small-notehead grace-note path — a dotted
+    // grace quaver's excluding-augmentation extent must equal the undotted grace quaver's extent.
     @Test
-    void testRightExtentExcludingDotsStripsDotForDottedGraceQuaver() {
+    void testRightExtentExcludingAugmentationStripsDotForDottedGraceQuaver() {
         var plainGrace = element(ElementType.GRACE_QUAVER);
         var dottedGrace = element(ElementType.GRACE_QUAVER);
         dottedGrace.setDotCount(1);
 
         var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plainGrace, false, true);
-        var excludingDots =
-            ElementColumnBuilder.calculateRightExtentExcludingDotsSs(dottedGrace, false, true);
+        var excludingAugmentation =
+            ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(dottedGrace, false, true);
 
-        assertThat(excludingDots).isEqualTo(plainExtent);
+        assertThat(excludingAugmentation).isEqualTo(plainExtent);
+    }
+
+    // #492: calculateRightExtentSs with a fall includes FALL_GAP_SS + fall advance width beyond the
+    // base extent, so minimum spacing reserves room for the glyph.
+    @Test
+    void testRightExtentSsIncludesFall() {
+        var plain = element(ElementType.CROTCHET);
+        var withFall = element(ElementType.CROTCHET);
+        withFall.setFall();
+
+        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
+        var fallAdvanceWidthSs = SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
+        var expected = plainExtent + NoteGeometry.FALL_GAP_SS + fallAdvanceWidthSs;
+
+        var actualExtent = ElementColumnBuilder.calculateRightExtentSs(withFall, false, true);
+
+        assertThat(actualExtent).isEqualTo(expected);
+    }
+
+    // #492: calculateRightExtentExcludingAugmentationSs with a fall must equal the plain (non-fall) extent —
+    // the fall must not inflate comfortable/default spacing, only the minimum-spacing floor.
+    @Test
+    void testRightExtentExcludingAugmentationExcludesFall() {
+        var plain = element(ElementType.CROTCHET);
+        var withFall = element(ElementType.CROTCHET);
+        withFall.setFall();
+
+        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
+        var fallExcludingExtent = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(withFall, false, true);
+
+        assertThat(fallExcludingExtent).isEqualTo(plainExtent);
     }
 
     // T5: Grace quaver uses the small notehead + small-stem anchor, regular uses full-size — exact values

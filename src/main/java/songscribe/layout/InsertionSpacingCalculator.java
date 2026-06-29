@@ -293,7 +293,7 @@ public final class InsertionSpacingCalculator {
         // Calculate geometric extents using ElementColumnBuilder's static methods
         var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
         var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.isUpper());
-        var rightExtentExcludingDotsSs = ElementColumnBuilder.calculateRightExtentExcludingDotsSs(element, false, element.isUpper());
+        var rightExtentExcludingAugmentationSs = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(element, false, element.isUpper());
 
         // For insertion operations, we don't need stem positions or beam group info
         // since we're only calculating horizontal spacing
@@ -310,7 +310,7 @@ public final class InsertionSpacingCalculator {
             Collections.emptyList(),  // No grace notes
             leftExtentSs,
             rightExtentSs,
-            rightExtentExcludingDotsSs,
+            rightExtentExcludingAugmentationSs,
             stemTopSs,
             stemBottomSs,
             syllable,

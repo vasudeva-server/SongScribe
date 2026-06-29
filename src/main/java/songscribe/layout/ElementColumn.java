@@ -33,7 +33,7 @@ import songscribe.dom.StaffElement;
  * <ul>
  *   <li>A primary element (note, rest, or barline)</li>
  *   <li>Optional grace notes (which borrow space from the left)</li>
- *   <li>Horizontal extents (left edge including accidentals/grace notes; right edge including dots for minimum spacing, excluding dots for comfortable spacing)</li>
+ *   <li>Horizontal extents (left edge including accidentals/grace notes; right edge including augmentation for minimum spacing, excluding augmentation for comfortable spacing)</li>
  *   <li>Stem information (top/bottom for beam group coordination)</li>
  *   <li>Associated lyric syllable (which drives horizontal spacing per Gould/Ross)</li>
  *   <li>Beam membership flag (for internal spacing coordination)</li>
@@ -53,7 +53,7 @@ public final class ElementColumn {
     private final List<StaffElement> graceNotes;
     private final double leftExtentSs;
     private final double rightExtentSs;
-    private final double rightExtentExcludingDotsSs;
+    private final double rightExtentExcludingAugmentationSs;
     private final double stemTopSs;
     private final double stemBottomSs;
     private final @Nullable String syllable;
@@ -78,8 +78,8 @@ public final class ElementColumn {
      * @param element                    The primary element (note, rest, barline, etc.)
      * @param graceNotes                 Grace notes anchored to this element (empty list if none)
      * @param leftExtentSs               Left extent relative to element head left edge; 0.0 without accidental, negative with one
-     * @param rightExtentSs              Right extent relative to element head left edge; equals element head width, plus dots if any
-     * @param rightExtentExcludingDotsSs Right extent excluding augmentation dots; used for comfortable spacing
+     * @param rightExtentSs                    Right extent relative to element head left edge; equals element head width, plus augmentation if any
+     * @param rightExtentExcludingAugmentationSs Right extent excluding augmentation (dots and fall); used for comfortable spacing
      * @param stemTopSs                  Top of stem (if stem up), or element head top if no stem
      * @param stemBottomSs               Bottom of stem (if stem down), or element head bottom if no stem
      * @param syllable                   Associated lyric syllable text (null if none)
@@ -91,7 +91,7 @@ public final class ElementColumn {
         List<StaffElement> graceNotes,
         double leftExtentSs,
         double rightExtentSs,
-        double rightExtentExcludingDotsSs,
+        double rightExtentExcludingAugmentationSs,
         double stemTopSs,
         double stemBottomSs,
         @Nullable String syllable,
@@ -101,7 +101,7 @@ public final class ElementColumn {
         this.graceNotes = List.copyOf(graceNotes);
         this.leftExtentSs = leftExtentSs;
         this.rightExtentSs = rightExtentSs;
-        this.rightExtentExcludingDotsSs = rightExtentExcludingDotsSs;
+        this.rightExtentExcludingAugmentationSs = rightExtentExcludingAugmentationSs;
         this.stemTopSs = stemTopSs;
         this.stemBottomSs = stemBottomSs;
         this.syllable = syllable;
@@ -110,11 +110,11 @@ public final class ElementColumn {
     }
 
     /**
-     * Creates a new ElementColumn where the right extent excluding dots equals the right extent.
+     * Creates a new ElementColumn where the right extent excluding augmentation equals the right extent.
      * <p>
-     * Package-private so it is reachable only from tests that do not care about dot-driven
+     * Package-private so it is reachable only from tests that do not care about augmentation-driven
      * spacing. Production callers must use the full constructor and pass the correct
-     * {@code rightExtentExcludingDotsSs}.
+     * {@code rightExtentExcludingAugmentationSs}.
      */
     ElementColumn(
         StaffElement element,
@@ -190,19 +190,19 @@ public final class ElementColumn {
 
     /**
      * Returns the right extent relative to the element head left edge (glyph origin).
-     * Equal to the element head width with no dots; larger when dots are present.
+     * Equal to the element head width with no dots or fall; larger when dots or a fall are present.
      */
     public double getRightExtentSs() {
         return rightExtentSs;
     }
 
     /**
-     * Returns the right extent excluding augmentation dots.
-     * Used for comfortable (default) spacing so dots do not push the next element unless
-     * the minimum gap would otherwise be violated.
+     * Returns the right extent excluding augmentation dots and fall.
+     * Used for comfortable (default) spacing so dots and a fall do not push the next element
+     * unless the minimum gap would otherwise be violated.
      */
-    public double getRightExtentExcludingDotsSs() {
-        return rightExtentExcludingDotsSs;
+    public double getRightExtentExcludingAugmentationSs() {
+        return rightExtentExcludingAugmentationSs;
     }
 
     /**
@@ -234,7 +234,7 @@ public final class ElementColumn {
      * Only valid after X position has been set by the spacing calculator.
      */
     public double getNoteheadCenterXSs() {
-        return xSs + rightExtentExcludingDotsSs / 2.0;
+        return xSs + rightExtentExcludingAugmentationSs / 2.0;
     }
 
     // ==========================================================================

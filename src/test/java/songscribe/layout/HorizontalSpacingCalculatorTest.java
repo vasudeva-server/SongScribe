@@ -1180,8 +1180,8 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     }
 
     // #441: a dotted note where the dot fits within the default gap must not shift the next
-    // note head. Comfortable spacing (notehead only, excluding dots) dominates over minimum
-    // spacing (which includes dots), so a dotted-prev column produces the same next-head
+    // note head. Comfortable spacing (notehead only, excluding augmentation) dominates over minimum
+    // spacing (which includes augmentation), so a dotted-prev column produces the same next-head
     // position as a plain-prev column.
     @Test
     void testDotWithinDefaultGapDoesNotShiftNextHead() {
@@ -1191,7 +1191,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
         );
         // prevColumn with 1 dot: rightExtentSs includes the dot's footprint (one dot-spacing step,
-        // the same per-dot stride the renderer uses); rightExtentExcludingDotsSs does not
+        // the same per-dot stride the renderer uses); rightExtentExcludingAugmentationSs does not
         var dotRightExtentSs = PLAIN_RIGHT_EXTENT_SS + NoteGeometry.DOT_SPACING_SS;
         var dottedPrevColumn = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),

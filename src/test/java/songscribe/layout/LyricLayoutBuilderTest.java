@@ -38,11 +38,6 @@ import org.mockito.MockedStatic;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.UnitTest;
-import songscribe.layout.ElementColumn;
-import songscribe.layout.LyricBoxLayout;
-import songscribe.layout.LyricConnectorLayout;
-import songscribe.layout.LyricLayoutBuilder;
-import songscribe.layout.LyricRenderMetrics;
 import songscribe.message.MessageCenter;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
@@ -66,7 +61,7 @@ class LyricLayoutBuilderTest extends UnitTest {
     // Distance from the STOP carrier to the following syllable that leaves the raw extender
     // overshoot well within the gap, so the clamp must leave the extender untouched.
     private static final double FAR_FOLLOWING_SYLLABLE_GAP_SS = 20.0;
-    // Arbitrary dot width used in tests that need rightExtentSs > rightExtentExcludingDotsSs.
+    // Arbitrary dot width used in tests that need rightExtentSs > rightExtentExcludingAugmentationSs.
     private static final double FAKE_DOT_EXTENT_SS = 2.0;
 
     private Song song;
@@ -248,7 +243,7 @@ class LyricLayoutBuilderTest extends UnitTest {
     }
 
     // computeLyricBoxLeftXSs: normal note box is centered on the note column centre
-    // (columnXSs + rightExtentExcludingDotsSs/2), minus half the syllable width.
+    // (columnXSs + rightExtentExcludingAugmentationSs/2), minus half the syllable width.
     // Uses a verse-2 lyric so the builder measures width via lyricBoxWidthSs(text)
     // rather than the cached syllableWidthSs; the oracle calls lyricBoxWidthSs independently.
     @Test
@@ -269,18 +264,19 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var box = boxes.getFirst();
 
-        // Independent oracle: box left = note centre (excluding dots) − half syllable width
+        // Independent oracle: box left = note centre (excluding augmentation) − half syllable width
         var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
-        var noteCenterXSs = noteXSs + col.getRightExtentExcludingDotsSs() / 2.0;
+        var noteCenterXSs = noteXSs + col.getRightExtentExcludingAugmentationSs() / 2.0;
         var expectedBoxLeftXSs = noteCenterXSs - syllableWidthSs / 2.0;
 
         assertThat(box.xSs())
-            .as("lyric box left edge = note centre (excluding dots) − halfWidth")
+            .as("lyric box left edge = note centre (excluding augmentation) − halfWidth")
             .isCloseTo(expectedBoxLeftXSs, within(TOLERANCE));
     }
 
-    // Dotted note: the lyric box must be centred on the notehead extent (rightExtentExcludingDotsSs),
-    // not the full extent that includes the dot. Dots must not shift the lyric to the right (#451).
+    // Dotted note: the lyric box must be centred on the notehead extent
+    // (rightExtentExcludingAugmentationSs), not the full extent that includes the dot.
+    // Dots must not shift the lyric to the right (#451).
     @Test
     void testDottedNoteLyricBoxIgnoresDots() {
         var n1 = note();
@@ -290,16 +286,16 @@ class LyricLayoutBuilderTest extends UnitTest {
         addToLine(n1);
 
         var noteXSs = 10.0;
-        var rightExtentExcludingDotsSs = Engraving.NOTE_HEAD_WIDTH_SS;
-        var rightExtentWithDotsSs = rightExtentExcludingDotsSs + FAKE_DOT_EXTENT_SS;
+        var rightExtentExcludingAugmentationSs = Engraving.NOTE_HEAD_WIDTH_SS;
+        var rightExtentWithDotsSs = rightExtentExcludingAugmentationSs + FAKE_DOT_EXTENT_SS;
 
-        // Full public constructor: rightExtentSs includes the dot, rightExtentExcludingDotsSs does not.
+        // Full public constructor: rightExtentSs includes the dot, rightExtentExcludingAugmentationSs does not.
         var col = new ElementColumn(
             n1,
             Collections.emptyList(),
             0.0,
             rightExtentWithDotsSs,
-            rightExtentExcludingDotsSs,
+            rightExtentExcludingAugmentationSs,
             0.0, 0.0, null, 0.0, false);
         col.setXSs(noteXSs);
 
@@ -309,7 +305,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(boxes).as("expected exactly one box for dotted note").hasSize(1);
 
         var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
-        var noteCenterXSs = noteXSs + rightExtentExcludingDotsSs / 2.0;
+        var noteCenterXSs = noteXSs + rightExtentExcludingAugmentationSs / 2.0;
         var expectedBoxLeftXSs = noteCenterXSs - syllableWidthSs / 2.0;
 
         assertThat(boxes.getFirst().xSs())

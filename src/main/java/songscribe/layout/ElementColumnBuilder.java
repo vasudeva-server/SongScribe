@@ -120,7 +120,7 @@ public class ElementColumnBuilder {
         // Calculate horizontal extents
         var leftExtentSs = calculateLeftExtentSs(element);
         var rightExtentSs = calculateRightExtentSs(element, beamed, element.isUpper());
-        var rightExtentExcludingDotsSs = calculateRightExtentExcludingDotsSs(element, beamed, element.isUpper());
+        var rightExtentExcludingAugmentationSs = calculateRightExtentExcludingAugmentationSs(element, beamed, element.isUpper());
 
         // Calculate stem positions
         var stemTopSs = calculateStemTopSs(element);
@@ -138,7 +138,7 @@ public class ElementColumnBuilder {
             graceNotes,
             leftExtentSs,
             rightExtentSs,
-            rightExtentExcludingDotsSs,
+            rightExtentExcludingAugmentationSs,
             stemTopSs,
             stemBottomSs,
             syllable,
@@ -189,10 +189,10 @@ public class ElementColumnBuilder {
 
     /**
      * Calculates the right extent of an element column.
-     * This includes the element head right edge, any dots, and the flag extent for unbeamed
-     * flagged elements (8th, 16th, 32nd, grace quaver).
+     * This includes the element head right edge, any dots, any fall reservation, and the flag
+     * extent for unbeamed flagged elements (8th, 16th, 32nd, grace quaver).
      * <p>
-     * Used for minimum spacing calculations, which must account for dots to prevent overlap.
+     * Used for minimum spacing calculations, which must account for dots and fall to prevent overlap.
      *
      * @param element The element
      * @param beamed  {@code true} if the element is part of a beam group (flags are suppressed)
@@ -204,18 +204,18 @@ public class ElementColumnBuilder {
     }
 
     /**
-     * Calculates the right extent of an element column, excluding augmentation dots.
+     * Calculates the right extent of an element column, excluding augmentation dots and fall.
      * <p>
-     * Used for comfortable (default) spacing so dots do not push the next element
+     * Used for comfortable (default) spacing so dots and a fall do not push the next element
      * unless the minimum gap would otherwise be violated — mirroring how accidentals
-     * on the left do not widen the gap beyond the comfortable default (refs #441).
+     * on the left do not widen the gap beyond the comfortable default (refs #441, #492).
      *
      * @param element The element
      * @param beamed  {@code true} if the element is part of a beam group (flags are suppressed)
      * @param upper   {@code true} if the stem goes up; affects which stem anchor is used
-     * @return Right extent in ss relative to element head left edge (glyph origin), dots excluded
+     * @return Right extent in ss relative to element head left edge (glyph origin), dots and fall excluded
      */
-    public static double calculateRightExtentExcludingDotsSs(StaffElement element, boolean beamed, boolean upper) {
+    public static double calculateRightExtentExcludingAugmentationSs(StaffElement element, boolean beamed, boolean upper) {
         return calculateRightExtentInternal(element, beamed, upper, false);
     }
 
@@ -223,7 +223,7 @@ public class ElementColumnBuilder {
         StaffElement element,
         boolean beamed,
         boolean upper,
-        boolean includeDots) {
+        boolean includeAugmentation) {
 
         var type = element.getType();
 
@@ -234,29 +234,35 @@ public class ElementColumnBuilder {
         }
 
         // Element head right edge: use small notehead width for grace notes
-        var noteheadRightExtent = getNoteheadRightExtent(type);
+        var noteheadRightExtentSs = getNoteheadRightExtent(type);
 
         // Augmentation dots extend the right edge. Derived from the same positions the renderer
         // draws (see NoteGeometry.dotsRightExtentSs), so spacing reserves exactly what is painted —
         // the dots already clear the flag when an unbeamed up-stem one is present.
-        var rightExtent = includeDots
-            ? NoteGeometry.dotsRightExtentSs(element, beamed, upper, noteheadRightExtent)
-            : noteheadRightExtent;
+        var baseRightExtentSs = includeAugmentation
+            ? NoteGeometry.dotsRightExtentSs(element, beamed, upper, noteheadRightExtentSs)
+            : noteheadRightExtentSs;
 
         // Flag extent: only for unbeamed elements that have a flag
         var flagBBox = NoteGeometry.flagBBoxLocalSs(type, upper, beamed);
-        var flagRightExtent = (flagBBox == null) ? 0.0 : flagBBox.getMaxX();
+        var flagRightExtentSs = (flagBBox == null) ? 0.0 : flagBBox.getMaxX();
 
-        var rightExtentSs = Math.max(rightExtent, flagRightExtent);
+        var rightExtentSs = Math.max(baseRightExtentSs, flagRightExtentSs);
 
         // A fall's glyph hangs off the note's right edge, one gap past the column edge. Reserve that
         // gap plus the glyph's advance width so the next element (or a barline / end-of-line) does
         // not overlap it. Unlike a connecting glissando — whose room is reserved between two notes by
         // HorizontalSpacingCalculator.ensureGlissandoSpacing — a fall has no following note, so its
         // own column must carry the reservation.
-        if (element.hasFall()) {
+        // Gated on includeAugmentation (like dots) so the fall only expands the minimum-spacing
+        // extent, not the comfortable-spacing extent — the next element shifts only when the minimum
+        // gap would otherwise be violated (refs #492).
+        if (includeAugmentation && element.hasFall()) {
             var fallAdvanceWidthSs = SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
-            rightExtentSs += NoteGeometry.FALL_GAP_SS + fallAdvanceWidthSs;
+            // The fall anchors after the notehead/dots right edge, not the flag, so compute its
+            // extent independently and take the max to avoid stacking it on top of the flag width.
+            var fallRightExtentSs = baseRightExtentSs + NoteGeometry.FALL_GAP_SS + fallAdvanceWidthSs;
+            rightExtentSs = Math.max(rightExtentSs, fallRightExtentSs);
         }
 
         return rightExtentSs;
