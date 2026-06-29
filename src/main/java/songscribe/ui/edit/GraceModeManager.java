@@ -621,13 +621,18 @@ public final class GraceModeManager {
                     line.removeElement(hostNoteIndex);
                 }
 
+                // Remove the grace note (and its connecting slide) before showing
+                // the dialog. showErrorMessage is modal and pumps the EDT, so an
+                // intervening repaint would otherwise render the grace note's slide
+                // against the now-following barline and crash on its missing glyph.
+                finish(true);
+
                 OptionDialogs.showErrorMessage(
                     SwingUtilities.getWindowAncestor(component),
                     Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
                     Strings.ERROR_GRACE_NOTE_SAME_PITCH
                 );
 
-                finish(true);
                 return;
             }
 
