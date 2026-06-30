@@ -533,33 +533,8 @@ public class LayoutEngine {
                     var bottomYSs = stemsUp ? elementYSs : beamYSs;
 
                     // Determine stub direction for partial-beam elements.
-                    // A stub is needed at beam level L when neither neighbour shares level L.
-                    var myBeams = beamCount(element);
-                    var leftBeams = i > beamStart ? beamCount(line.getElement(i - 1)) : 0;
-                    var rightBeams = i < beamEnd ? beamCount(line.getElement(i + 1)) : 0;
-
-                    var hasStub = false;
-
-                    for (var level = 2; level <= myBeams; level++) {
-                        if (leftBeams < level && rightBeams < level) {
-                            hasStub = true;
-                            break;
-                        }
-                    }
-
-                    var stubRight = false;
-
-                    if (hasStub) {
-                        if (i == beamStart) {
-                            stubRight = true;                   // first element → stub right
-                        } else if (i == beamEnd || rightBeams < myBeams) {
-                            // last element → stub left || element after a beam break → left
-                        } else if (leftBeams < myBeams) {
-                            stubRight = true;                   // element at a beam break → right
-                        } else {
-                            stubRight = rightBeams >= leftBeams; // toward neighbour with more beams
-                        }
-                    }
+                    // Delegated to BeamMath so the writer can use the same rule.
+                    var stubRight = BeamMath.stubRight(line, i, beamStart, beamEnd);
 
                     stemLayouts.put(element, new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, stubRight));
                 }
@@ -786,13 +761,12 @@ public class LayoutEngine {
     /**
      * Returns the number of beams (flag levels) for a note type.
      * QUAVER = 1, SEMIQUAVER = 2, DEMI_SEMIQUAVER = 3.
+     *
+     * <p>Delegates to {@link BeamMath#beamCount} — the single source of truth
+     * shared by the writer and renderer.
      */
     static int beamCount(StaffElement note) {
-        return switch (note.getType()) {
-            case SEMIQUAVER -> 2;
-            case DEMI_SEMIQUAVER -> 3;
-            default -> 1;
-        };
+        return BeamMath.beamCount(note);
     }
 
     /**

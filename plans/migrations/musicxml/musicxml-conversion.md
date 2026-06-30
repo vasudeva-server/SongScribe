@@ -7,7 +7,7 @@
 | 1 | [Conversion Scaffold + Round-Trip Harness](#-phase-1-conversion-scaffold--round-trip-harness) | ✅ Complete | [phase-1-scaffold.md](./phase-1-scaffold.md) |
 | 2 | [Structural Model (Line ↔ Measure)](#-phase-2-structural-model-line--measure) | ✅ Complete | [phase-2-structural-model.md](./phase-2-structural-model.md) |
 | 3 | [Notes & Per-Note Attachments](#-phase-3-notes--per-note-attachments) | ✅ Complete | [phase-3-notes.md](./phase-3-notes.md) |
-| 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ⏳ Pending | — |
+| 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ✅ Complete | [phase-4-range-spans.md](./phase-4-range-spans.md) |
 | 5 | [Per-Measure Attributes (Key, Tempo)](#-phase-5-per-measure-attributes-key-tempo) | ⏳ Pending | — |
 | 6 | [Lyrics](#-phase-6-lyrics) | ⏳ Pending | — |
 | 7 | [Header, Layout & Extension Fields](#️-phase-7-header-layout--extension-fields) | ⏳ Pending | — |
@@ -119,19 +119,20 @@ See [phase-3-notes.md](./phase-3-notes.md) for the detailed implementation plan.
 
 ---
 
-## ⏳ Phase 4: Line-Level Range Spans
+## ✅ Phase 4: Line-Level Range Spans
 
-**Goal**: The index-pair spans stored on `Line` ↔ per-note MusicXML markers. The
-expand-on-write / collapse-on-read machinery. Bijective.
+**Status**: ✅ Complete — see [phase-4-range-spans.md](./phase-4-range-spans.md)
 
-**Mapping** (musicxml.md § "Line-level range spans"):
-- Beaming → per-note `<beam>`; ties → `<tie>` + `<tied>`; tuplets →
-  `<time-modification>` + `<tuplet>` bracket; crescendo/diminuendo → `<wedge>`;
-  trills → `<trill-mark>` + `<wavy-line>`; first/second endings →
-  `<barline><ending>`.
+Implemented the index-pair spans stored on `Line` ↔ per-note MusicXML markers,
+with expand-on-write / collapse-on-read machinery. Beaming → per-note `<beam>`;
+ties → `<tie>` + `<tied>`; tuplets → `<time-modification>` + `<tuplet>` bracket;
+crescendo/diminuendo → `<wedge>`; trills → `<trill-mark>` + `<wavy-line>`;
+first/second endings → `<barline><ending>`. Persisted user offsets (tuplet
+`verticalPositionSs`, hairpin `x1`/`x2`/`y` shifts, trill `yPositionSs`) ride on
+native `relative-x`/`relative-y`.
 
-**Verify**: Round-trip spans that start/stop mid-line and span multiple notes;
-confirm spans re-collapse to identical index pairs.
+See [phase-4-range-spans.md](./phase-4-range-spans.md) for the detailed
+implementation plan.
 
 ---
 

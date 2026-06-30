@@ -27,9 +27,9 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.layout.BeamMath;
 import songscribe.smufl.Engraving;
 import songscribe.dom.LineElement;
 import songscribe.layout.LayoutResult;
@@ -51,13 +51,6 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
 
     private static final double CLIP_SLOP_SS = 0.25;   // extra clipping margin (~2 px)
     private static final double BEAM_STUB_SS = 1.0;  // 8px
-
-    // Note types for beam levels (32nd, 16th, 8th)
-    private static final ElementType[] BEAM_LEVELS = new ElementType[]{
-        ElementType.DEMI_SEMIQUAVER,
-        ElementType.SEMIQUAVER,
-        ElementType.QUAVER,
-    };
 
     // Singleton instance
     private static final BeamGroupRenderer INSTANCE = new BeamGroupRenderer();
@@ -160,23 +153,10 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
 
     /**
      * Determines the beam level based on the shortest note in the range.
+     * Delegates to {@link BeamMath#beamLevel}.
      */
     int getBeamLevel(Line line, int beginIndex, int endIndex) {
-        var maxLevel = 0;
-
-        for (var i = beginIndex; i <= endIndex; i++) {
-            var noteType = line.getElement(i).getType();
-
-            for (var j = 0; j < BEAM_LEVELS.length; j++) {
-                if (noteType == BEAM_LEVELS[j]) {
-                    var level = BEAM_LEVELS.length - 1 - j;
-                    maxLevel = Math.max(maxLevel, level);
-                    break;
-                }
-            }
-        }
-
-        return maxLevel;
+        return BeamMath.beamLevel(line, beginIndex, endIndex);
     }
 
     private void drawBeams(
@@ -278,31 +258,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
     }
 
     boolean isNoteTypeInLevel(Line line, int noteIndex, int level) {
-        var type = line.getElement(noteIndex).getType();
-
-        if (!type.isGraceNote()) {
-            for (var i = 0; i < BEAM_LEVELS.length; i++) {
-                if (BEAM_LEVELS[i] == type) {
-                    return i <= (BEAM_LEVELS.length - 1 - level);
-                }
-            }
-            return false;
-        }
-
-        // Grace notes: check surrounding notes
-        var begin = noteIndex - 1;
-        var end = noteIndex + 1;
-
-        while (begin > 0 && line.getElement(begin).getType().isGraceNote()) {
-            begin--;
-        }
-
-        while (end < line.elementCount() && line.getElement(end).getType().isGraceNote()) {
-            end++;
-        }
-
-        return begin >= 0 && isNoteTypeInLevel(line, begin, level) &&
-            end < line.elementCount() && isNoteTypeInLevel(line, end, level);
+        return BeamMath.noteTypeInLevel(line, noteIndex, level);
     }
 
     private void drawBeam(

@@ -77,6 +77,22 @@ final class MusicXmlTags {
     static final String SLIDE         = "slide";
     static final String FALLOFF       = "falloff";
 
+    // Element names — span subtree (beam, tie, tuplet, hairpin, trill, ending).
+    static final String BEAM           = "beam";
+    static final String TIE            = "tie";
+    static final String TIED           = "tied";
+    static final String TIME_MOD       = "time-modification";
+    static final String ACTUAL_NOTES   = "actual-notes";
+    static final String NORMAL_NOTES   = "normal-notes";
+    static final String TUPLET         = "tuplet";
+    static final String DIRECTION      = "direction";
+    static final String DIRECTION_TYPE = "direction-type";
+    static final String WEDGE          = "wedge";
+    static final String ORNAMENTS      = "ornaments";
+    static final String TRILL_MARK     = "trill-mark";
+    static final String WAVY_LINE      = "wavy-line";
+    static final String ENDING         = "ending";
+
     // Attribute names — document structure.
     static final String ATTR_VERSION    = "version";
     static final String ATTR_NEW_SYSTEM = "new-system";
@@ -92,6 +108,7 @@ final class MusicXmlTags {
     static final String ATTR_DEFAULT_X   = "default-x";
     static final String ATTR_DEFAULT_Y   = "default-y";
     static final String ATTR_RELATIVE_X  = "relative-x";
+    static final String ATTR_RELATIVE_Y  = "relative-y";
     static final String ATTR_TYPE        = "type";
     static final String ATTR_LINE_SHAPE  = "line-shape";
     static final String ATTR_LINE_TYPE   = "line-type";
@@ -109,4 +126,28 @@ final class MusicXmlTags {
     static final String SLIDE_STOP    = "stop";
     static final String LINE_STRAIGHT = "straight";
     static final String LINE_SOLID    = "solid";
+
+    // Attribute values — beam type (text content of <beam>).
+    static final String BEAM_BEGIN        = "begin";
+    static final String BEAM_CONTINUE     = "continue";
+    static final String BEAM_END          = "end";
+    static final String BEAM_FORWARD_HOOK = "forward hook";
+    static final String BEAM_BACKWARD_HOOK = "backward hook";
+
+    // Attribute values — generic span type (used by tie, tied, wavy-line, ending @type).
+    static final String TYPE_START = "start";
+    static final String TYPE_STOP  = "stop";
+
+    // Attribute values — wedge type (@type on <wedge>).
+    static final String WEDGE_CRESCENDO  = "crescendo";
+    static final String WEDGE_DIMINUENDO = "diminuendo";
+
+    // Attribute values — ending type (@type on <ending>).
+    static final String ENDING_DISCONTINUE = "discontinue";
+
+    // Attribute values — span numbering.
+    // The wedge @number is always "1" (only one hairpin is ever open at a time);
+    // ending @number is "1" for the first volta bracket and "2" for the second.
+    static final String NUMBER_1 = "1";
+    static final String NUMBER_2 = "2";
 }

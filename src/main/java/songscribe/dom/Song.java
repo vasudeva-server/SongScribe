@@ -947,6 +947,34 @@ public final class Song {
     }
 
     /**
+     * Restores the terminal invariant after a {@link #newParsingStub() parsing stub}
+     * has been fully populated: ensures the song's last line ends with a valid
+     * terminal ({@link ElementType#isValidTerminal()}). File readers suspend mutation
+     * tracking while building lines, so the per-{@code addLine} maintenance is skipped;
+     * this restores the invariant in one pass at the end of a load.
+     *
+     * <p>Must be called while mutation tracking is still suspended so the fix-up is
+     * silent (no notification, no {@code modified} flag) and the {@link Line} terminal
+     * guards stay bypassed. A no-op when the last line already ends with a valid
+     * terminal, so a range span (e.g. an {@code Ending} ending on that barline) keeps
+     * its exact element reference.
+     */
+    public void installTerminalAfterParsing() {
+        if (lines.isEmpty()) {
+            return;
+        }
+
+        var lastLine = lines.getLast();
+        var lastIdx = lastLine.elementCount() - 1;
+
+        if (lastIdx >= 0 && lastLine.getElement(lastIdx).getType().isValidTerminal()) {
+            return;
+        }
+
+        maintainTerminalOnLastLineChange(null, lastLine);
+    }
+
+    /**
      * Returns the terminal type at the end of {@code previousLastLine} if it is the
      * outgoing terminal (non-null, distinct from {@code newLastLine}, and ends in a
      * valid terminal). Returns {@code null} otherwise.

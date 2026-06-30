@@ -35,8 +35,8 @@ import org.xml.sax.SAXException;
 /**
  * Test-side utility that compiles the bundled MusicXML 4.0 XSD once (via a
  * {@code static} field) and exposes a {@link #validate(String)} method for
- * schema-checking writer output.  Not a JUnit test itself — used by
- * {@link MusicXmlRoundTripTest}.
+ * schema-checking writer output.  Not a JUnit test itself — used by the
+ * MusicXML round-trip test classes.
  *
  * <p>The XSD and its sibling imports live under {@code docs/musicxml-4.0-schema/}.
  * Pointing the {@link StreamSource} at the XSD file object sets the system ID

@@ -20,17 +20,27 @@
 package songscribe.io.musicxml;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import org.jspecify.annotations.Nullable;
+import songscribe.dom.Beam;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.Hairpin;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Tie;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
 import songscribe.io.XML;
+import songscribe.layout.BeamMath;
+import songscribe.layout.LineEndingSupport;
 
 public final class MusicXmlWriter {
 
@@ -55,6 +65,86 @@ public final class MusicXmlWriter {
     private static final int GRACE_STEM_EXTENSION_TENTHS = 35;
 
     private MusicXmlWriter() {}
+
+    // -------------------------------------------------------------------------
+    // Per-element-index span precompute types
+    //
+    // IndexSpanMarkers holds all span activity for one element index.
+    // The noteMarkers field (per-note spans) is threaded into NoteWriteContext
+    // so writeNote/writeNotations can do O(1) lookups; the hairpin and ending
+    // fields are consumed by the measure-level element loop (Phase 3).
+    // -------------------------------------------------------------------------
+
+    private record IndexSpanMarkers(
+        NoteSpanMarkers noteMarkers,
+        List<Hairpin> hairpinsStartingHere,
+        List<Hairpin> hairpinsEndingHere,
+        List<EndingMarker> endingLeftBarlineMarkers,
+        List<EndingMarker> endingRightBarlineMarkers
+    ) {}
+
+    /**
+     * One {@code <ending number type>} child to fold onto a {@code <barline>}.
+     * The structural anchor/split/end → volta mapping is resolved once in
+     * {@link #buildSpanIndex} and stored as left-barline / right-barline marker
+     * lists per element index (see the ASCII diagram there).
+     */
+    private record EndingMarker(String number, String type) {}
+
+    /**
+     * Mutable builder for one element's {@link IndexSpanMarkers}. Created once
+     * per element index during {@link #buildSpanIndex}, discarded after the
+     * final records are assembled.
+     */
+    private static final class SpanBuilder {
+
+        // Empty array = not in a beam group (matches NoteSpanMarkers sentinel).
+        String[] beamLevelValues = new String[0];
+        boolean tieStartsHere;
+        boolean tieStopsHere;
+        @Nullable Tuplet tuplet;
+        boolean isTupletAnchor;
+        boolean isTupletEnd;
+        @Nullable Trill trill;
+        boolean isTrillAnchor;
+        boolean isTrillEnd;
+
+        // Lazily allocated: most indices carry no hairpin or ending markers, so
+        // these stay null (and resolve to a shared empty list in build()) until
+        // the first marker is bucketed here. Crescendos and diminuendos share one
+        // pair of buckets — the wedge type is recovered from the Hairpin subtype.
+        @Nullable List<Hairpin> hairpinsStartingHere;
+        @Nullable List<Hairpin> hairpinsEndingHere;
+        @Nullable List<EndingMarker> endingLeftBarlineMarkers;
+        @Nullable List<EndingMarker> endingRightBarlineMarkers;
+
+        IndexSpanMarkers build() {
+            var noteMarkers = new NoteSpanMarkers(
+                beamLevelValues,
+                tieStartsHere, tieStopsHere,
+                tuplet, isTupletAnchor, isTupletEnd,
+                trill, isTrillAnchor, isTrillEnd
+            );
+
+            return new IndexSpanMarkers(
+                noteMarkers,
+                orEmpty(hairpinsStartingHere), orEmpty(hairpinsEndingHere),
+                orEmpty(endingLeftBarlineMarkers), orEmpty(endingRightBarlineMarkers)
+            );
+        }
+    }
+
+    /** Appends {@code value} to {@code list}, allocating the list on first use. */
+    private static <T> List<T> appendLazily(@Nullable List<T> list, T value) {
+        var target = list == null ? new ArrayList<T>() : list;
+        target.add(value);
+        return target;
+    }
+
+    /** Returns {@code list}, or a shared empty list when it was never allocated. */
+    private static <T> List<T> orEmpty(@Nullable List<T> list) {
+        return list == null ? List.of() : list;
+    }
 
     public static void writeSong(Song song, PrintWriter pw) {
         pw.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
@@ -132,25 +222,36 @@ public final class MusicXmlWriter {
             var elements = line.getElements();
             var lastElement = elements.isEmpty() ? null : elements.getLast();
 
+            // Build the per-element span index once per line. Anchor/end indices
+            // for all six span types are resolved here so the element loop can do
+            // O(1) lookups instead of calling getAnchorElementIndex() (ArrayList.indexOf,
+            // O(n)) per element per span.
+            var spanIndex = buildSpanIndex(line);
+
             for (int i = 0; i < elements.size(); i++) {
                 var element = elements.get(i);
                 var type = element.getType();
+                var markers = spanIndex[i];
 
                 if (type == ElementType.REPEAT_LEFT) {
                     // REPEAT_LEFT opens a new measure (the forward-repeat barline
                     // is a left barline, not a right barline). Close the current
                     // measure with an invisible right barline to preserve the
-                    // line boundary, then open the new measure.
+                    // line boundary, then open the new measure. An ending anchored
+                    // (or ended) on the REPEAT_LEFT rides on the forward-left barline.
                     writeInvisibleRightBarline(pw);
-                    measureNumber = openForwardRepeatMeasure(pw, measureNumber);
+                    measureNumber = openForwardRepeatMeasure(pw, measureNumber, markers.endingLeftBarlineMarkers());
 
                 } else if (type == ElementType.REPEAT_LEFT_RIGHT) {
                     // REPEAT_LEFT_RIGHT straddles a measure boundary:
                     // - a backward-repeat right barline closes the current measure,
                     // - a forward-repeat left barline opens the next one.
                     // The reader reconstructs the REPEAT_LEFT_RIGHT from this pair.
-                    writeBackwardRepeatRightBarline(pw);
-                    measureNumber = openForwardRepeatMeasure(pw, measureNumber);
+                    // For an ending split here, <ending number="1" type="stop">
+                    // rides on the backward-right barline and <ending number="2"
+                    // type="start"> on the forward-left barline.
+                    writeBackwardRepeatRightBarline(pw, markers.endingRightBarlineMarkers());
+                    measureNumber = openForwardRepeatMeasure(pw, measureNumber, markers.endingLeftBarlineMarkers());
 
                 } else if (type.isBarLine() || type.isRepeat()) {
                     // All other barline/repeat types close the current measure
@@ -166,7 +267,7 @@ public final class MusicXmlWriter {
                         continue;
                     }
 
-                    writeBarline(pw, entry);
+                    writeBarline(pw, entry, markers.endingRightBarlineMarkers());
                     closeMeasure(pw);
                     measureOpen = false;
 
@@ -179,6 +280,17 @@ public final class MusicXmlWriter {
                         measureNumber++;
                         openMeasure(pw, measureNumber);
                         measureOpen = true;
+
+                        // A REPEAT_RIGHT split (not its own dedicated branch) closes
+                        // volta 1 on the right barline above; volta 2 begins in this
+                        // new measure, so its <ending number="2" type="start"> rides
+                        // on an invisible (style-none) left barline — the first child
+                        // of the measure per the barline-location schema rule.
+                        var leftBarlineMarkers = markers.endingLeftBarlineMarkers();
+
+                        if (!leftBarlineMarkers.isEmpty()) {
+                            writeInvisibleLeftBarline(pw, leftBarlineMarkers);
+                        }
                     }
 
                 } else if (type.isBreathMark()) {
@@ -192,9 +304,19 @@ public final class MusicXmlWriter {
                     var typeToken = NoteTypeMapping.typeToken(type);
 
                     if (typeToken != null) {
+                        // Hairpin wedges bind to the next <note>: both the start
+                        // wedge (on the anchor) and the stop wedge (on the end) are
+                        // emitted as <direction> siblings immediately before their
+                        // bound note, giving the reader one uniform look-ahead rule.
+                        writeHairpinWedges(pw, markers);
+
                         var nextElement = (i + 1 < elements.size()) ? elements.get(i + 1) : null;
                         var nextIsBreathMark = nextElement != null && nextElement.getType().isBreathMark();
-                        writeNote(pw, element, typeToken, nextIsBreathMark, pendingGlissando);
+                        var ctx = new NoteWriteContext(
+                            element, typeToken, nextIsBreathMark,
+                            pendingGlissando, markers.noteMarkers()
+                        );
+                        writeNote(pw, ctx);
                         // getGlissando() is null unless this note starts a glissando.
                         pendingGlissando = element.getGlissando();
                     }
@@ -222,44 +344,58 @@ public final class MusicXmlWriter {
     //     (<grace slash="no"/>)?             — grace notes only, no steal-time-following
     //     (<rest/>  |  <pitch>…</pitch>)    — rest has no pitch; grace has pitch
     //     (<duration>…</duration>)?         — omitted for grace (zero playback time)
+    //     (<tie type="stop"/>)?             — sound tie stop; chained before start (not rests)
+    //     (<tie type="start"/>)?            — sound tie start (not rests)
     //     <type>…</type>
     //     (<dot/>)*                          — dotCount times; grace: always 0
     //     (<accidental …>…</accidental>)?   — not for rests
+    //     (<time-modification>              — every note in a tuplet (incl. rests)
+    //       <actual-notes>grade</actual-notes>
+    //       <normal-notes>largest-power-of-two-below-grade</normal-notes>
+    //     </time-modification>)?
     //     (<stem [default-y="…"]>…</stem>)? — grace: always "up"; otherwise only when !auto
+    //     (<beam number="N">…</beam>)*      — per beam level (Phase 2b)
     //     (<notations>                       — emitted only when non-empty
+    //       (<tied type="stop"/>)?          — notation tie stop (first; chained before start)
+    //       (<tied type="start"/>)?         — notation tie start
     //       (<slide …/>)*                   — stop slide before start slide
-    //       (<fermata/>)?
+    //       (<tuplet type="start" number="1" [relative-y="…"]/>)?  — tuplet bracket open
+    //       (<tuplet type="stop"  number="1"                  />)?  — tuplet bracket close
+    //       (<ornaments>                    — omitted for rests; emitted when trill is active
+    //         (<trill-mark/>)?              — anchor note (and end, for single-note trill)
+    //         (<wavy-line type="start" number="1" [relative-y="…"]/>)?
+    //         (<wavy-line type="stop"  number="1"                  />)?
+    //       </ornaments>)?
     //       (<articulations>
     //         (<accent/>|<staccato/>|<falloff/>|<breath-mark/>)*
     //       </articulations>)?
     //       (<dynamics><…/></dynamics>)?
+    //       (<fermata/>)?
     //     </notations>)?
     //   </note>
     // -------------------------------------------------------------------------
 
-    private static void writeNote(
-            PrintWriter pw,
-            StaffElement note,
-            String typeToken,
-            boolean nextIsBreathMark,
-            StaffElement.@Nullable Glissando pendingStopGlissando
-    ) {
+    private static void writeNote(PrintWriter pw, NoteWriteContext ctx) {
+        var note = ctx.note();
+        var typeToken = ctx.typeToken();
         var type = note.getType();
         var isGrace = type.isGraceNote();
         var isRest = type.isRest();
+        var spanMarkers = ctx.spanMarkers();
 
         // Compute position in tenths.
         // default-x: the base layout position (getXSs() stores the layout-assigned
         //   position; for notes this is set per the new layout system).
         // relative-x: the user-set horizontal offset, emitted only when non-zero
         //   (mirrors the legacy writeElement guard).
-        var baseXTenths = note.getXSs() * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+        var baseXTenths = ssToTenths(note.getXSs());
         var xOffsetPx = note.getXOffsetPx();
-        var relativeXTenths = ScaleContext.pxToSs(xOffsetPx) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
 
         // Open <note> tag with optional position attributes. relative-x is emitted
-        // only when the note carries a user offset (mirrors the legacy guard).
+        // only when the note carries a user offset (mirrors the legacy guard), so
+        // its tenths conversion is computed only in that branch.
         if (xOffsetPx != 0) {
+            var relativeXTenths = ssToTenths(ScaleContext.pxToSs(xOffsetPx));
             XML.writeBeginTag(pw, MusicXmlTags.NOTE,
                 MusicXmlTags.ATTR_DEFAULT_X, formatTenths(baseXTenths),
                 MusicXmlTags.ATTR_RELATIVE_X, formatTenths(relativeXTenths)
@@ -293,6 +429,19 @@ public final class MusicXmlWriter {
             XML.writeValue(pw, MusicXmlTags.DURATION, Integer.toString(ticks));
         }
 
+        // 3a. <tie type="stop"/>? + <tie type="start"/>? — sound ties, note-level,
+        //     after <duration> and before <type>.  Rests cannot be tied.
+        //     Interior notes of a chain emit stop before start to form a closed loop.
+        if (!isRest) {
+            if (spanMarkers.tieStopsHere()) {
+                XML.writeEmptyTag(pw, MusicXmlTags.TIE, MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_STOP);
+            }
+
+            if (spanMarkers.tieStartsHere()) {
+                XML.writeEmptyTag(pw, MusicXmlTags.TIE, MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_START);
+            }
+        }
+
         // 4. <type>
         XML.writeValue(pw, MusicXmlTags.NOTE_TYPE, typeToken);
 
@@ -308,11 +457,25 @@ public final class MusicXmlWriter {
             writeAccidental(pw, note);
         }
 
+        // 6a. <time-modification> — emitted on every note in a tuplet span,
+        //     including rests.  After <accidental>, before <stem> per schema.
+        var tupletForTimeMod = spanMarkers.tuplet();
+
+        if (tupletForTimeMod != null) {
+            writeTimeModification(pw, tupletForTimeMod.getGrade());
+        }
+
         // 7. <stem>
         writeStem(pw, note, isGrace);
 
-        // 8. <notations>
-        writeNotations(pw, note, nextIsBreathMark, pendingStopGlissando);
+        // 8. <beam number="N"> — one element per active beam level, note-level,
+        //    after <stem> and before <notations> per MusicXML 4.0 schema.
+        //    Pre-computed values are null for non-beamed notes and for levels
+        //    where this note has no beam activity.
+        writeBeamValues(pw, spanMarkers.beamLevelValues());
+
+        // 9. <notations>
+        writeNotations(pw, ctx);
 
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.NOTE);
@@ -398,24 +561,49 @@ public final class MusicXmlWriter {
     }
 
     // -------------------------------------------------------------------------
-    // <notations>: emitted only when at least one child will be written.
-    //
-    // Schema order within <notations> (xs:choice — any order is valid):
-    //   <slide type="stop"/>?   — destination note of a glissando
-    //   <slide type="start"/>?  — source note of a glissando
-    //   <fermata/>?
-    //   <articulations>?        — accent, staccato, falloff, breath-mark
-    //   <dynamics>?
+    // <beam>: emits one <beam number="N"> element per active beam level.
+    // Values are pre-computed by computeNoteBeamValues in the span precompute.
     // -------------------------------------------------------------------------
 
-    private static void writeNotations(
-            PrintWriter pw,
-            StaffElement note,
-            boolean nextIsBreathMark,
-            StaffElement.@Nullable Glissando pendingStopGlissando
-    ) {
+    private static void writeBeamValues(PrintWriter pw, String[] beamLevelValues) {
+        // An empty array means the note is not part of any beam group — nothing to emit.
+        if (beamLevelValues.length == 0) {
+            return;
+        }
+
+        for (var level = 0; level < beamLevelValues.length; level++) {
+            var value = beamLevelValues[level];
+
+            // Empty-string entries are the sentinel for "no beam at this level".
+            if (!value.isEmpty()) {
+                XML.writeValue(pw, MusicXmlTags.BEAM, value,
+                    MusicXmlTags.ATTR_NUMBER, Integer.toString(level + 1));
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // <notations>: emitted only when at least one child will be written.
+    //
+    // Emission order within <notations> (xs:choice — any order is valid per
+    // schema; the writer uses this consistent convention):
+    //   <tied …/>*              — notation ties (stop before start on interior notes)
+    //   <slide …/>*             — stop slide before start slide
+    //   <tuplet …/>?            — tuplet bracket start/stop
+    //   <ornaments>?            — trill-mark + wavy-line (not for rests)
+    //   <articulations>?        — accent, staccato, falloff, breath-mark
+    //   <dynamics>?
+    //   <fermata/>?             — last per the full schema ordering
+    // -------------------------------------------------------------------------
+
+    private static void writeNotations(PrintWriter pw, NoteWriteContext ctx) {
+        var note = ctx.note();
+        var nextIsBreathMark = ctx.nextIsBreathMark();
+        var pendingStopGlissando = ctx.pendingStopGlissando();
         var type = note.getType();
         var isGrace = type.isGraceNote();
+        var isRest = type.isRest();
+        var spanMarkers = ctx.spanMarkers();
 
         // Glissando slides are not applicable to grace notes.
         var startGlissando = isGrace ? null : note.getGlissando();
@@ -427,7 +615,28 @@ public final class MusicXmlWriter {
         var dynamic = note.findAttachment(DynamicAttachment.class);
 
         var hasArticulationsBlock = !articulations.isEmpty() || note.hasFall() || nextIsBreathMark;
-        var hasNotations = hasSlideStop || hasSlideStart || hasFermata || hasArticulationsBlock || dynamic != null;
+
+        // Tied (notation ties): emitted for the same cases as the sound <tie>.
+        var hasTiedStop = !isRest && spanMarkers.tieStopsHere();
+        var hasTiedStart = !isRest && spanMarkers.tieStartsHere();
+
+        // Tuplet bracket: start on the anchor, stop on the end note.
+        var isTupletAnchor = spanMarkers.isTupletAnchor();
+        var isTupletEnd = spanMarkers.isTupletEnd();
+
+        // Ornaments (trill): not emitted for rests.
+        // isTrillAnchor → emit <trill-mark/> + <wavy-line type="start">
+        // isTrillEnd    → emit <wavy-line type="stop">
+        // For a single-note trill anchor == end, so both flags are set on one note.
+        var isTrillAnchor = !isRest && spanMarkers.isTrillAnchor();
+        var isTrillEnd = !isRest && spanMarkers.isTrillEnd();
+        var hasOrnaments = isTrillAnchor || isTrillEnd;
+
+        var hasNotations = hasSlideStop || hasSlideStart || hasFermata
+            || hasArticulationsBlock || dynamic != null
+            || hasTiedStop || hasTiedStart
+            || isTupletAnchor || isTupletEnd
+            || hasOrnaments;
 
         if (!hasNotations) {
             return;
@@ -435,6 +644,16 @@ public final class MusicXmlWriter {
 
         XML.writeBeginTag(pw, MusicXmlTags.NOTATIONS);
         XML.indent();
+
+        // <tied> — notation counterpart of the sound <tie>, emitted first.
+        // Interior notes of a chain emit stop before start.
+        if (hasTiedStop) {
+            XML.writeEmptyTag(pw, MusicXmlTags.TIED, MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_STOP);
+        }
+
+        if (hasTiedStart) {
+            XML.writeEmptyTag(pw, MusicXmlTags.TIED, MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_START);
+        }
 
         // <slide type="stop"> on the destination note of a glissando.
         // Carries the computed end-point coordinates for external-renderer
@@ -449,9 +668,45 @@ public final class MusicXmlWriter {
             writeSlide(pw, MusicXmlTags.SLIDE_START, startGlissando);
         }
 
-        // <fermata/>
-        if (hasFermata) {
-            XML.writeEmptyTag(pw, MusicXmlTags.FERMATA);
+        // <tuplet> bracket: start on the anchor, stop on the end note.
+        // relative-y carries verticalPositionSs, only when non-zero.
+        if (isTupletAnchor) {
+            var tuplet = spanMarkers.tuplet();
+            var verticalPositionSs = tuplet != null ? tuplet.getVerticalPositionSs() : 0;
+            writeNumberedMarker(pw, MusicXmlTags.TUPLET, MusicXmlTags.TYPE_START, verticalPositionSs);
+        }
+
+        if (isTupletEnd) {
+            writeNumberedMarker(pw, MusicXmlTags.TUPLET, MusicXmlTags.TYPE_STOP, 0);
+        }
+
+        // <ornaments>: trill-mark + wavy-line start/stop.
+        // Only emitted when this note participates in a trill span.
+        if (hasOrnaments) {
+            XML.writeBeginTag(pw, MusicXmlTags.ORNAMENTS);
+            XML.indent();
+
+            // <trill-mark/> appears on the anchor (and on the end note of a
+            // single-note trill, where anchor == end so isTrillAnchor is also true).
+            if (isTrillAnchor) {
+                XML.writeEmptyTag(pw, MusicXmlTags.TRILL_MARK);
+            }
+
+            // <wavy-line type="start"> on the anchor, carrying yPositionSs as
+            // relative-y, only when non-zero.
+            if (isTrillAnchor) {
+                var trill = spanMarkers.trill();
+                var yPositionSs = trill != null ? trill.getYPositionSs() : 0;
+                writeNumberedMarker(pw, MusicXmlTags.WAVY_LINE, MusicXmlTags.TYPE_START, yPositionSs);
+            }
+
+            // <wavy-line type="stop"> on the end note.
+            if (isTrillEnd) {
+                writeNumberedMarker(pw, MusicXmlTags.WAVY_LINE, MusicXmlTags.TYPE_STOP, 0);
+            }
+
+            XML.dedent();
+            XML.writeEndTag(pw, MusicXmlTags.ORNAMENTS);
         }
 
         // <articulations>: accent, staccato, fall (falloff), breath-mark.
@@ -487,6 +742,11 @@ public final class MusicXmlWriter {
             XML.writeEndTag(pw, MusicXmlTags.DYNAMICS);
         }
 
+        // <fermata/> — last per the schema ordering convention.
+        if (hasFermata) {
+            XML.writeEmptyTag(pw, MusicXmlTags.FERMATA);
+        }
+
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.NOTATIONS);
     }
@@ -498,9 +758,9 @@ public final class MusicXmlWriter {
     // The glissando lives on the *source* note via StaffElement.slide.
     // For the start slide: glissando.cachedStartX/Y is the endpoint.
     // For the stop slide: the end is cachedStartX + cachedLength × cos/sin.
-    // Coordinates are in staff-space units; multiply by TENTHS_PER_STAFF_SPACE
-    // to produce MusicXML tenths.  These are write-forward only — the reader
-    // ignores them and re-derives geometry from layout.
+    // Coordinates are in staff-space units; ssToTenths converts them to
+    // MusicXML tenths.  These are write-forward only — the reader ignores them
+    // and re-derives geometry from layout.
     // -------------------------------------------------------------------------
 
     private static void writeSlide(
@@ -537,9 +797,469 @@ public final class MusicXmlWriter {
         XML.writeEmptyTag(pw, MusicXmlTags.SLIDE,
             MusicXmlTags.ATTR_TYPE, slideType,
             MusicXmlTags.ATTR_LINE_TYPE, MusicXmlTags.LINE_SOLID,
-            MusicXmlTags.ATTR_DEFAULT_X, formatTenths(xSs * MusicXmlTags.TENTHS_PER_STAFF_SPACE),
-            MusicXmlTags.ATTR_DEFAULT_Y, formatTenths(ySs * MusicXmlTags.TENTHS_PER_STAFF_SPACE)
+            MusicXmlTags.ATTR_DEFAULT_X, formatTenths(ssToTenths(xSs)),
+            MusicXmlTags.ATTR_DEFAULT_Y, formatTenths(ssToTenths(ySs))
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // Hairpin wedges (measure-level <direction>)
+    //
+    // Both wedges of a hairpin are emitted immediately before their bound note:
+    // the start wedge before the anchor note, the stop wedge before the end note.
+    // This both-before-the-note placement lets the reader use one uniform rule —
+    // each wedge binds to the next <note> after it.  number is always "1": the
+    // app never produces overlapping wedges, so only one is ever open.
+    // -------------------------------------------------------------------------
+
+    /**
+     * Emits the start and stop wedges bound to the note at this element index.
+     * Stop wedges (closing an open hairpin) precede start wedges so a hairpin's
+     * stop and the next hairpin's start on the same note keep a natural order.
+     */
+    private static void writeHairpinWedges(PrintWriter pw, IndexSpanMarkers markers) {
+        for (var hairpin : markers.hairpinsEndingHere()) {
+            writeStopWedge(pw, hairpin);
+        }
+
+        for (var hairpin : markers.hairpinsStartingHere()) {
+            writeStartWedge(pw, hairpin);
+        }
+    }
+
+    /**
+     * Emits the start wedge for {@code hairpin}: {@code <wedge type="crescendo|
+     * diminuendo" number="1">}, carrying {@code x1ShiftSs} as {@code relative-x}
+     * and {@code yShiftSs} as {@code relative-y} (ss × 10 = tenths), each only
+     * when non-zero.
+     */
+    private static void writeStartWedge(PrintWriter pw, Hairpin hairpin) {
+        var wedgeType = WedgeTypeMapping.wedgeType(hairpin);
+
+        if (wedgeType == null) {
+            return;
+        }
+
+        var attrs = new ArrayList<String>();
+        attrs.add(MusicXmlTags.ATTR_TYPE);
+        attrs.add(wedgeType);
+        attrs.add(MusicXmlTags.ATTR_NUMBER);
+        attrs.add(MusicXmlTags.NUMBER_1);
+        addShiftAttr(attrs, MusicXmlTags.ATTR_RELATIVE_X, hairpin.getX1ShiftSs());
+        addShiftAttr(attrs, MusicXmlTags.ATTR_RELATIVE_Y, hairpin.getYShiftSs());
+
+        writeWedgeDirection(pw, attrs);
+    }
+
+    /**
+     * Emits the stop wedge for {@code hairpin}: {@code <wedge type="stop"
+     * number="1">}, carrying {@code x2ShiftSs} as {@code relative-x}
+     * (ss × 10 = tenths), only when non-zero.
+     */
+    private static void writeStopWedge(PrintWriter pw, Hairpin hairpin) {
+        var attrs = new ArrayList<String>();
+        attrs.add(MusicXmlTags.ATTR_TYPE);
+        attrs.add(MusicXmlTags.TYPE_STOP);
+        attrs.add(MusicXmlTags.ATTR_NUMBER);
+        attrs.add(MusicXmlTags.NUMBER_1);
+        addShiftAttr(attrs, MusicXmlTags.ATTR_RELATIVE_X, hairpin.getX2ShiftSs());
+
+        writeWedgeDirection(pw, attrs);
+    }
+
+    /**
+     * Wraps a {@code <wedge>} (built from {@code wedgeAttrs}, a flat alternating
+     * key/value list) in its {@code <direction><direction-type>} envelope.
+     */
+    private static void writeWedgeDirection(PrintWriter pw, List<String> wedgeAttrs) {
+        XML.writeBeginTag(pw, MusicXmlTags.DIRECTION);
+        XML.indent();
+
+        XML.writeBeginTag(pw, MusicXmlTags.DIRECTION_TYPE);
+        XML.indent();
+
+        XML.writeEmptyTag(pw, MusicXmlTags.WEDGE, wedgeAttrs.toArray(new String[0]));
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.DIRECTION_TYPE);
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.DIRECTION);
+    }
+
+    /**
+     * Emits an empty {@code <tag type=… number="1">} marker, adding a
+     * {@code relative-y} attribute ({@code verticalShiftSs} → tenths) only when
+     * non-zero. Shared by the tuplet-bracket and wavy-line start/stop emitters,
+     * which differ only in the tag name, the type token, and whether a vertical
+     * shift applies (stop markers always pass zero).
+     */
+    private static void writeNumberedMarker(PrintWriter pw, String tag, String type, double verticalShiftSs) {
+        if (verticalShiftSs != 0) {
+            XML.writeEmptyTag(pw, tag,
+                MusicXmlTags.ATTR_TYPE, type,
+                MusicXmlTags.ATTR_NUMBER, MusicXmlTags.NUMBER_1,
+                MusicXmlTags.ATTR_RELATIVE_Y, formatTenths(ssToTenths(verticalShiftSs))
+            );
+        } else {
+            XML.writeEmptyTag(pw, tag,
+                MusicXmlTags.ATTR_TYPE, type,
+                MusicXmlTags.ATTR_NUMBER, MusicXmlTags.NUMBER_1
+            );
+        }
+    }
+
+    /**
+     * Appends an optional position-shift attribute to {@code attrs} (a flat
+     * alternating key/value list): when {@code shiftSs} is non-zero, adds
+     * {@code attrName} and the ss→tenths-formatted value; otherwise does nothing.
+     */
+    private static void addShiftAttr(List<String> attrs, String attrName, double shiftSs) {
+        if (shiftSs != 0) {
+            attrs.add(attrName);
+            attrs.add(formatTenths(ssToTenths(shiftSs)));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // <time-modification> helper
+    // -------------------------------------------------------------------------
+
+    /**
+     * Emits a {@code <time-modification>} element with {@code <actual-notes>}
+     * set to {@code grade} (the tuplet numerator) and {@code <normal-notes>}
+     * set to the largest power of two strictly less than {@code grade}
+     * (3→2, 5→4, 6→4, 7→4).
+     *
+     * <p>Emitted on every note in a tuplet span (including rests), after
+     * {@code <accidental>} and before {@code <stem>} per the MusicXML schema.
+     * {@code <normal-notes>} is write-forward only — the reader recovers the
+     * grade from {@code <actual-notes>} and ignores {@code <normal-notes>}.
+     */
+    private static void writeTimeModification(PrintWriter pw, int grade) {
+        var normalNotes = largestPowerOfTwoBelowGrade(grade);
+        XML.writeBeginTag(pw, MusicXmlTags.TIME_MOD);
+        XML.indent();
+        XML.writeValue(pw, MusicXmlTags.ACTUAL_NOTES, Integer.toString(grade));
+        XML.writeValue(pw, MusicXmlTags.NORMAL_NOTES, Integer.toString(normalNotes));
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.TIME_MOD);
+    }
+
+    /**
+     * Returns the largest power of two strictly less than {@code grade}.
+     *
+     * <p>Examples: 3→2, 5→4, 6→4, 7→4.
+     * This is the MusicXML convention for {@code <normal-notes>} in a tuplet.
+     */
+    private static int largestPowerOfTwoBelowGrade(int grade) {
+        var result = 1;
+
+        while (result * 2 < grade) {
+            result *= 2;
+        }
+
+        return result;
+    }
+
+    // -------------------------------------------------------------------------
+    // Per-element span precompute
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns {@code true} when both span endpoints fall within the line's
+     * element range — the guard every span loop in {@link #buildSpanIndex}
+     * applies before bucketing a span (a malformed song can leave an anchor or
+     * end index dangling at -1 or past the element count).
+     */
+    private static boolean indicesInRange(int anchorIdx, int endIdx, int count) {
+        return anchorIdx >= 0 && endIdx >= 0 && anchorIdx < count && endIdx < count;
+    }
+
+    /**
+     * Buckets one hairpin's start and end onto its anchor and end builders. A
+     * span whose endpoints fall outside the line is silently skipped.
+     */
+    private static void bucketHairpin(SpanBuilder[] builders, Hairpin hairpin, int count) {
+        var anchorIdx = hairpin.getAnchorElementIndex();
+        var endIdx = hairpin.getEndElementIndex();
+
+        if (!indicesInRange(anchorIdx, endIdx, count)) {
+            return;
+        }
+
+        var anchorBuilder = builders[anchorIdx];
+        var endBuilder = builders[endIdx];
+        anchorBuilder.hairpinsStartingHere = appendLazily(anchorBuilder.hairpinsStartingHere, hairpin);
+        endBuilder.hairpinsEndingHere = appendLazily(endBuilder.hairpinsEndingHere, hairpin);
+    }
+
+    /**
+     * Builds the per-element-index span marker array for {@code line}.
+     *
+     * <p>For each of the six span types, this method calls the line accessor
+     * once and resolves every span's anchor/end element index exactly once
+     * via {@link songscribe.dom.RangeElement#getAnchorElementIndex()} /
+     * {@link songscribe.dom.RangeElement#getEndElementIndex()}.
+     * The element loop can then do O(1) lookups instead of calling
+     * {@code indexOf} (O(n)) per element per span.
+     *
+     * <p>Bucket rules:
+     * <ul>
+     *   <li><b>Beam / Tuplet / Trill</b>: span reference set on anchor through
+     *       end (inclusive); anchor and end flags set only at the endpoints.</li>
+     *   <li><b>Tie</b>: {@code tieStartsHere} set at anchor; {@code tieStopsHere}
+     *       set at end. Both flags may be true on the same note when it is the
+     *       end of one tie and the anchor of the next in a chain.</li>
+     *   <li><b>Crescendo / Diminuendo / Ending</b>: anchor and end indices only;
+     *       Ending additionally records its split index when present.</li>
+     * </ul>
+     */
+    private static IndexSpanMarkers[] buildSpanIndex(Line line) {
+        var count = line.elementCount();
+        var builders = new SpanBuilder[count];
+
+        for (int i = 0; i < count; i++) {
+            builders[i] = new SpanBuilder();
+        }
+
+        // Beams: pre-compute per-note, per-level beam values for every note
+        // in the group [anchor, end].  A single-note beam (anchor == end)
+        // is degenerate and produces no <beam> output.
+        for (var beam : line.findRangeElements(Beam.class)) {
+            var anchorIdx = beam.getAnchorElementIndex();
+            var endIdx = beam.getEndElementIndex();
+
+            if (!indicesInRange(anchorIdx, endIdx, count)) {
+                continue;
+            }
+
+            // Skip degenerate single-note beams — they cannot be beamed.
+            if (anchorIdx == endIdx) {
+                continue;
+            }
+
+            for (int i = anchorIdx; i <= endIdx; i++) {
+                builders[i].beamLevelValues = computeNoteBeamValues(line, i, anchorIdx, endIdx);
+            }
+        }
+
+        // Ties: anchor and end flags are independent so a note that is the end
+        // of one tie and the anchor of the next will have both flags set.
+        for (var tie : line.findTies()) {
+            var anchorIdx = tie.getAnchorElementIndex();
+            var endIdx = tie.getEndElementIndex();
+
+            if (!indicesInRange(anchorIdx, endIdx, count)) {
+                continue;
+            }
+
+            builders[anchorIdx].tieStartsHere = true;
+            builders[endIdx].tieStopsHere = true;
+        }
+
+        // Tuplets: set the span reference on every note in the group [anchor, end].
+        for (var tuplet : line.findRangeElements(Tuplet.class)) {
+            var anchorIdx = tuplet.getAnchorElementIndex();
+            var endIdx = tuplet.getEndElementIndex();
+
+            if (!indicesInRange(anchorIdx, endIdx, count)) {
+                continue;
+            }
+
+            builders[anchorIdx].isTupletAnchor = true;
+            builders[endIdx].isTupletEnd = true;
+
+            for (int i = anchorIdx; i <= endIdx; i++) {
+                builders[i].tuplet = tuplet;
+            }
+        }
+
+        // Trills: set the span reference on every note in the group [anchor, end].
+        for (var trill : line.findRangeElements(Trill.class)) {
+            var anchorIdx = trill.getAnchorElementIndex();
+            var endIdx = trill.getEndElementIndex();
+
+            if (!indicesInRange(anchorIdx, endIdx, count)) {
+                continue;
+            }
+
+            builders[anchorIdx].isTrillAnchor = true;
+            builders[endIdx].isTrillEnd = true;
+
+            for (int i = anchorIdx; i <= endIdx; i++) {
+                builders[i].trill = trill;
+            }
+        }
+
+        // Hairpins (measure-level): anchor and end indices only. Crescendos and
+        // diminuendos share one pair of start/end buckets; the wedge type is
+        // recovered from the Hairpin subtype at emission time.
+        for (var crescendo : line.getCrescendos()) {
+            bucketHairpin(builders, crescendo, count);
+        }
+
+        for (var diminuendo : line.getDiminuendos()) {
+            bucketHairpin(builders, diminuendo, count);
+        }
+
+        // Endings (measure-level): one SongScribe Ending expands to one or two
+        // MusicXML voltas, folded onto the <barline> elements Phase 2 emits.
+        //
+        //   anchor               split (REPEAT_RIGHT /         end
+        //   (REPEAT_LEFT or       REPEAT_LEFT_RIGHT)           (terminal barline)
+        //    SINGLE_BARLINE)
+        //        |                      |                          |
+        //   [1 start]            [1 stop] [2 start]            [2 stop]
+        //        '------ volta 1 -------'  '------- volta 2 -------'
+        //
+        // A split-less ending (no REPEAT between anchor and end) is a single
+        // bracket: [1 start] at the anchor → [1 stop] at the end.
+        //
+        // Markers are bucketed per element index as left-barline vs right-barline
+        // children so the element loop can attach them to the correct <barline>
+        // emission without re-deriving the structure:
+        //   - REPEAT_LEFT anchor  → forward (left) barline   → left bucket
+        //   - SINGLE_BARLINE anchor / terminal end / split stop → right barline
+        //   - split [2 start]     → forward (left) barline    → left bucket
+        // getSplitIndex() returns -1 for split-less single-bracket endings.
+        for (var ending : LineEndingSupport.findEndings(line)) {
+            var anchorIdx = ending.getAnchorElementIndex();
+            var endIdx = ending.getEndElementIndex();
+
+            if (!indicesInRange(anchorIdx, endIdx, count)) {
+                continue;
+            }
+
+            var splitIdx = ending.getSplitIndex(line);
+            var hasSplit = splitIdx >= 0 && splitIdx < count;
+
+            // Anchor: <ending number="1" type="start">. A REPEAT_LEFT anchor is
+            // written as a forward (left) barline; any other anchor (SINGLE_BARLINE)
+            // closes the previous measure as a right barline.
+            var anchorStart = new EndingMarker(MusicXmlTags.NUMBER_1, MusicXmlTags.TYPE_START);
+            var anchorBuilder = builders[anchorIdx];
+
+            if (line.getElement(anchorIdx).getType() == ElementType.REPEAT_LEFT) {
+                anchorBuilder.endingLeftBarlineMarkers = appendLazily(anchorBuilder.endingLeftBarlineMarkers, anchorStart);
+            } else {
+                anchorBuilder.endingRightBarlineMarkers = appendLazily(anchorBuilder.endingRightBarlineMarkers, anchorStart);
+            }
+
+            // End: <ending number type="stop">. number is 2 for a two-bracket
+            // ending (a split exists) and 1 for a split-less single bracket.
+            var endNumber = hasSplit ? MusicXmlTags.NUMBER_2 : MusicXmlTags.NUMBER_1;
+            var endStop = new EndingMarker(endNumber, MusicXmlTags.TYPE_STOP);
+            var endBuilder = builders[endIdx];
+
+            if (line.getElement(endIdx).getType() == ElementType.REPEAT_LEFT) {
+                endBuilder.endingLeftBarlineMarkers = appendLazily(endBuilder.endingLeftBarlineMarkers, endStop);
+            } else {
+                endBuilder.endingRightBarlineMarkers = appendLazily(endBuilder.endingRightBarlineMarkers, endStop);
+            }
+
+            // Split: <ending number="1" type="stop"> closes volta 1 on the right
+            // (backward) barline; <ending number="2" type="start"> opens volta 2
+            // on the left (forward) barline.
+            if (hasSplit) {
+                var splitBuilder = builders[splitIdx];
+                splitBuilder.endingRightBarlineMarkers = appendLazily(splitBuilder.endingRightBarlineMarkers,
+                    new EndingMarker(MusicXmlTags.NUMBER_1, MusicXmlTags.TYPE_STOP));
+                splitBuilder.endingLeftBarlineMarkers = appendLazily(splitBuilder.endingLeftBarlineMarkers,
+                    new EndingMarker(MusicXmlTags.NUMBER_2, MusicXmlTags.TYPE_START));
+            }
+        }
+
+        // Assemble the final immutable per-index records.
+        var result = new IndexSpanMarkers[count];
+
+        for (int i = 0; i < count; i++) {
+            result[i] = builders[i].build();
+        }
+
+        return result;
+    }
+
+    /**
+     * Empty-string sentinel stored in beam-level values for levels where the
+     * note has no {@code <beam>} element. A level entry is empty when the note
+     * is not short enough for that secondary beam level.
+     */
+    private static final String NO_BEAM_AT_LEVEL = "";
+
+    /**
+     * Computes the MusicXML {@code <beam>} text-content values for note
+     * {@code noteIdx} within the beam group [{@code anchorIdx}, {@code endIdx}].
+     *
+     * <p>Returns an array indexed by {@code (number - 1)}: {@code result[0]}
+     * holds the value for {@code <beam number="1">}, {@code result[1]} for
+     * {@code number="2"}, etc. An empty-string entry means no {@code <beam>}
+     * element should be emitted at that number for this note.
+     *
+     * <p>Level 0 (primary, {@code number="1"}): always {@code begin/continue/end}
+     * for every note in the group — never a hook.
+     *
+     * <p>Secondary levels (1 = 16th, 2 = 32nd): for each level L, this method
+     * finds the maximal contiguous run of notes at that level containing
+     * {@code noteIdx}. A run of length ≥ 2 emits {@code begin/continue/end};
+     * a run of length 1 is a partial-beam hook whose direction is determined
+     * by {@link BeamMath#stubRight}.
+     *
+     * <p>Hook direction: {@code stubRight == true} → {@code "forward hook"};
+     * {@code stubRight == false} → {@code "backward hook"}.
+     */
+    private static String[] computeNoteBeamValues(Line line, int noteIdx, int anchorIdx, int endIdx) {
+        // Initialize all levels to the "no beam" sentinel; each slot is overwritten
+        // if the note participates at that level. Sized by BeamMath.LEVEL_COUNT so
+        // the array always matches the level loop below.
+        var values = new String[BeamMath.LEVEL_COUNT];
+        Arrays.fill(values, NO_BEAM_AT_LEVEL);
+
+        // Level 0 (primary beam, number="1"): begin/continue/end — never a hook.
+        if (noteIdx == anchorIdx) {
+            values[0] = MusicXmlTags.BEAM_BEGIN;
+        } else if (noteIdx == endIdx) {
+            values[0] = MusicXmlTags.BEAM_END;
+        } else {
+            values[0] = MusicXmlTags.BEAM_CONTINUE;
+        }
+
+        // Secondary beam levels: level 1 = 16th (number="2"), level 2 = 32nd (number="3").
+        for (var level = 1; level < BeamMath.LEVEL_COUNT; level++) {
+            if (!BeamMath.noteTypeInLevel(line, noteIdx, level)) {
+                // This note does not participate at this level; no <beam> element.
+                continue;
+            }
+
+            // Find the maximal contiguous run at this level that contains noteIdx.
+            var runStart = noteIdx;
+
+            while (runStart > anchorIdx && BeamMath.noteTypeInLevel(line, runStart - 1, level)) {
+                runStart--;
+            }
+
+            var runEnd = noteIdx;
+
+            while (runEnd < endIdx && BeamMath.noteTypeInLevel(line, runEnd + 1, level)) {
+                runEnd++;
+            }
+
+            if (runStart == runEnd) {
+                // Single-note run: emit a partial-beam hook.  Direction is a pure
+                // function of note durations + position in the beam group.
+                values[level] = BeamMath.stubRight(line, noteIdx, anchorIdx, endIdx)
+                    ? MusicXmlTags.BEAM_FORWARD_HOOK
+                    : MusicXmlTags.BEAM_BACKWARD_HOOK;
+            } else if (noteIdx == runStart) {
+                values[level] = MusicXmlTags.BEAM_BEGIN;
+            } else if (noteIdx == runEnd) {
+                values[level] = MusicXmlTags.BEAM_END;
+            } else {
+                values[level] = MusicXmlTags.BEAM_CONTINUE;
+            }
+        }
+
+        return values;
     }
 
     // -------------------------------------------------------------------------
@@ -558,15 +1278,26 @@ public final class MusicXmlWriter {
     }
 
     /**
+     * Converts a staff-space measure to MusicXML tenths — the inverse of the
+     * reader's {@code tenthsToSs}. All position values share this single
+     * conversion so the scattered {@code × TENTHS_PER_STAFF_SPACE} arithmetic
+     * has one source of truth.
+     */
+    private static double ssToTenths(double ss) {
+        return ss * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+    }
+
+    /**
      * Closes the current measure, increments the measure counter, opens a new
      * measure, and writes the forward-repeat left barline into it. Returns the
-     * updated measure number.
+     * updated measure number. {@code forwardLeftEndings} are folded onto the
+     * forward-left {@code <barline>} (an ending anchor or volta-2 start).
      */
-    private static int openForwardRepeatMeasure(PrintWriter pw, int measureNumber) {
+    private static int openForwardRepeatMeasure(PrintWriter pw, int measureNumber, List<EndingMarker> forwardLeftEndings) {
         closeMeasure(pw);
         measureNumber++;
         openMeasure(pw, measureNumber);
-        writeForwardRepeatLeftBarline(pw);
+        writeForwardRepeatLeftBarline(pw, forwardLeftEndings);
         return measureNumber;
     }
 
@@ -630,58 +1361,80 @@ public final class MusicXmlWriter {
     // -------------------------------------------------------------------------
 
     /**
-     * Emits a forward-repeat left barline (heavy-light style, forward direction).
+     * Emits a forward-repeat left barline (heavy-light style, forward direction),
+     * folding {@code endings} onto it.
      */
-    private static void writeForwardRepeatLeftBarline(PrintWriter pw) {
-        writeBarlineFor(pw, ElementType.REPEAT_LEFT);
+    private static void writeForwardRepeatLeftBarline(PrintWriter pw, List<EndingMarker> endings) {
+        writeBarlineFor(pw, ElementType.REPEAT_LEFT, endings);
     }
 
     /**
-     * Emits a backward-repeat right barline (light-heavy style, backward direction).
+     * Emits a backward-repeat right barline (light-heavy style, backward direction),
+     * folding {@code endings} onto it.
      */
-    private static void writeBackwardRepeatRightBarline(PrintWriter pw) {
-        writeBarlineFor(pw, ElementType.REPEAT_RIGHT);
+    private static void writeBackwardRepeatRightBarline(PrintWriter pw, List<EndingMarker> endings) {
+        writeBarlineFor(pw, ElementType.REPEAT_RIGHT, endings);
     }
 
     /**
      * Looks up the {@link BarlineStyleMapping.BarlineEntry} for the given
-     * {@link ElementType} and delegates to {@link #writeBarline(PrintWriter, BarlineStyleMapping.BarlineEntry)}.
+     * {@link ElementType} and delegates to {@link #writeBarline(PrintWriter, BarlineStyleMapping.BarlineEntry, List)}.
      * The type must have a forward-map entry; types without one (e.g.
      * {@code REPEAT_LEFT_RIGHT}) are handled by their own callers before this
      * method is reached.
      */
-    private static void writeBarlineFor(PrintWriter pw, ElementType type) {
+    private static void writeBarlineFor(PrintWriter pw, ElementType type, List<EndingMarker> endings) {
         var entry = BarlineStyleMapping.forElementType(type);
 
         if (entry == null) {
             return;
         }
 
-        writeBarline(pw, entry);
+        writeBarline(pw, entry, endings);
     }
 
     /**
      * Emits a {@code <barline>} using the location stored in the
-     * {@link BarlineStyleMapping.BarlineEntry}.
+     * {@link BarlineStyleMapping.BarlineEntry}, folding {@code endings} onto it.
      */
-    private static void writeBarline(PrintWriter pw, BarlineStyleMapping.BarlineEntry entry) {
-        writeBarline(pw, entry.location(), entry.barStyle(), entry.repeatDirection());
+    private static void writeBarline(PrintWriter pw, BarlineStyleMapping.BarlineEntry entry, List<EndingMarker> endings) {
+        writeBarline(pw, entry.location(), entry.barStyle(), entry.repeatDirection(), endings);
     }
 
     /** Emits {@code <barline location="right"><bar-style>none</bar-style></barline>}. */
     private static void writeInvisibleRightBarline(PrintWriter pw) {
-        writeBarline(pw, BarlineStyleMapping.LOCATION_RIGHT, BarlineStyleMapping.BAR_STYLE_NONE, null);
+        writeBarline(pw, BarlineStyleMapping.LOCATION_RIGHT, BarlineStyleMapping.BAR_STYLE_NONE, null, List.of());
     }
 
     /**
-     * Emits a full {@code <barline>} element with {@code <bar-style>} and,
+     * Emits {@code <barline location="left"><bar-style>none</bar-style>…</barline>}
+     * carrying {@code endings}. Used to host a volta-2 {@code <ending number="2"
+     * type="start">} at the start of the measure following a REPEAT_RIGHT split,
+     * where no real left barline element exists.
+     */
+    private static void writeInvisibleLeftBarline(PrintWriter pw, List<EndingMarker> endings) {
+        writeBarline(pw, BarlineStyleMapping.LOCATION_LEFT, BarlineStyleMapping.BAR_STYLE_NONE, null, endings);
+    }
+
+    /**
+     * Emits a full {@code <barline>} element with {@code <bar-style>}, any
+     * {@code <ending>} children (which precede {@code <repeat>} per schema), and,
      * when non-null, a {@code <repeat direction="..."/>} child.
      */
-    private static void writeBarline(PrintWriter pw, String location, String barStyle, @Nullable String repeatDirection) {
+    private static void writeBarline(PrintWriter pw, String location, String barStyle,
+            @Nullable String repeatDirection, List<EndingMarker> endings) {
         XML.writeBeginTag(pw, MusicXmlTags.BARLINE, MusicXmlTags.ATTR_LOCATION, location);
         XML.indent();
 
         XML.writeValue(pw, MusicXmlTags.BAR_STYLE, barStyle);
+
+        // <ending> precedes <repeat> inside <barline> per the MusicXML schema.
+        for (var ending : endings) {
+            XML.writeEmptyTag(pw, MusicXmlTags.ENDING,
+                MusicXmlTags.ATTR_NUMBER, ending.number(),
+                MusicXmlTags.ATTR_TYPE, ending.type()
+            );
+        }
 
         if (repeatDirection != null) {
             XML.writeEmptyTag(pw, MusicXmlTags.REPEAT, MusicXmlTags.ATTR_DIRECTION, repeatDirection);
