@@ -20,17 +20,21 @@
 
 package songscribe.ui.renderer;
 
-import module java.desktop;
-
-import org.jspecify.annotations.Nullable;
-
+import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * Computes the horizontal column extent of a note in staff spaces (note-local origin),
- * plus the flag's bounding box for conditional glissando endpoint adjustment.
+ * Computes horizontal extents of a note in staff spaces (note-local origin) for slide
+ * rendering. Two extents are exposed:
+ *
+ * <ul>
+ *   <li>{@link #extentSs} — the full column extent including the stem, used to anchor a
+ *       trailing fall glyph off the note's right edge.
+ *   <li>{@link #glissandoAttachExtentSs} — the stem-free extent (notehead, augmentation
+ *       dots, accidental), used as the attachment points of a connecting glissando.
+ * </ul>
  *
  * <p>Column extent diagram (note-local space, X=0 at notehead glyph origin):
  * <pre>
@@ -46,63 +50,97 @@ import songscribe.smufl.SMuFLMetadata;
  *     |           |stem |<-- notehead -->|
  *     |←  left   →|    ←left            →right
  * </pre>
- * Left extent is driven by: accidental (if present), stem left edge (stem-down),
- * notehead left edge, or ledger-line overhang.
- * Right extent is driven by: stem right edge (stem-up), notehead right edge,
- * augmentation dots, or ledger-line overhang.
+ * Full-extent left is driven by: accidental (if present), stem left edge (stem-down),
+ * or notehead left edge.
+ * Full-extent right is driven by: stem right edge (stem-up), notehead right edge,
+ * or augmentation dots.
+ * The stem-free glissando-attach extent drops the stem contribution entirely, so its
+ * left/right are driven only by the accidental, notehead, and augmentation dots.
+ * Ledger lines are excluded — they are reference lines, not ink the glissando must avoid.
  *
- * <p>The flag is deliberately excluded from the static extent because both glissando
- * endpoints are pinned at notehead-centre Y, so the flag (which lives near the stem
- * tip, far above/below) usually has no ink in the line's path. The result is
- * intentionally uncached — the computation is a handful of O(1) bbox lookups, far
- * cheaper than maintaining a cache (the cache it replaces was needed only because
- * the old Area build was expensive; refs #465).
+ * <p>The flag is deliberately excluded from both extents because both glissando endpoints
+ * are pinned at notehead-centre Y, so the flag (which lives near the stem tip, far
+ * above/below) has no ink in the line's path. The results are intentionally uncached —
+ * each computation is a handful of O(1) bbox lookups, far cheaper than maintaining a
+ * cache (the cache it replaces was needed only because the old Area build was expensive;
+ * refs #465).
  */
 final class NoteColumnGeometry {
 
     /**
-     * Horizontal column extent plus optional flag bbox for a single note.
+     * Horizontal extent of a single note in note-local staff spaces.
      *
-     * @param leftSs        left edge in staff spaces (note-local, ≤ 0)
-     * @param rightSs       right edge in staff spaces (note-local, ≥ 0)
-     * @param flagBBoxLocal flag glyph bbox in note-local space, or {@code null} when the
-     *                      note is beamed, has no flag, or has no stem
+     * @param leftSs  left edge in staff spaces (note-local, ≤ 0)
+     * @param rightSs right edge in staff spaces (note-local, ≥ 0)
      */
-    record ColumnExtent(double leftSs, double rightSs, @Nullable Rectangle2D flagBBoxLocal) {}
+    record ColumnExtent(double leftSs, double rightSs) {}
 
     private NoteColumnGeometry() {}
 
     /**
-     * Computes the column extent for {@code note} in note-local staff-space coordinates.
+     * Computes the stem-free extent used for connecting-glissando attachment points, in
+     * note-local staff-space coordinates. The stem and flag are excluded; the extent is
+     * driven only by the notehead, augmentation dots (right), and accidental (left).
      *
-     * @param note   the note whose column extent to compute
-     * @param beamed whether the note belongs to a beam group (suppresses flag computation)
-     * @return the column extent with an optional flag bbox
+     * @param note   the note whose attach extent to compute
+     * @param beamed whether the note belongs to a beam group (affects dot placement)
+     * @return the stem-free column extent
      */
-    static ColumnExtent extentSs(StaffElement note, boolean beamed) {
+    static ColumnExtent glissandoAttachExtentSs(StaffElement note, boolean beamed) {
         var noteType = note.getType();
-
-        // Grace notes always stem up, mirroring buildNoteArea.
-        var upper = note.isUpper();
-
-        if (noteType.isGraceNote()) {
-            upper = true;
-        }
+        var upper = resolvesUpper(note, noteType);
 
         // ---- notehead ----
         var glyph = noteType.requireSMuFLGlyph();
         var noteheadBBox = SMuFLMetadata.requireBBox(glyph);
         var offsetX = NoteGeometry.getNoteheadXOffsetSs(noteType, upper);
         var leftSs = offsetX + noteheadBBox.left();
-        var rightSs = NoteGeometry.getNoteheadRightEdgeSs(note);
 
         // ---- augmentation dots (extend right) ----
-        rightSs = NoteGeometry.dotsRightExtentSs(note, beamed, upper, rightSs);
+        var rightSs = NoteGeometry.dotsRightExtentSs(
+            note, beamed, upper, NoteGeometry.getNoteheadRightEdgeSs(note));
 
-        // ---- stem and flag ----
-        @Nullable Rectangle2D flagBBoxLocal = null;
+        // ---- accidental (extend left only) ----
+        if (note.getAccidental() != null) {
+            var accidentalStartXSs = NoteGeometry.getAccidentalStartXSs(note);
+
+            if (accidentalStartXSs < leftSs) {
+                leftSs = accidentalStartXSs;
+            }
+        }
+
+        return new ColumnExtent(leftSs, rightSs);
+    }
+
+    /**
+     * Computes the full column extent for {@code note} in note-local staff-space
+     * coordinates, including the stem. Used to anchor a trailing fall glyph.
+     *
+     * @param note   the note whose column extent to compute
+     * @param beamed whether the note belongs to a beam group (affects dot placement)
+     * @return the full column extent
+     */
+    static ColumnExtent extentSs(StaffElement note, boolean beamed) {
+        return extentSs(note, glissandoAttachExtentSs(note, beamed));
+    }
+
+    /**
+     * Widens an already-computed stem-free extent into the full column extent by folding in the
+     * stem. Lets callers that already hold the stem-free attach extent (see
+     * {@link #glissandoAttachExtentSs}) reuse it instead of recomputing the notehead/dots/accidental
+     * geometry.
+     *
+     * @param note     the note whose full extent to compute
+     * @param stemFree the stem-free extent for the same note, from {@link #glissandoAttachExtentSs}
+     * @return the full column extent
+     */
+    static ColumnExtent extentSs(StaffElement note, ColumnExtent stemFree) {
+        var noteType = note.getType();
+        var leftSs = stemFree.leftSs();
+        var rightSs = stemFree.rightSs();
 
         if (noteType.isNoteWithStem()) {
+            var upper = resolvesUpper(note, noteType);
             var stemGeom = NoteGeometry.computeBaseStemGeometry(noteType, upper);
             var stemLeftXSs = stemGeom.stemLeftXSs();
 
@@ -119,28 +157,20 @@ final class NoteColumnGeometry {
                     leftSs = stemLeftXSs;
                 }
             }
-
-            flagBBoxLocal = NoteGeometry.flagBBoxLocalSs(noteType, upper, beamed);
         }
 
-        // ---- accidental (extend left only) ----
-        if (note.getAccidental() != null) {
-            var accidentalStartXSs = NoteGeometry.getAccidentalStartXSs(note);
+        return new ColumnExtent(leftSs, rightSs);
+    }
 
-            if (accidentalStartXSs < leftSs) {
-                leftSs = accidentalStartXSs;
-            }
+    /**
+     * Resolves the effective stem direction for extent computation. Grace notes always stem up,
+     * mirroring buildNoteArea; every other note uses its own stem direction.
+     */
+    private static boolean resolvesUpper(StaffElement note, ElementType noteType) {
+        if (noteType.isGraceNote()) {
+            return true;
         }
 
-        // ---- ledger lines (extend both sides) ----
-        // Use the base extent (no accidental shortening) — the accidental's own left
-        // extent is already folded in above.
-        if (NoteGeometry.noteNeedsLedgerLines(note)) {
-            var extent = NoteGeometry.getLedgerLineBaseExtentSs(note);
-            leftSs = Math.min(leftSs, extent.leftSs());
-            rightSs = Math.max(rightSs, extent.rightSs());
-        }
-
-        return new ColumnExtent(leftSs, rightSs, flagBBoxLocal);
+        return note.isUpper();
     }
 }

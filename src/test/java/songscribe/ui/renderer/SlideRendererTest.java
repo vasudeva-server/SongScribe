@@ -90,35 +90,24 @@ class SlideRendererTest extends UnitTest {
 
         // Source note: elementXSs = 0 (LayoutResult returns 0 when not in the map)
         var sourceExtent = NoteColumnGeometry.extentSs(source, false);
+        var sourceGlissExtent = NoteColumnGeometry.glissandoAttachExtentSs(source, false);
         var src = new SlideRenderer.NoteContext(
             source,
             0.0,
-            sourceExtent.leftSs(),
-            sourceExtent.rightSs(),
-            null
+            sourceExtent.rightSs(),         // columnRightXSs: stem-full fall anchor
+            sourceGlissExtent.leftSs(),     // glissLeftXSs
+            sourceGlissExtent.rightSs()     // glissRightXSs
         );
 
-        // Target note: elementXSs = targetXSs; translate the local flag bbox to layout space if present.
+        // Target note: elementXSs = targetXSs
         var targetExtent = NoteColumnGeometry.extentSs(target, false);
-        var targetCySs = 0.0;
-        Rectangle2D targetFlagBBoxLayout = null;
-
-        if (targetExtent.flagBBoxLocal() != null) {
-            var localFlag = targetExtent.flagBBoxLocal();
-            targetFlagBBoxLayout = new Rectangle2D.Double(
-                localFlag.getX() + targetXSs,
-                localFlag.getY() + targetCySs,
-                localFlag.getWidth(),
-                localFlag.getHeight()
-            );
-        }
-
+        var targetGlissExtent = NoteColumnGeometry.glissandoAttachExtentSs(target, false);
         var tgt = new SlideRenderer.NoteContext(
             target,
-            targetCySs,
-            targetXSs + targetExtent.leftSs(),
-            targetXSs + targetExtent.rightSs(),
-            targetFlagBBoxLayout
+            0.0,
+            targetXSs + targetExtent.rightSs(),       // columnRightXSs
+            targetXSs + targetGlissExtent.leftSs(),   // glissLeftXSs
+            targetXSs + targetGlissExtent.rightSs()   // glissRightXSs
         );
 
         return SlideRenderer.computeEndpoints(src, tgt);
@@ -389,14 +378,49 @@ class SlideRendererTest extends UnitTest {
     }
 
     // ======================================================================
+    // resolveNoteContext — direct field-wiring tests
+    // ======================================================================
+
+    @Test
+    void testResolveNoteContext_mapsEachExtentToItsFieldAndStaffPositionToY() {
+        // Pins resolveNoteContext's wiring: the fall anchor comes from the stem-full extent, the
+        // glissando attach edges from the stem-free extent (note their left is negative and right
+        // positive, so a glissLeft/glissRight swap is caught), and cySs from the staff position.
+        // A down-stem note is used so the stem-free notehead left is strictly negative (an up-stem
+        // crotchet's notehead left sits exactly at the origin).
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(false);
+        note.setStaffPosition(0);
+
+        var line = detachedLine();
+        line.addElement(note);
+
+        var middleLineYSs = 4.0;
+        var ctx = SlideRenderer.resolveNoteContext(
+            note, 0, line, LayoutResult.builder().build(), middleLineYSs);
+
+        // elementXSs = 0 (note absent from the empty LayoutResult), so each field equals the raw extent.
+        var fullExtent = NoteColumnGeometry.extentSs(note, false);
+        var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, false);
+
+        assertThat(ctx.columnRightXSs()).isCloseTo(fullExtent.rightSs(), within(0.001));
+        assertThat(ctx.glissRightXSs()).isCloseTo(attachExtent.rightSs(), within(0.001));
+        assertThat(ctx.glissLeftXSs()).isCloseTo(attachExtent.leftSs(), within(0.001));
+        // The attach edges straddle the origin: a glissLeft/glissRight swap would flip these signs.
+        assertThat(ctx.glissLeftXSs()).isLessThan(0.0);
+        assertThat(ctx.glissRightXSs()).isGreaterThan(0.0);
+        assertThat(ctx.cySs()).isCloseTo(
+            RenderingUtils.noteStaffPositionToCoordinateSs(0, middleLineYSs), within(0.001));
+    }
+
+    // ======================================================================
     // computeEndpoints — direct tests
     // ======================================================================
 
     /**
      * Builds a NoteContext for a crotchet centred at (cxSs, cySs) with a symmetric
-     * half-column extent of HALF_COLUMN_SS on each side, no flag bbox.
-     * startX = cxSs + HALF_COLUMN_SS + NoteGeometry.GLISSANDO_DRAWN_GAP_SS
-     * endX   = cxSs - HALF_COLUMN_SS - NoteGeometry.GLISSANDO_DRAWN_GAP_SS
+     * half-column of HALF_COLUMN_SS: glissRightXSs = cxSs + HALF_COLUMN_SS,
+     * glissLeftXSs = cxSs - HALF_COLUMN_SS, columnRightXSs = cxSs + HALF_COLUMN_SS.
      */
     private static SlideRenderer.NoteContext noteContextAt(double cxSs, double cySs) {
         var note = ElementType.CROTCHET.newInstance();
@@ -404,15 +428,26 @@ class SlideRendererTest extends UnitTest {
         return new SlideRenderer.NoteContext(
             note,
             cySs,
-            cxSs - HALF_COLUMN_SS,
-            cxSs + HALF_COLUMN_SS,
-            null
+            cxSs + HALF_COLUMN_SS,  // columnRightXSs
+            cxSs - HALF_COLUMN_SS,  // glissLeftXSs
+            cxSs + HALF_COLUMN_SS   // glissRightXSs
         );
     }
 
     @Test
-    void testComputeEndpoints_zeroLengthConnected_returnsNull() {
-        // src and tgt at identical column edges → endX < startX → null
+    void testComputeEndpoints_zeroAttachLength_returnsNull() {
+        // Centres exactly 1.0 ss apart: tgt.glissLeft (1.0 - 0.5 = 0.5) coincides with
+        // src.glissRight (0.0 + 0.5 = 0.5), so attachLength = 0 ≤ 2*gap. The early guard
+        // rejects this before the unit-vector division, preventing a divide-by-zero/NaN.
+        var src = noteContextAt(0.0, 0.0);
+        var tgt = noteContextAt(1.0, 0.0);
+        assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
+    }
+
+    @Test
+    void testComputeEndpoints_sameCentreDrawnTooShort_returnsNull() {
+        // Same centre: attachLength = 1.0 (tgt.glissLeft = 4.5, src.glissRight = 5.5),
+        // drawn length = 1.0 - 2*0.4 = 0.2 < MIN_RECT_LENGTH_SS → null
         var src = noteContextAt(5.0, 0.0);
         var tgt = noteContextAt(5.0, 0.0);
         assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
@@ -420,16 +455,23 @@ class SlideRendererTest extends UnitTest {
 
     @Test
     void testComputeEndpoints_shortConnected_returnsNull() {
-        // Notes placed only 0.1 ss apart: endX = 0.1 - 0.5 - 0.25 = -0.65 < startX = 0.5 + 0.25 = 0.75 → null
+        // Notes 0.1 ss apart: attachLength = 0.9, drawn = 0.9 - 2*0.4 = 0.1 < MIN_RECT_LENGTH_SS → null
         var src = noteContextAt(0.0, 0.0);
         var tgt = noteContextAt(0.1, 0.0);
         assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
     }
 
     @Test
+    void testComputeEndpoints_nullTarget_returnsNull() {
+        // No following note to connect to: a connecting glissando cannot be drawn.
+        var src = noteContextAt(0.0, 0.0);
+        assertThat(SlideRenderer.computeEndpoints(src, null)).isNull();
+    }
+
+    @Test
     void testComputeEndpoints_connected_returnsHorizontalEndpoints() {
         // Two notes 10 ss apart on the same staff line → a horizontal CONNECTED glissando.
-        // startX = 0.0 + 0.5 + 0.25 = 0.75, endX = 10.0 - 0.5 - 0.25 = 9.25
+        // startX = 0.0 + 0.5 + 0.4 = 0.9, endX = 10.0 - 0.5 - 0.4 = 9.1
         var srcCx = 0.0;
         var tgtCx = 10.0;
         var src = noteContextAt(srcCx, 0.0);
@@ -450,21 +492,74 @@ class SlideRendererTest extends UnitTest {
     }
 
     // ======================================================================
-    // computeEndpoints — conditional-flag matrix
+    // computeEndpoints — along-line gap
     // ======================================================================
 
-    /**
-     * Builds a NoteContext with explicit column edges and a flag bbox in layout space.
-     */
-    private static SlideRenderer.NoteContext noteContextWithFlag(
-        StaffElement note,
-        double columnLeftXSs, double columnRightXSs, double cySs,
-        Rectangle2D flagBBoxLayout
-    ) {
-        return new SlideRenderer.NoteContext(
-            note, cySs, columnLeftXSs, columnRightXSs, flagBBoxLayout
-        );
+    @Test
+    void testComputeEndpoints_steepGlissandoHasSmallerHorizontalInsetThanShallow() {
+        // Along-line gap: the horizontal component of the inset is gap * cos θ, so it
+        // shrinks as the line steepens. A shallow (horizontal) glissando has full inset = gap;
+        // a 45° glissando has a smaller horizontal inset.
+        var shallowResult = SlideRenderer.computeEndpoints(
+            noteContextAt(0.0, 0.0), noteContextAt(10.0, 0.0));
+        assertThat(shallowResult).isNotNull();
+
+        var steepDy = 10.0;
+        var steepResult = SlideRenderer.computeEndpoints(
+            noteContextAt(0.0, 0.0), noteContextAt(10.0, steepDy));
+        assertThat(steepResult).isNotNull();
+
+        var attachStartX = HALF_COLUMN_SS;  // src.glissRightXSs = 0 + HALF_COLUMN_SS
+        var shallowHorizontalInset = Objects.requireNonNull(shallowResult).startXSs() - attachStartX;
+        var steepHorizontalInset = Objects.requireNonNull(steepResult).startXSs() - attachStartX;
+
+        // Steep glissando has a smaller horizontal inset (gap * cosθ < gap)
+        assertThat(steepHorizontalInset).isLessThan(shallowHorizontalInset);
+        // Shallow (θ = 0): horizontal inset = gap exactly
+        assertThat(shallowHorizontalInset).isCloseTo(NoteGeometry.GLISSANDO_DRAWN_GAP_SS, within(0.001));
+
+        // Both endpoints lie on the attach-to-attach ray for the steep case
+        var attachEndX = 10.0 - HALF_COLUMN_SS;  // tgt.glissLeftXSs
+        var dx = attachEndX - attachStartX;
+        var attachLength = Math.sqrt(dx * dx + steepDy * steepDy);
+        var unitX = dx / attachLength;
+        var unitY = steepDy / attachLength;
+        var gap = NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
+
+        assertThat(steepResult.startXSs()).isCloseTo(attachStartX + unitX * gap, within(0.001));
+        assertThat(steepResult.startYSs()).isCloseTo(unitY * gap, within(0.001));
+        assertThat(steepResult.endXSs()).isCloseTo(attachEndX - unitX * gap, within(0.001));
+        assertThat(steepResult.endYSs()).isCloseTo(steepDy - unitY * gap, within(0.001));
     }
+
+    @Test
+    void testComputeEndpoints_descendingGlissandoTrimsYDownward() {
+        // Descending slide (target below source, dy < 0): the along-line trim must move the start
+        // endpoint downward (negative Y) and the end endpoint upward toward the source, mirroring
+        // the ascending case. Catches a sign error in the Y component of the trim or in atan2.
+        var descendingDy = -10.0;
+        var result = SlideRenderer.computeEndpoints(
+            noteContextAt(0.0, 0.0), noteContextAt(10.0, descendingDy));
+        assertThat(result).isNotNull();
+
+        var attachStartX = HALF_COLUMN_SS;        // src.glissRightXSs
+        var attachEndX = 10.0 - HALF_COLUMN_SS;   // tgt.glissLeftXSs
+        var dx = attachEndX - attachStartX;
+        var attachLength = Math.hypot(dx, descendingDy);
+        var unitX = dx / attachLength;
+        var unitY = descendingDy / attachLength;
+        var gap = NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
+
+        var endpoints = Objects.requireNonNull(result);
+        assertThat(endpoints.startYSs()).isCloseTo(unitY * gap, within(0.001));
+        assertThat(endpoints.startYSs()).isLessThan(0.0);
+        assertThat(endpoints.endYSs()).isCloseTo(descendingDy - unitY * gap, within(0.001));
+        assertThat(endpoints.angle()).isCloseTo(Math.atan2(descendingDy, dx), within(0.001));
+    }
+
+    // ======================================================================
+    // NoteContext.shiftedX
+    // ======================================================================
 
     /**
      * Creates an up-stem crotchet (leading note).
@@ -475,125 +570,21 @@ class SlideRendererTest extends UnitTest {
         return note;
     }
 
-    /**
-     * Creates a down-stem crotchet (trailing note).
-     */
-    private static StaffElement downStemNote() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(false);
-        return note;
-    }
-
     @Test
-    void testComputeEndpoints_leadingUpStemFlagIntersectsLine_startXPushedToFlagRight() {
-        // Leading up-stem note, column X=[0, 1]. Flag bbox spans X=[0.5, 2.0], Y=[-1, 1].
-        // The nominal start (columnRight + gap = 1.25) and the horizontal line at Y=0 run
-        // through the flag, so startX is pushed past the flag's right edge to flagRight + gap.
-        var srcNote = upStemNote();
-        var columnLeft = 0.0;
-        var columnRight = 1.0;
-        var flagRight = 2.0;
-        var flagBBox = new Rectangle2D.Double(0.5, -1.0, flagRight - 0.5, 2.0);
-        var src = noteContextWithFlag(srcNote, columnLeft, columnRight, 0.0, flagBBox);
-
-        // Target note far to the right with no flag, at Y=0 (horizontal line)
-        var tgtNote = upStemNote();
-        var tgt = new SlideRenderer.NoteContext(tgtNote, 0.0, 9.0, 10.0, null);
-
-        var result = SlideRenderer.computeEndpoints(src, tgt);
-        assertThat(result).isNotNull();
-
-        var expectedStartX = flagRight + NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
-        assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
-    }
-
-    @Test
-    void testComputeEndpoints_leadingUpStemFlagClearsLine_startXAtColumnRight() {
-        // Leading up-stem note; flag bbox is entirely above Y=0 so the horizontal line clears it.
-        var srcNote = upStemNote();
-        var columnLeft = 0.0;
-        var columnRight = 1.0;
-        // Flag bbox placed far above the notehead Y line: Y=[-5, -3]
-        var flagBBox = new Rectangle2D.Double(0.0, -5.0, 2.0, 2.0);
-        var src = noteContextWithFlag(srcNote, columnLeft, columnRight, 0.0, flagBBox);
-
-        var tgtNote = upStemNote();
-        var tgt = new SlideRenderer.NoteContext(tgtNote, 0.0, 9.0, 10.0, null);
-
-        var result = SlideRenderer.computeEndpoints(src, tgt);
-        assertThat(result).isNotNull();
-
-        var expectedStartX = columnRight + NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
-        assertThat(Objects.requireNonNull(result).startXSs()).isCloseTo(expectedStartX, within(0.01));
-    }
-
-    @Test
-    void testComputeEndpoints_trailingDownStemFlagIntersectsLine_endXPushedToFlagLeft() {
-        // Trailing down-stem note; flag is on the left side.
-        // Source note at [0, 1]; target at [8, 9] with flag spanning [7.0, 8.5] in X and [-1, 1] in Y.
-        // The nominal endX = 8.0 - 0.25 = 7.75, which lands inside the flag [7.0, 8.5].
-        var srcNote = upStemNote();
-        var src = new SlideRenderer.NoteContext(srcNote, 0.0, 0.0, 1.0, null);
-
-        var tgtNote = downStemNote();
-        var flagLeft = 7.0;
-        var flagBBox = new Rectangle2D.Double(flagLeft, -1.0, 1.5, 2.0);
-        var tgt = noteContextWithFlag(tgtNote, 8.0, 9.0, 0.0, flagBBox);
-
-        var result = SlideRenderer.computeEndpoints(src, tgt);
-        assertThat(result).isNotNull();
-
-        var expectedEndX = flagLeft - NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
-        assertThat(Objects.requireNonNull(result).endXSs()).isCloseTo(expectedEndX, within(0.01));
-    }
-
-    @Test
-    void testComputeEndpoints_trailingDownStemFlagClearsLine_endXAtColumnLeft() {
-        // Trailing down-stem note; flag bbox placed above Y=0 so the horizontal line clears it.
-        var srcNote = upStemNote();
-        var src = new SlideRenderer.NoteContext(srcNote, 0.0, 0.0, 1.0, null);
-
-        var tgtNote = downStemNote();
-        var columnLeft = 8.0;
-        // Flag bbox placed far above the notehead Y line: Y=[-5, -3]
-        var flagBBox = new Rectangle2D.Double(7.0, -5.0, 2.0, 2.0);
-        var tgt = noteContextWithFlag(tgtNote, columnLeft, 9.0, 0.0, flagBBox);
-
-        var result = SlideRenderer.computeEndpoints(src, tgt);
-        assertThat(result).isNotNull();
-
-        var expectedEndX = columnLeft - NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
-        assertThat(Objects.requireNonNull(result).endXSs()).isCloseTo(expectedEndX, within(0.01));
-    }
-
-    // ======================================================================
-    // NoteContext.shiftedX
-    // ======================================================================
-
-    @Test
-    void testShiftedX_shiftsColumnEdgesAndFlagBBoxX_leavesYUnchanged() {
+    void testShiftedX_shiftsAllXFields_leavesYUnchanged() {
         var note = upStemNote();
-        var columnLeft = 1.0;
         var columnRight = 3.0;
-        var flagX = 2.0;
-        var flagY = -4.0;
-        var flagW = 1.5;
-        var flagH = 1.0;
+        var glissLeft = 1.0;
+        var glissRight = 3.0;
         var cy = 2.5;
-        var flagBBox = new Rectangle2D.Double(flagX, flagY, flagW, flagH);
-        var ctx = new SlideRenderer.NoteContext(note, cy, columnLeft, columnRight, flagBBox);
+        var ctx = new SlideRenderer.NoteContext(note, cy, columnRight, glissLeft, glissRight);
 
         var shift = 3.0;
         var shifted = ctx.shiftedX(shift);
 
-        assertThat(shifted.columnLeftXSs()).isCloseTo(columnLeft + shift, within(0.001));
         assertThat(shifted.columnRightXSs()).isCloseTo(columnRight + shift, within(0.001));
+        assertThat(shifted.glissLeftXSs()).isCloseTo(glissLeft + shift, within(0.001));
+        assertThat(shifted.glissRightXSs()).isCloseTo(glissRight + shift, within(0.001));
         assertThat(shifted.cySs()).isCloseTo(cy, within(0.001));
-        assertThat(shifted.flagBBoxLayout()).isNotNull();
-        var shiftedFlag = Objects.requireNonNull(shifted.flagBBoxLayout());
-        assertThat(shiftedFlag.getX()).isCloseTo(flagX + shift, within(0.001));
-        assertThat(shiftedFlag.getY()).isCloseTo(flagY, within(0.001));
-        assertThat(shiftedFlag.getWidth()).isCloseTo(flagW, within(0.001));
-        assertThat(shiftedFlag.getHeight()).isCloseTo(flagH, within(0.001));
     }
 }

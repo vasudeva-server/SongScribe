@@ -42,11 +42,12 @@ import songscribe.util.GraphicsState;
  * {@link StaffElement.Glissando} (a filled rectangle between two notes) and a trailing
  * {@link StaffElement.Fall} (the {@code brassFallLipShort} glyph hanging off the note's right).
  * <p>
- * A connecting glissando's endpoints are placed at the trailing edge of the leading note's column
- * and the leading edge of the trailing note's column, each offset outward by
- * {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS}. Both endpoints sit at their own notehead-centre Y;
- * the drawn line's angle is derived from those two points. When the straight line intersects a
- * flag's bounding box, the relevant endpoint is pushed past the flag's far edge by the same gap.
+ * A connecting glissando attaches at the stem-free extents of the two notes — the leading note's
+ * right edge and the trailing note's left edge (notehead, augmentation dots, and accidental, but
+ * not the stem or flag) — each at its own notehead-centre Y. The drawn line is a sub-segment of
+ * that attach-to-attach ray, trimmed by {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS} along the line
+ * direction at each end, so it stays collinear with the ray and clears the noteheads by a constant
+ * distance regardless of slope.
  * <p>
  * A fall's glyph is drawn {@link NoteGeometry#FALL_GAP_SS} past the host note's column edge, at the
  * note's notehead-centre Y, and its drawn rect is cached on the {@link StaffElement.Fall} for
@@ -361,52 +362,28 @@ public final class SlideRenderer {
     // ==========================================================================
 
     /**
-     * Resolved geometry for a single note: notehead-centre Y, column edges in layout space,
-     * optional flag bounding box in layout space, and note reference.
+     * Resolved geometry for a single note in layout space: notehead-centre Y, the stem-full
+     * column right edge (the fall anchor), and the stem-free glissando attachment extents.
      */
     record NoteContext(
         StaffElement note,
         double cySs,
-        double columnLeftXSs,
         double columnRightXSs,
-        @Nullable Rectangle2D flagBBoxLayout
+        double glissLeftXSs,
+        double glissRightXSs
     ) {
 
-        // Defensively copy the mutable flag bbox so the record owns its geometry and a
-        // caller retaining the original reference cannot mutate it out from under us.
-        NoteContext {
-            if (flagBBoxLayout != null) {
-                flagBBoxLayout = new Rectangle2D.Double(
-                    flagBBoxLayout.getX(),
-                    flagBBoxLayout.getY(),
-                    flagBBoxLayout.getWidth(),
-                    flagBBoxLayout.getHeight()
-                );
-            }
-        }
-
         /**
-         * Returns a copy shifted right by {@code shiftSs} along X: both column edges are
-         * translated and the flag bbox's X is translated (when non-null), leaving Y intact.
+         * Returns a copy shifted right by {@code shiftSs} along X: the fall anchor and both
+         * glissando attach extents are translated, leaving Y intact.
          */
         NoteContext shiftedX(double shiftSs) {
-            Rectangle2D shiftedFlag = null;
-
-            if (flagBBoxLayout != null) {
-                shiftedFlag = new Rectangle2D.Double(
-                    flagBBoxLayout.getX() + shiftSs,
-                    flagBBoxLayout.getY(),
-                    flagBBoxLayout.getWidth(),
-                    flagBBoxLayout.getHeight()
-                );
-            }
-
             return new NoteContext(
                 note,
                 cySs,
-                columnLeftXSs + shiftSs,
                 columnRightXSs + shiftSs,
-                shiftedFlag
+                glissLeftXSs + shiftSs,
+                glissRightXSs + shiftSs
             );
         }
     }
@@ -421,35 +398,26 @@ public final class SlideRenderer {
     ) {}
 
     /**
-     * Resolves the geometry context for a note at the given index: notehead-centre Y,
-     * column edges in layout space, and the optional flag bbox translated into layout space.
+     * Resolves the geometry context for a note at the given index: notehead-centre Y, the
+     * stem-full column right edge (fall anchor), and the stem-free glissando attach extents,
+     * all translated into layout space.
      */
-    private static NoteContext resolveNoteContext(
+    static NoteContext resolveNoteContext(
         StaffElement note, int noteIndex, Line line,
         LayoutResult layoutResult, double middleLineYSs
     ) {
         var beamed = line.findBeamAt(noteIndex) != null;
         var elementXSs = layoutResult.getElementXSs(note);
         var cy = RenderingUtils.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
-        var extent = NoteColumnGeometry.extentSs(note, beamed);
 
-        var columnLeftXSs = elementXSs + extent.leftSs();
-        var columnRightXSs = elementXSs + extent.rightSs();
+        // Compute the stem-free attach extent once and widen it to the stem-full extent for the
+        // fall anchor, rather than recomputing the notehead/dots/accidental geometry twice.
+        var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, beamed);
+        var columnRightXSs = elementXSs + NoteColumnGeometry.extentSs(note, attachExtent).rightSs();
+        var glissLeftXSs = elementXSs + attachExtent.leftSs();
+        var glissRightXSs = elementXSs + attachExtent.rightSs();
 
-        // Translate the flag bbox from note-local space to layout space.
-        Rectangle2D flagBBoxLayout = null;
-        var flagBBoxLocal = extent.flagBBoxLocal();
-
-        if (flagBBoxLocal != null) {
-            flagBBoxLayout = new Rectangle2D.Double(
-                flagBBoxLocal.getX() + elementXSs,
-                flagBBoxLocal.getY() + cy,
-                flagBBoxLocal.getWidth(),
-                flagBBoxLocal.getHeight()
-            );
-        }
-
-        return new NoteContext(note, cy, columnLeftXSs, columnRightXSs, flagBBoxLayout);
+        return new NoteContext(note, cy, columnRightXSs, glissLeftXSs, glissRightXSs);
     }
 
     /**
@@ -472,23 +440,19 @@ public final class SlideRenderer {
 
     /**
      * Computes the slide start/end positions in layout space (staff-space coordinates).
-     * Returns null if the slide is too short to render (endpoints crossed or
-     * length &lt; MIN_RECT_LENGTH_SS).
+     * Returns null if the slide is too short to render.
      * <p>
      * Both render() and the public endpoint methods delegate to this.
      * <p>
-     * Conditional flag attachment logic (single-pass):
-     * <pre>
-     *   LEADING note (line departs from RIGHT edge):
-     *     up-stem   flag is RIGHT → push startX to flagMaxX + gap  IFF line ∩ flagBBox
-     *     down-stem flag is LEFT  → never near right edge           → ignore
-     *
-     *   TRAILING note (line arrives at LEFT edge):
-     *     down-stem flag is LEFT  → push endX to flagMinX − gap  IFF line ∩ flagBBox
-     *     up-stem   flag is RIGHT → never near left edge          → ignore
-     * </pre>
-     * Once an endpoint is pushed past the flag's far edge the line begins/ends clear of
-     * the flag and cannot re-enter it, so no re-test is needed.
+     * The attachment points are the stem-free column extents — the leading note's right
+     * ({@link NoteContext#glissRightXSs}) and the trailing note's left
+     * ({@link NoteContext#glissLeftXSs}) — each at its own notehead-centre Y. The drawn line
+     * is a sub-segment of the attach-to-attach ray, trimmed by
+     * {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS} <em>along the line direction</em> at each
+     * end. Because the gap is measured along the line, its horizontal component is
+     * {@code gap·cosθ}, so the line clears the noteheads by a constant distance regardless of
+     * slope. The slide is rejected when the attach length leaves no room for both gaps
+     * ({@code len ≤ 2·gap}) or when the drawn length falls below {@link #MIN_RECT_LENGTH_SS}.
      *
      * @param src Source note context
      * @param tgt Target note context, or null when there is no following note to connect to
@@ -502,41 +466,33 @@ public final class SlideRenderer {
             return null;
         }
 
-        // Base endpoints: column-edge ± gap at notehead-centre Y.
-        var startX = src.columnRightXSs() + NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
-        var startY = src.cySs();
-        var endX = tgt.columnLeftXSs() - NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
-        var endY = tgt.cySs();
+        // Attachment points: stem-free extents, each at its own notehead-centre Y.
+        var attachStartX = src.glissRightXSs();
+        var attachStartY = src.cySs();
+        var attachEndX = tgt.glissLeftXSs();
+        var attachEndY = tgt.cySs();
 
-        // Conditional flag push — leading note (up-stem only).
-        // Grace notes always stem up and are treated the same as up-stem notes.
-        var srcNote = src.note();
+        var dx = attachEndX - attachStartX;
+        var dy = attachEndY - attachStartY;
+        var attachLength = Math.hypot(dx, dy);
 
-        if ((srcNote.isUpper() || srcNote.getType().isGraceNote()) && src.flagBBoxLayout() != null) {
-            var flagBBox = src.flagBBoxLayout();
+        // Trim a constant gap off each end along the line direction; both gaps together must
+        // leave drawable length.
+        var gap = NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
 
-            if (flagBBox.intersectsLine(startX, startY, endX, endY)) {
-                startX = flagBBox.getMaxX() + NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
-            }
-        }
-
-        // Conditional flag push — trailing note (down-stem only).
-        if (!tgt.note().isUpper() && tgt.flagBBoxLayout() != null) {
-            var flagBBox = tgt.flagBBoxLayout();
-
-            if (flagBBox.intersectsLine(startX, startY, endX, endY)) {
-                endX = flagBBox.getMinX() - NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
-            }
-        }
-
-        // Reject crossed endpoints with the cheap comparison before computing the length.
-        if (endX <= startX) {
+        if (attachLength <= 2 * gap) {
             return null;
         }
 
-        var dx = endX - startX;
-        var dy = endY - startY;
-        var length = Math.sqrt(dx * dx + dy * dy);
+        var unitX = dx / attachLength;
+        var unitY = dy / attachLength;
+
+        var startX = attachStartX + unitX * gap;
+        var startY = attachStartY + unitY * gap;
+        var endX = attachEndX - unitX * gap;
+        var endY = attachEndY - unitY * gap;
+
+        var length = attachLength - 2 * gap;
 
         if (length < MIN_RECT_LENGTH_SS) {
             return null;
@@ -550,9 +506,9 @@ public final class SlideRenderer {
     /**
      * Renders a filled rectangle between two note columns.
      * <p>
-     * For connecting glissandos, the shape spans from the source column's right edge
-     * to the target column's left edge, each offset by {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS},
-     * with conditional flag-bbox avoidance on either end.
+     * For connecting glissandos, the shape spans the stem-free attach extents of the two notes
+     * (source right, target left), trimmed by {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS} along the
+     * line direction at each end. See {@link #computeEndpoints} for the endpoint geometry.
      *
      * @param g2           Graphics context (staff-space coordinate system)
      * @param src          Source note context

@@ -50,7 +50,7 @@ public final class NoteGeometry {
      * Gap between the note column edge and the drawn slide line, in staff spaces. The connecting
      * glissando uses it on both endpoints to keep the drawn line clear of the note's ink.
      */
-    public static final double GLISSANDO_DRAWN_GAP_SS = 0.33;
+    public static final double GLISSANDO_DRAWN_GAP_SS = 0.4;
 
     /**
      * Gap between the host note's column edge and a fall's glyph, in staff spaces. Mirrors the

@@ -23,8 +23,6 @@ package songscribe.ui.renderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-import java.util.Objects;
-
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +30,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.layout.NoteGeometry;
+import songscribe.smufl.SMuFLMetadata;
 
 class NoteColumnGeometryTest extends UnitTest {
 
@@ -68,24 +67,21 @@ class NoteColumnGeometryTest extends UnitTest {
     // ======================================================================
 
     @Test
-    void testSemibreve_noStem_hasNullFlagBBoxAndNoteheadDrivenRight() {
-        // A semibreve has no stem and no flag: the right edge is the bare notehead right edge
-        // and there is no flag bbox.
+    void testSemibreve_noStem_noteheadDrivenRight() {
+        // A semibreve has no stem and no flag: the right edge is the bare notehead right edge.
         var note = ElementType.SEMIBREVE.newInstance();
         note.setUpper(true);
 
         var extent = NoteColumnGeometry.extentSs(note, false);
 
-        assertThat(extent.flagBBoxLocal()).isNull();
         assertThat(extent.rightSs())
             .isCloseTo(NoteGeometry.getNoteheadRightEdgeSs(note), within(TOLERANCE_SS));
         assertThat(extent.leftSs()).isLessThan(extent.rightSs());
     }
 
     @Test
-    void testMinim_hasStemButNoFlag_nullFlagBBoxWithStemDrivenRight() {
-        // A minim (half note) has a stem but no flag: flagBBoxLocal stays null, yet the stem
-        // still drives the right edge as for any up-stem note.
+    void testMinim_hasStemButNoFlag_stemDrivenRight() {
+        // A minim (half note) has a stem but no flag; the stem drives the right edge.
         var note = ElementType.MINIM.newInstance();
         note.setUpper(true);
 
@@ -93,7 +89,6 @@ class NoteColumnGeometryTest extends UnitTest {
         var stemGeom = NoteGeometry.computeBaseStemGeometry(ElementType.MINIM, true);
         var expectedRight = stemGeom.stemLeftXSs() + NoteGeometry.STEM_WIDTH_SS;
 
-        assertThat(extent.flagBBoxLocal()).isNull();
         assertThat(extent.rightSs()).isCloseTo(expectedRight, within(TOLERANCE_SS));
     }
 
@@ -152,13 +147,13 @@ class NoteColumnGeometryTest extends UnitTest {
     }
 
     @Test
-    void testLedgerNote_widerThanOnStaff_onRelevantSide() {
-        // A note on the staff (staffPosition = 0): no ledger lines, narrower.
+    void testLedgerNote_extentIgnoresLedgerLines() {
+        // Ledger lines are excluded from the column extent; a ledger note and an on-staff note
+        // of the same type and stem direction must produce identical extents.
         var onStaff = ElementType.CROTCHET.newInstance();
         onStaff.setUpper(true);
         onStaff.setStaffPosition(0);
 
-        // A note with ledger lines below the staff.
         var ledger = ElementType.CROTCHET.newInstance();
         ledger.setUpper(true);
         ledger.setStaffPosition(TWO_LEDGERS_BELOW_SP);
@@ -166,78 +161,48 @@ class NoteColumnGeometryTest extends UnitTest {
         var onStaffExtent = NoteColumnGeometry.extentSs(onStaff, false);
         var ledgerExtent = NoteColumnGeometry.extentSs(ledger, false);
 
-        // Ledger lines extend both left and right of the notehead, making the column wider.
-        assertThat(ledgerExtent.leftSs()).isLessThan(onStaffExtent.leftSs());
-        assertThat(ledgerExtent.rightSs()).isGreaterThan(onStaffExtent.rightSs());
+        assertThat(ledgerExtent.leftSs()).isCloseTo(onStaffExtent.leftSs(), within(TOLERANCE_SS));
+        assertThat(ledgerExtent.rightSs()).isCloseTo(onStaffExtent.rightSs(), within(TOLERANCE_SS));
     }
 
     @Test
-    void testLedgerNote_extentMatchesProportionalBaseExtent() {
-        // The column extent for a ledger note must exactly reflect getLedgerLineBaseExtentSs, not
-        // the old fixed 0.25 ss overhang. Verified for both stem-up and stem-down configurations.
+    void testLedgerNote_extentMatchesNoteheadStemExtentForBothStemDirections() {
+        // With ledger lines excluded, the extent matches the plain notehead/stem geometry for
+        // both stem-up and stem-down, and does not equal getLedgerLineBaseExtentSs.
         var stemUpNote = ElementType.CROTCHET.newInstance();
         stemUpNote.setUpper(true);
         stemUpNote.setStaffPosition(TWO_LEDGERS_BELOW_SP);
 
-        var stemUpExtent = NoteColumnGeometry.extentSs(stemUpNote, false);
-        var stemUpLedger = NoteGeometry.getLedgerLineBaseExtentSs(stemUpNote);
+        var stemUpOnStaff = ElementType.CROTCHET.newInstance();
+        stemUpOnStaff.setUpper(true);
+        stemUpOnStaff.setStaffPosition(0);
 
-        assertThat(stemUpExtent.leftSs()).isCloseTo(stemUpLedger.leftSs(), within(TOLERANCE_SS));
-        assertThat(stemUpExtent.rightSs()).isCloseTo(stemUpLedger.rightSs(), within(TOLERANCE_SS));
+        var stemUpExtent = NoteColumnGeometry.extentSs(stemUpNote, false);
+        var stemUpOnStaffExtent = NoteColumnGeometry.extentSs(stemUpOnStaff, false);
+
+        assertThat(stemUpExtent.leftSs()).isCloseTo(stemUpOnStaffExtent.leftSs(), within(TOLERANCE_SS));
+        assertThat(stemUpExtent.rightSs()).isCloseTo(stemUpOnStaffExtent.rightSs(), within(TOLERANCE_SS));
+
+        // The column extent must NOT equal the ledger base extent: ledger lines overhang the
+        // notehead on the left, so the base left is strictly more negative than the column left.
+        var stemUpLedgerBase = NoteGeometry.getLedgerLineBaseExtentSs(stemUpNote);
+        assertThat(stemUpExtent.leftSs())
+            .as("ledger-excluded extent must not include the ledger overhang")
+            .isGreaterThan(stemUpLedgerBase.leftSs());
 
         var stemDownNote = ElementType.CROTCHET.newInstance();
         stemDownNote.setUpper(false);
         stemDownNote.setStaffPosition(TWO_LEDGERS_BELOW_SP);
 
+        var stemDownOnStaff = ElementType.CROTCHET.newInstance();
+        stemDownOnStaff.setUpper(false);
+        stemDownOnStaff.setStaffPosition(0);
+
         var stemDownExtent = NoteColumnGeometry.extentSs(stemDownNote, false);
-        var stemDownLedger = NoteGeometry.getLedgerLineBaseExtentSs(stemDownNote);
+        var stemDownOnStaffExtent = NoteColumnGeometry.extentSs(stemDownOnStaff, false);
 
-        assertThat(stemDownExtent.leftSs()).isCloseTo(stemDownLedger.leftSs(), within(TOLERANCE_SS));
-        assertThat(stemDownExtent.rightSs()).isCloseTo(stemDownLedger.rightSs(), within(TOLERANCE_SS));
-    }
-
-    @Test
-    void testGraceNote_flagBBoxNarrowerThanFullNote() {
-        // The grace flag bbox is scaled by GRACE_NOTE_SCALE; a full quaver's flag is at full size.
-        var full = ElementType.QUAVER.newInstance();
-        full.setUpper(true);
-
-        var grace = ElementType.GRACE_QUAVER.newInstance();
-        // Grace notes always stem up (enforced inside extentSs)
-
-        var fullExtent = NoteColumnGeometry.extentSs(full, false);
-        var graceExtent = NoteColumnGeometry.extentSs(grace, false);
-
-        // Both unbeamed notes have flags, but the grace flag is scaled smaller.
-        assertThat(graceExtent.flagBBoxLocal()).isNotNull();
-        assertThat(fullExtent.flagBBoxLocal()).isNotNull();
-        var graceFlagWidth = Objects.requireNonNull(graceExtent.flagBBoxLocal()).getWidth();
-        var fullFlagWidth = Objects.requireNonNull(fullExtent.flagBBoxLocal()).getWidth();
-        assertThat(graceFlagWidth).isLessThan(fullFlagWidth);
-    }
-
-    // ======================================================================
-    // Flag-split invariant
-    // ======================================================================
-
-    @Test
-    void testUnbeamedQuaver_hasNonNullFlagBBox() {
-        var note = ElementType.QUAVER.newInstance();
-        note.setUpper(true);
-
-        var extent = NoteColumnGeometry.extentSs(note, false);
-
-        assertThat(extent.flagBBoxLocal()).isNotNull();
-    }
-
-    @Test
-    void testBeamedQuaver_hasNullFlagBBox() {
-        var note = ElementType.QUAVER.newInstance();
-        note.setUpper(true);
-
-        var extent = NoteColumnGeometry.extentSs(note, true);
-
-        assertThat(extent.flagBBoxLocal()).isNull();
+        assertThat(stemDownExtent.leftSs()).isCloseTo(stemDownOnStaffExtent.leftSs(), within(TOLERANCE_SS));
+        assertThat(stemDownExtent.rightSs()).isCloseTo(stemDownOnStaffExtent.rightSs(), within(TOLERANCE_SS));
     }
 
     @Test
@@ -251,5 +216,78 @@ class NoteColumnGeometryTest extends UnitTest {
         var beamedExtent = NoteColumnGeometry.extentSs(note, true);
 
         assertThat(unbeamedExtent.rightSs()).isCloseTo(beamedExtent.rightSs(), within(TOLERANCE_SS));
+    }
+
+    // ======================================================================
+    // glissandoAttachExtentSs — stem-free attach extents
+    // ======================================================================
+
+    @Test
+    void testGlissandoAttachExtent_upStemCrotchet_rightSsEqualsNoteheadRight() {
+        // The stem-free attach extent's right edge is the notehead right (augmentation dots
+        // aside, not the stem). The stem is excluded regardless of whether it adds visual width.
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+
+        var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, false);
+
+        assertThat(attachExtent.rightSs())
+            .isCloseTo(NoteGeometry.getNoteheadRightEdgeSs(note), within(TOLERANCE_SS));
+    }
+
+    @Test
+    void testGlissandoAttachExtent_downStemCrotchet_leftSsExcludesStemAndIsNoteheadDriven() {
+        // Stem-down crotchet: the stem extends leftward, pushing the full extent's left further
+        // negative. The stem-free attach extent stops at the notehead left, so it must be (a) less
+        // negative than the stem-full left and (b) exactly the notehead left edge (notehead X
+        // offset + glyph left bbox). A partial (wrong) stem retraction would satisfy (a) but
+        // fail (b).
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(false);
+
+        var fullExtent = NoteColumnGeometry.extentSs(note, false);
+        var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, false);
+
+        var glyph = ElementType.CROTCHET.requireSMuFLGlyph();
+        var noteheadLeftSs =
+            NoteGeometry.getNoteheadXOffsetSs(ElementType.CROTCHET, false)
+                + SMuFLMetadata.requireBBox(glyph).left();
+
+        // (a) Stem-free left is less negative (closer to zero) than stem-full left.
+        assertThat(attachExtent.leftSs()).isGreaterThan(fullExtent.leftSs());
+        // (b) Stem-free left is exactly the notehead left edge.
+        assertThat(attachExtent.leftSs()).isCloseTo(noteheadLeftSs, within(TOLERANCE_SS));
+    }
+
+    @Test
+    void testGlissandoAttachExtent_dottedNote_rightSsGreaterThanPlain() {
+        // Augmentation dots extend the right attach edge, just as they extend the full extent.
+        var plain = ElementType.CROTCHET.newInstance();
+        plain.setUpper(true);
+
+        var dotted = ElementType.CROTCHET.newInstance();
+        dotted.setUpper(true);
+        dotted.setDotCount(1);
+
+        var plainAttach = NoteColumnGeometry.glissandoAttachExtentSs(plain, false);
+        var dottedAttach = NoteColumnGeometry.glissandoAttachExtentSs(dotted, false);
+
+        assertThat(dottedAttach.rightSs()).isGreaterThan(plainAttach.rightSs());
+    }
+
+    @Test
+    void testGlissandoAttachExtent_accidentalNote_leftSsLessThanPlain() {
+        // An accidental extends the left attach edge leftward (more negative).
+        var plain = ElementType.CROTCHET.newInstance();
+        plain.setUpper(true);
+
+        var withAccidental = ElementType.CROTCHET.newInstance();
+        withAccidental.setUpper(true);
+        withAccidental.setAccidental(StaffElement.Accidental.SHARP);
+
+        var plainAttach = NoteColumnGeometry.glissandoAttachExtentSs(plain, false);
+        var accidentalAttach = NoteColumnGeometry.glissandoAttachExtentSs(withAccidental, false);
+
+        assertThat(accidentalAttach.leftSs()).isLessThan(plainAttach.leftSs());
     }
 }

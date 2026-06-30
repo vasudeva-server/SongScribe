@@ -322,27 +322,13 @@ public class HorizontalSpacingCalculator {
 
     /**
      * Ensures minimum horizontal spacing for a glissando between two columns.
-     * Computes ledger-line-inclusive extents on-the-fly via the shared helper
-     * on {@link songscribe.ui.renderer.SlideRenderer}. Returns the input spacing unchanged if no glissando
-     * or if there is already enough room.
+     * Returns the input spacing unchanged if no glissando or if there is already enough room.
      * <p>
-     * Geometry:
-     * <pre>
-     *   prev note origin          curr note origin
-     *       |                         |
-     *       |-- rightExtent -->|      |
-     *       |            overhang-->| |<--overhang
-     *       |                   |<->| |
-     *       |                   gap   |
-     *       |<------- spacingSs ----->|
-     * </pre>
-     * {@code glissRightExtent = max(rightExtent, noteheadWidth + overhang)}
-     * <br>
-     * {@code glissLeftExtent = min(leftExtent, -overhang)}
-     * <br>
-     * {@code gap = spacingSs + glissLeftExtent(curr) - glissRightExtent(prev)}
-     * <br>
-     * The glissando must fit within "gap".
+     * Computes: {@code gap = spacingSs + currLeft - prevRight}, where {@code currLeft} is
+     * adjusted by {@link #ACCIDENTAL_RENDER_LEFT_DELTA_SS} when the current note has an accidental
+     * (the renderer places the accidental slightly further left than the layout extent).
+     * If {@code gap < }{@link NoteGeometry#MIN_GLISSANDO_RESERVATION_SS}, spacing is widened
+     * to close the difference. Ledger lines are excluded from both extents.
      */
     private static double ensureGlissandoSpacing(
         ElementColumn prev, ElementColumn curr, double spacingSs
@@ -351,15 +337,7 @@ public class HorizontalSpacingCalculator {
             return spacingSs;
         }
 
-        // Compute ledger-line-inclusive extents on-the-fly
-        var prevElement = prev.getElement();
         var prevGlissRight = prev.getRightExtentSs();
-
-        if (NoteGeometry.noteNeedsLedgerLines(prevElement)) {
-            var ledgerRightSs = NoteGeometry.getLedgerLineBaseExtentSs(prevElement).rightSs();
-            prevGlissRight = Math.max(prevGlissRight, ledgerRightSs);
-        }
-
         var currElement = curr.getElement();
         var currGlissLeft = curr.getLeftExtentSs();
 
@@ -369,11 +347,6 @@ public class HorizontalSpacingCalculator {
         // its minimum visible length (refs #443).
         if (currElement.getAccidental() != null) {
             currGlissLeft -= ACCIDENTAL_RENDER_LEFT_DELTA_SS;
-        }
-
-        if (NoteGeometry.noteNeedsLedgerLines(currElement)) {
-            var ledgerLeftSs = NoteGeometry.getLedgerLineBaseExtentSs(currElement).leftSs();
-            currGlissLeft = Math.min(currGlissLeft, ledgerLeftSs);
         }
 
         var gap = spacingSs + currGlissLeft - prevGlissRight;
