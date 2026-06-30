@@ -227,6 +227,18 @@ public final class MusicEditOperations {
         });
     }
 
+    public boolean canAddDynamicsToSelection() {
+        var state = coordinator.getActiveSelection();
+
+        if (state == null || !state.hasElementSelection()) {
+            return false;
+        }
+
+        var hairpins = getDynamicsFromSelection(state);
+
+        return hairpins.crescendos().isEmpty() && hairpins.diminuendos().isEmpty();
+    }
+
     public boolean canRemoveDynamicsFromSelection() {
         var state = coordinator.getActiveSelection();
 

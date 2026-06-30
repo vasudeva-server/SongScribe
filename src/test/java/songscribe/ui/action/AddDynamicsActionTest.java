@@ -36,6 +36,7 @@ import org.mockito.MockedStatic;
 import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.AddDynamicsCommand;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
 
 class AddDynamicsActionTest extends MainFrameMockTest {
 
@@ -112,7 +113,7 @@ class AddDynamicsActionTest extends MainFrameMockTest {
             var action = AddDynamicsAction.createCrescendoAction(mainFrame());
             action.updateEnabledState();
 
-            assertThat(action.isEnabled()).isFalse();
+            assertThat(action.isEnabled()).as("no selection must disable the action").isFalse();
         }
 
         @Test
@@ -123,7 +124,7 @@ class AddDynamicsActionTest extends MainFrameMockTest {
             var action = AddDynamicsAction.createCrescendoAction(mainFrame());
             action.updateEnabledState();
 
-            assertThat(action.isEnabled()).isFalse();
+            assertThat(action.isEnabled()).as("a single selected note must disable the action").isFalse();
         }
 
         @Test
@@ -138,7 +139,7 @@ class AddDynamicsActionTest extends MainFrameMockTest {
             var action = AddDynamicsAction.createCrescendoAction(mainFrame());
             action.updateEnabledState();
 
-            assertThat(action.isEnabled()).isTrue();
+            assertThat(action.isEnabled()).as("multiple selected notes must enable the action").isTrue();
         }
 
         @Test
@@ -152,7 +153,85 @@ class AddDynamicsActionTest extends MainFrameMockTest {
             var action = AddDynamicsAction.createCrescendoAction(mainFrame());
             action.updateEnabledState();
 
-            assertThat(action.isEnabled()).isFalse();
+            assertThat(action.isEnabled()).as("a selection containing rests must disable the action").isFalse();
+        }
+    }
+
+    // Row 11: musicSelectionDidChange forwards canAddDynamicsToSelection() to the enabled
+    // state, gated by updateEnabledState() and a non-null ScoreViewController
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MusicSelectionDidChange {
+
+        // REQUIRES_MULTIPLE_SELECTION: selectionSize must be > 1 so updateEnabledState() passes
+        // and delegates the final enabled state to canAddDynamicsToSelection().
+        private static final int MULTIPLE_SELECTION_SIZE = 2;
+
+        // 1 note is not "multiple", so updateEnabledState() fails REQUIRES_MULTIPLE_SELECTION.
+        private static final int SINGLE_SELECTION_SIZE = 1;
+
+        @BeforeEach
+        void setUpMultipleSelection() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(MULTIPLE_SELECTION_SIZE);
+            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
+            when(mockEnv().coordinator().selectionHasDurations()).thenReturn(true);
+        }
+
+        @Test
+        void testDisabledWhenCanAddDynamicsToSelectionReturnsFalse() {
+            // canAddDynamicsToSelection() = false is forwarded directly to setEnabled().
+            when(mockEnv().ctrl().canAddDynamicsToSelection()).thenReturn(false);
+            var action = AddDynamicsAction.createCrescendoAction(mainFrame());
+
+            action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled())
+                .as("a false result from canAddDynamicsToSelection() must disable the action")
+                .isFalse();
+        }
+
+        @Test
+        void testEnabledWhenCanAddDynamicsToSelectionReturnsTrue() {
+            // canAddDynamicsToSelection() = true is forwarded directly to setEnabled().
+            when(mockEnv().ctrl().canAddDynamicsToSelection()).thenReturn(true);
+            var action = AddDynamicsAction.createDiminuendoAction(mainFrame());
+
+            action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled())
+                .as("a true result from canAddDynamicsToSelection() must enable the action")
+                .isTrue();
+        }
+
+        @Test
+        void testStaysDisabledWhenUpdateEnabledStateReturnsFalse() {
+            // Single-note selection fails REQUIRES_MULTIPLE_SELECTION, so updateEnabledState()
+            // returns false and canAddDynamicsToSelection() must never override that to true.
+            when(mockEnv().score().getSelectionSize()).thenReturn(SINGLE_SELECTION_SIZE);
+            when(mockEnv().ctrl().canAddDynamicsToSelection()).thenReturn(true);
+            var action = AddDynamicsAction.createCrescendoAction(mainFrame());
+
+            action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled())
+                .as("a false updateEnabledState() result must not be overridden by canAddDynamicsToSelection()")
+                .isFalse();
+        }
+
+        @Test
+        void testEnabledStateUnchangedWhenScoreViewControllerIsNull() {
+            // A null controller short-circuits the handler entirely, leaving the action's
+            // enabled state at whatever it was before the notification (false, from construction).
+            when(mockEnv().score().getController()).thenReturn(null);
+            when(mockEnv().ctrl().canAddDynamicsToSelection()).thenReturn(true);
+            var action = AddDynamicsAction.createCrescendoAction(mainFrame());
+
+            action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled())
+                .as("a null ScoreViewController must leave the action's enabled state untouched")
+                .isFalse();
         }
     }
 }

@@ -22,9 +22,12 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import net.engio.mbassy.listener.Handler;
+
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.AddDynamicsCommand;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 
 public final class AddDynamicsAction extends UIAction {
@@ -60,6 +63,18 @@ public final class AddDynamicsAction extends UIAction {
 
     public boolean isCrescendo() {
         return isCrescendo;
+    }
+
+    @Override
+    @Handler
+    public void musicSelectionDidChange(
+        MusicSelectionDidChangeNotification message
+    ) {
+        var ctrl = message.getScoreViewController();
+
+        if (ctrl != null && updateEnabledState()) {
+            setEnabled(ctrl.canAddDynamicsToSelection());
+        }
     }
 
     @Override

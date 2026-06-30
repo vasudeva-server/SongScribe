@@ -251,6 +251,10 @@ public final class ScoreViewController {
         return operations.canToggleTuplet();
     }
 
+    public boolean canAddDynamicsToSelection() {
+        return operations.canAddDynamicsToSelection();
+    }
+
     public boolean canRemoveDynamicsFromSelection() {
         return operations.canRemoveDynamicsFromSelection();
     }

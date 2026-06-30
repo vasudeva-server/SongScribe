@@ -53,28 +53,36 @@ class LineIsInHairpinRangeTest extends UnitTest {
     void testIndexInsideCrescendoRangeReturnsTrue() {
         var line = lineWithNotes(6);
         addCrescendo(line, 2, 5);
-        assertThat(line.isInHairpinRange(3)).isTrue();
+        assertThat(line.isInHairpinRange(3))
+            .as("index inside a crescendo range must be reported as in-range")
+            .isTrue();
     }
 
     @Test
     void testIndexInsideDiminuendoRangeReturnsTrue() {
         var line = lineWithNotes(6);
         addDiminuendo(line, 2, 5);
-        assertThat(line.isInHairpinRange(3)).isTrue();
+        assertThat(line.isInHairpinRange(3))
+            .as("index inside a diminuendo range must be reported as in-range")
+            .isTrue();
     }
 
     @Test
     void testIndexAtRangeBoundaryStartReturnsTrue() {
         var line = lineWithNotes(6);
         addCrescendo(line, 2, 5);
-        assertThat(line.isInHairpinRange(2)).isTrue();
+        assertThat(line.isInHairpinRange(2))
+            .as("index at the range start boundary must be reported as in-range")
+            .isTrue();
     }
 
     @Test
     void testIndexAtRangeBoundaryEndReturnsTrue() {
         var line = lineWithNotes(6);
         addCrescendo(line, 2, 5);
-        assertThat(line.isInHairpinRange(5)).isTrue();
+        assertThat(line.isInHairpinRange(5))
+            .as("index at the range end boundary must be reported as in-range")
+            .isTrue();
     }
 
     @Test
@@ -82,12 +90,16 @@ class LineIsInHairpinRangeTest extends UnitTest {
         var line = lineWithNotes(11);
         addCrescendo(line, 2, 5);
         addDiminuendo(line, 8, 10);
-        assertThat(line.isInHairpinRange(6)).isFalse();
+        assertThat(line.isInHairpinRange(6))
+            .as("index between two hairpin ranges must not be reported as in-range")
+            .isFalse();
     }
 
     @Test
     void testNoHairpinsOnLineReturnsFalse() {
         var line = detachedLine();
-        assertThat(line.isInHairpinRange(0)).isFalse();
+        assertThat(line.isInHairpinRange(0))
+            .as("a line with no hairpins must never report an index as in-range")
+            .isFalse();
     }
 }

@@ -364,6 +364,59 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     @Test
+    void testCanAddDynamicsReturnsFalseWhenNoActiveLine() {
+        var env = setupEnv(crotchet(), crotchet());
+        env.coordinator().clearSelection();
+        assertThat(env.operations().canAddDynamicsToSelection())
+            .as("canAddDynamicsToSelection() with no active line must return false")
+            .isFalse();
+    }
+
+    @Test
+    void testCanAddDynamicsReturnsFalseWhenNoElementSelection() {
+        var env = setupEnv(crotchet(), crotchet());
+        // No selectRange call — coordinator has a registered line but no element selection.
+        assertThat(env.operations().canAddDynamicsToSelection())
+            .as("canAddDynamicsToSelection() with no element selection must return false")
+            .isFalse();
+    }
+
+    @Test
+    void testCanAddDynamicsReturnsTrueWithNoExistingHairpins() {
+        var env = setupEnv(crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        assertThat(env.operations().canAddDynamicsToSelection())
+            .as("canAddDynamicsToSelection() with no overlapping hairpins must return true")
+            .isTrue();
+    }
+
+    @Test
+    void testCanAddDynamicsReturnsFalseWhenSelectionOverlapsExistingCrescendo() {
+        // Existing crescendo spans [0..1], new selection [1..2] overlaps at note 1.
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        var line = env.line();
+        song.withoutMutationTracking(
+            () -> line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(1))));
+        ReflectionTestHelper.selectRange(env.coordinator(), 1, 2);
+        assertThat(env.operations().canAddDynamicsToSelection())
+            .as("canAddDynamicsToSelection() must return false when selection overlaps an existing crescendo")
+            .isFalse();
+    }
+
+    @Test
+    void testCanAddDynamicsReturnsFalseWhenSelectionOverlapsExistingDiminuendo() {
+        // Existing diminuendo spans [1..2], new selection [0..1] overlaps at note 1.
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        var line = env.line();
+        song.withoutMutationTracking(
+            () -> line.addRangeElement(new Diminuendo(line.getElement(1), line.getElement(2))));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        assertThat(env.operations().canAddDynamicsToSelection())
+            .as("canAddDynamicsToSelection() must return false when selection overlaps an existing diminuendo")
+            .isFalse();
+    }
+
+    @Test
     void testRemoveDynamicsEmitsRemovalPerSpan() {
         // One crescendo at [0..1] and one diminuendo at [2..3], selection covers all four notes.
         var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
