@@ -646,11 +646,6 @@ public final class MusicEditOperations {
         var state = coordinator.getActiveSelection();
 
         if (state == null) {
-            OptionDialogs.showInfoMessage(
-                null,
-                Strings.ALERT_TITLE_STEM_DIRECTION,
-                Strings.ERROR_STEM_NO_SELECTION
-            );
             return;
         }
 

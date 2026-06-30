@@ -22,7 +22,6 @@ package songscribe.ui.menu;
 
 import module java.desktop;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,33 +40,26 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.error.RuntimeError;
 import songscribe.Strings;
-import songscribe.Version;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.RecentDocumentsDidChangeNotification;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ClearRecentsAction;
 import songscribe.ui.action.CloseWindowAction;
-import songscribe.ui.action.DialogOpenAction;
 import songscribe.ui.action.ExportABCAction;
 import songscribe.ui.action.ExportImageAction;
 import songscribe.ui.action.ExportMidiAction;
 import songscribe.ui.action.ExportPDFAction;
 import songscribe.ui.action.ExportSVGAction;
 import songscribe.ui.action.InsertLineAction;
-import songscribe.ui.action.LaunchAction;
 import songscribe.ui.action.NewAction;
 import songscribe.ui.action.OpenAction;
 import songscribe.ui.action.OpenRecentAction;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.action.SaveAsAction;
-import songscribe.ui.action.TipAction;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.dialog.KeyMapDialog;
 import songscribe.ui.platform.mac.MacNativeMenuController;
-import songscribe.ui.dialog.ReportBugDialog;
-import songscribe.ui.dialog.TutorialDialog;
-import songscribe.ui.dialog.WhatsNewDialog;
+
 public class MenuController {
 
     private static final Logger LOG = LoggerFactory.getLogger(MenuController.class);
@@ -102,9 +94,6 @@ public class MenuController {
         menuBar.add(new NotationMenu(mainFrame));
         menuBar.add(initSongMenu());
         //        menuBar.add(initModeMenu());
-        //        menuBar.add(launchMenu);
-        //        menuBar.add(initHelpMenu());
-        //        var launchMenu = initLaunchMenu();
 
         if (SystemInfo.isMacOS) {
             // Desktop.getDesktop().setDefaultMenuBar(menuBar) is broken in macOS.
@@ -322,46 +311,6 @@ public class MenuController {
         menu.addSeparator();
 
         menu.add(Actions.SONG_SETTINGS_ACTION);
-        return menu;
-    }
-
-    private JMenu initHelpMenu() {
-        // TODO: Help needs updating for the new app
-        var menu = new JMenu(Strings.get(Strings.MENU_HELP));
-        menu.add(
-            new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_TUTORIAL), TutorialDialog::new)
-        );
-        menu.add(new TipAction(mainFrame));
-        menu.add(new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_KEYMAP), KeyMapDialog::new));
-
-        menu.addSeparator();
-
-        addCommonHelpItems(menu);
-        return menu;
-    }
-
-    protected void addCommonHelpItems(JMenu menu) {
-        menu.add(new DialogOpenAction<>(mainFrame, Strings.get(Strings.ACTION_HELP_REPORT_BUG), ReportBugDialog::new));
-
-        if (new File(WhatsNewDialog.WHATS_NEW_FILE).exists()) {
-            menu.add(
-                new DialogOpenAction<>(
-                    mainFrame,
-                    Strings.get(Strings.ACTION_HELP_WHATS_NEW, Version.PUBLIC_VERSION),
-                    WhatsNewDialog::new
-                )
-            );
-        }
-
-        if (!SystemInfo.isMacOS) {
-            menu.add(Actions.ABOUT_ACTION);
-        }
-    }
-
-    private static JMenu initLaunchMenu() {
-        var menu = new JMenu(Strings.get(Strings.MENU_LAUNCH));
-        menu.add(new LaunchAction(LaunchAction.App.SONGBOOK));
-        menu.add(new LaunchAction(LaunchAction.App.SONGSHOW));
         return menu;
     }
 

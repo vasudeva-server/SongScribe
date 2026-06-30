@@ -21,14 +21,15 @@ package songscribe.ui.playback;
 
 import module java.desktop;
 
-import songscribe.error.RuntimeError;
+import org.jspecify.annotations.Nullable;
 
-public class PlayThread extends Thread {
+public class PlayThread implements Runnable {
 
     private static final int NOTE_DURATION_MS = 700;
 
     private final int pitch;
     private final boolean playNoteOn;
+    private @Nullable Thread thread;
 
     public PlayThread(int pitch) {
         this(pitch, true);
@@ -42,6 +43,21 @@ public class PlayThread extends Thread {
     public PlayThread(int pitch, boolean playNoteOn) {
         this.pitch = pitch;
         this.playNoteOn = playNoteOn;
+    }
+
+    public void start() {
+        thread = new Thread(this);
+        thread.start();
+    }
+
+    public void join(long millis) throws InterruptedException {
+        if (thread != null) {
+            thread.join(millis);
+        }
+    }
+
+    public boolean isAlive() {
+        return thread != null && thread.isAlive();
     }
 
     @Override
@@ -59,15 +75,12 @@ public class PlayThread extends Thread {
         sendNoteOff(pitch);
     }
 
-    /**
-     * Sends bank-select and program-change messages to configure the instrument.
-     * No-op if {@code midiReceiver} is null.
-     */
+    /** Sends bank-select and program-change messages to configure the instrument. */
     private static void setupInstrument() throws InvalidMidiDataException {
         var receiver = MidiController.midiReceiver;
 
         if (receiver == null) {
-            throw RuntimeError.exit("setupInstrument() called with null midiReceiver");
+            return;
         }
 
         var bankMsb = new ShortMessage();

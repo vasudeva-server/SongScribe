@@ -511,6 +511,8 @@ public final class PlaybackController {
             score.getSong(), noteSelection
         );
 
+        // Sequence doesn't override equals(), so != checks whether the sequencer already
+        // has this exact object loaded — content equality is not meaningful here.
         //noinspection ObjectEquality
         if (
             (sequencer.getTickPosition() >= sequencer.getTickLength()) ||
