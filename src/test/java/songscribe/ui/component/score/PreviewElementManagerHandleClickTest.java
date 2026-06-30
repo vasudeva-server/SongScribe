@@ -115,6 +115,64 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
     }
 
     // -----------------------------------------------------------------------
+    // Fall-placeholder path — line-full guard
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class FallPlaceholderPath {
+
+        /**
+         * With room on the line, a FALL zone applies a fall to the source note at
+         * {@code currentXIndex - 1} without changing the element count.
+         */
+        @Test
+        void testFallAppliedWhenLineHasRoom() {
+            song.setLineWidthSs(WIDE_LINE_SS);
+            addNotes(2, ElementType.CROTCHET);
+
+            setPreviewElement(ElementType.SLIDE.newInstance());
+            PreviewElementManager.setCurrentXIndex(1);
+            PreviewElementManager.setCurrentSlideZone(SlideZone.FALL);
+
+            var countBefore = line.elementCount();
+            PreviewElementManager.handleClick(lc);
+
+            assertThat(line.getElement(0).hasFall())
+                .as("fall applied to source note when the line has room")
+                .isTrue();
+            assertThat(line.elementCount())
+                .as("applying a fall does not change the element count")
+                .isEqualTo(countBefore);
+        }
+
+        /**
+         * When the fall would not fit, the click shows the line-full error and leaves the source
+         * note unchanged. The alert is verified through a static mock so removing it fails the test.
+         */
+        @Test
+        void testFallBlockedWhenLineFull() {
+            song.setLineWidthSs(0);
+            addNotes(2, ElementType.CROTCHET);
+
+            setPreviewElement(ElementType.SLIDE.newInstance());
+            PreviewElementManager.setCurrentXIndex(1);
+            PreviewElementManager.setCurrentSlideZone(SlideZone.FALL);
+
+            try (MockedStatic<OptionDialogs> optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                PreviewElementManager.handleClick(lc);
+
+                optionDialogsMock.verify(() -> OptionDialogs.showErrorMessage(
+                    isNull(), eq(Strings.ALERT_TITLE_INSERT_ERROR), eq(Strings.ERROR_LINE_FULL_FALL)));
+            }
+
+            assertThat(line.getElement(0).hasFall())
+                .as("fall not applied when the line is full")
+                .isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // forceInsert path (row 30)
     // -----------------------------------------------------------------------
 
@@ -167,6 +225,34 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
             assertThat(line.getElement(1).getType())
                 .as("element at index 1 replaced with preview type")
                 .isEqualTo(ElementType.QUAVER);
+        }
+
+        /**
+         * When an insertion would not fit, the note path shows the line-full error with the note
+         * variant and inserts nothing. The alert is verified through a static mock so removing it
+         * fails the test.
+         */
+        @Test
+        void testNoteInsertBlockedWhenLineFull() {
+            song.setLineWidthSs(0);
+            addNotes(2, ElementType.CROTCHET);
+
+            setPreviewElement(ElementType.CROTCHET.newInstance());
+            PreviewElementManager.setCurrentXIndex(1);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+
+            var countBefore = line.elementCount();
+
+            try (MockedStatic<OptionDialogs> optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                PreviewElementManager.handleClick(lc, true);
+
+                optionDialogsMock.verify(() -> OptionDialogs.showErrorMessage(
+                    isNull(), eq(Strings.ALERT_TITLE_INSERT_ERROR), eq(Strings.ERROR_LINE_FULL_NOTE)));
+            }
+
+            assertThat(line.elementCount())
+                .as("note not inserted when the line is full")
+                .isEqualTo(countBefore);
         }
     }
 

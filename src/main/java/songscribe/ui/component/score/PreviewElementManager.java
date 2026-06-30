@@ -664,6 +664,17 @@ public final class PreviewElementManager {
             }
 
             var noteIndex = currentXIndex - 1;
+
+            if (zone == SlideZone.FALL
+                    && !InsertionSpacingCalculator.hasRoomForFall(line, noteIndex, lc.getLayoutResult())) {
+                OptionDialogs.showErrorMessage(
+                    null,
+                    Strings.ALERT_TITLE_INSERT_ERROR,
+                    Strings.ERROR_LINE_FULL_FALL
+                );
+                return;
+            }
+
             var sourceNote = line.getElement(noteIndex);
 
             line.withModification(() -> line.modifyElement(
@@ -937,7 +948,7 @@ public final class PreviewElementManager {
             OptionDialogs.showErrorMessage(
                 null,
                 Strings.ALERT_TITLE_INSERT_ERROR,
-                Strings.ERROR_LINE_FULL
+                Strings.ERROR_LINE_FULL_NOTE
             );
             return null;
         }

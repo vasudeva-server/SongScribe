@@ -66,8 +66,16 @@ public final class InsertionSpacingCalculator {
          * @return {@code true} if the projected line width does not exceed the margin
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
-            return newLineWidthSs + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
+            return fitsWithinMarginSs(newLineWidthSs, staffRightMarginSs);
         }
+    }
+
+    /**
+     * The single line-fit rule: a projected width fits when it leaves at least the default
+     * column gap before the right margin, so elements don't butt up against the line end.
+     */
+    private static boolean fitsWithinMarginSs(double projectedWidthSs, double staffRightMarginSs) {
+        return projectedWidthSs + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
     }
 
     private InsertionSpacingCalculator() {
@@ -213,16 +221,7 @@ public final class InsertionSpacingCalculator {
         // and the last real element's right edge shifted by the insertion shift.
         // Exclude the auto-maintained FINAL_DOUBLE_BARLINE — its position is fixed.
         insertedColumn.setXSs(insertedElementXSs);
-        var newLineWidthSs = insertedColumn.getRightEdgeXSs();
-
-        var effectiveCount = line.effectiveElementCount();
-
-        if (effectiveCount > 0) {
-            var lastElement = line.getElement(effectiveCount - 1);
-            var lastColumn = createLightweightColumn(lastElement);
-            lastColumn.setXSs(elementXSs(lastElement, layout) + shiftSs);
-            newLineWidthSs = Math.max(newLineWidthSs, lastColumn.getRightEdgeXSs());
-        }
+        var newLineWidthSs = projectedWidthWithLastShiftSs(line, insertedColumn.getRightEdgeXSs(), shiftSs, layout);
 
         return new InsertionResult(insertedElementXSs, shiftSs, newLineWidthSs);
     }
@@ -278,6 +277,76 @@ public final class InsertionSpacingCalculator {
         // Shared singleton is safe: calculateInsertion only reads geometry from the element.
         var hostNote = ElementType.CROTCHET.getInstance();
         return calculateInsertion(line, hostNote, graceNoteIndex + 1, null).fitsWithinLine(staffRightMarginSs);
+    }
+
+    /**
+     * Determines whether a fall will fit on a line when applied to the element at the given index.
+     * <p>
+     * A fall extends the source element's right extent. When that extension is large enough to push
+     * subsequent elements right, this method checks whether the last element on the line would
+     * overflow the right margin.
+     *
+     * @param line        The line to check
+     * @param sourceIndex The index of the element the fall would be applied to
+     * @param layout      Layout result for position lookup; null falls back to {@code xOffset}
+     * @return {@code true} if the fall fits on the line
+     */
+    public static boolean hasRoomForFall(Line line, int sourceIndex, @Nullable LayoutResult layout) {
+        var sourceElement = line.getElement(sourceIndex);
+
+        // Fall already present — no change in right extent, always fits
+        if (sourceElement.hasFall()) {
+            return true;
+        }
+
+        // Measure a clone carrying the fall so the live model element is never mutated,
+        // mirroring the read-only geometry contract of hasRoomForGraceNote.
+        var sourceWithFall = sourceElement.clone();
+        sourceWithFall.setFall();
+        var sourceColumnWithFall = createLightweightColumn(sourceWithFall);
+
+        // The clone is absent from the layout map, so look up its X by the original element.
+        sourceColumnWithFall.setXSs(elementXSs(sourceElement, layout));
+
+        var effectiveCount = line.effectiveElementCount();
+        var projectedWidthSs = sourceColumnWithFall.getRightEdgeXSs();
+
+        // If there are effective elements after the source, the fall's larger right extent
+        // may push them right — check whether the last element would overflow the margin.
+        if (sourceIndex + 1 < effectiveCount) {
+            var nextElement = line.getElement(sourceIndex + 1);
+            var nextColumn = createLightweightColumn(nextElement);
+            var currentNextXSs = elementXSs(nextElement, layout);
+            var requiredNextXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(sourceColumnWithFall, nextColumn);
+            var shiftSs = Math.max(0, requiredNextXSs - currentNextXSs);
+
+            if (shiftSs > 0) {
+                projectedWidthSs = projectedWidthWithLastShiftSs(line, projectedWidthSs, shiftSs, layout);
+            }
+        }
+
+        return fitsWithinMarginSs(projectedWidthSs, line.getSong().getLineWidthSs());
+    }
+
+    /**
+     * Projects the line width after shifting the last effective element right by {@code shiftSs},
+     * taking the larger of {@code baseWidthSs} and that element's shifted right edge. Returns
+     * {@code baseWidthSs} unchanged when the line has no effective elements.
+     */
+    private static double projectedWidthWithLastShiftSs(
+        Line line, double baseWidthSs, double shiftSs, @Nullable LayoutResult layout) {
+
+        var effectiveCount = line.effectiveElementCount();
+
+        if (effectiveCount == 0) {
+            return baseWidthSs;
+        }
+
+        var lastElement = line.getElement(effectiveCount - 1);
+        var lastColumn = createLightweightColumn(lastElement);
+        lastColumn.setXSs(elementXSs(lastElement, layout) + shiftSs);
+
+        return Math.max(baseWidthSs, lastColumn.getRightEdgeXSs());
     }
 
     /**
