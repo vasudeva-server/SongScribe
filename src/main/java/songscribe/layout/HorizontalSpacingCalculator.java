@@ -496,11 +496,11 @@ public class HorizontalSpacingCalculator {
             var curr = beamColumns.get(i);
 
             // Use the per-pair beam-internal gap, ignoring syllables. The comfortable gap is
-            // measured to the note head — the accidental is excluded so it does not inflate
-            // beam-internal spacing — while the minimum, which uses the full left extent, is a
-            // hard geometric floor (refs #418).
+            // measured to the note head — the accidental and fall are excluded so neither
+            // inflates beam-internal spacing — while the minimum, which uses the full left and
+            // right extents, is a hard geometric floor (refs #418, #496).
             var internalGapSs = beamInternalGapSs(prev, curr);
-            var comfortableSpacingSs = prev.getRightExtentSs() + internalGapSs;
+            var comfortableSpacingSs = prev.getRightExtentExcludingAugmentationSs() + internalGapSs;
             var minimumSpacingSs = calculateMinimumColumnSpacingSs(prev, curr);
             var spacingSs = Math.max(comfortableSpacingSs, minimumSpacingSs);
             spacingSs = ensureGlissandoSpacing(prev, curr, spacingSs);

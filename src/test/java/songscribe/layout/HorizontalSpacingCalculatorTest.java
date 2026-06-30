@@ -62,6 +62,14 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     // A deliberately wide accidental left extent, chosen so the geometric minimum spacing
     // exceeds the comfortable gap and therefore governs (shifting the note head).
     private static final double WIDE_ACCIDENTAL_LEFT_EXTENT_SS = -3.0;
+    // A fall extra width small enough that, with the beam-internal default gap (2.5ss), the
+    // comfortable spacing still has margin over the minimum gap (1.0ss) and so must not shift
+    // the next note (refs #496).
+    private static final double FALL_EXTRA_RIGHT_EXTENT_SS = 0.5;
+    // A fall extra width wide enough that the minimum-gap floor exceeds the beam-internal
+    // default gap, so the minimum-gap algorithm — not the fall's full width — governs the
+    // shift (refs #496).
+    private static final double WIDE_FALL_EXTRA_RIGHT_EXTENT_SS = 2.0;
 
     // Row 23 (strengthened): calculatePositions places first column at clef+keyAccidentals+firstNoteOffset
     // (pinned concrete value — not self-referential against calculateFirstElementXSs)
@@ -689,6 +697,85 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         // Semiquaver → quaver: the longer note (quaver) governs → default gap
         var defaultSpacing = BEAM_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
         assertThat(col3.getXSs() - col2.getXSs()).isCloseTo(defaultSpacing, within(TOLERANCE));
+    }
+
+    // #496: a fall on a beamed note must not shift the next beamed note by the fall's full
+    // width. The comfortable beam-internal gap is measured to the note head, excluding the
+    // fall, the same way it already excludes augmentation dots for unbeamed notes — so a fall
+    // that fits within the comfortable gap does not move the next note at all.
+    @Test
+    void testBeamGroupFallWithinDefaultGapDoesNotShiftNextNote() {
+        var calculator = new HorizontalSpacingCalculator();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var noFallColumn = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var noFallNext = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        calculator.calculatePositions(List.of(col0, noFallColumn, noFallNext), detachedLine());
+
+        var fallElement = ElementType.QUAVER.newInstance();
+        fallElement.setFall();
+        // rightExtentSs includes the fall; rightExtentExcludingAugmentationSs does not.
+        var fallColumn = new ElementColumn(
+            fallElement, Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS + FALL_EXTRA_RIGHT_EXTENT_SS, BEAM_RIGHT_EXTENT_SS,
+            0.0, 0.0, null, 0.0, true
+        );
+        var fallNext = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        calculator.calculatePositions(List.of(col0, fallColumn, fallNext), detachedLine());
+
+        assertThat(fallNext.getXSs() - fallColumn.getXSs())
+            .as("a fall that fits within the comfortable gap must not shift the next note")
+            .isCloseTo(noFallNext.getXSs() - noFallColumn.getXSs(), within(TOLERANCE));
+    }
+
+    // #496: when a fall is wide enough to violate the minimum gap, the next beamed note is
+    // shifted only as far as the minimum-gap algorithm requires — not by the fall's full width
+    // added on top of the comfortable gap.
+    @Test
+    void testBeamGroupWideFallShiftsOnlyToMaintainMinimumGap() {
+        var calculator = new HorizontalSpacingCalculator();
+
+        var col0 = new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            0.0, PLAIN_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false
+        );
+        var fallElement = ElementType.QUAVER.newInstance();
+        fallElement.setFall();
+        var fallRightExtentSs = BEAM_RIGHT_EXTENT_SS + WIDE_FALL_EXTRA_RIGHT_EXTENT_SS;
+        var fallColumn = new ElementColumn(
+            fallElement, Collections.emptyList(),
+            0.0, fallRightExtentSs, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+        var nextColumn = new ElementColumn(
+            ElementType.QUAVER.newInstance(), Collections.emptyList(),
+            0.0, BEAM_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, true
+        );
+
+        calculator.calculatePositions(List.of(col0, fallColumn, nextColumn), detachedLine());
+
+        var minimumGapSpacing = fallRightExtentSs + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+        var actualSpacing = nextColumn.getXSs() - fallColumn.getXSs();
+
+        assertThat(actualSpacing)
+            .as("a wide fall must shift the next note only as far as the minimum-gap floor requires")
+            .isCloseTo(minimumGapSpacing, within(TOLERANCE));
+        var fallInflatedComfortableSpacing =
+            fallRightExtentSs + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        assertThat(actualSpacing)
+            .as("must not also add the comfortable beam gap on top of the fall's full width")
+            .isLessThan(fallInflatedComfortableSpacing);
     }
 
     // #418: two adjacent beam groups must not be merged. A quaver group followed by a separate
