@@ -53,16 +53,6 @@ class LineHeightTest extends UnitTest {
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;
     private static final double TOLERANCE = 0.001;
 
-    /**
-     * Minimum line height: the staff itself plus the inter-line margin.
-     * No above- or below-staff extents, no lyrics.
-     */
-    private static final double MIN_LINE_HEIGHT_SS =
-        StaffExtents.STAFF_HEIGHT_SS
-        + StaffExtents.MIN_ABOVE_STAFF_SS
-        + StaffExtents.MIN_BELOW_STAFF_SS
-        + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
-
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
         var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-");
@@ -96,7 +86,7 @@ class LineHeightTest extends UnitTest {
         var result = require(engine().layout(song.getLine(0), true), "LayoutResult");
 
         assertThat(result.getLineHeightSs())
-            .isCloseTo(MIN_LINE_HEIGHT_SS, within(TOLERANCE));
+            .isCloseTo(SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS, within(TOLERANCE));
     }
 
     @Test
@@ -107,7 +97,7 @@ class LineHeightTest extends UnitTest {
         var result = require(engine().layout(song.getLine(1), false), "LayoutResult");
 
         assertThat(result.getLineHeightSs())
-            .isCloseTo(MIN_LINE_HEIGHT_SS, within(TOLERANCE));
+            .isCloseTo(SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS, within(TOLERANCE));
     }
 
     /** Below-staff reservation only: the line-height term minus the inter-line margin. */

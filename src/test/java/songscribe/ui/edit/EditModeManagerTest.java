@@ -20,8 +20,6 @@
 
 package songscribe.ui.edit;
 
-import java.lang.reflect.Field;
-
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +48,7 @@ class EditModeManagerTest extends UnitTest {
 
     // Resets the EditModeManager and GraceModeManager singletons between tests.
     @AfterEach
-    void tearDownSingletons() throws Exception {
+    void tearDownSingletons() {
         resetEditModeManagerInstance(null);
         resetGraceModeManagerInstance(null);
         // Restore action state so tests don't bleed into each other.
@@ -457,17 +455,11 @@ class EditModeManagerTest extends UnitTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private static void resetEditModeManagerInstance(@Nullable EditModeManager value)
-        throws Exception {
-        var field = EditModeManager.class.getDeclaredField("INSTANCE");
-        field.setAccessible(true);
-        field.set(null, value);
+    private static void resetEditModeManagerInstance(@Nullable EditModeManager value) {
+        EditModeManager.setInstance(value);
     }
 
-    private static void resetGraceModeManagerInstance(@Nullable GraceModeManager value)
-        throws Exception {
-        var field = GraceModeManager.class.getDeclaredField("instance");
-        field.setAccessible(true);
-        field.set(null, value);
+    private static void resetGraceModeManagerInstance(@Nullable GraceModeManager value) {
+        GraceModeManager.setInstance(value);
     }
 }

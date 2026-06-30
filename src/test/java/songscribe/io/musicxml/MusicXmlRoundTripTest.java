@@ -478,14 +478,6 @@ class MusicXmlRoundTripTest extends UnitTest {
      */
     private static final int G_MAJOR_SHARP_COUNT = 1;
 
-    /**
-     * Maximum dot count supported by the MusicXML round-trip (double-dotted note).
-     */
-    private static final int MAX_DOT_COUNT = 2;
-
-    // MusicXML coordinate unit: 1 staff space = 10 tenths.
-    private static final int TENTHS_PER_STAFF_SPACE = 10;
-
     /** The lattice origin: B4 lives at staffPosition 0. */
     private static final int B4_STAFF_POSITION = 0;
 
@@ -686,7 +678,7 @@ class MusicXmlRoundTripTest extends UnitTest {
 
     @Test
     void testDotCountsRoundTrip() throws Exception {
-        for (var dotCount = 0; dotCount <= MAX_DOT_COUNT; dotCount++) {
+        for (var dotCount = 0; dotCount <= NoteTypeMapping.MAX_DOT_COUNT; dotCount++) {
             final var finalDotCount = dotCount;
             var song = buildSong(line -> {
                 var note = ElementType.MINIM.newInstance();
@@ -1128,7 +1120,7 @@ class MusicXmlRoundTripTest extends UnitTest {
 
         var defaultX = Double.parseDouble(noteElement.getAttribute("default-x"));
         var relativeX = Double.parseDouble(noteElement.getAttribute("relative-x"));
-        var expectedOffsetTenths = ScaleContext.pxToSs(X_OFFSET_PX) * TENTHS_PER_STAFF_SPACE;
+        var expectedOffsetTenths = ScaleContext.pxToSs(X_OFFSET_PX) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
 
         // relative-x encodes the user-set offset in tenths.
         assertThat(relativeX)
@@ -1174,10 +1166,10 @@ class MusicXmlRoundTripTest extends UnitTest {
 
         var xml = writeToString(song);
 
-        var expectedStartXTenths = SLIDE_START_X_SS * TENTHS_PER_STAFF_SPACE;
-        var expectedStartYTenths = SLIDE_START_Y_SS * TENTHS_PER_STAFF_SPACE;
-        var expectedStopXTenths  = (SLIDE_START_X_SS + SLIDE_LENGTH_SS * SLIDE_COS) * TENTHS_PER_STAFF_SPACE;
-        var expectedStopYTenths  = (SLIDE_START_Y_SS + SLIDE_LENGTH_SS * SLIDE_SIN) * TENTHS_PER_STAFF_SPACE;
+        var expectedStartXTenths = SLIDE_START_X_SS * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+        var expectedStartYTenths = SLIDE_START_Y_SS * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+        var expectedStopXTenths  = (SLIDE_START_X_SS + SLIDE_LENGTH_SS * SLIDE_COS) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+        var expectedStopYTenths  = (SLIDE_START_Y_SS + SLIDE_LENGTH_SS * SLIDE_SIN) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
 
         // Start slide: default-x/y at the beginning of the glissando line.
         var startDefaultX = slideAttribute(xml, "start", "default-x");
@@ -1667,8 +1659,8 @@ class MusicXmlRoundTripTest extends UnitTest {
 
         var xml = writeToString(song);
 
-        var expectedStopXTenths = (SLIDE_START_X_SS + SLIDE_LENGTH_SS * DIAGONAL_SLIDE_COS) * TENTHS_PER_STAFF_SPACE;
-        var expectedStopYTenths = (SLIDE_START_Y_SS + SLIDE_LENGTH_SS * DIAGONAL_SLIDE_SIN) * TENTHS_PER_STAFF_SPACE;
+        var expectedStopXTenths = (SLIDE_START_X_SS + SLIDE_LENGTH_SS * DIAGONAL_SLIDE_COS) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+        var expectedStopYTenths = (SLIDE_START_Y_SS + SLIDE_LENGTH_SS * DIAGONAL_SLIDE_SIN) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
 
         var stopDefaultX = slideAttribute(xml, "stop", "default-x");
         var stopDefaultY = slideAttribute(xml, "stop", "default-y");

@@ -47,12 +47,6 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
     private static final Offset<Double> EPSILON = within(1e-10);
 
-    // Staff geometry constants for expected-value calculations
-    private static final double STAFF_HALF_SS = StaffExtents.STAFF_HALF_SS;             // 2.0
-    private static final double MIN_ABOVE_STAFF_SS = StaffExtents.MIN_ABOVE_STAFF_SS;
-    private static final double MIN_BELOW_STAFF_SS = StaffExtents.MIN_BELOW_STAFF_SS;
-    private static final double INTER_LINE_MARGIN_SS = SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
-
     /** Asserts non-null and narrows the type so NullAway is satisfied on the caller. */
     @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
@@ -161,7 +155,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
             var layout = require(builder.getDecorationLayout(attribution), "attribution layout");
             assertThat(layout.ySs())
                 .describedAs("attribution top Y must be above the staff top")
-                .isLessThan(-STAFF_HALF_SS);
+                .isLessThan(-StaffExtents.STAFF_HALF_SS);
         }
 
         @Test
@@ -199,9 +193,9 @@ class VerticalStackingCalculatorTest extends UnitTest {
             // With no elements and no attribution, the computed lineHeightSs must be at
             // least StaffExtents.STAFF_HEIGHT_SS + MIN_ABOVE_STAFF_SS + MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS.
             var expectedMinHeight = StaffExtents.STAFF_HEIGHT_SS
-                + MIN_ABOVE_STAFF_SS
-                + MIN_BELOW_STAFF_SS
-                + INTER_LINE_MARGIN_SS;
+                + StaffExtents.MIN_ABOVE_STAFF_SS
+                + StaffExtents.MIN_BELOW_STAFF_SS
+                + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
 
             var builder = LayoutResult.builder();
 
@@ -232,7 +226,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
             var result = builder.build();
             assertThat(result.getAboveStaffSs())
-                .isGreaterThanOrEqualTo(MIN_ABOVE_STAFF_SS - EPSILON.value);
+                .isGreaterThanOrEqualTo(StaffExtents.MIN_ABOVE_STAFF_SS - EPSILON.value);
         }
 
         @Test

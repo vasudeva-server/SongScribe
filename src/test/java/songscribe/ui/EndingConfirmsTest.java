@@ -50,7 +50,6 @@ import songscribe.dom.Line;
 import songscribe.layout.EndingLineFixture;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.PasteboardAction;
-import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
@@ -135,13 +134,7 @@ class EndingConfirmsTest extends UnitTest {
     private SelectionCoordinator coordinatorForLine(Line line) {
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
 
-        try {
-            var field = SelectionCoordinator.class.getDeclaredField("managedActions");
-            field.setAccessible(true);
-            field.set(coordinator, new ArrayList<UIAction>());
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException("Failed to inject managed actions", e);
-        }
+        coordinator.setManagedActions(new ArrayList<>());
 
         return coordinator;
     }

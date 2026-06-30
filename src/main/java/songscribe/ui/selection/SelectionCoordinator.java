@@ -604,6 +604,14 @@ public final class SelectionCoordinator {
         return managedActions;
     }
 
+    public void setManagedActions(@Nullable List<UIAction> actions) {
+        this.managedActions = actions;
+    }
+
+    AWTEventListener getGlobalMouseReleasedListener() {
+        return globalMouseReleasedListener;
+    }
+
     /**
      * Applies the given action to all applicable elements in the selection.
      * Wraps the entire pass in a single modification bracket so all emitted

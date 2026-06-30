@@ -70,6 +70,11 @@ public final class EditModeManager {
         return INSTANCE;
     }
 
+    /** Sets the singleton instance; intended for test teardown only. */
+    static void setInstance(@Nullable EditModeManager value) {
+        INSTANCE = value;
+    }
+
     private final ScoreActions scoreActions;
     private final GraceModeManager graceModeManager;
 

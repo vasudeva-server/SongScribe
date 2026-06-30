@@ -51,8 +51,6 @@ class NoteTypeMappingTest extends UnitTest {
     //   2 dots: × TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR
     // -------------------------------------------------------------------------
 
-    private static final int DIVISIONS = NoteTypeMapping.DIVISIONS;
-
     // Multiplier for whole note: a whole note equals QUARTERS_PER_WHOLE quarter notes.
     private static final int QUARTERS_PER_WHOLE = 4;
 
@@ -70,12 +68,12 @@ class NoteTypeMappingTest extends UnitTest {
     // Base (undotted) tick counts
     // -------------------------------------------------------------------------
 
-    private static final int BASE_WHOLE         = QUARTERS_PER_WHOLE * DIVISIONS;        // 1920
-    private static final int BASE_HALF          = 2 * DIVISIONS;                          //  960
-    private static final int BASE_QUARTER       = DIVISIONS;                              //  480
-    private static final int BASE_EIGHTH        = DIVISIONS / 2;                          //  240
-    private static final int BASE_SIXTEENTH     = DIVISIONS / SIXTEENTHS_PER_QUARTER;    //  120
-    private static final int BASE_THIRTY_SECOND = DIVISIONS / THIRTY_SECONDS_PER_QUARTER;//   60
+    private static final int BASE_WHOLE         = QUARTERS_PER_WHOLE * NoteTypeMapping.DIVISIONS;        // 1920
+    private static final int BASE_HALF          = 2 * NoteTypeMapping.DIVISIONS;                          //  960
+    private static final int BASE_QUARTER       = NoteTypeMapping.DIVISIONS;                              //  480
+    private static final int BASE_EIGHTH        = NoteTypeMapping.DIVISIONS / 2;                          //  240
+    private static final int BASE_SIXTEENTH     = NoteTypeMapping.DIVISIONS / SIXTEENTHS_PER_QUARTER;    //  120
+    private static final int BASE_THIRTY_SECOND = NoteTypeMapping.DIVISIONS / THIRTY_SECONDS_PER_QUARTER;//   60
 
     // -------------------------------------------------------------------------
     // Expected dotted tick counts (computed from base values)

@@ -39,7 +39,6 @@ import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.PasteboardAction;
-import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
@@ -86,13 +85,7 @@ class DeleteLyricTest extends MainFrameMockTest {
     private SelectionCoordinator createCoordinator(Line line) {
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
 
-        try {
-            var field = SelectionCoordinator.class.getDeclaredField("managedActions");
-            field.setAccessible(true);
-            field.set(coordinator, new ArrayList<UIAction>());
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException("Failed to inject managed actions", e);
-        }
+        coordinator.setManagedActions(new ArrayList<>());
 
         return coordinator;
     }

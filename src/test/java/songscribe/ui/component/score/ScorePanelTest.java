@@ -41,10 +41,6 @@ import songscribe.UnitTest;
  */
 class ScorePanelTest extends UnitTest {
 
-    // Reuse the production constants so this test cannot silently diverge if they change
-    private static final int VERTICAL_BLOCK_DECREMENT = ScorePanel.VERTICAL_BLOCK_DECREMENT;
-    private static final int HORIZONTAL_BLOCK_DECREMENT = ScorePanel.HORIZONTAL_BLOCK_DECREMENT;
-
     /**
      * Creates a ScorePanel whose content has the given preferred size, placed inside
      * a parent container whose size is set to {@code parentWidth × parentHeight}.
@@ -185,8 +181,8 @@ class ScorePanelTest extends UnitTest {
             );
 
             assertThat(increment)
-                .as("vertical block increment = visibleRect.height - " + VERTICAL_BLOCK_DECREMENT)
-                .isEqualTo(visibleHeight - VERTICAL_BLOCK_DECREMENT);
+                .as("vertical block increment = visibleRect.height - " + ScorePanel.VERTICAL_BLOCK_DECREMENT)
+                .isEqualTo(visibleHeight - ScorePanel.VERTICAL_BLOCK_DECREMENT);
         }
 
         /**
@@ -203,8 +199,8 @@ class ScorePanelTest extends UnitTest {
             );
 
             assertThat(increment)
-                .as("horizontal block increment = visibleRect.width - " + HORIZONTAL_BLOCK_DECREMENT)
-                .isEqualTo(visibleWidth - HORIZONTAL_BLOCK_DECREMENT);
+                .as("horizontal block increment = visibleRect.width - " + ScorePanel.HORIZONTAL_BLOCK_DECREMENT)
+                .isEqualTo(visibleWidth - ScorePanel.HORIZONTAL_BLOCK_DECREMENT);
         }
     }
 }

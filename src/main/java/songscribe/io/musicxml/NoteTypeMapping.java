@@ -169,7 +169,7 @@ public final class NoteTypeMapping {
     );
 
     // Maximum supported dot count (double-dotted).
-    private static final int MAX_DOT_COUNT = 2;
+    static final int MAX_DOT_COUNT = 2;
 
     private NoteTypeMapping() {}
 

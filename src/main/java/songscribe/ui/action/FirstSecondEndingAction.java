@@ -55,6 +55,10 @@ public final class FirstSecondEndingAction extends UIAction {
         return cachedResult;
     }
 
+    public void setCachedResult(@Nullable EndingValidationResult result) {
+        this.cachedResult = result;
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
         MessageCenter.post(new FirstSecondEndingCommand());

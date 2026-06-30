@@ -447,13 +447,9 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
     }
 
     @Nullable
-    private static EndingValidationResult setCachedEndingResult(@Nullable EndingValidationResult value)
-        throws ReflectiveOperationException
-    {
-        var field = FirstSecondEndingAction.class.getDeclaredField("cachedResult");
-        field.setAccessible(true);
-        var previous = (EndingValidationResult) field.get(Actions.MAKE_ENDING_ACTION);
-        field.set(Actions.MAKE_ENDING_ACTION, value);
+    private static EndingValidationResult setCachedEndingResult(@Nullable EndingValidationResult value) {
+        var previous = Actions.MAKE_ENDING_ACTION.getCachedResult();
+        Actions.MAKE_ENDING_ACTION.setCachedResult(value);
         return previous;
     }
 

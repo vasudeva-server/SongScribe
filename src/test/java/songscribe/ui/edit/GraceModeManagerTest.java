@@ -80,7 +80,7 @@ class GraceModeManagerTest extends UnitTest {
     }
 
     @AfterEach
-    void tearDown() throws Exception {
+    void tearDown() {
         // Reset the static singleton so tests don't bleed into each other.
         resetStaticInstance(null);
     }
@@ -93,7 +93,7 @@ class GraceModeManagerTest extends UnitTest {
     class IsActiveAndIsInProgress {
 
         @Test
-        void testIsActiveReturnsFalseWhenNoInstance() throws Exception {
+        void testIsActiveReturnsFalseWhenNoInstance() {
             resetStaticInstance(null);
             assertThat(GraceModeManager.isActive()).isFalse();
         }
@@ -107,19 +107,19 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testIsActiveReturnsTrueWhenStateIsNonInactive() throws Exception {
+        void testIsActiveReturnsTrueWhenStateIsNonInactive() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             assertThat(GraceModeManager.isActive()).isTrue();
             assertThat(manager.isInProgress()).isTrue();
         }
 
         @Test
-        void testIsInProgressIsFalseOnlyForInactiveState() throws Exception {
+        void testIsInProgressIsFalseOnlyForInactiveState() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
 
             for (var state : GraceModeManager.State.values()) {
-                setField(manager, "state", state);
+                manager.setState(state);
                 var expectedInProgress = state != GraceModeManager.State.INACTIVE;
                 assertThat(manager.isInProgress())
                     .as("isInProgress for state %s", state)
@@ -136,7 +136,7 @@ class GraceModeManagerTest extends UnitTest {
     class IsPendingCancel {
 
         @Test
-        void testIsPendingCancelReturnsFalseWhenNoInstance() throws Exception {
+        void testIsPendingCancelReturnsFalseWhenNoInstance() {
             resetStaticInstance(null);
             var element = ElementType.GRACE_QUAVER.newInstance();
             assertThat(GraceModeManager.isPendingCancel(element)).isFalse();
@@ -151,25 +151,25 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testIsPendingCancelReturnsFalseForDifferentElement() throws Exception {
+        void testIsPendingCancelReturnsFalseForDifferentElement() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var otherElement = ElementType.CROTCHET.newInstance();
 
-            setField(manager, "pendingCancel", true);
-            setField(manager, "graceNote", graceNote);
+            manager.setPendingCancel(true);
+            manager.setGraceNote(graceNote);
 
             // Different instance — identity check must fail
             assertThat(GraceModeManager.isPendingCancel(otherElement)).isFalse();
         }
 
         @Test
-        void testIsPendingCancelReturnsTrueForExactGraceNoteInstance() throws Exception {
+        void testIsPendingCancelReturnsTrueForExactGraceNoteInstance() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
 
-            setField(manager, "pendingCancel", true);
-            setField(manager, "graceNote", graceNote);
+            manager.setPendingCancel(true);
+            manager.setGraceNote(graceNote);
 
             assertThat(GraceModeManager.isPendingCancel(graceNote)).isTrue();
         }
@@ -183,46 +183,46 @@ class GraceModeManagerTest extends UnitTest {
     class ThresholdPx {
 
         @Test
-        void testCancelThresholdReturnsMinus1WhenNoInstance() throws Exception {
+        void testCancelThresholdReturnsMinus1WhenNoInstance() {
             resetStaticInstance(null);
             assertThat(GraceModeManager.getCancelThresholdPx()).isEqualTo(-1);
         }
 
         @Test
-        void testConnectThresholdReturnsMinus1WhenNoInstance() throws Exception {
+        void testConnectThresholdReturnsMinus1WhenNoInstance() {
             resetStaticInstance(null);
             assertThat(GraceModeManager.getConnectThresholdPx()).isEqualTo(-1);
         }
 
         @Test
-        void testCancelThresholdReturnsMinus1WhenGraceNoteIsNull() throws Exception {
+        void testCancelThresholdReturnsMinus1WhenGraceNoteIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
-            setField(manager, "graceNote", null);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceNote(null);
+            manager.setGraceLineComponent(lineComponent);
             assertThat(GraceModeManager.getCancelThresholdPx()).isEqualTo(-1);
         }
 
         @Test
-        void testCancelThresholdReturnsMinus1WhenLineComponentIsNull() throws Exception {
+        void testCancelThresholdReturnsMinus1WhenLineComponentIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "graceNote", ElementType.GRACE_QUAVER.newInstance());
-            setField(manager, "graceLineComponent", null);
+            manager.setGraceNote(ElementType.GRACE_QUAVER.newInstance());
+            manager.setGraceLineComponent(null);
             assertThat(GraceModeManager.getCancelThresholdPx()).isEqualTo(-1);
         }
 
         @Test
-        void testCancelThresholdReturnsMinus1WhenLayoutIsNull() throws Exception {
+        void testCancelThresholdReturnsMinus1WhenLayoutIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
             when(lineComponent.getLayoutResult()).thenReturn(null);
-            setField(manager, "graceNote", ElementType.GRACE_QUAVER.newInstance());
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceNote(ElementType.GRACE_QUAVER.newInstance());
+            manager.setGraceLineComponent(lineComponent);
             assertThat(GraceModeManager.getCancelThresholdPx()).isEqualTo(-1);
         }
 
         @Test
-        void testCancelThresholdIsGraceXPxMinusSlopPx() throws Exception {
+        void testCancelThresholdIsGraceXPxMinusSlopPx() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
@@ -231,15 +231,15 @@ class GraceModeManagerTest extends UnitTest {
             // Place grace note at xSs = 10.0 → with 8 px/ss → 80 px
             when(layout.getElementXSs(graceNote)).thenReturn(10.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
-            setField(manager, "graceNote", graceNote);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceNote(graceNote);
+            manager.setGraceLineComponent(lineComponent);
 
             var expectedPx = (int) Math.round(10.0 * ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE) - GraceModeManager.GRACE_SLOP_PX;
             assertThat(GraceModeManager.getCancelThresholdPx()).isEqualTo(expectedPx);
         }
 
         @Test
-        void testConnectThresholdReturnsMinus1WhenColumnIsNull() throws Exception {
+        void testConnectThresholdReturnsMinus1WhenColumnIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
@@ -247,14 +247,14 @@ class GraceModeManagerTest extends UnitTest {
 
             when(layout.getElementColumn(graceNote)).thenReturn(null);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
-            setField(manager, "graceNote", graceNote);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceNote(graceNote);
+            manager.setGraceLineComponent(lineComponent);
 
             assertThat(GraceModeManager.getConnectThresholdPx()).isEqualTo(-1);
         }
 
         @Test
-        void testConnectThresholdIsRightEdgePxPlusSlopPx() throws Exception {
+        void testConnectThresholdIsRightEdgePxPlusSlopPx() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
@@ -266,8 +266,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(layout.getElementColumn(graceNote)).thenReturn(column);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
-            setField(manager, "graceNote", graceNote);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceNote(graceNote);
+            manager.setGraceLineComponent(lineComponent);
 
             var rightEdgeSs = 5.0 + 2.0;
             var expectedPx = (int) Math.round(rightEdgeSs * ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE) + GraceModeManager.GRACE_SLOP_PX;
@@ -283,59 +283,59 @@ class GraceModeManagerTest extends UnitTest {
     class GetLockedInsertionXSs {
 
         @Test
-        void testReturnsZeroWhenGraceNoteIsNull() throws Exception {
+        void testReturnsZeroWhenGraceNoteIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "graceNote", null);
-            setField(manager, "graceLine", detachedLine());
-            setField(manager, "graceLineComponent", mock(LineComponent.class));
+            manager.setGraceNote(null);
+            manager.setGraceLine(detachedLine());
+            manager.setGraceLineComponent(mock(LineComponent.class));
             assertThat(manager.getLockedInsertionXSs()).isEqualTo(0.0);
         }
 
         @Test
-        void testReturnsZeroWhenGraceLineIsNull() throws Exception {
+        void testReturnsZeroWhenGraceLineIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "graceNote", ElementType.GRACE_QUAVER.newInstance());
-            setField(manager, "graceLine", null);
-            setField(manager, "graceLineComponent", mock(LineComponent.class));
+            manager.setGraceNote(ElementType.GRACE_QUAVER.newInstance());
+            manager.setGraceLine(null);
+            manager.setGraceLineComponent(mock(LineComponent.class));
             assertThat(manager.getLockedInsertionXSs()).isEqualTo(0.0);
         }
 
         @Test
-        void testReturnsZeroWhenGraceLineComponentIsNull() throws Exception {
+        void testReturnsZeroWhenGraceLineComponentIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "graceNote", ElementType.GRACE_QUAVER.newInstance());
-            setField(manager, "graceLine", detachedLine());
-            setField(manager, "graceLineComponent", null);
+            manager.setGraceNote(ElementType.GRACE_QUAVER.newInstance());
+            manager.setGraceLine(detachedLine());
+            manager.setGraceLineComponent(null);
             assertThat(manager.getLockedInsertionXSs()).isEqualTo(0.0);
         }
 
         @Test
-        void testReturnsZeroWhenLayoutIsNull() throws Exception {
+        void testReturnsZeroWhenLayoutIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
             when(lineComponent.getLayoutResult()).thenReturn(null);
-            setField(manager, "graceNote", ElementType.GRACE_QUAVER.newInstance());
-            setField(manager, "graceLine", detachedLine());
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceNote(ElementType.GRACE_QUAVER.newInstance());
+            manager.setGraceLine(detachedLine());
+            manager.setGraceLineComponent(lineComponent);
             assertThat(manager.getLockedInsertionXSs()).isEqualTo(0.0);
         }
 
         @Test
-        void testReturnsZeroWhenColumnIsNull() throws Exception {
+        void testReturnsZeroWhenColumnIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
             var layout = mock(LayoutResult.class);
             when(layout.getElementColumn(graceNote)).thenReturn(null);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
-            setField(manager, "graceNote", graceNote);
-            setField(manager, "graceLine", detachedLine());
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceNote(graceNote);
+            manager.setGraceLine(detachedLine());
+            manager.setGraceLineComponent(lineComponent);
             assertThat(manager.getLockedInsertionXSs()).isEqualTo(0.0);
         }
 
         @Test
-        void testComputedValueIsColumnXPlusRightExtentPlusGapPlusHostLeftExtent() throws Exception {
+        void testComputedValueIsColumnXPlusRightExtentPlusGapPlusHostLeftExtent() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             // Preview element with no accidental → hostLeftExtentSs = 0
@@ -349,9 +349,9 @@ class GraceModeManagerTest extends UnitTest {
             when(layout.getElementColumn(graceNote)).thenReturn(column);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
 
-            setField(manager, "graceNote", graceNote);
-            setField(manager, "graceLine", detachedLine());
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceNote(graceNote);
+            manager.setGraceLine(detachedLine());
+            manager.setGraceLineComponent(lineComponent);
 
             // EditModeManager.getPreviewElement() is static — must mock statically.
             // No accidental on hostPreview → hostLeftExtentSs = 0.
@@ -364,7 +364,7 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testUsesZeroHostLeftExtentWhenPreviewElementIsNull() throws Exception {
+        void testUsesZeroHostLeftExtentWhenPreviewElementIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
@@ -376,9 +376,9 @@ class GraceModeManagerTest extends UnitTest {
             when(layout.getElementColumn(graceNote)).thenReturn(column);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
 
-            setField(manager, "graceNote", graceNote);
-            setField(manager, "graceLine", detachedLine());
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceNote(graceNote);
+            manager.setGraceLine(detachedLine());
+            manager.setGraceLineComponent(lineComponent);
 
             // EditModeManager.getPreviewElement() is static — must mock statically.
             try (var emMock = mockStatic(EditModeManager.class)) {
@@ -427,9 +427,9 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert() throws Exception {
+        void testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE_INSERT);
+            manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 0, 0, MouseEvent.BUTTON1);
 
@@ -437,9 +437,9 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testReturnsFalseWhenStateIsGraceNote() throws Exception {
+        void testReturnsFalseWhenStateIsGraceNote() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 0, 0, MouseEvent.BUTTON1);
 
@@ -592,9 +592,9 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert() throws Exception {
+        void testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE_INSERT);
+            manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
 
@@ -611,16 +611,16 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testFinishesWithCancelWhenMouseDownPointIsNull() throws Exception {
+        void testFinishesWithCancelWhenMouseDownPointIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var line = detachedLine();
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             line.addElement(graceNote);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             setField(manager, "mouseDownPoint", null);
-            setField(manager, "graceNote", graceNote);
-            setField(manager, "graceLine", line);
+            manager.setGraceNote(graceNote);
+            manager.setGraceLine(line);
             setField(manager, "graceNoteIndex", 0);
 
             var lineComponent = mock(LineComponent.class);
@@ -632,7 +632,7 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testDragLeftWithPendingCancelFinishesWithCancel() throws Exception {
+        void testDragLeftWithPendingCancelFinishesWithCancel() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var line = detachedLine();
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
@@ -640,13 +640,13 @@ class GraceModeManagerTest extends UnitTest {
 
             // Simulate: state=GRACE_NOTE, pendingCancel=true, drag time >= MIN_DRAG_MILLIS
             var startPoint = new Point(100, 100);
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
-            setField(manager, "pendingCancel", true);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+            manager.setPendingCancel(true);
             setField(manager, "mouseDownPoint", startPoint);
             // Make the down time old enough to count as a drag
             setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
-            setField(manager, "graceNote", graceNote);
-            setField(manager, "graceLine", line);
+            manager.setGraceNote(graceNote);
+            manager.setGraceLine(line);
             setField(manager, "graceNoteIndex", 0);
 
             var lineComponent = mock(LineComponent.class);
@@ -659,7 +659,7 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testClickTransitionsToGraceNoteInsertState() throws Exception {
+        void testClickTransitionsToGraceNoteInsertState() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var line = detachedLine();
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
@@ -669,11 +669,11 @@ class GraceModeManagerTest extends UnitTest {
 
             // Short time since mouse-down → classified as click
             var startPoint = new Point(100, 100);
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             setField(manager, "mouseDownPoint", startPoint);
             setField(manager, "mouseDownTime", System.currentTimeMillis());
-            setField(manager, "graceNote", graceNote);
-            setField(manager, "graceLine", line);
+            manager.setGraceNote(graceNote);
+            manager.setGraceLine(line);
             setField(manager, "graceNoteIndex", 0);
             // graceLineComponent is null → getLockedInsertionXSs returns 0 → enterGraceNoteInsert calls finish
 
@@ -708,9 +708,9 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert() throws Exception {
+        void testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE_INSERT);
+            manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 0, 0, MouseEvent.BUTTON1);
 
@@ -727,7 +727,7 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testPendingCancelSetWhenDragLeftOfGraceNote() throws Exception {
+        void testPendingCancelSetWhenDragLeftOfGraceNote() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
@@ -741,10 +741,10 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
-            setField(manager, "graceNote", graceNote);
-            setField(manager, "graceLine", detachedLine());
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+            manager.setGraceNote(graceNote);
+            manager.setGraceLine(detachedLine());
+            manager.setGraceLineComponent(lineComponent);
             // Simulate an old mouse-down time to make isDrag = true
             setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
 
@@ -753,11 +753,11 @@ class GraceModeManagerTest extends UnitTest {
             var result = manager.mouseDragged(lineComponent, e);
 
             assertThat(result).isTrue();
-            assertThat((Boolean) getField(manager, "pendingCancel")).isTrue();
+            assertThat(manager.isPendingCancel()).isTrue();
         }
 
         @Test
-        void testPendingConnectSetAndGlissandoAddedWhenDragRightWithEligibleHost() throws Exception {
+        void testPendingConnectSetAndGlissandoAddedWhenDragRightWithEligibleHost() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var hostNote = ElementType.CROTCHET.newInstance();
@@ -776,23 +776,23 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
-            setField(manager, "graceNote", graceNote);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(lineComponent);
             setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
 
             // Mouse x >= connectThreshold (100) → pendingConnect should become true
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 105, 0, MouseEvent.BUTTON1);
             manager.mouseDragged(lineComponent, e);
 
-            assertThat((Boolean) getField(manager, "pendingConnect")).isTrue();
+            assertThat(manager.isPendingConnect()).isTrue();
             assertThat(graceNote.hasGlissando()).isTrue();
         }
 
         @Test
-        void testGlissandoRemovedWhenPendingConnectBecomesFlase() throws Exception {
+        void testGlissandoRemovedWhenPendingConnectBecomesFlase() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             // Pre-attach a glissando (as if drag-right had fired before)
@@ -811,11 +811,11 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
-            setField(manager, "graceNote", graceNote);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(lineComponent);
             setField(manager, "pendingConnect", true);
             setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
 
@@ -823,7 +823,7 @@ class GraceModeManagerTest extends UnitTest {
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 50, 0, MouseEvent.BUTTON1);
             manager.mouseDragged(lineComponent, e);
 
-            assertThat((Boolean) getField(manager, "pendingConnect")).isFalse();
+            assertThat(manager.isPendingConnect()).isFalse();
             assertThat(graceNote.hasGlissando()).isFalse();
         }
     }
@@ -860,9 +860,9 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testReturnsTrueWhenInProgressButNotGraceNoteInsertState() throws Exception {
+        void testReturnsTrueWhenInProgressButNotGraceNoteInsertState() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 0, 0, MouseEvent.BUTTON1);
 
@@ -871,20 +871,20 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testJustEnteredInsertFlagSuppressesFirstClick() throws Exception {
+        void testJustEnteredInsertFlagSuppressesFirstClick() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE_INSERT);
+            manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
             setField(manager, "justEnteredInsert", true);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 0, 0, MouseEvent.BUTTON1);
 
             assertThat(manager.mouseClicked(lineComponent, e)).isTrue();
             // Flag must be cleared after suppression
-            assertThat((Boolean) getField(manager, "justEnteredInsert")).isFalse();
+            assertThat(manager.isJustEnteredInsert()).isFalse();
         }
 
         @Test
-        void testCancelWhenClickOnDifferentLine() throws Exception {
+        void testCancelWhenClickOnDifferentLine() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
@@ -893,11 +893,11 @@ class GraceModeManagerTest extends UnitTest {
             var graceLineComponent = mock(LineComponent.class);
             var otherLineComponent = mock(LineComponent.class);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE_INSERT);
-            setField(manager, "graceNote", graceNote);
+            manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", graceLineComponent);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(graceLineComponent);
 
             var e = mouseEvent(otherLineComponent, MouseEvent.MOUSE_CLICKED, 0, 0, MouseEvent.BUTTON1);
             assertThat(manager.mouseClicked(otherLineComponent, e)).isTrue();
@@ -907,7 +907,7 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testCancelWhenClickLeftOfGraceNote() throws Exception {
+        void testCancelWhenClickLeftOfGraceNote() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
@@ -919,11 +919,11 @@ class GraceModeManagerTest extends UnitTest {
             when(layout.getElementXSs(graceNote)).thenReturn(10.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE_INSERT);
-            setField(manager, "graceNote", graceNote);
+            manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(lineComponent);
 
             // Click at x=70 <= cancelThreshold → cancel
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 70, 0, MouseEvent.BUTTON1);
@@ -973,7 +973,7 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testFinishesWithCancelWhenHostNoteDoesNotFit() throws Exception {
+        void testFinishesWithCancelWhenHostNoteDoesNotFit() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var hostPreview = ElementType.CROTCHET.newInstance();
@@ -1001,13 +1001,13 @@ class GraceModeManagerTest extends UnitTest {
 
             // Set state and fields to trigger enterGraceNoteInsert via click (mouseReleased)
             var startPoint = new Point(100, 100);
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             setField(manager, "mouseDownPoint", startPoint);
             setField(manager, "mouseDownTime", System.currentTimeMillis());
-            setField(manager, "graceNote", graceNote);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(lineComponent);
 
             // click event (x,y same as startPoint → no drag)
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_RELEASED, 100, 100, MouseEvent.BUTTON1);
@@ -1053,18 +1053,18 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testCancelRemovesGraceNoteViaModificationBracket() throws Exception {
+        void testCancelRemovesGraceNoteViaModificationBracket() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             setField(manager, "mouseDownPoint", null);  // triggers finish(cancel=true)
-            setField(manager, "graceNote", graceNote);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", mock(LineComponent.class));
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(mock(LineComponent.class));
 
             var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
             manager.mouseReleased(mock(LineComponent.class), e);
@@ -1074,18 +1074,18 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testCancelDoesNotRemoveWhenGraceNoteIsNull() throws Exception {
+        void testCancelDoesNotRemoveWhenGraceNoteIsNull() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var line = detachedLine();
             var note = ElementType.CROTCHET.newInstance();
             line.addElement(note);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             setField(manager, "mouseDownPoint", null);
-            setField(manager, "graceNote", null);  // no grace note to remove
+            manager.setGraceNote(null);  // no grace note to remove
             setField(manager, "graceNoteIndex", -1);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", mock(LineComponent.class));
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(mock(LineComponent.class));
 
             var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
             manager.mouseReleased(mock(LineComponent.class), e);
@@ -1130,19 +1130,19 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testFinishResetsAllStateFieldsToDefaults() throws Exception {
+        void testFinishResetsAllStateFieldsToDefaults() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             setField(manager, "mouseDownPoint", null);  // triggers finish(cancel=true)
-            setField(manager, "graceNote", graceNote);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", mock(LineComponent.class));
-            setField(manager, "pendingCancel", true);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(mock(LineComponent.class));
+            manager.setPendingCancel(true);
             setField(manager, "pendingConnect", true);
             setField(manager, "justEnteredInsert", true);
 
@@ -1151,28 +1151,28 @@ class GraceModeManagerTest extends UnitTest {
 
             // finish() must reset all state
             assertThat(manager.isInProgress()).isFalse();
-            assertThat((Boolean) getField(manager, "pendingCancel")).isFalse();
-            assertThat((Boolean) getField(manager, "pendingConnect")).isFalse();
-            assertThat((Boolean) getField(manager, "justEnteredInsert")).isFalse();
-            assertThat(getField(manager, "graceNote")).isNull();
-            assertThat(getField(manager, "graceLine")).isNull();
-            assertThat(getField(manager, "graceLineComponent")).isNull();
-            assertThat((Integer) getField(manager, "graceNoteIndex")).isEqualTo(-1);
+            assertThat(manager.isPendingCancel()).isFalse();
+            assertThat(manager.isPendingConnect()).isFalse();
+            assertThat(manager.isJustEnteredInsert()).isFalse();
+            assertThat(manager.getGraceNote()).isNull();
+            assertThat(manager.getGraceLine()).isNull();
+            assertThat(manager.getGraceLineComponent()).isNull();
+            assertThat(manager.getGraceNoteIndex()).isEqualTo(-1);
         }
 
         @Test
-        void testFinishPostsGraceModeStateDidChangeNotificationWithFalse() throws Exception {
+        void testFinishPostsGraceModeStateDidChangeNotificationWithFalse() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             setField(manager, "mouseDownPoint", null);
-            setField(manager, "graceNote", graceNote);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", mock(LineComponent.class));
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(mock(LineComponent.class));
 
             var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
             manager.mouseReleased(mock(LineComponent.class), e);
@@ -1209,7 +1209,7 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testPendingConnectIsFalseWhenNoNextElement() throws Exception {
+        void testPendingConnectIsFalseWhenNoNextElement() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             // Line with only the grace note — no next element
@@ -1227,22 +1227,22 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
-            setField(manager, "graceNote", graceNote);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(lineComponent);
             setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
 
             // Drag right past connectThreshold, but no eligible host
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 105, 0, MouseEvent.BUTTON1);
             manager.mouseDragged(lineComponent, e);
 
-            assertThat((Boolean) getField(manager, "pendingConnect")).isFalse();
+            assertThat(manager.isPendingConnect()).isFalse();
         }
 
         @Test
-        void testPendingConnectIsFalseWhenNextElementIsNotPitchedNote() throws Exception {
+        void testPendingConnectIsFalseWhenNextElementIsNotPitchedNote() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var restNote = ElementType.CROTCHET_REST.newInstance();
@@ -1260,21 +1260,21 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
-            setField(manager, "graceNote", graceNote);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(lineComponent);
             setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
 
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 105, 0, MouseEvent.BUTTON1);
             manager.mouseDragged(lineComponent, e);
 
-            assertThat((Boolean) getField(manager, "pendingConnect")).isFalse();
+            assertThat(manager.isPendingConnect()).isFalse();
         }
 
         @Test
-        void testPendingConnectIsTrueWhenNextElementIsPitchedNote() throws Exception {
+        void testPendingConnectIsTrueWhenNextElementIsPitchedNote() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var hostNote = ElementType.CROTCHET.newInstance();
@@ -1292,17 +1292,17 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
-            setField(manager, "graceNote", graceNote);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", lineComponent);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(lineComponent);
             setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
 
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 105, 0, MouseEvent.BUTTON1);
             manager.mouseDragged(lineComponent, e);
 
-            assertThat((Boolean) getField(manager, "pendingConnect")).isTrue();
+            assertThat(manager.isPendingConnect()).isTrue();
         }
     }
 
@@ -1347,7 +1347,7 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testNotificationWithTruePostedOnEnterGraceNote() throws Exception {
+        void testNotificationWithTruePostedOnEnterGraceNote() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
@@ -1381,18 +1381,18 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testNotificationWithFalsePostedOnFinish() throws Exception {
+        void testNotificationWithFalsePostedOnFinish() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
 
-            setField(manager, "state", GraceModeManager.State.GRACE_NOTE);
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
             setField(manager, "mouseDownPoint", null);
-            setField(manager, "graceNote", graceNote);
+            manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
-            setField(manager, "graceLine", line);
-            setField(manager, "graceLineComponent", mock(LineComponent.class));
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(mock(LineComponent.class));
 
             var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
             manager.mouseReleased(mock(LineComponent.class), e);
@@ -1446,7 +1446,7 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testEnterGraceNoteSelectsQuarterNoteAndClearsEmbellishments() throws Exception {
+        void testEnterGraceNoteSelectsQuarterNoteAndClearsEmbellishments() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
@@ -1500,21 +1500,23 @@ class GraceModeManagerTest extends UnitTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private static void resetStaticInstance(@Nullable GraceModeManager value) throws Exception {
-        var field = GraceModeManager.class.getDeclaredField("instance");
-        field.setAccessible(true);
-        field.set(null, value);
+    private static void resetStaticInstance(@Nullable GraceModeManager value) {
+        GraceModeManager.setInstance(value);
     }
 
-    private static void setField(Object target, String name, @Nullable Object value) throws Exception {
-        Field field = findField(target.getClass(), name);
-        field.setAccessible(true);
-        field.set(target, value);
+    private static void setField(Object target, String name, @Nullable Object value) {
+        try {
+            var field = findField(target.getClass(), name);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /** Walks the class hierarchy to find a declared field by name. */
     private static Field findField(Class<?> clazz, String name) throws NoSuchFieldException {
-        Class<?> current = clazz;
+        var current = clazz;
 
         while (current != null) {
             try {
@@ -1540,10 +1542,5 @@ class GraceModeManagerTest extends UnitTest {
         );
     }
 
-    @Nullable
-    private static Object getField(Object target, String name) throws Exception {
-        Field field = findField(target.getClass(), name);
-        field.setAccessible(true);
-        return field.get(target);
-    }
+
 }

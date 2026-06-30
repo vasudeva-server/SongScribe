@@ -27,7 +27,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.awt.Toolkit;
-import java.awt.event.AWTEventListener;
 import java.awt.event.MouseEvent;
 import java.util.List;
 
@@ -77,10 +76,8 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
                 .as("draggingLine set after dragDidStart")
                 .isSameAs(mockLine);
 
-            // Obtain the listener field directly (it is a final field initialised at construction time).
-            var listenerField = SelectionCoordinator.class.getDeclaredField("globalMouseReleasedListener");
-            listenerField.setAccessible(true);
-            var listener = (AWTEventListener) listenerField.get(coordinator);
+            // Obtain the listener via the package-private accessor.
+            var listener = coordinator.getGlobalMouseReleasedListener();
 
             // Invoke the listener directly — the AWT dispatch path is not under test.
             var fakeSource = new java.awt.Panel();
