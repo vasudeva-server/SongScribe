@@ -177,11 +177,11 @@ public class NoteAttachedStacker {
     static NoteBounds computeNoteBounds(StaffElement element) {
         var centerYSs = StaffExtents.spToSs(element.getStaffPosition());
         var type = element.getType();
-        var upper = element.isUpper();
+        var direction = element.getDirection();
         var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
         var noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
-        var topSs = Math.min(centerYSs + type.getTopYOffsetSs(upper), noteheadTopSs);
-        var botSs = Math.max(topSs + type.getElementHeightSs(upper), noteheadBotSs);
+        var topSs = Math.min(centerYSs + type.getTopYOffsetSs(direction), noteheadTopSs);
+        var botSs = Math.max(topSs + type.getElementHeightSs(direction), noteheadBotSs);
         return new NoteBounds(topSs, botSs);
     }
 
@@ -237,7 +237,7 @@ public class NoteAttachedStacker {
     /**
      * Seeds upward-arcing tie bounds into the note-attached StaffExtents layer.
      * <p>
-     * For each tie where the stem points down ({@code !isUpper()}), the tie arcs upward
+     * For each tie where the stem points down ({@code getDirection().isDown()}), the tie arcs upward
      * and may interfere with above-staff decorations. This method samples the outer Bezier
      * curve of each such tie and reserves the curve's vertical extent in the extents layer,
      * ensuring decorations stack above the tie arc.
@@ -298,7 +298,7 @@ public class NoteAttachedStacker {
             var endEdgeYSs = evaluateBezierYSs(endEdgeT, tieLayout);
 
             // Upper notes (stem up) get downward-arcing ties; others get upward-arcing ties.
-            var arcsDown = startElement.isUpper();
+            var arcsDown = startElement.getDirection().isUp();
             var sampleCount = Math.max(TIE_BOUND_MIN_SAMPLES, (int) Math.ceil(spanWidthSs));
 
             if (!arcsDown) {

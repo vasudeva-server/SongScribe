@@ -361,20 +361,26 @@ public class LayoutEngine {
             }
 
             // Scan for any manual override in the group; first one wins.
-            Boolean manualDirection = null;
+            StaffElement.@Nullable Direction manualDirection = null;
 
             for (var i = beamStart; i <= beamEnd; i++) {
                 var n = line.getElement(i);
 
                 if (!n.isStemDirectionAuto()) {
-                    manualDirection = n.isUpper();
+                    manualDirection = n.getDirection();
                     break;
                 }
             }
 
-            var stemsUp = (manualDirection != null)
-                ? manualDirection
-                : (minStaffPos + maxStaffPos) > 0;
+            StaffElement.Direction stemDirection;
+
+            if (manualDirection != null) {
+                stemDirection = manualDirection;
+            } else if ((minStaffPos + maxStaffPos) > 0) {
+                stemDirection = StaffElement.Direction.UP;
+            } else {
+                stemDirection = StaffElement.Direction.DOWN;
+            }
 
             // Normalize auto-direction notes to the group stem direction.
             // Manual overrides are left untouched.
@@ -382,7 +388,7 @@ public class LayoutEngine {
                 var n = line.getElement(i);
 
                 if (n.isStemDirectionAuto()) {
-                    n.setUpper(stemsUp);
+                    n.setDirection(stemDirection);
                 }
             }
 
@@ -423,7 +429,7 @@ public class LayoutEngine {
                 for (var i = beamStart + 1; i <= beamEnd; i++) {
                     var pos = line.getElement(i).getStaffPosition();
 
-                    if (stemsUp ? pos < anchorStaffPos : pos > anchorStaffPos) {
+                    if (stemDirection.isUp() ? pos < anchorStaffPos : pos > anchorStaffPos) {
                         anchorStaffPos = pos;
                         anchorIdx = i;
                     }
@@ -436,7 +442,7 @@ public class LayoutEngine {
 
                 // Place beam exactly MIN_STEM_SS from the anchor notehead.
                 // Y-down: beam above notehead = smaller Y (subtract); beam below = larger Y (add).
-                var beamYAtAnchorSs = stemsUp
+                var beamYAtAnchorSs = stemDirection.isUp()
                     ? anchorElementYSs - MIN_STEM_SS
                     : anchorElementYSs + MIN_STEM_SS;
 
@@ -448,7 +454,7 @@ public class LayoutEngine {
                     var allOk = true;
 
                     for (var i = beamStart; i <= beamEnd; i++) {
-                        var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemsUp, slope, firstXSs, startYSs);
+                        var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemDirection.isUp(), slope, firstXSs, startYSs);
 
                         if (geometry == null) {
                             continue;
@@ -473,7 +479,7 @@ public class LayoutEngine {
                 var maxDeficitSs = 0.0;
 
                 for (var i = beamStart; i <= beamEnd; i++) {
-                    var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemsUp, slope, firstXSs, startYSs);
+                    var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemDirection.isUp(), slope, firstXSs, startYSs);
 
                     if (geometry == null) {
                         continue;
@@ -487,7 +493,7 @@ public class LayoutEngine {
                 }
 
                 if (maxDeficitSs > 0.0) {
-                    startYSs += stemsUp ? -maxDeficitSs : maxDeficitSs;
+                    startYSs += stemDirection.isUp() ? -maxDeficitSs : maxDeficitSs;
                 }
             }
 
@@ -517,7 +523,7 @@ public class LayoutEngine {
                 var firstXSs = firstColumn.getXSs();
 
                 for (var i = beamStart; i <= beamEnd; i++) {
-                    var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemsUp, slope, firstXSs, startYSs);
+                    var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemDirection.isUp(), slope, firstXSs, startYSs);
 
                     if (geometry == null) {
                         continue;
@@ -529,8 +535,8 @@ public class LayoutEngine {
                     var stemLenSs = geometry.stemLenSs();
                     var lengtheningSs = stemLenSs - MIN_STEM_SS;
 
-                    var topYSs = stemsUp ? beamYSs : elementYSs;
-                    var bottomYSs = stemsUp ? elementYSs : beamYSs;
+                    var topYSs = stemDirection.isUp() ? beamYSs : elementYSs;
+                    var bottomYSs = stemDirection.isUp() ? elementYSs : beamYSs;
 
                     // Determine stub direction for partial-beam elements.
                     // Delegated to BeamMath so the writer can use the same rule.
@@ -540,7 +546,7 @@ public class LayoutEngine {
                 }
             }
 
-            var beamLayout = new LayoutResult.BeamLayout(slope, startYSs, stemsUp, thickeningSs, stemLayouts);
+            var beamLayout = new LayoutResult.BeamLayout(slope, startYSs, stemDirection.isUp(), thickeningSs, stemLayouts);
             builder.putBeamLayout(beam, beamLayout);
         }
     }
@@ -578,13 +584,11 @@ public class LayoutEngine {
             }
 
             // Set auto stem direction: elements below the middle line (staffPosition > 0) get stems up.
-            // This matches ScoreView.defaultUpperNote: upper=true means stem up.
             if (element.isStemDirectionAuto()) {
-                element.setUpper(element.getType().isGraceNote() || element.getStaffPosition() > 0);
+                element.setDirection(StaffElement.defaultDirection(element));
             }
 
-            // isUpper() → stem up (upper=true means stem goes up)
-            var stemsUp = element.isUpper();
+            var direction = element.getDirection();
             var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
             var stemLenSs = element.getType().isGraceNote()
                 ? Engraving.GRACE_NOTE_STEM_LENGTH_SS
@@ -594,14 +598,14 @@ public class LayoutEngine {
             // center but the natural stem length falls short. The signed distance the tip must
             // travel toward center is elementYSs for an up-stem and -elementYSs for a down-stem;
             // a stem pointing away from center (only via a manual override) is never extended.
-            var distanceTowardCenterSs = stemsUp ? elementYSs : -elementYSs;
+            var distanceTowardCenterSs = direction.isUp() ? elementYSs : -elementYSs;
             var lengtheningSs = element.getType().isGraceNote()
                 ? 0.0
                 : Math.max(0.0, distanceTowardCenterSs - MIN_STEM_SS);
 
             // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
-            var topYSs = stemsUp ? elementYSs - (stemLenSs + lengtheningSs) : elementYSs;
-            var bottomYSs = stemsUp ? elementYSs : elementYSs + (stemLenSs + lengtheningSs);
+            var topYSs = direction.isUp() ? elementYSs - (stemLenSs + lengtheningSs) : elementYSs;
+            var bottomYSs = direction.isUp() ? elementYSs : elementYSs + (stemLenSs + lengtheningSs);
 
             builder.putStemLayout(element, new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, false));
         }
@@ -648,15 +652,15 @@ public class LayoutEngine {
                 continue;
             }
 
-            // Tie direction: stem-up elements tie below (+1), stem-down elements tie above (-1).
-            // Y increases downward, so direction = +1 → arc bulges downward.
-            var direction = startElement.isUpper() ? 1 : -1;
+            // Tie arc sign: stem-up elements tie below (+1), stem-down elements tie above (-1).
+            // Y increases downward, so arcSignSs = +1 → arc bulges downward.
+            var arcSignSs = startElement.getDirection().isUp() ? 1 : -1;
 
             // Tie attachment points: centered on notehead horizontally.
             var startXSs = startColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
             var endXSs = endColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
-            var startYSs = StaffExtents.spToSs(startElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
-            var endYSs = StaffExtents.spToSs(endElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+            var startYSs = StaffExtents.spToSs(startElement.getStaffPosition()) + arcSignSs * TIE_ENDPOINT_Y_OFFSET_SS;
+            var endYSs = StaffExtents.spToSs(endElement.getStaffPosition()) + arcSignSs * TIE_ENDPOINT_Y_OFFSET_SS;
 
             var tieWidthSs = endXSs - startXSs;
 
@@ -673,13 +677,13 @@ public class LayoutEngine {
             // Control point Y: both at shoulder height from the baseline.
             // Baseline is the midpoint Y of the two endpoints (identical for ties).
             var baseYSs = (startYSs + endYSs) * 0.5;
-            var shoulderYSs = baseYSs + direction * shoulderHSs;
+            var shoulderYSs = baseYSs + arcSignSs * shoulderHSs;
 
             // Outer curve control points: offset away from notes by midThickness.
-            var outerCpYSs = shoulderYSs + direction * TIE_MID_THICKNESS_SS;
+            var outerCpYSs = shoulderYSs + arcSignSs * TIE_MID_THICKNESS_SS;
 
             // Inner curve control points: offset toward notes by midThickness.
-            var innerCpYSs = shoulderYSs - direction * TIE_MID_THICKNESS_SS;
+            var innerCpYSs = shoulderYSs - arcSignSs * TIE_MID_THICKNESS_SS;
 
             // Interior note collision avoidance: only for ties spanning 3+ notes.
             var spanAnchorIdx = span.getAnchorElementIndex();
@@ -710,7 +714,7 @@ public class LayoutEngine {
                             t * t * t * endYSs;
 
                     // Deflection: how much the element protrudes into the tie arc.
-                    var deflection = (tieYAtElementSs - elementYSs) * direction;
+                    var deflection = (tieYAtElementSs - elementYSs) * arcSignSs;
 
                     if (deflection > maxDeflection) {
                         maxDeflection = deflection;
@@ -720,9 +724,9 @@ public class LayoutEngine {
                 if (maxDeflection > 0.0) {
                     var push = TIE_COLLISION_PUSH * TIE_COLLISION_FACTOR * maxDeflection;
                     shoulderHSs += push;
-                    shoulderYSs = baseYSs + direction * shoulderHSs;
-                    outerCpYSs = shoulderYSs + direction * TIE_MID_THICKNESS_SS;
-                    innerCpYSs = shoulderYSs - direction * TIE_MID_THICKNESS_SS;
+                    shoulderYSs = baseYSs + arcSignSs * shoulderHSs;
+                    outerCpYSs = shoulderYSs + arcSignSs * TIE_MID_THICKNESS_SS;
+                    innerCpYSs = shoulderYSs - arcSignSs * TIE_MID_THICKNESS_SS;
                 }
             }
 

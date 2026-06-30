@@ -47,7 +47,6 @@ import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ElementTypeAction;
-import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
@@ -1164,9 +1163,9 @@ public final class PreviewElementManager {
         applyStaffPosition(replacement, currentStaffPosition);
 
         if (replacement.isStemDirectionAuto()) {
-            replacement.setUpper(ScoreView.defaultUpperNote(replacement));
+            replacement.setDirection(StaffElement.defaultDirection(replacement));
         } else {
-            replacement.setUpper(previewElement.isUpper());
+            replacement.setDirection(previewElement.getDirection());
         }
 
         // Remove all beam spans touching this element — the new element type may differ

@@ -361,8 +361,8 @@ public final class InsertionSpacingCalculator {
     private static ElementColumn createLightweightColumn(StaffElement element) {
         // Calculate geometric extents using ElementColumnBuilder's static methods
         var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
-        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.isUpper());
-        var rightExtentExcludingAugmentationSs = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(element, false, element.isUpper());
+        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.getDirection());
+        var rightExtentExcludingAugmentationSs = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(element, false, element.getDirection());
 
         // For insertion operations, we don't need stem positions or beam group info
         // since we're only calculating horizontal spacing

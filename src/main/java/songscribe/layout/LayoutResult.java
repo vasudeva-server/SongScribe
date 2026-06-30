@@ -888,7 +888,7 @@ public final class LayoutResult {
                 // doesn't overflow the staff boundary.
                 if (line.getSong().isAutoMaintainedTerminal(element, line)) {
                     var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                            previewElement, false, true);
+                            previewElement, false, StaffElement.Direction.UP);
                     return elementX + column.getRightExtentSs() - previewRightExtentSs;
                 }
 
@@ -924,8 +924,8 @@ public final class LayoutResult {
                 previewElement,
                 Collections.emptyList(),
                 ElementColumnBuilder.calculateLeftExtentSs(previewElement),
-                ElementColumnBuilder.calculateRightExtentSs(previewElement, false, true),
-                ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(previewElement, false, true),
+                ElementColumnBuilder.calculateRightExtentSs(previewElement, false, StaffElement.Direction.UP),
+                ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(previewElement, false, StaffElement.Direction.UP),
                 0,
                 0,
                 null,

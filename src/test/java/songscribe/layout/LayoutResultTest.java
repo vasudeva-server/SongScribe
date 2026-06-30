@@ -423,7 +423,8 @@ class LayoutResultTest extends UnitTest {
             .putElementColumn(terminal, columnAt(terminal, TERMINAL_X_SS, TERMINAL_RIGHT_EXTENT_SS))
             .build();
 
-        var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(preview, false, true);
+        var previewRightExtentSs =
+            ElementColumnBuilder.calculateRightExtentSs(preview, false, StaffElement.Direction.UP);
         var expected = TERMINAL_X_SS + TERMINAL_RIGHT_EXTENT_SS - previewRightExtentSs;
 
         assertThat(result.calculateInsertionXSs(1, TERMINAL_X_SS, preview, line))
@@ -446,7 +447,7 @@ class LayoutResultTest extends UnitTest {
             preview,
             Collections.emptyList(),
             ElementColumnBuilder.calculateLeftExtentSs(preview),
-            ElementColumnBuilder.calculateRightExtentSs(preview, false, true),
+            ElementColumnBuilder.calculateRightExtentSs(preview, false, StaffElement.Direction.UP),
             0.0, 0.0, null, 0.0, false);
         var expected = HorizontalSpacingCalculator.calculateNextColumnXSs(lastColumn, previewColumn);
 

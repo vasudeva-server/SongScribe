@@ -37,7 +37,6 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.NoteGeometry;
-import songscribe.layout.NoteGeometry.StemGeometry;
 import songscribe.util.GraphicsState;
 
 /**
@@ -47,7 +46,7 @@ import songscribe.util.GraphicsState;
  * This renderer handles:
  * <ul>
  *   <li>Note heads (whole, half, filled)</li>
- *   <li>Stems (up or down based on note.isUpper())</li>
+ *   <li>Stems (up or down based on note.getDirection())</li>
  *   <li>Flags (for non-beamed 8th, 16th, 32nd notes)</li>
  *   <li>Dots (for dotted notes)</li>
  *   <li>Accidentals (sharps, flats, naturals)</li>
@@ -143,39 +142,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         return noteX;
     }
 
-    /**
-     * Computes the base stem geometry for a note type and direction.
-     * This is the shared anchor selection and positioning logic used by both
-     * {@code NoteRenderer} (for drawing) and {@code SlideRenderer} (for area building).
-     *
-     * @param noteType The note type (determines anchor and stem length)
-     * @param upper    true for stem-up, false for stem-down
-     * @return The base stem geometry
-     */
-    public static StemGeometry computeBaseStemGeometry(ElementType noteType, boolean upper) {
-        var isMinim = noteType == ElementType.MINIM;
-        var isGrace = noteType.isGraceNote();
 
-        GlyphAnchors.Anchor anchor;
-
-        if (isGrace) {
-            anchor = NoteGeometry.STEM_UP_SE_BLACK_SMALL;
-        } else if (upper) {
-            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE : Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
-        } else {
-            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
-        }
-
-        var anchorX = anchor.x();
-
-        // Stem left edge: for up-stems, the anchor marks the RIGHT edge of the stem;
-        // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
-        // left by STEM_WIDTH_SS/2, so we compensate.
-        var stemLeftX = anchorX - (upper ? NoteGeometry.STEM_WIDTH_SS : NoteGeometry.STEM_WIDTH_SS / 2);
-        var stemLength = isGrace ? Engraving.GRACE_NOTE_STEM_LENGTH_SS : Engraving.STEM_LENGTH_SS;
-
-        return new StemGeometry(stemLeftX, anchor.y(), stemLength);
-    }
 
 
     @Override
@@ -261,13 +228,12 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
-        // Grace notes always have stem up
-        var upper = noteType.isGraceNote() || note.isUpper();
+        var direction = NoteGeometry.effectiveDirection(note);
 
         // Note: Don't set color here - respect the color set by the caller
 
         // Adjust x position for lower stem notes
-        var noteHeadXPosSs = NoteGeometry.getNoteheadXOffsetSs(noteType, upper);
+        var noteHeadXPosSs = NoteGeometry.getNoteheadXOffsetSs(noteType, direction);
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(noteType.isGraceNote() ? RenderingUtils.GRACE_NOTE_FONT : RenderingUtils.MUSIC_FONT);
@@ -275,16 +241,16 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         }
 
         // Draw stem (always for notes with stems - beamed notes need stems to connect to beams)
-        var stemTip = renderStem(g2, note, upper, beamed, noteType, invariants);
+        var stemTip = renderStem(g2, note, direction, beamed, noteType, invariants);
 
         // Draw flags only for unbeamed notes (beamed notes get beams instead of flags)
         if (!beamed) {
-            renderFlags(g2, note, upper, noteType, stemTip);
+            renderFlags(g2, note, direction, noteType, stemTip);
         }
 
         // Draw dots (grace notes don't have dots)
         if (!noteType.isGraceNote()) {
-            renderDots(g2, note, beamed, upper);
+            renderDots(g2, note, beamed, direction);
         }
     }
 
@@ -296,7 +262,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     private Point2D.@Nullable Double renderStem(
         Graphics2D g2,
         StaffElement note,
-        boolean upper,
+        StaffElement.Direction direction,
         boolean beamed,
         ElementType noteType,
         LineInvariants invariants
@@ -305,7 +271,8 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             return null;
         }
 
-        var geom = NoteGeometry.computeBaseStemGeometry(noteType, upper);
+        var upper = direction.isUp();
+        var geom = NoteGeometry.computeBaseStemGeometry(noteType, direction);
         var stemWidthSs = invariants.getLineThickness().stemSs();
 
         // A down-stem sits flush with the notehead's LEFT edge, which is the glyph
@@ -411,7 +378,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     private void renderFlags(
         Graphics2D g2,
         StaffElement note,
-        boolean upper,
+        StaffElement.Direction direction,
         ElementType noteType,
         Point2D.@Nullable Double stemTip
     ) {
@@ -419,7 +386,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
-        var flagGlyph = noteType.getFlagGlyph(upper);
+        var flagGlyph = noteType.getFlagGlyph(direction);
 
         if (flagGlyph == null) {
             return;
@@ -453,7 +420,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         Graphics2D g2,
         StaffElement note,
         boolean beamed,
-        boolean upper
+        StaffElement.Direction direction
     ) {
         if (note.getDotCount() == 0) {
             return;
@@ -462,7 +429,8 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
             var dotStr = SMuFLGlyph.AUGMENTATION_DOT.asString();
-            NoteGeometry.forEachDotPosition(note, beamed, upper, (dotX, yOffset) ->
+            NoteGeometry.forEachDotPosition(
+                note, beamed, direction, (dotX, yOffset) ->
                 g2.drawString(dotStr, dotX.floatValue(), yOffset.floatValue()));
         }
     }

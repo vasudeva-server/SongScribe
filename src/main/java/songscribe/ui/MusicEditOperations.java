@@ -28,8 +28,6 @@ import java.util.List;
 import java.util.HashSet;
 import java.util.TreeSet;
 
-
-import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Beam;
 import songscribe.dom.Song;
@@ -681,24 +679,24 @@ public final class MusicEditOperations {
                     // Flip the whole beam group together, once per group.
                     if (processedBeams.add(beam)) {
                         var firstElement = line.getElement(beam.getAnchorElementIndex());
-                        var newUpper = !firstElement.isUpper();
+                        var newDirection = firstElement.getDirection().opposite();
 
                         for (var j = beam.getAnchorElementIndex(); j <= beam.getEndElementIndex(); j++) {
                             var beamIndex = j;
                             line.modifyElement(beamIndex, stemFields, () -> {
                                 var beamElement = line.getElement(beamIndex);
                                 beamElement.setStemDirectionAuto(false);
-                                beamElement.setUpper(newUpper);
+                                beamElement.setDirection(newDirection);
                             });
                         }
                     }
                 } else {
                     var noteIndex = i;
-                    var newUpper = !note.isUpper();
+                    var newDirection = note.getDirection().opposite();
                     line.modifyElement(noteIndex, stemFields, () -> {
                         var target = line.getElement(noteIndex);
                         target.setStemDirectionAuto(false);
-                        target.setUpper(newUpper);
+                        target.setDirection(newDirection);
                     });
                 }
             }
@@ -727,11 +725,11 @@ public final class MusicEditOperations {
 
             for (var i : tiePartnersToFlip) {
                 int partnerIndex = i;
-                var newUpper = !line.getElement(partnerIndex).isUpper();
+                var newDirection = line.getElement(partnerIndex).getDirection().opposite();
                 line.modifyElement(partnerIndex, stemFields, () -> {
                     var note = line.getElement(partnerIndex);
                     note.setStemDirectionAuto(false);
-                    note.setUpper(newUpper);
+                    note.setDirection(newDirection);
                 });
             }
         });

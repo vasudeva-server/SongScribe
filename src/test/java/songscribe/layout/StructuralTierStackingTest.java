@@ -509,7 +509,7 @@ class StructuralTierStackingTest extends UnitTest {
 
             var noteType = note.getType();
             var noteheadCenterXSs = noteType.getElementCenterXSs()
-                + NoteGeometry.getNoteheadXOffsetSs(noteType, note.isUpper());
+                + NoteGeometry.getNoteheadXOffsetSs(noteType, note.getDirection());
             var expectedXSs = NOTE1_X_SS + noteheadCenterXSs - dynamic.getContentWidthSs() / 2.0;
             assertThat(layout.xSs()).isCloseTo(expectedXSs, within(TOLERANCE));
         }

@@ -377,7 +377,7 @@ public class HorizontalAdjustment extends Adjustment {
             rect.line
         );
         rect.rect.y = yPosPx + ScaleContext.ssToRoundedPx(
-            note.getType().getTopYOffsetSs(note.isUpper()));
+            note.getType().getTopYOffsetSs(note.getDirection()));
         var lineComponent = scoreView.getLineComponent(rect.line);
 
         if (lineComponent == null) {

@@ -42,11 +42,11 @@ import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
-import songscribe.ui.component.ScoreView;
 import songscribe.dom.AttributionFormatter;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 
 public final class SongIO {
@@ -495,7 +495,7 @@ public final class SongIO {
                     var line = parsedLines.getLast();
                     note.setXOffsetPx(ScaleContext.ssToRoundedPx(
                         InsertionSpacingCalculator.calculateAppendPositionSs(line, note, null)));
-                    note.setUpper(ScoreView.defaultUpperNote(note));
+                    note.setDirection(StaffElement.defaultDirection(note));
                     line.addElement(note);
                 }
             } else if (where == Where.TEMPO_CHANGE) {
@@ -565,7 +565,7 @@ public final class SongIO {
 
                 for (var i = 0; i < lastLine.elementCount(); i++) {
                     if (lastLine.getElement(i).getType().isGraceNote()) {
-                        lastLine.getElement(i).setUpper(true);
+                        lastLine.getElement(i).setDirection(StaffElement.Direction.UP);
                     }
                 }
             }

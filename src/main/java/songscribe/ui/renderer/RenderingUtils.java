@@ -263,7 +263,7 @@ public final class RenderingUtils {
 
         var type = note.getType();
         var noteheadCenterXSs = type.getElementCenterXSs()
-            + NoteGeometry.getNoteheadXOffsetSs(type, note.isUpper());
+            + NoteGeometry.getNoteheadXOffsetSs(type, note.getDirection());
         return layoutXSs + noteheadCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
     }
 
@@ -329,12 +329,13 @@ public final class RenderingUtils {
      * Returns the X offset in staff spaces from the note reference point to the stem center,
      * for the given stem direction and note type.
      *
-     * @param noteType the note type (determines which notehead anchor to use)
-     * @param upper    true = stem goes up (stem-up SE anchor); false = stem goes down (stem-down NW anchor)
+     * @param noteType  the note type (determines which notehead anchor to use)
+     * @param direction stem direction: UP = stem-up SE anchor; DOWN = stem-down NW anchor
      * @return X offset from note reference point to stem center, in staff spaces
      */
-    static double stemCenterXOffsetSs(ElementType noteType, boolean upper) {
+    static double stemCenterXOffsetSs(ElementType noteType, StaffElement.Direction direction) {
         var isMinim = noteType == ElementType.MINIM;
+        var upper = direction.isUp();
         double anchorX;
 
         if (isMinim) {

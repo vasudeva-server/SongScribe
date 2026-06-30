@@ -64,7 +64,6 @@ import songscribe.message.MessageCenter;
  * the {@link ScoreView#getDocumentFonts()} guard, the {@link ScoreView#installDocumentFonts}
  * non-mutation contract, {@link ScoreView#rebuildLyricRenderMetrics()} guard and
  * idempotency, {@link ScoreView#getSuggestedFileName()} branch logic,
- * {@link ScoreView#defaultUpperNote(songscribe.dom.StaffElement)} static logic,
  * {@link ScoreView#getNoteYPosPx(int, int)} coordinate formula, and
  * {@link ScoreView#drawWidthIfWiderLine(songscribe.dom.Line, boolean)} rescaling.
  */
@@ -244,36 +243,6 @@ class ScoreViewTest extends UnitTest {
 
             // Empty number → no leading separator; only diacritic-stripped title.
             assertThat(scoreView.getSuggestedFileName()).isEqualTo("Melodie");
-        }
-    }
-
-    @Nested
-    class DefaultUpperNote {
-
-        @Test
-        void testDefaultUpperNoteReturnsTrueWhenStaffPositionIsPositive() {
-            var note = ElementType.CROTCHET.newInstance();
-            note.setStaffPosition(1);
-
-            assertThat(ScoreView.defaultUpperNote(note)).isTrue();
-        }
-
-        @Test
-        void testDefaultUpperNoteReturnsFalseWhenStaffPositionIsZeroAndNotGrace() {
-            // staffPosition == 0 and a non-grace type → stem should point down (upper=false).
-            var note = ElementType.CROTCHET.newInstance();
-            note.setStaffPosition(0);
-
-            assertThat(ScoreView.defaultUpperNote(note)).isFalse();
-        }
-
-        @Test
-        void testDefaultUpperNoteReturnsTrueForGraceNoteRegardlessOfStaffPosition() {
-            // Grace notes always return true regardless of staff position.
-            var grace = ElementType.GRACE_QUAVER.newInstance();
-            grace.setStaffPosition(0);
-
-            assertThat(ScoreView.defaultUpperNote(grace)).isTrue();
         }
     }
 

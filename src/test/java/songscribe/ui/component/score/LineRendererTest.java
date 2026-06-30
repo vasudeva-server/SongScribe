@@ -21,6 +21,7 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.mock;
@@ -50,6 +51,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
@@ -549,6 +551,7 @@ class LineRendererTest extends UnitTest {
         private LineRenderer renderer;
         private MockedStatic<NoteRenderer> nrMock;
         private MockedStatic<ScoreView> scoreMock;
+        private MockedStatic<StaffElement> staffElementMock;
 
         @BeforeEach
         void setUp() {
@@ -556,12 +559,13 @@ class LineRendererTest extends UnitTest {
             renderer = new LineRenderer(lc);
             nrMock = mockStatic(NoteRenderer.class);
             scoreMock = mockStatic(ScoreView.class);
+            staffElementMock = mockStatic(StaffElement.class, CALLS_REAL_METHODS);
 
             var mockScore = mock(ScoreView.class);
             var nrInstance = mock(NoteRenderer.class);
 
             nrMock.when(NoteRenderer::getInstance).thenReturn(nrInstance);
-            scoreMock.when(() -> ScoreView.defaultUpperNote(any())).thenReturn(true);
+            staffElementMock.when(() -> StaffElement.defaultDirection(any())).thenReturn(StaffElement.Direction.UP);
             scoreMock.when(ScoreView::getPreviewElementColor).thenReturn(Color.GRAY);
 
             when(lc.getScoreView()).thenReturn(mockScore);
@@ -576,6 +580,7 @@ class LineRendererTest extends UnitTest {
         @AfterEach
         void tearDown() {
             PreviewElementManager.setCurrentPreviewLine(null);
+            staffElementMock.close();
             scoreMock.close();
             nrMock.close();
         }

@@ -97,8 +97,9 @@ class NoteAttachedStackerTest extends UnitTest {
             var centerYSs = StaffExtents.spToSs(STAFF_CENTER_SP);
             var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
             var noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
-            var expectedTopSs = Math.min(centerYSs + type.getTopYOffsetSs(false), noteheadTopSs);
-            var expectedBotSs = Math.max(expectedTopSs + type.getElementHeightSs(false), noteheadBotSs);
+            var expectedTopSs = Math.min(centerYSs + type.getTopYOffsetSs(StaffElement.Direction.DOWN), noteheadTopSs);
+            var expectedBotSs =
+                Math.max(expectedTopSs + type.getElementHeightSs(StaffElement.Direction.DOWN), noteheadBotSs);
 
             var bounds = NoteAttachedStacker.computeNoteBounds(note);
 

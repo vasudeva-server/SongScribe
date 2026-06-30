@@ -648,7 +648,7 @@ class LineRenderer {
 
         // Set the preview element position
         previewElement.setStaffPosition(currentStaffPosition);
-        previewElement.setUpper(ScoreView.defaultUpperNote(previewElement));
+        previewElement.setDirection(StaffElement.defaultDirection(previewElement));
 
         // Render the preview element with the preview element color.
         // Pass x as an override so NoteRenderer and decoration renderers apply

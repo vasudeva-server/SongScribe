@@ -119,8 +119,8 @@ public class ElementColumnBuilder {
 
         // Calculate horizontal extents
         var leftExtentSs = calculateLeftExtentSs(element);
-        var rightExtentSs = calculateRightExtentSs(element, beamed, element.isUpper());
-        var rightExtentExcludingAugmentationSs = calculateRightExtentExcludingAugmentationSs(element, beamed, element.isUpper());
+        var rightExtentSs = calculateRightExtentSs(element, beamed, element.getDirection());
+        var rightExtentExcludingAugmentationSs = calculateRightExtentExcludingAugmentationSs(element, beamed, element.getDirection());
 
         // Calculate stem positions
         var stemTopSs = calculateStemTopSs(element);
@@ -194,13 +194,13 @@ public class ElementColumnBuilder {
      * <p>
      * Used for minimum spacing calculations, which must account for dots and fall to prevent overlap.
      *
-     * @param element The element
-     * @param beamed  {@code true} if the element is part of a beam group (flags are suppressed)
-     * @param upper   {@code true} if the stem goes up; affects which stem anchor is used
+     * @param element   The element
+     * @param beamed    {@code true} if the element is part of a beam group (flags are suppressed)
+     * @param direction The stem direction; affects which stem anchor is used
      * @return Right extent in ss relative to element head left edge (glyph origin)
      */
-    public static double calculateRightExtentSs(StaffElement element, boolean beamed, boolean upper) {
-        return calculateRightExtentInternal(element, beamed, upper, true);
+    public static double calculateRightExtentSs(StaffElement element, boolean beamed, StaffElement.Direction direction) {
+        return calculateRightExtentInternal(element, beamed, direction, true);
     }
 
     /**
@@ -210,19 +210,19 @@ public class ElementColumnBuilder {
      * unless the minimum gap would otherwise be violated — mirroring how accidentals
      * on the left do not widen the gap beyond the comfortable default (refs #441, #492).
      *
-     * @param element The element
-     * @param beamed  {@code true} if the element is part of a beam group (flags are suppressed)
-     * @param upper   {@code true} if the stem goes up; affects which stem anchor is used
+     * @param element   The element
+     * @param beamed    {@code true} if the element is part of a beam group (flags are suppressed)
+     * @param direction The stem direction; affects which stem anchor is used
      * @return Right extent in ss relative to element head left edge (glyph origin), dots and fall excluded
      */
-    public static double calculateRightExtentExcludingAugmentationSs(StaffElement element, boolean beamed, boolean upper) {
-        return calculateRightExtentInternal(element, beamed, upper, false);
+    public static double calculateRightExtentExcludingAugmentationSs(StaffElement element, boolean beamed, StaffElement.Direction direction) {
+        return calculateRightExtentInternal(element, beamed, direction, false);
     }
 
     private static double calculateRightExtentInternal(
         StaffElement element,
         boolean beamed,
-        boolean upper,
+        StaffElement.Direction direction,
         boolean includeAugmentation) {
 
         var type = element.getType();
@@ -240,11 +240,11 @@ public class ElementColumnBuilder {
         // draws (see NoteGeometry.dotsRightExtentSs), so spacing reserves exactly what is painted —
         // the dots already clear the flag when an unbeamed up-stem one is present.
         var baseRightExtentSs = includeAugmentation
-            ? NoteGeometry.dotsRightExtentSs(element, beamed, upper, noteheadRightExtentSs)
+            ? NoteGeometry.dotsRightExtentSs(element, beamed, direction, noteheadRightExtentSs)
             : noteheadRightExtentSs;
 
         // Flag extent: only for unbeamed elements that have a flag
-        var flagBBox = NoteGeometry.flagBBoxLocalSs(type, upper, beamed);
+        var flagBBox = NoteGeometry.flagBBoxLocalSs(type, direction, beamed);
         var flagRightExtentSs = (flagBBox == null) ? 0.0 : flagBBox.getMaxX();
 
         var rightExtentSs = Math.max(baseRightExtentSs, flagRightExtentSs);
@@ -295,7 +295,7 @@ public class ElementColumnBuilder {
         }
 
         // Stem up: stem extends upward
-        if (!element.isUpper()) {
+        if (element.getDirection().isDown()) {
             return -Engraving.STEM_LENGTH_SS;
         }
 
@@ -320,7 +320,7 @@ public class ElementColumnBuilder {
         }
 
         // Stem down: stem extends downward
-        if (element.isUpper()) {
+        if (element.getDirection().isUp()) {
             return Engraving.STEM_LENGTH_SS;
         }
 

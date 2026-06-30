@@ -486,7 +486,7 @@ public class VerticalAdjustment extends Adjustment {
                 }
 
                 adjustRect.rect.x = startNote.getXOffsetPx()
-                    + (startNote.isUpper() ? 0 : TUPLET_LOWER_HANDLE_X_OFFSET_PX);
+                    + (startNote.getDirection().isUp() ? 0 : TUPLET_LOWER_HANDLE_X_OFFSET_PX);
                 adjustRect.rect.y = (int) bounds.getTopSs();
             }
         }

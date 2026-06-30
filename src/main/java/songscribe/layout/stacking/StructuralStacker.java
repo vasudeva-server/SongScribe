@@ -148,7 +148,7 @@ public class StructuralStacker {
         var columnXSs = column.getXSs();
         var noteType = note.getType();
         var noteheadCenterXSs = noteType.getElementCenterXSs()
-            + NoteGeometry.getNoteheadXOffsetSs(noteType, note.isUpper());
+            + NoteGeometry.getNoteheadXOffsetSs(noteType, note.getDirection());
         var contentWidthSs = dynamic.getContentWidthSs();
         var centeredXSs = columnXSs + noteheadCenterXSs - contentWidthSs / 2.0;
         var staffPosition = note.getStaffPosition();

@@ -133,7 +133,7 @@ public class Tuplet extends RangeElement {
 
         return line.findBeamAt(getAnchorElementIndex()) != null
             && line.findBeamAt(getEndElementIndex()) != null
-            && anchor.isUpper();
+            && anchor.getDirection().isUp();
     }
 
     @Override

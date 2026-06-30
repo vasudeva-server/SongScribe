@@ -369,6 +369,98 @@ class StaffElementTest extends UnitTest {
     }
 
     // ------------------------------------------------------------------
+    // Direction — getDirection() defaults to DOWN and tracks setUpper(boolean)
+    // ------------------------------------------------------------------
+
+    @Test
+    void testDirectionDefaultsToDown() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        assertThat(element.getDirection()).isEqualTo(StaffElement.Direction.DOWN);
+        assertThat(element.isUpper()).isFalse();
+    }
+
+    @Test
+    void testSetUpperTrueSetsDirectionUp() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        element.setUpper(true);
+
+        assertThat(element.getDirection()).isEqualTo(StaffElement.Direction.UP);
+        assertThat(element.isUpper()).isTrue();
+    }
+
+    @Test
+    void testSetUpperFalseSetsDirectionDown() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        element.setUpper(true);
+        element.setUpper(false);
+
+        assertThat(element.getDirection()).isEqualTo(StaffElement.Direction.DOWN);
+        assertThat(element.isUpper()).isFalse();
+    }
+
+    @Test
+    void testSetDirectionUpSetsIsUpperTrue() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        element.setDirection(StaffElement.Direction.UP);
+
+        assertThat(element.isUpper()).isTrue();
+    }
+
+    @Test
+    void testSetDirectionDownSetsIsUpperFalse() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        element.setDirection(StaffElement.Direction.UP);
+        element.setDirection(StaffElement.Direction.DOWN);
+
+        assertThat(element.isUpper()).isFalse();
+    }
+
+    // ------------------------------------------------------------------
+    // Direction.opposite() — flips UP and DOWN
+    // ------------------------------------------------------------------
+
+    @Test
+    void testOppositeReturnsDownForUp() {
+        assertThat(StaffElement.Direction.UP.opposite()).isEqualTo(StaffElement.Direction.DOWN);
+    }
+
+    @Test
+    void testOppositeReturnsUpForDown() {
+        assertThat(StaffElement.Direction.DOWN.opposite()).isEqualTo(StaffElement.Direction.UP);
+    }
+
+    // ------------------------------------------------------------------
+    // defaultDirection — up for positive staff position or grace notes, down otherwise
+    // ------------------------------------------------------------------
+
+    @Test
+    void testDefaultDirectionReturnsUpWhenStaffPositionIsPositive() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setStaffPosition(1);
+
+        assertThat(StaffElement.defaultDirection(note)).isEqualTo(StaffElement.Direction.UP);
+    }
+
+    @Test
+    void testDefaultDirectionReturnsDownWhenStaffPositionIsZeroAndNotGrace() {
+        // staffPosition == 0 and a non-grace type → stem should point down.
+        var note = ElementType.CROTCHET.newInstance();
+        note.setStaffPosition(0);
+
+        assertThat(StaffElement.defaultDirection(note)).isEqualTo(StaffElement.Direction.DOWN);
+    }
+
+    @Test
+    void testDefaultDirectionReturnsUpForGraceNoteRegardlessOfStaffPosition() {
+        // Grace notes always return UP regardless of staff position.
+        var grace = ElementType.GRACE_QUAVER.newInstance();
+        grace.setStaffPosition(0);
+
+        assertThat(StaffElement.defaultDirection(grace)).isEqualTo(StaffElement.Direction.UP);
+    }
+
+    // ------------------------------------------------------------------
     // T12 (Row 12): findLastAccidental — inherits from same-position predecessor,
     //               or falls back to the key signature if none exists
     // ------------------------------------------------------------------

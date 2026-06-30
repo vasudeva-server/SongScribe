@@ -20,6 +20,7 @@
 
 package songscribe.ui.component.score;
 
+import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -45,7 +46,7 @@ import songscribe.ui.playback.PlaybackController;
  * Shared static-mock fixture for tests that drive {@link PreviewElementManager}
  * via {@link #lc}. Each subclass inherits a fresh {@link Song} / {@link Line},
  * stubbed {@link EditModeManager}, {@link ScoreView}, {@link PlaybackController},
- * and {@link MessageCenter} statics, plus the cursor reset in tearDown.
+ * {@link StaffElement}, and {@link MessageCenter} statics, plus the cursor reset in tearDown.
  */
 abstract class PreviewElementManagerTestBase extends UnitTest {
 
@@ -56,6 +57,7 @@ abstract class PreviewElementManagerTestBase extends UnitTest {
     protected MockedStatic<EditModeManager> editModeManagerMock;
     protected MockedStatic<ScoreView> scoreMock;
     protected MockedStatic<PlaybackController> playbackMock;
+    protected MockedStatic<StaffElement> staffElementMock;
 
     protected LineComponent lc;
     protected Song song;
@@ -72,6 +74,7 @@ abstract class PreviewElementManagerTestBase extends UnitTest {
         editModeManagerMock = mockStatic(EditModeManager.class);
         scoreMock = mockStatic(ScoreView.class);
         playbackMock = mockStatic(PlaybackController.class);
+        staffElementMock = mockStatic(StaffElement.class, CALLS_REAL_METHODS);
 
         lc = mock(LineComponent.class);
         var score = mock(ScoreView.class);
@@ -89,7 +92,7 @@ abstract class PreviewElementManagerTestBase extends UnitTest {
 
         playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
 
-        scoreMock.when(() -> ScoreView.defaultUpperNote(any())).thenReturn(true);
+        staffElementMock.when(() -> StaffElement.defaultDirection(any())).thenReturn(StaffElement.Direction.UP);
 
         PreviewElementManager.setCurrentPreviewLine(lc);
         PreviewElementManager.setCurrentStaffPosition(0);
@@ -107,6 +110,7 @@ abstract class PreviewElementManagerTestBase extends UnitTest {
         PreviewElementManager.setXPosSsMatchesElement(false);
         PreviewElementManager.setCurrentSlideZone(null);
 
+        staffElementMock.close();
         playbackMock.close();
         scoreMock.close();
         editModeManagerMock.close();

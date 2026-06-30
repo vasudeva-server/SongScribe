@@ -35,6 +35,7 @@ import songscribe.dom.ElementLocation;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.StaffExtents;
 import songscribe.smufl.Engraving;
@@ -240,7 +241,7 @@ class BeamGroupRendererTest extends UnitTest {
         var layout = new LayoutResult.StemLayout(-3.5, 0.5, 0.0, false);
         var element = ElementType.QUAVER.newInstance();
 
-        var result = BeamGroupRenderer.stemTipYSsOffset(layout, true, element);
+        var result = BeamGroupRenderer.stemTipYSsOffset(layout, StaffElement.Direction.UP, element);
 
         assertThat(result).isCloseTo(-3.5, within(TOLERANCE));
     }
@@ -250,7 +251,7 @@ class BeamGroupRendererTest extends UnitTest {
         var layout = new LayoutResult.StemLayout(-3.5, 0.5, 0.0, false);
         var element = ElementType.QUAVER.newInstance();
 
-        var result = BeamGroupRenderer.stemTipYSsOffset(layout, false, element);
+        var result = BeamGroupRenderer.stemTipYSsOffset(layout, StaffElement.Direction.DOWN, element);
 
         assertThat(result).isCloseTo(0.5, within(TOLERANCE));
     }
@@ -262,7 +263,7 @@ class BeamGroupRendererTest extends UnitTest {
         element.setStaffPosition(4);
         var expectedYSs = StaffExtents.spToSs(4) - Engraving.STEM_LENGTH_SS;
 
-        var result = BeamGroupRenderer.stemTipYSsOffset(null, true, element);
+        var result = BeamGroupRenderer.stemTipYSsOffset(null, StaffElement.Direction.UP, element);
 
         assertThat(result).isCloseTo(expectedYSs, within(TOLERANCE));
     }
@@ -273,7 +274,7 @@ class BeamGroupRendererTest extends UnitTest {
         element.setStaffPosition(-2);
         var expectedYSs = StaffExtents.spToSs(-2) + Engraving.STEM_LENGTH_SS;
 
-        var result = BeamGroupRenderer.stemTipYSsOffset(null, false, element);
+        var result = BeamGroupRenderer.stemTipYSsOffset(null, StaffElement.Direction.DOWN, element);
 
         assertThat(result).isCloseTo(expectedYSs, within(TOLERANCE));
     }

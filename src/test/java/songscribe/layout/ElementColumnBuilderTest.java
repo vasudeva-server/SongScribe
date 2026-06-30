@@ -60,7 +60,7 @@ class ElementColumnBuilderTest extends UnitTest {
     void testBeamedQuaverExtentEqualsNoteheadOnly() {
         var quaver = element(ElementType.QUAVER);
         var noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
-        var extent = ElementColumnBuilder.calculateRightExtentSs(quaver, true, true);
+        var extent = ElementColumnBuilder.calculateRightExtentSs(quaver, true, StaffElement.Direction.UP);
 
         assertThat(extent).isEqualTo(noteheadOnly);
     }
@@ -72,7 +72,7 @@ class ElementColumnBuilderTest extends UnitTest {
 
     // Flag right extent for an unbeamed up-stem quaver, computed as ElementColumnBuilder does.
     private static double quaverFlagExtentSs() {
-        return NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, true).stemLeftXSs()
+        return NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, StaffElement.Direction.UP).stemLeftXSs()
             + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right();
     }
 
@@ -84,11 +84,11 @@ class ElementColumnBuilderTest extends UnitTest {
         var dottedQuaver = element(ElementType.QUAVER);
         dottedQuaver.setDotCount(1);
 
-        var firstDotXSs = NoteGeometry.firstDotXSs(ElementType.QUAVER, false, true);
+        var firstDotXSs = NoteGeometry.firstDotXSs(ElementType.QUAVER, false, StaffElement.Direction.UP);
         var dotsExtent = firstDotXSs + dotGlyphRightSs();
         var expected = Math.max(dotsExtent, quaverFlagExtentSs());
 
-        var actual = ElementColumnBuilder.calculateRightExtentSs(dottedQuaver, false, true);
+        var actual = ElementColumnBuilder.calculateRightExtentSs(dottedQuaver, false, StaffElement.Direction.UP);
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -100,12 +100,12 @@ class ElementColumnBuilderTest extends UnitTest {
         var doubleDottedQuaver = element(ElementType.QUAVER);
         doubleDottedQuaver.setDotCount(DOUBLE_DOT_COUNT);
 
-        var firstDotXSs = NoteGeometry.firstDotXSs(ElementType.QUAVER, false, true);
+        var firstDotXSs = NoteGeometry.firstDotXSs(ElementType.QUAVER, false, StaffElement.Direction.UP);
         var lastDotXSs = firstDotXSs + (DOUBLE_DOT_COUNT - 1) * NoteGeometry.DOT_SPACING_SS;
         var dotsExtent = lastDotXSs + dotGlyphRightSs();
         var expected = Math.max(dotsExtent, quaverFlagExtentSs());
 
-        var actual = ElementColumnBuilder.calculateRightExtentSs(doubleDottedQuaver, false, true);
+        var actual = ElementColumnBuilder.calculateRightExtentSs(doubleDottedQuaver, false, StaffElement.Direction.UP);
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -119,11 +119,11 @@ class ElementColumnBuilderTest extends UnitTest {
         dottedQuaver.setDotCount(1);
 
         var flagExtent =
-            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, true).stemLeftXSs()
+            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, StaffElement.Direction.UP).stemLeftXSs()
                 + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right();
         var expectedExcludingAugmentation = Math.max(Engraving.NOTE_HEAD_WIDTH_SS, flagExtent);
 
-        var excludingAugmentation = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(dottedQuaver, false, true);
+        var excludingAugmentation = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(dottedQuaver, false, StaffElement.Direction.UP);
 
         assertThat(excludingAugmentation).isEqualTo(expectedExcludingAugmentation);
         // Flag still wins the Math.max — the extent is more than the bare notehead alone
@@ -137,8 +137,8 @@ class ElementColumnBuilderTest extends UnitTest {
         var dotted = element(ElementType.CROTCHET);
         dotted.setDotCount(1);
 
-        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
-        var dottedExcludingAugmentation = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(dotted, false, true);
+        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, StaffElement.Direction.UP);
+        var dottedExcludingAugmentation = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(dotted, false, StaffElement.Direction.UP);
 
         // Excluding augmentation must match the plain (undotted) right extent
         assertThat(dottedExcludingAugmentation).isEqualTo(plainExtent);
@@ -152,9 +152,9 @@ class ElementColumnBuilderTest extends UnitTest {
         var doubleDotted = element(ElementType.CROTCHET);
         doubleDotted.setDotCount(DOUBLE_DOT_COUNT);
 
-        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
+        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, StaffElement.Direction.UP);
         var excludingAugmentation =
-            ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(doubleDotted, false, true);
+            ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(doubleDotted, false, StaffElement.Direction.UP);
 
         assertThat(excludingAugmentation).isEqualTo(plainExtent);
     }
@@ -167,9 +167,9 @@ class ElementColumnBuilderTest extends UnitTest {
         var dottedGrace = element(ElementType.GRACE_QUAVER);
         dottedGrace.setDotCount(1);
 
-        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plainGrace, false, true);
+        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plainGrace, false, StaffElement.Direction.UP);
         var excludingAugmentation =
-            ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(dottedGrace, false, true);
+            ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(dottedGrace, false, StaffElement.Direction.UP);
 
         assertThat(excludingAugmentation).isEqualTo(plainExtent);
     }
@@ -182,11 +182,11 @@ class ElementColumnBuilderTest extends UnitTest {
         var withFall = element(ElementType.CROTCHET);
         withFall.setFall();
 
-        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
+        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, StaffElement.Direction.UP);
         var fallAdvanceWidthSs = SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
         var expected = plainExtent + NoteGeometry.FALL_GAP_SS + fallAdvanceWidthSs;
 
-        var actualExtent = ElementColumnBuilder.calculateRightExtentSs(withFall, false, true);
+        var actualExtent = ElementColumnBuilder.calculateRightExtentSs(withFall, false, StaffElement.Direction.UP);
 
         assertThat(actualExtent).isEqualTo(expected);
     }
@@ -199,8 +199,8 @@ class ElementColumnBuilderTest extends UnitTest {
         var withFall = element(ElementType.CROTCHET);
         withFall.setFall();
 
-        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
-        var fallExcludingExtent = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(withFall, false, true);
+        var plainExtent = ElementColumnBuilder.calculateRightExtentSs(plain, false, StaffElement.Direction.UP);
+        var fallExcludingExtent = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(withFall, false, StaffElement.Direction.UP);
 
         assertThat(fallExcludingExtent).isEqualTo(plainExtent);
     }
@@ -211,17 +211,18 @@ class ElementColumnBuilderTest extends UnitTest {
         var graceQuaver = element(ElementType.GRACE_QUAVER);
         var regularQuaver = element(ElementType.QUAVER);
 
-        var graceStemLeftXSs = NoteGeometry.computeBaseStemGeometry(ElementType.GRACE_QUAVER, true).stemLeftXSs();
+        var graceStemLeftXSs =
+            NoteGeometry.computeBaseStemGeometry(ElementType.GRACE_QUAVER, StaffElement.Direction.UP).stemLeftXSs();
         var flagBBoxRight = SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right();
         var expectedGrace = Math.max(
             ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS,
             NoteGeometry.getGraceFlagOriginXSs(graceStemLeftXSs) + ElementType.GRACE_NOTE_SCALE * flagBBoxRight);
         var expectedRegular = Math.max(
             Engraving.NOTE_HEAD_WIDTH_SS,
-            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, true).stemLeftXSs() + flagBBoxRight);
+            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, StaffElement.Direction.UP).stemLeftXSs() + flagBBoxRight);
 
-        var graceExtent = ElementColumnBuilder.calculateRightExtentSs(graceQuaver, false, true);
-        var regularExtent = ElementColumnBuilder.calculateRightExtentSs(regularQuaver, false, true);
+        var graceExtent = ElementColumnBuilder.calculateRightExtentSs(graceQuaver, false, StaffElement.Direction.UP);
+        var regularExtent = ElementColumnBuilder.calculateRightExtentSs(regularQuaver, false, StaffElement.Direction.UP);
 
         assertThat(graceExtent).isEqualTo(expectedGrace);
         assertThat(regularExtent).isEqualTo(expectedRegular);
@@ -234,8 +235,8 @@ class ElementColumnBuilderTest extends UnitTest {
         for (var type : new ElementType[]{ElementType.CROTCHET, ElementType.MINIM, ElementType.SEMIBREVE}) {
             var n = element(type);
             var noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
-            var extentUnbeamed = ElementColumnBuilder.calculateRightExtentSs(n, false, true);
-            var extentBeamed = ElementColumnBuilder.calculateRightExtentSs(n, true, true);
+            var extentUnbeamed = ElementColumnBuilder.calculateRightExtentSs(n, false, StaffElement.Direction.UP);
+            var extentBeamed = ElementColumnBuilder.calculateRightExtentSs(n, true, StaffElement.Direction.UP);
 
             assertThat(extentUnbeamed)
                 .as("Unbeamed %s should equal notehead extent", type)
@@ -253,15 +254,15 @@ class ElementColumnBuilderTest extends UnitTest {
 
         var expectedUp = Math.max(
             Engraving.NOTE_HEAD_WIDTH_SS,
-            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, true).stemLeftXSs()
+            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, StaffElement.Direction.UP).stemLeftXSs()
                 + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right());
         var expectedDown = Math.max(
             Engraving.NOTE_HEAD_WIDTH_SS,
-            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, false).stemLeftXSs()
+            NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, StaffElement.Direction.DOWN).stemLeftXSs()
                 + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_DOWN).right());
 
-        var upExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
-        var downExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, false);
+        var upExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, StaffElement.Direction.UP);
+        var downExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, StaffElement.Direction.DOWN);
 
         assertThat(upExtent).isEqualTo(expectedUp);
         assertThat(downExtent).isEqualTo(expectedDown);
@@ -273,7 +274,7 @@ class ElementColumnBuilderTest extends UnitTest {
     void testUnbeamedQuaverExtentExceedsNoteheadOnly() {
         var quaver = element(ElementType.QUAVER);
         var noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
-        var extent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
+        var extent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, StaffElement.Direction.UP);
 
         assertThat(extent).isGreaterThan(noteheadOnly);
     }
@@ -284,7 +285,7 @@ class ElementColumnBuilderTest extends UnitTest {
         for (var type : new ElementType[]{ElementType.CROTCHET_REST, ElementType.SINGLE_BARLINE}) {
             var el = element(type);
 
-            assertThat(ElementColumnBuilder.calculateRightExtentSs(el, false, true))
+            assertThat(ElementColumnBuilder.calculateRightExtentSs(el, false, StaffElement.Direction.UP))
                 .as("Right extent of %s should equal element width", type)
                 .isEqualTo(type.getElementWidthSs());
         }

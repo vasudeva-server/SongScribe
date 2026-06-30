@@ -293,10 +293,10 @@ class NoteGeometryTest extends UnitTest {
          * notehead is X-offset (stem-down) — that a copied formula would silently reproduce.
          */
         private static void assertProportionalExtent(
-            NoteGeometry.LedgerExtentSs actual, ElementType noteType, boolean upper
+            NoteGeometry.LedgerExtentSs actual, ElementType noteType, StaffElement.Direction direction
         ) {
             var bbox = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph());
-            var offset = NoteGeometry.getNoteheadXOffsetSs(noteType, upper);
+            var offset = NoteGeometry.getNoteheadXOffsetSs(noteType, direction);
             var headLeft = offset + bbox.left();
             var headRight = offset + bbox.right();
             var expectedExtension = Engraving.LEDGER_LINE_LENGTH_FRACTION * (headRight - headLeft);
@@ -324,7 +324,7 @@ class NoteGeometryTest extends UnitTest {
             note.setStaffPosition(LEDGER_POSITION_SP);
 
             assertProportionalExtent(
-                NoteGeometry.getLedgerLineBaseExtentSs(note), ElementType.CROTCHET, true);
+                NoteGeometry.getLedgerLineBaseExtentSs(note), ElementType.CROTCHET, StaffElement.Direction.UP);
         }
 
         @Test
@@ -335,7 +335,7 @@ class NoteGeometryTest extends UnitTest {
             note.setStaffPosition(LEDGER_POSITION_SP);
 
             var actual = NoteGeometry.getLedgerLineBaseExtentSs(note);
-            assertProportionalExtent(actual, ElementType.CROTCHET, false);
+            assertProportionalExtent(actual, ElementType.CROTCHET, StaffElement.Direction.DOWN);
 
             // stem-down ledgerLeft is further left than stem-up, since the notehead is shifted left
             var stemUpNote = ElementType.CROTCHET.newInstance();
@@ -352,7 +352,7 @@ class NoteGeometryTest extends UnitTest {
             note.setStaffPosition(LEDGER_POSITION_SP);
 
             assertProportionalExtent(
-                NoteGeometry.getLedgerLineBaseExtentSs(note), ElementType.GRACE_QUAVER, true);
+                NoteGeometry.getLedgerLineBaseExtentSs(note), ElementType.GRACE_QUAVER, StaffElement.Direction.UP);
         }
     }
 
@@ -416,7 +416,7 @@ class NoteGeometryTest extends UnitTest {
             var noteType = ElementType.CROTCHET;
             var glyph = noteType.requireSMuFLGlyph();
             var bbox = SMuFLMetadata.requireBBox(glyph);
-            var headLeft = NoteGeometry.getNoteheadXOffsetSs(noteType, true) + bbox.left();
+            var headLeft = NoteGeometry.getNoteheadXOffsetSs(noteType, StaffElement.Direction.UP) + bbox.left();
             var midpoint = (accRight + headLeft) / 2;
 
             // Precondition: midpoint is right of base ledgerLeft (shortening applies)
@@ -480,7 +480,7 @@ class NoteGeometryTest extends UnitTest {
             var noteType = ElementType.CROTCHET;
             var glyph = noteType.requireSMuFLGlyph();
             var bbox = SMuFLMetadata.requireBBox(glyph);
-            var headLeft = NoteGeometry.getNoteheadXOffsetSs(noteType, true) + bbox.left();
+            var headLeft = NoteGeometry.getNoteheadXOffsetSs(noteType, StaffElement.Direction.UP) + bbox.left();
             var midpoint = (accRight + headLeft) / 2;
 
             // Show that accRight IS left of the base ledger left edge …
@@ -528,7 +528,7 @@ class NoteGeometryTest extends UnitTest {
             var accRight = flatBounds.leftSs() + flatBounds.widthSs();
             var noteType = ElementType.CROTCHET;
             var bbox = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph());
-            var headLeft = NoteGeometry.getNoteheadXOffsetSs(noteType, true) + bbox.left();
+            var headLeft = NoteGeometry.getNoteheadXOffsetSs(noteType, StaffElement.Direction.UP) + bbox.left();
             var expectedLeft = Math.max(baseExtent.leftSs(), (accRight + headLeft) / 2);
 
             var actual = NoteGeometry.getLedgerLineExtentSs(note, ledgerYSs);
@@ -708,23 +708,47 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testStemDownShiftsLeftByHalfStemWidth() {
-            // upper=false means stem-down; offset = -(STEM_WIDTH_SS / 2)
-            final boolean upper = false;
+            // direction=DOWN means stem-down; offset = -(STEM_WIDTH_SS / 2)
+            final var direction = StaffElement.Direction.DOWN;
             final float expectedOffsetSs = (float) -(NoteGeometry.STEM_WIDTH_SS / 2);
-            assertThat(NoteGeometry.getNoteheadXOffsetSs(ElementType.CROTCHET, upper))
+            assertThat(NoteGeometry.getNoteheadXOffsetSs(ElementType.CROTCHET, direction))
                 .isEqualTo(expectedOffsetSs);
         }
 
         @Test
         void testStemUpReturnsZero() {
-            final boolean upper = true;
-            assertThat(NoteGeometry.getNoteheadXOffsetSs(ElementType.CROTCHET, upper)).isEqualTo(0f);
+            final var direction = StaffElement.Direction.UP;
+            assertThat(NoteGeometry.getNoteheadXOffsetSs(ElementType.CROTCHET, direction)).isEqualTo(0f);
         }
 
         @Test
         void testNonStemmedNoteReturnsZero() {
             // SEMIBREVE has no stem (isNoteWithStem() == false) → always 0
-            assertThat(NoteGeometry.getNoteheadXOffsetSs(ElementType.SEMIBREVE, false)).isEqualTo(0f);
+            assertThat(NoteGeometry.getNoteheadXOffsetSs(ElementType.SEMIBREVE, StaffElement.Direction.DOWN)).isEqualTo(0f);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // effectiveDirection — grace notes always resolve UP regardless of stored direction
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class EffectiveDirection {
+
+        @Test
+        void testGraceNoteStoredDownStillResolvesUp() {
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setDirection(StaffElement.Direction.DOWN);
+
+            assertThat(NoteGeometry.effectiveDirection(grace)).isEqualTo(StaffElement.Direction.UP);
+        }
+
+        @Test
+        void testNonGraceNoteUsesOwnStoredDirection() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setDirection(StaffElement.Direction.DOWN);
+
+            assertThat(NoteGeometry.effectiveDirection(note)).isEqualTo(StaffElement.Direction.DOWN);
         }
     }
 

@@ -41,10 +41,10 @@ class ElementTypeTest extends UnitTest {
             assertThat(type.getFullElementWidthSs())
                 .as("widthSs of %s", type)
                 .isGreaterThan(0);
-            assertThat(type.getElementHeightSs(true))
+            assertThat(type.getElementHeightSs(StaffElement.Direction.UP))
                 .as("heightUpSs of %s", type)
                 .isGreaterThan(0);
-            assertThat(type.getElementHeightSs(false))
+            assertThat(type.getElementHeightSs(StaffElement.Direction.DOWN))
                 .as("heightDownSs of %s", type)
                 .isGreaterThan(0);
         }
@@ -62,35 +62,35 @@ class ElementTypeTest extends UnitTest {
         }
     }
 
-    // T7: getFlagGlyph(upper) returns the correct glyph for each flagged type × direction
+    // T7: getFlagGlyph(direction) returns the correct glyph for each flagged type × direction
     @Test
     void testGetFlagGlyphReturnsCorrectGlyphForFlaggedTypes() {
-        assertThat(ElementType.QUAVER.getFlagGlyph(true)).isEqualTo(SMuFLGlyph.FLAG_8TH_UP);
-        assertThat(ElementType.QUAVER.getFlagGlyph(false)).isEqualTo(SMuFLGlyph.FLAG_8TH_DOWN);
+        assertThat(ElementType.QUAVER.getFlagGlyph(StaffElement.Direction.UP)).isEqualTo(SMuFLGlyph.FLAG_8TH_UP);
+        assertThat(ElementType.QUAVER.getFlagGlyph(StaffElement.Direction.DOWN)).isEqualTo(SMuFLGlyph.FLAG_8TH_DOWN);
 
-        assertThat(ElementType.SEMIQUAVER.getFlagGlyph(true)).isEqualTo(SMuFLGlyph.FLAG_16TH_UP);
-        assertThat(ElementType.SEMIQUAVER.getFlagGlyph(false)).isEqualTo(SMuFLGlyph.FLAG_16TH_DOWN);
+        assertThat(ElementType.SEMIQUAVER.getFlagGlyph(StaffElement.Direction.UP)).isEqualTo(SMuFLGlyph.FLAG_16TH_UP);
+        assertThat(ElementType.SEMIQUAVER.getFlagGlyph(StaffElement.Direction.DOWN)).isEqualTo(SMuFLGlyph.FLAG_16TH_DOWN);
 
-        assertThat(ElementType.DEMI_SEMIQUAVER.getFlagGlyph(true)).isEqualTo(SMuFLGlyph.FLAG_32ND_UP);
-        assertThat(ElementType.DEMI_SEMIQUAVER.getFlagGlyph(false)).isEqualTo(SMuFLGlyph.FLAG_32ND_DOWN);
+        assertThat(ElementType.DEMI_SEMIQUAVER.getFlagGlyph(StaffElement.Direction.UP)).isEqualTo(SMuFLGlyph.FLAG_32ND_UP);
+        assertThat(ElementType.DEMI_SEMIQUAVER.getFlagGlyph(StaffElement.Direction.DOWN)).isEqualTo(SMuFLGlyph.FLAG_32ND_DOWN);
     }
 
     // T7 continued: GRACE_QUAVER always returns regular 8th flag (renderers use grace font for sizing)
     @Test
     void testGetFlagGlyphReturnsEighthFlagForGraceQuaver() {
-        assertThat(ElementType.GRACE_QUAVER.getFlagGlyph(true)).isEqualTo(SMuFLGlyph.FLAG_8TH_UP);
-        assertThat(ElementType.GRACE_QUAVER.getFlagGlyph(false)).isEqualTo(SMuFLGlyph.FLAG_8TH_UP);
+        assertThat(ElementType.GRACE_QUAVER.getFlagGlyph(StaffElement.Direction.UP)).isEqualTo(SMuFLGlyph.FLAG_8TH_UP);
+        assertThat(ElementType.GRACE_QUAVER.getFlagGlyph(StaffElement.Direction.DOWN)).isEqualTo(SMuFLGlyph.FLAG_8TH_UP);
     }
 
-    // T8: getFlagGlyph(upper) returns null for non-flagged types
+    // T8: getFlagGlyph(direction) returns null for non-flagged types
     @Test
     void testGetFlagGlyphReturnsNullForNonFlaggedTypes() {
-        assertThat(ElementType.CROTCHET.getFlagGlyph(true)).isNull();
-        assertThat(ElementType.MINIM.getFlagGlyph(true)).isNull();
-        assertThat(ElementType.SEMIBREVE.getFlagGlyph(true)).isNull();
-        assertThat(ElementType.CROTCHET_REST.getFlagGlyph(true)).isNull();
-        assertThat(ElementType.QUAVER_REST.getFlagGlyph(true)).isNull();
-        assertThat(ElementType.SEMIBREVE_REST.getFlagGlyph(true)).isNull();
+        assertThat(ElementType.CROTCHET.getFlagGlyph(StaffElement.Direction.UP)).isNull();
+        assertThat(ElementType.MINIM.getFlagGlyph(StaffElement.Direction.UP)).isNull();
+        assertThat(ElementType.SEMIBREVE.getFlagGlyph(StaffElement.Direction.UP)).isNull();
+        assertThat(ElementType.CROTCHET_REST.getFlagGlyph(StaffElement.Direction.UP)).isNull();
+        assertThat(ElementType.QUAVER_REST.getFlagGlyph(StaffElement.Direction.UP)).isNull();
+        assertThat(ElementType.SEMIBREVE_REST.getFlagGlyph(StaffElement.Direction.UP)).isNull();
     }
 
     @Test
@@ -631,7 +631,7 @@ class ElementTypeTest extends UnitTest {
         @Test
         void testElementGetContentHeightReturnsPx() {
             var element = ElementType.CROTCHET.newInstance();
-            var expectedPx = ScaleContext.ssToPx(ElementType.CROTCHET.getElementHeightSs(element.isUpper()));
+            var expectedPx = ScaleContext.ssToPx(ElementType.CROTCHET.getElementHeightSs(element.getDirection()));
             assertThat(element.getContentHeightPx()).isCloseTo(expectedPx, within(1e-9));
         }
 
@@ -651,11 +651,11 @@ class ElementTypeTest extends UnitTest {
         void testBarlineHeightEqualsStaffHeight() {
             var staffHeight = StaffExtents.STAFF_HEIGHT_SS;
 
-            assertThat(ElementType.SINGLE_BARLINE.getElementHeightSs(true))
+            assertThat(ElementType.SINGLE_BARLINE.getElementHeightSs(StaffElement.Direction.UP))
                 .isCloseTo(staffHeight, within(1e-9));
-            assertThat(ElementType.DOUBLE_BARLINE.getElementHeightSs(true))
+            assertThat(ElementType.DOUBLE_BARLINE.getElementHeightSs(StaffElement.Direction.UP))
                 .isCloseTo(staffHeight, within(1e-9));
-            assertThat(ElementType.FINAL_DOUBLE_BARLINE.getElementHeightSs(true))
+            assertThat(ElementType.FINAL_DOUBLE_BARLINE.getElementHeightSs(StaffElement.Direction.UP))
                 .isCloseTo(staffHeight, within(1e-9));
         }
 
@@ -663,18 +663,18 @@ class ElementTypeTest extends UnitTest {
         void testRepeatHeightEqualsStaffHeight() {
             var staffHeight = StaffExtents.STAFF_HEIGHT_SS;
 
-            assertThat(ElementType.REPEAT_LEFT.getElementHeightSs(true))
+            assertThat(ElementType.REPEAT_LEFT.getElementHeightSs(StaffElement.Direction.UP))
                 .isCloseTo(staffHeight, within(1e-9));
-            assertThat(ElementType.REPEAT_RIGHT.getElementHeightSs(false))
+            assertThat(ElementType.REPEAT_RIGHT.getElementHeightSs(StaffElement.Direction.DOWN))
                 .isCloseTo(staffHeight, within(1e-9));
-            assertThat(ElementType.REPEAT_LEFT_RIGHT.getElementHeightSs(true))
+            assertThat(ElementType.REPEAT_LEFT_RIGHT.getElementHeightSs(StaffElement.Direction.UP))
                 .isCloseTo(staffHeight, within(1e-9));
         }
 
         @Test
         void testSemibreveHeightIsSameBothDirections() {
-            assertThat(ElementType.SEMIBREVE.getElementHeightSs(true))
-                .isEqualTo(ElementType.SEMIBREVE.getElementHeightSs(false));
+            assertThat(ElementType.SEMIBREVE.getElementHeightSs(StaffElement.Direction.UP))
+                .isEqualTo(ElementType.SEMIBREVE.getElementHeightSs(StaffElement.Direction.DOWN));
         }
 
         @Test
@@ -684,10 +684,10 @@ class ElementTypeTest extends UnitTest {
             // is the notehead top.  Asserting != here catches an up/down swap that would still
             // pass a ">0" or equality check on the height alone.
             var type = ElementType.CROTCHET;
-            assertThat(type.getElementHeightSs(true)).isGreaterThan(0);
-            assertThat(type.getElementHeightSs(false)).isGreaterThan(0);
-            assertThat(type.getTopYOffsetSs(true))
-                .isNotEqualTo(type.getTopYOffsetSs(false));
+            assertThat(type.getElementHeightSs(StaffElement.Direction.UP)).isGreaterThan(0);
+            assertThat(type.getElementHeightSs(StaffElement.Direction.DOWN)).isGreaterThan(0);
+            assertThat(type.getTopYOffsetSs(StaffElement.Direction.UP))
+                .isNotEqualTo(type.getTopYOffsetSs(StaffElement.Direction.DOWN));
         }
     }
 

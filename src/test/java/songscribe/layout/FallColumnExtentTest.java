@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -52,8 +53,8 @@ class FallColumnExtentTest extends UnitTest {
         var withFall = ElementType.CROTCHET.newInstance();
         withFall.setFall();
 
-        var plainRightSs = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
-        var fallRightSs = ElementColumnBuilder.calculateRightExtentSs(withFall, false, true);
+        var plainRightSs = ElementColumnBuilder.calculateRightExtentSs(plain, false, StaffElement.Direction.UP);
+        var fallRightSs = ElementColumnBuilder.calculateRightExtentSs(withFall, false, StaffElement.Direction.UP);
 
         var fallAdvanceSs = SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
         var expectedReservationSs = NoteGeometry.FALL_GAP_SS + fallAdvanceSs;
@@ -71,8 +72,8 @@ class FallColumnExtentTest extends UnitTest {
         withFall.setFall();
         var plain = ElementType.CROTCHET.newInstance();
 
-        var fallRightSs = ElementColumnBuilder.calculateRightExtentSs(withFall, false, true);
-        var plainRightSs = ElementColumnBuilder.calculateRightExtentSs(plain, false, true);
+        var fallRightSs = ElementColumnBuilder.calculateRightExtentSs(withFall, false, StaffElement.Direction.UP);
+        var plainRightSs = ElementColumnBuilder.calculateRightExtentSs(plain, false, StaffElement.Direction.UP);
 
         assertThat(fallRightSs)
             .as("a fall note is wider than the same note without one")

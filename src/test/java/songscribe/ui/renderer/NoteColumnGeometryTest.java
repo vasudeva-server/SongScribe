@@ -56,7 +56,7 @@ class NoteColumnGeometryTest extends UnitTest {
         note.setUpper(true);
 
         var extent = NoteColumnGeometry.extentSs(note, false);
-        var stemGeom = NoteGeometry.computeBaseStemGeometry(ElementType.CROTCHET, true);
+        var stemGeom = NoteGeometry.computeBaseStemGeometry(ElementType.CROTCHET, StaffElement.Direction.UP);
         var expectedRight = stemGeom.stemLeftXSs() + NoteGeometry.STEM_WIDTH_SS;
 
         assertThat(extent.rightSs()).isCloseTo(expectedRight, within(TOLERANCE_SS));
@@ -86,7 +86,7 @@ class NoteColumnGeometryTest extends UnitTest {
         note.setUpper(true);
 
         var extent = NoteColumnGeometry.extentSs(note, false);
-        var stemGeom = NoteGeometry.computeBaseStemGeometry(ElementType.MINIM, true);
+        var stemGeom = NoteGeometry.computeBaseStemGeometry(ElementType.MINIM, StaffElement.Direction.UP);
         var expectedRight = stemGeom.stemLeftXSs() + NoteGeometry.STEM_WIDTH_SS;
 
         assertThat(extent.rightSs()).isCloseTo(expectedRight, within(TOLERANCE_SS));
@@ -250,7 +250,7 @@ class NoteColumnGeometryTest extends UnitTest {
 
         var glyph = ElementType.CROTCHET.requireSMuFLGlyph();
         var noteheadLeftSs =
-            NoteGeometry.getNoteheadXOffsetSs(ElementType.CROTCHET, false)
+            NoteGeometry.getNoteheadXOffsetSs(ElementType.CROTCHET, StaffElement.Direction.DOWN)
                 + SMuFLMetadata.requireBBox(glyph).left();
 
         // (a) Stem-free left is less negative (closer to zero) than stem-full left.

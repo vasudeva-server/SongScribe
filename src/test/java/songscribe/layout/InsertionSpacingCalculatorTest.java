@@ -118,7 +118,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
         var insertedLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(insertedElement);
         var insertedRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-            insertedElement, false, insertedElement.isUpper());
+            insertedElement, false, insertedElement.getDirection());
         var insertedColumn = new ElementColumn(
             insertedElement, Collections.emptyList(),
             insertedLeftExtentSs, insertedRightExtentSs, 0, 0, null, 0, false);
@@ -126,7 +126,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
         var existingLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(existingElement);
         var existingRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-            existingElement, false, existingElement.isUpper());
+            existingElement, false, existingElement.getDirection());
         var existingColumn = new ElementColumn(
             existingElement, Collections.emptyList(),
             existingLeftExtentSs, existingRightExtentSs, 0, 0, null, 0, false);
@@ -141,7 +141,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     private static double lastElementRightEdgeSs(Line line) {
         var last = line.getElement(line.elementCount() - 1);
         var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(last);
-        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(last, false, last.isUpper());
+        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(last, false, last.getDirection());
         var column = new ElementColumn(
             last, Collections.emptyList(), leftExtentSs, rightExtentSs, 0, 0, null, 0, false
         );
@@ -156,7 +156,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     private static double rightEdgeWithFallSs(StaffElement element, double xSs) {
         element.setFall();
         var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
-        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.isUpper());
+        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.getDirection());
         element.removeSlide();
 
         var column = new ElementColumn(
@@ -377,7 +377,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // Compute insertedXSs: same algorithm the production code uses.
             var prevLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(prevElement);
             var prevRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                prevElement, false, prevElement.isUpper());
+                prevElement, false, prevElement.getDirection());
             var prevXSs = ScaleContext.pxToSs(prevElement.getXOffsetPx());
             var prevColumn = new ElementColumn(
                 prevElement, Collections.emptyList(),
@@ -387,7 +387,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var inserted = crotchet();
             var insertedLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(inserted);
             var insertedRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                inserted, false, inserted.isUpper());
+                inserted, false, inserted.getDirection());
             var insertedColumn = new ElementColumn(
                 inserted, Collections.emptyList(),
                 insertedLeftExtentSs, insertedRightExtentSs, 0, 0, null, 0, false);
@@ -397,7 +397,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
             var nextLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(nextElement);
             var nextRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                nextElement, false, nextElement.isUpper());
+                nextElement, false, nextElement.getDirection());
             var nextColumn = new ElementColumn(
                 nextElement, Collections.emptyList(),
                 nextLeftExtentSs, nextRightExtentSs, 0, 0, null, 0, false);
@@ -432,7 +432,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // Build equivalent columns exactly as the production code does internally.
             var currentLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(currentElement);
             var currentRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                currentElement, false, currentElement.isUpper());
+                currentElement, false, currentElement.getDirection());
             var currentColumn = new ElementColumn(
                 currentElement, Collections.emptyList(),
                 currentLeftExtentSs, currentRightExtentSs, 0, 0, null, 0, false);
@@ -440,7 +440,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
             var nextLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(nextElement);
             var nextRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                nextElement, false, nextElement.isUpper());
+                nextElement, false, nextElement.getDirection());
             var nextColumn = new ElementColumn(
                 nextElement, Collections.emptyList(),
                 nextLeftExtentSs, nextRightExtentSs, 0, 0, null, 0, false);
@@ -471,7 +471,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // Recompute the inserted element's column right edge from scratch.
             var insertedLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(inserted);
             var insertedRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                inserted, false, inserted.isUpper());
+                inserted, false, inserted.getDirection());
             var insertedColumn = new ElementColumn(
                 inserted, Collections.emptyList(),
                 insertedLeftExtentSs, insertedRightExtentSs, 0, 0, null, 0, false);
@@ -484,7 +484,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var lastElement = line.getElement(lastIndex);
             var lastLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(lastElement);
             var lastRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                lastElement, false, lastElement.isUpper());
+                lastElement, false, lastElement.getDirection());
             var lastColumn = new ElementColumn(
                 lastElement, Collections.emptyList(),
                 lastLeftExtentSs, lastRightExtentSs, 0, 0, null, 0, false);

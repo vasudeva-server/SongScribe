@@ -352,10 +352,6 @@ public final class ScoreView
         setupLineComponentState();
     }
 
-    public static boolean defaultUpperNote(StaffElement note) {
-        return (note.getStaffPosition() > 0) || note.getType().isGraceNote();
-    }
-
     /**
      * Sets up selection provider and initial state for all LineComponents.
      * <p>
@@ -641,7 +637,7 @@ public final class ScoreView
                 EditModeManager.setPreviewElement(element);
             }
 
-            element.setUpper(defaultUpperNote(element));
+            element.setDirection(StaffElement.defaultDirection(element));
         }
 
         EditModeManager.setPreviewElement(element);

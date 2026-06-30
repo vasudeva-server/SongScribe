@@ -200,7 +200,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         }
 
         var beginNote = line.getElement(beginIndex);
-        var isUpper = beginNote.isUpper();
+        var direction = beginNote.getDirection();
         var leftOriented = false;
 
         // Half beam (single note at this level)
@@ -230,11 +230,11 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
             }
 
             var type = leftOriented ? BeamType.ATTACH_RIGHT : BeamType.ATTACH_LEFT;
-            drawBeam(g2, line, invariants, begin, end, isUpper, type, recursionLevel, selected, beamLayout, selectionColor);
+            drawBeam(g2, line, invariants, begin, end, direction, type, recursionLevel, selected, beamLayout, selectionColor);
         }
         // Full beam
         else {
-            drawBeam(g2, line, invariants, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
+            drawBeam(g2, line, invariants, beginIndex, endIndex, direction, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
         }
 
         // Sub-beams for inner levels.
@@ -267,7 +267,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         LineInvariants invariants,
         int beginIndex,
         int endIndex,
-        boolean isUpper,
+        StaffElement.Direction direction,
         BeamType type,
         int recursionLevel,
         boolean selected,
@@ -279,6 +279,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var layoutResult = invariants.getLayoutResult();
         var middleLineYSs = invariants.getMiddleLineYSs();
         var halfStemWidthSs = NoteGeometry.STEM_WIDTH_SS / 2.0;
+        var isUpper = direction.isUp();
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---
         var thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
@@ -290,9 +291,9 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var firstStemLayout = layoutResult.getStemLayout(beginNote);
         var firstNoteXSs = layoutResult.getElementXSs(beginNote);
         var firstStemCenterXSs = firstNoteXSs
-            + RenderingUtils.stemCenterXOffsetSs(beginNote.getType(), isUpper);
+            + RenderingUtils.stemCenterXOffsetSs(beginNote.getType(), direction);
         var firstX = firstStemCenterXSs - halfStemWidthSs;
-        var firstTipYSs = stemTipYSsOffset(firstStemLayout, isUpper, beginNote);
+        var firstTipYSs = stemTipYSsOffset(firstStemLayout, direction, beginNote);
         var firstOuterY = middleLineYSs + firstTipYSs + innerBeamOffsetSs;
         var firstInnerY = firstOuterY + beamDepthSs;
 
@@ -300,9 +301,9 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var lastStemLayout = layoutResult.getStemLayout(endNote);
         var lastNoteXSs = layoutResult.getElementXSs(endNote);
         var lastStemCenterXSs = lastNoteXSs
-            + RenderingUtils.stemCenterXOffsetSs(endNote.getType(), isUpper);
+            + RenderingUtils.stemCenterXOffsetSs(endNote.getType(), direction);
         var lastX = lastStemCenterXSs + halfStemWidthSs;
-        var lastTipYSs = stemTipYSsOffset(lastStemLayout, isUpper, endNote);
+        var lastTipYSs = stemTipYSsOffset(lastStemLayout, direction, endNote);
         var lastOuterY = middleLineYSs + lastTipYSs + innerBeamOffsetSs;
         var lastInnerY = lastOuterY + beamDepthSs;
 
@@ -337,24 +338,24 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
      * Returns the Y offset from {@code middleLineYSs} to the beam-connection end of the stem
      * (the stem tip), in staff-space units.
      *
-     * @param layout  StemLayout from LayoutResult, or null if unavailable
-     * @param isUpper true = stem goes up (beam above notes)
-     * @param element fallback element for staff-position estimate when layout is null
+     * @param layout    StemLayout from LayoutResult, or null if unavailable
+     * @param direction UP = stem goes up (beam above notes); DOWN = stem goes down
+     * @param element   fallback element for staff-position estimate when layout is null
      */
     static double stemTipYSsOffset(
         LayoutResult.@Nullable StemLayout layout,
-        boolean isUpper,
+        StaffElement.Direction direction,
         StaffElement element
     ) {
         if (layout != null) {
             // topYSs = smaller Y (higher screen) = stem tip for stem-up
             // bottomYSs = larger Y (lower screen) = stem tip for stem-down
-            return isUpper ? layout.topYSs() : layout.bottomYSs();
+            return direction.isUp() ? layout.topYSs() : layout.bottomYSs();
         }
 
         // Fallback: approximate from staff position + standard stem length
         var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
-        return isUpper
+        return direction.isUp()
             ? elementYSs - Engraving.STEM_LENGTH_SS
             : elementYSs + Engraving.STEM_LENGTH_SS;
     }

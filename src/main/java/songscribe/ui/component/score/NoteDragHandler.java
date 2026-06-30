@@ -39,7 +39,6 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
-import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.ScaleContext;
 import songscribe.layout.StaffExtents;
@@ -60,7 +59,7 @@ class NoteDragHandler {
      * {@link ElementModification#beforeElement()} for the eventual mutation
      * record (the actual element is mutated incrementally during drag).
      */
-    private record DragEntry(int index, int originalStaffPositionSp, boolean originalUpper, StaffElement beforeClone) {}
+    private record DragEntry(int index, int originalStaffPositionSp, StaffElement.Direction originalDirection, StaffElement beforeClone) {}
 
     private final LineComponent lc;
 
@@ -200,7 +199,7 @@ class NoteDragHandler {
 
         for (var idx : groupIndices) {
             var groupNote = line.getElement(idx);
-            dragGroup.add(new DragEntry(idx, groupNote.getStaffPosition(), groupNote.isUpper(), groupNote.clone()));
+            dragGroup.add(new DragEntry(idx, groupNote.getStaffPosition(), groupNote.getDirection(), groupNote.clone()));
         }
 
         // Save state for possible revert on a press+release without drag
@@ -268,7 +267,7 @@ class NoteDragHandler {
         for (var entry : dragGroup) {
             var groupNote = dragLine.getElement(entry.index());
             groupNote.setStaffPosition(entry.originalStaffPositionSp() + deltaSp);
-            groupNote.setUpper(ScoreView.defaultUpperNote(groupNote));
+            groupNote.setDirection(StaffElement.defaultDirection(groupNote));
         }
 
         // Play NOTE_ON for the new pitch of the dragged note

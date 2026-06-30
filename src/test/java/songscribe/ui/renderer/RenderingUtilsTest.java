@@ -175,7 +175,7 @@ class RenderingUtilsTest extends UnitTest {
 
         var type = note.getType();
         var noteheadCenterXSs =
-            type.getElementCenterXSs() + NoteGeometry.getNoteheadXOffsetSs(type, note.isUpper());
+            type.getElementCenterXSs() + NoteGeometry.getNoteheadXOffsetSs(type, note.getDirection());
         var expected = layoutXSs + noteheadCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
 
         var actual = RenderingUtils.centeredGlyphX(layoutXSs, note, glyphBBoxLeft, glyphWidthSs);
@@ -187,28 +187,28 @@ class RenderingUtilsTest extends UnitTest {
     @Test
     void testStemCenterXOffsetSsMinimUp() {
         var expected = Engraving.NOTEHEAD_HALF_STEM_UP_SE.x() - NoteGeometry.STEM_WIDTH_SS / 2.0;
-        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.MINIM, true))
+        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.MINIM, StaffElement.Direction.UP))
             .isCloseTo(expected, within(1e-9));
     }
 
     @Test
     void testStemCenterXOffsetSsMinimDown() {
         var expected = Engraving.NOTEHEAD_HALF_STEM_DOWN_NW.x();
-        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.MINIM, false))
+        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.MINIM, StaffElement.Direction.DOWN))
             .isCloseTo(expected, within(1e-9));
     }
 
     @Test
     void testStemCenterXOffsetSsBlackNoteheadUp() {
         var expected = Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() - NoteGeometry.STEM_WIDTH_SS / 2.0;
-        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.CROTCHET, true))
+        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.CROTCHET, StaffElement.Direction.UP))
             .isCloseTo(expected, within(1e-9));
     }
 
     @Test
     void testStemCenterXOffsetSsBlackNoteheadDown() {
         var expected = Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x();
-        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.CROTCHET, false))
+        assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.CROTCHET, StaffElement.Direction.DOWN))
             .isCloseTo(expected, within(1e-9));
     }
 }

@@ -20,7 +20,6 @@
 
 package songscribe.ui.renderer;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLMetadata;
@@ -88,17 +87,17 @@ final class NoteColumnGeometry {
      */
     static ColumnExtent glissandoAttachExtentSs(StaffElement note, boolean beamed) {
         var noteType = note.getType();
-        var upper = resolvesUpper(note, noteType);
+        var direction = NoteGeometry.effectiveDirection(note);
 
         // ---- notehead ----
         var glyph = noteType.requireSMuFLGlyph();
         var noteheadBBox = SMuFLMetadata.requireBBox(glyph);
-        var offsetX = NoteGeometry.getNoteheadXOffsetSs(noteType, upper);
+        var offsetX = NoteGeometry.getNoteheadXOffsetSs(noteType, direction);
         var leftSs = offsetX + noteheadBBox.left();
 
         // ---- augmentation dots (extend right) ----
         var rightSs = NoteGeometry.dotsRightExtentSs(
-            note, beamed, upper, NoteGeometry.getNoteheadRightEdgeSs(note));
+            note, beamed, direction, NoteGeometry.getNoteheadRightEdgeSs(note));
 
         // ---- accidental (extend left only) ----
         if (note.getAccidental() != null) {
@@ -140,11 +139,11 @@ final class NoteColumnGeometry {
         var rightSs = stemFree.rightSs();
 
         if (noteType.isNoteWithStem()) {
-            var upper = resolvesUpper(note, noteType);
-            var stemGeom = NoteGeometry.computeBaseStemGeometry(noteType, upper);
+            var direction = NoteGeometry.effectiveDirection(note);
+            var stemGeom = NoteGeometry.computeBaseStemGeometry(noteType, direction);
             var stemLeftXSs = stemGeom.stemLeftXSs();
 
-            if (upper) {
+            if (direction.isUp()) {
                 // Stem-up: stem is to the right of the notehead.
                 var stemRightXSs = stemLeftXSs + NoteGeometry.STEM_WIDTH_SS;
 
@@ -162,15 +161,4 @@ final class NoteColumnGeometry {
         return new ColumnExtent(leftSs, rightSs);
     }
 
-    /**
-     * Resolves the effective stem direction for extent computation. Grace notes always stem up,
-     * mirroring buildNoteArea; every other note uses its own stem direction.
-     */
-    private static boolean resolvesUpper(StaffElement note, ElementType noteType) {
-        if (noteType.isGraceNote()) {
-            return true;
-        }
-
-        return note.isUpper();
-    }
 }

@@ -81,8 +81,10 @@ class SlideRendererTest extends UnitTest {
         }
 
         // Same staff position for both → horizontal line, the shortest (worst) case for the length check.
-        var sourceRightSs = ElementColumnBuilder.calculateRightExtentSs(source, false, true);
-        var targetRightSs = ElementColumnBuilder.calculateRightExtentSs(target, false, true);
+        var sourceRightSs =
+            ElementColumnBuilder.calculateRightExtentSs(source, false, StaffElement.Direction.UP);
+        var targetRightSs =
+            ElementColumnBuilder.calculateRightExtentSs(target, false, StaffElement.Direction.UP);
         var targetLeftSs = ElementColumnBuilder.calculateLeftExtentSs(target);
         var sourceColumn = new ElementColumn(source, List.of(), 0.0, sourceRightSs, sourceRightSs, 0, 0, null, 0, false);
         var targetColumn = new ElementColumn(target, List.of(), targetLeftSs, targetRightSs, targetRightSs, 0, 0, null, 0, false);

@@ -100,7 +100,7 @@ public final class TupletRenderer {
 
             var anchorXSs = decorLayout.xSs();
             var endXSs = anchorXSs + decorLayout.widthSs();
-            var isUpper = anchorNote.isUpper();
+            var isUpper = anchorNote.getDirection().isUp();
             var stemSs = invariants.getLineThickness().stemSs();
             var leftXSs = anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS
                 - (isUpper ? stemSs : Engraving.NOTE_HEAD_WIDTH_SS)

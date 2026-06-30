@@ -237,10 +237,10 @@ public enum ElementType {
     /**
      * Returns the element height in staff spaces for the given stem direction.
      *
-     * @param upper {@code true} for stem-up; {@code false} for stem-down
+     * @param direction {@code UP} for stem-up; {@code DOWN} for stem-down
      */
-    public double getElementHeightSs(boolean upper) {
-        return upper ? heightUpSs : heightDownSs;
+    public double getElementHeightSs(StaffElement.Direction direction) {
+        return direction.isUp() ? heightUpSs : heightDownSs;
     }
 
     /**
@@ -306,7 +306,7 @@ public enum ElementType {
     /**
      * Returns the Y offset in staff spaces from the notehead center to the top of the notehead.
      * The returned value is negative (the top is above the note center).
-     * For non-stemmed elements this equals {@link #getTopYOffsetSs(boolean)}.
+     * For non-stemmed elements this equals {@link #getTopYOffsetSs(StaffElement.Direction)}.
      */
     public double getNoteheadTopOffsetSs() {
         return noteheadTopOffsetSs;
@@ -319,10 +319,10 @@ public enum ElementType {
      * For stem-up notes this is the stem tip; for stem-down the notehead top; for
      * non-stemmed elements the glyph bbox top or half of the staff height above center.
      *
-     * @param upper {@code true} for stem-up; {@code false} for stem-down
+     * @param direction {@code UP} for stem-up; {@code DOWN} for stem-down
      */
-    public double getTopYOffsetSs(boolean upper) {
-        return upper ? topOffsetUpSs : topOffsetDownSs;
+    public double getTopYOffsetSs(StaffElement.Direction direction) {
+        return direction.isUp() ? topOffsetUpSs : topOffsetDownSs;
     }
 
     public int getDefaultDuration() {
@@ -512,38 +512,21 @@ public enum ElementType {
      * Returns the SMuFL flag glyph for this note type and stem direction, or {@code null} if this
      * type has no flag (whole, half, quarter notes, rests, non-note types).
      *
-     * @param upper {@code true} for stem-up (flag on right of stem); {@code false} for stem-down
+     * @param direction {@code UP} for stem-up (flag on right of stem); {@code DOWN} for stem-down
      * @return The flag glyph, or {@code null} if this type carries no flag
      */
     @Nullable
-    public SMuFLGlyph getFlagGlyph(boolean upper) {
+    public SMuFLGlyph getFlagGlyph(StaffElement.Direction direction) {
         return switch (this) {
-            case QUAVER -> upper ? SMuFLGlyph.FLAG_8TH_UP : SMuFLGlyph.FLAG_8TH_DOWN;
+            case QUAVER -> direction.isUp() ? SMuFLGlyph.FLAG_8TH_UP : SMuFLGlyph.FLAG_8TH_DOWN;
             case GRACE_QUAVER -> SMuFLGlyph.FLAG_8TH_UP;
-            case SEMIQUAVER -> upper ? SMuFLGlyph.FLAG_16TH_UP : SMuFLGlyph.FLAG_16TH_DOWN;
-            case DEMI_SEMIQUAVER -> upper ? SMuFLGlyph.FLAG_32ND_UP : SMuFLGlyph.FLAG_32ND_DOWN;
+            case SEMIQUAVER -> direction.isUp() ? SMuFLGlyph.FLAG_16TH_UP : SMuFLGlyph.FLAG_16TH_DOWN;
+            case DEMI_SEMIQUAVER -> direction.isUp() ? SMuFLGlyph.FLAG_32ND_UP : SMuFLGlyph.FLAG_32ND_DOWN;
             default -> null;
         };
     }
 
-    /**
-     * Returns the SMuFL flag glyph for this note type and stem direction, or exits the app if this
-     * type carries no flag. Call only when the type is known to be flagged (e.g. a beamable note);
-     * a null result then indicates a broken install missing required metadata.
-     *
-     * @param upper {@code true} for stem-up (flag on right of stem); {@code false} for stem-down
-     */
-    public SMuFLGlyph requireFlagGlyph(boolean upper) {
-        var glyph = getFlagGlyph(upper);
-
-        if (glyph == null) {
-            throw RuntimeError.missingResource("Missing flag glyph for note type " + this);
-        }
-
-        return glyph;
-    }
-
-    // ========================================================================
+  // ========================================================================
     // Element bounds in staff spaces
     // ========================================================================
 
@@ -594,7 +577,7 @@ public enum ElementType {
 
                 // Width: max of notehead and stem-up flag extent
                 var width = headRight;
-                var flagGlyph = type.getFlagGlyph(true);
+                var flagGlyph = type.getFlagGlyph(StaffElement.Direction.UP);
 
                 if (flagGlyph != null) {
                     var flagBBox = requireBBox(flagGlyph, type);

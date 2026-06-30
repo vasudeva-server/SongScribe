@@ -94,7 +94,7 @@ public class StaffElement extends LineElement implements Cloneable {
     @Nullable
     protected Accidental accidental;
     protected boolean isAccidentalInParentheses = false;
-    protected boolean upper = false;
+    protected Direction direction = Direction.DOWN;
     private boolean stemDirectionAuto = true;
 
     // The line which owns this note
@@ -145,7 +145,7 @@ public class StaffElement extends LineElement implements Cloneable {
             accidental = source.accidental;
             isAccidentalInParentheses = source.isAccidentalInParentheses;
             slide = source.slide;
-            upper = source.upper;
+            direction = source.direction;
             stemDirectionAuto = source.stemDirectionAuto;
             staffPosition = source.staffPosition;
 
@@ -164,7 +164,7 @@ public class StaffElement extends LineElement implements Cloneable {
         accidental = note.accidental;
         isAccidentalInParentheses = note.isAccidentalInParentheses;
         line = note.line;
-        upper = note.upper;
+        direction = note.direction;
         slide = note.slide;
         stemDirectionAuto = note.stemDirectionAuto;
 
@@ -222,7 +222,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.ssToPx(getType().getElementHeightSs(upper));
+        return ScaleContext.ssToPx(getType().getElementHeightSs(getDirection()));
     }
 
     // ========================================================================
@@ -488,11 +488,26 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public boolean isUpper() {
-        return upper;
+        return direction.isUp();
     }
 
     public void setUpper(boolean upper) {
-        this.upper = upper;
+        this.direction = upper ? Direction.UP : Direction.DOWN;
+    }
+
+    public Direction getDirection() {
+        return direction;
+    }
+
+    public void setDirection(Direction direction) {
+        this.direction = direction;
+    }
+
+    /** Returns the default stem direction for a note: up for grace notes or staff positions above the middle line, down otherwise. */
+    public static Direction defaultDirection(StaffElement note) {
+        return (note.getStaffPosition() > 0) || note.getType().isGraceNote()
+            ? Direction.UP
+            : Direction.DOWN;
     }
 
     /** Returns the verse-1 lyric for this element, or null if none is set. */
@@ -712,6 +727,35 @@ public class StaffElement extends LineElement implements Cloneable {
     @Override
     public String toString() {
         return "StaffElement{type=" + (type != null ? type.name() : "null") + ", staffPosition=" + staffPosition + '}';
+    }
+
+    /**
+     * The vertical direction a stem, beam, or similar element points.
+     */
+    public enum Direction {
+        UP,
+        DOWN;
+
+        /**
+         * Returns true if this direction is {@link #UP}.
+         */
+        public boolean isUp() {
+            return this == UP;
+        }
+
+        /**
+         * Returns true if this direction is {@link #DOWN}.
+         */
+        public boolean isDown() {
+            return this == DOWN;
+        }
+
+        /**
+         * Returns the opposite direction: {@link #UP} for {@link #DOWN} and vice versa.
+         */
+        public Direction opposite() {
+            return this == UP ? DOWN : UP;
+        }
     }
 
     public enum Accidental {

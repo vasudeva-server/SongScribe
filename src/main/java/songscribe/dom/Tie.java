@@ -55,9 +55,9 @@ public class Tie extends RangeElement {
 
     @Override
     public boolean isAbove() {
-        // Ties go above if stem points down (upper=true), below if stem points up
+        // Ties go above if stem points down, below if stem points up
         var anchor = getAnchorElement();
 
-        return anchor != null && anchor.isUpper();
+        return anchor != null && anchor.getDirection().isUp();
     }
 }
