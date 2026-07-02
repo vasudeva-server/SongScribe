@@ -37,10 +37,10 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.ElementType;
-import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.TempoChangeAttachment;
 
 /**
  * SAX reader that parses MusicXML 4.0 documents produced by {@link MusicXmlWriter}
@@ -86,6 +86,9 @@ public final class MusicXmlReader extends DefaultHandler {
     // Measure-level hairpin wedge state machine — see WedgeResolver.
     private final WedgeResolver wedges = new WedgeResolver();
 
+    // Measure-level tempo direction state machine — see MetronomeResolver.
+    private final MetronomeResolver metronome = new MetronomeResolver();
+
     // Resolves <ending> markers collected on barlines into Ending range spans
     // on the current line — see EndingResolver.
     private final EndingResolver endings = new EndingResolver(this);
@@ -111,6 +114,22 @@ public final class MusicXmlReader extends DefaultHandler {
     Line getCurrentLine() {
         return currentLine;
     }
+
+    /**
+     * The signed-fifths key signature currently in effect. Measure 1 seeds this
+     * from the song default; a later line's {@code <key>} advances it. It is
+     * applied to each new line so a key persists across lines until restated —
+     * mirroring the writer, which emits a {@code <key>} only when a line's key
+     * differs from this running value.
+     */
+    private int runningFifths = 0;
+
+    /**
+     * True once the measure-1 {@code <key>} has set the song default and seeded
+     * {@link #runningFifths}. Distinguishes the song-default key (measure 1) from
+     * a per-line key change (any later measure).
+     */
+    private boolean songDefaultKeySet = false;
 
     // -------------------------------------------------------------------------
     // Note-reconstruction state — accumulated per <note> in NoteAccumulator;
@@ -261,12 +280,47 @@ public final class MusicXmlReader extends DefaultHandler {
             case DIRECTION -> {
                 if (qName.equals(MusicXmlTags.DIRECTION_TYPE)) {
                     where = Where.DIRECTION_TYPE;
+                } else if (qName.equals(MusicXmlTags.SOUND)) {
+                    // <sound tempo> is write-forward only; the visible tempo is
+                    // recovered from <metronome>, so this carries no read state.
+                    where = Where.SOUND;
                 }
             }
             case DIRECTION_TYPE -> {
                 if (qName.equals(MusicXmlTags.WEDGE)) {
                     wedges.handleWedge(attributes);
                     where = Where.WEDGE;
+                } else if (qName.equals(MusicXmlTags.METRONOME)) {
+                    metronome.beginMetronome(attributes);
+                    where = Where.METRONOME;
+                } else if (qName.equals(MusicXmlTags.WORDS)) {
+                    where = Where.WORDS;
+                }
+            }
+            case METRONOME -> {
+                if (qName.equals(MusicXmlTags.BEAT_UNIT)) {
+                    where = Where.BEAT_UNIT;
+                } else if (qName.equals(MusicXmlTags.BEAT_UNIT_DOT)) {
+                    metronome.addBeatUnitDot();
+                    where = Where.BEAT_UNIT_DOT;
+                } else if (qName.equals(MusicXmlTags.PER_MINUTE)) {
+                    where = Where.PER_MINUTE;
+                } else if (qName.equals(MusicXmlTags.METRONOME_NOTE)) {
+                    metronome.beginMetronomeNote();
+                    where = Where.METRONOME_NOTE;
+                } else if (qName.equals(MusicXmlTags.METRONOME_RELATION)) {
+                    // <metronome-relation> is always "equals"; its position (between
+                    // the two note groups) carries no read state beyond marking the
+                    // modulation form, which the metronome-notes already do.
+                    where = Where.METRONOME_RELATION;
+                }
+            }
+            case METRONOME_NOTE -> {
+                if (qName.equals(MusicXmlTags.METRONOME_TYPE)) {
+                    where = Where.METRONOME_TYPE;
+                } else if (qName.equals(MusicXmlTags.METRONOME_DOT)) {
+                    metronome.addMetronomeDot();
+                    where = Where.METRONOME_DOT;
                 }
             }
             case NOTE -> {
@@ -427,8 +481,24 @@ public final class MusicXmlReader extends DefaultHandler {
                         throw new SAXException("Unexpected <fifths> outside <score-partwise>");
                     }
 
-                    song.setDefaultKeyAccidentalCount(Math.abs(fifths));
-                    song.setDefaultKeyType(keyTypeFromFifths(fifths));
+                    if (songDefaultKeySet) {
+                        // A later line's key change: advance the running key and
+                        // apply it to the line now being built.
+                        runningFifths = fifths;
+
+                        if (currentLine != null) {
+                            applyFifthsToLine(currentLine, fifths);
+                        }
+                    } else {
+                        // Measure 1: the song default, which also seeds the running
+                        // key. Line 1 itself is materialized from the default when
+                        // it is added, so it is not set here.
+                        song.setDefaultKeyAccidentalCount(KeySignatureMapping.accidentalCount(fifths));
+                        song.setDefaultKeyType(KeySignatureMapping.keyType(fifths));
+                        runningFifths = fifths;
+                        songDefaultKeySet = true;
+                    }
+
                     where = Where.KEY;
                 }
             }
@@ -607,6 +677,61 @@ public final class MusicXmlReader extends DefaultHandler {
                     where = Where.DIRECTION_TYPE;
                 }
             }
+            case BEAT_UNIT -> {
+                if (qName.equals(MusicXmlTags.BEAT_UNIT)) {
+                    metronome.setBeatUnitToken(value.toString().trim());
+                    where = Where.METRONOME;
+                }
+            }
+            case BEAT_UNIT_DOT -> {
+                if (qName.equals(MusicXmlTags.BEAT_UNIT_DOT)) {
+                    where = Where.METRONOME;
+                }
+            }
+            case PER_MINUTE -> {
+                if (qName.equals(MusicXmlTags.PER_MINUTE)) {
+                    metronome.setVisibleTempo(parseIntOrThrow(MusicXmlTags.PER_MINUTE, value.toString()));
+                    where = Where.METRONOME;
+                }
+            }
+            case METRONOME -> {
+                if (qName.equals(MusicXmlTags.METRONOME)) {
+                    where = Where.DIRECTION_TYPE;
+                }
+            }
+            case METRONOME_TYPE -> {
+                if (qName.equals(MusicXmlTags.METRONOME_TYPE)) {
+                    metronome.setMetronomeType(value.toString().trim());
+                    where = Where.METRONOME_NOTE;
+                }
+            }
+            case METRONOME_DOT -> {
+                if (qName.equals(MusicXmlTags.METRONOME_DOT)) {
+                    where = Where.METRONOME_NOTE;
+                }
+            }
+            case METRONOME_NOTE -> {
+                if (qName.equals(MusicXmlTags.METRONOME_NOTE)) {
+                    metronome.endMetronomeNote();
+                    where = Where.METRONOME;
+                }
+            }
+            case METRONOME_RELATION -> {
+                if (qName.equals(MusicXmlTags.METRONOME_RELATION)) {
+                    where = Where.METRONOME;
+                }
+            }
+            case WORDS -> {
+                if (qName.equals(MusicXmlTags.WORDS)) {
+                    metronome.setWords(value.toString());
+                    where = Where.DIRECTION_TYPE;
+                }
+            }
+            case SOUND -> {
+                if (qName.equals(MusicXmlTags.SOUND)) {
+                    where = Where.DIRECTION;
+                }
+            }
             case DIRECTION_TYPE -> {
                 if (qName.equals(MusicXmlTags.DIRECTION_TYPE)) {
                     where = Where.DIRECTION;
@@ -614,6 +739,9 @@ public final class MusicXmlReader extends DefaultHandler {
             }
             case DIRECTION -> {
                 if (qName.equals(MusicXmlTags.DIRECTION)) {
+                    // Build any accumulated metronome tempo now; it binds to the
+                    // next note (see MetronomeResolver).
+                    metronome.endDirection();
                     where = Where.MEASURE;
                 }
             }
@@ -629,6 +757,8 @@ public final class MusicXmlReader extends DefaultHandler {
                     spans.flushPendingSlideStart();
                     spans.flushPendingSpanStarts();
                     wedges.flushPendingWedge();
+                    metronome.flushPendingTempo();
+                    metronome.flushPendingBeatChange();
                     endings.flushPendingEnding();
                     // Commit the final line now that all its elements are in place.
                     commitCurrentLine();
@@ -654,6 +784,7 @@ public final class MusicXmlReader extends DefaultHandler {
                         // or partial file may leave the last line ending in a note or a
                         // non-terminal barline.
                         song.installTerminalAfterParsing();
+                        applyInitialTempo();
                         song.endSuspendMutationTracking();
                     }
 
@@ -709,6 +840,24 @@ public final class MusicXmlReader extends DefaultHandler {
         // terminal barline (REPEAT_RIGHT / FINAL_DOUBLE_BARLINE) that lands mid-line.
         commitCurrentLine();
         currentLine = new Line(song);
+
+        // A key signature persists until restated. For every line after the first,
+        // seed the new line with the running key so lines that keep it (the writer
+        // emits no <key> for them) still round-trip; a <key> in this line's first
+        // measure overrides this via the FIFTHS handler. The first line is skipped:
+        // its key is the song default, materialized when the line is added.
+        if (songDefaultKeySet) {
+            applyFifthsToLine(currentLine, runningFifths);
+        }
+    }
+
+    /**
+     * Applies a signed-fifths key signature to {@code line}, setting both its key
+     * type and accidental count. Inverse of the writer's fifths encoding.
+     */
+    private void applyFifthsToLine(Line line, int fifths) {
+        line.setKeyType(KeySignatureMapping.keyType(fifths));
+        line.setKeyAccidentalCount(KeySignatureMapping.accidentalCount(fifths));
     }
 
     /**
@@ -773,6 +922,8 @@ public final class MusicXmlReader extends DefaultHandler {
         spans.resolveTuplet(currentLine, element, markers);
         spans.resolveTrill(currentLine, element, markers);
         wedges.resolveWedge(currentLine, element);
+        metronome.resolveTempo(element);
+        metronome.resolveBeatChange(element);
 
         // A breath-mark attached to this note's <notations> becomes a standalone
         // BREATH_MARK element immediately after the note.
@@ -826,20 +977,26 @@ public final class MusicXmlReader extends DefaultHandler {
     }
 
     /**
-     * Maps a MusicXML {@code <fifths>} value to the corresponding {@link KeyType}.
-     * <ul>
-     *   <li>0 → {@link KeyType#FLATS} (matches {@link Song#DEFAULT_KEY_TYPE})</li>
-     *   <li>positive → {@link KeyType#SHARPS}</li>
-     *   <li>negative → {@link KeyType#FLATS}</li>
-     * </ul>
+     * Restores the song-level base tempo after assembly. The base tempo is
+     * anchored on the first element of the first line (mirroring
+     * {@code Line.attachInitialTempoIfNeeded}), so when that element carries a
+     * {@link TempoChangeAttachment}, its tempo is the song's base tempo.
      */
-    private static KeyType keyTypeFromFifths(int fifths) {
-        if (fifths > 0) {
-            return KeyType.SHARPS;
-        } else {
-            // Covers both fifths == 0 (no accidentals, default to FLATS per
-            // Song.DEFAULT_KEY_TYPE) and fifths < 0 (explicit flats).
-            return KeyType.FLATS;
+    private void applyInitialTempo() {
+        if (song == null || song.lineCount() == 0) {
+            return;
+        }
+
+        var firstLine = song.getLine(0);
+
+        if (firstLine.elementCount() == 0) {
+            return;
+        }
+
+        var attachment = firstLine.getElement(0).findAttachment(TempoChangeAttachment.class);
+
+        if (attachment != null) {
+            song.setTempo(attachment.getTempo());
         }
     }
 
@@ -930,5 +1087,22 @@ public final class MusicXmlReader extends DefaultHandler {
         DIRECTION,
         DIRECTION_TYPE,
         WEDGE,
+
+        // Measure-level tempo direction subtree
+        // (<direction><direction-type><metronome>/<words>, <sound>).
+        METRONOME,
+        BEAT_UNIT,
+        BEAT_UNIT_DOT,
+        PER_MINUTE,
+        WORDS,
+        SOUND,
+
+        // Measure-level metric-modulation subtree
+        // (<metronome><metronome-note><metronome-type>/<metronome-dot>,
+        // <metronome-relation>).
+        METRONOME_NOTE,
+        METRONOME_TYPE,
+        METRONOME_DOT,
+        METRONOME_RELATION,
     }
 }

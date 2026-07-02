@@ -8,7 +8,7 @@
 | 2 | [Structural Model (Line ↔ Measure)](#-phase-2-structural-model-line--measure) | ✅ Complete | [phase-2-structural-model.md](./phase-2-structural-model.md) |
 | 3 | [Notes & Per-Note Attachments](#-phase-3-notes--per-note-attachments) | ✅ Complete | [phase-3-notes.md](./phase-3-notes.md) |
 | 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ✅ Complete | [phase-4-range-spans.md](./phase-4-range-spans.md) |
-| 5 | [Per-Measure Attributes (Key, Tempo)](#-phase-5-per-measure-attributes-key-tempo) | ⏳ Pending | — |
+| 5 | [Per-Measure Attributes (Key, Tempo)](#-phase-5-per-measure-attributes-key-tempo) | ✅ Complete | [phase-5-per-measure-attributes.md](./phase-5-per-measure-attributes.md) |
 | 6 | [Lyrics](#-phase-6-lyrics) | ⏳ Pending | — |
 | 7 | [Header, Layout & Extension Fields](#️-phase-7-header-layout--extension-fields) | ⏳ Pending | — |
 | 8 | [Losslessness Gate & Cutover](#-phase-8-losslessness-gate--cutover) | ⏳ Pending | — |
@@ -136,7 +136,16 @@ implementation plan.
 
 ---
 
-## ⏳ Phase 5: Per-Measure Attributes (Key, Tempo)
+## ✅ Phase 5: Per-Measure Attributes (Key, Tempo)
+
+**Status**: ✅ Complete — see [phase-5-per-measure-attributes.md](./phase-5-per-measure-attributes.md)
+
+**Delivered**: Per-line key changes (`<attributes><key><fifths>`), song/per-note
+tempo directions (`<metronome>` beat-unit + `<per-minute>` + `<words>` + hide via
+`print-object`, write-forward `<sound tempo>`), and metric modulation
+(`BeatChange` → two-`<metronome-note>` relation form) — all round-tripping through
+writer and reader with schema-valid output. New helpers: `BeatUnitMapping`,
+`KeySignatureMapping`, `MetronomeResolver`.
 
 **Goal**: Measure-level attributes and tempo directions.
 

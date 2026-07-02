@@ -93,6 +93,18 @@ final class MusicXmlTags {
     static final String WAVY_LINE      = "wavy-line";
     static final String ENDING         = "ending";
 
+    // Element names — tempo / metronome direction subtree.
+    static final String METRONOME          = "metronome";
+    static final String BEAT_UNIT          = "beat-unit";
+    static final String BEAT_UNIT_DOT      = "beat-unit-dot";
+    static final String PER_MINUTE         = "per-minute";
+    static final String WORDS              = "words";
+    static final String SOUND              = "sound";
+    static final String METRONOME_NOTE     = "metronome-note";
+    static final String METRONOME_TYPE     = "metronome-type";
+    static final String METRONOME_DOT      = "metronome-dot";
+    static final String METRONOME_RELATION = "metronome-relation";
+
     // Attribute names — document structure.
     static final String ATTR_VERSION    = "version";
     static final String ATTR_NEW_SYSTEM = "new-system";
@@ -113,6 +125,15 @@ final class MusicXmlTags {
     static final String ATTR_LINE_SHAPE  = "line-shape";
     static final String ATTR_LINE_TYPE   = "line-type";
     static final String ATTR_LINE_LENGTH = "line-length";
+
+    // Attribute names — tempo / metronome direction subtree.
+    static final String ATTR_TEMPO        = "tempo";
+    static final String ATTR_PRINT_OBJECT = "print-object";
+
+    // Element content values — tempo / metronome direction subtree. The
+    // <metronome-relation> symbol between the two metric-modulation note groups;
+    // "equals" is the only value the schema currently defines.
+    static final String RELATION_EQUALS = "equals";
 
     // Attribute values — document structure.
     static final String YES     = "yes";

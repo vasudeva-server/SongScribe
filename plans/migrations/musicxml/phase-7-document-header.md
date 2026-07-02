@@ -3,7 +3,7 @@
 **Type:** Sub-plan  <br>
 **Parent:** plans/migrations/musicxml/musicxml.md → Phase 7  <br>
 **Created:** 2026-05-30  <br>
-**Status:** In Progress  <br>
+**Status:** Pending  <br>
 **BlockedBy:** —
 
 ---

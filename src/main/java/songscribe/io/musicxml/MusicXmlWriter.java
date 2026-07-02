@@ -26,15 +26,19 @@ import java.util.List;
 import java.util.Locale;
 import org.jspecify.annotations.Nullable;
 import songscribe.dom.Beam;
+import songscribe.dom.BeatChange;
+import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.Duration;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
-import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Tempo;
+import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
@@ -197,6 +201,18 @@ public final class MusicXmlWriter {
     private static void writeLineDrivenMeasures(Song song, PrintWriter pw) {
         int measureNumber = 0;
 
+        // The key signature currently in effect. Measure 1 emits the song default
+        // (see writeAttributes); each later line whose effective key differs from
+        // this running value emits a key-only <attributes> and advances it. A
+        // MusicXML key persists until restated, so lines that keep the running key
+        // emit nothing — the reader carries it forward.
+        var runningFifths = KeySignatureMapping.toFifths(song.getDefaultKeyType(), song.getDefaultKeyAccidentalCount());
+
+        // The first element of the first line anchors the song base tempo (mirrors
+        // Line.attachInitialTempoIfNeeded): its emitted tempo is its own
+        // TempoChangeAttachment if present, else song.getTempo().
+        var firstSongElement = firstElementOfSong(song);
+
         for (Line line : song.getLines()) {
             // Glissandos are intra-line — they cannot span a system break.
             // Reset the pending-stop state at the start of each line so a
@@ -212,6 +228,13 @@ public final class MusicXmlWriter {
 
             if (measureNumber == FIRST_MEASURE_NUMBER) {
                 writeAttributes(song, pw);
+            } else {
+                var lineFifths = effectiveKeyFifths(song, line);
+
+                if (lineFifths != runningFifths) {
+                    writeKeyOnlyAttributes(pw, lineFifths);
+                    runningFifths = lineFifths;
+                }
             }
 
             // measureOpen tracks whether the current measure tag is still open.
@@ -304,6 +327,25 @@ public final class MusicXmlWriter {
                     var typeToken = NoteTypeMapping.typeToken(type);
 
                     if (typeToken != null) {
+                        // A tempo <direction> precedes the note it marks. The first
+                        // element of the first line carries the song base tempo; any
+                        // element with its own TempoChangeAttachment carries a
+                        // per-note tempo.
+                        var tempo = tempoForElement(song, firstSongElement, element);
+
+                        if (tempo != null) {
+                            writeTempoDirection(pw, tempo);
+                        }
+
+                        // A metric-modulation <direction> also precedes the note it
+                        // marks (the note carrying the BeatChangeAttachment), so the
+                        // reader binds it to the next note with the same rule.
+                        var beatChangeAttachment = element.findAttachment(BeatChangeAttachment.class);
+
+                        if (beatChangeAttachment != null) {
+                            writeMetricModulationDirection(pw, beatChangeAttachment.getBeatChange());
+                        }
+
                         // Hairpin wedges bind to the next <note>: both the start
                         // wedge (on the anchor) and the stop wedge (on the end) are
                         // emitted as <direction> siblings immediately before their
@@ -887,6 +929,188 @@ public final class MusicXmlWriter {
         XML.writeEndTag(pw, MusicXmlTags.DIRECTION);
     }
 
+    // -------------------------------------------------------------------------
+    // Tempo direction
+    // -------------------------------------------------------------------------
+
+    /** Returns the first element of the song's first line, or null when empty. */
+    private static @Nullable StaffElement firstElementOfSong(Song song) {
+        var lines = song.getLines();
+
+        if (lines.isEmpty()) {
+            return null;
+        }
+
+        var firstLineElements = lines.get(0).getElements();
+        return firstLineElements.isEmpty() ? null : firstLineElements.get(0);
+    }
+
+    /**
+     * Resolves the tempo to emit before {@code element}, or null when it carries
+     * none. An element's own {@link TempoChangeAttachment} is a per-note tempo;
+     * the first element of the first line falls back to {@code song.getTempo()}
+     * (mirroring {@code Line.attachInitialTempoIfNeeded} at write time so the base
+     * tempo is emitted even for a not-yet-materialized song).
+     */
+    private static @Nullable Tempo tempoForElement(
+            Song song, @Nullable StaffElement firstSongElement, StaffElement element) {
+        var attachment = element.findAttachment(TempoChangeAttachment.class);
+
+        if (attachment != null) {
+            return attachment.getTempo();
+        }
+
+        if (element == firstSongElement) {
+            return song.getTempo();
+        }
+
+        return null;
+    }
+
+    /**
+     * Emits a tempo {@code <direction>}: a {@code <metronome>} beat-unit form
+     * ({@code <beat-unit>} + any {@code <beat-unit-dot/>} + {@code <per-minute>}),
+     * an optional {@code <words>} description direction-type, and a write-forward
+     * {@code <sound tempo>}. A hidden tempo carries {@code print-object="no"} on
+     * the {@code <metronome>}; the beat-unit/per-minute are still emitted so the
+     * visible tempo survives.
+     */
+    private static void writeTempoDirection(PrintWriter pw, Tempo tempo) {
+        var beatUnit = BeatUnitMapping.forDuration(tempo.getTempoType());
+
+        if (beatUnit == null) {
+            // Every Tempo.tempoType is one of the seven mapped Durations, so this
+            // is unreachable; the guard keeps the writer null-safe.
+            return;
+        }
+
+        XML.writeBeginTag(pw, MusicXmlTags.DIRECTION);
+        XML.indent();
+
+        writeMetronomeDirectionType(pw, tempo, beatUnit);
+
+        var description = tempo.getTempoDescription();
+
+        if (description != null && !description.isEmpty()) {
+            writeWordsDirectionType(pw, description);
+        }
+
+        // <sound tempo> is write-forward only; the reader recovers the visible
+        // tempo from <metronome>/<per-minute> and ignores this playback value.
+        XML.writeEmptyTag(pw, MusicXmlTags.SOUND,
+            MusicXmlTags.ATTR_TEMPO, Integer.toString(tempo.getRealTempo()));
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.DIRECTION);
+    }
+
+    /**
+     * Emits the {@code <direction-type><metronome>} beat-unit form for
+     * {@code tempo}, carrying {@code print-object="no"} when the tempo is hidden.
+     */
+    private static void writeMetronomeDirectionType(
+            PrintWriter pw, Tempo tempo, BeatUnitMapping.BeatUnitEntry beatUnit) {
+        XML.writeBeginTag(pw, MusicXmlTags.DIRECTION_TYPE);
+        XML.indent();
+
+        if (tempo.shouldShowTempo()) {
+            XML.writeBeginTag(pw, MusicXmlTags.METRONOME);
+        } else {
+            XML.writeBeginTag(pw, MusicXmlTags.METRONOME,
+                MusicXmlTags.ATTR_PRINT_OBJECT, MusicXmlTags.NO);
+        }
+
+        XML.indent();
+
+        XML.writeValue(pw, MusicXmlTags.BEAT_UNIT, beatUnit.token());
+
+        for (var dot = 0; dot < beatUnit.dotCount(); dot++) {
+            XML.writeEmptyTag(pw, MusicXmlTags.BEAT_UNIT_DOT);
+        }
+
+        XML.writeValue(pw, MusicXmlTags.PER_MINUTE, Integer.toString(tempo.getVisibleTempo()));
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.METRONOME);
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.DIRECTION_TYPE);
+    }
+
+    /** Emits a {@code <direction-type><words>} carrying the tempo description. */
+    private static void writeWordsDirectionType(PrintWriter pw, String description) {
+        XML.writeBeginTag(pw, MusicXmlTags.DIRECTION_TYPE);
+        XML.indent();
+
+        XML.writeValue(pw, MusicXmlTags.WORDS, description);
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.DIRECTION_TYPE);
+    }
+
+    // -------------------------------------------------------------------------
+    // Metric-modulation direction
+    // -------------------------------------------------------------------------
+
+    /**
+     * Emits a metric-modulation {@code <direction>}: a {@code <metronome>} carrying
+     * two {@code <metronome-note>}s related by {@code <metronome-relation>equals</metronome-relation>}
+     * — the first for {@code beatChange.duration()} (the left note value), the second
+     * for {@code beatChange.beat()} (the right). Tokens and dots come from
+     * {@link BeatUnitMapping}. Reuses the same {@code <direction>} envelope as the
+     * tempo form; the reader distinguishes the two by the presence of
+     * {@code <metronome-note>} vs {@code <beat-unit>}.
+     */
+    private static void writeMetricModulationDirection(PrintWriter pw, BeatChange beatChange) {
+        XML.writeBeginTag(pw, MusicXmlTags.DIRECTION);
+        XML.indent();
+
+        XML.writeBeginTag(pw, MusicXmlTags.DIRECTION_TYPE);
+        XML.indent();
+
+        XML.writeBeginTag(pw, MusicXmlTags.METRONOME);
+        XML.indent();
+
+        writeMetronomeNote(pw, beatChange.duration());
+        XML.writeValue(pw, MusicXmlTags.METRONOME_RELATION, MusicXmlTags.RELATION_EQUALS);
+        writeMetronomeNote(pw, beatChange.beat());
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.METRONOME);
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.DIRECTION_TYPE);
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.DIRECTION);
+    }
+
+    /**
+     * Emits one {@code <metronome-note>}: a {@code <metronome-type>} token plus one
+     * {@code <metronome-dot/>} per augmentation dot, both from {@link BeatUnitMapping}.
+     */
+    private static void writeMetronomeNote(PrintWriter pw, Duration duration) {
+        var beatUnit = BeatUnitMapping.forDuration(duration);
+
+        if (beatUnit == null) {
+            // Every BeatChange Duration is one of the seven mapped values, so this
+            // is unreachable; the guard keeps the writer null-safe.
+            return;
+        }
+
+        XML.writeBeginTag(pw, MusicXmlTags.METRONOME_NOTE);
+        XML.indent();
+
+        XML.writeValue(pw, MusicXmlTags.METRONOME_TYPE, beatUnit.token());
+
+        for (var dot = 0; dot < beatUnit.dotCount(); dot++) {
+            XML.writeEmptyTag(pw, MusicXmlTags.METRONOME_DOT);
+        }
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.METRONOME_NOTE);
+    }
+
     /**
      * Emits an empty {@code <tag type=… number="1">} marker, adding a
      * {@code relative-y} attribute ({@code verticalShiftSs} → tenths) only when
@@ -1328,11 +1552,8 @@ public final class MusicXmlWriter {
 
         XML.writeValue(pw, "divisions", Integer.toString(DIVISIONS));
 
-        // <key> with inline child <fifths>
-        // Encode as signed fifths: negative for flats (MusicXML convention).
-        int fifths = song.getDefaultKeyType() == KeyType.FLATS
-            ? -song.getDefaultKeyAccidentalCount()
-            : song.getDefaultKeyAccidentalCount();
+        // <key> with inline child <fifths> — measure 1 carries the song default.
+        var fifths = KeySignatureMapping.toFifths(song.getDefaultKeyType(), song.getDefaultKeyAccidentalCount());
         XML.printIndent(pw);
         pw.println("<key><fifths>" + fifths + "</fifths></key>");
 
@@ -1346,6 +1567,37 @@ public final class MusicXmlWriter {
 
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.ATTRIBUTES);
+    }
+
+    /**
+     * Emits a key-only {@code <attributes>} block carrying just
+     * {@code <key><fifths>}, used at a later line whose key differs from the
+     * running key signature.
+     */
+    private static void writeKeyOnlyAttributes(PrintWriter pw, int fifths) {
+        XML.writeBeginTag(pw, MusicXmlTags.ATTRIBUTES);
+        XML.indent();
+
+        XML.printIndent(pw);
+        pw.println("<key><fifths>" + fifths + "</fifths></key>");
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.ATTRIBUTES);
+    }
+
+    /**
+     * The signed-fifths encoding of {@code line}'s effective key: its own key when
+     * set, otherwise the song default (matching how every line is materialized
+     * from the default on load).
+     */
+    private static int effectiveKeyFifths(Song song, Line line) {
+        var lineKeyType = line.getKeyType();
+
+        if (lineKeyType == null) {
+            return KeySignatureMapping.toFifths(song.getDefaultKeyType(), song.getDefaultKeyAccidentalCount());
+        }
+
+        return KeySignatureMapping.toFifths(lineKeyType, line.getKeyAccidentalCount());
     }
 
     // -------------------------------------------------------------------------

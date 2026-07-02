@@ -155,6 +155,42 @@
       "type": "sub-plan"
     },
     {
+      "path": "plans/migrations/musicxml/phase-3-notes.md",
+      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "parentPhase": 3,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/musicxml/phase-4-range-spans.md",
+      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "parentPhase": 4,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/musicxml/phase-5-per-measure-attributes.md",
+      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "parentPhase": 5,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/musicxml/phase-7-document-header.md",
+      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "parentPhase": 7,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "status": "pending",
+      "type": "sub-plan"
+    },
+    {
       "path": "plans/completed/migrations/rendering-rewrite/milestone-3-ties-glissandos.md",
       "parentPlan": "plans/completed/migrations/rendering-rewrite/rendering-rewrite.md",
       "parentPhase": 3,
