@@ -25,8 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 import songscribe.dom.StaffElement;
-import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
+import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.Articulation;
 import songscribe.layout.ElementColumn;
 import songscribe.dom.FermataAttachment;
@@ -39,6 +38,9 @@ import org.jspecify.annotations.Nullable;
 
 import static songscribe.layout.stacking.StackingUtils.anchorCeilingSs;
 import static songscribe.layout.stacking.StackingUtils.stackAbove;
+import static songscribe.layout.stacking.StackingUtils.stackAtAnchor;
+import static songscribe.layout.stacking.StackingUtils.stackBeyond;
+import static songscribe.layout.stacking.StackingUtils.stackStaccato;
 
 /**
  * Seeds note bounds and stacks note-attached decorations (tiers 1-2).
@@ -62,12 +64,15 @@ public class NoteAttachedStacker {
      * provides visual separation from the notehead.
      */
     public static final double TIE_DECORATION_MARGIN_SS = 0.25;  // 2px
-    // Precomposed accent+staccato glyph dimensions (staff-space units)
-    private static final double ACCENT_STACCATO_WIDTH_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).width();
+    /**
+     * Vertical margin between the staff (or notehead) and articulations (staccato, accent).
+     * Kept tighter than {@link NoteAttachedStacker#NOTE_DECORATION_MARGIN_SS} so articulations
+     * sit close to the note, matching standard engraving.
+     */
+    public static final double ARTICULATION_MARGIN_SS = 0.20;
 
-    private static final double ACCENT_STACCATO_HEIGHT_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).height();
+    // Gap between accent and staccato when both are stacked on the same note.
+    public static final double ACCENT_STACCATO_GAP_SS = 0.125;
 
     // Minimum number of Bezier samples when seeding tie bounds into extents.
     // Ensures adequate curve resolution even for short ties.
@@ -111,11 +116,27 @@ public class NoteAttachedStacker {
     }
 
     /**
+     * Returns the side articulations are placed on for the given note: opposite the stem, so
+     * {@link Direction#UP} (above the staff) for down-stems and {@link Direction#DOWN}
+     * (below the staff) for up-stems. Shared by the layout path ({@link #stackArticulations})
+     * and the render path ({@code ArticulationRenderer}) so the "opposite the stem" rule is
+     * defined exactly once.
+     */
+    public static Direction articulationDirection(StaffElement note) {
+        return note.getDirection().opposite();
+    }
+
+    /**
      * Computes note-attached decoration layouts for a single note without a full layout pipeline.
      * <p>
      * Used by the insertion note preview, where no {@link LayoutResult} is available.
      * Creates a minimal {@link StaffExtents}, seeds note bounds, and runs the same
      * stacking logic as the full pipeline (articulations, then fermata).
+     * <p>
+     * Unlike {@link #stackArticulations}, this has no {@link StackingContext} to update with
+     * the below-staff content extent (used for lyric placement) — the preview exists only to
+     * compute decoration positions for rendering, not to size the line, so that update is
+     * intentionally skipped here.
      *
      * @param note the note to compute layouts for
      * @param xSs  X position in staff-space units
@@ -146,9 +167,11 @@ public class NoteAttachedStacker {
             }
         }
 
+        var direction = articulationDirection(note);
+
         dispatchArticulationStacking(staccatoArticulation, accentArticulation,
-            extents, xSs, NOTE_DECORATION_MARGIN_SS,
-            staffPosition, builder);
+            extents, xSs, ARTICULATION_MARGIN_SS,
+            staffPosition, direction, builder);
 
         // Tier 2: Fermata
         var fermata = note.findAttachment(FermataAttachment.class);
@@ -390,10 +413,13 @@ public class NoteAttachedStacker {
     /**
      * Stacks articulations for the given column using StaffExtents collision detection.
      * <p>
-     * Articulations are always placed above the staff (vocal music context).
-     * Notes within or below the staff anchor above the top staff line;
-     * notes at or above the top staff line anchor above the notehead.
-     * Staccato is placed closest to the notehead; accent stacks beyond staccato.
+     * Articulations are placed opposite the stem: above the staff for down-stems,
+     * below the staff for up-stems. Staccato anchors relative to the note: it clears
+     * an interior staff line by {@link StackingUtils#STACCATO_ON_LINE_DISTANCE_SS}, or
+     * sits {@link StackingUtils#STACCATO_BETWEEN_LINES_DISTANCE_SS} from the note center
+     * in a space; beyond the staff it anchors at the notehead. Accent anchors at the
+     * nearer staff line (or the notehead beyond it) and, when paired with staccato,
+     * stacks beyond it using {@link #ACCENT_STACCATO_GAP_SS} as their gap.
      */
     private void stackArticulations(
         ElementColumn column,
@@ -421,56 +447,101 @@ public class NoteAttachedStacker {
             }
         }
 
-        // Use reduced margin for notes with upward ties
-        var marginSs = context.getNotesWithUpwardTie().contains(note)
-            ? TIE_DECORATION_MARGIN_SS
-            : NOTE_DECORATION_MARGIN_SS;
+        var direction = articulationDirection(note);
 
-        dispatchArticulationStacking(staccatoArticulation, accentArticulation,
-            noteAttachedExtents, xSs, marginSs, staffPosition, builder);
-    }
+        double marginSs;
 
-    /**
-     * Dispatches articulation stacking based on whether both accent and staccato are present.
-     * When both are present, uses the precomposed accent+staccato glyph keyed on the staccato
-     * articulation; otherwise stacks each articulation individually.
-     */
-    private static void dispatchArticulationStacking(
-        @Nullable Articulation staccatoArticulation,
-        @Nullable Articulation accentArticulation,
-        StaffExtents extents,
-        double xSs, double marginSs, int staffPosition,
-        LayoutResult.Builder builder) {
-
-        if (staccatoArticulation != null && accentArticulation != null) {
-            stackAbove(extents, staccatoArticulation, xSs,
-                ACCENT_STACCATO_WIDTH_SS, ACCENT_STACCATO_HEIGHT_SS,
-                marginSs, staffPosition, builder);
+        if (direction.isUp()) {
+            // Down-stem articulations stack above the staff, where an upward-arcing tie may
+            // intrude; use the reduced tie margin when this note's tie is the active constraint.
+            marginSs = context.getNotesWithUpwardTie().contains(note)
+                ? TIE_DECORATION_MARGIN_SS
+                : ARTICULATION_MARGIN_SS;
         } else {
-            if (staccatoArticulation != null) {
-                stackSingleArticulation(staccatoArticulation, extents,
-                    xSs, marginSs, staffPosition, builder);
-            }
+            // Up-stem articulations stack below the staff; upward ties never arc into them.
+            marginSs = ARTICULATION_MARGIN_SS;
+        }
 
-            if (accentArticulation != null) {
-                stackSingleArticulation(accentArticulation, extents,
-                    xSs, marginSs, staffPosition, builder);
-            }
+        var edgeYSs = dispatchArticulationStacking(staccatoArticulation, accentArticulation,
+            noteAttachedExtents, xSs, marginSs, staffPosition, direction, builder);
+
+        if (direction.isDown() && edgeYSs != null) {
+            // Push the below-staff content extent down so lyrics clear the articulations.
+            context.updateBotContentExtentSs(edgeYSs);
         }
     }
 
     /**
-     * Stacks a single articulation above the staff with anchored ceiling collision detection.
+     * Dispatches articulation stacking based on whether both accent and staccato are present.
+     * <p>
+     * When both are present, staccato is stacked first at its note-relative distance, then
+     * accent is stacked beyond it (via {@link StackingUtils#stackBeyond}) using
+     * {@link #ACCENT_STACCATO_GAP_SS} as their gap — but never closer to the staff than
+     * {@link #ARTICULATION_MARGIN_SS} from the staff line, since staccato's note-relative
+     * position can sit closer to the staff than accent's minimum clearance requires.
+     *
+     * @return the placed element's top Y (above) or bottom Y (below) in staff-space units,
+     *     or {@code null} if neither articulation was present (both callers guard against this
+     *     by only invoking this method for notes with at least one articulation, so this is
+     *     unreachable given {@link songscribe.dom.ArticulationType}'s current two members)
      */
-    private static void stackSingleArticulation(
+    private static @Nullable Double dispatchArticulationStacking(
+        @Nullable Articulation staccatoArticulation,
+        @Nullable Articulation accentArticulation,
+        StaffExtents extents,
+        double xSs, double marginSs, int staffPosition,
+        Direction direction,
+        LayoutResult.Builder builder) {
+
+        if (staccatoArticulation != null && accentArticulation != null) {
+            stackSingleArticulation(staccatoArticulation, extents,
+                xSs, marginSs, staffPosition, direction, builder);
+
+            var accentWidthSs = accentArticulation.getContentWidthSs();
+            var accentHeightSs = accentArticulation.getContentHeightSs();
+
+            return stackBeyond(direction, extents, accentArticulation, xSs,
+                accentWidthSs, accentHeightSs, ACCENT_STACCATO_GAP_SS, ARTICULATION_MARGIN_SS, builder);
+        }
+
+        if (staccatoArticulation != null) {
+            return stackSingleArticulation(staccatoArticulation, extents,
+                xSs, marginSs, staffPosition, direction, builder);
+        }
+
+        if (accentArticulation != null) {
+            return stackSingleArticulation(accentArticulation, extents,
+                xSs, marginSs, staffPosition, direction, builder);
+        }
+
+        return null;
+    }
+
+    /**
+     * Stacks a single articulation with anchored collision detection, above or below the staff.
+     * <p>
+     * Staccato uses its note-relative anchor ({@link StackingUtils#stackStaccato}); accent
+     * uses the generic staff-line anchor ({@link StackingUtils#stackAtAnchor}).
+     *
+     * @return the placed element's top Y (above) or bottom Y (below) in staff-space units
+     */
+    private static double stackSingleArticulation(
         Articulation articulation,
         StaffExtents extents,
         double xSs, double marginSs, int staffPosition,
+        Direction direction,
         LayoutResult.Builder builder) {
 
-        stackAbove(extents, articulation, xSs,
-            articulation.getContentWidthSs(), articulation.getContentHeightSs(),
-            marginSs, staffPosition, builder);
+        var widthSs = articulation.getContentWidthSs();
+        var heightSs = articulation.getContentHeightSs();
+
+        if (articulation.isStaccato()) {
+            return stackStaccato(direction, extents, articulation, xSs,
+                widthSs, heightSs, marginSs, staffPosition, builder);
+        }
+
+        return stackAtAnchor(direction, extents, articulation, xSs,
+            widthSs, heightSs, marginSs, staffPosition, builder);
     }
 
 

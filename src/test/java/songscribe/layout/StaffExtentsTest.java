@@ -32,8 +32,10 @@ import songscribe.layout.StaffExtents;
 class StaffExtentsTest extends UnitTest {
 
     private static final double LINE_WIDTH_SS = 64.0;
-    private static final double STAFF_TOP_SS = 0.0;
-    private static final double STAFF_BOTTOM_SS = StaffExtents.STAFF_HEIGHT_SS;
+
+    // Both top and bot arrays default to the middle staff line (Y-down, middle line = 0),
+    // the same coordinate system StackingUtils' anchor calculations use.
+    private static final double DEFAULT_EXTENT_SS = 0.0;
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -61,7 +63,7 @@ class StaffExtentsTest extends UnitTest {
             var target = new StaffExtents(LINE_WIDTH_SS);
             target.copyTopFrom(source);
 
-            assertThat(target.yGet(false, 10.0, 5.0)).isEqualTo(STAFF_BOTTOM_SS);
+            assertThat(target.yGet(false, 10.0, 5.0)).isEqualTo(DEFAULT_EXTENT_SS);
         }
     }
 
@@ -70,15 +72,15 @@ class StaffExtentsTest extends UnitTest {
     class InitializationDefaults {
 
         @Test
-        void testBotDefaultsToStaffBottom() {
+        void testBotDefaultsToMiddleLine() {
             var extents = new StaffExtents(LINE_WIDTH_SS);
-            assertThat(extents.yGet(false, 0.0, LINE_WIDTH_SS)).isEqualTo(STAFF_BOTTOM_SS);
+            assertThat(extents.yGet(false, 0.0, LINE_WIDTH_SS)).isEqualTo(DEFAULT_EXTENT_SS);
         }
 
         @Test
-        void testTopDefaultsToStaffTop() {
+        void testTopDefaultsToMiddleLine() {
             var extents = new StaffExtents(LINE_WIDTH_SS);
-            assertThat(extents.yGet(true, 0.0, LINE_WIDTH_SS)).isEqualTo(STAFF_TOP_SS);
+            assertThat(extents.yGet(true, 0.0, LINE_WIDTH_SS)).isEqualTo(DEFAULT_EXTENT_SS);
         }
     }
 
@@ -188,7 +190,7 @@ class StaffExtentsTest extends UnitTest {
             extents.ySet(true, 10.0, 5.0, -3.0);
 
             // Query a different region — should still be at default
-            assertThat(extents.yGet(true, 30.0, 5.0)).isEqualTo(STAFF_TOP_SS);
+            assertThat(extents.yGet(true, 30.0, 5.0)).isEqualTo(DEFAULT_EXTENT_SS);
         }
     }
 
@@ -218,7 +220,7 @@ class StaffExtentsTest extends UnitTest {
             extents.ySet(true, 10.0, 5.0, -2.0);
 
             // Below direction should still be at default
-            assertThat(extents.yGet(false, 10.0, 5.0)).isEqualTo(STAFF_BOTTOM_SS);
+            assertThat(extents.yGet(false, 10.0, 5.0)).isEqualTo(DEFAULT_EXTENT_SS);
         }
 
         @Test

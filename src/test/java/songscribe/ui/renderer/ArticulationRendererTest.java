@@ -22,6 +22,7 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyFloat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -49,13 +50,22 @@ class ArticulationRendererTest extends UnitTest {
     private static final double ELEMENT_X_SS = 4.0;
 
     /**
-     * Renders a note with the given articulations and returns the spy so callers
-     * can capture the drawString calls to see which glyphs were drawn.
+     * Renders a down-stem note with the given articulations and returns the spy so
+     * callers can capture the drawString calls to see which glyphs were drawn.
      */
     private Graphics2D renderAndSpy(Articulation... articulations) {
+        return renderAndSpy(false, articulations);
+    }
+
+    /**
+     * Renders a note with the given stem direction and articulations, returning the
+     * spy so callers can capture the drawString calls to see which glyphs were drawn.
+     */
+    private Graphics2D renderAndSpy(boolean upper, Articulation... articulations) {
         var g2Spy = spy(RenderContextTestHelper.realG2());
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
         var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(upper);
 
         for (var a : articulations) {
             note.addArticulation(a);
@@ -100,18 +110,76 @@ class ArticulationRendererTest extends UnitTest {
     }
 
     @Test
-    void testRenderStaccatoPlusAccentComboDrawsComboGlyphOnce() {
-        // When both staccato and accent are present, the combo glyph
-        // ARTIC_ACCENT_STACCATO_ABOVE is drawn once (via the staccato loop entry).
-        // The accent articulation has no layout entry in combo mode and is skipped.
+    void testRenderSkipsArticulationWithNoDecorationLayout() {
+        // Non-preview path: layoutResult comes from invariants.getLayoutResult(), which
+        // RenderContextTestHelper.newContext seeds as an empty LayoutResult. With no
+        // override X, getDecorationLayout returns null for every articulation, exercising
+        // the `if (layout == null) continue;` skip branch — render() must not draw or throw.
+        var g2Spy = spy(RenderContextTestHelper.realG2());
+        var invariants = RenderContextTestHelper.newContext(new Song()).build();
+        var note = ElementType.CROTCHET.newInstance();
+        note.addArticulation(new Articulation(ArticulationType.STACCATO));
+
+        var frame = ElementFrame.LINE_LEVEL.withElement(0, Double.NaN);
+        RENDERER.render(invariants, frame, note, g2Spy);
+
+        verify(g2Spy, times(0)).drawString(anyString(), anyFloat(), anyFloat());
+    }
+
+    @Test
+    void testRenderStaccatoPlusAccentDrawsSeparateGlyphs() {
         var staccato = new Articulation(ArticulationType.STACCATO);
         var accent = new Articulation(ArticulationType.ACCENT);
         var g2Spy = renderAndSpy(staccato, accent);
         var glyphCaptor = ArgumentCaptor.forClass(String.class);
 
-        verify(g2Spy, times(1)).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
+        verify(g2Spy, times(2)).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
+
+        assertThat(glyphCaptor.getAllValues()).containsExactlyInAnyOrder(
+            SMuFLGlyph.ARTIC_STACCATO_ABOVE.asString(),
+            SMuFLGlyph.ARTIC_ACCENT_ABOVE.asString());
+    }
+
+    // ==========================================================================
+    // render() — glyph selection branches, below-staff (up-stem note)
+    // ==========================================================================
+
+    @Test
+    void testRenderSoloStaccatoDrawsStaccatoBelowGlyphForUpStemNote() {
+        var staccato = new Articulation(ArticulationType.STACCATO);
+        var g2Spy = renderAndSpy(true, staccato);
+        var glyphCaptor = ArgumentCaptor.forClass(String.class);
+
+        // drawBravuraGlyph calls g2.drawString with the glyph string
+        verify(g2Spy).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
 
         assertThat(glyphCaptor.getValue())
-            .isEqualTo(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE.asString());
+            .isEqualTo(SMuFLGlyph.ARTIC_STACCATO_BELOW.asString());
+    }
+
+    @Test
+    void testRenderSoloAccentDrawsAccentBelowGlyphForUpStemNote() {
+        var accent = new Articulation(ArticulationType.ACCENT);
+        var g2Spy = renderAndSpy(true, accent);
+        var glyphCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(g2Spy).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
+
+        assertThat(glyphCaptor.getValue())
+            .isEqualTo(SMuFLGlyph.ARTIC_ACCENT_BELOW.asString());
+    }
+
+    @Test
+    void testRenderStaccatoPlusAccentDrawsSeparateBelowGlyphsForUpStemNote() {
+        var staccato = new Articulation(ArticulationType.STACCATO);
+        var accent = new Articulation(ArticulationType.ACCENT);
+        var g2Spy = renderAndSpy(true, staccato, accent);
+        var glyphCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(g2Spy, times(2)).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
+
+        assertThat(glyphCaptor.getAllValues()).containsExactlyInAnyOrder(
+            SMuFLGlyph.ARTIC_STACCATO_BELOW.asString(),
+            SMuFLGlyph.ARTIC_ACCENT_BELOW.asString());
     }
 }

@@ -23,13 +23,11 @@ package songscribe.dom;
 /**
  * Types of articulations that can be applied to notes.
  * <p>
- * Articulations are drawn outward from the note head:
+ * Articulations are drawn opposite the stem, outward from the staff:
  * <ul>
- *   <li>For downward stems: articulations go down from head (ascending enum order)</li>
- *   <li>For upward stems: articulations go up from head (descending enum order)</li>
+ *   <li>For downward stems: articulations go above the staff</li>
+ *   <li>For upward stems: articulations go below the staff</li>
  * </ul>
- * <p>
- * The enum order determines drawing priority - closest to note head first.
  */
 public enum ArticulationType {
 
@@ -65,31 +63,5 @@ public enum ArticulationType {
      */
     public boolean hasMidiDurationOverride() {
         return midiDurationPercent >= 0;
-    }
-
-    /**
-     * Returns the articulation types in order for drawing on stem side.
-     * For stems pointing down, articulations are drawn below the head (ascending order).
-     * For stems pointing up, articulations are drawn above the head (descending order).
-     *
-     * @param stemUp true if stem points up, false if stem points down
-     * @return Array of articulation types in drawing order (closest to head first)
-     */
-    public static ArticulationType[] getDrawingOrder(boolean stemUp) {
-        var values = values();
-
-        if (stemUp) {
-            // Reverse order for upward stems (articulations above head)
-            var reversed = new ArticulationType[values.length];
-
-            for (var i = 0; i < values.length; i++) {
-                reversed[i] = values[values.length - 1 - i];
-            }
-
-            return reversed;
-        }
-
-        // Normal order for downward stems (articulations below head)
-        return values.clone();
     }
 }

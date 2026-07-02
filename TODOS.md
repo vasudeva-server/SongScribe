@@ -245,3 +245,38 @@ lower-friction first cut.
 **Depends on / blocked by:** Completion of
 `plans/finish-mainframe-decoupling.md` (the invariant must actually hold before a
 guard can be made green).
+
+## Make `Articulation.getContentWidthSs`/`getContentHeightSs` direction-aware
+
+**What:** `Articulation.java` (`getContentWidthSs`/`getContentHeightSs`) always
+derives dimensions from the *above* glyphs (`ARTIC_STACCATO_ABOVE`,
+`ARTIC_ACCENT_ABOVE`), regardless of the note's stem direction, even after the
+below-staff articulation placement work (`plans/articulation-stem-direction-placement.md`)
+lands and these values get fed into below-staff stacking (`stackBelow`) for
+up-stem notes too.
+
+**Why:** Checked `bravura_metadata.json` directly during the plan review: the
+single staccato and accent glyphs happen to have identical above/below bboxes
+today (staccato 0.336×0.336 both; accent 1.356×0.976 both), so this is
+numerically safe right now. But the precomposed accent+staccato combo glyph's
+above/below bboxes are *not* identical (height 1.68 vs 1.644) — proving the
+"above and below dims match" assumption is a font-specific coincidence for the
+two single glyphs, not a guarantee. If a future Bravura update (or a new
+articulation type) breaks that symmetry, `Articulation`'s content dimensions
+would silently be wrong for below-staff placement — wrong layout box size,
+possible collision-detection or rendering misalignment, with no test catching
+it, since nothing currently exercises the below path against this method.
+
+**Context:** The parity risk is guarded today by a unit test (added as part of
+`plans/articulation-stem-direction-placement.md`, Code Quality Issue 1) that
+asserts `ARTIC_STACCATO_ABOVE`/`ARTIC_STACCATO_BELOW` and
+`ARTIC_ACCENT_ABOVE`/`ARTIC_ACCENT_BELOW` bboxes stay dimensionally identical —
+so this TODO is not urgent, but if that test ever starts failing (or a new
+below-diverging glyph is added), the fix is to make `getContentWidthSs`/
+`getContentHeightSs` take (or read) the owning `StaffElement`'s `Direction` and
+select the matching ABOVE/BELOW bbox explicitly, mirroring how
+`ArticulationRenderer` and `NoteAttachedStacker.dispatchArticulationStacking`
+already do direction-aware glyph selection.
+
+**Depends on / blocked by:** Nothing — can be picked up any time the parity
+test above starts failing, or proactively as defensive hardening.

@@ -97,4 +97,30 @@ class ArticulationTest extends UnitTest {
         assertThat(new Articulation(ArticulationType.STACCATO).getContentWidthPx())
             .isCloseTo(expectedPx, within(DOUBLE_EPSILON));
     }
+
+    // -------------------------------------------------------------------------
+    // Above/below bbox parity — getContentWidthSs/getContentHeightSs are
+    // direction-unaware (they always read the *_ABOVE glyph's bbox). This is
+    // only safe because the above/below bboxes are numerically identical in
+    // bravura_metadata.json; this test documents and guards that assumption.
+    // See TODOS.md for the deferred direction-aware follow-up if it ever fails.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testStaccatoAboveAndBelowBboxesHaveIdenticalDimensions() {
+        var above = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
+        var below = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_BELOW);
+
+        assertThat(below.width()).isCloseTo(above.width(), within(DOUBLE_EPSILON));
+        assertThat(below.height()).isCloseTo(above.height(), within(DOUBLE_EPSILON));
+    }
+
+    @Test
+    void testAccentAboveAndBelowBboxesHaveIdenticalDimensions() {
+        var above = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
+        var below = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_BELOW);
+
+        assertThat(below.width()).isCloseTo(above.width(), within(DOUBLE_EPSILON));
+        assertThat(below.height()).isCloseTo(above.height(), within(DOUBLE_EPSILON));
+    }
 }

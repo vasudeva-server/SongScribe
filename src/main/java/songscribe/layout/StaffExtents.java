@@ -20,8 +20,6 @@
 
 package songscribe.layout;
 
-import java.util.Arrays;
-
 /**
  * Segmented y-extent array for above/below-staff collision detection.
  * <p>
@@ -80,8 +78,8 @@ public class StaffExtents {
     /**
      * Creates a new StaffExtents with default initialization.
      * <p>
-     * The top array is initialized to staff top (0.0 ss) and the bottom array
-     * to staff bottom ({@link StaffExtents#STAFF_HEIGHT_SS}).
+     * Both arrays default to the middle staff line (0.0 ss), matching the
+     * Y-down, middle-line-relative coordinate system used throughout layout.
      *
      * @param lineWidthSs total width of the staff line in staff-space units
      */
@@ -89,7 +87,6 @@ public class StaffExtents {
         this.lineWidthSs = lineWidthSs;
         top = new double[YSTEP];
         bot = new double[YSTEP];
-        Arrays.fill(bot, STAFF_HEIGHT_SS);
     }
 
     /** Converts a staff position (half staff-space units) to staff spaces. */

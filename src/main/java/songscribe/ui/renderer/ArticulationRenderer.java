@@ -59,11 +59,17 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
     private static final double STACCATO_WIDTH_SS =
         SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).width();
 
-    private static final double ACCENT_STACCATO_BBOX_LEFT_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).left();
+    private static final double ACCENT_BELOW_BBOX_LEFT_SS =
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_BELOW).left();
 
-    private static final double ACCENT_STACCATO_WIDTH_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).width();
+    private static final double ACCENT_BELOW_WIDTH_SS =
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_BELOW).width();
+
+    private static final double STACCATO_BELOW_BBOX_LEFT_SS =
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_BELOW).left();
+
+    private static final double STACCATO_BELOW_WIDTH_SS =
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_BELOW).width();
 
     // Singleton instance
     private static final ArticulationRenderer INSTANCE = new ArticulationRenderer();
@@ -109,47 +115,44 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
         try (var ignored = GraphicsState.save(g2, COLOR)) {
             RenderingUtils.applyDecorationColor(g2, element, invariants, frame);
 
-            var hasStaccato = false;
-            var hasAccent = false;
-
-            for (var a : element.getArticulations()) {
-                if (a.isStaccato()) {
-                    hasStaccato = true;
-                } else if (a.isAccent()) {
-                    hasAccent = true;
-                }
-            }
-
-            var isCombo = hasStaccato && hasAccent;
+            var above = NoteAttachedStacker.articulationDirection(element).isUp();
 
             for (var articulation : element.getArticulations()) {
                 var layout = layoutResult.getDecorationLayout(articulation);
 
                 if (layout == null) {
-                    // In combo mode, the accent articulation has no layout entry — skip it.
                     continue;
                 }
 
-                var componentTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
-
-                if (isCombo && articulation.isStaccato()) {
-                    var x = RenderingUtils.centeredGlyphX(layout.xSs(), element,
-                        ACCENT_STACCATO_BBOX_LEFT_SS, ACCENT_STACCATO_WIDTH_SS);
-                    var y = RenderingUtils.glyphOriginYFromLayoutTop(componentTopYSs,
-                        SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE);
-                    RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE, x, y, true);
-                } else if (articulation.isStaccato()) {
-                    var x = RenderingUtils.centeredGlyphX(layout.xSs(), element,
-                        STACCATO_BBOX_LEFT_SS, STACCATO_WIDTH_SS);
-                    var y = RenderingUtils.glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_STACCATO_ABOVE);
-                    RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y, true);
+                if (articulation.isStaccato()) {
+                    var glyph = above ? SMuFLGlyph.ARTIC_STACCATO_ABOVE : SMuFLGlyph.ARTIC_STACCATO_BELOW;
+                    var bboxLeftSs = above ? STACCATO_BBOX_LEFT_SS : STACCATO_BELOW_BBOX_LEFT_SS;
+                    var widthSs = above ? STACCATO_WIDTH_SS : STACCATO_BELOW_WIDTH_SS;
+                    drawArticulationGlyph(g2, layout, element, invariants, glyph, bboxLeftSs, widthSs);
                 } else if (articulation.isAccent()) {
-                    var x = RenderingUtils.centeredGlyphX(layout.xSs(), element,
-                        ACCENT_BBOX_LEFT_SS, ACCENT_WIDTH_SS);
-                    var y = RenderingUtils.glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_ACCENT_ABOVE);
-                    RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_ABOVE, x, y, true);
+                    var glyph = above ? SMuFLGlyph.ARTIC_ACCENT_ABOVE : SMuFLGlyph.ARTIC_ACCENT_BELOW;
+                    var bboxLeftSs = above ? ACCENT_BBOX_LEFT_SS : ACCENT_BELOW_BBOX_LEFT_SS;
+                    var widthSs = above ? ACCENT_WIDTH_SS : ACCENT_BELOW_WIDTH_SS;
+                    drawArticulationGlyph(g2, layout, element, invariants, glyph, bboxLeftSs, widthSs);
                 }
             }
         }
+    }
+
+    /**
+     * Draws a single articulation glyph at its layout position, centered horizontally on the
+     * note using the glyph's own bounding box.
+     */
+    private static void drawArticulationGlyph(
+        Graphics2D g2,
+        LayoutResult.DecorationLayout layout,
+        StaffElement element,
+        LineInvariants invariants,
+        SMuFLGlyph glyph, double bboxLeftSs, double widthSs) {
+
+        var componentTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
+        var x = RenderingUtils.centeredGlyphX(layout.xSs(), element, bboxLeftSs, widthSs);
+        var y = RenderingUtils.glyphOriginYFromLayoutTop(componentTopYSs, glyph);
+        RenderingUtils.drawBravuraGlyph(g2, glyph, x, y, true);
     }
 }

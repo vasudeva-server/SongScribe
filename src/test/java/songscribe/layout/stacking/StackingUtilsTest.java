@@ -58,6 +58,25 @@ class StackingUtilsTest extends UnitTest {
     // A staff position one unit above the top staff line (strictly above — uses ceiling formula)
     private static final int ABOVE_TOP_STAFF_LINE_POSITION = StackingUtils.TOP_STAFF_LINE_POSITION - 2;
 
+    // A staff position at the bottom staff line (boundary — still uses floor formula)
+    private static final int AT_BOTTOM_STAFF_LINE_POSITION = StackingUtils.BOTTOM_STAFF_LINE_POSITION;
+
+    // A staff position one unit below the bottom staff line (strictly below — uses floor formula)
+    private static final int BELOW_BOTTOM_STAFF_LINE_POSITION = StackingUtils.BOTTOM_STAFF_LINE_POSITION + 2;
+
+    // An interior staff line (even position, not the top/bottom line) — staccatoAnchor*
+    // uses STACCATO_ON_LINE_DISTANCE_SS here instead of the fixed staff-line anchor.
+    private static final int INTERIOR_LINE_STAFF_POSITION = WITHIN_STAFF_POSITION;
+
+    // A space between staff lines (odd position) — staccatoAnchor* uses
+    // STACCATO_BETWEEN_LINES_DISTANCE_SS here.
+    private static final int INTERIOR_SPACE_STAFF_POSITION = -1;
+
+    // The outer space, one position inside the top/bottom staff line — still a space, so
+    // staccatoAnchor* uses STACCATO_BETWEEN_LINES_DISTANCE_SS, not the fixed staff-line anchor.
+    private static final int OUTER_SPACE_ABOVE_STAFF_POSITION = StackingUtils.TOP_STAFF_LINE_POSITION + 1;
+    private static final int OUTER_SPACE_BELOW_STAFF_POSITION = StackingUtils.BOTTOM_STAFF_LINE_POSITION - 1;
+
     // Margin used in stackAboveWithRegions tests
     private static final double REGION_MARGIN_SS = 0.5;
 
@@ -125,6 +144,147 @@ class StackingUtilsTest extends UnitTest {
 
         var result = StackingUtils.anchorCeilingSs(sp);
         assertThat(result).isCloseTo(expectedCeilingSs, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // anchorFloorSs(sp): within or above staff → STAFF_BOT_Y_SS
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testAnchorFloorWithinStaffReturnsStaffBotY() {
+        // sp < BOTTOM_STAFF_LINE_POSITION: the note is within or above the staff,
+        // so the anchor floor is pinned to the bottom staff line.
+        var result = StackingUtils.anchorFloorSs(WITHIN_STAFF_POSITION);
+        assertThat(result).isEqualTo(StackingUtils.STAFF_BOT_Y_SS);
+    }
+
+    @Test
+    void testAnchorFloorAboveTopLineReturnsStaffBotYForNegativePosition() {
+        // Any negative sp (above middle line) should also return STAFF_BOT_Y_SS.
+        var aboveMiddlePosition = -4;
+        var result = StackingUtils.anchorFloorSs(aboveMiddlePosition);
+        assertThat(result).isEqualTo(StackingUtils.STAFF_BOT_Y_SS);
+    }
+
+    // -------------------------------------------------------------------------
+    // anchorFloorSs(sp): at or below bottom staff line → formula result
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testAnchorFloorAtBottomStaffLineUsesNoteHeadFormula() {
+        // sp == BOTTOM_STAFF_LINE_POSITION: boundary that does NOT use STAFF_BOT_Y_SS;
+        // result is noteHeadY + NOTE_HEAD_RADIUS_SS.
+        var sp = AT_BOTTOM_STAFF_LINE_POSITION;
+        var expectedNoteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedFloorSs = expectedNoteHeadYSs + StackingUtils.NOTE_HEAD_RADIUS_SS;
+
+        var result = StackingUtils.anchorFloorSs(sp);
+        assertThat(result).isCloseTo(expectedFloorSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testAnchorFloorBelowBottomStaffLineUsesNoteHeadFormula() {
+        // sp > BOTTOM_STAFF_LINE_POSITION: well below the staff — same formula.
+        var sp = BELOW_BOTTOM_STAFF_LINE_POSITION;
+        var expectedNoteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedFloorSs = expectedNoteHeadYSs + StackingUtils.NOTE_HEAD_RADIUS_SS;
+
+        var result = StackingUtils.anchorFloorSs(sp);
+        assertThat(result).isCloseTo(expectedFloorSs, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // staccatoAnchorCeilingSs(sp) / staccatoAnchorFloorSs(sp)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testStaccatoAnchorCeilingOnInteriorLineUsesOnLineDistance() {
+        var sp = INTERIOR_LINE_STAFF_POSITION;
+        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedCeilingSs = noteHeadYSs - StackingUtils.STACCATO_ON_LINE_DISTANCE_SS;
+
+        var result = StackingUtils.staccatoAnchorCeilingSs(sp);
+        assertThat(result).isCloseTo(expectedCeilingSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testStaccatoAnchorCeilingInSpaceUsesBetweenLinesDistance() {
+        var sp = INTERIOR_SPACE_STAFF_POSITION;
+        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedCeilingSs = noteHeadYSs - StackingUtils.STACCATO_BETWEEN_LINES_DISTANCE_SS;
+
+        var result = StackingUtils.staccatoAnchorCeilingSs(sp);
+        assertThat(result).isCloseTo(expectedCeilingSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testStaccatoAnchorCeilingInOuterSpaceUsesBetweenLinesDistance() {
+        // The outer space is still a space, not the staff line itself, so it does not
+        // fall back to the fixed staff-line anchor.
+        var sp = OUTER_SPACE_ABOVE_STAFF_POSITION;
+        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedCeilingSs = noteHeadYSs - StackingUtils.STACCATO_BETWEEN_LINES_DISTANCE_SS;
+
+        var result = StackingUtils.staccatoAnchorCeilingSs(sp);
+        assertThat(result).isCloseTo(expectedCeilingSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testStaccatoAnchorCeilingAtTopStaffLineDelegatesToAnchorCeiling() {
+        var sp = AT_TOP_STAFF_LINE_POSITION;
+        var result = StackingUtils.staccatoAnchorCeilingSs(sp);
+        assertThat(result).isCloseTo(StackingUtils.anchorCeilingSs(sp), within(TOLERANCE));
+    }
+
+    @Test
+    void testStaccatoAnchorCeilingAboveTopStaffLineDelegatesToAnchorCeiling() {
+        var sp = ABOVE_TOP_STAFF_LINE_POSITION;
+        var result = StackingUtils.staccatoAnchorCeilingSs(sp);
+        assertThat(result).isCloseTo(StackingUtils.anchorCeilingSs(sp), within(TOLERANCE));
+    }
+
+    @Test
+    void testStaccatoAnchorFloorOnInteriorLineUsesOnLineDistance() {
+        var sp = INTERIOR_LINE_STAFF_POSITION;
+        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedFloorSs = noteHeadYSs + StackingUtils.STACCATO_ON_LINE_DISTANCE_SS;
+
+        var result = StackingUtils.staccatoAnchorFloorSs(sp);
+        assertThat(result).isCloseTo(expectedFloorSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testStaccatoAnchorFloorInSpaceUsesBetweenLinesDistance() {
+        var sp = INTERIOR_SPACE_STAFF_POSITION;
+        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedFloorSs = noteHeadYSs + StackingUtils.STACCATO_BETWEEN_LINES_DISTANCE_SS;
+
+        var result = StackingUtils.staccatoAnchorFloorSs(sp);
+        assertThat(result).isCloseTo(expectedFloorSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testStaccatoAnchorFloorInOuterSpaceUsesBetweenLinesDistance() {
+        var sp = OUTER_SPACE_BELOW_STAFF_POSITION;
+        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedFloorSs = noteHeadYSs + StackingUtils.STACCATO_BETWEEN_LINES_DISTANCE_SS;
+
+        var result = StackingUtils.staccatoAnchorFloorSs(sp);
+        assertThat(result).isCloseTo(expectedFloorSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testStaccatoAnchorFloorAtBottomStaffLineDelegatesToAnchorFloor() {
+        var sp = AT_BOTTOM_STAFF_LINE_POSITION;
+        var result = StackingUtils.staccatoAnchorFloorSs(sp);
+        assertThat(result).isCloseTo(StackingUtils.anchorFloorSs(sp), within(TOLERANCE));
+    }
+
+    @Test
+    void testStaccatoAnchorFloorBelowBottomStaffLineDelegatesToAnchorFloor() {
+        var sp = BELOW_BOTTOM_STAFF_LINE_POSITION;
+        var result = StackingUtils.staccatoAnchorFloorSs(sp);
+        assertThat(result).isCloseTo(StackingUtils.anchorFloorSs(sp), within(TOLERANCE));
     }
 
     // -------------------------------------------------------------------------

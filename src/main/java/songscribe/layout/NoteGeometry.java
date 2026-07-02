@@ -123,7 +123,7 @@ public final class NoteGeometry {
         var noteType = note.getType();
 
         // Dots shift up when note is on a line (even staff position)
-        var yOffset = (note.getStaffPosition() % 2 == 0) ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
+        var yOffset = StaffElement.isLinePosition(note.getStaffPosition()) ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
 
         var dotX = firstDotXSs(noteType, beamed, direction);
 

@@ -22,17 +22,13 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Arrays;
-import java.util.List;
-
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 
 /**
- * Tests for {@link ArticulationType} — MIDI duration override logic and
- * drawing-order contract.
+ * Tests for {@link ArticulationType} — MIDI duration override logic.
  */
 class ArticulationTypeTest extends UnitTest {
 
@@ -79,58 +75,6 @@ class ArticulationTypeTest extends UnitTest {
         @Test
         void testStaccatoReturnsTrue() {
             assertThat(ArticulationType.STACCATO.hasMidiDurationOverride()).isTrue();
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Row 10 — getDrawingOrder(false) returns types in ascending enum order
-    // -------------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class GetDrawingOrderStemDown {
-
-        @Test
-        void testDrawingOrderAscendsWithEnumOrdinal() {
-            var order = ArticulationType.getDrawingOrder(false);
-
-            // Each element must appear at or after the previous one in enum declaration order.
-            for (var i = 0; i < order.length - 1; i++) {
-                assertThat(order[i].ordinal())
-                    .describedAs("drawing order index %d (%s) ordinal must be less than index %d (%s) ordinal",
-                        i, order[i], i + 1, order[i + 1])
-                    .isLessThan(order[i + 1].ordinal());
-            }
-        }
-
-        @Test
-        void testDrawingOrderContainsAllTypes() {
-            var order = ArticulationType.getDrawingOrder(false);
-            assertThat(order).containsExactlyInAnyOrder(ArticulationType.values());
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Row 11 — getDrawingOrder(true) is the reverse of getDrawingOrder(false)
-    // -------------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class GetDrawingOrderStemUp {
-
-        @Test
-        void testDrawingOrderStemUpIsReversalOfStemDown() {
-            var stemDown = ArticulationType.getDrawingOrder(false);
-            var stemUp = ArticulationType.getDrawingOrder(true);
-
-            // Reverse stemDown and compare element-by-element with stemUp.
-            var reversedStemDown = Arrays.copyOf(stemDown, stemDown.length);
-
-            for (var i = 0; i < reversedStemDown.length; i++) {
-                reversedStemDown[i] = stemDown[stemDown.length - 1 - i];
-            }
-
-            assertThat(stemUp).containsExactly(reversedStemDown);
         }
     }
 }

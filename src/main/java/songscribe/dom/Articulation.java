@@ -29,10 +29,10 @@ import songscribe.smufl.SMuFLMetadata;
  * Represents an articulation marking on a staff element.
  * <p>
  * Articulations modify how an element is played (staccato, accent, etc.).
- * They are drawn outward from the note head:
+ * They are drawn opposite the stem, outward from the staff:
  * <ul>
- *   <li>For downward stems: articulations go below the head</li>
- *   <li>For upward stems: articulations go above the head</li>
+ *   <li>For downward stems: articulations go above the staff</li>
+ *   <li>For upward stems: articulations go below the staff</li>
  * </ul>
  */
 public class Articulation extends LineElement {

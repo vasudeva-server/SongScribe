@@ -11,7 +11,7 @@ Feature branches are based on `develop`, not `main`. Before any operation that r
 ## Development Scripts
 
 - Compile: run `./scripts/compile.sh` exactly — no flags, no pipes, no additions. Never use `./gradlew`, `gradle`, `javac`, or `java -cp`. Outputs SUCCESS/FAILURE. Fix errors before proceeding.
-- Run: `./scripts/run.sh` — flags: `--log-level=debug|info|warn|error|trace`, `--truncate-log`. UI debug features: prefix with `DEBUG=1`.
+- Run: DO NOT use the `/run` or `/verify` skill. Use `./scripts/run.sh` — flags: `--log-level=debug|info|warn|error|trace`, `--truncate-log`. UI debug features: prefix with `DEBUG=1`.
 - Tests: always `./scripts/compile.sh` first if any file under `src/main/` changed; always `./scripts/test.sh` (never `./gradlew test`). Run unit before e2e. Any e2e test requires user approval.
   - Targets: bare = all; `unit` / `e2e` pick the task and must come first; `ClassName`, `ClassName.method`, `'Class$Nested'`, `'Class$Nested.method'`, space-separated multiple, and `-Dtest=*Pattern` filter by name. A bare name with no `unit`/`e2e` prefix runs under the **unit** task (which excludes e2e), so e2e classes need the prefix: `e2e ClassName` (see [testing-e2e.md](../guides/testing-e2e.md)).
   - Flags (`--debug`, `--verbose`) apply to e2e only.
