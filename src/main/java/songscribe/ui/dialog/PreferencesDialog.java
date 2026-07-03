@@ -44,6 +44,7 @@ import songscribe.layout.PageModel;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.playback.PlayThread;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 
 import songscribe.util.GraphicUtils;
@@ -598,20 +599,33 @@ public class PreferencesDialog extends BaseDialog {
             });
 
             addChangeListener();
+            addClickListener();
         }
 
         @Override
         protected void initContents() {
             var panel = new JPanel(new GridBagLayout());
             var gc = new GridBagConstraints();
+
+            var selectHintLabel = new JLabel(Strings.get(Strings.LABEL_PREFS_INSTRUMENT_SELECT_HINT));
+            gc.gridx = 0;
             gc.gridy = 0;
-            gc.weighty = 1.0;
+            gc.weightx = 0.5;
+            gc.weighty = 0;
+            gc.fill = GridBagConstraints.NONE;
+            gc.anchor = GridBagConstraints.WEST;
+            var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
+            gc.insets = new Insets(0, horizontalGap, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_GAP), 0);
+            panel.add(selectHintLabel, gc);
 
             instrumentList.setVisibleRowCount(10);
             instrumentList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
             gc.gridx = 0;
+            gc.gridy = 1;
             gc.weightx = 0.5;
+            gc.weighty = 1.0;
             gc.fill = GridBagConstraints.BOTH;
+            gc.insets = new Insets(0, 0, 0, 0);
             panel.add(new JScrollPane(instrumentList), gc);
 
             scaleButton.setText("\uEF4E");
@@ -622,15 +636,32 @@ public class PreferencesDialog extends BaseDialog {
             var spaceKey = (KeyStroke) scaleAction.getValue(Action.ACCELERATOR_KEY);
             scaleButton.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(spaceKey, "playScale");
             scaleButton.getActionMap().put("playScale", scaleAction);
+
+            var scaleButtonRow = new JPanel();
+            scaleButtonRow.setLayout(new BoxLayout(scaleButtonRow, BoxLayout.X_AXIS));
+            scaleButtonRow.add(scaleButton);
+            var extraGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP);
+            scaleButtonRow.add(Box.createHorizontalStrut(extraGap));
+            scaleButtonRow.add(new JLabel(Strings.get(Strings.LABEL_PREFS_PLAY_SCALE)));
+
             gc.gridx = 1;
             gc.weightx = 0.5;
             gc.fill = GridBagConstraints.NONE;
             gc.anchor = GridBagConstraints.WEST;
             var buttonGap = FlatLafProps.getInt(FlatLafKey.DIALOG_PREFERENCES_INSTRUMENTS_BUTTON_GAP);
             gc.insets = new Insets(0, buttonGap, 0, 0);
-            panel.add(scaleButton, gc);
+            panel.add(scaleButtonRow, gc);
 
             addExpanding(panel, GridBagConstraints.BOTH);
+        }
+
+        /** Plays a single note with the selected instrument, unless the scale is currently playing. */
+        private void playSingleNoteIfNotScalePlaying() {
+            if (scaleAction.isPlaying()) {
+                return;
+            }
+
+            new PlayThread(ScaleAction.SINGLE_NOTE_PITCH).start();
         }
 
         @Override
@@ -662,10 +693,31 @@ public class PreferencesDialog extends BaseDialog {
                 );
                 syncPlaybackPrefs();
 
-                // Restart scale if it was already playing
                 if (scaleAction.isPlaying()) {
+                    // Restart scale if it was already playing
                     scaleAction.stop();
                     scaleAction.play();
+                } else {
+                    playSingleNoteIfNotScalePlaying();
+                }
+            });
+        }
+
+        /** ListSelectionListener doesn't fire when clicking an already-selected item, so play it here instead. */
+        private void addClickListener() {
+            instrumentList.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    var index = instrumentList.locationToIndex(e.getPoint());
+
+                    if (index >= 0 && index == instrumentList.getSelectedIndex()) {
+                        if (scaleAction.isPlaying()) {
+                            scaleAction.stop();
+                            scaleAction.play();
+                        } else {
+                            playSingleNoteIfNotScalePlaying();
+                        }
+                    }
                 }
             });
         }
@@ -677,9 +729,12 @@ public class PreferencesDialog extends BaseDialog {
             private static final int SCALE_VELOCITY = 70;
             private static final int SCALE_TEMPO_BPM = 120;
 
+            // Db4, played when the user selects an instrument in the list
+            static final int SINGLE_NOTE_PITCH = 61;
+
             // Db major scale: Db4, Eb4, F4, Gb4, Ab4, Bb4, C5, Db5
             private static final int[] SCALE = new int[] {
-                61, 63, 65, 66, 68, 70, 72, 73,
+                SINGLE_NOTE_PITCH, 63, 65, 66, 68, 70, 72, 73,
             };
 
             private @Nullable Color defaultButtonBackground;
