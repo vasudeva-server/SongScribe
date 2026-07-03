@@ -258,17 +258,18 @@ class NoteDragHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Glissando Cleanup
+    // Glissando Unison Retention
     // -------------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class GlissandoCleanup {
+    class GlissandoUnisonRetention {
 
         @Test
-        void testRemovesBackwardGlissandoWhenUnisonAfterDrag() {
+        void testRetainsBackwardGlissandoWhenUnisonAfterDrag() {
             // [crotchet@0 (connected gliss), crotchet@4]
-            // Drag index 1 by -4 → unison → remove glissando from index 0
+            // Drag index 1 by -4 → unison. The glissando is left intact; the renderer
+            // hides it while the notes share a pitch and shows it again when they diverge.
             var line = createLine(0, 4);
             line.getElement(0).setGlissando();
             when(lc.getLine()).thenReturn(line);
@@ -279,13 +280,14 @@ class NoteDragHandlerTest extends UnitTest {
             handler.handleRelease();
 
             assertThat(line.getElement(0).hasGlissando())
-                .isFalse();
+                .isTrue();
         }
 
         @Test
-        void testRemovesForwardGlissandoWhenUnisonAfterDrag() {
+        void testRetainsForwardGlissandoWhenUnisonAfterDrag() {
             // [crotchet@4 (connected gliss), crotchet@0]
-            // Drag index 0 by -4 → position becomes 0, matches index 1 → remove glissando
+            // Drag index 0 by -4 → position becomes 0, matches index 1 → unison. The
+            // glissando is left intact; the renderer hides it only while the pitches match.
             var line = createLine(4, 0);
             line.getElement(0).setGlissando();
             when(lc.getLine()).thenReturn(line);
@@ -296,7 +298,7 @@ class NoteDragHandlerTest extends UnitTest {
             handler.handleRelease();
 
             assertThat(line.getElement(0).hasGlissando())
-                .isFalse();
+                .isTrue();
         }
     }
 

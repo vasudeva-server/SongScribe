@@ -236,10 +236,8 @@ class LineSelectionHandler {
             && pressHitResult instanceof HitResult.ElementHead(var index)
             && lineSelectionState != null
             && lineSelectionState.getSelectionAnchor() != -1) {
-            lineSelectionState.extendSelectionTo(index);
-            lc.getScoreView().selectionChanged();
+            lc.getScoreView().extendSelectionTo(index);
             playNoteIfPitched(index);
-            lc.repaint();
         }
 
         return true;
@@ -304,15 +302,12 @@ class LineSelectionHandler {
      * Used by both the press handler and {@link NoteDragHandler}.
      */
     void selectElementAtIndex(int elementIndex) {
-        prepareSelection();
-        var selState = lc.getLineSelectionState();
+        var scoreView = lc.getScoreView();
+        var state = scoreView.getSelectionCoordinator().selectSingleElement(lc.getLineIndex(), elementIndex);
 
-        if (selState == null) {
-            return;
+        if (state != null) {
+            scoreView.selectionChanged();
         }
-
-        selState.setSelectionFromClick(elementIndex);
-        lc.getScoreView().selectionChanged();
     }
 
     /**

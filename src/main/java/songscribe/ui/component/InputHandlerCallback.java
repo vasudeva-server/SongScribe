@@ -26,6 +26,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
+import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Callback interface for ScoreInputHandler to communicate with ScoreView.
@@ -44,4 +45,15 @@ public interface InputHandlerCallback {
     boolean requestFocusInWindow();
 
     @Nullable Window getWindow();
+
+    SelectionCoordinator getSelectionCoordinator();
+
+    void selectionChanged();
+
+    /**
+     * Extends the active element selection to {@code targetIndex}, keeping the anchor
+     * fixed. Shared by shift-click and shift-arrow, which each compute the target index
+     * to extend or shrink the selection to.
+     */
+    void extendSelectionTo(int targetIndex);
 }

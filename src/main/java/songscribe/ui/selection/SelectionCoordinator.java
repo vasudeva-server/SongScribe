@@ -196,6 +196,27 @@ public final class SelectionCoordinator {
     }
 
     /**
+     * Collapses the selection to a single element at {@code elementIndex} on the line
+     * at {@code lineIndex}: clears any prior selection, activates the target line, and
+     * sets the single-element selection. Returns the now-active state, or null if the
+     * target line has no registered selection state. Shared by the mouse click-to-select
+     * path and arrow-key navigation; each caller handles its own notification and repaint.
+     */
+    @Nullable
+    public LineSelectionState selectSingleElement(int lineIndex, int elementIndex) {
+        clearSelection();
+        activateLine(lineIndex);
+
+        var state = getActiveSelection();
+
+        if (state != null) {
+            state.setSelectionFromClick(elementIndex);
+        }
+
+        return state;
+    }
+
+    /**
      * Activates the given line for selection. Clears the previous line's selection.
      */
     public void activateLine(int lineIndex) {

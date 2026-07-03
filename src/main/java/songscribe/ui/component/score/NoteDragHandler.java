@@ -24,26 +24,16 @@ import module java.desktop;
 
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
-import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
-import songscribe.message.mutation.ElementModification;
 import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.ScaleContext;
 import songscribe.layout.StaffExtents;
 import songscribe.ui.playback.MidiController;
-import songscribe.ui.playback.PlayThread;
 
 /**
  * Handles press/drag/release for pitch-dragging a note head in SELECT mode.
@@ -52,14 +42,6 @@ import songscribe.ui.playback.PlayThread;
  * mouse events here before passing them on to other handlers.
  */
 class NoteDragHandler {
-
-    /**
-     * Captures the original state of a single note in the drag group.
-     * {@code beforeClone} is a snapshot taken at press time, used as the
-     * {@link ElementModification#beforeElement()} for the eventual mutation
-     * record (the actual element is mutated incrementally during drag).
-     */
-    private record DragEntry(int index, int originalStaffPositionSp, StaffElement.Direction originalDirection, StaffElement beforeClone) {}
 
     private final LineComponent lc;
 
@@ -84,7 +66,7 @@ class NoteDragHandler {
     private Line dragLine;
 
     /** All notes (plus tie-chain expansions) that move together during drag. */
-    private final List<DragEntry> dragGroup = new ArrayList<>();
+    private final List<PitchShifter.PitchShiftEntry> dragGroup = new ArrayList<>();
 
     NoteDragHandler(LineComponent lc) {
         this.lc = lc;
@@ -170,36 +152,12 @@ class NoteDragHandler {
 
         // Build the drag group from the captured selection range (which may be multi-note)
         dragGroup.clear();
-
-        // Collect all unique indices, expanding each selected note's tie chain
-        var groupIndices = new LinkedHashSet<Integer>();
-
-        for (var i = dragBegin; i <= dragEnd; i++) {
-            var element = line.getElement(i);
-
-            if (!element.getType().isPitchedNote()) {
-                continue;
-            }
-
-            var tie = line.findTieAt(i);
-
-            if (tie != null) {
-                for (var j = tie.getAnchorElementIndex(); j <= tie.getEndElementIndex(); j++) {
-                    groupIndices.add(j);
-                }
-            } else {
-                groupIndices.add(i);
-            }
-        }
+        dragGroup.addAll(PitchShifter.buildPitchShiftGroup(line, dragBegin, dragEnd));
 
         // Fall back to just the dragged note if nothing was collected
-        if (groupIndices.isEmpty()) {
-            groupIndices.add(hitIndex);
-        }
-
-        for (var idx : groupIndices) {
-            var groupNote = line.getElement(idx);
-            dragGroup.add(new DragEntry(idx, groupNote.getStaffPosition(), groupNote.getDirection(), groupNote.clone()));
+        if (dragGroup.isEmpty()) {
+            var hitNote = line.getElement(hitIndex);
+            dragGroup.add(new PitchShifter.PitchShiftEntry(hitIndex, hitNote.getStaffPosition(), hitNote.clone()));
         }
 
         // Save state for possible revert on a press+release without drag
@@ -239,44 +197,18 @@ class NoteDragHandler {
         }
 
         // Clamp delta so no note in the group exits the valid staff range
-        var minDelta = Integer.MIN_VALUE;
-        var maxDelta = Integer.MAX_VALUE;
+        var clampedDelta = PitchShifter.clampDelta(dragGroup, deltaSp);
 
-        for (var entry : dragGroup) {
-            minDelta = Math.max(minDelta, StaffExtents.MIN_STAFF_POSITION_SP - entry.originalStaffPositionSp());
-            maxDelta = Math.min(maxDelta, StaffExtents.MAX_STAFF_POSITION_SP - entry.originalStaffPositionSp());
-        }
-
-        deltaSp = Math.clamp(deltaSp, minDelta, maxDelta);
-
-        // If the clamped delta produces no movement, skip
-        if (originalDragStaffPositionSp + deltaSp == lastPlayedStaffPositionSp) {
+        // If the clamped delta lands on the last-played position, skip so a stationary
+        // mouse does not retrigger the note.
+        if (originalDragStaffPositionSp + clampedDelta == lastPlayedStaffPositionSp) {
             return;
         }
 
-        var playSelected = Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE);
+        // Shared with arrow-key shifting: move the whole group and play the dragged note.
+        PitchShifter.moveGroupAndPlayAnchor(dragLine, dragGroup, dragElementIndex, clampedDelta);
 
-        // Send NOTE_OFF for the pitch we were playing
-        var oldNote = dragLine.getElement(dragElementIndex);
-
-        if (playSelected) {
-            PlayThread.sendNoteOff(oldNote.getPitch());
-        }
-
-        // Apply clamped delta to all group entries
-        for (var entry : dragGroup) {
-            var groupNote = dragLine.getElement(entry.index());
-            groupNote.setStaffPosition(entry.originalStaffPositionSp() + deltaSp);
-            groupNote.setDirection(StaffElement.defaultDirection(groupNote));
-        }
-
-        // Play NOTE_ON for the new pitch of the dragged note
-        var newPitch = dragLine.getElement(dragElementIndex).getPitch();
-
-        if (playSelected) {
-            PlayThread.sendNoteOn(newPitch);
-        }
-        lastPlayedStaffPositionSp = originalDragStaffPositionSp + deltaSp;
+        lastPlayedStaffPositionSp = originalDragStaffPositionSp + clampedDelta;
 
         lc.invalidateLayout();
         dragMoved = true;
@@ -300,66 +232,14 @@ class NoteDragHandler {
         }
 
         if (dragMoved) {
-            if (Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
-                // The last drag noteOn is still sounding — schedule a noteOff after the standard duration
-                new PlayThread(dragLine.getElement(dragElementIndex).getPitch(), false).start();
-            }
+            // The last drag noteOn is still sounding — let it ring for the standard
+            // duration, then stop it. Shared with arrow-key shifting.
+            PitchShifter.scheduleAnchorNoteOff(dragLine, dragElementIndex);
 
-            // Coalesce all finalize mutations into a single SongDidChangeNotification.
-            // The pitch mutations were already applied during handleDrag, so each PITCH
-            // ElementModification carries an empty mutator and the press-time beforeClone.
-            // The follow-up cleanup steps (glissando removal, grace-note removal) emit
-            // their own mutations into the same bracket.
-            var line = dragLine;
-            line.withModification(() -> {
-                for (var entry : dragGroup) {
-                    line.applyChange(
-                            new ElementModification(line, entry.index(), EnumSet.of(ElementField.PITCH), entry.beforeClone()),
-                            () -> {}
-                    );
-                }
-
-                // Remove connected glissandos that became unison after the pitch drag
-                for (var entry : dragGroup) {
-                    removeUnisonConnectedGlissandos(line, entry.index());
-                }
-
-                // Grace note validity checks — iterate in reverse index order to avoid index shifting from removals
-                var sortedEntries = dragGroup.stream()
-                        .sorted((a, b) -> Integer.compare(b.index(), a.index()))
-                        .toList();
-
-                for (var entry : sortedEntries) {
-                    var idx = entry.index();
-                    var element = line.getElement(idx);
-
-                    if (element.getType().isGraceNote()
-                            && idx + 1 < line.elementCount()
-                            && element.getPitch() == line.getElement(idx + 1).getPitch()) {
-                        // Grace note dragged to the same pitch as its following note — remove the grace note
-                        OptionDialogs.showWarningMessage(
-                                null,
-                                Strings.ALERT_TITLE_GRACE_NOTE_WARNING,
-                                Strings.WARNING_GRACE_NOTE_SAME_PITCH
-                        );
-                        line.removeElement(idx);
-                    } else if (!element.getType().isGraceNote()) {
-                        // Host note dragged to the same pitch as its preceding grace note — remove the grace note
-                        var graceIdx = line.precedingGraceNoteIndex(idx);
-
-                        if (graceIdx >= 0
-                                && line.getElement(graceIdx).getPitch() == element.getPitch()) {
-                            OptionDialogs.showWarningMessage(
-                                    null,
-                                    Strings.ALERT_TITLE_GRACE_NOTE_WARNING,
-                                    Strings.WARNING_GRACE_NOTE_SAME_PITCH
-                            );
-                            line.removeElement(graceIdx);
-                        }
-                    }
-                }
-            });
-            // TODO: push to undo stack when undo system is re-enabled
+            // The pitch mutations were already applied during handleDrag, so
+            // commitPitchShift records each PITCH ElementModification with the
+            // press-time beforeClone plus the grace-note cleanup.
+            PitchShifter.commitPitchShift(dragLine, dragGroup);
         }
 
         dragActive = false;
@@ -368,37 +248,5 @@ class NoteDragHandler {
         dragGroup.clear();
 
         PreviewElementManager.restorePreviewElement(lc);
-    }
-
-    /**
-     * Removes connected glissandos that became unison after a pitch drag.
-     * Checks the glissando FROM the dragged note (to the next note) and
-     * the glissando TO the dragged note (from the previous note). Each
-     * removal is emitted as a {@link ElementModification} carrying the
-     * pre-removal clone of the affected element. Must be called inside an
-     * open modification bracket on {@code line.getSong()}.
-     */
-    private static void removeUnisonConnectedGlissandos(Line line, int elementIndex) {
-        var element = line.getElement(elementIndex);
-
-        // Glissando FROM the dragged note to the next note
-        var glissando = element.getGlissando();
-
-        if (glissando != null
-            && elementIndex + 1 < line.elementCount()
-            && element.getPitch() == line.getElement(elementIndex + 1).getPitch()) {
-            line.modifyElement(elementIndex, ElementField.SLIDE, element::removeSlide);
-        }
-
-        // Glissando TO the dragged note from the previous note
-        if (elementIndex > 0) {
-            var prev = line.getElement(elementIndex - 1);
-            var prevGlissando = prev.getGlissando();
-
-            if (prevGlissando != null
-                && prev.getPitch() == element.getPitch()) {
-                line.modifyElement(elementIndex - 1, ElementField.SLIDE, prev::removeSlide);
-            }
-        }
     }
 }

@@ -26,11 +26,15 @@ import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import songscribe.dom.Line;
 import songscribe.message.MessageCenter;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.component.score.PitchShifter;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.selection.ElementSelection;
+import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.layout.StaffExtents;
 import songscribe.message.command.DeselectCommand;
 import songscribe.util.UIUtils;
@@ -174,14 +178,24 @@ public final class ScoreInputHandler extends KeyAdapter
         var actionMap = component.getActionMap();
 
         for (var keyCode : KEY_CODES) {
-            var actionKey = new Object();
-            var keyStroke = KeyStroke.getKeyStroke(keyCode, 0);
-            bindings.put(keyStroke, actionKey);
-            inputMap.put(keyStroke, actionKey);
-            actionMap.put(actionKey, new KeyAction(callback, keyCode));
+            registerBinding(bindings, inputMap, actionMap, keyCode, 0);
         }
 
+        // Shift+Left/Right extend or shrink an existing selection.
+        registerBinding(bindings, inputMap, actionMap, KeyEvent.VK_LEFT, InputEvent.SHIFT_DOWN_MASK);
+        registerBinding(bindings, inputMap, actionMap, KeyEvent.VK_RIGHT, InputEvent.SHIFT_DOWN_MASK);
+
         return bindings;
+    }
+
+    private void registerBinding(
+        Map<KeyStroke, Object> bindings, InputMap inputMap, ActionMap actionMap, int keyCode, int modifiers) {
+        var actionKey = new Object();
+        var keyStroke = KeyStroke.getKeyStroke(keyCode, modifiers);
+        var shift = (modifiers & InputEvent.SHIFT_DOWN_MASK) != 0;
+        bindings.put(keyStroke, actionKey);
+        inputMap.put(keyStroke, actionKey);
+        actionMap.put(actionKey, new KeyAction(callback, keyCode, shift));
     }
 
     /**
@@ -189,32 +203,196 @@ public final class ScoreInputHandler extends KeyAdapter
      */
     private static class KeyAction extends AbstractAction {
 
+        /** Signed staff-position delta that raises a pitch by one position (up on the staff). */
+        private static final int RAISE_PITCH_DELTA_SP = -1;
+
+        /** Signed staff-position delta that lowers a pitch by one position (down on the staff). */
+        private static final int LOWER_PITCH_DELTA_SP = 1;
+
+        /** Signed element-index delta for a leftward (previous-element) selection move. */
+        private static final int MOVE_LEFT = -1;
+
+        /** Signed element-index delta for a rightward (next-element) selection move. */
+        private static final int MOVE_RIGHT = 1;
+
         private final InputHandlerCallback callback;
         private final int code;
+        private final boolean shift;
 
-        KeyAction(InputHandlerCallback callback, int code) {
+        KeyAction(InputHandlerCallback callback, int code, boolean shift) {
             this.callback = callback;
             this.code = code;
+            this.shift = shift;
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            handlePitchAdjustment();
+            var coordinator = callback.getSelectionCoordinator();
+            var selection = coordinator.getSelection();
+
+            // Shift+Left/Right extend the active selection; with no selection there is
+            // nothing to extend.
+            if (shift) {
+                if (selection != null) {
+                    extendSelection(coordinator);
+                }
+
+                return;
+            }
+
+            // With an active selection, arrow keys control that selection; otherwise
+            // fall through to the edit-mode preview-note nudge.
+            if (selection != null) {
+                handleSelectionArrow(coordinator, selection);
+            } else {
+                handlePreviewNudge();
+            }
         }
 
-        private void handlePitchAdjustment() {
+        /**
+         * Shift+Left/Right: move the non-anchor end of the selection one element in the
+         * arrow's direction, extending or shrinking the range. Computes the target index
+         * and delegates the actual selection change to the shared
+         * {@link InputHandlerCallback#extendSelectionTo(int)}. Stops at the line
+         * boundary — a selection never spans lines.
+         */
+        private void extendSelection(SelectionCoordinator coordinator) {
+            var state = coordinator.getActiveSelection();
+
+            if (state == null || state.getSelectionAnchor() == -1) {
+                return;
+            }
+
+            var anchor = state.getSelectionAnchor();
+            var movingEnd = (anchor == state.getSelectionBegin()) ? state.getSelectionEnd() : state.getSelectionBegin();
+            int target;
+
+            if (code == KeyEvent.VK_LEFT) {
+                target = movingEnd - 1;
+
+                if (target < 0) {
+                    return;
+                }
+            } else {
+                target = movingEnd + 1;
+
+                if (target > state.getLine().effectiveElementCount() - 1) {
+                    return;
+                }
+            }
+
+            callback.extendSelectionTo(target);
+        }
+
+        /**
+         * Arrow-key behavior while a selection is active: Up/Down shift the
+         * selection's pitch by one staff position (through the same mutation path
+         * as a mouse drag); Left/Right move the selection to the neighboring
+         * element, crossing to the adjacent line at a boundary.
+         */
+        private void handleSelectionArrow(SelectionCoordinator coordinator, ElementSelection selection) {
+            var line = selection.line();
+            var begin = selection.begin();
+            var end = selection.end();
+
+            switch (code) {
+                case KeyEvent.VK_UP -> PitchShifter.shiftPitch(line, begin, end, RAISE_PITCH_DELTA_SP);
+                case KeyEvent.VK_DOWN -> PitchShifter.shiftPitch(line, begin, end, LOWER_PITCH_DELTA_SP);
+                case KeyEvent.VK_LEFT -> moveSelection(coordinator, selection, MOVE_LEFT);
+                case KeyEvent.VK_RIGHT -> moveSelection(coordinator, selection, MOVE_RIGHT);
+                default -> { }
+            }
+
+            // Up/Down repaint via the SongDidChangeNotification the pitch shift commits;
+            // Left/Right repaint inside selectSingle.
+        }
+
+        /**
+         * Left/Right arrow on a selection, unified by {@code direction} (−1 left, +1
+         * right):
+         * <ul>
+         *   <li>a multi-element selection collapses to a single element one step inward
+         *       from its trailing edge (Left → {@code end − 1}, Right → {@code begin + 1});
+         *   <li>a single selection moves one element in {@code direction};
+         *   <li>at the line boundary it crosses to the adjacent line's nearest element,
+         *       if any.
+         * </ul>
+         */
+        private void moveSelection(SelectionCoordinator coordinator, ElementSelection selection, int direction) {
+            var line = selection.line();
+            var begin = selection.begin();
+            var end = selection.end();
+            var lineIndex = coordinator.getActiveLineIndex();
+
+            if (end > begin) {
+                // Collapse the range toward the arrow, landing one step in from the trailing edge.
+                var trailingEdge = (direction == MOVE_LEFT) ? end : begin;
+                selectSingle(coordinator, lineIndex, trailingEdge + direction);
+                return;
+            }
+
+            // Single element: the boundary is index 0 going left, the last element going right.
+            var current = begin;
+            var boundary = (direction == MOVE_LEFT) ? 0 : line.effectiveElementCount() - 1;
+
+            if (current != boundary) {
+                selectSingle(coordinator, lineIndex, current + direction);
+                return;
+            }
+
+            crossToAdjacentLine(coordinator, line, lineIndex, direction);
+        }
+
+        /**
+         * Crosses a single selection at the line boundary to the adjacent line in
+         * {@code direction}: the previous line's last element going left, the next
+         * line's first element going right. No-op if there is no adjacent line or it
+         * has no elements.
+         */
+        private void crossToAdjacentLine(SelectionCoordinator coordinator, Line line, int lineIndex, int direction) {
+            var adjacentIndex = lineIndex + direction;
+            var song = line.getSong();
+
+            if (adjacentIndex < 0 || adjacentIndex >= song.lineCount()) {
+                return;
+            }
+
+            var adjacentLine = song.getLine(adjacentIndex);
+            var elementCount = adjacentLine.effectiveElementCount();
+
+            if (elementCount == 0) {
+                return;
+            }
+
+            // Land on the element nearest the boundary just crossed: the last going left, first going right.
+            var landingIndex = (direction == MOVE_LEFT) ? elementCount - 1 : 0;
+            selectSingle(coordinator, adjacentIndex, landingIndex);
+        }
+
+        /**
+         * Collapses the selection to a single element at {@code elementIndex} on the
+         * line at {@code lineIndex} via the shared
+         * {@link SelectionCoordinator#selectSingleElement(int, int)} primitive (the
+         * same one the mouse click-to-select path uses), then notifies and repaints.
+         */
+        private void selectSingle(SelectionCoordinator coordinator, int lineIndex, int elementIndex) {
+            if (coordinator.selectSingleElement(lineIndex, elementIndex) == null) {
+                return;
+            }
+
+            callback.selectionChanged();
+            callback.repaint();
+        }
+
+        /**
+         * Edit-mode preview-note nudge: with no active selection, Up/Down move the
+         * insertion preview note by one staff position within the valid range.
+         */
+        private void handlePreviewNudge() {
             if ((callback.getMode() != Mode.EDIT) || (callback.getControl() != Control.KEYBOARD)) {
                 return;
             }
 
-            // TODO: Keyboard mode navigation needs to be re-implemented.
-            // The old position tracking system (NotePosition) has been removed.
-            // Keyboard mode will need a new implementation that works with
-            // LineComponent's insertion tracking or a separate keyboard-specific system.
-            // When wiring caret navigation, consult Song.isInteractable(element, line)
-            // so the caret skips the auto-maintained terminal on the last line.
-
-            // For now, keyboard mode is disabled. Only UP/DOWN for pitch adjustment remain functional.
             var insertionNote = EditModeManager.getPreviewElement();
 
             if (insertionNote != null) {

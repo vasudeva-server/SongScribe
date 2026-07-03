@@ -659,6 +659,20 @@ public final class ScoreView
         MessageCenter.post(new MusicSelectionDidChangeNotification(this));
     }
 
+    @Override
+    public void extendSelectionTo(int targetIndex) {
+        var state = selectionCoordinator.getActiveSelection();
+
+        if (state == null) {
+            return;
+        }
+
+        // A missing anchor is a no-op inside LineSelectionState.extendSelectionTo.
+        state.extendSelectionTo(targetIndex);
+        selectionChanged();
+        repaint();
+    }
+
     public int getSelectionSize() {
         return selectionCoordinator.getSelectionSize();
     }

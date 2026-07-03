@@ -22,7 +22,10 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -31,27 +34,44 @@ import static org.mockito.Mockito.when;
 import java.awt.Component;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.util.List;
 
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.KeyStroke;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 import songscribe.layout.StaffExtents;
+import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.DeselectCommand;
+import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.ElementModification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.ReflectionTestHelper;
+import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.playback.PlayThread;
 import songscribe.util.UIUtils;
 
 class ScoreInputHandlerTest extends UnitTest {
@@ -438,6 +458,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getMode()).thenReturn(Mode.SELECT);
             when(callback.getControl()).thenReturn(Control.KEYBOARD);
+            when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
             var handler = new ScoreInputHandler(callback);
             var component = new JPanel();
             handler.installKeyBindings(component);
@@ -462,6 +483,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getMode()).thenReturn(Mode.EDIT);
             when(callback.getControl()).thenReturn(Control.MOUSE);
+            when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
             var handler = new ScoreInputHandler(callback);
             var component = new JPanel();
             handler.installKeyBindings(component);
@@ -483,6 +505,429 @@ class ScoreInputHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------
+    // Arrow-key navigation of an active selection (Left/Right)
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SelectionArrowNavigation {
+
+        @Test
+        void testLeftMovesSingleSelectionToPreviousElement() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectNote(coordinator, 1);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
+
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
+            assertThat(state.getSelectionBegin()).isEqualTo(0);
+            assertThat(state.getSelectionEnd()).isEqualTo(0);
+        }
+
+        @Test
+        void testRightMovesSingleSelectionToNextElement() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
+
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
+            assertThat(state.getSelectionBegin()).isEqualTo(1);
+            assertThat(state.getSelectionEnd()).isEqualTo(1);
+        }
+
+        @Test
+        void testLeftOnMultiSelectionCollapsesToNextToLastElement() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectRange(coordinator, 0, 2);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
+
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(state.getSelectionBegin()).isEqualTo(1);
+            assertThat(state.getSelectionEnd()).isEqualTo(1);
+        }
+
+        @Test
+        void testRightOnMultiSelectionCollapsesToSecondElement() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectRange(coordinator, 0, 2);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
+
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(state.getSelectionBegin()).isEqualTo(1);
+            assertThat(state.getSelectionEnd()).isEqualTo(1);
+        }
+
+        @Test
+        void testLeftAtFirstElementWithNoPreviousLineIsNoOp() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
+
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
+            assertThat(state.getSelectionBegin()).isEqualTo(0);
+            assertThat(state.getSelectionEnd()).isEqualTo(0);
+        }
+
+        @Test
+        void testRightAtLastElementWithNoNextLineIsNoOp() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectNote(coordinator, 2);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
+
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
+            assertThat(state.getSelectionBegin()).isEqualTo(2);
+            assertThat(state.getSelectionEnd()).isEqualTo(2);
+        }
+
+        @Test
+        void testLeftAtFirstElementCrossesToPreviousLineLastElement() {
+            var coordinator = twoLineCoordinator(2, 2);
+            coordinator.activateLine(1);
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
+
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
+            assertThat(state.getSelectionBegin()).isEqualTo(1);
+            assertThat(state.getSelectionEnd()).isEqualTo(1);
+        }
+
+        @Test
+        void testRightAtLastElementCrossesToNextLineFirstElement() {
+            var coordinator = twoLineCoordinator(2, 2);
+            coordinator.activateLine(0);
+            ReflectionTestHelper.selectNote(coordinator, 1);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
+
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(coordinator.getActiveLineIndex()).isEqualTo(1);
+            assertThat(state.getSelectionBegin()).isEqualTo(0);
+            assertThat(state.getSelectionEnd()).isEqualTo(0);
+        }
+
+        @Test
+        void testRightAtLastElementWithEmptyNextLineIsNoOp() {
+            var coordinator = twoLineCoordinator(2, 0);
+            coordinator.activateLine(0);
+            ReflectionTestHelper.selectNote(coordinator, 1);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
+
+            // The next line has no elements, so the selection stays put on line 0.
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
+            assertThat(state.getSelectionBegin()).isEqualTo(1);
+            assertThat(state.getSelectionEnd()).isEqualTo(1);
+        }
+
+        @Test
+        void testLeftAtFirstElementWithEmptyPreviousLineIsNoOp() {
+            var coordinator = twoLineCoordinator(0, 2);
+            coordinator.activateLine(1);
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
+
+            // The previous line has no elements, so the selection stays put on line 1.
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(coordinator.getActiveLineIndex()).isEqualTo(1);
+            assertThat(state.getSelectionBegin()).isEqualTo(0);
+            assertThat(state.getSelectionEnd()).isEqualTo(0);
+        }
+
+        private List<StaffElement> threeCrotchets() {
+            return List.of(
+                ElementType.CROTCHET.newInstance(),
+                ElementType.CROTCHET.newInstance(),
+                ElementType.CROTCHET.newInstance()
+            );
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Arrow-key pitch shift of an active selection (Up/Down)
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SelectionArrowPitchShift {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+
+        // The pitch shift plays the anchor note when PLAY_SELECTED_NOTE is on (the default),
+        // firing static PlayThread sends and spawning a real PlayThread. Mock both so the
+        // tests neither leak a background thread nor depend on the MIDI receiver being null.
+        private MockedStatic<PlayThread> playThreadStaticMock;
+        private MockedConstruction<PlayThread> playThreadConstruction;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            playThreadStaticMock = mockStatic(PlayThread.class);
+            playThreadConstruction = mockConstruction(PlayThread.class);
+        }
+
+        @AfterEach
+        void tearDown() {
+            playThreadConstruction.close();
+            playThreadStaticMock.close();
+            messageCenterMock.close();
+        }
+
+        @Test
+        void testUpRaisesSingleSelectedNotePitchAndRecordsMutation() {
+            final int originalPositionSp = 4;
+            var song = new Song();
+            var line = song.getLine(0);
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(originalPositionSp);
+            song.withoutMutationTracking(() -> line.addElement(note));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_UP);
+
+            assertThat(note.getStaffPosition()).isEqualTo(originalPositionSp - 1);
+
+            var modification = capturedPitchModification();
+            assertThat(modification.fields()).containsExactly(ElementField.PITCH);
+            assertThat(modification.beforeElement().getStaffPosition()).isEqualTo(originalPositionSp);
+        }
+
+        @Test
+        void testDownLowersSingleSelectedNotePitchAndRecordsMutation() {
+            final int originalPositionSp = 4;
+            var song = new Song();
+            var line = song.getLine(0);
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(originalPositionSp);
+            song.withoutMutationTracking(() -> line.addElement(note));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_DOWN);
+
+            assertThat(note.getStaffPosition()).isEqualTo(originalPositionSp + 1);
+
+            var modification = capturedPitchModification();
+            assertThat(modification.fields()).containsExactly(ElementField.PITCH);
+            assertThat(modification.beforeElement().getStaffPosition()).isEqualTo(originalPositionSp);
+        }
+
+        @Test
+        void testUpShiftsEveryNoteInMultiSelection() {
+            final int firstPositionSp = 0;
+            final int secondPositionSp = 2;
+            var song = new Song();
+            var line = song.getLine(0);
+            var firstNote = ElementType.CROTCHET.newInstance();
+            firstNote.setStaffPosition(firstPositionSp);
+            var secondNote = ElementType.CROTCHET.newInstance();
+            secondNote.setStaffPosition(secondPositionSp);
+            song.withoutMutationTracking(() -> {
+                line.addElement(firstNote);
+                line.addElement(secondNote);
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_UP);
+
+            assertThat(firstNote.getStaffPosition()).isEqualTo(firstPositionSp - 1);
+            assertThat(secondNote.getStaffPosition()).isEqualTo(secondPositionSp - 1);
+        }
+
+        @Test
+        void testUpAtUpperBoundaryClampsAndRecordsNoMutation() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(StaffExtents.MIN_STAFF_POSITION_SP);
+            song.withoutMutationTracking(() -> line.addElement(note));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_UP);
+
+            assertThat(note.getStaffPosition()).isEqualTo(StaffExtents.MIN_STAFF_POSITION_SP);
+            messageCenterMock.verify(() -> MessageCenter.post(any(Message.class)), never());
+        }
+
+        @Test
+        void testDownAtLowerBoundaryClampsAndRecordsNoMutation() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(StaffExtents.MAX_STAFF_POSITION_SP);
+            song.withoutMutationTracking(() -> line.addElement(note));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_DOWN);
+
+            assertThat(note.getStaffPosition()).isEqualTo(StaffExtents.MAX_STAFF_POSITION_SP);
+            messageCenterMock.verify(() -> MessageCenter.post(any(Message.class)), never());
+        }
+
+        @Test
+        void testUpOnSelectedRestIsNoOp() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var rest = ElementType.CROTCHET_REST.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(rest));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_UP);
+
+            // A rest is not pitched, so the shift group is empty and nothing is mutated.
+            messageCenterMock.verify(() -> MessageCenter.post(any(Message.class)), never());
+        }
+
+        /**
+         * Captures all posted messages and returns the {@link ElementModification}
+         * carried by whichever {@link SongDidChangeNotification} recorded the shift.
+         */
+        private ElementModification capturedPitchModification() {
+            var captor = ArgumentCaptor.forClass(Message.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()), atLeastOnce());
+
+            return captor.getAllValues().stream()
+                .filter(m -> m instanceof SongDidChangeNotification)
+                .map(m -> (SongDidChangeNotification) m)
+                .flatMap(n -> n.getMutations().stream())
+                .filter(m -> m instanceof ElementModification)
+                .map(m -> (ElementModification) m)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No ElementModification in captured notifications"));
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Shift+Left/Right extend or shrink an active selection. Each case verifies
+    // the target index handed to the shared InputHandlerCallback.extendSelectionTo.
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SelectionShiftArrowExtension {
+
+        @Test
+        void testShiftRightExtendsSingleSelectionForward() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectNote(coordinator, 0);
+            var callback = selectionCallback(coordinator);
+
+            pressShiftArrowKey(callback, KeyEvent.VK_RIGHT);
+
+            verify(callback).extendSelectionTo(1);
+        }
+
+        @Test
+        void testShiftLeftExtendsSingleSelectionBackward() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectNote(coordinator, 2);
+            var callback = selectionCallback(coordinator);
+
+            pressShiftArrowKey(callback, KeyEvent.VK_LEFT);
+
+            verify(callback).extendSelectionTo(1);
+        }
+
+        @Test
+        void testShiftRightExtendsRangeFromMovingEnd() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+            var callback = selectionCallback(coordinator);
+
+            pressShiftArrowKey(callback, KeyEvent.VK_RIGHT);
+
+            verify(callback).extendSelectionTo(2);
+        }
+
+        @Test
+        void testShiftLeftShrinksRangeFromMovingEnd() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectRange(coordinator, 0, 2);
+            var callback = selectionCallback(coordinator);
+
+            pressShiftArrowKey(callback, KeyEvent.VK_LEFT);
+
+            verify(callback).extendSelectionTo(1);
+        }
+
+        @Test
+        void testShiftRightMovesTheEndOppositeTheAnchor() {
+            // Anchor at index 2, selection [0..2]; the moving end is begin (0).
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectRange(coordinator, 2, 0);
+            var callback = selectionCallback(coordinator);
+
+            pressShiftArrowKey(callback, KeyEvent.VK_RIGHT);
+
+            verify(callback).extendSelectionTo(1);
+        }
+
+        @Test
+        void testShiftRightAtLastElementIsNoOp() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectNote(coordinator, 2);
+            var callback = selectionCallback(coordinator);
+
+            pressShiftArrowKey(callback, KeyEvent.VK_RIGHT);
+
+            verify(callback, never()).extendSelectionTo(anyInt());
+        }
+
+        @Test
+        void testShiftLeftAtFirstElementIsNoOp() {
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            ReflectionTestHelper.selectNote(coordinator, 0);
+            var callback = selectionCallback(coordinator);
+
+            pressShiftArrowKey(callback, KeyEvent.VK_LEFT);
+
+            verify(callback, never()).extendSelectionTo(anyInt());
+        }
+
+        @Test
+        void testShiftArrowWithNoActiveSelectionIsNoOp() {
+            // Line 0 is active but nothing is selected, so there is nothing to extend.
+            var coordinator = ReflectionTestHelper.createCoordinator(threeCrotchets(), List.of());
+            var callback = selectionCallback(coordinator);
+
+            pressShiftArrowKey(callback, KeyEvent.VK_RIGHT);
+
+            verify(callback, never()).extendSelectionTo(anyInt());
+        }
+
+        private List<StaffElement> threeCrotchets() {
+            return List.of(
+                ElementType.CROTCHET.newInstance(),
+                ElementType.CROTCHET.newInstance(),
+                ElementType.CROTCHET.newInstance()
+            );
+        }
+    }
+
+    // -------------------------------------------------------------------
     // Row 70: installKeyBindings registers one binding per key code
     // -------------------------------------------------------------------
 
@@ -498,7 +943,8 @@ class ScoreInputHandlerTest extends UnitTest {
 
             var bindings = handler.installKeyBindings(component);
 
-            final int expectedBindingCount = 7; // KEY_CODES.length in ScoreInputHandler
+            // 7 plain KEY_CODES bindings + shift-Left/Right extension bindings.
+            final int expectedBindingCount = 9;
             assertThat(bindings).hasSize(expectedBindingCount);
 
             var inputMap = component.getInputMap(JPanel.WHEN_FOCUSED);
@@ -549,6 +995,88 @@ class ScoreInputHandlerTest extends UnitTest {
         var callback = mock(InputHandlerCallback.class);
         when(callback.getMode()).thenReturn(Mode.EDIT);
         when(callback.getControl()).thenReturn(Control.KEYBOARD);
+        // No active selection, so arrow keys fall through to the preview-nudge path.
+        when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
         return callback;
+    }
+
+    /**
+     * Installs key bindings on a fresh component and fires the arrow-key action
+     * for {@code keyCode}, exercising {@code ScoreInputHandler.KeyAction} exactly
+     * as a real key press would.
+     */
+    private void pressArrowKey(InputHandlerCallback callback, int keyCode) {
+        var handler = new ScoreInputHandler(callback);
+        var component = new JPanel();
+        handler.installKeyBindings(component);
+
+        var action = component.getActionMap().get(
+            component.getInputMap(JPanel.WHEN_FOCUSED).get(KeyStroke.getKeyStroke(keyCode, 0)));
+        action.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
+    }
+
+    /**
+     * Fires the Shift+arrow action for {@code keyCode}, exercising the selection
+     * extension branch of {@code ScoreInputHandler.KeyAction}.
+     */
+    private void pressShiftArrowKey(InputHandlerCallback callback, int keyCode) {
+        var handler = new ScoreInputHandler(callback);
+        var component = new JPanel();
+        handler.installKeyBindings(component);
+
+        var action = component.getActionMap().get(
+            component.getInputMap(JPanel.WHEN_FOCUSED).get(
+                KeyStroke.getKeyStroke(keyCode, InputEvent.SHIFT_DOWN_MASK)));
+        action.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
+    }
+
+    /** A callback whose only wired behavior is exposing {@code coordinator}. */
+    private InputHandlerCallback selectionCallback(SelectionCoordinator coordinator) {
+        var callback = mock(InputHandlerCallback.class);
+        when(callback.getSelectionCoordinator()).thenReturn(coordinator);
+        return callback;
+    }
+
+    /** Returns {@code coordinator}'s active selection state, failing the test if none exists. */
+    private LineSelectionState activeSelectionOrFail(SelectionCoordinator coordinator) {
+        var state = coordinator.getActiveSelection();
+
+        if (state == null) {
+            throw new AssertionError("Expected an active selection");
+        }
+
+        return state;
+    }
+
+    /**
+     * Builds a two-line {@link SelectionCoordinator} backed by a real {@link Song}:
+     * line 0 with {@code firstLineNoteCount} crotchets, line 1 (the new last line,
+     * carrying the auto-maintained terminal) with {@code secondLineNoteCount}
+     * crotchets. No line is activated.
+     */
+    private SelectionCoordinator twoLineCoordinator(int firstLineNoteCount, int secondLineNoteCount) {
+        var song = new Song();
+        var firstLine = song.getLine(0);
+
+        song.withoutMutationTracking(() -> {
+            for (var i = 0; i < firstLineNoteCount; i++) {
+                firstLine.addElement(ElementType.CROTCHET.newInstance());
+            }
+        });
+
+        var secondLine = new Line(song);
+
+        song.withoutMutationTracking(() -> {
+            for (var i = 0; i < secondLineNoteCount; i++) {
+                secondLine.addElement(ElementType.CROTCHET.newInstance());
+            }
+        });
+
+        song.addLine(secondLine);
+
+        var coordinator = new SelectionCoordinator(() -> song);
+        coordinator.registerLineState(0, new LineSelectionState(firstLine));
+        coordinator.registerLineState(1, new LineSelectionState(secondLine));
+        return coordinator;
     }
 }
