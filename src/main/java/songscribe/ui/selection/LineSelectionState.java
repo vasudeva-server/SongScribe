@@ -293,6 +293,19 @@ public final class LineSelectionState {
     }
 
     /**
+     * Sets the selection to the given inclusive range directly, moving the anchor to
+     * {@code begin}. Used to re-derive a valid selection after a mutation — such as a
+     * grace-note collapse — has shifted element indices out from under it.
+     */
+    public void setSelectionRange(int begin, int end) {
+        selectionBegin = begin;
+        selectionEnd = end;
+        selectionAnchor = begin;
+        selectedSlideElementIndex = -1;
+        selectionChangeCallback.run();
+    }
+
+    /**
      * Resets selection begin/end to -1 without touching lineSelected.
      * Used before recalculating selection from drag.
      */

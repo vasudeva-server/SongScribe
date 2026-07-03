@@ -150,15 +150,11 @@ class NoteDragHandler {
             pressPreservedMultiSelection = false;
         }
 
-        // Build the drag group from the captured selection range (which may be multi-note)
+        // Build the drag group from the captured selection range (which may be multi-note).
+        // The press gate above admits any note (isNote), and buildPitchShiftGroup includes
+        // every note in the range, so the group is never empty for an admitted hit.
         dragGroup.clear();
         dragGroup.addAll(PitchShifter.buildPitchShiftGroup(line, dragBegin, dragEnd));
-
-        // Fall back to just the dragged note if nothing was collected
-        if (dragGroup.isEmpty()) {
-            var hitNote = line.getElement(hitIndex);
-            dragGroup.add(new PitchShifter.PitchShiftEntry(hitIndex, hitNote.getStaffPosition(), hitNote.clone()));
-        }
 
         // Save state for possible revert on a press+release without drag
         dragElementIndex = hitIndex;

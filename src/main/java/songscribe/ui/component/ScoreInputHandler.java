@@ -26,6 +26,8 @@ import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.Line;
 import songscribe.message.MessageCenter;
 import songscribe.ui.Control;
@@ -296,8 +298,10 @@ public final class ScoreInputHandler extends KeyAdapter
             var end = selection.end();
 
             switch (code) {
-                case KeyEvent.VK_UP -> PitchShifter.shiftPitch(line, begin, end, RAISE_PITCH_DELTA_SP);
-                case KeyEvent.VK_DOWN -> PitchShifter.shiftPitch(line, begin, end, LOWER_PITCH_DELTA_SP);
+                case KeyEvent.VK_UP ->
+                        applyPitchShift(coordinator, PitchShifter.shiftPitch(line, begin, end, RAISE_PITCH_DELTA_SP));
+                case KeyEvent.VK_DOWN ->
+                        applyPitchShift(coordinator, PitchShifter.shiftPitch(line, begin, end, LOWER_PITCH_DELTA_SP));
                 case KeyEvent.VK_LEFT -> moveSelection(coordinator, selection, MOVE_LEFT);
                 case KeyEvent.VK_RIGHT -> moveSelection(coordinator, selection, MOVE_RIGHT);
                 default -> { }
@@ -305,6 +309,31 @@ public final class ScoreInputHandler extends KeyAdapter
 
             // Up/Down repaint via the SongDidChangeNotification the pitch shift commits;
             // Left/Right repaint inside selectSingle.
+        }
+
+        /**
+         * Re-syncs the active selection after a pitch shift that collapsed a grace
+         * note into its host (or vice versa). {@code adjustedRange} is null when the
+         * selection's original {@code [begin, end]} range is still valid — nothing
+         * removed. Otherwise it's the range adjusted for the removed element's index
+         * shift, or {@code {-1, -1}} if the whole range was removed.
+         */
+        private void applyPitchShift(SelectionCoordinator coordinator, int @Nullable [] adjustedRange) {
+            if (adjustedRange == null) {
+                return;
+            }
+
+            var state = coordinator.getActiveSelection();
+
+            if (state == null) {
+                return;
+            }
+
+            if (adjustedRange[0] == -1) {
+                state.clearSelection();
+            } else {
+                state.setSelectionRange(adjustedRange[0], adjustedRange[1]);
+            }
         }
 
         /**

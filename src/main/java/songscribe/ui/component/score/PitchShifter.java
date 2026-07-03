@@ -25,6 +25,8 @@ import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
@@ -66,23 +68,29 @@ public final class PitchShifter {
      * changes on a selection.
      * <p>
      * {@code deltaSp} is clamped so no note leaves the valid staff range; if the
-     * range holds no pitched notes or the clamped delta is zero, nothing happens.
+     * range holds no notes or the clamped delta is zero, nothing happens.
      * Pre-mutation clones for the {@link ElementModification} records are captured
      * before the shift is applied. The move, the single note played, and the commit
      * are the exact same operations a mouse drag performs — a drag runs them live
      * across many mouse steps, an arrow key runs them once per press.
+     * <p>
+     * A grace-note/host collapse during the commit removes an element, shifting every
+     * later index down by one. Returns null if {@code [begin, end]} is still valid as
+     * the selection range (nothing removed, or nothing removed within/before it);
+     * otherwise returns the range adjusted for the removals, or {@code {-1, -1}} if
+     * every element in the range was removed and the selection should be cleared.
      */
-    public static void shiftPitch(Line line, int begin, int end, int deltaSp) {
+    public static int @Nullable [] shiftPitch(Line line, int begin, int end, int deltaSp) {
         var group = buildPitchShiftGroup(line, begin, end);
 
         if (group.isEmpty()) {
-            return;
+            return null;
         }
 
         var clampedDelta = clampDelta(group, deltaSp);
 
         if (clampedDelta == 0) {
-            return;
+            return null;
         }
 
         // The first note in the range is the arrow-key analog of the grabbed note in a
@@ -96,7 +104,41 @@ public final class PitchShifter {
         // here to let the played note ring for its standard duration.
         scheduleAnchorNoteOff(line, anchorIndex);
 
-        commitPitchShift(line, group);
+        var removedIndices = commitPitchShift(line, group);
+
+        if (removedIndices.isEmpty()) {
+            return null;
+        }
+
+        return adjustRangeForRemovals(begin, end, removedIndices);
+    }
+
+    /**
+     * Recomputes the {@code [begin, end]} selection range after {@code removedIndices}
+     * (indices in the pre-removal element list) were removed, each shifting every later
+     * index down by one. A removal below {@code begin} shifts the whole range down;
+     * a removal within {@code [begin, end]} only shrinks {@code end}. Returns
+     * {@code {-1, -1}} if the adjusted range is empty (every element in the original
+     * range was removed).
+     */
+    static int[] adjustRangeForRemovals(int begin, int end, List<Integer> removedIndices) {
+        var newBegin = begin;
+        var newEnd = end;
+
+        for (var removedIndex : removedIndices) {
+            if (removedIndex < begin) {
+                newBegin--;
+                newEnd--;
+            } else if (removedIndex <= end) {
+                newEnd--;
+            }
+        }
+
+        if (newEnd < newBegin) {
+            return new int[] {-1, -1};
+        }
+
+        return new int[] {newBegin, newEnd};
     }
 
     /**
@@ -143,10 +185,10 @@ public final class PitchShifter {
 
     /**
      * Builds the pitch-shift group for the inclusive {@code [begin, end]} range:
-     * every pitched note in the range, with each note's tie chain fully expanded
-     * so tied notes move together. Each entry captures the note's current staff
-     * position and a pre-mutation clone. Returns an empty list if the range holds
-     * no pitched notes.
+     * every note in the range — grace notes included, since they shift exactly like
+     * pitched notes — with each note's tie chain fully expanded so tied notes move
+     * together. Each entry captures the note's current staff position and a
+     * pre-mutation clone. Returns an empty list if the range holds no notes.
      */
     static List<PitchShiftEntry> buildPitchShiftGroup(Line line, int begin, int end) {
         // Collect all unique indices, expanding each selected note's tie chain
@@ -155,7 +197,7 @@ public final class PitchShifter {
         for (var i = begin; i <= end; i++) {
             var element = line.getElement(i);
 
-            if (!element.getType().isPitchedNote()) {
+            if (!element.getType().isNote()) {
                 continue;
             }
 
@@ -206,8 +248,14 @@ public final class PitchShifter {
      * A connected glissando that becomes unison is left intact: the renderer hides
      * it while the two notes share a pitch and shows it again when they diverge, so
      * moving a note through unison — by drag or arrow key — never destroys it.
+     * <p>
+     * Returns the indices (in the pre-removal element list) of every element removed
+     * by a grace-note/host collapse, so a caller tracking a selection range can adjust
+     * it for the resulting index shift. Empty if nothing was removed.
      */
-    static void commitPitchShift(Line line, List<PitchShiftEntry> group) {
+    static List<Integer> commitPitchShift(Line line, List<PitchShiftEntry> group) {
+        var removedIndices = new ArrayList<Integer>();
+
         line.withModification(() -> {
             for (var entry : group) {
                 line.applyChange(
@@ -235,6 +283,7 @@ public final class PitchShifter {
                             Strings.WARNING_GRACE_NOTE_SAME_PITCH
                     );
                     line.removeElement(idx);
+                    removedIndices.add(idx);
                 } else if (!element.getType().isGraceNote()) {
                     // Host note shifted to the same pitch as its preceding grace note — remove the grace note
                     var graceIdx = line.precedingGraceNoteIndex(idx);
@@ -247,9 +296,12 @@ public final class PitchShifter {
                                 Strings.WARNING_GRACE_NOTE_SAME_PITCH
                         );
                         line.removeElement(graceIdx);
+                        removedIndices.add(graceIdx);
                     }
                 }
             }
         });
+
+        return removedIndices;
     }
 }

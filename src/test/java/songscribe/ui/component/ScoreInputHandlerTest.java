@@ -23,6 +23,7 @@ package songscribe.ui.component;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -65,6 +66,7 @@ import songscribe.message.mutation.ElementModification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.ReflectionTestHelper;
@@ -799,6 +801,43 @@ class ScoreInputHandlerTest extends UnitTest {
 
             // A rest is not pitched, so the shift group is empty and nothing is mutated.
             messageCenterMock.verify(() -> MessageCenter.post(any(Message.class)), never());
+        }
+
+        @Test
+        void testDownCollapsingUnselectedPrecedingGraceNoteShrinksSelectionRange() {
+            final int gracePositionSp = 4;
+            var song = new Song();
+            var line = song.getLine(0);
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setStaffPosition(gracePositionSp);
+            var host = ElementType.CROTCHET.newInstance();
+            host.setStaffPosition(gracePositionSp - 1);
+            var extra = ElementType.CROTCHET.newInstance();
+            extra.setStaffPosition(gracePositionSp - 3);
+            song.withoutMutationTracking(() -> {
+                line.addElement(grace);
+                line.addElement(host);
+                line.addElement(extra);
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            // The grace note (index 0) is deliberately left out of the selection.
+            ReflectionTestHelper.selectRange(coordinator, 1, 2);
+
+            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_DOWN);
+
+                optionDialogsMock.verify(() ->
+                    OptionDialogs.showWarningMessage(any(), anyString(), anyString()));
+            }
+
+            // The grace note collapsed into the host, shifting every later index down by
+            // one; the surviving selection must track the same two notes (now at 0 and 1),
+            // not the stale pre-removal indices (1 and 2).
+            assertThat(line.effectiveElementCount()).isEqualTo(2);
+            var state = activeSelectionOrFail(coordinator);
+            assertThat(state.getSelectionBegin()).isEqualTo(0);
+            assertThat(state.getSelectionEnd()).isEqualTo(1);
         }
 
         /**
