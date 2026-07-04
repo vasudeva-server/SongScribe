@@ -30,13 +30,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.shape.AccentShape;
 import songscribe.dom.Articulation;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.layout.ElementColumn;
-import songscribe.layout.LayoutResult;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.stacking.NoteAttachedStacker;
@@ -435,12 +434,12 @@ class ArticulationStackingTest extends UnitTest {
                 result.getDecorationLayout(note.getArticulations().getFirst()),
                 "accent DecorationLayout");
 
-            var individualBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
+            var accentBounds = AccentShape.accent().getBounds2D();
 
             assertThat(accentLayout.widthSs())
-                .isCloseTo(individualBBox.width(), within(TOLERANCE));
+                .isCloseTo(accentBounds.getWidth(), within(TOLERANCE));
             assertThat(accentLayout.heightSs())
-                .isCloseTo(individualBBox.height(), within(TOLERANCE));
+                .isCloseTo(accentBounds.getHeight(), within(TOLERANCE));
         }
     }
 

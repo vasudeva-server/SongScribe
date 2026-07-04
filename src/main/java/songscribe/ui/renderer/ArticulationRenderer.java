@@ -24,6 +24,7 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 
 import module java.desktop;
 
+import songscribe.shape.AccentShape;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -47,23 +48,11 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
     // ==========================================================================
 
     // SMuFL bbox-derived widths in staff-space units
-    private static final double ACCENT_BBOX_LEFT_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE).left();
-
-    private static final double ACCENT_WIDTH_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE).width();
-
     private static final double STACCATO_BBOX_LEFT_SS =
         SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).left();
 
     private static final double STACCATO_WIDTH_SS =
         SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).width();
-
-    private static final double ACCENT_BELOW_BBOX_LEFT_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_BELOW).left();
-
-    private static final double ACCENT_BELOW_WIDTH_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_BELOW).width();
 
     private static final double STACCATO_BELOW_BBOX_LEFT_SS =
         SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_BELOW).left();
@@ -130,10 +119,7 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
                     var widthSs = above ? STACCATO_WIDTH_SS : STACCATO_BELOW_WIDTH_SS;
                     drawArticulationGlyph(g2, layout, element, invariants, glyph, bboxLeftSs, widthSs);
                 } else if (articulation.isAccent()) {
-                    var glyph = above ? SMuFLGlyph.ARTIC_ACCENT_ABOVE : SMuFLGlyph.ARTIC_ACCENT_BELOW;
-                    var bboxLeftSs = above ? ACCENT_BBOX_LEFT_SS : ACCENT_BELOW_BBOX_LEFT_SS;
-                    var widthSs = above ? ACCENT_WIDTH_SS : ACCENT_BELOW_WIDTH_SS;
-                    drawArticulationGlyph(g2, layout, element, invariants, glyph, bboxLeftSs, widthSs);
+                    drawAccentGlyph(g2, layout, element, invariants);
                 }
             }
         }
@@ -154,5 +140,26 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
         var x = RenderingUtils.centeredGlyphX(layout.xSs(), element, bboxLeftSs, widthSs);
         var y = RenderingUtils.glyphOriginYFromLayoutTop(componentTopYSs, glyph);
         RenderingUtils.drawBravuraGlyph(g2, glyph, x, y, true);
+    }
+
+    /**
+     * Draws the accent wedge at its layout position, centered horizontally on the note using the
+     * wedge's own bounds. Unlike the SMuFL articulation glyphs, the wedge is drawn as a filled
+     * {@link AccentShape#accent()} path rather than a music-font glyph.
+     */
+    private static void drawAccentGlyph(
+        Graphics2D g2,
+        LayoutResult.DecorationLayout layout,
+        StaffElement element,
+        LineInvariants invariants
+    ) {
+        var wedge = AccentShape.accent();
+        var bounds = wedge.getBounds2D();
+
+        var componentTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
+        var x = RenderingUtils.centeredGlyphX(layout.xSs(), element, bounds.getMinX(), bounds.getWidth());
+        var y = componentTopYSs - bounds.getMinY();
+
+        g2.fill(AffineTransform.getTranslateInstance(x, y).createTransformedShape(wedge));
     }
 }

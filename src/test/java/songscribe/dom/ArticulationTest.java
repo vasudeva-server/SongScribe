@@ -28,13 +28,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.shape.AccentShape;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Tests for {@link Articulation} — getContentWidthPx and getContentHeightPx
- * delegate to ScaleContext.ssToPx with the SMuFL bbox dimensions for the
- * articulation type (STACCATO or ACCENT).
+ * delegate to ScaleContext.ssToPx with the content dimensions for the
+ * articulation type: the SMuFL bbox for STACCATO, {@link AccentShape}'s own
+ * bounds for ACCENT.
  */
 class ArticulationTest extends UnitTest {
 
@@ -63,9 +65,8 @@ class ArticulationTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void testGetContentHeightPxEqualsAccentBboxHeightTimesPps() {
-        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
-        double expectedPx = bbox.height() * TEST_PPS;
+    void testGetContentHeightPxEqualsAccentGlyphHeightTimesPps() {
+        double expectedPx = AccentShape.accent().getBounds2D().getHeight() * TEST_PPS;
 
         assertThat(new Articulation(ArticulationType.ACCENT).getContentHeightPx())
             .isCloseTo(expectedPx, within(DOUBLE_EPSILON));
@@ -81,9 +82,8 @@ class ArticulationTest extends UnitTest {
     }
 
     @Test
-    void testGetContentWidthPxEqualsAccentBboxWidthTimesPps() {
-        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
-        double expectedPx = bbox.width() * TEST_PPS;
+    void testGetContentWidthPxEqualsAccentGlyphWidthTimesPps() {
+        double expectedPx = AccentShape.accent().getBounds2D().getWidth() * TEST_PPS;
 
         assertThat(new Articulation(ArticulationType.ACCENT).getContentWidthPx())
             .isCloseTo(expectedPx, within(DOUBLE_EPSILON));
@@ -99,11 +99,11 @@ class ArticulationTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Above/below bbox parity — getContentWidthSs/getContentHeightSs are
-    // direction-unaware (they always read the *_ABOVE glyph's bbox). This is
-    // only safe because the above/below bboxes are numerically identical in
-    // bravura_metadata.json; this test documents and guards that assumption.
-    // See TODOS.md for the deferred direction-aware follow-up if it ever fails.
+    // Above/below dimension parity — getContentWidthSs/getContentHeightSs are
+    // direction-unaware. For STACCATO this is only safe because the above/below
+    // SMuFL bboxes are numerically identical in bravura_metadata.json; this test
+    // documents and guards that assumption. See TODOS.md for the deferred
+    // direction-aware follow-up if it ever fails.
     // -------------------------------------------------------------------------
 
     @Test
@@ -115,12 +115,13 @@ class ArticulationTest extends UnitTest {
         assertThat(below.height()).isCloseTo(above.height(), within(DOUBLE_EPSILON));
     }
 
+    // For ACCENT, the same direction-unaware dimensions are safe because AccentShape's
+    // wedge is vertically symmetric about its own origin — flipping it for "below"
+    // placement is a no-op, so a single shape serves both directions.
     @Test
-    void testAccentAboveAndBelowBboxesHaveIdenticalDimensions() {
-        var above = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
-        var below = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_BELOW);
+    void testAccentGlyphBoundsAreVerticallySymmetric() {
+        var bounds = AccentShape.accent().getBounds2D();
 
-        assertThat(below.width()).isCloseTo(above.width(), within(DOUBLE_EPSILON));
-        assertThat(below.height()).isCloseTo(above.height(), within(DOUBLE_EPSILON));
+        assertThat(bounds.getMinY()).isCloseTo(-bounds.getMaxY(), within(DOUBLE_EPSILON));
     }
 }

@@ -20,8 +20,11 @@
 
 package songscribe.dom;
 
+import module java.desktop;
+
 import org.jspecify.annotations.Nullable;
 
+import songscribe.shape.AccentShape;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -40,6 +43,8 @@ public class Articulation extends LineElement {
     // SMuFL bbox-derived dimensions in staff-space units
     private static final double STACCATO_WIDTH_SS;
     private static final double STACCATO_HEIGHT_SS;
+
+    // AccentShape is a custom (non-SMuFL) wedge, so its dimensions come from its own bounds.
     private static final double ACCENT_WIDTH_SS;
     private static final double ACCENT_HEIGHT_SS;
 
@@ -48,9 +53,9 @@ public class Articulation extends LineElement {
         STACCATO_WIDTH_SS = staccatoBBox.width();
         STACCATO_HEIGHT_SS = staccatoBBox.height();
 
-        var accentBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
-        ACCENT_WIDTH_SS = accentBBox.width();
-        ACCENT_HEIGHT_SS = accentBBox.height();
+        var accentBounds = AccentShape.accent().getBounds2D();
+        ACCENT_WIDTH_SS = accentBounds.getWidth();
+        ACCENT_HEIGHT_SS = accentBounds.getHeight();
     }
 
     /** The staff element this articulation belongs to. */

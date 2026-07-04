@@ -21,6 +21,7 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.spy;
@@ -98,15 +99,13 @@ class ArticulationRendererTest extends UnitTest {
     }
 
     @Test
-    void testRenderSoloAccentDrawsAccentGlyph() {
+    void testRenderSoloAccentFillsAccentWedge() {
         var accent = new Articulation(ArticulationType.ACCENT);
         var g2Spy = renderAndSpy(accent);
-        var glyphCaptor = ArgumentCaptor.forClass(String.class);
 
-        verify(g2Spy).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
-
-        assertThat(glyphCaptor.getValue())
-            .isEqualTo(SMuFLGlyph.ARTIC_ACCENT_ABOVE.asString());
+        // Accent is drawn as a filled AccentShape wedge, not a drawString glyph.
+        verify(g2Spy).fill(any(Shape.class));
+        verify(g2Spy, times(0)).drawString(anyString(), anyFloat(), anyFloat());
     }
 
     @Test
@@ -133,11 +132,10 @@ class ArticulationRendererTest extends UnitTest {
         var g2Spy = renderAndSpy(staccato, accent);
         var glyphCaptor = ArgumentCaptor.forClass(String.class);
 
-        verify(g2Spy, times(2)).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
+        verify(g2Spy).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
+        verify(g2Spy).fill(any(Shape.class));
 
-        assertThat(glyphCaptor.getAllValues()).containsExactlyInAnyOrder(
-            SMuFLGlyph.ARTIC_STACCATO_ABOVE.asString(),
-            SMuFLGlyph.ARTIC_ACCENT_ABOVE.asString());
+        assertThat(glyphCaptor.getValue()).isEqualTo(SMuFLGlyph.ARTIC_STACCATO_ABOVE.asString());
     }
 
     // ==========================================================================
@@ -158,15 +156,12 @@ class ArticulationRendererTest extends UnitTest {
     }
 
     @Test
-    void testRenderSoloAccentDrawsAccentBelowGlyphForUpStemNote() {
+    void testRenderSoloAccentFillsAccentWedgeForUpStemNote() {
         var accent = new Articulation(ArticulationType.ACCENT);
         var g2Spy = renderAndSpy(true, accent);
-        var glyphCaptor = ArgumentCaptor.forClass(String.class);
 
-        verify(g2Spy).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
-
-        assertThat(glyphCaptor.getValue())
-            .isEqualTo(SMuFLGlyph.ARTIC_ACCENT_BELOW.asString());
+        verify(g2Spy).fill(any(Shape.class));
+        verify(g2Spy, times(0)).drawString(anyString(), anyFloat(), anyFloat());
     }
 
     @Test
@@ -176,10 +171,9 @@ class ArticulationRendererTest extends UnitTest {
         var g2Spy = renderAndSpy(true, staccato, accent);
         var glyphCaptor = ArgumentCaptor.forClass(String.class);
 
-        verify(g2Spy, times(2)).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
+        verify(g2Spy).drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
+        verify(g2Spy).fill(any(Shape.class));
 
-        assertThat(glyphCaptor.getAllValues()).containsExactlyInAnyOrder(
-            SMuFLGlyph.ARTIC_STACCATO_BELOW.asString(),
-            SMuFLGlyph.ARTIC_ACCENT_BELOW.asString());
+        assertThat(glyphCaptor.getValue()).isEqualTo(SMuFLGlyph.ARTIC_STACCATO_BELOW.asString());
     }
 }
