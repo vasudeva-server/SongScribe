@@ -30,6 +30,7 @@ import module java.desktop;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.Tie;
+import songscribe.shape.TieShape;
 import songscribe.util.GraphicsState;
 
 /**
@@ -96,25 +97,15 @@ public final class TieRenderer {
             g2.translate(0, invariants.getMiddleLineYSs());
             g2.setColor(determineTieColor(tie, invariants));
 
-            var tiePath = new GeneralPath(Path2D.WIND_NON_ZERO, 4);
-
-            // Outer cubic Bezier: start → end
-            tiePath.moveTo(layout.startXSs(), layout.startYSs());
-            tiePath.curveTo(
+            var tiePath = TieShape.build(
+                layout.startXSs(), layout.startYSs(),
                 layout.cp1XSs(), layout.cp1YSs(),
                 layout.cp2XSs(), layout.cp2YSs(),
-                layout.endXSs(), layout.endYSs()
-            );
-
-            // Inner cubic Bezier (reversed): end → start, forming the lens shape.
-            // Both curves share start/end points, creating natural tapering.
-            tiePath.curveTo(
-                layout.innerCp2XSs(), layout.innerCp2YSs(),
+                layout.endXSs(), layout.endYSs(),
                 layout.innerCp1XSs(), layout.innerCp1YSs(),
-                layout.startXSs(), layout.startYSs()
+                layout.innerCp2XSs(), layout.innerCp2YSs()
             );
 
-            tiePath.closePath();
             g2.fill(tiePath);
 
             // Round the tapered ends: LilyPond outlines the bezier sandwich with a round pen of

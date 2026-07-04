@@ -28,6 +28,7 @@ import songscribe.dom.Line;
 import songscribe.smufl.Engraving;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.Tuplet;
+import songscribe.shape.TupletBracketShape;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 
@@ -171,17 +172,13 @@ public final class TupletRenderer {
                 // Each side is a single path so its arm corner joins cleanly: down the vertical
                 // arm, up to the corner, then across to the number gap. The number gap splits the
                 // bracket into two separate paths.
-                GraphicUtils.drawPath(g2, new Point2D[]{
-                    new Point2D.Double(leftXSs, armBottomYSs),
-                    new Point2D.Double(leftXSs, bracketYSs),
-                    new Point2D.Double(gapLeftXSs, bracketYSs)
-                }, thicknessSs);
+                GraphicUtils.drawPath(g2,
+                    TupletBracketShape.leftArm(leftXSs, gapLeftXSs, bracketYSs, armBottomYSs),
+                    thicknessSs);
 
-                GraphicUtils.drawPath(g2, new Point2D[]{
-                    new Point2D.Double(gapRightXSs, bracketYSs),
-                    new Point2D.Double(rightXSs, bracketYSs),
-                    new Point2D.Double(rightXSs, armBottomYSs)
-                }, thicknessSs);
+                GraphicUtils.drawPath(g2,
+                    TupletBracketShape.rightArm(gapRightXSs, rightXSs, bracketYSs, armBottomYSs),
+                    thicknessSs);
 
                 // Number is centered on the bracket line
                 numberBaselineYSs = bracketYSs - inkBounds.getCenterY();

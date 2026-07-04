@@ -29,6 +29,7 @@ import module java.desktop;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.layout.LayoutResult;
+import songscribe.shape.HairpinShape;
 import songscribe.util.GraphicsState;
 
 /**
@@ -82,17 +83,7 @@ public final class DynamicsRenderer {
         var bottomYSs = topYSs + layout.heightSs();
         var middleYSs = topYSs + layout.heightSs() / 2.0;
 
-        if (isCrescendo) {
-            return new Line2D.Double[]{
-                new Line2D.Double(x1, middleYSs, x2, topYSs),
-                new Line2D.Double(x1, middleYSs, x2, bottomYSs)
-            };
-        } else {
-            return new Line2D.Double[]{
-                new Line2D.Double(x1, topYSs, x2, middleYSs),
-                new Line2D.Double(x1, bottomYSs, x2, middleYSs)
-            };
-        }
+        return HairpinShape.lines(x1, x2, topYSs, bottomYSs, middleYSs, isCrescendo);
     }
 
     private void renderSingleHairpin(

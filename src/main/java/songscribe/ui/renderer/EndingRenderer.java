@@ -25,12 +25,10 @@ import static songscribe.util.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import songscribe.dom.Line;
 import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
+import songscribe.shape.EndingBracketShape;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 
@@ -123,16 +121,10 @@ public final class EndingRenderer {
 
             // Bracket as a single path so the top corners join cleanly: up the left leg, across
             // the top, and (when present) down the right leg.
-            var bracketPoints = new ArrayList<Point2D>(List.of(
-                new Point2D.Double(x1, yBottomSs),
-                new Point2D.Double(x1, yTopSs),
-                new Point2D.Double(x2, yTopSs)));
+            var bracketPoints = EndingBracketShape.points(
+                x1, x2, yTopSs, yBottomSs, bracket.hasClosingStroke());
 
-            if (bracket.hasClosingStroke()) {
-                bracketPoints.add(new Point2D.Double(x2, yBottomSs));
-            }
-
-            GraphicUtils.drawPath(g2, bracketPoints.toArray(new Point2D[0]), thicknessSs);
+            GraphicUtils.drawPath(g2, bracketPoints, thicknessSs);
 
             // Draw ending label (e.g. "1." or "2.") using Bravura volta glyphs.
             // Baseline = bracket top + glyph height + visual offset below bracket.
