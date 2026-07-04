@@ -1352,7 +1352,28 @@ public final class LayoutResult {
         double cp1XSs, double cp1YSs,
         double cp2XSs, double cp2YSs,
         double innerCp1XSs, double innerCp1YSs,
-        double innerCp2XSs, double innerCp2YSs) {}
+        double innerCp2XSs, double innerCp2YSs) {
+
+        /**
+         * Returns a copy of this tie rigidly shifted vertically by {@code delta} staff spaces.
+         * <p>
+         * Every Y — both endpoints and all four control points — moves by {@code delta}; the X
+         * positions are unchanged, so the arc's shape is preserved and only its vertical position
+         * changes. Used to slide a tie outward until it clears a staccato tucked under its arc.
+         *
+         * @param delta vertical shift in staff spaces (positive = downward)
+         * @return the translated tie
+         */
+        public TieLayout translateY(double delta) {
+            return new TieLayout(
+                startXSs, startYSs + delta,
+                endXSs, endYSs + delta,
+                cp1XSs, cp1YSs + delta,
+                cp2XSs, cp2YSs + delta,
+                innerCp1XSs, innerCp1YSs + delta,
+                innerCp2XSs, innerCp2YSs + delta);
+        }
+    }
 
     /**
      * Immutable positioned bounds of a single above-staff decoration, computed during layout.

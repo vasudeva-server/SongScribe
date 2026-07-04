@@ -258,16 +258,23 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     /**
-     * Returns true if this note has an articulation of the given type.
+     * Returns the first articulation of the given type, or {@code null} if this note has none.
      */
-    public boolean hasArticulation(ArticulationType type) {
+    public @Nullable Articulation findArticulation(ArticulationType type) {
         for (var articulation : articulations) {
             if (articulation.getType() == type) {
-                return true;
+                return articulation;
             }
         }
 
-        return false;
+        return null;
+    }
+
+    /**
+     * Returns true if this note has an articulation of the given type.
+     */
+    public boolean hasArticulation(ArticulationType type) {
+        return findArticulation(type) != null;
     }
 
     /**
@@ -763,6 +770,13 @@ public class StaffElement extends LineElement implements Cloneable {
          */
         public Direction opposite() {
             return this == UP ? DOWN : UP;
+        }
+
+        /**
+         * Returns this direction as a numeric sign: +1 for {@link #UP}, -1 for {@link #DOWN}.
+         */
+        public int sign() {
+            return this == UP ? 1 : -1;
         }
     }
 

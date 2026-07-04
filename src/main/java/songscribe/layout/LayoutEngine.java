@@ -77,16 +77,49 @@ public class LayoutEngine {
     static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
     private static final double MIN_STEM_SS = Engraving.STEM_LENGTH_SS;
 
-    // Tie geometry constants (MuseScore port, staff-space units unless noted)
-    private static final double TIE_SHOULDER_W = 0.6;                // shoulder width fraction of tie span
-    static final double TIE_MIN_SHOULDER_HEIGHT_SS = 0.3;            // minimum arc height
-    static final double TIE_MAX_SHOULDER_HEIGHT_SS = 2.0;            // maximum arc height
-    private static final double TIE_SHOULDER_HEIGHT_SCALE = 0.3;    // sqrt scaling factor for arc height
-    static final double TIE_MID_THICKNESS_SS = Engraving.TIE_MIDPOINT_THICKNESS_SS; // midpoint half-thickness (midWidth - endWidth)
-    static final double TIE_COLLISION_FACTOR = 0.65;                 // interior deflection scaling
-    static final double TIE_COLLISION_PUSH = 0.45;                   // midpoint push-up ratio on collision
-    static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;            // visual half-width of notehead
-    static final double TIE_ENDPOINT_Y_OFFSET_SS = 0.7;             // y offset from note center (noteHeight/2 + 0.2)
+    // Tie geometry constants (LilyPond slur_shape port).
+    //
+    // Two LilyPond unit families are involved. "Position-space" tie-details are in
+    // half-staff-spaces and convert to staff spaces by ×0.5 (proven by
+    // Tie_configuration::get_transformed_bezier, which translates by
+    // delta_y_ + staff_space·0.5·position_). Geometric gaps are already in staff spaces.
+
+    /** slur_shape asymptotic max arc height h_inf (bezier-bow.cc slur_height); staff spaces. */
+    static final double TIE_HEIGHT_LIMIT_SS = 1.1;
+    /** slur_shape height-vs-width growth ratio r_0 (bezier-bow.cc slur_height); unitless. */
+    static final double TIE_RATIO = 0.333;
+    /** slur_shape control-point indent factor max_fraction = 1/3.1 (bezier-bow.cc slur_shape); unitless. */
+    private static final double TIE_SLUR_MAX_FRACTION = 1.0 / 3.1;
+
+    /** Vertical gap of each endpoint from the note center, in the arc direction; staff spaces. */
+    static final double NATURAL_TIE_GAP_SS = 1.04;
+
+    /** LilyPond Tie tip-staff-line-clearance: outward nudge for an endpoint landing on a staff line; staff spaces. */
+    public static final double STAFF_LINE_TIE_CLEARANCE_GAP_SS = 0.19;
+    /** Largest note staff position (half staff-spaces) whose on-line endpoint gets the outward nudge; inner lines only. */
+    static final int TIE_ON_LINE_NUDGE_MAX_POSITION_SP = 2;
+    /** Trigger margin: an arc fitting below a line keeps its natural height while its outer edge (incl. stroke) stays this far below; staff spaces. */
+    static final double TIE_OUTER_EDGE_LINE_CLEARANCE_SS = 0.125;
+    /** Fixed ink height (bottom of the endpoint stroke cap to the top of the apex stroke) when a tie is heightened over a staff line; staff spaces. */
+    static final double TIE_HEIGHTENED_INK_HEIGHT_SS = 0.88;
+
+    /** LilyPond default layout line-thickness (ly/paper-defaults-init.ly), i.e. staff line thickness; staff spaces. */
+    private static final double TIE_LINE_THICKNESS_SS = 0.1;
+    /** Tie apex thickness measured in LilyPond, as a multiple of staff line thickness (includes the render stroke). */
+    private static final double TIE_APEX_THICKNESS_RATIO = 5.0 / 3.0;
+    /** Fraction of its control-point offset a symmetric cubic actually reaches at the apex (t=0.5), per side. */
+    static final double TIE_APEX_CONTROL_REACH = 0.75;
+    /** Round-pen outline width TieRenderer strokes around the filled lens (rounds the ends, adds to apex); staff spaces. */
+    public static final double TIE_OUTLINE_THICKNESS_SS = 0.05;
+    /**
+     * Tie lens midpoint half-thickness (centerline → outer/inner control point). Solved so the rendered
+     * apex thickness — the filled lens (each side reaching {@link #TIE_APEX_CONTROL_REACH} of this offset)
+     * plus the {@link #TIE_OUTLINE_THICKNESS_SS} stroke — equals LilyPond's measured
+     * {@link #TIE_APEX_THICKNESS_RATIO} × staff line thickness; staff spaces.
+     */
+    static final double TIE_MID_THICKNESS_SS =
+        (TIE_APEX_THICKNESS_RATIO * TIE_LINE_THICKNESS_SS - TIE_OUTLINE_THICKNESS_SS)
+            / (2 * TIE_APEX_CONTROL_REACH);
 
     private final LyricRenderMetrics lyricRenderMetrics;
     private final double staffRightMarginSs;
@@ -614,9 +647,10 @@ public class LayoutEngine {
     /**
      * Calculates tie geometry for all tie spans in the line.
      * <p>
-     * Ports MuseScore's tie layout algorithm to SongScribe's staff-space coordinate system.
-     * Each tie produces a filled lens shape defined by an outer and an inner cubic Bezier curve
-     * that share start/end points, creating natural tapering at the endpoints.
+     * Ports LilyPond's single-tie {@code slur_shape} curve (bezier-bow.cc) plus endpoint gaps
+     * and staff-line avoidance (tie-formatting-problem.cc) to SongScribe's staff-space coordinate
+     * system. Each tie produces a filled lens shape defined by an outer and an inner cubic Bézier
+     * curve that share start/end points, creating natural tapering at the endpoints.
      * Populates {@code builder} with a {@link LayoutResult.TieLayout} for each tie span.
      */
     private void calculateTies(
@@ -654,91 +688,170 @@ public class LayoutEngine {
 
             // Tie arc sign: stem-up elements tie below (+1), stem-down elements tie above (-1).
             // Y increases downward, so arcSignSs = +1 → arc bulges downward.
-            var arcSignSs = startElement.getDirection().isUp() ? 1 : -1;
+            var arcSignSs = startElement.getDirection().sign();
 
-            // Tie attachment points: centered on notehead horizontally.
-            var startXSs = startColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
-            var endXSs = endColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
-            var startYSs = StaffExtents.spToSs(startElement.getStaffPosition()) + arcSignSs * TIE_ENDPOINT_Y_OFFSET_SS;
-            var endYSs = StaffExtents.spToSs(endElement.getStaffPosition()) + arcSignSs * TIE_ENDPOINT_Y_OFFSET_SS;
+            // Endpoint attachment: each endpoint sits horizontally at the center of its notehead. Its
+            // vertical placement is note-relative; a staccato tucked under the arc is cleared later by the
+            // stacker, once it is actually placed. A tie joins two same-pitch notes, so both endpoints
+            // share one Y.
+            var startXSs = startColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS / 2;
+            var endXSs = endColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS / 2;
+            var endpointYSs = tieEndpointYSs(startElement.getStaffPosition(), arcSignSs);
 
             var tieWidthSs = endXSs - startXSs;
 
-            // Shoulder height: sqrt growth curve, short ties are relatively tall, long ties flatten.
-            var shoulderHSs = TIE_MIN_SHOULDER_HEIGHT_SS
-                + TIE_SHOULDER_HEIGHT_SCALE * Math.sqrt(Math.max(tieWidthSs - 1, 0));
-            shoulderHSs = Math.clamp(shoulderHSs, TIE_MIN_SHOULDER_HEIGHT_SS, TIE_MAX_SHOULDER_HEIGHT_SS);
+            // LilyPond slur_shape: control points P1 = (indent, height), P2 = (width − indent, height).
+            var indentSs = slurIndentSs(tieWidthSs);
+            var cp1XSs = startXSs + indentSs;
+            var cp2XSs = endXSs - indentSs;
 
-            // Control point X positions: at 20% and 80% of tie width (shoulderW = 0.6).
-            var marginFraction = (1.0 - TIE_SHOULDER_W) * 0.5;
-            var cp1XSs = startXSs + tieWidthSs * marginFraction;
-            var cp2XSs = startXSs + tieWidthSs * (marginFraction + TIE_SHOULDER_W);
+            // Arc height from the endpoint baseline (the shared endpoint Y for a same-pitch tie),
+            // adjusted so the arc body clears the nearest staff line.
+            var heightSs = tieLineAvoidedHeightSs(endpointYSs, arcSignSs, slurHeightSs(tieWidthSs));
+            var shoulderYSs = endpointYSs + arcSignSs * heightSs;
 
-            // Control point Y: both at shoulder height from the baseline.
-            // Baseline is the midpoint Y of the two endpoints (identical for ties).
-            var baseYSs = (startYSs + endYSs) * 0.5;
-            var shoulderYSs = baseYSs + arcSignSs * shoulderHSs;
-
-            // Outer curve control points: offset away from notes by midThickness.
+            // Outer/inner lens taper: outer control points offset away from the notes by the midpoint
+            // half-thickness, inner control points offset toward the notes.
             var outerCpYSs = shoulderYSs + arcSignSs * TIE_MID_THICKNESS_SS;
-
-            // Inner curve control points: offset toward notes by midThickness.
             var innerCpYSs = shoulderYSs - arcSignSs * TIE_MID_THICKNESS_SS;
 
-            // Interior note collision avoidance: only for ties spanning 3+ notes.
-            var spanAnchorIdx = span.getAnchorElementIndex();
-            var spanEndIdx = span.getEndElementIndex();
-
-            if (spanEndIdx - spanAnchorIdx >= 2) {
-                var maxDeflection = 0.0;
-
-                for (var i = spanAnchorIdx + 1; i < spanEndIdx; i++) {
-                    var interiorElement = line.getElement(i);
-                    var interiorColumn = elementToColumn.get(interiorElement);
-
-                    if (interiorColumn == null) {
-                        continue;
-                    }
-
-                    var elementXSs = interiorColumn.getXSs();
-                    var elementYSs = StaffExtents.spToSs(interiorElement.getStaffPosition());
-
-                    // Evaluate outer cubic Bezier at approximate t (linear X interpolation).
-                    var t = tieWidthSs > 0
-                        ? Math.clamp((elementXSs - startXSs) / tieWidthSs, 0.0, 1.0) : 0.5;
-                    var mt = 1.0 - t;
-                    var tieYAtElementSs =
-                        mt * mt * mt * startYSs +
-                            3 * mt * mt * t * outerCpYSs +
-                            3 * mt * t * t * outerCpYSs +
-                            t * t * t * endYSs;
-
-                    // Deflection: how much the element protrudes into the tie arc.
-                    var deflection = (tieYAtElementSs - elementYSs) * arcSignSs;
-
-                    if (deflection > maxDeflection) {
-                        maxDeflection = deflection;
-                    }
-                }
-
-                if (maxDeflection > 0.0) {
-                    var push = TIE_COLLISION_PUSH * TIE_COLLISION_FACTOR * maxDeflection;
-                    shoulderHSs += push;
-                    shoulderYSs = baseYSs + arcSignSs * shoulderHSs;
-                    outerCpYSs = shoulderYSs + arcSignSs * TIE_MID_THICKNESS_SS;
-                    innerCpYSs = shoulderYSs - arcSignSs * TIE_MID_THICKNESS_SS;
-                }
-            }
-
             builder.putTieLayout(span, new LayoutResult.TieLayout(
-                startXSs, startYSs,
-                endXSs, endYSs,
+                startXSs, endpointYSs,
+                endXSs, endpointYSs,
                 cp1XSs, outerCpYSs,
                 cp2XSs, outerCpYSs,
                 cp1XSs, innerCpYSs,
                 cp2XSs, innerCpYSs
             ));
         }
+    }
+
+    /**
+     * LilyPond bezier-bow.cc {@code F0_1}: maps [0, ∞) → [0, 1). Unitless.
+     */
+    private static double slurF01(double x) {
+        return 2 / Math.PI * Math.atan(Math.PI * x / 2);
+    }
+
+    /**
+     * LilyPond bezier-bow.cc {@code slur_height}: the tie arc height for the given tie width.
+     * Both the argument and the result are in staff spaces.
+     */
+    static double slurHeightSs(double widthSs) {
+        return slurF01(widthSs * TIE_RATIO / TIE_HEIGHT_LIMIT_SS) * TIE_HEIGHT_LIMIT_SS;
+    }
+
+    /**
+     * LilyPond bezier-bow.cc {@code slur_shape} control-point indent: the horizontal inset of the
+     * two interior Bézier control points from the tie endpoints. Width and result are in staff spaces.
+     */
+    static double slurIndentSs(double widthSs) {
+        var q = 2 * TIE_HEIGHT_LIMIT_SS / TIE_SLUR_MAX_FRACTION;
+
+        return 2 * TIE_HEIGHT_LIMIT_SS - q * q * TIE_SLUR_MAX_FRACTION / (widthSs + q);
+    }
+
+    /**
+     * Y of both tie endpoints (a tie joins two same-pitch notes, so both share one Y), in staff spaces.
+     * <p>
+     * The endpoint sits {@link #NATURAL_TIE_GAP_SS} beyond the note center in the arc direction, plus
+     * {@link #tieEndpointNudgeSs} to lift an on-line endpoint off its line. Placement is purely
+     * note-relative; a staccato tucked under the arc is cleared later — once it is actually placed — by
+     * the stacker shifting the whole tie outward.
+     *
+     * @param notePositionSp the tied notes' shared staff position (half staff-spaces)
+     * @param arcSignSs      +1 when the arc bulges downward, -1 upward
+     */
+    static double tieEndpointYSs(int notePositionSp, int arcSignSs) {
+        return StaffExtents.spToSs(notePositionSp)
+            + arcSignSs * NATURAL_TIE_GAP_SS
+            + tieEndpointNudgeSs(notePositionSp, arcSignSs);
+    }
+
+    /**
+     * Rigid outward nudge for an endpoint that would land on an inner staff line (the 1.0 ss gap places
+     * it on the adjacent line for a note on lines 0, ±2), leaving a visible gap; 0 otherwise. Result and
+     * all distances are in staff spaces.
+     *
+     * @param notePositionSp the tied notes' shared staff position (half staff-spaces)
+     * @param arcSignSs      +1 when the arc bulges downward, -1 upward
+     */
+    static double tieEndpointNudgeSs(int notePositionSp, int arcSignSs) {
+        if (StaffElement.isLinePosition(notePositionSp)
+            && Math.abs(notePositionSp) <= TIE_ON_LINE_NUDGE_MAX_POSITION_SP) {
+            return arcSignSs * STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * Adjusts the tie arc height so its body clears the nearest staff line, mirroring LilyPond's
+     * per-configuration staff-line avoidance. The endpoints are fixed, so only the height changes.
+     * <p>
+     * The arc stays on whichever side of the line its natural apex already favors, matching LilyPond. An
+     * arc whose apex sits below the line stays under it, keeping its natural height unless its outer edge
+     * (incl. render stroke) would come within {@link #TIE_OUTER_EDGE_LINE_CLEARANCE_SS} of the line — a
+     * small edge-based trigger, so a tie resting quietly inside a staff space is left untouched. When the
+     * trigger fires the arc is flattened just enough to restore that edge gap. An arc whose apex pokes
+     * through the line is instead heightened up and over it — never squashed back under — so the stroked
+     * arc stands a fixed {@link #TIE_HEIGHTENED_INK_HEIGHT_SS} tall (bottom of the endpoint stroke cap to
+     * the top of the apex stroke), a stable height independent of tie width. Returns the natural height
+     * when the arc already clears, or when no real staff line is near the apex. All Y arguments and the
+     * result are in staff spaces.
+     *
+     * @param baseYSs         the endpoint baseline Y (midpoint of the two endpoints)
+     * @param arcSignSs       +1 when the arc bulges downward, -1 upward
+     * @param naturalHeightSs the unadjusted slur_shape arc height
+     */
+    static double tieLineAvoidedHeightSs(double baseYSs, int arcSignSs, double naturalHeightSs) {
+        var halfStrokeSs = TIE_OUTLINE_THICKNESS_SS / 2;
+
+        // The staff line nearest the natural apex centerline; only a real (in-staff) line constrains.
+        var apexOutwardSs = TIE_APEX_CONTROL_REACH * naturalHeightSs;
+        var apexMidYSs = baseYSs + arcSignSs * apexOutwardSs;
+        var nearestLineYSs = (double) Math.round(apexMidYSs);
+
+        if (Math.abs(nearestLineYSs) > StaffExtents.STAFF_HALF_SS) {
+            return naturalHeightSs;
+        }
+
+        // Distance from the baseline out to the line, positive in the arc direction.
+        var lineDistSs = arcSignSs * (nearestLineYSs - baseYSs);
+
+        // Natural apex sits below the line: keep the arc under it, flattening only when its outer edge
+        // would intrude on the small edge trigger. If even a flat arc cannot clear below, fall through
+        // and lift it over.
+        if (apexOutwardSs <= lineDistSs) {
+            if (tieOuterEdgeDistSs(naturalHeightSs, halfStrokeSs) <= lineDistSs - TIE_OUTER_EDGE_LINE_CLEARANCE_SS) {
+                return naturalHeightSs;
+            }
+
+            var flattenedHeightSs =
+                tieHeightForOuterEdgeDistSs(lineDistSs - TIE_OUTER_EDGE_LINE_CLEARANCE_SS, halfStrokeSs);
+
+            if (flattenedHeightSs > 0) {
+                return flattenedHeightSs;
+            }
+        }
+
+        // Natural apex pokes through the line (or cannot clear below): heighten so the stroked arc stands
+        // a fixed ink height tall — from the endpoint stroke cap (halfStroke below the anchor) to the top
+        // of the apex stroke — a stable height independent of tie width; never shrink an already-taller
+        // natural arc. The outer edge above the anchor must therefore reach the ink height less that cap.
+        return Math.max(
+            naturalHeightSs,
+            tieHeightForOuterEdgeDistSs(TIE_HEIGHTENED_INK_HEIGHT_SS - halfStrokeSs, halfStrokeSs));
+    }
+
+    /** Outward distance from the baseline to the arc's outer edge (incl. stroke) at the apex; staff spaces. */
+    private static double tieOuterEdgeDistSs(double heightSs, double halfStrokeSs) {
+        return TIE_APEX_CONTROL_REACH * (heightSs + TIE_MID_THICKNESS_SS) + halfStrokeSs;
+    }
+
+    /** Inverse of {@link #tieOuterEdgeDistSs}: the arc height whose outer edge sits at the given distance. */
+    private static double tieHeightForOuterEdgeDistSs(double outerEdgeDistSs, double halfStrokeSs) {
+        return (outerEdgeDistSs - halfStrokeSs) / TIE_APEX_CONTROL_REACH - TIE_MID_THICKNESS_SS;
     }
 
     /**

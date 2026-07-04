@@ -431,6 +431,20 @@ class StaffElementTest extends UnitTest {
     }
 
     // ------------------------------------------------------------------
+    // Direction.sign() — +1 for UP, -1 for DOWN
+    // ------------------------------------------------------------------
+
+    @Test
+    void testSignReturnsPositiveOneForUp() {
+        assertThat(StaffElement.Direction.UP.sign()).isEqualTo(1);
+    }
+
+    @Test
+    void testSignReturnsNegativeOneForDown() {
+        assertThat(StaffElement.Direction.DOWN.sign()).isEqualTo(-1);
+    }
+
+    // ------------------------------------------------------------------
     // defaultDirection — up for positive staff position or grace notes, down otherwise
     // ------------------------------------------------------------------
 
@@ -738,6 +752,28 @@ class StaffElementTest extends UnitTest {
         assertThat(element.hasArticulation(ArticulationType.STACCATO)).isTrue();
         // A different type that was not added must still report absent
         assertThat(element.hasArticulation(ArticulationType.ACCENT)).isFalse();
+    }
+
+    // ------------------------------------------------------------------
+    // findArticulation(type) — returns the matching articulation, or null when absent
+    // ------------------------------------------------------------------
+
+    @Test
+    void testFindArticulationReturnsNullWhenAbsent() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        assertThat(element.findArticulation(ArticulationType.STACCATO)).isNull();
+    }
+
+    @Test
+    void testFindArticulationReturnsMatchingArticulation() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        var staccato = new Articulation(element, ArticulationType.STACCATO);
+        element.addArticulation(staccato);
+
+        assertThat(element.findArticulation(ArticulationType.STACCATO)).isSameAs(staccato);
+        // A different type that was not added must return null
+        assertThat(element.findArticulation(ArticulationType.ACCENT)).isNull();
     }
 
     // ------------------------------------------------------------------

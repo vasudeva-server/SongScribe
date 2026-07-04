@@ -21,11 +21,13 @@
 package songscribe.ui.renderer;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.STROKE;
 import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
 
+import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.Tie;
 import songscribe.util.GraphicsState;
@@ -40,6 +42,16 @@ public final class TieRenderer {
 
     // Singleton instance
     private static final TieRenderer INSTANCE = new TieRenderer();
+
+    /**
+     * Round pen used to outline the filled lens, blunting the sharp cusps where the outer and
+     * inner curves meet. Immutable, so a single shared instance suffices across all repaints.
+     */
+    private static final BasicStroke TIE_OUTLINE_STROKE = new BasicStroke(
+        (float) LayoutEngine.TIE_OUTLINE_THICKNESS_SS,
+        BasicStroke.CAP_ROUND,
+        BasicStroke.JOIN_ROUND
+    );
 
     /**
      * Private constructor - use {@link #getInstance()}.
@@ -80,7 +92,7 @@ public final class TieRenderer {
             return;
         }
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR, STROKE)) {
             g2.translate(0, invariants.getMiddleLineYSs());
             g2.setColor(determineTieColor(tie, invariants));
 
@@ -104,6 +116,11 @@ public final class TieRenderer {
 
             tiePath.closePath();
             g2.fill(tiePath);
+
+            // Round the tapered ends: LilyPond outlines the bezier sandwich with a round pen of
+            // line-thickness, which blunts the otherwise-sharp cusps where the two curves meet.
+            g2.setStroke(TIE_OUTLINE_STROKE);
+            g2.draw(tiePath);
         }
     }
 

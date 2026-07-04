@@ -97,7 +97,7 @@ public class Ending extends RangeElement {
     /**
      * Describes the effect of replacing one element with another on this ending.
      * Used by the UI layer to decide whether to abort, confirm-and-invalidate,
-     * or confirm-and-compensate before calling {@link songscribe.dom.Line#setElement}.
+     * or confirm-and-compensate before calling {@link Line#setElement}.
      */
     public sealed interface EndingEffect
         permits EndingEffect.None, EndingEffect.Invalidate,
@@ -185,7 +185,7 @@ public class Ending extends RangeElement {
      * @return the computed bracket ranges (also stored on this Ending)
      */
     public List<BracketRange> computeBracketRanges(
-        songscribe.dom.Line line,
+        Line line,
         ToDoubleFunction<? super StaffElement> elementXSs,
         LineThickness lt
     ) {
@@ -418,7 +418,7 @@ public class Ending extends RangeElement {
      * @param line            the owning line (pre-deletion state)
      */
     @SuppressWarnings("SlowListContainsAll")
-    public boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, songscribe.dom.Line line) {
+    public boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
         // Condition 2: REPEAT_RIGHT split element is deleted
         var splitElement = findRepeatSplitElement(line);
 
@@ -465,7 +465,7 @@ public class Ending extends RangeElement {
      * @param line       the owning line (pre-replacement state)
      */
     public EndingEffect checkReplacement(
-        StaffElement oldElement, StaffElement newElement, songscribe.dom.Line line
+        StaffElement oldElement, StaffElement newElement, Line line
     ) {
         var newType = newElement.getType();
 
@@ -534,7 +534,7 @@ public class Ending extends RangeElement {
      * @param line       the owning line
      */
     public boolean isInvalidatedByReplacement(
-        StaffElement oldElement, StaffElement newElement, songscribe.dom.Line line
+        StaffElement oldElement, StaffElement newElement, Line line
     ) {
         return checkReplacement(oldElement, newElement, line) instanceof EndingEffect.Invalidate;
     }
@@ -550,7 +550,7 @@ public class Ending extends RangeElement {
      * @param line          the owning line (pre-insertion state)
      */
     public boolean isInvalidatedByInsertion(
-        int insertedIndex, ElementType insertedType, songscribe.dom.Line line
+        int insertedIndex, ElementType insertedType, Line line
     ) {
         if (!insertedType.isBarLine() && !insertedType.isRepeat()) {
             return false;
