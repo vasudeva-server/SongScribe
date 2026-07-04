@@ -66,6 +66,12 @@ class ScaleContextTest extends UnitTest {
     // Negative pps value used to verify the guard in setPixelsPerStaffSpace.
     private static final double NEGATIVE_PPS = -5.0;
 
+    // Zoom percentages used for setZoomPercent / getZoomPercent tests.
+    private static final int ZOOM_PERCENT_DEFAULT = 100;
+    private static final int ZOOM_PERCENT_HALF = 50;
+    private static final int ZOOM_PERCENT_DOUBLE = 200;
+    private static final int ZOOM_PERCENT_NEGATIVE = -10;
+
     // Font used for rows 47–49: a plain, headless-safe font with a fixed size.
     private static final int TEST_FONT_SIZE_PT = 12;
     private static final Font TEST_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, TEST_FONT_SIZE_PT);
@@ -146,6 +152,50 @@ class ScaleContextTest extends UnitTest {
     @Test
     void testSetPixelsPerStaffSpaceThrowsForNegativeValue() {
         assertThatThrownBy(() -> ScaleContext.setPixelsPerStaffSpace(NEGATIVE_PPS))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // -------------------------------------------------------------------------
+    // setZoomPercent / getZoomPercent — 100% maps to the default pps
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testSetZoomPercentAtDefaultSetsDefaultPps() {
+        ScaleContext.setZoomPercent(ZOOM_PERCENT_DEFAULT);
+
+        assertThat(ScaleContext.getPixelsPerStaffSpace())
+            .isCloseTo(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE, within(DOUBLE_EPSILON));
+    }
+
+    @Test
+    void testSetZoomPercentScalesPpsProportionally() {
+        ScaleContext.setZoomPercent(ZOOM_PERCENT_HALF);
+        assertThat(ScaleContext.getPixelsPerStaffSpace())
+            .isCloseTo(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE * ZOOM_PERCENT_HALF / ZOOM_PERCENT_DEFAULT, within(DOUBLE_EPSILON));
+
+        ScaleContext.setZoomPercent(ZOOM_PERCENT_DOUBLE);
+        assertThat(ScaleContext.getPixelsPerStaffSpace())
+            .isCloseTo(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE * ZOOM_PERCENT_DOUBLE / ZOOM_PERCENT_DEFAULT, within(DOUBLE_EPSILON));
+    }
+
+    @Test
+    void testGetZoomPercentIsInverseOfSetZoomPercent() {
+        ScaleContext.setZoomPercent(ZOOM_PERCENT_HALF);
+        assertThat(ScaleContext.getZoomPercent()).isEqualTo(ZOOM_PERCENT_HALF);
+
+        ScaleContext.setZoomPercent(ZOOM_PERCENT_DOUBLE);
+        assertThat(ScaleContext.getZoomPercent()).isEqualTo(ZOOM_PERCENT_DOUBLE);
+    }
+
+    @Test
+    void testSetZoomPercentThrowsForZero() {
+        assertThatThrownBy(() -> ScaleContext.setZoomPercent(0))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void testSetZoomPercentThrowsForNegativeValue() {
+        assertThatThrownBy(() -> ScaleContext.setZoomPercent(ZOOM_PERCENT_NEGATIVE))
             .isInstanceOf(IllegalArgumentException.class);
     }
 

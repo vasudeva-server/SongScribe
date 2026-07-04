@@ -43,6 +43,9 @@ public final class ScaleContext {
     /** Default pixels per staff space, matching the legacy 8px staff line spacing. */
     public static final double DEFAULT_PIXELS_PER_STAFF_SPACE = 8.0;
 
+    /** Divisor/multiplier converting between a zoom fraction and its integer percentage form. */
+    private static final int ZOOM_PERCENT_SCALE = 100;
+
     private volatile double pixelsPerStaffSpace = DEFAULT_PIXELS_PER_STAFF_SPACE;
 
     private ScaleContext() {}
@@ -59,6 +62,20 @@ public final class ScaleContext {
         }
 
         INSTANCE.pixelsPerStaffSpace = pxPerSs;
+    }
+
+    /** Returns the current zoom level as an integer percentage, with 100% being the default scale. */
+    public static int getZoomPercent() {
+        return (int) Math.round(INSTANCE.pixelsPerStaffSpace / DEFAULT_PIXELS_PER_STAFF_SPACE * ZOOM_PERCENT_SCALE);
+    }
+
+    /** Sets the zoom level as an integer percentage, with 100% being the default scale. */
+    public static void setZoomPercent(int zoomPercent) {
+        if (zoomPercent <= 0) {
+            throw new IllegalArgumentException("zoomPercent must be positive: " + zoomPercent);
+        }
+
+        setPixelsPerStaffSpace(DEFAULT_PIXELS_PER_STAFF_SPACE * zoomPercent / ZOOM_PERCENT_SCALE);
     }
 
     /** Convert a value in staff-space units to pixels. */
