@@ -618,13 +618,14 @@ public class PreferencesDialog extends BaseDialog {
             gc.insets = new Insets(0, horizontalGap, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_GAP), 0);
             panel.add(selectHintLabel, gc);
 
-            instrumentList.setVisibleRowCount(10);
+            ensureInstrumentsLoaded();
+            instrumentList.setVisibleRowCount(instrumentStrings.length);
             instrumentList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
             gc.gridx = 0;
             gc.gridy = 1;
             gc.weightx = 0.5;
-            gc.weighty = 1.0;
-            gc.fill = GridBagConstraints.BOTH;
+            gc.weighty = 0;
+            gc.fill = GridBagConstraints.HORIZONTAL;
             gc.insets = new Insets(0, 0, 0, 0);
             panel.add(new JScrollPane(instrumentList), gc);
 
@@ -652,7 +653,7 @@ public class PreferencesDialog extends BaseDialog {
             gc.insets = new Insets(0, buttonGap, 0, 0);
             panel.add(scaleButtonRow, gc);
 
-            addExpanding(panel, GridBagConstraints.BOTH);
+            add(panel, constraints);
         }
 
         /** Plays a single note with the selected instrument, unless the scale is currently playing. */
