@@ -155,7 +155,7 @@ class SongLineManagementTest extends UnitTest {
                 var line = song.getLine(0);
                 var note = ElementType.CROTCHET.newInstance();
                 line.addElement(note);
-                note.setLyricForVerse(1, Lyric.Syllabic.SINGLE, true, "joy", Lyric.Extend.NONE);
+                note.setLyricForVerse(1, Lyric.Syllabic.BEGIN, true, "joy", Lyric.Extend.NONE);
             });
 
             assertThat(song.getLyricsText()).isEqualTo("joy--");

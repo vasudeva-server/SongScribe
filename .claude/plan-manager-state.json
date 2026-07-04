@@ -182,6 +182,15 @@
       "type": "sub-plan"
     },
     {
+      "path": "plans/migrations/musicxml/phase-6-lyrics.md",
+      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "parentPhase": 6,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
       "path": "plans/migrations/musicxml/phase-7-document-header.md",
       "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
       "parentPhase": 7,

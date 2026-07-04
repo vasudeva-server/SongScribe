@@ -9,7 +9,7 @@
 | 3 | [Notes & Per-Note Attachments](#-phase-3-notes--per-note-attachments) | ✅ Complete | [phase-3-notes.md](./phase-3-notes.md) |
 | 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ✅ Complete | [phase-4-range-spans.md](./phase-4-range-spans.md) |
 | 5 | [Per-Measure Attributes (Key, Tempo)](#-phase-5-per-measure-attributes-key-tempo) | ✅ Complete | [phase-5-per-measure-attributes.md](./phase-5-per-measure-attributes.md) |
-| 6 | [Lyrics](#-phase-6-lyrics) | ⏳ Pending | — |
+| 6 | [Lyrics](#-phase-6-lyrics) | ✅ Complete | [phase-6-lyrics.md](./phase-6-lyrics.md) |
 | 7 | [Header, Layout & Extension Fields](#️-phase-7-header-layout--extension-fields) | ⏳ Pending | — |
 | 8 | [Losslessness Gate & Cutover](#-phase-8-losslessness-gate--cutover) | ⏳ Pending | — |
 
@@ -161,16 +161,21 @@ and a metric modulation.
 
 ---
 
-## ⏳ Phase 6: Lyrics
+## ✅ Phase 6: Lyrics
 
-**Goal**: Per-verse lyrics.
+**Status**: ✅ Complete — see [phase-6-lyrics.md](./phase-6-lyrics.md)
 
-**Mapping** (musicxml.md § "Lyrics"):
-- Verse number → `<lyric number>`; syllabic → `<syllabic>`; text → `<text>`;
-  compound-word marker → `<elision>`; extender → `<extend type>`.
+Implemented per-verse `<lyric>` content in both directions: verse number →
+`<lyric number>`, syllabic → `<syllabic>`, text → `<text>` (with compound-word
+boundaries carrying a non-breaking hyphen), melisma extenders → `<extend
+type>` (including text-less STOP/CONTINUE carrier lyrics). `SyllabicMapping`
+provides the `Syllabic`/`Extend` ↔ token lookup; the `Lyric` record now
+enforces `compound ⇒ syllabic ∈ {BEGIN, MIDDLE}` at construction, closing a
+writer/reader round-trip asymmetry. Round-trips losslessly for multi-verse
+songs with syllabic breaks, compound words, and extenders (including
+cross-note and missing-`number` cases), with schema-valid output.
 
-**Verify**: Round-trip multi-verse songs with syllabic breaks, compound words,
-and extenders.
+See [phase-6-lyrics.md](./phase-6-lyrics.md) for the detailed implementation plan.
 
 ---
 

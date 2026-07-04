@@ -73,6 +73,9 @@ public final class MusicXmlReader extends DefaultHandler {
         }
     }
 
+    /** Verse number for a {@code <lyric>} that omits its {@code number} attribute. */
+    private static final int DEFAULT_LYRIC_VERSE = 1;
+
     private Where where = Where.NONE;
     private final StringBuilder value = new StringBuilder(200);
 
@@ -363,6 +366,29 @@ public final class MusicXmlReader extends DefaultHandler {
                     where = Where.BEAM;
                 } else if (qName.equals(MusicXmlTags.NOTATIONS)) {
                     where = Where.NOTATIONS;
+                } else if (qName.equals(MusicXmlTags.LYRIC)) {
+                    // A <lyric number="N"> opens one verse. Absent number → verse 1
+                    // (lenient, matching StaffElementIO).
+                    var numberAttr = attributes.getValue(MusicXmlTags.ATTR_NUMBER);
+                    var verse = numberAttr != null
+                        ? parseIntOrThrow(MusicXmlTags.ATTR_NUMBER, numberAttr)
+                        : DEFAULT_LYRIC_VERSE;
+                    note.beginLyric(verse);
+                    where = Where.LYRIC;
+                }
+            }
+            case LYRIC -> {
+                if (qName.equals(MusicXmlTags.SYLLABIC)) {
+                    where = Where.SYLLABIC;
+                } else if (qName.equals(MusicXmlTags.LYRIC_TEXT)) {
+                    where = Where.LYRIC_TEXT;
+                } else if (qName.equals(MusicXmlTags.EXTEND)) {
+                    // <extend> is an empty element; its type attr is the only data.
+                    // Absent/unrecognized type → START (see SyllabicMapping).
+                    note.setLyricExtend(
+                        SyllabicMapping.forExtendToken(attributes.getValue(MusicXmlTags.ATTR_TYPE))
+                    );
+                    where = Where.EXTEND;
                 }
             }
             case PITCH -> {
@@ -669,6 +695,31 @@ public final class MusicXmlReader extends DefaultHandler {
             }
             case NOTATIONS -> {
                 if (qName.equals(MusicXmlTags.NOTATIONS)) {
+                    where = Where.NOTE;
+                }
+            }
+            case SYLLABIC -> {
+                if (qName.equals(MusicXmlTags.SYLLABIC)) {
+                    note.setLyricSyllabicToken(value.toString().trim());
+                    where = Where.LYRIC;
+                }
+            }
+            case LYRIC_TEXT -> {
+                if (qName.equals(MusicXmlTags.LYRIC_TEXT)) {
+                    // Not trimmed: the text is emitted inline with no surrounding
+                    // whitespace, and a trailing compound marker must survive intact.
+                    note.setLyricText(value.toString());
+                    where = Where.LYRIC;
+                }
+            }
+            case EXTEND -> {
+                if (qName.equals(MusicXmlTags.EXTEND)) {
+                    where = Where.LYRIC;
+                }
+            }
+            case LYRIC -> {
+                if (qName.equals(MusicXmlTags.LYRIC)) {
+                    note.endLyric();
                     where = Where.NOTE;
                 }
             }
@@ -1070,6 +1121,12 @@ public final class MusicXmlReader extends DefaultHandler {
         DYNAMICS,
         DYNAMIC_MARK,
         SLIDE,
+
+        // Per-note lyric subtree (<lyric><syllabic>/<text>/<extend>).
+        LYRIC,
+        SYLLABIC,
+        LYRIC_TEXT,
+        EXTEND,
 
         // Per-note range-span subtree (beam, tie, tuplet, trill).
         BEAM,

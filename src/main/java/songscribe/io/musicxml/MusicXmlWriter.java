@@ -34,12 +34,12 @@ import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.io.XML;
@@ -519,6 +519,9 @@ public final class MusicXmlWriter {
         // 9. <notations>
         writeNotations(pw, ctx);
 
+        // 10. <lyric>×n — one per verse.
+        writeLyrics(pw, note);
+
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.NOTE);
     }
@@ -791,6 +794,50 @@ public final class MusicXmlWriter {
 
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.NOTATIONS);
+    }
+
+    // -------------------------------------------------------------------------
+    // <lyric> emission: one child per verse, mirroring the legacy
+    // StaffElementIO write loop. A carrier lyric (extend STOP/CONTINUE) has no
+    // text of its own -- it only marks a melisma boundary -- so it emits only
+    // <extend type="stop|continue"/>. Every other lyric emits <syllabic> and
+    // <text> (with the compound-word marker appended when applicable), then an
+    // <extend type="start"/> only when this syllable opens a melisma.
+    // -------------------------------------------------------------------------
+
+    private static void writeLyrics(PrintWriter pw, StaffElement note) {
+        var lyrics = note.getLyrics();
+
+        if (lyrics.isEmpty()) {
+            return;
+        }
+
+        for (var lyric : lyrics) {
+            var extend = lyric.extend();
+
+            XML.writeBeginTag(pw, MusicXmlTags.LYRIC,
+                MusicXmlTags.ATTR_NUMBER, Integer.toString(lyric.verse()));
+            XML.indent();
+
+            if (lyric.isCarrier()) {
+                XML.writeEmptyTag(pw, MusicXmlTags.EXTEND,
+                    MusicXmlTags.ATTR_TYPE, SyllabicMapping.forExtend(extend));
+            } else {
+                XML.writeValue(pw, MusicXmlTags.SYLLABIC, SyllabicMapping.forSyllabic(lyric.syllabic()));
+
+                var text = lyric.text();
+                var lyricText = lyric.compound() ? text + Lyric.COMPOUND_WORD_MARKER : text;
+                XML.writeValue(pw, MusicXmlTags.LYRIC_TEXT, lyricText);
+
+                if (extend == Lyric.Extend.START) {
+                    XML.writeEmptyTag(pw, MusicXmlTags.EXTEND,
+                        MusicXmlTags.ATTR_TYPE, SyllabicMapping.forExtend(extend));
+                }
+            }
+
+            XML.dedent();
+            XML.writeEndTag(pw, MusicXmlTags.LYRIC);
+        }
     }
 
     // -------------------------------------------------------------------------

@@ -77,6 +77,14 @@ final class MusicXmlTags {
     static final String SLIDE         = "slide";
     static final String FALLOFF       = "falloff";
 
+    // Element names — lyric subtree. ATTR_NUMBER (verse number) and ATTR_TYPE
+    // (extend type) are shared, general-purpose attribute constants declared
+    // below; they are not redeclared here.
+    static final String LYRIC       = "lyric";
+    static final String SYLLABIC    = "syllabic";
+    static final String LYRIC_TEXT  = "text";
+    static final String EXTEND      = "extend";
+
     // Element names — span subtree (beam, tie, tuplet, hairpin, trill, ending).
     static final String BEAM           = "beam";
     static final String TIE            = "tie";

@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
@@ -119,6 +120,24 @@ class LyricTest extends UnitTest {
     void testInvariantRejectsCompoundOnContinueCarrier() {
         assertThatThrownBy(() -> new Lyric(1, "", Lyric.Extend.CONTINUE, null, true))
             .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void testInvariantRejectsCompoundOnNonContinuingSyllabic() {
+        assertThatThrownBy(() -> new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, true))
+            .isInstanceOf(IllegalStateException.class);
+
+        assertThatThrownBy(() -> new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.END, true))
+            .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void testInvariantAcceptsCompoundOnContinuingSyllabic() {
+        assertThatCode(() -> new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, true))
+            .doesNotThrowAnyException();
+
+        assertThatCode(() -> new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, true))
+            .doesNotThrowAnyException();
     }
 
     // --- Phase 7: typographic normalization seam ---

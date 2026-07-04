@@ -23,7 +23,7 @@ package songscribe.ui.component;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.Constants;
+import songscribe.Constants;
 import songscribe.util.GraphicUtils;
 
 public final class StartFrame {

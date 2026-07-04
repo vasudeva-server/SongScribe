@@ -175,7 +175,7 @@ The `unofficial-translation` flag qualifies the translated lyrics but is not dis
 | verse number (`XML_LYRIC_NUMBER`) | `<lyric number="N">` | Native |
 | syllabic (single/begin/middle/end) (`XML_SYLLABIC`) | `<syllabic>` | Native |
 | text (`XML_LYRIC_TEXT`) | `<text>` | Native |
-| compound-word marker (`COMPOUND_WORD_MARKER`) | `<elision>` (native compound-syllable mechanism) | Native |
+| compound-word marker (`COMPOUND_WORD_MARKER`) | non-breaking hyphen (`Constants.NON_BREAKING_HYPHEN`) appended within `<text>` | Native |
 | extender (start/stop/continue) (`XML_EXTEND_TAG`) | `<extend type="...">` | Native |
 
 * * *

@@ -19,6 +19,9 @@
  */
 package songscribe.io.musicxml;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
@@ -29,6 +32,7 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 
@@ -59,22 +63,26 @@ import songscribe.dom.StaffElement;
  *          ├─ TIME_MODIFICATION
  *          │    └─ ACTUAL_NOTES (text)    ─► actualNotes (tuplet grade)
  *          ├─ BEAM (@number, text)        ─► beam1Type (number=1 only)
- *          └─ NOTATIONS
- *               ├─ ARTICULATIONS
- *               │    ├─ ACCENT      ─► ACCENT articulation
- *               │    ├─ STACCATO    ─► STACCATO articulation
- *               │    ├─ FALLOFF     ─► setFall()
- *               │    └─ BREATH_MARK ─► append BREATH_MARK element after note
- *               ├─ FERMATA            ─► FermataAttachment
- *               ├─ DYNAMICS
- *               │    └─ DYNAMIC_MARK ─► DynamicAttachment
- *               ├─ SLIDE (@type)      ─► slideType (glissando pairing done by
- *               │                        MusicXmlReader.resolveSlide)
- *               ├─ TIED (@type)       ─► tiedStart / tiedStop
- *               ├─ TUPLET (@type,@rel-y) ─► tupletStart / tupletStop
- *               └─ ORNAMENTS
- *                    ├─ TRILL_MARK        ─► (decorative; pairing via WAVY_LINE)
- *                    └─ WAVY_LINE (@type) ─► trillStart / trillStop
+ *          ├─ NOTATIONS
+ *          │    ├─ ARTICULATIONS
+ *          │    │    ├─ ACCENT      ─► ACCENT articulation
+ *          │    │    ├─ STACCATO    ─► STACCATO articulation
+ *          │    │    ├─ FALLOFF     ─► setFall()
+ *          │    │    └─ BREATH_MARK ─► append BREATH_MARK element after note
+ *          │    ├─ FERMATA            ─► FermataAttachment
+ *          │    ├─ DYNAMICS
+ *          │    │    └─ DYNAMIC_MARK ─► DynamicAttachment
+ *          │    ├─ SLIDE (@type)      ─► slideType (glissando pairing done by
+ *          │    │                        MusicXmlReader.resolveSlide)
+ *          │    ├─ TIED (@type)       ─► tiedStart / tiedStop
+ *          │    ├─ TUPLET (@type,@rel-y) ─► tupletStart / tupletStop
+ *          │    └─ ORNAMENTS
+ *          │         ├─ TRILL_MARK        ─► (decorative; pairing via WAVY_LINE)
+ *          │         └─ WAVY_LINE (@type) ─► trillStart / trillStop
+ *          └─ LYRIC (@number)             ─► one pending Lyric per verse
+ *               ├─ SYLLABIC (text)        ─► syllabic token
+ *               ├─ LYRIC_TEXT (text)      ─► syllable text (compound marker stripped)
+ *               └─ EXTEND (@type)         ─► melisma extender state
  * </pre>
  *
  * <p>The span-marker fields ({@code beam1Type}, {@code tiedStart}/{@code
@@ -142,6 +150,20 @@ final class NoteAccumulator {
     private boolean trillRelativeYPresent = false;
     private double trillRelativeYTenths = 0.0;
 
+    // -------------------------------------------------------------------------
+    // Lyric accumulation. Each <lyric> child of this <note> is finalized at
+    // </lyric> into `lyrics` (one Lyric per verse), then copied onto
+    // element.lyrics in appendStaffElement. The scratch fields below hold the
+    // <lyric> currently being parsed; beginLyric resets them at each <lyric> start.
+    // -------------------------------------------------------------------------
+
+    private final List<Lyric> lyrics = new ArrayList<>();
+
+    private int lyricVerse = 1;
+    private String lyricSyllabicToken = "";
+    private String lyricText = "";
+    private Lyric.Extend lyricExtend = Lyric.Extend.NONE;
+
     /**
      * Clears all per-note accumulation fields. Called at every {@code <note>} start.
      */
@@ -179,6 +201,10 @@ final class NoteAccumulator {
         trillStop = false;
         trillRelativeYPresent = false;
         trillRelativeYTenths = 0.0;
+
+        // The accumulated lyrics are note-scoped: clearing them here is what stops
+        // one note's <lyric> children from bleeding onto the following note.
+        lyrics.clear();
     }
 
     // -------------------------------------------------------------------------
@@ -342,6 +368,67 @@ final class NoteAccumulator {
     }
 
     // -------------------------------------------------------------------------
+    // Lyric accumulation — called from MusicXmlReader for each <lyric> subtree.
+    // -------------------------------------------------------------------------
+
+    /**
+     * Begins a fresh {@code <lyric>} for the given verse, clearing the per-lyric
+     * scratch fields so leftover state from the previous {@code <lyric>} cannot
+     * leak into this one.
+     */
+    void beginLyric(int verse) {
+        lyricVerse = verse;
+        lyricSyllabicToken = "";
+        lyricText = "";
+        lyricExtend = Lyric.Extend.NONE;
+    }
+
+    void setLyricSyllabicToken(String syllabicToken) {
+        lyricSyllabicToken = syllabicToken;
+    }
+
+    void setLyricText(String text) {
+        lyricText = text;
+    }
+
+    void setLyricExtend(Lyric.Extend extend) {
+        lyricExtend = extend;
+    }
+
+    /**
+     * Finalizes the {@code <lyric>} currently being parsed into a {@link Lyric}
+     * and appends it to this note's pending list. Mirrors
+     * {@code StaffElementIO.endElement11}'s lyric-close branch: STOP/CONTINUE
+     * carriers get a null syllabic and empty text; for BEGIN/MIDDLE syllabics a
+     * trailing compound-word marker is stripped and {@code compound} set. The
+     * {@link Lyric} constructor re-validates the carrier/syllabic contract.
+     */
+    void endLyric() {
+        Lyric.@Nullable Syllabic syllabic;
+        var text = lyricText;
+        var compound = false;
+
+        if (Lyric.isCarrier(lyricExtend)) {
+            // Carriers mark a melisma boundary on a note with no text of its own.
+            syllabic = null;
+            text = "";
+        } else {
+            syllabic = SyllabicMapping.forSyllabicToken(lyricSyllabicToken);
+
+            // A trailing compound-word marker is only meaningful on a syllable
+            // that continues into the next (BEGIN/MIDDLE); strip it and flag
+            // compound so the boundary round-trips.
+            if (Lyric.syllabicContinues(syllabic)) {
+                var stripped = Lyric.stripCompoundMarker(text);
+                text = stripped.text();
+                compound = stripped.hadMarker();
+            }
+        }
+
+        lyrics.add(new Lyric(lyricVerse, text, lyricExtend, syllabic, compound));
+    }
+
+    // -------------------------------------------------------------------------
     // Accessors — read by MusicXmlReader's breath-mark logic
     // -------------------------------------------------------------------------
 
@@ -471,6 +558,10 @@ final class NoteAccumulator {
         if (hasFall) {
             element.setFall();
         }
+
+        // Copy this note's accumulated lyrics onto the element; each was already
+        // constructed (and validated) at its </lyric> by endLyric.
+        element.lyrics.addAll(lyrics);
 
         return element;
     }

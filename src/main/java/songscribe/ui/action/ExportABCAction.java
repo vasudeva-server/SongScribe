@@ -45,7 +45,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
-import songscribe.ui.Constants;
+import songscribe.Constants;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.FermataAttachment;

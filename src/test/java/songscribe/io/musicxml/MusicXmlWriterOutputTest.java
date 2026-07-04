@@ -37,12 +37,15 @@ import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.layout.Ending;
+import songscribe.Constants;
 
 /**
  * Writer-output fidelity cases: assertions on the emitted MusicXML that the
@@ -107,6 +110,19 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         var nodes = doc.getElementsByTagName(childTag);
 
         return nodes.getLength() == 0 ? null : nodes.item(0).getTextContent().trim();
+    }
+
+    /**
+     * Returns the untrimmed text content of the first {@code <childTag>} descendant
+     * of {@code lyric}, or {@code null} if none is present. Unlike
+     * {@link #firstElementText}, this does not trim: the compound-word marker
+     * (U+2011) appended to {@code <text>} is not whitespace, but trimming is
+     * avoided here on principle since a lyric's exact text content is the point
+     * under test.
+     */
+    private static @Nullable String lyricChildText(Element lyric, String childTag) {
+        var nodes = lyric.getElementsByTagName(childTag);
+        return nodes.getLength() == 0 ? null : nodes.item(0).getTextContent();
     }
 
     /**
@@ -486,6 +502,154 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         var validator = new MusicXmlSchemaValidator();
         assertThatCode(() -> validator.validate(xml))
             .as("a song with all six span types must be schema-valid")
+            .doesNotThrowAnyException();
+    }
+
+    // -- Phase 6, Task 2b: lyric writer output --
+
+    /**
+     * Builds one line with six notes, each carrying a distinct representative
+     * {@code <lyric>} form: a plain syllable, a compound-word boundary, a melisma
+     * start, a text-less STOP carrier, a text-less CONTINUE carrier, and a note
+     * with two verses. Shared by the raw-output shape test and the schema-valid
+     * gate so both exercise the same matrix of forms.
+     */
+    private static Song buildLyricMatrixSong() {
+        return buildSong(line -> {
+            var plainSyllable = ElementType.CROTCHET.newInstance();
+            plainSyllable.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "Ky", Lyric.Extend.NONE);
+            line.addElement(plainSyllable);
+
+            var compoundSyllable = ElementType.CROTCHET.newInstance();
+            compoundSyllable.setLyricForVerse(1, Lyric.Syllabic.BEGIN, true, "self", Lyric.Extend.NONE);
+            line.addElement(compoundSyllable);
+
+            var extenderStart = ElementType.CROTCHET.newInstance();
+            extenderStart.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "oh", Lyric.Extend.START);
+            line.addElement(extenderStart);
+
+            var stopCarrier = ElementType.CROTCHET.newInstance();
+            stopCarrier.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+            line.addElement(stopCarrier);
+
+            var continueCarrier = ElementType.CROTCHET.newInstance();
+            continueCarrier.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+            line.addElement(continueCarrier);
+
+            var multiVerse = ElementType.CROTCHET.newInstance();
+            multiVerse.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "one", Lyric.Extend.NONE);
+            multiVerse.setLyricForVerse(2, Lyric.Syllabic.SINGLE, false, "two", Lyric.Extend.NONE);
+            line.addElement(multiVerse);
+        });
+    }
+
+    /**
+     * Task 2b — Raw lyric output shapes: asserts the emitted {@code <lyric>}
+     * element structure for the six representative forms in
+     * {@link #buildLyricMatrixSong()}. The round-trip tests confirm the
+     * reconstructed {@link Lyric} values; this test instead pins the exact emitted
+     * element shape — the carrier's absent {@code <syllabic>}/{@code <text>}, or the
+     * raw U+2011 marker character inside {@code <text>} — which a value-level
+     * round-trip cannot observe.
+     */
+    @Test
+    void testLyricWriterOutputShapes() throws Exception {
+        var xml = writeToString(buildLyricMatrixSong());
+        var factory = DocumentBuilderFactory.newInstance();
+        var builder = factory.newDocumentBuilder();
+        var doc = builder.parse(new InputSource(new StringReader(xml)));
+        var notes = doc.getElementsByTagName("note");
+
+        // Note 0: plain syllable — <syllabic>begin</syllabic><text>Ky</text>, no <extend>.
+        var plainLyrics = ((Element) notes.item(0)).getElementsByTagName("lyric");
+        assertThat(plainLyrics.getLength()).as("plain-syllable note must carry exactly one <lyric>").isEqualTo(1);
+
+        var plainLyric = (Element) plainLyrics.item(0);
+        assertThat(plainLyric.getAttribute("number")).as("plain syllable: verse number").isEqualTo("1");
+        assertThat(lyricChildText(plainLyric, "syllabic")).as("plain syllable: <syllabic>").isEqualTo("begin");
+        assertThat(lyricChildText(plainLyric, "text")).as("plain syllable: <text>").isEqualTo("Ky");
+        assertThat(plainLyric.getElementsByTagName("extend").getLength())
+            .as("plain syllable: no <extend>")
+            .isEqualTo(0);
+
+        // Note 1: compound-word boundary — <text> carries the U+2011 marker.
+        var compoundLyric = (Element) ((Element) notes.item(1)).getElementsByTagName("lyric").item(0);
+        assertThat(lyricChildText(compoundLyric, "syllabic")).as("compound syllable: <syllabic>").isEqualTo("begin");
+        assertThat(lyricChildText(compoundLyric, "text"))
+            .as("compound syllable: <text> carries the compound-word marker")
+            .isEqualTo("self" + Constants.NON_BREAKING_HYPHEN);
+
+        // Note 2: extender start — <extend type="start"/> after <syllabic>/<text>.
+        var extenderLyric = (Element) ((Element) notes.item(2)).getElementsByTagName("lyric").item(0);
+        assertThat(lyricChildText(extenderLyric, "syllabic")).as("extender start: <syllabic>").isEqualTo("single");
+        assertThat(lyricChildText(extenderLyric, "text")).as("extender start: <text>").isEqualTo("oh");
+        var extenderStartTag = (Element) extenderLyric.getElementsByTagName("extend").item(0);
+        assertThat(extenderStartTag.getAttribute("type")).as("extender start: <extend type>").isEqualTo("start");
+
+        // Note 3: text-less STOP carrier — no <syllabic>/<text>, only <extend type="stop"/>.
+        var stopLyric = (Element) ((Element) notes.item(3)).getElementsByTagName("lyric").item(0);
+        assertThat(stopLyric.getElementsByTagName("syllabic").getLength())
+            .as("STOP carrier: no <syllabic>")
+            .isEqualTo(0);
+        assertThat(stopLyric.getElementsByTagName("text").getLength())
+            .as("STOP carrier: no <text>")
+            .isEqualTo(0);
+        var stopExtend = (Element) stopLyric.getElementsByTagName("extend").item(0);
+        assertThat(stopExtend.getAttribute("type")).as("STOP carrier: <extend type>").isEqualTo("stop");
+
+        // Note 4: text-less CONTINUE carrier — same shape, type="continue".
+        var continueLyric = (Element) ((Element) notes.item(4)).getElementsByTagName("lyric").item(0);
+        assertThat(continueLyric.getElementsByTagName("syllabic").getLength())
+            .as("CONTINUE carrier: no <syllabic>")
+            .isEqualTo(0);
+        assertThat(continueLyric.getElementsByTagName("text").getLength())
+            .as("CONTINUE carrier: no <text>")
+            .isEqualTo(0);
+        var continueExtend = (Element) continueLyric.getElementsByTagName("extend").item(0);
+        assertThat(continueExtend.getAttribute("type")).as("CONTINUE carrier: <extend type>").isEqualTo("continue");
+
+        // Note 5: multi-verse — two <lyric> children, number="1" then number="2".
+        var multiVerseLyrics = ((Element) notes.item(5)).getElementsByTagName("lyric");
+        assertThat(multiVerseLyrics.getLength()).as("multi-verse note: two <lyric> children").isEqualTo(2);
+        assertThat(((Element) multiVerseLyrics.item(0)).getAttribute("number"))
+            .as("multi-verse note: first <lyric number>")
+            .isEqualTo("1");
+        assertThat(((Element) multiVerseLyrics.item(1)).getAttribute("number"))
+            .as("multi-verse note: second <lyric number>")
+            .isEqualTo("2");
+    }
+
+    /**
+     * A note with no lyrics must emit no {@code <lyric>} child at all. This guards
+     * the writer's empty-list early return; a value-level round-trip cannot observe
+     * it, since an absent {@code <lyric>} and an empty lyric list reload identically.
+     */
+    @Test
+    void testNoteWithoutLyricsEmitsNoLyricElement() throws Exception {
+        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var xml = writeToString(song);
+        var doc = DocumentBuilderFactory.newInstance()
+            .newDocumentBuilder()
+            .parse(new InputSource(new StringReader(xml)));
+
+        assertThat(doc.getElementsByTagName("lyric").getLength())
+            .as("a lyric-free note must emit no <lyric> element")
+            .isZero();
+    }
+
+    /**
+     * Task 2b — Schema-valid gate for lyric-bearing output: {@code roundTrip()}
+     * does not auto-validate, so schema conformance (the {@code <lyric>} content
+     * model, and its position after {@code <notations>} within {@code <note>}) needs
+     * its own assertion, covering the same matrix of forms as
+     * {@link #testLyricWriterOutputShapes()}.
+     */
+    @Test
+    void testLyricsWriterOutputIsSchemaValid() throws Exception {
+        var xml = writeToString(buildLyricMatrixSong());
+        var validator = new MusicXmlSchemaValidator();
+        assertThatCode(() -> validator.validate(xml))
+            .as("a song with lyric-bearing notes (plain, compound, extender, carriers, multi-verse) must be schema-valid")
             .doesNotThrowAnyException();
     }
 }
