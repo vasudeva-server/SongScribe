@@ -39,8 +39,14 @@ import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.dom.SongMetadata;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
+import songscribe.io.DocumentValidation;
+import songscribe.io.SongLoadResult;
+import songscribe.util.DateUtils;
 
 /**
  * SAX reader that parses MusicXML 4.0 documents produced by {@link MusicXmlWriter}
@@ -92,6 +98,9 @@ public final class MusicXmlReader extends DefaultHandler {
     // Measure-level tempo direction state machine — see MetronomeResolver.
     private final MetronomeResolver metronome = new MetronomeResolver();
 
+    // Measure-level annotation direction state machine — see AnnotationResolver.
+    private final AnnotationResolver annotations = new AnnotationResolver();
+
     // Resolves <ending> markers collected on barlines into Ending range spans
     // on the current line — see EndingResolver.
     private final EndingResolver endings = new EndingResolver(this);
@@ -142,6 +151,100 @@ public final class MusicXmlReader extends DefaultHandler {
     private final NoteAccumulator note = new NoteAccumulator();
 
     // -------------------------------------------------------------------------
+    // Credit-reconstruction state — accumulated per <credit> subtree and routed
+    // at </credit> (see dispatchCredit). The subtitle is the one canonical head
+    // field carried by a credit (there is no <movement-*> equivalent); it is held
+    // here and folded into SongMetadata at the terminal </score-partwise>.
+    // -------------------------------------------------------------------------
+
+    // The <credit-type> text of the credit currently being read.
+    private String creditType = "";
+
+    // The <credit-words> text of the credit currently being read.
+    private String creditWords = "";
+
+    // The raw relative-y attribute of the current <credit-words>, or null when
+    // absent. Only attribution credits carry it (see MusicXmlWriter.writeCredit).
+    @Nullable
+    private String creditWordsRelativeYRaw = null;
+
+    // The subtitle recovered from the subtitle credit; empty when the document
+    // carries no subtitle credit (a blank subtitle is never written, so absent
+    // and empty are indistinguishable). Folded into SongMetadata at
+    // </score-partwise>.
+    private String subtitle = "";
+
+    // True once the attribution Y offset has been recovered. The writer emits the
+    // same relative-y on every attribution credit, so only the first is read.
+    private boolean attributionOffsetRead = false;
+
+    // -------------------------------------------------------------------------
+    // Head-metadata scratch — accumulated from <movement-*> and <identification>
+    // (creators + <miscellaneous> fields) and assembled, together with the
+    // credit-derived subtitle above, into a single SongMetadata record at the
+    // terminal </score-partwise> (see applyHeadMetadata). Defaults mirror the
+    // SongMetadata defaults so an absent element leaves its field at the value a
+    // blank document would carry. Write-forward head elements (<rights>,
+    // <software>, <encoding-date>, <supports>) are consumed but not read.
+    // -------------------------------------------------------------------------
+
+    private String headTitle = "";
+    private String headNumber = "";
+    private String headPlace = "";
+
+    // Composer/lyricist default to empty; SongMetadata coerces empty to
+    // SRI_CHINMOY, matching the value a document with no <creator> would carry.
+    private String headComposer = "";
+    private String headLyricist = "";
+
+    // Set true when a <creator type="arranger"> is seen; the flag is the only
+    // information the arranger creator carries (its text is always SRI_CHINMOY).
+    private boolean headArrangement = false;
+
+    private boolean headUnofficialTranslation = false;
+    private Song.LyricsSource headLyricsSource = Song.LyricsSource.LYRICIST;
+
+    // Composition date (composition-date misc-field).
+    private String headYear = "";
+    private int headMonth = 0;
+    private int headDay = 0;
+
+    // Lyrics/words date (lyrics-date misc-field).
+    private String headWordsYear = "";
+    private int headWordsMonth = 0;
+    private int headWordsDay = 0;
+
+    // The type attribute of the <creator> currently being read, routed at
+    // </creator>; null when the element omits it (then ignored).
+    @Nullable
+    private String creatorType = null;
+
+    // The name attribute of the <miscellaneous-field> currently being read,
+    // routed at </miscellaneous-field>; null when the element omits it.
+    @Nullable
+    private String miscFieldName = null;
+
+    // -------------------------------------------------------------------------
+    // Defaults-reconstruction state — the document fonts recovered from
+    // <defaults> (<word-font> → ANNOTATION, <lyric-font> → LYRICS) and the
+    // <miscellaneous> sub-attribution-font/-size fields (→ SUB_ATTRIBUTION).
+    // Starts from the canonical default set; each recovered role overrides one
+    // entry. A document with no <defaults> fonts leaves this at the defaults,
+    // which is returned as-is via SongLoadResult.Success. The line width rides in
+    // <page-width> and the row-height delta in a misc-field; both are applied
+    // straight onto the song.
+    // -------------------------------------------------------------------------
+
+    private final DocumentFonts documentFonts = DocumentFonts.defaultFonts();
+
+    // The sub-attribution font arrives as two separate <miscellaneous-field>s
+    // (family, then size); both must be present before the role can be resolved.
+    @Nullable
+    private String subAttributionFontFamily = null;
+    @Nullable
+    private Integer subAttributionFontSize = null;
+
+    // -------------------------------------------------------------------------
     // Public API
     // -------------------------------------------------------------------------
 
@@ -160,19 +263,24 @@ public final class MusicXmlReader extends DefaultHandler {
 
     /**
      * Parses a MusicXML document from the given {@link InputSource} and returns
-     * the resulting {@link Song}.
+     * the resulting {@link SongLoadResult.Success} (the parsed song plus its
+     * document fonts; the warning is always {@code null}, as MusicXML parsing has
+     * no load-warning path — failure surfaces as a thrown exception).
+     * <p>
+     * When the document carries no {@code <defaults>} font block, the result's
+     * fonts default to {@link DocumentFonts#defaultFonts()}.
      *
      * @param source the MusicXML input to parse
-     * @return the parsed song
+     * @return the parsed song plus its document fonts
      * @throws IOException  on I/O errors
      * @throws SAXException on parse errors
      */
-    public static Song read(InputSource source) throws IOException, SAXException {
+    public static SongLoadResult.Success read(InputSource source) throws IOException, SAXException {
         try {
             var parser = PARSER_FACTORY.newSAXParser();
             var handler = new MusicXmlReader();
             parser.parse(source, handler);
-            return handler.getSong();
+            return new SongLoadResult.Success(handler.getSong(), handler.documentFonts, null);
         } catch (ParserConfigurationException e) {
             throw new SAXException("Failed to create SAX parser", e);
         }
@@ -180,14 +288,14 @@ public final class MusicXmlReader extends DefaultHandler {
 
     /**
      * Parses a MusicXML document from the given {@link File} and returns the
-     * resulting {@link Song}.
+     * resulting {@link SongLoadResult.Success}.
      *
      * @param file the MusicXML file to parse
-     * @return the parsed song
+     * @return the parsed song plus its document fonts
      * @throws IOException  on I/O errors
      * @throws SAXException on parse errors
      */
-    public static Song read(File file) throws IOException, SAXException {
+    public static SongLoadResult.Success read(File file) throws IOException, SAXException {
         return read(new InputSource(file.toURI().toString()));
     }
 
@@ -222,10 +330,93 @@ public final class MusicXmlReader extends DefaultHandler {
                 }
             }
             case SCORE_PARTWISE -> {
-                if (qName.equals(MusicXmlTags.PART_LIST)) {
+                if (qName.equals(MusicXmlTags.MOVEMENT_TITLE)) {
+                    where = Where.MOVEMENT_TITLE;
+                } else if (qName.equals(MusicXmlTags.MOVEMENT_NUMBER)) {
+                    where = Where.MOVEMENT_NUMBER;
+                } else if (qName.equals(MusicXmlTags.IDENTIFICATION)) {
+                    where = Where.IDENTIFICATION;
+                } else if (qName.equals(MusicXmlTags.DEFAULTS)) {
+                    where = Where.DEFAULTS;
+                } else if (qName.equals(MusicXmlTags.PART_LIST)) {
                     where = Where.PART_LIST;
                 } else if (qName.equals(MusicXmlTags.PART)) {
                     where = Where.PART;
+                } else if (qName.equals(MusicXmlTags.CREDIT)) {
+                    // Reset the per-credit accumulators; the subtree's
+                    // <credit-type> and <credit-words> fill them and </credit>
+                    // routes on them.
+                    creditType = "";
+                    creditWords = "";
+                    creditWordsRelativeYRaw = null;
+                    where = Where.CREDIT;
+                }
+            }
+            case IDENTIFICATION -> {
+                if (qName.equals(MusicXmlTags.CREATOR)) {
+                    // Capture the routing type here; the name text arrives at
+                    // </creator>.
+                    creatorType = attributes.getValue(MusicXmlTags.ATTR_TYPE);
+                    where = Where.CREATOR;
+                } else if (qName.equals(MusicXmlTags.RIGHTS)) {
+                    where = Where.RIGHTS;
+                } else if (qName.equals(MusicXmlTags.ENCODING)) {
+                    where = Where.ENCODING;
+                } else if (qName.equals(MusicXmlTags.MISCELLANEOUS)) {
+                    where = Where.MISCELLANEOUS;
+                }
+            }
+            case ENCODING -> {
+                // <software>/<encoding-date> are write-forward: their subtrees are
+                // consumed so their text does not leak, but nothing is read back.
+                // <supports> is an empty element with no state, skipped in place.
+                if (qName.equals(MusicXmlTags.SOFTWARE)) {
+                    where = Where.SOFTWARE;
+                } else if (qName.equals(MusicXmlTags.ENCODING_DATE)) {
+                    where = Where.ENCODING_DATE;
+                }
+            }
+            case MISCELLANEOUS -> {
+                if (qName.equals(MusicXmlTags.MISCELLANEOUS_FIELD)) {
+                    // Capture the routing name here; the value text arrives at
+                    // </miscellaneous-field>.
+                    miscFieldName = attributes.getValue(MusicXmlTags.ATTR_NAME);
+                    where = Where.MISCELLANEOUS_FIELD;
+                }
+            }
+            case DEFAULTS -> {
+                // <scaling>/<staff-layout> and their leaves are write-forward and
+                // consumed by their own states; <music-font>/<lyric-language> are
+                // empty write-forward elements skipped in place. Only <page-layout>
+                // (for <page-width>) and the <word-font>/<lyric-font> roles read.
+                if (qName.equals(MusicXmlTags.SCALING)) {
+                    where = Where.DEFAULTS_SCALING;
+                } else if (qName.equals(MusicXmlTags.PAGE_LAYOUT)) {
+                    where = Where.DEFAULTS_PAGE_LAYOUT;
+                } else if (qName.equals(MusicXmlTags.STAFF_LAYOUT)) {
+                    where = Where.DEFAULTS_STAFF_LAYOUT;
+                } else if (qName.equals(MusicXmlTags.WORD_FONT)) {
+                    setDocumentFont(FontKey.ANNOTATION, attributes);
+                } else if (qName.equals(MusicXmlTags.LYRIC_FONT)) {
+                    setDocumentFont(FontKey.LYRICS, attributes);
+                }
+            }
+            case DEFAULTS_PAGE_LAYOUT -> {
+                // <page-height> is write-forward, consumed by staying in place;
+                // <page-width> carries the model line width.
+                if (qName.equals(MusicXmlTags.PAGE_WIDTH)) {
+                    where = Where.DEFAULTS_PAGE_WIDTH;
+                }
+            }
+            case CREDIT -> {
+                if (qName.equals(MusicXmlTags.CREDIT_TYPE)) {
+                    where = Where.CREDIT_TYPE;
+                } else if (qName.equals(MusicXmlTags.CREDIT_WORDS)) {
+                    // relative-y is captured here from the attributes; the text
+                    // arrives at </credit-words>. Font attributes are write-forward
+                    // (recovered from <defaults>) and are not read.
+                    creditWordsRelativeYRaw = attributes.getValue(MusicXmlTags.ATTR_RELATIVE_Y);
+                    where = Where.CREDIT_WORDS;
                 }
             }
             case PART_LIST -> {
@@ -249,6 +440,12 @@ public final class MusicXmlReader extends DefaultHandler {
                     barlines.beginBarline(attributes.getValue(MusicXmlTags.ATTR_LOCATION));
                     where = Where.BARLINE;
                 } else if (qName.equals(MusicXmlTags.DIRECTION)) {
+                    // A placement attribute (and no <metronome>) marks this
+                    // direction as an annotation; tempo/metric-mod/wedge
+                    // directions never carry placement — see AnnotationResolver.
+                    annotations.beginDirection(
+                        AnnotationResolver.placementFor(attributes.getValue(MusicXmlTags.ATTR_PLACEMENT))
+                    );
                     where = Where.DIRECTION;
                 } else if (qName.equals(MusicXmlTags.NOTE)) {
                     startNote(attributes);
@@ -297,6 +494,18 @@ public final class MusicXmlReader extends DefaultHandler {
                     metronome.beginMetronome(attributes);
                     where = Where.METRONOME;
                 } else if (qName.equals(MusicXmlTags.WORDS)) {
+                    // For an annotation direction, the halign and relative-y
+                    // recover the annotation's alignment and user Y offset; the
+                    // text arrives at </words>.
+                    if (annotations.isAnnotationDirection()) {
+                        annotations.setXAlignment(
+                            TextAlignmentMapping.xAlignment(attributes.getValue(MusicXmlTags.ATTR_HALIGN))
+                        );
+                        annotations.setUserYOffsetSs(
+                            optionalTenthsAttrToSs(attributes, MusicXmlTags.ATTR_RELATIVE_Y)
+                        );
+                    }
+
                     where = Where.WORDS;
                 }
             }
@@ -774,7 +983,14 @@ public final class MusicXmlReader extends DefaultHandler {
             }
             case WORDS -> {
                 if (qName.equals(MusicXmlTags.WORDS)) {
-                    metronome.setWords(value.toString());
+                    // An annotation direction's words build its Annotation; a
+                    // tempo direction's words are its optional description.
+                    if (annotations.isAnnotationDirection()) {
+                        annotations.setWords(value.toString());
+                    } else {
+                        metronome.setWords(value.toString());
+                    }
+
                     where = Where.DIRECTION_TYPE;
                 }
             }
@@ -790,9 +1006,13 @@ public final class MusicXmlReader extends DefaultHandler {
             }
             case DIRECTION -> {
                 if (qName.equals(MusicXmlTags.DIRECTION)) {
-                    // Build any accumulated metronome tempo now; it binds to the
-                    // next note (see MetronomeResolver).
+                    // Build any accumulated metronome tempo or annotation now; each
+                    // binds to the next note (see MetronomeResolver /
+                    // AnnotationResolver). Exactly one builds per direction: a
+                    // metronome direction carries no placement, an annotation
+                    // direction carries no <metronome>.
                     metronome.endDirection();
+                    annotations.endDirection();
                     where = Where.MEASURE;
                 }
             }
@@ -810,6 +1030,7 @@ public final class MusicXmlReader extends DefaultHandler {
                     wedges.flushPendingWedge();
                     metronome.flushPendingTempo();
                     metronome.flushPendingBeatChange();
+                    annotations.flushPendingAnnotation();
                     endings.flushPendingEnding();
                     // Commit the final line now that all its elements are in place.
                     commitCurrentLine();
@@ -826,14 +1047,129 @@ public final class MusicXmlReader extends DefaultHandler {
                     where = Where.SCORE_PARTWISE;
                 }
             }
+            case MOVEMENT_TITLE -> {
+                if (qName.equals(MusicXmlTags.MOVEMENT_TITLE)) {
+                    headTitle = value.toString();
+                    where = Where.SCORE_PARTWISE;
+                }
+            }
+            case MOVEMENT_NUMBER -> {
+                if (qName.equals(MusicXmlTags.MOVEMENT_NUMBER)) {
+                    headNumber = value.toString();
+                    where = Where.SCORE_PARTWISE;
+                }
+            }
+            case IDENTIFICATION -> {
+                if (qName.equals(MusicXmlTags.IDENTIFICATION)) {
+                    where = Where.SCORE_PARTWISE;
+                }
+            }
+            case CREATOR -> {
+                if (qName.equals(MusicXmlTags.CREATOR)) {
+                    applyCreator(value.toString());
+                    where = Where.IDENTIFICATION;
+                }
+            }
+            case RIGHTS -> {
+                // Write-forward (a fixed copyright string); consumed, not read.
+                if (qName.equals(MusicXmlTags.RIGHTS)) {
+                    where = Where.IDENTIFICATION;
+                }
+            }
+            case ENCODING -> {
+                if (qName.equals(MusicXmlTags.ENCODING)) {
+                    where = Where.IDENTIFICATION;
+                }
+            }
+            case SOFTWARE -> {
+                // Write-forward; consumed, not read.
+                if (qName.equals(MusicXmlTags.SOFTWARE)) {
+                    where = Where.ENCODING;
+                }
+            }
+            case ENCODING_DATE -> {
+                // Write-forward; consumed, not read.
+                if (qName.equals(MusicXmlTags.ENCODING_DATE)) {
+                    where = Where.ENCODING;
+                }
+            }
+            case MISCELLANEOUS -> {
+                if (qName.equals(MusicXmlTags.MISCELLANEOUS)) {
+                    where = Where.IDENTIFICATION;
+                }
+            }
+            case MISCELLANEOUS_FIELD -> {
+                if (qName.equals(MusicXmlTags.MISCELLANEOUS_FIELD)) {
+                    applyMiscField(miscFieldName, value.toString());
+                    where = Where.MISCELLANEOUS;
+                }
+            }
+            case DEFAULTS -> {
+                if (qName.equals(MusicXmlTags.DEFAULTS)) {
+                    where = Where.SCORE_PARTWISE;
+                }
+            }
+            case DEFAULTS_SCALING -> {
+                if (qName.equals(MusicXmlTags.SCALING)) {
+                    where = Where.DEFAULTS;
+                }
+            }
+            case DEFAULTS_PAGE_LAYOUT -> {
+                if (qName.equals(MusicXmlTags.PAGE_LAYOUT)) {
+                    where = Where.DEFAULTS;
+                }
+            }
+            case DEFAULTS_PAGE_WIDTH -> {
+                if (qName.equals(MusicXmlTags.PAGE_WIDTH)) {
+                    // page-width (tenths) → line width (staff spaces). Write-forward
+                    // <page-height>/<scaling> are ignored, so the recovered width is
+                    // the sole canonical page-layout value.
+                    if (song != null) {
+                        song.setLineWidthSs(
+                            tenthsToSs(parseDoubleOrThrow(MusicXmlTags.PAGE_WIDTH, value.toString()))
+                        );
+                    }
+
+                    where = Where.DEFAULTS_PAGE_LAYOUT;
+                }
+            }
+            case DEFAULTS_STAFF_LAYOUT -> {
+                if (qName.equals(MusicXmlTags.STAFF_LAYOUT)) {
+                    where = Where.DEFAULTS;
+                }
+            }
+            case CREDIT_TYPE -> {
+                if (qName.equals(MusicXmlTags.CREDIT_TYPE)) {
+                    creditType = value.toString();
+                    where = Where.CREDIT;
+                }
+            }
+            case CREDIT_WORDS -> {
+                if (qName.equals(MusicXmlTags.CREDIT_WORDS)) {
+                    // P-1: read the accumulated text only here, at the end element,
+                    // so a long credit split across multiple SAX characters()
+                    // chunks (footnotes/underlyrics) is not truncated.
+                    creditWords = value.toString();
+                    where = Where.CREDIT;
+                }
+            }
+            case CREDIT -> {
+                if (qName.equals(MusicXmlTags.CREDIT)) {
+                    dispatchCredit();
+                    where = Where.SCORE_PARTWISE;
+                }
+            }
             case SCORE_PARTWISE -> {
                 if (qName.equals(MusicXmlTags.SCORE_PARTWISE)) {
                     if (song != null) {
-                        // Restore the terminal invariant while tracking is still
-                        // suspended so the fix-up is silent: the writer emits a line's
-                        // closing barline only as a real terminal, but a hand-authored
-                        // or partial file may leave the last line ending in a note or a
+                        // Assemble the accumulated head scratch and the credit-
+                        // derived subtitle into SongMetadata, then restore the
+                        // terminal invariant while tracking is still suspended so
+                        // the fix-ups are silent: the writer emits a line's closing
+                        // barline only as a real terminal, but a hand-authored or
+                        // partial file may leave the last line ending in a note or a
                         // non-terminal barline.
+                        applyHeadMetadata();
                         song.installTerminalAfterParsing();
                         applyInitialTempo();
                         song.endSuspendMutationTracking();
@@ -975,6 +1311,7 @@ public final class MusicXmlReader extends DefaultHandler {
         wedges.resolveWedge(currentLine, element);
         metronome.resolveTempo(element);
         metronome.resolveBeatChange(element);
+        annotations.resolveAnnotation(element);
 
         // A breath-mark attached to this note's <notations> becomes a standalone
         // BREATH_MARK element immediately after the note.
@@ -1052,33 +1389,255 @@ public final class MusicXmlReader extends DefaultHandler {
     }
 
     /**
-     * Parses {@code raw} as an integer, throwing a {@link SAXException} if it
-     * is not a valid integer. Mirrors the behaviour of
-     * {@code DocumentValidation.parseIntOrThrow}.
+     * Routes a fully-read {@code <credit>} by its {@code <credit-type>}. Every
+     * credit routes into exactly one of three classes; the reader treats each
+     * differently. This is the read side of the writer's data-flow contract: the
+     * same value (composer, dates, place) is emitted in BOTH head (canonical) and
+     * a credit (display-only), and the reader MUST take head and ignore the credit
+     * or a hand-edited credit corrupts the model.
+     *
+     * <pre>
+     *                          WRITER                          READER
+     *   Song field ─────────────┬─────────────────┐
+     *                           │                 │
+     *    ┌──────────────────────▼───┐   ┌─────────▼────────────┐
+     *    │ HEAD (identification/     │   │ CREDIT (&lt;credit&gt;)    │
+     *    │  movement/miscellaneous)  │   │  fonts + positions   │
+     *    └──────────┬────────────────┘   └───┬──────────────┬───┘
+     *               │                         │              │
+     *    ┌──────────▼──────────┐  ┌───────────▼───┐  ┌───────▼─────────────┐
+     *    │ CANONICAL           │  │ DISPLAY-ONLY  │  │ WRITE-FORWARD       │
+     *    │ read → model        │  │ ignored;      │  │ ignored;            │
+     *    │                     │  │ re-derived    │  │ recomputed/constant │
+     *    ├─────────────────────┤  ├───────────────┤  ├─────────────────────┤
+     *    │ subtitle credit     │  │ title credit  │  │ rights, software,   │
+     *    │ 4 score-below credit│  │ composer/     │  │ encoding-date,      │
+     *    │ attribution rel-y   │  │  lyricist/    │  │ supports, scaling,  │
+     *    │                     │  │  arranger/    │  │ music-font,         │
+     *    │                     │  │  date/rights/ │  │ default-x/default-y │
+     *    │                     │  │  place credits│  │ (external renderer) │
+     *    └─────────────────────┘  └───────────────┘  └─────────────────────┘
+     * </pre>
      */
-    private static int parseIntOrThrow(String tag, String raw) throws SAXException {
+    private void dispatchCredit() throws SAXException {
+        var parsedSong = song;
+
+        if (parsedSong == null) {
+            return;
+        }
+
+        switch (creditType) {
+            // Canonical — the subtitle has no <movement-*> equivalent, so the
+            // credit is its source of truth. Held until </score-partwise>, where
+            // it is folded into SongMetadata (there is no setSubtitle mutator).
+            case MusicXmlTags.CREDIT_SUBTITLE -> subtitle = creditWords;
+
+            // Canonical — the four score-below text blocks are standalone Song
+            // fields with direct setters.
+            case MusicXmlTags.CREDIT_UNDERLYRICS -> parsedSong.setUnderLyrics(creditWords);
+            case MusicXmlTags.CREDIT_BANGLA_LYRICS -> parsedSong.setBanglaLyrics(creditWords);
+            case MusicXmlTags.CREDIT_TRANSLATION -> parsedSong.setTranslatedLyrics(creditWords);
+            case MusicXmlTags.CREDIT_FOOTNOTES -> parsedSong.setFootnotes(creditWords);
+
+            // Display-only attribution roles — the text is re-derived from the
+            // head <creator>/<rights>/misc-fields, so it is ignored; only the
+            // shared relative-y (the attribution user Y offset) is recovered, once.
+            case MusicXmlTags.CREDIT_COMPOSER,
+                 MusicXmlTags.CREDIT_LYRICIST,
+                 MusicXmlTags.CREDIT_ARRANGER,
+                 MusicXmlTags.CREDIT_COMPOSITION_DATE,
+                 MusicXmlTags.CREDIT_LYRICS_DATE,
+                 MusicXmlTags.CREDIT_RIGHTS,
+                 MusicXmlTags.CREDIT_PLACE -> readAttributionOffsetOnce(parsedSong);
+
+            // Display-only — the title is re-derived from <movement-*>; ignored.
+            // Unknown credit-types are skipped for the same reason.
+            default -> {
+                // no read state
+            }
+        }
+    }
+
+    /**
+     * Recovers the attribution user Y offset from the current attribution credit's
+     * {@code relative-y}, but only from the first attribution credit that carries
+     * it — the writer emits the same {@code relative-y} on every attribution
+     * credit, so reading it once is sufficient.
+     */
+    private void readAttributionOffsetOnce(Song parsedSong) throws SAXException {
+        if (attributionOffsetRead || creditWordsRelativeYRaw == null) {
+            return;
+        }
+
+        var offsetTenths = parseDoubleOrThrow(MusicXmlTags.ATTR_RELATIVE_Y, creditWordsRelativeYRaw);
+        parsedSong.getAttributionElement().setUserYOffsetSs(tenthsToSs(offsetTenths));
+        attributionOffsetRead = true;
+    }
+
+    /**
+     * Routes a {@code <creator>}'s text by its captured {@code type} attribute:
+     * composer/lyricist into the head scratch, arranger into the arrangement flag
+     * (its text is always {@code SRI_CHINMOY}, so only the presence matters).
+     * Unknown or missing types are ignored.
+     */
+    private void applyCreator(String text) {
+        if (MusicXmlTags.CREATOR_COMPOSER.equals(creatorType)) {
+            headComposer = text;
+        } else if (MusicXmlTags.CREATOR_LYRICIST.equals(creatorType)) {
+            headLyricist = text;
+        } else if (MusicXmlTags.CREATOR_ARRANGER.equals(creatorType)) {
+            headArrangement = true;
+        }
+    }
+
+    /**
+     * Routes a {@code <miscellaneous-field>}'s text by its captured {@code name}
+     * attribute. The head fields go into the metadata scratch; the two dates go
+     * through the shared {@link DateUtils#parseIsoDate} inverse of the writer's
+     * {@code toIsoDate} (a malformed date parses to {@code null} and is treated as
+     * absent, keeping the scratch date fields at their empty defaults). The
+     * defaults residuals — {@code row-height-adjustment} and the sub-attribution
+     * font — are applied straight onto the song / {@link #documentFonts}. Unknown
+     * misc-fields are ignored.
+     */
+    private void applyMiscField(@Nullable String name, String text) throws SAXException {
+        if (MusicXmlTags.MISC_COMPOSITION_DATE.equals(name)) {
+            var parts = DateUtils.parseIsoDate(text);
+
+            if (parts != null) {
+                headYear = parts.year();
+                headMonth = parts.month();
+                headDay = parts.day();
+            }
+        } else if (MusicXmlTags.MISC_LYRICS_DATE.equals(name)) {
+            var parts = DateUtils.parseIsoDate(text);
+
+            if (parts != null) {
+                headWordsYear = parts.year();
+                headWordsMonth = parts.month();
+                headWordsDay = parts.day();
+            }
+        } else if (MusicXmlTags.MISC_COMPOSITION_PLACE.equals(name)) {
+            headPlace = text;
+        } else if (MusicXmlTags.MISC_LYRICS_SOURCE.equals(name)) {
+            headLyricsSource = lyricsSourceOrThrow(text);
+        } else if (MusicXmlTags.MISC_UNOFFICIAL_TRANSLATION.equals(name)) {
+            headUnofficialTranslation = Boolean.parseBoolean(text);
+        } else if (MusicXmlTags.MISC_ROW_HEIGHT_ADJUSTMENT.equals(name)) {
+            // A staff-space delta stored verbatim (the writer omits it when 0).
+            if (song != null) {
+                song.setRowHeightAdjustmentSs(
+                    parseDoubleOrThrow(MusicXmlTags.MISC_ROW_HEIGHT_ADJUSTMENT, text)
+                );
+            }
+        } else if (MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT.equals(name)) {
+            subAttributionFontFamily = text;
+            applySubAttributionFont();
+        } else if (MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT_SIZE.equals(name)) {
+            subAttributionFontSize = parseIntOrThrow(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT_SIZE, text);
+            applySubAttributionFont();
+        }
+    }
+
+    /**
+     * Recovers a document-font role from a {@code <word-font>}/{@code <lyric-font>}
+     * element's {@code font-family}/{@code font-size} attributes into
+     * {@link #documentFonts}. Weight/style are write-forward (not emitted, not
+     * read). An element missing either attribute is left at its default — defensive
+     * only, since the writer always emits both.
+     */
+    private void setDocumentFont(FontKey key, Attributes attributes) throws SAXException {
+        var family = attributes.getValue(MusicXmlTags.ATTR_FONT_FAMILY);
+        var sizeRaw = attributes.getValue(MusicXmlTags.ATTR_FONT_SIZE);
+
+        if (family == null || sizeRaw == null) {
+            return;
+        }
+
+        // font-size is a schema decimal; the writer emits an integer point size.
+        var size = (int) Math.round(parseDoubleOrThrow(MusicXmlTags.ATTR_FONT_SIZE, sizeRaw));
+        documentFonts.setFont(key, family, size);
+    }
+
+    /**
+     * Sets the {@link FontKey#SUB_ATTRIBUTION} role once both its family and size
+     * misc-fields have been read — they arrive as two separate
+     * {@code <miscellaneous-field>}s, so neither half alone can resolve the font.
+     */
+    private void applySubAttributionFont() {
+        if (subAttributionFontFamily != null && subAttributionFontSize != null) {
+            documentFonts.setFont(FontKey.SUB_ATTRIBUTION, subAttributionFontFamily, subAttributionFontSize);
+        }
+    }
+
+    /**
+     * Resolves a {@code lyrics-source} token to a {@link Song.LyricsSource},
+     * throwing a {@link SAXException} on an unknown token. Fails hard rather than
+     * defaulting, matching the reader's {@code parseIntOrThrow}/
+     * {@code parseDoubleOrThrow} convention — the writer only ever emits an enum
+     * constant name, so an unknown token means a corrupt document.
+     */
+    private static Song.LyricsSource lyricsSourceOrThrow(String token) throws SAXException {
         try {
-            return Integer.parseInt(raw.trim());
-        } catch (NumberFormatException e) {
+            return Song.LyricsSource.valueOf(token);
+        } catch (IllegalArgumentException e) {
             throw new SAXException(
-                "Corrupt document: malformed <" + tag + "> value: '" + raw + "'", e
+                "Corrupt document: malformed <" + MusicXmlTags.MISC_LYRICS_SOURCE +
+                "> value: '" + token + "'", e
             );
         }
     }
 
     /**
-     * Parses {@code raw} as a double, throwing a {@link SAXException} if it is not
-     * a valid number. Used for positional attributes (tenths), which MusicXML
-     * permits to be fractional.
+     * Assembles the accumulated head scratch and the credit-derived subtitle into
+     * the song's {@link SongMetadata} at the terminal {@code </score-partwise>},
+     * mirroring {@code SongIO.DocumentReader -> Song.loadFrom} (one all-args
+     * construction). Building the record once here — rather than piecemeal at each
+     * container's end — dissolves the {@code </identification>}-before-
+     * {@code </credit>} ordering hazard (the subtitle credit follows the head), and
+     * needs no {@code setSubtitle}/{@code withSubtitle} mutator (neither exists).
+     * Runs while mutation tracking is still suspended, so the assembly is silent.
+     */
+    private void applyHeadMetadata() {
+        var parsedSong = song;
+
+        if (parsedSong == null) {
+            return;
+        }
+
+        // subtitle is empty when the document carries no subtitle credit,
+        // matching a blank document. The SongMetadata compact constructor
+        // normalizes/coerces every field, so the scratch values need no
+        // pre-normalization here.
+        parsedSong.setMetadata(new SongMetadata(
+            headTitle, headNumber, headPlace,
+            headYear, headMonth, headDay,
+            headComposer, headLyricist, headLyricsSource,
+            headArrangement, headUnofficialTranslation,
+            subtitle,
+            headWordsYear, headWordsMonth, headWordsDay
+        ));
+    }
+
+    /**
+     * Parses {@code raw} (trimmed) as an integer, throwing a {@link SAXException}
+     * if it is not a valid integer. Delegates to the shared
+     * {@link DocumentValidation#parseIntOrThrow}, supplying the reader's logger so
+     * the {@code .mssw} and MusicXML readers report corrupt values one way. The
+     * trim tolerates the surrounding whitespace SAX character data can carry.
+     */
+    private static int parseIntOrThrow(String tag, String raw) throws SAXException {
+        return DocumentValidation.parseIntOrThrow(LOG, tag, raw.trim());
+    }
+
+    /**
+     * Parses {@code raw} (trimmed) as a double, throwing a {@link SAXException} if
+     * it is not a valid number. Used for positional attributes (tenths), which
+     * MusicXML permits to be fractional. Delegates to the shared
+     * {@link DocumentValidation#parseDoubleOrThrow}, supplying the reader's logger.
      */
     static double parseDoubleOrThrow(String attr, String raw) throws SAXException {
-        try {
-            return Double.parseDouble(raw.trim());
-        } catch (NumberFormatException e) {
-            throw new SAXException(
-                "Corrupt document: malformed '" + attr + "' value: '" + raw + "'", e
-            );
-        }
+        return DocumentValidation.parseDoubleOrThrow(LOG, attr, raw.trim());
     }
 
     // -------------------------------------------------------------------------
@@ -1097,6 +1656,38 @@ public final class MusicXmlReader extends DefaultHandler {
         FIFTHS,
         BARLINE,
         BAR_STYLE,
+
+        // Score-header metadata subtree (<movement-*>, <identification> with its
+        // <creator>/<rights>/<encoding>/<miscellaneous> children). Each container
+        // has its own state so its subtree is consumed cleanly and unknown leaves
+        // are skipped; the write-forward leaves (<rights>/<software>/
+        // <encoding-date>) are consumed but not read.
+        MOVEMENT_TITLE,
+        MOVEMENT_NUMBER,
+        IDENTIFICATION,
+        CREATOR,
+        RIGHTS,
+        ENCODING,
+        SOFTWARE,
+        ENCODING_DATE,
+        MISCELLANEOUS,
+        MISCELLANEOUS_FIELD,
+
+        // Score-header <defaults> subtree. <scaling>/<staff-layout> and
+        // <page-height> are write-forward (consumed, not read); <page-width>
+        // carries the line width, and <word-font>/<lyric-font> the document
+        // fonts. <music-font>/<lyric-language> are empty write-forward elements
+        // skipped in place under DEFAULTS.
+        DEFAULTS,
+        DEFAULTS_SCALING,
+        DEFAULTS_PAGE_LAYOUT,
+        DEFAULTS_PAGE_WIDTH,
+        DEFAULTS_STAFF_LAYOUT,
+
+        // Score-header credit subtree (<credit><credit-type>/<credit-words>).
+        CREDIT,
+        CREDIT_TYPE,
+        CREDIT_WORDS,
 
         // Note subtree.
         NOTE,

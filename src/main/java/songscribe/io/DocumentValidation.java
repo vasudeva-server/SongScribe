@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.helpers.MessageFormatter;
 import org.xml.sax.SAXException;
 
-final class DocumentValidation {
+public final class DocumentValidation {
 
     private DocumentValidation() {}
 
@@ -39,7 +39,7 @@ final class DocumentValidation {
         }
     }
 
-    static int parseIntOrThrow(Logger log, String tag, String raw) throws SAXException {
+    public static int parseIntOrThrow(Logger log, String tag, String raw) throws SAXException {
         try {
             return Integer.parseInt(raw);
         } catch (NumberFormatException e) {
@@ -55,7 +55,7 @@ final class DocumentValidation {
         }
     }
 
-    static double parseDoubleOrThrow(Logger log, String tag, String raw) throws SAXException {
+    public static double parseDoubleOrThrow(Logger log, String tag, String raw) throws SAXException {
         try {
             return Double.parseDouble(raw);
         } catch (NumberFormatException e) {

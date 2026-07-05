@@ -113,6 +113,41 @@ final class MusicXmlTags {
     static final String METRONOME_DOT      = "metronome-dot";
     static final String METRONOME_RELATION = "metronome-relation";
 
+    // Element names — head / identification subtree.
+    static final String MOVEMENT_TITLE  = "movement-title";
+    static final String MOVEMENT_NUMBER = "movement-number";
+    static final String IDENTIFICATION  = "identification";
+    static final String CREATOR         = "creator";
+    static final String RIGHTS          = "rights";
+    static final String ENCODING        = "encoding";
+    static final String SOFTWARE        = "software";
+    static final String ENCODING_DATE   = "encoding-date";
+    static final String SUPPORTS        = "supports";
+
+    // Element names — defaults subtree.
+    static final String DEFAULTS       = "defaults";
+    static final String SCALING        = "scaling";
+    static final String MILLIMETERS    = "millimeters";
+    static final String TENTHS         = "tenths";
+    static final String PAGE_LAYOUT    = "page-layout";
+    static final String PAGE_HEIGHT    = "page-height";
+    static final String PAGE_WIDTH     = "page-width";
+    static final String STAFF_LAYOUT   = "staff-layout";
+    static final String STAFF_DISTANCE = "staff-distance";
+    static final String MUSIC_FONT     = "music-font";
+    static final String WORD_FONT      = "word-font";
+    static final String LYRIC_FONT     = "lyric-font";
+    static final String LYRIC_LANGUAGE = "lyric-language";
+
+    // Element names — credit subtree.
+    static final String CREDIT       = "credit";
+    static final String CREDIT_TYPE  = "credit-type";
+    static final String CREDIT_WORDS = "credit-words";
+
+    // Element names — miscellaneous subtree.
+    static final String MISCELLANEOUS       = "miscellaneous";
+    static final String MISCELLANEOUS_FIELD = "miscellaneous-field";
+
     // Attribute names — document structure.
     static final String ATTR_VERSION    = "version";
     static final String ATTR_NEW_SYSTEM = "new-system";
@@ -137,6 +172,19 @@ final class MusicXmlTags {
     // Attribute names — tempo / metronome direction subtree.
     static final String ATTR_TEMPO        = "tempo";
     static final String ATTR_PRINT_OBJECT = "print-object";
+
+    // Attribute names — head / defaults / credit / miscellaneous.
+    static final String ATTR_NAME        = "name";
+    static final String ATTR_FONT_FAMILY = "font-family";
+    static final String ATTR_FONT_SIZE   = "font-size";
+    static final String ATTR_FONT_WEIGHT = "font-weight";
+    static final String ATTR_FONT_STYLE  = "font-style";
+    static final String ATTR_JUSTIFY     = "justify";
+    static final String ATTR_HALIGN      = "halign";
+    static final String ATTR_XML_LANG    = "xml:lang";
+    static final String ATTR_PAGE        = "page";
+    static final String ATTR_PLACEMENT   = "placement";
+    static final String ATTR_ELEMENT     = "element";
 
     // Element content values — tempo / metronome direction subtree. The
     // <metronome-relation> symbol between the two metric-modulation note groups;
@@ -179,4 +227,74 @@ final class MusicXmlTags {
     // ending @number is "1" for the first volta bracket and "2" for the second.
     static final String NUMBER_1 = "1";
     static final String NUMBER_2 = "2";
+
+    // Attribute values — fixed document fonts (write-forward).
+    static final String MUSIC_FONT_FAMILY = "Bravura";
+    static final String MUSIC_FONT_SIZE   = "32";
+
+    // Attribute values — font weight/style (creator/credit/word fonts).
+    static final String WEIGHT_BOLD   = "bold";
+    static final String WEIGHT_NORMAL = "normal";
+    static final String STYLE_ITALIC  = "italic";
+    static final String STYLE_NORMAL  = "normal";
+
+    // Attribute values — scaling / page layout (write-forward, fixed).
+    static final double SCALING_MILLIMETERS = 7.0;
+    static final String SCALING_TENTHS      = "40";
+    static final String PAGE_HEIGHT_TENTHS  = "1596";
+
+    // Attribute values — text alignment (credit / direction words).
+    static final String JUSTIFY_CENTER = "center";
+    static final String HALIGN_LEFT    = "left";
+    static final String HALIGN_CENTER  = "center";
+    static final String HALIGN_RIGHT   = "right";
+
+    // Attribute values — direction placement (credit / annotation).
+    static final String PLACEMENT_ABOVE = "above";
+    static final String PLACEMENT_BELOW = "below";
+
+    // Attribute values — <supports> element tokens (write-forward, always emitted).
+    static final String SUPPORTS_ACCIDENTAL = "accidental";
+    static final String SUPPORTS_BEAM       = "beam";
+    static final String SUPPORTS_STEM       = "stem";
+
+    // Attribute values — <lyric-language xml:lang="…">.
+    static final String LYRIC_LANGUAGE_DEFAULT = "en";
+
+    // Attribute value — xml:lang on the bangla-lyrics <credit-words> (Bangla ISO 639-1 code).
+    static final String CREDIT_LANGUAGE_BANGLA = "bn";
+
+    // Element content values — <creator type="…">.
+    static final String CREATOR_COMPOSER = "composer";
+    static final String CREATOR_LYRICIST = "lyricist";
+    static final String CREATOR_ARRANGER = "arranger";
+
+    // Element content values — <credit-type>.
+    static final String CREDIT_TITLE            = "title";
+    static final String CREDIT_SUBTITLE         = "subtitle";
+    static final String CREDIT_COMPOSER         = "composer";
+    static final String CREDIT_LYRICIST         = "lyricist";
+    static final String CREDIT_ARRANGER         = "arranger";
+    static final String CREDIT_COMPOSITION_DATE = "composition date";
+    static final String CREDIT_LYRICS_DATE      = "lyrics date";
+    static final String CREDIT_RIGHTS           = "rights";
+    static final String CREDIT_PLACE            = "place";
+    static final String CREDIT_UNDERLYRICS      = "underlyrics";
+    static final String CREDIT_BANGLA_LYRICS    = "bangla-lyrics";
+    static final String CREDIT_TRANSLATION      = "translation";
+    static final String CREDIT_FOOTNOTES        = "footnotes";
+
+    // Attribute values — <miscellaneous-field name="…">.
+    static final String MISC_COMPOSITION_DATE          = "composition-date";
+    static final String MISC_LYRICS_DATE               = "lyrics-date";
+    static final String MISC_COMPOSITION_PLACE         = "composition-place";
+    static final String MISC_LYRICS_SOURCE             = "lyrics-source";
+    static final String MISC_UNOFFICIAL_TRANSLATION    = "unofficial-translation";
+    static final String MISC_SUB_ATTRIBUTION_FONT      = "sub-attribution-font";
+    static final String MISC_SUB_ATTRIBUTION_FONT_SIZE = "sub-attribution-font-size";
+    static final String MISC_ROW_HEIGHT_ADJUSTMENT     = "row-height-adjustment";
+
+    // Rights/copyright format string (write-forward, ignored on read).
+    // %d is substituted with the current year.
+    static final String COPYRIGHT = "Copyright © %d Sri Chinmoy Centre, Creative Commons BY-NC-ND 4.0";
 }

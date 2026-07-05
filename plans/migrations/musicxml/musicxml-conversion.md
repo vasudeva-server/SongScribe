@@ -10,7 +10,7 @@
 | 4 | [Line-Level Range Spans](#-phase-4-line-level-range-spans) | ✅ Complete | [phase-4-range-spans.md](./phase-4-range-spans.md) |
 | 5 | [Per-Measure Attributes (Key, Tempo)](#-phase-5-per-measure-attributes-key-tempo) | ✅ Complete | [phase-5-per-measure-attributes.md](./phase-5-per-measure-attributes.md) |
 | 6 | [Lyrics](#-phase-6-lyrics) | ✅ Complete | [phase-6-lyrics.md](./phase-6-lyrics.md) |
-| 7 | [Header, Layout & Extension Fields](#️-phase-7-header-layout--extension-fields) | ⏳ Pending | — |
+| 7 | [Header, Layout & Extension Fields](#️-phase-7-header-layout--extension-fields) | ✅ Complete | [phase-7-document-header.md](./phase-7-document-header.md) |
 | 8 | [Losslessness Gate & Cutover](#-phase-8-losslessness-gate--cutover) | ⏳ Pending | — |
 
 ## Context
@@ -179,7 +179,20 @@ See [phase-6-lyrics.md](./phase-6-lyrics.md) for the detailed implementation pla
 
 ---
 
-## ⏳ Phase 7: Header, Layout & Extension Fields
+## ✅ Phase 7: Header, Layout & Extension Fields
+
+**Status**: ✅ Complete — see [phase-7-document-header.md](./phase-7-document-header.md)
+
+Implemented the everything-before-`<part-list>` document head plus in-measure
+annotations, in both directions: head metadata (`<movement-title>`/`<movement-number>`,
+`<identification>` creators/rights/encoding, residual `<miscellaneous>` fields),
+`<defaults>` (scaling/page-layout/document fonts via a threaded `DocumentFonts`),
+`<credit>` elements (title/subtitle/attribution roles/score-below blocks, with
+subtitle and score-below canonical and the rest re-derived from head on read),
+and annotations (`<direction placement>` with halign/justify/relative-y). All
+slices round-trip losslessly with schema-valid output; external-renderer
+absolute geometry, per-line layout residuals, and production save/open wiring
+are explicitly deferred to Phase 8.
 
 **Goal**: Score head, `<defaults>`/`<print>` layout, `<credit>` elements,
 annotations, and the residual `<miscellaneous>` extension fields.
@@ -208,11 +221,10 @@ annotations, and the residual `<miscellaneous>` extension fields.
   `<lyric-font>` / `<word-font>`; paddings/distances → system-layout fields;
   attribution user Y offset (`XML_ATTRIBUTION_Y_OFFSET`) → `relative-y` on
   attribution `<credit-words>` (ss → tenths); spacing factors → `<misc-field>`.
-- Annotations → `<direction placement="above|below">` (the `Placement` enum — see
-  [annotation-placement-refactor.md](./annotation-placement-refactor.md), a
-  prerequisite model change) `<direction-type><words>` with halign/justify;
-  `userYOffsetSs` → `relative-y`; computed base Y → `default-y` (write-forward,
-  ignored on read).
+- Annotations → `<direction placement="above|below">` (the `Placement` enum — the
+  model refactor already landed, commit `e5219b50`) `<direction-type><words>` with
+  halign/justify; `userYOffsetSs` → `relative-y`; computed base Y → `default-y`
+  (write-forward, ignored on read).
 
 **Verify**: Round-trip a fully-populated header + layout + credits + annotations;
 attribution credits re-derive from head metadata, score-below credits reload

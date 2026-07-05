@@ -23,7 +23,15 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import java.io.PrintWriter;
 import java.io.StringReader;
+import java.io.StringWriter;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -40,11 +48,15 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.dom.SongMetadata;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
 import songscribe.layout.Ending;
+import songscribe.util.DateUtils;
 import songscribe.Constants;
 
 /**
@@ -75,6 +87,30 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
 
     /** Grade of the triplet tuplet in the all-span schema case. */
     private static final int ALL_SPAN_TUPLET_GRADE = 3;
+
+    // -- Phase 7: credit-matrix song fields, shared by the credit shape tests
+    //    and the schema-valid gate --
+    private static final String CREDIT_TEST_NUMBER      = "5";
+    private static final String CREDIT_TEST_TITLE       = "My Song Title";
+    private static final String CREDIT_TEST_SUBTITLE    = "My Subtitle";
+    private static final String CREDIT_TEST_COMPOSER    = "A Composer";
+    private static final String CREDIT_TEST_LYRICIST    = "A Lyricist";
+    private static final String CREDIT_TEST_PLACE       = "New York";
+    private static final String COMPOSITION_YEAR        = "1987";
+    private static final int COMPOSITION_MONTH          = 12;
+    private static final int COMPOSITION_DAY             = 3;
+    private static final String LYRICS_YEAR             = "1988";
+    private static final int LYRICS_MONTH               = 6;
+    private static final int LYRICS_DAY                 = 15;
+    private static final double ATTRIBUTION_Y_OFFSET_SS = 3.5;
+    private static final String CREDIT_TEST_UNDERLYRICS   = "Under lyrics text";
+    private static final String CREDIT_TEST_BANGLA_LYRICS = "Bangla lyrics text";
+    private static final String CREDIT_TEST_TRANSLATION   = "Translated lyrics text";
+    private static final String CREDIT_TEST_FOOTNOTES     = "Footnote text";
+
+    // A fixed clock so the rights-credit year is deterministic under test.
+    private static final String FIXED_CLOCK_INSTANT = "2026-01-01T00:00:00Z";
+    private static final int FIXED_CLOCK_YEAR       = 2026;
 
     /**
      * Parses {@code xml} via DOM and returns the named attribute value from the first
@@ -123,6 +159,129 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     private static @Nullable String lyricChildText(Element lyric, String childTag) {
         var nodes = lyric.getElementsByTagName(childTag);
         return nodes.getLength() == 0 ? null : nodes.item(0).getTextContent();
+    }
+
+    /**
+     * Returns the {@code <credit-words>} element belonging to the {@code <credit>}
+     * whose {@code <credit-type>} text equals {@code creditType}, or {@code null}
+     * when no such credit is present.
+     */
+    private static @Nullable Element creditWordsForType(String xml, String creditType) throws Exception {
+        var factory = DocumentBuilderFactory.newInstance();
+        var builder = factory.newDocumentBuilder();
+        var doc = builder.parse(new InputSource(new StringReader(xml)));
+        var credits = doc.getElementsByTagName("credit");
+
+        for (var i = 0; i < credits.getLength(); i++) {
+            var credit = (Element) credits.item(i);
+            var creditTypeElements = credit.getElementsByTagName("credit-type");
+
+            if (creditTypeElements.getLength() > 0 && creditType.equals(creditTypeElements.item(0).getTextContent())) {
+                var creditWords = credit.getElementsByTagName("credit-words");
+                return creditWords.getLength() == 0 ? null : (Element) creditWords.item(0);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the {@code <credit-words>} element belonging to the {@code <credit>}
+     * whose {@code <credit-type>} text equals {@code creditType}. Fails the test
+     * with a descriptive message when no such credit is present, so call sites
+     * can dereference the result without a separate null check.
+     */
+    private static Element requireCreditWordsForType(String xml, String creditType) throws Exception {
+        var words = creditWordsForType(xml, creditType);
+
+        if (words == null) {
+            throw new AssertionError("%s credit must be present".formatted(creditType));
+        }
+
+        return words;
+    }
+
+    /** Returns the set of {@code <credit-type>} text values present in {@code xml}. */
+    private static Set<String> creditTypesPresent(String xml) throws Exception {
+        var factory = DocumentBuilderFactory.newInstance();
+        var builder = factory.newDocumentBuilder();
+        var doc = builder.parse(new InputSource(new StringReader(xml)));
+        var creditTypeElements = doc.getElementsByTagName("credit-type");
+        var result = new HashSet<String>();
+
+        for (var i = 0; i < creditTypeElements.getLength(); i++) {
+            result.add(creditTypeElements.item(i).getTextContent());
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns the text of the {@code <miscellaneous-field>} whose {@code name}
+     * attribute equals {@code name}, or {@code null} when no such field is present.
+     */
+    private static @Nullable String miscFieldValue(String xml, String name) throws Exception {
+        var factory = DocumentBuilderFactory.newInstance();
+        var builder = factory.newDocumentBuilder();
+        var doc = builder.parse(new InputSource(new StringReader(xml)));
+        var fields = doc.getElementsByTagName("miscellaneous-field");
+
+        for (var i = 0; i < fields.getLength(); i++) {
+            var field = (Element) fields.item(i);
+
+            if (name.equals(field.getAttribute("name"))) {
+                return field.getTextContent();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Writes {@code song} using a fixed {@code clock} (rather than the
+     * system-default clock {@link #writeToString(Song)} uses) so the
+     * write-forward {@code <rights>}-credit year is deterministic under test.
+     */
+    private static String writeToString(Song song, Clock clock) {
+        var stringWriter = new StringWriter();
+        var printWriter = new PrintWriter(stringWriter);
+        MusicXmlWriter.writeSong(song, DocumentFonts.defaultFonts(), printWriter, clock);
+        printWriter.flush();
+        return stringWriter.toString();
+    }
+
+    /**
+     * Builds a song with every credit-affecting field populated: title, number,
+     * subtitle, distinct composer/lyricist, {@code isArrangement()=true},
+     * distinct composition/lyrics dates, place, a non-zero attribution Y offset,
+     * and all four score-below text blocks. Shared by the credit shape tests and
+     * the schema-valid gate.
+     */
+    private static Song buildCreditMatrixSong() {
+        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+        song.setMetadata(new SongMetadata(
+            CREDIT_TEST_TITLE,
+            CREDIT_TEST_NUMBER,
+            CREDIT_TEST_PLACE,
+            COMPOSITION_YEAR, COMPOSITION_MONTH, COMPOSITION_DAY,
+            CREDIT_TEST_COMPOSER,
+            CREDIT_TEST_LYRICIST,
+            Song.LyricsSource.LYRICIST,
+            true,
+            false,
+            CREDIT_TEST_SUBTITLE,
+            LYRICS_YEAR, LYRICS_MONTH, LYRICS_DAY
+        ));
+
+        song.getAttributionElement().setUserYOffsetSs(ATTRIBUTION_Y_OFFSET_SS);
+
+        song.setUnderLyrics(CREDIT_TEST_UNDERLYRICS);
+        song.setBanglaLyrics(CREDIT_TEST_BANGLA_LYRICS);
+        song.setTranslatedLyrics(CREDIT_TEST_TRANSLATION);
+        song.setFootnotes(CREDIT_TEST_FOOTNOTES);
+
+        return song;
     }
 
     /**
@@ -650,6 +809,234 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         var validator = new MusicXmlSchemaValidator();
         assertThatCode(() -> validator.validate(xml))
             .as("a song with lyric-bearing notes (plain, compound, extender, carriers, multi-verse) must be schema-valid")
+            .doesNotThrowAnyException();
+    }
+
+    // -- Phase 7: Credits writer output --
+
+    /**
+     * Task 2 — title/subtitle credit shapes: {@code title} carries the numbered
+     * title, {@code justify="center"}, and the {@code TITLE} role font;
+     * {@code subtitle} carries the bare subtitle text, the {@code SUBTITLE} role
+     * font, and no {@code justify}.
+     */
+    @Test
+    void testCreditTitleAndSubtitleWriterOutputShapes() throws Exception {
+        var song = buildCreditMatrixSong();
+        var xml = writeToString(song);
+
+        var titleWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_TITLE);
+        assertThat(titleWords.getTextContent())
+            .as("title credit text must be the numbered title")
+            .isEqualTo(song.getNumberedTitle());
+        assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_JUSTIFY))
+            .as("title credit justify")
+            .isEqualTo(MusicXmlTags.JUSTIFY_CENTER);
+
+        var titleFont = DocumentFonts.defaultFonts().getFont(FontKey.TITLE);
+        assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+            .as("title credit font-family")
+            .isEqualTo(titleFont.getFamily());
+        assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_FONT_SIZE))
+            .as("title credit font-size")
+            .isEqualTo(String.valueOf(titleFont.getSize()));
+        assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_FONT_WEIGHT))
+            .as("title credit font-weight")
+            .isEqualTo(titleFont.isBold() ? MusicXmlTags.WEIGHT_BOLD : MusicXmlTags.WEIGHT_NORMAL);
+        assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_FONT_STYLE))
+            .as("title credit font-style")
+            .isEqualTo(titleFont.isItalic() ? MusicXmlTags.STYLE_ITALIC : MusicXmlTags.STYLE_NORMAL);
+
+        var subtitleWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_SUBTITLE);
+        assertThat(subtitleWords.getTextContent())
+            .as("subtitle credit text")
+            .isEqualTo(CREDIT_TEST_SUBTITLE);
+        assertThat(subtitleWords.hasAttribute(MusicXmlTags.ATTR_JUSTIFY))
+            .as("subtitle credit must not carry justify")
+            .isFalse();
+
+        var subtitleFont = DocumentFonts.defaultFonts().getFont(FontKey.SUBTITLE);
+        assertThat(subtitleWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+            .as("subtitle credit font-family")
+            .isEqualTo(subtitleFont.getFamily());
+    }
+
+    /**
+     * Task 3 — attribution-role credit shapes: composer, lyricist, arranger
+     * (isArrangement()=true), composition date, lyrics date (distinct from
+     * composition date), rights, and place all emit an {@code ATTRIBUTION}-font
+     * credit carrying the same {@code relative-y} (the attribution Y offset, in
+     * tenths).
+     */
+    @Test
+    void testCreditAttributionWriterOutputShapes() throws Exception {
+        var song = buildCreditMatrixSong();
+        var clock = Clock.fixed(Instant.parse(FIXED_CLOCK_INSTANT), ZoneOffset.UTC);
+        var xml = writeToString(song, clock);
+
+        var expectedRelativeYTenths = ATTRIBUTION_Y_OFFSET_SS * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+        var attributionCreditTypes = List.of(
+            MusicXmlTags.CREDIT_COMPOSER, MusicXmlTags.CREDIT_LYRICIST, MusicXmlTags.CREDIT_ARRANGER,
+            MusicXmlTags.CREDIT_COMPOSITION_DATE, MusicXmlTags.CREDIT_LYRICS_DATE,
+            MusicXmlTags.CREDIT_RIGHTS, MusicXmlTags.CREDIT_PLACE
+        );
+
+        var attributionFont = DocumentFonts.defaultFonts().getFont(FontKey.ATTRIBUTION);
+
+        for (var creditType : attributionCreditTypes) {
+            var words = requireCreditWordsForType(xml, creditType);
+            assertThat(Double.parseDouble(words.getAttribute(MusicXmlTags.ATTR_RELATIVE_Y)))
+                .as("%s credit relative-y", creditType)
+                .isCloseTo(expectedRelativeYTenths, Offset.offset(0.01));
+            assertThat(words.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+                .as("%s credit font-family", creditType)
+                .isEqualTo(attributionFont.getFamily());
+        }
+
+        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_COMPOSER).getTextContent())
+            .as("composer credit text")
+            .isEqualTo(CREDIT_TEST_COMPOSER);
+        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_LYRICIST).getTextContent())
+            .as("lyricist credit text")
+            .isEqualTo(CREDIT_TEST_LYRICIST);
+        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_ARRANGER).getTextContent())
+            .as("arranger credit text")
+            .isEqualTo(Song.SRI_CHINMOY);
+        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_COMPOSITION_DATE).getTextContent())
+            .as("composition date credit text")
+            .isEqualTo(DateUtils.toIsoDate(COMPOSITION_YEAR, COMPOSITION_MONTH, COMPOSITION_DAY));
+        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_LYRICS_DATE).getTextContent())
+            .as("lyrics date credit text")
+            .isEqualTo(DateUtils.toIsoDate(LYRICS_YEAR, LYRICS_MONTH, LYRICS_DAY));
+        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_RIGHTS).getTextContent())
+            .as("rights credit text")
+            .isEqualTo(String.format(MusicXmlTags.COPYRIGHT, FIXED_CLOCK_YEAR));
+        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_PLACE).getTextContent())
+            .as("place credit text")
+            .isEqualTo(CREDIT_TEST_PLACE);
+    }
+
+    /**
+     * Task 4 — score-below credit shapes: underlyrics/translation carry the
+     * {@code LYRICS} font, bangla-lyrics carries the {@code BANGLA} font plus
+     * {@code xml:lang="bn"}, and footnotes carries the {@code FOOTNOTE} font.
+     */
+    @Test
+    void testCreditScoreBelowWriterOutputShapes() throws Exception {
+        var song = buildCreditMatrixSong();
+        var xml = writeToString(song);
+
+        var underLyricsWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_UNDERLYRICS);
+        assertThat(underLyricsWords.getTextContent())
+            .as("underlyrics credit text")
+            .isEqualTo(CREDIT_TEST_UNDERLYRICS);
+        assertThat(underLyricsWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+            .as("underlyrics credit font-family")
+            .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.LYRICS).getFamily());
+
+        var banglaWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_BANGLA_LYRICS);
+        assertThat(banglaWords.getTextContent())
+            .as("bangla-lyrics credit text")
+            .isEqualTo(CREDIT_TEST_BANGLA_LYRICS);
+        assertThat(banglaWords.getAttribute(MusicXmlTags.ATTR_XML_LANG))
+            .as("bangla-lyrics credit xml:lang")
+            .isEqualTo(MusicXmlTags.CREDIT_LANGUAGE_BANGLA);
+        assertThat(banglaWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+            .as("bangla-lyrics credit font-family")
+            .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.BANGLA).getFamily());
+
+        var translationWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_TRANSLATION);
+        assertThat(translationWords.getTextContent())
+            .as("translation credit text")
+            .isEqualTo(CREDIT_TEST_TRANSLATION);
+
+        var footnotesWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_FOOTNOTES);
+        assertThat(footnotesWords.getTextContent())
+            .as("footnotes credit text")
+            .isEqualTo(CREDIT_TEST_FOOTNOTES);
+        assertThat(footnotesWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+            .as("footnotes credit font-family")
+            .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.FOOTNOTE).getFamily());
+    }
+
+    /**
+     * A song with blank subtitle/place/dates, {@code isArrangement()=false}, and
+     * blank score-below fields emits only the four credits that are never blank:
+     * title (always non-empty), composer/lyricist (coerced to Sri Chinmoy when
+     * blank), and rights (a fixed format string).
+     */
+    @Test
+    void testBlankCreditFieldsEmitNoCredit() throws Exception {
+        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var xml = writeToString(song);
+
+        assertThat(creditTypesPresent(xml))
+            .as("credit-types present for a song with blank subtitle/place/dates/arrangement/score-below fields")
+            .containsExactlyInAnyOrder(
+                MusicXmlTags.CREDIT_TITLE,
+                MusicXmlTags.CREDIT_COMPOSER,
+                MusicXmlTags.CREDIT_LYRICIST,
+                MusicXmlTags.CREDIT_RIGHTS
+            );
+    }
+
+    /**
+     * A lyrics date equal to the composition date is redundant, so the writer
+     * emits neither the {@code lyrics-date} miscellaneous-field nor the
+     * {@code lyrics date} credit — only the composition date is written. Guards
+     * the dedup branches in {@code HeaderText} / {@code writeMiscellaneousFields}
+     * / {@code writeCredits}, which no distinct-date test exercises.
+     */
+    @Test
+    void testLyricsDateEqualToCompositionDateIsOmitted() throws Exception {
+        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+        song.setMetadata(new SongMetadata(
+            CREDIT_TEST_TITLE,
+            CREDIT_TEST_NUMBER,
+            CREDIT_TEST_PLACE,
+            COMPOSITION_YEAR, COMPOSITION_MONTH, COMPOSITION_DAY,
+            CREDIT_TEST_COMPOSER,
+            CREDIT_TEST_LYRICIST,
+            Song.LyricsSource.LYRICIST,
+            false,
+            false,
+            CREDIT_TEST_SUBTITLE,
+            // Lyrics date deliberately equal to the composition date.
+            COMPOSITION_YEAR, COMPOSITION_MONTH, COMPOSITION_DAY
+        ));
+
+        var xml = writeToString(song);
+        var expectedCompositionDate = DateUtils.toIsoDate(COMPOSITION_YEAR, COMPOSITION_MONTH, COMPOSITION_DAY);
+
+        // The composition date is present as both a misc-field and a credit.
+        assertThat(miscFieldValue(xml, MusicXmlTags.MISC_COMPOSITION_DATE))
+            .as("composition-date misc-field must be present")
+            .isEqualTo(expectedCompositionDate);
+        assertThat(creditTypesPresent(xml))
+            .as("composition date credit must be present")
+            .contains(MusicXmlTags.CREDIT_COMPOSITION_DATE);
+
+        // The redundant lyrics date is omitted from both.
+        assertThat(miscFieldValue(xml, MusicXmlTags.MISC_LYRICS_DATE))
+            .as("a lyrics-date equal to the composition date must not be emitted as a misc-field")
+            .isNull();
+        assertThat(creditTypesPresent(xml))
+            .as("a lyrics date equal to the composition date must not be emitted as a credit")
+            .doesNotContain(MusicXmlTags.CREDIT_LYRICS_DATE);
+    }
+
+    /**
+     * Task 5 — schema-valid gate: a song with every credit field populated
+     * (title/subtitle/attribution roles/score-below blocks) emits schema-valid
+     * MusicXML.
+     */
+    @Test
+    void testCreditsWriterOutputIsSchemaValid() throws Exception {
+        var xml = writeToString(buildCreditMatrixSong());
+        var validator = new MusicXmlSchemaValidator();
+        assertThatCode(() -> validator.validate(xml))
+            .as("a song with every credit field populated must be schema-valid")
             .doesNotThrowAnyException();
     }
 }

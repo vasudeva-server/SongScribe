@@ -74,6 +74,44 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     }
 
     /**
+     * Wraps a single {@code <miscellaneous-field>} (the given name/value) in an
+     * {@code <identification><miscellaneous>} block, followed by a minimal valid
+     * one-note part so parsing reaches {@code </score-partwise>}. Used to exercise
+     * the head miscellaneous-field error and treat-as-absent paths.
+     */
+    private static String scoreWithMiscellaneousField(String name, String value) {
+        return
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<score-partwise version=\"4.0\">\n" +
+            "  <identification>\n" +
+            "    <miscellaneous>\n" +
+            "      <miscellaneous-field name=\"" + name + "\">" + value + "</miscellaneous-field>\n" +
+            "    </miscellaneous>\n" +
+            "  </identification>\n" +
+            "  <part-list>\n" +
+            "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
+            "  </part-list>\n" +
+            "  <part id=\"P1\">\n" +
+            "    <measure number=\"1\">\n" +
+            "      <print new-system=\"yes\"/>\n" +
+            "      <attributes>\n" +
+            "        <divisions>480</divisions>\n" +
+            "        <key><fifths>0</fifths></key>\n" +
+            "        <time print-object=\"no\"><senza-misura/></time>\n" +
+            "        <clef><sign>G</sign><line>2</line></clef>\n" +
+            "      </attributes>\n" +
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>quarter</type>\n" +
+            "      </note>\n" +
+            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n" +
+            "    </measure>\n" +
+            "  </part>\n" +
+            "</score-partwise>\n";
+    }
+
+    /**
      * Task 2 — Dangling {@code <slide type="start">} reader handling: when no matching
      * {@code type="stop"} arrives (e.g. a truncated file), the reader drops the pending
      * start at part-end, the note has no glissando, and parsing completes without error.
@@ -625,5 +663,61 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         assertThat(LineEndingSupport.findEndings(song.getLine(0)))
             .as("an ending stop with no matching start must build no span")
             .isEmpty();
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 7: head <miscellaneous-field> error and treat-as-absent paths.
+    //
+    // A malformed enum/number value in a head field must throw (fail hard,
+    // matching the reader's parse-or-throw convention), while a malformed date
+    // is treated as absent (the model tolerates a blank date rather than
+    // aborting the load).
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testMalformedLyricsSourceThrows() {
+        var xml = scoreWithMiscellaneousField(MusicXmlTags.MISC_LYRICS_SOURCE, "bogus");
+
+        assertThatThrownBy(() -> parse(xml))
+            .isInstanceOf(SAXException.class)
+            .hasMessageContaining(MusicXmlTags.MISC_LYRICS_SOURCE);
+    }
+
+    @Test
+    void testMalformedRowHeightAdjustmentThrows() {
+        var xml = scoreWithMiscellaneousField(MusicXmlTags.MISC_ROW_HEIGHT_ADJUSTMENT, "abc");
+
+        assertThatThrownBy(() -> parse(xml))
+            .isInstanceOf(SAXException.class)
+            .hasMessageContaining(MusicXmlTags.MISC_ROW_HEIGHT_ADJUSTMENT);
+    }
+
+    @Test
+    void testMalformedSubAttributionFontSizeThrows() {
+        var xml = scoreWithMiscellaneousField(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT_SIZE, "abc");
+
+        assertThatThrownBy(() -> parse(xml))
+            .isInstanceOf(SAXException.class)
+            .hasMessageContaining(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT_SIZE);
+    }
+
+    @Test
+    void testMalformedCompositionDateIsTreatedAsAbsent() throws Exception {
+        var xml = scoreWithMiscellaneousField(MusicXmlTags.MISC_COMPOSITION_DATE, "not-a-date");
+
+        var song = parse(xml);
+
+        // A malformed date parses to null in DateUtils, so the head date scratch
+        // stays at its empty default and the reloaded song carries a blank date
+        // rather than the load aborting.
+        assertThat(song.getYear())
+            .as("a malformed composition-date must reload as a blank year, not throw")
+            .isEmpty();
+        assertThat(song.getMonth())
+            .as("a malformed composition-date must reload with month 0")
+            .isZero();
+        assertThat(song.getDay())
+            .as("a malformed composition-date must reload with day 0")
+            .isZero();
     }
 }

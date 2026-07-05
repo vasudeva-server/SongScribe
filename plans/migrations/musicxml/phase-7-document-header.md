@@ -1,481 +1,704 @@
-# Sub-plan: Phase 7 — Document Header & Defaults
+# Sub-plan: Phase 7 — Header, Layout & Extension Fields
 
 **Type:** Sub-plan  <br>
-**Parent:** plans/migrations/musicxml/musicxml.md → Phase 7  <br>
-**Created:** 2026-05-30  <br>
-**Status:** Pending  <br>
+**Parent:** [musicxml-conversion.md](./musicxml-conversion.md) → Phase 7  <br>
+**Created:** 2026-07-04  <br>
+**Status:** Complete  <br>
 **BlockedBy:** —
 
 ---
 
 ## Purpose
 
-Emit everything that precedes `<part-list>` in every exported MusicXML document:
-the `<movement-title>`, `<movement-number>`, `<identification>`, `<defaults>`,
-and `<credit>` blocks, plus the staff-space ↔ tenths unit-conversion utilities
-those blocks depend on, through the existing `XML`/`Indent` emission helpers.
+Add the everything-before-`<part-list>` document head plus in-measure
+**annotations** to *both* the MusicXML writer and reader, round-tripping
+losslessly with schema-valid output. This closes every remaining persisted field
+except the per-line layout residuals noted below (deferred to Phase 8's gate).
 
-**Delivered:**
-- A `MusicXmlUtils` class with `ssToTenths`, `tenthsToSs`, the
-  `TENTHS_PER_STAFF_SPACE` constant, and a tenths/decimal formatter.
-- New `MusicXmlTags` vocabulary for the header, defaults, and credit
-  elements/attributes.
-- `MusicXmlWriter.writeSong` emitting the title, identification, defaults, and
-  credit blocks, with its signature widened to accept the data those blocks need.
-- Updated call sites and tests.
+**Delivered (each round-trips through writer + reader):**
 
-**Credits in scope (see musicxml.md § "Credits"):** the on-page display of the
-title and every attribution role (composer, lyricist, arranger, composition date,
-lyrics date, rights, place) as first-page `<credit>` elements, and the score-below
-text blocks (underlyrics, Bangla lyrics, translated lyrics, footnotes) as
-last-page `<credit page="N">` elements. The `TITLE` / `ATTRIBUTION` / `BANGLA` /
-`FOOTNOTE` fonts ride in the `<credit-words>` attributes, so there are **no**
-`font-...` misc-fields.
+- **Head metadata** — `<movement-title>` / `<movement-number>`, `<identification>`
+  (`<creator>` composer/lyricist/arranger, `<rights>`, `<encoding>`), and the
+  residual `<miscellaneous>` fields (composition-date, lyrics-date,
+  composition-place, lyrics-source, unofficial-translation, sub-attribution-font,
+  row-height-adjustment).
+- **`<defaults>`** — `<scaling>`, `<page-layout>` carrying line width, and the three
+  document fonts (`<music-font>` / `<word-font>` / `<lyric-font>`). **DocumentFonts
+  is threaded through the writer/reader** so fonts round-trip.
+- **`<credit>` elements** — title, **subtitle** (canonical), each attribution role,
+  and the score-below text blocks (underlyrics / Bangla / translation / footnotes,
+  canonical). Fonts ride in `<credit-words>` attributes; the attribution user
+  Y-offset rides on `relative-y`.
+- **Annotations** — `<direction placement="above|below"><direction-type><words>`
+  with halign/justify, `userYOffsetSs` → `relative-y`.
 
-**Explicitly NOT in scope (deferred):**
-- Any production export action / menu wiring. There is no production caller of
-  `writeSong` yet; only tests call it. A future phase wires the UI and supplies
-  `SongLayoutMetrics` from `ScoreView.getSongLayoutMetrics()`.
-- `<part-name>` content and anything inside `<part>` (notes/measures are owned by
-  other phases).
+**Explicitly OUT of scope (deferred):**
 
-**Credit positions come from the rendered component geometry** (not from
-`SongLayoutMetrics`). The header items are laid out as Swing components inside
-`MainPanel`, so each item's on-page position is read from its rendered bounds —
-see § "Credit positions" for the exact source per item and the px → tenths /
-page-origin conversion. Two facts constrain this:
-
-- **Single-page model.** SongScribe has no pagination — `ScoreView.updatePageLayout`
-  (`ScoreView.java:900`) grows one scrollable page to fit all content; `PageModel`
-  is one logical page. So every credit is on **page 1**, and "last page" = page 1
-  today. The `page="N"` mechanism is emitted for forward-compatibility but is
-  always `1` until a multi-page layout exists.
-- **Attribution is still a single string.** `Song.getAttribution()` is one
-  multi-line string with only a block-level `attributionStartYSs`
-  (`Song.java:513`, in ss, historically right-aligned); it is not yet decomposed
-  into composer/lyricist/arranger/… and is **not currently rendered**. Per-role
-  attribution credits and their positions therefore cannot be emitted until the
-  attribution rework lands — which is exactly what Phase 7 is **blocked** on.
+- **External-renderer absolute geometry (Option A).** Computed absolute positions —
+  credit `default-x`/`default-y` and page/system distances — are
+  **write-forward-only** (best-effort or omitted) and are **not** read back.
+  SongScribe recomputes them via layout. Only the model *deltas* (`relative-y`,
+  misc-fields) round-trip. Wiring `SongLayoutMetrics` / `PageModel` / rendered
+  `MainPanel` geometry for pixel-accurate external placement is a later task, not
+  this phase. Tracked: [#512](https://github.com/vasudeva-server/SongScribe/issues/512).
+- **Per-line layout residuals** — `XML_LYRICS_YPOS` (per-line lyric Y) and
+  `XML_NOTE_DIST_CHANGE` (per-line spacing factor). These live on `Line`, not
+  `Song`, and need a per-measure `<print>` home out of proportion to this phase.
+  Called out here so Phase 8's corpus gate can force them if the corpus uses them.
+- **Production save/open wiring.** No production caller invokes the MusicXML
+  writer yet; tests drive it. The UI/save-path cutover is Phase 8.
+- **`dynamic-layout` flag** — always `true`, carries no information; dropped.
+- **Annotation `BELOW` *rendering*.** `SystemStacker.stackAnnotations` still stacks
+  every annotation above the staff (it never reads `getPlacement()`). That is a
+  layout bug, not a serialization concern; the `placement` value round-trips
+  regardless. Not in scope. Tracked:
+  [#511](https://github.com/vasudeva-server/SongScribe/issues/511).
+- **Model-layer words-date normalization.** Decision 1B normalizes words-date→empty
+  (when it equals composition-date) in the **writer only**, to keep the model
+  read-only this phase. Pushing the invariant down to the model/UI so the workaround
+  can be removed is deferred. Tracked:
+  [#513](https://github.com/vasudeva-server/SongScribe/issues/513).
 
 ## Implementation Approach
 
-Insert the header blocks into `writeSong` between the `<score-partwise>` open tag
-and the existing `<part-list>` emission, in MusicXML's required order:
-`movement-title`, `movement-number`, `identification`, `defaults`, then the
-`credit` elements, then the already-implemented `part-list`/`part`. (`<credit>`
-must follow `<defaults>` and precede `<part-list>` per the schema.)
+The head blocks insert into `MusicXmlWriter.writeSong` **between the
+`<score-partwise>` open tag and `<part-list>`**, in MusicXML 4.0 content order:
+`<movement-number>` → `<movement-title>` → `<identification>` → `<defaults>` →
+`<credit>*` → `<part-list>`. The reader attaches new `Where` states under
+`case SCORE_PARTWISE` in `startElement`/`endElement`. Annotations live inside
+`<part>` as measure-level `<direction>` siblings of `<note>`, so they hook the
+existing measure/note writer and the reader's `DIRECTION` subtree.
 
-### Value mapping (element → source)
+Every slice mirrors the Phase 3–6 vertical-slice pattern: writer + reader +
+per-slice round-trip test, writer output validated against
+`docs/musicxml-4.0-schema/`.
 
-| Element | Source |
+### Data-flow contract (canonical / display-only / write-forward)
+
+Every field routes into exactly one of three classes; the reader treats each
+differently. This is the core correctness contract of the whole phase — the same
+value (composer, dates, place) is emitted in **both** head (canonical) and a
+credit (display-only), and the reader **must** take head and ignore the credit or
+a hand-edited credit corrupts the model. An inline copy of this diagram belongs
+above the reader's `</credit>` dispatch method.
+
+```
+                         WRITER                          READER
+  Song field ─────────────┬─────────────────┐
+                          │                 │
+   ┌──────────────────────▼───┐   ┌─────────▼────────────┐
+   │ HEAD (identification/     │   │ CREDIT (<credit>)    │
+   │  movement/miscellaneous)  │   │  fonts + positions   │
+   └──────────┬────────────────┘   └───┬──────────────┬───┘
+              │                         │              │
+   ┌──────────▼──────────┐  ┌───────────▼───┐  ┌───────▼─────────────┐
+   │ CANONICAL           │  │ DISPLAY-ONLY  │  │ WRITE-FORWARD       │
+   │ read → model        │  │ ignored;      │  │ ignored;            │
+   │                     │  │ re-derived    │  │ recomputed/constant │
+   ├─────────────────────┤  ├───────────────┤  ├─────────────────────┤
+   │ movement-title/num  │  │ title credit  │  │ rights, software,   │
+   │ creators→arrangement│  │ composer/     │  │ encoding-date,      │
+   │ misc-fields (dates, │  │  lyricist/    │  │ supports, scaling,  │
+   │  place, source, …)  │  │  arranger/    │  │ music-font,         │
+   │ line-width,rowheight│  │  date/rights/ │  │ page-height,        │
+   │ word/lyric fonts    │  │  place credits│  │ default-x/default-y │
+   │ subtitle credit ◄───┼──┤ (re-derived   │  │ (external renderer) │
+   │ 4 score-below credit│  │  from HEAD)   │  │                     │
+   │ attribution rel-y   │  └───────────────┘  └─────────────────────┘
+   │ annotations         │
+   └─────────────────────┘
+   INVARIANT: for composer/lyricist/dates/place the SAME value is emitted in
+   BOTH head (canonical) and a credit (display-only). The reader MUST take head
+   and ignore the credit, or a hand-edited credit corrupts the model.
+```
+
+### Resolved layout-fidelity decision (Option A)
+
+Manual adjustments are stored in the model as **deltas from a computed base**, not
+absolute coordinates, so they round-trip without any rendered-geometry coupling:
+
+- Attribution nudge → `Attribution.getUserYOffsetSs()` → `relative-y` on the
+  attribution `<credit-words>` (read back).
+- Row-height adjustment → `rowHeightAdjustmentSs` (a delta) → `<misc-field
+  name="row-height-adjustment">` (read back exactly; schema accepts the
+  misc-field).
+- Line width → `lineWidthSs` (a real value) → `<page-layout><page-width>` (read
+  back).
+
+`default-x`/`default-y` and computed distances carry the absolute base for
+external renderers only and are **ignored on read** (same treatment as note
+`default-x` and glissando endpoints from Phase 3–4).
+
+### Serialization conventions (resolved)
+
+- **No DOCTYPE, no `standalone`.** Keep the writer's existing
+  `<?xml version="1.0" encoding="UTF-8"?>` declaration unchanged. The reader sets
+  `disallow-doctype-decl=true` (`MusicXmlReader.java:66`), so any emitted DOCTYPE
+  would make the reader throw on its own output.
+- **`<supports>` — always emit** these three fixed tags inside `<encoding>`
+  (write-forward, ignored on read): `<supports element="accidental" type="yes"/>`,
+  `<supports element="beam" type="yes"/>`, `<supports element="stem" type="yes"/>`.
+- **Fonts** come from a `DocumentFontsHolder` threaded into the writer
+  (`ScoreView` is the production holder; tests pass `DocumentFonts.defaultFonts()`)
+  and are returned as a `DocumentFonts` from the reader. Each `FontKey` maps to a
+  `java.awt.Font`; emit `font-family` = `getFamily()`, `font-size` = `getSize()`,
+  `font-weight` = `isBold() ? "bold" : "normal"`, `font-style` =
+  `isItalic() ? "italic" : "normal"` (`java.awt.Font` has **no** weight accessor).
+
+### Head metadata mapping (element → source)
+
+| MusicXML | Source | Direction |
+|---|---|---|
+| `<movement-title>` | `song.getTitle()` (bare) | round-trip |
+| `<movement-number>` | `song.getNumber()` — omit element if empty | round-trip |
+| `<creator type="composer">` | `song.getComposer()` (never empty — coerced to `SRI_CHINMOY`) | round-trip |
+| `<creator type="lyricist">` | `song.getLyricist()` | round-trip |
+| `<creator type="arranger">` | `Song.SRI_CHINMOY`, only when `song.isArrangement()`; omit otherwise | round-trip (the flag) |
+| `<rights>` | `String.format(COPYRIGHT, currentYear)` — **no model field**; constant | write-forward (ignored on read) |
+| `<encoding><software>` | `"SongScribe " + Version.PUBLIC_VERSION` (String, e.g. `"2.0.0"`) | write-forward |
+| `<encoding><encoding-date>` | `LocalDate.now()` ISO_LOCAL_DATE | write-forward |
+| `<encoding><supports>` ×3 | fixed `element="accidental"` / `"beam"` / `"stem"`, each `type="yes"` (always emitted) | write-forward |
+
+### Miscellaneous-field mapping (`<miscellaneous><miscellaneous-field name="…">`)
+
+All round-trip (read back verbatim). Emit each only when populated; omit the whole
+`<miscellaneous>` block when none apply.
+
+| `name` | Source | Notes |
+|---|---|---|
+| `composition-date` | `getYear()`/`getMonth()`/`getDay()` via `DateUtils.toIsoDate` | omit if year blank; partial forms `1987` / `1987-12` / `1987-12-01` |
+| `lyrics-date` | `getWordsYear()`/`getWordsMonth()`/`getWordsDay()` via `DateUtils.toIsoDate` | writer-prep normalizes words-date→empty when it equals composition-date, then omit when empty (1B) |
+| `composition-place` | `song.getPlace()` | omit if blank |
+| `lyrics-source` | `song.getLyricsSource().name()` (`LYRICIST`/`TEXT`/`OTHER`) | |
+| `unofficial-translation` | `"true"` when `song.isUnofficialTranslation()` | omit when false |
+| `sub-attribution-font` / `sub-attribution-font-size` | `fonts.getFont(FontKey.SUB_ATTRIBUTION)` family / size | needs DocumentFonts (Defaults phase) |
+| `row-height-adjustment` | `rowHeightAdjustmentSs` | omit when 0 (Defaults phase) |
+
+Dates go through the shared `songscribe.util.DateUtils` (Phase 1) — never a
+MusicXML-local copy.
+
+### Credit mapping (`<credit>` after `<defaults>`, before `<part-list>`)
+
+`<credit-words>` carries `font-family`/`font-size`/`font-weight`/`font-style` (from
+the role's `FontKey` `java.awt.Font`, per Serialization conventions), `justify`,
+and — write-forward only — `default-x`/`default-y`. Emit a credit only when its
+text is non-blank. `page` is always `1` (single-page model); omit the attribute
+when `1`.
+
+**Single routing table (resolved 6B).** A single static table/enum — keyed by
+credit-type — carries each credit's `FontKey`, routing class (canonical /
+display-only), `xml:lang`, and a reference to its text getter. Both the writer
+(`writeCredits`, Phase 7) and the reader (`</credit>` dispatch, Phase 8) drive off
+this one table so the two sides cannot drift. A test asserts every credit-type the
+writer emits is handled by the reader.
+
+| `<credit-type>` | Text source | `FontKey` | Read behavior |
+|---|---|---|---|
+| `title` | `song.getNumberedTitle()` | `TITLE` | display-only (re-derived from `<movement-*>`) |
+| `subtitle` | `song.getSubtitle()` | `SUBTITLE` | **canonical — read back into metadata** |
+| `composer` | `song.getComposer()` | `ATTRIBUTION` | display-only (re-derived from `<creator>`) |
+| `lyricist` | `song.getLyricist()` | `ATTRIBUTION` | display-only |
+| `arranger` | `Song.SRI_CHINMOY` (only when `isArrangement()`) | `ATTRIBUTION` | display-only |
+| `composition date` | formatted date string | `ATTRIBUTION` | display-only (re-derived from misc-field) |
+| `lyrics date` | formatted lyrics-date string (only when distinct) | `ATTRIBUTION` | display-only |
+| `rights` | `String.format(COPYRIGHT, currentYear)` | `ATTRIBUTION` | display-only |
+| `place` | `song.getPlace()` | `ATTRIBUTION` | display-only |
+| `underlyrics` | `song.getUnderLyrics()` | `LYRICS` | **canonical — read back** |
+| `bangla-lyrics` | `song.getBanglaLyrics()` (+ `xml:lang` on words) | `BANGLA` | **canonical — read back** |
+| `translation` | `song.getTranslatedLyrics()` | `LYRICS` | **canonical — read back** |
+| `footnotes` | `song.getFootnotes()` | `FOOTNOTE` | **canonical — read back** |
+
+Every attribution `<credit-words>` carries the same `relative-y` =
+`ssToTenths(attributionElement.getUserYOffsetSs())`; on read the offset is read
+back **once** into `attributionElement.setUserYOffsetSs(...)`.
+
+### Annotation mapping (`<direction>` inside a measure)
+
+| MusicXML | Source |
 |---|---|
-| `movement-title` | `song.getTitle()` |
-| `movement-number` | `song.getNumber()` — omit element entirely if empty |
-| `creator[@type="composer"]` | TBD — API not yet defined; emit empty element for now |
-| `creator[@type="lyricist"]` | TBD — API not yet defined; emit empty element for now |
-| `creator[@type="arranger"]` | TBD — API not yet defined; emit empty element for now |
-| `rights` (copyright) | `String.format(COPYRIGHT, Year.now())` |
-| `software` | `songscribe.Version.PUBLIC_VERSION` |
-| `encoding-date` | current date (`java.time.LocalDate`, ISO_LOCAL_DATE) |
-| `system-distance` | `formatTenths(ssToTenths(metrics.totalLineHeightSs() − StaffExtents.STAFF_HEIGHT_SS))` |
-| `top-system-distance` | `formatTenths(ssToTenths(metrics.maxAboveStaffSs()))` |
-| `page-height`, `page-width`, margins | derived from `PageModel` |
-| `word-font@font-family` | `fonts.getFont(FontKey.ANNOTATION).getFamily()` |
-| `word-font@font-size` | same font `.getSize()` |
-| `lyric-font@font-family` | `fonts.getFont(FontKey.LYRICS).getFamily()` |
-| `lyric-font@font-size` | same font `.getSize()` |
-| `lyric-language@xml:lang` | hardcoded `"en"` |
-| `<misc-field name="composition-date">` | ISO 8601 string assembled from `song` year/month/day (exact getters TBD; gate on `month > 0` / `day > 0` for partial forms: `"1987"`, `"1987-12"`, `"1987-12-01"`); omit element if year is absent |
-| `<misc-field name="lyrics-date">` | same ISO 8601 assembly from lyrics date fields (exact getters TBD); omit entirely when equal to or absent from composition date |
-| `<misc-field name="place">` | `XML_PLACE` field on song (exact getter TBD); omit if blank |
-| `<misc-field name="unofficial-translation">` | `XML_UNOFFICIAL_TRANSLATION` flag on song; omit if false |
+| `<direction placement="above\|below">` | `annotation.getPlacement()` (`ABOVE`/`BELOW`) |
+| `<direction-type><words halign="…" justify="…">text</words>` | `getAnnotation()`; halign/justify from `getXAlignment()` (0.0→left, 0.5→center, 1.0→right) |
+| `relative-y` on `<words>` | `ssToTenths(getUserYOffsetSs())` |
+| `default-y` on `<words>` | computed base — write-forward, ignored on read |
 
-The score-below text blocks are **not** misc-fields — they are emitted as
-last-page credits (see the credit table below).
-
-### Credit mapping (element → source)
-
-Each credit is emitted only when its source field is non-blank. `<credit-words>`
-carries the font (`font-family`, `font-size`, `font-weight`), justification, and
-position; the text is the rendered display string. See "Open design items" for
-where positions and the last-page index come from.
-
-| `<credit-type>` | Display text source | Font (`FontKey`) | Page |
-|---|---|---|---|
-| `title` | `song.getNumberedTitle()` | `TITLE` | 1 |
-| `composer` | composer field (API TBD) | `ATTRIBUTION` | 1 |
-| `lyricist` | lyricist field (API TBD) | `ATTRIBUTION` | 1 |
-| `arranger` | arranger field (API TBD) | `ATTRIBUTION` | 1 |
-| `composition date` | formatted date string (from y/m/d) | `ATTRIBUTION` | 1 |
-| `lyrics date` | formatted lyrics-date string; omit when equal to composition date | `ATTRIBUTION` | 1 |
-| `rights` | `String.format(COPYRIGHT, Year.now())` | `ATTRIBUTION` | 1 |
-| `place` | `XML_PLACE` field | `ATTRIBUTION` | 1 |
-| `underlyrics` | `XML_UNDERLYRICS` field | `LYRICS` | 1 |
-| `bangla-lyrics` | `XML_BANGLA_LYRICS` field (+ `xml:lang` on `<credit-words>`) | `BANGLA` | 1 |
-| `translation` | `XML_TRANSLATED_LYRICS` field | `LYRICS` | 1 |
-| `footnotes` | `XML_FOOTNOTES` field | `FOOTNOTE` | 1 |
-
-(All credits are page 1 — SongScribe renders a single page; see § "Credit positions".)
-
-Static (constant for every document): `<scaling>` `millimeters=7` `tenths=40`;
-`<system-layout>/<system-margins>` left/right `0`; `<staff-layout>/<staff-distance>`
-`0`; `<music-font font-family="Bravura" font-size="32">`; the `<supports>` flags.
-The XML declaration includes `standalone="no"` and a `<!DOCTYPE score-partwise ...>` line.
-
-### Unit conversion + formatting
-
-- `TENTHS_PER_STAFF_SPACE = 10` (a tenth is 1/10 of a staff space; the 4-staff-space
-  staff height = 40 tenths).
-- `ssToTenths(ss) = ss × TENTHS_PER_STAFF_SPACE`; `tenthsToSs(t) = t / TENTHS_PER_STAFF_SPACE`.
-- Formatter: round to 2 decimal places, then strip trailing zeros and any bare
-  trailing decimal point: `40.00 → "40"`, `12.50 → "12.5"`, `12.534 → "12.53"`.
-  Used for `system-distance`, `top-system-distance`, and `<millimeters>`.
-
-### Credit positions
-
-A `<credit>`'s `default-x` / `default-y` are measured in tenths from the page's
-**bottom-left** corner. The header items are Swing components in `MainPanel`, so
-each item's page position is read from its rendered geometry and converted:
-
-- **Pixel → tenths:** px → ss via `ScaleContext` (`px / pixelsPerStaffSpace`,
-  default 8 px/ss — `ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE`), then
-  `ssToTenths` (× 10). Add a `MusicXmlUtils.pxToTenths(px, scaleContext)` helper
-  (or compose the two) rather than hardcoding the factor.
-- **Y origin flip:** Swing y is from the top; MusicXML `default-y` is from the
-  bottom. `default-y = pxToTenths(pageHeightPx − itemTopPx)`, where
-  `itemTopPx = PageModel.getTopMarginPx() + component.getY()`.
-- **X:** `default-x = pxToTenths(itemLeftPx)`. Centered items derive
-  `itemLeftPx = (lineWidthPx − itemWidthPx) / 2` (matching the render code).
-
-Per-item source (read at export time from the laid-out `MainPanel`):
-
-| Credit | Text | Position source | Page |
-|---|---|---|---|
-| `title` | `Song.getNumberedTitle()` | `TitleComponent` bounds — centered x (`TitleComponent.java`), top = `topMargin + getY()`; `justify="center"` | 1 |
-| attribution roles | (await rework) | block start = `Song.getAttributionStartYSs()` (ss), right-aligned; **no per-role positions until the attribution rework** | 1 |
-| `underlyrics` | `Song.getUnderLyrics()` | `UnderLyricsComponent` bounds (centered) | 1 |
-| `bangla-lyrics` | `Song.getBanglaLyrics()` | `BanglaLyricsComponent` bounds (centered) | 1 |
-| `translation` | `Song.getTranslatedLyrics()` | `TranslationComponent` bounds (centered) | 1 |
-| `footnotes` | `Song.getFootnotes()` | `FootnotesComponent` bounds — centered (`FootnotesComponent.java:81`) | 1 |
-
-Because positions live on the laid-out components (which `ScoreView`/`MainPanel`
-own at render time), they are **not** derivable from `SongLayoutMetrics` alone.
-The production caller — which owns the rendered components — must supply each
-item's `(x, y, page)`; the simplest shape is a small per-item position record (or
-list of credit descriptors) passed into `writeSong`. Since there is no production
-caller yet (deferred — see § Purpose), Phase 4a's writer accepts these positions
-as input and tests supply known values.
+Annotations attach per note via `AnnotationAttachment`
+(`note.findAttachment(AnnotationAttachment.class)`). **Writer:** emit the
+`<direction>` immediately **before** the annotated note's `<note>`, in the existing
+`writeLineDrivenMeasures` note-branch seam (order: `writeTempoDirection` →
+`writeMetricModulationDirection` → `writeHairpinWedges` → **annotation** →
+`writeNote`). **Reader discriminator (unambiguous):** a `<direction>` that is
+words-only — no `<metronome>` (tempo/metric-mod always carry it), no `<wedge>`
+(hairpins always carry it), no `<dynamics>` (Phase 3 emits those inside `<note>`,
+never as directions) — and carries a `placement` attribute is an annotation. **Note
+the current gap:** today a words-only direction routes its text to
+`MetronomeResolver.setWords` and is then discarded at `endDirection` (no beat
+token) — Phase 8 intercepts these (by the `placement`/no-`metronome` signal) into
+an `Annotation` on the next note instead of letting the resolver drop them.
 
 ### Decomposition rationale
 
-Most conceptual decisions (the system-distance span, the `× 10` anchor, the
-formatter rules, font-family vs PostScript name, the `"en"` default, the writer
-signature) were resolved before this plan and are fixed in the tables above, so
-the identification/defaults phases are mechanical. Phases 1 and 2 are independent
-foundations (util class, vocabulary) and can run in parallel. Phases 3–4 split
-the writer emission into title/identification then defaults to keep each phase
-small and its diff reviewable. Phase 4a adds the `<credit>` block; its per-credit
-positions come from the rendered component geometry (§ "Credit positions"),
-supplied to the writer by the caller, and all credits are page 1 (single-page
-model). The attribution-role credits remain gated on the external attribution
-rework. Phase 5 fixes the two existing test call sites for the new signature.
-Phase 6 isolates all test writing (unit + output + schema) so the mechanical
-emission phases are not blocked on test authoring.
+- **Phase 1 (shared DateUtils)** extracts the existing SongIO ISO-date logic into
+  `songscribe.util.DateUtils` so SongIO and the MusicXML code share one
+  implementation — mechanical refactor gated by SongIO's existing date tests →
+  Sonnet.
+- **Phase 2 (vocab)** is pure mechanical constant-adding → Sonnet.
+- **Phase 3 (fonts plumbing)** is the one cross-cutting architectural change —
+  widen `writeSong`/`read`/the harness to carry fonts while keeping every existing
+  caller green via `DocumentFonts.defaultFonts()`. Isolated so it compiles and all
+  Phase 1–6 tests still pass **before** any font is emitted → Opus (signature +
+  harness reversibility).
+- **Head (4 write / 5 read+round-trip)**, **Defaults (6)**, **Credits (7 write / 8
+  read+round-trip)**, **Annotations (9)** are the vertical slices. Writer halves of
+  the larger slices are mechanical (Sonnet); the reader halves are the reversible
+  SAX-accumulator work (Opus), matching the Phase 6 split.
+- **Phase 10** is the fully-populated round-trip + regression gate → isolated last.
 
 ### Key code touchpoints
 
-- **Create:** `src/main/java/songscribe/io/musicxml/MusicXmlUtils.java`.
-- **Edit:** `src/main/java/songscribe/io/musicxml/MusicXmlTags.java` — append
-  element/attribute/value constants (mirror its existing grouping style).
-- **Edit:** `src/main/java/songscribe/io/musicxml/MusicXmlWriter.java` —
-  `writeSong` (currently `MusicXmlWriter.java:41`); insert header emission before
-  the `<part-list>` block at `MusicXmlWriter.java:48`. Reuse `XML.writeBeginTag`,
-  `XML.writeEndTag`, `XML.writeValue`, `XML.writeEmptyTag`, `XML.printIndent`,
-  `XML.indent`/`dedent` exactly as the existing methods do.
-- **Edit (tests):** `MusicXmlRoundTripTest.java:48` and
-  `MusicXmlWriterSchemaTest.java:40` — the only two `writeSong` callers.
-- **Read-only references (mirror, do not change):** `SongLayoutMetrics`
-  (`totalLineHeightSs()`, `maxAboveStaffSs()`), `StaffExtents.STAFF_HEIGHT_SS`,
-  `DocumentFontsHolder.getFont(FontKey)`, `FontKey.ANNOTATION` / `FontKey.LYRICS`
-  (defaults block) and `FontKey.TITLE` / `FontKey.ATTRIBUTION` / `FontKey.BANGLA` /
-  `FontKey.FOOTNOTE` (credit `<credit-words>` fonts),
-  `songscribe.Version.PUBLIC_VERSION`, `Song.getTitle()` / `Song.getNumber()`,
-  `PageModel` (page height, width, margins). For how production builds metrics,
-  see `StaffPanel.updateSongMetrics`
-  (`SongLayoutMetricsBuilder.build(layouts, lyricAscentSs)`).
+Model (read-only unless noted):
 
-### New writer signature
+- `dom/Song.java` — `getTitle()`:428, `getNumber()`:588, `getSubtitle()`:432,
+  `getNumberedTitle()`:441, `getComposer()`:550, `getLyricist()`:554,
+  `getLyricsSource()`:558, `isArrangement()`:562, `isUnofficialTranslation()`:546,
+  `getPlace()`:460, `getYear()`:464/`getMonth()`:468/`getDay()`:472,
+  `getWordsYear()`:476/`getWordsMonth()`:480/`getWordsDay()`:484,
+  `getUnderLyrics()`:530, `getBanglaLyrics()`:534, `getTranslatedLyrics()`:538,
+  `getFootnotes()`:542, `getAttributionElement()`:579, `SRI_CHINMOY`:74,
+  `setMetadata(SongMetadata)`:677, `LyricsSource` enum (nested).
+- `dom/SongMetadata.java` — the immutable record holding all head fields;
+  reader rebuilds it and calls `setMetadata`.
+- `dom/Attribution.java` extends `LineElement`; `getUserYOffsetSs()` /
+  `setUserYOffsetSs()` at `LineElement.java:214/221`.
+- `dom/Annotation.java` — `Placement { ABOVE, BELOW }`:26, `placement`:28,
+  `getAnnotation()`:50, `getXAlignment()`:58, `getUserYOffsetSs()`:74.
+- `dom/AnnotationAttachment.java`; `note.findAttachment(AnnotationAttachment.class)`;
+  `Line.isAnnotation()`:1483.
+- `font/DocumentFonts` (concrete, `implements DocumentFontsHolder`,
+  `defaultFonts()`:93, value `equals`:114) / `font/DocumentFontsHolder` (interface);
+  `getFont(FontKey)` → `java.awt.Font`. `FontKey`: TITLE, SUBTITLE, LYRICS,
+  ATTRIBUTION, SUB_ATTRIBUTION, ANNOTATION, BANGLA, FOOTNOTE.
+- `Version.PUBLIC_VERSION` (`build/generated-sources/songscribe/Version.java`,
+  String).
 
-```java
-public static void writeSong(Song song,
-                             DocumentFontsHolder fonts,
-                             SongLayoutMetrics metrics,
-                             PageModel pageModel,
-                             PrintWriter pw)
-```
+Legacy IO to refactor / mirror (`io/`):
 
-The writer stays a pure serializer — it receives pre-built `SongLayoutMetrics` and
-`PageModel`, it does not run layout. Resolve the exact `PageModel` access pattern
-(constructor arg, factory, or extracted from `Song`) during implementation.
+- `SongIO.java` — `toIsoDate`:113 (private static, **move to DateUtils**),
+  `parseLyricsDate`:977 (private instance on `DocumentReader`, **delegate to
+  DateUtils**), constants `MAX_MONTH`:273 / `MAX_DAY`:274 / `ISO_DATE_PATTERN`:277
+  (**move to DateUtils**; also referenced at :624/:632/:947). `writeSong` emission
+  (129–…) and `DocumentReader.endElement12` (~574–689) are the head reference shapes.
+- `AnnotationIO.java` — `writeAnnotation` (47–66) / `AnnotationReader` (68–159):
+  `XML_NAME`/`XML_ALIGNMENT`/`XML_PLACEMENT`/`XML_USER_Y_OFFSET`.
+- `ViewIO.java` — `FONT_TAGS` / `FontKey` enumeration for the fonts.
+- `XML.java` — `writeBeginTag`/`writeEmptyTag`/`writeValue`/`writeEndTag`/
+  `escapeXML`/`indent`/`dedent`.
 
-The credit block needs each item's `(x, y, page)`, which lives on the rendered
-`MainPanel` components, not in `SongLayoutMetrics` (§ "Credit positions"). Phase 4a
-widens the signature to accept these positions — a per-item position record or
-list of credit descriptors — supplied by the production caller that owns the
-laid-out components. `page` is always `1` (single-page model).
+MusicXML IO (`io/musicxml/`, edit):
 
-### Resolved decisions
-
-1. **XML declaration / DOCTYPE.** Emit `<?xml version="1.0" encoding="UTF-8" standalone="no"?>` and a `<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">` line. Confirm the round-trip/schema tests accept the DOCTYPE.
-2. **Current year/date source.** Read `Year.now()` / `LocalDate.now()` (ISO_LOCAL_DATE) directly in the static `writeSong`. Tests assert on format/pattern, not the exact value. Do not add an injectable clock now.
-3. **`music-font font-size="32"`.** Emit as the fixed constant `"32"` (equals `RenderingUtils.FONT_SIZE × 8 px/ss`); do **not** pull it from `getMusicFont().getSize()` (which returns `4.0`).
-4. **Empty `movement-number`.** Omit `<movement-number>` entirely if `song.getNumber()` is empty or blank; emit it normally otherwise.
-5. **`page-layout` values.** Derive from `PageModel`, not fixed constants. The writer signature or a helper must provide access to `PageModel`; resolve the exact access path during implementation.
-6. **Credit-type vocabulary.** Use the role names from the credit-mapping table as `<credit-type>` text: `title`, `composer`, `lyricist`, `arranger`, `composition date`, `lyrics date`, `rights`, `place`, `underlyrics`, `bangla-lyrics`, `translation`, `footnotes`. The standard MusicXML set covers title/composer/lyricist/arranger/rights; the rest are SongScribe-specific but valid (credit-type is free text).
-7. **Credit fonts.** `<credit-words>` `font-family`/`font-size`/`font-weight` come from `fonts.getFont(FontKey)` for the role's `FontKey` (table above). This is the sole storage for the `TITLE`/`ATTRIBUTION`/`BANGLA`/`FOOTNOTE` view fonts — there are no `font-...` misc-fields.
-8. **Credit positions.** `default-x`/`default-y` are read from the rendered `MainPanel` component geometry and converted px → tenths with a bottom-left page origin (§ "Credit positions"). The caller (which owns the laid-out components) supplies each item's `(x, y, page)` to `writeSong`; the writer does not run layout.
-9. **Credit page index.** Always `1` — SongScribe renders a single page (`ScoreView.updatePageLayout`, `PageModel`). The `page="N"` attribute is emitted for forward-compatibility but never exceeds `1` until a multi-page layout exists.
-
-### Still gated (external)
-
-10. **Per-role attribution credits.** `composer` / `lyricist` / `arranger` / `composition date` / `lyrics date` / `rights` / `place` credits need discrete attribution fields and per-role positions. Today `Song.getAttribution()` is one multi-line string with only a block-level `attributionStartYSs`, and it is not rendered. These credits cannot be emitted until the external attribution rework lands — the same dependency that **blocks** Phase 7 overall.
+- `MusicXmlWriter.java` — `writeSong`:153 (insert head before `<part-list>`);
+  existing `ssToTenths`:1557 / `formatTenths`:1547 / `TENTHS_PER_STAFF_SPACE`
+  (`MusicXmlTags`:41) — **already present, reuse; do not recreate**. Measure/note
+  loop (`writeLineDrivenMeasures`:201, `writeNote`:420) for annotation directions;
+  existing `writeTempoDirection`/`writeHairpinWedges` mark the direction seam.
+- `MusicXmlReader.java` — `Where` enum:1088, `startElement`:199 / `endElement`:488
+  `case SCORE_PARTWISE`; XXE hardening at :59–74 (`disallow-doctype-decl`); the
+  `DIRECTION`/`DIRECTION_TYPE`/`WORDS`/`METRONOME` subtree and `MetronomeResolver`
+  binding at `finishNote` (~:976).
+- `MusicXmlTags.java` — append head/defaults/credit/miscellaneous/direction-words
+  constants.
+- `MusicXmlSchemaValidator.validate(String)` (test scope; does not disallow DOCTYPE,
+  so the reader is the binding constraint).
+- Test support: `MusicXmlRoundTripSupport` (`writeToString`/`parse`/`roundTrip`/
+  `buildSong`), `MusicXmlWriterOutputTest`, per-feature round-trip test pattern
+  (`MusicXmlTempoRoundTripTest`, `MusicXmlLyricRoundTripTest`).
 
 ## Dependencies
 
-- **Internal:** none outside this sub-plan for Phases 1–2. Phases 3–6 depend only
-  on earlier phases here (see dashboard).
-- **External:** `songscribe.Version` is generated at build time
-  (`build.gradle.kts` `generateVersion`); `./scripts/compile.sh` runs that task,
-  so no manual step is needed.
-- **Must not regress:** the existing structural output (`part-list`, `part`,
-  measures, barlines) and the round-trip test must still pass. Header blocks are
-  inserted *before* `part-list`; nothing in the existing emission changes.
+- **Rebase:** none — `musicxml-phase-7` branches from current `develop`.
+- **Prerequisite satisfied:** the annotation `Placement` enum refactor is already
+  committed (`e5219b50`); no model change needed here.
+- **Internal ordering:** see each phase's `BlockedBy` field below (the parent
+  dashboard tracks dependencies in its Phase Dependencies graph, not a column).
+- **Must not regress:** the Phase 1–6 round-trip suites; SongScribe's existing
+  `.mssw` lyrics-date read/write tests (Phase 1 refactors their shared code);
+  writer output must keep validating against `docs/musicxml-4.0-schema/`; the
+  fonts-plumbing signature change (Phase 3) must leave every existing
+  writer/reader/harness caller green.
 
 ## Plan
 
 | Phase | Description | Status | Recommended model |
 |-------|-------------|--------|-------------------|
-| 1 | [Unit Conversion Utilities](#-phase-1-unit-conversion-utilities) | ⏳ Pending | Haiku 4.5 or Sonnet 4.6, low |
-| 2 | [MusicXML Vocabulary Additions](#-phase-2-musicxml-vocabulary-additions) | ⏳ Pending | Haiku 4.5, low |
-| 3 | [Writer: Title and Identification](#-phase-3-writer-title-and-identification) | ⏳ Pending | Sonnet 4.6, low |
-| 4 | [Writer: Defaults Block](#-phase-4-writer-defaults-block) | ⏳ Pending | Sonnet 4.6, medium |
-| 4a | [Writer: Credit Block](#-phase-4a-writer-credit-block) | ⏳ Pending | Sonnet 4.6, medium |
-| 5 | [Update Writer Call Sites](#-phase-5-update-writer-call-sites) | ⏳ Pending | Haiku 4.5 or Sonnet 4.6, low |
-| 6 | [Tests](#-phase-6-tests) | ⏳ Pending | Sonnet 4.6, medium |
+| 1 | [Shared DateUtils](#-phase-1-shared-dateutils) | ✅ Complete | Sonnet 4.6, low |
+| 2 | [MusicXML Vocabulary](#-phase-2-musicxml-vocabulary) | ✅ Complete | Sonnet 4.6, low |
+| 3 | [Fonts Plumbing](#-phase-3-fonts-plumbing) | ✅ Complete | Opus 4.8, medium |
+| 4 | [Writer: Head Metadata](#-phase-4-writer-head-metadata) | ✅ Complete | Sonnet 4.6, low |
+| 5 | [Reader: Head Metadata + Round-Trip](#-phase-5-reader-head-metadata--round-trip) | ✅ Complete | Opus 4.8, medium |
+| 6 | [Defaults: Writer + Reader + Round-Trip](#-phase-6-defaults-writer--reader--round-trip) | ✅ Complete | Opus 4.8, medium |
+| 7 | [Writer: Credits](#-phase-7-writer-credits) | ✅ Complete | Sonnet 4.6, medium |
+| 8 | [Reader: Credits + Round-Trip](#-phase-8-reader-credits--round-trip) | ✅ Complete | Opus 4.8, medium |
+| 9 | [Annotations: Writer + Reader + Round-Trip](#-phase-9-annotations-writer--reader--round-trip) | ✅ Complete | Opus 4.8, medium |
+| 10 | [Full Round-Trip + Regression](#-phase-10-full-round-trip--regression) | ✅ Complete | Sonnet 4.6, medium |
 
-## ⏳ Phase 1: Unit Conversion Utilities
+## ✅ Phase 1: Shared DateUtils
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** —  <br>
-**Recommended model/effort:** Haiku 4.5 or Sonnet 4.6, low — single new class with fully-specified arithmetic and a deterministic string formatter; no design choices remain.
+**Recommended model/effort:** Sonnet 4.6, low — extract-and-delegate refactor of existing, test-covered SongIO date logic into a shared util; no new behavior.
 
 ### Tasks
-1. Create `MusicXmlUtils` (package-private `final` class, private constructor,
-   standard file header) in `songscribe.io.musicxml`.
-2. Add `static final double TENTHS_PER_STAFF_SPACE = 10;` with a doc comment
-   explaining the 40-tenths = 4-staff-space anchor.
-3. Add `static double ssToTenths(double ss)` and `static double tenthsToSs(double tenths)`.
-4. Add `static String formatTenths(double value)` — round to 2 dp, strip trailing
-   zeros and a bare trailing decimal point (`40.00 → "40"`, `12.50 → "12.5"`,
-   `12.534 → "12.53"`). Use this same method for `<millimeters>`.
-5. Run `./scripts/compile.sh` — must report SUCCESS.
+1. Create `songscribe.util.DateUtils` (`final`, private constructor, standard file
+   header): move `MAX_MONTH` / `MAX_DAY` / `ISO_DATE_PATTERN` (from
+   `SongIO`/`DocumentReader`) as `public static final`; move `toIsoDate(String
+   year, int month, int day)` verbatim (public static); add
+   `public static @Nullable DateParts parseIsoDate(String str)` extracted from
+   `parseLyricsDate`'s parse + range-validate core — the `ISO_DATE_PATTERN`
+   (2-digit month/day only) plus **both bounds** (`1 ≤ month ≤ MAX_MONTH`,
+   `1 ≤ day ≤ MAX_DAY`); returns `null` on malformed or out-of-range input (no
+   logging, no side effects). This must reproduce **all nine** existing
+   `LyricsDateIO` rejections, including the lower-bound cases `1984-00` (month 0),
+   `1984-06-00` (day 0), and the single-digit `1984-6` (resolved 5A). Add
+   `public record DateParts(String year, int month, int day)`.
+2. Refactor `SongIO`: delete its private `toIsoDate` and call
+   `DateUtils.toIsoDate(...)` at `SongIO.java:185`; replace `parseLyricsDate`'s body
+   to call `DateUtils.parseIsoDate(str)` — on `null` log the existing warning and
+   set `invalidLyricsDate = str`, otherwise assign `wordsYear/wordsMonth/wordsDay`
+   from the `DateParts` (the per-field month-vs-day warning granularity collapses to
+   one "malformed lyricsDate" warning — acceptable). Replace SongIO's remaining
+   `MAX_MONTH`/`MAX_DAY` references (:624, :632, :947) with `DateUtils.MAX_MONTH` /
+   `DateUtils.MAX_DAY` and delete the private copies + `ISO_DATE_PATTERN`.
+3. Tests: add `DateUtilsTest` — `toIsoDate` full/partial/absent forms; `parseIsoDate`
+   valid `YYYY`/`YYYY-MM`/`YYYY-MM-DD`, and the nine existing `LyricsDateIO`
+   malformed/out-of-range inputs (`1984-13`, `1984--6`, `1984-6-`, `1984-06-27-01`,
+   `1984-XX`, `1984-06-32`, `1984-00`, `1984-06-00`, `1984-6`) → `null` (resolved 5A),
+   and the `toIsoDate`∘`parseIsoDate` round-trip. Identify and re-run the existing
+   SongIO lyrics-date tests to confirm no regression (they assert model state +
+   `invalidLyricsDate`, not log strings, so collapsing the three warnings to one is
+   safe — but the `invalidLyricsDate = str` assignment on the `null` path must be
+   preserved in Phase 1 task 2).
+4. Gate: `./scripts/compile.sh` (SUCCESS); `./scripts/test.sh DateUtilsTest` plus the
+   existing SongIO lyrics-date test class.
 
-## ⏳ Phase 2: MusicXML Vocabulary Additions
+## ✅ Phase 2: MusicXML Vocabulary
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** —  <br>
-**Recommended model/effort:** Haiku 4.5, low — appending named string constants to an existing file, mirroring its established grouping.
+**Recommended model/effort:** Sonnet 4.6, low — appending named constants mirroring `MusicXmlTags`' grouping.
 
 ### Tasks
-1. In `MusicXmlTags`, add element-name constants: `MOVEMENT_TITLE`,
+1. In `MusicXmlTags`, add **head/identification** element constants: `MOVEMENT_TITLE`,
    `MOVEMENT_NUMBER`, `IDENTIFICATION`, `CREATOR`, `RIGHTS`, `ENCODING`, `SOFTWARE`,
-   `ENCODING_DATE`, `SUPPORTS`, `DEFAULTS`, `SCALING`, `MILLIMETERS`, `TENTHS`,
-   `PAGE_LAYOUT`, `PAGE_HEIGHT`, `PAGE_WIDTH`, `PAGE_MARGINS`, `LEFT_MARGIN`,
-   `RIGHT_MARGIN`, `TOP_MARGIN`, `BOTTOM_MARGIN`, `SYSTEM_LAYOUT`,
-   `SYSTEM_MARGINS`, `SYSTEM_DISTANCE`, `TOP_SYSTEM_DISTANCE`, `STAFF_LAYOUT`,
-   `STAFF_DISTANCE`, `MUSIC_FONT`, `WORD_FONT`, `LYRIC_FONT`, `LYRIC_LANGUAGE`.
-2. Add attribute-name constants: `ATTR_FONT_FAMILY`, `ATTR_FONT_SIZE`,
-   `ATTR_XML_LANG`, plus the `<supports>` attribute names (`ATTR_ELEMENT`,
-   `ATTR_ATTRIBUTE`, `ATTR_TYPE`, `ATTR_VALUE`) and `ATTR_PAGE_MARGINS_TYPE`.
+   `ENCODING_DATE`, `SUPPORTS`; **defaults** constants: `DEFAULTS`, `SCALING`, `MILLIMETERS`,
+   `TENTHS`, `PAGE_LAYOUT`, `PAGE_HEIGHT`, `PAGE_WIDTH`, `STAFF_LAYOUT`,
+   `STAFF_DISTANCE`, `MUSIC_FONT`, `WORD_FONT`, `LYRIC_FONT`, `LYRIC_LANGUAGE`;
+   **credit** constants: `CREDIT`, `CREDIT_TYPE`, `CREDIT_WORDS`; **miscellaneous**
+   constants: `MISCELLANEOUS`, `MISCELLANEOUS_FIELD`.
+2. Add attribute constants (reuse existing `ATTR_TYPE`, `ATTR_DEFAULT_X`,
+   `ATTR_DEFAULT_Y`, `ATTR_RELATIVE_Y`, `ATTR_NUMBER`): `ATTR_NAME`,
+   `ATTR_FONT_FAMILY`, `ATTR_FONT_SIZE`, `ATTR_FONT_WEIGHT`, `ATTR_FONT_STYLE`,
+   `ATTR_JUSTIFY`, `ATTR_HALIGN`, `ATTR_XML_LANG`, `ATTR_PAGE`, `ATTR_PLACEMENT`,
+   `ATTR_ELEMENT` (reuse the existing `YES` value constant for `type="yes"`).
 3. Add value/literal constants: `MUSIC_FONT_FAMILY = "Bravura"`,
-   `MUSIC_FONT_SIZE = "32"`, `LYRIC_LANGUAGE_DEFAULT = "en"`, the fixed
-   `<scaling>` values (`SCALING_TENTHS = "40"`, `SCALING_MILLIMETERS = 7.0`),
-   fixed system/staff numeric values (`SYSTEM_MARGINS_LEFT = 0`,
-   `SYSTEM_MARGINS_RIGHT = 0`, `STAFF_DISTANCE = 0`), and
-   `COPYRIGHT = "Copyright © %d Sri Chinmoy Centre, Creative Commons BY-NC-ND 4.0"`,
-   `CREATOR_COMPOSER = "composer"`, `CREATOR_LYRICIST = "lyricist"`, and
-   `CREATOR_ARRANGER = "arranger"`.
-   Do **not** add fixed page-layout dimension constants — those come from `PageModel`.
-4. Add element-name constants for the miscellaneous block: `MISCELLANEOUS`,
-   `MISCELLANEOUS_FIELD`.
-5. Add attribute-name constant `ATTR_NAME` (used as the `name` attribute on
-   `<miscellaneous-field>`).
-6. Add misc-field name string constants for the fields that **stay** in
-   `<miscellaneous>`: `MISC_COMPOSITION_DATE = "composition-date"`,
-   `MISC_LYRICS_DATE = "lyrics-date"`, `MISC_PLACE = "place"`,
-   `MISC_UNOFFICIAL_TRANSLATION = "unofficial-translation"`. Do **not** add
-   misc-field constants for underlyrics / bangla / translated lyrics / footnotes —
-   those are credits now.
-7. Add credit element-name constants: `CREDIT`, `CREDIT_TYPE`, `CREDIT_WORDS`.
-8. Add credit attribute-name constants: `ATTR_PAGE`, `ATTR_FONT_WEIGHT`,
-   `ATTR_JUSTIFY`, `ATTR_DEFAULT_X`, `ATTR_DEFAULT_Y` (reuse `ATTR_FONT_FAMILY`,
-   `ATTR_FONT_SIZE`, `ATTR_XML_LANG` from step 2).
-9. Add credit-type value constants: `CREDIT_TITLE = "title"`,
-   `CREDIT_COMPOSER = "composer"`, `CREDIT_LYRICIST = "lyricist"`,
-   `CREDIT_ARRANGER = "arranger"`, `CREDIT_COMPOSITION_DATE = "composition date"`,
-   `CREDIT_LYRICS_DATE = "lyrics date"`, `CREDIT_RIGHTS = "rights"`,
-   `CREDIT_PLACE = "place"`, `CREDIT_UNDERLYRICS = "underlyrics"`,
-   `CREDIT_BANGLA_LYRICS = "bangla-lyrics"`, `CREDIT_TRANSLATION = "translation"`,
-   `CREDIT_FOOTNOTES = "footnotes"`, plus `JUSTIFY_CENTER = "center"`.
-10. Run `./scripts/compile.sh` — must report SUCCESS.
+   `MUSIC_FONT_SIZE = "32"`, `SCALING_MILLIMETERS = 7.0`, `SCALING_TENTHS = "40"`,
+   `PAGE_HEIGHT_TENTHS` (a fixed page-height in tenths — write-forward, ignored on
+   read), `LYRIC_LANGUAGE_DEFAULT = "en"`, `COPYRIGHT` (copyright format string,
+   mirror the old draft's value), the `creator`/`credit` type tokens
+   (`CREATOR_COMPOSER` = `"composer"`, `CREATOR_LYRICIST` = `"lyricist"`,
+   `CREATOR_ARRANGER` = `"arranger"`; `CREDIT_TITLE`, `CREDIT_SUBTITLE`,
+   `CREDIT_COMPOSER`, `CREDIT_LYRICIST`, `CREDIT_ARRANGER`, `CREDIT_COMPOSITION_DATE`
+   = `"composition date"`, `CREDIT_LYRICS_DATE` = `"lyrics date"`, `CREDIT_RIGHTS`,
+   `CREDIT_PLACE`, `CREDIT_UNDERLYRICS`, `CREDIT_BANGLA_LYRICS` = `"bangla-lyrics"`,
+   `CREDIT_TRANSLATION` = `"translation"`, `CREDIT_FOOTNOTES`), `JUSTIFY_CENTER`,
+   `HALIGN_LEFT`/`HALIGN_CENTER`/`HALIGN_RIGHT`, `WEIGHT_BOLD`/`WEIGHT_NORMAL`,
+   `STYLE_ITALIC`/`STYLE_NORMAL`, `PLACEMENT_ABOVE`/`PLACEMENT_BELOW`, the
+   `<supports>` element tokens (`SUPPORTS_ACCIDENTAL` = `"accidental"`,
+   `SUPPORTS_BEAM` = `"beam"`, `SUPPORTS_STEM` = `"stem"`), and the
+   misc-field names (`MISC_COMPOSITION_DATE` = `"composition-date"`,
+   `MISC_LYRICS_DATE` = `"lyrics-date"`, `MISC_COMPOSITION_PLACE` =
+   `"composition-place"`, `MISC_LYRICS_SOURCE` = `"lyrics-source"`,
+   `MISC_UNOFFICIAL_TRANSLATION` = `"unofficial-translation"`,
+   `MISC_SUB_ATTRIBUTION_FONT` = `"sub-attribution-font"`,
+   `MISC_SUB_ATTRIBUTION_FONT_SIZE` = `"sub-attribution-font-size"`,
+   `MISC_ROW_HEIGHT_ADJUSTMENT` = `"row-height-adjustment"`).
+4. Gate: `./scripts/compile.sh` (SUCCESS).
 
-## ⏳ Phase 3: Writer: Title and Identification
+## ✅ Phase 3: Fonts Plumbing
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
+**BlockedBy:** —  <br>
+**Recommended model/effort:** Opus 4.8, medium — the one cross-cutting signature change; must keep every existing writer/reader/harness caller green with zero behavior change before any font is emitted.
+
+### Tasks
+1. Widen `MusicXmlWriter.writeSong` to accept a `DocumentFontsHolder` parameter
+   (mirroring legacy `SongIO.writeSong(Song, DocumentFontsHolder, PrintWriter)`) plus
+   an injectable `Clock` (default `Clock.systemDefaultZone()`) so the write-forward
+   `<rights>` year, `<encoding-date>`, and copyright credit are deterministic under
+   test (resolved 8B). `MusicXmlReader.read` returns a small immutable result record
+   **`MusicXmlReadResult(Song song, DocumentFonts fonts)`** (resolved 3A — `read` is
+   `static`, so a return record is the only clean shape; **no** stateful
+   `getDocumentFonts()` accessor), defaulting `fonts` to `DocumentFonts.defaultFonts()`
+   when `<defaults>` fonts are absent (mirror
+   `SongIO.DocumentReader.getDocumentFonts()`).
+2. Thread fonts through `MusicXmlRoundTripSupport`: add font-aware
+   `writeToString(Song, DocumentFontsHolder)` / `parse` / `roundTrip(Song,
+   DocumentFontsHolder)` overloads returning the `MusicXmlReadResult` (`Song` +
+   `DocumentFonts`); keep
+   the existing `Song`-only signatures delegating with `DocumentFonts.defaultFonts()`
+   so Phase 1–6 tests compile unchanged. Fonts compare by value via
+   `DocumentFonts.equals` (`assertEquals`).
+3. Update the existing `writeSong`/`read` call sites (entry points and any
+   non-harness test callers) to the new signatures with default fonts. Emit
+   **nothing** new yet — this phase only widens the seam.
+4. Gate: `./scripts/compile.sh` (SUCCESS); `./scripts/test.sh unit` — the full
+   Phase 1–6 suite stays green (no output change).
+
+## ✅ Phase 4: Writer: Head Metadata
+
+**Status:** Complete  <br>
 **BlockedBy:** 1, 2  <br>
-**Recommended model/effort:** Sonnet 4.6, low — mechanical tag emission mirroring existing `writeSong` helpers; signature widening with a single insertion point.
+**Recommended model/effort:** Sonnet 4.6, low — mechanical tag emission mirroring existing `writeSong` helpers, inserted at a single seam; values come straight from the mapping tables.
 
 ### Tasks
-1. Widen `writeSong` to `(Song, DocumentFontsHolder, SongLayoutMetrics, PageModel, PrintWriter)` (do not yet use `fonts`/`metrics`/`pageModel` beyond compiling — they are consumed in Phase 4). Resolve how to obtain `PageModel` for the new parameter (see Resolved decisions #5). Update the XML declaration: emit `<?xml version="1.0" encoding="UTF-8" standalone="no"?>` and a `<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">` line.
-2. Add a private `writeMovementInfo` that emits `<movement-title>` (`song.getTitle()`) immediately after the `<score-partwise>` open tag, then emits `<movement-number>` only if `song.getNumber()` is non-empty.
-3. Add a private `writeIdentification` emitting `<identification>` → `<creator type="composer"/>` (`CREATOR_COMPOSER`), `<creator type="lyricist"/>` (`CREATOR_LYRICIST`), and `<creator type="arranger"/>` (`CREATOR_ARRANGER`) (empty, source API TBD), then `<rights>` with content `String.format(COPYRIGHT, Year.now())`, `<encoding>` → `<software>SongScribe v{version}</software>`, `<encoding-date>` (from `LocalDate.now()` in ISO_LOCAL_DATE format), and the `<supports>` flags.
-4. Extend `writeIdentification` to close `<identification>` with a
-   `<miscellaneous>` block. Emit one `<miscellaneous-field name="...">` element
-   for each non-blank / non-false field that **stays** in `<miscellaneous>`,
-   using the constants from Phase 2: `composition-date` (ISO 8601 assembled from
-   year/month/day, exact getters TBD), `lyrics-date` (same assembly, omit when
-   equal to or absent from composition date), `place`, `unofficial-translation`
-   (emit `"true"` only when flag is set). The score-below text blocks
-   (underlyrics, bangla, translated lyrics, footnotes) are **not** emitted here —
-   they are credits (Phase 4a). Omit the entire `<miscellaneous>` element if no
-   fields have values.
-5. Call both new methods in order before the existing `<part-list>` emission.
-6. Run `./scripts/compile.sh` — must report SUCCESS.
+1. In `writeSong`, after the `<score-partwise>` open (and `indent()`) and before
+   `<part-list>`, call new private helpers in schema order: `writeMovementInfo` →
+   `writeIdentification`. Leave the existing `<?xml version="1.0"
+   encoding="UTF-8"?>` declaration unchanged — **no DOCTYPE, no `standalone`**.
+2. `writeMovementInfo`: `<movement-number>` (only when `getNumber()` non-empty) then
+   `<movement-title>` (`getTitle()`).
+3. `writeIdentification`: `<identification>` → `<creator type="composer">` /
+   `type="lyricist">` from the discrete getters; `<creator type="arranger">` =
+   `SRI_CHINMOY` only when `isArrangement()`; `<rights>` from
+   `String.format(COPYRIGHT, currentYear)` where `currentYear` and the
+   `<encoding-date>` derive from the injected `Clock` (resolved 8B — **not** a bare
+   `LocalDate.now()`), so writer-output tests pin a fixed date; `<encoding>` →
+   `<software>` = `"SongScribe " + Version.PUBLIC_VERSION` + `<encoding-date>`
+   (`LocalDate.now(clock)`, ISO_LOCAL_DATE), then the always-emitted fixed
+   `<supports>` set —
+   `<supports element="accidental" type="yes"/>`,
+   `<supports element="beam" type="yes"/>`,
+   `<supports element="stem" type="yes"/>` (write-forward).
+4. Close `<identification>` with a `<miscellaneous>` block per the misc-field
+   mapping (composition-date, lyrics-date, composition-place, lyrics-source,
+   unofficial-translation) using `DateUtils.toIsoDate` for the two dates.
+   **lyrics-date (resolved 1B):** a writer-side metadata-prep step normalizes the
+   words-date to *empty* when it equals the composition-date, then emits `lyrics-date`
+   only when the (normalized) words-date is non-empty — mirroring the legacy rule at
+   `SongIO.java:185-189` (a bare `equal → omit` on populated fields is model-lossy:
+   `SongMetadata` has component-wise `equals`, so a populated words-date equal to
+   composition would reload as empty and break round-trip). Normalization lives in
+   writer-prep **only, not the model** (keeps the model read-only). Build the
+   misc-field list into a collection emitted in one pass so Phase 6 can append its
+   fields without reopening the block. **Defer `sub-attribution-font*` and
+   `row-height-adjustment` to Phase 6** (need fonts / defaults). Omit the whole
+   `<miscellaneous>` when no field applies.
+5. Gate: `./scripts/compile.sh` (SUCCESS).
 
-## ⏳ Phase 4: Writer: Defaults Block
+## ✅ Phase 5: Reader: Head Metadata + Round-Trip
 
-**Status:** Pending  <br>
-**BlockedBy:** 3  <br>
-**Recommended model/effort:** Sonnet 4.6, medium — more sub-elements and the two computed distances plus font lookups; still mechanical given the value-mapping table.
+**Status:** Complete  <br>
+**BlockedBy:** 4  <br>
+**Recommended model/effort:** Opus 4.8, medium — reversible SAX accumulation into the immutable `SongMetadata` record; subtree consumption + ISO-date inverse.
 
 ### Tasks
-1. Add a private `writeDefaults` that emits `<defaults>` and its children in order, called after `writeIdentification` and before `<part-list>`.
-2. Emit `<scaling>` (`<millimeters>` via `MusicXmlUtils.formatTenths`,
-   `<tenths>40</tenths>`), `<page-layout>` with height, width, and all four
-   margins derived from `pageModel`, and
+1. Add `Where` states under `SCORE_PARTWISE`: `MOVEMENT_TITLE`, `MOVEMENT_NUMBER`,
+   `IDENTIFICATION`, `CREATOR`, `RIGHTS`, `ENCODING`, `SOFTWARE`, `ENCODING_DATE`,
+   `MISCELLANEOUS`, `MISCELLANEOUS_FIELD`, with matching `endElement` cases
+   returning to their parent. Dispatch is single-level, so each container needs its
+   own start+end cases to consume its subtree cleanly and skip unknown leaves.
+2. Accumulate head fields into a mutable scratch (title, number, composer,
+   lyricist, arranger-seen→`arrangement`, and each misc-field). `<creator>` routes
+   by its `type` attribute. Ignore write-forward-only elements on read (`<rights>`,
+   `<software>`, `<encoding-date>`, `<supports>`).
+3. Parse misc-fields back: `composition-date`/`lyrics-date` via
+   `DateUtils.parseIsoDate` into year/month/day + words y/m/d (null → treat as
+   absent); `composition-place` → place; `lyrics-source` → an **enum-or-throw helper**
+   wrapping `LyricsSource.valueOf` that raises `SAXException("Corrupt document:
+   malformed <lyrics-source>…")` on an unknown token (resolved 7A — matches the
+   reader's `parseIntOrThrow`/`parseDoubleOrThrow` fail-hard convention; the reader
+   has no raw `valueOf` today); `unofficial-translation` → boolean. **Do not** rebuild
+   metadata at `</identification>`; accumulate every field (title, number, composer,
+   lyricist, arrangement, dates, place, source, unofficial-translation, **and the
+   subtitle** from the Phase 8 credit) into reader-local scratch and build
+   `SongMetadata` **once** at the terminal `SCORE_PARTWISE` fix-up (resolved: mirror
+   `SongIO.DocumentReader` → `Song.loadFrom`, which assembles the record in one
+   all-args construction). This dissolves the `</identification>`-before-`</credit>`
+   ordering hazard and needs **no** `setSubtitle`/`withSubtitle` mutator (neither
+   exists).
+4. Add `MusicXmlHeaderRoundTripTest` (extends `MusicXmlRoundTripSupport`): a song
+   with title, number, distinct composer/lyricist, `isArrangement()=true`,
+   `lyricsSource`, full + partial composition/lyrics dates, place, and
+   unofficial-translation round-trips with all metadata equal; empty number omits
+   `<movement-number>` and reloads as empty; a `headerRoundTripIsSchemaValid` case
+   runs `MusicXmlSchemaValidator.validate`.
+5. Gate: `./scripts/compile.sh`; `./scripts/test.sh MusicXmlHeaderRoundTripTest`.
+
+## ✅ Phase 6: Defaults: Writer + Reader + Round-Trip
+
+**Status:** Complete  <br>
+**BlockedBy:** 3, 4  <br>
+**Recommended model/effort:** Opus 4.8, medium — fonts round-trip (write + parse) plus the line-width / row-height delta homes and their inverses.
+
+### Tasks
+1. `writeDefaults` (after `writeIdentification`, before credits): `<scaling>`
+   (`<millimeters>7</millimeters><tenths>40</tenths>`); `<page-layout>` with
+   `<page-height>` = `PAGE_HEIGHT_TENTHS` (fixed) and `<page-width>` =
+   `formatTenths(ssToTenths(lineWidthSs))`;
    `<staff-layout><staff-distance>0</staff-distance></staff-layout>`.
-3. Emit `<system-layout>` with `<system-margins>` (0/0), `<system-distance>` =
-   `formatTenths(ssToTenths(metrics.totalLineHeightSs() − StaffExtents.STAFF_HEIGHT_SS))`,
-   and `<top-system-distance>` = `formatTenths(ssToTenths(metrics.maxAboveStaffSs()))`.
-4. Emit `<music-font font-family="Bravura" font-size="32"/>`.
-5. Emit `<word-font>` from `fonts.getFont(FontKey.ANNOTATION)` (`getFamily()`,
-   `getSize()`) and `<lyric-font>` from `fonts.getFont(FontKey.LYRICS)`.
-6. Emit `<lyric-language xml:lang="en"/>`.
-7. Run `./scripts/compile.sh` — must report SUCCESS.
+2. Append the deferred misc-fields to the Phase 4 `<miscellaneous>` block
+   (coordinate so all misc-fields live in one block): `sub-attribution-font` /
+   `sub-attribution-font-size` from `fonts.getFont(FontKey.SUB_ATTRIBUTION)`
+   (family / size), and `row-height-adjustment` = `rowHeightAdjustmentSs` when
+   non-zero.
+3. Emit fonts: `<music-font font-family="Bravura" font-size="32"/>`; `<word-font>`
+   from `fonts.getFont(FontKey.ANNOTATION)`; `<lyric-font>` from
+   `fonts.getFont(FontKey.LYRICS)` (`getFamily()` / `getSize()`);
+   `<lyric-language xml:lang="en"/>`.
+4. Reader: `DEFAULTS` subtree states; parse `<page-width>` → `lineWidthSs`
+   (`tenthsToSs`) via `parseDoubleOrThrow`, the `row-height-adjustment` misc-field →
+   `rowHeightAdjustmentSs`, and `<word-font>`/`<lyric-font>`/sub-attribution
+   misc-fields (font-size via `parseDoubleOrThrow`/`parseIntOrThrow`, resolved 7A)
+   back into the `DocumentFonts` result. Ignore
+   `<scaling>`/`<music-font>`/`<page-height>` on read (fixed/write-forward).
+5. Add `MusicXmlDefaultsRoundTripTest`: line width, row-height adjustment, and the
+   annotation/lyric/sub-attribution fonts survive round-trip (`DocumentFonts.equals`);
+   a document with **no `<defaults>` fonts reads back `DocumentFonts.defaultFonts()`**
+   (resolved 3A); a **hand-edited write-forward value** (`<page-height>` /
+   `<scaling>`) leaves the reloaded model unchanged (resolved 3A — proves
+   ignored-on-read); a `defaultsRoundTripIsSchemaValid` case.
+6. Gate: `./scripts/compile.sh`; `./scripts/test.sh MusicXmlDefaultsRoundTripTest`.
 
-## ⏳ Phase 4a: Writer: Credit Block
+## ✅ Phase 7: Writer: Credits
 
-**Status:** Pending  <br>
-**BlockedBy:** 4 (attribution-role credits additionally gated on the external attribution rework — Resolved decisions #10)  <br>
-**Recommended model/effort:** Sonnet 4.6, medium — mechanical tag emission; positions come from the rendered geometry passed in by the caller (§ "Credit positions").
-
-> **Positions:** each credit's `(x, y, page)` is supplied by the caller from the
-> laid-out `MainPanel` components and converted px → tenths with a bottom-left
-> page origin (§ "Credit positions"). Widen the signature to accept these
-> positions (a per-item record / credit-descriptor list). `page` is always `1`.
-> The attribution-role credits stay deferred until the attribution rework.
-
-### Tasks
-1. Add a `pxToTenths` helper to `MusicXmlUtils` (px → ss via `ScaleContext`, then
-   `ssToTenths`); use it for all credit positions. Widen `writeSong` (or add a
-   credit-descriptor parameter) to receive each item's `(x, y, page)`.
-2. Add a private `writeCredits` that emits the `<credit>` elements after
-   `writeDefaults` and before the `<part-list>` emission.
-3. Add a private helper (e.g. `writeCredit(creditType, fontKey, page, text, xPx, yTopPx, …)`)
-   emitting `<credit page="N">` (omit `page` when 1) → `<credit-type>` → and
-   `<credit-words>` with `font-family`/`font-size`/`font-weight` from
-   `fonts.getFont(fontKey)`, optional `justify="center"`, and `default-x` /
-   `default-y` (px → tenths; `default-y` flipped to a bottom-left origin via the
-   page height). The element text is the rendered display string.
-4. Emit the title credit from `TitleComponent` geometry (`FontKey.TITLE`,
-   `justify="center"`), only when the title is non-blank. The `<credit-words>`
-   text is `song.getNumberedTitle()` (title prefixed with the movement number
-   when present).
-5. Emit the score-below credits, each only when non-blank, on page 1, from their
-   component geometry: `underlyrics` (`FontKey.LYRICS`), `bangla-lyrics`
-   (`FontKey.BANGLA`, add `xml:lang`), `translation` (`FontKey.LYRICS`),
-   `footnotes` (`FontKey.FOOTNOTE`).
-6. Leave the attribution-role credits (`composer` … `place`) **unimplemented**
-   with a clear TODO referencing the attribution rework (Resolved decisions #10):
-   the discrete fields and per-role positions do not exist yet.
-7. Run `./scripts/compile.sh` — must report SUCCESS.
-
-## ⏳ Phase 5: Update Writer Call Sites
-
-**Status:** Pending  <br>
-**BlockedBy:** 3  <br>
-**Recommended model/effort:** Haiku 4.5 or Sonnet 4.6, low — two mechanical call-site edits to satisfy the new signature.
+**Status:** Complete  <br>
+**BlockedBy:** 2, 3  <br>
+**Recommended model/effort:** Sonnet 4.6, medium — mechanical `<credit>` emission from the credit table; positions are best-effort/omitted (write-forward), so no layout coupling.
 
 ### Tasks
-1. In `MusicXmlRoundTripTest.writeToString` (`MusicXmlRoundTripTest.java:48`),
-   pass a `DocumentFonts` (use `DocumentFonts.defaultsFromPrefs()` or an explicit
-   test instance), a `SongLayoutMetrics` built via
-   `SongLayoutMetricsBuilder.build(List.of(), 0.0)` (or from the song's layout if
-   the test already has results), and a `PageModel` test instance.
-2. In `MusicXmlWriterSchemaTest.testEmptyDefaultSongIsSchemaValid`
-   (`MusicXmlWriterSchemaTest.java:40`), apply the same call-site update.
-3. Run `./scripts/compile.sh` — must report SUCCESS.
+1. `writeCredits` (after `writeDefaults`, before `<part-list>`) with a private
+   `writeCredit(creditType, fontKey, text, justify, relativeYSs, xmlLang)` helper:
+   `<credit>` (omit `page` when 1) → `<credit-type>` → `<credit-words>` with
+   `font-family`/`font-size`/`font-weight`/`font-style` from the role's
+   `fonts.getFont(fontKey)` (weight/style via `isBold()`/`isItalic()`), optional
+   `justify`/`xml:lang`/`relative-y`. Emit a credit only when its text is non-blank.
+   `default-x`/`default-y` omitted (write-forward, deferred).
+2. Emit `title` (`getNumberedTitle()`, `TITLE`, `justify="center"`) and `subtitle`
+   (`getSubtitle()`, `SUBTITLE`) credits.
+3. Emit attribution-role credits (`composer`, `lyricist`, `arranger` when
+   `isArrangement()`, `composition date`, `lyrics date` when distinct, `rights`,
+   `place`), each `ATTRIBUTION`, each carrying `relative-y` =
+   `ssToTenths(attributionElement.getUserYOffsetSs())`.
+4. Emit score-below credits (`underlyrics` `LYRICS`, `bangla-lyrics` `BANGLA` +
+   `xml:lang`, `translation` `LYRICS`, `footnotes` `FOOTNOTE`), page 1.
+5. Gate: `./scripts/compile.sh`; add raw-output assertions to
+   `MusicXmlWriterOutputTest` (title/subtitle/attribution/score-below shapes, fonts
+   present, blank fields emit no credit) + a `creditsWriterOutputIsSchemaValid` case;
+   `./scripts/test.sh MusicXmlWriterOutputTest`.
 
-## ⏳ Phase 6: Tests
+## ✅ Phase 8: Reader: Credits + Round-Trip
 
-**Status:** Pending  <br>
-**BlockedBy:** 4, 4a, 5  <br>
-**Recommended model/effort:** Sonnet 4.6, medium — new unit tests plus assertions over emitted XML and schema validation.
+**Status:** Complete  <br>
+**BlockedBy:** 7  <br>
+**Recommended model/effort:** Opus 4.8, medium — the reversible slice: read the canonical credits back, re-derive the display-only ones, recover the attribution offset once.
 
 ### Tasks
-1. Create `MusicXmlUtilsTest`: `ssToTenths`/`tenthsToSs` round-trip, the
-   `TENTHS_PER_STAFF_SPACE` anchor (4 ss → 40 tenths), and `formatTenths` cases
-   (`40.00 → "40"`, `12.50 → "12.5"`, `12.534 → "12.53"`).
-2. Add a writer test asserting the title/identification block: `movement-title`
-   present; `movement-number` present when `song.getNumber()` is non-empty and
-   absent when empty; `software` contains `Version.PUBLIC_VERSION`; the
-   `<supports>` flags present; `encoding-date` matches ISO date pattern.
-3. Add a writer test for the `<miscellaneous>` block: a song populated with the
-   residual misc-field values (`composition-date`, `lyrics-date`, `place`,
-   `unofficial-translation`) emits a `<miscellaneous>` element with the correct
-   `<miscellaneous-field name="...">` entries; a song with none emits no
-   `<miscellaneous>` element at all; `lyrics-date` is omitted when it equals
-   `composition-date` and present when distinct; `unofficial-translation` appears
-   only when the flag is true. Confirm there are **no** `<miscellaneous-field>`
-   entries for underlyrics / bangla / translated lyrics / footnotes (those are
-   credits).
-4. Add a writer test asserting the defaults block from a known `SongLayoutMetrics`,
-   known `DocumentFonts`, and known `PageModel`: `page-height`/`page-width`/margins
-   match PageModel values; `system-distance`/`top-system-distance` numeric values;
-   `word-font`/`lyric-font` family+size; `music-font` size `32`; and
-   `lyric-language="en"`.
-5. Add a writer test for the `<credit>` block: the title and each populated
-   attribution role emit a `<credit>` (page 1) with the right `<credit-type>` and
-   `<credit-words>` font (family/size/weight from the role's `FontKey`); blank
-   roles emit no credit; `lyrics date` credit is omitted when equal to the
-   composition date. The score-below blocks (underlyrics, bangla-lyrics,
-   translation, footnotes) emit `<credit page="N">` on the last page, with
-   `xml:lang` on the bangla credit; absent blocks emit no credit.
-6. Extend `MusicXmlWriterSchemaTest` so the header + defaults + credits output
-   validates against the MusicXML 4.0 schema in `docs/musicxml-4.0-schema/`.
-7. Run `./scripts/compile.sh`, then `./scripts/test.sh MusicXmlUtilsTest
-   MusicXmlWriterSchemaTest MusicXmlRoundTripTest` (and the new writer tests) —
-   all must be green.
+1. Add `CREDIT` / `CREDIT_TYPE` / `CREDIT_WORDS` `Where` states under
+   `SCORE_PARTWISE`; accumulate `<credit-type>` + `<credit-words>` text + its
+   attributes per credit (own start+end cases for clean subtree consumption).
+   **P-1:** credit-words / misc-field text must accumulate across SAX `characters()`
+   chunks — append to the existing `value` `StringBuilder` and read only at the end
+   element (long footnotes/underlyrics arrive in multiple chunks and would otherwise
+   truncate).
+2. On each `</credit>`, dispatch by credit-type via the single routing table (6B):
+   **canonical** → subtitle accumulates into the head scratch (assembled with the
+   rest of `SongMetadata` at the terminal `SCORE_PARTWISE`, per Phase 5 — **no**
+   `setSubtitle`, which does not exist); the four score-below blocks →
+   `setUnderLyrics`/`setBanglaLyrics`/`setTranslatedLyrics`/`setFootnotes` (standalone
+   `Song` fields); **display-only** (title, composer, lyricist, arranger,
+   composition/lyrics date, rights, place) → ignore text (re-derived from head). Add
+   an inline copy of the canonical/display-only/write-forward diagram (see
+   Implementation Approach → Data-flow contract) as a comment above this dispatch
+   method (resolved 4A).
+3. Read the attribution `relative-y` back **once** into
+   `attributionElement.setUserYOffsetSs(tenthsToSs(...))` (first attribution credit
+   that carries it).
+4. Add `MusicXmlCreditRoundTripTest`: subtitle + all four score-below blocks reload
+   verbatim; a populated attribution Y-offset survives; title/attribution credits do
+   **not** corrupt head metadata (canonical head still wins); a blank subtitle
+   reloads blank; `creditRoundTripIsSchemaValid`.
+5. Gate: `./scripts/compile.sh`; `./scripts/test.sh MusicXmlCreditRoundTripTest`.
+
+## ✅ Phase 9: Annotations: Writer + Reader + Round-Trip
+
+**Status:** Complete  <br>
+**BlockedBy:** 2  <br>
+**Recommended model/effort:** Opus 4.8, medium — measure-level `<direction>` emission plus the reader discriminator separating annotation directions from tempo/wedge directions, and intercepting the currently-dropped words-only direction.
+
+### Tasks
+1. Writer: in the `writeLineDrivenMeasures` note-branch seam, for a note carrying an
+   `AnnotationAttachment` emit a `<direction placement="above|below">` immediately
+   before its `<note>` (after the tempo/wedge directions):
+   `<direction-type><words halign="…" justify="…" relative-y="…">text</words>` from
+   `getAnnotation()` / `getXAlignment()` / `getUserYOffsetSs()`. `default-y` omitted
+   (write-forward).
+2. Reader: read the `placement` attribute on `<direction>` start. **Discriminator
+   (resolved 2A — single rule, not "and/or"):** a `<direction>` is an annotation iff
+   it carries **no `<metronome>` and has a `placement` attribute**. (Verify the
+   writer's tempo/metric-mod directions never emit `placement`, so the signal is
+   unambiguous.) Route such a direction's `<words>` text + halign + relative-y into an
+   annotation accumulator instead of `MetronomeResolver` (which currently drops
+   words-only directions), and build an `Annotation`
+   (`setAnnotation`/`setXAlignment`/`setPlacement`/`setUserYOffsetSs`) into an
+   `AnnotationAttachment` on the next note. Tempo directions (carry `<metronome>`)
+   still route to `MetronomeResolver` unchanged; a words-only direction with **no**
+   `placement` is left to the resolver (dropped), never promoted to a phantom
+   annotation.
+3. Map `xAlignment` ↔ halign/justify (0.0↔left, 0.5↔center, 1.0↔right) — a small
+   symmetric lookup in both directions.
+4. Add `MusicXmlAnnotationRoundTripTest`: an ABOVE and a BELOW annotation with
+   distinct text, each of left/center/right alignment, and a non-zero
+   `userYOffsetSs`, all round-trip; a note carrying **both** a tempo direction and an
+   annotation keeps both distinct (tempo still parsed, annotation attached);
+   **two annotations on consecutive notes round-trip in order and stay attached to
+   the correct notes** (resolved 2A — exercises attach-to-next-note); **a words-only
+   `<direction>` with no `placement` (and no `<metronome>`) is NOT promoted to an
+   annotation** (resolved 2A — negative discriminator case);
+   `annotationRoundTripIsSchemaValid`.
+5. Gate: `./scripts/compile.sh`; `./scripts/test.sh MusicXmlAnnotationRoundTripTest`.
+
+## ✅ Phase 10: Full Round-Trip + Regression
+
+**Status:** Complete  <br>
+**BlockedBy:** 5, 6, 8, 9  <br>
+**Recommended model/effort:** Sonnet 4.6, medium — one integration test over a fully-populated song plus the cumulative regression gate.
+
+### Tasks
+1. Add `MusicXmlDocumentRoundTripTest`: build a song populated across **every**
+   Phase 7 area — full head metadata, distinct dates, all misc-fields, custom
+   fonts, line width + row-height adjustment, title/subtitle/attribution/score-below
+   credits with an attribution offset, and both ABOVE/BELOW annotations — plus
+   notes/lyrics/tempo/key from earlier phases. Assert full equality after
+   `roundTrip` (including `DocumentFonts.equals`), that every residual `<misc-field>`
+   reloads verbatim, and schema validity of the whole document.
+2. Assert the display-only credits (title, attribution roles) re-derive from head
+   metadata rather than being read from the credit text (mutating a credit's text in
+   hand-written XML must not change the reloaded model).
+3. Gate: `./scripts/compile.sh`; `./scripts/test.sh unit` — the full suite is green
+   with no Phase 1–6 regression.
 
 ## Verification (whole sub-plan)
 
-- `./scripts/compile.sh` reports SUCCESS after each phase.
-- Unit tests green: `MusicXmlUtilsTest`, the writer
-  header/identification/misc-field/defaults/credit tests,
-  `MusicXmlWriterSchemaTest`, `MusicXmlRoundTripTest`.
-- Emitted output for a representative song contains the correct element set and
-  ordering (title, identification with `<miscellaneous>`, defaults, credits) with
-  all values matching the element-to-source and credit tables above.
-- Header + defaults + credits output validates against the MusicXML 4.0 schema.
-- The pre-existing structural output (part-list, measures, barlines) is unchanged
-  and its round-trip test still passes.
+- `./scripts/compile.sh` → SUCCESS after every phase.
+- Writer output for head + `<defaults>` + credits + annotations validates against
+  `docs/musicxml-4.0-schema/` via explicit `MusicXmlSchemaValidator` assertions.
+- `./scripts/test.sh unit` green, including `DateUtilsTest`, and the header /
+  defaults / credit / annotation / full-document round-trip suites, with no
+  Phase 1–6 regression and no regression in SongScribe's existing `.mssw`
+  lyrics-date tests (Phase 1 refactor).
+- Round-trips losslessly: all head metadata and misc-fields; the three document
+  fonts; line width and row-height adjustment; the subtitle and all four
+  score-below blocks (verbatim); the attribution Y-offset; and ABOVE/BELOW
+  annotations with alignment + offset. Display-only credits (title, attribution
+  roles) re-derive from head metadata and never corrupt it on read.
+- Write-forward-only data (`<rights>`, `<software>`, `<encoding-date>`,
+  `<supports>`, `<page-height>`, credit `default-x`/`default-y`) is emitted
+  schema-valid and ignored on read.

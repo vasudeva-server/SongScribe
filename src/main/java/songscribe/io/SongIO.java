@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -48,6 +47,7 @@ import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.util.DateUtils;
 
 public final class SongIO {
 
@@ -101,29 +101,6 @@ public final class SongIO {
     private static final String XML_SUBTITLE = "subtitle";
 
     private SongIO() {
-    }
-
-    /**
-     * Formats a words date as a reduced-precision ISO 8601 string.
-     * Returns {@code ""} when {@code year} is blank.
-     * Appends {@code -MM} when {@code month > 0}, and {@code -DD} when both
-     * {@code month > 0} and {@code day > 0} (day without month is impossible
-     * by the dialog's enable rules).
-     */
-    private static String toIsoDate(String year, int month, int day) {
-        if (year.isEmpty()) {
-            return "";
-        }
-
-        if (month <= 0) {
-            return year;
-        }
-
-        if (day <= 0) {
-            return String.format("%s-%02d", year, month);
-        }
-
-        return String.format("%s-%02d-%02d", year, month, day);
     }
 
     public static void writeSong(Song c, DocumentFontsHolder fonts, PrintWriter pw) {
@@ -182,7 +159,7 @@ public final class SongIO {
             XML.writeValue(pw, XML_DAY, Integer.toString(c.getDay()));
         }
 
-        var lyricsDateStr = toIsoDate(c.getWordsYear(), c.getWordsMonth(), c.getWordsDay());
+        var lyricsDateStr = DateUtils.toIsoDate(c.getWordsYear(), c.getWordsMonth(), c.getWordsDay());
 
         if (!lyricsDateStr.isEmpty()) {
             XML.writeValue(pw, XML_LYRICS_DATE, lyricsDateStr);
@@ -270,12 +247,8 @@ public final class SongIO {
     public static class DocumentReader extends DefaultHandler {
 
         private static final Logger LOG = LoggerFactory.getLogger(DocumentReader.class);
-        private static final int MAX_MONTH = 12;
-        private static final int MAX_DAY = 31;
         private static final String BY_PREFIX = "by ";
         private static final int CURRENT_FORMAT_VERSION = 3;
-        private static final Pattern ISO_DATE_PATTERN =
-            Pattern.compile("^(\\d{4})(?:-(\\d{2})(?:-(\\d{2}))?)?$");
 
         @Nullable
         private Where where = null;
@@ -621,7 +594,7 @@ public final class SongIO {
                         case XML_YEAR -> year = str;
                         case XML_MONTH -> {
                             month = DocumentValidation.parseIntOrThrow(LOG, XML_MONTH, str);
-                            if (month < 1 || month > MAX_MONTH) {
+                            if (month < 1 || month > DateUtils.MAX_MONTH) {
                                 LOG.warn("Corrupt document: month out of range: {}", month);
                                 month = 0;
                                 monthInvalid = true;
@@ -629,7 +602,7 @@ public final class SongIO {
                         }
                         case XML_DAY -> {
                             day = DocumentValidation.parseIntOrThrow(LOG, XML_DAY, str);
-                            if (day < 1 || day > MAX_DAY) {
+                            if (day < 1 || day > DateUtils.MAX_DAY) {
                                 LOG.warn("Corrupt document: day out of range: {}", day);
                                 day = 0;
                             }
@@ -944,7 +917,7 @@ public final class SongIO {
                         try {
                             var parsedDay = Integer.parseInt(dayStr);
 
-                            if (parsedDay >= 1 && parsedDay <= MAX_DAY) {
+                            if (parsedDay >= 1 && parsedDay <= DateUtils.MAX_DAY) {
                                 day = parsedDay;
                             }
                         } catch (NumberFormatException ignored) { /* best-effort */ }
@@ -975,45 +948,17 @@ public final class SongIO {
          * must not abort the whole document load.
          */
         private void parseLyricsDate(String str) {
-            var matcher = ISO_DATE_PATTERN.matcher(str);
+            var parsed = DateUtils.parseIsoDate(str);
 
-            if (!matcher.matches()) {
+            if (parsed == null) {
                 LOG.warn("Corrupt document: malformed lyricsDate: '{}'", str);
                 invalidLyricsDate = str;
                 return;
             }
 
-            // Group 1 is always present (4 digits); parseInt cannot throw.
-            var parsedWordsYear = matcher.group(1);
-            var monthGroup = matcher.group(2);
-            var dayGroup = matcher.group(3);
-
-            var parsedWordsMonth = 0;
-            var parsedWordsDay = 0;
-
-            if (monthGroup != null) {
-                parsedWordsMonth = Integer.parseInt(monthGroup);
-
-                if (parsedWordsMonth < 1 || parsedWordsMonth > MAX_MONTH) {
-                    LOG.warn("Corrupt document: lyricsDate month out of range: '{}'", str);
-                    invalidLyricsDate = str;
-                    return;
-                }
-            }
-
-            if (dayGroup != null) {
-                parsedWordsDay = Integer.parseInt(dayGroup);
-
-                if (parsedWordsDay < 1 || parsedWordsDay > MAX_DAY) {
-                    LOG.warn("Corrupt document: lyricsDate day out of range: '{}'", str);
-                    invalidLyricsDate = str;
-                    return;
-                }
-            }
-
-            wordsYear = parsedWordsYear;
-            wordsMonth = parsedWordsMonth;
-            wordsDay = parsedWordsDay;
+            wordsYear = parsed.year();
+            wordsMonth = parsed.month();
+            wordsDay = parsed.day();
         }
 
         private enum Where {

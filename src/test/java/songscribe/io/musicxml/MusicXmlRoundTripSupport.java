@@ -35,6 +35,9 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.font.DocumentFonts;
+import songscribe.font.DocumentFontsHolder;
+import songscribe.io.SongLoadResult;
 
 /**
  * Shared plumbing for the MusicXML round-trip test classes: the write/read
@@ -58,20 +61,37 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
 
     // -- helpers --
 
+    // The Song-only overloads default to DocumentFonts.defaultFonts() so the
+    // Phase 1–6 tests that predate fonts plumbing compile and run unchanged; the
+    // font-aware overloads carry the DocumentFonts through the write/read seam and
+    // surface it back via SongLoadResult.Success.
+
     protected static String writeToString(Song song) throws Exception {
+        return writeToString(song, DocumentFonts.defaultFonts());
+    }
+
+    protected static String writeToString(Song song, DocumentFontsHolder fonts) throws Exception {
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
-        MusicXmlWriter.writeSong(song, pw);
+        MusicXmlWriter.writeSong(song, fonts, pw);
         pw.flush();
         return sw.toString();
     }
 
     protected static Song parse(String xml) throws Exception {
+        return parseResult(xml).song();
+    }
+
+    protected static SongLoadResult.Success parseResult(String xml) throws Exception {
         return MusicXmlReader.read(new InputSource(new StringReader(xml)));
     }
 
     public static Song roundTrip(Song song) throws Exception {
-        return parse(writeToString(song));
+        return roundTrip(song, DocumentFonts.defaultFonts()).song();
+    }
+
+    public static SongLoadResult.Success roundTrip(Song song, DocumentFontsHolder fonts) throws Exception {
+        return parseResult(writeToString(song, fonts));
     }
 
     /**

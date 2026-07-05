@@ -19,12 +19,20 @@
  */
 package songscribe.io.musicxml;
 
+import java.awt.Font;
 import java.io.PrintWriter;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import org.jspecify.annotations.Nullable;
+import songscribe.Version;
+import songscribe.dom.Annotation;
+import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Beam;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
@@ -42,9 +50,12 @@ import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.font.DocumentFontsHolder;
+import songscribe.font.FontKey;
 import songscribe.io.XML;
 import songscribe.layout.BeamMath;
 import songscribe.layout.LineEndingSupport;
+import songscribe.util.DateUtils;
 
 public final class MusicXmlWriter {
 
@@ -67,6 +78,10 @@ public final class MusicXmlWriter {
     // = 35 tenths. Added to the note's tenths-from-middle-line to give the
     // stem-tip default-y.
     private static final int GRACE_STEM_EXTENSION_TENTHS = 35;
+
+    // <staff-distance> is write-forward: SongScribe's single-staff model has no
+    // inter-staff spacing, so a zero distance is emitted and ignored on read.
+    private static final String STAFF_DISTANCE_TENTHS = "0";
 
     private MusicXmlWriter() {}
 
@@ -150,12 +165,46 @@ public final class MusicXmlWriter {
         return list == null ? List.of() : list;
     }
 
-    public static void writeSong(Song song, PrintWriter pw) {
+    /**
+     * Writes {@code song} to {@code pw} as MusicXML, using {@code fonts} for the
+     * document-level font roles. Uses the system-default {@link Clock} for the
+     * write-forward {@code <rights>} year and {@code <encoding-date>}.
+     *
+     * @param song  the song to serialize
+     * @param fonts the document fonts to emit under {@code <defaults>}/{@code <credit>}
+     * @param pw    the writer to emit the MusicXML document to
+     */
+    public static void writeSong(Song song, DocumentFontsHolder fonts, PrintWriter pw) {
+        writeSong(song, fonts, pw, Clock.systemDefaultZone());
+    }
+
+    /**
+     * Writes {@code song} to {@code pw} as MusicXML. The {@code clock} is
+     * injectable so the write-forward {@code <rights>} year and
+     * {@code <encoding-date>} are deterministic under test.
+     *
+     * @param song  the song to serialize
+     * @param fonts the document fonts to emit under {@code <defaults>}/{@code <credit>}
+     * @param pw    the writer to emit the MusicXML document to
+     * @param clock the clock supplying the current date for write-forward fields
+     */
+    public static void writeSong(Song song, DocumentFontsHolder fonts, PrintWriter pw, Clock clock) {
         pw.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
 
         XML.resetIndent();
         XML.writeBeginTag(pw, MusicXmlTags.SCORE_PARTWISE, MusicXmlTags.ATTR_VERSION, MusicXmlTags.VERSION_VALUE);
         XML.indent();
+
+        // Resolve every clock- and date-derived header value once, so the
+        // <miscellaneous> block and the <credit> list share a single source for
+        // the composition/lyrics dates (and the lyrics-date-equals-composition
+        // dedup) and the <rights>/<encoding-date> strings.
+        var headerText = HeaderText.of(song, clock);
+
+        writeMovementInfo(song, pw);
+        writeIdentification(song, fonts, headerText, pw);
+        writeDefaults(song, fonts, pw);
+        writeCredits(song, fonts, headerText, pw);
 
         XML.writeBeginTag(pw, MusicXmlTags.PART_LIST);
         XML.indent();
@@ -181,6 +230,382 @@ public final class MusicXmlWriter {
 
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.SCORE_PARTWISE);
+    }
+
+    /**
+     * The clock- and date-derived header strings, resolved once per write so the
+     * {@code <miscellaneous>} block and the {@code <credit>} list agree on a
+     * single value for each.
+     *
+     * @param compositionDate    the composition date as a reduced-precision ISO
+     *                           string, or {@code ""} when the song has none
+     * @param distinctLyricsDate the lyrics date, or {@code ""} when absent OR
+     *                           equal to the composition date (redundant to emit
+     *                           a second time)
+     * @param rights             the {@code <rights>}/rights-credit copyright line
+     * @param encodingDate       the {@code <encoding-date>} in ISO local-date form
+     */
+    private record HeaderText(String compositionDate, String distinctLyricsDate, String rights, String encodingDate) {
+
+        static HeaderText of(Song song, Clock clock) {
+            var compositionDate = DateUtils.toIsoDate(song.getYear(), song.getMonth(), song.getDay());
+            var lyricsDate = DateUtils.toIsoDate(song.getWordsYear(), song.getWordsMonth(), song.getWordsDay());
+
+            // A lyrics date equal to the composition date is redundant — drop it
+            // here so neither the <miscellaneous> block nor the credit list emits
+            // a duplicate value.
+            var distinctLyricsDate = lyricsDate.equals(compositionDate) ? "" : lyricsDate;
+
+            var currentDate = LocalDate.now(clock);
+            var rights = String.format(MusicXmlTags.COPYRIGHT, currentDate.getYear());
+            var encodingDate = currentDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+            return new HeaderText(compositionDate, distinctLyricsDate, rights, encodingDate);
+        }
+    }
+
+    /**
+     * Writes {@code <movement-number>} (omitted when {@code getNumber()} is
+     * blank) followed by {@code <movement-title>}, in schema order.
+     */
+    private static void writeMovementInfo(Song song, PrintWriter pw) {
+        if (!song.getNumber().isEmpty()) {
+            XML.writeValue(pw, MusicXmlTags.MOVEMENT_NUMBER, song.getNumber());
+        }
+
+        XML.writeValue(pw, MusicXmlTags.MOVEMENT_TITLE, song.getTitle());
+    }
+
+    /**
+     * Writes {@code <identification>}: composer/lyricist/arranger
+     * {@code <creator>}s, the write-forward {@code <rights>} and
+     * {@code <encoding>} blocks (dated from {@code headerText} so writer-output
+     * tests can pin a fixed date), and the residual {@code <miscellaneous>}
+     * block.
+     */
+    private static void writeIdentification(Song song, DocumentFontsHolder fonts, HeaderText headerText, PrintWriter pw) {
+        XML.writeBeginTag(pw, MusicXmlTags.IDENTIFICATION);
+        XML.indent();
+
+        XML.writeValue(
+            pw,
+            MusicXmlTags.CREATOR,
+            song.getComposer(),
+            MusicXmlTags.ATTR_TYPE, MusicXmlTags.CREATOR_COMPOSER
+        );
+        XML.writeValue(
+            pw,
+            MusicXmlTags.CREATOR,
+            song.getLyricist(),
+            MusicXmlTags.ATTR_TYPE, MusicXmlTags.CREATOR_LYRICIST
+        );
+
+        if (song.isArrangement()) {
+            XML.writeValue(
+                pw,
+                MusicXmlTags.CREATOR,
+                Song.SRI_CHINMOY,
+                MusicXmlTags.ATTR_TYPE, MusicXmlTags.CREATOR_ARRANGER
+            );
+        }
+
+        XML.writeValue(pw, MusicXmlTags.RIGHTS, headerText.rights());
+
+        XML.writeBeginTag(pw, MusicXmlTags.ENCODING);
+        XML.indent();
+        XML.writeValue(pw, MusicXmlTags.SOFTWARE, "SongScribe " + Version.PUBLIC_VERSION);
+        XML.writeValue(pw, MusicXmlTags.ENCODING_DATE, headerText.encodingDate());
+        XML.writeEmptyTag(
+            pw,
+            MusicXmlTags.SUPPORTS,
+            MusicXmlTags.ATTR_ELEMENT, MusicXmlTags.SUPPORTS_ACCIDENTAL,
+            MusicXmlTags.ATTR_TYPE, MusicXmlTags.YES
+        );
+        XML.writeEmptyTag(
+            pw,
+            MusicXmlTags.SUPPORTS,
+            MusicXmlTags.ATTR_ELEMENT, MusicXmlTags.SUPPORTS_BEAM,
+            MusicXmlTags.ATTR_TYPE, MusicXmlTags.YES
+        );
+        XML.writeEmptyTag(
+            pw,
+            MusicXmlTags.SUPPORTS,
+            MusicXmlTags.ATTR_ELEMENT, MusicXmlTags.SUPPORTS_STEM,
+            MusicXmlTags.ATTR_TYPE, MusicXmlTags.YES
+        );
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.ENCODING);
+
+        writeMiscellaneousFields(song, fonts, headerText, pw);
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.IDENTIFICATION);
+    }
+
+    /**
+     * Writes the residual {@code <miscellaneous>} block (composition-date,
+     * lyrics-date, composition-place, lyrics-source, unofficial-translation,
+     * sub-attribution-font/-size, row-height-adjustment), omitting the whole
+     * block when no field applies. Fields are collected into one insertion-ordered
+     * name→value map so they emit in order in a single {@code <miscellaneous>}
+     * block, with each name paired to its value at the point of insertion (no
+     * index coupling between separate name/value lists).
+     */
+    private static void writeMiscellaneousFields(Song song, DocumentFontsHolder fonts, HeaderText headerText, PrintWriter pw) {
+        var fields = new LinkedHashMap<String, String>();
+
+        if (!headerText.compositionDate().isEmpty()) {
+            fields.put(MusicXmlTags.MISC_COMPOSITION_DATE, headerText.compositionDate());
+        }
+
+        // The lyrics date is already dropped in HeaderText when equal to the
+        // composition date, so a non-empty value here is genuinely distinct.
+        if (!headerText.distinctLyricsDate().isEmpty()) {
+            fields.put(MusicXmlTags.MISC_LYRICS_DATE, headerText.distinctLyricsDate());
+        }
+
+        if (!song.getPlace().isEmpty()) {
+            fields.put(MusicXmlTags.MISC_COMPOSITION_PLACE, song.getPlace());
+        }
+
+        fields.put(MusicXmlTags.MISC_LYRICS_SOURCE, song.getLyricsSource().name());
+
+        if (song.isUnofficialTranslation()) {
+            fields.put(MusicXmlTags.MISC_UNOFFICIAL_TRANSLATION, "true");
+        }
+
+        // The sub-attribution font rides in the miscellaneous block (no
+        // <defaults> element carries a sub-attribution role); it is always
+        // emitted so the reader can recover it.
+        var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
+        fields.put(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT, subAttributionFont.getFamily());
+        fields.put(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT_SIZE, String.valueOf(subAttributionFont.getSize()));
+
+        // Row-height adjustment is a delta from the computed base; omit when 0.
+        var rowHeightAdjustmentSs = song.getRowHeightAdjustmentSs();
+
+        if (rowHeightAdjustmentSs != 0) {
+            fields.put(MusicXmlTags.MISC_ROW_HEIGHT_ADJUSTMENT, String.valueOf(rowHeightAdjustmentSs));
+        }
+
+        if (fields.isEmpty()) {
+            return;
+        }
+
+        XML.writeBeginTag(pw, MusicXmlTags.MISCELLANEOUS);
+        XML.indent();
+
+        for (var field : fields.entrySet()) {
+            XML.writeValue(
+                pw,
+                MusicXmlTags.MISCELLANEOUS_FIELD,
+                field.getValue(),
+                MusicXmlTags.ATTR_NAME, field.getKey()
+            );
+        }
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.MISCELLANEOUS);
+    }
+
+    /**
+     * Writes the {@code <defaults>} block: the fixed {@code <scaling>}, the
+     * {@code <page-layout>} carrying the model line width as {@code <page-width>},
+     * a zero {@code <staff-layout>}, and the document fonts. {@code <scaling>},
+     * {@code <page-height>}, and {@code <music-font>} are write-forward (fixed)
+     * and ignored on read; {@code <page-width>}, {@code <word-font>}, and
+     * {@code <lyric-font>} round-trip (the sub-attribution font rides in the
+     * {@code <miscellaneous>} block, as MusicXML has no sub-attribution role).
+     */
+    private static void writeDefaults(Song song, DocumentFontsHolder fonts, PrintWriter pw) {
+        XML.writeBeginTag(pw, MusicXmlTags.DEFAULTS);
+        XML.indent();
+
+        // Fixed scaling: 7 mm per 40 tenths (one 4-space staff), the MusicXML
+        // default. Write-forward — the reader ignores it.
+        XML.writeBeginTag(pw, MusicXmlTags.SCALING);
+        XML.indent();
+        XML.writeValue(
+            pw,
+            MusicXmlTags.MILLIMETERS,
+            String.format(Locale.ROOT, "%.0f", MusicXmlTags.SCALING_MILLIMETERS)
+        );
+        XML.writeValue(pw, MusicXmlTags.TENTHS, MusicXmlTags.SCALING_TENTHS);
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.SCALING);
+
+        // Page layout: page-height is a fixed write-forward value; page-width
+        // carries the model line width — the one canonical page-layout field.
+        XML.writeBeginTag(pw, MusicXmlTags.PAGE_LAYOUT);
+        XML.indent();
+        XML.writeValue(pw, MusicXmlTags.PAGE_HEIGHT, MusicXmlTags.PAGE_HEIGHT_TENTHS);
+        XML.writeValue(pw, MusicXmlTags.PAGE_WIDTH, formatTenths(ssToTenths(song.getLineWidthSs())));
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.PAGE_LAYOUT);
+
+        XML.writeBeginTag(pw, MusicXmlTags.STAFF_LAYOUT);
+        XML.indent();
+        XML.writeValue(pw, MusicXmlTags.STAFF_DISTANCE, STAFF_DISTANCE_TENTHS);
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.STAFF_LAYOUT);
+
+        // Fixed music font (write-forward); the word/lyric fonts round-trip.
+        XML.writeEmptyTag(
+            pw,
+            MusicXmlTags.MUSIC_FONT,
+            MusicXmlTags.ATTR_FONT_FAMILY, MusicXmlTags.MUSIC_FONT_FAMILY,
+            MusicXmlTags.ATTR_FONT_SIZE, MusicXmlTags.MUSIC_FONT_SIZE
+        );
+        writeDocumentFont(pw, MusicXmlTags.WORD_FONT, fonts.getFont(FontKey.ANNOTATION));
+        writeDocumentFont(pw, MusicXmlTags.LYRIC_FONT, fonts.getFont(FontKey.LYRICS));
+        XML.writeEmptyTag(
+            pw,
+            MusicXmlTags.LYRIC_LANGUAGE,
+            MusicXmlTags.ATTR_XML_LANG, MusicXmlTags.LYRIC_LANGUAGE_DEFAULT
+        );
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.DEFAULTS);
+    }
+
+    /**
+     * Writes a self-closing document-font element ({@code <word-font>} /
+     * {@code <lyric-font>}) carrying the role's {@code font-family} and
+     * {@code font-size}. Weight/style are not emitted — the reader recovers only
+     * family and size back into the {@code DocumentFonts} result.
+     */
+    private static void writeDocumentFont(PrintWriter pw, String tag, Font font) {
+        XML.writeEmptyTag(
+            pw,
+            tag,
+            MusicXmlTags.ATTR_FONT_FAMILY, font.getFamily(),
+            MusicXmlTags.ATTR_FONT_SIZE, String.valueOf(font.getSize())
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Credits
+    //
+    // Data-flow contract (see phase-7-document-header.md § Implementation
+    // Approach → "Data-flow contract"): every credit emitted here is either
+    // display-only (re-derived from the head on read — title, attribution
+    // roles) or canonical (subtitle, the four score-below blocks — read back
+    // into the model). The reader (Phase 8) must take the head/model value
+    // and ignore a display-only credit's text, or a hand-edited credit would
+    // corrupt the model on reload.
+    // -------------------------------------------------------------------------
+
+    /**
+     * Writes the {@code <credit>} elements: title, subtitle, each attribution
+     * role, and the score-below text blocks, in that order. Every credit is
+     * page 1 (single-page model), so the {@code page} attribute is never
+     * written (the schema default is already {@code 1}).
+     */
+    private static void writeCredits(Song song, DocumentFontsHolder fonts, HeaderText headerText, PrintWriter pw) {
+        writeCredit(pw, fonts, MusicXmlTags.CREDIT_TITLE, FontKey.TITLE, song.getNumberedTitle(), MusicXmlTags.JUSTIFY_CENTER, null, null);
+        writeCredit(pw, fonts, MusicXmlTags.CREDIT_SUBTITLE, FontKey.SUBTITLE, song.getSubtitle(), null, null, null);
+
+        var attributionRelativeYSs = song.getAttributionElement().getUserYOffsetSs();
+
+        writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_COMPOSER, song.getComposer(), attributionRelativeYSs);
+        writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_LYRICIST, song.getLyricist(), attributionRelativeYSs);
+
+        if (song.isArrangement()) {
+            writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_ARRANGER, Song.SRI_CHINMOY, attributionRelativeYSs);
+        }
+
+        writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_COMPOSITION_DATE, headerText.compositionDate(), attributionRelativeYSs);
+
+        // The lyrics date is emitted as its own credit only when distinct from the
+        // composition date; HeaderText already blanks it when they are equal, so a
+        // non-empty value here is genuinely distinct.
+        if (!headerText.distinctLyricsDate().isEmpty()) {
+            writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_LYRICS_DATE, headerText.distinctLyricsDate(), attributionRelativeYSs);
+        }
+
+        writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_RIGHTS, headerText.rights(), attributionRelativeYSs);
+        writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_PLACE, song.getPlace(), attributionRelativeYSs);
+
+        writeCredit(pw, fonts, MusicXmlTags.CREDIT_UNDERLYRICS, FontKey.LYRICS, song.getUnderLyrics(), null, null, null);
+        writeCredit(pw, fonts, MusicXmlTags.CREDIT_BANGLA_LYRICS, FontKey.BANGLA, song.getBanglaLyrics(), null, null, MusicXmlTags.CREDIT_LANGUAGE_BANGLA);
+        writeCredit(pw, fonts, MusicXmlTags.CREDIT_TRANSLATION, FontKey.LYRICS, song.getTranslatedLyrics(), null, null, null);
+        writeCredit(pw, fonts, MusicXmlTags.CREDIT_FOOTNOTES, FontKey.FOOTNOTE, song.getFootnotes(), null, null, null);
+    }
+
+    /**
+     * Writes one attribution-role {@code <credit>} (composer, lyricist, arranger,
+     * the two dates, rights, place): an {@code ATTRIBUTION}-font credit carrying
+     * the shared attribution {@code relative-y} and no {@code justify}/
+     * {@code xml:lang}. Convenience over {@link #writeCredit} for the seven
+     * attribution calls, which are identical but for their type and text.
+     */
+    private static void writeAttributionCredit(PrintWriter pw, DocumentFontsHolder fonts, String creditType, String text, double relativeYSs) {
+        writeCredit(pw, fonts, creditType, FontKey.ATTRIBUTION, text, null, relativeYSs, null);
+    }
+
+    /**
+     * Writes one {@code <credit>} — {@code <credit-type>} then
+     * {@code <credit-words>} — when {@code text} is non-blank; emits nothing
+     * otherwise. {@code <credit-words>} always carries font-family/font-size/
+     * font-weight/font-style from {@code fonts.getFont(fontKey)} (weight/style
+     * via {@link java.awt.Font#isBold()}/{@link java.awt.Font#isItalic()});
+     * {@code justify}/{@code xmlLang} are written only when non-null, and
+     * {@code relativeYSs} (a staff-space offset, converted here via the shared
+     * {@link #ssToTenths} / {@link #formatTenths}) only when non-null — the
+     * attribution roles always pass a value (even {@code 0}) so the reader can
+     * recover the offset; title/subtitle/score-below credits pass {@code null}
+     * so no {@code relative-y} is written. {@code default-x}/{@code default-y}
+     * are write-forward, external-renderer-only fields (see the sub-plan's
+     * "Explicitly OUT of scope" list) and are never emitted here.
+     */
+    private static void writeCredit(
+            PrintWriter pw,
+            DocumentFontsHolder fonts,
+            String creditType,
+            FontKey fontKey,
+            String text,
+            @Nullable String justify,
+            @Nullable Double relativeYSs,
+            @Nullable String xmlLang) {
+        if (text.isBlank()) {
+            return;
+        }
+
+        XML.writeBeginTag(pw, MusicXmlTags.CREDIT);
+        XML.indent();
+
+        XML.writeValue(pw, MusicXmlTags.CREDIT_TYPE, creditType);
+
+        var font = fonts.getFont(fontKey);
+        var creditWordsAttrs = new ArrayList<String>();
+        creditWordsAttrs.add(MusicXmlTags.ATTR_FONT_FAMILY);
+        creditWordsAttrs.add(font.getFamily());
+        creditWordsAttrs.add(MusicXmlTags.ATTR_FONT_SIZE);
+        creditWordsAttrs.add(String.valueOf(font.getSize()));
+        creditWordsAttrs.add(MusicXmlTags.ATTR_FONT_WEIGHT);
+        creditWordsAttrs.add(font.isBold() ? MusicXmlTags.WEIGHT_BOLD : MusicXmlTags.WEIGHT_NORMAL);
+        creditWordsAttrs.add(MusicXmlTags.ATTR_FONT_STYLE);
+        creditWordsAttrs.add(font.isItalic() ? MusicXmlTags.STYLE_ITALIC : MusicXmlTags.STYLE_NORMAL);
+
+        if (justify != null) {
+            creditWordsAttrs.add(MusicXmlTags.ATTR_JUSTIFY);
+            creditWordsAttrs.add(justify);
+        }
+
+        if (xmlLang != null) {
+            creditWordsAttrs.add(MusicXmlTags.ATTR_XML_LANG);
+            creditWordsAttrs.add(xmlLang);
+        }
+
+        if (relativeYSs != null) {
+            creditWordsAttrs.add(MusicXmlTags.ATTR_RELATIVE_Y);
+            creditWordsAttrs.add(formatTenths(ssToTenths(relativeYSs)));
+        }
+
+        XML.writeValue(pw, MusicXmlTags.CREDIT_WORDS, text, creditWordsAttrs.toArray(new String[0]));
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.CREDIT);
     }
 
     /**
@@ -351,6 +776,15 @@ public final class MusicXmlWriter {
                         // emitted as <direction> siblings immediately before their
                         // bound note, giving the reader one uniform look-ahead rule.
                         writeHairpinWedges(pw, markers);
+
+                        // An annotation <direction placement="above|below"> also
+                        // binds to the next note, so it too is emitted immediately
+                        // before its <note> (after the tempo/wedge directions).
+                        var annotationAttachment = element.findAttachment(AnnotationAttachment.class);
+
+                        if (annotationAttachment != null) {
+                            writeAnnotationDirection(pw, annotationAttachment.getAnnotation());
+                        }
 
                         var nextElement = (i + 1 < elements.size()) ? elements.get(i + 1) : null;
                         var nextIsBreathMark = nextElement != null && nextElement.getType().isBreathMark();
@@ -1124,6 +1558,44 @@ public final class MusicXmlWriter {
 
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.METRONOME);
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.DIRECTION_TYPE);
+
+        XML.dedent();
+        XML.writeEndTag(pw, MusicXmlTags.DIRECTION);
+    }
+
+    // -------------------------------------------------------------------------
+    // Annotation direction
+    // -------------------------------------------------------------------------
+
+    /**
+     * Emits an annotation {@code <direction placement="above|below">} immediately
+     * before the annotated {@code <note>}: a single
+     * {@code <direction-type><words halign="…" justify="…" relative-y="…">text</words>}
+     * from {@code getAnnotation()} / {@code getXAlignment()} / {@code getUserYOffsetSs()}.
+     * {@code halign} and {@code justify} share the one alignment token. {@code default-y}
+     * (the computed base position) is write-forward only and intentionally omitted;
+     * the reader recovers the annotation from {@code placement} + {@code halign} +
+     * {@code relative-y} and binds it to the next note.
+     */
+    private static void writeAnnotationDirection(PrintWriter pw, Annotation annotation) {
+        var placementToken = AnnotationResolver.placementToken(annotation.getPlacement());
+
+        XML.writeBeginTag(pw, MusicXmlTags.DIRECTION, MusicXmlTags.ATTR_PLACEMENT, placementToken);
+        XML.indent();
+
+        XML.writeBeginTag(pw, MusicXmlTags.DIRECTION_TYPE);
+        XML.indent();
+
+        var alignToken = TextAlignmentMapping.alignToken(annotation.getXAlignment());
+
+        XML.writeValue(pw, MusicXmlTags.WORDS, annotation.getAnnotation(),
+            MusicXmlTags.ATTR_HALIGN, alignToken,
+            MusicXmlTags.ATTR_JUSTIFY, alignToken,
+            MusicXmlTags.ATTR_RELATIVE_Y, formatTenths(ssToTenths(annotation.getUserYOffsetSs()))
+        );
 
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.DIRECTION_TYPE);
