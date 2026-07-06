@@ -33,8 +33,10 @@ import songscribe.UnitTest;
 import songscribe.dom.CollisionRegion;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.Trill;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.Neighbor;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
 
@@ -478,6 +480,66 @@ class StackingUtilsTest extends UnitTest {
         // Sampling at xSs=1.0 (step 1 in a 128-step/100-ss grid) is safely out of range.
         var farLeftXSs = 1.0;
         assertThat(extents.yGet(true, farLeftXSs, 0.1)).isEqualTo(0.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 4 (#507) — placeAndReserve: shared placement core used by
+    // stackAtAnchor/stackAtCenter/stackAgainstNeighbor. Reserve-edge/return convention and tagged
+    // reservation.
+    // -------------------------------------------------------------------------
+
+    private static final double PLACE_AND_RESERVE_X_SS = 5.0;
+    private static final double PLACE_AND_RESERVE_WIDTH_SS = 1.0;
+    private static final double PLACE_AND_RESERVE_HEIGHT_SS = 1.5;
+    private static final double PLACE_AND_RESERVE_BOUND_SS = -2.0;
+    private static final double PLACE_AND_RESERVE_MARGIN_SS = 0.3;
+
+    @Test
+    void testPlaceAndReserveAboveReturnsTopEdgeAndReservesItTagged() {
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        var element = mock(LineElement.class);
+        var builder = new LayoutResult.Builder();
+
+        var returnedYSs = StackingUtils.placeAndReserve(Direction.UP, extents, element,
+            PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS, PLACE_AND_RESERVE_HEIGHT_SS,
+            PLACE_AND_RESERVE_BOUND_SS, PLACE_AND_RESERVE_MARGIN_SS, Neighbor.NOTEHEAD, builder);
+
+        // Above: element top = bound - margin - height; the return value is that same top edge.
+        var expectedTopYSs = PLACE_AND_RESERVE_BOUND_SS - PLACE_AND_RESERVE_MARGIN_SS
+            - PLACE_AND_RESERVE_HEIGHT_SS;
+        assertThat(returnedYSs).isCloseTo(expectedTopYSs, within(TOLERANCE));
+
+        var layout = require(builder.build().getDecorationLayout(element), "decoration layout");
+        assertThat(layout.ySs()).isCloseTo(expectedTopYSs, within(TOLERANCE));
+
+        // Reserved at the top (outer) edge, tagged with the given Neighbor.
+        var contact = extents.contact(true, PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS);
+        assertThat(contact.ySs()).isCloseTo(expectedTopYSs, within(TOLERANCE));
+        assertThat(contact.tag()).isEqualTo(Neighbor.NOTEHEAD);
+    }
+
+    @Test
+    void testPlaceAndReserveBelowReturnsBottomEdgeAndReservesItTagged() {
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        var element = mock(LineElement.class);
+        var builder = new LayoutResult.Builder();
+
+        var boundSs = -PLACE_AND_RESERVE_BOUND_SS; // mirror to a positive (below-staff) bound
+        var returnedYSs = StackingUtils.placeAndReserve(Direction.DOWN, extents, element,
+            PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS, PLACE_AND_RESERVE_HEIGHT_SS,
+            boundSs, PLACE_AND_RESERVE_MARGIN_SS, Neighbor.STACCATO, builder);
+
+        // Below: element top = bound + margin; the return value is the bottom (outer) edge.
+        var expectedTopYSs = boundSs + PLACE_AND_RESERVE_MARGIN_SS;
+        var expectedBottomYSs = expectedTopYSs + PLACE_AND_RESERVE_HEIGHT_SS;
+        assertThat(returnedYSs).isCloseTo(expectedBottomYSs, within(TOLERANCE));
+
+        var layout = require(builder.build().getDecorationLayout(element), "decoration layout");
+        assertThat(layout.ySs()).isCloseTo(expectedTopYSs, within(TOLERANCE));
+
+        var contact = extents.contact(false, PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS);
+        assertThat(contact.ySs()).isCloseTo(expectedBottomYSs, within(TOLERANCE));
+        assertThat(contact.tag()).isEqualTo(Neighbor.STACCATO);
     }
 
     // -------------------------------------------------------------------------

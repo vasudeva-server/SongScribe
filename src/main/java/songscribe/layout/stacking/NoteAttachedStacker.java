@@ -20,10 +20,8 @@
 
 package songscribe.layout.stacking;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Direction;
@@ -31,19 +29,17 @@ import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.layout.ElementColumn;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.LineElement;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.layout.Neighbor;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
 import songscribe.dom.Trill;
 
 import org.jspecify.annotations.Nullable;
 
-import static songscribe.layout.stacking.StackingUtils.anchorCeilingSs;
-import static songscribe.layout.stacking.StackingUtils.stackAbove;
-import static songscribe.layout.stacking.StackingUtils.stackAtAnchor;
-import static songscribe.layout.stacking.StackingUtils.stackBeyond;
 import static songscribe.layout.stacking.StackingUtils.stackStaccato;
 
 /**
@@ -51,9 +47,6 @@ import static songscribe.layout.stacking.StackingUtils.stackStaccato;
  * <p>
  * Tier 1: near-note decorations (articulations — staccato, accent).
  * Tier 2: note decorations (fermata, trill).
- * <p>
- * Also populates the {@code notesWithUpwardTie} set on the {@link StackingContext}
- * during tie seeding, which downstream stackers read for margin adjustments.
  */
 public class NoteAttachedStacker {
 
@@ -69,14 +62,21 @@ public class NoteAttachedStacker {
      */
     public static final double TIE_DECORATION_MARGIN_SS = 0.25;  // 2px
     /**
-     * Vertical margin between the staff (or notehead) and articulations (staccato, accent).
-     * Kept tighter than {@link NoteAttachedStacker#NOTE_DECORATION_MARGIN_SS} so articulations
-     * sit close to the note, matching standard engraving.
+     * Vertical clearance between an articulation and the staff or notehead. Per #507, an accent's
+     * outer edge clears the outer staff line — or the notehead's outer edge when the notehead
+     * protrudes past the staff — by this amount. Kept tighter than
+     * {@link NoteAttachedStacker#NOTE_DECORATION_MARGIN_SS} so articulations sit close to the note,
+     * matching standard engraving.
      */
-    public static final double ARTICULATION_MARGIN_SS = 0.20;
+    public static final double ARTICULATION_MARGIN_SS = 0.195;  // per #507
 
-    // Gap between accent and staccato when both are stacked on the same note.
-    public static final double ACCENT_STACCATO_GAP_SS = 0.125;
+    /**
+     * Distance from a staccato dot's center to the accent's inner edge when both stack on the same
+     * note, per #507. The center-to-edge conversion (since the skyline reports the staccato's outer
+     * edge, not its center) is applied in {@link NoteAttachedStacker#stackAgainstNeighbor} via the
+     * staccato half-height.
+     */
+    public static final double ACCENT_STACCATO_CENTER_MARGIN_SS = 0.27;  // per #507
 
     /**
      * Outward gap between a placed staccato dot's center and the tie endpoint, in staff spaces.
@@ -99,9 +99,6 @@ public class NoteAttachedStacker {
 
     /**
      * Seeds note bounds and tie bounds, then stacks all note-attached decorations.
-     * <p>
-     * Populates {@link StackingContext#setNotesWithUpwardTie(Set)} during tie seeding
-     * so downstream stackers can use reduced margins for tie-affected notes.
      */
     public void stack() {
         var columns = context.getColumns();
@@ -120,8 +117,8 @@ public class NoteAttachedStacker {
         // seedTieBounds samples the shifted arc.
         clearStaccatoUnderTies();
 
-        // Seed upward-arcing tie bounds so the accent stacks above ties
-        context.setNotesWithUpwardTie(seedTieBounds());
+        // Seed tie arc bounds so the accent stacks clear of the ties
+        seedTieBounds();
 
         // Tier 1b: Accent — placed after the tie is seeded so it stacks above whichever is
         // highest in the extents, the tie when present (LilyPond `avoid-slur around`).
@@ -171,8 +168,8 @@ public class NoteAttachedStacker {
 
         // Seed note bounds using the non-beamed path
         var bounds = computeNoteBounds(note);
-        extents.ySet(true, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, bounds.topSs());
-        extents.ySet(false, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, bounds.botSs());
+        extents.ySet(true, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, bounds.topSs(), Neighbor.NOTEHEAD);
+        extents.ySet(false, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, bounds.botSs(), Neighbor.NOTEHEAD);
 
         var builder = new LayoutResult.Builder();
         var staffPosition = note.getStaffPosition();
@@ -190,21 +187,22 @@ public class NoteAttachedStacker {
         }
 
         var direction = articulationDirection(note);
+        var staccatoHalfHeightSs = staccatoHalfHeightSs(staccatoArticulation);
 
         // No tie in the preview: place staccato, then the accent above it back-to-back —
         // equivalent to the full pipeline with an empty tie seed between the two passes.
         stackStaccatoOnly(staccatoArticulation, extents, xSs, ARTICULATION_MARGIN_SS,
             staffPosition, direction, builder);
-        stackAccentAboveExtents(accentArticulation, staccatoArticulation != null, extents,
-            xSs, ARTICULATION_MARGIN_SS, staffPosition, direction, builder);
+        stackAccentAboveExtents(accentArticulation, staccatoHalfHeightSs, extents,
+            xSs, direction, builder);
 
         // Tier 2: Fermata
         var fermata = note.findAttachment(FermataAttachment.class);
 
         if (fermata != null) {
-            stackAbove(extents, fermata, xSs,
-                fermata.getContentWidthSs(), fermata.getContentHeightSs(),
-                NOTE_DECORATION_MARGIN_SS, staffPosition, builder);
+            stackAgainstNeighbor(Direction.UP, extents, fermata, xSs,
+                fermata.getContentWidthSs(), fermata.getContentHeightSs(), Neighbor.FERMATA,
+                0, builder);
         }
 
         return builder.build();
@@ -268,8 +266,8 @@ public class NoteAttachedStacker {
                 botSs = bounds.botSs();
             }
 
-            noteAttachedExtents.ySet(true, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, topSs);
-            noteAttachedExtents.ySet(false, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, botSs);
+            noteAttachedExtents.ySet(true, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, topSs, Neighbor.NOTEHEAD);
+            noteAttachedExtents.ySet(false, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, botSs, Neighbor.NOTEHEAD);
 
             // Track lowest notehead bottom for lyrics baseline calculation
             var noteheadCenterYSs = element.getStaffPosition()
@@ -371,33 +369,22 @@ public class NoteAttachedStacker {
     }
 
     /**
-     * Seeds upward-arcing tie bounds into the note-attached StaffExtents layer.
+     * Seeds tie arc bounds into the note-attached StaffExtents layer.
      * <p>
-     * For each tie where the stem points down ({@code getDirection().isDown()}), the tie arcs upward
-     * and may interfere with above-staff decorations. This method samples the outer Bezier
-     * curve of each such tie and reserves the curve's vertical extent in the extents layer,
-     * ensuring decorations stack above the tie arc.
-     * <p>
-     * Also returns the set of notes with upward ties so stacking methods
-     * can use a reduced margin ({@link NoteAttachedStacker#TIE_DECORATION_MARGIN_SS}) for
-     * single-note decorations. A note is only added to the set when the tie endpoint at
-     * that note's position is above (more negative Y than) the anchored ceiling, meaning
-     * the tie is the actual constraint that pushes decorations higher. When the tie stays
-     * within the staff, the normal margin applies.
-     *
-     * @return notes whose upward tie arc is the active constraint
+     * For each tie the outer Bezier curve is sampled and its vertical extent reserved in the
+     * extents layer (tagged {@link Neighbor#TIE} by {@link #seedTieArcIntoExtents}) so decorations
+     * stack clear of the tie arc. Upward-arcing ties (stem down) reserve above the staff;
+     * downward-arcing ties (stem up) reserve below.
      */
-    private Set<StaffElement> seedTieBounds() {
+    private void seedTieBounds() {
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
         var builder = context.getBuilder();
         var ties = line.findTies();
 
         if (ties.isEmpty()) {
-            return Set.of();
+            return;
         }
-
-        var upwardTieNotes = new HashSet<StaffElement>();
 
         for (var span : ties) {
             var startElement = span.getAnchorElement();
@@ -437,30 +424,17 @@ public class NoteAttachedStacker {
             var arcsDown = startElement.getDirection().isUp();
             var sampleCount = Math.max(TIE_BOUND_MIN_SAMPLES, (int) Math.ceil(spanWidthSs));
 
-            if (!arcsDown) {
-                // Only use reduced margin for notes where the tie protrudes above the anchor ceiling.
-                // Use the notehead-edge Y (not the raw endpoint) since that reflects the visible arc.
-                if (startEdgeYSs < anchorCeilingSs(startElement)) {
-                    upwardTieNotes.add(startElement);
-                }
-
-                if (endEdgeYSs < anchorCeilingSs(endElement)) {
-                    upwardTieNotes.add(endElement);
-                }
-            }
-
             seedTieArcIntoExtents(tieLayout, startColumn, endColumn,
                 startEdgeYSs, endEdgeYSs, sx, spanWidthSs, sampleCount, !arcsDown);
         }
-
-        return upwardTieNotes.isEmpty() ? Set.of() : upwardTieNotes;
     }
 
     /**
-     * Reserves the tie arc's vertical extent in the note-attached layer so line
-     * sizing accounts for the arc. For downward arcs (above=false) also feeds the
-     * notehead-edge Y values and sampled Y values into the context's below-staff
-     * content extent so lyric placement clears the arc.
+     * Reserves the tie arc's vertical extent in the note-attached layer — tagged
+     * {@link Neighbor#TIE} so a decoration later querying the arc resolves it as a tie — so line
+     * sizing accounts for the arc. For downward arcs (above=false) also feeds the notehead-edge Y
+     * values and sampled Y values into the context's below-staff content extent so lyric placement
+     * clears the arc. Only ties flow through this path today; slur seeding is future work (#515).
      */
     private void seedTieArcIntoExtents(
         LayoutResult.TieLayout tieLayout,
@@ -475,7 +449,7 @@ public class NoteAttachedStacker {
 
         if (startColumn != null) {
             noteAttachedExtents.ySet(above, startColumn.getXSs(),
-                SMuFLConstants.NOTE_HEAD_WIDTH_SS, startEdgeYSs);
+                SMuFLConstants.NOTE_HEAD_WIDTH_SS, startEdgeYSs, Neighbor.TIE);
 
             if (!above) {
                 context.updateBotContentExtentSs(startEdgeYSs);
@@ -484,7 +458,7 @@ public class NoteAttachedStacker {
 
         if (endColumn != null) {
             noteAttachedExtents.ySet(above, endColumn.getXSs(),
-                SMuFLConstants.NOTE_HEAD_WIDTH_SS, endEdgeYSs);
+                SMuFLConstants.NOTE_HEAD_WIDTH_SS, endEdgeYSs, Neighbor.TIE);
 
             if (!above) {
                 context.updateBotContentExtentSs(endEdgeYSs);
@@ -497,7 +471,7 @@ public class NoteAttachedStacker {
             var tMid = (i + 0.5) / sampleCount;
             var ySs = evaluateBezierYSs(tMid, tieLayout);
             var segmentXSs = sx + i * segmentWidthSs;
-            noteAttachedExtents.ySet(above, segmentXSs, segmentWidthSs, ySs);
+            noteAttachedExtents.ySet(above, segmentXSs, segmentWidthSs, ySs, Neighbor.TIE);
 
             if (!above) {
                 context.updateBotContentExtentSs(ySs);
@@ -553,10 +527,10 @@ public class NoteAttachedStacker {
     /**
      * Places the accent for the given column, if present.
      * <p>
-     * Runs after the tie is seeded, so it stacks above whatever is highest in the extents — the
-     * tie when present, else the staccato, else the notehead (LilyPond {@code avoid-slur around}).
-     * When paired with staccato it stacks beyond it using {@link #ACCENT_STACCATO_GAP_SS} as
-     * their gap; otherwise it anchors at the nearer staff line (or the notehead beyond it).
+     * Runs after the tie is seeded, so it stacks against whatever is most outward in the extents —
+     * the tie when present, else the staccato, else the notehead or staff line (LilyPond
+     * {@code avoid-slur around}). The clearance for each neighbor is resolved by
+     * {@link #pairMarginSs} inside {@link #stackAgainstNeighbor}.
      */
     private void stackAccentColumn(
         ElementColumn column,
@@ -570,19 +544,19 @@ public class NoteAttachedStacker {
         }
 
         var direction = articulationDirection(note);
-        var staccatoPresent = findStaccato(note) != null;
-        var marginSs = accentAnchorMarginSs(note, direction);
+        var staccatoHalfHeightSs = staccatoHalfHeightSs(findStaccato(note));
 
-        var edgeYSs = stackAccentAboveExtents(accent, staccatoPresent, noteAttachedExtents,
-            column.getXSs(), marginSs, note.getStaffPosition(), direction, builder);
+        var edgeYSs = stackAccentAboveExtents(accent, staccatoHalfHeightSs, noteAttachedExtents,
+            column.getXSs(), direction, builder);
 
         updateBelowStaffContentExtent(direction, edgeYSs);
     }
 
     /**
      * Places the staccato dot (if present) at its note-relative anchor
-     * ({@link StackingUtils#stackStaccato}). Shared by the full pipeline's staccato pass and the
-     * no-tie preview so the two agree on staccato placement.
+     * ({@link StackingUtils#stackStaccato}), tagging its footprint {@link Neighbor#STACCATO} so a
+     * later accent querying that step resolves the staccato as its neighbor. Shared by the full
+     * pipeline's staccato pass and the no-tie preview so the two agree on staccato placement.
      *
      * @return the dot's top Y (above) or bottom Y (below) in staff-space units, or {@code null}
      *     when no staccato is present
@@ -600,28 +574,33 @@ public class NoteAttachedStacker {
 
         return stackStaccato(direction, extents, staccato, xSs,
             staccato.getContentWidthSs(), staccato.getContentHeightSs(), marginSs,
-            staffPosition, builder);
+            staffPosition, Neighbor.STACCATO, builder);
     }
 
     /**
-     * Places the accent (if present) above the current extents.
-     * <p>
-     * When a staccato is present the accent stacks beyond it — and beyond any already-seeded tie
-     * — via {@link StackingUtils#stackBeyond}, using {@link #ACCENT_STACCATO_GAP_SS} as their gap
-     * but never closer than {@link #ARTICULATION_MARGIN_SS} to the staff edge, since staccato's
-     * note-relative position can sit closer to the staff than accent's minimum clearance
-     * requires. Otherwise the accent anchors at the nearer staff line (or notehead beyond it)
-     * with {@code marginSs}, which still clears any seeded tie via the extents. Shared by the
-     * full pipeline's accent pass and the no-tie preview.
+     * Half the staccato's content height, or 0 when no staccato is present. Used to convert the
+     * accent's center-relative clearance to the outer edge the skyline reports.
+     */
+    private static double staccatoHalfHeightSs(@Nullable Articulation staccato) {
+        return staccato == null ? 0 : staccato.getContentHeightSs() / 2;
+    }
+
+    /**
+     * Places the accent (if present) against its immediate neighbor in the tagged skyline via
+     * {@link #stackAgainstNeighbor}. The neighbor — tie, staccato, notehead, or staff line — and
+     * its clearance are resolved from the extents, so one accent path serves both the full
+     * pipeline's accent pass and the no-tie preview.
      *
+     * @param staccatoHalfHeightSs half the staccato's content height, or 0 when no staccato is
+     *     present; consulted only when the resolved neighbor is a {@link Neighbor#STACCATO}
      * @return the accent's top Y (above) or bottom Y (below) in staff-space units, or
      *     {@code null} when no accent is present
      */
     private static @Nullable Double stackAccentAboveExtents(
         @Nullable Articulation accent,
-        boolean staccatoPresent,
+        double staccatoHalfHeightSs,
         StaffExtents extents,
-        double xSs, double marginSs, int staffPosition,
+        double xSs,
         Direction direction,
         LayoutResult.Builder builder) {
 
@@ -629,30 +608,76 @@ public class NoteAttachedStacker {
             return null;
         }
 
-        var widthSs = accent.getContentWidthSs();
-        var heightSs = accent.getContentHeightSs();
-
-        if (staccatoPresent) {
-            return stackBeyond(direction, extents, accent, xSs,
-                widthSs, heightSs, ACCENT_STACCATO_GAP_SS, ARTICULATION_MARGIN_SS, builder);
-        }
-
-        return stackAtAnchor(direction, extents, accent, xSs,
-            widthSs, heightSs, marginSs, staffPosition, builder);
+        return stackAgainstNeighbor(direction, extents, accent, xSs,
+            accent.getContentWidthSs(), accent.getContentHeightSs(), Neighbor.ACCENT,
+            staccatoHalfHeightSs, builder);
     }
 
     /**
-     * Margin used to anchor an accent that stacks alone (no staccato below it). Down-stem
-     * articulations stack above the staff, where an upward-arcing tie may intrude; use the
-     * reduced tie margin when this note's tie is the active constraint. Up-stem articulations
-     * stack below the staff, which upward ties never reach, so they use the standard margin.
+     * Vertical clearance a {@code decoration} must keep from its immediate {@code neighbor} in the
+     * stack, in staff spaces. Total by construction: the outer switch handles every decoration (an
+     * explicit {@code ACCENT} arm plus a default covering {@code TRILL}/{@code FERMATA}), and the
+     * accent arm handles every neighbor, so no reachable pair falls through to an undefined margin.
+     * <p>
+     * The accent-over-staccato pair is handled directly in {@link #stackAgainstNeighbor} (it needs
+     * the staccato's half-height for the center-to-edge conversion) and so never reaches this
+     * lookup.
      */
-    private double accentAnchorMarginSs(StaffElement note, Direction direction) {
-        if (direction.isUp() && context.getNotesWithUpwardTie().contains(note)) {
-            return TIE_DECORATION_MARGIN_SS;
+    static double pairMarginSs(Neighbor decoration, Neighbor neighbor) {
+        return switch (decoration) {
+            case ACCENT -> switch (neighbor) {
+                case TIE -> TIE_DECORATION_MARGIN_SS;
+                // Accent is always innermost, so its only real decoration neighbor is a tie; every
+                // other neighbor (notehead, staff line) uses the articulation-to-staff clearance.
+                default -> ARTICULATION_MARGIN_SS;
+            };
+            // TRILL and FERMATA use one uniform margin for every neighbor, including the reachable
+            // TRILL×ACCENT, FERMATA×TRILL, and FERMATA×ACCENT (order outward: accent → trill →
+            // fermata). #507 only constrains accent clearances; per-neighbor trill/fermata margins
+            // are deferred to #515.
+            default -> NOTE_DECORATION_MARGIN_SS;
+        };
+    }
+
+    /**
+     * Places a note-attached decoration against its immediate neighbor in the tagged skyline.
+     * Queries {@link StaffExtents#contact} under the decoration's footprint, looks the clearance up
+     * in {@link #pairMarginSs} from the neighbor's tag, then delegates to
+     * {@link StackingUtils#placeAndReserve}, which reserves the footprint tagged
+     * {@code decorationTag} and returns the decoration's outer Y.
+     *
+     * @param staccatoHalfHeightSs half the staccato's content height; consulted only for the
+     *     accent-over-staccato pair, and 0 otherwise
+     * @return the decoration's outer Y in staff-space units (top above, bottom below)
+     */
+    static double stackAgainstNeighbor(
+        Direction direction,
+        StaffExtents extents,
+        LineElement element,
+        double xSs, double widthSs, double heightSs, Neighbor decorationTag,
+        double staccatoHalfHeightSs,
+        LayoutResult.Builder builder) {
+
+        var above = direction.isUp();
+        var contact = StackingUtils.contactExpanded(extents, above, xSs, widthSs);
+
+        double marginSs;
+
+        if (decorationTag == Neighbor.ACCENT && contact.tag() == Neighbor.STACCATO) {
+            // contact() reports the staccato's true outer edge, but #507 measures the accent's
+            // inner-edge clearance from the staccato's *center*. Convert: an inner edge
+            // ACCENT_STACCATO_CENTER_MARGIN_SS from the center is that value minus the staccato's
+            // half-height from the outer edge contact() reports. The staccato stays reserved at its
+            // true outer edge, so any later decoration querying that step sees its real occupancy.
+            // Only the accent uses this center margin; a trill or fermata over a staccato takes its
+            // uniform pairMarginSs clearance (below), measured from the same outer edge.
+            marginSs = ACCENT_STACCATO_CENTER_MARGIN_SS - staccatoHalfHeightSs;
+        } else {
+            marginSs = pairMarginSs(decorationTag, contact.tag());
         }
 
-        return ARTICULATION_MARGIN_SS;
+        return StackingUtils.placeAndReserve(direction, extents, element, xSs, widthSs, heightSs,
+            contact.ySs(), marginSs, decorationTag, builder);
     }
 
     /**
@@ -698,12 +723,9 @@ public class NoteAttachedStacker {
             return;
         }
 
-        var xSs = column.getXSs();
-        var staffPosition = note.getStaffPosition();
-
-        stackAbove(noteAttachedExtents, fermata, xSs,
-            fermata.getContentWidthSs(), fermata.getContentHeightSs(),
-            NOTE_DECORATION_MARGIN_SS, staffPosition, builder);
+        stackAgainstNeighbor(Direction.UP, noteAttachedExtents, fermata, column.getXSs(),
+            fermata.getContentWidthSs(), fermata.getContentHeightSs(), Neighbor.FERMATA,
+            0, builder);
     }
 
     /**
@@ -758,11 +780,9 @@ public class NoteAttachedStacker {
             }
         }
 
-        var staffPosition = anchor.getStaffPosition();
         var widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
-        stackAbove(noteAttachedExtents, trill, anchorXSs, widthSs,
-            trill.getContentHeightSs(), NOTE_DECORATION_MARGIN_SS,
-            staffPosition, builder);
+        stackAgainstNeighbor(Direction.UP, noteAttachedExtents, trill, anchorXSs, widthSs,
+            trill.getContentHeightSs(), Neighbor.TRILL, 0, builder);
     }
 
 }

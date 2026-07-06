@@ -26,7 +26,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -155,39 +154,5 @@ class StackingContextTest extends UnitTest {
 
         assertThat(context.getBotContentExtentSs())
             .isCloseTo(PEAK_VALUE_SS, within(TOLERANCE));
-    }
-
-    // -------------------------------------------------------------------------
-    // Row 14 — notesWithUpwardTie: default empty / setter replaces
-    // -------------------------------------------------------------------------
-
-    @Test
-    void testNotesWithUpwardTieDefaultIsEmpty() {
-        var context = emptyContext();
-        assertThat(context.getNotesWithUpwardTie()).isEmpty();
-    }
-
-    @Test
-    void testSetNotesWithUpwardTieReplacesTheSet() {
-        var context = emptyContext();
-        var noteA = mock(StaffElement.class);
-        var noteB = mock(StaffElement.class);
-        var replacement = Set.of(noteA, noteB);
-
-        context.setNotesWithUpwardTie(replacement);
-
-        assertThat(context.getNotesWithUpwardTie()).containsExactlyInAnyOrder(noteA, noteB);
-    }
-
-    @Test
-    void testSetNotesWithUpwardTieReplacesAnyPreviousValue() {
-        var context = emptyContext();
-        var noteA = mock(StaffElement.class);
-        context.setNotesWithUpwardTie(Set.of(noteA));
-
-        var noteB = mock(StaffElement.class);
-        context.setNotesWithUpwardTie(Set.of(noteB));
-
-        assertThat(context.getNotesWithUpwardTie()).containsExactly(noteB);
     }
 }

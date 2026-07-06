@@ -38,6 +38,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.engraving.Staff;
 import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.layout.stacking.StackingUtils;
 import songscribe.layout.stacking.VerticalStackingCalculator;
@@ -52,15 +53,15 @@ class ArticulationStackingTest extends UnitTest {
     // A within-staff position whose note stems up, so its articulations stack below the staff.
     private static final int UP_STEM_STAFF_POSITION = 2;
 
-    // D5/G4: far enough from the middle line that accent's natural gap-relative position (see
-    // ACCENT_STACCATO_GAP_SS) is more extreme than the staff-edge clamp, so the gap constant is
-    // the binding constraint on where accent lands beyond staccato.
+    // D5/G4: far enough from the middle line that the staccato's own note-relative position is
+    // more outward than the staff-edge floor, so contact() resolves accent's neighbor as the
+    // STACCATO (center-relative margin, #507) rather than the staff-edge clamp.
     private static final int GAP_BINDS_ABOVE_STAFF_POSITION = -2;
     private static final int GAP_BINDS_BELOW_STAFF_POSITION = 2;
 
     // C5/A4: one position closer to the middle line than GAP_BINDS_*, where staccato itself
-    // still sits within the staff, so accent's natural gap-relative position falls short of the
-    // staff-edge clamp — the clamp (not the gap constant) is the binding constraint.
+    // still sits within the staff, so its position falls short of the staff-edge floor —
+    // the clamp (STAFF_LINE, not STACCATO) is the binding constraint.
     private static final int CLAMP_BINDS_ABOVE_STAFF_POSITION = GAP_BINDS_ABOVE_STAFF_POSITION + 1;
     private static final int CLAMP_BINDS_BELOW_STAFF_POSITION = GAP_BINDS_BELOW_STAFF_POSITION - 1;
 
@@ -135,10 +136,11 @@ class ArticulationStackingTest extends UnitTest {
 
     /**
      * Asserts that staccato and accent are stacked as two separate glyphs above the staff
-     * (staccato closest to the note, accent beyond it), with accent positioned at whichever is
-     * further from the staff: {@link NoteAttachedStacker#ACCENT_STACCATO_GAP_SS} beyond
-     * staccato, or {@link NoteAttachedStacker#ARTICULATION_MARGIN_SS} above the top staff line —
-     * mirroring {@link StackingUtils#stackBeyond}.
+     * (staccato closest to the note, accent beyond it). Accent's neighbor is resolved the same
+     * way {@link NoteAttachedStacker#stackAgainstNeighbor} resolves it: whichever of the staff
+     * floor or the staccato's own reservation is more outward. When the staccato wins, the
+     * accent's clearance is measured from the staccato's <em>center</em>, not its outer edge
+     * (#507); when the staff floor wins, it's the plain {@link NoteAttachedStacker#ARTICULATION_MARGIN_SS}.
      */
     private static void assertSeparateGlyphsAboveStaff(StaffElement note, LayoutResult result) {
         var staccatoArticulation = note.getArticulations().get(0);
@@ -149,11 +151,18 @@ class ArticulationStackingTest extends UnitTest {
         var accentLayout = require(
             result.getDecorationLayout(accentArticulation), "accent DecorationLayout");
 
-        var naturalTopYSs = staccatoLayout.ySs()
-            - NoteAttachedStacker.ACCENT_STACCATO_GAP_SS - accentLayout.heightSs();
-        var staffMinimumTopYSs = StackingUtils.anchorCeilingSs(0)
-            - NoteAttachedStacker.ARTICULATION_MARGIN_SS - accentLayout.heightSs();
-        var expectedAccentYSs = Math.min(naturalTopYSs, staffMinimumTopYSs);
+        var staffFloorYSs = -Staff.STAFF_HALF_SS;
+        double expectedAccentYSs;
+
+        if (staccatoLayout.ySs() < staffFloorYSs) {
+            var staccatoHalfHeightSs = staccatoArticulation.getContentHeightSs() / 2;
+            var staccatoCenterYSs = staccatoLayout.ySs() + staccatoHalfHeightSs;
+            expectedAccentYSs = staccatoCenterYSs
+                - NoteAttachedStacker.ACCENT_STACCATO_CENTER_MARGIN_SS - accentLayout.heightSs();
+        } else {
+            expectedAccentYSs = staffFloorYSs
+                - NoteAttachedStacker.ARTICULATION_MARGIN_SS - accentLayout.heightSs();
+        }
 
         assertThat(staccatoLayout.ySs()).isLessThan(0.0);
         assertThat(accentLayout.ySs()).isLessThan(staccatoLayout.ySs());
@@ -172,11 +181,18 @@ class ArticulationStackingTest extends UnitTest {
         var accentLayout = require(
             result.getDecorationLayout(accentArticulation), "accent DecorationLayout");
 
-        var naturalTopYSs = staccatoLayout.ySs() + staccatoLayout.heightSs()
-            + NoteAttachedStacker.ACCENT_STACCATO_GAP_SS;
-        var staffMinimumTopYSs = StackingUtils.anchorFloorSs(0)
-            + NoteAttachedStacker.ARTICULATION_MARGIN_SS;
-        var expectedAccentYSs = Math.max(naturalTopYSs, staffMinimumTopYSs);
+        var staccatoBotYSs = staccatoLayout.ySs() + staccatoLayout.heightSs();
+        var staffFloorYSs = Staff.STAFF_HALF_SS;
+        double expectedAccentYSs;
+
+        if (staccatoBotYSs > staffFloorYSs) {
+            var staccatoHalfHeightSs = staccatoArticulation.getContentHeightSs() / 2;
+            var staccatoCenterYSs = staccatoBotYSs - staccatoHalfHeightSs;
+            expectedAccentYSs = staccatoCenterYSs
+                + NoteAttachedStacker.ACCENT_STACCATO_CENTER_MARGIN_SS;
+        } else {
+            expectedAccentYSs = staffFloorYSs + NoteAttachedStacker.ARTICULATION_MARGIN_SS;
+        }
 
         assertThat(staccatoLayout.ySs()).isGreaterThan(0.0);
         assertThat(accentLayout.ySs()).isGreaterThan(staccatoLayout.ySs());
@@ -237,8 +253,8 @@ class ArticulationStackingTest extends UnitTest {
 
         @Test
         void testAccentStacksBeyondStaccatoWithGapFarFromMiddleLine() {
-            // D5: far enough from the middle line that accent's natural gap-relative position
-            // (ACCENT_STACCATO_GAP_SS beyond staccato) determines its placement, not the clamp.
+            // D5: far enough from the middle line that the staccato's own position determines
+            // accent's placement (STACCATO neighbor), not the staff-edge clamp.
             var note = createNote(
                 GAP_BINDS_ABOVE_STAFF_POSITION, false, ArticulationType.STACCATO, ArticulationType.ACCENT);
             var result = stackSingleColumn(note);
@@ -301,8 +317,8 @@ class ArticulationStackingTest extends UnitTest {
 
         @Test
         void testAccentStacksBeyondStaccatoWithGapFarFromMiddleLine() {
-            // G4: far enough from the middle line that accent's natural gap-relative position
-            // (ACCENT_STACCATO_GAP_SS beyond staccato) determines its placement, not the clamp.
+            // G4: far enough from the middle line that the staccato's own position determines
+            // accent's placement (STACCATO neighbor), not the staff-edge clamp.
             var note = createNote(
                 GAP_BINDS_BELOW_STAFF_POSITION, true, ArticulationType.STACCATO, ArticulationType.ACCENT);
             var result = stackSingleColumn(note);

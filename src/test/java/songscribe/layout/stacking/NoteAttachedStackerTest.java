@@ -36,12 +36,15 @@ import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.Neighbor;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
 import songscribe.engraving.SMuFLConstants;
@@ -69,10 +72,9 @@ class NoteAttachedStackerTest extends UnitTest {
     private static final double EXTREME_STEM_BOT_SS = 10.0;
 
     // For sp=0: anchorCeilingSs = STAFF_TOP_Y_SS = -2.0 (since 0 > TOP_STAFF_LINE_POSITION=-4).
-    // A flat tie arc at -3.0 is above the ceiling (-3.0 < -2.0) → protrudes.
-    // A flat tie arc at -1.0 is below the ceiling (-1.0 ≥ -2.0) → does not protrude.
+    // A flat tie arc at -3.0 is above the ceiling (-3.0 < -2.0) → protrudes, i.e. is more
+    // outward than the STAFF_LINE floor, so it wins contact()'s argmax as the TIE neighbor.
     private static final double PROTRUDING_ARC_Y_SS = -3.0;
-    private static final double NON_PROTRUDING_ARC_Y_SS = -1.0;
 
     // Downward arc Y far below the extreme stem bot so the tie becomes the
     // bottoming constraint for botContentExtentSs.
@@ -84,9 +86,10 @@ class NoteAttachedStackerTest extends UnitTest {
     private static final double BEZIER_MID_Y_SS = -3.0;
 
     // Phase 4 (#503) — staccato/accent/tie ordering constants.
-    // 2 positions above the middle line: far enough that accent's natural gap-relative position
-    // (ACCENT_STACCATO_GAP_SS beyond staccato) is the binding constraint rather than the
-    // staff-edge clamp — same value as GAP_BINDS_ABOVE_STAFF_POSITION in ArticulationStackingTest.
+    // 2 positions above the middle line: far enough that the staccato's own natural
+    // (note-relative) position is more outward than the STAFF_LINE floor, so contact() resolves
+    // it as the STACCATO neighbor rather than the staff-edge clamp — same value as
+    // GAP_BINDS_ABOVE_STAFF_POSITION in ArticulationStackingTest.
     private static final int GAP_BINDS_ABOVE_SP = -2;
 
     // Mirror of PROTRUDING_ARC_Y_SS for the below-staff (up-stem) direction: for sp=0,
@@ -114,6 +117,25 @@ class NoteAttachedStackerTest extends UnitTest {
     private static final int SP_SPACE_ADJACENT_TO_CENTRE_BELOW = 1;
     private static final int SP_LINE_TWO_OUT_BELOW = 2;
     private static final int SP_SPACE_TWO_OUT_BELOW = 3;
+
+    // Phase 4 (#507) — geometry for the direct stackAgainstNeighbor tests: arbitrary but fixed
+    // footprint, reused as both the seeded reservation's range and the decoration's own.
+    private static final double NEIGHBOR_TEST_X_SS = 10.0;
+    private static final double NEIGHBOR_TEST_WIDTH_SS = 1.0;
+    private static final double NEIGHBOR_TEST_HEIGHT_SS = 1.2;
+
+    // A notehead Y within the staff (less outward than -STAFF_HALF_SS): #507's "|sp| < 4" case,
+    // where the STAFF_LINE floor — not the notehead — must win contact()'s argmax.
+    private static final double NOTEHEAD_WITHIN_STAFF_TOP_SS = -1.0;
+
+    // A notehead Y protruding past the staff (more outward than -STAFF_HALF_SS): #507's
+    // "|sp| >= 4" case, where the notehead's own edge must win contact()'s argmax.
+    private static final double NOTEHEAD_PROTRUDING_TOP_SS = -3.0;
+
+    // A staccato's true outer-edge Y (more outward than the staff floor) and its half-height —
+    // inputs to the #507 center-relative accent-over-staccato conversion.
+    private static final double STACCATO_OUTER_EDGE_TOP_SS = -3.0;
+    private static final double STACCATO_HALF_HEIGHT_SS = 0.3;
 
     // -------------------------------------------------------------------------
     // Row 15 — computeNoteBounds: both code paths
@@ -213,14 +235,14 @@ class NoteAttachedStackerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Row 17 — seedTieBounds: upward-arcing tie, notesWithUpwardTie membership
+    // Row 17 — seedTieBounds: upward-arcing tie, tagged Neighbor.TIE in the above extents
     // -------------------------------------------------------------------------
 
     @Nested
     class SeedTieBoundsUpwardArc {
 
         @Test
-        void testAddsBothEndpointsToUpwardTieSetWhenArcProtrudesAboveCeiling() {
+        void testTieArcReservationIsTaggedTie() {
             var startNote = stemDownNote(STAFF_CENTER_SP);
             var endNote = stemDownNote(STAFF_CENTER_SP);
 
@@ -229,7 +251,6 @@ class NoteAttachedStackerTest extends UnitTest {
             line.addRangeElement(tie);
 
             var builder = new LayoutResult.Builder();
-            // Flat arc at -3.0 < anchor ceiling (-2.0) → both endpoints protrude.
             builder.putTieLayout(tie,
                 flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, PROTRUDING_ARC_Y_SS));
 
@@ -237,33 +258,12 @@ class NoteAttachedStackerTest extends UnitTest {
                 List.of(mockColumnAt(startNote, START_NOTE_X_SS),
                     mockColumnAt(endNote, END_NOTE_X_SS)),
                 line, builder);
-            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            new NoteAttachedStacker(context, extents).stack();
 
-            assertThat(context.getNotesWithUpwardTie())
-                .containsExactlyInAnyOrder(startNote, endNote);
-        }
-
-        @Test
-        void testExcludesBothEndpointsFromSetWhenArcStaysBelowCeiling() {
-            var startNote = stemDownNote(STAFF_CENTER_SP);
-            var endNote = stemDownNote(STAFF_CENTER_SP);
-
-            var line = detachedLine();
-            var tie = new Tie(startNote, endNote);
-            line.addRangeElement(tie);
-
-            var builder = new LayoutResult.Builder();
-            // Flat arc at -1.0 ≥ anchor ceiling (-2.0) → neither endpoint protrudes.
-            builder.putTieLayout(tie,
-                flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, NON_PROTRUDING_ARC_Y_SS));
-
-            var context = new StackingContext(
-                List.of(mockColumnAt(startNote, START_NOTE_X_SS),
-                    mockColumnAt(endNote, END_NOTE_X_SS)),
-                line, builder);
-            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
-
-            assertThat(context.getNotesWithUpwardTie()).isEmpty();
+            var midTieXSs = (START_NOTE_X_SS + END_NOTE_X_SS) / 2.0;
+            assertThat(extents.contact(true, midTieXSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS).tag())
+                .isEqualTo(Neighbor.TIE);
         }
 
         @Test
@@ -330,7 +330,7 @@ class NoteAttachedStackerTest extends UnitTest {
         }
 
         @Test
-        void testDownwardArcIsNotAddedToUpwardTieSet() {
+        void testDownwardArcReservesOnlyBelowExtentsNotAbove() {
             var startNote = stemUpNote(STAFF_CENTER_SP);
             var endNote = stemUpNote(STAFF_CENTER_SP);
 
@@ -346,9 +346,16 @@ class NoteAttachedStackerTest extends UnitTest {
                 List.of(mockColumnAt(startNote, START_NOTE_X_SS),
                     mockColumnAt(endNote, END_NOTE_X_SS)),
                 line, builder);
-            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            new NoteAttachedStacker(context, extents).stack();
 
-            assertThat(context.getNotesWithUpwardTie()).isEmpty();
+            var midTieXSs = (START_NOTE_X_SS + END_NOTE_X_SS) / 2.0;
+            assertThat(extents.contact(false, midTieXSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS).tag())
+                .describedAs("downward arc must be tagged TIE in the below extents")
+                .isEqualTo(Neighbor.TIE);
+            assertThat(extents.contact(true, midTieXSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS).tag())
+                .describedAs("a downward arc must never be reserved in the above extents")
+                .isEqualTo(Neighbor.STAFF_LINE);
         }
     }
 
@@ -518,9 +525,14 @@ class NoteAttachedStackerTest extends UnitTest {
                 .describedAs("staccato position must be unchanged by tie presence")
                 .isCloseTo(noTieStaccatoLayout.ySs(), within(TOLERANCE));
 
-            // Without a tie, accent stacks directly above staccato using the gap constant.
-            var expectedNoTieAccentYSs = noTieStaccatoLayout.ySs()
-                - NoteAttachedStacker.ACCENT_STACCATO_GAP_SS
+            // Without a tie, accent stacks directly above staccato: contact() reports the
+            // staccato's true outer edge (noTieStaccatoLayout.ySs()), so its center is that
+            // outer edge plus half its height, and the accent's inner edge sits
+            // ACCENT_STACCATO_CENTER_MARGIN_SS from that center (#507).
+            var noTieStaccatoHalfHeightSs = noTieStaccato.getContentHeightSs() / 2;
+            var noTieStaccatoCenterYSs = noTieStaccatoLayout.ySs() + noTieStaccatoHalfHeightSs;
+            var expectedNoTieAccentYSs = noTieStaccatoCenterYSs
+                - NoteAttachedStacker.ACCENT_STACCATO_CENTER_MARGIN_SS
                 - noTieAccentLayout.heightSs();
             assertThat(noTieAccentLayout.ySs())
                 .describedAs("without a tie, accent must stack directly above staccato")
@@ -920,6 +932,417 @@ class NoteAttachedStackerTest extends UnitTest {
         // Single-note trill: endXSs defaults to anchorXSs → span = 0, so
         // widthSs = max(glyphWidth, 0 + glyphWidth) = glyphWidth = getContentWidthSs().
         assertThat(layout.widthSs()).isCloseTo(trill.getContentWidthSs(), within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 4 (#507) — pairMarginSs: total-by-construction clearance table.
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class PairMarginSs {
+
+        @Test
+        void testAccentStaffLineReturnsArticulationMargin() {
+            assertThat(NoteAttachedStacker.pairMarginSs(Neighbor.ACCENT, Neighbor.STAFF_LINE))
+                .isEqualTo(NoteAttachedStacker.ARTICULATION_MARGIN_SS);
+        }
+
+        @Test
+        void testAccentNoteheadReturnsArticulationMargin() {
+            assertThat(NoteAttachedStacker.pairMarginSs(Neighbor.ACCENT, Neighbor.NOTEHEAD))
+                .isEqualTo(NoteAttachedStacker.ARTICULATION_MARGIN_SS);
+        }
+
+        @Test
+        void testAccentTieReturnsTieMargin() {
+            assertThat(NoteAttachedStacker.pairMarginSs(Neighbor.ACCENT, Neighbor.TIE))
+                .isEqualTo(NoteAttachedStacker.TIE_DECORATION_MARGIN_SS);
+        }
+
+        @Test
+        void testTrillReturnsNoteDecorationMarginForEveryNeighbor() {
+            // Total by construction: TRILL's default covers every neighbor, including the
+            // reachable TRILL x ACCENT.
+            for (var neighbor : Neighbor.values()) {
+                assertThat(NoteAttachedStacker.pairMarginSs(Neighbor.TRILL, neighbor))
+                    .describedAs("TRILL x %s", neighbor)
+                    .isEqualTo(NoteAttachedStacker.NOTE_DECORATION_MARGIN_SS);
+            }
+        }
+
+        @Test
+        void testFermataReturnsNoteDecorationMarginForEveryNeighbor() {
+            // Total by construction: FERMATA's default covers every neighbor, including the
+            // reachable FERMATA x TRILL and FERMATA x ACCENT.
+            for (var neighbor : Neighbor.values()) {
+                assertThat(NoteAttachedStacker.pairMarginSs(Neighbor.FERMATA, neighbor))
+                    .describedAs("FERMATA x %s", neighbor)
+                    .isEqualTo(NoteAttachedStacker.NOTE_DECORATION_MARGIN_SS);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 4 (#507) — end-to-end placement values via stackAgainstNeighbor directly.
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class StackAgainstNeighbor507PlacementValues {
+
+        @Test
+        void testWithinStaffNoteheadAccentClearsStaffLineFloor() {
+            // Notehead reservation is less outward than the STAFF_LINE floor, so the floor —
+            // not the notehead — must win contact()'s argmax (#507's "|sp| < 4" case).
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS,
+                NOTEHEAD_WITHIN_STAFF_TOP_SS, Neighbor.NOTEHEAD);
+
+            var element = mock(LineElement.class);
+            var builder = new LayoutResult.Builder();
+            NoteAttachedStacker.stackAgainstNeighbor(Direction.UP, extents, element,
+                NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS, NEIGHBOR_TEST_HEIGHT_SS,
+                Neighbor.ACCENT, 0, builder);
+
+            var expectedYSs = -Staff.STAFF_HALF_SS
+                - NoteAttachedStacker.ARTICULATION_MARGIN_SS - NEIGHBOR_TEST_HEIGHT_SS;
+            var layout = require(builder.build().getDecorationLayout(element));
+            assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testProtrudingNoteheadAccentClearsNoteheadOuterEdge() {
+            // Notehead reservation is more outward than the STAFF_LINE floor, so the notehead's
+            // own edge must win contact()'s argmax (#507's "|sp| >= 4" case) — "whichever is
+            // farther outward" resolved via the NOTEHEAD tag beating the floor.
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS,
+                NOTEHEAD_PROTRUDING_TOP_SS, Neighbor.NOTEHEAD);
+
+            var element = mock(LineElement.class);
+            var builder = new LayoutResult.Builder();
+            NoteAttachedStacker.stackAgainstNeighbor(Direction.UP, extents, element,
+                NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS, NEIGHBOR_TEST_HEIGHT_SS,
+                Neighbor.ACCENT, 0, builder);
+
+            var expectedYSs = NOTEHEAD_PROTRUDING_TOP_SS
+                - NoteAttachedStacker.ARTICULATION_MARGIN_SS - NEIGHBOR_TEST_HEIGHT_SS;
+            var layout = require(builder.build().getDecorationLayout(element));
+            assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testStaccatoNoTieAccentInnerEdgeMeasuredFromStaccatoCenter() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS,
+                STACCATO_OUTER_EDGE_TOP_SS, Neighbor.STACCATO);
+
+            var element = mock(LineElement.class);
+            var builder = new LayoutResult.Builder();
+            NoteAttachedStacker.stackAgainstNeighbor(Direction.UP, extents, element,
+                NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS, NEIGHBOR_TEST_HEIGHT_SS,
+                Neighbor.ACCENT, STACCATO_HALF_HEIGHT_SS, builder);
+
+            var layout = require(builder.build().getDecorationLayout(element));
+            var staccatoCenterYSs = STACCATO_OUTER_EDGE_TOP_SS + STACCATO_HALF_HEIGHT_SS;
+            var accentInnerEdgeYSs = layout.ySs() + NEIGHBOR_TEST_HEIGHT_SS;
+
+            assertThat(staccatoCenterYSs - accentInnerEdgeYSs)
+                .describedAs("accent's inner edge must sit ACCENT_STACCATO_CENTER_MARGIN_SS "
+                    + "from the staccato's center, not its outer edge")
+                .isCloseTo(NoteAttachedStacker.ACCENT_STACCATO_CENTER_MARGIN_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testDownStemNotePlacesAccentAboveTheStaff() {
+            var note = stemDownNote(STAFF_CENTER_SP);
+            note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
+            var accent = note.getArticulations().getFirst();
+
+            var builder = new LayoutResult.Builder();
+            var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
+            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+            var layout = require(builder.build().getDecorationLayout(accent));
+            assertThat(layout.ySs())
+                .describedAs("accent must place opposite a down stem: above the staff")
+                .isLessThan(0.0);
+        }
+
+        @Test
+        void testUpStemNotePlacesAccentBelowTheStaff() {
+            var note = stemUpNote(STAFF_CENTER_SP);
+            note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
+            var accent = note.getArticulations().getFirst();
+
+            var builder = new LayoutResult.Builder();
+            var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
+            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+            var layout = require(builder.build().getDecorationLayout(accent));
+            assertThat(layout.ySs())
+                .describedAs("accent must place opposite an up stem: below the staff")
+                .isGreaterThan(0.0);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Gap B — decoration-over-decoration placement, each landing NOTE_DECORATION_MARGIN_SS
+    // beyond the inner decoration. stack() places Tier 2 decorations fermata-then-trill (the
+    // fermata loop over columns runs before stackTrills), so with all three present the
+    // reachable pairs are FERMATA x ACCENT and TRILL x FERMATA.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testFermataClearsAccentAndTrillClearsFermataByNoteDecorationMargin() {
+        var note = stemDownNote(STAFF_CENTER_SP);
+        note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
+        var accent = note.getArticulations().getFirst();
+
+        var fermata = new FermataAttachment(note);
+        note.addAttachment(fermata);
+
+        var line = detachedLine();
+        line.addElement(note);
+        var trill = new Trill(note);
+        line.addRangeElement(trill);
+
+        var builder = new LayoutResult.Builder();
+        var context = new StackingContext(
+            List.of(mockColumnAt(note, START_NOTE_X_SS)), line, builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        var result = builder.build();
+        var accentLayout = require(result.getDecorationLayout(accent));
+        var trillLayout = require(result.getDecorationLayout(trill));
+        var fermataLayout = require(result.findAttachmentDecorationLayout(note, FermataAttachment.class));
+
+        // FERMATA x ACCENT: fermata's near edge clears accent's outer edge by NOTE_DECORATION_MARGIN_SS.
+        assertThat(accentLayout.ySs() - (fermataLayout.ySs() + fermataLayout.heightSs()))
+            .describedAs("fermata must clear the accent by NOTE_DECORATION_MARGIN_SS")
+            .isCloseTo(NoteAttachedStacker.NOTE_DECORATION_MARGIN_SS, within(TOLERANCE));
+
+        // TRILL x FERMATA: trill's near edge clears fermata's outer edge by the same margin.
+        assertThat(fermataLayout.ySs() - (trillLayout.ySs() + trillLayout.heightSs()))
+            .describedAs("trill must clear the fermata by NOTE_DECORATION_MARGIN_SS")
+            .isCloseTo(NoteAttachedStacker.NOTE_DECORATION_MARGIN_SS, within(TOLERANCE));
+    }
+
+    @Test
+    void testFermataClearsAccentDirectlyWhenNoTrillPresent() {
+        var note = stemDownNote(STAFF_CENTER_SP);
+        note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
+        var accent = note.getArticulations().getFirst();
+
+        var fermata = new FermataAttachment(note);
+        note.addAttachment(fermata);
+
+        var builder = new LayoutResult.Builder();
+        var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        var result = builder.build();
+        var accentLayout = require(result.getDecorationLayout(accent));
+        var fermataLayout = require(result.findAttachmentDecorationLayout(note, FermataAttachment.class));
+
+        // FERMATA x ACCENT (no trill present): fermata clears the accent directly.
+        assertThat(accentLayout.ySs() - (fermataLayout.ySs() + fermataLayout.heightSs()))
+            .describedAs("fermata must clear the accent by NOTE_DECORATION_MARGIN_SS directly "
+                + "when no trill is present")
+            .isCloseTo(NoteAttachedStacker.NOTE_DECORATION_MARGIN_SS, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // Gap C (critical) — decoration over staccato must still clear the outer staff line by at
+    // least ARTICULATION_MARGIN_SS: pins the quantization assumption that no staccato lands in
+    // the thin under-clear band, and catches any regression to center-seeding the staccato.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testAccentOverStaccatoClearsOuterStaffLineByAtLeastArticulationMargin() {
+        var note = stemDownNote(GAP_BINDS_ABOVE_SP);
+        note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
+        note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
+        var accent = note.getArticulations().get(1);
+
+        var builder = new LayoutResult.Builder();
+        var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        var accentLayout = require(builder.build().getDecorationLayout(accent));
+        var clearanceFromStaffLineSs = -Staff.STAFF_HALF_SS
+            - (accentLayout.ySs() + accentLayout.heightSs());
+
+        assertThat(clearanceFromStaffLineSs)
+            .describedAs("accent over a staccato must still clear the outer staff line by at "
+                + "least ARTICULATION_MARGIN_SS, not just the staccato's own center margin")
+            .isGreaterThanOrEqualTo(NoteAttachedStacker.ARTICULATION_MARGIN_SS - TOLERANCE);
+    }
+
+    @Test
+    void testFermataOverStaccatoWithNoAccentClearsOuterStaffLineByAtLeastArticulationMargin() {
+        var note = stemDownNote(GAP_BINDS_ABOVE_SP);
+        note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
+        var staccato = note.getArticulations().getFirst();
+
+        var fermata = new FermataAttachment(note);
+        note.addAttachment(fermata);
+
+        var builder = new LayoutResult.Builder();
+        var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        var result = builder.build();
+        var fermataLayout =
+            require(result.findAttachmentDecorationLayout(note, FermataAttachment.class));
+        var clearanceFromStaffLineSs = -Staff.STAFF_HALF_SS
+            - (fermataLayout.ySs() + fermataLayout.heightSs());
+
+        assertThat(clearanceFromStaffLineSs)
+            .describedAs("a fermata placed over a staccato (no accent) must still clear the "
+                + "outer staff line by at least ARTICULATION_MARGIN_SS")
+            .isGreaterThanOrEqualTo(NoteAttachedStacker.ARTICULATION_MARGIN_SS - TOLERANCE);
+
+        // A fermata is a note decoration, not an articulation: it must clear the staccato's outer
+        // edge by the full NOTE_DECORATION_MARGIN_SS, not the accent-only center margin. Above the
+        // staff the fermata sits farther out (more negative Y), so the gap is the staccato's top
+        // edge minus the fermata's bottom edge.
+        var staccatoLayout = require(result.getDecorationLayout(staccato));
+        var gapAboveStaccatoSs =
+            staccatoLayout.ySs() - (fermataLayout.ySs() + fermataLayout.heightSs());
+
+        assertThat(gapAboveStaccatoSs)
+            .describedAs("fermata over a staccato (no accent) clears it by NOTE_DECORATION_MARGIN_SS")
+            .isCloseTo(NoteAttachedStacker.NOTE_DECORATION_MARGIN_SS, within(TOLERANCE));
+    }
+
+    @Test
+    void testNoteWithStaccatoButNoAccentPlacesNoAccentDecoration() {
+        // stackAccentAboveExtents returns null on its @Nullable no-accent contract and must place
+        // nothing: a note carrying only a staccato yields exactly one decoration — the staccato.
+        var note = stemDownNote(STAFF_CENTER_SP);
+        note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
+        var staccato = note.getArticulations().getFirst();
+
+        var builder = new LayoutResult.Builder();
+        var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        assertThat(builder.build().getDecorationLayouts())
+            .describedAs("only the staccato is placed; no accent decoration when the note has none")
+            .containsOnlyKeys(staccato);
+    }
+
+    // -------------------------------------------------------------------------
+    // Regression (#507/#503) — an accent over an arc gets the arc's margin whether or not a
+    // staccato also sits on the note: `b …( \accent …) \staccato \accent` shape.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testAccentOverArcGetsArcMarginRegardlessOfStaccatoPresence() {
+        // With staccato present.
+        var withStaccatoStartNote = stemDownNote(STAFF_CENTER_SP);
+        withStaccatoStartNote.addArticulation(
+            new Articulation(withStaccatoStartNote, ArticulationType.STACCATO));
+        withStaccatoStartNote.addArticulation(
+            new Articulation(withStaccatoStartNote, ArticulationType.ACCENT));
+        var withStaccatoAccent = withStaccatoStartNote.getArticulations().get(1);
+
+        var withStaccatoEndNote = stemDownNote(STAFF_CENTER_SP);
+        var withStaccatoLine = detachedLine();
+        var withStaccatoTie = new Tie(withStaccatoStartNote, withStaccatoEndNote);
+        withStaccatoLine.addRangeElement(withStaccatoTie);
+
+        var withStaccatoBuilder = new LayoutResult.Builder();
+        withStaccatoBuilder.putTieLayout(withStaccatoTie,
+            flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, PROTRUDING_ARC_Y_SS));
+        var withStaccatoContext = new StackingContext(
+            List.of(mockColumnAt(withStaccatoStartNote, START_NOTE_X_SS),
+                mockColumnAt(withStaccatoEndNote, END_NOTE_X_SS)),
+            withStaccatoLine, withStaccatoBuilder);
+        new NoteAttachedStacker(withStaccatoContext, new StaffExtents(LINE_WIDTH_SS)).stack();
+        var withStaccatoAccentLayout =
+            require(withStaccatoBuilder.build().getDecorationLayout(withStaccatoAccent));
+
+        // Without staccato — same tie, same accent.
+        var noStaccatoStartNote = stemDownNote(STAFF_CENTER_SP);
+        noStaccatoStartNote.addArticulation(
+            new Articulation(noStaccatoStartNote, ArticulationType.ACCENT));
+        var noStaccatoAccent = noStaccatoStartNote.getArticulations().getFirst();
+
+        var noStaccatoEndNote = stemDownNote(STAFF_CENTER_SP);
+        var noStaccatoLine = detachedLine();
+        var noStaccatoTie = new Tie(noStaccatoStartNote, noStaccatoEndNote);
+        noStaccatoLine.addRangeElement(noStaccatoTie);
+
+        var noStaccatoBuilder = new LayoutResult.Builder();
+        noStaccatoBuilder.putTieLayout(noStaccatoTie,
+            flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, PROTRUDING_ARC_Y_SS));
+        var noStaccatoContext = new StackingContext(
+            List.of(mockColumnAt(noStaccatoStartNote, START_NOTE_X_SS),
+                mockColumnAt(noStaccatoEndNote, END_NOTE_X_SS)),
+            noStaccatoLine, noStaccatoBuilder);
+        new NoteAttachedStacker(noStaccatoContext, new StaffExtents(LINE_WIDTH_SS)).stack();
+        var noStaccatoAccentLayout =
+            require(noStaccatoBuilder.build().getDecorationLayout(noStaccatoAccent));
+
+        var expectedYSs = PROTRUDING_ARC_Y_SS
+            - NoteAttachedStacker.TIE_DECORATION_MARGIN_SS
+            - withStaccatoAccentLayout.heightSs();
+
+        assertThat(withStaccatoAccentLayout.ySs())
+            .describedAs("accent over an arc must get the arc's margin even with a staccato present")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
+        assertThat(noStaccatoAccentLayout.ySs())
+            .describedAs("accent over an arc must get the arc's margin with no staccato present")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // Flipped/mixed stems — a down-stem note (accent above) and an up-stem note (accent below)
+    // sharing one upward arc: the below accent never sees the (above-only) arc.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testMixedStemAccentsOnSharedUpwardArcEachQueryTheirOwnSideOnly() {
+        // Down-stem note: accent placed above, must clear the upward arc.
+        var startNote = stemDownNote(STAFF_CENTER_SP);
+        startNote.addArticulation(new Articulation(startNote, ArticulationType.ACCENT));
+        var aboveAccent = startNote.getArticulations().getFirst();
+
+        // Up-stem note: accent placed below; the (above-only) arc must never affect it.
+        var endNote = stemUpNote(STAFF_CENTER_SP);
+        endNote.addArticulation(new Articulation(endNote, ArticulationType.ACCENT));
+        var belowAccent = endNote.getArticulations().getFirst();
+
+        var line = detachedLine();
+        var tie = new Tie(startNote, endNote);
+        line.addRangeElement(tie);
+
+        var builder = new LayoutResult.Builder();
+        // arcsDown = startElement.getDirection().isUp() = false (stem down) -> arc reserved above.
+        builder.putTieLayout(tie, flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, PROTRUDING_ARC_Y_SS));
+
+        var context = new StackingContext(
+            List.of(mockColumnAt(startNote, START_NOTE_X_SS), mockColumnAt(endNote, END_NOTE_X_SS)),
+            line, builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        var result = builder.build();
+        var aboveAccentLayout = require(result.getDecorationLayout(aboveAccent));
+        var belowAccentLayout = require(result.getDecorationLayout(belowAccent));
+
+        var expectedAboveYSs = PROTRUDING_ARC_Y_SS
+            - NoteAttachedStacker.TIE_DECORATION_MARGIN_SS - aboveAccentLayout.heightSs();
+        assertThat(aboveAccentLayout.ySs())
+            .describedAs("above accent must clear the upward arc")
+            .isCloseTo(expectedAboveYSs, within(TOLERANCE));
+
+        var expectedBelowYSs = StackingUtils.anchorFloorSs(STAFF_CENTER_SP)
+            + NoteAttachedStacker.ARTICULATION_MARGIN_SS;
+        assertThat(belowAccentLayout.ySs())
+            .describedAs("below accent must anchor to the notehead/staff floor, never seeing "
+                + "the above-only arc")
+            .isCloseTo(expectedBelowYSs, within(TOLERANCE));
     }
 
     // -------------------------------------------------------------------------

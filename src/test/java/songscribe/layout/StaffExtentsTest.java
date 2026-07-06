@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.engraving.Staff;
 
 class StaffExtentsTest extends UnitTest {
 
@@ -62,6 +63,19 @@ class StaffExtentsTest extends UnitTest {
             target.copyTopFrom(source);
 
             assertThat(target.yGet(false, 10.0, 5.0)).isEqualTo(DEFAULT_EXTENT_SS);
+        }
+
+        @Test
+        void testCopyTopFromAlsoCopiesTopTag() {
+            var source = new StaffExtents(LINE_WIDTH_SS);
+            source.ySet(true, 10.0, 5.0, -3.0, Neighbor.NOTEHEAD);
+
+            var target = new StaffExtents(LINE_WIDTH_SS);
+            target.copyTopFrom(source);
+
+            var contact = target.contact(true, 10.0, 5.0);
+            assertThat(contact.ySs()).isEqualTo(-3.0);
+            assertThat(contact.tag()).isEqualTo(Neighbor.NOTEHEAD);
         }
     }
 
@@ -230,4 +244,196 @@ class StaffExtentsTest extends UnitTest {
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Tagged ySet: records the tag at the step it wins; untagged ySet
+    // delegates to STAFF_LINE.
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TaggedYSet {
+
+        @Test
+        void testBelowTaggedReservationRecordsTagAtExtremeStep() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(false, 10.0, 5.0, 6.0, Neighbor.STACCATO);
+
+            var contact = extents.contact(false, 10.0, 5.0);
+            assertThat(contact.ySs()).isEqualTo(6.0);
+            assertThat(contact.tag()).isEqualTo(Neighbor.STACCATO);
+        }
+
+        @Test
+        void testUntaggedYSetDelegatesToStaffLineTag() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, 10.0, 5.0, -5.0);
+
+            assertThat(extents.contact(true, 10.0, 5.0).tag()).isEqualTo(Neighbor.STAFF_LINE);
+        }
+
+        @Test
+        void testNonWinningReservationDoesNotOverwriteEarlierTag() {
+            // A later reservation that does not win the numeric update (less outward than the
+            // current value) must leave the earlier tag in place.
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, 10.0, 5.0, -5.0, Neighbor.NOTEHEAD);
+            extents.ySet(true, 10.0, 5.0, -2.0, Neighbor.TIE);
+
+            var contact = extents.contact(true, 10.0, 5.0);
+            assertThat(contact.ySs()).isEqualTo(-5.0);
+            assertThat(contact.tag()).isEqualTo(Neighbor.NOTEHEAD);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // contact(): argmax seeded with the STAFF_LINE floor; a reservation that
+    // does not protrude past the floor never becomes the reported neighbor.
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ContactQueries {
+
+        @Test
+        void testAboveEmptyRegionReturnsStaffEdgeFloor() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            var contact = extents.contact(true, 10.0, 5.0);
+
+            assertThat(contact.ySs()).isEqualTo(-Staff.STAFF_HALF_SS);
+            assertThat(contact.tag()).isEqualTo(Neighbor.STAFF_LINE);
+        }
+
+        @Test
+        void testBelowEmptyRegionReturnsStaffEdgeFloor() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            var contact = extents.contact(false, 10.0, 5.0);
+
+            assertThat(contact.ySs()).isEqualTo(Staff.STAFF_HALF_SS);
+            assertThat(contact.tag()).isEqualTo(Neighbor.STAFF_LINE);
+        }
+
+        @Test
+        void testAboveReservationBuriedInsideStaffDoesNotBecomeNeighbor() {
+            // -1.0 is less outward than the floor (-STAFF_HALF_SS = -2.0), so the built-in
+            // STAFF_LINE floor must still win the argmax over the buried NOTEHEAD reservation.
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, 10.0, 5.0, -1.0, Neighbor.NOTEHEAD);
+
+            var contact = extents.contact(true, 10.0, 5.0);
+            assertThat(contact.ySs()).isEqualTo(-Staff.STAFF_HALF_SS);
+            assertThat(contact.tag()).isEqualTo(Neighbor.STAFF_LINE);
+        }
+
+        @Test
+        void testBelowReservationBuriedInsideStaffDoesNotBecomeNeighbor() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(false, 10.0, 5.0, 1.0, Neighbor.NOTEHEAD);
+
+            var contact = extents.contact(false, 10.0, 5.0);
+            assertThat(contact.ySs()).isEqualTo(Staff.STAFF_HALF_SS);
+            assertThat(contact.tag()).isEqualTo(Neighbor.STAFF_LINE);
+        }
+
+        @Test
+        void testAboveReservationProtrudingPastFloorBecomesNeighbor() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, 10.0, 5.0, -3.0, Neighbor.NOTEHEAD);
+
+            var contact = extents.contact(true, 10.0, 5.0);
+            assertThat(contact.ySs()).isEqualTo(-3.0);
+            assertThat(contact.tag()).isEqualTo(Neighbor.NOTEHEAD);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Gap A (critical) — yGet stays floor-free: contact() alone knows the
+    // staff-edge floor; yGet must still report the raw 0.0 default.
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class YGetStaysFloorFree {
+
+        @Test
+        void testAboveYGetReturnsRawDefaultDespiteContactReportingFloor() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+
+            assertThat(extents.contact(true, 10.0, 5.0).ySs())
+                .describedAs("contact() reports the staff-edge floor for an empty region")
+                .isEqualTo(-Staff.STAFF_HALF_SS);
+            assertThat(extents.yGet(true, 10.0, 5.0))
+                .describedAs("yGet must stay floor-free and report the raw 0.0 default")
+                .isEqualTo(DEFAULT_EXTENT_SS);
+        }
+
+        @Test
+        void testBelowYGetReturnsRawDefaultDespiteContactReportingFloor() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+
+            assertThat(extents.contact(false, 10.0, 5.0).ySs())
+                .describedAs("contact() reports the staff-edge floor for an empty region")
+                .isEqualTo(Staff.STAFF_HALF_SS);
+            assertThat(extents.yGet(false, 10.0, 5.0))
+                .describedAs("yGet must stay floor-free and report the raw 0.0 default")
+                .isEqualTo(DEFAULT_EXTENT_SS);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Gap D — contact() tie-break and normal-order argmax: an exact tie in the
+    // extreme Y is won by the last writer; a genuine argmax picks whichever
+    // reservation is actually more outward, tag included.
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ContactArgmaxTieBreak {
+
+        @Test
+        void testAboveTiedExtremeValueLastWriterTagWins() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, 10.0, 5.0, -5.0, Neighbor.NOTEHEAD);
+            extents.ySet(true, 10.0, 5.0, -5.0, Neighbor.TIE);
+
+            var contact = extents.contact(true, 10.0, 5.0);
+            assertThat(contact.ySs()).isEqualTo(-5.0);
+            assertThat(contact.tag()).isEqualTo(Neighbor.TIE);
+        }
+
+        @Test
+        void testBelowTiedExtremeValueLastWriterTagWins() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(false, 10.0, 5.0, 5.0, Neighbor.NOTEHEAD);
+            extents.ySet(false, 10.0, 5.0, 5.0, Neighbor.TIE);
+
+            var contact = extents.contact(false, 10.0, 5.0);
+            assertThat(contact.ySs()).isEqualTo(5.0);
+            assertThat(contact.tag()).isEqualTo(Neighbor.TIE);
+        }
+
+        @Test
+        void testAboveNormalOrderStaccatoSeededMoreOutwardThanTieWins() {
+            // Tie seeded first at the inner (less outward) position, staccato seeded second at
+            // a genuinely more outward position — not a tie, so this locks the plain argmax
+            // branch, distinct from the tie-break case above.
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, 10.0, 5.0, -2.4, Neighbor.TIE);
+            extents.ySet(true, 10.0, 5.0, -3.0, Neighbor.STACCATO);
+
+            var contact = extents.contact(true, 10.0, 5.0);
+            assertThat(contact.ySs()).isEqualTo(-3.0);
+            assertThat(contact.tag()).isEqualTo(Neighbor.STACCATO);
+        }
+
+        @Test
+        void testBelowNormalOrderStaccatoSeededMoreOutwardThanTieWins() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(false, 10.0, 5.0, 2.4, Neighbor.TIE);
+            extents.ySet(false, 10.0, 5.0, 3.0, Neighbor.STACCATO);
+
+            var contact = extents.contact(false, 10.0, 5.0);
+            assertThat(contact.ySs()).isEqualTo(3.0);
+            assertThat(contact.tag()).isEqualTo(Neighbor.STACCATO);
+        }
+    }
 }

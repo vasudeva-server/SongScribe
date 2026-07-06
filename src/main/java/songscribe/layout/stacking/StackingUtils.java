@@ -29,6 +29,7 @@ import songscribe.dom.CollisionRegion;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.LineElement;
 import songscribe.dom.RangeElement;
+import songscribe.layout.Neighbor;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
 
@@ -36,9 +37,8 @@ import songscribe.engraving.Staff;
  * Shared static helpers used by all stacking delegates.
  * <p>
  * Contains collision-aware placement methods ({@link #stackAbove}, {@link #stackBelow},
- * {@link #stackStaccato}, {@link #stackBeyond}, {@link #stackAboveWithRegions}) and anchor
- * ceiling/floor calculations. The above/below variants share their implementation, dispatched
- * on {@link Direction}.
+ * {@link #stackStaccato}, {@link #stackAboveWithRegions}) and anchor ceiling/floor calculations.
+ * The above/below variants share their implementation, dispatched on {@link Direction}.
  */
 public final class StackingUtils {
 
@@ -73,6 +73,27 @@ public final class StackingUtils {
     static final double STACCATO_BETWEEN_LINES_DISTANCE_SS = 1.0;
 
     private StackingUtils() {
+    }
+
+    /**
+     * Queries the untagged extent under a footprint expanded by
+     * {@link #STRUCTURAL_HORIZONTAL_MARGIN_SS} on each side (the horizontal collision margin that
+     * collapses between adjacent elements).
+     */
+    static double yGetExpanded(StaffExtents extents, boolean above, double xSs, double widthSs) {
+        return extents.yGet(above, xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS,
+            widthSs + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS);
+    }
+
+    /**
+     * Queries the tagged {@link StaffExtents.Contact} under a footprint expanded by
+     * {@link #STRUCTURAL_HORIZONTAL_MARGIN_SS} on each side, the tagged counterpart of
+     * {@link #yGetExpanded}.
+     */
+    static StaffExtents.Contact contactExpanded(
+        StaffExtents extents, boolean above, double xSs, double widthSs) {
+        return extents.contact(above, xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS,
+            widthSs + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS);
     }
 
     /**
@@ -166,7 +187,7 @@ public final class StackingUtils {
         LayoutResult.Builder builder) {
 
         return stackAtAnchor(Direction.UP, extents, element, xSs, widthSs, heightSs, marginSs,
-            staffPosition, builder);
+            staffPosition, Neighbor.STAFF_LINE, builder);
     }
 
     /**
@@ -186,7 +207,7 @@ public final class StackingUtils {
         LayoutResult.Builder builder) {
 
         return stackAtAnchor(Direction.DOWN, extents, element, xSs, widthSs, heightSs, marginSs,
-            staffPosition, builder);
+            staffPosition, Neighbor.STAFF_LINE, builder);
     }
 
     /**
@@ -199,6 +220,9 @@ public final class StackingUtils {
      * since that distance already fully specifies the dot's position relative to the note;
      * margin only applies to avoid colliding with already-reserved content (e.g. a stem tip),
      * not to the ideal, uncollided position.
+     * <p>
+     * The reservation is tagged {@code tag} so a later decoration querying this step resolves the
+     * dot as its neighbor.
      *
      * @return the computed top Y (above) or bottom Y (below) in staff-space units
      */
@@ -207,7 +231,7 @@ public final class StackingUtils {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
-        int staffPosition,
+        int staffPosition, Neighbor tag,
         LayoutResult.Builder builder) {
 
         var atOrBeyondStaffEdge = direction.isUp()
@@ -216,7 +240,7 @@ public final class StackingUtils {
 
         if (atOrBeyondStaffEdge) {
             return stackAtAnchor(direction, extents, element, xSs, widthSs, heightSs, marginSs,
-                staffPosition, builder);
+                staffPosition, tag, builder);
         }
 
         var centerSs = direction.isUp()
@@ -224,46 +248,45 @@ public final class StackingUtils {
             : staccatoAnchorFloorSs(staffPosition);
 
         return stackAtCenter(direction, extents, element, xSs, widthSs, heightSs, marginSs,
-            centerSs, builder);
+            centerSs, tag, builder);
     }
 
     /**
-     * Places an element on the given side of the staff, beyond whatever is already reserved
-     * (e.g. staccato), but never closer to the staff than {@code staffGapSs} from the staff
-     * edge. Used to stack accent beyond staccato: staccato's own note-relative position can sit
-     * closer to the staff than accent's minimum clearance requires, so accent must satisfy
-     * both — whichever constraint is further from the staff wins.
+     * Shared placement core: given a computed {@code boundSs} (the Y this element must clear on
+     * the given side), positions {@code element} one {@code marginSs} inside it, reserves its
+     * footprint tagged {@code tag}, writes the decoration layout, and returns the element's outer Y.
+     * <p>
+     * Reserve-edge / return convention: the reservation is written at the element's edge nearest
+     * the staff (its top edge above, its bottom edge below), so a neighboring tier that later
+     * queries this step adds its own margin — each tier-to-tier gap equals the outer element's
+     * margin. The value returned is the element's outer Y: its top when above the staff, its
+     * bottom when below.
      *
-     * @return the computed top Y (above) or bottom Y (below) in staff-space units
+     * @return the element's outer Y in staff-space units (top above, bottom below)
      */
-    public static double stackBeyond(
+    static double placeAndReserve(
         Direction direction,
         StaffExtents extents,
         LineElement element,
-        double xSs, double widthSs, double heightSs, double marginSs, double staffGapSs,
+        double xSs, double widthSs, double heightSs, double boundSs, double marginSs, Neighbor tag,
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
-        var queryXSs = xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS;
-        var queryWidthSs = widthSs + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS;
-        var currentSs = extents.yGet(above, queryXSs, queryWidthSs);
 
         double elementTopYSs;
         double reserveEdgeYSs;
 
         if (above) {
-            var naturalYSs = currentSs - marginSs - heightSs;
-            var staffMinimumYSs = STAFF_TOP_Y_SS - staffGapSs - heightSs;
-            elementTopYSs = Math.min(naturalYSs, staffMinimumYSs);
+            // Position: bottom margin between this element's bottom and the ceiling
+            elementTopYSs = boundSs - marginSs - heightSs;
             reserveEdgeYSs = elementTopYSs;
         } else {
-            var naturalTopYSs = currentSs + marginSs;
-            var staffMinimumTopYSs = STAFF_BOT_Y_SS + staffGapSs;
-            elementTopYSs = Math.max(naturalTopYSs, staffMinimumTopYSs);
+            // Position: top margin between the floor and this element's top
+            elementTopYSs = boundSs + marginSs;
             reserveEdgeYSs = elementTopYSs + heightSs;
         }
 
-        extents.ySet(above, xSs, widthSs, reserveEdgeYSs);
+        extents.ySet(above, xSs, widthSs, reserveEdgeYSs, tag);
 
         builder.putDecorationLayout(element,
             new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, marginSs));
@@ -281,12 +304,12 @@ public final class StackingUtils {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
-        int staffPosition,
+        int staffPosition, Neighbor tag,
         LayoutResult.Builder builder) {
 
         var anchorSs = direction.isUp() ? anchorCeilingSs(staffPosition) : anchorFloorSs(staffPosition);
         return stackAtAnchor(direction, extents, element, xSs, widthSs, heightSs, marginSs,
-            anchorSs, builder);
+            anchorSs, tag, builder);
     }
 
     private static double stackAtAnchor(
@@ -294,36 +317,15 @@ public final class StackingUtils {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
-        double anchorSs,
+        double anchorSs, Neighbor tag,
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
-        var queryXSs = xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS;
-        var queryWidthSs = widthSs + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS;
-        var currentSs = extents.yGet(above, queryXSs, queryWidthSs);
+        var currentSs = yGetExpanded(extents, above, xSs, widthSs);
         var boundSs = above ? Math.min(currentSs, anchorSs) : Math.max(currentSs, anchorSs);
 
-        double elementTopYSs;
-        double reserveEdgeYSs;
-
-        if (above) {
-            // Position: bottom margin between this element's bottom and the ceiling
-            elementTopYSs = boundSs - marginSs - heightSs;
-            reserveEdgeYSs = elementTopYSs;
-        } else {
-            // Position: top margin between the floor and this element's top
-            elementTopYSs = boundSs + marginSs;
-            reserveEdgeYSs = elementTopYSs + heightSs;
-        }
-
-        // Reserve at element edge (top above, bottom below). The neighboring tier applies its
-        // own margin when it queries, so each tier-to-tier gap = the neighboring element's margin.
-        extents.ySet(above, xSs, widthSs, reserveEdgeYSs);
-
-        builder.putDecorationLayout(element,
-            new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, marginSs));
-
-        return above ? elementTopYSs : reserveEdgeYSs;
+        return placeAndReserve(direction, extents, element, xSs, widthSs, heightSs, boundSs,
+            marginSs, tag, builder);
     }
 
     private static double stackAtCenter(
@@ -331,14 +333,11 @@ public final class StackingUtils {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
-        double centerSs,
+        double centerSs, Neighbor tag,
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
-        // Query: expand by horizontal margin (collapses between adjacent elements)
-        var queryXSs = xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS;
-        var queryWidthSs = widthSs + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS;
-        var currentSs = extents.yGet(above, queryXSs, queryWidthSs);
+        var currentSs = yGetExpanded(extents, above, xSs, widthSs);
 
         double elementTopYSs;
         double reserveEdgeYSs;
@@ -360,7 +359,7 @@ public final class StackingUtils {
 
         // Reserve at element edge. The neighboring tier applies its own margin when it
         // queries, so each tier-to-tier gap = the neighboring element's margin.
-        extents.ySet(above, xSs, widthSs, reserveEdgeYSs);
+        extents.ySet(above, xSs, widthSs, reserveEdgeYSs, tag);
 
         builder.putDecorationLayout(element,
             new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, marginSs));
@@ -393,10 +392,7 @@ public final class StackingUtils {
         // so the element clears all content beneath every sub-region.
         for (var region : regions) {
             var regionXSs = xSs + region.xOffsetSs();
-            var queryXSs = regionXSs - STRUCTURAL_HORIZONTAL_MARGIN_SS;
-            var queryWidthSs = region.widthSs() + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS;
-
-            var regionTopSs = extents.yGet(true, queryXSs, queryWidthSs);
+            var regionTopSs = yGetExpanded(extents, true, regionXSs, region.widthSs());
             var regionCeilingSs = Math.min(regionTopSs, anchorSs);
 
             // Constraint: elementY + yOffset + height <= ceiling - margin

@@ -23,7 +23,6 @@ package songscribe.layout.stacking;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
@@ -35,8 +34,7 @@ import songscribe.engraving.Staff;
  * Shared context passed to all stacking delegates.
  * <p>
  * Holds the column list, element-to-column map, line, and layout builder
- * that every stacker needs. {@code notesWithUpwardTie} is mutable: it is
- * populated during seeding (tier 0) and read by later tiers.
+ * that every stacker needs.
  */
 public class StackingContext {
 
@@ -44,7 +42,6 @@ public class StackingContext {
     private final Map<StaffElement, ElementColumn> columnsByElement;
     private final Line line;
     private final LayoutResult.Builder builder;
-    private Set<StaffElement> notesWithUpwardTie = Set.of();
     private double lowestNoteBotSs = Staff.STAFF_HEIGHT_SS;
     // True extent of staff-element content below the staff. Defaults to staff bottom
     // (STAFF_HALF_SS in middle-relative coordinates) so an empty line contributes 0
@@ -75,14 +72,6 @@ public class StackingContext {
 
     public LayoutResult.Builder getBuilder() {
         return builder;
-    }
-
-    public Set<StaffElement> getNotesWithUpwardTie() {
-        return notesWithUpwardTie;
-    }
-
-    public void setNotesWithUpwardTie(Set<StaffElement> notesWithUpwardTie) {
-        this.notesWithUpwardTie = notesWithUpwardTie;
     }
 
     public double getLowestNoteBotSs() {
