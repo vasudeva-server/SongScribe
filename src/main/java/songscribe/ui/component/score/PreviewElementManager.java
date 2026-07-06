@@ -55,6 +55,8 @@ import songscribe.dom.ScaleContext;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.engraving.Staff;
+import songscribe.message.notification.PreviewElementDidChangeNotification;
+import songscribe.layout.StaffExtents;
 import songscribe.ui.playback.PlaybackController;
 
 /**
@@ -620,6 +622,7 @@ public final class PreviewElementManager {
         // Rests snap to their default staff position; pitched notes follow the mouse Y
         if (previewElement != null) {
             applyStaffPosition(previewElement, staffPosition);
+            MessageCenter.post(new PreviewElementDidChangeNotification(previewElement, line, xIndex));
         }
 
         // Repaint this line

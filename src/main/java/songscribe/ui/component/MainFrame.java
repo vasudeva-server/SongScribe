@@ -621,6 +621,7 @@ public class MainFrame extends JFrame implements Printable {
         // +---------------------+
         // | NORTH: Toolbar      |
         // | CENTER: ScoreView       |
+        // | SOUTH: StatusBar    |
         // +---------------------+
         var contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
@@ -660,6 +661,7 @@ public class MainFrame extends JFrame implements Printable {
         requireScoreView().init();
 
         contentPane.add(createCenterContent(), BorderLayout.CENTER);
+        contentPane.add(new StatusBar(), BorderLayout.SOUTH);
 
     }
 

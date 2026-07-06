@@ -51,15 +51,11 @@ final class FontSettingRow {
     private static final String CHOOSE_FONT_COMMAND = "choose-font";
     private static final String RESET_FONT_COMMAND = "reset-font";
 
-    // FlatLaf's standard border color key, used to box the description label so
-    // it matches the Fonts tab's font-name fields.
-    private static final String COMPONENT_BORDER_COLOR_KEY = "Component.borderColor";
-
     // The system defaults never change at runtime, so build them once and read
     // each Reset's font from the shared instance rather than rebuilding all
     // fonts on every Reset click.
     @Nullable
-    private static DocumentFonts systemDefaultFonts;
+    private static DocumentFonts systemDefaultFonts = null;
 
     private FontSettingRow() {
     }
@@ -72,8 +68,8 @@ final class FontSettingRow {
         MainFrame mainFrame,
         JLabel fontDescription,
         FontKey fontKey,
-        Supplier<Font> currentFont,
-        Consumer<Font> onFontChosen
+        Supplier<? extends Font> currentFont,
+        Consumer<? super Font> onFontChosen
     ) {
         return create(
             mainFrame,
@@ -98,8 +94,8 @@ final class FontSettingRow {
         JLabel rowLabel,
         JLabel fontDescription,
         FontKey fontKey,
-        Supplier<Font> currentFont,
-        Consumer<Font> onFontChosen
+        Supplier<? extends Font> currentFont,
+        Consumer<? super Font> onFontChosen
     ) {
         var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
         var row = new JPanel(new GridBagLayout());
@@ -147,7 +143,7 @@ final class FontSettingRow {
     static JLabel createFontDescriptionLabel() {
         var label = new JLabel();
         label.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(UIManager.getColor(COMPONENT_BORDER_COLOR_KEY)),
+            BorderFactory.createLineBorder(UIUtils.getComponentBorderColor()),
             UIUtils.spacingBorder(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_LABEL_PADDING)
         ));
         return label;
@@ -158,7 +154,7 @@ final class FontSettingRow {
      * the owner. Shared by the Choose / Reset actions and by each tab's initial
      * {@code getData()} so the row, label, and the tab's preview start in sync.
      */
-    static void applyFont(Font font, JLabel fontDescription, Consumer<Font> onFontChosen) {
+    static void applyFont(Font font, JLabel fontDescription, Consumer<? super Font> onFontChosen) {
         fontDescription.setText(MyFontUtils.getFullFontDescription(font));
         onFontChosen.accept(font);
     }
@@ -174,14 +170,14 @@ final class FontSettingRow {
     private static final class ChooseFontAction extends UIAction {
 
         private final JLabel fontDescription;
-        private final Supplier<Font> currentFont;
-        private final Consumer<Font> onFontChosen;
+        private final Supplier<? extends Font> currentFont;
+        private final Consumer<? super Font> onFontChosen;
 
         private ChooseFontAction(
             MainFrame mainFrame,
             JLabel fontDescription,
-            Supplier<Font> currentFont,
-            Consumer<Font> onFontChosen
+            Supplier<? extends Font> currentFont,
+            Consumer<? super Font> onFontChosen
         ) {
             super(
                 mainFrame,
@@ -203,13 +199,13 @@ final class FontSettingRow {
 
         private final FontKey fontKey;
         private final JLabel fontDescription;
-        private final Consumer<Font> onFontChosen;
+        private final Consumer<? super Font> onFontChosen;
 
         private ResetFontAction(
             MainFrame mainFrame,
             FontKey fontKey,
             JLabel fontDescription,
-            Consumer<Font> onFontChosen
+            Consumer<? super Font> onFontChosen
         ) {
             super(
                 mainFrame,

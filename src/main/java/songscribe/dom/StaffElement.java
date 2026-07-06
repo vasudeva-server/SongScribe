@@ -725,8 +725,17 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public @Nullable Accidental findLastAccidental() {
-        for (var i = line.getElementIndex(this) - 1; i >= 0; i--) {
-            var note = line.getElement(i);
+        return findEffectiveAccidental(line, line.getElementIndex(this));
+    }
+
+    /**
+     * Resolves the effective accidental for this note at the given insertion index within
+     * the given line: the nearest earlier accidental at the same staff position, falling
+     * back to the line's key signature.
+     */
+    public @Nullable Accidental findEffectiveAccidental(Line targetLine, int index) {
+        for (var i = index - 1; i >= 0; i--) {
+            var note = targetLine.getElement(i);
 
             if (
                 (note.getStaffPosition() == staffPosition) &&
@@ -736,7 +745,7 @@ public class StaffElement extends LineElement implements Cloneable {
             }
         }
 
-        return getAccidental(line);
+        return getAccidental(targetLine);
     }
 
     @Override

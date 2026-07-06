@@ -44,7 +44,7 @@ public enum ElementType {
     CROTCHET("Quarter note", KeyEvent.VK_4, 0, PPQ, 0),
     QUAVER("Eighth note", KeyEvent.VK_3, 0, PPQ / 2, 0),
     SEMIQUAVER("Sixteenth note", KeyEvent.VK_2, 0, PPQ / 4, 0),
-    DEMI_SEMIQUAVER("Thirtysecond note", KeyEvent.VK_1, 0, PPQ / 8, 0),
+    DEMI_SEMIQUAVER("Thirty-second note", KeyEvent.VK_1, 0, PPQ / 8, 0),
 
     // Rests
     SEMIBREVE_REST("Whole rest", KeyEvent.VK_6, -1, PPQ * 4, -1),
@@ -52,16 +52,16 @@ public enum ElementType {
     CROTCHET_REST("Quarter rest", KeyEvent.VK_4, -1, PPQ, 0),
     QUAVER_REST("Eighth rest", KeyEvent.VK_3, -1, PPQ / 2, 0),
     SEMIQUAVER_REST("Sixteenth rest", KeyEvent.VK_2, -1, PPQ / 4, 0),
-    DEMI_SEMIQUAVER_REST("Thirtysecond rest", KeyEvent.VK_1, -1, PPQ / 8, 0),
+    DEMI_SEMIQUAVER_REST("Thirty-second rest", KeyEvent.VK_1, -1, PPQ / 8, 0),
 
     // Grace notes
-    GRACE_QUAVER("Grace eighth", KeyEvent.VK_G, 0, 0, 0),
+    GRACE_QUAVER("Grace note", KeyEvent.VK_G, 0, 0, 0),
 
     // Other
     SLIDE("Slide", 0, 0),
     REPEAT_LEFT("Repeat left", KeyEvent.VK_L, 0, 0, 0),
     REPEAT_RIGHT("Repeat right", KeyEvent.VK_R, 0, 0, 0),
-    REPEAT_LEFT_RIGHT("Repeate left/right", 0, 0),
+    REPEAT_LEFT_RIGHT("Repeat left/right", 0, 0),
     BREATH_MARK("Breath mark", 0, -7),
     SINGLE_BARLINE("Single barline", 0, 0),
     DOUBLE_BARLINE("Double barline", 0, 0),

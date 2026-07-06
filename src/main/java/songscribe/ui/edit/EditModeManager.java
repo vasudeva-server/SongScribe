@@ -27,6 +27,8 @@ import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.dom.Articulation;
@@ -139,6 +141,7 @@ public final class EditModeManager {
      */
     public static void setPreviewElement(@Nullable StaffElement previewElement) {
         instance().previewElement = previewElement;
+        MessageCenter.post(new PreviewElementDidChangeNotification(previewElement));
     }
 
     /**

@@ -56,6 +56,7 @@ import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
+import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.prefs.PrefsKey;
@@ -154,6 +155,7 @@ public final class ScoreViewController {
 
         if (previewElement != null) {
             EditModeManager.decorateElement(previewElement);
+            MessageCenter.post(new PreviewElementDidChangeNotification(previewElement));
             score.repaint();
         } else {
             score.setPreviewElement(EditModeManager.makePreviewElement());

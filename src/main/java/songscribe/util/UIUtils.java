@@ -195,6 +195,14 @@ public final class UIUtils {
         return BorderFactory.createEmptyBorder(insets.top, insets.left, insets.bottom, insets.right);
     }
 
+    // FlatLaf's standard component border color, used to box or underline components
+    // so they match the look of the theme's default field borders.
+    private static final String COMPONENT_BORDER_COLOR_KEY = "Component.borderColor";
+
+    public static Color getComponentBorderColor() {
+        return UIManager.getColor(COMPONENT_BORDER_COLOR_KEY);
+    }
+
     public static JPanel padComponent(
         JComponent component,
         int top,
@@ -460,6 +468,7 @@ public final class UIUtils {
         SourceSans3Font.installRemaining();
         MyFontUtils.installLocalFont("Poetica-SuppOrnaments.otf");
         MyFontUtils.installLocalFont("TiroBangla-Regular.ttf");
+        MyFontUtils.installLocalFont("BravuraText.otf");
     }
 
     //
