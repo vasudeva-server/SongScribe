@@ -63,7 +63,9 @@ For each test in scope, identify its **production counterpart** (e.g.
 ## Phase 2: Static Review (parallel agents)
 
 Launch two review agents concurrently in a single message via the Agent tool.
-Begin each agent's prompt with:
+Run both agents (Correctness, Usefulness) with `model: sonnet` — they surface
+candidate findings that the orchestrator re-validates before fixing. Begin each
+agent's prompt with:
 
 > MANDATORY: Read .agents/rules/serena.md and follow it for all Java exploration.
 
