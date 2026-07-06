@@ -29,7 +29,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 
 /**
  * Shared context passed to all stacking delegates.
@@ -45,11 +45,11 @@ public class StackingContext {
     private final Line line;
     private final LayoutResult.Builder builder;
     private Set<StaffElement> notesWithUpwardTie = Set.of();
-    private double lowestNoteBotSs = StaffExtents.STAFF_HEIGHT_SS;
+    private double lowestNoteBotSs = Staff.STAFF_HEIGHT_SS;
     // True extent of staff-element content below the staff. Defaults to staff bottom
     // (STAFF_HALF_SS in middle-relative coordinates) so an empty line contributes 0
     // below-staff content. Used for lyric positioning.
-    private double botContentExtentSs = StaffExtents.STAFF_HALF_SS;
+    private double botContentExtentSs = Staff.STAFF_HALF_SS;
 
     public StackingContext(
             List<ElementColumn> columns,

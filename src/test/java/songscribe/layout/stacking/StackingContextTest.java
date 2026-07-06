@@ -35,7 +35,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 
 class StackingContextTest extends UnitTest {
 
@@ -43,14 +43,14 @@ class StackingContextTest extends UnitTest {
     private static final double TOLERANCE = 1e-9;
 
     // Two distinct accumulation values that form a peak in the middle
-    private static final double LOWER_VALUE_SS = StaffExtents.STAFF_HALF_SS + 0.5;
-    private static final double PEAK_VALUE_SS = StaffExtents.STAFF_HALF_SS + 2.0;
-    private static final double AFTER_PEAK_VALUE_SS = StaffExtents.STAFF_HALF_SS + 1.0;
+    private static final double LOWER_VALUE_SS = Staff.STAFF_HALF_SS + 0.5;
+    private static final double PEAK_VALUE_SS = Staff.STAFF_HALF_SS + 2.0;
+    private static final double AFTER_PEAK_VALUE_SS = Staff.STAFF_HALF_SS + 1.0;
 
     // Accumulation values for lowestNoteBotSs (default = STAFF_HEIGHT_SS)
-    private static final double LOWER_NOTE_BOT_SS = StaffExtents.STAFF_HEIGHT_SS + 0.5;
-    private static final double PEAK_NOTE_BOT_SS = StaffExtents.STAFF_HEIGHT_SS + 2.0;
-    private static final double AFTER_PEAK_NOTE_BOT_SS = StaffExtents.STAFF_HEIGHT_SS + 1.0;
+    private static final double LOWER_NOTE_BOT_SS = Staff.STAFF_HEIGHT_SS + 0.5;
+    private static final double PEAK_NOTE_BOT_SS = Staff.STAFF_HEIGHT_SS + 2.0;
+    private static final double AFTER_PEAK_NOTE_BOT_SS = Staff.STAFF_HEIGHT_SS + 1.0;
 
     private static ElementColumn mockColumn(StaffElement element) {
         var column = mock(ElementColumn.class);

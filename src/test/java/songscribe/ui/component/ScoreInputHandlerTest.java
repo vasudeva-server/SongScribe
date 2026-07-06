@@ -57,7 +57,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.DeselectCommand;
@@ -392,7 +392,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
             var note = ElementType.CROTCHET.newInstance();
             // upper bound: staffPosition < -(STAFF_LINES_ABOVE + 2) * 2 = -10
-            final int upperBound = -(StaffExtents.STAFF_LINES_ABOVE + 2) * 2;
+            final int upperBound = -(Staff.STAFF_LINES_ABOVE + 2) * 2;
             note.setStaffPosition(upperBound - 1);
 
             try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
@@ -439,7 +439,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
             var note = ElementType.CROTCHET.newInstance();
             // lower bound: staffPosition > (STAFF_LINES_BELOW + 2) * 2 = 12
-            final int lowerBound = (StaffExtents.STAFF_LINES_BELOW + 2) * 2;
+            final int lowerBound = (Staff.STAFF_LINES_BELOW + 2) * 2;
             note.setStaffPosition(lowerBound + 1);
 
             try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
@@ -758,7 +758,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var song = new Song();
             var line = song.getLine(0);
             var note = ElementType.CROTCHET.newInstance();
-            note.setStaffPosition(StaffExtents.MIN_STAFF_POSITION_SP);
+            note.setStaffPosition(Staff.MIN_STAFF_POSITION_SP);
             song.withoutMutationTracking(() -> line.addElement(note));
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -766,7 +766,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_UP);
 
-            assertThat(note.getStaffPosition()).isEqualTo(StaffExtents.MIN_STAFF_POSITION_SP);
+            assertThat(note.getStaffPosition()).isEqualTo(Staff.MIN_STAFF_POSITION_SP);
             messageCenterMock.verify(() -> MessageCenter.post(any(Message.class)), never());
         }
 
@@ -775,7 +775,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var song = new Song();
             var line = song.getLine(0);
             var note = ElementType.CROTCHET.newInstance();
-            note.setStaffPosition(StaffExtents.MAX_STAFF_POSITION_SP);
+            note.setStaffPosition(Staff.MAX_STAFF_POSITION_SP);
             song.withoutMutationTracking(() -> line.addElement(note));
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -783,7 +783,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_DOWN);
 
-            assertThat(note.getStaffPosition()).isEqualTo(StaffExtents.MAX_STAFF_POSITION_SP);
+            assertThat(note.getStaffPosition()).isEqualTo(Staff.MAX_STAFF_POSITION_SP);
             messageCenterMock.verify(() -> MessageCenter.post(any(Message.class)), never());
         }
 

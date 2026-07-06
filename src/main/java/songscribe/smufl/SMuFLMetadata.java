@@ -68,7 +68,7 @@ public final class SMuFLMetadata {
         return requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).height();
     }
 
-    static SMuFLData getEngravingDefaults() {
+    public static SMuFLData getEngravingDefaults() {
         return instance().engravingDefaults;
     }
 

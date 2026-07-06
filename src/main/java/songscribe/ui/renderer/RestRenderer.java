@@ -31,10 +31,10 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.util.GraphicsState;
 
 /**
@@ -80,7 +80,7 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
         }
 
         // Center-to-center: one dot glyph plus a one-dot-width gap (LilyPond convention).
-        DOT_SPACING_SS = (float) (Engraving.AUGMENTATION_DOT_WIDTH_SS * 2);
+        DOT_SPACING_SS = (float) (SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS * 2);
     }
 
     // Singleton instance
@@ -180,16 +180,16 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
 
         if (noteType == ElementType.SEMIBREVE_REST) {
             // Whole rest hangs below the 4th line (second from top)
-            return middleLineYSs + StaffExtents.spToSs(SEMIBREVE_REST_Y_OFFSET);
+            return middleLineYSs + Staff.spToSs(SEMIBREVE_REST_Y_OFFSET);
         }
 
         if (noteType == ElementType.MINIM_REST) {
             // Half rest sits on the middle line
-            return middleLineYSs + StaffExtents.spToSs(MINIM_REST_Y_OFFSET);
+            return middleLineYSs + Staff.spToSs(MINIM_REST_Y_OFFSET);
         }
 
         // Other rests use standard note Y positioning
-        return middleLineYSs + StaffExtents.spToSs(note.getStaffPosition());
+        return middleLineYSs + Staff.spToSs(note.getStaffPosition());
     }
 
     /**

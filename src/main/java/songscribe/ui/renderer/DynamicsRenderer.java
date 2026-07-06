@@ -29,6 +29,7 @@ import module java.desktop;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.layout.LayoutResult;
+import songscribe.engraving.LineThickness;
 import songscribe.shape.HairpinShape;
 import songscribe.util.GraphicsState;
 
@@ -98,7 +99,7 @@ public final class DynamicsRenderer {
             // overlap at the narrow tip and fill it solidly. GraphicUtils.drawRoundedLine
             // keeps ends within endpoints, which leaves the tip visually unclosed.
             g2.setStroke(new BasicStroke(
-                (float) invariants.getLineThickness().hairpinSs(),
+                (float) LineThickness.HAIRPIN_SS,
                 BasicStroke.CAP_ROUND,
                 BasicStroke.JOIN_ROUND
             ));

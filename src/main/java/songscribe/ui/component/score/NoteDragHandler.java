@@ -32,7 +32,7 @@ import songscribe.dom.Line;
 import songscribe.ui.Mode;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.ScaleContext;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.ui.playback.MidiController;
 
 /**
@@ -181,7 +181,7 @@ class NoteDragHandler {
         // a reposition of the line component within its parent can perturb the mapping.
         var deltaYPx = e.getYOnScreen() - dragPressScreenYPx;
         var deltaYSs = ScaleContext.pxToSs(deltaYPx);
-        var deltaSp = StaffExtents.ssToSp(deltaYSs);
+        var deltaSp = Staff.ssToSp(deltaYSs);
         var newPositionSp = originalDragStaffPositionSp + deltaSp;
 
         if (newPositionSp == lastPlayedStaffPositionSp) {

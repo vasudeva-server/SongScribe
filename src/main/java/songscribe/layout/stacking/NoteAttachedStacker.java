@@ -33,8 +33,9 @@ import songscribe.layout.ElementColumn;
 import songscribe.dom.FermataAttachment;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.dom.Trill;
 
 import org.jspecify.annotations.Nullable;
@@ -165,13 +166,13 @@ public class NoteAttachedStacker {
      */
     public static LayoutResult computePreviewDecorationLayouts(StaffElement note, double xSs) {
         // Create minimal extents just wide enough to contain the note
-        var lineWidthSs = xSs + Engraving.NOTE_HEAD_WIDTH_SS + 1.0;
+        var lineWidthSs = xSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS + 1.0;
         var extents = new StaffExtents(lineWidthSs);
 
         // Seed note bounds using the non-beamed path
         var bounds = computeNoteBounds(note);
-        extents.ySet(true, xSs, Engraving.NOTE_HEAD_WIDTH_SS, bounds.topSs());
-        extents.ySet(false, xSs, Engraving.NOTE_HEAD_WIDTH_SS, bounds.botSs());
+        extents.ySet(true, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, bounds.topSs());
+        extents.ySet(false, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, bounds.botSs());
 
         var builder = new LayoutResult.Builder();
         var staffPosition = note.getStaffPosition();
@@ -222,7 +223,7 @@ public class NoteAttachedStacker {
      * Computes note vertical bounds from element type geometry alone (no stem layout).
      */
     static NoteBounds computeNoteBounds(StaffElement element) {
-        var centerYSs = StaffExtents.spToSs(element.getStaffPosition());
+        var centerYSs = Staff.spToSs(element.getStaffPosition());
         var type = element.getType();
         var direction = element.getDirection();
         var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
@@ -255,7 +256,7 @@ public class NoteAttachedStacker {
 
             if (stemLayout != null) {
                 var centerYSs = element.getStaffPosition()
-                    * StaffExtents.STAFF_POSITION_OFFSET_SS;
+                    * Staff.STAFF_POSITION_OFFSET_SS;
                 var type = element.getType();
                 var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
                 var noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
@@ -267,12 +268,12 @@ public class NoteAttachedStacker {
                 botSs = bounds.botSs();
             }
 
-            noteAttachedExtents.ySet(true, xSs, Engraving.NOTE_HEAD_WIDTH_SS, topSs);
-            noteAttachedExtents.ySet(false, xSs, Engraving.NOTE_HEAD_WIDTH_SS, botSs);
+            noteAttachedExtents.ySet(true, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, topSs);
+            noteAttachedExtents.ySet(false, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, botSs);
 
             // Track lowest notehead bottom for lyrics baseline calculation
             var noteheadCenterYSs = element.getStaffPosition()
-                * StaffExtents.STAFF_POSITION_OFFSET_SS;
+                * Staff.STAFF_POSITION_OFFSET_SS;
             context.updateLowestNoteBotSs(
                 noteheadCenterYSs + StackingUtils.NOTE_HEAD_RADIUS_SS);
 
@@ -321,7 +322,7 @@ public class NoteAttachedStacker {
 
             // Clear the dot, but never sit closer to the staff than the outer-staff-line clearance.
             var targetMag = Math.max(dotCenterMag + STACCATO_TIE_GAP_SS,
-                StaffExtents.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS);
+                Staff.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS);
             var target = arcSign * targetMag;
             var delta = target - tieLayout.startYSs();
 
@@ -427,8 +428,8 @@ public class NoteAttachedStacker {
             var startColumn = columnsByElement.get(startElement);
             var endColumn = columnsByElement.get(endElement);
 
-            var startEdgeT = Math.min(Engraving.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
-            var endEdgeT = Math.max(1.0 - Engraving.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
+            var startEdgeT = Math.min(SMuFLConstants.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
+            var endEdgeT = Math.max(1.0 - SMuFLConstants.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
             var startEdgeYSs = evaluateBezierYSs(startEdgeT, tieLayout);
             var endEdgeYSs = evaluateBezierYSs(endEdgeT, tieLayout);
 
@@ -474,7 +475,7 @@ public class NoteAttachedStacker {
 
         if (startColumn != null) {
             noteAttachedExtents.ySet(above, startColumn.getXSs(),
-                Engraving.NOTE_HEAD_WIDTH_SS, startEdgeYSs);
+                SMuFLConstants.NOTE_HEAD_WIDTH_SS, startEdgeYSs);
 
             if (!above) {
                 context.updateBotContentExtentSs(startEdgeYSs);
@@ -483,7 +484,7 @@ public class NoteAttachedStacker {
 
         if (endColumn != null) {
             noteAttachedExtents.ySet(above, endColumn.getXSs(),
-                Engraving.NOTE_HEAD_WIDTH_SS, endEdgeYSs);
+                SMuFLConstants.NOTE_HEAD_WIDTH_SS, endEdgeYSs);
 
             if (!above) {
                 context.updateBotContentExtentSs(endEdgeYSs);

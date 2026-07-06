@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 
 /**
  * Unit tests for the pure-logic static methods in {@link PreviewElementManager}:
@@ -218,7 +218,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         void testMouseOneStaffSpaceBelowReturnsPositiveSp() {
             // ssToSp(1.0) = round(1.0 / 0.5) = 2
             var middleYSs = 5.0;
-            var mouseYSs = middleYSs + StaffExtents.STAFF_POSITION_OFFSET_SS * 2;
+            var mouseYSs = middleYSs + Staff.STAFF_POSITION_OFFSET_SS * 2;
             assertThat(PreviewElementManager.calculateStaffPositionFromMouse(mouseYSs, middleYSs))
                 .as("one staff-space below middle yields sp +2")
                 .isEqualTo(2);
@@ -252,7 +252,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** Minimum bound is inclusive. */
         @Test
         void testMinBoundIsValid() {
-            assertThat(PreviewElementManager.isValidStaffPosition(StaffExtents.MIN_STAFF_POSITION_SP))
+            assertThat(PreviewElementManager.isValidStaffPosition(Staff.MIN_STAFF_POSITION_SP))
                 .as("MIN_STAFF_POSITION_SP is valid")
                 .isTrue();
         }
@@ -260,7 +260,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** Maximum bound is inclusive. */
         @Test
         void testMaxBoundIsValid() {
-            assertThat(PreviewElementManager.isValidStaffPosition(StaffExtents.MAX_STAFF_POSITION_SP))
+            assertThat(PreviewElementManager.isValidStaffPosition(Staff.MAX_STAFF_POSITION_SP))
                 .as("MAX_STAFF_POSITION_SP is valid")
                 .isTrue();
         }
@@ -268,7 +268,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** One below the minimum is invalid. */
         @Test
         void testOneBelowMinIsInvalid() {
-            assertThat(PreviewElementManager.isValidStaffPosition(StaffExtents.MIN_STAFF_POSITION_SP - 1))
+            assertThat(PreviewElementManager.isValidStaffPosition(Staff.MIN_STAFF_POSITION_SP - 1))
                 .as("MIN-1 is invalid")
                 .isFalse();
         }
@@ -276,7 +276,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** One above the maximum is invalid. */
         @Test
         void testOneAboveMaxIsInvalid() {
-            assertThat(PreviewElementManager.isValidStaffPosition(StaffExtents.MAX_STAFF_POSITION_SP + 1))
+            assertThat(PreviewElementManager.isValidStaffPosition(Staff.MAX_STAFF_POSITION_SP + 1))
                 .as("MAX+1 is invalid")
                 .isFalse();
         }

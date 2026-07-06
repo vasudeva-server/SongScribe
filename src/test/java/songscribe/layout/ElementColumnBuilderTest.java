@@ -34,7 +34,7 @@ import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -59,7 +59,7 @@ class ElementColumnBuilderTest extends UnitTest {
     @Test
     void testBeamedQuaverExtentEqualsNoteheadOnly() {
         var quaver = element(ElementType.QUAVER);
-        var noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
+        var noteheadOnly = SMuFLConstants.NOTE_HEAD_WIDTH_SS;
         var extent = ElementColumnBuilder.calculateRightExtentSs(quaver, true, StaffElement.Direction.UP);
 
         assertThat(extent).isEqualTo(noteheadOnly);
@@ -121,13 +121,13 @@ class ElementColumnBuilderTest extends UnitTest {
         var flagExtent =
             NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, StaffElement.Direction.UP).stemLeftXSs()
                 + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right();
-        var expectedExcludingAugmentation = Math.max(Engraving.NOTE_HEAD_WIDTH_SS, flagExtent);
+        var expectedExcludingAugmentation = Math.max(SMuFLConstants.NOTE_HEAD_WIDTH_SS, flagExtent);
 
         var excludingAugmentation = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(dottedQuaver, false, StaffElement.Direction.UP);
 
         assertThat(excludingAugmentation).isEqualTo(expectedExcludingAugmentation);
         // Flag still wins the Math.max — the extent is more than the bare notehead alone
-        assertThat(excludingAugmentation).isGreaterThan(Engraving.NOTE_HEAD_WIDTH_SS);
+        assertThat(excludingAugmentation).isGreaterThan(SMuFLConstants.NOTE_HEAD_WIDTH_SS);
     }
 
     // #441: calculateRightExtentExcludingAugmentationSs for a dotted note equals the undotted right extent
@@ -218,7 +218,7 @@ class ElementColumnBuilderTest extends UnitTest {
             ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS,
             NoteGeometry.getGraceFlagOriginXSs(graceStemLeftXSs) + ElementType.GRACE_NOTE_SCALE * flagBBoxRight);
         var expectedRegular = Math.max(
-            Engraving.NOTE_HEAD_WIDTH_SS,
+            SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, StaffElement.Direction.UP).stemLeftXSs() + flagBBoxRight);
 
         var graceExtent = ElementColumnBuilder.calculateRightExtentSs(graceQuaver, false, StaffElement.Direction.UP);
@@ -234,7 +234,7 @@ class ElementColumnBuilderTest extends UnitTest {
     void testNonFlaggedTypesUnchanged() {
         for (var type : new ElementType[]{ElementType.CROTCHET, ElementType.MINIM, ElementType.SEMIBREVE}) {
             var n = element(type);
-            var noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
+            var noteheadOnly = SMuFLConstants.NOTE_HEAD_WIDTH_SS;
             var extentUnbeamed = ElementColumnBuilder.calculateRightExtentSs(n, false, StaffElement.Direction.UP);
             var extentBeamed = ElementColumnBuilder.calculateRightExtentSs(n, true, StaffElement.Direction.UP);
 
@@ -253,11 +253,11 @@ class ElementColumnBuilderTest extends UnitTest {
         var quaver = element(ElementType.QUAVER);
 
         var expectedUp = Math.max(
-            Engraving.NOTE_HEAD_WIDTH_SS,
+            SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, StaffElement.Direction.UP).stemLeftXSs()
                 + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right());
         var expectedDown = Math.max(
-            Engraving.NOTE_HEAD_WIDTH_SS,
+            SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, StaffElement.Direction.DOWN).stemLeftXSs()
                 + SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_DOWN).right());
 
@@ -273,7 +273,7 @@ class ElementColumnBuilderTest extends UnitTest {
     @Test
     void testUnbeamedQuaverExtentExceedsNoteheadOnly() {
         var quaver = element(ElementType.QUAVER);
-        var noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
+        var noteheadOnly = SMuFLConstants.NOTE_HEAD_WIDTH_SS;
         var extent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, StaffElement.Direction.UP);
 
         assertThat(extent).isGreaterThan(noteheadOnly);
@@ -407,7 +407,7 @@ class ElementColumnBuilderTest extends UnitTest {
         void testStemTopSsStemUp() {
             // isUpper=false (default) → stem extends upward: top = -STEM_LENGTH_SS
             var note = element(ElementType.CROTCHET);
-            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-Engraving.STEM_LENGTH_SS);
+            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-SMuFLConstants.STEM_LENGTH_SS);
         }
 
         @Test
@@ -437,7 +437,7 @@ class ElementColumnBuilderTest extends UnitTest {
             // isUpper=true → stem extends downward: bottom = STEM_LENGTH_SS
             var note = element(ElementType.CROTCHET);
             note.setUpper(true);
-            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(Engraving.STEM_LENGTH_SS);
+            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(SMuFLConstants.STEM_LENGTH_SS);
         }
 
         @Test

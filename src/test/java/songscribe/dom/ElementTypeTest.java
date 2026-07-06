@@ -29,8 +29,8 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.smufl.SMuFLGlyph;
 
-import songscribe.layout.StaffExtents;
-import songscribe.layout.LineThickness;
+import songscribe.engraving.Staff;
+import songscribe.engraving.LineThickness;
 
 class ElementTypeTest extends UnitTest {
 
@@ -96,9 +96,9 @@ class ElementTypeTest extends UnitTest {
     @Test
     void testEndingAnchorXOffsetPerBranch() {
         // Branch 1: REPEAT_LEFT — anchor on the thin barline that follows thick | sep | thin
-        var expectedRepeatLeft = ElementType.THICK_BARLINE_SS
-            + ElementType.BARLINE_SEP_SS
-            + ElementType.THIN_BARLINE_SS / 2;
+        var expectedRepeatLeft = LineThickness.THICK_BARLINE_SS
+            + LineThickness.BARLINE_SEPARATION_SS
+            + LineThickness.THIN_BARLINE_SS / 2;
         assertThat(ElementType.REPEAT_LEFT.endingAnchorXOffsetSs())
             .isCloseTo(expectedRepeatLeft, within(1e-9));
 
@@ -107,7 +107,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE,
             ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT
         }) {
-            var expected = type.getFullElementWidthSs() - ElementType.THIN_BARLINE_SS / 2;
+            var expected = type.getFullElementWidthSs() - LineThickness.THIN_BARLINE_SS / 2;
             assertThat(type.endingAnchorXOffsetSs())
                 .as("endingAnchorXOffsetSs() of %s", type)
                 .isCloseTo(expected, within(1e-9));
@@ -530,9 +530,9 @@ class ElementTypeTest extends UnitTest {
         final double lineWidthSs = 40.0;
 
         // FINAL_DOUBLE_BARLINE: baseWidthSs = thin + thick + sep
-        var finalBarBaseWidth = ElementType.THIN_BARLINE_SS
-            + ElementType.THICK_BARLINE_SS
-            + ElementType.BARLINE_SEP_SS;
+        var finalBarBaseWidth = LineThickness.THIN_BARLINE_SS
+            + LineThickness.THICK_BARLINE_SS
+            + LineThickness.BARLINE_SEPARATION_SS;
         assertThat(ElementType.terminalFlushRightXSs(lineWidthSs, ElementType.FINAL_DOUBLE_BARLINE))
             .isCloseTo(lineWidthSs - finalBarBaseWidth, within(1e-9));
 
@@ -649,7 +649,7 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testBarlineHeightEqualsStaffHeight() {
-            var staffHeight = StaffExtents.STAFF_HEIGHT_SS;
+            var staffHeight = Staff.STAFF_HEIGHT_SS;
 
             assertThat(ElementType.SINGLE_BARLINE.getElementHeightSs(StaffElement.Direction.UP))
                 .isCloseTo(staffHeight, within(1e-9));
@@ -661,7 +661,7 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testRepeatHeightEqualsStaffHeight() {
-            var staffHeight = StaffExtents.STAFF_HEIGHT_SS;
+            var staffHeight = Staff.STAFF_HEIGHT_SS;
 
             assertThat(ElementType.REPEAT_LEFT.getElementHeightSs(StaffElement.Direction.UP))
                 .isCloseTo(staffHeight, within(1e-9));
@@ -702,17 +702,15 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testDoubleBarlineWidth() {
-            var lt = LineThickness.getInstance();
-            var expected = 2 * lt.thinBarlineSs() + lt.barlineSeparationSs();
+            var expected = 2 * LineThickness.THIN_BARLINE_SS + LineThickness.BARLINE_SEPARATION_SS;
             assertThat(ElementType.DOUBLE_BARLINE.getFullElementWidthSs())
                 .isCloseTo(expected, within(1e-9));
         }
 
         @Test
         void testFinalDoubleBarlineWidth() {
-            var lt = LineThickness.getInstance();
-            var expected = lt.thinBarlineSs() + lt.thickBarlineSs()
-                + lt.barlineSeparationSs();
+            var expected = LineThickness.THIN_BARLINE_SS + LineThickness.THICK_BARLINE_SS
+                + LineThickness.BARLINE_SEPARATION_SS;
             assertThat(ElementType.FINAL_DOUBLE_BARLINE.getFullElementWidthSs())
                 .isCloseTo(expected, within(1e-9));
         }
@@ -731,8 +729,7 @@ class ElementTypeTest extends UnitTest {
                 .isEqualTo(ElementType.REPEAT_RIGHT.getFullElementWidthSs());
 
             // Repeat left/right shares the thick bar, so it equals 2 * single - thick
-            var lt = LineThickness.getInstance();
-            var expected = 2 * ElementType.REPEAT_LEFT.getFullElementWidthSs() - lt.thickBarlineSs();
+            var expected = 2 * ElementType.REPEAT_LEFT.getFullElementWidthSs() - LineThickness.THICK_BARLINE_SS;
             assertThat(ElementType.REPEAT_LEFT_RIGHT.getFullElementWidthSs())
                 .isCloseTo(expected, within(1e-9));
         }
@@ -761,7 +758,7 @@ class ElementTypeTest extends UnitTest {
         @Test
         void testSingleBarlineWidth() {
             assertThat(ElementType.SINGLE_BARLINE.getFullElementWidthSs())
-                .isCloseTo(LineThickness.getInstance().thinBarlineSs(), within(1e-9));
+                .isCloseTo(LineThickness.THIN_BARLINE_SS, within(1e-9));
         }
 
         @Test

@@ -23,7 +23,7 @@ package songscribe.smufl;
 /**
  * Engraving defaults from SMuFL metadata, all values in staff spaces.
  */
-record SMuFLData(
+public record SMuFLData(
     double beamThickness,
     double beamSpacing,
     double repeatBarlineDotSeparation,

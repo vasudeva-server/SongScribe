@@ -32,6 +32,7 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Attachment;
+import songscribe.engraving.Staff;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
 import songscribe.dom.CollisionRegion;
@@ -565,7 +566,7 @@ public final class LayoutResult {
      * This is the lyric-positioning anchor: the maximum distance below the staff bottom that
      * any staff element (notehead, stem, decoration) reaches on this line. Distinct from the
      * layout reservation embedded in {@link #getLineHeightSs()}, which floors at
-     * {@link StaffExtents#MIN_BELOW_STAFF_SS} for ledger-line capacity.
+     * {@link Staff#MIN_BELOW_STAFF_SS} for ledger-line capacity.
      */
     public double getBelowContentSs() {
         return belowContentSs;
@@ -575,12 +576,12 @@ public final class LayoutResult {
      * Returns the below-staff reservation embedded in this line's height, in staff spaces.
      * <p>
      * Equals {@code lineHeightSs - aboveStaffSs - STAFF_HEIGHT_SS}: the part of the line that
-     * sits below the staff bottom including the {@link StaffExtents#MIN_BELOW_STAFF_SS}
+     * sits below the staff bottom including the {@link Staff#MIN_BELOW_STAFF_SS}
      * floor and the inter-line margin. Use {@link #getBelowContentSs()} when you need the
      * actual content extent without the floor or margin.
      */
     public double getBelowStaffReservationSs() {
-        return lineHeightSs - aboveStaffSs - StaffExtents.STAFF_HEIGHT_SS;
+        return lineHeightSs - aboveStaffSs - Staff.STAFF_HEIGHT_SS;
     }
 
     // ==========================================================================
@@ -640,7 +641,7 @@ public final class LayoutResult {
 
     // Package-private for direct unit testing of the formula.
     double lyricAreaBaseYSs() {
-        return aboveStaffSs + StaffExtents.STAFF_HEIGHT_SS + belowContentSs + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS;
+        return aboveStaffSs + Staff.STAFF_HEIGHT_SS + belowContentSs + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS;
     }
 
     /**

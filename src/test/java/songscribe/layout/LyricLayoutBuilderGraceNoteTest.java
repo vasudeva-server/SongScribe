@@ -34,19 +34,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.layout.ElementColumn;
-import songscribe.layout.ElementColumnBuilder;
-import songscribe.layout.LyricBoxLayout;
-import songscribe.layout.LyricConnectorLayout;
-import songscribe.layout.LyricLayoutBuilder;
-import songscribe.layout.LyricRenderMetrics;
 import songscribe.message.MessageCenter;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 
 /**
  * Phase 4 of the grace-note-lyric feature: a lyric on a grace note centres its
@@ -120,7 +114,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             element,
             Collections.emptyList(),
             0.0,
-            Engraving.NOTE_HEAD_WIDTH_SS,
+            SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false);
         column.setXSs(xSs);
         return column;

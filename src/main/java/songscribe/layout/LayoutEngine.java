@@ -35,7 +35,8 @@ import songscribe.dom.KeySignature;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.Staff;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.stacking.VerticalStackingCalculator;
@@ -75,7 +76,7 @@ public class LayoutEngine {
     static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
     private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
     static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
-    private static final double MIN_STEM_SS = Engraving.STEM_LENGTH_SS;
+    private static final double MIN_STEM_SS = SMuFLConstants.STEM_LENGTH_SS;
 
     // Tie geometry constants (LilyPond slur_shape port).
     //
@@ -236,7 +237,7 @@ public class LayoutEngine {
             var emptyLineHeightSs = SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS;
             var emptyBuilder = LayoutResult.builder()
                 .setLineHeightSs(emptyLineHeightSs)
-                .setAboveStaffSs(StaffExtents.MIN_ABOVE_STAFF_SS);
+                .setAboveStaffSs(Staff.MIN_ABOVE_STAFF_SS);
             createHeaderElements(line, emptyBuilder);
             return emptyBuilder.build();
         }
@@ -439,7 +440,7 @@ public class LayoutEngine {
 
                 if (dxSs != 0.0) {
                     var rawSlope =
-                        StaffExtents.spToSs(lastElement.getStaffPosition() - firstElement.getStaffPosition()) / dxSs;
+                        Staff.spToSs(lastElement.getStaffPosition() - firstElement.getStaffPosition()) / dxSs;
 
                     // Hyperbolic dampening saturates extreme slopes without hard clamping.
                     slope = BEAM_SLOPE_MAX * rawSlope / (BEAM_SLOPE_MAX + Math.abs(rawSlope));
@@ -471,7 +472,7 @@ public class LayoutEngine {
                 var anchorElement = line.getElement(anchorIdx);
                 var anchorColumn = elementToColumn.get(anchorElement);
                 var anchorXSs = (anchorColumn != null) ? anchorColumn.getXSs() : firstXSs;
-                var anchorElementYSs = StaffExtents.spToSs(anchorElement.getStaffPosition());
+                var anchorElementYSs = Staff.spToSs(anchorElement.getStaffPosition());
 
                 // Place beam exactly MIN_STEM_SS from the anchor notehead.
                 // Y-down: beam above notehead = smaller Y (subtract); beam below = larger Y (add).
@@ -595,7 +596,7 @@ public class LayoutEngine {
             return null;
         }
 
-        var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
+        var elementYSs = Staff.spToSs(element.getStaffPosition());
         var beamYSs = slope * (column.getXSs() - firstXSs) + startYSs;
         var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
         return new BeamElementGeometry(element, elementYSs, beamYSs, stemLenSs);
@@ -622,9 +623,9 @@ public class LayoutEngine {
             }
 
             var direction = element.getDirection();
-            var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
+            var elementYSs = Staff.spToSs(element.getStaffPosition());
             var stemLenSs = element.getType().isGraceNote()
-                ? Engraving.GRACE_NOTE_STEM_LENGTH_SS
+                ? SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS
                 : MIN_STEM_SS;
 
             // Extend the stem tip to reach the staff center (Y=0) when the stem points toward
@@ -694,8 +695,8 @@ public class LayoutEngine {
             // vertical placement is note-relative; a staccato tucked under the arc is cleared later by the
             // stacker, once it is actually placed. A tie joins two same-pitch notes, so both endpoints
             // share one Y.
-            var startXSs = startColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS / 2;
-            var endXSs = endColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS / 2;
+            var startXSs = startColumn.getXSs() + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
+            var endXSs = endColumn.getXSs() + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
             var endpointYSs = tieEndpointYSs(startElement.getStaffPosition(), arcSignSs);
 
             var tieWidthSs = endXSs - startXSs;
@@ -763,7 +764,7 @@ public class LayoutEngine {
      * @param arcSignSs      +1 when the arc bulges downward, -1 upward
      */
     static double tieEndpointYSs(int notePositionSp, int arcSignSs) {
-        return StaffExtents.spToSs(notePositionSp)
+        return Staff.spToSs(notePositionSp)
             + arcSignSs * NATURAL_TIE_GAP_SS
             + tieEndpointNudgeSs(notePositionSp, arcSignSs);
     }
@@ -812,7 +813,7 @@ public class LayoutEngine {
         var apexMidYSs = baseYSs + arcSignSs * apexOutwardSs;
         var nearestLineYSs = (double) Math.round(apexMidYSs);
 
-        if (Math.abs(nearestLineYSs) > StaffExtents.STAFF_HALF_SS) {
+        if (Math.abs(nearestLineYSs) > Staff.STAFF_HALF_SS) {
             return naturalHeightSs;
         }
 
@@ -869,7 +870,7 @@ public class LayoutEngine {
         var keyType = rawKeyType != null ? rawKeyType : KeyType.NONE;
         var keySig = new KeySignature(keyType, line.getKeyAccidentalCount());
         var keySigXSs = CLEF_X_POSITION_SS
-            + Engraving.G_CLEF_WIDTH_SS
+            + SMuFLConstants.G_CLEF_WIDTH_SS
             + clef.getMarginRightSs();
         keySig.setPosition(keySigXSs, 0);
         builder.setKeySignature(keySig);

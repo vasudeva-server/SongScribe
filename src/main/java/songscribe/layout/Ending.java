@@ -34,7 +34,8 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.LineThickness;
+import songscribe.engraving.SMuFLConstants;
 
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
@@ -181,13 +182,11 @@ public class Ending extends RangeElement {
      *
      * @param line    the line containing this ending
      * @param elementXSs function that returns the X position of an element in staff spaces
-     * @param lt      line thickness metrics
      * @return the computed bracket ranges (also stored on this Ending)
      */
     public List<BracketRange> computeBracketRanges(
         Line line,
-        ToDoubleFunction<? super StaffElement> elementXSs,
-        LineThickness lt
+        ToDoubleFunction<? super StaffElement> elementXSs
     ) {
         var start = getAnchorElementIndex();
         var end = getEndElementIndex();
@@ -237,7 +236,7 @@ public class Ending extends RangeElement {
             else if (start > 0) {
                 var prevElement = line.getElement(start - 1);
                 var prevX = elementXSs.applyAsDouble(prevElement)
-                    + Engraving.NOTE_HEAD_WIDTH_SS;
+                    + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
                 x1 -= (x1 - prevX) / 2.0;
             }
 
@@ -247,10 +246,10 @@ public class Ending extends RangeElement {
                 var repeatElementX = elementXSs.applyAsDouble(
                     line.getElement(repeatSplitIndex));
                 x2 = repeatElementX
-                    + lt.repeatRightThinBarlineCenterXSs();
+                    + LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
                 repeatX = repeatElementX
-                    + lt.repeatRightAfterThickXSs()
-                    - lt.voltaBracketSs() / 2;
+                    + LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS
+                    - LineThickness.VOLTA_BRACKET_SS / 2;
             }
             else {
                 x2 = elementXSs.applyAsDouble(endElement);
@@ -261,7 +260,7 @@ public class Ending extends RangeElement {
                     x2 += (nextX - x2) / 2.0;
                 }
                 else {
-                    x2 += Engraving.NOTE_HEAD_WIDTH_SS;
+                    x2 += SMuFLConstants.NOTE_HEAD_WIDTH_SS;
                 }
             }
 
@@ -289,15 +288,15 @@ public class Ending extends RangeElement {
 
             switch (endType) {
                 case REPEAT_RIGHT, REPEAT_LEFT_RIGHT -> {
-                    x2 += lt.repeatRightThinBarlineCenterXSs();
+                    x2 += LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
                     hasClosingStroke = true;
                 }
                 case FINAL_DOUBLE_BARLINE -> {
-                    x2 += lt.thinBarlineSs() / 2;
+                    x2 += LineThickness.THIN_BARLINE_SS / 2;
                     hasClosingStroke = true;
                 }
                 case SINGLE_BARLINE, DOUBLE_BARLINE -> {
-                    x2 += lt.thinBarlineSs() / 2;
+                    x2 += LineThickness.THIN_BARLINE_SS / 2;
                     hasClosingStroke = false;
                 }
                 case REPEAT_LEFT -> hasClosingStroke = false;
@@ -307,7 +306,7 @@ public class Ending extends RangeElement {
                         x2 += (elementXSs.applyAsDouble(nextElement) - x2) / 2.0;
                     }
                     else {
-                        x2 += Engraving.NOTE_HEAD_WIDTH_SS;
+                        x2 += SMuFLConstants.NOTE_HEAD_WIDTH_SS;
                     }
 
                     hasClosingStroke = false;
@@ -338,7 +337,7 @@ public class Ending extends RangeElement {
      */
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(Engraving.NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS);
+        return Math.max(SMuFLConstants.NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS);
     }
 
     /**
@@ -367,7 +366,7 @@ public class Ending extends RangeElement {
         double xBaseSs
     ) {
         var spanWidthSs = bracket.widthSs();
-        var bracketThicknessSs = LineThickness.getInstance().voltaBracketSs();
+        var bracketThicknessSs = LineThickness.VOLTA_BRACKET_SS;
         var regions = new ArrayList<CollisionRegion>(4);
 
         // Horizontal bar

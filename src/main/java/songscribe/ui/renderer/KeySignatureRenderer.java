@@ -31,7 +31,7 @@ import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.dom.KeySignature;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.util.GraphicsState;
 
 /**
@@ -136,7 +136,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
 
             for (var i = 0; i < accidentalCount; i++) {
                 var staffPosition = staffPositions[i % 7];
-                var y = middleLineYSs + StaffExtents.spToSs(staffPosition);
+                var y = middleLineYSs + Staff.spToSs(staffPosition);
 
                 g2.drawString(glyphStr, (float) xPosSs, (float) y);
                 xPosSs += ACCIDENTAL_SPACING_SS;
@@ -262,7 +262,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
 
                 for (var i = 0; i < accidentalCounts[kt]; i++) {
                     var staffPosition = staffPositions[(i + startingOffsets[kt]) % 7];
-                    var y = middleLineYSs + StaffExtents.spToSs(staffPosition);
+                    var y = middleLineYSs + Staff.spToSs(staffPosition);
 
                     g2.drawString(glyphStr, (float) xPosSs, (float) y);
                     xPosSs += KEY_CHANGE_SPACING_SS;

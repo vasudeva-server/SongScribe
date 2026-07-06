@@ -43,7 +43,7 @@ import songscribe.dom.Song;
 import songscribe.layout.InsertionSpacingCalculator.InsertionResult;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.SongLayoutMetrics;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
@@ -194,7 +194,7 @@ class LineComponentTest extends UnitTest {
 
             assertThat(lc.getMiddleLineYSs())
                 .as("calculateMiddleLineYSs returns aboveStaffSs + STAFF_HALF_SS")
-                .isEqualTo(aboveStaffSs + StaffExtents.STAFF_HALF_SS);
+                .isEqualTo(aboveStaffSs + Staff.STAFF_HALF_SS);
         }
     }
 

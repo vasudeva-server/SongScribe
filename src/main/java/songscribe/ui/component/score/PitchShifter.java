@@ -35,7 +35,7 @@ import songscribe.message.mutation.ElementModification;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.ui.OptionDialogs;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.ui.playback.PlayThread;
 
 /**
@@ -224,15 +224,15 @@ public final class PitchShifter {
 
     /**
      * Clamps {@code deltaSp} so that applying it leaves no note in {@code group}
-     * outside {@link StaffExtents#MIN_STAFF_POSITION_SP}..{@link StaffExtents#MAX_STAFF_POSITION_SP}.
+     * outside {@link Staff#MIN_STAFF_POSITION_SP}..{@link Staff#MAX_STAFF_POSITION_SP}.
      */
     static int clampDelta(List<PitchShiftEntry> group, int deltaSp) {
         var minDelta = Integer.MIN_VALUE;
         var maxDelta = Integer.MAX_VALUE;
 
         for (var entry : group) {
-            minDelta = Math.max(minDelta, StaffExtents.MIN_STAFF_POSITION_SP - entry.originalStaffPositionSp());
-            maxDelta = Math.min(maxDelta, StaffExtents.MAX_STAFF_POSITION_SP - entry.originalStaffPositionSp());
+            minDelta = Math.max(minDelta, Staff.MIN_STAFF_POSITION_SP - entry.originalStaffPositionSp());
+            maxDelta = Math.min(maxDelta, Staff.MAX_STAFF_POSITION_SP - entry.originalStaffPositionSp());
         }
 
         return Math.clamp(deltaSp, minDelta, maxDelta);

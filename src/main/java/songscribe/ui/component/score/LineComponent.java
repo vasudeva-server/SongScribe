@@ -39,7 +39,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.SongLayoutMetrics;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.util.GraphicsState;
 import songscribe.ui.selection.LineSelectionState;
@@ -263,7 +263,7 @@ public class LineComponent extends ScoreComponent
      * @return Y coordinate in pixels
      */
     public int staffPositionToYPx(int staffPositionSp) {
-        return getMiddleLineYPx() + (int) Math.round(ScaleContext.ssToPx(StaffExtents.spToSs(staffPositionSp)));
+        return getMiddleLineYPx() + (int) Math.round(ScaleContext.ssToPx(Staff.spToSs(staffPositionSp)));
     }
 
     /**
@@ -536,13 +536,13 @@ public class LineComponent extends ScoreComponent
             if (lineDoesNotFit) {
                 // First layout could not fit the content (issue #449); fall back to the
                 // minimum above-staff space so the staff still positions sensibly.
-                return StaffExtents.MIN_ABOVE_STAFF_SS + StaffExtents.STAFF_HALF_SS;
+                return Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HALF_SS;
             }
 
             throw unexpectedNullLayout();
         }
 
-        return result.getAboveStaffSs() + StaffExtents.STAFF_HALF_SS;
+        return result.getAboveStaffSs() + Staff.STAFF_HALF_SS;
     }
 
     /**

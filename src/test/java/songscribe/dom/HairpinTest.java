@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 
 /**
  * Tests for {@link Hairpin} — getContentHeightSs and getSpanWidthSs.
@@ -81,7 +81,7 @@ class HairpinTest extends UnitTest {
 
             double anchorXSs = 0.0;
             double endXSs = 0.0;
-            double geometryWidthSs = endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS;
+            double geometryWidthSs = endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
 
             assertThat(geometryWidthSs)
                 .as("precondition: geometry width must be less than the minimum for clamp branch")
@@ -104,7 +104,7 @@ class HairpinTest extends UnitTest {
             // Use a span large enough that geometry dominates.
             double anchorXSs = 0.0;
             double endXSs = Hairpin.HAIRPIN_OPENING_HEIGHT_SS + 2.0;
-            double expectedWidthSs = endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS;
+            double expectedWidthSs = endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
 
             assertThat(expectedWidthSs)
                 .as("precondition: geometry width must exceed the minimum for geometry branch")

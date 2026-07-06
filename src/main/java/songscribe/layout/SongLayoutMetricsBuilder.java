@@ -22,6 +22,8 @@ package songscribe.layout;
 
 import java.util.List;
 
+import songscribe.engraving.Staff;
+
 /**
  * Reduces a list of per-line {@link LayoutResult}s into a single
  * {@link SongLayoutMetrics} that applies uniformly across all lines.
@@ -35,7 +37,7 @@ public final class SongLayoutMetricsBuilder {
      * Vertical margin between the bottom of one staff line and the top of the next.
      */
     public static final double INTER_LINE_MARGIN_SS = 1.25;  // 10px
-    public static final double MIN_LINE_HEIGHT_SS = StaffExtents.STAFF_HEIGHT_SS + StaffExtents.MIN_ABOVE_STAFF_SS + StaffExtents.MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS;
+    public static final double MIN_LINE_HEIGHT_SS = Staff.STAFF_HEIGHT_SS + Staff.MIN_ABOVE_STAFF_SS + Staff.MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS;
     /**
      * Approximate height of a single lyrics row (to be measured from actual font in later phases).
      */
@@ -57,8 +59,8 @@ public final class SongLayoutMetricsBuilder {
      * @return metrics object suitable for driving uniform line heights
      */
     public static SongLayoutMetrics build(List<LayoutResult> layouts, double lyricAscentSs) {
-        var maxAboveStaffSs = StaffExtents.MIN_ABOVE_STAFF_SS;
-        var maxBelowStaffSs = StaffExtents.MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS;
+        var maxAboveStaffSs = Staff.MIN_ABOVE_STAFF_SS;
+        var maxBelowStaffSs = Staff.MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS;
         var maxBelowContentSs = 0.0;
         var verseCount = 0;
 
@@ -77,7 +79,7 @@ public final class SongLayoutMetricsBuilder {
         var lyricsLineHeightSs = hasLyrics ? LYRICS_HEIGHT_SS : 0.0;
         var lyricsBandHeightSs = verseCount * lyricsLineHeightSs;
         var totalLineHeightSs = maxAboveStaffSs
-            + StaffExtents.STAFF_HEIGHT_SS
+            + Staff.STAFF_HEIGHT_SS
             + maxBelowStaffSs
             + staffToLyricsGapSs
             + lyricsBandHeightSs;

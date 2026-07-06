@@ -29,7 +29,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
-import java.util.Objects;
 
 import module java.desktop;
 
@@ -41,7 +40,6 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.layout.Ending;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.LineThickness;
 
 /**
  * Tests for {@link EndingRenderer#renderEndings}: verifies the skip path when no
@@ -78,7 +76,7 @@ class EndingRendererTest extends UnitTest {
         line.addElement(note2);
         var ending = new Ending(note1, note2);
         line.addRangeElement(ending);
-        ending.computeBracketRanges(line, e -> 5.0, LineThickness.getInstance());
+        ending.computeBracketRanges(line, e -> 5.0);
         return new LineWithEnding(line, ending);
     }
 

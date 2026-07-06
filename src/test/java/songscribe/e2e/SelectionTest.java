@@ -43,7 +43,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.dom.ScaleContext;
 
 /**
@@ -223,7 +223,7 @@ class SelectionTest extends E2ETest {
                 var loc = lc.getLocationOnScreen();
                 // Click at the midpoint of the clef — squarely inside the header region
                 var clefMidXPx = (int) Math.round(
-                    ScaleContext.ssToPx(Engraving.G_CLEF_WIDTH_SS / 2.0));
+                    ScaleContext.ssToPx(SMuFLConstants.G_CLEF_WIDTH_SS / 2.0));
                 var yPx = lc.staffPositionToYPx(0);
                 return new Point(loc.x + clefMidXPx, loc.y + yPx);
             }));

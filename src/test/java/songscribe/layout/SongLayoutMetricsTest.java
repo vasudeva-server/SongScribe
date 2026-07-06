@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.SongLayoutMetricsBuilder;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 
 class SongLayoutMetricsTest extends UnitTest {
 
@@ -70,14 +70,14 @@ class SongLayoutMetricsTest extends UnitTest {
     void testEmptyListUsesMinimumDefaults() {
         var metrics = SongLayoutMetricsBuilder.build(List.of(), 0.0);
 
-        assertThat(metrics.maxAboveStaffSs()).isEqualTo(StaffExtents.MIN_ABOVE_STAFF_SS, within(TOLERANCE));
+        assertThat(metrics.maxAboveStaffSs()).isEqualTo(Staff.MIN_ABOVE_STAFF_SS, within(TOLERANCE));
         assertThat(metrics.maxBelowStaffSs())
-            .isEqualTo(StaffExtents.MIN_BELOW_STAFF_SS + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS, within(TOLERANCE));
+            .isEqualTo(Staff.MIN_BELOW_STAFF_SS + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS, within(TOLERANCE));
         assertThat(metrics.totalLineHeightSs())
             .isEqualTo(
-                StaffExtents.MIN_ABOVE_STAFF_SS
-                + StaffExtents.STAFF_HEIGHT_SS
-                + StaffExtents.MIN_BELOW_STAFF_SS
+                Staff.MIN_ABOVE_STAFF_SS
+                + Staff.STAFF_HEIGHT_SS
+                + Staff.MIN_BELOW_STAFF_SS
                 + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS,
                 within(TOLERANCE));
     }
@@ -85,8 +85,8 @@ class SongLayoutMetricsTest extends UnitTest {
     @Test
     void testMaxAboveStaffSsTakesMaxAcrossLines() {
         // Line A has 3.0 above; line B has 5.0 above
-        var lineA = fakeLayout(3.0, 3.0 + StaffExtents.STAFF_HEIGHT_SS + 2.0);
-        var lineB = fakeLayout(5.0, 5.0 + StaffExtents.STAFF_HEIGHT_SS + 2.0);
+        var lineA = fakeLayout(3.0, 3.0 + Staff.STAFF_HEIGHT_SS + 2.0);
+        var lineB = fakeLayout(5.0, 5.0 + Staff.STAFF_HEIGHT_SS + 2.0);
 
         var metrics = SongLayoutMetricsBuilder.build(List.of(lineA, lineB), 0.0);
 
@@ -96,12 +96,12 @@ class SongLayoutMetricsTest extends UnitTest {
     @Test
     void testMaxBelowStaffSsTakesMaxAcrossLines() {
         // Use values that exceed the default minimum floor so the max is data-driven
-        var minFloor = StaffExtents.MIN_BELOW_STAFF_SS + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
+        var minFloor = Staff.MIN_BELOW_STAFF_SS + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
         var belowA = minFloor + 1.0;
         var belowB = minFloor + 3.0;
 
-        var lineA = fakeLayout(2.0, 2.0 + StaffExtents.STAFF_HEIGHT_SS + belowA);
-        var lineB = fakeLayout(2.0, 2.0 + StaffExtents.STAFF_HEIGHT_SS + belowB);
+        var lineA = fakeLayout(2.0, 2.0 + Staff.STAFF_HEIGHT_SS + belowA);
+        var lineB = fakeLayout(2.0, 2.0 + Staff.STAFF_HEIGHT_SS + belowB);
 
         var metrics = SongLayoutMetricsBuilder.build(List.of(lineA, lineB), 0.0);
 
@@ -112,18 +112,18 @@ class SongLayoutMetricsTest extends UnitTest {
     void testTotalLineHeightSsIsSumOfParts() {
         // Use a below value that exceeds the minimum floor so total is purely data-driven
         var above = 3.5;
-        var below = StaffExtents.MIN_BELOW_STAFF_SS + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS + 2.0;
-        var layout = fakeLayout(above, above + StaffExtents.STAFF_HEIGHT_SS + below);
+        var below = Staff.MIN_BELOW_STAFF_SS + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS + 2.0;
+        var layout = fakeLayout(above, above + Staff.STAFF_HEIGHT_SS + below);
 
         var metrics = SongLayoutMetricsBuilder.build(List.of(layout), 0.0);
 
         assertThat(metrics.totalLineHeightSs())
-            .isEqualTo(above + StaffExtents.STAFF_HEIGHT_SS + below, within(TOLERANCE));
+            .isEqualTo(above + Staff.STAFF_HEIGHT_SS + below, within(TOLERANCE));
     }
 
     @Test
     void testVerseCountCollapsesWhenNoLyrics() {
-        var layout = fakeLayout(2.0, 2.0 + StaffExtents.STAFF_HEIGHT_SS + 2.0);
+        var layout = fakeLayout(2.0, 2.0 + Staff.STAFF_HEIGHT_SS + 2.0);
 
         var metrics = SongLayoutMetricsBuilder.build(List.of(layout), 0.0);
 
@@ -136,8 +136,8 @@ class SongLayoutMetricsTest extends UnitTest {
     @Test
     void testLyricsBandPopulatedWhenVersesPresent() {
         var above = 3.0;
-        var below = StaffExtents.MIN_BELOW_STAFF_SS + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS + 1.0;
-        var lineHeight = above + StaffExtents.STAFF_HEIGHT_SS + below;
+        var below = Staff.MIN_BELOW_STAFF_SS + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS + 1.0;
+        var lineHeight = above + Staff.STAFF_HEIGHT_SS + below;
         // Two lines: one with verse count 2, one with verse count 1 — max should win.
         var layoutA = fakeLayoutWithVerses(above, lineHeight, 2);
         var layoutB = fakeLayoutWithVerses(above, lineHeight, 1);
@@ -152,7 +152,7 @@ class SongLayoutMetricsTest extends UnitTest {
         assertThat(metrics.totalLineHeightSs())
             .isEqualTo(
                 above
-                + StaffExtents.STAFF_HEIGHT_SS
+                + Staff.STAFF_HEIGHT_SS
                 + below
                 + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
                 + 2 * SongLayoutMetricsBuilder.LYRICS_HEIGHT_SS,
@@ -172,7 +172,7 @@ class SongLayoutMetricsTest extends UnitTest {
         final double expectedVerse1Ss = 10.5;
         final double expectedVerse2Ss = 13.0;
 
-        var lineHeight = aboveSs + StaffExtents.STAFF_HEIGHT_SS + 2.0;
+        var lineHeight = aboveSs + Staff.STAFF_HEIGHT_SS + 2.0;
         var metrics = SongLayoutMetricsBuilder.build(
             List.of(fakeLayoutWithVerses(aboveSs, lineHeight, belowContentSs, 2)), 0.0);
 
@@ -189,7 +189,7 @@ class SongLayoutMetricsTest extends UnitTest {
         final double expectedGapSs = 2.5; // LYRICS_ROW_MARGIN_SS + lyricAscentSs = 1.0 + 1.5
 
         var above = 2.0;
-        var lineHeight = above + StaffExtents.STAFF_HEIGHT_SS + 2.0;
+        var lineHeight = above + Staff.STAFF_HEIGHT_SS + 2.0;
         var layout = fakeLayoutWithVerses(above, lineHeight, 1);
         var metrics = SongLayoutMetricsBuilder.build(List.of(layout), lyricAscentSs);
 
@@ -207,8 +207,8 @@ class SongLayoutMetricsTest extends UnitTest {
 
     @Test
     void testMaxBelowContentSsTakesMaxAcrossLines() {
-        var lineA = fakeLayout(2.0, 2.0 + StaffExtents.STAFF_HEIGHT_SS + 2.0, 1.5);
-        var lineB = fakeLayout(2.0, 2.0 + StaffExtents.STAFF_HEIGHT_SS + 2.0, 3.5);
+        var lineA = fakeLayout(2.0, 2.0 + Staff.STAFF_HEIGHT_SS + 2.0, 1.5);
+        var lineB = fakeLayout(2.0, 2.0 + Staff.STAFF_HEIGHT_SS + 2.0, 3.5);
 
         var metrics = SongLayoutMetricsBuilder.build(List.of(lineA, lineB), 0.0);
 
@@ -219,12 +219,12 @@ class SongLayoutMetricsTest extends UnitTest {
     void testStaffYHelpers() {
         var above = 3.0;
         var below = 2.0;
-        var layout = fakeLayout(above, above + StaffExtents.STAFF_HEIGHT_SS + below);
+        var layout = fakeLayout(above, above + Staff.STAFF_HEIGHT_SS + below);
 
         var metrics = SongLayoutMetricsBuilder.build(List.of(layout), 0.0);
 
         assertThat(metrics.staffTopYSsInLine()).isEqualTo(above, within(TOLERANCE));
         assertThat(metrics.staffBottomYSsInLine())
-            .isEqualTo(above + StaffExtents.STAFF_HEIGHT_SS, within(TOLERANCE));
+            .isEqualTo(above + Staff.STAFF_HEIGHT_SS, within(TOLERANCE));
     }
 }

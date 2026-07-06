@@ -32,10 +32,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.layout.ElementColumn;
-import songscribe.layout.HorizontalSpacingCalculator;
-import songscribe.layout.NoteGeometry;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 
 class HorizontalSpacingCalculatorTest extends UnitTest {
 
@@ -82,7 +79,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             element,
             Collections.emptyList(),
             0.0,
-            Engraving.NOTE_HEAD_WIDTH_SS,
+            SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false
         );
         var columns = List.of(column);
@@ -90,7 +87,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         calculator.calculatePositions(columns, line);
 
         // Concrete expected value: clef width + 0*keyAccidentalWidth + firstNoteOffset
-        var expectedXSs = Engraving.G_CLEF_WIDTH_SS
+        var expectedXSs = SMuFLConstants.G_CLEF_WIDTH_SS
             + line.getKeyAccidentalCount() * HorizontalSpacingCalculator.KEY_ACCIDENTAL_WIDTH_SS
             + HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS;
         assertThat(column.getXSs()).isCloseTo(expectedXSs, within(TOLERANCE));
@@ -108,7 +105,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             element,
             Collections.emptyList(),
             ACCIDENTAL_LEFT_EXTENT_SS,
-            Engraving.NOTE_HEAD_WIDTH_SS,
+            SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false
         );
 
@@ -126,18 +123,18 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     @Test
     void testCalculateHeaderRightEdgeSsWithZeroAccidentals() {
         assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(0))
-            .isEqualTo(Engraving.G_CLEF_WIDTH_SS);
+            .isEqualTo(SMuFLConstants.G_CLEF_WIDTH_SS);
     }
 
     @Test
     void testCalculateHeaderRightEdgeSsWithThreeAccidentals() {
-        var expected = Engraving.G_CLEF_WIDTH_SS + THREE_KEY_ACCIDENTALS * HorizontalSpacingCalculator.KEY_ACCIDENTAL_WIDTH_SS;
+        var expected = SMuFLConstants.G_CLEF_WIDTH_SS + THREE_KEY_ACCIDENTALS * HorizontalSpacingCalculator.KEY_ACCIDENTAL_WIDTH_SS;
         assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(THREE_KEY_ACCIDENTALS)).isEqualTo(expected);
     }
 
     @Test
     void testCalculateHeaderRightEdgeSsWithSevenAccidentals() {
-        var expected = Engraving.G_CLEF_WIDTH_SS + SEVEN_KEY_ACCIDENTALS * HorizontalSpacingCalculator.KEY_ACCIDENTAL_WIDTH_SS;
+        var expected = SMuFLConstants.G_CLEF_WIDTH_SS + SEVEN_KEY_ACCIDENTALS * HorizontalSpacingCalculator.KEY_ACCIDENTAL_WIDTH_SS;
         assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(SEVEN_KEY_ACCIDENTALS)).isEqualTo(expected);
     }
 
@@ -150,18 +147,18 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         var prevColumn = new ElementColumn(
             prevElement,
             Collections.emptyList(),
-            0.0, Engraving.NOTE_HEAD_WIDTH_SS,
+            0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false
         );
         var currColumn = new ElementColumn(
             currElement,
             Collections.emptyList(),
-            0.0, Engraving.NOTE_HEAD_WIDTH_SS,
+            0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false
         );
         prevColumn.setXSs(PREV_COLUMN_X_SS);
 
-        var expected = PREV_COLUMN_X_SS + Engraving.NOTE_HEAD_WIDTH_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+        var expected = PREV_COLUMN_X_SS + SMuFLConstants.NOTE_HEAD_WIDTH_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
         assertThat(HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, currColumn))
             .isEqualTo(expected);
     }
@@ -196,11 +193,11 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     void testLyricSpacingDominatesWithWideSyllables() {
         var prevColumn = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
-            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, "do", WIDE_SYLLABLE_WIDTH_SS, false
+            0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, "do", WIDE_SYLLABLE_WIDTH_SS, false
         );
         var currColumn = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
-            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, "re", WIDE_SYLLABLE_WIDTH_SS, false
+            0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, "re", WIDE_SYLLABLE_WIDTH_SS, false
         );
         prevColumn.setXSs(PREV_COLUMN_X_SS);
         prevColumn.setMinGapToNextSyllableSs(SYLLABLE_GAP_SS);
@@ -211,7 +208,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         //              = WIDE/2 + SYLLABLE_GAP + WIDE/2 = WIDE + SYLLABLE_GAP
         var expectedLyricSpacing = WIDE_SYLLABLE_WIDTH_SS + SYLLABLE_GAP_SS;
         var expectedXSs = PREV_COLUMN_X_SS + expectedLyricSpacing;
-        var wouldBeWithDefault = PREV_COLUMN_X_SS + Engraving.NOTE_HEAD_WIDTH_SS
+        var wouldBeWithDefault = PREV_COLUMN_X_SS + SMuFLConstants.NOTE_HEAD_WIDTH_SS
             + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
         assertThat(result).isEqualTo(expectedXSs);
         assertThat(result).isGreaterThan(wouldBeWithDefault);
@@ -223,11 +220,11 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     void testLyricSpacingUsesPrevColumnGapWhenPrevHasNoLyric() {
         var prevColumn = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
-            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+            0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
         );
         var currColumn = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
-            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, "re", WIDE_SYLLABLE_WIDTH_SS, false
+            0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, "re", WIDE_SYLLABLE_WIDTH_SS, false
         );
         prevColumn.setXSs(PREV_COLUMN_X_SS);
         prevColumn.setMinGapToNextSyllableSs(SYLLABLE_GAP_SS);
@@ -251,7 +248,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         );
         var currColumn = new ElementColumn(
             currElement, Collections.emptyList(),
-            ACCIDENTAL_LEFT_EXTENT_SS, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+            ACCIDENTAL_LEFT_EXTENT_SS, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
         );
         prevColumn.setXSs(PREV_COLUMN_X_SS);
 
@@ -388,7 +385,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         );
         var currColumn = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
-            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+            0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
         );
         prevColumn.setXSs(PREV_COLUMN_X_SS);
 
@@ -1157,14 +1154,14 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         );
         var hostPlain = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
-            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+            0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
         );
         var accidentalElement = ElementType.CROTCHET.newInstance();
         accidentalElement.setAccidental(StaffElement.Accidental.SHARP);
         // Normal accidental: leftExtentSs = ACCIDENTAL_LEFT_EXTENT_SS (head still at origin)
         var hostAccidental = new ElementColumn(
             accidentalElement, Collections.emptyList(),
-            ACCIDENTAL_LEFT_EXTENT_SS, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+            ACCIDENTAL_LEFT_EXTENT_SS, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
         );
         prevColumn.setXSs(PREV_COLUMN_X_SS);
 
@@ -1189,14 +1186,14 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         );
         var hostPlain = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
-            0.0, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+            0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
         );
         var wideElement = ElementType.CROTCHET.newInstance();
         wideElement.setAccidental(StaffElement.Accidental.SHARP);
         // Wide accidental: leftExtentSs = wideLeftExtentSs (head still at origin)
         var hostWide = new ElementColumn(
             wideElement, Collections.emptyList(),
-            wideLeftExtentSs, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+            wideLeftExtentSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
         );
         prevColumn.setXSs(PREV_COLUMN_X_SS);
 
@@ -1228,7 +1225,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         host.setAccidental(StaffElement.Accidental.SHARP);
         var hostColumn = new ElementColumn(
             host, Collections.emptyList(),
-            ACCIDENTAL_LEFT_EXTENT_SS, Engraving.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
+            ACCIDENTAL_LEFT_EXTENT_SS, SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0.0, 0.0, null, 0.0, false
         );
         graceColumn.setXSs(PREV_COLUMN_X_SS);
 

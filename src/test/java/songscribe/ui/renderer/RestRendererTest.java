@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.smufl.SMuFLGlyph;
 
 class RestRendererTest extends UnitTest {
@@ -90,7 +90,7 @@ class RestRendererTest extends UnitTest {
     @Test
     void testCalculateRestYSsForSemibreveRestUsesFixedOffset() {
         var note = ElementType.SEMIBREVE_REST.newInstance();
-        var expected = MIDDLE_Y_SS + StaffExtents.spToSs(RestRenderer.SEMIBREVE_REST_Y_OFFSET);
+        var expected = MIDDLE_Y_SS + Staff.spToSs(RestRenderer.SEMIBREVE_REST_Y_OFFSET);
 
         assertThat(RestRenderer.getInstance().calculateRestYSs(note, MIDDLE_Y_SS))
             .isCloseTo(expected, within(TOLERANCE));
@@ -99,7 +99,7 @@ class RestRendererTest extends UnitTest {
     @Test
     void testCalculateRestYSsForMinimRestUsesFixedOffset() {
         var note = ElementType.MINIM_REST.newInstance();
-        var expected = MIDDLE_Y_SS + StaffExtents.spToSs(RestRenderer.MINIM_REST_Y_OFFSET);
+        var expected = MIDDLE_Y_SS + Staff.spToSs(RestRenderer.MINIM_REST_Y_OFFSET);
 
         assertThat(RestRenderer.getInstance().calculateRestYSs(note, MIDDLE_Y_SS))
             .isCloseTo(expected, within(TOLERANCE));
@@ -110,7 +110,7 @@ class RestRendererTest extends UnitTest {
         // StructuralElement.getStaffPosition() returns the type's default staff position,
         // not a settable value — so the branch uses ElementType.getDefaultStaffPosition().
         var note = ElementType.CROTCHET_REST.newInstance();
-        var expected = MIDDLE_Y_SS + StaffExtents.spToSs(note.getType().getDefaultStaffPosition());
+        var expected = MIDDLE_Y_SS + Staff.spToSs(note.getType().getDefaultStaffPosition());
 
         assertThat(RestRenderer.getInstance().calculateRestYSs(note, MIDDLE_Y_SS))
             .isCloseTo(expected, within(TOLERANCE));

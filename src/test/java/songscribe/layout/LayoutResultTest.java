@@ -35,6 +35,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Clef;
 import songscribe.dom.KeySignature;
 import songscribe.dom.ScaleContext;
+import songscribe.engraving.Staff;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
@@ -44,14 +45,7 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
-import songscribe.layout.ElementColumn;
-import songscribe.layout.LayoutResult;
-import songscribe.layout.LyricBoxLayout;
-import songscribe.layout.LyricRenderMetrics;
-import songscribe.layout.SongLayoutMetrics;
-import songscribe.layout.SongLayoutMetricsBuilder;
-import songscribe.layout.StaffExtents;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 
 class LayoutResultTest extends UnitTest {
 
@@ -108,7 +102,7 @@ class LayoutResultTest extends UnitTest {
         var metrics = testSongMetrics();
         var anchor = layoutResult.getLyricAnchor(element, metrics);
 
-        assertThat(anchor.centerXSs()).isCloseTo(5.0 + Engraving.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
+        assertThat(anchor.centerXSs()).isCloseTo(5.0 + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
         assertThat(anchor.baselineYSs()).isCloseTo(metrics.verseYSsInLine(1), within(TOLERANCE));
     }
 
@@ -125,7 +119,7 @@ class LayoutResultTest extends UnitTest {
         // Centred on the notehead (excluding the dot), not the full extent that includes it.
         assertThat(anchor.centerXSs())
             .as("dotted note: anchor must be centred on the notehead, not shifted right by the dot")
-            .isCloseTo(5.0 + Engraving.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
+            .isCloseTo(5.0 + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
     }
 
     // T3: getLyricAnchor Y matches verseYSsInLine(1) exactly
@@ -161,7 +155,7 @@ class LayoutResultTest extends UnitTest {
         song.withoutMutationTracking(() -> line.addElement(0, element));
         var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
         var lyricsFont = DocumentFonts.defaultFonts().getLyricsFont();
-        var baselineYSs = 1.0 + StaffExtents.STAFF_HEIGHT_SS + 0.5
+        var baselineYSs = 1.0 + Staff.STAFF_HEIGHT_SS + 0.5
             + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
             + ScaleContext.fontAscentSs(lyricsFont);
         var layoutResult = LayoutResult.builder()
@@ -228,7 +222,7 @@ class LayoutResultTest extends UnitTest {
             .setBelowContentSs(BELOW_CONTENT_SS + BELOW_CONTENT_DELTA_SS)
             .build();
 
-        var expectedBase = ABOVE_STAFF_SS + StaffExtents.STAFF_HEIGHT_SS
+        var expectedBase = ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS
             + BELOW_CONTENT_SS + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS;
 
         assertThat(base.lyricAreaBaseYSs()).isCloseTo(expectedBase, within(TOLERANCE));
@@ -687,7 +681,7 @@ class LayoutResultTest extends UnitTest {
 
     private static final double RESERVATION_LINE_HEIGHT_SS = 10.0;
     private static final double RESERVATION_ABOVE_STAFF_SS = 2.0;
-    // RESERVATION_LINE_HEIGHT_SS - RESERVATION_ABOVE_STAFF_SS - StaffExtents.STAFF_HEIGHT_SS (4.0).
+    // RESERVATION_LINE_HEIGHT_SS - RESERVATION_ABOVE_STAFF_SS - Staff.STAFF_HEIGHT_SS (4.0).
     private static final double EXPECTED_BELOW_STAFF_RESERVATION_SS = 4.0;
 
     private static final double SAMPLE_BOUNDS_LEFT_SS = 5.0;
@@ -720,7 +714,7 @@ class LayoutResultTest extends UnitTest {
 
     private static ElementColumn testColumnAt(StaffElement element, double xSs) {
         var column = new ElementColumn(
-            element, Collections.emptyList(), 0.0, Engraving.NOTE_HEAD_WIDTH_SS,
+            element, Collections.emptyList(), 0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false);
         column.setXSs(xSs);
         return column;
@@ -730,8 +724,8 @@ class LayoutResultTest extends UnitTest {
     private static ElementColumn testDottedColumnAt(StaffElement element, double xSs) {
         var column = new ElementColumn(
             element, Collections.emptyList(), 0.0,
-            Engraving.NOTE_HEAD_WIDTH_SS + FAKE_DOT_EXTENT_SS,
-            Engraving.NOTE_HEAD_WIDTH_SS,
+            SMuFLConstants.NOTE_HEAD_WIDTH_SS + FAKE_DOT_EXTENT_SS,
+            SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false);
         column.setXSs(xSs);
         return column;

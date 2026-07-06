@@ -26,6 +26,7 @@ import module java.desktop;
 import songscribe.error.RuntimeError;
 import songscribe.dom.ElementType;
 import songscribe.layout.LayoutResult;
+import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
@@ -183,7 +184,7 @@ class LineRenderer {
 
             var lineWidth = invariants.getSong().getLineWidthSs();
             var middleLineYSs = invariants.getMiddleLineYSs();
-            var staffLineThicknessSs = invariants.getLineThickness().staffLineSs();
+            var staffLineThicknessSs = LineThickness.STAFF_LINE_SS;
 
             // Staff has 5 lines, middle line (B) is at index 2.
             // Lines are at: middleLineYSs - 2, middleLineYSs - 1, middleLineYSs,

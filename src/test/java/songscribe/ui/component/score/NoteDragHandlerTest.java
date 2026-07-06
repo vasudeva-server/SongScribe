@@ -59,7 +59,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.ScaleContext;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.LineSelectionState;
@@ -529,7 +529,7 @@ class NoteDragHandlerTest extends UnitTest {
      */
     private void dragToPosition(int targetPositionSp) {
         var deltaSp = targetPositionSp - pressOriginalSp;
-        var deltaYSs = deltaSp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var deltaYSs = deltaSp * Staff.STAFF_POSITION_OFFSET_SS;
         scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble())).thenReturn(deltaYSs);
 
         var event = mouseEvent(lc, MouseEvent.MOUSE_DRAGGED, MOUSE_X, DRAG_SCREEN_Y, MouseEvent.BUTTON1);

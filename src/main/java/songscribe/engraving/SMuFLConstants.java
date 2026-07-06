@@ -18,15 +18,19 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.smufl;
+package songscribe.engraving;
+
+import songscribe.smufl.GlyphAnchors;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Single entry point for all SMuFL-sourced constants, all values in staff spaces.
  * Initialized once from {@link SMuFLMetadata} at class load time.
  */
-public final class Engraving {
+public final class SMuFLConstants {
 
-    // Engraving defaults
+    // SMuFLConstants defaults
     public static final double BEAM_THICKNESS_SS;
     public static final double BEAM_SPACING_SS;
     public static final double REPEAT_BARLINE_DOT_SEPARATION_SS;
@@ -77,5 +81,5 @@ public final class Engraving {
         NOTEHEAD_HALF_STEM_DOWN_NW = halfAnchors.requireStemDownNW();
     }
 
-    private Engraving() {}
+    private SMuFLConstants() {}
 }

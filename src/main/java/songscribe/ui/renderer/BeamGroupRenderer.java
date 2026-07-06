@@ -30,11 +30,11 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.BeamMath;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.dom.LineElement;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.util.GraphicsState;
 
 /**
@@ -283,9 +283,9 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---
         var thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
-        var effectiveBeamDepthSs = Engraving.BEAM_THICKNESS_SS + thickeningSs;
+        var effectiveBeamDepthSs = SMuFLConstants.BEAM_THICKNESS_SS + thickeningSs;
         var beamDepthSs = isUpper ? effectiveBeamDepthSs : -effectiveBeamDepthSs;
-        var innerBeamOffsetSs = (effectiveBeamDepthSs + Engraving.BEAM_SPACING_SS) * recursionLevel * (isUpper ? 1 : -1);
+        var innerBeamOffsetSs = (effectiveBeamDepthSs + SMuFLConstants.BEAM_SPACING_SS) * recursionLevel * (isUpper ? 1 : -1);
 
         // --- First note stem geometry ---
         var firstStemLayout = layoutResult.getStemLayout(beginNote);
@@ -354,10 +354,10 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         }
 
         // Fallback: approximate from staff position + standard stem length
-        var elementYSs = StaffExtents.spToSs(element.getStaffPosition());
+        var elementYSs = Staff.spToSs(element.getStaffPosition());
         return direction.isUp()
-            ? elementYSs - Engraving.STEM_LENGTH_SS
-            : elementYSs + Engraving.STEM_LENGTH_SS;
+            ? elementYSs - SMuFLConstants.STEM_LENGTH_SS
+            : elementYSs + SMuFLConstants.STEM_LENGTH_SS;
     }
 
     /**

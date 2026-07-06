@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.LineThickness;
+import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
 import songscribe.dom.ScaleContext;
 import songscribe.smufl.SMuFLGlyph;
@@ -541,7 +541,7 @@ public final class SlideRenderer {
             glissando.hasCachedGeometry = true;
         }
 
-        var thicknessSs = LineThickness.getInstance().glissandoSs();
+        var thicknessSs = LineThickness.GLISSANDO_SS;
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
             g2.setColor(color);

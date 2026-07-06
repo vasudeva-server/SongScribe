@@ -39,6 +39,7 @@ import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 
 class VerticalStackingCalculatorTest extends UnitTest {
@@ -56,9 +57,9 @@ class VerticalStackingCalculatorTest extends UnitTest {
     // Distance to sample past the notehead origin to confirm no extent bleeds there.
     private static final double FAR_RIGHT_OFFSET_SS = 5.0;
     // Top of the valid staff range — worst-case for the centerYSs top-translation bug.
-    private static final int TOP_STAFF_POSITION = StaffExtents.MIN_STAFF_POSITION_SP;
+    private static final int TOP_STAFF_POSITION = Staff.MIN_STAFF_POSITION_SP;
     // Bottom of the valid staff range — makes botSs + centerYSs exceed the default STAFF_HEIGHT_SS.
-    private static final int BOTTOM_STAFF_POSITION = StaffExtents.MAX_STAFF_POSITION_SP;
+    private static final int BOTTOM_STAFF_POSITION = Staff.MAX_STAFF_POSITION_SP;
 
     @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
@@ -118,7 +119,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         note.setAccidental(Accidental.SHARP);
 
         var bounds = require(NoteGeometry.getAccidentalBoundsSs(note), "sharp bounds");
-        var centerYSs = StaffExtents.spToSs(note.getStaffPosition());
+        var centerYSs = Staff.spToSs(note.getStaffPosition());
 
         var structural = new StaffExtents(LINE_WIDTH_SS);
 
@@ -147,7 +148,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         note.setAccidental(Accidental.FLAT);
 
         var bounds = require(NoteGeometry.getAccidentalBoundsSs(note), "flat bounds");
-        var centerYSs = StaffExtents.spToSs(TOP_STAFF_POSITION);
+        var centerYSs = Staff.spToSs(TOP_STAFF_POSITION);
         var expectedTopAbsoluteYSs = centerYSs + bounds.topSs();
 
         var structural = new StaffExtents(LINE_WIDTH_SS);
@@ -171,14 +172,14 @@ class VerticalStackingCalculatorTest extends UnitTest {
         note.setAccidental(Accidental.SHARP);
 
         var bounds = require(NoteGeometry.getAccidentalBoundsSs(note), "sharp bounds");
-        var centerYSs = StaffExtents.spToSs(BOTTOM_STAFF_POSITION);
+        var centerYSs = Staff.spToSs(BOTTOM_STAFF_POSITION);
         var expectedBotAbsoluteYSs = bounds.botSs() + centerYSs;
 
         // Fixture precondition: seeded value must exceed the default bottom (STAFF_HEIGHT_SS)
         // so that it, not the default, is what yGet returns.
         assertThat(expectedBotAbsoluteYSs)
             .describedAs("seeded bot must exceed default STAFF_HEIGHT_SS floor")
-            .isGreaterThan(StaffExtents.STAFF_HEIGHT_SS);
+            .isGreaterThan(Staff.STAFF_HEIGHT_SS);
 
         var structural = new StaffExtents(LINE_WIDTH_SS);
 
@@ -204,7 +205,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         //
         // belowContentSs is distinct from belowStaff (which floors at MIN_BELOW_STAFF_SS = 4.0).
         final double stemBotSs = 5.0;
-        final double expectedBelowContentSs = stemBotSs - StaffExtents.STAFF_HALF_SS;
+        final double expectedBelowContentSs = stemBotSs - Staff.STAFF_HALF_SS;
 
         var note = ElementType.CROTCHET.newInstance();
         // Staff position 0 keeps centerYSs = 0, so notehead bot << STAFF_HALF_SS;

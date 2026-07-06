@@ -31,7 +31,8 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.LineThickness;
+import songscribe.engraving.SMuFLConstants;
 
 /**
  * Unit tests for {@link Ending}: label format, span-width geometry, split-element search,
@@ -86,7 +87,7 @@ class EndingTest extends UnitTest {
         void testZeroSpanReturnsNoteHeadWidth() {
             double anchorX = 10.0;
             assertThat(ending.getSpanWidthSs(anchorX, anchorX))
-                .isEqualTo(Engraving.NOTE_HEAD_WIDTH_SS);
+                .isEqualTo(SMuFLConstants.NOTE_HEAD_WIDTH_SS);
         }
 
         @Test
@@ -94,7 +95,7 @@ class EndingTest extends UnitTest {
             double anchorX = 10.0;
             double span = 10.0;
             assertThat(ending.getSpanWidthSs(anchorX, anchorX + span))
-                .isEqualTo(span + Engraving.NOTE_HEAD_WIDTH_SS);
+                .isEqualTo(span + SMuFLConstants.NOTE_HEAD_WIDTH_SS);
         }
     }
 
@@ -165,8 +166,6 @@ class EndingTest extends UnitTest {
     @Nested
     class ComputeCollisionRegions {
 
-        private final LineThickness lt = LineThickness.getInstance();
-
         @Test
         void testNoClosingStrokeProducesThreeRegions() {
             // No closing stroke → bar, left-tick, label = 3 regions
@@ -194,7 +193,7 @@ class EndingTest extends UnitTest {
             var regions = ending.computeCollisionRegions(bracket, xBase);
 
             assertThat(regions).hasSize(4);
-            double expectedRightTickX = xBase + span - lt.voltaBracketSs();
+            double expectedRightTickX = xBase + span - LineThickness.VOLTA_BRACKET_SS;
             assertThat(regions.get(2).xOffsetSs()).isEqualTo(expectedRightTickX);
             assertThat(regions.get(3).xOffsetSs()).isEqualTo(xBase + Ending.LABEL_X_INSET_SS);
         }
@@ -215,13 +214,11 @@ class EndingTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Row 14 — computeBracketRanges(Line, ToDoubleFunction, LineThickness)
+    // Row 14 — computeBracketRanges(Line, ToDoubleFunction)
     // -------------------------------------------------------------------------
 
     @Nested
     class ComputeBracketRanges {
-
-        private final LineThickness lt = LineThickness.getInstance();
 
         /** Maps elements to their assigned X positions. */
         private ToDoubleFunction<StaffElement> positionMap(
@@ -260,7 +257,7 @@ class EndingTest extends UnitTest {
             var elements = new StaffElement[]{anchor, end, terminal};
             var xs = new double[]{anchorX, endX, terminalX};
 
-            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs), lt);
+            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs));
 
             // anchor=CROTCHET at index 0, not barline, no previous → x1 = anchorX
             // end has a next element (terminal) → x2 = endX + (terminalX - endX) / 2
@@ -293,21 +290,21 @@ class EndingTest extends UnitTest {
             };
             var xs = new double[]{anchorX, note1X, note2X, splitX, note4X, note5X, endX};
 
-            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs), lt);
+            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs));
 
             assertThat(ranges).hasSize(2);
 
             // First bracket: anchor=SINGLE_BARLINE at idx 0 (no prev), isBarLine → offset applied
             double expectedX1 = anchorX + ElementType.SINGLE_BARLINE.endingAnchorXOffsetSs();
-            double expectedX2First = splitX + lt.repeatRightThinBarlineCenterXSs();
+            double expectedX2First = splitX + LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
             var bracket1 = ranges.get(0);
             assertThat(bracket1.number()).isEqualTo(1);
             assertThat(bracket1.x1Ss()).isEqualTo(expectedX1);
             assertThat(bracket1.x2Ss()).isEqualTo(expectedX2First);
 
             // Second bracket: starts after repeat thick barline, end=SINGLE_BARLINE → no closing stroke
-            double expectedX1Second = splitX + lt.repeatRightAfterThickXSs() - lt.voltaBracketSs() / 2;
-            double expectedX2Second = endX + lt.thinBarlineSs() / 2;
+            double expectedX1Second = splitX + LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS - LineThickness.VOLTA_BRACKET_SS / 2;
+            double expectedX2Second = endX + LineThickness.THIN_BARLINE_SS / 2;
             var bracket2 = ranges.get(1);
             assertThat(bracket2.number()).isEqualTo(2);
             assertThat(bracket2.x1Ss()).isEqualTo(expectedX1Second);
@@ -345,7 +342,7 @@ class EndingTest extends UnitTest {
             var elements = new StaffElement[]{prev, anchor, mid, end, terminal};
             var xs = new double[]{prevX, anchorX, midX, endX, terminalX};
 
-            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs), lt);
+            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs));
 
             assertThat(ranges).hasSize(1);
             // x1 anchored to the prev barline, not the anchor note
@@ -376,7 +373,7 @@ class EndingTest extends UnitTest {
             };
             var xs = new double[]{anchorX, note1X, note2X, splitX, note4X, note5X, endX};
 
-            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs), lt);
+            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs));
 
             assertThat(ranges).hasSize(2);
             assertThat(ranges.get(1).hasClosingStroke()).isTrue();

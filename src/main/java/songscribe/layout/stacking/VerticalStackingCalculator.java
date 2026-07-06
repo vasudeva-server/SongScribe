@@ -35,6 +35,7 @@ import songscribe.dom.Hairpin;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.SongLayoutMetricsBuilder;
 import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.layout.NoteGeometry;
@@ -142,8 +143,8 @@ public class VerticalStackingCalculator {
         // both subtract STAFF_HALF_SS from the signed extent.
         var topExtentSs = systemExtents.yGet(true, 0, lineWidthSs);
         var aboveStaffSs = Math.max(
-            StaffExtents.MIN_ABOVE_STAFF_SS,
-            -topExtentSs - StaffExtents.STAFF_HALF_SS);
+            Staff.MIN_ABOVE_STAFF_SS,
+            -topExtentSs - Staff.STAFF_HALF_SS);
 
         // An upward user Y offset on the attribution can raise it above the naturally
         // stacked position. Grow aboveStaffSs to accommodate so the first staff drops.
@@ -155,7 +156,7 @@ public class VerticalStackingCalculator {
 
                 if (naturalLayout != null) {
                     var shiftedTopSs = naturalLayout.ySs() + userYOffsetSs;
-                    var aboveFromAttribution = -shiftedTopSs - StaffExtents.STAFF_HALF_SS;
+                    var aboveFromAttribution = -shiftedTopSs - Staff.STAFF_HALF_SS;
                     aboveStaffSs = Math.max(aboveStaffSs, aboveFromAttribution);
                 }
             }
@@ -169,17 +170,17 @@ public class VerticalStackingCalculator {
                 systemExtents.yGet(false, 0, lineWidthSs),
                 lowestNoteBotSs));
         var belowStaffSs = Math.max(
-            StaffExtents.MIN_BELOW_STAFF_SS,
-            botExtentSs - StaffExtents.STAFF_HALF_SS);
+            Staff.MIN_BELOW_STAFF_SS,
+            botExtentSs - Staff.STAFF_HALF_SS);
 
         // True extent of staff-element content below the staff bottom — distinct from the
         // sizing reservation above. Tracked in the context as elements seed their bounds
         // (notes, downward ties), defaults to staff bottom for an empty line.
         var belowContentSs = Math.max(
             0.0,
-            context.getBotContentExtentSs() - StaffExtents.STAFF_HALF_SS);
+            context.getBotContentExtentSs() - Staff.STAFF_HALF_SS);
 
-        var lineHeightSs = StaffExtents.STAFF_HEIGHT_SS
+        var lineHeightSs = Staff.STAFF_HEIGHT_SS
             + aboveStaffSs
             + belowStaffSs
             + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
@@ -262,7 +263,7 @@ public class VerticalStackingCalculator {
             var accXSs = column.getXSs() + bounds.leftSs();
 
             // bounds Y values are relative to the note center; shift to staff coordinates.
-            var centerYSs = StaffExtents.spToSs(element.getStaffPosition());
+            var centerYSs = Staff.spToSs(element.getStaffPosition());
 
             structuralExtents.ySet(true, accXSs, bounds.widthSs(), bounds.topSs() + centerYSs);
             structuralExtents.ySet(false, accXSs, bounds.widthSs(), bounds.botSs() + centerYSs);

@@ -71,7 +71,7 @@ import songscribe.layout.SongLayoutMetrics;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.util.GraphicsState;
 import songscribe.util.GraphicUtils;
 import songscribe.util.StringUtils;
@@ -610,7 +610,7 @@ public final class ScoreView
     @Override
     public int getNoteYPosPx(int staffPosition, int lineIndex) {
         return (int) Math.round(middleLineYPx +
-            ScaleContext.ssToPx(StaffExtents.spToSs(staffPosition)) +
+            ScaleContext.ssToPx(Staff.spToSs(staffPosition)) +
             (lineIndex * rowHeightPx));
     }
 

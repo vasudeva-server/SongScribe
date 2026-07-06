@@ -27,7 +27,8 @@ import module java.desktop;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.LineThickness;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.util.GraphicsState;
 
@@ -112,10 +113,9 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
         ElementType noteType,
         LineInvariants invariants
     ) {
-        var lt = invariants.getLineThickness();
-        var thin = lt.thinBarlineSs();
-        var thick = lt.thickBarlineSs();
-        var sep = lt.barlineSeparationSs();
+        var thin = LineThickness.THIN_BARLINE_SS;
+        var thick = LineThickness.THICK_BARLINE_SS;
+        var sep = LineThickness.BARLINE_SEPARATION_SS;
 
         var topY = -STAFF_HALF_HEIGHT_SS;
         var bottomY = STAFF_HALF_HEIGHT_SS;
@@ -175,7 +175,7 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
         double sep
     ) {
         drawRepeatDots(g2, x);
-        x += Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
+        x += SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
         drawBar(g2, x, thin, topY, bottomY);
         x += thin + sep;
         drawBar(g2, x, thick, topY, bottomY);

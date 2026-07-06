@@ -36,16 +36,13 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.dom.ScaleContext;
-import songscribe.layout.ElementColumn;
-import songscribe.layout.LyricLayoutBuilder;
-import songscribe.layout.LyricRenderMetrics;
 import songscribe.message.MessageCenter;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 
 class LyricRenderMetricsTest extends UnitTest {
 
@@ -183,7 +180,7 @@ class LyricRenderMetricsTest extends UnitTest {
 
     private static ElementColumn columnAt(StaffElement element, double xSs) {
         var column = new ElementColumn(
-            element, Collections.emptyList(), 0.0, Engraving.NOTE_HEAD_WIDTH_SS,
+            element, Collections.emptyList(), 0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false);
         column.setXSs(xSs);
         return column;

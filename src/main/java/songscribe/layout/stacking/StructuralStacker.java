@@ -35,7 +35,6 @@ import songscribe.layout.LayoutResult;
 import songscribe.dom.RangeElement;
 import songscribe.layout.StaffExtents;
 import songscribe.dom.Tuplet;
-import songscribe.layout.LineThickness;
 import songscribe.layout.NoteGeometry;
 
 import static songscribe.layout.stacking.StackingUtils.stackAbove;
@@ -170,8 +169,6 @@ public class StructuralStacker {
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
-        var lt = LineThickness.getInstance();
-
         for (var ending : line.findRangeElements(Ending.class)) {
             var anchor = ending.getAnchorElement();
 
@@ -191,8 +188,7 @@ public class StructuralStacker {
                     }
 
                     return col.getXSs();
-                },
-                lt);
+                });
 
             if (brackets.isEmpty()) {
                 continue;

@@ -25,7 +25,7 @@ import module java.desktop;
 
 import songscribe.dom.StaffElement;
 import songscribe.dom.ScaleContext;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 
 /**
  * Static hit-testing utilities for note heads in a {@link LineComponent}.
@@ -106,7 +106,7 @@ public final class ElementHitTest {
         var layoutResult = lc.getLayoutResult();
         var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
         var elementYSs = lc.getMiddleLineYSs()
-            + StaffExtents.spToSs(element.getStaffPosition());
+            + Staff.spToSs(element.getStaffPosition());
         var topOffsetSs = elementType.getNoteheadTopOffsetSs();
 
         if (expandToMinimum) {

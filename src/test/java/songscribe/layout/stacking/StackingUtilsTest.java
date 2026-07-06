@@ -36,6 +36,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Trill;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 
 class StackingUtilsTest extends UnitTest {
 
@@ -128,7 +129,7 @@ class StackingUtilsTest extends UnitTest {
         // sp == TOP_STAFF_LINE_POSITION: boundary that does NOT use STAFF_TOP_Y_SS;
         // result is noteHeadY - NOTE_HEAD_RADIUS_SS.
         var sp = AT_TOP_STAFF_LINE_POSITION;
-        var expectedNoteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedNoteHeadYSs = sp * Staff.STAFF_POSITION_OFFSET_SS;
         var expectedCeilingSs = expectedNoteHeadYSs - StackingUtils.NOTE_HEAD_RADIUS_SS;
 
         var result = StackingUtils.anchorCeilingSs(sp);
@@ -139,7 +140,7 @@ class StackingUtilsTest extends UnitTest {
     void testAnchorCeilingAboveTopStaffLineUsesNoteHeadFormula() {
         // sp < TOP_STAFF_LINE_POSITION: well above the staff — same formula.
         var sp = ABOVE_TOP_STAFF_LINE_POSITION;
-        var expectedNoteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedNoteHeadYSs = sp * Staff.STAFF_POSITION_OFFSET_SS;
         var expectedCeilingSs = expectedNoteHeadYSs - StackingUtils.NOTE_HEAD_RADIUS_SS;
 
         var result = StackingUtils.anchorCeilingSs(sp);
@@ -175,7 +176,7 @@ class StackingUtilsTest extends UnitTest {
         // sp == BOTTOM_STAFF_LINE_POSITION: boundary that does NOT use STAFF_BOT_Y_SS;
         // result is noteHeadY + NOTE_HEAD_RADIUS_SS.
         var sp = AT_BOTTOM_STAFF_LINE_POSITION;
-        var expectedNoteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedNoteHeadYSs = sp * Staff.STAFF_POSITION_OFFSET_SS;
         var expectedFloorSs = expectedNoteHeadYSs + StackingUtils.NOTE_HEAD_RADIUS_SS;
 
         var result = StackingUtils.anchorFloorSs(sp);
@@ -186,7 +187,7 @@ class StackingUtilsTest extends UnitTest {
     void testAnchorFloorBelowBottomStaffLineUsesNoteHeadFormula() {
         // sp > BOTTOM_STAFF_LINE_POSITION: well below the staff — same formula.
         var sp = BELOW_BOTTOM_STAFF_LINE_POSITION;
-        var expectedNoteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var expectedNoteHeadYSs = sp * Staff.STAFF_POSITION_OFFSET_SS;
         var expectedFloorSs = expectedNoteHeadYSs + StackingUtils.NOTE_HEAD_RADIUS_SS;
 
         var result = StackingUtils.anchorFloorSs(sp);
@@ -200,7 +201,7 @@ class StackingUtilsTest extends UnitTest {
     @Test
     void testStaccatoAnchorCeilingOnInteriorLineUsesOnLineDistance() {
         var sp = INTERIOR_LINE_STAFF_POSITION;
-        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = sp * Staff.STAFF_POSITION_OFFSET_SS;
         var expectedCeilingSs = noteHeadYSs - StackingUtils.STACCATO_ON_LINE_DISTANCE_SS;
 
         var result = StackingUtils.staccatoAnchorCeilingSs(sp);
@@ -210,7 +211,7 @@ class StackingUtilsTest extends UnitTest {
     @Test
     void testStaccatoAnchorCeilingInSpaceUsesBetweenLinesDistance() {
         var sp = INTERIOR_SPACE_STAFF_POSITION;
-        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = sp * Staff.STAFF_POSITION_OFFSET_SS;
         var expectedCeilingSs = noteHeadYSs - StackingUtils.STACCATO_BETWEEN_LINES_DISTANCE_SS;
 
         var result = StackingUtils.staccatoAnchorCeilingSs(sp);
@@ -222,7 +223,7 @@ class StackingUtilsTest extends UnitTest {
         // The outer space is still a space, not the staff line itself, so it does not
         // fall back to the fixed staff-line anchor.
         var sp = OUTER_SPACE_ABOVE_STAFF_POSITION;
-        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = sp * Staff.STAFF_POSITION_OFFSET_SS;
         var expectedCeilingSs = noteHeadYSs - StackingUtils.STACCATO_BETWEEN_LINES_DISTANCE_SS;
 
         var result = StackingUtils.staccatoAnchorCeilingSs(sp);
@@ -246,7 +247,7 @@ class StackingUtilsTest extends UnitTest {
     @Test
     void testStaccatoAnchorFloorOnInteriorLineUsesOnLineDistance() {
         var sp = INTERIOR_LINE_STAFF_POSITION;
-        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = sp * Staff.STAFF_POSITION_OFFSET_SS;
         var expectedFloorSs = noteHeadYSs + StackingUtils.STACCATO_ON_LINE_DISTANCE_SS;
 
         var result = StackingUtils.staccatoAnchorFloorSs(sp);
@@ -256,7 +257,7 @@ class StackingUtilsTest extends UnitTest {
     @Test
     void testStaccatoAnchorFloorInSpaceUsesBetweenLinesDistance() {
         var sp = INTERIOR_SPACE_STAFF_POSITION;
-        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = sp * Staff.STAFF_POSITION_OFFSET_SS;
         var expectedFloorSs = noteHeadYSs + StackingUtils.STACCATO_BETWEEN_LINES_DISTANCE_SS;
 
         var result = StackingUtils.staccatoAnchorFloorSs(sp);
@@ -266,7 +267,7 @@ class StackingUtilsTest extends UnitTest {
     @Test
     void testStaccatoAnchorFloorInOuterSpaceUsesBetweenLinesDistance() {
         var sp = OUTER_SPACE_BELOW_STAFF_POSITION;
-        var noteHeadYSs = sp * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = sp * Staff.STAFF_POSITION_OFFSET_SS;
         var expectedFloorSs = noteHeadYSs + StackingUtils.STACCATO_BETWEEN_LINES_DISTANCE_SS;
 
         var result = StackingUtils.staccatoAnchorFloorSs(sp);

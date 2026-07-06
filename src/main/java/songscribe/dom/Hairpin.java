@@ -20,7 +20,7 @@
 
 package songscribe.dom;
 
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 
 /**
  * Base class for hairpin dynamic markings (crescendo and diminuendo).
@@ -97,7 +97,7 @@ public abstract sealed class Hairpin extends RangeElement
      */
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(HAIRPIN_OPENING_HEIGHT_SS, endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS);
+        return Math.max(HAIRPIN_OPENING_HEIGHT_SS, endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS);
     }
 
     @Override

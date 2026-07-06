@@ -55,7 +55,7 @@ import songscribe.layout.LayoutResult;
 import songscribe.dom.ScaleContext;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.ui.playback.PlaybackController;
 
 /**
@@ -896,7 +896,7 @@ public final class PreviewElementManager {
      * @return Staff position
      */
     static int calculateStaffPositionFromMouse(double mouseYss, double middleLineYSs) {
-        return StaffExtents.ssToSp(mouseYss - middleLineYSs);
+        return Staff.ssToSp(mouseYss - middleLineYSs);
     }
 
     /**
@@ -918,8 +918,8 @@ public final class PreviewElementManager {
      * @return true if the position is valid
      */
     static boolean isValidStaffPosition(int staffPosition) {
-        return staffPosition >= StaffExtents.MIN_STAFF_POSITION_SP
-            && staffPosition <= StaffExtents.MAX_STAFF_POSITION_SP;
+        return staffPosition >= Staff.MIN_STAFF_POSITION_SP
+            && staffPosition <= Staff.MAX_STAFF_POSITION_SP;
     }
 
     // ==========================================================================

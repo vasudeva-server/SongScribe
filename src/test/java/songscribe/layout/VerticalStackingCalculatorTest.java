@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Attribution;
+import songscribe.engraving.Staff;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 
@@ -155,7 +156,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
             var layout = require(builder.getDecorationLayout(attribution), "attribution layout");
             assertThat(layout.ySs())
                 .describedAs("attribution top Y must be above the staff top")
-                .isLessThan(-StaffExtents.STAFF_HALF_SS);
+                .isLessThan(-Staff.STAFF_HALF_SS);
         }
 
         @Test
@@ -191,10 +192,10 @@ class VerticalStackingCalculatorTest extends UnitTest {
         @Test
         void testLineHeightAtLeastMinimumForEmptyColumns() {
             // With no elements and no attribution, the computed lineHeightSs must be at
-            // least StaffExtents.STAFF_HEIGHT_SS + MIN_ABOVE_STAFF_SS + MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS.
-            var expectedMinHeight = StaffExtents.STAFF_HEIGHT_SS
-                + StaffExtents.MIN_ABOVE_STAFF_SS
-                + StaffExtents.MIN_BELOW_STAFF_SS
+            // least Staff.STAFF_HEIGHT_SS + MIN_ABOVE_STAFF_SS + MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS.
+            var expectedMinHeight = Staff.STAFF_HEIGHT_SS
+                + Staff.MIN_ABOVE_STAFF_SS
+                + Staff.MIN_BELOW_STAFF_SS
                 + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
 
             var builder = LayoutResult.builder();
@@ -226,7 +227,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
             var result = builder.build();
             assertThat(result.getAboveStaffSs())
-                .isGreaterThanOrEqualTo(StaffExtents.MIN_ABOVE_STAFF_SS - EPSILON.value);
+                .isGreaterThanOrEqualTo(Staff.MIN_ABOVE_STAFF_SS - EPSILON.value);
         }
 
         @Test

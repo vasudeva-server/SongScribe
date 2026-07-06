@@ -29,7 +29,9 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.smufl.BBox;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.LineThickness;
+import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.Staff;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.error.RuntimeError;
@@ -125,15 +127,6 @@ public enum ElementType {
 
     /** Uniform scale factor applied to grace note glyphs (75% of normal size). */
     public static final float GRACE_NOTE_SCALE = 0.75f;
-
-    /** Height of the 5-line staff (4 gaps of 1 ss each) in staff spaces. */
-    public static final double STAFF_HEIGHT_SS = 4.0;
-
-    // LilyPond-derived barline thicknesses in staff spaces (base = 0.1 ss)
-    private static final double BASE_LINE_THICKNESS_SS = 0.1;
-    static final double THIN_BARLINE_SS  = BASE_LINE_THICKNESS_SS * 1.9;
-    static final double THICK_BARLINE_SS = BASE_LINE_THICKNESS_SS * 6.0;
-    static final double BARLINE_SEP_SS   = BASE_LINE_THICKNESS_SS * 3.0;
 
     static {
         computeElementBoundsSs();
@@ -285,12 +278,13 @@ public enum ElementType {
     public double endingAnchorXOffsetSs() {
         if (this == REPEAT_LEFT) {
             // Layout: thick | sep | thin | sep | dots — anchor on the thin barline center
-            return THICK_BARLINE_SS + BARLINE_SEP_SS + THIN_BARLINE_SS / 2;
+            return LineThickness.THICK_BARLINE_SS + LineThickness.BARLINE_SEPARATION_SS
+                + LineThickness.THIN_BARLINE_SS / 2;
         }
 
         if (isBarLine() || isRepeat()) {
             // Generic: center on the rightmost thin barline
-            return fullWidthSs - THIN_BARLINE_SS / 2;
+            return fullWidthSs - LineThickness.THIN_BARLINE_SS / 2;
         }
 
         return 0;
@@ -590,12 +584,12 @@ public enum ElementType {
                 type.noteheadTopOffsetSs = headTop;
 
                 // Height up: from top of stem to bottom of notehead
-                var upTop = stemUpY - Engraving.STEM_LENGTH_SS;
+                var upTop = stemUpY - SMuFLConstants.STEM_LENGTH_SS;
                 type.heightUpSs = headBottom - upTop;
                 type.topOffsetUpSs = upTop;    // stem tip above center (negative)
 
                 // Height down: from top of notehead to bottom of stem
-                var downBottom = stemDownY + Engraving.STEM_LENGTH_SS;
+                var downBottom = stemDownY + SMuFLConstants.STEM_LENGTH_SS;
                 type.heightDownSs = downBottom - headTop;
                 type.topOffsetDownSs = headTop; // notehead top above center (negative)
             } else {
@@ -628,7 +622,7 @@ public enum ElementType {
         var stemUpX = anchors.stemUpSE().x() * scale;
         var stemUpY = anchors.stemUpSE().y() * scale;
 
-        var upTop = stemUpY - Engraving.GRACE_NOTE_STEM_LENGTH_SS;
+        var upTop = stemUpY - SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS;
         var width = headRight;
 
         var flagBBox = requireBBox(SMuFLGlyph.FLAG_8TH_UP, type);
@@ -680,26 +674,31 @@ public enum ElementType {
     }
 
     private static void computeBarlineBoundsSs() {
-        var topOffset = -STAFF_HEIGHT_SS / 2;
+        var topOffset = -Staff.STAFF_HEIGHT_SS / 2;
 
-        SINGLE_BARLINE.setSymmetricBounds(THIN_BARLINE_SS, STAFF_HEIGHT_SS, topOffset);
-        DOUBLE_BARLINE.setSymmetricBounds(2 * THIN_BARLINE_SS + BARLINE_SEP_SS, STAFF_HEIGHT_SS, topOffset);
-        FINAL_DOUBLE_BARLINE.setSymmetricBounds(THIN_BARLINE_SS + THICK_BARLINE_SS + BARLINE_SEP_SS, STAFF_HEIGHT_SS, topOffset);
+        SINGLE_BARLINE.setSymmetricBounds(LineThickness.THIN_BARLINE_SS, Staff.STAFF_HEIGHT_SS, topOffset);
+        DOUBLE_BARLINE.setSymmetricBounds(
+            2 * LineThickness.THIN_BARLINE_SS + LineThickness.BARLINE_SEPARATION_SS, Staff.STAFF_HEIGHT_SS, topOffset);
+        FINAL_DOUBLE_BARLINE.setSymmetricBounds(
+            LineThickness.THIN_BARLINE_SS + LineThickness.THICK_BARLINE_SS + LineThickness.BARLINE_SEPARATION_SS,
+            Staff.STAFF_HEIGHT_SS, topOffset);
     }
 
     private static void computeRepeatBoundsSs() {
-        var dotsAdvance = Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS;
-        var topOffset = -STAFF_HEIGHT_SS / 2;
+        var dotsAdvance = SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS;
+        var topOffset = -Staff.STAFF_HEIGHT_SS / 2;
 
         // Match the renderer's actual layout: dots | sep | thin | sep | thick
-        var singleRepeatWidth = dotsAdvance + BARLINE_SEP_SS + THIN_BARLINE_SS + BARLINE_SEP_SS + THICK_BARLINE_SS;
+        var singleRepeatWidth = dotsAdvance + LineThickness.BARLINE_SEPARATION_SS + LineThickness.THIN_BARLINE_SS
+            + LineThickness.BARLINE_SEPARATION_SS + LineThickness.THICK_BARLINE_SS;
 
-        REPEAT_LEFT.setSymmetricBounds(singleRepeatWidth, STAFF_HEIGHT_SS, topOffset);
-        REPEAT_RIGHT.setSymmetricBounds(singleRepeatWidth, STAFF_HEIGHT_SS, topOffset);
+        REPEAT_LEFT.setSymmetricBounds(singleRepeatWidth, Staff.STAFF_HEIGHT_SS, topOffset);
+        REPEAT_RIGHT.setSymmetricBounds(singleRepeatWidth, Staff.STAFF_HEIGHT_SS, topOffset);
 
         // REPEAT_LEFT_RIGHT shares the thick bar: dots | sep | thin | sep | thick | sep | thin | sep | dots
-        var leftRightWidth = 2 * dotsAdvance + 4 * BARLINE_SEP_SS + 2 * THIN_BARLINE_SS + THICK_BARLINE_SS;
-        REPEAT_LEFT_RIGHT.setSymmetricBounds(leftRightWidth, STAFF_HEIGHT_SS, topOffset);
+        var leftRightWidth = 2 * dotsAdvance + 4 * LineThickness.BARLINE_SEPARATION_SS
+            + 2 * LineThickness.THIN_BARLINE_SS + LineThickness.THICK_BARLINE_SS;
+        REPEAT_LEFT_RIGHT.setSymmetricBounds(leftRightWidth, Staff.STAFF_HEIGHT_SS, topOffset);
     }
 
     private static BBox requireBBox(@Nullable SMuFLGlyph glyph, ElementType context) {

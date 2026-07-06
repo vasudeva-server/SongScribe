@@ -42,12 +42,11 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
-import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.Tuplet;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.LineThickness;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.LineThickness;
+import songscribe.engraving.SMuFLConstants;
 
 class TupletRendererTest extends UnitTest {
 
@@ -203,8 +202,8 @@ class TupletRendererTest extends UnitTest {
         var invariants = buildInvariantsWithTuplet(true, false);
         var recording = recordingG2();
         var g2 = recording.g2();
-        var stemSs = LineThickness.getInstance().stemSs();
-        var expectedLeftX = 1.0 + Engraving.NOTE_HEAD_WIDTH_SS - stemSs - Tuplet.ARM_EXTENSION_SS;
+        var stemSs = LineThickness.STEM_SS;
+        var expectedLeftX = 1.0 + SMuFLConstants.NOTE_HEAD_WIDTH_SS - stemSs - Tuplet.ARM_EXTENSION_SS;
 
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
@@ -238,7 +237,7 @@ class TupletRendererTest extends UnitTest {
         var recording = recordingG2();
         var g2 = recording.g2();
         var endXSs = 1.0 + 4.0;
-        var expectedRightX = endXSs + Engraving.NOTE_HEAD_WIDTH_SS + Tuplet.ARM_EXTENSION_SS;
+        var expectedRightX = endXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS + Tuplet.ARM_EXTENSION_SS;
 
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);

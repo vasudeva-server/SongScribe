@@ -37,7 +37,7 @@ import songscribe.ui.component.score.PitchShifter;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.message.command.DeselectCommand;
 import songscribe.util.UIUtils;
 
@@ -426,12 +426,12 @@ public final class ScoreInputHandler extends KeyAdapter
 
             if (insertionNote != null) {
                 if (code == KeyEvent.VK_UP) {
-                    if (insertionNote.getStaffPosition() >= (-(StaffExtents.STAFF_LINES_ABOVE + 2) * 2)) {
+                    if (insertionNote.getStaffPosition() >= (-(Staff.STAFF_LINES_ABOVE + 2) * 2)) {
                         insertionNote.setStaffPosition(insertionNote.getStaffPosition() - 1);
                         callback.repaint();
                     }
                 } else if (code == KeyEvent.VK_DOWN) {
-                    if (insertionNote.getStaffPosition() <= ((StaffExtents.STAFF_LINES_BELOW + 2) * 2)) {
+                    if (insertionNote.getStaffPosition() <= ((Staff.STAFF_LINES_BELOW + 2) * 2)) {
                         insertionNote.setStaffPosition(insertionNote.getStaffPosition() + 1);
                         callback.repaint();
                     }

@@ -18,7 +18,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.smufl;
+package songscribe.engraving;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 
-class EngravingTest extends UnitTest {
+class SMuFLConstantsTest extends UnitTest {
 
     // -----------------------------------------------------------------------
     // ROW 37 — G_CLEF_WIDTH_SS reflects the concrete Bravura advance width
@@ -40,7 +40,7 @@ class EngravingTest extends UnitTest {
 
     @Test
     void testGClefWidthMatchesBravuraAdvanceWidth() {
-        assertThat(Engraving.G_CLEF_WIDTH_SS)
+        assertThat(SMuFLConstants.G_CLEF_WIDTH_SS)
                 .isCloseTo(BRAVURA_G_CLEF_ADVANCE_WIDTH_SS, within(ADVANCE_WIDTH_TOLERANCE_SS));
     }
 
@@ -56,28 +56,28 @@ class EngravingTest extends UnitTest {
 
     @Test
     void testBeamThicknessIsPlausible() {
-        assertThat(Engraving.BEAM_THICKNESS_SS)
+        assertThat(SMuFLConstants.BEAM_THICKNESS_SS)
                 .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
                 .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
     }
 
     @Test
     void testBeamSpacingIsPlausible() {
-        assertThat(Engraving.BEAM_SPACING_SS)
+        assertThat(SMuFLConstants.BEAM_SPACING_SS)
                 .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
                 .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
     }
 
     @Test
     void testRepeatBarlineDotSeparationIsPlausible() {
-        assertThat(Engraving.REPEAT_BARLINE_DOT_SEPARATION_SS)
+        assertThat(SMuFLConstants.REPEAT_BARLINE_DOT_SEPARATION_SS)
                 .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
                 .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
     }
 
     @Test
     void testLedgerLineThicknessIsPlausible() {
-        assertThat(Engraving.LEDGER_LINE_THICKNESS_SS)
+        assertThat(SMuFLConstants.LEDGER_LINE_THICKNESS_SS)
                 .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
                 .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
     }
@@ -87,12 +87,12 @@ class EngravingTest extends UnitTest {
 
     @Test
     void testLedgerLineLengthFractionIsLilyPondDefault() {
-        assertThat(Engraving.LEDGER_LINE_LENGTH_FRACTION).isEqualTo(LILYPOND_LENGTH_FRACTION_DEFAULT);
+        assertThat(SMuFLConstants.LEDGER_LINE_LENGTH_FRACTION).isEqualTo(LILYPOND_LENGTH_FRACTION_DEFAULT);
     }
 
     @Test
     void testTieMidpointThicknessIsPlausible() {
-        assertThat(Engraving.TIE_MIDPOINT_THICKNESS_SS)
+        assertThat(SMuFLConstants.TIE_MIDPOINT_THICKNESS_SS)
                 .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
                 .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
     }
@@ -121,7 +121,7 @@ class EngravingTest extends UnitTest {
 
     @Test
     void testNoteheadBlackStemUpSeAnchorMatchesBravura() {
-        var anchor = Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
+        var anchor = SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE;
         assertThat(anchor.x())
                 .as("stemUpSE x (right edge, positive in Y-down)")
                 .isCloseTo(BRAVURA_NOTEHEAD_BLACK_STEM_UP_SE_X, within(ANCHOR_TOLERANCE_SS));
@@ -132,7 +132,7 @@ class EngravingTest extends UnitTest {
 
     @Test
     void testNoteheadBlackStemDownNwAnchorMatchesBravura() {
-        var anchor = Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
+        var anchor = SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW;
         assertThat(anchor.x())
                 .as("stemDownNW x (left edge, zero in Bravura)")
                 .isCloseTo(BRAVURA_NOTEHEAD_BLACK_STEM_DOWN_NW_X, within(ANCHOR_TOLERANCE_SS));

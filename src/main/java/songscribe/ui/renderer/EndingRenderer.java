@@ -28,6 +28,7 @@ import module java.desktop;
 import songscribe.dom.Line;
 import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
+import songscribe.engraving.LineThickness;
 import songscribe.shape.EndingBracketShape;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
@@ -114,7 +115,7 @@ public final class EndingRenderer {
         var x2 = bracket.x2Ss();
         var yBottomSs = yTopSs + ending.getContentHeightSs();
 
-        var thicknessSs = invariants.getLineThickness().voltaBracketSs();
+        var thicknessSs = LineThickness.VOLTA_BRACKET_SS;
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(RenderingUtils.ELEMENT_COLOR);

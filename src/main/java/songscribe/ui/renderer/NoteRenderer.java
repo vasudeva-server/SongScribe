@@ -32,10 +32,9 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.Engraving;
-import songscribe.smufl.SMuFLMetadata;
+import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
 import songscribe.util.GraphicsState;
 
@@ -74,7 +73,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
     // Half the beam thickness in ss, used to tuck beamed stems inside the beam
     // so they don't peek past the outer edge when the beam is angled.
-    private static final double HALF_BEAM_THICKNESS_SS = Engraving.BEAM_THICKNESS_SS / 2.0;
+    private static final double HALF_BEAM_THICKNESS_SS = SMuFLConstants.BEAM_THICKNESS_SS / 2.0;
 
     // Stem end-cap arc diameter as a fraction of stem width (from LilyPond print analysis)
     private static final double STEM_ARC_RATIO = 0.57;
@@ -273,7 +272,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
         var upper = direction.isUp();
         var geom = NoteGeometry.computeBaseStemGeometry(noteType, direction);
-        var stemWidthSs = invariants.getLineThickness().stemSs();
+        var stemWidthSs = LineThickness.STEM_SS;
 
         // A down-stem sits flush with the notehead's LEFT edge, which is the glyph
         // origin — and the font snaps that origin to an integer device pixel. The

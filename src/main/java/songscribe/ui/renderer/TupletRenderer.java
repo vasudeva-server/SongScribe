@@ -25,8 +25,9 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 import module java.desktop;
 
 import songscribe.dom.Line;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.LayoutResult;
+import songscribe.engraving.LineThickness;
 import songscribe.dom.Tuplet;
 import songscribe.shape.TupletBracketShape;
 import songscribe.util.GraphicUtils;
@@ -102,11 +103,11 @@ public final class TupletRenderer {
             var anchorXSs = decorLayout.xSs();
             var endXSs = anchorXSs + decorLayout.widthSs();
             var isUpper = anchorNote.getDirection().isUp();
-            var stemSs = invariants.getLineThickness().stemSs();
-            var leftXSs = anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS
-                - (isUpper ? stemSs : Engraving.NOTE_HEAD_WIDTH_SS)
+            var stemSs = LineThickness.STEM_SS;
+            var leftXSs = anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS
+                - (isUpper ? stemSs : SMuFLConstants.NOTE_HEAD_WIDTH_SS)
                 - Tuplet.ARM_EXTENSION_SS;
-            var rightXSs = endXSs + Engraving.NOTE_HEAD_WIDTH_SS + Tuplet.ARM_EXTENSION_SS;
+            var rightXSs = endXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS + Tuplet.ARM_EXTENSION_SS;
 
             var numberOnly = tuplet.isNumberOnly(line);
 
@@ -150,7 +151,7 @@ public final class TupletRenderer {
             ? centerXSs
             : centerXSs + TUPLET_GAP_ITALIC_CORRECTION_SS / 2.0;
 
-        var thicknessSs = invariants.getLineThickness().tupletBracketSs();
+        var thicknessSs = LineThickness.TUPLET_BRACKET_SS;
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
             g2.setColor(RenderingUtils.ELEMENT_COLOR);

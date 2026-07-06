@@ -26,7 +26,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 
 
 /**
@@ -133,7 +133,7 @@ public class HorizontalSpacingCalculator {
      * @return X position in staff-space units of the header's right edge
      */
     public static double calculateHeaderRightEdgeSs(int keyAccidentalCount) {
-        return Engraving.G_CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS;
+        return SMuFLConstants.G_CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS;
     }
 
     /**

@@ -18,13 +18,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.layout;
+package songscribe.engraving;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.smufl.Engraving;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -40,66 +39,59 @@ class LineThicknessTest extends UnitTest {
 
         @Test
         void testStemThicknessEqualsBaseTimesMultiplier() {
-            var lt = LineThickness.getInstance();
             double expectedStemSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * LineThickness.STEM_MULTIPLIER;
-            assertThat(lt.stemSs()).isEqualTo(expectedStemSs);
+            assertThat(LineThickness.STEM_SS).isEqualTo(expectedStemSs);
         }
 
         @Test
         void testLedgerLineThicknessEqualsBaseTimesTwo() {
-            var lt = LineThickness.getInstance();
             double expectedLedgerLineSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * 2;
-            assertThat(lt.ledgerLineSs()).isEqualTo(expectedLedgerLineSs);
+            assertThat(LineThickness.LEDGER_LINE_SS).isEqualTo(expectedLedgerLineSs);
         }
 
         @Test
         void testHairpinThicknessEqualsBase() {
-            var lt = LineThickness.getInstance();
             // HAIRPIN_MULTIPLIER = 1.0: hairpin is the same thickness as the base staff line
-            assertThat(lt.hairpinSs()).isEqualTo(LineThickness.LILYPOND_BASE_THICKNESS_SS);
+            assertThat(LineThickness.HAIRPIN_SS).isEqualTo(LineThickness.LILYPOND_BASE_THICKNESS_SS);
         }
 
         @Test
         void testVoltaBracketThicknessEqualsBaseTimesMultiplier() {
-            var lt = LineThickness.getInstance();
             double expectedVoltaBracketSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * LineThickness.VOLTA_BRACKET_MULTIPLIER;
-            assertThat(lt.voltaBracketSs()).isEqualTo(expectedVoltaBracketSs);
+            assertThat(LineThickness.VOLTA_BRACKET_SS).isEqualTo(expectedVoltaBracketSs);
         }
 
         @Test
         void testTupletBracketThicknessEqualsBaseTimesMultiplier() {
-            var lt = LineThickness.getInstance();
             double expectedTupletBracketSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * LineThickness.TUPLET_BRACKET_MULTIPLIER;
-            assertThat(lt.tupletBracketSs()).isEqualTo(expectedTupletBracketSs);
+            assertThat(LineThickness.TUPLET_BRACKET_SS).isEqualTo(expectedTupletBracketSs);
         }
     }
 
     // -----------------------------------------------------------------------
-    // Row 20: repeatRightThinBarlineCenterXSs / repeatRightAfterThickXSs arithmetic
+    // Row 20: REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS / REPEAT_RIGHT_AFTER_THICK_X_SS arithmetic
     // -----------------------------------------------------------------------
 
     @Test
     void testRepeatRightThinBarlineCenterXSsMatchesFormula() {
-        var lt = LineThickness.getInstance();
         // formula: dotsAdvanceWidth + barlineSeparation + thinBarline/2
-        double expected = Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS
-                + lt.barlineSeparationSs()
-                + lt.thinBarlineSs() / 2;
-        assertThat(lt.repeatRightThinBarlineCenterXSs()).isEqualTo(expected);
+        double expected = SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS
+                + LineThickness.BARLINE_SEPARATION_SS
+                + LineThickness.THIN_BARLINE_SS / 2;
+        assertThat(LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS).isEqualTo(expected);
     }
 
     @Test
     void testRepeatRightAfterThickXSsMatchesFormula() {
-        var lt = LineThickness.getInstance();
         // formula: dotsAdvanceWidth + sep + thin + sep + thick
-        var sep = lt.barlineSeparationSs();
-        double expected = Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS
-                + sep + lt.thinBarlineSs() + sep + lt.thickBarlineSs();
+        var sep = LineThickness.BARLINE_SEPARATION_SS;
+        double expected = SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS
+                + sep + LineThickness.THIN_BARLINE_SS + sep + LineThickness.THICK_BARLINE_SS;
         assertAll(
-            () -> assertThat(lt.repeatRightAfterThickXSs()).isEqualTo(expected),
+            () -> assertThat(LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS).isEqualTo(expected),
             // after-thick must be greater than thin-center (thick barline is to the right)
-            () -> assertThat(lt.repeatRightAfterThickXSs())
-                      .isGreaterThan(lt.repeatRightThinBarlineCenterXSs())
+            () -> assertThat(LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS)
+                      .isGreaterThan(LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS)
         );
     }
 }

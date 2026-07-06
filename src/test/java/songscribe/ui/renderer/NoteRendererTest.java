@@ -33,7 +33,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.layout.NoteGeometry;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -134,45 +134,45 @@ class NoteRendererTest extends UnitTest {
         @Test
         void testBlackNoteHeadStemUpUsesBlackUpAnchor() {
             var geom = NoteGeometry.computeBaseStemGeometry(ElementType.CROTCHET, StaffElement.Direction.UP);
-            var anchor = Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
+            var anchor = SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE;
             var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS;
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
-            assertThat(geom.lengthSs()).isCloseTo(Engraving.STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(geom.lengthSs()).isCloseTo(SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
         }
 
         @Test
         void testBlackNoteHeadStemDownUsesBlackDownAnchor() {
             var geom = NoteGeometry.computeBaseStemGeometry(ElementType.CROTCHET, StaffElement.Direction.DOWN);
-            var anchor = Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
+            var anchor = SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW;
             var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS / 2;
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
-            assertThat(geom.lengthSs()).isCloseTo(Engraving.STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(geom.lengthSs()).isCloseTo(SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
         }
 
         @Test
         void testMinimStemUpUsesHalfUpAnchor() {
             var geom = NoteGeometry.computeBaseStemGeometry(ElementType.MINIM, StaffElement.Direction.UP);
-            var anchor = Engraving.NOTEHEAD_HALF_STEM_UP_SE;
+            var anchor = SMuFLConstants.NOTEHEAD_HALF_STEM_UP_SE;
             var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS;
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
-            assertThat(geom.lengthSs()).isCloseTo(Engraving.STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(geom.lengthSs()).isCloseTo(SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
         }
 
         @Test
         void testMinimStemDownUsesHalfDownAnchor() {
             var geom = NoteGeometry.computeBaseStemGeometry(ElementType.MINIM, StaffElement.Direction.DOWN);
-            var anchor = Engraving.NOTEHEAD_HALF_STEM_DOWN_NW;
+            var anchor = SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW;
             var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS / 2;
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
-            assertThat(geom.lengthSs()).isCloseTo(Engraving.STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(geom.lengthSs()).isCloseTo(SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
         }
 
         @Test
@@ -183,7 +183,7 @@ class NoteRendererTest extends UnitTest {
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
-            assertThat(geom.lengthSs()).isCloseTo(Engraving.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
+            assertThat(geom.lengthSs()).isCloseTo(SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
         }
     }
 
@@ -240,7 +240,7 @@ class NoteRendererTest extends UnitTest {
         // Expected first-dot X derived independently from SMuFL metadata: the notehead's right
         // edge plus one augmentation-dot width (the LilyPond pad-by-one-dot-width gap).
         private static double expectedNoteheadDotXSs(SMuFLGlyph noteheadGlyph) {
-            return SMuFLMetadata.requireBBox(noteheadGlyph).right() + Engraving.AUGMENTATION_DOT_WIDTH_SS;
+            return SMuFLMetadata.requireBBox(noteheadGlyph).right() + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
         }
 
         // Expected first-dot X for an unbeamed up-stem flagged note: the flag's right edge (the
@@ -250,7 +250,7 @@ class NoteRendererTest extends UnitTest {
                 NoteGeometry.computeBaseStemGeometry(ElementType.QUAVER, StaffElement.Direction.UP)
                     .stemLeftXSs();
             var flagRightSs = stemLeftXSs + SMuFLMetadata.requireBBox(flagGlyph).right();
-            return flagRightSs + Engraving.AUGMENTATION_DOT_WIDTH_SS;
+            return flagRightSs + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
         }
 
         @Test

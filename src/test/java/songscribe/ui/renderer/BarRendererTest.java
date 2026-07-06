@@ -37,8 +37,8 @@ import org.mockito.ArgumentCaptor;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
-import songscribe.layout.LineThickness;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.LineThickness;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 
 class BarRendererTest extends UnitTest {
@@ -147,15 +147,14 @@ class BarRendererTest extends UnitTest {
         //   after thin:  x += thin + sep
         //   after thick: x += thick  → returned value
         var g2 = RenderContextTestHelper.realG2();
-        var lt = LineThickness.getInstance();
-        var thin = lt.thinBarlineSs();
-        var thick = lt.thickBarlineSs();
-        var sep = lt.barlineSeparationSs();
+        var thin = LineThickness.THIN_BARLINE_SS;
+        var thick = LineThickness.THICK_BARLINE_SS;
+        var sep = LineThickness.BARLINE_SEPARATION_SS;
         final double startX = 0.0;
         final double topY = -2.0;
         final double bottomY = 2.0;
 
-        var x = startX + Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
+        var x = startX + SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
         x += thin + sep;
         x += thick;
         var expectedX = x;

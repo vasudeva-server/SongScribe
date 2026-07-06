@@ -9,11 +9,12 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.AccidentalBounds;
 import songscribe.dom.StaffElement.Accidental;
+import songscribe.engraving.LineThickness;
 import songscribe.error.RuntimeError;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.BBox;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -33,7 +34,7 @@ public final class NoteGeometry {
     // ==========================================================================
 
     /** Stem width in staff-space units (LilyPond multiplier-derived). */
-    public static final double STEM_WIDTH_SS = LineThickness.getInstance().stemSs();
+    public static final double STEM_WIDTH_SS = LineThickness.STEM_SS;
 
     // ==========================================================================
     // Font Constants
@@ -71,8 +72,8 @@ public final class NoteGeometry {
      * Used for grace notes which use pre-sized small glyphs.
      */
     public static final GlyphAnchors.Anchor STEM_UP_SE_BLACK_SMALL = new GlyphAnchors.Anchor(
-        Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() * ElementType.GRACE_NOTE_SCALE,
-        Engraving.NOTEHEAD_BLACK_STEM_UP_SE.y() * ElementType.GRACE_NOTE_SCALE
+        SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE.x() * ElementType.GRACE_NOTE_SCALE,
+        SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE.y() * ElementType.GRACE_NOTE_SCALE
     );
 
     // ==========================================================================
@@ -85,7 +86,7 @@ public final class NoteGeometry {
 
     // Center-to-center spacing between consecutive augmentation dots (in ss): one dot glyph
     // plus a one-dot-width gap, following LilyPond's stack-by-one-dot-width convention.
-    public static final double DOT_SPACING_SS = Engraving.AUGMENTATION_DOT_WIDTH_SS * 2;
+    public static final double DOT_SPACING_SS = SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS * 2;
 
     /**
      * Returns the X position (in ss, from the note glyph origin) of the first augmentation dot,
@@ -104,7 +105,7 @@ public final class NoteGeometry {
             }
         }
 
-        return obstructionRightSs + Engraving.AUGMENTATION_DOT_WIDTH_SS;
+        return obstructionRightSs + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
     }
 
     /**
@@ -185,9 +186,9 @@ public final class NoteGeometry {
         if (isGrace) {
             anchor = STEM_UP_SE_BLACK_SMALL;
         } else if (direction.isUp()) {
-            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE : Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
+            anchor = isMinim ? SMuFLConstants.NOTEHEAD_HALF_STEM_UP_SE : SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE;
         } else {
-            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
+            anchor = isMinim ? SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW : SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW;
         }
 
         var anchorX = anchor.x();
@@ -196,7 +197,7 @@ public final class NoteGeometry {
         // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
         // left by STEM_WIDTH_SS/2, so we compensate.
         var stemLeftX = anchorX - (direction.isUp() ? STEM_WIDTH_SS : STEM_WIDTH_SS / 2);
-        var stemLength = isGrace ? Engraving.GRACE_NOTE_STEM_LENGTH_SS : Engraving.STEM_LENGTH_SS;
+        var stemLength = isGrace ? SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS : SMuFLConstants.STEM_LENGTH_SS;
 
         return new StemGeometry(stemLeftX, anchor.y(), stemLength);
     }
@@ -541,7 +542,7 @@ public final class NoteGeometry {
      * note and reuse it across the note's ledger lines.
      *
      * <p>Each side of the base extent runs beyond the notehead bbox by
-     * {@link Engraving#LEDGER_LINE_LENGTH_FRACTION} × notehead width (LilyPond's proportional rule).
+     * {@link SMuFLConstants#LEDGER_LINE_LENGTH_FRACTION} × notehead width (LilyPond's proportional rule).
      *
      * <p>Every note type passing {@link #noteNeedsLedgerLines} yields a non-null glyph via
      * {@code requireSMuFLGlyph()}, and {@code bbox.left()} is {@code 0.0} for all noteheads, so no
@@ -555,7 +556,7 @@ public final class NoteGeometry {
         var headLeftSs = offsetSs + bbox.left();
         var headRightSs = offsetSs + bbox.right();
         var widthSs = headRightSs - headLeftSs;
-        var extensionSs = Engraving.LEDGER_LINE_LENGTH_FRACTION * widthSs;
+        var extensionSs = SMuFLConstants.LEDGER_LINE_LENGTH_FRACTION * widthSs;
         var baseExtentSs = new LedgerExtentSs(headLeftSs - extensionSs, headRightSs + extensionSs);
 
         return new LedgerLineGeometry(baseExtentSs, getClosestAccidentalComponentBoundsSs(note), headLeftSs);

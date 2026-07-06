@@ -43,34 +43,6 @@ public class StaffExtents {
      * Matches abc2svg's step count. Each step covers lineWidth / YSTEP staff-space units.
      */
     public static final int YSTEP = 128;
-    /**
-     * Height of 5-line staff (4 gaps of 1 ss each)
-     */
-    public static final double STAFF_HEIGHT_SS = 4.0;  // 32px
-    public static final double STAFF_HALF_SS = STAFF_HEIGHT_SS / 2.0;
-    /**
-     * Staff position offset: half of one staff space.
-     * Used to convert between staff positions and Y coordinates.
-     */
-    public static final double STAFF_POSITION_OFFSET_SS = 0.5;  // 4px
-    /**
-     * Staff lines above middle line for ledger lines
-     */
-    public static final int STAFF_LINES_ABOVE = 3;
-    /** Minimum (highest-pitched) valid staff position, in half staff-space units. */
-    public static final int MIN_STAFF_POSITION_SP = -(STAFF_LINES_ABOVE + 2) * 2;
-    /** Minimum staff-space amount reserved above the staff top, derived from MIN_STAFF_POSITION_SP. */
-    public static final double MIN_ABOVE_STAFF_SS =
-        Math.abs(MIN_STAFF_POSITION_SP) * STAFF_POSITION_OFFSET_SS - STAFF_HALF_SS;
-    /**
-     * Staff lines below middle line for ledger lines
-     */
-    public static final int STAFF_LINES_BELOW = 4;
-    /** Maximum (lowest-pitched) valid staff position, in half staff-space units. */
-    public static final int MAX_STAFF_POSITION_SP = (STAFF_LINES_BELOW + 2) * 2;
-    /** Minimum staff-space amount reserved below the staff bottom, derived from MAX_STAFF_POSITION_SP. */
-    public static final double MIN_BELOW_STAFF_SS =
-        MAX_STAFF_POSITION_SP * STAFF_POSITION_OFFSET_SS - STAFF_HALF_SS;
     private final double[] top;
     private final double[] bot;
     private final double lineWidthSs;
@@ -87,16 +59,6 @@ public class StaffExtents {
         this.lineWidthSs = lineWidthSs;
         top = new double[YSTEP];
         bot = new double[YSTEP];
-    }
-
-    /** Converts a staff position (half staff-space units) to staff spaces. */
-    public static double spToSs(int staffPositionSp) {
-        return staffPositionSp * STAFF_POSITION_OFFSET_SS;
-    }
-
-    /** Converts staff spaces to a staff position (half staff-space units). */
-    public static int ssToSp(double ss) {
-        return (int) Math.round(ss / STAFF_POSITION_OFFSET_SS);
     }
 
     /**

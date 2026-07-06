@@ -36,7 +36,6 @@ import songscribe.dom.Tie;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
-import songscribe.layout.LineThickness;
 import songscribe.layout.SongLayoutMetrics;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
@@ -91,7 +90,6 @@ public final class LineInvariants {
     private final int playingNoteIndex;
     private final int playingGraceNoteIndex;
     private final double pixelsPerStaffSpace;
-    private final LineThickness lineThickness;
 
     /** Tie span containing the playing note, resolved once; null when nothing is playing. */
     @Nullable
@@ -121,7 +119,6 @@ public final class LineInvariants {
         playingNoteIndex = b.playingNoteIndex;
         playingGraceNoteIndex = b.playingGraceNoteIndex;
         pixelsPerStaffSpace = ScaleContext.getPixelsPerStaffSpace();
-        lineThickness = LineThickness.getInstance();
         playingTieSpan = (b.playingNoteIndex >= 0 && b.currentLine != null)
             ? b.currentLine.findTieAt(b.playingNoteIndex)
             : null;
@@ -463,11 +460,6 @@ public final class LineInvariants {
 
         // No further lyric on this line: span runs to the end of the line.
         return playingNoteIndex < count;
-    }
-
-    /** Returns the resolved line thicknesses (LilyPond multiplier-derived). */
-    public LineThickness getLineThickness() {
-        return lineThickness;
     }
 
     // ==========================================================================

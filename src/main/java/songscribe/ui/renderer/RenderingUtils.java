@@ -30,15 +30,16 @@ import java.util.function.DoubleConsumer;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.component.ScoreView;
+import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 import songscribe.util.MyFontUtils;
@@ -194,7 +195,7 @@ public final class RenderingUtils {
     static void drawLedgerLine(Graphics2D g2, double leftXSs, double rightXSs, double ySs, LineInvariants invariants) {
         // Color is intentionally not set — inherited from caller so insertion notes
         // draw ledger lines in their own color.
-        var thicknessSs = invariants.getLineThickness().ledgerLineSs();
+        var thicknessSs = LineThickness.LEDGER_LINE_SS;
         GraphicUtils.drawRoundedLine(g2, leftXSs, ySs, rightXSs, ySs, thicknessSs);
     }
 
@@ -300,7 +301,7 @@ public final class RenderingUtils {
      * @return Y coordinate for the note in staff spaces
      */
     public static double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
-        return middleLineYSs + StaffExtents.spToSs(staffPosition);
+        return middleLineYSs + Staff.spToSs(staffPosition);
     }
 
     /**
@@ -320,7 +321,7 @@ public final class RenderingUtils {
         var step = (staffPosition > 0) ? -2 : 2;
 
         while (Math.abs(i) > 5) {
-            consumer.accept(StaffExtents.spToSs(i - staffPosition));
+            consumer.accept(Staff.spToSs(i - staffPosition));
             i += step;
         }
     }
@@ -339,9 +340,9 @@ public final class RenderingUtils {
         double anchorX;
 
         if (isMinim) {
-            anchorX = (upper ? Engraving.NOTEHEAD_HALF_STEM_UP_SE : Engraving.NOTEHEAD_HALF_STEM_DOWN_NW).x();
+            anchorX = (upper ? SMuFLConstants.NOTEHEAD_HALF_STEM_UP_SE : SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW).x();
         } else {
-            anchorX = (upper ? Engraving.NOTEHEAD_BLACK_STEM_UP_SE : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW).x();
+            anchorX = (upper ? SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE : SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW).x();
         }
 
         // upper: SE anchor is the stem's right edge; center = anchorX - half stem width

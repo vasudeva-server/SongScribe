@@ -44,7 +44,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 
 class LyricLayoutBuilderTest extends UnitTest {
 
@@ -110,7 +110,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             element,
             Collections.emptyList(),
             0.0,
-            Engraving.NOTE_HEAD_WIDTH_SS,
+            SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, syllableWidthSs, false);
         column.setXSs(xSs);
         return column;
@@ -214,7 +214,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         // With syllableWidthSs=0, boxXSs == noteCenter (columnXSs + rightExtent/2) for each column.
         // A hyphen opens at syllableEnd (= boxXSs + 0) and closes at the next box's xSs.
-        var halfHeadWidthSs = Engraving.NOTE_HEAD_WIDTH_SS / 2.0;
+        var halfHeadWidthSs = SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0;
         var box0XSs = col0XSs + halfHeadWidthSs;
         var box1XSs = col1XSs + halfHeadWidthSs;
         var box2XSs = col2XSs + halfHeadWidthSs;
@@ -286,7 +286,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         addToLine(n1);
 
         var noteXSs = 10.0;
-        var rightExtentExcludingAugmentationSs = Engraving.NOTE_HEAD_WIDTH_SS;
+        var rightExtentExcludingAugmentationSs = SMuFLConstants.NOTE_HEAD_WIDTH_SS;
         var rightExtentWithDotsSs = rightExtentExcludingAugmentationSs + FAKE_DOT_EXTENT_SS;
 
         // Full public constructor: rightExtentSs includes the dot, rightExtentExcludingAugmentationSs does not.

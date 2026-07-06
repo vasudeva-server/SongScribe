@@ -36,8 +36,8 @@ import songscribe.dom.AccidentalBounds;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
-import songscribe.layout.StaffExtents;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.Staff;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -299,7 +299,7 @@ class NoteGeometryTest extends UnitTest {
             var offset = NoteGeometry.getNoteheadXOffsetSs(noteType, direction);
             var headLeft = offset + bbox.left();
             var headRight = offset + bbox.right();
-            var expectedExtension = Engraving.LEDGER_LINE_LENGTH_FRACTION * (headRight - headLeft);
+            var expectedExtension = SMuFLConstants.LEDGER_LINE_LENGTH_FRACTION * (headRight - headLeft);
 
             var leftExtension = headLeft - actual.leftSs();
             var rightExtension = actual.rightSs() - headRight;
@@ -403,7 +403,7 @@ class NoteGeometryTest extends UnitTest {
             note.setStaffPosition(ONE_LEDGER_BELOW_SP);
             note.setAccidental(Accidental.SHARP);
 
-            var ledgerYSs = StaffExtents.spToSs(LEDGER_WITHIN_ACC_RANGE_SP);
+            var ledgerYSs = Staff.spToSs(LEDGER_WITHIN_ACC_RANGE_SP);
             var baseExtent = NoteGeometry.getLedgerLineBaseExtentSs(note);
             var accBounds = requireAccBounds(note);
 
@@ -443,7 +443,7 @@ class NoteGeometryTest extends UnitTest {
             note.setStaffPosition(THREE_LEDGERS_BELOW_SP);
             note.setAccidental(Accidental.SHARP);
 
-            var ledgerYSs = StaffExtents.spToSs(LEDGER_OUTSIDE_ACC_RANGE_SP);
+            var ledgerYSs = Staff.spToSs(LEDGER_OUTSIDE_ACC_RANGE_SP);
             var baseExtent = NoteGeometry.getLedgerLineBaseExtentSs(note);
             var accBounds = requireAccBounds(note);
 
@@ -473,7 +473,7 @@ class NoteGeometryTest extends UnitTest {
             note.setStaffPosition(ONE_LEDGER_BELOW_SP);
             note.setAccidental(Accidental.SHARP);
 
-            var ledgerYSs = StaffExtents.spToSs(LEDGER_WITHIN_ACC_RANGE_SP);
+            var ledgerYSs = Staff.spToSs(LEDGER_WITHIN_ACC_RANGE_SP);
             var baseExtent = NoteGeometry.getLedgerLineBaseExtentSs(note);
             var accBounds = requireAccBounds(note);
             var accRight = accBounds.leftSs() + accBounds.widthSs();
@@ -517,7 +517,7 @@ class NoteGeometryTest extends UnitTest {
             assertThat(flatBounds.leftSs() + flatBounds.widthSs())
                 .isCloseTo(fullBounds.leftSs() + fullBounds.widthSs(), within(TOLERANCE));
 
-            var ledgerYSs = StaffExtents.spToSs(LEDGER_WITHIN_ACC_RANGE_SP);
+            var ledgerYSs = Staff.spToSs(LEDGER_WITHIN_ACC_RANGE_SP);
 
             // Shortening only engages when the ledger Y sits within the flat's vertical extent.
             assertThat(ledgerYSs)
@@ -578,7 +578,7 @@ class NoteGeometryTest extends UnitTest {
             note.setStaffPosition(ONE_LEDGER_BELOW_SP);
 
             var baseExtent = NoteGeometry.getLedgerLineBaseExtentSs(note);
-            var actual = NoteGeometry.getLedgerLineExtentSs(note, StaffExtents.spToSs(LEDGER_WITHIN_ACC_RANGE_SP));
+            var actual = NoteGeometry.getLedgerLineExtentSs(note, Staff.spToSs(LEDGER_WITHIN_ACC_RANGE_SP));
 
             assertThat(actual.leftSs()).isCloseTo(baseExtent.leftSs(), within(TOLERANCE));
             assertThat(actual.rightSs()).isCloseTo(baseExtent.rightSs(), within(TOLERANCE));

@@ -30,6 +30,7 @@ import songscribe.layout.LayoutResult;
 import songscribe.dom.LineElement;
 import songscribe.dom.RangeElement;
 import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 
 /**
  * Shared static helpers used by all stacking delegates.
@@ -51,14 +52,14 @@ public final class StackingUtils {
 
     // Y coordinate of the top staff line in the middleLineY=0 coordinate system
     static final double STAFF_TOP_Y_SS =
-        TOP_STAFF_LINE_POSITION * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        TOP_STAFF_LINE_POSITION * Staff.STAFF_POSITION_OFFSET_SS;
 
     // Staff position of the bottom staff line (E4); positions >= this are at or below the staff
     static final int BOTTOM_STAFF_LINE_POSITION = 4;
 
     // Y coordinate of the bottom staff line in the middleLineY=0 coordinate system
     static final double STAFF_BOT_Y_SS =
-        BOTTOM_STAFF_LINE_POSITION * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        BOTTOM_STAFF_LINE_POSITION * Staff.STAFF_POSITION_OFFSET_SS;
 
     // Horizontal collision margin for structural/system elements (collapses between adjacent elements)
     static final double STRUCTURAL_HORIZONTAL_MARGIN_SS = 0.75; // 6px
@@ -92,7 +93,7 @@ public final class StackingUtils {
             return STAFF_TOP_Y_SS;
         }
 
-        var noteHeadYSs = staffPosition * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = staffPosition * Staff.STAFF_POSITION_OFFSET_SS;
         return noteHeadYSs - NOTE_HEAD_RADIUS_SS;
     }
 
@@ -104,7 +105,7 @@ public final class StackingUtils {
             return STAFF_BOT_Y_SS;
         }
 
-        var noteHeadYSs = staffPosition * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = staffPosition * Staff.STAFF_POSITION_OFFSET_SS;
         return noteHeadYSs + NOTE_HEAD_RADIUS_SS;
     }
 
@@ -122,7 +123,7 @@ public final class StackingUtils {
             return anchorCeilingSs(staffPosition);
         }
 
-        var noteHeadYSs = staffPosition * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = staffPosition * Staff.STAFF_POSITION_OFFSET_SS;
         var distanceSs = StaffElement.isLinePosition(staffPosition)
             ? STACCATO_ON_LINE_DISTANCE_SS
             : STACCATO_BETWEEN_LINES_DISTANCE_SS;
@@ -140,7 +141,7 @@ public final class StackingUtils {
             return anchorFloorSs(staffPosition);
         }
 
-        var noteHeadYSs = staffPosition * StaffExtents.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = staffPosition * Staff.STAFF_POSITION_OFFSET_SS;
         var distanceSs = StaffElement.isLinePosition(staffPosition)
             ? STACCATO_ON_LINE_DISTANCE_SS
             : STACCATO_BETWEEN_LINES_DISTANCE_SS;

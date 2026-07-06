@@ -32,7 +32,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -67,7 +67,7 @@ public class ElementColumnBuilder {
         SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL).width();
 
     // Half note head width (for left/right extent calculation) (ss)
-    static final double HALF_NOTE_HEAD_SS = Engraving.NOTE_HEAD_WIDTH_SS / 2.0;
+    static final double HALF_NOTE_HEAD_SS = SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0;
 
     private final LyricRenderMetrics lyricRenderMetrics;
 
@@ -271,7 +271,7 @@ public class ElementColumnBuilder {
     private static double getNoteheadRightExtent(ElementType type) {
         return type.isGraceNote()
             ? NOTE_HEAD_SMALL_WIDTH_SS
-            : Engraving.NOTE_HEAD_WIDTH_SS;
+            : SMuFLConstants.NOTE_HEAD_WIDTH_SS;
     }
 
     // ==========================================================================
@@ -296,7 +296,7 @@ public class ElementColumnBuilder {
 
         // Stem up: stem extends upward
         if (element.getDirection().isDown()) {
-            return -Engraving.STEM_LENGTH_SS;
+            return -SMuFLConstants.STEM_LENGTH_SS;
         }
 
         // Stem down: top is just above element head
@@ -321,7 +321,7 @@ public class ElementColumnBuilder {
 
         // Stem down: stem extends downward
         if (element.getDirection().isUp()) {
-            return Engraving.STEM_LENGTH_SS;
+            return SMuFLConstants.STEM_LENGTH_SS;
         }
 
         // Stem up: bottom is just below element head

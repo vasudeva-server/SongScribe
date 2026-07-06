@@ -55,7 +55,7 @@ import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.PageModel;
-import songscribe.layout.StaffExtents;
+import songscribe.engraving.Staff;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 
@@ -262,7 +262,7 @@ class ScoreViewTest extends UnitTest {
 
             var expected = (int) Math.round(
                 middleLineY
-                    + ScaleContext.ssToPx(StaffExtents.spToSs(staffPosition))
+                    + ScaleContext.ssToPx(Staff.spToSs(staffPosition))
                     + lineIndex * rowHeight
             );
 

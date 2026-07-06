@@ -32,7 +32,7 @@ import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.LayoutResult;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.dom.Trill;
 import songscribe.util.GraphicsState;
 
@@ -89,7 +89,7 @@ public final class TrillRenderer {
         LayoutResult layoutResult
     ) {
         if (endNote != null && endNote != anchor) {
-            var endXSs = layoutResult.getElementXSs(endNote) + Engraving.NOTE_HEAD_WIDTH_SS;
+            var endXSs = layoutResult.getElementXSs(endNote) + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
             renderTrill(g2, layoutXSs, endXSs, trillTopYSs, color);
         } else {
             var trillXSs = RenderingUtils.centeredGlyphX(layoutXSs,

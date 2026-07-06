@@ -26,7 +26,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
@@ -44,7 +43,8 @@ import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.StaffExtents;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.Staff;
+import songscribe.engraving.SMuFLConstants;
 
 class NoteAttachedStackerTest extends UnitTest {
 
@@ -127,7 +127,7 @@ class NoteAttachedStackerTest extends UnitTest {
             // Stem-down CROTCHET at staff center — no stem layout, so type-geometry path.
             var note = stemDownNote(STAFF_CENTER_SP);
             var type = note.getType();
-            var centerYSs = StaffExtents.spToSs(STAFF_CENTER_SP);
+            var centerYSs = Staff.spToSs(STAFF_CENTER_SP);
             var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
             var noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
             var expectedTopSs = Math.min(centerYSs + type.getTopYOffsetSs(StaffElement.Direction.DOWN), noteheadTopSs);
@@ -152,9 +152,9 @@ class NoteAttachedStackerTest extends UnitTest {
             var extents = new StaffExtents(LINE_WIDTH_SS);
             new NoteAttachedStacker(context, extents).stack();
 
-            assertThat(extents.yGet(true, START_NOTE_X_SS, Engraving.NOTE_HEAD_WIDTH_SS))
+            assertThat(extents.yGet(true, START_NOTE_X_SS, SMuFLConstants.NOTE_HEAD_WIDTH_SS))
                 .isCloseTo(EXTREME_STEM_TOP_SS, within(TOLERANCE));
-            assertThat(extents.yGet(false, START_NOTE_X_SS, Engraving.NOTE_HEAD_WIDTH_SS))
+            assertThat(extents.yGet(false, START_NOTE_X_SS, SMuFLConstants.NOTE_HEAD_WIDTH_SS))
                 .isCloseTo(EXTREME_STEM_BOT_SS, within(TOLERANCE));
         }
 
@@ -170,7 +170,7 @@ class NoteAttachedStackerTest extends UnitTest {
             // topSs for a stem-down note at staff center is negative (notehead top is
             // above center), so it beats the initial 0.0 and is captured by yGet.
             var expectedTopSs = NoteAttachedStacker.computeNoteBounds(note).topSs();
-            assertThat(extents.yGet(true, START_NOTE_X_SS, Engraving.NOTE_HEAD_WIDTH_SS))
+            assertThat(extents.yGet(true, START_NOTE_X_SS, SMuFLConstants.NOTE_HEAD_WIDTH_SS))
                 .isCloseTo(expectedTopSs, within(TOLERANCE));
         }
     }
@@ -191,7 +191,7 @@ class NoteAttachedStackerTest extends UnitTest {
             new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
 
             var expected =
-                StaffExtents.spToSs(LEDGER_LINE_BELOW_SP) + StackingUtils.NOTE_HEAD_RADIUS_SS;
+                Staff.spToSs(LEDGER_LINE_BELOW_SP) + StackingUtils.NOTE_HEAD_RADIUS_SS;
             assertThat(context.getLowestNoteBotSs()).isCloseTo(expected, within(TOLERANCE));
         }
 
@@ -288,7 +288,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
             // Query at mid-span — the entire tie arc is sampled above, so the min equals arcY.
             var midTieXSs = (START_NOTE_X_SS + END_NOTE_X_SS) / 2.0;
-            assertThat(extents.yGet(true, midTieXSs, Engraving.NOTE_HEAD_WIDTH_SS))
+            assertThat(extents.yGet(true, midTieXSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS))
                 .isCloseTo(PROTRUDING_ARC_Y_SS, within(TOLERANCE));
         }
     }
@@ -563,7 +563,7 @@ class NoteAttachedStackerTest extends UnitTest {
             var dotCenterMagSs = -StackingUtils.staccatoAnchorCeilingSs(GAP_BINDS_ABOVE_SP);
             var targetMagSs = Math.max(
                 dotCenterMagSs + NoteAttachedStacker.STACCATO_TIE_GAP_SS,
-                StaffExtents.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS);
+                Staff.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS);
             var expectedYSs = -targetMagSs;
 
             var shiftedTie = require(builder.getTieLayout(tie));
@@ -638,7 +638,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
             var targetMagSs = Math.max(
                 endDotCenterMagSs + NoteAttachedStacker.STACCATO_TIE_GAP_SS,
-                StaffExtents.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS);
+                Staff.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS);
 
             var shiftedTie = require(builder.getTieLayout(tie));
             assertThat(shiftedTie.startYSs())
@@ -661,7 +661,7 @@ class NoteAttachedStackerTest extends UnitTest {
             for (var sp : new int[] {STAFF_CENTER_SP, SP_SPACE_ADJACENT_TO_CENTRE_ABOVE}) {
                 var shiftedTie = shiftedTieForStaccatoNoteAbove(sp);
                 var expectedYSs =
-                    -(StaffExtents.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS);
+                    -(Staff.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS);
 
                 assertThat(shiftedTie.startYSs())
                     .describedAs("sp=%d: staff-line clearance must win over the dot clearance".formatted(sp))
@@ -674,7 +674,7 @@ class NoteAttachedStackerTest extends UnitTest {
             for (var sp : new int[] {GAP_BINDS_ABOVE_SP, SP_SPACE_TWO_OUT_ABOVE}) {
                 var shiftedTie = shiftedTieForStaccatoNoteAbove(sp);
                 var dotCenterMagSs = -StackingUtils.staccatoAnchorCeilingSs(sp);
-                var staffLineTermSs = StaffExtents.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+                var staffLineTermSs = Staff.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
                 var dotTermSs = dotCenterMagSs + NoteAttachedStacker.STACCATO_TIE_GAP_SS;
 
                 // Sanity: this sp must actually exercise the dot-bound branch, not the staff-line one.
@@ -767,7 +767,7 @@ class NoteAttachedStackerTest extends UnitTest {
         void testStaffLineTermWinsForDownwardArcingTie() {
             for (var sp : new int[] {STAFF_CENTER_SP, SP_SPACE_ADJACENT_TO_CENTRE_BELOW}) {
                 var shiftedTie = shiftedTieForStaccatoNoteBelow(sp);
-                var expectedYSs = StaffExtents.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+                var expectedYSs = Staff.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
 
                 assertThat(shiftedTie.startYSs())
                     .describedAs("sp=%d: staff-line clearance must win for a downward-arcing tie too".formatted(sp))
@@ -780,7 +780,7 @@ class NoteAttachedStackerTest extends UnitTest {
             for (var sp : new int[] {SP_LINE_TWO_OUT_BELOW, SP_SPACE_TWO_OUT_BELOW}) {
                 var shiftedTie = shiftedTieForStaccatoNoteBelow(sp);
                 var dotCenterMagSs = StackingUtils.staccatoAnchorFloorSs(sp);
-                var staffLineTermSs = StaffExtents.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+                var staffLineTermSs = Staff.STAFF_HALF_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
                 var dotTermSs = dotCenterMagSs + NoteAttachedStacker.STACCATO_TIE_GAP_SS;
 
                 // Sanity: this sp must actually exercise the dot-bound branch, not the staff-line one.

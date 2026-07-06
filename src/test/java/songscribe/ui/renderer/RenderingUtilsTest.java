@@ -37,8 +37,8 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.layout.NoteGeometry;
-import songscribe.layout.StaffExtents;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.Staff;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.ui.component.ScoreView;
 
 class RenderingUtilsTest extends UnitTest {
@@ -112,7 +112,7 @@ class RenderingUtilsTest extends UnitTest {
         var positions = new ArrayList<Double>();
         RenderingUtils.forEachLedgerLineYSs(7, positions::add);
 
-        assertThat(positions).containsExactly(StaffExtents.spToSs(-1));
+        assertThat(positions).containsExactly(Staff.spToSs(-1));
     }
 
     // forEachLedgerLineYSs — two ledger lines below staff
@@ -124,8 +124,8 @@ class RenderingUtilsTest extends UnitTest {
         RenderingUtils.forEachLedgerLineYSs(9, positions::add);
 
         assertThat(positions).containsExactly(
-            StaffExtents.spToSs(-1),
-            StaffExtents.spToSs(-3)
+            Staff.spToSs(-1),
+            Staff.spToSs(-3)
         );
     }
 
@@ -138,7 +138,7 @@ class RenderingUtilsTest extends UnitTest {
         var positions = new ArrayList<Double>();
         RenderingUtils.forEachLedgerLineYSs(-7, positions::add);
 
-        assertThat(positions).containsExactly(StaffExtents.spToSs(1));
+        assertThat(positions).containsExactly(Staff.spToSs(1));
     }
 
     // forEachLedgerLineYSs — on-staff position produces no ledger lines
@@ -159,8 +159,8 @@ class RenderingUtilsTest extends UnitTest {
         RenderingUtils.forEachLedgerLineYSs(8, positions::add);
 
         assertThat(positions).containsExactly(
-            StaffExtents.spToSs(0),
-            StaffExtents.spToSs(-2)
+            Staff.spToSs(0),
+            Staff.spToSs(-2)
         );
     }
 
@@ -186,28 +186,28 @@ class RenderingUtilsTest extends UnitTest {
     // stemCenterXOffsetSs — all 4 branches: minim-up, minim-down, black-up, black-down
     @Test
     void testStemCenterXOffsetSsMinimUp() {
-        var expected = Engraving.NOTEHEAD_HALF_STEM_UP_SE.x() - NoteGeometry.STEM_WIDTH_SS / 2.0;
+        var expected = SMuFLConstants.NOTEHEAD_HALF_STEM_UP_SE.x() - NoteGeometry.STEM_WIDTH_SS / 2.0;
         assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.MINIM, StaffElement.Direction.UP))
             .isCloseTo(expected, within(1e-9));
     }
 
     @Test
     void testStemCenterXOffsetSsMinimDown() {
-        var expected = Engraving.NOTEHEAD_HALF_STEM_DOWN_NW.x();
+        var expected = SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW.x();
         assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.MINIM, StaffElement.Direction.DOWN))
             .isCloseTo(expected, within(1e-9));
     }
 
     @Test
     void testStemCenterXOffsetSsBlackNoteheadUp() {
-        var expected = Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() - NoteGeometry.STEM_WIDTH_SS / 2.0;
+        var expected = SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE.x() - NoteGeometry.STEM_WIDTH_SS / 2.0;
         assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.CROTCHET, StaffElement.Direction.UP))
             .isCloseTo(expected, within(1e-9));
     }
 
     @Test
     void testStemCenterXOffsetSsBlackNoteheadDown() {
-        var expected = Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x();
+        var expected = SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW.x();
         assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.CROTCHET, StaffElement.Direction.DOWN))
             .isCloseTo(expected, within(1e-9));
     }

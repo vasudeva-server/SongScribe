@@ -40,7 +40,8 @@ import songscribe.font.DocumentFonts;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
-import songscribe.smufl.Engraving;
+import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.Staff;
 
 @SuppressWarnings("DataFlowIssue")
 class LayoutEngineTest extends UnitTest {
@@ -198,7 +199,7 @@ class LayoutEngineTest extends UnitTest {
         var keySig = require(result.getKeySignature(), "KeySignature");
 
         var expectedXSs = LayoutEngine.CLEF_X_POSITION_SS
-            + Engraving.G_CLEF_WIDTH_SS
+            + SMuFLConstants.G_CLEF_WIDTH_SS
             + new Clef().getMarginRightSs();
 
         assertThat(keySig.getXSs()).isCloseTo(expectedXSs, within(TOLERANCE));
@@ -302,8 +303,8 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var stem = require(result.getStemLayout(element), "StemLayout");
 
-        var elementYSs = StaffExtents.spToSs(SP_BELOW_MIDDLE);
-        assertThat(stem.topYSs()).describedAs("stem-up top Y").isCloseTo(elementYSs - Engraving.STEM_LENGTH_SS, within(TOLERANCE));
+        var elementYSs = Staff.spToSs(SP_BELOW_MIDDLE);
+        assertThat(stem.topYSs()).describedAs("stem-up top Y").isCloseTo(elementYSs - SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
         assertThat(stem.bottomYSs()).describedAs("stem-up bottom Y").isCloseTo(elementYSs, within(TOLERANCE));
     }
 
@@ -318,9 +319,9 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var stem = require(result.getStemLayout(element), "StemLayout");
 
-        var elementYSs = StaffExtents.spToSs(SP_ABOVE_MIDDLE);
+        var elementYSs = Staff.spToSs(SP_ABOVE_MIDDLE);
         assertThat(stem.topYSs()).describedAs("stem-down top Y").isCloseTo(elementYSs, within(TOLERANCE));
-        assertThat(stem.bottomYSs()).describedAs("stem-down bottom Y").isCloseTo(elementYSs + Engraving.STEM_LENGTH_SS, within(TOLERANCE));
+        assertThat(stem.bottomYSs()).describedAs("stem-down bottom Y").isCloseTo(elementYSs + SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
     }
 
     // T10: Unbeamed grace note always gets stem up, with grace-note stem length, even when above the middle line
@@ -334,8 +335,8 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var stem = require(result.getStemLayout(element), "StemLayout");
 
-        var elementYSs = StaffExtents.spToSs(SP_ABOVE_MIDDLE_GRACE);
-        assertThat(stem.topYSs()).describedAs("grace stem-up top Y").isCloseTo(elementYSs - Engraving.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
+        var elementYSs = Staff.spToSs(SP_ABOVE_MIDDLE_GRACE);
+        assertThat(stem.topYSs()).describedAs("grace stem-up top Y").isCloseTo(elementYSs - SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
         assertThat(stem.bottomYSs()).describedAs("grace stem-up bottom Y").isCloseTo(elementYSs, within(TOLERANCE));
     }
 
@@ -352,9 +353,9 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var stem = require(result.getStemLayout(element), "StemLayout");
 
-        var elementYSs = StaffExtents.spToSs(SP_BELOW_MIDDLE_MANUAL);
+        var elementYSs = Staff.spToSs(SP_BELOW_MIDDLE_MANUAL);
         assertThat(stem.topYSs()).describedAs("manual stem-down top Y").isCloseTo(elementYSs, within(TOLERANCE));
-        assertThat(stem.bottomYSs()).describedAs("manual stem-down bottom Y").isCloseTo(elementYSs + Engraving.STEM_LENGTH_SS, within(TOLERANCE));
+        assertThat(stem.bottomYSs()).describedAs("manual stem-down bottom Y").isCloseTo(elementYSs + SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
     }
 
     // T12a: Beamed group with all notes above the middle line → auto stem direction is down (stemsUp=false)
@@ -459,7 +460,7 @@ class LayoutEngineTest extends UnitTest {
             var stem = require(result.getStemLayout(note), "StemLayout at sp=" + sp);
             assertThat(stem.bottomYSs() - stem.topYSs())
                 .describedAs("stem length at sp=%d must be ≥ minimum stem length".formatted(sp))
-                .isGreaterThanOrEqualTo(Engraving.STEM_LENGTH_SS - TOLERANCE);
+                .isGreaterThanOrEqualTo(SMuFLConstants.STEM_LENGTH_SS - TOLERANCE);
         }
     }
 
@@ -547,7 +548,7 @@ class LayoutEngineTest extends UnitTest {
         var noteXSs = result.getElementXSs(note1);
         assertThat(tieLayout.startXSs())
             .describedAs("tie startXSs must equal anchorNote X + NOTE_HEAD_WIDTH_SS / 2 (notehead center)")
-            .isCloseTo(noteXSs + Engraving.NOTE_HEAD_WIDTH_SS / 2, within(TOLERANCE));
+            .isCloseTo(noteXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2, within(TOLERANCE));
     }
 
     // T23: Tie direction: stem-up note (isUpper=true, direction=+1) has arc bulging downward.
@@ -591,7 +592,7 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
 
-        var unshiftedYSs = StaffExtents.spToSs(SP_TIE_LINE_DOWN_ARC) + LayoutEngine.NATURAL_TIE_GAP_SS;
+        var unshiftedYSs = Staff.spToSs(SP_TIE_LINE_DOWN_ARC) + LayoutEngine.NATURAL_TIE_GAP_SS;
 
         assertThat(tieLayout.startYSs() - unshiftedYSs)
             .describedAs("tip-on-line shift must equal exactly STAFF_LINE_TIE_CLEARANCE_GAP_SS")
@@ -604,7 +605,7 @@ class LayoutEngineTest extends UnitTest {
     // T32: A short arc whose body already clears the nearest staff line keeps its natural height.
     @Test
     void testTieAlreadyClearOfStaffLinesKeepsNaturalHeight() {
-        var baseYSs = StaffExtents.spToSs(SP_TIE_SPACE_CENTER);
+        var baseYSs = Staff.spToSs(SP_TIE_SPACE_CENTER);
 
         var heightSs = LayoutEngine.tieLineAvoidedHeightSs(baseYSs, 1, TIE_TEST_CLEAR_HEIGHT_SS);
 
@@ -617,7 +618,7 @@ class LayoutEngineTest extends UnitTest {
     //      clearance below the line (fit-below), and the flattened height is below the natural height.
     @Test
     void testTieFlattenedToKeepOuterEdgeBelowLine() {
-        var baseYSs = StaffExtents.spToSs(SP_TIE_SPACE_CENTER);
+        var baseYSs = Staff.spToSs(SP_TIE_SPACE_CENTER);
         var halfStrokeSs = LayoutEngine.TIE_OUTLINE_THICKNESS_SS / 2;
         var nearestLineYSs = (double) Math.round(
             baseYSs + LayoutEngine.TIE_APEX_CONTROL_REACH * TIE_TEST_FLATTEN_HEIGHT_SS);
@@ -640,7 +641,7 @@ class LayoutEngineTest extends UnitTest {
     //      height above the endpoints (clear-above), exceeding the natural height.
     @Test
     void testTieHeightenedToFixedInkHeightAboveLine() {
-        var baseYSs = StaffExtents.spToSs(SP_TIE_SPACE_CENTER);
+        var baseYSs = Staff.spToSs(SP_TIE_SPACE_CENTER);
 
         var heightSs = LayoutEngine.tieLineAvoidedHeightSs(baseYSs, 1, TIE_TEST_HEIGHTEN_HEIGHT_SS);
 
@@ -658,7 +659,7 @@ class LayoutEngineTest extends UnitTest {
     //      apex favors rather than being squashed under the line.
     @Test
     void testTiePokingPastLineIsHeightenedNotFlattened() {
-        var baseYSs = StaffExtents.spToSs(SP_TIE_SPACE_CENTER);
+        var baseYSs = Staff.spToSs(SP_TIE_SPACE_CENTER);
 
         var heightSs = LayoutEngine.tieLineAvoidedHeightSs(baseYSs, 1, TIE_TEST_POKE_HEIGHT_SS);
 
@@ -763,7 +764,7 @@ class LayoutEngineTest extends UnitTest {
 
         for (var arcSignSs : new int[] {-1, 1}) {
             for (var sp : new int[] {0, SP_TIE_LINE_DOWN_ARC, SP_TIE_SPACE_CENTER, SP_TIE_LINE_BEYOND_NUDGE_BOUND}) {
-                var unshiftedYSs = StaffExtents.spToSs(sp) + arcSignSs * LayoutEngine.NATURAL_TIE_GAP_SS;
+                var unshiftedYSs = Staff.spToSs(sp) + arcSignSs * LayoutEngine.NATURAL_TIE_GAP_SS;
                 var expectedNudgeSs = nudgedPositions.contains(sp)
                     ? arcSignSs * LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS
                     : 0.0;
@@ -801,7 +802,7 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
 
-        var unshiftedYSs = StaffExtents.spToSs(SP_TIE_LINE_UP_ARC) - LayoutEngine.NATURAL_TIE_GAP_SS;
+        var unshiftedYSs = Staff.spToSs(SP_TIE_LINE_UP_ARC) - LayoutEngine.NATURAL_TIE_GAP_SS;
         var expectedShiftSs = -LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
 
         assertThat(tieLayout.startYSs() - unshiftedYSs)
@@ -937,10 +938,10 @@ class LayoutEngineTest extends UnitTest {
                 .isCloseTo(0.0, within(TOLERANCE));
 
             // Grace notes auto-direction to stem-up; an unextended grace stem keeps its grace length.
-            var elementYSs = StaffExtents.spToSs(SP_LEDGER_ABOVE_2);
+            var elementYSs = Staff.spToSs(SP_LEDGER_ABOVE_2);
             assertThat(stem.topYSs())
                 .describedAs("grace stem-up top Y keeps grace length (no lengthening)")
-                .isCloseTo(elementYSs - Engraving.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
+                .isCloseTo(elementYSs - SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
             assertThat(stem.bottomYSs())
                 .describedAs("grace stem-up bottom Y sits at the notehead")
                 .isCloseTo(elementYSs, within(TOLERANCE));
@@ -980,10 +981,10 @@ class LayoutEngineTest extends UnitTest {
                 .isCloseTo(0.0, within(TOLERANCE));
 
             // Tip keeps the natural stem length, moving further from centre rather than toward it.
-            var elementYSs = StaffExtents.spToSs(SP_LEDGER_ABOVE_2);
+            var elementYSs = Staff.spToSs(SP_LEDGER_ABOVE_2);
             assertThat(stem.topYSs())
                 .describedAs("away-from-centre up-stem keeps its natural length")
-                .isCloseTo(elementYSs - Engraving.STEM_LENGTH_SS, within(TOLERANCE));
+                .isCloseTo(elementYSs - SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
         }
     }
 }
