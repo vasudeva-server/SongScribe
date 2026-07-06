@@ -805,65 +805,6 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Trill
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testToggleTrillEmitsRangeElementAddition() {
-        var env = setupEnv(crotchet(), crotchet(), crotchet());
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        env.operations().toggleTrill();
-
-        var notification = captureSingleDidChange();
-        var mutations = notification.getMutations();
-        assertThat(mutations).hasSize(1);
-        assertThat(mutations.getFirst()).isInstanceOf(RangeElementAddition.class);
-        assertThat(((RangeElementAddition) mutations.getFirst()).line()).isSameAs(env.line());
-    }
-
-    @Test
-    void testToggleTrillOffResultsInNoTrill() {
-        var env = setupEnv(crotchet(), crotchet(), crotchet());
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        // Add trill, then remove it
-        env.operations().toggleTrill();
-        env.operations().toggleTrill();
-
-        // After two toggles the line should have no trill range elements
-        assertThat(env.line().findRangeElements(Trill.class))
-            .as("trill removed after second toggle").isEmpty();
-    }
-
-    @Test
-    void testToggleTrillRemovesAllOverlappingTrillsInSingleNotification() {
-        // Two pre-existing trills both overlapping the selection must each be removed
-        // in a single notification containing two RangeElementRemoval mutations.
-        //
-        // Layout: [CROTCHET(0), CROTCHET(1), CROTCHET(2), CROTCHET(3), CROTCHET(4)]
-        // trill1: [0..1], trill2: [3..4], selection: [0..4] — both trills overlap.
-        var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet(), crotchet());
-        var line = env.line();
-        song.withoutMutationTracking(() -> {
-            line.addRangeElement(new Trill(line.getElement(0), line.getElement(1)));
-            line.addRangeElement(new Trill(line.getElement(3), line.getElement(4)));
-        });
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 4);
-        env.operations().toggleTrill();
-
-        var notification = captureSingleDidChange();
-        var mutations = notification.getMutations();
-        var removals = mutations.stream()
-            .filter(m -> m instanceof RangeElementRemoval r && r.element() instanceof Trill)
-            .toList();
-        assertThat(removals)
-            .as("both overlapping trills removed in one notification")
-            .hasSize(2);
-        assertThat(mutations)
-            .as("no mutations other than the two trill removals")
-            .hasSize(2);
-    }
-
-    // -----------------------------------------------------------------------
     // Stem direction
     // -----------------------------------------------------------------------
 

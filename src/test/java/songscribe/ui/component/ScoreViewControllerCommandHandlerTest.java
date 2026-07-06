@@ -48,7 +48,6 @@ import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.command.RemoveDynamicsCommand;
 import songscribe.message.command.ToggleBeamCommand;
 import songscribe.message.command.ToggleTieCommand;
-import songscribe.message.command.ToggleTrillCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.CrescendoAddition;
@@ -306,22 +305,6 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         assertThat(mutations).hasSize(2);
         assertThat(mutations.get(0)).isInstanceOf(CrescendoRemoval.class);
         assertThat(mutations.get(1)).isInstanceOf(DiminuendoRemoval.class);
-    }
-
-    // -----------------------------------------------------------------------
-    // Trill
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testHandleToggleTrillEmitsOneNotificationWithSingleRangeElementAddition() {
-        var env = setupTest(crotchet(), crotchet(), crotchet());
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-
-        env.scoreMessageCoordinator().handleToggleTrill(new ToggleTrillCommand());
-
-        var notification = captureSingleDidChange();
-        assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().getFirst()).isInstanceOf(RangeElementAddition.class);
     }
 
     // -----------------------------------------------------------------------

@@ -346,7 +346,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         uiFlagged.setEnabled(true);
 
         // unflaggedAction does not carry DISABLE_IN_GRACE_MODE → must not be restored
-        var unflaggedAction = FermataAction.createAction(mainFrame());
+        var unflaggedAction = AccidentalAction.createSharpAction(mainFrame());
         var uiUnflagged = (SelectableUIAction) unflaggedAction;
         uiUnflagged.setSelected(false);
         uiUnflagged.setEnabled(true);

@@ -236,8 +236,6 @@ public final class EditModeManager {
             Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()
         );
 
-        element.setFermata(Actions.FERMATA_ACTION.isSelected());
-
         element.clearArticulations();
 
         if (Actions.ACCENT_ACTION.isSelected()) {
@@ -315,8 +313,7 @@ public final class EditModeManager {
 
         var nextElement = inst.previewElement.getType().newInstance();
 
-        // After inserting an element, turn off fermata and accidental parentheses
-        Actions.FERMATA_ACTION.setSelected(false);
+        // After inserting an element, turn off accidental parentheses
         Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(false);
 
         // Add any other element decorations

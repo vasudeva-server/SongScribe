@@ -34,10 +34,10 @@ import songscribe.dom.StaffElement;
 
 /**
  * Regression tests for issue #426: replacing an existing note must honor the note-entry
- * decorations (accidental, dot count, articulations, fermata) carried on the preview element,
+ * decorations (accidental, dot count, articulations) carried on the preview element,
  * while preserving the decorations the existing note carries that the preview cannot set.
  *
- * <p>The user places a bare note, toggles accent/staccato/natural/fermata on the toolbar
+ * <p>The user places a bare note, toggles accent/staccato/natural on the toolbar
  * (which decorate the preview element), then clicks the existing note's x position at a
  * different staff position. That click routes to {@code modifyExistingElement}, which must
  * transfer the preview's decorations to the replacement and leave the rest intact.
@@ -61,14 +61,13 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
 
     /**
      * Builds the decorated preview element the user would be "holding": a crotchet with a
-     * natural accidental, accent and staccato articulations, and a fermata.
+     * natural accidental, accent and staccato articulations.
      */
     private static StaffElement decoratedPreview() {
         var preview = ElementType.CROTCHET.newInstance();
         preview.setAccidental(StaffElement.Accidental.NATURAL);
         preview.addArticulation(new Articulation(preview, ArticulationType.ACCENT));
         preview.addArticulation(new Articulation(preview, ArticulationType.STACCATO));
-        preview.addAttachment(new FermataAttachment(preview));
         return preview;
     }
 
@@ -86,7 +85,7 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
 
     /**
      * Replacing a bare note with a fully decorated preview transfers the preview's
-     * articulations and fermata, with no stray decorations left behind.
+     * articulations, with no stray decorations left behind.
      */
     @Test
     void testReplacementInheritsAllPreviewDecorations() {
@@ -102,10 +101,6 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
             .extracting(Articulation::getType)
             .as("accent and staccato carried over from the preview, with no extras")
             .containsExactlyInAnyOrder(ArticulationType.ACCENT, ArticulationType.STACCATO);
-
-        assertThat(replacement.findAttachment(FermataAttachment.class))
-            .as("fermata carried over from the preview")
-            .isNotNull();
     }
 
     /**
@@ -152,9 +147,9 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
     }
 
     /**
-     * The preview is authoritative for these decorations: replacing a note that already has a
-     * fermata and an accent with an undecorated preview removes them, mirroring how an empty
-     * accidental on the preview clears the existing accidental.
+     * The preview is authoritative for these decorations: replacing a note that already has an
+     * accent with an undecorated preview removes it, mirroring how an empty accidental on the
+     * preview clears the existing accidental.
      */
     @Test
     void testUndecoratedPreviewClearsExistingDecorations() {
@@ -163,7 +158,6 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
         song.withoutMutationTracking(() -> {
             var existing = ElementType.CROTCHET.newInstance();
             existing.addArticulation(new Articulation(existing, ArticulationType.ACCENT));
-            existing.addAttachment(new FermataAttachment(existing));
             line.addElement(existing);
         });
 
@@ -174,16 +168,12 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
         assertThat(replacement.getArticulations())
             .as("existing accent removed because the preview has none")
             .isEmpty();
-
-        assertThat(replacement.findAttachment(FermataAttachment.class))
-            .as("fermata removed because the preview has none")
-            .isNull();
     }
 
     /**
-     * Decorations the preview cannot set — a dynamic attachment, lyrics, and a manual x-offset —
-     * survive the replacement untouched. This guards the "preserve" half of the contract that an
-     * over-eager clear of attachments or lyrics would silently break.
+     * Decorations the preview cannot set — a dynamic attachment, lyrics, a fermata, and a manual
+     * x-offset — survive the replacement untouched. This guards the "preserve" half of the
+     * contract that an over-eager clear of attachments or lyrics would silently break.
      */
     @Test
     void testReplacementPreservesNonPreviewDecorations() {
@@ -195,6 +185,7 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
                 new DynamicAttachment(existing, DynamicAttachment.DynamicType.FORTE));
             existing.setLyricForVerse(
                 LYRIC_VERSE, Lyric.Syllabic.SINGLE, false, LYRIC_TEXT, Lyric.Extend.NONE);
+            existing.addAttachment(new FermataAttachment(existing));
             existing.setXOffsetPx(EXISTING_X_OFFSET_PX);
             line.addElement(existing);
         });
@@ -212,6 +203,10 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
             .isNotNull()
             .extracting(Lyric::text)
             .isEqualTo(LYRIC_TEXT);
+
+        assertThat(replacement.findAttachment(FermataAttachment.class))
+            .as("fermata is not preview-settable, so it survives replacement")
+            .isNotNull();
 
         assertThat(replacement.getXOffsetPx())
             .as("manual x-offset survives replacement")

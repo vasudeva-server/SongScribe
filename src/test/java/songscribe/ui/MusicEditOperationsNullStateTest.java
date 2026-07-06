@@ -263,27 +263,6 @@ class MusicEditOperationsNullStateTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // canToggleTrill — null state (row 60)
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testCanToggleTrillReturnsFalseWhenStateNull() {
-        assertThat(opsWithNullState().canToggleTrill())
-            .as("canToggleTrill() with null state must return false")
-            .isFalse();
-    }
-
-    // -----------------------------------------------------------------------
-    // toggleTrill — null state guard (row 61)
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testToggleTrillEmitsNoNotificationWhenStateNull() {
-        opsWithNullState().toggleTrill();
-        verifyNoChangeNotification();
-    }
-
-    // -----------------------------------------------------------------------
     // canFlipStemDirection — null state (row 65)
     // -----------------------------------------------------------------------
 

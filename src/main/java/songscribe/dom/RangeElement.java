@@ -222,6 +222,14 @@ public abstract class RangeElement extends LineElement {
     }
 
     /**
+     * Returns whether this range element overlaps the inclusive element index
+     * range {@code [begin, end]}.
+     */
+    public boolean overlaps(int begin, int end) {
+        return getAnchorElementIndex() <= end && getEndElementIndex() >= begin;
+    }
+
+    /**
      * Serializes this element's anchor/end indices as {@code "anchorIdx,endIdx;"}.
      */
     public String toIndexString() {

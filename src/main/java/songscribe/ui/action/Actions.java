@@ -140,7 +140,7 @@ public final class Actions {
 
     public static FlipStemDirectionAction FLIP_STEM_DIRECTION_ACTION;
     public static EditLyricAction EDIT_LYRIC_ACTION;
-    public static ToggleTrillAction TOGGLE_TRILL_ACTION;
+    public static TrillAction TRILL_ACTION;
 
     public static AddDynamicsAction ADD_CRESCENDO_ACTION;
     public static AddDynamicsAction ADD_DIMINUENDO_ACTION;
@@ -307,7 +307,7 @@ public final class Actions {
 
         FLIP_STEM_DIRECTION_ACTION = FlipStemDirectionAction.createAction(mainFrame);
         EDIT_LYRIC_ACTION = EditLyricAction.createAction(mainFrame);
-        TOGGLE_TRILL_ACTION = ToggleTrillAction.createAction(mainFrame);
+        TRILL_ACTION = TrillAction.createAction(mainFrame);
 
         ADD_CRESCENDO_ACTION = AddDynamicsAction.createCrescendoAction(mainFrame);
         ADD_DIMINUENDO_ACTION = AddDynamicsAction.createDiminuendoAction(mainFrame);
@@ -396,6 +396,7 @@ public final class Actions {
         ACCENT_ACTION.reset();
         REST_ACTION.reset();
         FERMATA_ACTION.reset();
+        TRILL_ACTION.reset();
         ACCIDENTAL_IN_PARENS_ACTION.reset();
     }
 

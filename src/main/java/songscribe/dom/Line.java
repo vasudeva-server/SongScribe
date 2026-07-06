@@ -1298,15 +1298,12 @@ public class Line {
      */
     public void addTuplet(Tuplet tuplet) {
         tuplet.setParentLine(this);
-        var anchorIdx = elements.indexOf(tuplet.getAnchorElement());
-        var endIdx = elements.indexOf(tuplet.getEndElement());
+        var anchorIndex = elements.indexOf(tuplet.getAnchorElement());
+        var endIndex = elements.indexOf(tuplet.getEndElement());
 
         // Remove any existing tuplets that overlap the new range.
-        final int finalAnchor = anchorIdx;
-        final int finalEnd = endIdx;
-        rangeElements.removeIf(re -> re instanceof Tuplet t
-            && t.getAnchorElementIndex() <= finalEnd
-            && t.getEndElementIndex() >= finalAnchor);
+        rangeElements.removeIf(rangeElement ->
+            rangeElement instanceof Tuplet existingTuplet && existingTuplet.overlaps(anchorIndex, endIndex));
 
         applyChange(new TupletAddition(this, tuplet), () -> rangeElements.add(tuplet));
     }
@@ -1516,6 +1513,53 @@ public class Line {
             new RangeElementAddition(this, element),
             () -> rangeElements.add(element)
         );
+    }
+
+    /**
+     * Adds a trill range element, first removing any existing trill that overlaps the new one.
+     * Each removal is recorded as its own mutation so replacing a displaced trill is undoable.
+     */
+    public void addTrill(Trill trill) {
+        trill.setParentLine(this);
+
+        for (var overlapping : findTrillsOverlapping(trill.getAnchorElementIndex(), trill.getEndElementIndex())) {
+            removeRangeElement(overlapping);
+        }
+
+        addRangeElement(trill);
+    }
+
+    /**
+     * Removes every trill range element overlapping {@code [beginIndex, endIndex]}.
+     */
+    public void removeTrillsOverlapping(int beginIndex, int endIndex) {
+        for (var trill : findTrillsOverlapping(beginIndex, endIndex)) {
+            removeRangeElement(trill);
+        }
+    }
+
+    /**
+     * Finds every trill range element overlapping {@code [beginIndex, endIndex]}.
+     */
+    public List<Trill> findTrillsOverlapping(int beginIndex, int endIndex) {
+        return findRangeElements(Trill.class).stream()
+            .filter(trill -> trill.overlaps(beginIndex, endIndex))
+            .toList();
+    }
+
+    /**
+     * Returns whether any trill range element overlaps {@code [beginIndex, endIndex]}.
+     * Cheaper than {@link #findTrillsOverlapping} when only presence matters: it
+     * short-circuits and allocates no intermediate lists.
+     */
+    public boolean hasTrillOverlapping(int beginIndex, int endIndex) {
+        for (var element : rangeElements) {
+            if (element instanceof Trill trill && trill.overlaps(beginIndex, endIndex)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

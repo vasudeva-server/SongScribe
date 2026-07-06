@@ -39,7 +39,6 @@ import songscribe.message.command.RemoveDynamicsCommand;
 import songscribe.message.command.SelectLineCommand;
 import songscribe.message.command.ToggleBeamCommand;
 import songscribe.message.command.ToggleTieCommand;
-import songscribe.message.command.ToggleTrillCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.message.mutation.ElementField;
@@ -224,11 +223,6 @@ public final class ScoreViewController {
     }
 
     @Handler
-    public void handleToggleTrill(ToggleTrillCommand message) {
-        operations.toggleTrill();
-    }
-
-    @Handler
     public void handleFlipStemDirection(FlipStemDirectionCommand message) {
         operations.flipStemDirection();
     }
@@ -265,10 +259,6 @@ public final class ScoreViewController {
 
     public boolean canChangeTempo() {
         return operations.canChangeTempo();
-    }
-
-    public boolean canToggleTrill() {
-        return operations.canToggleTrill();
     }
 
     public boolean canFlipStemDirection() {

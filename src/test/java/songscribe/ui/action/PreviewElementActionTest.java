@@ -41,7 +41,7 @@ import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.ui.selection.ElementSelection;
 
 // Rows 56-58: PreviewElementAction.actionPerformed — keyboard-shortcut toggle and
-// command-posting behaviour. FermataAction (a concrete non-overriding subclass) is
+// command-posting behaviour. DotAction (a concrete non-overriding subclass) is
 // used so the parent's actionPerformed body runs without further indirection.
 class PreviewElementActionTest extends MainFrameMockTest {
 
@@ -66,11 +66,11 @@ class PreviewElementActionTest extends MainFrameMockTest {
         // themselves; keyboard shortcuts need explicit toggling.
         @Test
         void testActionPerformedTogglesSelectionWhenSourceIsJRootPane() {
-            var action = FermataAction.createAction(mainFrame());
+            var action = DotAction.createDotAction(mainFrame());
             assertThat(action.isSelected()).isFalse();
 
             action.actionPerformed(
-                new ActionEvent(new JRootPane(), ActionEvent.ACTION_PERFORMED, "fermata")
+                new ActionEvent(new JRootPane(), ActionEvent.ACTION_PERFORMED, "add-dot")
             );
 
             assertThat(action.isSelected()).isTrue();
@@ -84,9 +84,9 @@ class PreviewElementActionTest extends MainFrameMockTest {
             when(mockEnv().coordinator().getSelection())
                 .thenReturn(mock(ElementSelection.class));
 
-            var action = FermataAction.createAction(mainFrame());
+            var action = DotAction.createDotAction(mainFrame());
             action.actionPerformed(
-                new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "fermata")
+                new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "add-dot")
             );
 
             // UIAction's constructor calls MessageCenter.subscribe, which is fine.
@@ -100,9 +100,9 @@ class PreviewElementActionTest extends MainFrameMockTest {
         void testActionPerformedWithNoSelectionPostsUpdatePreviewElementCommand() {
             // coordinator.getSelection() returns null by default — no active selection.
 
-            var action = FermataAction.createAction(mainFrame());
+            var action = DotAction.createDotAction(mainFrame());
             action.actionPerformed(
-                new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "fermata")
+                new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "add-dot")
             );
 
             messageMock.verify(() -> MessageCenter.post(any(UpdatePreviewElementCommand.class)));

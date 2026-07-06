@@ -587,7 +587,6 @@ public final class GraceModeManager {
         Actions.DOT_ACTION_GROUP.clearSelection();
         Actions.ACCIDENTAL_ACTION_GROUP.clearSelection();
         Actions.ARTICULATION_ACTION_GROUP.clearSelection();
-        Actions.FERMATA_ACTION.setSelected(false);
 
         // Set state before posting the message so that enableFromGraceModeState()
         // sees the correct state when disabling DISABLE_IN_GRACE_MODE actions.

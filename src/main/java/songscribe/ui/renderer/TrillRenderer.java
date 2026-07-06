@@ -48,14 +48,15 @@ public final class TrillRenderer {
     // Trill glyph advance width in staff-space units, used to position the wavy line start
     private static final double TRILL_ADVANCE_WIDTH_SS;
 
-    // Wavy line segment width from SMuFL repeatOffset (0.948 ss)
-    static final double WIGGLE_SEGMENT_WIDTH_SS = 0.948;
+    // Wavy line segment width from the advance width of the WIGGLE_TRILL_FASTER glyph
+    static final double WIGGLE_SEGMENT_WIDTH_SS;
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
 
     static {
         TRILL_ADVANCE_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
+        WIGGLE_SEGMENT_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.WIGGLE_TRILL_FASTER);
     }
 
     /**
@@ -163,7 +164,7 @@ public final class TrillRenderer {
     }
 
     /**
-     * Draws a wavy trill extension line using tiled WIGGLE_TRILL glyphs.
+     * Draws a wavy trill extension line using tiled WIGGLE_TRILL_FASTER glyphs.
      * All coordinates in staff-space units.
      */
     void drawWavyLine(
@@ -191,7 +192,7 @@ public final class TrillRenderer {
 
             for (var i = 0; i < segments; i++) {
                 g2.drawString(
-                    SMuFLGlyph.WIGGLE_TRILL.asString(),
+                    SMuFLGlyph.WIGGLE_TRILL_FASTER.asString(),
                     (float) (i * WIGGLE_SEGMENT_WIDTH_SS),
                     0f
                 );

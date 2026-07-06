@@ -39,7 +39,6 @@ import songscribe.dom.Diminuendo;
 import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
 import songscribe.dom.Tie;
-import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -283,20 +282,10 @@ public final class MusicEditOperations {
         var diminuendoList = new ArrayList<Diminuendo>();
 
         for (var re : line.getRangeElements()) {
-            if (re instanceof Crescendo cres) {
-                var anchor = cres.getAnchorElementIndex();
-                var end = cres.getEndElementIndex();
-
-                if (anchor <= selectionEnd && end >= selectionBegin) {
-                    crescendoList.add(cres);
-                }
-            } else if (re instanceof Diminuendo dim) {
-                var anchor = dim.getAnchorElementIndex();
-                var end = dim.getEndElementIndex();
-
-                if (anchor <= selectionEnd && end >= selectionBegin) {
-                    diminuendoList.add(dim);
-                }
+            if (re instanceof Crescendo cres && cres.overlaps(selectionBegin, selectionEnd)) {
+                crescendoList.add(cres);
+            } else if (re instanceof Diminuendo dim && dim.overlaps(selectionBegin, selectionEnd)) {
+                diminuendoList.add(dim);
             }
         }
 
@@ -603,47 +592,6 @@ public final class MusicEditOperations {
         });
     }
 
-    // ========== Trill Operations ==========
-
-    public boolean canToggleTrill() {
-        var state = coordinator.getActiveSelection();
-        return (state != null) && state.canToggleTrill();
-    }
-
-    public void toggleTrill() {
-        var state = coordinator.getActiveSelection();
-
-        if (state == null) {
-            return;
-        }
-
-        var line = state.getLine();
-        var begin = state.getSelectionBegin();
-        var end = state.getSelectionEnd();
-
-        line.withModification(() -> {
-            // Collect all Trill range elements that overlap the selection
-            var overlapping = line.findRangeElements(Trill.class).stream()
-                .filter(t -> {
-                    var a = t.getAnchorElementIndex();
-                    var e = t.getEndElementIndex();
-                    return a <= end && e >= begin;
-                })
-                .toList();
-
-            if (overlapping.isEmpty()) {
-                // No trills in selection — add a single Trill spanning the selection
-                var anchorNote = line.getElement(begin);
-                var endNote = line.getElement(end);
-                line.addRangeElement(new Trill(anchorNote, endNote));
-            } else {
-                // Trills exist in the selection — remove them all
-                for (var trill : overlapping) {
-                    line.removeRangeElement(trill);
-                }
-            }
-        });
-    }
 
     // ========== Stem Direction Operations ==========
 

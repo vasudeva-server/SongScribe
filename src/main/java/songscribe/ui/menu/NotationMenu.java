@@ -33,8 +33,8 @@ import static songscribe.ui.action.Actions.REST_ACTION;
 import static songscribe.ui.action.Actions.STAFF_ANNOTATION_ACTIONS;
 import static songscribe.ui.action.Actions.TOGGLE_BEAM_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TIE_ACTION;
-import static songscribe.ui.action.Actions.TOGGLE_TRILL_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TUPLET_ACTIONS;
+import static songscribe.ui.action.Actions.TRILL_ACTION;
 
 import module java.desktop;
 
@@ -71,7 +71,7 @@ public class NotationMenu extends JMenu {
         add(new ArticulationMenu());
         add(createTupletMenu());
         add(createDynamicsMenu());
-        add(new JCheckBoxMenuItem(TOGGLE_TRILL_ACTION));
+        add(new JCheckBoxMenuItem(TRILL_ACTION));
         add(new JCheckBoxMenuItem(FERMATA_ACTION));
         add(new JCheckBoxMenuItem(BREATH_MARK_ACTION));
 

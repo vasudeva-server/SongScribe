@@ -35,7 +35,6 @@ import songscribe.dom.Beam;
 import songscribe.dom.Song;
 import songscribe.dom.ElementLocation;
 import songscribe.dom.ElementType;
-import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
@@ -1124,9 +1123,9 @@ public final class PreviewElementManager {
     /**
      * Replaces an existing element with the current preview element's type and pitch.
      * Note-entry decorations the user sets on the preview element via the toolbar/menu
-     * (accidental, dot count, articulations, fermata) are taken from the preview. Other
+     * (accidental, dot count, articulations) are taken from the preview. Other
      * decorations not settable on the preview (trill, annotation, tempo/beat change,
-     * dynamic attachments, lyrics, x position) are preserved from the existing element.
+     * dynamic attachments, lyrics, fermata, x position) are preserved from the existing element.
      * Called when the user clicks on an existing element head with the preview element active.
      *
      * @param lc           The LineComponent
@@ -1151,13 +1150,12 @@ public final class PreviewElementManager {
         replacement.setAccidentalInParentheses(previewElement.isAccidentalInParentheses());
         replacement.setStemDirectionAuto(previewElement.isStemDirectionAuto());
 
-        // Articulations and the fermata are note-entry decorations the user sets on the preview
-        // element via the toolbar/menu, exactly like the accidental above. Carry them over from
-        // the preview, overriding any inherited from the existing element. Other attachments
-        // (dynamics, annotations, trills) are not preview-settable, so they remain copied from
+        // Articulations are a note-entry decoration the user sets on the preview element via the
+        // toolbar/menu, exactly like the accidental above. Carry them over from the preview,
+        // overriding any inherited from the existing element. Other attachments (dynamics,
+        // annotations, trills, fermata) are not preview-settable, so they remain copied from
         // the existing element by the copy constructor.
         replacement.copyArticulationsFrom(previewElement);
-        replacement.setFermata(previewElement.findAttachment(FermataAttachment.class) != null);
 
         // Rests snap to their default staff position; pitched notes use the mouse Y position
         applyStaffPosition(replacement, currentStaffPosition);

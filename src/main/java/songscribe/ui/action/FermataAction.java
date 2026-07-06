@@ -20,6 +20,8 @@
 
 package songscribe.ui.action;
 
+import module java.desktop;
+
 import java.util.EnumSet;
 
 import songscribe.Strings;
@@ -44,8 +46,14 @@ public final class FermataAction extends NoteOnlyAction {
             0,
             "fermata",
             Strings.get(Strings.ACTION_FERMATA_TOOLTIP),
-            NoteOnlyAction.FLAGS
+            withFlags(NoteOnlyAction.FLAGS, Flag.DISABLE_IN_GRACE_MODE, Flag.REQUIRES_SINGLE_SELECTION)
         );
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        toggleOnKeyboardShortcut(e);
+        applyToSelectionIfActive();
     }
 
     @Override

@@ -31,7 +31,6 @@ import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
-import songscribe.dom.FermataAttachment;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
@@ -177,14 +176,12 @@ class EditModeManagerTest extends UnitTest {
 
         @Test
         void testSkipsNonDotDecorationsForRests() {
-            // Rests must not receive accidental, fermata, or articulation decorations.
+            // Rests must not receive accidental or articulation decorations.
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
-            Actions.FERMATA_ACTION.setSelected(true);
             Actions.ACCENT_ACTION.setSelected(true);
             var rest = ElementType.CROTCHET_REST.newInstance();
             EditModeManager.decorateElement(rest);
             assertThat(rest.getAccidental()).isNull();
-            assertThat(rest.findAttachment(FermataAttachment.class)).isNull();
             assertThat(rest.getArticulations()).isEmpty();
         }
 
@@ -212,23 +209,6 @@ class EditModeManagerTest extends UnitTest {
             var element = ElementType.CROTCHET.newInstance();
             EditModeManager.decorateElement(element);
             assertThat(element.isAccidentalInParentheses()).isTrue();
-        }
-
-        @Test
-        void testAddsFermataAttachmentWhenFermataActionSelected() {
-            Actions.FERMATA_ACTION.setSelected(true);
-            var element = ElementType.CROTCHET.newInstance();
-            EditModeManager.decorateElement(element);
-            assertThat(element.findAttachment(FermataAttachment.class)).isNotNull();
-        }
-
-        @Test
-        void testRemovesFermataAttachmentWhenFermataActionNotSelected() {
-            Actions.FERMATA_ACTION.setSelected(false);
-            var element = ElementType.CROTCHET.newInstance();
-            element.addAttachment(new FermataAttachment(element));
-            EditModeManager.decorateElement(element);
-            assertThat(element.findAttachment(FermataAttachment.class)).isNull();
         }
 
         @Test
@@ -353,18 +333,14 @@ class EditModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testTurnOffFermataAndAccidentalInParensAfterInsert() {
-            // Set up: FERMATA and ACCIDENTAL_IN_PARENS selected before the insert.
-            Actions.FERMATA_ACTION.setSelected(true);
+        void testTurnOffAccidentalInParensAfterInsert() {
+            // Set up: ACCIDENTAL_IN_PARENS selected before the insert.
             Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
             var previewElement = ElementType.CROTCHET.newInstance();
             EditModeManager.setPreviewElement(previewElement);
             var line = lineWith(ElementType.CROTCHET);
             // Index 0 is the inserted element.
             EditModeManager.previewElementDidChange(line, 0);
-            assertThat(Actions.FERMATA_ACTION.isSelected())
-                .as("FERMATA_ACTION should be turned off after insert")
-                .isFalse();
             assertThat(Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected())
                 .as("ACCIDENTAL_IN_PARENS_ACTION should be turned off after insert")
                 .isFalse();

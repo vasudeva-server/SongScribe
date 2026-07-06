@@ -1459,7 +1459,6 @@ class GraceModeManagerTest extends UnitTest {
             Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
             Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
-            Actions.FERMATA_ACTION.setSelected(true);
 
             try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
                 calcMock.when(
@@ -1490,9 +1489,6 @@ class GraceModeManagerTest extends UnitTest {
             assertThat(Actions.ARTICULATION_ACTION_GROUP.getSelected())
                 .as("ARTICULATION_ACTION_GROUP should be cleared after entering grace note mode")
                 .isNull();
-            assertThat(Actions.FERMATA_ACTION.isSelected())
-                .as("FERMATA_ACTION should be deselected after entering grace note mode")
-                .isFalse();
         }
     }
 

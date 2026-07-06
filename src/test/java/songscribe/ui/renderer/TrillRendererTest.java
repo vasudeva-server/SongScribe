@@ -88,7 +88,7 @@ class TrillRendererTest extends UnitTest {
             glyphCaptor.capture(), anyFloat(), anyFloat());
 
         assertThat(glyphCaptor.getAllValues())
-            .allMatch(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL.asString()));
+            .allMatch(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL_FASTER.asString()));
     }
 
     @Test
@@ -111,7 +111,7 @@ class TrillRendererTest extends UnitTest {
     void testRenderTrillAtPositionSingleNotePassesNaNEndXToRenderTrill() {
         // endNote is null → single-note trill path → renderTrill is called with NaN endXSs.
         // The distinguishing observable: renderTrill only calls drawWavyLine when endXSs
-        // is not NaN, so for a single-note trill there should be NO WIGGLE_TRILL drawString
+        // is not NaN, so for a single-note trill there should be NO WIGGLE_TRILL_FASTER drawString
         // call — only the ORNAMENT_TRILL glyph.
         var g2Spy = spy(RenderContextTestHelper.realG2());
         var anchor = ElementType.CROTCHET.newInstance();
@@ -130,7 +130,7 @@ class TrillRendererTest extends UnitTest {
             .anyMatch(s -> s.equals(SMuFLGlyph.ORNAMENT_TRILL.asString()));
 
         assertThat(glyphCaptor.getAllValues())
-            .noneMatch(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL.asString()));
+            .noneMatch(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL_FASTER.asString()));
     }
 
     @Test
@@ -138,7 +138,7 @@ class TrillRendererTest extends UnitTest {
         // endNote != null && endNote != anchor → multi-note trill path.
         // endXSs = layoutResult.getElementXSs(endNote) + NOTE_HEAD_WIDTH_SS
         // renderTrill is called with a valid endXSs, so drawWavyLine runs and
-        // WIGGLE_TRILL glyph strings appear when endXSs > wavyStartX.
+        // WIGGLE_TRILL_FASTER glyph strings appear when endXSs > wavyStartX.
         var g2Spy = spy(RenderContextTestHelper.realG2());
         var anchor = ElementType.CROTCHET.newInstance();
         var endNote = ElementType.CROTCHET.newInstance();
@@ -161,7 +161,7 @@ class TrillRendererTest extends UnitTest {
             .anyMatch(s -> s.equals(SMuFLGlyph.ORNAMENT_TRILL.asString()));
 
         assertThat(glyphCaptor.getAllValues())
-            .anyMatch(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL.asString()));
+            .anyMatch(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL_FASTER.asString()));
     }
 
     @Test
@@ -181,6 +181,6 @@ class TrillRendererTest extends UnitTest {
             .drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
 
         assertThat(glyphCaptor.getAllValues())
-            .noneMatch(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL.asString()));
+            .noneMatch(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL_FASTER.asString()));
     }
 }
