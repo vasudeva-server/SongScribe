@@ -32,6 +32,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **Creating a new singleton class**: [Singletons](.agents/guides/singletons.md).
 - **Third-party API documentation lookup**: [Context7](.agents/guides/context7.md) — use context7 rather than web search.
 - **SMuFL glyph names, codepoints, or ranges**: look up at `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`.
+- **LilyPond source**: If the user mentions LilyPond source, it is found at ~/Developer/projects/lilypond/lily/.
 
 The guides above trigger on *what a task touches*. One guide triggers on *how hard a task is*, independent of subsystem:
 
