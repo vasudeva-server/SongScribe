@@ -84,10 +84,7 @@ public final class StatusBar extends JComponent {
         setLayout(new BorderLayout());
         setOpaque(true);
         setBackground(FlatLafProps.getColor(FlatLafKey.STATUS_BAR_BACKGROUND));
-        setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(1, 0, 0, 0, UIUtils.getComponentBorderColor()),
-            UIUtils.spacingBorder(FlatLafKey.STATUS_BAR_PADDING)
-        ));
+        setBorder(UIUtils.spacingBorder(FlatLafKey.STATUS_BAR_PADDING));
 
         accidentalLabel.setFont(new Font("Bravura Text", Font.PLAIN,
             (int) (accidentalLabel.getFont().getSize() * ACCIDENTAL_FONT_SIZE_FACTOR)
