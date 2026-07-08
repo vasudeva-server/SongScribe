@@ -33,6 +33,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import songscribe.FileExtensions;
 import songscribe.Strings;
 import songscribe.export.ExportOptions;
 import songscribe.font.DocumentFonts;
@@ -41,7 +42,7 @@ import songscribe.font.FontKey;
 import songscribe.export.ImageExporter;
 import songscribe.export.SVGExporter;
 import songscribe.io.SongLoadResult;
-import songscribe.io.SongLoader;
+import songscribe.io.SongFileLoader;
 import songscribe.message.MessageCenter;
 import songscribe.dom.Song;
 import songscribe.dom.Line;
@@ -72,6 +73,7 @@ import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
 import songscribe.engraving.Staff;
+import songscribe.util.FileUtils;
 import songscribe.util.GraphicsState;
 import songscribe.util.GraphicUtils;
 import songscribe.util.StringUtils;
@@ -417,7 +419,7 @@ public final class ScoreView
     }
 
     public boolean openFile(File file, boolean updateCurrentFile) {
-        var result = SongLoader.load(file);
+        var result = SongFileLoader.load(file);
 
         if (result instanceof SongLoadResult.Success success) {
             var lineWidthInches =
@@ -439,7 +441,7 @@ public final class ScoreView
                 setSong(success.song());
 
                 if (updateCurrentFile && onFileOpened != null) {
-                    onFileOpened.accept(file);
+                    onFileOpened.accept(FileUtils.hasExtension(file, FileExtensions.SONGWRITER) ? null : file);
                 }
 
                 var warning = success.warning();
@@ -485,6 +487,21 @@ public final class ScoreView
                     e.actualInches(),
                     e.maxInches()
                 );
+                yield false;
+            }
+            case SongLoadResult.WrongSoftware e -> {
+                var software = e.software();
+                var name = (software != null && !software.isBlank())
+                    ? software
+                    : Strings.get(Strings.ALERT_MUSICXML_FOREIGN_OTHER);
+                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ALERT_MUSICXML_FOREIGN, name);
+                LOG.error("Refused to open '{}': not created by SongScribe (software: {})", file.getName(), software);
+                yield false;
+            }
+            case SongLoadResult.UnsupportedFileFormat e -> {
+                var fileName = file.getName();
+                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ALERT_MUSICXML_UNSUPPORTED, fileName);
+                LOG.error("Refused to open '{}': unsupported file format ({})", fileName, e.detail());
                 yield false;
             }
         };

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<song version="2.10">
+  <keys>5</keys>
+  <keytype>FLATS</keytype>
+  <number>42</number>
+  <songtitle>Corpus Kitchen Sink</songtitle>
+  <subtitle>A Synthetic Subtitle</subtitle>
+  <place>Jamaica, New York</place>
+  <year>1987</year>
+  <month>12</month>
+  <day>1</day>
+  <lyricsDate>1990-05</lyricsDate>
+  <underlyrics>Corpus underlyrics line</underlyrics>
+  <banglalyrics>Corpus Bangla lyrics line</banglalyrics>
+  <translatedlyrics>Corpus translated lyrics line</translatedlyrics>
+  <unofficialTranslation>true</unofficialTranslation>
+  <composer>Corpus Composer</composer>
+  <lyricist>Corpus Lyricist</lyricist>
+  <lyricssource>TEXT</lyricssource>
+  <arrangement>true</arrangement>
+  <rightinfo>Words from Corpus Lyricist
+Music from Corpus Composer
+Arrangement by Sri Chinmoy
+May, 1990 (words) / December 1, 1987 (music)
+Jamaica, New York</rightinfo>
+  <footnotes>Corpus footnote line</footnotes>
+  <rowheight>2.5</rowheight>
+  <linewidth>130.0</linewidth>
+  <dynamicLayout>true</dynamicLayout>
+  <attributionyoffset>4.0</attributionyoffset>
+  <lines>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+          </note>
+      </notes>
+    </line>
+  </lines>
+  <view>
+    <titlefont>HelveticaNeue</titlefont>
+    <titlefontsize>32</titlefontsize>
+    <subtitleFont>HelveticaNeue</subtitleFont>
+    <subtitleFontSize>24</subtitleFontSize>
+    <lyricsfont>HelveticaNeue</lyricsfont>
+    <lyricsfontsize>18</lyricsfontsize>
+    <generalfont>HelveticaNeue</generalfont>
+    <generalfontsize>16</generalfontsize>
+    <subAttributionFont>HelveticaNeue</subAttributionFont>
+    <subAttributionFontSize>15</subAttributionFontSize>
+    <annotationfont>HelveticaNeue</annotationfont>
+    <annotationfontsize>16</annotationfontsize>
+    <banglaFont>TiroBangla</banglaFont>
+    <banglaFontSize>18</banglaFontSize>
+    <footnoteFont>HelveticaNeue</footnoteFont>
+    <footnoteFontSize>14</footnoteFontSize>
+  </view>
+</song>

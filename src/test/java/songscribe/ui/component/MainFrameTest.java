@@ -61,7 +61,8 @@ import javax.swing.JRootPane;
 import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.Song;
-import songscribe.io.SongIO;
+import songscribe.io.SongFileWriter;
+import songscribe.io.musicxml.MusicXmlWriter;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
@@ -329,12 +330,12 @@ class MainFrameTest extends UnitTest {
 
             doCallRealMethod().when(frame).saveCurrentFile();
 
-            try (var songIOMock = mockStatic(SongIO.class);
+            try (var musicXmlWriterMock = mockStatic(MusicXmlWriter.class);
                  var messageCenterMock = mockStatic(MessageCenter.class)) {
 
-                // SongIO.writeSong is a no-op stub — we only care about side-effects.
-                songIOMock.when(
-                    () -> SongIO.writeSong(any(Song.class), any(), any())
+                // MusicXmlWriter.writeSong is a no-op stub — we only care about side-effects.
+                musicXmlWriterMock.when(
+                    () -> MusicXmlWriter.writeSong(any(Song.class), any(), any())
                 ).then(inv -> null);
 
                 var result = frame.saveCurrentFile();
@@ -380,6 +381,45 @@ class MainFrameTest extends UnitTest {
                 assertThat(result)
                     .as("IOException → returns false")
                     .isFalse();
+
+                optionDialogsMock.verify(
+                    () -> OptionDialogs.showErrorMessage(any(), anyString(), anyString())
+                );
+            }
+        }
+
+        /**
+         * When {@code SongFileWriter.write} returns {@code false} (a write that recorded
+         * an error via {@code checkError} rather than throwing), {@code saveCurrentFile()}
+         * shows an error dialog, leaves the song modified, and returns {@code false}.
+         */
+        @Test
+        void testWriteReturningFalseShowsErrorAndReturnsFalse() throws IOException {
+            var tempFile = Files.createTempFile("MainFrameTest", ".musicxml").toFile();
+            tempFile.deleteOnExit();
+
+            var mockScore = mock(ScoreView.class);
+            var mockSong = mock(Song.class);
+            when(mockScore.getSong()).thenReturn(mockSong);
+            frame.currentFile = tempFile;
+            frame.scoreView = mockScore;
+
+            doCallRealMethod().when(frame).saveCurrentFile();
+
+            try (var songFileWriterMock = mockStatic(SongFileWriter.class);
+                 var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+
+                songFileWriterMock.when(
+                    () -> SongFileWriter.write(any(Song.class), any(), any(File.class))
+                ).thenReturn(false);
+
+                var result = frame.saveCurrentFile();
+
+                assertThat(result)
+                    .as("write() returning false → saveCurrentFile returns false")
+                    .isFalse();
+
+                verify(mockSong, never()).setModified(false);
 
                 optionDialogsMock.verify(
                     () -> OptionDialogs.showErrorMessage(any(), anyString(), anyString())

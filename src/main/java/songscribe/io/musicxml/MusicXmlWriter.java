@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import org.jspecify.annotations.Nullable;
+import songscribe.Constants;
 import songscribe.Version;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
@@ -314,7 +315,7 @@ public final class MusicXmlWriter {
 
         XML.writeBeginTag(pw, MusicXmlTags.ENCODING);
         XML.indent();
-        XML.writeValue(pw, MusicXmlTags.SOFTWARE, "SongScribe " + Version.PUBLIC_VERSION);
+        XML.writeValue(pw, MusicXmlTags.SOFTWARE, Constants.PACKAGE_NAME + " " + Version.PUBLIC_VERSION);
         XML.writeValue(pw, MusicXmlTags.ENCODING_DATE, headerText.encodingDate());
         XML.writeEmptyTag(
             pw,

@@ -303,34 +303,4 @@ class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
             noteAt(song, 0).getLyricForVerse(FIRST_VERSE), expected, "escaped special characters");
     }
 
-    // -------------------------------------------------------------------------
-    // Hand-authored document helper
-    // -------------------------------------------------------------------------
-
-    /**
-     * Wraps {@code measureBody} in a minimal score-partwise document with a
-     * new-system {@code <print>} (so the reader starts a line) and standard
-     * attributes. Mirrors {@code MusicXmlReaderLenienceTest.scoreWithMeasureBody}.
-     */
-    private static String scoreWithMeasureBody(String measureBody) {
-        return
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<score-partwise version=\"4.0\">\n" +
-            "  <part-list>\n" +
-            "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
-            "  </part-list>\n" +
-            "  <part id=\"P1\">\n" +
-            "    <measure number=\"1\">\n" +
-            "      <print new-system=\"yes\"/>\n" +
-            "      <attributes>\n" +
-            "        <divisions>480</divisions>\n" +
-            "        <key><fifths>0</fifths></key>\n" +
-            "        <time print-object=\"no\"><senza-misura/></time>\n" +
-            "        <clef><sign>G</sign><line>2</line></clef>\n" +
-            "      </attributes>\n" +
-            measureBody +
-            "    </measure>\n" +
-            "  </part>\n" +
-            "</score-partwise>\n";
-    }
 }

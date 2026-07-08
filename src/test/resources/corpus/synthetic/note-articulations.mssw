@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<song version="2.10">
+  <keys>5</keys>
+  <keytype>FLATS</keytype>
+  <number></number>
+  <songtitle>Untitled</songtitle>
+  <composer>Sri Chinmoy</composer>
+  <lyricist>Sri Chinmoy</lyricist>
+  <lyricssource>LYRICIST</lyricssource>
+  <rightinfo>Words and Music by
+Sri Chinmoy</rightinfo>
+  <linewidth>0.0</linewidth>
+  <dynamicLayout>true</dynamicLayout>
+  <lines>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <forcearticulation>ACCENT</forcearticulation>
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <durationarticulation>STACCATO</durationarticulation>
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <fermata />
+          </note>
+      </notes>
+    </line>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <dynamic type="PIANISSIMO" />
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <dynamic type="MEZZO_FORTE" />
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <dynamic type="FORTE" />
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <dynamic type="SFORZANDO" />
+          </note>
+      </notes>
+    </line>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <stemDirectionAuto />
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <stemDirectionAuto />
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>16</xpos>
+            <staffposition>0</staffposition>
+          </note>
+      </notes>
+    </line>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <staffposition>-1</staffposition>
+            <glissando />
+          </note>
+          <note type="CROTCHET">
+            <staffposition>6</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <fall />
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+          </note>
+          <note type="BREATH_MARK">
+            <staffposition>-7</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+          </note>
+          <note type="SLIDE">
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+          </note>
+      </notes>
+    </line>
+  </lines>
+  <view>
+    <titlefont>HelveticaNeue</titlefont>
+    <titlefontsize>32</titlefontsize>
+    <subtitleFont>HelveticaNeue</subtitleFont>
+    <subtitleFontSize>24</subtitleFontSize>
+    <lyricsfont>HelveticaNeue</lyricsfont>
+    <lyricsfontsize>18</lyricsfontsize>
+    <generalfont>HelveticaNeue</generalfont>
+    <generalfontsize>16</generalfontsize>
+    <subAttributionFont>HelveticaNeue</subAttributionFont>
+    <subAttributionFontSize>15</subAttributionFontSize>
+    <annotationfont>HelveticaNeue</annotationfont>
+    <annotationfontsize>16</annotationfontsize>
+    <banglaFont>TiroBangla</banglaFont>
+    <banglaFontSize>18</banglaFontSize>
+    <footnoteFont>HelveticaNeue</footnoteFont>
+    <footnoteFontSize>14</footnoteFontSize>
+  </view>
+</song>

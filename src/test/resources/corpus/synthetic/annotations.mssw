@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<song version="2.10">
+  <keys>5</keys>
+  <keytype>FLATS</keytype>
+  <number></number>
+  <songtitle>Untitled</songtitle>
+  <composer>Sri Chinmoy</composer>
+  <lyricist>Sri Chinmoy</lyricist>
+  <lyricssource>LYRICIST</lyricssource>
+  <rightinfo>Words and Music by
+Sri Chinmoy</rightinfo>
+  <linewidth>0.0</linewidth>
+  <dynamicLayout>true</dynamicLayout>
+  <lines>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <annotation>
+              <name>dolce</name>
+              <alignment>0.0</alignment>
+              <placement>ABOVE</placement>
+              <useryoffset>2.0</useryoffset>
+            </annotation>
+          </note>
+      </notes>
+    </line>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <annotation>
+              <name>rit.</name>
+              <alignment>0.5</alignment>
+              <placement>BELOW</placement>
+              <useryoffset>-2.0</useryoffset>
+            </annotation>
+          </note>
+      </notes>
+    </line>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+            <annotation>
+              <name>fine</name>
+              <alignment>1.0</alignment>
+              <placement>ABOVE</placement>
+              <useryoffset>2.0</useryoffset>
+            </annotation>
+          </note>
+      </notes>
+    </line>
+  </lines>
+  <view>
+    <titlefont>HelveticaNeue</titlefont>
+    <titlefontsize>32</titlefontsize>
+    <subtitleFont>HelveticaNeue</subtitleFont>
+    <subtitleFontSize>24</subtitleFontSize>
+    <lyricsfont>HelveticaNeue</lyricsfont>
+    <lyricsfontsize>18</lyricsfontsize>
+    <generalfont>HelveticaNeue</generalfont>
+    <generalfontsize>16</generalfontsize>
+    <subAttributionFont>HelveticaNeue</subAttributionFont>
+    <subAttributionFontSize>15</subAttributionFontSize>
+    <annotationfont>HelveticaNeue</annotationfont>
+    <annotationfontsize>16</annotationfontsize>
+    <banglaFont>TiroBangla</banglaFont>
+    <banglaFontSize>18</banglaFontSize>
+    <footnoteFont>HelveticaNeue</footnoteFont>
+    <footnoteFontSize>14</footnoteFontSize>
+  </view>
+</song>

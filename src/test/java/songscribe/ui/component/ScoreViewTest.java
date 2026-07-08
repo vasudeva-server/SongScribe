@@ -30,7 +30,11 @@ import java.awt.Font;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.JComponent;
@@ -40,6 +44,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
 import org.xml.sax.SAXException;
 
@@ -53,6 +58,7 @@ import songscribe.font.FontKey;
 import songscribe.io.SongIO;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
+import songscribe.io.musicxml.MusicXmlWriter;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.PageModel;
 import songscribe.engraving.Staff;
@@ -465,6 +471,9 @@ class ScoreViewTest extends UnitTest {
         // direct LineWidthTooLarge test so the value is self-documenting rather than raw.
         private static final double EXCESS_LINE_WIDTH_INCHES = 100.0;
 
+        // A non-SongScribe provenance string for the WrongSoftware arm.
+        private static final String FOREIGN_SOFTWARE = "Finale";
+
         @Test
         void testOpenFileReturnsFalseOnNewerVersion() {
             var cause = new SongIO.NewerVersionException();
@@ -517,6 +526,41 @@ class ScoreViewTest extends UnitTest {
         }
 
         @Test
+        void testOpenFileReturnsFalseOnWrongSoftware() {
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE))
+                    .thenReturn(new SongLoadResult.WrongSoftware(STUB_FILE, FOREIGN_SOFTWARE));
+
+                var scoreView = new ScoreView(null);
+                assertThat(scoreView.openFile(STUB_FILE, false)).isFalse();
+            }
+        }
+
+        @Test
+        void testOpenFileReturnsFalseOnWrongSoftwareWithNullSoftware() {
+            // Null software drives the fallback branch of the arm's dialog-name
+            // ternary; a regression there would NPE rather than return false.
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE))
+                    .thenReturn(new SongLoadResult.WrongSoftware(STUB_FILE, null));
+
+                var scoreView = new ScoreView(null);
+                assertThat(scoreView.openFile(STUB_FILE, false)).isFalse();
+            }
+        }
+
+        @Test
+        void testOpenFileReturnsFalseOnUnsupportedFileFormat() {
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE))
+                    .thenReturn(new SongLoadResult.UnsupportedFileFormat(STUB_FILE, "pdf"));
+
+                var scoreView = new ScoreView(null);
+                assertThat(scoreView.openFile(STUB_FILE, false)).isFalse();
+            }
+        }
+
+        @Test
         void testOpenFileDetectsLineWidthTooLargeFromSuccessResult() {
             // Verify the conversion path: a Success whose song reports a line width that
             // exceeds MAX_LINE_WIDTH_INCHES must be converted to LineWidthTooLarge, causing
@@ -554,7 +598,34 @@ class ScoreViewTest extends UnitTest {
             assertThat(scoreView.getDocumentFonts()).isNotNull();
             // setSong was called — isInitialized() checks song != null.
             assertThat(scoreView.isInitialized()).isTrue();
-            // onFileOpened callback must have been invoked with the opened file.
+            // Legacy .mssw import is one-way: the callback fires with null so the
+            // document stays untitled and the first Save writes a fresh .musicxml.
+            assertThat(capturedFile.get()).isNull();
+        }
+
+        @Test
+        void testOpenFileReturnsTrueAndFiresCallbackWithFileForWriterProducedMusicXml(
+            @TempDir Path tempDir
+        ) throws Exception {
+
+            // Guards the silent "legacy branch regresses to file" failure mode: unlike
+            // the .mssw case above (untitled ⇒ null), opening a writer-produced .musicxml
+            // must report the file itself, since MusicXML is the canonical format.
+            var fixture = loadFixtureResult("full-line");
+            var stringWriter = new StringWriter();
+            var printWriter = new PrintWriter(stringWriter);
+            MusicXmlWriter.writeSong(fixture.song(), fixture.fonts(), printWriter);
+            printWriter.flush();
+
+            var file = tempDir.resolve("song.musicxml").toFile();
+            Files.writeString(file.toPath(), stringWriter.toString());
+
+            var capturedFile = new AtomicReference<File>();
+            var scoreView = new ScoreView(capturedFile::set);
+            var result = scoreView.openFile(file, true);
+
+            assertThat(result).isTrue();
+            assertThat(scoreView.isInitialized()).isTrue();
             assertThat(capturedFile.get()).isEqualTo(file);
         }
 

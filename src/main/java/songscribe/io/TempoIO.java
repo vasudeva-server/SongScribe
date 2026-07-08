@@ -113,8 +113,27 @@ public final class TempoIO {
             value.delete(0, value.length());
         }
 
+        // Resolves a tempo-type token to a Duration, accepting both the
+        // canonical enum names and the underscore-less legacy tokens (e.g.
+        // CROTCHETDOTTED). Shared by the v1.0 and v1.1 read paths so an unknown
+        // token is rejected identically on both.
+        private static Duration resolveTempoDuration(String str) throws SAXException {
+            var upper = str.toUpperCase();
+            var duration = LEGACY_TEMPO_DURATION_NAMES.get(upper);
+
+            if (duration == null) {
+                try {
+                    duration = Duration.valueOf(upper);
+                } catch (IllegalArgumentException e) {
+                    throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown tempo duration: '{}'", str);
+                }
+            }
+
+            return duration;
+        }
+
         @Nullable
-        public Tempo endElement10(String qName) {
+        public Tempo endElement10(String qName) throws SAXException {
             if (qName.equals(XML_TEMPO_CHANGE)) {
                 return tempo;
             }
@@ -130,16 +149,7 @@ public final class TempoIO {
                     case XML_VISIBLE_TEMPO -> tempo.setVisibleTempo(
                         Integer.parseInt(str)
                     );
-                    case XML_TEMPO_TYPE -> {
-                        var upper = str.toUpperCase();
-                        var duration = LEGACY_TEMPO_DURATION_NAMES.get(upper);
-
-                        if (duration == null) {
-                            duration = Duration.valueOf(upper);
-                        }
-
-                        tempo.setTempoType(duration);
-                    }
+                    case XML_TEMPO_TYPE -> tempo.setTempoType(resolveTempoDuration(str));
                     case XML_TEMPO_DESCRIPTION -> tempo.setTempoDescription(
                         str
                     );
@@ -168,13 +178,7 @@ public final class TempoIO {
                     case XML_VISIBLE_TEMPO -> tempo.setVisibleTempo(
                         Integer.parseInt(str)
                     );
-                    case XML_TEMPO_TYPE -> {
-                        try {
-                            tempo.setTempoType(Duration.valueOf(str));
-                        } catch (IllegalArgumentException e) {
-                            throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown tempo duration: '{}'", str);
-                        }
-                    }
+                    case XML_TEMPO_TYPE -> tempo.setTempoType(resolveTempoDuration(str));
                     case XML_TEMPO_DESCRIPTION -> tempo.setTempoDescription(
                         str
                     );

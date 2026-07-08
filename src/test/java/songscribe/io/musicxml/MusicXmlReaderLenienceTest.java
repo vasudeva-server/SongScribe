@@ -47,33 +47,6 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     private static final int BEAM_END_INDEX = 2;
 
     /**
-     * Wraps {@code measureBody} in a minimal score-partwise document with a
-     * new-system {@code <print>} (so the reader starts a line) and standard
-     * attributes. Used by the reader edge-case and error-path tests below.
-     */
-    private static String scoreWithMeasureBody(String measureBody) {
-        return
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<score-partwise version=\"4.0\">\n" +
-            "  <part-list>\n" +
-            "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
-            "  </part-list>\n" +
-            "  <part id=\"P1\">\n" +
-            "    <measure number=\"1\">\n" +
-            "      <print new-system=\"yes\"/>\n" +
-            "      <attributes>\n" +
-            "        <divisions>480</divisions>\n" +
-            "        <key><fifths>0</fifths></key>\n" +
-            "        <time print-object=\"no\"><senza-misura/></time>\n" +
-            "        <clef><sign>G</sign><line>2</line></clef>\n" +
-            "      </attributes>\n" +
-            measureBody +
-            "    </measure>\n" +
-            "  </part>\n" +
-            "</score-partwise>\n";
-    }
-
-    /**
      * Wraps a single {@code <miscellaneous-field>} (the given name/value) in an
      * {@code <identification><miscellaneous>} block, followed by a minimal valid
      * one-note part so parsing reaches {@code </score-partwise>}. Used to exercise
@@ -83,6 +56,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         return
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<score-partwise version=\"4.0\">\n" +
+            SOFTWARE_IDENTIFICATION +
             "  <identification>\n" +
             "    <miscellaneous>\n" +
             "      <miscellaneous-field name=\"" + name + "\">" + value + "</miscellaneous-field>\n" +
@@ -122,6 +96,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         var xml =
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<score-partwise version=\"4.0\">\n" +
+            SOFTWARE_IDENTIFICATION +
             "  <part-list>\n" +
             "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
             "  </part-list>\n" +
@@ -175,6 +150,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         var xml =
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<score-partwise version=\"4.0\">\n" +
+            SOFTWARE_IDENTIFICATION +
             "  <part-list>\n" +
             "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
             "  </part-list>\n" +
@@ -342,6 +318,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         var xml =
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<score-partwise version=\"4.0\">\n" +
+            SOFTWARE_IDENTIFICATION +
             "  <part-list>\n" +
             "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
             "  </part-list>\n" +

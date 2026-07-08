@@ -196,7 +196,16 @@
       "parentPhase": 7,
       "parentStep": null,
       "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
-      "status": "pending",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/musicxml/phase-8-cutover.md",
+      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "parentPhase": 8,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "status": "completed",
       "type": "sub-plan"
     },
     {

@@ -21,6 +21,7 @@
 package songscribe.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import module java.desktop;
 
@@ -128,6 +129,43 @@ class UtilsTest extends UnitTest {
         @Test
         void testRoundToTwoDecimalPlacesWithAlreadyRoundedValueIsUnchanged() {
             assertThat(Utils.roundToTwoDecimalPlaces(1.0)).isEqualTo(1.0);
+        }
+    }
+
+    @Nested
+    class CompareVersions {
+
+        @Test
+        void testEqualVersionsCompareZero() {
+            assertThat(Utils.compareVersions("4.0", "4.0")).isZero();
+        }
+
+        @Test
+        void testOlderVersionComparesNegative() {
+            assertThat(Utils.compareVersions("3.0", "4.0")).isNegative();
+        }
+
+        @Test
+        void testNewerMinorComparesPositive() {
+            assertThat(Utils.compareVersions("4.1", "4.0")).isPositive();
+        }
+
+        @Test
+        void testTenthMinorOrdersAfterNinth() {
+            // The reason compareVersions exists: "4.10" is a later release than
+            // "4.9", which a floating-point compare would get backwards (4.10 == 4.1).
+            assertThat(Utils.compareVersions("4.10", "4.9")).isPositive();
+        }
+
+        @Test
+        void testMissingTrailingComponentCountsAsZero() {
+            assertThat(Utils.compareVersions("4", "4.0")).isZero();
+        }
+
+        @Test
+        void testNonNumericComponentThrows() {
+            assertThatExceptionOfType(NumberFormatException.class)
+                .isThrownBy(() -> Utils.compareVersions("4.x", "4.0"));
         }
     }
 

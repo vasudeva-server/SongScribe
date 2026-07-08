@@ -55,7 +55,7 @@ class TempoIOTest extends UnitTest {
         return sw.toString();
     }
 
-    private static TempoIO.TempoReader driveReader10(String innerXml) {
+    private static TempoIO.TempoReader driveReader10(String innerXml) throws SAXException {
         var reader = new TempoIO.TempoReader();
         reader.startElement10(TempoIO.XML_TEMPO_CHANGE);
 
@@ -123,7 +123,7 @@ class TempoIOTest extends UnitTest {
 
         // Row 61: <dontshowtempo> → setShowTempo(false)
         @Test
-        void testDontShowTempoTagSetsShowTempoFalse() {
+        void testDontShowTempoTagSetsShowTempoFalse() throws SAXException {
             var reader = new TempoIO.TempoReader();
             reader.startElement10(TempoIO.XML_TEMPO_CHANGE);
             reader.startElement10(TempoIO.XML_DONT_SHOW_TEMPO);
@@ -151,7 +151,7 @@ class TempoIOTest extends UnitTest {
         void testLegacyDurationNameMapsToCanonical(
             String legacyName,
             String expectedDurationName
-        ) {
+        ) throws SAXException {
             var reader = new TempoIO.TempoReader();
             reader.startElement10(TempoIO.XML_TEMPO_CHANGE);
             reader.startElement10(TempoIO.XML_TEMPO_TYPE);
@@ -171,7 +171,7 @@ class TempoIOTest extends UnitTest {
 
         // Row 58: <tempochange> wrapper → Tempo; <position> via getPos10()
         @Test
-        void testTempoChangeWrapperParsesFieldsAndPos10() {
+        void testTempoChangeWrapperParsesFieldsAndPos10() throws SAXException {
             var expectedVisibleTempo = 96;
             var expectedPos = 5;
             var inner = """
@@ -194,7 +194,7 @@ class TempoIOTest extends UnitTest {
 
         // Row 60: canonical duration name takes Duration.valueOf path
         @Test
-        void testCanonicalDurationNameYieldsCorrectDuration() {
+        void testCanonicalDurationNameYieldsCorrectDuration() throws SAXException {
             var reader = new TempoIO.TempoReader();
             reader.startElement10(TempoIO.XML_TEMPO_CHANGE);
             reader.startElement10(TempoIO.XML_TEMPO_TYPE);
@@ -210,12 +210,12 @@ class TempoIOTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class EndElement11LegacyDurationNameThrows {
+    class EndElement11LegacyDurationNames {
 
-        // Row 63: unknown duration name in v1.1 path → SAXException wrapping the bad value
+        // Row 63: a genuinely-unknown duration name in the v1.1 path → SAXException
         @Test
-        void testUnknownDurationNameInV11PathThrowsSAXException() {
-            var unknownName = "MINIMDOTTED";
+        void testUnknownDurationNameInV11PathThrowsSAXException() throws Exception {
+            var unknownName = "NOTADURATION";
             var reader = new TempoIO.TempoReader();
             reader.startElement11(TempoIO.XML_TEMPO);
             reader.startElement11(TempoIO.XML_TEMPO_TYPE);
@@ -224,6 +224,32 @@ class TempoIOTest extends UnitTest {
             assertThatThrownBy(() -> reader.endElement11(TempoIO.XML_TEMPO_TYPE))
                 .isInstanceOf(SAXException.class)
                 .hasMessageContaining("Corrupt document: unknown tempo duration: '" + unknownName + "'");
+        }
+
+        // v1.1 files can still carry the underscore-less v1.0 dotted-duration tokens
+        // (e.g. real example songs at composition version 1.1), so the v1.1 path must
+        // apply the same legacy-name fallback as the v1.0 path rather than reject them.
+        @ParameterizedTest(name = "legacyName={0}, expected={1}")
+        @CsvSource({
+            "MINIMDOTTED,    MINIM_DOTTED",
+            "CROTCHETDOTTED, CROTCHET_DOTTED",
+            "QUAVERDOTTED,   QUAVER_DOTTED",
+            "SEMIBREVE,      SEMI_BREVE",
+        })
+        void testLegacyDurationNameMapsToCanonicalInV11Path(
+            String legacyName,
+            String expectedDurationName
+        ) throws Exception {
+            var reader = new TempoIO.TempoReader();
+            reader.startElement11(TempoIO.XML_TEMPO);
+            reader.startElement11(TempoIO.XML_TEMPO_TYPE);
+            reader.characters(legacyName.toCharArray(), 0, legacyName.length());
+            reader.endElement11(TempoIO.XML_TEMPO_TYPE);
+            var tempo = reader.endElement11(TempoIO.XML_TEMPO);
+
+            assertThat(tempo).isNotNull();
+            if (tempo == null) return;
+            assertThat(tempo.getTempoType()).isEqualTo(Duration.valueOf(expectedDurationName));
         }
     }
 

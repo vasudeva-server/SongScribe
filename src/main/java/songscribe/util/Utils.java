@@ -67,6 +67,33 @@ public final class Utils {
         return Calendar.getInstance().get(Calendar.YEAR);
     }
 
+    /**
+     * Compares two dotted numeric version strings (e.g. "4.0", "2.10")
+     * component by component. Missing trailing components count as 0, so
+     * "4" and "4.0" compare equal. Comparison is numeric per component, so
+     * "4.10" correctly orders after "4.9" (unlike a floating-point compare).
+     *
+     * @return a negative number, zero, or a positive number as {@code a} is
+     *     respectively less than, equal to, or greater than {@code b}
+     * @throws NumberFormatException if either string has a non-numeric component
+     */
+    public static int compareVersions(String a, String b) {
+        var aParts = a.split("\\.");
+        var bParts = b.split("\\.");
+        var count = Math.max(aParts.length, bParts.length);
+
+        for (var i = 0; i < count; i++) {
+            var aValue = (i < aParts.length) ? Integer.parseInt(aParts[i].trim()) : 0;
+            var bValue = (i < bParts.length) ? Integer.parseInt(bParts[i].trim()) : 0;
+
+            if (aValue != bValue) {
+                return Integer.compare(aValue, bValue);
+            }
+        }
+
+        return 0;
+    }
+
     @FunctionalInterface
     public interface DesktopOperation {
         @SuppressWarnings("ProhibitedExceptionDeclared") // Can't know in advance what perform will throw

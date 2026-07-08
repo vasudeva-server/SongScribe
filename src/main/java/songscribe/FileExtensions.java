@@ -22,6 +22,8 @@ package songscribe;
 public final class FileExtensions {
 
     public static final String SONGWRITER = "mssw";
+    public static final String MUSICXML = "musicxml";
+    public static final String XML = "xml";
 
     private FileExtensions() {}
 }

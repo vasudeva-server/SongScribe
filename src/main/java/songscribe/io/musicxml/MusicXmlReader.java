@@ -35,6 +35,7 @@ import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import songscribe.Constants;
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
@@ -47,6 +48,7 @@ import songscribe.font.FontKey;
 import songscribe.io.DocumentValidation;
 import songscribe.io.SongLoadResult;
 import songscribe.util.DateUtils;
+import songscribe.util.Utils;
 
 /**
  * SAX reader that parses MusicXML 4.0 documents produced by {@link MusicXmlWriter}
@@ -87,6 +89,12 @@ public final class MusicXmlReader extends DefaultHandler {
 
     @Nullable
     private Song song = null;
+
+    // The document's <software> provenance tag, captured at </software>. A
+    // present-but-foreign value is rejected there; a missing or blank value is
+    // rejected at endDocument. Null until the tag is seen.
+    @Nullable
+    private String software = null;
 
     // Per-note range-span pending anchors (slide, beam, tie, tuplet, trill) — see
     // RangeSpanResolver.
@@ -317,16 +325,30 @@ public final class MusicXmlReader extends DefaultHandler {
                 if (qName.equals(MusicXmlTags.SCORE_PARTWISE)) {
                     var version = attributes.getValue(MusicXmlTags.ATTR_VERSION);
 
-                    if (!MusicXmlTags.VERSION_VALUE.equals(version)) {
-                        throw new SAXException(
-                            "Unsupported MusicXML version: '" + version +
-                            "'; only " + MusicXmlTags.VERSION_VALUE + " is supported."
+                    if (version == null) {
+                        throw new UnsupportedFormatException("missing version attribute");
+                    }
+
+                    int comparison;
+
+                    try {
+                        comparison = Utils.compareVersions(version, MusicXmlTags.VERSION_VALUE);
+                    } catch (NumberFormatException e) {
+                        throw new UnsupportedFormatException("unparseable version '" + version + "'");
+                    }
+
+                    if (comparison < 0) {
+                        throw new UnsupportedFormatException(
+                            "unsupported MusicXML version '" + version +
+                            "'; requires " + MusicXmlTags.VERSION_VALUE + " or later"
                         );
                     }
 
                     song = Song.newParsingStub();
                     song.beginSuspendMutationTracking();
                     where = Where.SCORE_PARTWISE;
+                } else {
+                    throw new UnsupportedFormatException("root <" + qName + ">");
                 }
             }
             case SCORE_PARTWISE -> {
@@ -1082,8 +1104,18 @@ public final class MusicXmlReader extends DefaultHandler {
                 }
             }
             case SOFTWARE -> {
-                // Write-forward; consumed, not read.
+                // Provenance tag. <software> arrives in the header before any
+                // <part>, so reject a present-but-foreign document here rather
+                // than parsing the whole score body only to discard it. A
+                // missing or blank tag can only be detected once the document
+                // ends, so that case is deferred to endDocument.
                 if (qName.equals(MusicXmlTags.SOFTWARE)) {
+                    software = value.toString();
+
+                    if (!software.isBlank() && !software.startsWith(Constants.PACKAGE_NAME)) {
+                        throw new ForeignSoftwareException(software);
+                    }
+
                     where = Where.ENCODING;
                 }
             }
@@ -1191,6 +1223,14 @@ public final class MusicXmlReader extends DefaultHandler {
         // This avoids the silent-empty-value risk of forgetting to add a new
         // text-bearing state to a where-based guard.
         value.append(ch, start, length);
+    }
+
+    @Override
+    public void endDocument() throws SAXException {
+        // Provenance gate: only SongScribe-authored documents are accepted.
+        if (software == null || software.isBlank() || !software.startsWith(Constants.PACKAGE_NAME)) {
+            throw new ForeignSoftwareException(software);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -1752,5 +1792,44 @@ public final class MusicXmlReader extends DefaultHandler {
         METRONOME_TYPE,
         METRONOME_DOT,
         METRONOME_RELATION,
+    }
+
+    /**
+     * Thrown at endDocument when the document's {@code <software>} provenance tag
+     * is missing, blank, or does not identify SongScribe.
+     */
+    public static final class ForeignSoftwareException extends SAXException {
+
+        @Nullable
+        private final String software;
+
+        ForeignSoftwareException(@Nullable String software) {
+            super(SongLoadResult.WrongSoftware.message(software));
+            this.software = software;
+        }
+
+        @Nullable
+        public String software() {
+            return software;
+        }
+    }
+
+    /**
+     * Thrown at startElement when the root element is not {@code <score-partwise>}
+     * or its {@code version} is missing, unparseable, or older than
+     * {@link MusicXmlTags#VERSION_VALUE}.
+     */
+    public static final class UnsupportedFormatException extends SAXException {
+
+        private final String detail;
+
+        UnsupportedFormatException(String detail) {
+            super("Unsupported MusicXML format: " + detail);
+            this.detail = detail;
+        }
+
+        public String detail() {
+            return detail;
+        }
     }
 }

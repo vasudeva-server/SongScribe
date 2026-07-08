@@ -24,8 +24,6 @@ import module java.desktop;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
@@ -44,7 +42,7 @@ import songscribe.font.DocumentFonts;
 import songscribe.FileExtensions;
 import songscribe.util.FileUtils;
 import songscribe.util.ExtensionFileFilter;
-import songscribe.io.SongIO;
+import songscribe.io.SongFileWriter;
 import songscribe.lifecycle.Shutdown;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageLogger;
@@ -860,10 +858,18 @@ public class MainFrame extends JFrame implements Printable {
             this,
             Strings.get(Strings.DIALOG_OPEN_TITLE),
             true,
-            new ExtensionFileFilter(
-                Strings.get(Strings.FILTER_SONGSCRIBE),
-                FileExtensions.SONGWRITER
-            )
+            new ExtensionFileFilter[] {
+                new ExtensionFileFilter(
+                    Strings.get(Strings.FILTER_MUSICXML),
+                    FileExtensions.MUSICXML,
+                    FileExtensions.XML
+                ),
+                new ExtensionFileFilter(
+                    Strings.get(Strings.FILTER_SONGSCRIBE),
+                    FileExtensions.SONGWRITER
+                )
+            },
+            0
         );
 
         if (dialog.showDialog()) {
@@ -979,25 +985,25 @@ public class MainFrame extends JFrame implements Printable {
             return false;
         }
 
+        var song = scoreView.getSong();
+
         try {
-            var printWriter = new PrintWriter(
-                currentFile,
-                StandardCharsets.UTF_8
-            );
-            SongIO.writeSong(scoreView.getSong(), scoreView, printWriter);
-            printWriter.close();
-            scoreView.getSong().setModified(false);
-            LOG.info("Saved: {}", currentFile.getName());
-            MessageCenter.post(new DocumentWasSavedNotification());
-            return true;
-        } catch (IOException e1) {
-            OptionDialogs.showErrorMessage(
-                this,
-                Strings.ALERT_TITLE_FILE_ERROR,
-                Strings.ERROR_FILE_SAVE
-            );
-            return false;
+            if (SongFileWriter.write(song, scoreView, currentFile)) {
+                song.setModified(false);
+                LOG.info("Saved: {}", currentFile.getName());
+                MessageCenter.post(new DocumentWasSavedNotification());
+                return true;
+            }
+        } catch (IOException e) {
+            LOG.error("Failed to save {}", currentFile.getName(), e);
         }
+
+        OptionDialogs.showErrorMessage(
+            this,
+            Strings.ALERT_TITLE_FILE_ERROR,
+            Strings.ERROR_FILE_SAVE
+        );
+        return false;
     }
 
     boolean saveAsNewFile() {
@@ -1011,9 +1017,9 @@ public class MainFrame extends JFrame implements Printable {
         var saveFile = PlatformFileDialog.showSaveDialog(
             this,
             Strings.get(Strings.DIALOG_SAVE_AS_TITLE),
-            Strings.get(Strings.FILTER_SONGSCRIBE),
+            Strings.get(Strings.FILTER_MUSICXML),
             suggestedFileName,
-            FileExtensions.SONGWRITER
+            FileExtensions.MUSICXML
         );
 
         if (saveFile == null) {

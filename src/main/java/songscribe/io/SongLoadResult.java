@@ -35,7 +35,9 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
             SongLoadResult.IoError,
             SongLoadResult.ParseError,
             SongLoadResult.NewerVersion,
-            SongLoadResult.LineWidthTooLarge {
+            SongLoadResult.LineWidthTooLarge,
+            SongLoadResult.WrongSoftware,
+            SongLoadResult.UnsupportedFileFormat {
         File file();
     }
 
@@ -47,6 +49,22 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
 
     record LineWidthTooLarge(File file, double actualInches, double maxInches) implements Failure {}
 
+    record WrongSoftware(File file, @Nullable String software) implements Failure {
+
+        // Single source of truth for this failure's message, shared with the
+        // reader exception that produces it, so the wording cannot drift.
+        public static String message(@Nullable String software) {
+            return "File was not created by SongScribe (software: " + software + ")";
+        }
+    }
+
+    record UnsupportedFileFormat(File file, @Nullable String detail) implements Failure {
+
+        public static String message(@Nullable String detail) {
+            return "Unsupported file format: " + detail;
+        }
+    }
+
     default Song songOrThrow() throws IOException, SAXException {
         return switch (this) {
             case Success s -> s.song();
@@ -55,6 +73,8 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
             case NewerVersion e -> throw e.cause();
             case LineWidthTooLarge e -> throw new IOException(
                 "Line width " + e.actualInches() + " inches exceeds maximum " + e.maxInches() + " inches");
+            case WrongSoftware e -> throw new IOException(WrongSoftware.message(e.software()));
+            case UnsupportedFileFormat e -> throw new IOException(UnsupportedFileFormat.message(e.detail()));
         };
     }
 }

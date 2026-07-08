@@ -11,7 +11,7 @@
 | 5 | [Per-Measure Attributes (Key, Tempo)](#-phase-5-per-measure-attributes-key-tempo) | ✅ Complete | [phase-5-per-measure-attributes.md](./phase-5-per-measure-attributes.md) |
 | 6 | [Lyrics](#-phase-6-lyrics) | ✅ Complete | [phase-6-lyrics.md](./phase-6-lyrics.md) |
 | 7 | [Header, Layout & Extension Fields](#️-phase-7-header-layout--extension-fields) | ✅ Complete | [phase-7-document-header.md](./phase-7-document-header.md) |
-| 8 | [Losslessness Gate & Cutover](#-phase-8-losslessness-gate--cutover) | ⏳ Pending | — |
+| 8 | [Losslessness Gate & Cutover](#-phase-8-losslessness-gate--cutover) | ✅ Complete | [phase-8-cutover.md](./phase-8-cutover.md) |
 
 ## Context
 
@@ -232,20 +232,66 @@ verbatim, and every residual `<misc-field>` reloads verbatim.
 
 ---
 
-## ⏳ Phase 8: Losslessness Gate & Cutover
+## ✅ Phase 8: Losslessness Gate & Cutover
+
+**Status**: ✅ Complete — see [phase-8-cutover.md](./phase-8-cutover.md)
 
 **Goal**: Prove zero information loss across a real corpus, then make MusicXML the
 canonical on-disk format with `.mssw` as read-only legacy import.
 
 **Tasks**:
-- Round-trip every `.mssw` in the test corpus through `Song → MusicXML → Song` and
-  assert full model equality (the losslessness gate).
-- Wire MusicXML into the save/open path as the new canonical format; keep the
-  existing `.mssw` `DocumentReader` for one-way legacy import.
-- Update `FileExtensions` / file filters as needed.
+- ✅ Round-trip every `.mssw` in the test corpus through `Song → MusicXML → Song`
+  and assert losslessness (the losslessness gate). **Done** — see § "Test corpus &
+  losslessness gate" below.
+- ✅ Wire MusicXML into the save/open path as the new canonical `.musicxml`
+  format; keep the existing `.mssw` reader for one-way legacy import (route Open
+  by extension). **Done** — see [phase-8-cutover.md](./phase-8-cutover.md).
+- ✅ Add `FileExtensions.MUSICXML` + `filter.musicxml`; update save/open filters.
 
 **Verify**: Corpus round-trip is lossless. Opening a legacy `.mssw` and saving
-produces a faithful MusicXML document.
+produces a faithful `.musicxml` document.
+
+### Test corpus & losslessness gate
+
+**Location** — `src/test/resources/corpus/`:
+- `synthetic/` — 10 feature-exercising `.mssw` files, one per mapping slice
+  (structural/barlines, durations+rests, pitches+accidentals, articulations,
+  range-spans, key+tempo+metric-modulation, lyrics, header+credits, annotations,
+  and a kitchen-sink with custom fonts). Built programmatically and serialized via
+  the legacy `SongIO.writeSong`.
+- `real/` — 8 committed copies of the real Sri Chinmoy songs in `examples/`.
+
+**Generate** — the synthetic half is produced by
+`src/test/java/songscribe/io/musicxml/MusicXmlCorpusGenerator.java`, a build tool
+guarded behind `-Dcorpus.generate=true` so it never runs in a normal test pass.
+Regenerate and immediately re-verify with:
+
+```
+./scripts/generate-corpus.sh
+```
+
+(equivalently `EXTRA_JVM_ARGS="-Dcorpus.generate=true" ./scripts/test.sh MusicXmlCorpusGenerator`).
+The `real/` copies are static — the script does not touch them.
+
+**Gate** — `src/test/java/songscribe/io/musicxml/MusicXmlCorpusLosslessnessTest.java`
+runs in the ordinary unit suite. For every file it legacy-loads the `.mssw`,
+schema-validates the first MusicXML projection, then asserts the **serialization
+fixpoint**: because there is no deep `Song.equals()` and some fields are
+write-forward only (the five credit-words-only font roles, computed
+`default-x`/`default-y` bases, display-only credits), it normalizes with one
+round-trip and asserts the *next* round-trip reproduces the document byte-for-byte
+under a fixed `Clock`. Run it directly with:
+
+```
+./scripts/test.sh MusicXmlCorpusLosslessnessTest
+```
+
+**Finding** — building the gate surfaced a pre-existing legacy-reader bug: two
+`version="1.1"` example songs carrying underscore-less v1.0 tempo tokens
+(`CROTCHETDOTTED`) failed to load because `TempoIO.endElement11` called
+`Duration.valueOf` directly instead of consulting `LEGACY_TEMPO_DURATION_NAMES`
+like the v1.0 path. Fixed (the v1.1 path now applies the same legacy-name
+fallback); regression coverage added in `TempoIOTest`.
 
 ---
 

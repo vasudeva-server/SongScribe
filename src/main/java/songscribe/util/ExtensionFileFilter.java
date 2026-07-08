@@ -51,8 +51,7 @@ public class ExtensionFileFilter extends FileFilter implements FilenameFilter {
     }
 
     private boolean accept(String fileName) {
-        var ext = FileUtils.getExtension(fileName).toLowerCase();
-        return !ext.isEmpty() && extensions.contains(ext);
+        return FileUtils.hasExtension(new File(fileName), extensions.toArray(new String[0]));
     }
 
     public String getExtension(int index) {

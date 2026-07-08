@@ -32,7 +32,11 @@ final class MusicXmlTags {
 
     private MusicXmlTags() {}
 
-    /** Supported and emitted MusicXML schema version. */
+    /**
+     * Supported and emitted MusicXML schema version. Also the minimum the
+     * reader accepts: documents at this version or later are read
+     * (forward-compatible); older ones are rejected.
+     */
     static final String VERSION_VALUE = "4.0";
 
     // MusicXML's positional coordinate unit is the tenth: 1 staff space = 10

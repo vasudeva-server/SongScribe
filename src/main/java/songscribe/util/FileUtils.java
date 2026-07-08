@@ -76,6 +76,20 @@ public final class FileUtils {
         return (parent != null) ? parent.toString() : "";
     }
 
+    // Compares the file's extension (case-insensitive) against each candidate,
+    // which must already be lowercase.
+    public static boolean hasExtension(File file, String... extensions) {
+        var extension = getExtension(file.getName()).toLowerCase();
+
+        for (var candidate : extensions) {
+            if (extension.equals(candidate)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static File ensureExtension(File file, String... extensions) {
         var name = file.getName().toLowerCase();
 

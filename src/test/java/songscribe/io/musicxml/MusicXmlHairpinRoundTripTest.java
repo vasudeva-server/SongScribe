@@ -358,6 +358,7 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
         var xml =
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<score-partwise version=\"4.0\">\n" +
+            SOFTWARE_IDENTIFICATION +
             "  <part-list>\n" +
             "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
             "  </part-list>\n" +

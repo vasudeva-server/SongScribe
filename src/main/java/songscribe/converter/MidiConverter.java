@@ -28,7 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.SongScribe;
-import songscribe.io.SongLoader;
+import songscribe.io.SongFileLoader;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
 
@@ -80,7 +80,7 @@ public class MidiConverter {
 
         for (var file : files) {
             try {
-                var song = SongLoader.load(file).songOrThrow();
+                var song = SongFileLoader.load(file).songOrThrow();
                 var sequence = PlaybackController.buildSequence(song);
                 MidiSystem.write(
                     sequence,

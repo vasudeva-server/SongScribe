@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<song version="2.10">
+  <keys>5</keys>
+  <keytype>FLATS</keytype>
+  <number></number>
+  <songtitle>Untitled</songtitle>
+  <composer>Sri Chinmoy</composer>
+  <lyricist>Sri Chinmoy</lyricist>
+  <lyricssource>LYRICIST</lyricssource>
+  <rightinfo>Words and Music by
+Sri Chinmoy</rightinfo>
+  <linewidth>0.0</linewidth>
+  <dynamicLayout>true</dynamicLayout>
+  <lines>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="SEMIBREVE">
+            <staffposition>6</staffposition>
+          </note>
+          <note type="MINIM">
+            <staffposition>6</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <staffposition>6</staffposition>
+          </note>
+          <note type="QUAVER">
+            <staffposition>6</staffposition>
+          </note>
+          <note type="SEMIQUAVER">
+            <staffposition>6</staffposition>
+          </note>
+          <note type="DEMI_SEMIQUAVER">
+            <staffposition>6</staffposition>
+          </note>
+      </notes>
+    </line>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="SEMIBREVE_REST">
+            <staffposition>-1</staffposition>
+          </note>
+          <note type="MINIM_REST">
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET_REST">
+            <staffposition>0</staffposition>
+          </note>
+          <note type="QUAVER_REST">
+            <staffposition>0</staffposition>
+          </note>
+          <note type="SEMIQUAVER_REST">
+            <staffposition>0</staffposition>
+          </note>
+          <note type="DEMI_SEMIQUAVER_REST">
+            <staffposition>0</staffposition>
+          </note>
+      </notes>
+    </line>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="MINIM">
+            <staffposition>0</staffposition>
+            <dotted>1</dotted>
+          </note>
+          <note type="MINIM">
+            <staffposition>0</staffposition>
+            <dotted>2</dotted>
+          </note>
+          <note type="GRACE_QUAVER">
+            <staffposition>0</staffposition>
+            <stemDirectionAuto />
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <staffposition>0</staffposition>
+          </note>
+      </notes>
+    </line>
+  </lines>
+  <view>
+    <titlefont>HelveticaNeue</titlefont>
+    <titlefontsize>32</titlefontsize>
+    <subtitleFont>HelveticaNeue</subtitleFont>
+    <subtitleFontSize>24</subtitleFontSize>
+    <lyricsfont>HelveticaNeue</lyricsfont>
+    <lyricsfontsize>18</lyricsfontsize>
+    <generalfont>HelveticaNeue</generalfont>
+    <generalfontsize>16</generalfontsize>
+    <subAttributionFont>HelveticaNeue</subAttributionFont>
+    <subAttributionFontSize>15</subAttributionFontSize>
+    <annotationfont>HelveticaNeue</annotationfont>
+    <annotationfontsize>16</annotationfontsize>
+    <banglaFont>TiroBangla</banglaFont>
+    <banglaFontSize>18</banglaFontSize>
+    <footnoteFont>HelveticaNeue</footnoteFont>
+    <footnoteFontSize>14</footnoteFontSize>
+  </view>
+</song>

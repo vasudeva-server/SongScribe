@@ -28,6 +28,7 @@ import java.io.StringWriter;
 
 import org.xml.sax.InputSource;
 
+import songscribe.Constants;
 import songscribe.UnitTest;
 import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
@@ -59,7 +60,50 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
      */
     protected static final int C4_STAFF_POSITION = 6;
 
+    /**
+     * Minimal SongScribe provenance block. Every hand-built {@code <score-partwise>}
+     * fixture read through {@link MusicXmlReader} must carry a {@code <software>} tag
+     * that starts with {@link Constants#PACKAGE_NAME}, or the reader's provenance gate
+     * refuses it at {@code endDocument}. Fixtures insert this immediately after the
+     * root element so future fixtures inherit the tag instead of silently breaking.
+     */
+    protected static final String SOFTWARE_IDENTIFICATION =
+        "  <identification>\n" +
+        "    <encoding>\n" +
+        "      <software>" + Constants.PACKAGE_NAME + "</software>\n" +
+        "    </encoding>\n" +
+        "  </identification>\n";
+
     // -- helpers --
+
+    /**
+     * Wraps {@code measureBody} in a minimal {@code <score-partwise>} document with a
+     * SongScribe provenance tag, a new-system {@code <print>} (so the reader starts a
+     * line), and standard attributes. Shared by the hand-built reader edge-case and
+     * round-trip fixtures.
+     */
+    protected static String scoreWithMeasureBody(String measureBody) {
+        return
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<score-partwise version=\"4.0\">\n" +
+            SOFTWARE_IDENTIFICATION +
+            "  <part-list>\n" +
+            "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
+            "  </part-list>\n" +
+            "  <part id=\"P1\">\n" +
+            "    <measure number=\"1\">\n" +
+            "      <print new-system=\"yes\"/>\n" +
+            "      <attributes>\n" +
+            "        <divisions>480</divisions>\n" +
+            "        <key><fifths>0</fifths></key>\n" +
+            "        <time print-object=\"no\"><senza-misura/></time>\n" +
+            "        <clef><sign>G</sign><line>2</line></clef>\n" +
+            "      </attributes>\n" +
+            measureBody +
+            "    </measure>\n" +
+            "  </part>\n" +
+            "</score-partwise>\n";
+    }
 
     // The Song-only overloads default to DocumentFonts.defaultFonts() so the
     // Phase 1–6 tests that predate fonts plumbing compile and run unchanged; the
