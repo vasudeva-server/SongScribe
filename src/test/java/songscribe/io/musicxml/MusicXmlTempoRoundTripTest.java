@@ -249,6 +249,34 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
             PER_NOTE_TEMPO_BPM, Duration.MINIM, NO_DESCRIPTION, true, "line 2 per-note tempo");
     }
 
+    @Test
+    void testInitialTempoAnchorsOnLeadingGraceNoteRoundTrip() throws Exception {
+        // When the first note is a grace note, the base tempo anchors on it — the
+        // first element of the first line. The anchor must survive a MusicXML
+        // round-trip on both the write (firstElementOfSong) and read
+        // (applyInitialTempo) sides.
+        var baseTempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
+
+        var song = buildSong(line -> {
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var hostNote = ElementType.CROTCHET.newInstance();
+            line.addElement(graceNote);
+            line.addElement(hostNote);
+            attachTempo(graceNote, baseTempo);
+        });
+        song.withoutMutationTracking(() -> song.setTempo(baseTempo));
+
+        var reloaded = roundTrip(song);
+        var graceAnchor = reloaded.getLine(0).getElement(0);
+
+        var graceAttachment = graceAnchor.findAttachment(TempoChangeAttachment.class);
+        assertTempoEquals(
+            graceAttachment == null ? null : graceAttachment.getTempo(),
+            BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "grace-note tempo after round-trip");
+        assertTempoEquals(
+            reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "recovered base tempo");
+    }
+
     // -------------------------------------------------------------------------
     // Schema validation
     // -------------------------------------------------------------------------

@@ -241,6 +241,64 @@ class SongLoadingTest extends UnitTest {
         assertThat(attachment.getTempo()).isSameAs(tempo);
     }
 
+    @Test
+    @SuppressWarnings("NullAway")
+    void testLoadFromAnchorsInitialTempoOnLeadingGraceNote() {
+        var tempo = new Tempo();
+        tempo.setVisibleTempo(120);
+
+        var line = new Line(song);
+        var graceNote = new StaffElement(ElementType.GRACE_QUAVER);
+        var hostNote = new StaffElement(ElementType.CROTCHET);
+        song.withoutMutationTracking(() -> {
+            line.addElement(graceNote);
+            line.addElement(hostNote);
+            line.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+        });
+
+        var data = songDataWith(tempo, line);
+
+        song.withoutMutationTracking(() -> song.loadFrom(data));
+
+        var attachment = graceNote.findAttachment(TempoChangeAttachment.class);
+        assertThat(attachment)
+            .as("the initial tempo must anchor on the first element, a leading grace note included")
+            .isNotNull();
+        assertThat(attachment.getTempo()).isSameAs(tempo);
+        assertThat(hostNote.findAttachment(TempoChangeAttachment.class))
+            .as("the host note past the grace-note anchor must not carry the initial tempo")
+            .isNull();
+    }
+
+    private SongData songDataWith(Tempo tempo, Line line) {
+        return new SongData(
+            tempo,
+            "",
+            "",
+            "",
+            0,
+            0,
+            "",
+            "",
+            "",
+            "",
+            Song.SRI_CHINMOY,
+            Song.SRI_CHINMOY,
+            LyricsSource.LYRICIST,
+            false,
+            "",
+            false,
+            Song.DEFAULT_KEY_ACCIDENTAL_COUNT,
+            Song.DEFAULT_KEY_TYPE,
+            0.0,
+            0.0,
+            List.of(line),
+            false,
+            1,
+            "", "", 0, 0
+        );
+    }
+
     // selection2.mssw has no dynamics — regression guard for older files without them.
     private static final int SELECTION2_ELEMENT_COUNT = 19;
 

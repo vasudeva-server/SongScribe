@@ -184,6 +184,61 @@ class LineQueryTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // firstPitchedElement
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class FirstPitchedElement {
+
+        @Test
+        void testSkipsLeadingGraceNoteAndReturnsHostNote() {
+            // A grace note is an ornament, not the tempo anchor: firstPitchedElement
+            // must skip it and return the following pitched host note.
+            var song = new Song();
+            var line = song.getLine(0);
+            var graceNote = new StaffElement(ElementType.GRACE_QUAVER);
+            var hostNote = new StaffElement(ElementType.CROTCHET);
+            song.withoutMutationTracking(() -> {
+                line.addElement(graceNote);
+                line.addElement(hostNote);
+            });
+
+            assertThat(line.firstPitchedElement())
+                .as("firstPitchedElement must skip a leading grace note and return the host note")
+                .isSameAs(hostNote);
+        }
+
+        @Test
+        void testSkipsLeadingRestAndReturnsPitchedNote() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var rest = new StaffElement(ElementType.SEMIBREVE_REST);
+            var note = new StaffElement(ElementType.CROTCHET);
+            song.withoutMutationTracking(() -> {
+                line.addElement(rest);
+                line.addElement(note);
+            });
+
+            assertThat(line.firstPitchedElement())
+                .as("firstPitchedElement must skip a leading rest and return the pitched note")
+                .isSameAs(note);
+        }
+
+        @Test
+        void testReturnsNullWhenNoPitchedNotePresent() {
+            // A line with only a grace note has no pitched note to anchor the tempo on.
+            var song = new Song();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(new StaffElement(ElementType.GRACE_QUAVER)));
+
+            assertThat(line.firstPitchedElement())
+                .as("firstPitchedElement must return null when no pitched note is present")
+                .isNull();
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // isAnnotation
     // -----------------------------------------------------------------------
 

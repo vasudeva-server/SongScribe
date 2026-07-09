@@ -649,14 +649,14 @@ public final class Song {
 
     /**
      * Clears the song-level initial tempo if {@code element} losing its tempo change
-     * would orphan it. The song-level tempo is mirrored onto the first note of the
+     * would orphan it. The song-level tempo is mirrored onto the first element of the
      * first line on every reload by {@code attachInitialTempoIfNeeded}, so it must be
      * cleared when:
      * <ul>
      *   <li>{@code element} is the first element of the first line (the only place the
      *       initial tempo is anchored), or</li>
      *   <li>no per-note tempo changes remain anywhere — otherwise the song-level tempo
-     *       would be re-attached to the first note on the next reload.</li>
+     *       would be re-attached to the first element on the next reload.</li>
      * </ul>
      */
     public void clearTempoIfOrphaned(StaffElement element) {

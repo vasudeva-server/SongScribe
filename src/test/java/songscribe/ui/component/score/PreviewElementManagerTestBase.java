@@ -109,6 +109,7 @@ abstract class PreviewElementManagerTestBase extends UnitTest {
         PreviewElementManager.setCurrentXIndex(-1);
         PreviewElementManager.setXPosSsMatchesElement(false);
         PreviewElementManager.setCurrentSlideZone(null);
+        PreviewElementManager.clearPendingTempoPrompt();
 
         staffElementMock.close();
         playbackMock.close();

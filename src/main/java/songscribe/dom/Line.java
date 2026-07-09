@@ -809,6 +809,22 @@ public class Line {
         return thisContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
     }
 
+    /**
+     * Returns the first pitched note on this line, or null if it has none. Used to
+     * defer the initial-tempo dialog until a host note exists: when the first note is
+     * a grace note (an ornament), the dialog waits until the following pitched host
+     * note is placed, even though the tempo itself anchors on the first element.
+     */
+    public @Nullable StaffElement firstPitchedElement() {
+        for (var element : elements) {
+            if (element.getType().isPitchedNote()) {
+                return element;
+            }
+        }
+
+        return null;
+    }
+
     /** Attaches the song's initial tempo to the first element of this line if not already set. */
     void attachInitialTempoIfNeeded() {
         if (elements.isEmpty()) {
@@ -1467,6 +1483,9 @@ public class Line {
 
 
     public int getFirstTempoChange() {
+        // On the first line the base tempo is anchored on the first element
+        // (see attachInitialTempoIfNeeded), so the tempo marking — and its vertical
+        // adjustment handle — belongs to that element.
         if ((song.indexOfLine(this) == 0) && (elementCount() > 0)) {
             return 0;
         }

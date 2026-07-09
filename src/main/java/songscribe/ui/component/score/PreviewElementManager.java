@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
+import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Beam;
@@ -56,6 +57,7 @@ import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.engraving.Staff;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.layout.StaffExtents;
 import songscribe.ui.playback.PlaybackController;
 
@@ -96,6 +98,23 @@ public final class PreviewElementManager {
 
     /** Whether the mouse Y (staff position) is within the vertical bounds of that note head. */
     private static boolean yPosSpMatchesElement = false;
+
+    /**
+     * Runs after ScoreViewController's layout-invalidating handler so the pending prompt
+     * sees an invalidated (recomputable) layout for the just-inserted note.
+     */
+    private static final int TEMPO_PROMPT_PRIORITY = Message.LOW_PRIORITY - 1;
+
+    /**
+     * A first-note tempo prompt awaiting the commit of its enclosing modification bracket.
+     * The anchor is the first element of the first line (the grace note, when one leads).
+     * Set inside the insertion bracket, consumed by {@link #showPendingTempoPrompt}.
+     */
+    private record PendingTempoPrompt(LineComponent lineComponent, Line line, StaffElement anchor) {}
+
+    /** The pending first-note tempo prompt, or null when none is queued. */
+    @Nullable
+    private static PendingTempoPrompt pendingTempoPrompt = null;
 
     /** The slide zone determined by mouse position (null if no valid zone). */
     private static @Nullable SlideZone currentSlideZone = null;
@@ -374,6 +393,14 @@ public final class PreviewElementManager {
      */
     static void setCurrentSlideZone(@Nullable SlideZone zone) {
         currentSlideZone = zone;
+    }
+
+    /**
+     * Clears any queued first-note tempo prompt (package-private for test teardown, so a
+     * prompt left pending by one test cannot leak into the next).
+     */
+    static void clearPendingTempoPrompt() {
+        pendingTempoPrompt = null;
     }
 
     // ==========================================================================
@@ -714,8 +741,12 @@ public final class PreviewElementManager {
             return;
         }
 
-        var wasFirstLineEmpty = song.indexOfLine(line) == 0
-            && line.effectiveElementCount() == 0;
+        // The song's initial tempo anchors on the first element of the first line — a
+        // leading grace note keeps it. But when that first element is a grace note (an
+        // ornament), prompting for the tempo makes sense only once the host note exists,
+        // so the dialog is deferred until the first line gains its first pitched note.
+        var isFirstLine = song.indexOfLine(line) == 0;
+        var hadPitchedNoteBefore = isFirstLine && line.firstPitchedElement() != null;
 
         // Determine action based on position. Wrap in a modification bracket so the
         // line.add/setElement calls inside actually accumulate mutations and fire a
@@ -729,11 +760,46 @@ public final class PreviewElementManager {
             } else {
                 insertElement(lc, currentXIndex, line);
             }
-        });
 
-        if (wasFirstLineEmpty && line.effectiveElementCount() == 1) {
-            TempoChangeDialog.showForElement(MainFrame.getInstance(), line.getElement(0), line);
+            // Record the tempo anchor while the bracket is still open, but defer showing
+            // the dialog to songDidChange (see showPendingTempoPrompt). The layout is only
+            // invalidated when the outermost bracket closes, and grace mode nests this
+            // insertion inside a larger bracket, so showing the dialog synchronously here
+            // would render the note against a stale layout (at x = 0) behind the dialog.
+            //
+            // Gate on the first pitched note appearing (so a leading grace note alone does
+            // not prompt), but anchor the tempo on the first element — the grace note keeps
+            // the tempo, matching attachInitialTempoIfNeeded.
+            if (isFirstLine && !hadPitchedNoteBefore && line.firstPitchedElement() != null) {
+                pendingTempoPrompt = new PendingTempoPrompt(lc, line, line.getElement(0));
+            }
+        });
+    }
+
+    /**
+     * Shows the tempo dialog for a pending first-note anchor, if any. Invoked from
+     * {@link #songDidChange} once the outermost modification bracket has committed, so the
+     * layout has been invalidated and can be recomputed to give the note its final
+     * x-position before the modal dialog blocks the EDT.
+     */
+    static void showPendingTempoPrompt() {
+        var prompt = pendingTempoPrompt;
+
+        if (prompt == null) {
+            return;
         }
+
+        pendingTempoPrompt = null;
+
+        // Recompute now: ScoreViewController's higher-priority handler has just invalidated
+        // the layout, so ensureLayout positions the inserted note before the dialog appears.
+        prompt.lineComponent().ensureLayout();
+        TempoChangeDialog.showForElement(MainFrame.getInstance(), prompt.anchor(), prompt.line());
+    }
+
+    @Handler(priority = TEMPO_PROMPT_PRIORITY)
+    public void songDidChange(SongDidChangeNotification message) {
+        showPendingTempoPrompt();
     }
 
     /**

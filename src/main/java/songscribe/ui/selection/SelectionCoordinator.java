@@ -536,7 +536,7 @@ public final class SelectionCoordinator {
         for (var i = selection.begin(); i <= selection.end(); i++) {
             var elementType = line.getElement(i).getType();
 
-            if (elementType.isDuration()) {
+            if (elementType.isDuration() || elementType.isGraceNote()) {
                 hasDurations = true;
 
                 if (elementType.isRest()) {
