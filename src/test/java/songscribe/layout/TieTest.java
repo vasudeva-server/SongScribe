@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 
 class TieTest extends UnitTest {
@@ -100,32 +101,136 @@ class TieTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Row 48 — isAbove: anchor.isUpper() → true; not upper → false; null anchor → false
+    // Phase 5 — arcSign()/isAbove(): every branch of the both-stem fallthrough
+    // tree (Tie.arcSign() Javadoc). arcSign() > 0 == arc bulges down == below;
+    // isAbove() == arcSign() < 0. A note type without a stem (SEMIBREVE) drives
+    // the no-stem branches; ElementType.QUAVER (has a stem) drives the rest.
     // -----------------------------------------------------------------------
 
-    @Test
-    void testIsAboveReturnsTrueWhenAnchorIsUpper() {
-        var anchor = ElementType.QUAVER.newInstance();
-        anchor.setUpper(true);
-        var tie = new Tie(anchor, ElementType.QUAVER.newInstance());
+    // Sign convention constants — named per "No Magic Numbers", not re-derived per branch.
+    private static final int ARC_SIGN_ABOVE = -1;
+    private static final int ARC_SIGN_BELOW = 1;
 
+    // Staff positions (Y-down; 0 = middle line) for the no-stem branch.
+    private static final int SP_ABOVE_MIDDLE_LINE = -2;
+    private static final int SP_BELOW_MIDDLE_LINE = 2;
+    private static final int SP_ON_MIDDLE_LINE = 0;
+
+    private static StaffElement noteWithStem(StaffElement.Direction direction) {
+        var note = ElementType.QUAVER.newInstance();
+        note.setDirection(direction);
+        return note;
+    }
+
+    private static StaffElement noteWithoutStem(int staffPosition) {
+        var note = ElementType.SEMIBREVE.newInstance();
+        note.setStaffPosition(staffPosition);
+        return note;
+    }
+
+    @Test
+    void testBothStemsUpArcsBelow() {
+        var tie = new Tie(noteWithStem(StaffElement.Direction.UP), noteWithStem(StaffElement.Direction.UP));
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_BELOW);
+        assertThat(tie.isAbove()).isFalse();
+    }
+
+    @Test
+    void testBothStemsDownArcsAbove() {
+        var tie = new Tie(noteWithStem(StaffElement.Direction.DOWN), noteWithStem(StaffElement.Direction.DOWN));
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_ABOVE);
         assertThat(tie.isAbove()).isTrue();
     }
 
     @Test
-    void testIsAboveReturnsFalseWhenAnchorIsNotUpper() {
-        var anchor = ElementType.QUAVER.newInstance();
-        anchor.setUpper(false);
-        var tie = new Tie(anchor, ElementType.QUAVER.newInstance());
+    void testConflictingStemsLeftUpRightDownArcsAbove() {
+        var tie = new Tie(noteWithStem(StaffElement.Direction.UP), noteWithStem(StaffElement.Direction.DOWN));
 
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_ABOVE);
+        assertThat(tie.isAbove()).isTrue();
+    }
+
+    @Test
+    void testConflictingStemsLeftDownRightUpArcsAbove() {
+        var tie = new Tie(noteWithStem(StaffElement.Direction.DOWN), noteWithStem(StaffElement.Direction.UP));
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_ABOVE);
+        assertThat(tie.isAbove()).isTrue();
+    }
+
+    @Test
+    void testLeftOnlyStemUpArcsBelow() {
+        var tie = new Tie(noteWithStem(StaffElement.Direction.UP), noteWithoutStem(SP_ON_MIDDLE_LINE));
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_BELOW);
         assertThat(tie.isAbove()).isFalse();
     }
 
     @Test
-    void testIsAboveReturnsFalseWhenAnchorIsNull() {
+    void testLeftOnlyStemDownArcsAbove() {
+        var tie = new Tie(noteWithStem(StaffElement.Direction.DOWN), noteWithoutStem(SP_ON_MIDDLE_LINE));
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_ABOVE);
+        assertThat(tie.isAbove()).isTrue();
+    }
+
+    @Test
+    void testRightOnlyStemUpArcsBelow() {
+        var tie = new Tie(noteWithoutStem(SP_ON_MIDDLE_LINE), noteWithStem(StaffElement.Direction.UP));
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_BELOW);
+        assertThat(tie.isAbove()).isFalse();
+    }
+
+    @Test
+    void testRightOnlyStemDownArcsAbove() {
+        var tie = new Tie(noteWithoutStem(SP_ON_MIDDLE_LINE), noteWithStem(StaffElement.Direction.DOWN));
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_ABOVE);
+        assertThat(tie.isAbove()).isTrue();
+    }
+
+    @Test
+    void testNoStemAboveMiddleLineArcsAbove() {
+        var tie = new Tie(noteWithoutStem(SP_ABOVE_MIDDLE_LINE), noteWithoutStem(SP_ABOVE_MIDDLE_LINE));
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_ABOVE);
+        assertThat(tie.isAbove()).isTrue();
+    }
+
+    @Test
+    void testNoStemBelowMiddleLineArcsBelow() {
+        var tie = new Tie(noteWithoutStem(SP_BELOW_MIDDLE_LINE), noteWithoutStem(SP_BELOW_MIDDLE_LINE));
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_BELOW);
+        assertThat(tie.isAbove()).isFalse();
+    }
+
+    @Test
+    void testNoStemOnMiddleLineArcsAbove() {
+        var tie = new Tie(noteWithoutStem(SP_ON_MIDDLE_LINE), noteWithoutStem(SP_ON_MIDDLE_LINE));
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_ABOVE);
+        assertThat(tie.isAbove()).isTrue();
+    }
+
+    @Test
+    void testNullAnchorElementFallsBackToNeutralDefaultArcsAbove() {
         var tie = createTie();
         tie.setAnchorElement(null);
 
-        assertThat(tie.isAbove()).isFalse();
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_ABOVE);
+        assertThat(tie.isAbove()).isTrue();
+    }
+
+    @Test
+    void testNullEndElementFallsBackToNeutralDefaultArcsAbove() {
+        var tie = createTie();
+        tie.setEndElement(null);
+
+        assertThat(tie.arcSign()).isEqualTo(ARC_SIGN_ABOVE);
+        assertThat(tie.isAbove()).isTrue();
     }
 }

@@ -30,7 +30,7 @@ import module java.desktop;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.Tie;
-import songscribe.shape.TieShape;
+import songscribe.shape.BezierBow;
 import songscribe.util.GraphicsState;
 
 /**
@@ -97,7 +97,7 @@ public final class TieRenderer {
             g2.translate(0, invariants.getMiddleLineYSs());
             g2.setColor(determineTieColor(tie, invariants));
 
-            var tiePath = TieShape.build(
+            var tiePath = BezierBow.lens(
                 layout.startXSs(), layout.startYSs(),
                 layout.cp1XSs(), layout.cp1YSs(),
                 layout.cp2XSs(), layout.cp2YSs(),

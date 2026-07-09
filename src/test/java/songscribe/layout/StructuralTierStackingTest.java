@@ -41,6 +41,8 @@ import songscribe.font.DocumentFonts;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.engraving.Staff;
+import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.layout.stacking.StackingContext;
 import songscribe.layout.stacking.StackingUtils;
 import songscribe.layout.stacking.StructuralStacker;
@@ -512,6 +514,56 @@ class StructuralTierStackingTest extends UnitTest {
                 + NoteGeometry.getNoteheadXOffsetSs(noteType, note.getDirection());
             var expectedXSs = NOTE1_X_SS + noteheadCenterXSs - dynamic.getContentWidthSs() / 2.0;
             assertThat(layout.xSs()).isCloseTo(expectedXSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testIsolatedTextDynamicsClampsToStaffPadding() {
+            // stackDirectly runs against fresh (zero-top) extents: no real reservation under the
+            // dynamic's footprint, so only the staff-padding clamp applies.
+            var note = createNote(0, false);
+            var dynamic = new DynamicAttachment(note, DynamicAttachment.DynamicType.FORTE);
+            note.addAttachment(dynamic);
+
+            var line = detachedLine();
+            line.addElement(note);
+
+            var result = stackDirectly(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            var layout = require(
+                result.findAttachmentDecorationLayout(note, DynamicAttachment.class),
+                "text dynamics DecorationLayout");
+
+            var expectedYSs = -Staff.STAFF_HALF_SS
+                - NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS - layout.heightSs();
+            assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testTextDynamicsClearsFermataByDynamicPadding() {
+            // The structural tier starts from a copy of the note-attached layer's top extents
+            // (StaffExtents.copyTopFrom), so a tier-2 fermata already placed above the staff is a
+            // real reservation the dynamic's placement must clear by DYNAMIC_PADDING_SS.
+            var note = createNote(0, false);
+            var fermata = new FermataAttachment(note);
+            note.addAttachment(fermata);
+            var dynamic = new DynamicAttachment(note, DynamicAttachment.DynamicType.FORTE);
+            note.addAttachment(dynamic);
+
+            var line = detachedLine();
+            line.addElement(note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            var fermataLayout = require(
+                result.findAttachmentDecorationLayout(note, FermataAttachment.class),
+                "fermata DecorationLayout");
+            var dynamicLayout = require(
+                result.findAttachmentDecorationLayout(note, DynamicAttachment.class),
+                "text dynamics DecorationLayout");
+
+            assertThat(fermataLayout.ySs() - (dynamicLayout.ySs() + dynamicLayout.heightSs()))
+                .describedAs("text dynamics must clear the fermata by DYNAMIC_PADDING_SS")
+                .isCloseTo(NoteAttachedStacker.DYNAMIC_PADDING_SS, within(TOLERANCE));
         }
     }
 

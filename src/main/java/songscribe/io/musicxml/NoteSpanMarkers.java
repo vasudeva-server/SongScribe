@@ -20,6 +20,7 @@
 package songscribe.io.musicxml;
 
 import org.jspecify.annotations.Nullable;
+import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 
@@ -40,18 +41,30 @@ import songscribe.dom.Tuplet;
  * the group (anchor, interior, and end). The anchor/end booleans identify the
  * group boundaries; interior notes have neither flag set.
  *
- * <p>For ties the flags are independent: both {@code tieStartsHere} and
- * {@code tieStopsHere} may be true on the same note when it is the end of
- * one tie and the anchor of the next in a chain.
+ * <p>For ties the references are independent: both {@code tieStart} and
+ * {@code tieStop} may be non-null on the same note when it is the end of
+ * one tie and the anchor of the next in a chain. Each reference carries its
+ * tie's curve direction, read as the write-forward {@code <tied orientation>}.
  */
 record NoteSpanMarkers(
     String[] beamLevelValues,
-    boolean tieStartsHere,
-    boolean tieStopsHere,
+    @Nullable Tie tieStart,
+    @Nullable Tie tieStop,
     @Nullable Tuplet tuplet,
     boolean isTupletAnchor,
     boolean isTupletEnd,
     @Nullable Trill trill,
     boolean isTrillAnchor,
     boolean isTrillEnd
-) {}
+) {
+
+    /** True when a tie starts on this note (its anchor). */
+    boolean tieStartsHere() {
+        return tieStart != null;
+    }
+
+    /** True when a tie stops on this note (its end). */
+    boolean tieStopsHere() {
+        return tieStop != null;
+    }
+}

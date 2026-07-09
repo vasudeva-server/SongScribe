@@ -165,6 +165,7 @@ final class MusicXmlTags {
     static final String ATTR_RELATIVE_X  = "relative-x";
     static final String ATTR_RELATIVE_Y  = "relative-y";
     static final String ATTR_TYPE        = "type";
+    static final String ATTR_ORIENTATION = "orientation";
     static final String ATTR_LINE_SHAPE  = "line-shape";
     static final String ATTR_LINE_TYPE   = "line-type";
     static final String ATTR_LINE_LENGTH = "line-length";
@@ -214,6 +215,10 @@ final class MusicXmlTags {
     // Attribute values — generic span type (used by tie, tied, wavy-line, ending @type).
     static final String TYPE_START = "start";
     static final String TYPE_STOP  = "stop";
+
+    // Attribute values — <tied orientation> (write-forward tie curve direction).
+    static final String ORIENTATION_OVER  = "over";
+    static final String ORIENTATION_UNDER = "under";
 
     // Attribute values — wedge type (@type on <wedge>).
     static final String WEDGE_CRESCENDO  = "crescendo";

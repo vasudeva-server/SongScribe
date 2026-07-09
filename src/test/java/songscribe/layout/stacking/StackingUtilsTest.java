@@ -36,7 +36,6 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.Trill;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.Neighbor;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
 
@@ -483,9 +482,8 @@ class StackingUtilsTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Phase 4 (#507) — placeAndReserve: shared placement core used by
-    // stackAtAnchor/stackAtCenter/stackAgainstNeighbor. Reserve-edge/return convention and tagged
-    // reservation.
+    // placeAndReserve: shared placement core used by stackAtAnchor/stackAtCenter. Reserve-edge/
+    // return convention.
     // -------------------------------------------------------------------------
 
     private static final double PLACE_AND_RESERVE_X_SS = 5.0;
@@ -495,14 +493,14 @@ class StackingUtilsTest extends UnitTest {
     private static final double PLACE_AND_RESERVE_MARGIN_SS = 0.3;
 
     @Test
-    void testPlaceAndReserveAboveReturnsTopEdgeAndReservesItTagged() {
+    void testPlaceAndReserveAboveReturnsTopEdgeAndReservesIt() {
         var extents = new StaffExtents(LINE_WIDTH_SS);
         var element = mock(LineElement.class);
         var builder = new LayoutResult.Builder();
 
         var returnedYSs = StackingUtils.placeAndReserve(Direction.UP, extents, element,
             PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS, PLACE_AND_RESERVE_HEIGHT_SS,
-            PLACE_AND_RESERVE_BOUND_SS, PLACE_AND_RESERVE_MARGIN_SS, Neighbor.NOTEHEAD, builder);
+            PLACE_AND_RESERVE_BOUND_SS, PLACE_AND_RESERVE_MARGIN_SS, builder);
 
         // Above: element top = bound - margin - height; the return value is that same top edge.
         var expectedTopYSs = PLACE_AND_RESERVE_BOUND_SS - PLACE_AND_RESERVE_MARGIN_SS
@@ -512,14 +510,13 @@ class StackingUtilsTest extends UnitTest {
         var layout = require(builder.build().getDecorationLayout(element), "decoration layout");
         assertThat(layout.ySs()).isCloseTo(expectedTopYSs, within(TOLERANCE));
 
-        // Reserved at the top (outer) edge, tagged with the given Neighbor.
-        var contact = extents.contact(true, PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS);
-        assertThat(contact.ySs()).isCloseTo(expectedTopYSs, within(TOLERANCE));
-        assertThat(contact.tag()).isEqualTo(Neighbor.NOTEHEAD);
+        // Reserved at the top (outer) edge.
+        assertThat(extents.yGet(true, PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS))
+            .isCloseTo(expectedTopYSs, within(TOLERANCE));
     }
 
     @Test
-    void testPlaceAndReserveBelowReturnsBottomEdgeAndReservesItTagged() {
+    void testPlaceAndReserveBelowReturnsBottomEdgeAndReservesIt() {
         var extents = new StaffExtents(LINE_WIDTH_SS);
         var element = mock(LineElement.class);
         var builder = new LayoutResult.Builder();
@@ -527,7 +524,7 @@ class StackingUtilsTest extends UnitTest {
         var boundSs = -PLACE_AND_RESERVE_BOUND_SS; // mirror to a positive (below-staff) bound
         var returnedYSs = StackingUtils.placeAndReserve(Direction.DOWN, extents, element,
             PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS, PLACE_AND_RESERVE_HEIGHT_SS,
-            boundSs, PLACE_AND_RESERVE_MARGIN_SS, Neighbor.STACCATO, builder);
+            boundSs, PLACE_AND_RESERVE_MARGIN_SS, builder);
 
         // Below: element top = bound + margin; the return value is the bottom (outer) edge.
         var expectedTopYSs = boundSs + PLACE_AND_RESERVE_MARGIN_SS;
@@ -537,9 +534,93 @@ class StackingUtilsTest extends UnitTest {
         var layout = require(builder.build().getDecorationLayout(element), "decoration layout");
         assertThat(layout.ySs()).isCloseTo(expectedTopYSs, within(TOLERANCE));
 
-        var contact = extents.contact(false, PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS);
-        assertThat(contact.ySs()).isCloseTo(expectedBottomYSs, within(TOLERANCE));
-        assertThat(contact.tag()).isEqualTo(Neighbor.STACCATO);
+        assertThat(extents.yGet(false, PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS))
+            .isCloseTo(expectedBottomYSs, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // placeAndReserveClamped: LilyPond's aligned_side — max(realEdge + padding, staffEdge +
+    // staffPadding) outward. Covers both the support-driven case and the staff-padding clamp.
+    // -------------------------------------------------------------------------
+
+    private static final double CLAMPED_X_SS = 5.0;
+    private static final double CLAMPED_WIDTH_SS = 1.0;
+    private static final double CLAMPED_HEIGHT_SS = 1.5;
+    private static final double CLAMPED_PADDING_SS = 0.20;
+    private static final double CLAMPED_STAFF_PADDING_SS = 0.25;
+
+    // A real reservation far enough outward that it — not the staff clamp — wins the max.
+    private static final double CLAMPED_SUPPORT_ABOVE_SS = -5.0;
+    private static final double CLAMPED_SUPPORT_BELOW_SS = 5.0;
+
+    @Test
+    void testPlaceAndReserveClampedIsolatedElementClampsToStaffPadding() {
+        // No real reservation under the footprint: only the staff clamp applies, so the isolated
+        // articulation clears the staff line by exactly staffPaddingSs.
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        var element = mock(LineElement.class);
+        var builder = new LayoutResult.Builder();
+
+        var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.UP, extents, element,
+            CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
+            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS, builder);
+
+        var expectedTopYSs =
+            StackingUtils.STAFF_TOP_Y_SS - CLAMPED_STAFF_PADDING_SS - CLAMPED_HEIGHT_SS;
+        assertThat(returnedYSs).isCloseTo(expectedTopYSs, within(TOLERANCE));
+
+        var clearanceFromStaffSs = StackingUtils.STAFF_TOP_Y_SS - returnedYSs;
+        assertThat(clearanceFromStaffSs)
+            .describedAs("isolated articulation must clear the staff by staffPaddingSs + height")
+            .isCloseTo(CLAMPED_STAFF_PADDING_SS + CLAMPED_HEIGHT_SS, within(TOLERANCE));
+    }
+
+    @Test
+    void testPlaceAndReserveClampedRealSupportOverridesStaffPaddingClamp() {
+        // A real reservation more outward than the staff clamp wins: the element clears the real
+        // support's outer edge by paddingSs, edge-to-edge — not the staff clamp.
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        extents.ySet(true, CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_SUPPORT_ABOVE_SS);
+        var element = mock(LineElement.class);
+        var builder = new LayoutResult.Builder();
+
+        var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.UP, extents, element,
+            CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
+            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS, builder);
+
+        var expectedTopYSs = CLAMPED_SUPPORT_ABOVE_SS - CLAMPED_PADDING_SS - CLAMPED_HEIGHT_SS;
+        assertThat(returnedYSs).isCloseTo(expectedTopYSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testPlaceAndReserveClampedBelowIsolatedElementClampsToStaffPadding() {
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        var element = mock(LineElement.class);
+        var builder = new LayoutResult.Builder();
+
+        var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.DOWN, extents, element,
+            CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
+            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS, builder);
+
+        var expectedBottomYSs =
+            StackingUtils.STAFF_BOT_Y_SS + CLAMPED_STAFF_PADDING_SS + CLAMPED_HEIGHT_SS;
+        assertThat(returnedYSs).isCloseTo(expectedBottomYSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testPlaceAndReserveClampedBelowRealSupportOverridesStaffPaddingClamp() {
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        extents.ySet(false, CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_SUPPORT_BELOW_SS);
+        var element = mock(LineElement.class);
+        var builder = new LayoutResult.Builder();
+
+        var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.DOWN, extents, element,
+            CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
+            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS, builder);
+
+        var expectedBottomYSs =
+            CLAMPED_SUPPORT_BELOW_SS + CLAMPED_PADDING_SS + CLAMPED_HEIGHT_SS;
+        assertThat(returnedYSs).isCloseTo(expectedBottomYSs, within(TOLERANCE));
     }
 
     // -------------------------------------------------------------------------

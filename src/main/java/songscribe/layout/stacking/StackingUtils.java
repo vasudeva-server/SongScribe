@@ -29,7 +29,6 @@ import songscribe.dom.CollisionRegion;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.LineElement;
 import songscribe.dom.RangeElement;
-import songscribe.layout.Neighbor;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
 
@@ -72,6 +71,13 @@ public final class StackingUtils {
     // between staff lines (including the top and bottom spaces).
     static final double STACCATO_BETWEEN_LINES_DISTANCE_SS = 1.0;
 
+    // LilyPond quantize-position zone: the staff plus one staff-position beyond each outer line
+    // (LilyPond side-position-interface.cc aligned_side: staff_span.widen(1)). A staccato whose
+    // centre falls within this band is snapped to a space; beyond it, the dot keeps its raw padded
+    // position. In staff-space units, |centre| <= this value.
+    static final double STACCATO_QUANTIZE_ZONE_SS =
+        Staff.STAFF_HALF_SS + Staff.STAFF_POSITION_OFFSET_SS;
+
     private StackingUtils() {
     }
 
@@ -82,17 +88,6 @@ public final class StackingUtils {
      */
     static double yGetExpanded(StaffExtents extents, boolean above, double xSs, double widthSs) {
         return extents.yGet(above, xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS,
-            widthSs + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS);
-    }
-
-    /**
-     * Queries the tagged {@link StaffExtents.Contact} under a footprint expanded by
-     * {@link #STRUCTURAL_HORIZONTAL_MARGIN_SS} on each side, the tagged counterpart of
-     * {@link #yGetExpanded}.
-     */
-    static StaffExtents.Contact contactExpanded(
-        StaffExtents extents, boolean above, double xSs, double widthSs) {
-        return extents.contact(above, xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS,
             widthSs + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS);
     }
 
@@ -187,7 +182,7 @@ public final class StackingUtils {
         LayoutResult.Builder builder) {
 
         return stackAtAnchor(Direction.UP, extents, element, xSs, widthSs, heightSs, marginSs,
-            staffPosition, Neighbor.STAFF_LINE, builder);
+            staffPosition, builder);
     }
 
     /**
@@ -207,7 +202,7 @@ public final class StackingUtils {
         LayoutResult.Builder builder) {
 
         return stackAtAnchor(Direction.DOWN, extents, element, xSs, widthSs, heightSs, marginSs,
-            staffPosition, Neighbor.STAFF_LINE, builder);
+            staffPosition, builder);
     }
 
     /**
@@ -220,9 +215,6 @@ public final class StackingUtils {
      * since that distance already fully specifies the dot's position relative to the note;
      * margin only applies to avoid colliding with already-reserved content (e.g. a stem tip),
      * not to the ideal, uncollided position.
-     * <p>
-     * The reservation is tagged {@code tag} so a later decoration querying this step resolves the
-     * dot as its neighbor.
      *
      * @return the computed top Y (above) or bottom Y (below) in staff-space units
      */
@@ -230,8 +222,8 @@ public final class StackingUtils {
         Direction direction,
         StaffExtents extents,
         LineElement element,
-        double xSs, double widthSs, double heightSs, double marginSs,
-        int staffPosition, Neighbor tag,
+        double xSs, double widthSs, double heightSs, double marginSs, double staffPaddingSs,
+        int staffPosition,
         LayoutResult.Builder builder) {
 
         var atOrBeyondStaffEdge = direction.isUp()
@@ -239,8 +231,8 @@ public final class StackingUtils {
             : staffPosition >= BOTTOM_STAFF_LINE_POSITION;
 
         if (atOrBeyondStaffEdge) {
-            return stackAtAnchor(direction, extents, element, xSs, widthSs, heightSs, marginSs,
-                staffPosition, tag, builder);
+            return placeAndReserveClamped(direction, extents, element, xSs, widthSs, heightSs,
+                marginSs, staffPaddingSs, builder);
         }
 
         var centerSs = direction.isUp()
@@ -248,7 +240,7 @@ public final class StackingUtils {
             : staccatoAnchorFloorSs(staffPosition);
 
         return stackAtCenter(direction, extents, element, xSs, widthSs, heightSs, marginSs,
-            centerSs, tag, builder);
+            centerSs, builder);
     }
 
     /**
@@ -268,7 +260,7 @@ public final class StackingUtils {
         Direction direction,
         StaffExtents extents,
         LineElement element,
-        double xSs, double widthSs, double heightSs, double boundSs, double marginSs, Neighbor tag,
+        double xSs, double widthSs, double heightSs, double boundSs, double marginSs,
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
@@ -286,10 +278,80 @@ public final class StackingUtils {
             reserveEdgeYSs = elementTopYSs + heightSs;
         }
 
-        extents.ySet(above, xSs, widthSs, reserveEdgeYSs, tag);
+        extents.ySet(above, xSs, widthSs, reserveEdgeYSs);
 
         builder.putDecorationLayout(element,
             new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, marginSs));
+
+        return above ? elementTopYSs : reserveEdgeYSs;
+    }
+
+    /**
+     * Places an element at LilyPond's {@code aligned_side} position: the more-outward of its
+     * real-reservation support edge plus {@code paddingSs} and the staff edge plus
+     * {@code staffPaddingSs}.
+     * <p>
+     * The support edge comes from {@link #yGetExpanded} — the real reservations under the footprint
+     * (notehead, tie, staccato, …), excluding the staff line. When the footprint holds no real
+     * reservation ({@link StaffExtents#yGet} returns {@link StaffExtents#EMPTY_EXTENT_SS}), there is
+     * no support constraint and only the staff clamp applies; the empty default is never treated as
+     * a real support edge. Then, exactly as {@code Side_position_interface::aligned_side} does, the
+     * element is clamped outward against {@code staffEdge ± staffPaddingSs} (the top staff line
+     * above, the bottom staff line below).
+     * <p>
+     * Reserve-edge / return convention matches {@link #placeAndReserve}: the reservation is written
+     * at the element's outer edge (its top above, its bottom below) so a neighboring tier adds its
+     * own padding when it queries this step, and the returned value is the element's outer Y.
+     *
+     * @param paddingSs      the element's own padding against whatever its footprint contacts
+     * @param staffPaddingSs the element's staff-padding — the minimum gap it keeps from the staff
+     *                       line when the staff clamp is the outward constraint
+     * @return the element's outer Y in staff-space units (top above, bottom below)
+     */
+    static double placeAndReserveClamped(
+        Direction direction,
+        StaffExtents extents,
+        LineElement element,
+        double xSs, double widthSs, double heightSs,
+        double paddingSs, double staffPaddingSs,
+        LayoutResult.Builder builder) {
+
+        var above = direction.isUp();
+        var supportBoundSs = yGetExpanded(extents, above, xSs, widthSs);
+        var hasSupport = supportBoundSs != StaffExtents.EMPTY_EXTENT_SS;
+        var staffEdgeYSs = above ? STAFF_TOP_Y_SS : STAFF_BOT_Y_SS;
+
+        // The element's inner edge (nearest the staff): the more-outward of support ∓ padding and
+        // staffEdge ∓ staffPadding. Above, "more outward" is the smaller Y; below, the larger.
+        double innerEdgeYSs;
+
+        if (above) {
+            var staffInnerYSs = staffEdgeYSs - staffPaddingSs;
+            innerEdgeYSs = hasSupport
+                ? Math.min(supportBoundSs - paddingSs, staffInnerYSs)
+                : staffInnerYSs;
+        } else {
+            var staffInnerYSs = staffEdgeYSs + staffPaddingSs;
+            innerEdgeYSs = hasSupport
+                ? Math.max(supportBoundSs + paddingSs, staffInnerYSs)
+                : staffInnerYSs;
+        }
+
+        double elementTopYSs;
+        double reserveEdgeYSs;
+
+        if (above) {
+            elementTopYSs = innerEdgeYSs - heightSs;
+            reserveEdgeYSs = elementTopYSs;
+        } else {
+            elementTopYSs = innerEdgeYSs;
+            reserveEdgeYSs = elementTopYSs + heightSs;
+        }
+
+        extents.ySet(above, xSs, widthSs, reserveEdgeYSs);
+
+        builder.putDecorationLayout(element,
+            new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, paddingSs));
 
         return above ? elementTopYSs : reserveEdgeYSs;
     }
@@ -304,12 +366,12 @@ public final class StackingUtils {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
-        int staffPosition, Neighbor tag,
+        int staffPosition,
         LayoutResult.Builder builder) {
 
         var anchorSs = direction.isUp() ? anchorCeilingSs(staffPosition) : anchorFloorSs(staffPosition);
         return stackAtAnchor(direction, extents, element, xSs, widthSs, heightSs, marginSs,
-            anchorSs, tag, builder);
+            anchorSs, builder);
     }
 
     private static double stackAtAnchor(
@@ -317,7 +379,7 @@ public final class StackingUtils {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
-        double anchorSs, Neighbor tag,
+        double anchorSs,
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
@@ -325,7 +387,7 @@ public final class StackingUtils {
         var boundSs = above ? Math.min(currentSs, anchorSs) : Math.max(currentSs, anchorSs);
 
         return placeAndReserve(direction, extents, element, xSs, widthSs, heightSs, boundSs,
-            marginSs, tag, builder);
+            marginSs, builder);
     }
 
     private static double stackAtCenter(
@@ -333,38 +395,69 @@ public final class StackingUtils {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
-        double centerSs, Neighbor tag,
+        double centerSs,
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
         var currentSs = yGetExpanded(extents, above, xSs, widthSs);
 
-        double elementTopYSs;
-        double reserveEdgeYSs;
+        double centerYSs;
 
         if (above) {
             // Ideal (uncollided) position: centered exactly at the note-relative distance.
             var idealBottomYSs = centerSs + heightSs / 2.0;
             // Collision constraint: don't intrude into what's already reserved, with margin.
             var collisionBottomYSs = currentSs - marginSs;
-            var elementBottomYSs = Math.min(idealBottomYSs, collisionBottomYSs);
-            elementTopYSs = elementBottomYSs - heightSs;
-            reserveEdgeYSs = elementTopYSs;
+            centerYSs = Math.min(idealBottomYSs, collisionBottomYSs) - heightSs / 2.0;
         } else {
             var idealTopYSs = centerSs - heightSs / 2.0;
             var collisionTopYSs = currentSs + marginSs;
-            elementTopYSs = Math.max(idealTopYSs, collisionTopYSs);
-            reserveEdgeYSs = elementTopYSs + heightSs;
+            centerYSs = Math.max(idealTopYSs, collisionTopYSs) + heightSs / 2.0;
         }
+
+        // LilyPond quantize-position: snap the dot centre outward to the next off-line space. The
+        // uncollided anchor already sits in a space, so this only moves a dot that a tie (or other
+        // support) has pushed off its anchor, keeping it off the staff line it would otherwise
+        // land on.
+        centerYSs = quantizeStaccatoCenterSs(centerYSs, direction);
+
+        var elementTopYSs = centerYSs - heightSs / 2.0;
+        var reserveEdgeYSs = above ? elementTopYSs : elementTopYSs + heightSs;
 
         // Reserve at element edge. The neighboring tier applies its own margin when it
         // queries, so each tier-to-tier gap = the neighboring element's margin.
-        extents.ySet(above, xSs, widthSs, reserveEdgeYSs, tag);
+        extents.ySet(above, xSs, widthSs, reserveEdgeYSs);
 
         builder.putDecorationLayout(element,
             new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, marginSs));
 
         return above ? elementTopYSs : reserveEdgeYSs;
+    }
+
+    /**
+     * LilyPond {@code quantize-position} for a staccato dot centre (staff-space, Y-down): within the
+     * staff plus one position ({@link #STACCATO_QUANTIZE_ZONE_SS}, LilyPond
+     * {@code staff_span.widen(1)}), snaps the centre <em>outward</em> to the nearest odd staff
+     * position — a space — so a dot a tie has pushed off its ideal anchor never comes to rest on a
+     * staff line. Beyond that zone the dot keeps its raw padded position, since LilyPond does not
+     * quantize once the dot has cleared the staff.
+     */
+    private static double quantizeStaccatoCenterSs(double centerYSs, Direction direction) {
+        if (Math.abs(centerYSs) > STACCATO_QUANTIZE_ZONE_SS) {
+            return centerYSs;
+        }
+
+        var above = direction.isUp();
+        var position = centerYSs / Staff.STAFF_POSITION_OFFSET_SS;
+        // Round outward to the nearest integer staff position (above = toward smaller Y).
+        var rounded = above ? Math.floor(position) : Math.ceil(position);
+
+        // An even staff position is a staff line; push one more half-space outward to the space.
+        if (((int) rounded) % 2 == 0) {
+            rounded += above ? -1 : 1;
+        }
+
+        return rounded * Staff.STAFF_POSITION_OFFSET_SS;
     }
 
     /**

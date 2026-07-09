@@ -48,6 +48,7 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFontsHolder;
@@ -119,8 +120,8 @@ public final class MusicXmlWriter {
 
         // Empty array = not in a beam group (matches NoteSpanMarkers sentinel).
         String[] beamLevelValues = new String[0];
-        boolean tieStartsHere;
-        boolean tieStopsHere;
+        @Nullable Tie tieStart;
+        @Nullable Tie tieStop;
         @Nullable Tuplet tuplet;
         boolean isTupletAnchor;
         boolean isTupletEnd;
@@ -140,7 +141,7 @@ public final class MusicXmlWriter {
         IndexSpanMarkers build() {
             var noteMarkers = new NoteSpanMarkers(
                 beamLevelValues,
-                tieStartsHere, tieStopsHere,
+                tieStart, tieStop,
                 tuplet, isTupletAnchor, isTupletEnd,
                 trill, isTrillAnchor, isTrillEnd
             );
@@ -1075,6 +1076,17 @@ public final class MusicXmlWriter {
     //   <fermata/>?             — last per the full schema ordering
     // -------------------------------------------------------------------------
 
+    /**
+     * The write-forward {@code <tied orientation>} value for {@code tie}: {@code "over"} when the
+     * tie arcs above its notes ({@link Tie#isAbove()}), else {@code "under"}. A null tie (which the
+     * emit guards make unreachable) defaults to {@code "under"}.
+     */
+    private static String tiedOrientation(@Nullable Tie tie) {
+        return tie != null && tie.isAbove()
+            ? MusicXmlTags.ORIENTATION_OVER
+            : MusicXmlTags.ORIENTATION_UNDER;
+    }
+
     private static void writeNotations(PrintWriter pw, NoteWriteContext ctx) {
         var note = ctx.note();
         var nextIsBreathMark = ctx.nextIsBreathMark();
@@ -1125,13 +1137,17 @@ public final class MusicXmlWriter {
         XML.indent();
 
         // <tied> — notation counterpart of the sound <tie>, emitted first.
-        // Interior notes of a chain emit stop before start.
+        // Interior notes of a chain emit stop before start. Each carries a write-forward
+        // orientation ("over"/"under") from Tie.isAbove(); the reader ignores it (round-trip
+        // loss stays benign while direction is fully deterministic from stems).
         if (hasTiedStop) {
-            XML.writeEmptyTag(pw, MusicXmlTags.TIED, MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_STOP);
+            XML.writeEmptyTag(pw, MusicXmlTags.TIED, MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_STOP,
+                MusicXmlTags.ATTR_ORIENTATION, tiedOrientation(spanMarkers.tieStop()));
         }
 
         if (hasTiedStart) {
-            XML.writeEmptyTag(pw, MusicXmlTags.TIED, MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_START);
+            XML.writeEmptyTag(pw, MusicXmlTags.TIED, MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_START,
+                MusicXmlTags.ATTR_ORIENTATION, tiedOrientation(spanMarkers.tieStart()));
         }
 
         // <slide type="stop"> on the destination note of a glissando.
@@ -1751,8 +1767,8 @@ public final class MusicXmlWriter {
      * <ul>
      *   <li><b>Beam / Tuplet / Trill</b>: span reference set on anchor through
      *       end (inclusive); anchor and end flags set only at the endpoints.</li>
-     *   <li><b>Tie</b>: {@code tieStartsHere} set at anchor; {@code tieStopsHere}
-     *       set at end. Both flags may be true on the same note when it is the
+     *   <li><b>Tie</b>: {@code tieStart} reference set at anchor; {@code tieStop}
+     *       set at end. Both may be non-null on the same note when it is the
      *       end of one tie and the anchor of the next in a chain.</li>
      *   <li><b>Crescendo / Diminuendo / Ending</b>: anchor and end indices only;
      *       Ending additionally records its split index when present.</li>
@@ -1797,8 +1813,8 @@ public final class MusicXmlWriter {
                 continue;
             }
 
-            builders[anchorIdx].tieStartsHere = true;
-            builders[endIdx].tieStopsHere = true;
+            builders[anchorIdx].tieStart = tie;
+            builders[endIdx].tieStop = tie;
         }
 
         // Tuplets: set the span reference on every note in the group [anchor, end].

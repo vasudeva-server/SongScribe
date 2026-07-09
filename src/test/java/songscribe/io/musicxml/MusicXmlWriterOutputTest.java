@@ -136,6 +136,29 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
+     * Returns the {@code orientation} attribute value of the first {@code <tied>} element
+     * whose {@code type} attribute matches {@code tiedType} ("start"/"stop"), or {@code null}
+     * when no matching element or no such attribute is found.
+     */
+    private static @Nullable String tiedOrientation(String xml, String tiedType) throws Exception {
+        var factory = DocumentBuilderFactory.newInstance();
+        var builder = factory.newDocumentBuilder();
+        var doc = builder.parse(new InputSource(new StringReader(xml)));
+        var tiedElements = doc.getElementsByTagName("tied");
+
+        for (var i = 0; i < tiedElements.getLength(); i++) {
+            var tied = (Element) tiedElements.item(i);
+
+            if (tiedType.equals(tied.getAttribute("type"))) {
+                var value = tied.getAttribute("orientation");
+                return value.isEmpty() ? null : value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Returns the text content of the first {@code <childTag>} element in document
      * order, or {@code null} if none is present.
      */
@@ -662,6 +685,62 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         assertThatCode(() -> validator.validate(xml))
             .as("a song with all six span types must be schema-valid")
             .doesNotThrowAnyException();
+    }
+
+    // -- Phase 5, Task 4: <tied orientation> writer output --
+
+    /**
+     * Builds a two-crotchet tied song with the given explicit stem directions on each note.
+     * The writer never runs auto-stem layout, so the notes' write-forward {@code direction}
+     * fields are read as set here.
+     */
+    private static Song buildTiedSong(StaffElement.Direction startDirection, StaffElement.Direction endDirection) {
+        return buildSong(line -> {
+            var crotchet0 = ElementType.CROTCHET.newInstance();
+            crotchet0.setDirection(startDirection);
+            var crotchet1 = ElementType.CROTCHET.newInstance();
+            crotchet1.setDirection(endDirection);
+
+            line.addElement(crotchet0);
+            line.addElement(crotchet1);
+            line.addTie(new Tie(crotchet0, crotchet1));
+        });
+    }
+
+    @Test
+    void testTiedOrientationIsUnderWhenBothStemsUp() throws Exception {
+        var xml = writeToString(buildTiedSong(StaffElement.Direction.UP, StaffElement.Direction.UP));
+
+        assertThat(tiedOrientation(xml, "start"))
+            .as("both-up tie: <tied type=\"start\"> orientation")
+            .isEqualTo(MusicXmlTags.ORIENTATION_UNDER);
+        assertThat(tiedOrientation(xml, "stop"))
+            .as("both-up tie: <tied type=\"stop\"> orientation")
+            .isEqualTo(MusicXmlTags.ORIENTATION_UNDER);
+    }
+
+    @Test
+    void testTiedOrientationIsOverWhenBothStemsDown() throws Exception {
+        var xml = writeToString(buildTiedSong(StaffElement.Direction.DOWN, StaffElement.Direction.DOWN));
+
+        assertThat(tiedOrientation(xml, "start"))
+            .as("both-down tie: <tied type=\"start\"> orientation")
+            .isEqualTo(MusicXmlTags.ORIENTATION_OVER);
+        assertThat(tiedOrientation(xml, "stop"))
+            .as("both-down tie: <tied type=\"stop\"> orientation")
+            .isEqualTo(MusicXmlTags.ORIENTATION_OVER);
+    }
+
+    @Test
+    void testTiedOrientationIsOverWhenStemsConflict() throws Exception {
+        var xml = writeToString(buildTiedSong(StaffElement.Direction.UP, StaffElement.Direction.DOWN));
+
+        assertThat(tiedOrientation(xml, "start"))
+            .as("conflicting-stem tie: <tied type=\"start\"> orientation")
+            .isEqualTo(MusicXmlTags.ORIENTATION_OVER);
+        assertThat(tiedOrientation(xml, "stop"))
+            .as("conflicting-stem tie: <tied type=\"stop\"> orientation")
+            .isEqualTo(MusicXmlTags.ORIENTATION_OVER);
     }
 
     // -- Phase 6, Task 2b: lyric writer output --

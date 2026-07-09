@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.within;
 
 import module java.desktop;
 
-import java.util.Set;
+import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
@@ -42,6 +42,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
+import songscribe.shape.BezierBow;
 
 @SuppressWarnings("DataFlowIssue")
 class LayoutEngineTest extends UnitTest {
@@ -99,6 +100,10 @@ class LayoutEngineTest extends UnitTest {
     /** Staff position shared by both tied notes. */
     private static final int SP_TIE_NOTE = 2;
 
+    // Phase 5 — render-vs-export agreement constant
+    /** sp < 0 → stem down → arc bulges upward (arcSignSs=-1); mirrors SP_TIE_NOTE (stem up). */
+    private static final int SP_TIE_NOTE_STEM_DOWN = -2;
+
     // Phase 4 (#503) — tie staff-line avoidance constants
     /** Even sp → staff line; sp > 0 → stem up → arc bulges downward (arcSignSs=+1). */
     private static final int SP_TIE_LINE_DOWN_ARC = 2;
@@ -106,11 +111,20 @@ class LayoutEngineTest extends UnitTest {
     /** Even sp → staff line; sp < 0 → stem down → arc bulges upward (arcSignSs=-1); mirrors SP_TIE_LINE_DOWN_ARC. */
     private static final int SP_TIE_LINE_UP_ARC = -2;
 
-    /** Odd sp → the exact center of a staff space, equidistant from the lines on either side. */
+    /** Odd sp → a staff space; sp > 0 → stem up → arc down onto the sp-2 line, so the seat is pushed. */
     private static final int SP_TIE_SPACE_CENTER = 1;
 
-    /** Even sp → a staff line, but beyond TIE_ON_LINE_NUDGE_MAX_POSITION_SP, so it is not nudged. */
-    private static final int SP_TIE_LINE_BEYOND_NUDGE_BOUND = 4;
+    /** sp 0 → the middle staff line. */
+    private static final int SP_TIE_MIDDLE_LINE = 0;
+
+    /** Even sp → the bottom staff line (outermost within the staff). */
+    private static final int SP_TIE_BOTTOM_LINE = 4;
+
+    /** Odd sp → the space just above the bottom line; an arc-down edge row lands on the bottom line. */
+    private static final int SP_TIE_SPACE_ABOVE_BOTTOM_LINE = 3;
+
+    /** Odd sp → the space just below the bottom line; an arc-down edge row is off the staff. */
+    private static final int SP_TIE_SPACE_BELOW_STAFF = 5;
 
     /** Small natural arc height whose body already clears the nearest staff line (no adjustment). */
     private static final double TIE_TEST_CLEAR_HEIGHT_SS = 0.3;
@@ -123,6 +137,10 @@ class LayoutEngineTest extends UnitTest {
      * change: it must still be lifted over the line (heightened), never squashed back under it.
      */
     private static final double TIE_TEST_POKE_HEIGHT_SS = 0.7;
+
+    // Mirrors LayoutEngine's private TIE_SLUR_MAX_FRACTION (slur_shape max_fraction = 1/3.1),
+    // which the tie call site passes into BezierBow.indent but does not expose to tests.
+    private static final double TIE_TEST_SLUR_MAX_FRACTION = 1.0 / 3.1;
 
     // Natural slur_height / slur_indent growth-curve inputs (tie widths, staff spaces).
     /** A short tie. */
@@ -529,9 +547,12 @@ class LayoutEngineTest extends UnitTest {
             .isTrue();
     }
 
-    // T19: Tie endpoints attach at the notehead centers (start endpoint X = anchor note center).
+    // T19: Tie endpoints attach at the notehead's facing (span-side) edge plus note-head-gap while the
+    //      seat stays within the head box (LilyPond tie-formatting-problem.cc get_attachment, edge case).
+    //      SP_TIE_NOTE is a line position, so the tie seats STAFF_LINE_TIE_CLEARANCE_GAP_SS into the
+    //      adjacent space — within the head box — giving an edge attach. Both endpoints are mirror images.
     @Test
-    void testTieStartXSsEqualsNoteheadCenter() {
+    void testTieEndpointXSsAttachAtFacingEdgeForEdgeSeat() {
         var line = detachedLine();
         var note1 = ElementType.CROTCHET.newInstance();
         note1.setStaffPosition(SP_TIE_NOTE);
@@ -545,10 +566,59 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
 
-        var noteXSs = result.getElementXSs(note1);
+        // Left endpoint (dir=+1): facing edge is the anchor note's right edge, then note-head-gap in.
+        var note1XSs = result.getElementXSs(note1);
+        var expectedStartXSs = note1XSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS + LayoutEngine.NOTE_HEAD_GAP_SS;
+
         assertThat(tieLayout.startXSs())
-            .describedAs("tie startXSs must equal anchorNote X + NOTE_HEAD_WIDTH_SS / 2 (notehead center)")
-            .isCloseTo(noteXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2, within(TOLERANCE));
+            .describedAs("edge-seat tie startXSs attaches at the facing edge plus note-head-gap")
+            .isCloseTo(expectedStartXSs, within(TOLERANCE));
+
+        // Right endpoint (dir=-1, mirror image): facing edge is the end note's left edge.
+        var note2XSs = result.getElementXSs(note2);
+        var expectedEndXSs = note2XSs - LayoutEngine.NOTE_HEAD_GAP_SS;
+
+        assertThat(tieLayout.endXSs())
+            .describedAs("edge-seat tie endXSs mirrors startXSs: facing edge minus note-head-gap")
+            .isCloseTo(expectedEndXSs, within(TOLERANCE));
+    }
+
+    // T19b: A space note whose edge-seat row lands on a staff line is pushed past it, dropping the seat
+    //      below the head box so the endpoints recede to the notehead centre (center attach). Both
+    //      endpoints share the pushed Y. SP_TIE_SPACE_CENTER (sp 1, a space) arcs down (stem up) onto the
+    //      sp-2 line, so it is pushed by STAFF_LINE_TIE_CLEARANCE_GAP_SS beyond the head-box edge.
+    @Test
+    void testTieSpaceNotePushedPastLineSeatsAtCenterAttach() {
+        var line = detachedLine();
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setStaffPosition(SP_TIE_SPACE_CENTER);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setStaffPosition(SP_TIE_SPACE_CENTER);
+        line.addElement(note1);
+        line.addElement(note2);
+        var tie = new Tie(note1, note2);
+        line.addRangeElement(tie);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var tieLayout = require(result.getTieLayout(tie), "TieLayout");
+
+        // Down arc (stem up): seat is the head-box edge plus the clearance push, past the sp-2 line.
+        var arcSignSs = 1;
+        var expectedYSs = Staff.spToSs(SP_TIE_SPACE_CENTER)
+            + arcSignSs * (Staff.STAFF_POSITION_OFFSET_SS + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS);
+
+        assertThat(tieLayout.startYSs())
+            .describedAs("space note on a line edge-row is pushed past it to clear the line")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
+
+        // Center attach: the endpoint has receded to the notehead centre plus note-head-gap.
+        var note1XSs = result.getElementXSs(note1);
+        var expectedStartXSs =
+            note1XSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2 + LayoutEngine.NOTE_HEAD_GAP_SS;
+
+        assertThat(tieLayout.startXSs())
+            .describedAs("a seat below the head box attaches at the notehead centre (center attach)")
+            .isCloseTo(expectedStartXSs, within(TOLERANCE));
     }
 
     // T23: Tie direction: stem-up note (isUpper=true, direction=+1) has arc bulging downward.
@@ -571,14 +641,42 @@ class LayoutEngineTest extends UnitTest {
         assertThat(tieLayout.cp1YSs())
             .describedAs("stem-up tie outer control point must be below (larger Y than) start endpoint")
             .isGreaterThan(tieLayout.startYSs());
+        assertThat(tie.isAbove())
+            .describedAs("Phase 5: isAbove() must agree with the rendered (downward) arc — both-up ties are not above")
+            .isFalse();
     }
 
-    // T31: Tie tip on a staff line is cleared by exactly STAFF_LINE_TIE_CLEARANCE_GAP_SS.
-    //      SP_TIE_LINE_DOWN_ARC is a line position (even sp) with sp > 0 → stem up → arcSignSs=+1;
-    //      the tip-on-line branch fires unconditionally regardless of tie width, so the expected
-    //      shift is exact and independent of horizontal-spacing details.
+    // T23b: Tie direction: stem-down note arc bulges upward, and isAbove() agrees with the render.
+    //      Mirror of T23 for the opposite branch — guards the corrected inversion in both directions.
     @Test
-    void testTieTipOnStaffLineClearedByExactTipClearance() {
+    void testTieDirectionStemDownNoteArcBulgesUpAndIsAboveAgrees() {
+        var line = detachedLine();
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setStaffPosition(SP_TIE_NOTE_STEM_DOWN);  // sp < 0 → stem down → direction=-1
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setStaffPosition(SP_TIE_NOTE_STEM_DOWN);
+        line.addElement(note1);
+        line.addElement(note2);
+        var tie = new Tie(note1, note2);
+        line.addRangeElement(tie);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var tieLayout = require(result.getTieLayout(tie), "TieLayout");
+
+        assertThat(tieLayout.cp1YSs())
+            .describedAs("stem-down tie outer control point must be above (smaller Y than) start endpoint")
+            .isLessThan(tieLayout.startYSs());
+        assertThat(tie.isAbove())
+            .describedAs("Phase 5: isAbove() must agree with the rendered (upward) arc — both-down ties are above")
+            .isTrue();
+    }
+
+    // T31: A note on a staff line seats its tie STAFF_LINE_TIE_CLEARANCE_GAP_SS into the adjacent space,
+    //      clearing its own line. SP_TIE_LINE_DOWN_ARC is a line position (even sp) with sp > 0 → stem up
+    //      → arcSignSs=+1; the on-line seat is fixed regardless of tie width, so both endpoints sit exactly
+    //      the clearance below the note's line.
+    @Test
+    void testTieOnLineNoteSeatsClearanceIntoAdjacentSpace() {
         var line = detachedLine();
         var note1 = ElementType.CROTCHET.newInstance();
         note1.setStaffPosition(SP_TIE_LINE_DOWN_ARC);
@@ -592,14 +690,14 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
 
-        var unshiftedYSs = Staff.spToSs(SP_TIE_LINE_DOWN_ARC) + LayoutEngine.NATURAL_TIE_GAP_SS;
+        var expectedYSs = Staff.spToSs(SP_TIE_LINE_DOWN_ARC) + LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
 
-        assertThat(tieLayout.startYSs() - unshiftedYSs)
-            .describedAs("tip-on-line shift must equal exactly STAFF_LINE_TIE_CLEARANCE_GAP_SS")
-            .isCloseTo(LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS, within(TOLERANCE));
-        assertThat(tieLayout.endYSs() - unshiftedYSs)
-            .describedAs("both endpoints receive the same rigid shift")
-            .isCloseTo(LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS, within(TOLERANCE));
+        assertThat(tieLayout.startYSs())
+            .describedAs("on-line note seats its tie the clearance below its own line")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
+        assertThat(tieLayout.endYSs())
+            .describedAs("both endpoints share the same seat")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
     }
 
     // T32: A short arc whose body already clears the nearest staff line keeps its natural height.
@@ -674,23 +772,25 @@ class LayoutEngineTest extends UnitTest {
 
     // T39 (Phase 4, #503): the natural slur_height growth curve — zero at zero width, strictly
     //      increasing, and saturating strictly below the asymptotic height limit. Pins the wiring of
-    //      slurHeightSs (input scaling + saturation), which the direct avoidance tests bypass by
+    //      BezierBow.height (input scaling + saturation), which the direct avoidance tests bypass by
     //      passing literal heights.
     @Test
     void testSlurHeightGrowsMonotonicallyAndSaturatesBelowLimit() {
-        assertThat(LayoutEngine.slurHeightSs(0.0))
+        assertThat(BezierBow.height(0.0, LayoutEngine.TIE_RATIO, LayoutEngine.TIE_HEIGHT_LIMIT_SS))
             .describedAs("a zero-width tie has zero arc height")
             .isCloseTo(0.0, within(TOLERANCE));
 
-        var narrowHeightSs = LayoutEngine.slurHeightSs(TIE_TEST_NARROW_WIDTH_SS);
-        var wideHeightSs = LayoutEngine.slurHeightSs(TIE_TEST_WIDE_WIDTH_SS);
+        var narrowHeightSs = BezierBow.height(
+            TIE_TEST_NARROW_WIDTH_SS, LayoutEngine.TIE_RATIO, LayoutEngine.TIE_HEIGHT_LIMIT_SS);
+        var wideHeightSs = BezierBow.height(
+            TIE_TEST_WIDE_WIDTH_SS, LayoutEngine.TIE_RATIO, LayoutEngine.TIE_HEIGHT_LIMIT_SS);
 
         assertThat(narrowHeightSs)
             .describedAs("a narrow tie must arc lower than a wide one")
             .isPositive()
             .isLessThan(wideHeightSs);
 
-        assertThat(LayoutEngine.slurHeightSs(TIE_TEST_HUGE_WIDTH_SS))
+        assertThat(BezierBow.height(TIE_TEST_HUGE_WIDTH_SS, LayoutEngine.TIE_RATIO, LayoutEngine.TIE_HEIGHT_LIMIT_SS))
             .describedAs("arc height must saturate strictly below TIE_HEIGHT_LIMIT_SS")
             .isGreaterThan(wideHeightSs)
             .isLessThan(LayoutEngine.TIE_HEIGHT_LIMIT_SS);
@@ -698,15 +798,17 @@ class LayoutEngineTest extends UnitTest {
 
     // T40 (Phase 4, #503): the slur_shape control-point indent — zero at zero width, strictly
     //      increasing, always inside the tie (indent < width/2 for a real tie), saturating below its
-    //      2 × TIE_HEIGHT_LIMIT_SS asymptote. Pins slurIndentSs, which the avoidance tests never touch.
+    //      2 × TIE_HEIGHT_LIMIT_SS asymptote. Pins BezierBow.indent, which the avoidance tests never touch.
     @Test
     void testSlurIndentGrowsAndStaysInsideTheTie() {
-        assertThat(LayoutEngine.slurIndentSs(0.0))
+        var maxFraction = TIE_TEST_SLUR_MAX_FRACTION;
+
+        assertThat(BezierBow.indent(0.0, LayoutEngine.TIE_HEIGHT_LIMIT_SS, maxFraction))
             .describedAs("a zero-width tie has zero control-point indent")
             .isCloseTo(0.0, within(TOLERANCE));
 
-        var narrowIndentSs = LayoutEngine.slurIndentSs(TIE_TEST_NARROW_WIDTH_SS);
-        var wideIndentSs = LayoutEngine.slurIndentSs(TIE_TEST_WIDE_WIDTH_SS);
+        var narrowIndentSs = BezierBow.indent(TIE_TEST_NARROW_WIDTH_SS, LayoutEngine.TIE_HEIGHT_LIMIT_SS, maxFraction);
+        var wideIndentSs = BezierBow.indent(TIE_TEST_WIDE_WIDTH_SS, LayoutEngine.TIE_HEIGHT_LIMIT_SS, maxFraction);
 
         assertThat(narrowIndentSs)
             .describedAs("indent grows with tie width and stays inside the tie (indent < width/2)")
@@ -715,7 +817,7 @@ class LayoutEngineTest extends UnitTest {
             .isLessThan(wideIndentSs);
 
         var indentLimitSs = 2 * LayoutEngine.TIE_HEIGHT_LIMIT_SS;
-        assertThat(LayoutEngine.slurIndentSs(TIE_TEST_HUGE_WIDTH_SS))
+        assertThat(BezierBow.indent(TIE_TEST_HUGE_WIDTH_SS, LayoutEngine.TIE_HEIGHT_LIMIT_SS, maxFraction))
             .describedAs("indent saturates strictly below 2 × TIE_HEIGHT_LIMIT_SS")
             .isGreaterThan(wideIndentSs)
             .isLessThan(indentLimitSs);
@@ -752,27 +854,39 @@ class LayoutEngineTest extends UnitTest {
             .isCloseTo(LayoutEngine.TIE_HEIGHTENED_INK_HEIGHT_SS, within(TOLERANCE));
     }
 
-    // T42 (Phase 4, #503): no-staccato tie endpoint clearance table. |sp| = 0 and
-    // SP_TIE_LINE_DOWN_ARC (2) are interior line positions within TIE_ON_LINE_NUDGE_MAX_POSITION_SP,
-    // so the endpoint receives the extra STAFF_LINE_TIE_CLEARANCE_GAP_SS nudge; SP_TIE_SPACE_CENTER
-    // (a space) and SP_TIE_LINE_BEYOND_NUDGE_BOUND (a line beyond the bound) receive no nudge.
-    // Looping over both arc signs also confirms the table is symmetric for a downward-arcing
-    // (stem-up) tie, matching the upward-arcing case one-for-one.
+    // T42: tieSeatSs across the D4..B4 sweep (SongScribe coordinates, sp increasing downward). An
+    //      inner on-line note seats the clearance into the adjacent space; an outer staff line seats
+    //      outside the staff (TIE_OUTER_STAFF_LINE_SEAT_SS); a space note seats at the head-box edge,
+    //      pushed a further clearance when its edge row is a real staff line but not when that row is
+    //      off the staff. centerAttach follows: only a seat past the head-box edge recedes the
+    //      endpoints to the notehead centre.
     @Test
-    void testTieEndpointYSsNudgeTableAcrossStaffPositions() {
-        var nudgedPositions = Set.of(0, SP_TIE_LINE_DOWN_ARC);
+    void testTieSeatSsAcrossStaffPositions() {
+        record SeatCase(int sp, int arcSignSs, double expectedSeatSs, boolean centerAttach) {}
 
-        for (var arcSignSs : new int[] {-1, 1}) {
-            for (var sp : new int[] {0, SP_TIE_LINE_DOWN_ARC, SP_TIE_SPACE_CENTER, SP_TIE_LINE_BEYOND_NUDGE_BOUND}) {
-                var unshiftedYSs = Staff.spToSs(sp) + arcSignSs * LayoutEngine.NATURAL_TIE_GAP_SS;
-                var expectedNudgeSs = nudgedPositions.contains(sp)
-                    ? arcSignSs * LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS
-                    : 0.0;
+        var onLineSeatSs = LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+        var outerLineSeatSs = LayoutEngine.TIE_OUTER_STAFF_LINE_SEAT_SS;
+        var edgeSeatSs = Staff.STAFF_POSITION_OFFSET_SS;
+        var pushedSeatSs = edgeSeatSs + onLineSeatSs;
 
-                assertThat(LayoutEngine.tieEndpointYSs(sp, arcSignSs) - unshiftedYSs)
-                    .describedAs("nudge at sp=%d, arcSign=%d".formatted(sp, arcSignSs))
-                    .isCloseTo(expectedNudgeSs, within(TOLERANCE));
-            }
+        var cases = new SeatCase[] {
+            new SeatCase(SP_TIE_MIDDLE_LINE, -1, onLineSeatSs, false),            // B4: middle line, arc up
+            new SeatCase(SP_TIE_LINE_DOWN_ARC, 1, onLineSeatSs, false),           // G4: inner line, arc down
+            new SeatCase(SP_TIE_BOTTOM_LINE, 1, outerLineSeatSs, true),           // E4: outer line, arc down (outside the staff)
+            new SeatCase(SP_TIE_SPACE_CENTER, 1, pushedSeatSs, true),             // A4: space, edge row on a line
+            new SeatCase(SP_TIE_SPACE_ABOVE_BOTTOM_LINE, 1, pushedSeatSs, true),  // F4: space, edge row on bottom line
+            new SeatCase(SP_TIE_SPACE_BELOW_STAFF, 1, edgeSeatSs, false),         // D4: space below staff, no line
+        };
+
+        for (var testCase : cases) {
+            var seatSs = LayoutEngine.tieSeatSs(testCase.sp(), testCase.arcSignSs(), false);
+
+            assertThat(seatSs)
+                .describedAs("seat at sp=%d, arcSign=%d".formatted(testCase.sp(), testCase.arcSignSs()))
+                .isCloseTo(testCase.expectedSeatSs(), within(TOLERANCE));
+            assertThat(seatSs > Staff.STAFF_POSITION_OFFSET_SS)
+                .describedAs("center attach at sp=%d".formatted(testCase.sp()))
+                .isEqualTo(testCase.centerAttach());
         }
     }
 
@@ -785,8 +899,10 @@ class LayoutEngineTest extends UnitTest {
         return topOfInkSs + halfStrokeSs;
     }
 
-    // T34 (up-stem symmetry, mirrors T31 with the opposite arc sign): tip-on-line clearance for
-    //     an upward-bulging arc (stem-down note, SP_TIE_LINE_UP_ARC < 0 → arcSignSs=-1).
+    // T34 (up-stem symmetry, mirrors T31 with the opposite arc sign; also Phase 6 task 3c baseline):
+    //     tip-on-line clearance for an upward-bulging arc (stem-down note, SP_TIE_LINE_UP_ARC < 0 →
+    //     arcSignSs=-1). SP_TIE_LINE_UP_ARC == SP_TIE_NOTE_STEM_DOWN, so this also doubles as the
+    //     non-dotted baseline contrasted with T45: a note with no augmentation dot has none to move.
     @Test
     void testTieTipOnStaffLineClearedByExactTipClearanceForUpwardArc() {
         var line = detachedLine();
@@ -802,20 +918,102 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
 
-        var unshiftedYSs = Staff.spToSs(SP_TIE_LINE_UP_ARC) - LayoutEngine.NATURAL_TIE_GAP_SS;
-        var expectedShiftSs = -LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+        var arcSignSs = -1;
+        var expectedYSs =
+            Staff.spToSs(SP_TIE_LINE_UP_ARC) + arcSignSs * LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
 
-        assertThat(tieLayout.startYSs() - unshiftedYSs)
-            .describedAs("tip-on-line shift must equal exactly -STAFF_LINE_TIE_CLEARANCE_GAP_SS for an upward arc")
-            .isCloseTo(expectedShiftSs, within(TOLERANCE));
-        assertThat(tieLayout.endYSs() - unshiftedYSs)
-            .describedAs("both endpoints receive the same rigid shift")
-            .isCloseTo(expectedShiftSs, within(TOLERANCE));
+        assertThat(tieLayout.startYSs())
+            .describedAs("on-line note seats its upward tie the clearance above its own line")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
+        assertThat(tieLayout.endYSs())
+            .describedAs("both endpoints share the same seat")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
 
         // Symmetry: the arc bulges upward (smaller/more negative Y) rather than downward.
         assertThat(tieLayout.cp1YSs())
             .describedAs("stem-down tie outer control point must be above (smaller Y than) start endpoint")
             .isLessThan(tieLayout.startYSs());
+
+        var dotYOffsets = new ArrayList<Double>();
+        NoteGeometry.forEachDotPosition(note1, false, note1.getDirection(), (x, y) -> dotYOffsets.add(y));
+        assertThat(dotYOffsets)
+            .describedAs("a non-dotted note has no augmentation dot to move")
+            .isEmpty();
+    }
+
+    // T45 (Phase 6 task 3a): a down-stem dotted note's tie lifts a further TIE_DOT_ROW_NUDGE_SS to
+    //      clear its augmentation dot. sp < 0 → stem down → the arc bulges upward, toward the dot's
+    //      up-displaced row, so the seat row coincides with the dot row (tieSeatRowHasDot) and the
+    //      plain on-line nudge is replaced by the dot-row lift. The dot itself is never repositioned:
+    //      it stays on its own on-line row regardless of the tie.
+    @Test
+    void testDownStemDottedNoteLiftsTieByDotRowNudge() {
+        var line = detachedLine();
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setStaffPosition(SP_TIE_NOTE_STEM_DOWN);
+        note1.setDotCount(1);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setStaffPosition(SP_TIE_NOTE_STEM_DOWN);
+        line.addElement(note1);
+        line.addElement(note2);
+        var tie = new Tie(note1, note2);
+        line.addRangeElement(tie);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var tieLayout = require(result.getTieLayout(tie), "TieLayout");
+
+        var arcSignSs = -1; // sp < 0 → stem down → arc bulges upward, toward the dot's up-displaced row
+        // Dot-row coincidence seats at the head-box edge plus the dot-row lift, clearing the dot.
+        var expectedYSs = Staff.spToSs(SP_TIE_NOTE_STEM_DOWN)
+            + arcSignSs * (Staff.STAFF_POSITION_OFFSET_SS + LayoutEngine.TIE_DOT_ROW_NUDGE_SS);
+
+        assertThat(tieLayout.startYSs())
+            .describedAs("dot-row coincidence seats the tie at the head-box edge plus TIE_DOT_ROW_NUDGE_SS to clear the dot")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
+        assertThat(tieLayout.endYSs())
+            .describedAs("both endpoints share the same dot-row seat")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
+
+        var dotYOffsets = new ArrayList<Double>();
+        NoteGeometry.forEachDotPosition(note1, false, note1.getDirection(), (x, y) -> dotYOffsets.add(y));
+        assertThat(dotYOffsets)
+            .describedAs("the augmentation dot must stay on its own on-line row, unmoved by the tie")
+            .containsExactly(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS);
+    }
+
+    // T46 (Phase 6 task 3b): an up-stem dotted note's tie arcs away from its dot — the dot is always
+    //      displaced toward the top row, and an up-stem arc bulges downward, toward the opposite row —
+    //      so the seat row never coincides with the dot row, and the tie keeps the plain on-line nudge
+    //      instead of the dot-row lift. The dot again stays on its own on-line row.
+    @Test
+    void testUpStemDottedNoteTieNotLiftedByDotRowNudge() {
+        var line = detachedLine();
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setStaffPosition(SP_TIE_NOTE);
+        note1.setDotCount(1);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setStaffPosition(SP_TIE_NOTE);
+        line.addElement(note1);
+        line.addElement(note2);
+        var tie = new Tie(note1, note2);
+        line.addRangeElement(tie);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var tieLayout = require(result.getTieLayout(tie), "TieLayout");
+
+        var arcSignSs = 1; // sp > 0 → stem up → arc bulges downward, away from the dot's up-displaced row
+        // No dot-row coincidence: the on-line note keeps its plain clearance seat, not the dot-row lift.
+        var expectedYSs = Staff.spToSs(SP_TIE_NOTE) + arcSignSs * LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+
+        assertThat(tieLayout.startYSs())
+            .describedAs("no dot-row coincidence: the tie keeps the plain on-line clearance seat, not the dot-row lift")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
+
+        var dotYOffsets = new ArrayList<Double>();
+        NoteGeometry.forEachDotPosition(note1, false, note1.getDirection(), (x, y) -> dotYOffsets.add(y));
+        assertThat(dotYOffsets)
+            .describedAs("the augmentation dot must stay on its own on-line row, unmoved by the tie")
+            .containsExactly(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS);
     }
 
     // T24: createHeaderElements null keyType → key signature stored with KeyType.NONE

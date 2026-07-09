@@ -55,9 +55,108 @@ public class Tie extends RangeElement {
 
     @Override
     public boolean isAbove() {
-        // Ties go above if stem points down, below if stem points up
-        var anchor = getAnchorElement();
+        // isAbove and arcSign share one convention: arcSign < 0 == arc bulges up == tie above.
+        return arcSign() < 0;
+    }
 
-        return anchor != null && anchor.getDirection().isUp();
+    /**
+     * The tie arc's render/seed sign in Y-down screen space: {@code +1} = arc bulges
+     * <em>downward</em> (tie below the notes), {@code -1} = arc bulges upward (tie above).
+     *
+     * <p>Single source of truth for tie direction, consumed by three live sites:
+     * the renderer ({@code LayoutEngine.calculateTies}), the skyline seeder's reserve
+     * side ({@code NoteAttachedStacker.seedTieBounds}), and the MusicXML export
+     * ({@link #isAbove()} → {@code <tied orientation>}). All three must agree, so a
+     * conflicting-stem tie renders, seeds, and exports on the same side.
+     *
+     * <p>The <em>visual</em> arc direction ({@code tieDir}, a {@link StaffElement.Direction}
+     * where UP = arc bulges up = tie above) follows LilyPond's {@code get_default_dir}
+     * fallthrough tree, keying off <em>both</em> noteheads' stems:
+     *
+     * <pre>
+     *                  tieDirection(left, right)
+     *                           │
+     *         ┌─────────────────┴──────────────────┐
+     *    both have stems?                      not both
+     *         │ yes                                 │
+     *    both UP? ── yes ─→ DOWN                     │
+     *         │ no                                   │
+     *         └───────────────┐          ┌───────────┴───────────┐
+     *                         │     only left stem?        only right stem?
+     *                         │        │ yes                    │ yes
+     *                         │   opposite(left)          opposite(right)
+     *                         │        │                        │
+     *                    (fall through)                    (neither stem)
+     *                         │                                  │
+     *                         │                    staff pos vs middle line:
+     *                         │                     above → UP · below → DOWN
+     *                         │                     on middle → (fall through)
+     *                         └──────────────┬───────────────────┘
+     *                                   NEUTRAL → UP
+     * </pre>
+     *
+     * <p>The single inversion from musical "above" to Y-down "arc sign" lives in the
+     * {@code .opposite()} call below — and nowhere else. {@code tieDir = UP} (tie above)
+     * → {@code opposite()} = DOWN → {@code sign()} = {@code -1} (above); {@code tieDir = DOWN}
+     * (tie below) → {@code +1}. Do not re-derive {@code ±1} per branch.
+     *
+     * @return {@code +1} when the arc bulges downward (tie below), {@code -1} when it
+     * bulges upward (tie above)
+     */
+    public int arcSign() {
+        return tieArcDirection().opposite().sign();
+    }
+
+    /**
+     * Computes the tie's <em>visual</em> arc direction (UP = arc bulges up = tie above)
+     * via the fallthrough tree documented on {@link #arcSign()}. Reads both notes'
+     * {@link ElementType#isNoteWithStem()}, {@link StaffElement#getDirection()}, and
+     * {@link StaffElement#getStaffPosition()}.
+     */
+    private StaffElement.Direction tieArcDirection() {
+        var left = getAnchorElement();
+        var right = getEndElement();
+
+        // Either endpoint null → neutral default (mirrors the former isAbove() null guard).
+        if (left == null || right == null) {
+            return StaffElement.Direction.UP;
+        }
+
+        var leftHasStem = left.getType().isNoteWithStem();
+        var rightHasStem = right.getType().isNoteWithStem();
+
+        if (leftHasStem && rightHasStem) {
+            // Both stems up → tie below; any other pairing (both down, or conflicting) falls
+            // through to the neutral default.
+            if (left.getDirection().isUp() && right.getDirection().isUp()) {
+                return StaffElement.Direction.DOWN;
+            }
+
+            return StaffElement.Direction.UP;
+        }
+
+        if (leftHasStem) {
+            return left.getDirection().opposite();
+        }
+
+        if (rightHasStem) {
+            return right.getDirection().opposite();
+        }
+
+        // Neither note has a stem → key off staff position. getStaffPosition() is Y-down
+        // (0 = middle line, positive = below), so above the middle line is negative.
+        // Same-pitch tie ⇒ both notes share a staff position; read the left.
+        var staffPosition = left.getStaffPosition();
+
+        if (staffPosition < 0) {
+            return StaffElement.Direction.UP;
+        }
+
+        if (staffPosition > 0) {
+            return StaffElement.Direction.DOWN;
+        }
+
+        // Exactly on the middle line → neutral default.
+        return StaffElement.Direction.UP;
     }
 }

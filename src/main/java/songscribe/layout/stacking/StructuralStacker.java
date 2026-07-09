@@ -25,6 +25,7 @@ import java.util.Map;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.CollisionRegion;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
@@ -150,11 +151,10 @@ public class StructuralStacker {
             + NoteGeometry.getNoteheadXOffsetSs(noteType, note.getDirection());
         var contentWidthSs = dynamic.getContentWidthSs();
         var centeredXSs = columnXSs + noteheadCenterXSs - contentWidthSs / 2.0;
-        var staffPosition = note.getStaffPosition();
-        stackAbove(structuralExtents, dynamic, centeredXSs,
-            contentWidthSs, dynamic.getContentHeightSs(),
-            NoteAttachedStacker.NOTE_DECORATION_MARGIN_SS,
-            staffPosition, builder);
+        NoteAttachedStacker.stackAgainstNeighbor(Direction.UP, structuralExtents, dynamic,
+            centeredXSs, contentWidthSs, dynamic.getContentHeightSs(),
+            NoteAttachedStacker.DYNAMIC_PADDING_SS, NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS,
+            builder);
     }
 
     /**

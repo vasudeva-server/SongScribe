@@ -65,15 +65,11 @@ class ArticulationStackingTest extends UnitTest {
     private static final int CLAMP_BINDS_ABOVE_STAFF_POSITION = GAP_BINDS_ABOVE_STAFF_POSITION + 1;
     private static final int CLAMP_BINDS_BELOW_STAFF_POSITION = GAP_BINDS_BELOW_STAFF_POSITION - 1;
 
-    // A position well below the staff whose note stems up. Here the anchored floor (the notehead
-    // bottom) sits below StaffExtents' default below-content reservation, so the anchored floor is
-    // the binding constraint and the placed top-Y is exactly anchorFloorSs + ARTICULATION_MARGIN_SS.
+    // A position well below the staff whose note stems up. Here the note's own real reservation
+    // (its notehead/stem bottom) sits far enough below the staff that it — not the staff-padding
+    // clamp — is the binding constraint, so the placed top-Y is the note's outer edge plus
+    // STACCATO_PADDING_SS (LilyPond's aligned_side: real support + padding).
     private static final int BELOW_STAFF_STAFF_POSITION = 8;
-
-    // Expected top-Y of a single below-staff articulation for an up-stem note placed below the
-    // staff: the anchored floor plus the articulation margin.
-    private static final double EXPECTED_BELOW_TOP_Y_SS =
-        StackingUtils.anchorFloorSs(BELOW_STAFF_STAFF_POSITION) + NoteAttachedStacker.ARTICULATION_MARGIN_SS;
 
     // An explicit stem bottom for the preview/full-layout parity test: distinct from what the
     // non-beamed computeNoteBounds fallback would produce for a bare notehead at
@@ -107,6 +103,21 @@ class ArticulationStackingTest extends UnitTest {
     }
 
     /**
+     * Replicates {@code NoteAttachedStacker.computeNoteBounds}'s bottom-bound formula from public
+     * {@link songscribe.dom.ElementType} geometry, since that method is package-private to
+     * {@code songscribe.layout.stacking} and this test lives in {@code songscribe.layout}.
+     */
+    private static double computeNoteBotSs(StaffElement note) {
+        var centerYSs = Staff.spToSs(note.getStaffPosition());
+        var type = note.getType();
+        var direction = note.getDirection();
+        var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
+        var noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
+        var topSs = Math.min(centerYSs + type.getTopYOffsetSs(direction), noteheadTopSs);
+        return Math.max(topSs + type.getElementHeightSs(direction), noteheadBotSs);
+    }
+
+    /**
      * Creates an ElementColumn for a note at the standard test X position.
      */
     private static ElementColumn columnFor(StaffElement note) {
@@ -136,11 +147,11 @@ class ArticulationStackingTest extends UnitTest {
 
     /**
      * Asserts that staccato and accent are stacked as two separate glyphs above the staff
-     * (staccato closest to the note, accent beyond it). Accent's neighbor is resolved the same
-     * way {@link NoteAttachedStacker#stackAgainstNeighbor} resolves it: whichever of the staff
-     * floor or the staccato's own reservation is more outward. When the staccato wins, the
-     * accent's clearance is measured from the staccato's <em>center</em>, not its outer edge
-     * (#507); when the staff floor wins, it's the plain {@link NoteAttachedStacker#ARTICULATION_MARGIN_SS}.
+     * (staccato closest to the note, accent beyond it). Accent's inner edge is LilyPond's
+     * {@code aligned_side}: the more outward of the staccato's own outer edge plus
+     * {@link NoteAttachedStacker#ACCENT_PADDING_SS} (edge-to-edge, not center-relative — #507
+     * dropped the old center-relative rule) and the staff clamp,
+     * {@code staffEdge - }{@link NoteAttachedStacker#SCRIPT_STAFF_PADDING_SS}.
      */
     private static void assertSeparateGlyphsAboveStaff(StaffElement note, LayoutResult result) {
         var staccatoArticulation = note.getArticulations().get(0);
@@ -151,18 +162,9 @@ class ArticulationStackingTest extends UnitTest {
         var accentLayout = require(
             result.getDecorationLayout(accentArticulation), "accent DecorationLayout");
 
-        var staffFloorYSs = -Staff.STAFF_HALF_SS;
-        double expectedAccentYSs;
-
-        if (staccatoLayout.ySs() < staffFloorYSs) {
-            var staccatoHalfHeightSs = staccatoArticulation.getContentHeightSs() / 2;
-            var staccatoCenterYSs = staccatoLayout.ySs() + staccatoHalfHeightSs;
-            expectedAccentYSs = staccatoCenterYSs
-                - NoteAttachedStacker.ACCENT_STACCATO_CENTER_MARGIN_SS - accentLayout.heightSs();
-        } else {
-            expectedAccentYSs = staffFloorYSs
-                - NoteAttachedStacker.ARTICULATION_MARGIN_SS - accentLayout.heightSs();
-        }
+        var staffInnerYSs = -Staff.STAFF_HALF_SS - NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
+        var supportInnerYSs = staccatoLayout.ySs() - NoteAttachedStacker.ACCENT_PADDING_SS;
+        var expectedAccentYSs = Math.min(supportInnerYSs, staffInnerYSs) - accentLayout.heightSs();
 
         assertThat(staccatoLayout.ySs()).isLessThan(0.0);
         assertThat(accentLayout.ySs()).isLessThan(staccatoLayout.ySs());
@@ -182,17 +184,9 @@ class ArticulationStackingTest extends UnitTest {
             result.getDecorationLayout(accentArticulation), "accent DecorationLayout");
 
         var staccatoBotYSs = staccatoLayout.ySs() + staccatoLayout.heightSs();
-        var staffFloorYSs = Staff.STAFF_HALF_SS;
-        double expectedAccentYSs;
-
-        if (staccatoBotYSs > staffFloorYSs) {
-            var staccatoHalfHeightSs = staccatoArticulation.getContentHeightSs() / 2;
-            var staccatoCenterYSs = staccatoBotYSs - staccatoHalfHeightSs;
-            expectedAccentYSs = staccatoCenterYSs
-                + NoteAttachedStacker.ACCENT_STACCATO_CENTER_MARGIN_SS;
-        } else {
-            expectedAccentYSs = staffFloorYSs + NoteAttachedStacker.ARTICULATION_MARGIN_SS;
-        }
+        var staffInnerYSs = Staff.STAFF_HALF_SS + NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
+        var supportInnerYSs = staccatoBotYSs + NoteAttachedStacker.ACCENT_PADDING_SS;
+        var expectedAccentYSs = Math.max(supportInnerYSs, staffInnerYSs);
 
         assertThat(staccatoLayout.ySs()).isGreaterThan(0.0);
         assertThat(accentLayout.ySs()).isGreaterThan(staccatoLayout.ySs());
@@ -231,12 +225,11 @@ class ArticulationStackingTest extends UnitTest {
                 result.getDecorationLayout(note.getArticulations().getFirst()),
                 "accent DecorationLayout");
 
-            // Within the staff, accent uses the fixed staff-line anchor (not a note-relative
-            // center), and the note's own seeded extent (~-1.5 ss) is well short of the anchor
-            // (-2.0 ss), so the anchor — not the note's own reservation — is the binding
-            // constraint here.
+            // Within the staff, the note's own seeded extent (~-1.5 ss) minus ACCENT_PADDING_SS
+            // is well short of the staff-padding clamp (-2.0 - SCRIPT_STAFF_PADDING_SS), so the
+            // clamp — not the note's own reservation — is the binding constraint here.
             var expectedYSs = StackingUtils.anchorCeilingSs(-2)
-                - NoteAttachedStacker.ARTICULATION_MARGIN_SS - layout.heightSs();
+                - NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS - layout.heightSs();
             assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
         }
 
@@ -295,12 +288,11 @@ class ArticulationStackingTest extends UnitTest {
                 result.getDecorationLayout(note.getArticulations().getFirst()),
                 "accent DecorationLayout");
 
-            // Within the staff, accent uses the fixed staff-line anchor (not a note-relative
-            // center), and the note's own seeded extent (~1.5 ss) is well short of the anchor
-            // (2.0 ss), so the anchor — not the note's own reservation — is the binding
-            // constraint here.
+            // Within the staff, the note's own seeded extent (~1.5 ss) plus ACCENT_PADDING_SS is
+            // well short of the staff-padding clamp (2.0 + SCRIPT_STAFF_PADDING_SS), so the clamp
+            // — not the note's own reservation — is the binding constraint here.
             var expectedYSs = StackingUtils.anchorFloorSs(UP_STEM_STAFF_POSITION)
-                + NoteAttachedStacker.ARTICULATION_MARGIN_SS;
+                + NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
             assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
         }
 
@@ -326,17 +318,19 @@ class ArticulationStackingTest extends UnitTest {
         }
 
         @Test
-        void testBelowStaffArticulationSitsAtAnchoredFloorPlusMargin() {
-            // A note well below the staff: the anchored floor (its notehead bottom) is the binding
-            // constraint, so the placed top-Y is exactly anchorFloorSs + ARTICULATION_MARGIN_SS.
+        void testBelowStaffArticulationSitsAtRealReservationPlusPadding() {
+            // A note well below the staff: its own real reservation (notehead/stem bottom) is far
+            // enough out that it — not the staff-padding clamp — is the binding constraint, so the
+            // placed top-Y is exactly the note's outer edge plus STACCATO_PADDING_SS.
             var note = createNote(BELOW_STAFF_STAFF_POSITION, true, ArticulationType.STACCATO);
             var result = stackSingleColumn(note);
             var layout = require(
                 result.getDecorationLayout(note.getArticulations().getFirst()),
                 "staccato DecorationLayout");
 
+            var expectedYSs = computeNoteBotSs(note) + NoteAttachedStacker.STACCATO_PADDING_SS;
             assertThat(layout.ySs()).isGreaterThan(0.0);
-            assertThat(layout.ySs()).isCloseTo(EXPECTED_BELOW_TOP_Y_SS, within(TOLERANCE));
+            assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
         }
     }
 

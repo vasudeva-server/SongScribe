@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Attribution;
 import songscribe.dom.Beam;
@@ -40,6 +42,7 @@ import songscribe.engraving.Staff;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.stacking.VerticalStackingCalculator;
+import songscribe.shape.BezierBow;
 
 
 /**
@@ -70,6 +73,8 @@ import songscribe.layout.stacking.VerticalStackingCalculator;
  */
 public class LayoutEngine {
 
+    private static final Logger LOG = LoggerFactory.getLogger(LayoutEngine.class);
+
     static final double CLEF_X_POSITION_SS = 0.625;  // 5px
 
     // Beam geometry constants (staff-space units unless noted)
@@ -92,13 +97,33 @@ public class LayoutEngine {
     /** slur_shape control-point indent factor max_fraction = 1/3.1 (bezier-bow.cc slur_shape); unitless. */
     private static final double TIE_SLUR_MAX_FRACTION = 1.0 / 3.1;
 
-    /** Vertical gap of each endpoint from the note center, in the arc direction; staff spaces. */
-    static final double NATURAL_TIE_GAP_SS = 1.04;
+    /**
+     * LilyPond Tie note-head-gap: pulls both endpoints toward the span centre (an interval shrink,
+     * {@code attachment_x_.widen(-gap)}), not a per-edge offset; staff spaces.
+     */
+    static final double NOTE_HEAD_GAP_SS = 0.2;
+    /**
+     * LilyPond Tie generate_configuration dot lift: extra outward push of both endpoints when the tie's
+     * seat row coincides with the left note's displaced augmentation-dot row, so the tie clears the dot
+     * and attaches higher on the noteheads ({@code delta_y_ += dir·0.25·staff_space}); staff spaces.
+     */
+    static final double TIE_DOT_ROW_NUDGE_SS = 0.25;
 
-    /** LilyPond Tie tip-staff-line-clearance: outward nudge for an endpoint landing on a staff line; staff spaces. */
-    public static final double STAFF_LINE_TIE_CLEARANCE_GAP_SS = 0.19;
-    /** Largest note staff position (half staff-spaces) whose on-line endpoint gets the outward nudge; inner lines only. */
-    static final int TIE_ON_LINE_NUDGE_MAX_POSITION_SP = 2;
+    /**
+     * Distance a tie endpoint clears a staff line by, in the arc direction; staff spaces. Both the seat
+     * of a tie whose note sits on a line and the outward push of a tie whose edge-seat would land on a
+     * line are this amount (LilyPond Tie tip-staff-line-clearance, 0.45 half-spaces × 0.5).
+     */
+    public static final double STAFF_LINE_TIE_CLEARANCE_GAP_SS = 0.225;
+    /**
+     * Tie seat for a note on an <em>outer</em> staff line (the top or bottom line), in the arc
+     * direction; staff spaces. LilyPond seats these a full 1.5 staff-positions out — the endpoint
+     * lands in the open space beyond the staff and attaches centered outside the notehead, rather
+     * than tucking into the adjacent space like an inner-line note (measured: F5/E4 endpoints at
+     * ±1.5 staff-positions = 0.75 ss). Inner-line notes stay at
+     * {@link #STAFF_LINE_TIE_CLEARANCE_GAP_SS}.
+     */
+    static final double TIE_OUTER_STAFF_LINE_SEAT_SS = 0.75;
     /** Trigger margin: an arc fitting below a line keeps its natural height while its outer edge (incl. stroke) stays this far below; staff spaces. */
     static final double TIE_OUTER_EDGE_LINE_CLEARANCE_SS = 0.125;
     /** Fixed ink height (bottom of the endpoint stroke cap to the top of the apex stroke) when a tie is heightened over a staff line; staff spaces. */
@@ -687,34 +712,66 @@ public class LayoutEngine {
                 continue;
             }
 
-            // Tie arc sign: stem-up elements tie below (+1), stem-down elements tie above (-1).
-            // Y increases downward, so arcSignSs = +1 → arc bulges downward.
-            var arcSignSs = startElement.getDirection().sign();
+            // Tie arc sign from Tie.arcSign() (LilyPond's both-stem fallthrough tree, shared with
+            // the skyline seeder and MusicXML export). Y increases downward, so +1 → arc bulges
+            // downward (tie below), -1 → arc bulges upward (tie above).
+            var arcSignSs = span.arcSign();
 
-            // Endpoint attachment: each endpoint sits horizontally at the center of its notehead. Its
-            // vertical placement is note-relative; a staccato tucked under the arc is cleared later by the
-            // stacker, once it is actually placed. A tie joins two same-pitch notes, so both endpoints
-            // share one Y.
-            var startXSs = startColumn.getXSs() + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
-            var endXSs = endColumn.getXSs() + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
-            var endpointYSs = tieEndpointYSs(startElement.getStaffPosition(), arcSignSs);
+            // Seat the tie in the staff space adjacent to the note (in the arc direction), placed so
+            // both the endpoints and the apex clear the staff lines bounding that space (LilyPond
+            // tie-formatting-problem.cc generate_configuration). The vertical seat is computed first;
+            // the horizontal attachment then follows from it, because LilyPond samples the chord
+            // skyline at the seat height — the endpoint sits at the notehead's facing edge while the
+            // seat is within the head box, and recedes to the notehead centre once it drops below.
+            // A tie joins two same-pitch notes, so both endpoints share one Y. The tie is positioned
+            // purely note-relative and independent of any articulation, matching LilyPond, where the
+            // tie and the note's scripts (staccato, accent) are placed independently.
+            //
+            //   left note          tie          right note
+            //   ┌───────┐   start ↗   ↖ end   ┌───────┐
+            //   │  ●  ⟋─┼────╮       ╭────┼─⟍  ●  │
+            //   └───────┘    ╰───────╯    └───────┘
+            //
+            // When the seat row lands on the left note's up-displaced augmentation dot, the whole tie
+            // lifts a further quarter-space to clear it (the dot never moves) — LilyPond's dot-row case.
+            var notePositionSp = startElement.getStaffPosition();
+            var dotRowCoincides = tieSeatRowHasDot(startElement, arcSignSs);
+            var seatSs = tieSeatSs(notePositionSp, arcSignSs, dotRowCoincides);
+            var endpointYSs = Staff.spToSs(notePositionSp) + arcSignSs * seatSs;
+
+            // Facing edge while the seat stays within the half-space-tall head box; notehead centre
+            // once it clears the box (LilyPond get_attachment's edge-vs-centre step). dir = +1 for the
+            // left endpoint (tie extends rightward), -1 for the right.
+            var centerAttach = seatSs > Staff.STAFF_POSITION_OFFSET_SS;
+            var startXSs = tieEndpointXSs(startColumn.getXSs(), 1, centerAttach);
+            var endXSs = tieEndpointXSs(endColumn.getXSs(), -1, centerAttach);
 
             var tieWidthSs = endXSs - startXSs;
 
             // LilyPond slur_shape: control points P1 = (indent, height), P2 = (width − indent, height).
-            var indentSs = slurIndentSs(tieWidthSs);
+            var indentSs = BezierBow.indent(tieWidthSs, TIE_HEIGHT_LIMIT_SS, TIE_SLUR_MAX_FRACTION);
             var cp1XSs = startXSs + indentSs;
             var cp2XSs = endXSs - indentSs;
 
             // Arc height from the endpoint baseline (the shared endpoint Y for a same-pitch tie),
             // adjusted so the arc body clears the nearest staff line.
-            var heightSs = tieLineAvoidedHeightSs(endpointYSs, arcSignSs, slurHeightSs(tieWidthSs));
+            var heightSs = tieLineAvoidedHeightSs(
+                endpointYSs, arcSignSs, BezierBow.height(tieWidthSs, TIE_RATIO, TIE_HEIGHT_LIMIT_SS));
             var shoulderYSs = endpointYSs + arcSignSs * heightSs;
 
             // Outer/inner lens taper: outer control points offset away from the notes by the midpoint
             // half-thickness, inner control points offset toward the notes.
             var outerCpYSs = shoulderYSs + arcSignSs * TIE_MID_THICKNESS_SS;
             var innerCpYSs = shoulderYSs - arcSignSs * TIE_MID_THICKNESS_SS;
+
+            if (LOG.isDebugEnabled()) {
+                // LilyPond position convention (positive = up) for direct ground-truth comparison:
+                // LilyPond ss is positive-up, SongScribe ss is positive-down, so negate and ×2.
+                LOG.debug(
+                    "tie notePos={} arcSign={} seatSs={} width={} endpointPos={} apexPos={} heightSs={}",
+                    notePositionSp, arcSignSs, seatSs, tieWidthSs,
+                    -2 * endpointYSs, -2 * shoulderYSs, heightSs);
+            }
 
             builder.putTieLayout(span, new LayoutResult.TieLayout(
                 startXSs, endpointYSs,
@@ -728,62 +785,119 @@ public class LayoutEngine {
     }
 
     /**
-     * LilyPond bezier-bow.cc {@code F0_1}: maps [0, ∞) → [0, 1). Unitless.
-     */
-    private static double slurF01(double x) {
-        return 2 / Math.PI * Math.atan(Math.PI * x / 2);
-    }
-
-    /**
-     * LilyPond bezier-bow.cc {@code slur_height}: the tie arc height for the given tie width.
-     * Both the argument and the result are in staff spaces.
-     */
-    static double slurHeightSs(double widthSs) {
-        return slurF01(widthSs * TIE_RATIO / TIE_HEIGHT_LIMIT_SS) * TIE_HEIGHT_LIMIT_SS;
-    }
-
-    /**
-     * LilyPond bezier-bow.cc {@code slur_shape} control-point indent: the horizontal inset of the
-     * two interior Bézier control points from the tie endpoints. Width and result are in staff spaces.
-     */
-    static double slurIndentSs(double widthSs) {
-        var q = 2 * TIE_HEIGHT_LIMIT_SS / TIE_SLUR_MAX_FRACTION;
-
-        return 2 * TIE_HEIGHT_LIMIT_SS - q * q * TIE_SLUR_MAX_FRACTION / (widthSs + q);
-    }
-
-    /**
-     * Y of both tie endpoints (a tie joins two same-pitch notes, so both share one Y), in staff spaces.
+     * X of a tie endpoint, in staff spaces (LilyPond tie-formatting-problem.cc {@code get_attachment}).
      * <p>
-     * The endpoint sits {@link #NATURAL_TIE_GAP_SS} beyond the note center in the arc direction, plus
-     * {@link #tieEndpointNudgeSs} to lift an on-line endpoint off its line. Placement is purely
-     * note-relative; a staccato tucked under the arc is cleared later — once it is actually placed — by
-     * the stacker shifting the whole tie outward.
+     * LilyPond samples the chord's skyline outline at the endpoint's seat height, then note-head-gap
+     * pulls the endpoint {@link #NOTE_HEAD_GAP_SS} toward the span centre
+     * ({@code attachment_x_.widen(-gap)}). That sample is a step: while the seat sits within the head
+     * box the outline is the notehead's facing (span-side) edge; once the seat drops below the box the
+     * outline has receded to the notehead centre. The two endpoints are mirror images.
      *
-     * @param notePositionSp the tied notes' shared staff position (half staff-spaces)
-     * @param arcSignSs      +1 when the arc bulges downward, -1 upward
+     * @param noteLeftXSs  the notehead's left edge (its column X), in staff spaces
+     * @param dir          +1 for the left endpoint (tie extends rightward), -1 for the right endpoint
+     * @param centerAttach true when the seat has cleared the head box, so the endpoint attaches at the
+     *                     notehead centre rather than its facing edge
      */
-    static double tieEndpointYSs(int notePositionSp, int arcSignSs) {
-        return Staff.spToSs(notePositionSp)
-            + arcSignSs * NATURAL_TIE_GAP_SS
-            + tieEndpointNudgeSs(notePositionSp, arcSignSs);
+    static double tieEndpointXSs(double noteLeftXSs, int dir, boolean centerAttach) {
+        var centerXSs = noteLeftXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
+        var facingEdgeXSs = centerXSs + dir * SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
+        var skylineXSs = centerAttach ? centerXSs : facingEdgeXSs;
+
+        return skylineXSs + dir * NOTE_HEAD_GAP_SS;
     }
 
     /**
-     * Rigid outward nudge for an endpoint that would land on an inner staff line (the 1.0 ss gap places
-     * it on the adjacent line for a note on lines 0, ±2), leaving a visible gap; 0 otherwise. Result and
-     * all distances are in staff spaces.
+     * Distance from the tied notes' shared centre to the tie endpoints, in the arc direction; staff
+     * spaces. The tie is seated in the staff space adjacent to the note so its endpoints clear the
+     * bounding staff lines (LilyPond tie-formatting-problem.cc {@code generate_configuration}).
+     * <ul>
+     *   <li>A note <b>on a line</b> seats {@link #STAFF_LINE_TIE_CLEARANCE_GAP_SS} into the adjacent
+     *       space, clearing its own line; the far line bounding that space is cleared by the arc-height
+     *       adjustment in {@link #tieLineAvoidedHeightSs}.</li>
+     *   <li>A note <b>in a space</b> seats at the head-box edge, half a staff space out; if that edge
+     *       row is itself a staff line the endpoints would land on it, so the tie is pushed
+     *       {@link #STAFF_LINE_TIE_CLEARANCE_GAP_SS} further out to clear it.</li>
+     *   <li>When {@code dotRowCoincides} — the seat row lands on the left note's displaced dot row
+     *       ({@link #tieSeatRowHasDot}) — the tie seats at the head-box edge and lifts a further
+     *       {@link #TIE_DOT_ROW_NUDGE_SS} to attach above the dot (LilyPond adds {@code dir·0.25} and
+     *       disables y-tuning).</li>
+     * </ul>
+     * Placement is purely note-relative and independent of any articulation, matching LilyPond, where
+     * the tie and the note's scripts are positioned independently.
      *
-     * @param notePositionSp the tied notes' shared staff position (half staff-spaces)
-     * @param arcSignSs      +1 when the arc bulges downward, -1 upward
+     * @param notePositionSp  the tied notes' shared staff position (half staff-spaces)
+     * @param arcSignSs       +1 when the arc bulges downward, -1 upward
+     * @param dotRowCoincides whether the seat row coincides with the left note's dot row
      */
-    static double tieEndpointNudgeSs(int notePositionSp, int arcSignSs) {
-        if (StaffElement.isLinePosition(notePositionSp)
-            && Math.abs(notePositionSp) <= TIE_ON_LINE_NUDGE_MAX_POSITION_SP) {
-            return arcSignSs * STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+    static double tieSeatSs(int notePositionSp, int arcSignSs, boolean dotRowCoincides) {
+        if (dotRowCoincides) {
+            return Staff.STAFF_POSITION_OFFSET_SS + TIE_DOT_ROW_NUDGE_SS;
         }
 
-        return 0.0;
+        if (StaffElement.isLinePosition(notePositionSp)) {
+            // Outer staff lines seat outside the staff (centered outside the notehead); inner lines
+            // tuck into the adjacent space.
+            return isOuterStaffLine(notePositionSp)
+                ? TIE_OUTER_STAFF_LINE_SEAT_SS
+                : STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+        }
+
+        // A space note seats at the head-box edge; push past the edge row when it is a staff line.
+        var edgeRowSp = notePositionSp + arcSignSs;
+
+        if (isStaffLinePosition(edgeRowSp)) {
+            return Staff.STAFF_POSITION_OFFSET_SS + STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+        }
+
+        return Staff.STAFF_POSITION_OFFSET_SS;
+    }
+
+    /**
+     * Whether the given staff position is one of the five real staff lines — an even position within
+     * the staff — as opposed to a line position on a ledger row above or below the staff.
+     *
+     * @param staffPositionSp a staff position, in half staff-spaces
+     */
+    private static boolean isStaffLinePosition(int staffPositionSp) {
+        return StaffElement.isLinePosition(staffPositionSp)
+            && Math.abs(Staff.spToSs(staffPositionSp)) <= Staff.STAFF_HALF_SS;
+    }
+
+    /**
+     * Whether the given staff position is one of the two <em>outer</em> staff lines — the top or
+     * bottom line, i.e. a line position exactly {@link Staff#STAFF_HALF_SS} from the middle line.
+     *
+     * @param staffPositionSp a staff position, in half staff-spaces
+     */
+    private static boolean isOuterStaffLine(int staffPositionSp) {
+        return StaffElement.isLinePosition(staffPositionSp)
+            && Math.abs(Staff.spToSs(staffPositionSp)) == Staff.STAFF_HALF_SS;
+    }
+
+    /**
+     * Whether the tie's seat row coincides with the left note's augmentation-dot row — LilyPond's
+     * {@code generate_configuration} dot check ({@code dot_positions_.find(pos)}). Only a dotted note
+     * sitting on a staff line qualifies: its dot is displaced one half-space toward the top
+     * ({@link NoteGeometry#DOT_ON_LINE_Y_SHIFT_SS}) into the space an upward arc seats in. A note in a
+     * space keeps its dot on its own row — two half-spaces from the seat — so it never coincides, and an
+     * on-line note whose tie arcs the other way seats opposite the (always up-displaced) dot.
+     *
+     * @param note      the left (anchor) note of the tie
+     * @param arcSignSs +1 when the arc bulges downward, -1 upward
+     */
+    static boolean tieSeatRowHasDot(StaffElement note, int arcSignSs) {
+        var notePositionSp = note.getStaffPosition();
+
+        if (note.getDotCount() == 0 || !StaffElement.isLinePosition(notePositionSp)) {
+            return false;
+        }
+
+        // Dot row = note row displaced up (Y-down); seat row = note row + one half-space in the arc
+        // direction (LilyPond position_ += dir). They meet only for an upward arc into the dot's space.
+        var dotRowSp = notePositionSp + Staff.ssToSp(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS);
+        var seatRowSp = notePositionSp + arcSignSs;
+
+        return dotRowSp == seatRowSp;
     }
 
     /**
