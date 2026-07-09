@@ -95,7 +95,7 @@ public class LayoutEngine {
     /** slur_shape height-vs-width growth ratio r_0 (bezier-bow.cc slur_height); unitless. */
     static final double TIE_RATIO = 0.333;
     /** slur_shape control-point indent factor max_fraction = 1/3.1 (bezier-bow.cc slur_shape); unitless. */
-    private static final double TIE_SLUR_MAX_FRACTION = 1.0 / 3.1;
+    static final double TIE_SLUR_MAX_FRACTION = 1.0 / 3.1;
 
     /**
      * LilyPond Tie note-head-gap: pulls both endpoints toward the span centre (an interval shrink,
@@ -735,7 +735,7 @@ public class LayoutEngine {
             // When the seat row lands on the left note's up-displaced augmentation dot, the whole tie
             // lifts a further quarter-space to clear it (the dot never moves) — LilyPond's dot-row case.
             var notePositionSp = startElement.getStaffPosition();
-            var dotRowCoincides = tieSeatRowHasDot(startElement, arcSignSs);
+            var dotRowCoincides = tieSeatRowHasDot(startElement, notePositionSp, arcSignSs);
             var seatSs = tieSeatSs(notePositionSp, arcSignSs, dotRowCoincides);
             var endpointYSs = Staff.spToSs(notePositionSp) + arcSignSs * seatSs;
 
@@ -837,7 +837,7 @@ public class LayoutEngine {
         if (StaffElement.isLinePosition(notePositionSp)) {
             // Outer staff lines seat outside the staff (centered outside the notehead); inner lines
             // tuck into the adjacent space.
-            return isOuterStaffLine(notePositionSp)
+            return isOuterRealStaffLine(notePositionSp)
                 ? TIE_OUTER_STAFF_LINE_SEAT_SS
                 : STAFF_LINE_TIE_CLEARANCE_GAP_SS;
         }
@@ -845,7 +845,7 @@ public class LayoutEngine {
         // A space note seats at the head-box edge; push past the edge row when it is a staff line.
         var edgeRowSp = notePositionSp + arcSignSs;
 
-        if (isStaffLinePosition(edgeRowSp)) {
+        if (isRealStaffLinePosition(edgeRowSp)) {
             return Staff.STAFF_POSITION_OFFSET_SS + STAFF_LINE_TIE_CLEARANCE_GAP_SS;
         }
 
@@ -858,7 +858,7 @@ public class LayoutEngine {
      *
      * @param staffPositionSp a staff position, in half staff-spaces
      */
-    private static boolean isStaffLinePosition(int staffPositionSp) {
+    private static boolean isRealStaffLinePosition(int staffPositionSp) {
         return StaffElement.isLinePosition(staffPositionSp)
             && Math.abs(Staff.spToSs(staffPositionSp)) <= Staff.STAFF_HALF_SS;
     }
@@ -869,7 +869,7 @@ public class LayoutEngine {
      *
      * @param staffPositionSp a staff position, in half staff-spaces
      */
-    private static boolean isOuterStaffLine(int staffPositionSp) {
+    private static boolean isOuterRealStaffLine(int staffPositionSp) {
         return StaffElement.isLinePosition(staffPositionSp)
             && Math.abs(Staff.spToSs(staffPositionSp)) == Staff.STAFF_HALF_SS;
     }
@@ -882,12 +882,11 @@ public class LayoutEngine {
      * space keeps its dot on its own row — two half-spaces from the seat — so it never coincides, and an
      * on-line note whose tie arcs the other way seats opposite the (always up-displaced) dot.
      *
-     * @param note      the left (anchor) note of the tie
-     * @param arcSignSs +1 when the arc bulges downward, -1 upward
+     * @param note           the left (anchor) note of the tie
+     * @param notePositionSp the note's staff position (half staff-spaces)
+     * @param arcSignSs      +1 when the arc bulges downward, -1 upward
      */
-    static boolean tieSeatRowHasDot(StaffElement note, int arcSignSs) {
-        var notePositionSp = note.getStaffPosition();
-
+    static boolean tieSeatRowHasDot(StaffElement note, int notePositionSp, int arcSignSs) {
         if (note.getDotCount() == 0 || !StaffElement.isLinePosition(notePositionSp)) {
             return false;
         }

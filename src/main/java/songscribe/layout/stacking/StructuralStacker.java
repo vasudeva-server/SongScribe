@@ -151,7 +151,7 @@ public class StructuralStacker {
             + NoteGeometry.getNoteheadXOffsetSs(noteType, note.getDirection());
         var contentWidthSs = dynamic.getContentWidthSs();
         var centeredXSs = columnXSs + noteheadCenterXSs - contentWidthSs / 2.0;
-        NoteAttachedStacker.stackAgainstNeighbor(Direction.UP, structuralExtents, dynamic,
+        StackingUtils.placeAndReserveClamped(Direction.UP, structuralExtents, dynamic,
             centeredXSs, contentWidthSs, dynamic.getContentHeightSs(),
             NoteAttachedStacker.DYNAMIC_PADDING_SS, NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS,
             builder);

@@ -30,6 +30,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.layout.stacking.NoteAttachedStacker;
+import songscribe.layout.stacking.StackingUtils;
+import songscribe.layout.stacking.VerticalStackingCalculator;
 import songscribe.shape.AccentShape;
 import songscribe.dom.Articulation;
 import songscribe.font.DocumentFonts;
@@ -39,9 +42,6 @@ import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.engraving.Staff;
-import songscribe.layout.stacking.NoteAttachedStacker;
-import songscribe.layout.stacking.StackingUtils;
-import songscribe.layout.stacking.VerticalStackingCalculator;
 
 @SuppressWarnings("DataFlowIssue")
 class ArticulationStackingTest extends UnitTest {
@@ -102,22 +102,7 @@ class ArticulationStackingTest extends UnitTest {
         return note;
     }
 
-    /**
-     * Replicates {@code NoteAttachedStacker.computeNoteBounds}'s bottom-bound formula from public
-     * {@link songscribe.dom.ElementType} geometry, since that method is package-private to
-     * {@code songscribe.layout.stacking} and this test lives in {@code songscribe.layout}.
-     */
-    private static double computeNoteBotSs(StaffElement note) {
-        var centerYSs = Staff.spToSs(note.getStaffPosition());
-        var type = note.getType();
-        var direction = note.getDirection();
-        var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
-        var noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
-        var topSs = Math.min(centerYSs + type.getTopYOffsetSs(direction), noteheadTopSs);
-        return Math.max(topSs + type.getElementHeightSs(direction), noteheadBotSs);
-    }
-
-    /**
+  /**
      * Creates an ElementColumn for a note at the standard test X position.
      */
     private static ElementColumn columnFor(StaffElement note) {
@@ -328,7 +313,8 @@ class ArticulationStackingTest extends UnitTest {
                 result.getDecorationLayout(note.getArticulations().getFirst()),
                 "staccato DecorationLayout");
 
-            var expectedYSs = computeNoteBotSs(note) + NoteAttachedStacker.STACCATO_PADDING_SS;
+            var expectedYSs = NoteAttachedStacker.computeNoteBounds(note).botSs()
+                + NoteAttachedStacker.STACCATO_PADDING_SS;
             assertThat(layout.ySs()).isGreaterThan(0.0);
             assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
         }

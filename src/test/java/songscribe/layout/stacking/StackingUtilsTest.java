@@ -624,6 +624,46 @@ class StackingUtilsTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // stackStaccato: quantize-position — a collision-pushed dot centre landing exactly on a staff
+    // line, within the quantize zone, is snapped one further half-space outward to a space.
+    // -------------------------------------------------------------------------
+
+    private static final double QUANTIZE_X_SS = 5.0;
+    private static final double QUANTIZE_WIDTH_SS = 1.0;
+    private static final double QUANTIZE_HEIGHT_SS = 1.0;
+    private static final double QUANTIZE_MARGIN_SS = 0.3;
+    // Unused in this test: staffPosition = 0 is well within the staff, so the edge-clamp branch
+    // (the only branch that consults staffPaddingSs) never runs.
+    private static final double QUANTIZE_STAFF_PADDING_SS = 0.25;
+    private static final int QUANTIZE_STAFF_POSITION = 0;
+
+    // With staffPosition = 0 (the middle line), staccatoAnchorCeilingSs(0) = -1.5 (a space), so the
+    // uncollided ideal never needs quantizing. A real reservation this far out forces the collision
+    // branch to win, pushing the pre-quantize centre to exactly -2.0 ss — the top staff line —
+    // which is inside StackingUtils.STACCATO_QUANTIZE_ZONE_SS (2.5 ss).
+    private static final double QUANTIZE_COLLISION_SUPPORT_SS = -1.2;
+
+    @Test
+    void testStackStaccatoQuantizesCollisionPushedCentreOffStaffLine() {
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        extents.ySet(true, QUANTIZE_X_SS, QUANTIZE_WIDTH_SS, QUANTIZE_COLLISION_SUPPORT_SS);
+        var element = mock(LineElement.class);
+        var builder = new LayoutResult.Builder();
+
+        var returnedYSs = StackingUtils.stackStaccato(Direction.UP, extents, element,
+            QUANTIZE_X_SS, QUANTIZE_WIDTH_SS, QUANTIZE_HEIGHT_SS, QUANTIZE_MARGIN_SS,
+            QUANTIZE_STAFF_PADDING_SS, QUANTIZE_STAFF_POSITION, builder);
+
+        // Pre-quantize centre would land at -2.0 (a staff line); quantized, it snaps one further
+        // half-space outward to -2.5 (a space), so the dot's top edge is at -2.5 - height/2 = -3.0.
+        var expectedQuantizedCentreSs = -2.5;
+        var expectedTopYSs = expectedQuantizedCentreSs - QUANTIZE_HEIGHT_SS / 2.0;
+        assertThat(returnedYSs)
+            .describedAs("collision-pushed centre on a staff line snaps outward to the next space")
+            .isCloseTo(expectedTopYSs, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
     // Row 9 — isRangeCovered: covered, uncovered, and partial/wrong-end cases
     // -------------------------------------------------------------------------
 

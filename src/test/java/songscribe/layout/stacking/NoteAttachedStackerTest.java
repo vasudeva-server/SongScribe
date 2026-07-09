@@ -102,24 +102,6 @@ class NoteAttachedStackerTest extends UnitTest {
     private static final double TUCKED_ARC_Y_SS = -0.1;
     private static final double TUCKED_ARC_Y_BELOW_SS = 0.1;
 
-    // Phase 4 (#507) — geometry for the direct stackAgainstNeighbor tests: arbitrary but fixed
-    // footprint, reused as both the seeded reservation's range and the decoration's own.
-    private static final double NEIGHBOR_TEST_X_SS = 10.0;
-    private static final double NEIGHBOR_TEST_WIDTH_SS = 1.0;
-    private static final double NEIGHBOR_TEST_HEIGHT_SS = 1.2;
-
-    // A notehead Y within the staff (less outward than -STAFF_HALF_SS): the staff-padding clamp —
-    // not the notehead — must be the binding constraint.
-    private static final double NOTEHEAD_WITHIN_STAFF_TOP_SS = -1.0;
-
-    // A notehead Y protruding past the staff (more outward than -STAFF_HALF_SS): the notehead's
-    // own edge must be the binding constraint.
-    private static final double NOTEHEAD_PROTRUDING_TOP_SS = -3.0;
-
-    // A staccato's true outer-edge Y (more outward than the staff floor) — input to the accent's
-    // edge-to-edge clearance test.
-    private static final double STACCATO_OUTER_EDGE_TOP_SS = -3.0;
-
     // -------------------------------------------------------------------------
     // Row 15 — computeNoteBounds: both code paths
     // -------------------------------------------------------------------------
@@ -531,6 +513,25 @@ class NoteAttachedStackerTest extends UnitTest {
         assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
     }
 
+    @Test
+    void testPreviewPathStacksFermataAboveTheStaff() {
+        // computePreviewDecorationLayouts (the no-tie preview path) must place a fermata the same
+        // way the full pipeline's stackFermata does: both delegate to stackFermataAt.
+        var note = stemDownNote(STAFF_CENTER_SP);
+        var fermata = new FermataAttachment(note);
+        note.addAttachment(fermata);
+
+        var result = NoteAttachedStacker.computePreviewDecorationLayouts(note, START_NOTE_X_SS);
+        var layout = require(result.findAttachmentDecorationLayout(note, FermataAttachment.class));
+
+        var supportBoundSs = NoteAttachedStacker.computeNoteBounds(note).topSs();
+        var staffInnerYSs = StackingUtils.STAFF_TOP_Y_SS - NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
+        var innerEdgeYSs =
+            Math.min(supportBoundSs - NoteAttachedStacker.FERMATA_PADDING_SS, staffInnerYSs);
+        var expectedYSs = innerEdgeYSs - fermata.getContentHeightSs();
+        assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+    }
+
     // -------------------------------------------------------------------------
     // Row 24 — stackSingleTrill single-note: endXSs == anchorXSs → width = glyph width
     // -------------------------------------------------------------------------
@@ -553,6 +554,73 @@ class NoteAttachedStackerTest extends UnitTest {
         // Single-note trill: endXSs defaults to anchorXSs → span = 0, so
         // widthSs = max(glyphWidth, 0 + glyphWidth) = glyphWidth = getContentWidthSs().
         assertThat(layout.widthSs()).isCloseTo(trill.getContentWidthSs(), within(TOLERANCE));
+    }
+
+    @Test
+    void testDegenerateTrillWithNoEndElementSeatsAtAnchorOnly() {
+        // Unlike Trill(anchor) (endElement == anchor, so endIndex == anchorIndex naturally), an
+        // explicit null end element makes getEndElementIndex() return -1, exercising the
+        // endIndex < anchorIndex degenerate-span clamp in stackSingleTrill directly.
+        var note = stemDownNote(STAFF_CENTER_SP);
+        var line = detachedLine();
+        line.addElement(note);
+        var trill = new Trill(note);
+        trill.setEndElement(null);
+        line.addRangeElement(trill);
+
+        var builder = new LayoutResult.Builder();
+        var context = new StackingContext(
+            List.of(mockColumnAt(note, START_NOTE_X_SS)), line, builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        var layout = require(builder.build().getDecorationLayout(trill));
+
+        assertThat(layout.widthSs()).isCloseTo(trill.getContentWidthSs(), within(TOLERANCE));
+    }
+
+    @Test
+    void testTrillSkipsIntermediateLineElementWithNoColumn() {
+        // A trill spanning anchor to end whose line has an intermediate element (e.g. a rest) not
+        // included among the stacking columns exercises the null-column skip: the loop must pass
+        // over that index without failing, and seat identically to the same trill with no
+        // intermediate element at all, since a columnless rest contributes no constraint.
+        var anchorNote = stemDownNote(STAFF_CENTER_SP);
+        var endNote = stemDownNote(STAFF_CENTER_SP);
+
+        var lineWithRest = detachedLine();
+        lineWithRest.addElement(anchorNote);
+        lineWithRest.addElement(ElementType.CROTCHET_REST.newInstance());
+        lineWithRest.addElement(endNote);
+        var trillWithRest = new Trill(anchorNote, endNote);
+        lineWithRest.addRangeElement(trillWithRest);
+
+        var builderWithRest = new LayoutResult.Builder();
+        var contextWithRest = new StackingContext(
+            List.of(mockColumnAt(anchorNote, START_NOTE_X_SS), mockColumnAt(endNote, END_NOTE_X_SS)),
+            lineWithRest, builderWithRest);
+        new NoteAttachedStacker(contextWithRest, new StaffExtents(LINE_WIDTH_SS)).stack();
+        var layoutWithRest = require(builderWithRest.build().getDecorationLayout(trillWithRest));
+
+        var anchorNoteNoRest = stemDownNote(STAFF_CENTER_SP);
+        var endNoteNoRest = stemDownNote(STAFF_CENTER_SP);
+
+        var lineNoRest = detachedLine();
+        lineNoRest.addElement(anchorNoteNoRest);
+        lineNoRest.addElement(endNoteNoRest);
+        var trillNoRest = new Trill(anchorNoteNoRest, endNoteNoRest);
+        lineNoRest.addRangeElement(trillNoRest);
+
+        var builderNoRest = new LayoutResult.Builder();
+        var contextNoRest = new StackingContext(
+            List.of(mockColumnAt(anchorNoteNoRest, START_NOTE_X_SS),
+                mockColumnAt(endNoteNoRest, END_NOTE_X_SS)),
+            lineNoRest, builderNoRest);
+        new NoteAttachedStacker(contextNoRest, new StaffExtents(LINE_WIDTH_SS)).stack();
+        var layoutNoRest = require(builderNoRest.build().getDecorationLayout(trillNoRest));
+
+        assertThat(layoutWithRest.ySs())
+            .describedAs("the columnless rest between anchor and end contributes no constraint")
+            .isCloseTo(layoutNoRest.ySs(), within(TOLERANCE));
     }
 
     // -------------------------------------------------------------------------
@@ -604,78 +672,15 @@ class NoteAttachedStackerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // stackAgainstNeighbor: LilyPond's aligned_side, end-to-end placement values.
+    // Accent direction: end-to-end placement side.
+    //
+    // The aligned_side placement values themselves (isolated-clamp vs. real-support-override,
+    // above and below) are covered directly against StackingUtils.placeAndReserveClamped in
+    // StackingUtilsTest; NoteAttachedStacker no longer has its own wrapper around that method.
     // -------------------------------------------------------------------------
 
     @Nested
     class StackAgainstNeighborPlacementValues {
-
-        @Test
-        void testWithinStaffNoteheadAccentClampsToStaffPadding() {
-            // The notehead's own edge minus ACCENT_PADDING_SS is less outward than the
-            // staff-padding clamp, so the clamp — not the notehead — is the binding constraint.
-            var extents = new StaffExtents(LINE_WIDTH_SS);
-            extents.ySet(true, NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS,
-                NOTEHEAD_WITHIN_STAFF_TOP_SS);
-
-            var element = mock(LineElement.class);
-            var builder = new LayoutResult.Builder();
-            NoteAttachedStacker.stackAgainstNeighbor(Direction.UP, extents, element,
-                NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS, NEIGHBOR_TEST_HEIGHT_SS,
-                NoteAttachedStacker.ACCENT_PADDING_SS, NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS,
-                builder);
-
-            var expectedYSs = -Staff.STAFF_HALF_SS - NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS
-                - NEIGHBOR_TEST_HEIGHT_SS;
-            var layout = require(builder.build().getDecorationLayout(element));
-            assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
-        }
-
-        @Test
-        void testProtrudingNoteheadAccentClearsNoteheadOuterEdge() {
-            // The notehead's own edge minus ACCENT_PADDING_SS is more outward than the
-            // staff-padding clamp, so the notehead's real edge is the binding constraint.
-            var extents = new StaffExtents(LINE_WIDTH_SS);
-            extents.ySet(true, NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS,
-                NOTEHEAD_PROTRUDING_TOP_SS);
-
-            var element = mock(LineElement.class);
-            var builder = new LayoutResult.Builder();
-            NoteAttachedStacker.stackAgainstNeighbor(Direction.UP, extents, element,
-                NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS, NEIGHBOR_TEST_HEIGHT_SS,
-                NoteAttachedStacker.ACCENT_PADDING_SS, NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS,
-                builder);
-
-            var expectedYSs = NOTEHEAD_PROTRUDING_TOP_SS
-                - NoteAttachedStacker.ACCENT_PADDING_SS - NEIGHBOR_TEST_HEIGHT_SS;
-            var layout = require(builder.build().getDecorationLayout(element));
-            assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
-        }
-
-        @Test
-        void testStaccatoSupportAccentClearsOuterEdgeByAccentPadding() {
-            // #507 dropped the old center-relative accent-over-staccato rule: the accent clears
-            // the staccato's true OUTER edge by ACCENT_PADDING_SS, edge-to-edge, via the same
-            // placement core as every other pair.
-            var extents = new StaffExtents(LINE_WIDTH_SS);
-            extents.ySet(true, NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS,
-                STACCATO_OUTER_EDGE_TOP_SS);
-
-            var element = mock(LineElement.class);
-            var builder = new LayoutResult.Builder();
-            NoteAttachedStacker.stackAgainstNeighbor(Direction.UP, extents, element,
-                NEIGHBOR_TEST_X_SS, NEIGHBOR_TEST_WIDTH_SS, NEIGHBOR_TEST_HEIGHT_SS,
-                NoteAttachedStacker.ACCENT_PADDING_SS, NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS,
-                builder);
-
-            var layout = require(builder.build().getDecorationLayout(element));
-            var accentInnerEdgeYSs = layout.ySs() + NEIGHBOR_TEST_HEIGHT_SS;
-
-            assertThat(STACCATO_OUTER_EDGE_TOP_SS - accentInnerEdgeYSs)
-                .describedAs("accent's inner edge must sit ACCENT_PADDING_SS from the "
-                    + "staccato's outer edge, edge-to-edge")
-                .isCloseTo(NoteAttachedStacker.ACCENT_PADDING_SS, within(TOLERANCE));
-        }
 
         @Test
         void testDownStemNotePlacesAccentAboveTheStaff() {

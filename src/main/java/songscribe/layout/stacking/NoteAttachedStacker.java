@@ -28,7 +28,6 @@ import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.layout.ElementColumn;
 import songscribe.dom.FermataAttachment;
-import songscribe.dom.LineElement;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.StaffExtents;
@@ -213,13 +212,7 @@ public class NoteAttachedStacker {
         stackAccentAboveExtents(accentArticulation, extents, xSs, direction, builder);
 
         // Tier 2: Fermata
-        var fermata = note.findAttachment(FermataAttachment.class);
-
-        if (fermata != null) {
-            stackAgainstNeighbor(Direction.UP, extents, fermata, xSs,
-                fermata.getContentWidthSs(), fermata.getContentHeightSs(),
-                FERMATA_PADDING_SS, SCRIPT_STAFF_PADDING_SS, builder);
-        }
+        stackFermataAt(note.findAttachment(FermataAttachment.class), extents, xSs, builder);
 
         return builder.build();
     }
@@ -230,13 +223,13 @@ public class NoteAttachedStacker {
     /**
      * Vertical bounds of a note without stem layout (non-beamed path).
      */
-    record NoteBounds(double topSs, double botSs) {
+    public record NoteBounds(double topSs, double botSs) {
     }
 
     /**
      * Computes note vertical bounds from element type geometry alone (no stem layout).
      */
-    static NoteBounds computeNoteBounds(StaffElement element) {
+    public static NoteBounds computeNoteBounds(StaffElement element) {
         var centerYSs = Staff.spToSs(element.getStaffPosition());
         var type = element.getType();
         var direction = element.getDirection();
@@ -464,7 +457,7 @@ public class NoteAttachedStacker {
      * where its arc protrudes past the note, else the notehead or staff line. Every script takes
      * the tie as a side-support element in LilyPond, so the accent clears the arc directly when no
      * staccato sits between them. Clearance is uniformly {@link #ACCENT_PADDING_SS} from the
-     * neighbor's outer edge, resolved by {@link #stackAgainstNeighbor}.
+     * neighbor's outer edge, resolved by {@link StackingUtils#placeAndReserveClamped}.
      */
     private void stackAccentColumn(
         ElementColumn column,
@@ -511,9 +504,9 @@ public class NoteAttachedStacker {
 
     /**
      * Places the accent (if present) against its immediate neighbor in the skyline via
-     * {@link #stackAgainstNeighbor}. The neighbor — tie, staccato, notehead, or staff line — and
-     * its clearance are resolved from the extents, so one accent path serves both the full
-     * pipeline's accent pass and the no-tie preview.
+     * {@link StackingUtils#placeAndReserveClamped}. The neighbor — tie, staccato, notehead, or
+     * staff line — and its clearance are resolved from the extents, so one accent path serves
+     * both the full pipeline's accent pass and the no-tie preview.
      *
      * @return the accent's top Y (above) or bottom Y (below) in staff-space units, or
      *     {@code null} when no accent is present
@@ -529,32 +522,9 @@ public class NoteAttachedStacker {
             return null;
         }
 
-        return stackAgainstNeighbor(direction, extents, accent, xSs,
+        return StackingUtils.placeAndReserveClamped(direction, extents, accent, xSs,
             accent.getContentWidthSs(), accent.getContentHeightSs(),
             ACCENT_PADDING_SS, SCRIPT_STAFF_PADDING_SS, builder);
-    }
-
-    /**
-     * Places a note-attached decoration at LilyPond's {@code aligned_side} position via
-     * {@link StackingUtils#placeAndReserveClamped}: the more-outward of its real-reservation support
-     * edge plus {@code paddingSs} and the staff edge plus {@code staffPaddingSs}.
-     *
-     * @param paddingSs      the decoration's own padding, applied against whatever real reservation
-     *     its footprint contacts
-     * @param staffPaddingSs the decoration's staff-padding, applied when the staff clamp is the
-     *     outward constraint
-     * @return the decoration's outer Y in staff-space units (top above, bottom below)
-     */
-    static double stackAgainstNeighbor(
-        Direction direction,
-        StaffExtents extents,
-        LineElement element,
-        double xSs, double widthSs, double heightSs,
-        double paddingSs, double staffPaddingSs,
-        LayoutResult.Builder builder) {
-
-        return StackingUtils.placeAndReserveClamped(direction, extents, element, xSs, widthSs,
-            heightSs, paddingSs, staffPaddingSs, builder);
     }
 
     /**
@@ -594,13 +564,27 @@ public class NoteAttachedStacker {
         LayoutResult.Builder builder) {
 
         var note = column.getElement();
-        var fermata = note.findAttachment(FermataAttachment.class);
+
+        stackFermataAt(note.findAttachment(FermataAttachment.class), noteAttachedExtents,
+            column.getXSs(), builder);
+    }
+
+    /**
+     * Places the fermata (if present) above the staff via {@link
+     * StackingUtils#placeAndReserveClamped}. Shared by the full pipeline's fermata pass and the
+     * no-tie preview so the two agree on fermata placement.
+     */
+    private static void stackFermataAt(
+        @Nullable FermataAttachment fermata,
+        StaffExtents extents,
+        double xSs,
+        LayoutResult.Builder builder) {
 
         if (fermata == null) {
             return;
         }
 
-        stackAgainstNeighbor(Direction.UP, noteAttachedExtents, fermata, column.getXSs(),
+        StackingUtils.placeAndReserveClamped(Direction.UP, extents, fermata, xSs,
             fermata.getContentWidthSs(), fermata.getContentHeightSs(),
             FERMATA_PADDING_SS, SCRIPT_STAFF_PADDING_SS, builder);
     }

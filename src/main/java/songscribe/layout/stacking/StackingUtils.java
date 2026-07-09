@@ -264,24 +264,47 @@ public final class StackingUtils {
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
+        var innerEdgeYSs = above ? boundSs - marginSs : boundSs + marginSs;
+
+        return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
+            innerEdgeYSs, marginSs, builder);
+    }
+
+    /**
+     * Shared tail for {@link #placeAndReserve} and {@link #placeAndReserveClamped}: given the
+     * element's already-computed inner edge (nearest the staff), positions the element outward
+     * from it by {@code heightSs}, reserves its footprint, and writes the decoration layout.
+     *
+     * @param innerEdgeYSs        the element's inner edge in staff-space units (bottom above,
+     *                            top below)
+     * @param decorationMarginSs  the margin recorded in the resulting {@link
+     *                            LayoutResult.DecorationLayout}
+     * @return the element's outer Y in staff-space units (top above, bottom below)
+     */
+    private static double placeAtInnerEdge(
+        Direction direction,
+        StaffExtents extents,
+        LineElement element,
+        double xSs, double widthSs, double heightSs, double innerEdgeYSs, double decorationMarginSs,
+        LayoutResult.Builder builder) {
+
+        var above = direction.isUp();
 
         double elementTopYSs;
         double reserveEdgeYSs;
 
         if (above) {
-            // Position: bottom margin between this element's bottom and the ceiling
-            elementTopYSs = boundSs - marginSs - heightSs;
+            elementTopYSs = innerEdgeYSs - heightSs;
             reserveEdgeYSs = elementTopYSs;
         } else {
-            // Position: top margin between the floor and this element's top
-            elementTopYSs = boundSs + marginSs;
+            elementTopYSs = innerEdgeYSs;
             reserveEdgeYSs = elementTopYSs + heightSs;
         }
 
         extents.ySet(above, xSs, widthSs, reserveEdgeYSs);
 
         builder.putDecorationLayout(element,
-            new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, marginSs));
+            new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, decorationMarginSs));
 
         return above ? elementTopYSs : reserveEdgeYSs;
     }
@@ -337,23 +360,8 @@ public final class StackingUtils {
                 : staffInnerYSs;
         }
 
-        double elementTopYSs;
-        double reserveEdgeYSs;
-
-        if (above) {
-            elementTopYSs = innerEdgeYSs - heightSs;
-            reserveEdgeYSs = elementTopYSs;
-        } else {
-            elementTopYSs = innerEdgeYSs;
-            reserveEdgeYSs = elementTopYSs + heightSs;
-        }
-
-        extents.ySet(above, xSs, widthSs, reserveEdgeYSs);
-
-        builder.putDecorationLayout(element,
-            new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, paddingSs));
-
-        return above ? elementTopYSs : reserveEdgeYSs;
+        return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
+            innerEdgeYSs, paddingSs, builder);
     }
 
     /**

@@ -138,10 +138,6 @@ class LayoutEngineTest extends UnitTest {
      */
     private static final double TIE_TEST_POKE_HEIGHT_SS = 0.7;
 
-    // Mirrors LayoutEngine's private TIE_SLUR_MAX_FRACTION (slur_shape max_fraction = 1/3.1),
-    // which the tie call site passes into BezierBow.indent but does not expose to tests.
-    private static final double TIE_TEST_SLUR_MAX_FRACTION = 1.0 / 3.1;
-
     // Natural slur_height / slur_indent growth-curve inputs (tie widths, staff spaces).
     /** A short tie. */
     private static final double TIE_TEST_NARROW_WIDTH_SS = 2.0;
@@ -611,6 +607,10 @@ class LayoutEngineTest extends UnitTest {
             .describedAs("space note on a line edge-row is pushed past it to clear the line")
             .isCloseTo(expectedYSs, within(TOLERANCE));
 
+        assertThat(tieLayout.endYSs())
+            .describedAs("both endpoints share the pushed seat Y")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
+
         // Center attach: the endpoint has receded to the notehead centre plus note-head-gap.
         var note1XSs = result.getElementXSs(note1);
         var expectedStartXSs =
@@ -619,6 +619,15 @@ class LayoutEngineTest extends UnitTest {
         assertThat(tieLayout.startXSs())
             .describedAs("a seat below the head box attaches at the notehead centre (center attach)")
             .isCloseTo(expectedStartXSs, within(TOLERANCE));
+
+        // Right endpoint (mirror image): facing edge is the end note's own centre, minus the gap.
+        var note2XSs = result.getElementXSs(note2);
+        var expectedEndXSs =
+            note2XSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2 - LayoutEngine.NOTE_HEAD_GAP_SS;
+
+        assertThat(tieLayout.endXSs())
+            .describedAs("center-attach endXSs mirrors startXSs: notehead centre minus note-head-gap")
+            .isCloseTo(expectedEndXSs, within(TOLERANCE));
     }
 
     // T23: Tie direction: stem-up note (isUpper=true, direction=+1) has arc bulging downward.
@@ -801,7 +810,7 @@ class LayoutEngineTest extends UnitTest {
     //      2 × TIE_HEIGHT_LIMIT_SS asymptote. Pins BezierBow.indent, which the avoidance tests never touch.
     @Test
     void testSlurIndentGrowsAndStaysInsideTheTie() {
-        var maxFraction = TIE_TEST_SLUR_MAX_FRACTION;
+        var maxFraction = LayoutEngine.TIE_SLUR_MAX_FRACTION;
 
         assertThat(BezierBow.indent(0.0, LayoutEngine.TIE_HEIGHT_LIMIT_SS, maxFraction))
             .describedAs("a zero-width tie has zero control-point indent")
@@ -1007,6 +1016,9 @@ class LayoutEngineTest extends UnitTest {
 
         assertThat(tieLayout.startYSs())
             .describedAs("no dot-row coincidence: the tie keeps the plain on-line clearance seat, not the dot-row lift")
+            .isCloseTo(expectedYSs, within(TOLERANCE));
+        assertThat(tieLayout.endYSs())
+            .describedAs("both endpoints share the same seat")
             .isCloseTo(expectedYSs, within(TOLERANCE));
 
         var dotYOffsets = new ArrayList<Double>();

@@ -159,6 +159,31 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
+     * Returns the {@code orientation} attribute of every {@code <tied>} element matching
+     * {@code tiedType} ("start"/"stop"), in document order. Unlike {@link #tiedOrientation}, this
+     * does not stop at the first match, so it can distinguish an interior chain note's two
+     * independent {@code tiedStart}/{@code tiedStop} orientations from its neighbors'.
+     */
+    private static List<@Nullable String> tiedOrientations(String xml, String tiedType) throws Exception {
+        var factory = DocumentBuilderFactory.newInstance();
+        var builder = factory.newDocumentBuilder();
+        var doc = builder.parse(new InputSource(new StringReader(xml)));
+        var tiedElements = doc.getElementsByTagName("tied");
+        var orientations = new java.util.ArrayList<@Nullable String>();
+
+        for (var i = 0; i < tiedElements.getLength(); i++) {
+            var tied = (Element) tiedElements.item(i);
+
+            if (tiedType.equals(tied.getAttribute("type"))) {
+                var value = tied.getAttribute("orientation");
+                orientations.add(value.isEmpty() ? null : value);
+            }
+        }
+
+        return orientations;
+    }
+
+    /**
      * Returns the text content of the first {@code <childTag>} element in document
      * order, or {@code null} if none is present.
      */
@@ -741,6 +766,64 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         assertThat(tiedOrientation(xml, "stop"))
             .as("conflicting-stem tie: <tied type=\"stop\"> orientation")
             .isEqualTo(MusicXmlTags.ORIENTATION_OVER);
+    }
+
+    /**
+     * Builds a three-crotchet tie chain (two independent ties sharing the middle note as end of
+     * one and anchor of the other) with the given explicit stem direction on each note, mirroring
+     * {@link #buildTiedSong} for the two-note case.
+     * <p>
+     * Uses {@link songscribe.dom.Line#addRangeElement} rather than {@link
+     * songscribe.dom.Line#addTie}: {@code addTie}'s adjacent-tie merge (see its Javadoc) would
+     * collapse these two ties into a single {@code Tie(crotchet0, crotchet2)}, losing the interior
+     * note's independent {@code tieStop}/{@code tieStart} references this test exercises.
+     */
+    private static Song buildTiedChainSong(
+        StaffElement.Direction note0Direction,
+        StaffElement.Direction note1Direction,
+        StaffElement.Direction note2Direction) {
+
+        return buildSong(line -> {
+            var crotchet0 = ElementType.CROTCHET.newInstance();
+            crotchet0.setDirection(note0Direction);
+            var crotchet1 = ElementType.CROTCHET.newInstance();
+            crotchet1.setDirection(note1Direction);
+            var crotchet2 = ElementType.CROTCHET.newInstance();
+            crotchet2.setDirection(note2Direction);
+
+            line.addElement(crotchet0);
+            line.addElement(crotchet1);
+            line.addElement(crotchet2);
+
+            var tieA = new Tie(crotchet0, crotchet1);
+            tieA.setParentLine(line);
+            line.addRangeElement(tieA);
+
+            var tieB = new Tie(crotchet1, crotchet2);
+            tieB.setParentLine(line);
+            line.addRangeElement(tieB);
+        });
+    }
+
+    @Test
+    void testTiedOrientationsDifferOnSharedInteriorChainNote() throws Exception {
+        // Chain: note0 --(tieA)-- note1 --(tieB)-- note2. note1 carries both a tieStop (from tieA)
+        // and a tieStart (from tieB) as independent @Nullable Tie references, so a both-up left tie
+        // and a stems-conflict right tie must resolve to different orientations on the same note.
+        var xml = writeToString(buildTiedChainSong(
+            StaffElement.Direction.UP, StaffElement.Direction.UP, StaffElement.Direction.DOWN));
+
+        var startOrientations = tiedOrientations(xml, "start");
+        var stopOrientations = tiedOrientations(xml, "stop");
+
+        assertThat(startOrientations)
+            .as("tieA <tied type=\"start\"> (note0, both-up) then tieB <tied type=\"start\"> "
+                + "(note1, stems conflict)")
+            .containsExactly(MusicXmlTags.ORIENTATION_UNDER, MusicXmlTags.ORIENTATION_OVER);
+        assertThat(stopOrientations)
+            .as("tieA <tied type=\"stop\"> (note1, both-up) then tieB <tied type=\"stop\"> "
+                + "(note2, stems conflict)")
+            .containsExactly(MusicXmlTags.ORIENTATION_UNDER, MusicXmlTags.ORIENTATION_OVER);
     }
 
     // -- Phase 6, Task 2b: lyric writer output --
