@@ -1231,7 +1231,7 @@ public final class MusicXmlWriter {
 
         // <dynamics>
         if (dynamic != null) {
-            XML.writeBeginTag(pw, MusicXmlTags.DYNAMICS);
+            XML.writeBeginTag(pw, MusicXmlTags.DYNAMICS, MusicXmlTags.ATTR_PLACEMENT, MusicXmlTags.PLACEMENT_ABOVE);
             XML.indent();
             XML.writeEmptyTag(pw, dynamic.getType().getSymbol());
             XML.dedent();
