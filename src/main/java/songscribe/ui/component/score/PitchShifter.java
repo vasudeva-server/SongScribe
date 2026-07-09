@@ -162,7 +162,10 @@ public final class PitchShifter {
         for (var entry : group) {
             var note = line.getElement(entry.index());
             note.setStaffPosition(entry.originalStaffPositionSp() + clampedDelta);
-            note.setDirection(StaffElement.defaultDirection(note));
+
+            if (note.isStemDirectionAuto()) {
+                note.setDirection(StaffElement.defaultDirection(note));
+            }
         }
 
         // Note-on the anchor's new (post-move) pitch
