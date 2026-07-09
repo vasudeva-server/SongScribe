@@ -301,6 +301,38 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
     }
 
     // -----------------------------------------------------------------------
+    // Grace note over the cursor — clicks are ignored (issue #360)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class GraceNoteOverExistingElement {
+
+        /**
+         * A grace note may never be replaced. Clicking over one with a different preview
+         * element must leave it in place and not insert anything either.
+         */
+        @Test
+        void testClickOverGraceNoteIsIgnored() {
+            song.withoutMutationTracking(() -> line.addElement(ElementType.GRACE_QUAVER.newInstance()));
+
+            setPreviewElement(ElementType.CROTCHET.newInstance());
+            PreviewElementManager.setCurrentXIndex(0);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+
+            var countBefore = line.elementCount();
+            PreviewElementManager.handleClick(lc);
+
+            assertThat(line.elementCount())
+                .as("no element inserted or removed")
+                .isEqualTo(countBefore);
+            assertThat(line.getElement(0).getType())
+                .as("the grace note is not replaced")
+                .isEqualTo(ElementType.GRACE_QUAVER);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // validateAndGetPreviewElement stale-preview guard (row 37)
     // -----------------------------------------------------------------------
 

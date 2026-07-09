@@ -205,4 +205,22 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
             .as("clearing resets the x-index to -1")
             .isEqualTo(-1);
     }
+
+    @Test
+    void testHoveringGraceNoteHidesGhostPreview() {
+        // Layout: [grace] [terminal]
+        song.withoutMutationTracking(() -> line.addElement(ElementType.GRACE_QUAVER.newInstance()));
+
+        when(lc.getMiddleLineYSs()).thenReturn(0.0);
+        setPreviewElement(ElementType.CROTCHET.newInstance());
+        // Mouse is directly over the grace note's head.
+        stubLayout(0, 0);
+
+        PreviewElementManager.trackMouse(lc, mouseEvent(0, 0, false));
+
+        assertThat(PreviewElementManager.getHoveredElementLocation())
+            .as("a grace note under the cursor never shows the replacement highlight")
+            .isNull();
+        editModeManagerMock.verify(() -> EditModeManager.setPreviewElementVisible(false));
+    }
 }

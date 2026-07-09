@@ -253,6 +253,11 @@ public final class PreviewElementManager {
             return null;
         }
 
+        // A grace note may never be replaced, so it never shows the red replacement highlight.
+        if (isGraceNoteAt(currentPreviewLine.getLine(), currentXIndex)) {
+            return null;
+        }
+
         return new ElementLocation(currentPreviewLine.getLineIndex(), currentXIndex);
     }
 
@@ -413,6 +418,18 @@ public final class PreviewElementManager {
      */
     static boolean isSlidePlaceholder(@Nullable StaffElement element) {
         return element != null && element.getType() == ElementType.SLIDE;
+    }
+
+    /**
+     * Returns whether the element at {@code elementIndex} on {@code line} is a grace note.
+     * Grace notes may never be replaced by clicking through them with another preview
+     * element, so this gates both the ghost preview visibility and the click handler.
+     */
+    static boolean isGraceNoteAt(@Nullable Line line, int elementIndex) {
+        return line != null
+            && elementIndex >= 0
+            && elementIndex < line.elementCount()
+            && line.getElement(elementIndex).getType().isGraceNote();
     }
 
     /**
@@ -600,6 +617,10 @@ public final class PreviewElementManager {
         // getHoveredElementLocation, so newXMatch stays raw for the over-element-head check.
         var breathMarkBlocked = isBreathMarkInsertionBlocked(previewElement, xIndex, line, newXMatch);
 
+        // A grace note may never be replaced by clicking through it with another element.
+        // Hide the ghost preview over it; handleClick separately ignores the click.
+        var graceNoteBlocked = isGraceNoteAt(line, elementAtX);
+
         // Compute slide zone before change detection so zone changes trigger repaints.
         // Only compute when not over an element head (elementAtX < 0), as hovering over an
         // element head means there is no valid slide target to the left.
@@ -642,9 +663,9 @@ public final class PreviewElementManager {
 
         // Always show the ghost preview — even when hovering over an existing element head.
         // The preview shows the user what pitch/type will replace the existing element.
-        // Exception: breath marks must follow a note or rest, so suppress the ghost
-        // wherever that is not the case.
-        EditModeManager.setPreviewElementVisible(!breathMarkBlocked);
+        // Exceptions: breath marks must follow a note or rest, and grace notes may never
+        // be replaced, so suppress the ghost in either case.
+        EditModeManager.setPreviewElementVisible(!breathMarkBlocked && !graceNoteBlocked);
 
         // Rests snap to their default staff position; pitched notes follow the mouse Y
         if (previewElement != null) {
@@ -738,6 +759,11 @@ public final class PreviewElementManager {
 
         if (isBreathMarkInsertionBlocked(previewElement, currentXIndex, line, xPosSsMatchesElement)) {
             OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_BREATH_MARK, Strings.ALERT_BREATH_MARK_POSITION);
+            return;
+        }
+
+        // A grace note may never be replaced — ignore the click.
+        if (xPosSsMatchesElement && isGraceNoteAt(line, currentXIndex)) {
             return;
         }
 
