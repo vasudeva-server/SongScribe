@@ -102,7 +102,7 @@ class LyricEditorActionAuditTest extends MainFrameMockTest {
             ToggleNotationAction.createBeamAction(mainFrame),
             ToggleNotationAction.createTieAction(mainFrame),
             TupletAction.createTripletAction(mainFrame),
-            FlipStemDirectionAction.createAction(mainFrame),
+            StemDirectionAction.createFlipAction(mainFrame),
             EditLyricAction.createAction(mainFrame),
             // StaffAnnotationPopupButton
             AnnotationAction.createAction(mainFrame),

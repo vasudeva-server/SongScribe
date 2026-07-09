@@ -36,16 +36,24 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
+import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.command.AutoStemDirectionCommand;
 import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 
-class FlipStemDirectionActionEnablementTest extends MainFrameMockTest {
+/**
+ * The flip and auto actions are two instances of the same class, so enablement — which
+ * they share — is verified once. Each factory is then checked for the command it posts,
+ * the only behavior that distinguishes them.
+ */
+class StemDirectionActionEnablementTest extends MainFrameMockTest {
 
     // > 0 so REQUIRES_SELECTION passes, letting updateEnabledState() return true.
     private static final int SELECTION_SIZE = 1;
 
-    private FlipStemDirectionAction action;
+    private StemDirectionAction flipAction;
+    private StemDirectionAction autoAction;
 
     @BeforeEach
     void setUp() {
@@ -57,33 +65,42 @@ class FlipStemDirectionActionEnablementTest extends MainFrameMockTest {
         when(mockEnv().frame().getRootPane()).thenReturn(mockRootPane);
 
         // Override defaults so that the general updateEnabledState() checks pass,
-        // leaving canFlipStemDirection() in charge of the final enabled state.
+        // leaving canModifyStemDirection() in charge of the final enabled state.
         when(mockEnv().score().getSelectionSize()).thenReturn(SELECTION_SIZE);
         when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
         when(mockEnv().coordinator().selectionHasDurations()).thenReturn(true);
 
-        action = FlipStemDirectionAction.createAction(mainFrame());
+        flipAction = StemDirectionAction.createFlipAction(mainFrame());
+        autoAction = StemDirectionAction.createAutoAction(mainFrame());
     }
 
-    // Row 38: disables when canFlipStemDirection() returns false (e.g. all-rest selection)
+    // Row 38: disables when canModifyStemDirection() returns false (e.g. all-rest selection)
     @Test
-    void testDisablesWhenCannotFlipStemDirection() {
-        when(mockEnv().ctrl().canFlipStemDirection()).thenReturn(false);
+    void testDisablesWhenCannotModifyStemDirection() {
+        when(mockEnv().ctrl().canModifyStemDirection()).thenReturn(false);
         var notification = new MusicSelectionDidChangeNotification(mockEnv().score());
-        action.musicSelectionDidChange(notification);
-        assertThat(action.isEnabled()).isFalse();
+
+        flipAction.musicSelectionDidChange(notification);
+        autoAction.musicSelectionDidChange(notification);
+
+        assertThat(flipAction.isEnabled()).isFalse();
+        assertThat(autoAction.isEnabled()).isFalse();
     }
 
-    // Row 39: enables when canFlipStemDirection() returns true (selection has ≥1 note)
+    // Row 39: enables when canModifyStemDirection() returns true (selection has ≥1 note)
     @Test
-    void testEnablesWhenCanFlipStemDirection() {
-        when(mockEnv().ctrl().canFlipStemDirection()).thenReturn(true);
+    void testEnablesWhenCanModifyStemDirection() {
+        when(mockEnv().ctrl().canModifyStemDirection()).thenReturn(true);
         var notification = new MusicSelectionDidChangeNotification(mockEnv().score());
-        action.musicSelectionDidChange(notification);
-        assertThat(action.isEnabled()).isTrue();
+
+        flipAction.musicSelectionDidChange(notification);
+        autoAction.musicSelectionDidChange(notification);
+
+        assertThat(flipAction.isEnabled()).isTrue();
+        assertThat(autoAction.isEnabled()).isTrue();
     }
 
-    // Row 40: actionPerformed posts FlipStemDirectionCommand on the message bus
+    // Row 40: each action posts its own command on the message bus
     @Nested
     class ActionPerformed {
 
@@ -99,13 +116,22 @@ class FlipStemDirectionActionEnablementTest extends MainFrameMockTest {
             messageMock.close();
         }
 
-        @Test
-        void testActionPerformedPostsFlipStemDirectionCommand() {
+        private Message capturePostedMessage(StemDirectionAction action) {
             var e = new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "");
             action.actionPerformed(e);
-            var captor = ArgumentCaptor.forClass(FlipStemDirectionCommand.class);
+            var captor = ArgumentCaptor.forClass(Message.class);
             messageMock.verify(() -> MessageCenter.post(captor.capture()));
-            assertThat(captor.getValue()).isInstanceOf(FlipStemDirectionCommand.class);
+            return captor.getValue();
+        }
+
+        @Test
+        void testFlipActionPostsFlipStemDirectionCommand() {
+            assertThat(capturePostedMessage(flipAction)).isInstanceOf(FlipStemDirectionCommand.class);
+        }
+
+        @Test
+        void testAutoActionPostsAutoStemDirectionCommand() {
+            assertThat(capturePostedMessage(autoAction)).isInstanceOf(AutoStemDirectionCommand.class);
         }
     }
 }

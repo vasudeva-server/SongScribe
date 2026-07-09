@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.HashSet;
 import java.util.TreeSet;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Beam;
 import songscribe.dom.Song;
@@ -38,6 +40,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.ui.selection.LineSelectionState;
@@ -595,12 +598,54 @@ public final class MusicEditOperations {
 
     // ========== Stem Direction Operations ==========
 
-    public boolean canFlipStemDirection() {
+    private enum StemDirectionChange {
+        FLIP,
+        AUTO
+    }
+
+    public boolean canModifyStemDirection() {
         var state = coordinator.getActiveSelection();
-        return (state != null) && state.canFlipStemDirection();
+        return (state != null) && state.canModifyStemDirection();
     }
 
     public void flipStemDirection() {
+        modifyStemDirection(StemDirectionChange.FLIP);
+    }
+
+    public void autoStemDirection() {
+        modifyStemDirection(StemDirectionChange.AUTO);
+    }
+
+    /**
+     * Applies a stem change to the element at {@code index}. A non-null {@code newDirection}
+     * forces that direction; null restores automatic stem direction, letting the layout engine
+     * derive it.
+     */
+    private static void applyStemChange(
+        Line line,
+        int index,
+        EnumSet<ElementField> stemFields,
+        StaffElement.@Nullable Direction newDirection
+    ) {
+        if (newDirection == null) {
+            // Re-enabling auto on an already-auto element changes nothing. Recording a mutation
+            // anyway would mark the song modified and push an empty entry onto the undo stack.
+            if (line.getElement(index).isStemDirectionAuto()) {
+                return;
+            }
+
+            line.modifyElement(index, stemFields, () -> line.getElement(index).setStemDirectionAuto(true));
+            return;
+        }
+
+        line.modifyElement(index, stemFields, () -> {
+            var target = line.getElement(index);
+            target.setStemDirectionAuto(false);
+            target.setDirection(newDirection);
+        });
+    }
+
+    private void modifyStemDirection(StemDirectionChange change) {
         var state = coordinator.getActiveSelection();
 
         if (state == null) {
@@ -611,7 +656,7 @@ public final class MusicEditOperations {
         var stemFields = EnumSet.of(ElementField.UPPER, ElementField.STEM_DIRECTION_AUTO);
 
         line.withModification(() -> {
-            // Track which beam groups have already been processed to avoid double-flipping.
+            // Track which beam groups have already been processed to avoid modifying one twice.
             var processedBeams = new HashSet<Beam>();
 
             for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
@@ -624,35 +669,25 @@ public final class MusicEditOperations {
                 var beam = line.findBeamAt(i);
 
                 if (beam != null) {
-                    // Flip the whole beam group together, once per group.
+                    // Modify the whole beam group together, once per group. The group's new
+                    // direction is derived once from its anchor so every member agrees.
                     if (processedBeams.add(beam)) {
-                        var firstElement = line.getElement(beam.getAnchorElementIndex());
-                        var newDirection = firstElement.getDirection().opposite();
+                        var anchorIndex = beam.getAnchorElementIndex();
+                        var newDirection = flippedDirection(line, anchorIndex, change);
 
-                        for (var j = beam.getAnchorElementIndex(); j <= beam.getEndElementIndex(); j++) {
-                            var beamIndex = j;
-                            line.modifyElement(beamIndex, stemFields, () -> {
-                                var beamElement = line.getElement(beamIndex);
-                                beamElement.setStemDirectionAuto(false);
-                                beamElement.setDirection(newDirection);
-                            });
+                        for (var j = anchorIndex; j <= beam.getEndElementIndex(); j++) {
+                            applyStemChange(line, j, stemFields, newDirection);
                         }
                     }
                 } else {
-                    var noteIndex = i;
-                    var newDirection = note.getDirection().opposite();
-                    line.modifyElement(noteIndex, stemFields, () -> {
-                        var target = line.getElement(noteIndex);
-                        target.setStemDirectionAuto(false);
-                        target.setDirection(newDirection);
-                    });
+                    applyStemChange(line, i, stemFields, flippedDirection(line, i, change));
                 }
             }
 
-            // Flip tie partners that fall outside the selection. Ties may span more than
-            // two notes via the overlap-merge; all notes in the tie that weren't already
-            // covered by the selection must flip.
-            var tiePartnersToFlip = new TreeSet<Integer>();
+            // Apply the same change to tie partners that fall outside the selection. Ties may
+            // span more than two notes via the overlap-merge; all notes in the tie that weren't
+            // already covered by the selection must be updated too.
+            var tiePartnersToModify = new TreeSet<Integer>();
 
             for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
                 var tieSpan = line.findTieAt(i);
@@ -666,21 +701,31 @@ public final class MusicEditOperations {
 
                 for (var j = tieStart; j <= tieEnd; j++) {
                     if ((j < state.getSelectionBegin()) || (j > state.getSelectionEnd())) {
-                        tiePartnersToFlip.add(j);
+                        tiePartnersToModify.add(j);
                     }
                 }
             }
 
-            for (var i : tiePartnersToFlip) {
-                int partnerIndex = i;
-                var newDirection = line.getElement(partnerIndex).getDirection().opposite();
-                line.modifyElement(partnerIndex, stemFields, () -> {
-                    var note = line.getElement(partnerIndex);
-                    note.setStemDirectionAuto(false);
-                    note.setDirection(newDirection);
-                });
+            for (var partnerIndex : tiePartnersToModify) {
+                applyStemChange(line, partnerIndex, stemFields, flippedDirection(line, partnerIndex, change));
             }
         });
+    }
+
+    /**
+     * Returns the direction a {@link StemDirectionChange#FLIP} of the element at {@code index}
+     * would install, or null when {@code change} does not need one.
+     */
+    private static StaffElement.@Nullable Direction flippedDirection(
+        Line line,
+        int index,
+        StemDirectionChange change
+    ) {
+        if (change != StemDirectionChange.FLIP) {
+            return null;
+        }
+
+        return line.getElement(index).getDirection().opposite();
     }
 
     // ========== Tempo Operations ==========

@@ -138,7 +138,8 @@ public final class Actions {
     public static List<TupletAction> TOGGLE_TUPLET_ACTIONS;
     public static TupletAction REMOVE_TUPLET_ACTION;
 
-    public static FlipStemDirectionAction FLIP_STEM_DIRECTION_ACTION;
+    public static StemDirectionAction FLIP_STEM_DIRECTION_ACTION;
+    public static StemDirectionAction AUTO_STEM_DIRECTION_ACTION;
     public static EditLyricAction EDIT_LYRIC_ACTION;
     public static TrillAction TRILL_ACTION;
 
@@ -305,7 +306,8 @@ public final class Actions {
         );
         REMOVE_TUPLET_ACTION = TupletAction.createRemoveAction(mainFrame);
 
-        FLIP_STEM_DIRECTION_ACTION = FlipStemDirectionAction.createAction(mainFrame);
+        FLIP_STEM_DIRECTION_ACTION = StemDirectionAction.createFlipAction(mainFrame);
+        AUTO_STEM_DIRECTION_ACTION = StemDirectionAction.createAutoAction(mainFrame);
         EDIT_LYRIC_ACTION = EditLyricAction.createAction(mainFrame);
         TRILL_ACTION = TrillAction.createAction(mainFrame);
 

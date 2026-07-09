@@ -22,29 +22,68 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import java.util.function.Supplier;
 
 import net.engio.mbassy.listener.Handler;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.command.AutoStemDirectionCommand;
 import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 
-public final class FlipStemDirectionAction extends UIAction {
+public final class StemDirectionAction extends UIAction {
 
-    public static FlipStemDirectionAction createAction(MainFrame mainFrame) {
-        return new FlipStemDirectionAction(mainFrame);
-    }
+    private static final int FLIP_ICON_SIZE = 18;
 
-    private FlipStemDirectionAction(MainFrame mainFrame) {
-        super(
+    /** The auto action is menu-only, so it carries no icon and needs no icon size. */
+    private static final int NO_ICON_SIZE = 0;
+
+    private final Supplier<? extends Message> commandFactory;
+
+    public static StemDirectionAction createFlipAction(MainFrame mainFrame) {
+        return new StemDirectionAction(
             mainFrame,
             Strings.get(Strings.ACTION_STEM_FLIP),
             "@\uF374",
-            18,
+            FLIP_ICON_SIZE,
             "flip-stem-direction",
             Strings.get(Strings.ACTION_STEM_FLIP_TOOLTIP),
+            FlipStemDirectionCommand::new
+        );
+    }
+
+    public static StemDirectionAction createAutoAction(MainFrame mainFrame) {
+        return new StemDirectionAction(
+            mainFrame,
+            Strings.get(Strings.ACTION_STEM_AUTO),
+            null,
+            NO_ICON_SIZE,
+            "auto-stem-direction",
+            Strings.get(Strings.ACTION_STEM_AUTO_TOOLTIP),
+            AutoStemDirectionCommand::new
+        );
+    }
+
+    private StemDirectionAction(
+        MainFrame mainFrame,
+        String name,
+        @Nullable String icon,
+        int size,
+        String actionCommand,
+        String tooltip,
+        Supplier<? extends Message> commandFactory
+    ) {
+        super(
+            mainFrame,
+            name,
+            icon,
+            size,
+            actionCommand,
+            tooltip,
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
@@ -52,6 +91,7 @@ public final class FlipStemDirectionAction extends UIAction {
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_IN_GRACE_MODE
         );
+        this.commandFactory = commandFactory;
     }
 
     @Override
@@ -62,13 +102,13 @@ public final class FlipStemDirectionAction extends UIAction {
         var ctrl = message.getScoreViewController();
 
         if (ctrl != null && updateEnabledState()) {
-            setEnabled(ctrl.canFlipStemDirection());
+            setEnabled(ctrl.canModifyStemDirection());
         }
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         super.actionPerformed(e);
-        MessageCenter.post(new FlipStemDirectionCommand());
+        MessageCenter.post(commandFactory.get());
     }
 }

@@ -21,7 +21,9 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static songscribe.dom.StaffElementFactory.*;
 
 import org.junit.jupiter.api.AfterEach;
@@ -60,6 +62,15 @@ import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
 class MusicEditOperationsMutationTest extends UnitTest {
+
+    /** Number of quavers spanned by the beam fixture in the stem-direction tests. */
+    private static final int BEAM_GROUP_SIZE = 4;
+
+    /** Number of crotchets spanned by the tie fixture in the stem-direction tests. */
+    private static final int TIED_NOTE_COUNT = 3;
+
+    /** Notes in the [note, rest, note] fixture that are eligible for a stem change. */
+    private static final int NOTE_COUNT_EXCLUDING_REST = 2;
 
     private Song song;
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
@@ -134,6 +145,16 @@ class MusicEditOperationsMutationTest extends UnitTest {
             .hasSize(1);
 
         return didChanges.getFirst();
+    }
+
+    private void verifyNoDidChange() {
+        var mock = messageCenterMock;
+
+        if (mock == null) {
+            throw new IllegalStateException("messageCenterMock not set — call setupEnv() first");
+        }
+
+        mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
     }
 
     // -----------------------------------------------------------------------
@@ -896,6 +917,125 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
         for (var mutation : mutations) {
             assertThat(mutation).isInstanceOf(ElementModification.class);
+        }
+    }
+
+    /**
+     * Pins the stem direction of the given elements (auto off) without recording mutations.
+     * Elements default to {@code stemDirectionAuto == true}, so without this an
+     * {@code autoStemDirection()} assertion would hold before the call under test even ran.
+     */
+    private void forceManualStemDirection(Env env, int... indices) {
+        song.withoutMutationTracking(() -> {
+            for (var index : indices) {
+                env.line().getElement(index).setStemDirectionAuto(false);
+            }
+        });
+    }
+
+    @Test
+    void testAutoStemDirectionRestoresAutoOnSingleFlippedNote() {
+        var env = setupEnv(crotchet());
+        forceManualStemDirection(env, 0);
+        ReflectionTestHelper.selectNote(env.coordinator(), 0);
+        env.operations().autoStemDirection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+
+        var mutation = (ElementModification) mutations.getFirst();
+        assertThat(mutation.fields()).contains(ElementField.STEM_DIRECTION_AUTO);
+        assertThat(env.line().getElement(0).isStemDirectionAuto())
+            .as("note's stemDirectionAuto flag must transition false -> true")
+            .isTrue();
+    }
+
+    @Test
+    void testAutoStemDirectionEmitsNoNotificationWhenAlreadyAuto() {
+        // Elements start out auto, so restoring auto changes nothing. Recording mutations
+        // anyway would dirty the song and push an empty entry onto the undo stack.
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, TIED_NOTE_COUNT - 1);
+        env.operations().autoStemDirection();
+
+        verifyNoDidChange();
+    }
+
+    @Test
+    void testAutoStemDirectionSkipsRestElements() {
+        // [CROTCHET(0), CROTCHET_REST(1), CROTCHET(2)] — all three selected, all flipped.
+        // The rest at index 1 must not receive an ElementModification.
+        var env = setupEnv(crotchet(), crotchetRest(), crotchet());
+        forceManualStemDirection(env, 0, 2);
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, TIED_NOTE_COUNT - 1);
+        env.operations().autoStemDirection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+
+        assertThat(mutations)
+            .as("exactly two modifications — one per note, none for the rest")
+            .hasSize(NOTE_COUNT_EXCLUDING_REST);
+    }
+
+    @Test
+    void testAutoStemDirectionAppliesToWholeBeamGroupWhenPartiallySelected() {
+        // Beam covers [0..3] (four eighth-notes), all flipped. Selection covers only [0..1],
+        // a strict subset of the beam group. autoStemDirection() must restore auto for the
+        // entire beam group (indices 0-3), not just the selected notes.
+        var env = setupEnv(quaver(), quaver(), quaver(), quaver());
+        song.withoutMutationTracking(
+            () -> env.line().addBeaming(
+                new Beam(env.line().getElement(0), env.line().getElement(BEAM_GROUP_SIZE - 1))
+            )
+        );
+        forceManualStemDirection(env, 0, 1, 2, 3);
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        env.operations().autoStemDirection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+
+        assertThat(mutations)
+            .as("all four beam members updated exactly once despite partial selection")
+            .hasSize(BEAM_GROUP_SIZE);
+
+        for (var index = 0; index < BEAM_GROUP_SIZE; index++) {
+            assertThat(env.line().getElement(index).isStemDirectionAuto())
+                .as("beam member at index %d must have stemDirectionAuto restored to true", index)
+                .isTrue();
+        }
+    }
+
+    @Test
+    void testAutoStemDirectionAlsoAppliesToTiePartnersOutsideSelection() {
+        // [CROTCHET(0), CROTCHET(1), CROTCHET(2)] all flipped, tie spans [0..2].
+        // Selection covers only index 0. Tie partners at indices 1 and 2 fall
+        // outside the selection but must also have stemDirectionAuto restored.
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        song.withoutMutationTracking(
+            () -> env.line().addTie(
+                new Tie(env.line().getElement(0), env.line().getElement(TIED_NOTE_COUNT - 1))
+            )
+        );
+        forceManualStemDirection(env, 0, 1, 2);
+        ReflectionTestHelper.selectNote(env.coordinator(), 0);
+        env.operations().autoStemDirection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+
+        // Index 0 is in selection (directly updated); indices 1 and 2 are tie
+        // partners outside the selection (also updated). Total: 3 modifications.
+        assertThat(mutations)
+            .as("selected note plus both tie partners outside selection are all updated")
+            .hasSize(TIED_NOTE_COUNT);
+
+        for (var index = 0; index < TIED_NOTE_COUNT; index++) {
+            assertThat(env.line().getElement(index).isStemDirectionAuto())
+                .as("element at index %d must have stemDirectionAuto restored to true", index)
+                .isTrue();
         }
     }
 

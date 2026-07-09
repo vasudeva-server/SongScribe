@@ -30,6 +30,7 @@ import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.AddDynamicsCommand;
+import songscribe.message.command.AutoStemDirectionCommand;
 import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.message.command.FlipStemDirectionCommand;
@@ -229,6 +230,11 @@ public final class ScoreViewController {
         operations.flipStemDirection();
     }
 
+    @Handler
+    public void handleAutoStemDirection(AutoStemDirectionCommand message) {
+        operations.autoStemDirection();
+    }
+
     public boolean canToggleBeaming() {
         return operations.canToggleBeaming();
     }
@@ -263,8 +269,8 @@ public final class ScoreViewController {
         return operations.canChangeTempo();
     }
 
-    public boolean canFlipStemDirection() {
-        return operations.canFlipStemDirection();
+    public boolean canModifyStemDirection() {
+        return operations.canModifyStemDirection();
     }
 
     @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)

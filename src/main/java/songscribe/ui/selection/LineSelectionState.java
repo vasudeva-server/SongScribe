@@ -432,9 +432,10 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns whether the stem direction can be flipped.
+     * Returns whether the stem direction can be modified, either by flipping it
+     * or by restoring it to automatic.
      */
-    public boolean canFlipStemDirection() {
+    public boolean canModifyStemDirection() {
         return getSelectionSize() != 0 &&
             line.getElements(selectionBegin, selectionEnd)
             .stream()

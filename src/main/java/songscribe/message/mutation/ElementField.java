@@ -39,10 +39,10 @@ public enum ElementField {
     /** The element's trill flag was toggled. Emitted by {@code toggleTrill}. */
     TRILL,
 
-    /** The element's stem direction (upper/lower) was changed. Emitted by {@code flipStemDirection}. */
+    /** The element's stem direction (upper/lower) was changed. Emitted by {@code modifyStemDirection}. */
     UPPER,
 
-    /** The element's stem-direction-auto flag was changed. Emitted by {@code flipStemDirection}. */
+    /** The element's stem-direction-auto flag was changed. Emitted by {@code modifyStemDirection}. */
     STEM_DIRECTION_AUTO,
 
     /** The element's fermata flag was toggled. Emitted by {@code FermataAction}. */

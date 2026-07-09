@@ -43,6 +43,7 @@ import songscribe.UnitTest;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.AddDynamicsCommand;
+import songscribe.message.command.AutoStemDirectionCommand;
 import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.command.RemoveDynamicsCommand;
@@ -90,16 +91,33 @@ import songscribe.ui.selection.SelectionCoordinator;
 @SuppressWarnings("OverlyBroadThrowsClause")
 class ScoreViewControllerCommandHandlerTest extends UnitTest {
 
+    /** Notes in the stem-direction fixtures, all of which are selected. */
+    private static final int SELECTED_NOTE_COUNT = 3;
+
     private Song song;
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
+
+    // Actions.MAKE_ENDING_ACTION is a public static field that stays null until
+    // Actions.initialize() runs. Swapping in a mock keeps these tests from depending on
+    // another test class having initialized Actions earlier in the same JVM; the original
+    // is restored so the mock does not leak into tests that share the JVM.
+    private @Nullable FirstSecondEndingAction originalMakeEndingAction;
 
     @BeforeEach
     void setUp() {
         song = new Song();
+        originalMakeEndingAction = Actions.MAKE_ENDING_ACTION;
+        Actions.MAKE_ENDING_ACTION = mock(FirstSecondEndingAction.class);
     }
 
+    // MAKE_ENDING_ACTION lacks a @Nullable annotation but is null until Actions.initialize()
+    // runs (and after resetForTest()), so restoring the saved original — null in a unit-test
+    // JVM — requires suppressing NullAway.
+    @SuppressWarnings("NullAway")
     @AfterEach
     void tearDown() {
+        Actions.MAKE_ENDING_ACTION = originalMakeEndingAction;
+
         if (messageCenterMock != null) {
             messageCenterMock.close();
             messageCenterMock = null;
@@ -327,34 +345,61 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         }
     }
 
+    @Test
+    void testHandleAutoStemDirectionRestoresAutoOnEveryNote() {
+        var env = setupTest(crotchet(), crotchet(), crotchet());
+
+        // Elements default to auto, so pin them first. Otherwise the post-condition below
+        // would already hold before the handler ran, and a handler that flipped instead of
+        // restoring auto would still pass — FLIP records the same mutation field set.
+        song.withoutMutationTracking(() -> {
+            for (var index = 0; index < SELECTED_NOTE_COUNT; index++) {
+                env.line().getElement(index).setStemDirectionAuto(false);
+            }
+        });
+
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, SELECTED_NOTE_COUNT - 1);
+
+        env.scoreMessageCoordinator().handleAutoStemDirection(new AutoStemDirectionCommand());
+
+        var notification = captureSingleDidChange();
+        assertThat(notification.getMutations()).hasSize(SELECTED_NOTE_COUNT);
+
+        for (var mutation : notification.getMutations()) {
+            assertThat(mutation).isInstanceOf(ElementModification.class);
+            assertThat(((ElementModification) mutation).fields()).contains(ElementField.STEM_DIRECTION_AUTO);
+        }
+
+        for (var index = 0; index < SELECTED_NOTE_COUNT; index++) {
+            assertThat(env.line().getElement(index).isStemDirectionAuto())
+                .as("note at index %d must have stemDirectionAuto restored to true", index)
+                .isTrue();
+        }
+    }
+
     // -----------------------------------------------------------------------
     // First-second ending
     // -----------------------------------------------------------------------
 
     @Test
-    void testHandleFirstSecondEndingEmitsOneNotificationWithBarlineAndEnding() throws Exception {
+    void testHandleFirstSecondEndingEmitsOneNotificationWithBarlineAndEnding() {
         // The handler reads the cached EndingValidationResult from the singleton
-        // FirstSecondEndingAction. Inject a valid result via reflection, then restore
-        // the prior value to avoid leaking state into other tests.
+        // FirstSecondEndingAction, which setUp() has replaced with a mock.
         var env = setupTest(crotchet(), crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectNote(env.coordinator(), 0);
 
         var validResult = EndingValidationResult.valid(
             EndingValidationResult.PrecedingAction.INSERT_BARLINE, 0, 3);
-        var previous = setCachedEndingResult(validResult);
+        setCachedEndingResult(validResult);
 
-        try {
-            env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
+        env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
 
-            var notification = captureSingleDidChange();
-            assertThat(notification.getMutations()).hasSize(2);
-            assertThat(notification.getMutations().get(0)).isInstanceOf(ElementInsertion.class);
-            assertThat(notification.getMutations().get(1)).isInstanceOf(RangeElementAddition.class);
-            assertThat(((RangeElementAddition) notification.getMutations().get(1)).element())
-                .isInstanceOf(Ending.class);
-        } finally {
-            setCachedEndingResult(previous);
-        }
+        var notification = captureSingleDidChange();
+        assertThat(notification.getMutations()).hasSize(2);
+        assertThat(notification.getMutations().get(0)).isInstanceOf(ElementInsertion.class);
+        assertThat(notification.getMutations().get(1)).isInstanceOf(RangeElementAddition.class);
+        assertThat(((RangeElementAddition) notification.getMutations().get(1)).element())
+            .isInstanceOf(Ending.class);
     }
 
     // -----------------------------------------------------------------------
@@ -392,48 +437,37 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @Test
-    void testHandleFirstSecondEndingIsNoOpWhenCachedResultIsNull() throws Exception {
+    void testHandleFirstSecondEndingIsNoOpWhenCachedResultIsNull() {
         // Row 57a: null cached result — handler must not emit any notification.
         var env = setupTest(crotchet(), crotchet());
         ReflectionTestHelper.selectNote(env.coordinator(), 0);
 
-        var previous = setCachedEndingResult(null);
+        setCachedEndingResult(null);
 
-        try {
-            env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
+        env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
 
-            var mock = messageCenterMock;
-            if (mock == null) throw new IllegalStateException("messageCenterMock not set");
-            mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
-        } finally {
-            setCachedEndingResult(previous);
-        }
+        var mock = messageCenterMock;
+        if (mock == null) throw new IllegalStateException("messageCenterMock not set");
+        mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
     }
 
     @Test
-    void testHandleFirstSecondEndingIsNoOpWhenCachedResultIsInvalid() throws Exception {
+    void testHandleFirstSecondEndingIsNoOpWhenCachedResultIsInvalid() {
         // Row 57b: invalid cached result — handler must not emit any notification.
         var env = setupTest(crotchet(), crotchet());
         ReflectionTestHelper.selectNote(env.coordinator(), 0);
 
-        var previous = setCachedEndingResult(EndingValidationResult.invalid());
+        setCachedEndingResult(EndingValidationResult.invalid());
 
-        try {
-            env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
+        env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
 
-            var mock = messageCenterMock;
-            if (mock == null) throw new IllegalStateException("messageCenterMock not set");
-            mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
-        } finally {
-            setCachedEndingResult(previous);
-        }
+        var mock = messageCenterMock;
+        if (mock == null) throw new IllegalStateException("messageCenterMock not set");
+        mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
     }
 
-    @Nullable
-    private static EndingValidationResult setCachedEndingResult(@Nullable EndingValidationResult value) {
-        var previous = Actions.MAKE_ENDING_ACTION.getCachedResult();
-        Actions.MAKE_ENDING_ACTION.setCachedResult(value);
-        return previous;
+    private static void setCachedEndingResult(@Nullable EndingValidationResult value) {
+        when(Actions.MAKE_ENDING_ACTION.getCachedResult()).thenReturn(value);
     }
 
 }

@@ -263,23 +263,29 @@ class MusicEditOperationsNullStateTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // canFlipStemDirection — null state (row 65)
+    // canModifyStemDirection — null state (row 65)
     // -----------------------------------------------------------------------
 
     @Test
-    void testCanFlipStemDirectionReturnsFalseWhenStateNull() {
-        assertThat(opsWithNullState().canFlipStemDirection())
-            .as("canFlipStemDirection() with null state must return false")
+    void testCanModifyStemDirectionReturnsFalseWhenStateNull() {
+        assertThat(opsWithNullState().canModifyStemDirection())
+            .as("canModifyStemDirection() with null state must return false")
             .isFalse();
     }
 
     // -----------------------------------------------------------------------
-    // flipStemDirection — null state guard (row 66)
+    // flipStemDirection / autoStemDirection — null state guard (row 66)
     // -----------------------------------------------------------------------
 
     @Test
     void testFlipStemDirectionEmitsNoNotificationWhenStateNull() {
         opsWithNullState().flipStemDirection();
+        verifyNoChangeNotification();
+    }
+
+    @Test
+    void testAutoStemDirectionEmitsNoNotificationWhenStateNull() {
+        opsWithNullState().autoStemDirection();
         verifyNoChangeNotification();
     }
 }

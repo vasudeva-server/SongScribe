@@ -21,9 +21,10 @@ package songscribe.ui.menu;
 
 import static songscribe.ui.action.Actions.ADD_CRESCENDO_ACTION;
 import static songscribe.ui.action.Actions.ADD_DIMINUENDO_ACTION;
-import static songscribe.ui.action.Actions.EDIT_LYRIC_ACTION;
+import static songscribe.ui.action.Actions.AUTO_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.BREATH_MARK_ACTION;
 import static songscribe.ui.action.Actions.DYNAMIC_MARKING_ACTION_GROUP;
+import static songscribe.ui.action.Actions.EDIT_LYRIC_ACTION;
 import static songscribe.ui.action.Actions.FERMATA_ACTION;
 import static songscribe.ui.action.Actions.FLIP_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.MAKE_ENDING_ACTION;
@@ -80,7 +81,7 @@ public class NotationMenu extends JMenu {
         // Group 4: Display
         add(new JMenuItem(TOGGLE_BEAM_ACTION));
         add(new JMenuItem(TOGGLE_TIE_ACTION));
-        add(new JMenuItem(FLIP_STEM_DIRECTION_ACTION));
+        add(createStemDirectionMenu());
         add(new JMenuItem(EDIT_LYRIC_ACTION));
 
         addSeparator();
@@ -127,6 +128,13 @@ public class NotationMenu extends JMenu {
 
         menu.addSeparator();
         menu.add(REMOVE_TUPLET_ACTION);
+        return menu;
+    }
+
+    private static JMenu createStemDirectionMenu() {
+        var menu = new JMenu(Strings.get(Strings.MENU_NOTATION_STEM_DIRECTION));
+        menu.add(new JMenuItem(FLIP_STEM_DIRECTION_ACTION));
+        menu.add(new JMenuItem(AUTO_STEM_DIRECTION_ACTION));
         return menu;
     }
 

@@ -790,20 +790,20 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.canToggleTrill()).isFalse();
     }
 
-    // -- canFlipStemDirection --
+    // -- canModifyStemDirection --
 
     @Test
-    void testCanFlipStemDirectionReturnsFalseWhenNothingSelected() {
+    void testCanModifyStemDirectionReturnsFalseWhenNothingSelected() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
         // selectionBegin defaults to -1 — no selection.
 
-        assertThat(state.canFlipStemDirection()).isFalse();
+        assertThat(state.canModifyStemDirection()).isFalse();
     }
 
     @Test
-    void testCanFlipStemDirectionReturnsTrueWhenAtLeastOneNonRestInRange() {
+    void testCanModifyStemDirectionReturnsTrueWhenAtLeastOneNonRestInRange() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
@@ -811,11 +811,11 @@ class LineSelectionStateTest extends UnitTest {
         state.setSelectionFromClick(0);
         state.extendSelectionTo(1);
 
-        assertThat(state.canFlipStemDirection()).isTrue();
+        assertThat(state.canModifyStemDirection()).isTrue();
     }
 
     @Test
-    void testCanFlipStemDirectionReturnsFalseWhenSelectionIsAllRests() {
+    void testCanModifyStemDirectionReturnsFalseWhenSelectionIsAllRests() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET_REST.newInstance());
         line.addElement(ElementType.CROTCHET_REST.newInstance());
@@ -823,6 +823,6 @@ class LineSelectionStateTest extends UnitTest {
         state.setSelectionFromClick(0);
         state.extendSelectionTo(1);
 
-        assertThat(state.canFlipStemDirection()).isFalse();
+        assertThat(state.canModifyStemDirection()).isFalse();
     }
 }
