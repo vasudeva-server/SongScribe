@@ -36,6 +36,7 @@ import songscribe.layout.StaffExtents;
 import songscribe.shape.AccentShape;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 import songscribe.engraving.Staff;
 import songscribe.dom.Trill;
 
@@ -75,14 +76,14 @@ public class NoteAttachedStacker {
     /**
      * Padding the trill keeps from the first note of its range, where it seats as a script.
      */
-    public static final double TRILL_SCRIPT_PADDING_SS = 0.20;  // LilyPond script.scm trill
+    public static final double TRILL_SCRIPT_PADDING_SS = 0.40;  // LilyPond script.scm trill is 0.20
 
     /**
      * Padding the trill keeps from the notes after the first in its range, where it seats as a
      * spanner.
      */
-    // LilyPond define-grobs.scm TrillSpanner padding
-    public static final double TRILL_SPANNER_PADDING_SS = 0.50;
+    // LilyPond define-grobs.scm TrillSpanner padding is 0.50
+    public static final double TRILL_SPANNER_PADDING_SS = 0.70;
 
     /**
      * Staff-padding for scripts (staccato, accent, fermata, trill): the minimum gap they keep from
@@ -119,6 +120,20 @@ public class NoteAttachedStacker {
 
     private static final StaffExtents.Profile ACCENT_PROFILE_BELOW =
         ShapeProfile.innerEdge(AccentShape.accent(), false);
+
+    // The tr glyph's real inner (staff-facing) edge — its descending flourish, not the flat bottom of
+    // its box. Trills only ever sit above the staff, so only the above-staff edge is derived. Like the
+    // accent, the tr clears its neighbours by this outline (LilyPond builds a Script's skyline from its
+    // stencil — define-grobs.scm always-vertical-skylines-from-stencil); a notehead-wide box would let
+    // the flourish overlap a tie arc the box's flat bottom never reaches.
+    private static final StaffExtents.Profile TRILL_PROFILE_ABOVE =
+        ShapeProfile.innerEdge(BravuraFont.glyphOutline(SMuFLGlyph.ORNAMENT_TRILL), true);
+
+    // The tr glyph's ink width, used to centre its footprint on the notehead exactly as TrillRenderer
+    // draws it. Bravura gives ornamentTrill a left bearing of zero, so its box width equals its advance
+    // width, which is the quantity TrillRenderer centres by.
+    private static final double TRILL_GLYPH_WIDTH_SS =
+        SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL).width();
 
     /**
      * Flattening tolerance for the staccato dot's reserved outline: four chords across a dot 0.336 ss
@@ -755,18 +770,32 @@ public class NoteAttachedStacker {
         var innerEdgeYSs = StackingUtils.STAFF_TOP_Y_SS - SCRIPT_STAFF_PADDING_SS;
 
         for (var index = anchorIndex; index <= endIndex; index++) {
-            var column = columnsByElement.get(line.getElement(index));
+            var note = line.getElement(index);
+            var column = columnsByElement.get(note);
 
             if (column == null) {
                 continue;
             }
 
-            var paddingSs = (index == anchorIndex)
-                ? TRILL_SCRIPT_PADDING_SS
-                : TRILL_SPANNER_PADDING_SS;
+            double footprintXSs;
+            StaffExtents.Profile profile;
+            double paddingSs;
 
-            var support = noteAttachedExtents.clearance(true, column.getXSs(),
-                StaffExtents.Profile.flat(SMuFLConstants.NOTE_HEAD_WIDTH_SS),
+            if (index == anchorIndex) {
+                // The first note seats the tr glyph as a script: it clears the tie/notehead by the
+                // glyph's real inner edge, centred on the notehead exactly as TrillRenderer draws it.
+                footprintXSs = column.getXSs()
+                    + NoteGeometry.getNoteheadCenterXSs(note) - TRILL_GLYPH_WIDTH_SS / 2.0;
+                profile = TRILL_PROFILE_ABOVE;
+                paddingSs = TRILL_SCRIPT_PADDING_SS;
+            } else {
+                // Later notes sit under the flat wavy line, which clears them by a notehead-wide box.
+                footprintXSs = column.getXSs();
+                profile = StaffExtents.Profile.flat(SMuFLConstants.NOTE_HEAD_WIDTH_SS);
+                paddingSs = TRILL_SPANNER_PADDING_SS;
+            }
+
+            var support = noteAttachedExtents.clearance(true, footprintXSs, profile,
                 paddingSs, StackingUtils.SCRIPT_HORIZON_PADDING_SS);
 
             // An empty footprint carries no real reservation, so only the staff clamp applies.

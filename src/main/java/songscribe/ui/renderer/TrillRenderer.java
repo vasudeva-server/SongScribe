@@ -89,12 +89,12 @@ public final class TrillRenderer {
         Color color,
         LayoutResult layoutResult
     ) {
+        var trillXSs = RenderingUtils.centeredGlyphX(layoutXSs, anchor, 0, TRILL_ADVANCE_WIDTH_SS);
+
         if (endNote != null && endNote != anchor) {
             var endXSs = layoutResult.getElementXSs(endNote) + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
-            renderTrill(g2, layoutXSs, endXSs, trillTopYSs, color);
+            renderTrill(g2, trillXSs, endXSs, trillTopYSs, color);
         } else {
-            var trillXSs = RenderingUtils.centeredGlyphX(layoutXSs,
-                anchor, 0, TRILL_ADVANCE_WIDTH_SS);
             renderTrill(g2, trillXSs, Double.NaN, trillTopYSs, color);
         }
     }
