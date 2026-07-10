@@ -35,6 +35,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.util.MyFontUtils;
 import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
 
@@ -86,8 +87,8 @@ public final class StatusBar extends JComponent {
         setBackground(FlatLafProps.getColor(FlatLafKey.STATUS_BAR_BACKGROUND));
         setBorder(UIUtils.spacingBorder(FlatLafKey.STATUS_BAR_PADDING));
 
-        accidentalLabel.setFont(new Font("Bravura Text", Font.PLAIN,
-            (int) (accidentalLabel.getFont().getSize() * ACCIDENTAL_FONT_SIZE_FACTOR)
+        accidentalLabel.setFont(MyFontUtils.getLocalFont("BravuraText.otf",
+            (float) (accidentalLabel.getFont().getSize() * ACCIDENTAL_FONT_SIZE_FACTOR)
         ));
         accidentalLabel.setBorder(BorderFactory.createEmptyBorder(
             0, ACCIDENTAL_HORIZONTAL_PADDING_PX, 0, ACCIDENTAL_HORIZONTAL_PADDING_PX

@@ -320,7 +320,7 @@ public class MainFrame extends JFrame implements Printable {
      *                                                                         openMidi() (capped via await)
      *                                                                         finally latch.countDown()
      *                                        installEagerFonts():
-     *                                          remaining Source Sans faces + Poetica + TiroBangla (~1.1 s)
+     *                                          remaining Source Sans faces + TiroBangla (~1.1 s)
      *                                        build main window (initFrame, NOT shown)
      *                                        pendingStartupAction = &lt;autoload|arg|select&gt;
      *                                        startStartupGate() ──────────► "startup-gate":

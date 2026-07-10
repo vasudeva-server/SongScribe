@@ -460,15 +460,13 @@ public final class UIUtils {
     }
 
     /**
-     * Installs the remaining (non-Regular) SourceSans3 faces plus the Poetica and
-     * TiroBangla fonts. Called eagerly after the splash is visible so that all faces
-     * are available before the main window opens.
+     * Installs the remaining (non-Regular) SourceSans3 faces plus the TiroBangla font.
+     * Called eagerly after the splash is visible so that all faces are available
+     * before the main window opens.
      */
     public static void installEagerFonts() {
         SourceSans3Font.installRemaining();
-        MyFontUtils.installLocalFont("Poetica-SuppOrnaments.otf");
         MyFontUtils.installLocalFont("TiroBangla-Regular.ttf");
-        MyFontUtils.installLocalFont("BravuraText.otf");
     }
 
     //
