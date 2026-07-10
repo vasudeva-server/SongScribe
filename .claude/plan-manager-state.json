@@ -21,9 +21,9 @@
       "description": "Convert e2e tests to unit tests where possible, delete redundant e2e tests"
     },
     {
-      "path": "plans/migrations/musicxml/musicxml-conversion.md",
-      "subdirectory": "migrations/musicxml",
-      "active": true,
+      "path": "plans/completed/migrations/musicxml/musicxml-conversion.md",
+      "subdirectory": "completed/migrations/musicxml",
+      "active": false,
       "description": "Convert SongScribe document format to MusicXML 4.0 as the canonical lossless on-disk format (#288)"
     }
   ],
@@ -137,74 +137,74 @@
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/musicxml/phase-1-scaffold.md",
-      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "path": "plans/completed/migrations/musicxml/phase-1-scaffold.md",
+      "parentPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "parentPhase": 1,
       "parentStep": null,
-      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "masterPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/musicxml/phase-2-structural-model.md",
-      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "path": "plans/completed/migrations/musicxml/phase-2-structural-model.md",
+      "parentPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "parentPhase": 2,
       "parentStep": null,
-      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "masterPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/musicxml/phase-3-notes.md",
-      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "path": "plans/completed/migrations/musicxml/phase-3-notes.md",
+      "parentPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "parentPhase": 3,
       "parentStep": null,
-      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "masterPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/musicxml/phase-4-range-spans.md",
-      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "path": "plans/completed/migrations/musicxml/phase-4-range-spans.md",
+      "parentPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "parentPhase": 4,
       "parentStep": null,
-      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "masterPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/musicxml/phase-5-per-measure-attributes.md",
-      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "path": "plans/completed/migrations/musicxml/phase-5-per-measure-attributes.md",
+      "parentPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "parentPhase": 5,
       "parentStep": null,
-      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "masterPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/musicxml/phase-6-lyrics.md",
-      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "path": "plans/completed/migrations/musicxml/phase-6-lyrics.md",
+      "parentPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "parentPhase": 6,
       "parentStep": null,
-      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "masterPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/musicxml/phase-7-document-header.md",
-      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "path": "plans/completed/migrations/musicxml/phase-7-document-header.md",
+      "parentPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "parentPhase": 7,
       "parentStep": null,
-      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "masterPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/migrations/musicxml/phase-8-cutover.md",
-      "parentPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "path": "plans/completed/migrations/musicxml/phase-8-cutover.md",
+      "parentPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "parentPhase": 8,
       "parentStep": null,
-      "masterPlan": "plans/migrations/musicxml/musicxml-conversion.md",
+      "masterPlan": "plans/completed/migrations/musicxml/musicxml-conversion.md",
       "status": "completed",
       "type": "sub-plan"
     },
