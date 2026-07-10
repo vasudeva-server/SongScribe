@@ -107,6 +107,19 @@ class SongMetadataTest extends UnitTest {
         );
     }
 
+    /** Builds a {@link SongMetadata} with the given composition date and words date. */
+    private static SongMetadata withDates(
+        String year, int month, int day,
+        String wordsYear, int wordsMonth, int wordsDay
+    ) {
+        return new SongMetadata(
+            "", "", "", year, month, day,
+            Song.SRI_CHINMOY, Song.SRI_CHINMOY,
+            Song.LyricsSource.LYRICIST, false, false,
+            "", wordsYear, wordsMonth, wordsDay
+        );
+    }
+
     // -----------------------------------------------------------------------
     // §1 Title normalization
     // -----------------------------------------------------------------------
@@ -201,6 +214,58 @@ class SongMetadataTest extends UnitTest {
         void testPlaceEmptyAfterTrimRemainsEmpty() {
             var m = withPlace("   ");
             assertThat(m.place()).as("all-whitespace place normalizes to empty").isEmpty();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // §2b Words-date invariant: words-date == composition-date collapses to empty
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class WordsDateNormalization {
+
+        @Test
+        void testWordsDateEqualToCompositionDateNormalizesToEmpty() {
+            var m = withDates("1984", 6, 27, "1984", 6, 27);
+            assertThat(m.wordsYear()).as("wordsYear normalized to empty").isEmpty();
+            assertThat(m.wordsMonth()).as("wordsMonth normalized to zero").isZero();
+            assertThat(m.wordsDay()).as("wordsDay normalized to zero").isZero();
+        }
+
+        @Test
+        void testWordsDateEqualToCompositionDateAfterTrimNormalizesToEmpty() {
+            var m = withDates("1984", 6, 27, "  1984  ", 6, 27);
+            assertThat(m.wordsYear()).as("wordsYear normalized to empty after trim").isEmpty();
+            assertThat(m.wordsMonth()).as("wordsMonth normalized to zero after trim").isZero();
+            assertThat(m.wordsDay()).as("wordsDay normalized to zero after trim").isZero();
+        }
+
+        @Test
+        void testDifferentYearPreserved() {
+            var m = withDates("1984", 6, 27, "1985", 6, 27);
+            assertThat(m.wordsYear()).as("wordsYear preserved").isEqualTo("1985");
+            assertThat(m.wordsMonth()).as("wordsMonth preserved").isEqualTo(6);
+            assertThat(m.wordsDay()).as("wordsDay preserved").isEqualTo(27);
+        }
+
+        @Test
+        void testDifferentMonthPreserved() {
+            var m = withDates("1984", 6, 27, "1984", 7, 27);
+            assertThat(m.wordsMonth()).as("wordsMonth preserved").isEqualTo(7);
+        }
+
+        @Test
+        void testDifferentDayPreserved() {
+            var m = withDates("1984", 6, 27, "1984", 6, 28);
+            assertThat(m.wordsDay()).as("wordsDay preserved").isEqualTo(28);
+        }
+
+        @Test
+        void testWordsDatePartiallySetDoesNotFalselyMatchEmptyCompositionDate() {
+            var m = withDates("", 0, 0, "", 6, 27);
+            assertThat(m.wordsMonth()).as("wordsMonth preserved").isEqualTo(6);
+            assertThat(m.wordsDay()).as("wordsDay preserved").isEqualTo(27);
         }
     }
 

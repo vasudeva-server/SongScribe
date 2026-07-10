@@ -199,8 +199,7 @@ public final class MusicXmlWriter {
 
         // Resolve every clock- and date-derived header value once, so the
         // <miscellaneous> block and the <credit> list share a single source for
-        // the composition/lyrics dates (and the lyrics-date-equals-composition
-        // dedup) and the <rights>/<encoding-date> strings.
+        // the composition/lyrics dates and the <rights>/<encoding-date> strings.
         var headerText = HeaderText.of(song, clock);
 
         writeMovementInfo(song, pw);
@@ -239,30 +238,26 @@ public final class MusicXmlWriter {
      * {@code <miscellaneous>} block and the {@code <credit>} list agree on a
      * single value for each.
      *
-     * @param compositionDate    the composition date as a reduced-precision ISO
-     *                           string, or {@code ""} when the song has none
-     * @param distinctLyricsDate the lyrics date, or {@code ""} when absent OR
-     *                           equal to the composition date (redundant to emit
-     *                           a second time)
-     * @param rights             the {@code <rights>}/rights-credit copyright line
-     * @param encodingDate       the {@code <encoding-date>} in ISO local-date form
+     * @param compositionDate the composition date as a reduced-precision ISO
+     *                        string, or {@code ""} when the song has none
+     * @param lyricsDate      the words/lyrics date, or {@code ""} when absent
+     *                        (the model normalizes a words-date equal to the
+     *                        composition date to empty, so a non-empty value
+     *                        here is always genuinely distinct)
+     * @param rights          the {@code <rights>}/rights-credit copyright line
+     * @param encodingDate    the {@code <encoding-date>} in ISO local-date form
      */
-    private record HeaderText(String compositionDate, String distinctLyricsDate, String rights, String encodingDate) {
+    private record HeaderText(String compositionDate, String lyricsDate, String rights, String encodingDate) {
 
         static HeaderText of(Song song, Clock clock) {
             var compositionDate = DateUtils.toIsoDate(song.getYear(), song.getMonth(), song.getDay());
             var lyricsDate = DateUtils.toIsoDate(song.getWordsYear(), song.getWordsMonth(), song.getWordsDay());
 
-            // A lyrics date equal to the composition date is redundant — drop it
-            // here so neither the <miscellaneous> block nor the credit list emits
-            // a duplicate value.
-            var distinctLyricsDate = lyricsDate.equals(compositionDate) ? "" : lyricsDate;
-
             var currentDate = LocalDate.now(clock);
             var rights = String.format(MusicXmlTags.COPYRIGHT, currentDate.getYear());
             var encodingDate = currentDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-            return new HeaderText(compositionDate, distinctLyricsDate, rights, encodingDate);
+            return new HeaderText(compositionDate, lyricsDate, rights, encodingDate);
         }
     }
 
@@ -360,10 +355,8 @@ public final class MusicXmlWriter {
             fields.put(MusicXmlTags.MISC_COMPOSITION_DATE, headerText.compositionDate());
         }
 
-        // The lyrics date is already dropped in HeaderText when equal to the
-        // composition date, so a non-empty value here is genuinely distinct.
-        if (!headerText.distinctLyricsDate().isEmpty()) {
-            fields.put(MusicXmlTags.MISC_LYRICS_DATE, headerText.distinctLyricsDate());
+        if (!headerText.lyricsDate().isEmpty()) {
+            fields.put(MusicXmlTags.MISC_LYRICS_DATE, headerText.lyricsDate());
         }
 
         if (!song.getPlace().isEmpty()) {
@@ -518,11 +511,8 @@ public final class MusicXmlWriter {
 
         writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_COMPOSITION_DATE, headerText.compositionDate(), attributionRelativeYSs);
 
-        // The lyrics date is emitted as its own credit only when distinct from the
-        // composition date; HeaderText already blanks it when they are equal, so a
-        // non-empty value here is genuinely distinct.
-        if (!headerText.distinctLyricsDate().isEmpty()) {
-            writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_LYRICS_DATE, headerText.distinctLyricsDate(), attributionRelativeYSs);
+        if (!headerText.lyricsDate().isEmpty()) {
+            writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_LYRICS_DATE, headerText.lyricsDate(), attributionRelativeYSs);
         }
 
         writeAttributionCredit(pw, fonts, MusicXmlTags.CREDIT_RIGHTS, headerText.rights(), attributionRelativeYSs);

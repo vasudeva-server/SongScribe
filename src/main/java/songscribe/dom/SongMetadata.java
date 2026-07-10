@@ -46,6 +46,14 @@ import songscribe.util.StringUtils;
  *  Same factory feeds: dialog commit, dialog PREVIEW, loadFrom, Converter
  *  => preview == render (normalization parity guaranteed).
  * </pre>
+ *
+ * <h3>Words-date invariant</h3>
+ * The words (lyrics) date can never explicitly equal the composition date: if
+ * {@code wordsYear/wordsMonth/wordsDay} equal {@code year/month/day} after the
+ * above normalization, the words-date components are reset to
+ * {@code ("", 0, 0)}. An empty words-date is the sole canonical representation
+ * of "lyrics date same as music date," which every consumer (formatters, IO
+ * writers, equality checks) already assumes.
  */
 public record SongMetadata(
     String title,
@@ -82,6 +90,14 @@ public record SongMetadata(
         subtitle = normalizeTitle(subtitle);
         wordsYear = wordsYear.trim();
         // wordsMonth, wordsDay: as-is
+
+        // A words-date equal to the composition date is redundant; the model
+        // must never hold that state, so collapse it to empty here.
+        if (wordsYear.equals(year) && wordsMonth == month && wordsDay == day) {
+            wordsYear = "";
+            wordsMonth = 0;
+            wordsDay = 0;
+        }
     }
 
     /**
