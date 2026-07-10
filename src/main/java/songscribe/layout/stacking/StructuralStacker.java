@@ -153,8 +153,10 @@ public class StructuralStacker {
         var centeredXSs = columnXSs + noteheadCenterXSs - contentWidthSs / 2.0;
         StackingUtils.placeAndReserveClamped(Direction.UP, structuralExtents, dynamic,
             centeredXSs, contentWidthSs, dynamic.getContentHeightSs(),
+            StaffExtents.Profile.flat(contentWidthSs),
+            StaffExtents.Profile.flat(contentWidthSs),
             NoteAttachedStacker.DYNAMIC_PADDING_SS, NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS,
-            builder);
+            StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS, builder);
     }
 
     /**

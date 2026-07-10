@@ -117,47 +117,46 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
                     var glyph = above ? SMuFLGlyph.ARTIC_STACCATO_ABOVE : SMuFLGlyph.ARTIC_STACCATO_BELOW;
                     var bboxLeftSs = above ? STACCATO_BBOX_LEFT_SS : STACCATO_BELOW_BBOX_LEFT_SS;
                     var widthSs = above ? STACCATO_WIDTH_SS : STACCATO_BELOW_WIDTH_SS;
-                    drawArticulationGlyph(g2, layout, element, invariants, glyph, bboxLeftSs, widthSs);
+                    drawArticulationGlyph(g2, layout, invariants, glyph, bboxLeftSs, widthSs);
                 } else if (articulation.isAccent()) {
-                    drawAccentGlyph(g2, layout, element, invariants);
+                    drawAccentGlyph(g2, layout, invariants);
                 }
             }
         }
     }
 
     /**
-     * Draws a single articulation glyph at its layout position, centered horizontally on the
-     * note using the glyph's own bounding box.
+     * Draws a single articulation glyph centered within its layout box, which the stacker already
+     * centred on the notehead. The above and below staccato glyphs differ slightly in width, so the
+     * glyph is centred within the box rather than drawn flush at its left edge.
      */
     private static void drawArticulationGlyph(
         Graphics2D g2,
         LayoutResult.DecorationLayout layout,
-        StaffElement element,
         LineInvariants invariants,
         SMuFLGlyph glyph, double bboxLeftSs, double widthSs) {
 
         var componentTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
-        var x = RenderingUtils.centeredGlyphX(layout.xSs(), element, bboxLeftSs, widthSs);
+        var x = layout.xSs() + (layout.widthSs() - widthSs) / 2.0 - bboxLeftSs;
         var y = RenderingUtils.glyphOriginYFromLayoutTop(componentTopYSs, glyph);
         RenderingUtils.drawBravuraGlyph(g2, glyph, x, y, true);
     }
 
     /**
-     * Draws the accent wedge at its layout position, centered horizontally on the note using the
-     * wedge's own bounds. Unlike the SMuFL articulation glyphs, the wedge is drawn as a filled
+     * Draws the accent wedge centered within its layout box, which the stacker already centred on
+     * the notehead. Unlike the SMuFL articulation glyphs, the wedge is drawn as a filled
      * {@link AccentShape#accent()} path rather than a music-font glyph.
      */
     private static void drawAccentGlyph(
         Graphics2D g2,
         LayoutResult.DecorationLayout layout,
-        StaffElement element,
         LineInvariants invariants
     ) {
         var wedge = AccentShape.accent();
         var bounds = wedge.getBounds2D();
 
         var componentTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
-        var x = RenderingUtils.centeredGlyphX(layout.xSs(), element, bounds.getMinX(), bounds.getWidth());
+        var x = layout.xSs() + (layout.widthSs() - bounds.getWidth()) / 2.0 - bounds.getMinX();
         var y = componentTopYSs - bounds.getMinY();
 
         g2.fill(AffineTransform.getTranslateInstance(x, y).createTransformedShape(wedge));

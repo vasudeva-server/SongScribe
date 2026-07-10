@@ -300,7 +300,7 @@ public class LayoutEngine {
         calculateTies(line, columns, builder);
 
         // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
-        // Use the song's staff width for consistent StaffExtents discretization,
+        // Use the song's staff width for consistent StaffExtents clamping,
         // not the content width which varies with column count.
         verticalCalculator.calculate(
             columns, line, builder, staffRightMarginSs, fonts, attribution);

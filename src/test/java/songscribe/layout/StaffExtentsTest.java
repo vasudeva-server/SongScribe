@@ -22,6 +22,8 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -34,6 +36,66 @@ class StaffExtentsTest extends UnitTest {
     // Both top and bot arrays default to the middle staff line (Y-down, middle line = 0),
     // the same coordinate system StackingUtils' anchor calculations use.
     private static final double DEFAULT_EXTENT_SS = 0.0;
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class YSetProfile {
+
+        private static final double RESERVE_X_SS = 10.0;
+        private static final double RESERVE_WIDTH_SS = 5.0;
+        private static final double RESERVE_EDGE_Y_SS = -3.0;
+
+        // A wedge-shaped outer edge: flat at its left end, receding a full staff space toward the
+        // staff at its right.
+        private static final double SLOPED_INNER_OFFSET_SS = 1.0;
+
+        @Test
+        void testFlatProfileReservesExactlyWhatYSetDoes() {
+            // Every element but the staccato reserves a flat profile, so this identity is what keeps
+            // the outer-edge reservation from moving anything it should not.
+            var profiled = new StaffExtents(LINE_WIDTH_SS);
+            profiled.ySetProfile(true, RESERVE_X_SS,
+                StaffExtents.Profile.flat(RESERVE_WIDTH_SS), RESERVE_EDGE_Y_SS);
+
+            var flat = new StaffExtents(LINE_WIDTH_SS);
+            flat.ySet(true, RESERVE_X_SS, RESERVE_WIDTH_SS, RESERVE_EDGE_Y_SS);
+
+            assertThat(profiled.yGet(true, RESERVE_X_SS, RESERVE_WIDTH_SS))
+                .isEqualTo(flat.yGet(true, RESERVE_X_SS, RESERVE_WIDTH_SS));
+        }
+
+        @Test
+        void testProfileOffsetsGrowTowardTheStaff() {
+            // Above the staff, an outer-edge offset moves the reservation to a larger Y — inward.
+            // Getting this sign backwards would reserve outside the element's own box.
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            var profile = new StaffExtents.Profile(List.of(
+                new StaffExtents.Profile.Segment(
+                    0.0, RESERVE_WIDTH_SS, 0.0, SLOPED_INNER_OFFSET_SS)));
+
+            extents.ySetProfile(true, RESERVE_X_SS, profile, RESERVE_EDGE_Y_SS);
+
+            // At its left end the reservation sits on the edge; at its right it has receded inward.
+            assertThat(extents.yGet(true, RESERVE_X_SS, 0.0)).isEqualTo(RESERVE_EDGE_Y_SS);
+            assertThat(extents.yGet(true, RESERVE_X_SS + RESERVE_WIDTH_SS, 0.0))
+                .isEqualTo(RESERVE_EDGE_Y_SS + SLOPED_INNER_OFFSET_SS);
+        }
+
+        @Test
+        void testProfileOffsetsGrowTowardTheStaffBelow() {
+            // Below the staff the same offset moves the reservation to a smaller Y — inward again.
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            var profile = new StaffExtents.Profile(List.of(
+                new StaffExtents.Profile.Segment(
+                    0.0, RESERVE_WIDTH_SS, 0.0, SLOPED_INNER_OFFSET_SS)));
+
+            extents.ySetProfile(false, RESERVE_X_SS, profile, -RESERVE_EDGE_Y_SS);
+
+            assertThat(extents.yGet(false, RESERVE_X_SS, 0.0)).isEqualTo(-RESERVE_EDGE_Y_SS);
+            assertThat(extents.yGet(false, RESERVE_X_SS + RESERVE_WIDTH_SS, 0.0))
+                .isEqualTo(-RESERVE_EDGE_Y_SS - SLOPED_INNER_OFFSET_SS);
+        }
+    }
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested

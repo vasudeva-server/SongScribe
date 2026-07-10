@@ -31,18 +31,16 @@ import java.util.function.DoubleConsumer;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.component.ScoreView;
 import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.engraving.Staff;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
-import songscribe.util.MyFontUtils;
 
 /**
  * Stateless rendering utilities shared by element renderers.
@@ -64,7 +62,7 @@ public final class RenderingUtils {
      * Under the Graphics2D scale transform, this produces the correct pixel size
      * (4.0 ss * 8 px/ss = 32px).
      */
-    public static final float FONT_SIZE = 4.0f;
+    public static final float FONT_SIZE = BravuraFont.SIZE_SS;
 
     /**
      * The Bravura (SMuFL) music notation font at standard note size.
@@ -76,20 +74,12 @@ public final class RenderingUtils {
      */
     public static final Font GRACE_NOTE_FONT;
 
-    /** Cached Bravura music font at {@link #FONT_SIZE}. */
-    @Nullable
-    private static Font noteFont = null;
-
     /**
      * Returns the Bravura (SMuFL) music font at standard note size ({@link #FONT_SIZE}).
      * Callers needing a different size should call {@code deriveFont()}.
      */
     public static Font getMusicFont() {
-        if (noteFont == null) {
-            noteFont = MyFontUtils.getLocalFont("Bravura.otf", FONT_SIZE);
-        }
-
-        return noteFont;
+        return BravuraFont.font();
     }
 
     static {

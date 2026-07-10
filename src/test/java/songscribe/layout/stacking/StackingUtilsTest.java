@@ -563,7 +563,10 @@ class StackingUtilsTest extends UnitTest {
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.UP, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
-            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS, builder);
+            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS,
+            StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
 
         var expectedTopYSs =
             StackingUtils.STAFF_TOP_Y_SS - CLAMPED_STAFF_PADDING_SS - CLAMPED_HEIGHT_SS;
@@ -586,7 +589,10 @@ class StackingUtilsTest extends UnitTest {
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.UP, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
-            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS, builder);
+            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS,
+            StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
 
         var expectedTopYSs = CLAMPED_SUPPORT_ABOVE_SS - CLAMPED_PADDING_SS - CLAMPED_HEIGHT_SS;
         assertThat(returnedYSs).isCloseTo(expectedTopYSs, within(TOLERANCE));
@@ -600,7 +606,10 @@ class StackingUtilsTest extends UnitTest {
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.DOWN, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
-            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS, builder);
+            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS,
+            StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
 
         var expectedBottomYSs =
             StackingUtils.STAFF_BOT_Y_SS + CLAMPED_STAFF_PADDING_SS + CLAMPED_HEIGHT_SS;
@@ -616,7 +625,10 @@ class StackingUtilsTest extends UnitTest {
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.DOWN, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
-            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS, builder);
+            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS,
+            StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
 
         var expectedBottomYSs =
             CLAMPED_SUPPORT_BELOW_SS + CLAMPED_PADDING_SS + CLAMPED_HEIGHT_SS;
@@ -650,9 +662,12 @@ class StackingUtilsTest extends UnitTest {
         var element = mock(LineElement.class);
         var builder = new LayoutResult.Builder();
 
+        // A flat reservation profile: this asserts where the dot is placed, not what it reserves.
         var returnedYSs = StackingUtils.stackStaccato(Direction.UP, extents, element,
-            QUANTIZE_X_SS, QUANTIZE_WIDTH_SS, QUANTIZE_HEIGHT_SS, QUANTIZE_MARGIN_SS,
-            QUANTIZE_STAFF_PADDING_SS, QUANTIZE_STAFF_POSITION, builder);
+            QUANTIZE_X_SS, QUANTIZE_WIDTH_SS, QUANTIZE_HEIGHT_SS,
+            StaffExtents.Profile.flat(QUANTIZE_WIDTH_SS), QUANTIZE_MARGIN_SS,
+            QUANTIZE_STAFF_PADDING_SS, StackingUtils.SCRIPT_HORIZON_PADDING_SS,
+            QUANTIZE_STAFF_POSITION, builder);
 
         // Pre-quantize centre would land at -2.0 (a staff line); quantized, it snaps one further
         // half-space outward to -2.5 (a space), so the dot's top edge is at -2.5 - height/2 = -3.0.
@@ -661,6 +676,117 @@ class StackingUtilsTest extends UnitTest {
         assertThat(returnedYSs)
             .describedAs("collision-pushed centre on a staff line snaps outward to the next space")
             .isCloseTo(expectedTopYSs, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // stackStaccato over a *sloped* support (a tie arc's chord): the horizon padding must dilate the
+    // reservation, not widen the query. The two agree exactly against every flat support, so this is
+    // the only shape of case that can tell them apart.
+    // -------------------------------------------------------------------------
+
+    private static final double SLOPED_X_SS = 10.0;
+    private static final double SLOPED_WIDTH_SS = 1.0;
+    private static final double SLOPED_HEIGHT_SS = 1.0;
+    private static final double SLOPED_MARGIN_SS = 0.3;
+    private static final double SLOPED_STAFF_PADDING_SS = 0.25;
+
+    // A space strictly inside the staff, so stackStaccato takes its centre-anchored branch (the only
+    // one that ever consulted yGetExpanded) rather than the staff-edge clamp.
+    private static final int SLOPED_STAFF_POSITION = -1;
+
+    // The chord begins just right of the dot's footprint — inside SCRIPT_HORIZON_PADDING_SS, so both
+    // semantics see it — and climbs steeply away from the staff as it recedes. That is a tie arc's
+    // shape near its endpoint, where its slope is greatest.
+    private static final double SLOPED_CHORD_GAP_SS = 0.05;
+    private static final double SLOPED_CHORD_WIDTH_SS = 0.95;
+    private static final double SLOPED_CHORD_NEAR_Y_SS = -3.0;
+    private static final double SLOPED_CHORD_FAR_Y_SS = -4.0;
+
+    private static double slopedChordStartXSs() {
+        return SLOPED_X_SS + SLOPED_WIDTH_SS + SLOPED_CHORD_GAP_SS;
+    }
+
+    private static double stackStaccatoOverSlopedChord() {
+        var extents = new StaffExtents(LINE_WIDTH_SS);
+        extents.ySetSloped(true, slopedChordStartXSs(),
+            slopedChordStartXSs() + SLOPED_CHORD_WIDTH_SS,
+            SLOPED_CHORD_NEAR_Y_SS, SLOPED_CHORD_FAR_Y_SS);
+
+        return StackingUtils.stackStaccato(Direction.UP, extents, mock(LineElement.class),
+            SLOPED_X_SS, SLOPED_WIDTH_SS, SLOPED_HEIGHT_SS,
+            StaffExtents.Profile.flat(SLOPED_WIDTH_SS), SLOPED_MARGIN_SS,
+            SLOPED_STAFF_PADDING_SS, StackingUtils.SCRIPT_HORIZON_PADDING_SS,
+            SLOPED_STAFF_POSITION, new LayoutResult.Builder());
+    }
+
+    /** The dot's top Y for a given support edge, once margin, centring and quantization are applied. */
+    private static double dotTopYForSupportSs(double supportYSs) {
+        var centreYSs = supportYSs - SLOPED_MARGIN_SS - SLOPED_HEIGHT_SS / 2.0;
+
+        // The pushed centre lands well beyond STACCATO_QUANTIZE_ZONE_SS (2.5 ss), so it is not
+        // snapped and the raw sub-tenth-of-a-staff-space difference survives into the placement.
+        // Inside the zone, quantization would round both semantics to the same space and hide it.
+        assertThat(Math.abs(centreYSs)).isGreaterThan(StackingUtils.STACCATO_QUANTIZE_ZONE_SS);
+
+        return centreYSs - SLOPED_HEIGHT_SS / 2.0;
+    }
+
+    @Test
+    void testStaccatoOverASlopedSupportSeesTheChordsEndpointNotItsInterior() {
+        // LilyPond's Skyline::padded extends each building flat by the horizon padding, holding its
+        // endpoint height. The chord starts right of the dot, so over the dot's whole footprint the
+        // dilated chord sits at its near endpoint.
+        var expectedTopYSs = dotTopYForSupportSs(SLOPED_CHORD_NEAR_Y_SS);
+
+        assertThat(stackStaccatoOverSlopedChord())
+            .describedAs("the dot must rest on the dilated chord's endpoint height")
+            .isCloseTo(expectedTopYSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testWideningTheQueryWouldSeatTheStaccatoFurtherOut() {
+        // What the old yGetExpanded did: read the chord's *interior*, out to one horizon padding
+        // beyond the dot's own footprint, where the chord has already climbed away from the staff.
+        var chordSlopeSs =
+            (SLOPED_CHORD_FAR_Y_SS - SLOPED_CHORD_NEAR_Y_SS) / SLOPED_CHORD_WIDTH_SS;
+        var queryEdgeXSs = SLOPED_X_SS + SLOPED_WIDTH_SS + StackingUtils.SCRIPT_HORIZON_PADDING_SS;
+        var interiorYSs = SLOPED_CHORD_NEAR_Y_SS
+            + (queryEdgeXSs - slopedChordStartXSs()) * chordSlopeSs;
+
+        // The two really do differ here — otherwise this test proves nothing about the one above.
+        assertThat(interiorYSs).isLessThan(SLOPED_CHORD_NEAR_Y_SS);
+
+        // Query-widening is the more conservative of the two: it pushes the dot further from the
+        // staff. Migrating to clearance lets the dot sit closer, bounded by |chordSlope| x horizon.
+        var widenedTopYSs = dotTopYForSupportSs(interiorYSs);
+        var placedTopYSs = stackStaccatoOverSlopedChord();
+
+        assertThat(placedTopYSs)
+            .describedAs("the dot must NOT be pushed out by the chord's interior")
+            .isGreaterThan(widenedTopYSs);
+
+        assertThat(placedTopYSs - widenedTopYSs)
+            .describedAs("and the gap is bounded by the chord's slope across the horizon")
+            .isLessThanOrEqualTo(
+                Math.abs(chordSlopeSs) * StackingUtils.SCRIPT_HORIZON_PADDING_SS + TOLERANCE);
+    }
+
+    @Test
+    void testStaccatoWithNoSupportSitsAtItsIdealAnchor() {
+        // `clearance` reports absence explicitly. `yGet` used to report it as 0.0 — the middle staff
+        // line — which only ever behaved because a dot's ideal anchor is further out than its margin.
+        var returnedYSs = StackingUtils.stackStaccato(Direction.UP,
+            new StaffExtents(LINE_WIDTH_SS), mock(LineElement.class),
+            SLOPED_X_SS, SLOPED_WIDTH_SS, SLOPED_HEIGHT_SS,
+            StaffExtents.Profile.flat(SLOPED_WIDTH_SS), SLOPED_MARGIN_SS,
+            SLOPED_STAFF_PADDING_SS, StackingUtils.SCRIPT_HORIZON_PADDING_SS,
+            SLOPED_STAFF_POSITION, new LayoutResult.Builder());
+
+        var idealCentreSs = StackingUtils.staccatoAnchorCeilingSs(SLOPED_STAFF_POSITION);
+
+        assertThat(returnedYSs)
+            .describedAs("an unsupported dot sits exactly at its note-relative anchor")
+            .isCloseTo(idealCentreSs - SLOPED_HEIGHT_SS / 2.0, within(TOLERANCE));
     }
 
     // -------------------------------------------------------------------------

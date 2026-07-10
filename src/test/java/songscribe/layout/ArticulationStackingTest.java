@@ -50,6 +50,14 @@ class ArticulationStackingTest extends UnitTest {
     private static final double TOLERANCE = 0.001;
     private static final double NOTE_X_SS = 10.0;
 
+    // roundDotGainSs models the dot as the true circle Bravura draws, but the dot is *reserved* as
+    // four chords of that circle. Each chord lies inside the arc, so the accent seats a little closer
+    // than the ideal — by at most the flattening tolerance the reservation declares, and never in the
+    // other direction. That budget, not a fitted number, is the tolerance here: 0.02 ss against a
+    // 0.044 ss gain, so a dot reserved flat (gain 0) still fails these assertions outright.
+    private static final double ROUND_DOT_CHORD_TOLERANCE_SS =
+        NoteAttachedStacker.STACCATO_OUTLINE_FLATNESS_SS;
+
     // A within-staff position whose note stems up, so its articulations stack below the staff.
     private static final int UP_STEM_STAFF_POSITION = 2;
 
@@ -90,6 +98,19 @@ class ArticulationStackingTest extends UnitTest {
      * Creates a note with the given staff position, stem direction, and articulations.
      * Upper=true means stem up (note below middle), upper=false means stem down (note above middle).
      */
+    /**
+     * The x an articulation's {@link LayoutResult.DecorationLayout} carries: the glyph's left edge,
+     * centred on the notehead — where {@code ArticulationRenderer} draws it, and so where it
+     * collides. Not the note's column x; an accent is wider than a notehead.
+     */
+    private static double centeredArticulationXSs(StaffElement note, double widthSs) {
+        var type = note.getType();
+        var noteheadCenterXSs = type.getElementCenterXSs()
+            + NoteGeometry.getNoteheadXOffsetSs(type, note.getDirection());
+
+        return NOTE_X_SS + noteheadCenterXSs - widthSs / 2.0;
+    }
+
     private static StaffElement createNote(int staffPosition, boolean upper, ArticulationType... types) {
         var note = ElementType.CROTCHET.newInstance();
         note.setStaffPosition(staffPosition);
@@ -131,12 +152,88 @@ class ArticulationStackingTest extends UnitTest {
     }
 
     /**
+     * How far past the staccato dot's box edge the accent's inner edge descends — the whole of what
+     * the two outlines buy over two boxes.
+     * <p>
+     * Both glyphs are centred on the notehead, so the dot sits centred within the accent's box.
+     * LilyPond widens the <em>support</em> by {@code horizon-padding}, not the element's own edge
+     * (skyline.cc {@code internal_distance} pads {@code dim}), which puts the support's near edge a
+     * {@link StackingUtils#SCRIPT_HORIZON_PADDING_SS} left of the dot.
+     * <p>
+     * Two independent effects, and this test must not conflate them:
+     * <ol>
+     *   <li>the accent's edge has already sloped away from its own box by the time the dot appears
+     *       beneath it, so the accent seats that much closer than its box would allow;</li>
+     *   <li>the dot is a <em>circle</em>, not a box, and its reserved outline falls away from its box
+     *       top — so the accent seats closer still ({@link #roundDotGainSs}).</li>
+     * </ol>
+     * With a flat dot only (1) applies; the difference is what
+     * {@code AccentOverStaccatoTest} pins down.
+     */
+    private static double accentEdgeOffsetOverStaccatoSs(
+        boolean above, double accentWidthSs, double staccatoWidthSs) {
+
+        var insetSs = (accentWidthSs - staccatoWidthSs) / 2.0;
+        var windowStartSs = insetSs - StackingUtils.SCRIPT_HORIZON_PADDING_SS;
+
+        // The wedge's edge climbs steadily right of its cap (ShapeProfileTest), and the dot's window
+        // begins well right of it, so the wedge's offset over the whole window lies on one straight
+        // arm — the arm both bindings, flat-dot and round-dot, fall on.
+        var wedgeOffsetSs =
+            ShapeProfile.innerEdge(AccentShape.accent(), above).offsetSs(windowStartSs);
+
+        return wedgeOffsetSs + roundDotGainSs(above, windowStartSs, staccatoWidthSs);
+    }
+
+    /**
+     * How much further the accent descends because the staccato reserves its round outline instead of
+     * the flat top of its box.
+     * <p>
+     * Derived, not recorded. Above the staff, the accent's edge must clear the dot's dilated support
+     * everywhere: LilyPond's {@code Skyline::padded} extends every building of the support by the
+     * horizon padding, so the support the accent meets is the dot's outline dilated by
+     * {@code h}. The accent's edge is a straight arm of slope {@code m} through this region, so the
+     * binding x is where the dilated circle's own slope reaches {@code m}. Solving
+     * {@code T'(v) = m} on a circle of radius {@code r} puts the contact at
+     * {@code v = r(1 - m/√(1+m²))}, where the circle has dropped {@code r(1 - 1/√(1+m²))} below its
+     * apex, and the arm has meanwhile climbed {@code m·v}. Summing the two and cancelling gives a
+     * result that depends on neither {@code h} nor the dot's position:
+     * <pre>
+     *   gain = r · (1 + m − √(1 + m²))
+     * </pre>
+     * The same formula, evaluated with Feta's dot ({@code r = 0.2}) and its steeper sforzato arm
+     * ({@code m ≈ 0.30}), reproduces the 0.0511 ss that LilyPond 2.26 itself moves an accent when the
+     * dot's stencil is boxified — which is how this was checked against the engine rather than
+     * against SongScribe's own output.
+     */
+    private static double roundDotGainSs(
+        boolean above, double windowStartSs, double staccatoWidthSs) {
+
+        var radiusSs = staccatoWidthSs / 2.0;
+        var armSlopeSs = accentArmSlopeAtSs(above, windowStartSs);
+
+        return radiusSs * (1.0 + armSlopeSs - Math.hypot(1.0, armSlopeSs));
+    }
+
+    /** The slope of the accent's inner edge at {@code xSs} — one straight path segment of the wedge. */
+    private static double accentArmSlopeAtSs(boolean above, double xSs) {
+        for (var segment : ShapeProfile.innerEdge(AccentShape.accent(), above).segments()) {
+            if (xSs >= segment.xStartSs() && xSs <= segment.xEndSs()) {
+                return segment.slopeSs();
+            }
+        }
+
+        throw new AssertionError("the accent's inner edge does not span x = " + xSs);
+    }
+
+    /**
      * Asserts that staccato and accent are stacked as two separate glyphs above the staff
      * (staccato closest to the note, accent beyond it). Accent's inner edge is LilyPond's
-     * {@code aligned_side}: the more outward of the staccato's own outer edge plus
-     * {@link NoteAttachedStacker#ACCENT_PADDING_SS} (edge-to-edge, not center-relative — #507
-     * dropped the old center-relative rule) and the staff clamp,
-     * {@code staffEdge - }{@link NoteAttachedStacker#SCRIPT_STAFF_PADDING_SS}.
+     * {@code aligned_side}: the more outward of the staff clamp,
+     * {@code staffEdge - }{@link NoteAttachedStacker#SCRIPT_STAFF_PADDING_SS}, and the staccato's
+     * outer edge plus {@link NoteAttachedStacker#ACCENT_PADDING_SS} — measured not from the accent's
+     * bounding box but from its wedge, which over the dot has already receded
+     * {@link #accentEdgeOffsetOverStaccatoSs} from that box.
      */
     private static void assertSeparateGlyphsAboveStaff(StaffElement note, LayoutResult result) {
         var staccatoArticulation = note.getArticulations().get(0);
@@ -147,13 +244,17 @@ class ArticulationStackingTest extends UnitTest {
         var accentLayout = require(
             result.getDecorationLayout(accentArticulation), "accent DecorationLayout");
 
+        var wedgeOffsetSs = accentEdgeOffsetOverStaccatoSs(
+            true, accentLayout.widthSs(), staccatoLayout.widthSs());
         var staffInnerYSs = -Staff.STAFF_HALF_SS - NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
-        var supportInnerYSs = staccatoLayout.ySs() - NoteAttachedStacker.ACCENT_PADDING_SS;
+        var supportInnerYSs =
+            staccatoLayout.ySs() + wedgeOffsetSs - NoteAttachedStacker.ACCENT_PADDING_SS;
         var expectedAccentYSs = Math.min(supportInnerYSs, staffInnerYSs) - accentLayout.heightSs();
 
         assertThat(staccatoLayout.ySs()).isLessThan(0.0);
         assertThat(accentLayout.ySs()).isLessThan(staccatoLayout.ySs());
-        assertThat(accentLayout.ySs()).isCloseTo(expectedAccentYSs, within(TOLERANCE));
+        assertThat(accentLayout.ySs())
+            .isCloseTo(expectedAccentYSs, within(ROUND_DOT_CHORD_TOLERANCE_SS));
     }
 
     /**
@@ -168,14 +269,18 @@ class ArticulationStackingTest extends UnitTest {
         var accentLayout = require(
             result.getDecorationLayout(accentArticulation), "accent DecorationLayout");
 
+        var wedgeOffsetSs = accentEdgeOffsetOverStaccatoSs(
+            false, accentLayout.widthSs(), staccatoLayout.widthSs());
         var staccatoBotYSs = staccatoLayout.ySs() + staccatoLayout.heightSs();
         var staffInnerYSs = Staff.STAFF_HALF_SS + NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
-        var supportInnerYSs = staccatoBotYSs + NoteAttachedStacker.ACCENT_PADDING_SS;
+        var supportInnerYSs =
+            staccatoBotYSs - wedgeOffsetSs + NoteAttachedStacker.ACCENT_PADDING_SS;
         var expectedAccentYSs = Math.max(supportInnerYSs, staffInnerYSs);
 
         assertThat(staccatoLayout.ySs()).isGreaterThan(0.0);
         assertThat(accentLayout.ySs()).isGreaterThan(staccatoLayout.ySs());
-        assertThat(accentLayout.ySs()).isCloseTo(expectedAccentYSs, within(TOLERANCE));
+        assertThat(accentLayout.ySs())
+            .isCloseTo(expectedAccentYSs, within(ROUND_DOT_CHORD_TOLERANCE_SS));
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -197,7 +302,8 @@ class ArticulationStackingTest extends UnitTest {
             // notehead geometry (radius 0.5 ss) and confirmed by this test passing.
             var expectedYSs = StackingUtils.staccatoAnchorCeilingSs(-2) - layout.heightSs() / 2.0;
             assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
-            assertThat(layout.xSs()).isCloseTo(NOTE_X_SS, within(TOLERANCE));
+            assertThat(layout.xSs())
+                .isCloseTo(centeredArticulationXSs(note, layout.widthSs()), within(TOLERANCE));
             assertThat(layout.heightSs()).isGreaterThan(0.0);
             assertThat(layout.widthSs()).isGreaterThan(0.0);
         }
@@ -260,7 +366,8 @@ class ArticulationStackingTest extends UnitTest {
             var expectedYSs = StackingUtils.staccatoAnchorFloorSs(UP_STEM_STAFF_POSITION)
                 - layout.heightSs() / 2.0;
             assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
-            assertThat(layout.xSs()).isCloseTo(NOTE_X_SS, within(TOLERANCE));
+            assertThat(layout.xSs())
+                .isCloseTo(centeredArticulationXSs(note, layout.widthSs()), within(TOLERANCE));
             assertThat(layout.heightSs()).isGreaterThan(0.0);
             assertThat(layout.widthSs()).isGreaterThan(0.0);
         }
@@ -444,14 +551,16 @@ class ArticulationStackingTest extends UnitTest {
     class DecorationLayoutProperties {
 
         @Test
-        void testDecorationLayoutHasCorrectXPosition() {
+        void testDecorationLayoutXIsGlyphLeftEdgeCenteredOnNotehead() {
             var note = createNote(0, false, ArticulationType.STACCATO);
             var result = stackSingleColumn(note);
             var layout = require(
                 result.getDecorationLayout(note.getArticulations().getFirst()),
                 "staccato DecorationLayout");
 
-            assertThat(layout.xSs()).isCloseTo(NOTE_X_SS, within(TOLERANCE));
+            assertThat(layout.xSs())
+                .describedAs("articulation box is centred on the notehead, not anchored at column x")
+                .isCloseTo(centeredArticulationXSs(note, layout.widthSs()), within(TOLERANCE));
         }
 
         @Test

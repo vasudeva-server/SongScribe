@@ -63,6 +63,12 @@ public final class StackingUtils {
     // Horizontal collision margin for structural/system elements (collapses between adjacent elements)
     static final double STRUCTURAL_HORIZONTAL_MARGIN_SS = 0.75; // 6px
 
+    // Horizontal collision margin for scripts (staccato, accent, fermata, trill). Scripts sit within
+    // a note's own horizontal neighborhood, so they take a far tighter horizon than structural
+    // elements: widening a script's footprint by the structural margin would make it collide with a
+    // tie arc, an accidental, or a neighboring note that it does not physically overlap.
+    public static final double SCRIPT_HORIZON_PADDING_SS = 0.1; // LilyPond define-grobs.scm Script horizon-padding
+
     // Distance from the note center to the staccato dot when the note sits on an interior
     // staff line (a line other than the top or bottom one) — clears the line itself.
     static final double STACCATO_ON_LINE_DISTANCE_SS = 1.5;
@@ -85,10 +91,32 @@ public final class StackingUtils {
      * Queries the untagged extent under a footprint expanded by
      * {@link #STRUCTURAL_HORIZONTAL_MARGIN_SS} on each side (the horizontal collision margin that
      * collapses between adjacent elements).
+     * <p>
+     * <strong>Structural and system elements only.</strong> Every note-attached element resolves its
+     * supports through {@link StaffExtents#clearance} instead. Scripts do so because that is what
+     * LilyPond does; these callers do not, because they are modelled on abc2svg, and
+     * {@link #STRUCTURAL_HORIZONTAL_MARGIN_SS} has no LilyPond counterpart — LilyPond gives
+     * {@code TextScript}, {@code VoltaBracket} and {@code ChordName} no {@code horizon-padding} at
+     * all, and places them by {@code Axis_group_interface::add_outside_staff_grobs} rather than by
+     * {@code Side_position_interface::aligned_side}.
      */
     static double yGetExpanded(StaffExtents extents, boolean above, double xSs, double widthSs) {
-        return extents.yGet(above, xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS,
-            widthSs + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS);
+        return yGetExpanded(extents, above, xSs, widthSs, STRUCTURAL_HORIZONTAL_MARGIN_SS);
+    }
+
+    /**
+     * Queries the untagged extent under a footprint expanded by {@code horizonPaddingSs} on each
+     * side.
+     * <p>
+     * This widens the <em>query</em>. {@link StaffExtents#clearance} instead dilates each
+     * <em>reservation</em>, which is what LilyPond's {@code Skyline::padded} does. The two agree
+     * exactly wherever every reservation under the footprint is flat, and diverge only against a
+     * sloped one — a tie arc's chords. Prefer {@code clearance} for anything new.
+     */
+    static double yGetExpanded(
+        StaffExtents extents, boolean above, double xSs, double widthSs, double horizonPaddingSs) {
+
+        return extents.yGet(above, xSs - horizonPaddingSs, widthSs + 2 * horizonPaddingSs);
     }
 
     /**
@@ -216,13 +244,21 @@ public final class StackingUtils {
      * margin only applies to avoid colliding with already-reserved content (e.g. a stem tip),
      * not to the ideal, uncollided position.
      *
+     * The dot reserves {@code reserveProfile} — its round outline — rather than the top of its box,
+     * so an accent stacking outside it clears the circle it actually is. Both placement branches
+     * reserve it, and must stay in step.
+     *
+     * @param reserveProfile the dot's outer edge, from {@link songscribe.layout.ShapeProfile#outerEdge}
      * @return the computed top Y (above) or bottom Y (below) in staff-space units
      */
     public static double stackStaccato(
         Direction direction,
         StaffExtents extents,
         LineElement element,
-        double xSs, double widthSs, double heightSs, double marginSs, double staffPaddingSs,
+        double xSs, double widthSs, double heightSs,
+        StaffExtents.Profile reserveProfile,
+        double marginSs, double staffPaddingSs,
+        double horizonPaddingSs,
         int staffPosition,
         LayoutResult.Builder builder) {
 
@@ -232,15 +268,16 @@ public final class StackingUtils {
 
         if (atOrBeyondStaffEdge) {
             return placeAndReserveClamped(direction, extents, element, xSs, widthSs, heightSs,
-                marginSs, staffPaddingSs, builder);
+                StaffExtents.Profile.flat(widthSs), reserveProfile, marginSs, staffPaddingSs,
+                horizonPaddingSs, builder);
         }
 
         var centerSs = direction.isUp()
             ? staccatoAnchorCeilingSs(staffPosition)
             : staccatoAnchorFloorSs(staffPosition);
 
-        return stackAtCenter(direction, extents, element, xSs, widthSs, heightSs, marginSs,
-            centerSs, builder);
+        return stackAtCenter(direction, extents, element, xSs, widthSs, heightSs, reserveProfile,
+            marginSs, horizonPaddingSs, centerSs, builder);
     }
 
     /**
@@ -267,16 +304,19 @@ public final class StackingUtils {
         var innerEdgeYSs = above ? boundSs - marginSs : boundSs + marginSs;
 
         return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
-            innerEdgeYSs, marginSs, builder);
+            innerEdgeYSs, StaffExtents.Profile.flat(widthSs), marginSs, builder);
     }
 
     /**
      * Shared tail for {@link #placeAndReserve} and {@link #placeAndReserveClamped}: given the
      * element's already-computed inner edge (nearest the staff), positions the element outward
-     * from it by {@code heightSs}, reserves its footprint, and writes the decoration layout.
+     * from it by {@code heightSs}, reserves {@code reserveProfile} along its outer edge, and writes
+     * the decoration layout.
      *
      * @param innerEdgeYSs        the element's inner edge in staff-space units (bottom above,
      *                            top below)
+     * @param reserveProfile      the element's outer edge; {@link StaffExtents.Profile#flat} for
+     *                            anything a neighbour may treat as a rectangle
      * @param decorationMarginSs  the margin recorded in the resulting {@link
      *                            LayoutResult.DecorationLayout}
      * @return the element's outer Y in staff-space units (top above, bottom below)
@@ -285,7 +325,8 @@ public final class StackingUtils {
         Direction direction,
         StaffExtents extents,
         LineElement element,
-        double xSs, double widthSs, double heightSs, double innerEdgeYSs, double decorationMarginSs,
+        double xSs, double widthSs, double heightSs, double innerEdgeYSs,
+        StaffExtents.Profile reserveProfile, double decorationMarginSs,
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
@@ -301,7 +342,7 @@ public final class StackingUtils {
             reserveEdgeYSs = elementTopYSs + heightSs;
         }
 
-        extents.ySet(above, xSs, widthSs, reserveEdgeYSs);
+        extents.ySetProfile(above, xSs, reserveProfile, reserveEdgeYSs);
 
         builder.putDecorationLayout(element,
             new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, decorationMarginSs));
@@ -314,21 +355,30 @@ public final class StackingUtils {
      * real-reservation support edge plus {@code paddingSs} and the staff edge plus
      * {@code staffPaddingSs}.
      * <p>
-     * The support edge comes from {@link #yGetExpanded} — the real reservations under the footprint
-     * (notehead, tie, staccato, …), excluding the staff line. When the footprint holds no real
-     * reservation ({@link StaffExtents#yGet} returns {@link StaffExtents#EMPTY_EXTENT_SS}), there is
-     * no support constraint and only the staff clamp applies; the empty default is never treated as
-     * a real support edge. Then, exactly as {@code Side_position_interface::aligned_side} does, the
-     * element is clamped outward against {@code staffEdge ± staffPaddingSs} (the top staff line
-     * above, the bottom staff line below).
+     * The support edge comes from {@link StaffExtents#clearance} — the real reservations under the
+     * element's inner-edge profile (notehead, tie, staccato, …), excluding the staff line. When
+     * nothing lies under the profile there is no support constraint and only the staff clamp
+     * applies. Then, exactly as {@code Side_position_interface::aligned_side} does, the element is
+     * clamped outward against {@code staffEdge ± staffPaddingSs} (the top staff line above, the
+     * bottom staff line below).
      * <p>
      * Reserve-edge / return convention matches {@link #placeAndReserve}: the reservation is written
      * at the element's outer edge (its top above, its bottom below) so a neighboring tier adds its
      * own padding when it queries this step, and the returned value is the element's outer Y.
+     * <p>
+     * {@code profile} and {@code reserveProfile} are independent: the first is the edge the element
+     * presents to what lies beneath it, the second the edge it presents to whatever stacks outside
+     * it. An element may have a sloped inner edge and still reserve a flat outer one — the accent
+     * does — in which case nothing that later stacks outside it can nestle into its slope.
      *
-     * @param paddingSs      the element's own padding against whatever its footprint contacts
-     * @param staffPaddingSs the element's staff-padding — the minimum gap it keeps from the staff
-     *                       line when the staff clamp is the outward constraint
+     * @param profile          the element's inner edge; {@link StaffExtents.Profile#flat} for
+     *                         anything whose inner edge is its bounding edge
+     * @param reserveProfile   the element's outer edge; {@link StaffExtents.Profile#flat} for
+     *                         anything a neighbour may treat as a rectangle
+     * @param paddingSs        the element's own padding against whatever its footprint contacts
+     * @param staffPaddingSs   the element's staff-padding — the minimum gap it keeps from the staff
+     *                         line when the staff clamp is the outward constraint
+     * @param horizonPaddingSs how far beyond its own footprint the element looks for a support
      * @return the element's outer Y in staff-space units (top above, bottom below)
      */
     static double placeAndReserveClamped(
@@ -336,32 +386,33 @@ public final class StackingUtils {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs,
-        double paddingSs, double staffPaddingSs,
+        StaffExtents.Profile profile,
+        StaffExtents.Profile reserveProfile,
+        double paddingSs, double staffPaddingSs, double horizonPaddingSs,
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
-        var supportBoundSs = yGetExpanded(extents, above, xSs, widthSs);
-        var hasSupport = supportBoundSs != StaffExtents.EMPTY_EXTENT_SS;
+        var support = extents.clearance(above, xSs, profile, paddingSs, horizonPaddingSs);
         var staffEdgeYSs = above ? STAFF_TOP_Y_SS : STAFF_BOT_Y_SS;
 
-        // The element's inner edge (nearest the staff): the more-outward of support ∓ padding and
+        // The element's inner edge (nearest the staff): the more-outward of the support's demand and
         // staffEdge ∓ staffPadding. Above, "more outward" is the smaller Y; below, the larger.
         double innerEdgeYSs;
 
         if (above) {
             var staffInnerYSs = staffEdgeYSs - staffPaddingSs;
-            innerEdgeYSs = hasSupport
-                ? Math.min(supportBoundSs - paddingSs, staffInnerYSs)
+            innerEdgeYSs = support.present()
+                ? Math.min(support.ySs(), staffInnerYSs)
                 : staffInnerYSs;
         } else {
             var staffInnerYSs = staffEdgeYSs + staffPaddingSs;
-            innerEdgeYSs = hasSupport
-                ? Math.max(supportBoundSs + paddingSs, staffInnerYSs)
+            innerEdgeYSs = support.present()
+                ? Math.max(support.ySs(), staffInnerYSs)
                 : staffInnerYSs;
         }
 
         return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
-            innerEdgeYSs, paddingSs, builder);
+            innerEdgeYSs, reserveProfile, paddingSs, builder);
     }
 
     /**
@@ -402,25 +453,46 @@ public final class StackingUtils {
         Direction direction,
         StaffExtents extents,
         LineElement element,
-        double xSs, double widthSs, double heightSs, double marginSs,
+        double xSs, double widthSs, double heightSs,
+        StaffExtents.Profile reserveProfile,
+        double marginSs, double horizonPaddingSs,
         double centerSs,
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
-        var currentSs = yGetExpanded(extents, above, xSs, widthSs);
 
+        // The dot's supports, read the way LilyPond reads them: horizonPaddingSs dilates each
+        // *reservation*, never the dot's own footprint (skyline.cc internal_distance pads `dim`).
+        // Against a flat support the two are identical; against the tie arc's chords — the only
+        // sloped thing that can lie beneath the innermost script — a widened query would instead read
+        // the chord's interior up to horizonPaddingSs beyond the dot, where a dilated support holds
+        // the chord's endpoint height flat.
+        var support = extents.clearance(
+            above, xSs, StaffExtents.Profile.flat(widthSs), marginSs, horizonPaddingSs);
+
+        // The dot's edge nearest the staff: its bottom above the staff, its top below. It starts at
+        // the ideal, uncollided note-relative position and is pushed outward by whatever lies under
+        // it. Absence of support is a distinct case, not a reservation at the middle staff line —
+        // which is what `yGet` returning 0.0 used to make it look like.
+        double innerEdgeYSs;
         double centerYSs;
 
         if (above) {
-            // Ideal (uncollided) position: centered exactly at the note-relative distance.
-            var idealBottomYSs = centerSs + heightSs / 2.0;
-            // Collision constraint: don't intrude into what's already reserved, with margin.
-            var collisionBottomYSs = currentSs - marginSs;
-            centerYSs = Math.min(idealBottomYSs, collisionBottomYSs) - heightSs / 2.0;
+            innerEdgeYSs = centerSs + heightSs / 2.0;
+
+            if (support.present()) {
+                innerEdgeYSs = Math.min(innerEdgeYSs, support.ySs());
+            }
+
+            centerYSs = innerEdgeYSs - heightSs / 2.0;
         } else {
-            var idealTopYSs = centerSs - heightSs / 2.0;
-            var collisionTopYSs = currentSs + marginSs;
-            centerYSs = Math.max(idealTopYSs, collisionTopYSs) + heightSs / 2.0;
+            innerEdgeYSs = centerSs - heightSs / 2.0;
+
+            if (support.present()) {
+                innerEdgeYSs = Math.max(innerEdgeYSs, support.ySs());
+            }
+
+            centerYSs = innerEdgeYSs + heightSs / 2.0;
         }
 
         // LilyPond quantize-position: snap the dot centre outward to the next off-line space. The
@@ -432,9 +504,9 @@ public final class StackingUtils {
         var elementTopYSs = centerYSs - heightSs / 2.0;
         var reserveEdgeYSs = above ? elementTopYSs : elementTopYSs + heightSs;
 
-        // Reserve at element edge. The neighboring tier applies its own margin when it
-        // queries, so each tier-to-tier gap = the neighboring element's margin.
-        extents.ySet(above, xSs, widthSs, reserveEdgeYSs);
+        // Reserve along the element's outer edge. The neighboring tier applies its own margin when
+        // it queries, so each tier-to-tier gap = the neighboring element's margin.
+        extents.ySetProfile(above, xSs, reserveProfile, reserveEdgeYSs);
 
         builder.putDecorationLayout(element,
             new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, marginSs));

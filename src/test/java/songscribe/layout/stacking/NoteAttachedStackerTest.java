@@ -43,7 +43,9 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.ShapeProfile;
 import songscribe.layout.StaffExtents;
+import songscribe.shape.AccentShape;
 import songscribe.engraving.Staff;
 import songscribe.engraving.SMuFLConstants;
 
@@ -51,6 +53,9 @@ class NoteAttachedStackerTest extends UnitTest {
 
     private static final double LINE_WIDTH_SS = 64.0;
     private static final double TOLERANCE = 1e-9;
+
+    // What yGet reports for a footprint with nothing reserved under it: the middle staff line.
+    private static final double UNRESERVED_EXTENT_SS = 0.0;
 
     // Column X positions
     private static final double START_NOTE_X_SS = 10.0;
@@ -82,6 +87,21 @@ class NoteAttachedStackerTest extends UnitTest {
     // B(0) = 0, B(1) = 0, B(0.5) = 0.75 * BEZIER_CP_Y_SS = -3.0.
     private static final double BEZIER_CP_Y_SS = -4.0;
     private static final double BEZIER_MID_Y_SS = -3.0;
+
+    // Probes strung across the arc. The count is deliberately not a multiple of the 16 chords the
+    // seeding lays down, so most probes land between chord endpoints, where a chord and the curve
+    // it spans differ the most.
+    private static final int ARC_PROBE_COUNT = 37;
+
+    // Both noteheads reserve their own extents at the span's ends, and near the ends the notehead is
+    // the more outward of the two; probe strictly inside them.
+    private static final double ARC_PROBE_MIN_T = 0.1;
+    private static final double ARC_PROBE_MAX_T = 0.9;
+
+    // With the control points at the span's thirds, B(t) = 3 * cp * t * (1 - t) — a parabola with
+    // |B''| = 6 * |cp| = 24 in t. A chord spanning dt = 1/16 of it departs by at most
+    // |B''| * dt^2 / 8 = 0.0117 ss. Halving the chord count would quadruple that and be caught.
+    private static final double MAX_CHORD_SAGITTA_SS = 0.015;
 
     // Phase 4 (#503) — staccato/accent/tie ordering constants.
     // 2 positions above the middle line: far enough that the staccato's own natural
@@ -231,6 +251,52 @@ class NoteAttachedStackerTest extends UnitTest {
             assertThat(extents.yGet(true, midTieXSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS))
                 .isCloseTo(PROTRUDING_ARC_Y_SS, within(TOLERANCE));
         }
+
+        @Test
+        void testArcIsReservedAsChordsThatLieInsideTheCurveNotStepsThatOvershootIt() {
+            var startNote = stemDownNote(STAFF_CENTER_SP);
+            var endNote = stemDownNote(STAFF_CENTER_SP);
+
+            var line = detachedLine();
+            var tie = new Tie(startNote, endNote);
+            line.addRangeElement(tie);
+
+            var tieLayout = arcTieLayout(BEZIER_CP_Y_SS);
+            var builder = new LayoutResult.Builder();
+            builder.putTieLayout(tie, tieLayout);
+
+            var context = new StackingContext(
+                List.of(mockColumnAt(startNote, START_NOTE_X_SS),
+                    mockColumnAt(endNote, END_NOTE_X_SS)),
+                line, builder);
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            new NoteAttachedStacker(context, extents).stack();
+
+            // The control points sit at the span's thirds, so the Bezier's x is exactly linear in t
+            // and the curve's Y at a given x is directly comparable to what was reserved there.
+            var spanWidthSs = END_NOTE_X_SS - START_NOTE_X_SS;
+
+            for (var i = 0; i <= ARC_PROBE_COUNT; i++) {
+                var t = ARC_PROBE_MIN_T
+                    + (ARC_PROBE_MAX_T - ARC_PROBE_MIN_T) * i / ARC_PROBE_COUNT;
+                var probeXSs = START_NOTE_X_SS + t * spanWidthSs;
+                var arcYSs = NoteAttachedStacker.evaluateBezierYSs(t, tieLayout);
+                var reservedYSs = extents.yGet(true, probeXSs, 0.0);
+
+                // A chord joins two points on a convex arc, so it lies inside it — never beyond.
+                // A flat step stamped at its segment's midpoint Y instead bulges past the arc on the
+                // apex side of the midpoint and falls short of it on the other, by up to half the
+                // arc's rise across the segment — here fully 0.3 ss, twenty times the chord's worst
+                // case. Either bound catches it.
+                assertThat(reservedYSs)
+                    .describedAs("reservation at x = %.3f must not bulge past the arc".formatted(probeXSs))
+                    .isGreaterThanOrEqualTo(arcYSs - TOLERANCE);
+
+                assertThat(reservedYSs)
+                    .describedAs("reservation at x = %.3f must track the arc".formatted(probeXSs))
+                    .isLessThanOrEqualTo(arcYSs + MAX_CHORD_SAGITTA_SS);
+            }
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -295,7 +361,7 @@ class NoteAttachedStackerTest extends UnitTest {
                 .isCloseTo(DOWNWARD_ARC_Y_SS, within(TOLERANCE));
             assertThat(extents.yGet(true, midTieXSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS))
                 .describedAs("a downward arc must never be reserved in the above extents")
-                .isEqualTo(StaffExtents.EMPTY_EXTENT_SS);
+                .isEqualTo(UNRESERVED_EXTENT_SS);
         }
     }
 
@@ -341,7 +407,7 @@ class NoteAttachedStackerTest extends UnitTest {
                 .isCloseTo(PROTRUDING_ARC_Y_SS, within(TOLERANCE));
             assertThat(extents.yGet(false, midTieXSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS))
                 .describedAs("must not reserve on the opposite (below) side")
-                .isEqualTo(StaffExtents.EMPTY_EXTENT_SS);
+                .isEqualTo(UNRESERVED_EXTENT_SS);
         }
     }
 
@@ -900,8 +966,15 @@ class NoteAttachedStackerTest extends UnitTest {
         var aboveAccentLayout = require(result.getDecorationLayout(aboveAccent));
         var belowAccentLayout = require(result.getDecorationLayout(belowAccent));
 
-        // Above accent clears the protruding arc: one articulation margin outside the flat arc's Y.
-        var expectedAboveYSs = PROTRUDING_ARC_Y_SS
+        // Above accent clears the protruding arc by one articulation margin — measured against its
+        // wedge, not its box. The arc begins at the note's column X, which is right of the accent's
+        // left edge (the accent is wider than the notehead it is centred on), so even widened by
+        // SCRIPT_HORIZON_PADDING_SS the arc never reaches the wedge's zero-offset cap. Over the arc,
+        // the accent's edge has already climbed away from its bounding box by this much.
+        var arcNearEdgeSs = START_NOTE_X_SS - StackingUtils.SCRIPT_HORIZON_PADDING_SS;
+        var wedgeOffsetSs = ShapeProfile.innerEdge(AccentShape.accent(), true)
+            .offsetSs(arcNearEdgeSs - aboveAccentLayout.xSs());
+        var expectedAboveYSs = PROTRUDING_ARC_Y_SS + wedgeOffsetSs
             - NoteAttachedStacker.ACCENT_PADDING_SS - aboveAccentLayout.heightSs();
         assertThat(aboveAccentLayout.ySs())
             .describedAs("above accent must be pushed outward to clear the protruding arc")
