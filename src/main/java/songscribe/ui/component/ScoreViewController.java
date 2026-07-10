@@ -511,7 +511,13 @@ public final class ScoreViewController {
             // deleteNote must remove it along with the first selected note — a non-contiguous
             // operation that cannot be expressed as a single range. Fall back to the per-element loop.
             if (line.isHostOfPairedGraceNote(begin)) {
-                song.withModification(() -> deleteSelection(begin, end, line));
+                song.withModification(() -> {
+                    // Clear the selection before removing elements so that action
+                    // handlers reacting to SongDidChangeNotification don't query
+                    // selection indices that no longer exist on the shrunk line.
+                    selectionCoordinator.clearSelection();
+                    deleteSelection(begin, end, line);
+                });
             } else {
                 // A breath mark immediately after the selection is positionally attached
                 // to the last selected element, so include it in the range to delete.
@@ -544,6 +550,11 @@ public final class ScoreViewController {
                 }
 
                 song.withModification(() -> {
+                    // Clear the selection before removing elements so that action
+                    // handlers reacting to SongDidChangeNotification don't query
+                    // selection indices that no longer exist on the shrunk line.
+                    selectionCoordinator.clearSelection();
+
                     // Mirror deleteNote: adjust syllable relations and melisma extends
                     // on neighbors before removing. Both helpers require the target
                     // elements to still be present in the list.

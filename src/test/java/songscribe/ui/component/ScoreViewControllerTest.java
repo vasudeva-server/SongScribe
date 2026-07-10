@@ -39,6 +39,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
+import net.engio.mbassy.listener.Handler;
+
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
@@ -54,6 +56,7 @@ import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.InsertLineCommand;
 import songscribe.message.command.PasteboardOpCommand;
 import songscribe.message.command.SelectLineCommand;
+import songscribe.message.MessageCenter;
 import songscribe.ui.action.PasteboardAction;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
@@ -204,6 +207,70 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(line.getElement(1)).isSameAs(noteD);
             // D shifted left: shift = noteB.x - noteD.x = 10 - 30 = -20, so D.x = 30 - 20 = 10
             assertThat(noteD.getXOffsetPx()).isEqualTo(10);
+        }
+
+        // Regression: deleting all but the last few notes of a line used to crash.
+        // SongDidChangeNotification fires synchronously from inside the modification
+        // bracket, before handleDelete's trailing score.deselect() runs, so a
+        // songDidChange handler (like TrillAction's) that reads the selection's begin/end
+        // indices while enabling itself would see the pre-deletion range applied to the
+        // now-shrunk line, throwing IndexOutOfBoundsException in Line.getElements. The
+        // fix clears the selection before the elements are removed.
+        @Test
+        void testHandleDeleteAllButLastFewNotesDoesNotCrashSongDidChangeHandlers() {
+            final var noteCount = 20;
+            final var keepCount = 4;
+            var song = new Song();
+            var line = song.getLine(0);
+
+            song.withoutMutationTracking(() -> {
+                for (var i = 0; i < noteCount; i++) {
+                    line.addElement(crotchet());
+                }
+            });
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            // Select everything but the last keepCount notes, mirroring "delete all but
+            // the last 4 notes".
+            ReflectionTestHelper.selectRange(coordinator, 0, noteCount - keepCount - 1);
+            var activeSelection = coordinator.getActiveSelection();
+
+            if (activeSelection == null) {
+                throw new IllegalStateException("Expected an active selection");
+            }
+
+            var state = activeSelection;
+            var controller = buildController(song, coordinator, scoreMock);
+
+            var caughtDuringNotification = new Exception[1];
+
+            var listener = new Object() {
+                @Handler
+                void onSongDidChange(SongDidChangeNotification notification) {
+                    try {
+                        // Mirrors TrillAction.enableFromSelection reading the selection
+                        // state's begin/end range while the song is changing.
+                        state.canToggleTrill();
+                    } catch (Exception e) {
+                        caughtDuringNotification[0] = e;
+                    }
+                }
+            };
+
+            MessageCenter.subscribe(listener);
+
+            try {
+                controller.handleDelete();
+            } finally {
+                MessageCenter.unsubscribe(listener);
+            }
+
+            assertThat(caughtDuringNotification[0])
+                .as("songDidChange handlers must not see a stale out-of-range selection")
+                .isNull();
+            assertThat(line.elementCount()).isEqualTo(keepCount + 1);
         }
 
         // Issue #456: the contiguous-range path (which bypasses deleteNote) must also
