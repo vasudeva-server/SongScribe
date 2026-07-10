@@ -227,7 +227,13 @@ public final class NoteGeometry {
     // Accidental Constants
     // ==========================================================================
 
-    /** Horizontal gap between notehead origin and the right edge of an accidental, in staff spaces. */
+    /**
+     * Horizontal gap between notehead origin and the right edge of an accidental, in staff spaces.
+     * <p>
+     * Single source of truth for the accidental-to-notehead gap: the renderer draws with it and the
+     * layout reserves a column's left extent with it ({@code ElementColumnBuilder.calculateLeftExtentSs}),
+     * so the reserved extent matches what is actually drawn.
+     */
     public static final float ACCIDENTAL_PADDING_SS = 0.3375f; // 2.7px / 8 px/ss
 
     /**

@@ -57,11 +57,6 @@ import songscribe.smufl.SMuFLMetadata;
  */
 public class ElementColumnBuilder {
 
-    /**
-     * Gap between an accidental and the notehead, in staff-space units.
-     */
-    public static final double ACCIDENTAL_GAP_SS = 0.25;
-
     // Small note head width from SMuFL noteheadBlackSmall bounding box (ss)
     public static final double NOTE_HEAD_SMALL_WIDTH_SS =
         SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL).width();
@@ -181,7 +176,7 @@ public class ElementColumnBuilder {
         // Subtract accidental width if present
         if (element.getAccidental() != null) {
             var accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(element);
-            extentSs -= (accidentalWidthSs + ACCIDENTAL_GAP_SS);
+            extentSs -= (accidentalWidthSs + NoteGeometry.ACCIDENTAL_PADDING_SS);
         }
 
         return extentSs;

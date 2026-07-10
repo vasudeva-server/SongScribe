@@ -105,15 +105,6 @@ public class HorizontalSpacingCalculator {
     public static final double KEY_ACCIDENTAL_WIDTH_SS = 1.0;  // 8px
 
     /**
-     * How much further left the renderer places an accidental than the layout's left extent does.
-     * The renderer pads by {@link NoteGeometry#ACCIDENTAL_PADDING_SS} while the layout's left
-     * extent uses the smaller {@link ElementColumnBuilder#ACCIDENTAL_GAP_SS}. A glissando reserves
-     * against the renderer's edge, so this delta is added to the reserved gap (refs #443).
-     */
-    private static final double ACCIDENTAL_RENDER_LEFT_DELTA_SS =
-        NoteGeometry.ACCIDENTAL_PADDING_SS - ElementColumnBuilder.ACCIDENTAL_GAP_SS;
-
-    /**
      * Calculates the X position of the first note in a line, in staff-space units.
      * <p>
      * Formula: clefWidth + keySignatureWidth + FIRST_NOTE_OFFSET
@@ -324,10 +315,8 @@ public class HorizontalSpacingCalculator {
      * Ensures minimum horizontal spacing for a glissando between two columns.
      * Returns the input spacing unchanged if no glissando or if there is already enough room.
      * <p>
-     * Computes: {@code gap = spacingSs + currLeft - prevRight}, where {@code currLeft} is
-     * adjusted by {@link #ACCIDENTAL_RENDER_LEFT_DELTA_SS} when the current note has an accidental
-     * (the renderer places the accidental slightly further left than the layout extent).
-     * If {@code gap < }{@link NoteGeometry#MIN_GLISSANDO_RESERVATION_SS}, spacing is widened
+     * Computes: {@code gap = spacingSs + currLeft - prevRight}. If
+     * {@code gap < }{@link NoteGeometry#MIN_GLISSANDO_RESERVATION_SS}, spacing is widened
      * to close the difference. Ledger lines are excluded from both extents.
      */
     private static double ensureGlissandoSpacing(
@@ -338,16 +327,7 @@ public class HorizontalSpacingCalculator {
         }
 
         var prevGlissRight = prev.getRightExtentSs();
-        var currElement = curr.getElement();
         var currGlissLeft = curr.getLeftExtentSs();
-
-        // The glissando line ends at the next note's left-side area edge. The renderer places the
-        // accidental slightly further left than the layout left extent does, so reserve against the
-        // renderer's edge — otherwise the reserved gap is too small and the line falls just below
-        // its minimum visible length (refs #443).
-        if (currElement.getAccidental() != null) {
-            currGlissLeft -= ACCIDENTAL_RENDER_LEFT_DELTA_SS;
-        }
 
         var gap = spacingSs + currGlissLeft - prevGlissRight;
         var needed = NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
