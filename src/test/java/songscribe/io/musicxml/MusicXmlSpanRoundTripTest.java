@@ -111,9 +111,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testThreeNoteTieChainRoundTrips() throws Exception {
-        // The writer emits stop+start on the interior note (note1): the reader's
-        // addTie() merge logic collapses the two adjacent pairs into one
-        // Tie(note0, note2) covering the whole chain.
+        // The writer emits stop+start on the interior note (note1) for the two adjacent
+        // ties; the reader closes the stop/start pair for each and produces two distinct
+        // Tie range elements — tie ranges never coalesce.
         var song = buildSong(line -> {
             var note0 = ElementType.CROTCHET.newInstance();
             var note1 = ElementType.CROTCHET.newInstance();
@@ -121,19 +121,17 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
-            // addTie merges the two pairs into one span at build time.
             line.addTie(new Tie(note0, note1));
             line.addTie(new Tie(note1, note2));
         });
 
-        // After the first two addTie calls the line already holds one merged
-        // Tie(note0, note2); confirm the round-trip re-collapses to the same.
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
         var ties = line2.findTies();
 
-        assertThat(ties).as("tie count after three-note chain round-trip").hasSize(1);
-        assertRangeElementEquals(ties.get(0), 0, 2);
+        assertThat(ties).as("tie count after three-note chain round-trip").hasSize(2);
+        assertRangeElementEquals(ties.get(0), 0, 1);
+        assertRangeElementEquals(ties.get(1), 1, 2);
     }
 
     // -------------------------------------------------------------------------

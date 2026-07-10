@@ -46,8 +46,8 @@ import songscribe.dom.Tuplet;
  *   SLIDE    start ─► pendingSlideStart;      stop ─► setGlissando() on start
  *   BEAM     begin ─► pendingBeamStart;       end  ─► Beam(anchor, note)
  *   TIED     start ─► pendingTieStart;        stop ─► Tie(anchor, note)
- *              (interior note: stop then start chains the run; addTie
- *               merges the pairs into one Tie(firstAnchor, lastEnd))
+ *              (interior note: stop then start closes one pair and opens
+ *               the next, producing one Tie per adjacent pair in the chain)
  *   TUPLET   start ─► pendingTupletStart (grade captured from
  *                     &lt;time-modification&gt;); stop ─► Tuplet(anchor, note, grade)
  *   WAVY     start ─► pendingTrillStart;      stop ─► Trill(anchor, note)
@@ -155,9 +155,9 @@ final class RangeSpanResolver {
     /**
      * Collapses this note's {@code <tied>} markers into the active tie run.
      * Stop is processed before start so an interior note (which emits stop then
-     * start) closes its pair and immediately re-opens the next; {@link Line#addTie}
-     * merges the adjacent pairs into a single {@link Tie} over the whole chain. A
-     * dangling start is dropped, an orphan stop ignored — both logged.
+     * start) closes its pair and immediately re-opens the next, producing one
+     * {@link Tie} per adjacent pair in the chain. A dangling start is dropped,
+     * an orphan stop ignored — both logged.
      */
     void resolveTie(Line line, StaffElement element, NoteAccumulator.SpanMarkers markers) {
         if (markers.tiedStop()) {

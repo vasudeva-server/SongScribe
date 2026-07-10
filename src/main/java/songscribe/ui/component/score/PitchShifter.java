@@ -20,6 +20,7 @@
 
 package songscribe.ui.component.score;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -194,13 +195,24 @@ public final class PitchShifter {
      * pre-mutation clone. Returns an empty list if the range holds no notes.
      */
     static List<PitchShiftEntry> buildPitchShiftGroup(Line line, int begin, int end) {
-        // Collect all unique indices, expanding each selected note's tie chain
+        // Collect all unique indices, expanding each selected note's tie chain to its
+        // full transitive closure — chained ties (note1-2 tied, note2-3 tied separately)
+        // must move as one unit even though each link is its own two-note Tie.
         var groupIndices = new LinkedHashSet<Integer>();
+        var pending = new ArrayDeque<Integer>();
 
         for (var i = begin; i <= end; i++) {
             var element = line.getElement(i);
 
-            if (!element.getType().isNote()) {
+            if (element.getType().isNote()) {
+                pending.add(i);
+            }
+        }
+
+        while (!pending.isEmpty()) {
+            var i = pending.remove();
+
+            if (!groupIndices.add(i)) {
                 continue;
             }
 
@@ -208,10 +220,10 @@ public final class PitchShifter {
 
             if (tie != null) {
                 for (var j = tie.getAnchorElementIndex(); j <= tie.getEndElementIndex(); j++) {
-                    groupIndices.add(j);
+                    if (!groupIndices.contains(j)) {
+                        pending.add(j);
+                    }
                 }
-            } else {
-                groupIndices.add(i);
             }
         }
 

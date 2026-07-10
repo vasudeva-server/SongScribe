@@ -771,12 +771,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     /**
      * Builds a three-crotchet tie chain (two independent ties sharing the middle note as end of
      * one and anchor of the other) with the given explicit stem direction on each note, mirroring
-     * {@link #buildTiedSong} for the two-note case.
-     * <p>
-     * Uses {@link songscribe.dom.Line#addRangeElement} rather than {@link
-     * songscribe.dom.Line#addTie}: {@code addTie}'s adjacent-tie merge (see its Javadoc) would
-     * collapse these two ties into a single {@code Tie(crotchet0, crotchet2)}, losing the interior
-     * note's independent {@code tieStop}/{@code tieStart} references this test exercises.
+     * {@link #buildTiedSong} for the two-note case. Tie ranges never coalesce, so the interior
+     * note keeps independent {@code tieStop}/{@code tieStart} references this test exercises.
      */
     private static Song buildTiedChainSong(
         StaffElement.Direction note0Direction,
@@ -795,13 +791,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
             line.addElement(crotchet1);
             line.addElement(crotchet2);
 
-            var tieA = new Tie(crotchet0, crotchet1);
-            tieA.setParentLine(line);
-            line.addRangeElement(tieA);
-
-            var tieB = new Tie(crotchet1, crotchet2);
-            tieB.setParentLine(line);
-            line.addRangeElement(tieB);
+            line.addTie(new Tie(crotchet0, crotchet1));
+            line.addTie(new Tie(crotchet1, crotchet2));
         });
     }
 

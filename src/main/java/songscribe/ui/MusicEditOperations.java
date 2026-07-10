@@ -22,6 +22,7 @@ package songscribe.ui;
 
 import module java.desktop;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -120,14 +121,14 @@ public final class MusicEditOperations {
         var line = state.getLine();
 
         line.withModification(() -> {
-            var existing = line.findTieAt(state.getSelectionBegin());
+            var exactTie = line.findExactTie(state.getSelectionBegin(), state.getSelectionEnd());
 
-            if (existing != null) {
-                line.removeTie(existing);
-            } else {
+            if (exactTie == null) {
                 var anchorElement = line.getElement(state.getSelectionBegin());
                 var endElement = line.getElement(state.getSelectionEnd());
                 line.addTie(new Tie(anchorElement, endElement));
+            } else {
+                line.removeTie(exactTie);
             }
         });
 
@@ -684,12 +685,21 @@ public final class MusicEditOperations {
                 }
             }
 
-            // Apply the same change to tie partners that fall outside the selection. Ties may
-            // span more than two notes via the overlap-merge; all notes in the tie that weren't
-            // already covered by the selection must be updated too.
-            var tiePartnersToModify = new TreeSet<Integer>();
+            // Apply the same change to tie partners that fall outside the selection. Chained
+            // ties (note1-2 tied, note2-3 tied separately) must be walked to their full
+            // transitive closure so every note in the chain gets updated, not just the
+            // immediate partner of a selected note.
+            var visited = new TreeSet<Integer>();
 
             for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
+                visited.add(i);
+            }
+
+            var tiePartnersToModify = new TreeSet<Integer>();
+            var pending = new ArrayDeque<>(visited);
+
+            while (!pending.isEmpty()) {
+                var i = pending.remove();
                 var tieSpan = line.findTieAt(i);
 
                 if (tieSpan == null) {
@@ -700,8 +710,12 @@ public final class MusicEditOperations {
                 var tieEnd = tieSpan.getEndElementIndex();
 
                 for (var j = tieStart; j <= tieEnd; j++) {
-                    if ((j < state.getSelectionBegin()) || (j > state.getSelectionEnd())) {
-                        tiePartnersToModify.add(j);
+                    if (visited.add(j)) {
+                        pending.add(j);
+
+                        if ((j < state.getSelectionBegin()) || (j > state.getSelectionEnd())) {
+                            tiePartnersToModify.add(j);
+                        }
                     }
                 }
             }

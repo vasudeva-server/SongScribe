@@ -1095,52 +1095,32 @@ public class Line {
     }
 
     /**
-     * Adds a tie range element, merging with any existing ties that share endpoints.
-     * <p>
-     * If an existing tie ends at the new tie's start, or starts at the new tie's end,
-     * the spans are merged into a single wider tie. Any tie whose range is fully
-     * covered by the merged result is removed.
+     * Returns the {@link Tie} range element whose anchor is exactly {@code anchorIndex}
+     * and end is exactly {@code endIndex}, or {@code null} if no tie spans that exact
+     * range. Unlike {@link #findTieAt(int)}, this disambiguates chained ties that share
+     * an endpoint note — {@code findTieAt} would return whichever overlapping tie comes
+     * first, not necessarily the one matching a specific selection.
      */
-    public void addTie(Tie tie) {
-        tie.setParentLine(this);
-        var anchorIdx = elements.indexOf(tie.getAnchorElement());
-        var endIdx = elements.indexOf(tie.getEndElement());
-
-        // Expand bounds to absorb adjacent/overlapping ties.
-        var mergedAnchorIdx = anchorIdx;
-        var mergedEndIdx = endIdx;
-
+    @Nullable
+    public Tie findExactTie(int anchorIndex, int endIndex) {
         for (var re : rangeElements) {
-            if (re instanceof Tie existing) {
-                var existingAnchor = existing.getAnchorElementIndex();
-                var existingEnd = existing.getEndElementIndex();
-
-                if (existingAnchor <= anchorIdx && anchorIdx <= existingEnd) {
-                    mergedAnchorIdx = Math.min(mergedAnchorIdx, existingAnchor);
-                }
-
-                if (existingAnchor <= endIdx && endIdx <= existingEnd) {
-                    mergedEndIdx = Math.max(mergedEndIdx, existingEnd);
-                }
+            if (re instanceof Tie t
+                && t.getAnchorElementIndex() == anchorIndex
+                && t.getEndElementIndex() == endIndex) {
+                return t;
             }
         }
 
-        // Adjust tie anchor/end to the merged bounds when merging occurred.
-        if (mergedAnchorIdx != anchorIdx) {
-            tie.setAnchorElement(elements.get(mergedAnchorIdx));
-        }
+        return null;
+    }
 
-        if (mergedEndIdx != endIdx) {
-            tie.setEndElement(elements.get(mergedEndIdx));
-        }
-
-        // Remove all ties fully subsumed by the merged range.
-        final int finalMergedAnchor = mergedAnchorIdx;
-        final int finalMergedEnd = mergedEndIdx;
-        rangeElements.removeIf(re -> re instanceof Tie t
-            && t.getAnchorElementIndex() >= finalMergedAnchor
-            && t.getEndElementIndex() <= finalMergedEnd);
-
+    /**
+     * Adds a tie range element. Tie ranges never coalesce — a chain of tied notes is
+     * represented as one {@link Tie} per adjacent pair, each rendered as its own arc,
+     * even when two ties share an endpoint note.
+     */
+    public void addTie(Tie tie) {
+        tie.setParentLine(this);
         applyChange(new TieAddition(this, tie), () -> rangeElements.add(tie));
     }
 
@@ -1346,8 +1326,8 @@ public class Line {
     /**
      * Adds a crescendo hairpin range element.
      * <p>
-     * Overlap-merge semantics mirror {@link #addTie(Tie)}: any existing crescendo whose
-     * range overlaps or is adjacent to the new one is absorbed into a single wider hairpin.
+     * Any existing crescendo whose range overlaps or is adjacent to the new one is
+     * absorbed into a single wider hairpin.
      */
     public void addCrescendo(Crescendo hairpin) {
         addHairpin(hairpin, CrescendoAddition::new, Crescendo.class);
@@ -1363,7 +1343,7 @@ public class Line {
     /**
      * Adds a diminuendo hairpin range element.
      * <p>
-     * Overlap-merge semantics mirror {@link #addTie(Tie)}.
+     * Overlap-merge semantics mirror {@link #addCrescendo(Crescendo)}.
      */
     public void addDiminuendo(Diminuendo hairpin) {
         addHairpin(hairpin, DiminuendoAddition::new, Diminuendo.class);

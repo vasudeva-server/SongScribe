@@ -347,43 +347,30 @@ public final class LineSelectionState {
             return false;
         }
 
-        Tie firstTie = null;
-        Integer firstPitch = null;
+        var beginNote = line.getElement(selectionBegin);
+        var endNote = line.getElement(selectionEnd);
 
-        for (var i = selectionBegin; i <= selectionEnd; i++) {
-            var note = line.getElement(i);
-
-            if (!note.getType().isPitchedNote()) {
-                canTie = false;
-                return false;
-            }
-
-            if (firstPitch == null) {
-                firstPitch = note.getPitch();
-            } else if (note.getPitch() != firstPitch) {
-                canTie = false;
-                return false;
-            }
-
-            if (i == selectionBegin) {
-                firstTie = line.findTieAt(i);
-            } else {
-                //noinspection ObjectEquality
-                if (line.findTieAt(i) != firstTie) {
-                    canTie = false;
-                    return false;
-                }
-            }
+        if (!beginNote.getType().isPitchedNote() || !endNote.getType().isPitchedNote()) {
+            canTie = false;
+            return false;
         }
 
+        if (beginNote.getPitch() != endNote.getPitch()) {
+            canTie = false;
+            return false;
+        }
+
+        var exactTie = line.findExactTie(selectionBegin, selectionEnd);
+        var shouldConnect = exactTie == null;
+
         // Conflict: tying would connect what a beam already connects.
-        if (shouldConnectTieSelection() && !shouldConnectBeamSelection()) {
+        if (shouldConnect && !shouldConnectBeamSelection()) {
             canTie = false;
             return false;
         }
 
         canTie = true;
-        existingTie = firstTie;
+        existingTie = exactTie;
         return true;
     }
 

@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 
 /**
- * Unit tests for {@link Line} tie management: add/merge and query methods.
+ * Unit tests for {@link Line} tie management: add and query methods.
  *
  * <p>All element setup uses {@link Song#withoutMutationTracking} so element
  * installation produces no notification and requires no open bracket. Tie
@@ -66,19 +66,19 @@ class LineTieTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // addTie — adjacent/overlapping tie merge (row 31)
+    // addTie — tie ranges never coalesce (row 31)
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class AddTieAdjacentMerge {
+    class AddTieNeverMerges {
 
         /**
-         * Adding tie [0,1] then tie [1,2] — they share endpoint 1 — must merge into a
-         * single tie [0,2]. The tie count must be 1 (not 2) and the span must be exact.
+         * Adding tie [0,1] then tie [1,2] — they share endpoint 1 — must remain two
+         * distinct ties. Tie ranges never coalesce, even when adjacent.
          */
         @Test
-        void testAdjacentTiesWithSharedEndpointMergeIntoOneSpan() {
+        void testAdjacentTiesWithSharedEndpointDoNotMerge() {
             song.withoutMutationTracking(() ->
                 line.addTie(new Tie(line.getElement(IDX_0), line.getElement(IDX_1))));
 
@@ -89,23 +89,29 @@ class LineTieTest extends UnitTest {
 
             assertAll(
                 () -> assertThat(ties)
-                    .as("adjacent ties must merge into exactly one tie")
-                    .hasSize(1),
-                () -> assertThat(ties.getFirst().getAnchorElementIndex())
-                    .as("merged tie anchor must be 0")
+                    .as("adjacent ties must remain as two separate ties")
+                    .hasSize(2),
+                () -> assertThat(ties.get(0).getAnchorElementIndex())
+                    .as("first tie anchor must be 0")
                     .isEqualTo(IDX_0),
-                () -> assertThat(ties.getFirst().getEndElementIndex())
-                    .as("merged tie end must be 2")
+                () -> assertThat(ties.get(0).getEndElementIndex())
+                    .as("first tie end must be 1")
+                    .isEqualTo(IDX_1),
+                () -> assertThat(ties.get(1).getAnchorElementIndex())
+                    .as("second tie anchor must be 1")
+                    .isEqualTo(IDX_1),
+                () -> assertThat(ties.get(1).getEndElementIndex())
+                    .as("second tie end must be 2")
                     .isEqualTo(IDX_2)
             );
         }
 
         /**
-         * Adding tie [0,2] then [2,4] — they share endpoint 2 — must merge into a single
-         * tie [0,4]. The tie count must be 1 and the span must be exact.
+         * Adding tie [0,2] then [2,4] — they share endpoint 2 — must remain two
+         * distinct ties. Tie ranges never coalesce, even when sharing a midpoint.
          */
         @Test
-        void testAdjacentTiesWithSharedMidpointMergeIntoOneSpan() {
+        void testAdjacentTiesWithSharedMidpointDoNotMerge() {
             song.withoutMutationTracking(() ->
                 line.addTie(new Tie(line.getElement(IDX_0), line.getElement(IDX_2))));
 
@@ -116,13 +122,19 @@ class LineTieTest extends UnitTest {
 
             assertAll(
                 () -> assertThat(ties)
-                    .as("adjacent ties sharing midpoint must merge into exactly one tie")
-                    .hasSize(1),
-                () -> assertThat(ties.getFirst().getAnchorElementIndex())
-                    .as("merged tie anchor must be 0")
+                    .as("ties sharing a midpoint must remain as two separate ties")
+                    .hasSize(2),
+                () -> assertThat(ties.get(0).getAnchorElementIndex())
+                    .as("first tie anchor must be 0")
                     .isEqualTo(IDX_0),
-                () -> assertThat(ties.getFirst().getEndElementIndex())
-                    .as("merged tie end must be 4")
+                () -> assertThat(ties.get(0).getEndElementIndex())
+                    .as("first tie end must be 2")
+                    .isEqualTo(IDX_2),
+                () -> assertThat(ties.get(1).getAnchorElementIndex())
+                    .as("second tie anchor must be 2")
+                    .isEqualTo(IDX_2),
+                () -> assertThat(ties.get(1).getEndElementIndex())
+                    .as("second tie end must be 4")
                     .isEqualTo(IDX_4)
             );
         }

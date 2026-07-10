@@ -713,9 +713,9 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     @Test
-    void testCanToggleTieWithElementsInDifferentTiesSetsCanTieFalse() {
+    void testCanToggleTieWithElementsInDifferentTiesAllowsChainedTie() {
         // tie1 spans notes 0-1, tie2 spans notes 2-3.
-        // Selecting notes 1 and 2 crosses two different ties.
+        // Selecting notes 1 and 2 chains a new tie between the two existing ties.
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
@@ -729,8 +729,9 @@ class LineSelectionStateTest extends UnitTest {
 
         var result = state.canToggleTie();
 
-        assertThat(result).isFalse();
-        assertThat(state.getCanTie()).isEqualTo(false);
+        assertThat(result).isTrue();
+        assertThat(state.getCanTie()).isEqualTo(true);
+        assertThat(state.getExistingTie()).isNull();
     }
 
     // -- resetTieState --
