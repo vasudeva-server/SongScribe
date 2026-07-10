@@ -212,7 +212,8 @@ class ScoreViewControllerTest extends UnitTest {
         // Regression: deleting all but the last few notes of a line used to crash.
         // SongDidChangeNotification fires synchronously from inside the modification
         // bracket, before handleDelete's trailing score.deselect() runs, so a
-        // songDidChange handler (like TrillAction's) that reads the selection's begin/end
+        // songDidChange handler (like TrillAction, via the @Handler it inherits from
+        // UIAction) that reads the selection's begin/end
         // indices while enabling itself would see the pre-deletion range applied to the
         // now-shrunk line, throwing IndexOutOfBoundsException in Line.getElements. The
         // fix clears the selection before the elements are removed.
