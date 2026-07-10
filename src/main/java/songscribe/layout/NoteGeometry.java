@@ -594,6 +594,18 @@ public final class NoteGeometry {
     }
 
     /**
+     * Returns the X of the notehead's centre relative to the note's column X, in staff spaces.
+     * <p>
+     * Anything that must sit centred over the notehead — an articulation, a dynamic, a fermata —
+     * measures from here, not from the column X: the column is as wide as the whole element, and an
+     * accent or a dynamic is wider than the head itself.
+     */
+    public static double getNoteheadCenterXSs(StaffElement note) {
+        var noteType = note.getType();
+        return noteType.getElementCenterXSs() + getNoteheadXOffsetSs(noteType, note.getDirection());
+    }
+
+    /**
      * Returns the X origin for a grace note's flag glyph, given the stem's left edge X
      * (both in staff spaces). SMuFL flag glyphs anchor at the stem's left edge, but the
      * scaled grace glyph's internal stem connection is only {@link ElementType#GRACE_NOTE_SCALE}

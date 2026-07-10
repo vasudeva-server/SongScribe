@@ -1,0 +1,1076 @@
+<title>Note-Attached Placement — A Visual Guide</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* ============================================================
+     Design tokens — an engraver's plate: ink on warm paper,
+     ochre rubrication as accent, slate-teal for reservations.
+     ============================================================ */
+  :root {
+    --paper:      #F7F4EE;
+    --plate:      #FFFFFF;
+    --sunk:       #EFEAE0;
+    --ink:        #1B1E27;
+    --ink-soft:   #4C505C;
+    --ink-faint:  #7A7E8A;
+    --rule:       #DAD4C7;
+    --rule-soft:  #E7E1D5;
+    --accent:     #B26A00;   /* ochre — clearance, padding, key marks */
+    --accent-ink: #8A5200;
+    --skyline:    #2E6F7E;   /* slate-teal — reservations / buildings */
+    --skyline-fill: rgba(46,111,126,0.14);
+    --skyline-line: #2E6F7E;
+    /* script category hues — one coherent family */
+    --c-tie:      #3E7CB1;
+    --c-staccato: #2C8C6C;
+    --c-accent:   #B26A00;
+    --c-fermata:  #7C58A6;
+    --c-trill:    #B0473F;
+    --shadow:     0 1px 2px rgba(27,30,39,0.05), 0 8px 24px rgba(27,30,39,0.06);
+    --maxread:    43rem;
+    --maxfig:     58rem;
+    --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Charter, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:      #14161C;
+      --plate:      #1B1E26;
+      --sunk:       #23262F;
+      --ink:        #E9E6DE;
+      --ink-soft:   #B3B2AC;
+      --ink-faint:  #83838C;
+      --rule:       #333844;
+      --rule-soft:  #2A2E38;
+      --accent:     #E0973E;
+      --accent-ink: #E6AA5C;
+      --skyline:    #56A6B6;
+      --skyline-fill: rgba(86,166,182,0.16);
+      --skyline-line: #6FBACA;
+      --c-tie:      #6AA6D8;
+      --c-staccato: #4FC29A;
+      --c-accent:   #E0973E;
+      --c-fermata:  #B08FD8;
+      --c-trill:    #E27B72;
+      --shadow:     0 1px 2px rgba(0,0,0,0.3), 0 10px 30px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper:#F7F4EE; --plate:#FFFFFF; --sunk:#EFEAE0; --ink:#1B1E27; --ink-soft:#4C505C;
+    --ink-faint:#7A7E8A; --rule:#DAD4C7; --rule-soft:#E7E1D5; --accent:#B26A00; --accent-ink:#8A5200;
+    --skyline:#2E6F7E; --skyline-fill:rgba(46,111,126,0.14); --skyline-line:#2E6F7E;
+    --c-tie:#3E7CB1; --c-staccato:#2C8C6C; --c-accent:#B26A00; --c-fermata:#7C58A6; --c-trill:#B0473F;
+    --shadow:0 1px 2px rgba(27,30,39,0.05),0 8px 24px rgba(27,30,39,0.06);
+  }
+  :root[data-theme="dark"] {
+    --paper:#14161C; --plate:#1B1E26; --sunk:#23262F; --ink:#E9E6DE; --ink-soft:#B3B2AC;
+    --ink-faint:#83838C; --rule:#333844; --rule-soft:#2A2E38; --accent:#E0973E; --accent-ink:#E6AA5C;
+    --skyline:#56A6B6; --skyline-fill:rgba(86,166,182,0.16); --skyline-line:#6FBACA;
+    --c-tie:#6AA6D8; --c-staccato:#4FC29A; --c-accent:#E0973E; --c-fermata:#B08FD8; --c-trill:#E27B72;
+    --shadow:0 1px 2px rgba(0,0,0,0.3),0 10px 30px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.62;
+    letter-spacing: 0.005em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- masthead ---- */
+  header.mast {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: saturate(1.4) blur(8px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .mast-inner {
+    max-width: var(--maxfig); margin: 0 auto;
+    padding: 0.6rem clamp(1rem, 4vw, 2.4rem);
+    display: flex; align-items: baseline; gap: 1rem; justify-content: space-between;
+  }
+  .mast-title { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.04em; color: var(--ink-soft); }
+  .mast-title b { color: var(--ink); font-weight: 600; }
+  nav.jump { display: flex; gap: 0.15rem 1rem; flex-wrap: wrap; font-family: var(--mono); font-size: 0.72rem; }
+  nav.jump a { color: var(--ink-faint); text-decoration: none; letter-spacing: 0.02em; }
+  nav.jump a:hover { color: var(--accent); }
+  @media (max-width: 720px) { nav.jump { display: none; } }
+
+  main { display: block; }
+  section { padding: 0 clamp(1rem, 4vw, 2rem); }
+  .read { max-width: var(--maxread); margin-inline: auto; }
+  .fig-wrap { max-width: var(--maxfig); margin-inline: auto; }
+
+  /* ---- hero ---- */
+  .hero { padding-top: clamp(2.5rem, 7vw, 5rem); padding-bottom: 1rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent-ink); margin: 0 0 1.1rem;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 600; font-size: clamp(2.1rem, 6vw, 3.4rem);
+    line-height: 1.06; letter-spacing: -0.015em; text-wrap: balance; margin: 0 0 0.7rem;
+  }
+  h1 .light { color: var(--ink-soft); font-style: italic; }
+  .dek {
+    font-size: clamp(1.05rem, 2.4vw, 1.28rem); color: var(--ink-soft); max-width: 40rem;
+    text-wrap: pretty; margin: 0 0 1.6rem; line-height: 1.5;
+  }
+  .credit { font-family: var(--mono); font-size: 0.75rem; color: var(--ink-faint); letter-spacing: 0.02em; }
+  .credit a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid var(--rule); }
+
+  h2 {
+    font-family: var(--serif); font-weight: 600; font-size: clamp(1.5rem, 3.6vw, 2rem);
+    line-height: 1.15; letter-spacing: -0.01em; text-wrap: balance; margin: 0 0 0.3rem;
+  }
+  .sect-num {
+    font-family: var(--mono); font-size: 0.76rem; letter-spacing: 0.1em; color: var(--accent-ink);
+    text-transform: uppercase; display: block; margin-bottom: 0.5rem;
+  }
+  h3 { font-family: var(--serif); font-weight: 600; font-size: 1.2rem; letter-spacing: -0.005em; margin: 2rem 0 0.2rem; }
+  p { margin: 0.85rem 0; text-wrap: pretty; }
+  .read p { max-width: 40rem; }
+  strong { font-weight: 650; }
+  em.term { font-style: normal; font-weight: 600; color: var(--accent-ink); }
+  code, .kbd {
+    font-family: var(--mono); font-size: 0.86em;
+    background: var(--sunk); padding: 0.08em 0.36em; border-radius: 4px;
+    color: var(--ink); border: 1px solid var(--rule-soft);
+  }
+  a.ref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--rule); }
+
+  .rule-hr { max-width: var(--maxfig); margin: clamp(2.5rem,6vw,4rem) auto; border: 0; border-top: 1px solid var(--rule); }
+
+  /* ---- figure ---- */
+  figure { margin: 1.6rem 0 0.5rem; }
+  .plate {
+    background: var(--plate); border: 1px solid var(--rule); border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .plate-body { padding: clamp(0.8rem, 2vw, 1.4rem); }
+  .plate svg { display: block; width: 100%; height: auto; }
+  .scroll-x { overflow-x: auto; }
+  figcaption {
+    font-size: 0.9rem; color: var(--ink-soft); margin-top: 0.8rem; line-height: 1.5;
+    max-width: 44rem;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  .fig-label {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-faint); padding: 0.7rem clamp(0.8rem,2vw,1.4rem) 0;
+  }
+
+  /* svg text helpers (used inline) */
+  .svg-mono { font-family: var(--mono); }
+
+  /* ---- legend chips ---- */
+  .legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-family: var(--mono);
+    font-size: 0.74rem; color: var(--ink-soft); padding: 0.9rem clamp(0.8rem,2vw,1.4rem);
+    border-top: 1px solid var(--rule-soft); }
+  .legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .swatch { width: 0.85rem; height: 0.85rem; border-radius: 3px; flex: none; }
+  .swatch.line { height: 0; border-top: 2px solid; border-radius: 0; }
+  .swatch.dash { height: 0; border-top: 2px dashed; border-radius: 0; }
+
+  /* ---- interactive walkthrough ---- */
+  .wt-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+    padding: 0.9rem clamp(0.8rem,2vw,1.4rem); border-top: 1px solid var(--rule-soft); }
+  .step-btns { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .step-btns button {
+    font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.02em;
+    padding: 0.34rem 0.7rem; border-radius: 999px; cursor: pointer;
+    background: var(--sunk); color: var(--ink-soft); border: 1px solid var(--rule);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .step-btns button:hover { border-color: var(--accent); color: var(--ink); }
+  .step-btns button[aria-pressed="true"] {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+  .wt-nav { margin-left: auto; display: flex; gap: 0.4rem; }
+  .wt-nav button {
+    font-family: var(--mono); font-size: 0.9rem; width: 2rem; height: 2rem; border-radius: 8px;
+    background: var(--plate); color: var(--ink); border: 1px solid var(--rule); cursor: pointer;
+  }
+  .wt-nav button:hover { border-color: var(--accent); }
+  .wt-nav button:disabled { opacity: 0.35; cursor: default; border-color: var(--rule); }
+  .wt-caption {
+    padding: 0 clamp(0.8rem,2vw,1.4rem) 1.1rem; min-height: 3.2rem;
+  }
+  .wt-caption .step-name { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--accent-ink); }
+  .wt-caption p { margin: 0.25rem 0 0; font-size: 0.96rem; color: var(--ink-soft); max-width: 46rem; }
+  .wt-caption b { color: var(--ink); }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  /* ---- two-up compare ---- */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--rule); }
+  @media (max-width: 620px) { .compare { grid-template-columns: 1fr; } }
+  .compare > div { background: var(--plate); padding: clamp(0.7rem,2vw,1.2rem); }
+  .compare h4 { margin: 0 0 0.2rem; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em;
+    text-transform: uppercase; }
+  .compare .bad h4 { color: var(--c-trill); }
+  .compare .good h4 { color: var(--c-staccato); }
+  .compare p { font-size: 0.86rem; color: var(--ink-soft); margin: 0.5rem 0 0; }
+
+  /* ---- tier pipeline ---- */
+  .tiers { display: grid; gap: 0.75rem; margin: 1.4rem 0 0.5rem; max-width: var(--maxread); margin-inline: auto; }
+  .tier {
+    display: grid; grid-template-columns: auto 1fr; gap: 0.9rem 1rem; align-items: start;
+    background: var(--plate); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 0.9rem 1.1rem; box-shadow: var(--shadow); position: relative;
+  }
+  .tier .tnum { font-family: var(--mono); font-weight: 600; font-size: 1.1rem;
+    color: var(--accent); border: 1px solid var(--accent); border-radius: 8px;
+    width: 2rem; height: 2rem; display: grid; place-items: center; }
+  .tier h4 { margin: 0 0 0.15rem; font-family: var(--serif); font-size: 1.08rem; }
+  .tier .who { font-family: var(--mono); font-size: 0.74rem; color: var(--ink-faint); }
+  .tier p { margin: 0.3rem 0 0; font-size: 0.9rem; color: var(--ink-soft); }
+  .tier .flow { grid-column: 2; font-family: var(--mono); font-size: 0.73rem; color: var(--skyline);
+    margin-top: 0.4rem; }
+  .tier-link { text-align: center; font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint);
+    letter-spacing: 0.04em; }
+
+  /* ---- glossary ---- */
+  .glossary { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 12px;
+    overflow: hidden; max-width: var(--maxfig); margin-inline: auto; box-shadow: var(--shadow); }
+  .gterm { background: var(--plate); padding: 1rem 1.15rem; }
+  .gterm dt { font-family: var(--serif); font-weight: 600; font-size: 1.02rem; color: var(--ink);
+    display: flex; align-items: center; gap: 0.5rem; }
+  .gterm dt .tag { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-faint); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 0.05rem 0.32rem; font-weight: 400; }
+  .gterm dd { margin: 0.4rem 0 0; font-size: 0.87rem; color: var(--ink-soft); line-height: 1.5; }
+  .gterm dd code { font-size: 0.82em; }
+
+  /* ---- footer ---- */
+  footer { max-width: var(--maxfig); margin: 3rem auto 0; padding: 2rem clamp(1rem,4vw,2rem) 3rem;
+    border-top: 1px solid var(--rule); font-size: 0.86rem; color: var(--ink-soft); }
+  footer h4 { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 1.2rem 0 0.5rem; }
+  footer ul { margin: 0; padding-left: 1.1rem; }
+  footer li { margin: 0.2rem 0; }
+  footer code { font-size: 0.82em; }
+
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--sunk);
+    padding: 0.8rem 1.1rem; border-radius: 0 8px 8px 0; margin: 1.3rem auto; max-width: 40rem;
+    font-size: 0.94rem; color: var(--ink-soft);
+  }
+  .callout b { color: var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+  html { scroll-behavior: smooth; }
+  :target { scroll-margin-top: 4rem; }
+</style>
+
+<header class="mast">
+  <div class="mast-inner">
+    <span class="mast-title"><b>Note-Attached Placement</b> · layout/stacking</span>
+    <nav class="jump" aria-label="Sections">
+      <a href="#coords">Coordinates</a>
+      <a href="#skyline">Skyline</a>
+      <a href="#profiles">Profiles</a>
+      <a href="#clearance">Clearance</a>
+      <a href="#walk">Walkthrough</a>
+      <a href="#outlines">Outlines</a>
+      <a href="#tiers">Tiers</a>
+      <a href="#glossary">Glossary</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero fig-wrap">
+    <p class="eyebrow">Layout · vertical stacking · ported from LilyPond</p>
+    <h1>How a note stacks<br><span class="light">its decorations outward</span></h1>
+    <p class="dek">A staccato dot, an accent, a fermata, a trill — each has to sit clear of the note,
+      of the tie, and of every mark already placed beneath it. This is how the engine decides
+      where each one goes, one exact silhouette at a time.</p>
+    <p class="credit">Source: <a class="ref" href="#footer">songscribe.layout.stacking</a> · a visual companion to the code</p>
+
+    <figure class="fig-wrap" style="margin-top:2rem">
+      <div class="plate">
+        <div class="fig-label">The whole idea, in one picture</div>
+        <div class="plate-body scroll-x">
+          <svg viewBox="0 0 900 380" role="img" aria-label="A tied note with staccato, accent and fermata stacked above it, over a shaded skyline of reservations.">
+            <!-- reserved space: the skyline silhouette (buildings), behind everything -->
+            <path d="M 270 250 L 270 112 L 330 112 L 330 208 L 458 208 L 458 238 L 488 238 L 488 250 Z"
+                  fill="var(--skyline-fill)" stroke="none"/>
+            <!-- each building's reserved top edge -->
+            <g stroke="var(--skyline-line)" stroke-width="2.4" fill="none">
+              <path d="M 270 112 L 330 112"/>
+              <path d="M 330 208 L 458 208"/>
+              <path d="M 458 238 L 488 238"/>
+            </g>
+            <!-- staff -->
+            <g stroke="var(--ink)" stroke-width="1.1" opacity="0.9">
+              <line x1="60" y1="250" x2="840" y2="250"/>
+              <line x1="60" y1="274" x2="840" y2="274"/>
+              <line x1="60" y1="298" x2="840" y2="298"/>
+              <line x1="60" y1="322" x2="840" y2="322"/>
+              <line x1="60" y1="346" x2="840" y2="346"/>
+            </g>
+            <!-- notes + stems (down-stem => decorations above) -->
+            <g>
+              <ellipse cx="300" cy="250" rx="15" ry="11" transform="rotate(-20 300 250)" fill="var(--ink)"/>
+              <line x1="285" y1="250" x2="285" y2="342" stroke="var(--ink)" stroke-width="2.4"/>
+              <ellipse cx="470" cy="250" rx="15" ry="11" transform="rotate(-20 470 250)" fill="var(--ink)"/>
+              <line x1="455" y1="250" x2="455" y2="342" stroke="var(--ink)" stroke-width="2.4"/>
+            </g>
+            <!-- tie arc -->
+            <path d="M 312 242 C 360 214, 410 214, 458 242" fill="none" stroke="var(--c-tie)" stroke-width="3.2" stroke-linecap="round"/>
+            <!-- staccato dot -->
+            <circle cx="300" cy="196" r="7" fill="var(--c-staccato)"/>
+            <!-- accent wedge (sloped inner arm) -->
+            <path d="M 278 158 L 322 170 L 278 182" fill="none" stroke="var(--c-accent)" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+            <!-- fermata -->
+            <path d="M 274 140 A 26 22 0 0 1 326 140" fill="none" stroke="var(--c-fermata)" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="300" cy="134" r="3.4" fill="var(--c-fermata)"/>
+            <!-- glyph labels -->
+            <g class="svg-mono" font-size="12">
+              <text x="336" y="122" fill="var(--c-fermata)">fermata</text>
+              <text x="336" y="174" fill="var(--c-accent)">accent</text>
+              <text x="316" y="200" fill="var(--c-staccato)">staccato</text>
+              <text x="360" y="204" fill="var(--c-tie)">tie arc</text>
+            </g>
+            <!-- in-figure legend for the two structural terms -->
+            <g class="svg-mono" font-size="12.5">
+              <path d="M 596 152 L 462 208" stroke="var(--ink-faint)" stroke-width="0.8" fill="none" opacity="0.7"/>
+              <path d="M 588 186 L 360 228" stroke="var(--ink-faint)" stroke-width="0.8" fill="none" opacity="0.7"/>
+              <line x1="560" y1="150" x2="588" y2="150" stroke="var(--skyline-line)" stroke-width="2.6"/>
+              <text x="596" y="154" fill="var(--ink-soft)">building — one reservation</text>
+              <rect x="560" y="176" width="24" height="14" fill="var(--skyline-fill)" stroke="var(--skyline-line)" stroke-width="1"/>
+              <text x="596" y="188" fill="var(--ink-soft)">skyline — their silhouette</text>
+            </g>
+          </svg>
+        </div>
+        <div class="legend">
+          <span><i class="swatch" style="background:var(--ink)"></i>note &amp; stem</span>
+          <span><i class="swatch line" style="border-color:var(--c-tie)"></i>tie arc</span>
+          <span><i class="swatch" style="background:var(--c-staccato)"></i>staccato</span>
+          <span><i class="swatch" style="background:var(--c-accent)"></i>accent</span>
+          <span><i class="swatch" style="background:var(--c-fermata)"></i>fermata</span>
+          <span><i class="swatch" style="background:var(--skyline-fill);border:1px solid var(--skyline-line)"></i>reserved space</span>
+        </div>
+      </div>
+      <figcaption>Every mark reserves the exact horizontal span it occupies. The next mark out reads that
+        <b>skyline</b> — never a bounding box wider than the glyph — and seats itself just clear of it.
+        The rest of this page unpacks each word in that sentence.</figcaption>
+    </figure>
+  </section>
+
+  <hr class="rule-hr">
+
+  <!-- ============ COORDINATES ============ -->
+  <section id="coords" class="read">
+    <span class="sect-num">Orientation</span>
+    <h2>The page is measured in staff-spaces, and Y points down</h2>
+    <p>One <em class="term">staff-space</em> (ss) is the gap between two staff lines — the engraver's
+      natural unit, so the algorithm never touches pixels. The vertical origin is the
+      <strong>middle staff line</strong>, at <code>y = 0</code>. Y increases <em>downward</em>, the way
+      screen coordinates do, so a smaller Y is <strong>higher on the page</strong>.</p>
+    <p>That gives the one rule you need to keep straight while reading every diagram below:
+      <strong>“outward” means away from the staff</strong> — upward and toward smaller Y for marks
+      above the staff, downward and toward larger Y for marks below it. Articulations sit on the side
+      <em>opposite the stem</em>, so a down-stem note (like the one in every diagram here) carries its
+      decorations above.</p>
+  </section>
+
+  <figure class="fig-wrap">
+    <div class="plate">
+      <div class="fig-label">Coordinate frame</div>
+      <div class="plate-body scroll-x">
+        <svg viewBox="0 0 1000 300" role="img" aria-label="The five staff lines with their staff-space positions, the Y-down axis, and the above/below regions.">
+          <!-- above/below shading -->
+          <rect x="120" y="40" width="620" height="90" fill="var(--skyline-fill)" opacity="0.5"/>
+          <rect x="120" y="220" width="620" height="60" fill="var(--skyline-fill)" opacity="0.3"/>
+          <text x="130" y="60" class="svg-mono" font-size="12" fill="var(--skyline)">ABOVE THE STAFF — smaller Y, more outward ↑</text>
+          <text x="130" y="255" class="svg-mono" font-size="12" fill="var(--skyline)">BELOW THE STAFF — larger Y, more outward ↓</text>
+          <!-- staff lines with ss labels -->
+          <g stroke="var(--ink)" stroke-width="1.1">
+            <line x1="120" y1="130" x2="740" y2="130"/>
+            <line x1="120" y1="155" x2="740" y2="155"/>
+            <line x1="120" y1="180" x2="740" y2="180"/>
+            <line x1="120" y1="205" x2="740" y2="205"/>
+            <line x1="120" y1="230" x2="740" y2="230"/>
+          </g>
+          <!-- middle line emphasis -->
+          <line x1="120" y1="180" x2="740" y2="180" stroke="var(--accent)" stroke-width="2"/>
+          <!-- ss annotations -->
+          <g class="svg-mono" font-size="12" fill="var(--ink-soft)">
+            <text x="748" y="134">y = −2 ss   (top line, F5)</text>
+            <text x="748" y="159">y = −1 ss</text>
+            <text x="748" y="184" fill="var(--accent-ink)">y =  0 ss   (middle line)</text>
+            <text x="748" y="209">y = +1 ss</text>
+            <text x="748" y="234">y = +2 ss   (bottom line, E4)</text>
+          </g>
+          <!-- staff-space bracket -->
+          <g stroke="var(--ink-faint)" stroke-width="1">
+            <line x1="150" y1="155" x2="150" y2="180"/>
+            <line x1="145" y1="155" x2="155" y2="155"/>
+            <line x1="145" y1="180" x2="155" y2="180"/>
+          </g>
+          <text x="160" y="171" class="svg-mono" font-size="11" fill="var(--ink-faint)">1 staff-space</text>
+          <!-- Y axis arrow -->
+          <g stroke="var(--ink)" stroke-width="1.4" fill="none">
+            <line x1="90" y1="55" x2="90" y2="265"/>
+            <path d="M 84 255 L 90 268 L 96 255"/>
+          </g>
+          <text x="76" y="45" class="svg-mono" font-size="12" fill="var(--ink)">Y</text>
+        </svg>
+      </div>
+    </div>
+    <figcaption>The five lines sit at whole staff-space offsets from the middle line. Whether a mark is
+      “above” or “below” chooses the sign of “outward”; everything else in the algorithm is written once
+      and dispatched on that direction.</figcaption>
+  </figure>
+
+  <hr class="rule-hr">
+
+  <!-- ============ SKYLINE ============ -->
+  <section id="skyline" class="read">
+    <span class="sect-num">The data structure</span>
+    <h2>Reservations are exact intervals, not fixed steps</h2>
+    <p>The collision model — <code>StaffExtents</code> — is an <em class="term">exact-interval skyline</em>.
+      Each reservation is a <em class="term">building</em>: a single linear segment <code>y(x)</code>
+      that spans the precise <code>[xStart, xEnd]</code> the element occupies. A flat building is an
+      ordinary rectangle edge; a sloped one is a chord of a curve, which is how a tie arc gets stored
+      without being flattened into stairsteps.</p>
+    <p>This replaced an older model that chopped the line into a fixed number of equal-width steps. The
+      problem with steps is below: two marks that merely <em>share</em> a step were treated as colliding,
+      even though they never overlap. Discretization cannot tell a real overlap from a rounding artifact,
+      and no step count fixes it — only exact intervals do.</p>
+  </section>
+
+  <figure class="fig-wrap">
+    <div class="plate">
+      <div class="compare">
+        <div class="bad">
+          <h4>✗ Fixed-width steps (old)</h4>
+          <div class="scroll-x">
+          <svg viewBox="0 0 400 220" role="img" aria-label="Two elements in adjacent regions get rasterized into a shared step and falsely collide.">
+            <!-- step grid -->
+            <g stroke="var(--rule)" stroke-width="1">
+              <line x1="20" y1="40" x2="20" y2="180"/><line x1="68" y1="40" x2="68" y2="180"/>
+              <line x1="116" y1="40" x2="116" y2="180"/><line x1="164" y1="40" x2="164" y2="180"/>
+              <line x1="212" y1="40" x2="212" y2="180"/><line x1="260" y1="40" x2="260" y2="180"/>
+              <line x1="308" y1="40" x2="308" y2="180"/><line x1="356" y1="40" x2="356" y2="180"/>
+            </g>
+            <line x1="20" y1="180" x2="380" y2="180" stroke="var(--ink)" stroke-width="1.2"/>
+            <!-- element A -->
+            <rect x="74" y="120" width="34" height="60" fill="var(--c-tie)" opacity="0.85"/>
+            <!-- element B -->
+            <rect x="170" y="120" width="34" height="60" fill="var(--c-staccato)" opacity="0.85"/>
+            <!-- the shared step rasterized full width, in red -->
+            <rect x="164" y="70" width="48" height="10" fill="var(--c-trill)"/>
+            <rect x="116" y="70" width="48" height="10" fill="var(--c-trill)" opacity="0.5"/>
+            <text x="118" y="60" class="svg-mono" font-size="10.5" fill="var(--c-trill)">shared step → false collision</text>
+          </svg>
+          </div>
+          <p>A step any element touches is reserved across its whole width. The blue and green marks never
+            overlap, yet the red step forces them apart.</p>
+        </div>
+        <div class="good">
+          <h4>✓ Exact intervals (now)</h4>
+          <div class="scroll-x">
+          <svg viewBox="0 0 400 220" role="img" aria-label="Two elements each reserve only their exact span, leaving the true gap between them.">
+            <line x1="20" y1="180" x2="380" y2="180" stroke="var(--ink)" stroke-width="1.2"/>
+            <!-- element A building -->
+            <rect x="74" y="120" width="34" height="60" fill="var(--c-tie)" opacity="0.85"/>
+            <line x1="74" y1="120" x2="108" y2="120" stroke="var(--skyline-line)" stroke-width="3"/>
+            <!-- element B building -->
+            <rect x="170" y="120" width="34" height="60" fill="var(--c-staccato)" opacity="0.85"/>
+            <line x1="170" y1="120" x2="204" y2="120" stroke="var(--skyline-line)" stroke-width="3"/>
+            <!-- the real gap -->
+            <g stroke="var(--accent)" stroke-width="1.2">
+              <line x1="108" y1="150" x2="170" y2="150"/>
+              <line x1="108" y1="145" x2="108" y2="155"/>
+              <line x1="170" y1="145" x2="170" y2="155"/>
+            </g>
+            <text x="112" y="140" class="svg-mono" font-size="10.5" fill="var(--accent-ink)">real gap — preserved</text>
+          </svg>
+          </div>
+          <p>Each building spans exactly <code>[xStart, xEnd]</code>. The gap between two marks survives no
+            matter how narrow, because nothing was ever rounded to a grid.</p>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i class="swatch line" style="border-color:var(--skyline-line)"></i>building (reserved top edge)</span>
+        <span><i class="swatch" style="background:var(--c-trill)"></i>false reservation</span>
+        <span><i class="swatch line" style="border-color:var(--accent)"></i>true gap</span>
+      </div>
+    </div>
+    <figcaption>The exactness is the point. A curved reservation — a tie arc — is stored as a run of sloped
+      chords that track the curve, instead of flat steps that reserve the arc's full rise across each step.</figcaption>
+  </figure>
+
+  <hr class="rule-hr">
+
+  <!-- ============ PROFILES ============ -->
+  <section id="profiles" class="read">
+    <span class="sect-num">The shapes</span>
+    <h2>Every element shows two edges: an inner and an outer</h2>
+    <p>A mark does not collide as a rectangle. It presents a <em class="term">shape profile</em> — its real
+      edge, stored as a piecewise-linear list of offsets that grow <em>outward</em> from the element's
+      bounding edge. Each element carries two of them:</p>
+    <p>The <em class="term">inner edge</em> faces the staff and decides <strong>where the element may sit</strong> —
+      it is what gets lowered onto the reservations beneath. The <em class="term">outer edge</em> faces away
+      and is <strong>what the element reserves</strong> for whatever stacks outside it. They are independent:
+      the accent has a <em>sloped</em> inner edge (its wedge arm) yet reserves a <em>flat</em> outer box.
+      Anything with a genuinely flat inner edge just uses <code>Profile.flat</code> and skips the outline math.</p>
+  </section>
+
+  <figure class="fig-wrap">
+    <div class="plate">
+      <div class="compare">
+        <div>
+          <h4 style="color:var(--c-accent)">Accent — sloped inner edge</h4>
+          <div class="scroll-x">
+          <svg viewBox="0 0 400 240" role="img" aria-label="An accent wedge showing its bounding box, its sloped inner edge that recedes to a point, and its flat outer edge.">
+            <!-- bounding box -->
+            <rect x="120" y="70" width="160" height="100" fill="none" stroke="var(--rule)" stroke-width="1.2" stroke-dasharray="4 4"/>
+            <text x="120" y="62" class="svg-mono" font-size="10" fill="var(--ink-faint)">bounding box</text>
+            <!-- wedge glyph -->
+            <path d="M 120 70 L 280 120 L 120 170" fill="none" stroke="var(--c-accent)" stroke-width="3.4" stroke-linejoin="round"/>
+            <!-- inner edge (staff-facing = lower arm), highlighted -->
+            <path d="M 120 170 L 280 120" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-dasharray="6 4"/>
+            <text x="126" y="205" class="svg-mono" font-size="10.5" fill="var(--accent-ink)">inner edge — recedes to a point</text>
+            <!-- staff below -->
+            <line x1="60" y1="215" x2="340" y2="215" stroke="var(--ink)" stroke-width="1"/>
+            <!-- arrow outward -->
+            <g stroke="var(--skyline)" stroke-width="1.2" fill="none">
+              <line x1="300" y1="120" x2="300" y2="80"/><path d="M296 88 L300 78 L304 88"/>
+            </g>
+            <text x="308" y="104" class="svg-mono" font-size="10" fill="var(--skyline)">outward</text>
+          </svg>
+          </div>
+          <p>Its staff-facing boundary is a sloping arm, not a box edge — at the tip the outline has
+            receded a full half-height. Colliding the box would push the accent roughly twice as far out
+            as it should go.</p>
+        </div>
+        <div>
+          <h4 style="color:var(--c-staccato)">Staccato — round outer edge</h4>
+          <div class="scroll-x">
+          <svg viewBox="0 0 400 240" role="img" aria-label="A round staccato dot inside its square box, showing that the box top touches the circle at a single point.">
+            <!-- box -->
+            <rect x="160" y="70" width="80" height="80" fill="none" stroke="var(--rule)" stroke-width="1.2" stroke-dasharray="4 4"/>
+            <text x="160" y="62" class="svg-mono" font-size="10" fill="var(--ink-faint)">bounding box</text>
+            <!-- dot -->
+            <circle cx="200" cy="110" r="40" fill="var(--c-staccato)" opacity="0.9"/>
+            <!-- outer edge = the arc, sampled -->
+            <path d="M 160 110 A 40 40 0 0 1 240 110" fill="none" stroke="var(--skyline-line)" stroke-width="2.4" stroke-dasharray="5 3"/>
+            <!-- single touch point of box top -->
+            <circle cx="200" cy="70" r="3.5" fill="var(--c-trill)"/>
+            <text x="210" y="66" class="svg-mono" font-size="10.5" fill="var(--c-trill)">box touches at one point</text>
+            <text x="130" y="205" class="svg-mono" font-size="10.5" fill="var(--skyline)">outer edge — the real arc is reserved</text>
+            <line x1="60" y1="220" x2="340" y2="220" stroke="var(--ink)" stroke-width="1"/>
+          </svg>
+          </div>
+          <p>The dot is very nearly a true circle. Reserving its box top would make the next mark clear a
+            rectangle the dot only touches at a single point; reserving its outline lets that mark nestle
+            where the dot has already curved away.</p>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i class="swatch dash" style="border-color:var(--rule)"></i>bounding box</span>
+        <span><i class="swatch dash" style="border-color:var(--accent)"></i>inner edge (where it may sit)</span>
+        <span><i class="swatch dash" style="border-color:var(--skyline-line)"></i>outer edge (what it reserves)</span>
+      </div>
+    </div>
+    <figcaption>Profiles are derived once from the glyph's real FreeType outline (<code>ShapeProfile</code>),
+      exactly as LilyPond builds a grob's skyline from its stencil. Curves are flattened to chords at a
+      tolerance far below any padding, so flattening never changes a placement.</figcaption>
+  </figure>
+
+  <hr class="rule-hr">
+
+  <!-- ============ CLEARANCE ============ -->
+  <section id="clearance" class="read">
+    <span class="sect-num">The core query</span>
+    <h2>Clearance: how far out must this mark sit?</h2>
+    <p>Placing a mark is a single question, asked of the skyline: given my inner-edge profile, where is the
+      innermost position at which I clear every reservation beneath me by my <em class="term">padding</em>?
+      That query is <code>clearance</code>, and it is LilyPond's <code>aligned_side</code> distance
+      evaluated exactly — each building intersected with each profile segment, the binding contact found at
+      a breakpoint, no sampling.</p>
+    <p>Two other distances shape the answer. <em class="term">Staff-padding</em> is a floor: even with
+      nothing beneath it, a mark keeps a minimum gap from the staff line, and sits at whichever constraint —
+      support-plus-padding or staff-plus-staff-padding — is further out. And <em class="term">horizon
+      padding</em> controls how far <em>sideways</em> a mark looks for something to clear.</p>
+    <div class="callout"><b>The subtle rule:</b> horizon padding widens the <em>buildings</em>, never the
+      profile. Fattening the support lets it reach a profile's zero-offset end, so an accent over a notehead
+      still seats exactly where its box would — while widening the profile instead would let it slip closer.
+      Invisible for flat shapes; decisive against a sloped tie chord.</div>
+  </section>
+
+  <figure class="fig-wrap">
+    <div class="plate">
+      <div class="fig-label">The clearance query, resolved</div>
+      <div class="plate-body scroll-x">
+        <svg viewBox="0 0 960 340" role="img" aria-label="An element's inner-edge profile lowered onto a support building until a padding gap separates them, with the staff-padding floor also shown.">
+          <!-- staff line -->
+          <line x1="80" y1="300" x2="820" y2="300" stroke="var(--ink)" stroke-width="1.2"/>
+          <text x="80" y="320" class="svg-mono" font-size="11" fill="var(--ink-faint)">staff line (y = −2 ss)</text>
+
+          <!-- support building (e.g. a notehead / tie chord) -->
+          <rect x="300" y="250" width="180" height="50" fill="var(--skyline-fill)"/>
+          <line x1="300" y1="250" x2="480" y2="250" stroke="var(--skyline-line)" stroke-width="3"/>
+          <text x="330" y="278" class="svg-mono" font-size="11" fill="var(--skyline)">support building</text>
+
+          <!-- horizon padding: widened building footprint -->
+          <line x1="270" y1="250" x2="300" y2="250" stroke="var(--skyline-line)" stroke-width="3" stroke-dasharray="3 3"/>
+          <line x1="480" y1="250" x2="510" y2="250" stroke="var(--skyline-line)" stroke-width="3" stroke-dasharray="3 3"/>
+          <g stroke="var(--skyline)" stroke-width="1" opacity="0.8">
+            <line x1="270" y1="242" x2="270" y2="258"/><line x1="300" y1="242" x2="300" y2="258"/>
+          </g>
+          <text x="150" y="246" class="svg-mono" font-size="10.5" fill="var(--skyline)">horizon padding widens the building →</text>
+
+          <!-- the element being placed: a flat-ish profile with a slope -->
+          <g>
+            <path d="M 320 190 L 470 190 L 470 210 L 320 210 Z" fill="var(--c-accent)" opacity="0.16"/>
+            <line x1="320" y1="210" x2="470" y2="210" stroke="var(--accent)" stroke-width="2.6" stroke-dasharray="6 4"/>
+            <text x="345" y="184" class="svg-mono" font-size="11" fill="var(--accent-ink)">element being placed — inner-edge profile</text>
+          </g>
+
+          <!-- padding gap arrow -->
+          <g stroke="var(--accent)" stroke-width="1.4">
+            <line x1="540" y1="210" x2="540" y2="250"/>
+            <line x1="534" y1="210" x2="546" y2="210"/>
+            <line x1="534" y1="250" x2="546" y2="250"/>
+          </g>
+          <text x="552" y="234" class="svg-mono" font-size="11" fill="var(--accent-ink)">padding — cleared by exactly this</text>
+
+          <!-- staff-padding floor illustration on the right -->
+          <g stroke="var(--ink-faint)" stroke-width="1.2" stroke-dasharray="2 3">
+            <line x1="600" y1="278" x2="800" y2="278"/>
+          </g>
+          <g stroke="var(--ink-faint)" stroke-width="1.2">
+            <line x1="780" y1="278" x2="780" y2="300"/>
+            <line x1="774" y1="278" x2="786" y2="278"/><line x1="774" y1="300" x2="786" y2="300"/>
+          </g>
+          <text x="600" y="272" class="svg-mono" font-size="10.5" fill="var(--ink-faint)">staff-padding — floor when nothing is beneath</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i class="swatch line" style="border-color:var(--skyline-line)"></i>support (a building)</span>
+        <span><i class="swatch dash" style="border-color:var(--accent)"></i>element inner edge</span>
+        <span><i class="swatch line" style="border-color:var(--accent)"></i>padding gap</span>
+      </div>
+    </div>
+    <figcaption>The element descends until its profile is one padding above the nearest support — or, if no
+      support lies beneath it, until it rests at the staff-padding floor. <code>clearance</code> returns that
+      inner edge; the element then reserves its <em>outer</em> edge for the next mark out.</figcaption>
+  </figure>
+
+  <hr class="rule-hr">
+
+  <!-- ============ WALKTHROUGH ============ -->
+  <section id="walk" class="read">
+    <span class="sect-num">Tier 1–2, step by step</span>
+    <h2>Watch the column stack, innermost to outermost</h2>
+    <p>Note-attached marks are placed in a fixed order, each seated just outside the last. The order matters:
+      the tie is seeded <em>before</em> the articulations — in LilyPond a script takes the tie as a support,
+      so the tie is innermost and every script clears it wherever their spans overlap. Step through it.</p>
+  </section>
+
+  <figure class="fig-wrap">
+    <div class="plate">
+      <div class="fig-label">Note-attached stacking order</div>
+      <div class="plate-body">
+        <svg id="wt-svg" viewBox="0 0 760 380" role="img" aria-label="Interactive diagram: elements stack outward from the notehead in order."></svg>
+      </div>
+      <div class="wt-caption" aria-live="polite">
+        <span class="step-name" id="wt-step-name">Step 0</span>
+        <p id="wt-step-text"></p>
+      </div>
+      <div class="wt-controls">
+        <div class="step-btns" role="group" aria-label="Stacking steps">
+          <button data-step="0">1 · notehead</button>
+          <button data-step="1">2 · tie arc</button>
+          <button data-step="2">3 · staccato</button>
+          <button data-step="3">4 · accent</button>
+          <button data-step="4">5 · fermata</button>
+          <button data-step="5">6 · trill</button>
+        </div>
+        <div class="wt-nav">
+          <button id="wt-prev" aria-label="Previous step">‹</button>
+          <button id="wt-next" aria-label="Next step">›</button>
+        </div>
+      </div>
+    </div>
+    <figcaption>Innermost to outermost: <b>notehead/stem → tie arc → staccato → accent → fermata → trill</b>.
+      Each mark clears only what its own footprint overlaps, then reserves its outer edge into the skyline
+      for the next.</figcaption>
+  </figure>
+
+  <hr class="rule-hr">
+
+  <!-- ============ OUTLINES VS BOXES ============ -->
+  <section id="outlines" class="read">
+    <span class="sect-num">Why outlines</span>
+    <h2>Colliding by silhouette, not by box</h2>
+    <p>The recent change at the heart of this branch: scripts collide by their real outlines, not their
+      bounding boxes. Both motivating cases are marks stacking above a shape that curves or slopes away from
+      its box corners. Against a box, the mark clears a rectangle the glyph barely fills — and lands too far
+      out. Against the outline, it seats where LilyPond puts it.</p>
+  </section>
+
+  <figure class="fig-wrap">
+    <div class="plate">
+      <div class="fig-label">Box vs. outline — the accent over a tie arc</div>
+      <div class="plate-body scroll-x">
+        <svg viewBox="0 0 900 300" role="img" aria-label="An accent placed above a tie arc: against the box it sits about twice as far out as against the outline.">
+          <!-- staff -->
+          <g stroke="var(--ink)" stroke-width="1" opacity="0.85">
+            <line x1="60" y1="230" x2="840" y2="230"/><line x1="60" y1="254" x2="840" y2="254"/>
+            <line x1="60" y1="278" x2="840" y2="278"/>
+          </g>
+          <!-- tie arc -->
+          <path d="M 200 224 C 320 176, 520 176, 640 224" fill="none" stroke="var(--c-tie)" stroke-width="3.4" stroke-linecap="round"/>
+          <text x="380" y="205" class="svg-mono" font-size="11" fill="var(--c-tie)">tie arc</text>
+
+          <!-- BOX placement (too far) -->
+          <rect x="300" y="120" width="240" height="52" fill="none" stroke="var(--c-trill)" stroke-width="1.4" stroke-dasharray="5 4"/>
+          <path d="M 305 100 L 355 112 L 305 124" fill="none" stroke="var(--c-trill)" stroke-width="3" stroke-linejoin="round" opacity="0.85"/>
+          <text x="360" y="112" class="svg-mono" font-size="11" fill="var(--c-trill)">✗ against the box — ~2× too far out</text>
+
+          <!-- OUTLINE placement (correct) -->
+          <path d="M 305 176 L 355 188 L 305 200" fill="none" stroke="var(--c-accent)" stroke-width="3.4" stroke-linejoin="round"/>
+          <text x="360" y="192" class="svg-mono" font-size="11" fill="var(--accent-ink)">✓ against the outline — seats where LilyPond puts it</text>
+
+          <!-- distance brackets -->
+          <g stroke="var(--ink-faint)" stroke-width="1">
+            <line x1="270" y1="146" x2="270" y2="188"/><line x1="264" y1="146" x2="276" y2="146"/><line x1="264" y1="188" x2="276" y2="188"/>
+          </g>
+          <text x="180" y="172" class="svg-mono" font-size="10.5" fill="var(--ink-faint)">the difference</text>
+        </svg>
+      </div>
+      <figcaption>The accent's staff-facing edge is its wedge arm, which slopes to a point. Stacked against
+        the tie's box the arm never gets near the arc; stacked against the arc's real chord it drops into the
+        space the curve has vacated. The same reasoning places an accent tight over a round staccato dot.</figcaption>
+    </div>
+  </figure>
+
+  <hr class="rule-hr">
+
+  <!-- ============ TIERS ============ -->
+  <section id="tiers" class="read">
+    <span class="sect-num">The bigger pipeline</span>
+    <h2>Note-attached is the first of three tiers</h2>
+    <p>Everything above lives in <strong>tier one</strong>. The full vertical layout runs three
+      <code>StaffExtents</code> layers in sequence. Each higher tier begins by importing the silhouette of
+      the tier below — <code>copyTopFrom</code> copies only the above-staff buildings — so a hairpin clears
+      every articulation, and a tempo mark clears every hairpin, without any tier knowing the others' details.</p>
+  </section>
+
+  <div class="tiers">
+    <div class="tier">
+      <span class="tnum">1</span>
+      <div>
+        <h4>Note-attached layer</h4>
+        <span class="who">NoteAttachedStacker</span>
+        <p>Seeds note and tie bounds, then stacks articulations (staccato, accent), fermata, and trill —
+          everything on this page.</p>
+      </div>
+    </div>
+    <div class="tier-link">↓ copyTopFrom — import the above-staff skyline</div>
+    <div class="tier">
+      <span class="tnum">2</span>
+      <div>
+        <h4>Structural layer</h4>
+        <span class="who">StructuralStacker</span>
+        <p>Tuplet brackets, hairpins, text dynamics, volta endings — stacked outside everything note-attached.</p>
+      </div>
+    </div>
+    <div class="tier-link">↓ copyTopFrom — import the structural skyline</div>
+    <div class="tier">
+      <span class="tnum">3</span>
+      <div>
+        <h4>System layer</h4>
+        <span class="who">SystemStacker</span>
+        <p>Tempo, beat changes, annotations — the outermost marks, clearing all of the above.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="rule-hr">
+
+  <!-- ============ GLOSSARY ============ -->
+  <section id="glossary" class="fig-wrap">
+    <span class="sect-num" style="text-align:center;display:block">Reference</span>
+    <h2 style="text-align:center">Glossary</h2>
+    <p class="read" style="text-align:center;color:var(--ink-soft);margin-bottom:1.6rem">
+      The terms as the code uses them. Type tags mark the role each plays.</p>
+    <dl class="glossary">
+      <div class="gterm"><dt>staff extents <span class="tag">structure</span></dt>
+        <dd>The <code>StaffExtents</code> object: an exact-interval Y skyline holding above- and below-staff
+          reservations separately. Y-down, staff-space units, middle line at 0.</dd></div>
+      <div class="gterm"><dt>building <span class="tag">structure</span></dt>
+        <dd>One reservation — an exact <code>[xStart, xEnd]</code> linear segment <code>y(x)</code>. Flat is a
+          rectangle edge; sloped is a chord of a curve, like a tie arc.</dd></div>
+      <div class="gterm"><dt>skyline <span class="tag">structure</span></dt>
+        <dd>The silhouette formed by all buildings on one side — the outward-most reach at every x. Marks
+          stack against it.</dd></div>
+      <div class="gterm"><dt>shape profile <span class="tag">geometry</span></dt>
+        <dd>An element's edge as a piecewise-linear list of offsets, measured from its bounding edge and
+          growing outward. <code>Profile.flat</code> is the all-zero rectangle profile.</dd></div>
+      <div class="gterm"><dt>inner edge <span class="tag">geometry</span></dt>
+        <dd>The boundary nearest the staff. Decides <em>where the element may sit</em>; it is what
+          <code>clearance</code> lowers onto the reservations below.</dd></div>
+      <div class="gterm"><dt>outer edge <span class="tag">geometry</span></dt>
+        <dd>The boundary facing away from the staff. It is <em>what the element reserves</em> for whatever
+          stacks outside it.</dd></div>
+      <div class="gterm"><dt>script <span class="tag">element</span></dt>
+        <dd>A note-attached decoration placed by LilyPond's <code>aligned_side</code> rule: staccato, accent,
+          fermata, and the trill on the first note of its range.</dd></div>
+      <div class="gterm"><dt>spanner <span class="tag">element</span></dt>
+        <dd>How the trill seats over notes <em>after</em> the first in its range — a wider padding than it
+          uses as a script.</dd></div>
+      <div class="gterm"><dt>clearance <span class="tag">query</span></dt>
+        <dd>The exact <code>aligned_side</code> distance query. Returns the inner edge at which the element
+          clears every support by its padding, or “no support.”</dd></div>
+      <div class="gterm"><dt>support <span class="tag">query</span></dt>
+        <dd>The reservations lying under an element's inner-edge profile — notehead, tie, staccato — that
+          <code>clearance</code> resolves against. Excludes the staff line itself.</dd></div>
+      <div class="gterm"><dt>padding <span class="tag">distance</span></dt>
+        <dd>The gap an element keeps from whatever its footprint contacts. Each value is ported from LilyPond
+          (staccato 0.20, accent 0.20, fermata 0.40, trill 0.20 ss).</dd></div>
+      <div class="gterm"><dt>staff-padding <span class="tag">distance</span></dt>
+        <dd>The minimum gap kept from the staff line when the staff — not another mark — is the outward
+          constraint (scripts: 0.25 ss).</dd></div>
+      <div class="gterm"><dt>horizon padding <span class="tag">distance</span></dt>
+        <dd>How far beyond its own footprint an element looks for support. It widens the <em>buildings</em>,
+          never the profile (scripts: 0.10 ss).</dd></div>
+      <div class="gterm"><dt>direction <span class="tag">convention</span></dt>
+        <dd>Above vs. below the staff, dispatched on <code>Direction</code>. Articulations sit opposite the
+          stem. “Outward” means away from the staff on either side.</dd></div>
+      <div class="gterm"><dt>outlines vs. boxes <span class="tag">principle</span></dt>
+        <dd>A script clears and reserves against the glyph's real FreeType outline, not its bounding box —
+          mirroring LilyPond building a grob's skyline from its stencil.</dd></div>
+    </dl>
+  </section>
+
+  <footer id="footer">
+    <div style="max-width:var(--maxread);margin-inline:auto">
+      <h4>Source files</h4>
+      <ul>
+        <li><code>layout/StaffExtents.java</code> — the exact-interval skyline: buildings, profiles, <code>clearance</code></li>
+        <li><code>layout/ShapeProfile.java</code> — derives a profile from a glyph's real outline</li>
+        <li><code>layout/stacking/NoteAttachedStacker.java</code> — tiers 1–2: articulations, fermata, trill</li>
+        <li><code>layout/stacking/StackingUtils.java</code> — shared placement core (<code>placeAndReserveClamped</code>)</li>
+        <li><code>layout/stacking/StructuralStacker.java</code> — tier 3: hairpins, dynamics, endings</li>
+        <li><code>layout/NoteGeometry.java</code> — notehead / stem geometry the seeds are built from</li>
+      </ul>
+      <h4>Ported from LilyPond</h4>
+      <ul>
+        <li><code>Side_position_interface::aligned_side</code> — the placement rule (<code>clearance</code>)</li>
+        <li><code>Skyline::internal_distance</code> — pad the support, not the profile</li>
+        <li><code>grob::always-vertical-skylines-from-stencil</code> — skylines from the glyph outline</li>
+        <li><code>Script_engraver::acknowledge_tie → add_support</code> — the tie as innermost support</li>
+      </ul>
+      <p style="margin-top:1.6rem;font-family:var(--mono);font-size:0.74rem;color:var(--ink-faint)">
+        A visual companion to the note-attached placement code · branch 528-staffextents</p>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var svg = document.getElementById("wt-svg");
+  var SVGNS = "http://www.w3.org/2000/svg";
+
+  // ---- geometry (viewBox 760 x 380) ----
+  var SS = 26;                 // pixels per staff-space
+  var STAFF_X0 = 90, STAFF_X1 = 670;
+  var MIDDLE_Y = 300;          // y of middle staff line
+  function ssToY(ss) { return MIDDLE_Y + ss * SS; }
+  var lines = [-2, -1, 0, 1, 2];
+  var TOP_LINE_Y = ssToY(-2);
+
+  // note column
+  var NOTE_CX = 300;           // notehead centre x
+  var NOTE2_CX = 520;          // second (tied) notehead
+  var NOTE_SS = -2;            // note sits on the top line
+  var NOTE_CY = ssToY(NOTE_SS);
+  var HEAD_RX = 15, HEAD_RY = 11;
+  var NOTE_TOP_Y = NOTE_CY - HEAD_RY;   // seeded above-edge
+
+  // element metrics in ss (schematic, but proportional to real padding)
+  var PAD = { staccato: 0.20, accent: 0.20, fermata: 0.40, trill: 0.20 };
+  var H   = { staccato: 0.42, accent: 0.95, fermata: 1.05, trill: 0.80 };
+  var TIE_CREST_SS = 1.15;     // how far above the note top the tie arc crests
+
+  function el(name, attrs) {
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function txt(x, y, s, fill, size, anchor) {
+    var t = el("text", { x: x, y: y, fill: fill, "font-size": size || 11, "font-family": "var(--mono)" });
+    if (anchor) t.setAttribute("text-anchor", anchor);
+    t.textContent = s;
+    return t;
+  }
+
+  var STEPS = [
+    { name: "Step 1 · seed the notehead",
+      html: "The notehead and stem are seeded into the skyline first — the <b>innermost</b> reservation. Its top edge is what the tie and articulations will stack above." },
+    { name: "Step 2 · seed the tie arc",
+      html: "The tie is seeded <b>before</b> the articulations, reserved as sloped chords along the arc. It spans only where the arc physically is — never the noteheads it joins — so it becomes the innermost support each script clears." },
+    { name: "Step 3 · staccato",
+      html: "The staccato dot is the innermost script. It seats just outside the notehead (or the tie, where the arc protrudes) with <b>staccato padding, 0.20 ss</b>, and reserves its round outline." },
+    { name: "Step 4 · accent",
+      html: "The accent stacks against its nearest neighbour — the staccato here — with <b>accent padding, 0.20 ss</b>. It clears using its sloped wedge inner edge but reserves a flat outer box." },
+    { name: "Step 5 · fermata",
+      html: "The fermata (tier 2) clears everything below it with a wider <b>fermata padding, 0.40 ss</b>, using a flat profile, held out at least the staff-padding floor." },
+    { name: "Step 6 · trill",
+      html: "The trill sits outermost. It reserves one span across its whole range, but every note demands its own clearance — the span seats at the most-outward edge any note requires (<b>trill padding, 0.20 ss</b> as a script)." }
+  ];
+
+  var current = 0;
+
+  function drawStaff(g) {
+    lines.forEach(function (ss) {
+      g.appendChild(el("line", { x1: STAFF_X0, y1: ssToY(ss), x2: STAFF_X1, y2: ssToY(ss),
+        stroke: "var(--ink)", "stroke-width": 1.1, opacity: 0.85 }));
+    });
+  }
+
+  function skylinePath(topY) {
+    // a simple shaded silhouette from note top up to current outward edge, over the note span
+    return "M " + (NOTE_CX - 46) + " " + NOTE_TOP_Y +
+           " L " + (NOTE_CX - 46) + " " + topY +
+           " L " + (NOTE_CX + 46) + " " + topY +
+           " L " + (NOTE_CX + 46) + " " + NOTE_TOP_Y + " Z";
+  }
+
+  function paddingBracket(g, x, yOuter, yInner, label, color) {
+    g.appendChild(el("line", { x1: x, y1: yInner, x2: x, y2: yOuter, stroke: color, "stroke-width": 1.3 }));
+    g.appendChild(el("line", { x1: x - 5, y1: yInner, x2: x + 5, y2: yInner, stroke: color, "stroke-width": 1.3 }));
+    g.appendChild(el("line", { x1: x - 5, y1: yOuter, x2: x + 5, y2: yOuter, stroke: color, "stroke-width": 1.3 }));
+    g.appendChild(txt(x + 9, (yInner + yOuter) / 2 + 4, label, color, 10.5));
+  }
+
+  function render(step) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var g = el("g", {});
+    svg.appendChild(g);
+
+    drawStaff(g);
+
+    // running outward edge (smaller y = more outward)
+    var outerY = NOTE_TOP_Y;
+
+    // cumulative skyline shading (drawn first, under glyphs) — computed after we know final outerY,
+    // so pre-compute target edges:
+    var tieCrestY = NOTE_TOP_Y - TIE_CREST_SS * SS;
+    var edges = {};
+    var cur = NOTE_TOP_Y;
+    if (step >= 1) cur = Math.min(cur, tieCrestY);
+    if (step >= 2) { edges.staccatoInner = cur - PAD.staccato * SS; edges.staccatoOuter = edges.staccatoInner - H.staccato * SS; cur = edges.staccatoOuter; }
+    if (step >= 3) { edges.accentInner = cur - PAD.accent * SS; edges.accentOuter = edges.accentInner - H.accent * SS; cur = edges.accentOuter; }
+    if (step >= 4) { edges.fermataInner = cur - PAD.fermata * SS; edges.fermataOuter = edges.fermataInner - H.fermata * SS; cur = edges.fermataOuter; }
+    if (step >= 5) { edges.trillInner = cur - PAD.trill * SS; edges.trillOuter = edges.trillInner - H.trill * SS; cur = edges.trillOuter; }
+
+    // skyline shading up to current outward edge
+    g.appendChild(el("path", { d: skylinePath(cur - 4), fill: "var(--skyline-fill)", stroke: "none" }));
+
+    // ---- notehead + stem (down-stem, decorations above) ----
+    g.appendChild(el("ellipse", { cx: NOTE_CX, cy: NOTE_CY, rx: HEAD_RX, ry: HEAD_RY,
+      transform: "rotate(-20 " + NOTE_CX + " " + NOTE_CY + ")", fill: "var(--ink)" }));
+    g.appendChild(el("line", { x1: NOTE_CX - 15, y1: NOTE_CY, x2: NOTE_CX - 15, y2: NOTE_CY + 92,
+      stroke: "var(--ink)", "stroke-width": 2.4 }));
+    if (step >= 1) {
+      g.appendChild(el("ellipse", { cx: NOTE2_CX, cy: NOTE_CY, rx: HEAD_RX, ry: HEAD_RY,
+        transform: "rotate(-20 " + NOTE2_CX + " " + NOTE_CY + ")", fill: "var(--ink)" }));
+      g.appendChild(el("line", { x1: NOTE2_CX - 15, y1: NOTE_CY, x2: NOTE2_CX - 15, y2: NOTE_CY + 92,
+        stroke: "var(--ink)", "stroke-width": 2.4 }));
+    }
+    // seed marker on note top
+    g.appendChild(el("line", { x1: NOTE_CX - 16, y1: NOTE_TOP_Y, x2: NOTE_CX + 16, y2: NOTE_TOP_Y,
+      stroke: "var(--skyline-line)", "stroke-width": 2.6 }));
+    if (step === 0) g.appendChild(txt(NOTE_CX + 26, NOTE_TOP_Y - 2, "seeded top edge", "var(--skyline)", 10.5));
+
+    // ---- tie arc ----
+    if (step >= 1) {
+      var tx0 = NOTE_CX + 20, tx1 = NOTE2_CX - 20;
+      g.appendChild(el("path", { d: "M " + tx0 + " " + (NOTE_CY - 6) +
+        " C " + (tx0 + 60) + " " + tieCrestY + ", " + (tx1 - 60) + " " + tieCrestY + ", " + tx1 + " " + (NOTE_CY - 6),
+        fill: "none", stroke: "var(--c-tie)", "stroke-width": 3.2, "stroke-linecap": "round" }));
+      if (step === 1) g.appendChild(txt(NOTE_CX + 120, tieCrestY - 6, "tie arc — innermost support", "var(--c-tie)", 10.5));
+    }
+
+    // ---- staccato ----
+    if (step >= 2) {
+      var scy = (edges.staccatoInner + edges.staccatoOuter) / 2;
+      g.appendChild(el("circle", { cx: NOTE_CX, cy: scy, r: (H.staccato * SS) / 2, fill: "var(--c-staccato)" }));
+      paddingBracket(g, NOTE_CX + 40, edges.staccatoInner, Math.min(NOTE_TOP_Y, step >= 1 ? tieCrestY : NOTE_TOP_Y),
+        "0.20 staccato", "var(--c-staccato)");
+    }
+    // ---- accent ----
+    if (step >= 3) {
+      var ax = NOTE_CX - 22, aMid = (edges.accentInner + edges.accentOuter) / 2;
+      g.appendChild(el("path", { d: "M " + ax + " " + edges.accentOuter + " L " + (ax + 44) + " " + aMid + " L " + ax + " " + edges.accentInner,
+        fill: "none", stroke: "var(--c-accent)", "stroke-width": 3.2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+      paddingBracket(g, NOTE_CX + 40, edges.accentInner, edges.staccatoOuter, "0.20 accent", "var(--c-accent)");
+    }
+    // ---- fermata ----
+    if (step >= 4) {
+      var fMid = (edges.fermataInner + edges.fermataOuter) / 2;
+      g.appendChild(el("path", { d: "M " + (NOTE_CX - 26) + " " + edges.fermataInner +
+        " A 26 22 0 0 1 " + (NOTE_CX + 26) + " " + edges.fermataInner, fill: "none",
+        stroke: "var(--c-fermata)", "stroke-width": 3, "stroke-linecap": "round" }));
+      g.appendChild(el("circle", { cx: NOTE_CX, cy: edges.fermataInner - 5, r: 3.4, fill: "var(--c-fermata)" }));
+      paddingBracket(g, NOTE_CX + 40, edges.fermataInner, edges.accentOuter, "0.40 fermata", "var(--c-fermata)");
+    }
+    // ---- trill ----
+    if (step >= 5) {
+      var trY = (edges.trillInner + edges.trillOuter) / 2;
+      g.appendChild(txt(NOTE_CX - 30, trY + 4, "tr", "var(--c-trill)", 17));
+      var wave = "M " + (NOTE_CX + 2) + " " + trY;
+      for (var i = 0; i < 8; i++) {
+        var wx = NOTE_CX + 2 + i * 12;
+        wave += " q 3 -5 6 0 q 3 5 6 0";
+      }
+      g.appendChild(el("path", { d: wave, fill: "none", stroke: "var(--c-trill)", "stroke-width": 2 }));
+      // trill spans the whole range
+      g.appendChild(el("line", { x1: NOTE_CX - 30, y1: edges.trillOuter - 6, x2: NOTE2_CX + 10, y2: edges.trillOuter - 6,
+        stroke: "var(--c-trill)", "stroke-width": 1, "stroke-dasharray": "3 3", opacity: 0.6 }));
+      g.appendChild(txt(NOTE_CX + 120, edges.trillOuter - 10, "one span across the whole range", "var(--c-trill)", 10));
+      paddingBracket(g, NOTE_CX + 40, edges.trillInner, edges.fermataOuter, "0.20 trill", "var(--c-trill)");
+    }
+
+    // outward arrow
+    g.appendChild(el("line", { x1: 60, y1: NOTE_TOP_Y, x2: 60, y2: cur - 8, stroke: "var(--ink-faint)", "stroke-width": 1.2 }));
+    g.appendChild(el("path", { d: "M 55 " + (cur) + " L 60 " + (cur - 10) + " L 65 " + (cur), fill: "none", stroke: "var(--ink-faint)", "stroke-width": 1.2 }));
+    g.appendChild(txt(48, NOTE_TOP_Y + 4, "outward", "var(--ink-faint)", 10, "middle"));
+
+    // update caption + buttons
+    document.getElementById("wt-step-name").textContent = STEPS[step].name;
+    document.getElementById("wt-step-text").innerHTML = STEPS[step].html;
+    var btns = document.querySelectorAll(".step-btns button");
+    btns.forEach(function (b) { b.setAttribute("aria-pressed", String(Number(b.dataset.step) === step)); });
+    document.getElementById("wt-prev").disabled = (step === 0);
+    document.getElementById("wt-next").disabled = (step === STEPS.length - 1);
+  }
+
+  document.querySelectorAll(".step-btns button").forEach(function (b) {
+    b.addEventListener("click", function () { current = Number(b.dataset.step); render(current); });
+  });
+  document.getElementById("wt-prev").addEventListener("click", function () { if (current > 0) render(--current); });
+  document.getElementById("wt-next").addEventListener("click", function () { if (current < STEPS.length - 1) render(++current); });
+
+  render(0);
+})();
+</script>

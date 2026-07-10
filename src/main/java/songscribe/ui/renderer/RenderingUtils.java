@@ -252,10 +252,8 @@ public final class RenderingUtils {
         double layoutXSs, StaffElement note,
         double glyphBBoxLeft, double glyphWidthSs) {
 
-        var type = note.getType();
-        var noteheadCenterXSs = type.getElementCenterXSs()
-            + NoteGeometry.getNoteheadXOffsetSs(type, note.getDirection());
-        return layoutXSs + noteheadCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
+        return layoutXSs + NoteGeometry.getNoteheadCenterXSs(note)
+            - glyphBBoxLeft - glyphWidthSs / 2.0;
     }
 
     /**

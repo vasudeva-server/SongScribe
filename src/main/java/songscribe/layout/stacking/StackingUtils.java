@@ -99,24 +99,15 @@ public final class StackingUtils {
      * {@code TextScript}, {@code VoltaBracket} and {@code ChordName} no {@code horizon-padding} at
      * all, and places them by {@code Axis_group_interface::add_outside_staff_grobs} rather than by
      * {@code Side_position_interface::aligned_side}.
-     */
-    static double yGetExpanded(StaffExtents extents, boolean above, double xSs, double widthSs) {
-        return yGetExpanded(extents, above, xSs, widthSs, STRUCTURAL_HORIZONTAL_MARGIN_SS);
-    }
-
-    /**
-     * Queries the untagged extent under a footprint expanded by {@code horizonPaddingSs} on each
-     * side.
      * <p>
      * This widens the <em>query</em>. {@link StaffExtents#clearance} instead dilates each
      * <em>reservation</em>, which is what LilyPond's {@code Skyline::padded} does. The two agree
      * exactly wherever every reservation under the footprint is flat, and diverge only against a
      * sloped one — a tie arc's chords. Prefer {@code clearance} for anything new.
      */
-    static double yGetExpanded(
-        StaffExtents extents, boolean above, double xSs, double widthSs, double horizonPaddingSs) {
-
-        return extents.yGet(above, xSs - horizonPaddingSs, widthSs + 2 * horizonPaddingSs);
+    static double yGetExpanded(StaffExtents extents, boolean above, double xSs, double widthSs) {
+        return extents.yGet(above, xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS,
+            widthSs + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS);
     }
 
     /**
@@ -267,9 +258,11 @@ public final class StackingUtils {
             : staffPosition >= BOTTOM_STAFF_LINE_POSITION;
 
         if (atOrBeyondStaffEdge) {
+            var profiles = new StaffExtents.Profiles(
+                StaffExtents.Profile.flat(widthSs), reserveProfile);
+
             return placeAndReserveClamped(direction, extents, element, xSs, widthSs, heightSs,
-                StaffExtents.Profile.flat(widthSs), reserveProfile, marginSs, staffPaddingSs,
-                horizonPaddingSs, builder);
+                profiles, marginSs, staffPaddingSs, horizonPaddingSs, builder);
         }
 
         var centerSs = direction.isUp()
@@ -366,15 +359,11 @@ public final class StackingUtils {
      * at the element's outer edge (its top above, its bottom below) so a neighboring tier adds its
      * own padding when it queries this step, and the returned value is the element's outer Y.
      * <p>
-     * {@code profile} and {@code reserveProfile} are independent: the first is the edge the element
-     * presents to what lies beneath it, the second the edge it presents to whatever stacks outside
-     * it. An element may have a sloped inner edge and still reserve a flat outer one — the accent
-     * does — in which case nothing that later stacks outside it can nestle into its slope.
+     * An element may have a sloped inner edge and still reserve a flat outer one — the accent does —
+     * in which case nothing that later stacks outside it can nestle into its slope.
      *
-     * @param profile          the element's inner edge; {@link StaffExtents.Profile#flat} for
-     *                         anything whose inner edge is its bounding edge
-     * @param reserveProfile   the element's outer edge; {@link StaffExtents.Profile#flat} for
-     *                         anything a neighbour may treat as a rectangle
+     * @param profiles         the element's inner and outer edges; {@link StaffExtents.Profiles#flat}
+     *                         for anything a neighbour may treat as a rectangle
      * @param paddingSs        the element's own padding against whatever its footprint contacts
      * @param staffPaddingSs   the element's staff-padding — the minimum gap it keeps from the staff
      *                         line when the staff clamp is the outward constraint
@@ -386,13 +375,12 @@ public final class StackingUtils {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs,
-        StaffExtents.Profile profile,
-        StaffExtents.Profile reserveProfile,
+        StaffExtents.Profiles profiles,
         double paddingSs, double staffPaddingSs, double horizonPaddingSs,
         LayoutResult.Builder builder) {
 
         var above = direction.isUp();
-        var support = extents.clearance(above, xSs, profile, paddingSs, horizonPaddingSs);
+        var support = extents.clearance(above, xSs, profiles.inner(), paddingSs, horizonPaddingSs);
         var staffEdgeYSs = above ? STAFF_TOP_Y_SS : STAFF_BOT_Y_SS;
 
         // The element's inner edge (nearest the staff): the more-outward of the support's demand and
@@ -412,7 +400,7 @@ public final class StackingUtils {
         }
 
         return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
-            innerEdgeYSs, reserveProfile, paddingSs, builder);
+            innerEdgeYSs, profiles.outer(), paddingSs, builder);
     }
 
     /**

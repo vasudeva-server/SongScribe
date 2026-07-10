@@ -42,8 +42,6 @@ import org.slf4j.LoggerFactory;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.util.SystemInfo;
 
-import songscribe.smufl.SMuFLGlyph;
-
 
 public final class GraphicUtils {
 
@@ -531,14 +529,6 @@ public final class GraphicUtils {
         }
 
         return maxWidth;
-    }
-
-    /**
-     * Returns the glyph outline for the given SMuFL glyph rendered with {@code font},
-     * suitable for use as an {@link Area} component.
-     */
-    public static Shape glyphOutline(Font font, FontRenderContext frc, SMuFLGlyph glyph) {
-        return font.createGlyphVector(frc, glyph.asString()).getOutline();
     }
 
     /**

@@ -91,7 +91,16 @@ public final class BravuraFont {
      */
     public static Shape glyphOutline(SMuFLGlyph glyph) {
         var outline = font().createGlyphVector(OUTLINE_FRC, glyph.asString()).getOutline();
-        var scale = SMuFLMetadata.requireBBox(glyph).width() / outline.getBounds2D().getWidth();
+        var outlineWidthSs = outline.getBounds2D().getWidth();
+
+        // A missing glyph renders as an empty or zero-width outline, whose scale would come out
+        // infinite and silently poison every profile derived from it — and those profiles are held
+        // in static fields for the life of the process.
+        if (outlineWidthSs <= 0.0) {
+            throw new IllegalStateException("Bravura drew " + glyph + " with a zero-width outline");
+        }
+
+        var scale = SMuFLMetadata.requireBBox(glyph).width() / outlineWidthSs;
 
         return AffineTransform.getScaleInstance(scale, scale).createTransformedShape(outline);
     }

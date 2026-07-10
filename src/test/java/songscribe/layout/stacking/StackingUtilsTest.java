@@ -563,8 +563,7 @@ class StackingUtilsTest extends UnitTest {
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.UP, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
-            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
-            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            StaffExtents.Profiles.flat(CLAMPED_WIDTH_SS),
             CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS,
             StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
 
@@ -589,8 +588,7 @@ class StackingUtilsTest extends UnitTest {
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.UP, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
-            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
-            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            StaffExtents.Profiles.flat(CLAMPED_WIDTH_SS),
             CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS,
             StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
 
@@ -606,8 +604,7 @@ class StackingUtilsTest extends UnitTest {
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.DOWN, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
-            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
-            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            StaffExtents.Profiles.flat(CLAMPED_WIDTH_SS),
             CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS,
             StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
 
@@ -625,8 +622,7 @@ class StackingUtilsTest extends UnitTest {
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.DOWN, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
-            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
-            StaffExtents.Profile.flat(CLAMPED_WIDTH_SS),
+            StaffExtents.Profiles.flat(CLAMPED_WIDTH_SS),
             CLAMPED_PADDING_SS, CLAMPED_STAFF_PADDING_SS,
             StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
 

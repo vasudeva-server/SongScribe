@@ -39,6 +39,17 @@ import java.util.List;
  * </ol>
  * {@link #yGet} answers the simpler question "how far out does anything under this footprint
  * reach", and is what line sizing and the anchored stackers use.
+ * <p>
+ * The exactness is the point, and it is what the fixed-width steps this replaced could not give:
+ * a step that any part of an element touched was reserved across its whole width, so two elements
+ * that merely shared a step collided though they never overlapped. Discretization cannot separate a
+ * real overlap from a rounding artifact, and no step count fixes that — only exact intervals do.
+ * <p>
+ * The cost is that a query scans every reservation on the line rather than a fixed 128 cells, since
+ * the buildings carry no spatial index. Measured negligible: a line holds a few hundred buildings,
+ * each rejected by one interval comparison, and the extents are rebuilt per line. If a query ever
+ * does show up in a profile, keep the lists sorted by {@code xStartSs} and binary-search to the
+ * first candidate.
  */
 public class StaffExtents {
 
@@ -63,18 +74,18 @@ public class StaffExtents {
         /**
          * The building's Y at {@code xSs}, holding its endpoint value beyond either end. That
          * clamp is what gives a padded building its flat horizontal extension (see
-         * {@link #clearance}).
+         * {@link StaffExtents#clearance}).
          */
         double heightSs(double xSs) {
-            if (slopeSs == 0.0) {
-                return yStartSs;
-            }
-
-            return yStartSs + Math.clamp(xSs - xStartSs, 0.0, xEndSs - xStartSs) * slopeSs;
+            return valueAt(xSs, xStartSs, xEndSs, yStartSs, slopeSs);
         }
     }
 
-    /** The slope of a linear run, or zero where it is flat or degenerate. */
+    /**
+     * The slope of a linear run, or zero where it is flat or degenerate. A non-zero slope therefore
+     * implies {@code xEndSs > xStartSs}, which is what lets {@link #valueAt} clamp without checking
+     * the interval's orientation.
+     */
     private static double slopeSs(
         double xStartSs, double xEndSs, double yStartSs, double yEndSs) {
 
@@ -88,24 +99,60 @@ public class StaffExtents {
     }
 
     /**
+     * The value at {@code xSs} of the linear run rising from {@code yStartSs} at {@code xStartSs} at
+     * {@code slopeSs}, holding its endpoint value beyond either end.
+     * <p>
+     * A reservation's run carries an absolute Y and a profile segment's an offset from a bounding
+     * edge, but the arithmetic is the same, so {@link Building#heightSs} and
+     * {@link Profile.Segment#offsetSs} share it.
+     */
+    private static double valueAt(
+        double xSs, double xStartSs, double xEndSs, double yStartSs, double slopeSs) {
+
+        if (slopeSs == 0.0) {
+            return yStartSs;
+        }
+
+        return yStartSs + Math.clamp(xSs - xStartSs, 0.0, xEndSs - xStartSs) * slopeSs;
+    }
+
+    /**
      * An element's inner edge — the boundary nearest the staff — as a piecewise-linear offset from
      * its own inner bounding edge, with x measured from the element's left edge. Offsets are
      * {@code >= 0} and grow outward, away from the staff, so a flat-bottomed element above the
      * staff and a flat-topped element below it share the same all-zero profile.
+     * <p>
+     * The segments run left to right and cover the element without gaps; {@link #clearance} relies
+     * on that to stop walking them once one starts beyond the building it is testing.
      */
     public record Profile(List<Segment> segments) {
+
+        public Profile {
+            if (segments.isEmpty()) {
+                throw new IllegalArgumentException("a profile needs at least one segment");
+            }
+
+            segments = List.copyOf(segments);
+        }
 
         /** One linear run of an element's inner edge. */
         public record Segment(
             double xStartSs, double xEndSs, double yOffsetStartSs, double yOffsetEndSs,
             double slopeSs) {
 
-            /** {@code slopeSs} is derived; a query evaluates the segment millions of times per line. */
+            /**
+             * {@code slopeSs} is derived, never supplied: this overwrites whatever a caller passes,
+             * so a segment whose slope contradicts its endpoints cannot exist. It is stored rather
+             * than recomputed because a query evaluates the segment millions of times per line.
+             */
+            public Segment {
+                slopeSs = StaffExtents.slopeSs(xStartSs, xEndSs, yOffsetStartSs, yOffsetEndSs);
+            }
+
             public Segment(
                 double xStartSs, double xEndSs, double yOffsetStartSs, double yOffsetEndSs) {
 
-                this(xStartSs, xEndSs, yOffsetStartSs, yOffsetEndSs,
-                    StaffExtents.slopeSs(xStartSs, xEndSs, yOffsetStartSs, yOffsetEndSs));
+                this(xStartSs, xEndSs, yOffsetStartSs, yOffsetEndSs, 0.0);
             }
 
             boolean isFlat() {
@@ -114,12 +161,7 @@ public class StaffExtents {
 
             /** The offset at {@code localXSs} (relative to the element's left edge), end-clamped. */
             double offsetSs(double localXSs) {
-                if (slopeSs == 0.0) {
-                    return yOffsetStartSs;
-                }
-
-                return yOffsetStartSs
-                    + Math.clamp(localXSs - xStartSs, 0.0, xEndSs - xStartSs) * slopeSs;
+                return valueAt(localXSs, xStartSs, xEndSs, yOffsetStartSs, slopeSs);
             }
         }
 
@@ -151,6 +193,26 @@ public class StaffExtents {
             }
 
             return segments.getLast().yOffsetEndSs();
+        }
+    }
+
+    /**
+     * The two edges an element presents: {@code inner} faces the staff and decides where the element
+     * may sit; {@code outer} faces away and is what the element reserves for whatever stacks outside
+     * it.
+     * <p>
+     * They are independent — the accent has a sloped inner edge and still reserves a flat outer one —
+     * which is why they travel together in one type rather than as two interchangeable arguments.
+     *
+     * @param inner the element's inner edge, from {@link ShapeProfile#innerEdge}
+     * @param outer the element's outer edge, from {@link ShapeProfile#outerEdge}
+     */
+    public record Profiles(Profile inner, Profile outer) {
+
+        /** Both edges flat: any element a neighbour may treat as a rectangle. */
+        public static Profiles flat(double widthSs) {
+            var flat = Profile.flat(widthSs);
+            return new Profiles(flat, flat);
         }
     }
 
@@ -294,21 +356,12 @@ public class StaffExtents {
             if (!building.isFlat()) {
                 var clippedStartSs = Math.max(building.xStartSs(), xStartSs);
                 var clippedEndSs = Math.min(building.xEndSs(), xEndSs);
-                var startYSs = building.heightSs(clippedStartSs);
-                var endYSs = building.heightSs(clippedEndSs);
-                candidateYSs = above ? Math.min(startYSs, endYSs) : Math.max(startYSs, endYSs);
+                candidateYSs = combine(above,
+                    building.heightSs(clippedStartSs), building.heightSs(clippedEndSs));
             }
 
-            if (!hasOverlap) {
-                extremeYSs = candidateYSs;
-                hasOverlap = true;
-            }
-            else if (above) {
-                extremeYSs = Math.min(extremeYSs, candidateYSs);
-            }
-            else {
-                extremeYSs = Math.max(extremeYSs, candidateYSs);
-            }
+            extremeYSs = hasOverlap ? combine(above, extremeYSs, candidateYSs) : candidateYSs;
+            hasOverlap = true;
         }
 
         return extremeYSs;
@@ -388,16 +441,8 @@ public class StaffExtents {
                 var candidateYSs = extremeOverOverlap(
                     above, building, segment, xSs, overlapStartSs, overlapEndSs);
 
-                if (!hasOverlap) {
-                    extremeYSs = candidateYSs;
-                    hasOverlap = true;
-                }
-                else if (above) {
-                    extremeYSs = Math.min(extremeYSs, candidateYSs);
-                }
-                else {
-                    extremeYSs = Math.max(extremeYSs, candidateYSs);
-                }
+                extremeYSs = hasOverlap ? combine(above, extremeYSs, candidateYSs) : candidateYSs;
+                hasOverlap = true;
             }
         }
 

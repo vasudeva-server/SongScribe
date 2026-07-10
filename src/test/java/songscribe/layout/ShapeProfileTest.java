@@ -21,9 +21,12 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.within;
 
 import module java.desktop;
+
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -55,9 +58,31 @@ class ShapeProfileTest extends UnitTest {
     // glyph's topmost point, a little right of its leftmost point, and climbs from there.
     private static final double CAP_END_SS = 0.10;
 
+    // An arbitrary sloped segment, and a slope that contradicts its endpoints.
+    private static final double SEGMENT_SPAN_SS = 2.0;
+    private static final double SEGMENT_RISE_SS = 0.5;
+    private static final double BOGUS_SLOPE_SS = 99.0;
+
+    /**
+     * The profile's offset at {@code localXSs}, interpolated from each segment's endpoints rather
+     * than from its stored {@code slopeSs}, so the slope derivation is checked rather than reused.
+     * <p>
+     * End-clamped, exactly as {@link StaffExtents.Profile#offsetSs} is. Flattening leaves the
+     * polyline's leftmost vertex a hair inside the shape's true bounding box, so the profile does not
+     * quite reach {@code x = 0}. Returning {@code NaN} there instead — as this once did — silently
+     * defeated the assertions: AssertJ orders {@code NaN} above every other double, so
+     * {@code assertThat(NaN).isGreaterThan(anything)} passes.
+     */
     private static double offsetAtSs(StaffExtents.Profile profile, double localXSs) {
-        for (var segment : profile.segments()) {
-            if (localXSs >= segment.xStartSs() && localXSs <= segment.xEndSs()) {
+        var segments = profile.segments();
+        var first = segments.getFirst();
+
+        if (localXSs <= first.xStartSs()) {
+            return first.yOffsetStartSs();
+        }
+
+        for (var segment : segments) {
+            if (localXSs <= segment.xEndSs()) {
                 var spanSs = segment.xEndSs() - segment.xStartSs();
 
                 if (spanSs <= 0.0) {
@@ -70,7 +95,7 @@ class ShapeProfileTest extends UnitTest {
             }
         }
 
-        return Double.NaN;
+        return segments.getLast().yOffsetEndSs();
     }
 
     private static double minOffsetSs(StaffExtents.Profile profile) {
@@ -96,9 +121,11 @@ class ShapeProfileTest extends UnitTest {
     }
 
     @Test
-    void testAccentProfileTouchesItsInnerBoundingEdge() {
-        // The offset is measured from the inner bounding edge, so its minimum is zero by definition.
-        // Flattening leaves the polyline a hair inside the true bound; ShapeProfile renormalizes.
+    void testAccentProfileIsRenormalizedToTouchItsInnerBoundingEdge() {
+        // This guards the renormalization, not the boundary walk: buildProfile subtracts the minimum
+        // offset from every segment, so the minimum comes out zero whatever the outline. Drop that
+        // subtraction and the flattening residue — a hair inside the true bound, far above
+        // ZERO_TOLERANCE — reappears here, nudging an element that ought not to move at all.
         assertThat(minOffsetSs(ShapeProfile.innerEdge(AccentShape.accent(), true)))
             .describedAs("above-staff accent profile must touch its own bounding edge")
             .isCloseTo(0.0, within(ZERO_TOLERANCE));
@@ -106,6 +133,47 @@ class ShapeProfileTest extends UnitTest {
         assertThat(minOffsetSs(ShapeProfile.innerEdge(AccentShape.accent(), false)))
             .describedAs("below-staff accent profile must touch its own bounding edge")
             .isCloseTo(0.0, within(ZERO_TOLERANCE));
+    }
+
+    @Test
+    void testDegenerateShapeIsRejectedRatherThanYieldingAnEmptyProfile() {
+        // A zero-area shape, and one drawn only from vertical strokes, have no edge that can govern
+        // an envelope. Both once produced a Profile with no segments, which threw
+        // NoSuchElementException from deep inside StaffExtents.clearance on the next layout pass.
+        var emptyRect = new Rectangle2D.Double(0.0, 0.0, 0.0, 0.0);
+
+        assertThatIllegalArgumentException()
+            .isThrownBy(() -> ShapeProfile.innerEdge(emptyRect, true))
+            .withMessageContaining("no non-vertical outline edges");
+
+        var verticalStroke = new Path2D.Double();
+        verticalStroke.moveTo(0.0, 0.0);
+        verticalStroke.lineTo(0.0, 1.0);
+
+        assertThatIllegalArgumentException()
+            .isThrownBy(() -> ShapeProfile.outerEdge(verticalStroke, true))
+            .withMessageContaining("no non-vertical outline edges");
+    }
+
+    @Test
+    void testEmptyProfileIsRejected() {
+        // StaffExtents.clearance reads segments.getFirst()/getLast() unguarded; an empty profile must
+        // never reach it.
+        assertThatIllegalArgumentException()
+            .isThrownBy(() -> new StaffExtents.Profile(List.of()))
+            .withMessageContaining("at least one segment");
+    }
+
+    @Test
+    void testSegmentSlopeIsDerivedNotSupplied() {
+        // The canonical constructor takes a slope, so a caller could contradict the endpoints. It
+        // recomputes instead: a segment whose slope disagrees with its own endpoints cannot exist.
+        var lied = new StaffExtents.Profile.Segment(
+            0.0, SEGMENT_SPAN_SS, 0.0, SEGMENT_RISE_SS, BOGUS_SLOPE_SS);
+
+        assertThat(lied.slopeSs())
+            .describedAs("slope must be derived from the endpoints, not taken from the caller")
+            .isCloseTo(SEGMENT_RISE_SS / SEGMENT_SPAN_SS, within(ZERO_TOLERANCE));
     }
 
     @Test

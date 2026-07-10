@@ -99,6 +99,203 @@ class StaffExtentsTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    class Clearance {
+
+        private static final double PADDING_SS = 0.5;
+        private static final double HORIZON_PADDING_SS = 1.0;
+
+        private static final double ELEMENT_X_SS = 10.0;
+        private static final double ELEMENT_WIDTH_SS = 5.0;
+
+        private static final double SUPPORT_ABOVE_Y_SS = -3.0;
+        private static final double SUPPORT_BELOW_Y_SS = 3.0;
+
+        // Further from the staff than SUPPORT_ABOVE_Y_SS, so it is the binding one of the two.
+        private static final double OUTER_SUPPORT_ABOVE_Y_SS = -4.0;
+
+        // Far enough right that even dilated by HORIZON_PADDING_SS it cannot reach the element.
+        private static final double DISTANT_X_SS = 30.0;
+
+        private static final double MIDDLE_LINE_Y_SS = 0.0;
+
+        @Test
+        void testNoReservationAnywhereReportsAbsentSupport() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+
+            var support = extents.clearance(true, ELEMENT_X_SS,
+                StaffExtents.Profile.flat(ELEMENT_WIDTH_SS), PADDING_SS, HORIZON_PADDING_SS);
+
+            assertThat(support.present())
+                .describedAs("nothing is reserved, so only the caller's staff clamp may apply")
+                .isFalse();
+        }
+
+        @Test
+        void testReservationBeyondTheHorizonReportsAbsentSupport() {
+            // A line holds hundreds of reservations. Only those the element's own profile reaches,
+            // dilated by the horizon padding, may move it.
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, DISTANT_X_SS, ELEMENT_WIDTH_SS, SUPPORT_ABOVE_Y_SS);
+
+            var support = extents.clearance(true, ELEMENT_X_SS,
+                StaffExtents.Profile.flat(ELEMENT_WIDTH_SS), PADDING_SS, HORIZON_PADDING_SS);
+
+            assertThat(support.present())
+                .describedAs("a reservation elsewhere on the line is not a support")
+                .isFalse();
+        }
+
+        @Test
+        void testSupportAtTheMiddleLineIsPresentUnlikeNoSupportAtAll() {
+            // yGet reports 0.0 for both cases; only Support.present() tells them apart. Resolving a
+            // script's supports through yGet's 0.0 would silently clamp it to the middle staff line.
+            var reserved = new StaffExtents(LINE_WIDTH_SS);
+            reserved.ySet(true, ELEMENT_X_SS, ELEMENT_WIDTH_SS, MIDDLE_LINE_Y_SS);
+
+            var empty = new StaffExtents(LINE_WIDTH_SS);
+
+            assertThat(reserved.yGet(true, ELEMENT_X_SS, ELEMENT_WIDTH_SS))
+                .describedAs("yGet cannot distinguish these two")
+                .isEqualTo(empty.yGet(true, ELEMENT_X_SS, ELEMENT_WIDTH_SS));
+
+            var flat = StaffExtents.Profile.flat(ELEMENT_WIDTH_SS);
+            var reservedSupport =
+                reserved.clearance(true, ELEMENT_X_SS, flat, PADDING_SS, HORIZON_PADDING_SS);
+
+            assertThat(reservedSupport.present()).isTrue();
+            assertThat(reservedSupport.ySs()).isEqualTo(MIDDLE_LINE_Y_SS - PADDING_SS);
+
+            assertThat(empty.clearance(true, ELEMENT_X_SS, flat, PADDING_SS, HORIZON_PADDING_SS)
+                .present()).isFalse();
+        }
+
+        @Test
+        void testFlatProfileOverFlatSupportReducesToYGetPlusPadding() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, ELEMENT_X_SS, ELEMENT_WIDTH_SS, SUPPORT_ABOVE_Y_SS);
+
+            var support = extents.clearance(true, ELEMENT_X_SS,
+                StaffExtents.Profile.flat(ELEMENT_WIDTH_SS), PADDING_SS, HORIZON_PADDING_SS);
+
+            assertThat(support.present()).isTrue();
+            assertThat(support.ySs())
+                .describedAs("above the staff the element's inner edge sits padding above the support")
+                .isEqualTo(SUPPORT_ABOVE_Y_SS - PADDING_SS);
+        }
+
+        @Test
+        void testFlatProfileBelowTheStaffMirrorsTheAboveCase() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(false, ELEMENT_X_SS, ELEMENT_WIDTH_SS, SUPPORT_BELOW_Y_SS);
+
+            var support = extents.clearance(false, ELEMENT_X_SS,
+                StaffExtents.Profile.flat(ELEMENT_WIDTH_SS), PADDING_SS, HORIZON_PADDING_SS);
+
+            assertThat(support.present()).isTrue();
+            assertThat(support.ySs()).isEqualTo(SUPPORT_BELOW_Y_SS + PADDING_SS);
+        }
+
+        @Test
+        void testTheMostOutwardOfSeveralOverlappingSupportsBinds() {
+            // The fold across buildings, which nothing else exercises: two supports under one
+            // profile, and the element must clear the further one.
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, ELEMENT_X_SS, ELEMENT_WIDTH_SS, SUPPORT_ABOVE_Y_SS);
+            extents.ySet(true, ELEMENT_X_SS, ELEMENT_WIDTH_SS, OUTER_SUPPORT_ABOVE_Y_SS);
+
+            var support = extents.clearance(true, ELEMENT_X_SS,
+                StaffExtents.Profile.flat(ELEMENT_WIDTH_SS), PADDING_SS, HORIZON_PADDING_SS);
+
+            assertThat(support.ySs())
+                .describedAs("clearing the nearer support alone would leave the element inside the further one")
+                .isEqualTo(OUTER_SUPPORT_ABOVE_Y_SS - PADDING_SS);
+        }
+
+        // ---------------------------------------------------------------------
+        // A sloped support under a sloped profile: the case only clearance handles, and the only one
+        // where the demand curve kinks away from the ends of the overlap.
+        //
+        // The element sits at WEDGE_X_SS with an inner edge sloping outward at +1 (offset 0 at its
+        // left end, WEDGE_OUTER_OFFSET_SS at its right). The support is a chord falling at -2 per ss.
+        // Dilated by HORIZON_PADDING_SS the chord holds its endpoint height flat on either side, so
+        // demand(x) = height(x) + offset(x) runs:
+        //
+        //   [19, 20]  flat -2, offset rising  ->  demand rises  -2 .. -1
+        //   [20, 24]  height -2 -> -10, offset rising -> demand falls  -1 .. -5
+        //   [24, 25]  flat -10, offset rising ->  demand rises  -5 .. -4
+        //
+        // The minimum is -5, at the chord's own right end. Evaluating only the overlap's two ends
+        // would find min(-2, -4) = -4 and seat the element a full staff space too close.
+        private static final double WEDGE_X_SS = 19.0;
+        private static final double WEDGE_WIDTH_SS = 6.0;
+        private static final double WEDGE_OUTER_OFFSET_SS = 6.0;
+
+        private static final double CHORD_START_X_SS = 20.0;
+        private static final double CHORD_END_X_SS = 24.0;
+        private static final double CHORD_START_Y_SS = -2.0;
+        private static final double CHORD_END_Y_SS = -10.0;
+
+        private static final double KINK_DEMAND_Y_SS = -5.0;
+        private static final double OVERLAP_END_DEMAND_Y_SS = -4.0;
+
+        @Test
+        void testSlopedSupportBindsAtItsOwnEndpointInsideTheOverlap() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySetSloped(true, CHORD_START_X_SS, CHORD_END_X_SS,
+                CHORD_START_Y_SS, CHORD_END_Y_SS);
+
+            var wedge = new StaffExtents.Profile(List.of(new StaffExtents.Profile.Segment(
+                0.0, WEDGE_WIDTH_SS, 0.0, WEDGE_OUTER_OFFSET_SS)));
+
+            var support = extents.clearance(true, WEDGE_X_SS, wedge, PADDING_SS, HORIZON_PADDING_SS);
+
+            assertThat(support.present()).isTrue();
+            assertThat(support.ySs())
+                .describedAs("the binding x is the chord's right end, not either end of the overlap")
+                .isEqualTo(KINK_DEMAND_Y_SS - PADDING_SS);
+
+            assertThat(support.ySs())
+                .describedAs("dropping the chord's endpoints as breakpoints would seat it here")
+                .isNotEqualTo(OVERLAP_END_DEMAND_Y_SS - PADDING_SS);
+        }
+
+        // ---------------------------------------------------------------------
+        // Horizon padding dilates the support, never the element's own profile (skyline.cc pads
+        // `dim`). A flat support lying right of the profile's zero-offset end, close enough for the
+        // horizon to reach:
+        //
+        //   dilated support  -> reaches x = 21, where the profile's offset is only 2  -> demand -1
+        //   widened profile  -> support still starts at x = 22, offset there is 3     -> demand  0
+        //
+        // Padding both would double the padding; padding the profile instead lets the element slip a
+        // full staff space closer than LilyPond puts it.
+        private static final double NEAR_SUPPORT_START_X_SS = 22.0;
+        private static final double NEAR_SUPPORT_WIDTH_SS = 1.0;
+        private static final double DILATED_SUPPORT_DEMAND_Y_SS = -1.0;
+        private static final double WIDENED_PROFILE_DEMAND_Y_SS = 0.0;
+
+        @Test
+        void testHorizonPaddingDilatesTheSupportNotTheProfile() {
+            var extents = new StaffExtents(LINE_WIDTH_SS);
+            extents.ySet(true, NEAR_SUPPORT_START_X_SS, NEAR_SUPPORT_WIDTH_SS, SUPPORT_ABOVE_Y_SS);
+
+            var wedge = new StaffExtents.Profile(List.of(new StaffExtents.Profile.Segment(
+                0.0, WEDGE_WIDTH_SS, 0.0, WEDGE_OUTER_OFFSET_SS)));
+
+            var support = extents.clearance(true, WEDGE_X_SS, wedge, PADDING_SS, HORIZON_PADDING_SS);
+
+            assertThat(support.ySs())
+                .describedAs("the dilated support reaches where the wedge's offset is smaller")
+                .isEqualTo(DILATED_SUPPORT_DEMAND_Y_SS - PADDING_SS);
+
+            assertThat(support.ySs())
+                .describedAs("widening the profile instead would seat the element here")
+                .isNotEqualTo(WIDENED_PROFILE_DEMAND_Y_SS - PADDING_SS);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
     class CopyTopFrom {
 
         @Test

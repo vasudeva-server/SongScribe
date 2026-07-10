@@ -105,39 +105,15 @@ class AccentOverStaccatoTest extends UnitTest {
             .ySs();
     }
 
-    /** The slope of the accent's inner edge where the dot's support meets it — one straight segment. */
-    private static double accentArmSlopeSs() {
+    /** Where the dilated dot first meets the accent's arm, measured from the wedge's left edge. */
+    private static double supportWindowStartSs() {
         var insetSs = (ACCENT_WIDTH_SS - DOT_WIDTH_SS) / 2.0;
-        var windowStartSs = insetSs - HORIZON_PADDING_SS;
-
-        for (var segment : ACCENT_INNER_EDGE.segments()) {
-            if (windowStartSs >= segment.xStartSs() && windowStartSs <= segment.xEndSs()) {
-                return segment.slopeSs();
-            }
-        }
-
-        throw new AssertionError("the accent's inner edge does not span the dot's support window");
+        return insetSs - HORIZON_PADDING_SS;
     }
 
-    /**
-     * The closed form of the gain, derived from LilyPond's placement rule rather than measured from
-     * SongScribe's output.
-     * <p>
-     * {@code Skyline::padded} (skyline.cc) dilates every building of the support by the horizon
-     * padding, so the accent's straight arm — slope {@code m} — descends onto the dot's dilated
-     * circle. The binding x is where the circle's own slope reaches {@code m}, at
-     * {@code v = r(1 − m/√(1+m²))} from its apex; there the circle has dropped
-     * {@code r(1 − 1/√(1+m²))} and the arm has climbed {@code m·v}. The two sum to a gain
-     * independent of both the horizon padding and the dot's position:
-     * <pre>
-     *   gain = r · (1 + m − √(1 + m²))
-     * </pre>
-     */
+    /** The closed form of the gain. Derived, and explained, in {@link AccentDotGeometry}. */
     private static double closedFormGainSs() {
-        var radiusSs = DOT_WIDTH_SS / 2.0;
-        var slopeSs = accentArmSlopeSs();
-
-        return radiusSs * (1.0 + slopeSs - Math.hypot(1.0, slopeSs));
+        return AccentDotGeometry.roundDotGainSs(true, supportWindowStartSs(), DOT_WIDTH_SS);
     }
 
     @Test

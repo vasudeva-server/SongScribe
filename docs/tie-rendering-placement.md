@@ -1,4 +1,4 @@
-# Tie Placement Algorithm (SongScribe, amended from LilyPond)
+# Tie Rendering and Placement Algorithm (largely ported from LilyPond)
 
 This document captures the tie-placement algorithm **as implemented in SongScribe**, including
 the deliberate deviations from LilyPond. It is the source of truth for
@@ -96,7 +96,9 @@ if dotRowCoincides:                         # augmentation-dot coincidence (§5.
     return STAFF_POSITION_OFFSET_SS + TIE_DOT_ROW_NUDGE_SS      # 0.5 + 0.25 = 0.75
 
 if notePositionSp is a line position (even):                    # note ON a line (§5.1)
-    return STAFF_LINE_TIE_CLEARANCE_GAP_SS                       # 0.225
+    if notePositionSp is an OUTER staff line (top or bottom, sp ±4):
+        return TIE_OUTER_STAFF_LINE_SEAT_SS                      # 0.75 (centred outside the staff)
+    return STAFF_LINE_TIE_CLEARANCE_GAP_SS                       # 0.225 (inner line)
 
 # note in a SPACE (§5.2)
 edgeRowSp = notePositionSp + arcSign
@@ -107,10 +109,18 @@ return STAFF_POSITION_OFFSET_SS                                 # 0.5 (head-box 
 
 ### 5.1 Note on a line
 
-The endpoints seat `STAFF_LINE_TIE_CLEARANCE_GAP_SS` (0.225) into the adjacent space, clearing the
-note's **own** line. The **far** line bounding that space is cleared separately by the arc-height
-adjustment (§7). Seat = 0.225 < 0.5, so the endpoints remain within the head box → **edge attach**
-(§6).
+Two cases, split by whether the note sits on an **outer** staff line (the top or bottom line, sp
+±4) or an **inner** one:
+
+- **Inner line.** The endpoints seat `STAFF_LINE_TIE_CLEARANCE_GAP_SS` (0.225) into the adjacent
+  space, clearing the note's **own** line. The **far** line bounding that space is cleared
+  separately by the arc-height adjustment (§7). Seat = 0.225 < 0.5, so the endpoints remain within
+  the head box → **edge attach** (§6).
+- **Outer line.** The endpoints seat `TIE_OUTER_STAFF_LINE_SEAT_SS` (0.75) — a full 1.5
+  staff-positions out, into the open space beyond the staff — reproducing LilyPond's measured
+  placement for the top/bottom line (F5, E4). Seat = 0.75 > 0.5, so the endpoints drop below the
+  head box → **centre attach** (§6), the tie sitting centred outside the note-head rather than
+  tucked into the adjacent space (§9).
 
 ### 5.2 Note in a space
 
@@ -225,32 +235,29 @@ to blunt the cusps where the two curves meet.
 
 ---
 
-## 9. Deliberate deviations from LilyPond (the staff-boundary bug)
+## 9. Staff-boundary handling vs LilyPond
 
-LilyPond's search mishandles ties at the outermost staff line, because two of its guards interact
-badly there:
+At the outermost staff line SongScribe **reproduces** LilyPond for the on-line note and **overrides**
+it for the adjacent space note.
 
-- the head-gap nudge is guarded by `!on_line(pos)`, so it is **disabled** exactly when the seat
-  lands on a line;
-- the fall-back line-clearance test uses `staff_span.widen(-1)`, which **excludes** the outermost
-  line from the "within staff" region.
+**Outer line (E4, F5 — reproduced).** LilyPond seats a tie whose note sits on the top or bottom line
+a full 1.5 staff-positions out, so the endpoints land in the open space beyond the staff and attach
+centred outside the note-head (measured: ±1.5 sp = 0.75 ss). SongScribe matches this with the
+outer-line seat (§5.1): `TIE_OUTER_STAFF_LINE_SEAT_SS` = 0.75, seat > 0.5 → centre attach. (Earlier
+revisions treated LilyPond's centring here as a bug and forced edge attach; the measured ground
+truth showed it is correct, and the code was brought into line.)
 
-The visible symptoms, both wrong:
-
-- **E4** (on the bottom line): LilyPond pushes it deep to centre attach, unnecessarily — the plain
-  edge seat already clears the line.
-- **F4** (space just above the bottom line): LilyPond leaves the endpoints **on** the bottom line —
-  it never pushes them off.
-
-SongScribe implements the **intent** (clear the line) instead of copying the coincidence:
+**Space just inside the outer line (F4 — overridden).** LilyPond's fall-back line-clearance test
+uses `staff_span.widen(-1)`, which **excludes** the outermost line from the "within staff" region,
+so it leaves the endpoints of a tie in the space just above the bottom line **on** that line — a
+genuine edge-case bug. SongScribe implements the **intent** (clear the line): the edge row is the
+bottom line (a real staff line), so the space-note push (§5.2) lifts the seat to 0.725, dropping the
+endpoints 0.225 ss clear of the line at centre attach.
 
 | note | position | SongScribe seat | attach | vs LilyPond |
 |----|----|----|----|----|
-| E4 | bottom line (sp +4) | 0.225 (on-line rule) | edge | **deviates** — LilyPond centres it |
+| E4 | bottom line (sp +4) | 0.75 (outer-line seat) | centre | **reproduces** — endpoints centred outside the staff |
 | F4 | space above bottom line (sp +3) | 0.725 (pushed, edge row is the bottom line) | centre | **deviates** — LilyPond leaves it on the line |
-
-Both end with endpoints 0.225 ss clear of the bottom line — E4 via the on-line rule, F4 via the
-space-note push — differing only in edge vs centre attach.
 
 The in-staff cases (notes on inner lines or in inner spaces) are also computed from the seat rule
 above rather than LilyPond's `center_tie_vertically`; the fixed 0.225 clearance reproduces
@@ -269,7 +276,8 @@ All in staff spaces unless noted. Defined in `LayoutEngine` unless another class
 | `Staff.STAFF_POSITION_OFFSET_SS` | 0.5 | half a staff space; head-box half-height and the edge seat |
 | `Staff.STAFF_HALF_SS` | 2.0 | half the staff height; outermost staff line offset |
 | `NOTE_HEAD_GAP_SS` | 0.2 | gap pulling each endpoint toward the span centre (LilyPond note-head-gap) |
-| `STAFF_LINE_TIE_CLEARANCE_GAP_SS` | 0.225 | on-line seat, and the outward push for a space note whose edge row is a line |
+| `STAFF_LINE_TIE_CLEARANCE_GAP_SS` | 0.225 | inner-line seat, and the outward push for a space note whose edge row is a line |
+| `TIE_OUTER_STAFF_LINE_SEAT_SS` | 0.75 | seat for a note on an outer (top/bottom) staff line — endpoints land outside the staff, centred (LilyPond's measured 1.5-sp placement) |
 | `TIE_DOT_ROW_NUDGE_SS` | 0.25 | extra lift when the seat row coincides with an augmentation dot |
 | `SMuFLConstants.NOTE_HEAD_WIDTH_SS` | 1.18 (Bravura `noteheadBlack` bBox width) | note-head glyph width |
 | `TIE_HEIGHT_LIMIT_SS` | 1.1 | asymptotic max arc height (`h_inf`) |
@@ -294,7 +302,7 @@ through it. SongScribe coordinates (sp downward). Note centre Y = `sp × 0.5`; e
 | note | sp | line/space | arc | seat | attach | endpoint Y | sits in / clears |
 |----|----|----|----|----|----|----|----|
 | D4 | +5 | space (below staff) | down (+1) | 0.5 (edge) | edge | +3.0 | open space below the staff |
-| E4 | +4 | bottom line | down (+1) | 0.225 (on-line) | edge | +2.225 | 0.225 below the bottom line |
+| E4 | +4 | bottom line | down (+1) | 0.75 (outer line) | centre | +2.75 | 0.75 below the bottom line, in the open space |
 | F4 | +3 | space | down (+1) | 0.725 (pushed) | centre | +2.225 | 0.225 below the bottom line |
 | G4 | +2 | inner line | down (+1) | 0.225 (on-line) | edge | +1.225 | sp +3 space, clears the bottom line |
 | A4 | +1 | space | down (+1) | 0.725 (pushed) | centre | +1.225 | 0.225 below the sp +2 line |

@@ -152,9 +152,10 @@ public class NoteAttachedStacker {
         ShapeProfile.outerEdge(BravuraFont.glyphOutline(SMuFLGlyph.ARTIC_STACCATO_BELOW), false,
             STACCATO_OUTLINE_FLATNESS_SS);
 
-    // Number of chords the tie arc is reserved as. Each chord joins two points that lie exactly on
-    // the curve, so the reservation departs from the arc only by the chord's sagitta — never by the
-    // arc's full rise across the segment, as flat steps did.
+    // Fewest chords the tie arc is reserved as; a wide arc gets one per staff space instead. Each
+    // chord joins two points that lie exactly on the curve, so the reservation departs from the arc
+    // only by the chord's sagitta — never by the arc's full rise across the segment, as flat steps
+    // did.
     //
     // A chord lies *inside* a convex arc, so this under-reserves rather than over-reserves. The
     // sagitta scales as 1/n^2: at 8 chords it is ~0.009 ss, at 16 ~0.002 ss. 16 is cheap (a chord
@@ -588,13 +589,14 @@ public class NoteAttachedStacker {
 
         var widthSs = accent.getContentWidthSs();
         var xSs = articulationFootprintXSs(note, columnXSs, widthSs);
-        var profile = direction.isUp() ? ACCENT_PROFILE_ABOVE : ACCENT_PROFILE_BELOW;
+        var innerEdge = direction.isUp() ? ACCENT_PROFILE_ABOVE : ACCENT_PROFILE_BELOW;
 
         // The accent reserves its flat box, not its wedge: letting a dynamic or hairpin nestle under
         // its arm is a separate change with a far wider blast radius (#528 §6).
+        var profiles = new StaffExtents.Profiles(innerEdge, StaffExtents.Profile.flat(widthSs));
+
         return StackingUtils.placeAndReserveClamped(direction, extents, accent, xSs,
-            widthSs, accent.getContentHeightSs(), profile,
-            StaffExtents.Profile.flat(widthSs),
+            widthSs, accent.getContentHeightSs(), profiles,
             ACCENT_PADDING_SS, SCRIPT_STAFF_PADDING_SS,
             StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
     }
@@ -616,17 +618,12 @@ public class NoteAttachedStacker {
      * which is exactly where {@code ArticulationRenderer} draws it. The note's column x is not the
      * footprint: an accent is wider than a notehead, so anchoring its box at the column x pushes the
      * box off the glyph by half the width difference and makes it collide with whatever sits to the
-     * note's right — a tie arc, most visibly. Kept in step with
-     * {@code StructuralStacker.stackTextDynamics}, which centres the dynamic the same way.
+     * note's right — a tie arc, most visibly.
      */
     private static double articulationFootprintXSs(
         StaffElement note, double columnXSs, double widthSs) {
 
-        var type = note.getType();
-        var noteheadCenterXSs = type.getElementCenterXSs()
-            + NoteGeometry.getNoteheadXOffsetSs(type, note.getDirection());
-
-        return columnXSs + noteheadCenterXSs - widthSs / 2.0;
+        return columnXSs + NoteGeometry.getNoteheadCenterXSs(note) - widthSs / 2.0;
     }
 
     /**
@@ -678,8 +675,7 @@ public class NoteAttachedStacker {
 
         StackingUtils.placeAndReserveClamped(Direction.UP, extents, fermata, xSs,
             widthSs, fermata.getContentHeightSs(),
-            StaffExtents.Profile.flat(widthSs),
-            StaffExtents.Profile.flat(widthSs),
+            StaffExtents.Profiles.flat(widthSs),
             FERMATA_PADDING_SS, SCRIPT_STAFF_PADDING_SS,
             StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
     }

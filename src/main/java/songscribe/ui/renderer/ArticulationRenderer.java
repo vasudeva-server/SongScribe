@@ -126,9 +126,22 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
     }
 
     /**
+     * The X at which to draw a glyph of the given ink bounds so that it sits centred within its
+     * layout box, which the stacker already centred on the notehead.
+     * <p>
+     * The box is sized from the above-staff glyph's bbox, so centring rather than drawing flush at
+     * the box's left edge is what keeps a glyph whose own bbox differs — a future below-staff
+     * variant, or a wedge — on the note's axis.
+     */
+    private static double centeredInLayoutBoxXSs(
+        LayoutResult.DecorationLayout layout, double glyphBBoxLeftSs, double glyphWidthSs) {
+
+        return layout.xSs() + (layout.widthSs() - glyphWidthSs) / 2.0 - glyphBBoxLeftSs;
+    }
+
+    /**
      * Draws a single articulation glyph centered within its layout box, which the stacker already
-     * centred on the notehead. The above and below staccato glyphs differ slightly in width, so the
-     * glyph is centred within the box rather than drawn flush at its left edge.
+     * centred on the notehead.
      */
     private static void drawArticulationGlyph(
         Graphics2D g2,
@@ -137,7 +150,7 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
         SMuFLGlyph glyph, double bboxLeftSs, double widthSs) {
 
         var componentTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
-        var x = layout.xSs() + (layout.widthSs() - widthSs) / 2.0 - bboxLeftSs;
+        var x = centeredInLayoutBoxXSs(layout, bboxLeftSs, widthSs);
         var y = RenderingUtils.glyphOriginYFromLayoutTop(componentTopYSs, glyph);
         RenderingUtils.drawBravuraGlyph(g2, glyph, x, y, true);
     }
@@ -156,7 +169,7 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
         var bounds = wedge.getBounds2D();
 
         var componentTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
-        var x = layout.xSs() + (layout.widthSs() - bounds.getWidth()) / 2.0 - bounds.getMinX();
+        var x = centeredInLayoutBoxXSs(layout, bounds.getMinX(), bounds.getWidth());
         var y = componentTopYSs - bounds.getMinY();
 
         g2.fill(AffineTransform.getTranslateInstance(x, y).createTransformedShape(wedge));

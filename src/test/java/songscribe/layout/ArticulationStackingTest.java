@@ -50,10 +50,11 @@ class ArticulationStackingTest extends UnitTest {
     private static final double TOLERANCE = 0.001;
     private static final double NOTE_X_SS = 10.0;
 
-    // roundDotGainSs models the dot as the true circle Bravura draws, but the dot is *reserved* as
-    // four chords of that circle. Each chord lies inside the arc, so the accent seats a little closer
-    // than the ideal — by at most the flattening tolerance the reservation declares, and never in the
-    // other direction. That budget, not a fitted number, is the tolerance here: 0.02 ss against a
+    // AccentDotGeometry.roundDotGainSs models the dot as the true circle Bravura draws, but the dot
+    // is *reserved* as four chords of that circle. Each chord lies inside the arc, so the accent seats
+    // a little closer than the ideal — by at most the flattening tolerance the reservation declares,
+    // and never in the other direction. That budget, not a fitted number, is the tolerance here:
+    // 0.02 ss against a
     // 0.044 ss gain, so a dot reserved flat (gain 0) still fails these assertions outright.
     private static final double ROUND_DOT_CHORD_TOLERANCE_SS =
         NoteAttachedStacker.STACCATO_OUTLINE_FLATNESS_SS;
@@ -102,13 +103,15 @@ class ArticulationStackingTest extends UnitTest {
      * The x an articulation's {@link LayoutResult.DecorationLayout} carries: the glyph's left edge,
      * centred on the notehead — where {@code ArticulationRenderer} draws it, and so where it
      * collides. Not the note's column x; an accent is wider than a notehead.
+     * <p>
+     * This asserts the <em>wiring</em> — that the stacker centres the box on the notehead rather than
+     * anchoring it at the column x, the bug this guards against. It cannot catch an error inside
+     * {@link NoteGeometry#getNoteheadCenterXSs} itself, which is what {@code NoteGeometryTest} is
+     * for; recomputing that centre here would only have hidden such an error behind the same call
+     * chain the production code uses.
      */
     private static double centeredArticulationXSs(StaffElement note, double widthSs) {
-        var type = note.getType();
-        var noteheadCenterXSs = type.getElementCenterXSs()
-            + NoteGeometry.getNoteheadXOffsetSs(type, note.getDirection());
-
-        return NOTE_X_SS + noteheadCenterXSs - widthSs / 2.0;
+        return NOTE_X_SS + NoteGeometry.getNoteheadCenterXSs(note) - widthSs / 2.0;
     }
 
     private static StaffElement createNote(int staffPosition, boolean upper, ArticulationType... types) {
@@ -165,7 +168,7 @@ class ArticulationStackingTest extends UnitTest {
      *   <li>the accent's edge has already sloped away from its own box by the time the dot appears
      *       beneath it, so the accent seats that much closer than its box would allow;</li>
      *   <li>the dot is a <em>circle</em>, not a box, and its reserved outline falls away from its box
-     *       top — so the accent seats closer still ({@link #roundDotGainSs}).</li>
+     *       top — so the accent seats closer still ({@link AccentDotGeometry#roundDotGainSs}).</li>
      * </ol>
      * With a flat dot only (1) applies; the difference is what
      * {@code AccentOverStaccatoTest} pins down.
@@ -182,48 +185,8 @@ class ArticulationStackingTest extends UnitTest {
         var wedgeOffsetSs =
             ShapeProfile.innerEdge(AccentShape.accent(), above).offsetSs(windowStartSs);
 
-        return wedgeOffsetSs + roundDotGainSs(above, windowStartSs, staccatoWidthSs);
-    }
-
-    /**
-     * How much further the accent descends because the staccato reserves its round outline instead of
-     * the flat top of its box.
-     * <p>
-     * Derived, not recorded. Above the staff, the accent's edge must clear the dot's dilated support
-     * everywhere: LilyPond's {@code Skyline::padded} extends every building of the support by the
-     * horizon padding, so the support the accent meets is the dot's outline dilated by
-     * {@code h}. The accent's edge is a straight arm of slope {@code m} through this region, so the
-     * binding x is where the dilated circle's own slope reaches {@code m}. Solving
-     * {@code T'(v) = m} on a circle of radius {@code r} puts the contact at
-     * {@code v = r(1 - m/√(1+m²))}, where the circle has dropped {@code r(1 - 1/√(1+m²))} below its
-     * apex, and the arm has meanwhile climbed {@code m·v}. Summing the two and cancelling gives a
-     * result that depends on neither {@code h} nor the dot's position:
-     * <pre>
-     *   gain = r · (1 + m − √(1 + m²))
-     * </pre>
-     * The same formula, evaluated with Feta's dot ({@code r = 0.2}) and its steeper sforzato arm
-     * ({@code m ≈ 0.30}), reproduces the 0.0511 ss that LilyPond 2.26 itself moves an accent when the
-     * dot's stencil is boxified — which is how this was checked against the engine rather than
-     * against SongScribe's own output.
-     */
-    private static double roundDotGainSs(
-        boolean above, double windowStartSs, double staccatoWidthSs) {
-
-        var radiusSs = staccatoWidthSs / 2.0;
-        var armSlopeSs = accentArmSlopeAtSs(above, windowStartSs);
-
-        return radiusSs * (1.0 + armSlopeSs - Math.hypot(1.0, armSlopeSs));
-    }
-
-    /** The slope of the accent's inner edge at {@code xSs} — one straight path segment of the wedge. */
-    private static double accentArmSlopeAtSs(boolean above, double xSs) {
-        for (var segment : ShapeProfile.innerEdge(AccentShape.accent(), above).segments()) {
-            if (xSs >= segment.xStartSs() && xSs <= segment.xEndSs()) {
-                return segment.slopeSs();
-            }
-        }
-
-        throw new AssertionError("the accent's inner edge does not span x = " + xSs);
+        return wedgeOffsetSs
+            + AccentDotGeometry.roundDotGainSs(above, windowStartSs, staccatoWidthSs);
     }
 
     /**

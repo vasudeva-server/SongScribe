@@ -24,6 +24,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeSet;
 
 import org.jspecify.annotations.Nullable;
 
@@ -120,6 +121,14 @@ public final class ShapeProfile {
      */
     private static StaffExtents.Profile boundary(Shape shape, boolean lower, double flatnessSs) {
         var edges = flattenToEdges(shape, flatnessSs);
+
+        // A shape of zero width, or one drawn only from vertical strokes, has no edge that can
+        // govern an envelope over an interval, so it has no boundary to speak of. Fail here rather
+        // than hand StaffExtents.Profile an empty segment list.
+        if (edges.isEmpty()) {
+            throw new IllegalArgumentException("shape has no non-vertical outline edges");
+        }
+
         var bounds = shape.getBounds2D();
         var breakXs = distinctSortedXs(edges);
         var runs = new ArrayList<Run>();
@@ -238,25 +247,20 @@ public final class ShapeProfile {
         return governing;
     }
 
+    /**
+     * The edges' endpoint x-coordinates, sorted and deduplicated. Adjacent edges of a path share a
+     * vertex exactly — the same {@code double}, not two independently rounded ones — so equality is
+     * the right dedup test here.
+     */
     private static List<Double> distinctSortedXs(List<Edge> edges) {
-        var xs = new ArrayList<Double>();
+        var xs = new TreeSet<Double>();
 
         for (var edge : edges) {
             xs.add(edge.x0Ss());
             xs.add(edge.x1Ss());
         }
 
-        xs.sort(null);
-
-        var distinct = new ArrayList<Double>();
-
-        for (var xSs : xs) {
-            if (distinct.isEmpty() || xSs > distinct.getLast()) {
-                distinct.add(xSs);
-            }
-        }
-
-        return distinct;
+        return List.copyOf(xs);
     }
 
     /**
