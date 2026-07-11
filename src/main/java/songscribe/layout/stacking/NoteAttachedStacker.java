@@ -71,7 +71,16 @@ public class NoteAttachedStacker {
     /**
      * Padding a fermata keeps from the neighbor it stacks against.
      */
-    public static final double FERMATA_PADDING_SS = 0.40;  // LilyPond script.scm fermata
+    public static final double FERMATA_PADDING_SS = 0.466;  // LilyPond script.scm fermata
+
+    // The fermata looks no further than its own bbox when it clears what lies beneath it. A tie
+    // arcs upward toward its center, so under the fermata's footprint the tie is highest at the
+    // fermata's inner bbox corner (the edge toward the arc's center). Sampling with no horizon
+    // padding makes the placement take the tie's Y at exactly that corner — the ray traced straight
+    // down from the inner bottom corner of the fermata's box — and seat the fermata FERMATA_PADDING_SS
+    // above it. A non-zero horizon would sample SCRIPT_HORIZON_PADDING_SS further up the rising arc
+    // and over-clear it.
+    private static final double FERMATA_HORIZON_PADDING_SS = 0.0;
 
     /**
      * Padding the trill keeps from the first note of its range, where it seats as a script.
@@ -287,7 +296,7 @@ public class NoteAttachedStacker {
         stackAccentAboveExtents(accentArticulation, extents, note, xSs, direction, builder);
 
         // Tier 2: Fermata
-        stackFermataAt(note.findAttachment(FermataAttachment.class), extents, xSs, builder);
+        stackFermataAt(note.findAttachment(FermataAttachment.class), extents, note, xSs, builder);
 
         return builder.build();
     }
@@ -577,7 +586,7 @@ public class NoteAttachedStacker {
 
         return stackStaccato(direction, extents, staccato, xSs,
             widthSs, staccato.getContentHeightSs(), reserveProfile, paddingSs,
-            SCRIPT_STAFF_PADDING_SS, StackingUtils.SCRIPT_HORIZON_PADDING_SS,
+            scriptStaffPaddingSs(paddingSs), StackingUtils.SCRIPT_HORIZON_PADDING_SS,
             staffPosition, builder);
     }
 
@@ -612,7 +621,7 @@ public class NoteAttachedStacker {
 
         return StackingUtils.placeAndReserveClamped(direction, extents, accent, xSs,
             widthSs, accent.getContentHeightSs(), profiles,
-            ACCENT_PADDING_SS, SCRIPT_STAFF_PADDING_SS,
+            ACCENT_PADDING_SS, scriptStaffPaddingSs(ACCENT_PADDING_SS),
             StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
     }
 
@@ -642,6 +651,17 @@ public class NoteAttachedStacker {
     }
 
     /**
+     * The staff-padding a script clamps against the staff line by: the larger of its own
+     * neighbor padding and {@link #SCRIPT_STAFF_PADDING_SS}. A script keeps its own padding from any
+     * neighbor below it, and the staff line is no exception — so it never seats closer to the staff
+     * than it would to a tie or notehead. {@code SCRIPT_STAFF_PADDING_SS} is only a floor, binding
+     * for the scripts whose own padding is smaller than it (the staccato and accent).
+     */
+    private static double scriptStaffPaddingSs(double neighborPaddingSs) {
+        return Math.max(neighborPaddingSs, SCRIPT_STAFF_PADDING_SS);
+    }
+
+    /**
      * Returns the note's staccato articulation, or {@code null} if it has none.
      */
     private static @Nullable Articulation findStaccato(StaffElement note) {
@@ -668,18 +688,28 @@ public class NoteAttachedStacker {
         var note = column.getElement();
 
         stackFermataAt(note.findAttachment(FermataAttachment.class), noteAttachedExtents,
-            column.getXSs(), builder);
+            note, column.getXSs(), builder);
     }
 
     /**
      * Places the fermata (if present) above the staff via {@link
      * StackingUtils#placeAndReserveClamped}. Shared by the full pipeline's fermata pass and the
      * no-tie preview so the two agree on fermata placement.
+     * <p>
+     * The collision footprint is centred on the notehead, exactly where {@code FermataRenderer}
+     * draws the glyph — not anchored at the column x. Anchoring at the column x offsets the box
+     * from the glyph by half the difference between the fermata's width and the notehead's, so it
+     * clears the tie at the wrong x and the drawn glyph's inner bottom corner ends up nearer the
+     * tie than its padding. This mirrors {@link #articulationFootprintXSs}.
+     * <p>
+     * The staff clamp goes through {@link #scriptStaffPaddingSs}, so the fermata keeps its full
+     * padding from the top staff line just as it does from a tie or notehead.
      */
     private static void stackFermataAt(
         @Nullable FermataAttachment fermata,
         StaffExtents extents,
-        double xSs,
+        StaffElement note,
+        double columnXSs,
         LayoutResult.Builder builder) {
 
         if (fermata == null) {
@@ -687,12 +717,13 @@ public class NoteAttachedStacker {
         }
 
         var widthSs = fermata.getContentWidthSs();
+        var xSs = articulationFootprintXSs(note, columnXSs, widthSs);
 
         StackingUtils.placeAndReserveClamped(Direction.UP, extents, fermata, xSs,
             widthSs, fermata.getContentHeightSs(),
             StaffExtents.Profiles.flat(widthSs),
-            FERMATA_PADDING_SS, SCRIPT_STAFF_PADDING_SS,
-            StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
+            FERMATA_PADDING_SS, scriptStaffPaddingSs(FERMATA_PADDING_SS),
+            FERMATA_HORIZON_PADDING_SS, builder);
     }
 
     /**
@@ -764,10 +795,13 @@ public class NoteAttachedStacker {
             endIndex = anchorIndex;
         }
 
-        // Start from the staff clamp (the trill never seats closer to the staff than its
-        // staff-padding). Each note then pulls the inner edge further out — above, more outward is a
-        // smaller Y — by its own padding past the real reservations under its footprint.
-        var innerEdgeYSs = StackingUtils.STAFF_TOP_Y_SS - SCRIPT_STAFF_PADDING_SS;
+        // Start from the staff clamp. With no support the trill is a lone script at its anchor, so
+        // it keeps its own script padding from the staff line — never seating closer to the staff
+        // than to a tie or notehead (scriptStaffPaddingSs). Each note then pulls the inner edge
+        // further out — above, more outward is a smaller Y — by its own padding past the real
+        // reservations under its footprint.
+        var innerEdgeYSs =
+            StackingUtils.STAFF_TOP_INK_Y_SS - scriptStaffPaddingSs(TRILL_SCRIPT_PADDING_SS);
 
         for (var index = anchorIndex; index <= endIndex; index++) {
             var note = line.getElement(index);

@@ -36,6 +36,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Tie;
 import songscribe.engraving.Staff;
+import songscribe.layout.stacking.StackingUtils;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.smufl.SMuFLMetadata;
@@ -237,16 +238,12 @@ class TiedScriptStackingTest extends UnitTest {
         // full space.
         private static final double CENTRE_ATTACH_STACCATO_PUSH_SS = 1.0;
 
-        // Staff position of the bottom staff line (E4). Mirrors
-        // StackingUtils.BOTTOM_STAFF_LINE_POSITION, which is package-private to the stacking package.
-        private static final int BOTTOM_STAFF_LINE_POSITION = 4;
-
         // Untied at this staff position the dot still sits inside the staff, so its outer edge never
-        // reaches the accent: the staff clamp — the bottom line plus the script's staff-padding — is
-        // what holds the accent out. This is why the tie moves the accent less than it moves the dot.
+        // reaches the accent: the staff clamp — the bottom line's ink edge plus the script's
+        // staff-padding — is what holds the accent out. This is why the tie moves the accent less
+        // than it moves the dot.
         private static final double UNTIED_ACCENT_TOP_YSS =
-            BOTTOM_STAFF_LINE_POSITION * Staff.STAFF_POSITION_OFFSET_SS
-                + NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
+            StackingUtils.STAFF_BOT_INK_Y_SS + NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
 
         private static final double STACCATO_HEIGHT_SS =
             new Articulation(ArticulationType.STACCATO).getContentHeightSs();

@@ -43,6 +43,7 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.NoteGeometry;
 import songscribe.layout.ShapeProfile;
 import songscribe.layout.StaffExtents;
 import songscribe.shape.AccentShape;
@@ -572,7 +573,11 @@ class NoteAttachedStackerTest extends UnitTest {
         // The note's own real reservation (computeNoteBounds) is well within the staff, so the
         // staff-padding clamp — not the note's edge — is the binding constraint.
         var supportBoundSs = NoteAttachedStacker.computeNoteBounds(note).topSs();
-        var staffInnerYSs = StackingUtils.STAFF_TOP_Y_SS - NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
+        // The fermata keeps its own padding from the staff line — the larger of its padding and the
+        // script staff-padding — never dropping to the smaller staff-padding at the staff clamp.
+        var staffPaddingSs = Math.max(
+            NoteAttachedStacker.FERMATA_PADDING_SS, NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS);
+        var staffInnerYSs = StackingUtils.STAFF_TOP_INK_Y_SS - staffPaddingSs;
         var innerEdgeYSs =
             Math.min(supportBoundSs - NoteAttachedStacker.FERMATA_PADDING_SS, staffInnerYSs);
         var expectedYSs = innerEdgeYSs - fermata.getContentHeightSs();
@@ -591,11 +596,74 @@ class NoteAttachedStackerTest extends UnitTest {
         var layout = require(result.findAttachmentDecorationLayout(note, FermataAttachment.class));
 
         var supportBoundSs = NoteAttachedStacker.computeNoteBounds(note).topSs();
-        var staffInnerYSs = StackingUtils.STAFF_TOP_Y_SS - NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
+        // The fermata keeps its own padding from the staff line — the larger of its padding and the
+        // script staff-padding — never dropping to the smaller staff-padding at the staff clamp.
+        var staffPaddingSs = Math.max(
+            NoteAttachedStacker.FERMATA_PADDING_SS, NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS);
+        var staffInnerYSs = StackingUtils.STAFF_TOP_INK_Y_SS - staffPaddingSs;
         var innerEdgeYSs =
             Math.min(supportBoundSs - NoteAttachedStacker.FERMATA_PADDING_SS, staffInnerYSs);
         var expectedYSs = innerEdgeYSs - fermata.getContentHeightSs();
         assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testFermataBoxIsCenteredOnTheNoteheadNotTheColumnX() {
+        // The fermata's collision box — and the decoration-layout x derived from it — is centred on
+        // the notehead, exactly where FermataRenderer draws the glyph. Anchoring it at the column x
+        // (as this once did) offset the box from the glyph by half the width difference between the
+        // fermata and the notehead, so the drawn glyph's inner bottom corner under-cleared a tie to
+        // the note's side.
+        var note = stemDownNote(STAFF_CENTER_SP);
+        var fermata = new FermataAttachment(note);
+        note.addAttachment(fermata);
+
+        var builder = new LayoutResult.Builder();
+        var context = new StackingContext(
+            List.of(mockColumnAt(note, START_NOTE_X_SS)), detachedLine(), builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        var layout =
+            require(builder.build().findAttachmentDecorationLayout(note, FermataAttachment.class));
+
+        var boxCenterSs = layout.xSs() + fermata.getContentWidthSs() / 2.0;
+        var noteheadCenterSs = START_NOTE_X_SS + NoteGeometry.getNoteheadCenterXSs(note);
+        assertThat(boxCenterSs)
+            .describedAs("the fermata box must be centred on the notehead, not the column x")
+            .isCloseTo(noteheadCenterSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testFermataClearsProtrudingTieByFermataPadding() {
+        // A tie whose arc protrudes past the fermata's staff clamp becomes the binding support: the
+        // fermata's bottom edge sits FERMATA_PADDING_SS above the arc, just as a script takes the
+        // tie as a side-support element and clears it.
+        var startNote = stemDownNote(STAFF_CENTER_SP);
+        var fermata = new FermataAttachment(startNote);
+        startNote.addAttachment(fermata);
+        var endNote = stemDownNote(STAFF_CENTER_SP);
+
+        var line = detachedLine();
+        var tie = new Tie(startNote, endNote);
+        line.addRangeElement(tie);
+
+        var builder = new LayoutResult.Builder();
+        builder.putTieLayout(tie, flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, PROTRUDING_ARC_Y_SS));
+
+        var context = new StackingContext(
+            List.of(mockColumnAt(startNote, START_NOTE_X_SS), mockColumnAt(endNote, END_NOTE_X_SS)),
+            line, builder);
+        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+
+        var layout = require(
+            builder.build().findAttachmentDecorationLayout(startNote, FermataAttachment.class));
+
+        // Above the staff the fermata sits farther out (more negative Y); the gap to the arc is the
+        // arc Y minus the fermata's bottom edge.
+        var gapAboveTieSs = PROTRUDING_ARC_Y_SS - (layout.ySs() + layout.heightSs());
+        assertThat(gapAboveTieSs)
+            .describedAs("fermata must clear a protruding tie by FERMATA_PADDING_SS")
+            .isCloseTo(NoteAttachedStacker.FERMATA_PADDING_SS, within(TOLERANCE));
     }
 
     // -------------------------------------------------------------------------
@@ -980,8 +1048,9 @@ class NoteAttachedStackerTest extends UnitTest {
             .describedAs("above accent must be pushed outward to clear the protruding arc")
             .isCloseTo(expectedAboveYSs, within(TOLERANCE));
 
-        // Below accent anchors to the staff-padding clamp; the above-only arc never affects it.
-        var expectedBelowYSs = StackingUtils.anchorFloorSs(STAFF_CENTER_SP)
+        // Below accent anchors to the staff-padding clamp — the bottom staff line's ink edge plus
+        // the staff-padding; the above-only arc never affects it.
+        var expectedBelowYSs = StackingUtils.STAFF_BOT_INK_Y_SS
             + NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
         assertThat(belowAccentLayout.ySs())
             .describedAs("below accent must anchor to the notehead/staff floor, never seeing the arc")

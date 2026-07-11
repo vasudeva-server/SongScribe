@@ -31,6 +31,7 @@ import songscribe.dom.LineElement;
 import songscribe.dom.RangeElement;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
+import songscribe.engraving.LineThickness;
 
 /**
  * Shared static helpers used by all stacking delegates.
@@ -59,6 +60,18 @@ public final class StackingUtils {
     // Y coordinate of the bottom staff line in the middleLineY=0 coordinate system
     static final double STAFF_BOT_Y_SS =
         BOTTOM_STAFF_LINE_POSITION * Staff.STAFF_POSITION_OFFSET_SS;
+
+    // Half the staff line's ink thickness. The staff clamp pads to the outer edge of the top/bottom
+    // staff line's ink, not to its centerline (STAFF_TOP_Y_SS / STAFF_BOT_Y_SS), because every
+    // script and decoration padding is ink-to-ink: a fermata, a tie arc, and a round notehead are
+    // all bounded by ink, so the staff line — which also has thickness — must be measured to its ink.
+    static final double STAFF_LINE_HALF_THICKNESS_SS = LineThickness.STAFF_LINE_SS / 2.0;
+
+    // The outer ink edges of the outer staff lines: the top edge of the top line (above the staff)
+    // and the bottom edge of the bottom line (below it). These, not the centerlines, are what an
+    // element pads against when the staff is its outward clamp.
+    public static final double STAFF_TOP_INK_Y_SS = STAFF_TOP_Y_SS - STAFF_LINE_HALF_THICKNESS_SS;
+    public static final double STAFF_BOT_INK_Y_SS = STAFF_BOT_Y_SS + STAFF_LINE_HALF_THICKNESS_SS;
 
     // Horizontal collision margin for structural/system elements (collapses between adjacent elements)
     static final double STRUCTURAL_HORIZONTAL_MARGIN_SS = 0.75; // 6px
@@ -381,7 +394,9 @@ public final class StackingUtils {
 
         var above = direction.isUp();
         var support = extents.clearance(above, xSs, profiles.inner(), paddingSs, horizonPaddingSs);
-        var staffEdgeYSs = above ? STAFF_TOP_Y_SS : STAFF_BOT_Y_SS;
+        // The staff clamp pads to the staff line's ink edge, not its centerline — padding is
+        // ink-to-ink (see STAFF_TOP_INK_Y_SS).
+        var staffEdgeYSs = above ? STAFF_TOP_INK_Y_SS : STAFF_BOT_INK_Y_SS;
 
         // The element's inner edge (nearest the staff): the more-outward of the support's demand and
         // staffEdge ∓ staffPadding. Above, "more outward" is the smaller Y; below, the larger.

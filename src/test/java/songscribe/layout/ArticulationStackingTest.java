@@ -41,7 +41,6 @@ import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.engraving.Staff;
 
 @SuppressWarnings("DataFlowIssue")
 class ArticulationStackingTest extends UnitTest {
@@ -209,7 +208,8 @@ class ArticulationStackingTest extends UnitTest {
 
         var wedgeOffsetSs = accentEdgeOffsetOverStaccatoSs(
             true, accentLayout.widthSs(), staccatoLayout.widthSs());
-        var staffInnerYSs = -Staff.STAFF_HALF_SS - NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
+        var staffInnerYSs =
+            StackingUtils.STAFF_TOP_INK_Y_SS - NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
         var supportInnerYSs =
             staccatoLayout.ySs() + wedgeOffsetSs - NoteAttachedStacker.ACCENT_PADDING_SS;
         var expectedAccentYSs = Math.min(supportInnerYSs, staffInnerYSs) - accentLayout.heightSs();
@@ -235,7 +235,8 @@ class ArticulationStackingTest extends UnitTest {
         var wedgeOffsetSs = accentEdgeOffsetOverStaccatoSs(
             false, accentLayout.widthSs(), staccatoLayout.widthSs());
         var staccatoBotYSs = staccatoLayout.ySs() + staccatoLayout.heightSs();
-        var staffInnerYSs = Staff.STAFF_HALF_SS + NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
+        var staffInnerYSs =
+            StackingUtils.STAFF_BOT_INK_Y_SS + NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
         var supportInnerYSs =
             staccatoBotYSs - wedgeOffsetSs + NoteAttachedStacker.ACCENT_PADDING_SS;
         var expectedAccentYSs = Math.max(supportInnerYSs, staffInnerYSs);
@@ -280,9 +281,9 @@ class ArticulationStackingTest extends UnitTest {
                 "accent DecorationLayout");
 
             // Within the staff, the note's own seeded extent (~-1.5 ss) minus ACCENT_PADDING_SS
-            // is well short of the staff-padding clamp (-2.0 - SCRIPT_STAFF_PADDING_SS), so the
-            // clamp — not the note's own reservation — is the binding constraint here.
-            var expectedYSs = StackingUtils.anchorCeilingSs(-2)
+            // is well short of the staff-padding clamp (top line's ink edge - SCRIPT_STAFF_PADDING_SS),
+            // so the clamp — not the note's own reservation — is the binding constraint here.
+            var expectedYSs = StackingUtils.STAFF_TOP_INK_Y_SS
                 - NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS - layout.heightSs();
             assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
         }
@@ -344,9 +345,9 @@ class ArticulationStackingTest extends UnitTest {
                 "accent DecorationLayout");
 
             // Within the staff, the note's own seeded extent (~1.5 ss) plus ACCENT_PADDING_SS is
-            // well short of the staff-padding clamp (2.0 + SCRIPT_STAFF_PADDING_SS), so the clamp
-            // — not the note's own reservation — is the binding constraint here.
-            var expectedYSs = StackingUtils.anchorFloorSs(UP_STEM_STAFF_POSITION)
+            // well short of the staff-padding clamp (bottom line's ink edge + SCRIPT_STAFF_PADDING_SS),
+            // so the clamp — not the note's own reservation — is the binding constraint here.
+            var expectedYSs = StackingUtils.STAFF_BOT_INK_Y_SS
                 + NoteAttachedStacker.SCRIPT_STAFF_PADDING_SS;
             assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
         }

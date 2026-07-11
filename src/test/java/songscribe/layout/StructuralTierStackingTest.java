@@ -41,7 +41,6 @@ import songscribe.font.DocumentFonts;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.Staff;
 import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.layout.stacking.StackingContext;
 import songscribe.layout.stacking.StackingUtils;
@@ -533,7 +532,7 @@ class StructuralTierStackingTest extends UnitTest {
                 result.findAttachmentDecorationLayout(note, DynamicAttachment.class),
                 "text dynamics DecorationLayout");
 
-            var expectedYSs = -Staff.STAFF_HALF_SS
+            var expectedYSs = StackingUtils.STAFF_TOP_INK_Y_SS
                 - NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS - layout.heightSs();
             assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
         }

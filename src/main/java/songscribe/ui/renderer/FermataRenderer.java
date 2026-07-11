@@ -102,8 +102,10 @@ public final class FermataRenderer implements ElementRenderer<StaffElement> {
 
         var fermataTopYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
 
-        var x = RenderingUtils.centeredGlyphX(decorationLayout.xSs(), element,
-            FERMATA_BBOX_LEFT_SS, FERMATA_WIDTH_SS);
+        // The decoration layout's x is the glyph's visual left edge (already centred on the
+        // notehead by the stacker), so draw from it directly. Shifting by the bbox left offset
+        // turns that visual-left into the glyph origin drawString expects.
+        var x = decorationLayout.xSs() - FERMATA_BBOX_LEFT_SS;
 
         var y = RenderingUtils.glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
 

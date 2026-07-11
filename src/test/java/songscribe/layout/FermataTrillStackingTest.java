@@ -41,6 +41,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.NoteGeometry;
 import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 
@@ -97,7 +98,14 @@ class FermataTrillStackingTest extends UnitTest {
 
             // Fermata should be above the staff (negative Y = higher)
             assertThat(layout.ySs()).isLessThan(0.0);
-            assertThat(layout.xSs()).isCloseTo(NOTE_X_SS, within(TOLERANCE));
+
+            // The stored x is the glyph's visual left edge, centred on the notehead — not the
+            // column x — so the box center coincides with the notehead center.
+            var fermata = require(
+                note.findAttachment(FermataAttachment.class), "fermata attachment");
+            var boxCenterSs = layout.xSs() + fermata.getContentWidthSs() / 2.0;
+            assertThat(boxCenterSs)
+                .isCloseTo(NOTE_X_SS + NoteGeometry.getNoteheadCenterXSs(note), within(TOLERANCE));
         }
 
         @Test

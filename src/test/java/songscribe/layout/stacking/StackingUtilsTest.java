@@ -38,6 +38,7 @@ import songscribe.dom.Trill;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
+import songscribe.engraving.LineThickness;
 
 class StackingUtilsTest extends UnitTest {
 
@@ -146,6 +147,28 @@ class StackingUtilsTest extends UnitTest {
 
         var result = StackingUtils.anchorCeilingSs(sp);
         assertThat(result).isCloseTo(expectedCeilingSs, within(TOLERANCE));
+    }
+
+    // -------------------------------------------------------------------------
+    // Ink-edge constants: STAFF_TOP_INK_Y_SS / STAFF_BOT_INK_Y_SS pad to the outer edge of the
+    // outer staff line's ink, half a staff-line thickness beyond the centerlines.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testStaffInkEdgesLieHalfALineThicknessBeyondTheCenterlines() {
+        // Pin the constants' concrete values, not just their symbols: the top ink edge sits above
+        // its centerline (more negative) and the bottom ink edge below its centerline (more
+        // positive), each by half the staff line's thickness. A wrong-sign definition padding
+        // inward would move production and every clamp test together and stay green — this is the
+        // one assertion that catches that.
+        var halfThicknessSs = LineThickness.STAFF_LINE_SS / 2.0;
+
+        assertThat(StackingUtils.STAFF_TOP_INK_Y_SS)
+            .describedAs("top ink edge sits half a line thickness above the top centerline")
+            .isCloseTo(StackingUtils.STAFF_TOP_Y_SS - halfThicknessSs, within(TOLERANCE));
+        assertThat(StackingUtils.STAFF_BOT_INK_Y_SS)
+            .describedAs("bottom ink edge sits half a line thickness below the bottom centerline")
+            .isCloseTo(StackingUtils.STAFF_BOT_Y_SS + halfThicknessSs, within(TOLERANCE));
     }
 
     // -------------------------------------------------------------------------
@@ -568,10 +591,10 @@ class StackingUtilsTest extends UnitTest {
             StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
 
         var expectedTopYSs =
-            StackingUtils.STAFF_TOP_Y_SS - CLAMPED_STAFF_PADDING_SS - CLAMPED_HEIGHT_SS;
+            StackingUtils.STAFF_TOP_INK_Y_SS - CLAMPED_STAFF_PADDING_SS - CLAMPED_HEIGHT_SS;
         assertThat(returnedYSs).isCloseTo(expectedTopYSs, within(TOLERANCE));
 
-        var clearanceFromStaffSs = StackingUtils.STAFF_TOP_Y_SS - returnedYSs;
+        var clearanceFromStaffSs = StackingUtils.STAFF_TOP_INK_Y_SS - returnedYSs;
         assertThat(clearanceFromStaffSs)
             .describedAs("isolated articulation must clear the staff by staffPaddingSs + height")
             .isCloseTo(CLAMPED_STAFF_PADDING_SS + CLAMPED_HEIGHT_SS, within(TOLERANCE));
@@ -609,7 +632,7 @@ class StackingUtilsTest extends UnitTest {
             StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
 
         var expectedBottomYSs =
-            StackingUtils.STAFF_BOT_Y_SS + CLAMPED_STAFF_PADDING_SS + CLAMPED_HEIGHT_SS;
+            StackingUtils.STAFF_BOT_INK_Y_SS + CLAMPED_STAFF_PADDING_SS + CLAMPED_HEIGHT_SS;
         assertThat(returnedYSs).isCloseTo(expectedBottomYSs, within(TOLERANCE));
     }
 
