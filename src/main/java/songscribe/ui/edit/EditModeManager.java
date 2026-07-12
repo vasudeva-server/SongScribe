@@ -218,13 +218,21 @@ public final class EditModeManager {
      * @param element The element to decorate
      */
     public static void decorateElement(StaffElement element) {
+        var type = element.getType();
+
+        // Only notes and rests can be decorated; barlines, repeats, and other
+        // non-duration elements never carry dots, accidentals, or articulations.
+        if (!type.isNote() && !type.isRest()) {
+            return;
+        }
+
         var dotAction = Actions.DOT_ACTION_GROUP.getSelected();
         element.setDotCount(
             (dotAction != null) ? dotAction.getDotLevel().ordinal() + 1 : 0
         );
 
         // Rests don't get any other decorations
-        if (element.getType().isRest()) {
+        if (type.isRest()) {
             return;
         }
 

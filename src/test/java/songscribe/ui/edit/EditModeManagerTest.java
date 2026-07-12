@@ -186,6 +186,21 @@ class EditModeManagerTest extends UnitTest {
         }
 
         @Test
+        void testSkipsAllDecorationsForNonNoteNonRestElements() {
+            // Barlines, repeats, and other non-duration elements must not
+            // receive dots, accidentals, or articulations.
+            Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
+            Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
+            Actions.ACCENT_ACTION.setSelected(true);
+            Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+            var barline = ElementType.SINGLE_BARLINE.newInstance();
+            EditModeManager.decorateElement(barline);
+            assertThat(barline.getDotCount()).isEqualTo(0);
+            assertThat(barline.getAccidental()).isNull();
+            assertThat(barline.getArticulations()).isEmpty();
+        }
+
+        @Test
         void testSetsAccidentalFromAccidentalActionGroup() {
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
             var element = ElementType.CROTCHET.newInstance();
