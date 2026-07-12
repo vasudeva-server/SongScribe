@@ -374,20 +374,6 @@ public final class MusicEditOperations {
             return -1;
         }
 
-        // Selection must end with an appropriate terminal element.
-        // A REPEAT_LEFT_RIGHT split requires the second ending to end with a right repeat.
-        var endType = line.getElement(end).getType();
-        var splitType = line.getElement(rightRepeatIndex).getType();
-
-        if (splitType == ElementType.REPEAT_LEFT_RIGHT) {
-            if (endType != ElementType.REPEAT_RIGHT && endType != ElementType.REPEAT_LEFT_RIGHT) {
-                return -1;
-            }
-        }
-        else if (!endType.isTerminal()) {
-            return -1;
-        }
-
         // Validate first ending region (between optional leading element and right repeat):
         // one or more content elements, no barlines or repeats
         var firstEndingStart = begin;
@@ -524,28 +510,18 @@ public final class MusicEditOperations {
         var precedingType = precedingLine.getElement(precedingElementIndex).getType();
 
         if (precedingType.isContentElement()) {
-            var selectionLine = song.getLine(lineIndex);
-            var selectionBeginType = selectionLine.getElement(selectionBegin).getType();
-
-            if (selectionBeginType == ElementType.SINGLE_BARLINE
-                    || selectionBeginType == ElementType.REPEAT_LEFT) {
-                // Selection already starts with a barline or left repeat — no insertion needed
-                return EndingValidationResult.valid(
-                    EndingValidationResult.PrecedingAction.NONE,
-                    selectionBegin,
-                    selectionEnd
-                );
-            }
-
-            // Auto-insert barline; span starts at selectionBegin (barline goes there)
+            // Content predecessor — anchor the 1st bracket to the note at
+            // selectionBegin, whether or not the selection begins with a barline.
             return EndingValidationResult.valid(
-                EndingValidationResult.PrecedingAction.INSERT_BARLINE,
+                EndingValidationResult.PrecedingAction.NONE,
                 selectionBegin,
                 selectionEnd
             );
         }
 
-        if (precedingType == ElementType.SINGLE_BARLINE || precedingType == ElementType.REPEAT_LEFT) {
+        if (precedingType == ElementType.SINGLE_BARLINE
+                || precedingType == ElementType.REPEAT_LEFT
+                || precedingType == ElementType.REPEAT_LEFT_RIGHT) {
             // Extend span start backward to include the preceding element
             return EndingValidationResult.valid(
                 EndingValidationResult.PrecedingAction.EXTEND_SPAN,
@@ -554,7 +530,8 @@ public final class MusicEditOperations {
             );
         }
 
-        // Right repeat, left/right repeat, double barline, or final double barline — invalid
+        // Right repeat, double barline, or final double barline — invalid
+        // (REPEAT_LEFT_RIGHT is handled by the EXTEND_SPAN branch above).
         return EndingValidationResult.invalid();
     }
 
@@ -571,25 +548,8 @@ public final class MusicEditOperations {
             var start = result.getSpanStart();
             var end = result.getSpanEnd();
 
-            switch (result.getPrecedingAction()) {
-                case INSERT_BARLINE -> {
-                    var barline = ElementType.SINGLEBARLINE.newInstance();
-                    line.addElement(start, barline);
-                    // addElement shifts all existing spans; adjust our bounds
-                    // to account for the inserted element
-                    start++;
-                    end++;
-                }
-
-                case EXTEND_SPAN -> {
-                    // Start already includes the preceding barline/repeat
-                }
-
-                case NONE -> {
-                    // No adjustment needed
-                }
-            }
-
+            // EXTEND_SPAN and NONE both anchor at the pre-computed span bounds
+            // with no element insertion.
             var startElement = line.getElement(start);
             var endElement = line.getElement(end);
             line.addRangeElement(new Ending(startElement, endElement));

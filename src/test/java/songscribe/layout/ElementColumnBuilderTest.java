@@ -299,14 +299,14 @@ class ElementColumnBuilderTest extends UnitTest {
         assertThat(ElementColumnBuilder.calculateLeftExtentSs(note)).isEqualTo(0.0);
     }
 
-    // Row 19: calculateLeftExtentSs = -(accW + ACCIDENTAL_GAP_SS) when accidental present
+    // Row 19: calculateLeftExtentSs = -(accW + ACCIDENTAL_PADDING_SS) when accidental present
     @Test
     void testLeftExtentIsNegativeWithAccidental() {
         var note = element(ElementType.CROTCHET);
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         var accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(note);
-        var expected = -(accidentalWidthSs + ElementColumnBuilder.ACCIDENTAL_GAP_SS);
+        var expected = -(accidentalWidthSs + NoteGeometry.ACCIDENTAL_PADDING_SS);
 
         assertThat(ElementColumnBuilder.calculateLeftExtentSs(note)).isEqualTo(expected);
     }

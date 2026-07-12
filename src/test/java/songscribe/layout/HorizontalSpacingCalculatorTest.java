@@ -1211,8 +1211,9 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
 
     // #443 grace → host: when the grace note carries a connecting glissando and the host has an
     // accidental, the gap must widen so the glissando still reaches its minimum visible length.
-    // The glissando ends at the host accidental's rendered left edge, which sits
-    // (ACCIDENTAL_PADDING_SS - ACCIDENTAL_GAP_SS) further left than the layout left extent.
+    // The glissando ends at the host accidental's rendered left edge, which now equals the
+    // layout left extent — the renderer and layout reserve share the single
+    // NoteGeometry.ACCIDENTAL_PADDING_SS constant (refs the accidental-gap unification).
     @Test
     void testGraceWithGlissandoToHostWithAccidentalReservesGlissandoSpacing() {
         var grace = ElementType.GRACE_QUAVER.newInstance();
@@ -1240,9 +1241,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         var hostXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(graceColumn, hostColumn);
         var hostNoGlissXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(gracePlainColumn, hostColumn);
 
-        var accidentalRenderedLeftSs = ACCIDENTAL_LEFT_EXTENT_SS
-            - (NoteGeometry.ACCIDENTAL_PADDING_SS - ElementColumnBuilder.ACCIDENTAL_GAP_SS);
-        var reservedGapSs = (hostXSs - PREV_COLUMN_X_SS) + accidentalRenderedLeftSs - GRACE_RIGHT_EXTENT_SS;
+        var reservedGapSs = (hostXSs - PREV_COLUMN_X_SS) + ACCIDENTAL_LEFT_EXTENT_SS - GRACE_RIGHT_EXTENT_SS;
 
         // The reserved gap clears the minimum glissando reservation, measured to the rendered edge.
         assertThat(reservedGapSs).isGreaterThanOrEqualTo(NoteGeometry.MIN_GLISSANDO_RESERVATION_SS - TOLERANCE);

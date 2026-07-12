@@ -47,7 +47,6 @@ import songscribe.message.mutation.CrescendoRemoval;
 import songscribe.message.mutation.DiminuendoAddition;
 import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementField;
-import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.RangeElementAddition;
 import songscribe.message.mutation.RangeElementRemoval;
@@ -711,14 +710,15 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     @Test
-    void testCanMakeFirstSecondEndingReturnsInsertBarlineWhenPrecedingContentAndSelectionStartsWithNote() {
+    void testCanMakeFirstSecondEndingReturnsNoneWhenPrecedingContentAndSelectionStartsWithNote() {
         // checkPrecedingElement: preceding element is content; selection starts with a note
-        // (not a barline or left repeat) → action is INSERT_BARLINE, result is valid.
+        // (not a barline or left repeat) → #306: action is NONE (note-anchored, no barline
+        // inserted), result is valid.
         //
         // Layout: [REPEAT_LEFT(0), CROTCHET(1), CROTCHET(2), CROTCHET(3),
         //          REPEAT_RIGHT(4), CROTCHET(5), CROTCHET(6), SINGLE_BARLINE(7)]
         // Selection 2–7. Preceding element at index 1 is CROTCHET (content).
-        // selectionBeginType = CROTCHET → INSERT_BARLINE action.
+        // selectionBeginType = CROTCHET → NONE action, anchored at the note.
         var env = setupEnv(
             repeatLeft(), crotchet(), crotchet(), crotchet(),
             repeatRight(), crotchet(), crotchet(), singleBarline()
@@ -729,14 +729,47 @@ class MusicEditOperationsMutationTest extends UnitTest {
             .as("canMakeFirstSecondEnding() must be valid when preceding content + selection starts with note")
             .isTrue();
         assertThat(result.getPrecedingAction())
-            .as("preceding action must be INSERT_BARLINE when selection starts with a note after content")
-            .isEqualTo(EndingValidationResult.PrecedingAction.INSERT_BARLINE);
+            .as("preceding action must be NONE when selection starts with a note after content")
+            .isEqualTo(EndingValidationResult.PrecedingAction.NONE);
         assertThat(result.getSpanStart())
             .as("span start must be the selection begin index")
             .isEqualTo(2);
         assertThat(result.getSpanEnd())
             .as("span end must be the selection end index")
             .isEqualTo(7);
+    }
+
+    @Test
+    void testCanMakeFirstSecondEndingReturnsExtendSpanWhenPrecedingElementIsRepeatLeftRight() {
+        // #306: a REPEAT_LEFT_RIGHT immediately before the selection anchors the 1st bracket
+        // to that barline, just like SINGLE_BARLINE/REPEAT_LEFT — action is EXTEND_SPAN, not
+        // NONE or invalid.
+        //
+        // Layout: [REPEAT_LEFT(0), CROTCHET(1), CROTCHET(2), REPEAT_LEFT_RIGHT(3), CROTCHET(4),
+        //          CROTCHET(5), CROTCHET(6), REPEAT_RIGHT(7), CROTCHET(8), CROTCHET(9),
+        //          SINGLE_BARLINE(10)]
+        // Selection 4–10. Preceding element at index 3 is REPEAT_LEFT_RIGHT → EXTEND_SPAN;
+        // spanStart extends back to 3. hasEnclosingRepeat scans back from 3 and finds
+        // REPEAT_LEFT_RIGHT itself is a repeat, so the enclosing-repeat precondition is
+        // satisfied without needing to reach index 0.
+        var env = setupEnv(
+            repeatLeft(), crotchet(), crotchet(), repeatLeftRight(), crotchet(),
+            crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 4, 10);
+        var result = env.operations().canMakeFirstSecondEnding();
+        assertThat(result.isValid())
+            .as("canMakeFirstSecondEnding() must be valid when preceding element is REPEAT_LEFT_RIGHT")
+            .isTrue();
+        assertThat(result.getPrecedingAction())
+            .as("preceding action must be EXTEND_SPAN when preceding element is REPEAT_LEFT_RIGHT")
+            .isEqualTo(EndingValidationResult.PrecedingAction.EXTEND_SPAN);
+        assertThat(result.getSpanStart())
+            .as("span start must be extended back to the preceding REPEAT_LEFT_RIGHT index")
+            .isEqualTo(3);
+        assertThat(result.getSpanEnd())
+            .as("span end must remain the selection end index")
+            .isEqualTo(10);
     }
 
     @Test
@@ -1071,27 +1104,31 @@ class MusicEditOperationsMutationTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @Test
-    void testMakeFirstSecondEndingEmitsElementInsertionAndRangeElementAddition() {
-        // Four notes [n0..n3]. Result: INSERT_BARLINE at index 0, ending over [0..3].
-        // makeFirstSecondEnding inserts the barline at start=0 (shifting indices to
-        // start=1 and end=4), then adds an Ending spanning the adjusted bounds.
+    void testMakeFirstSecondEndingWithNoteAnchorEmitsOnlyRangeElementAddition() {
+        // #306: Four notes [n0..n3], selection begins on a note (no leading barline).
+        // Result: NONE action at index 0, ending over [0..3]. No barline is inserted —
+        // the Ending anchors directly at the note.
         var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectNote(env.coordinator(), 0);
         var result = EndingValidationResult.valid(
-            EndingValidationResult.PrecedingAction.INSERT_BARLINE, 0, 3);
+            EndingValidationResult.PrecedingAction.NONE, 0, 3);
         env.operations().makeFirstSecondEnding(result);
 
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
-        assertThat(mutations).hasSize(2);
-        assertThat(mutations.get(0)).isInstanceOf(ElementInsertion.class);
-        assertThat(mutations.get(1)).isInstanceOf(RangeElementAddition.class);
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.getFirst()).isInstanceOf(RangeElementAddition.class);
 
-        var insertion = (ElementInsertion) mutations.get(0);
-        assertThat(insertion.element().getType()).isEqualTo(ElementType.SINGLE_BARLINE);
-
-        var rangeAddition = (RangeElementAddition) mutations.get(1);
+        var rangeAddition = (RangeElementAddition) mutations.getFirst();
         assertThat(rangeAddition.element()).isInstanceOf(Ending.class);
+
+        var ending = (Ending) rangeAddition.element();
+        assertThat(ending.getAnchorElementIndex())
+            .as("Ending anchor is the note at the span start, no barline inserted")
+            .isEqualTo(0);
+        assertThat(ending.getEndElementIndex())
+            .as("Ending end is the original selection end")
+            .isEqualTo(3);
     }
 
     @Test
@@ -1118,9 +1155,10 @@ class MusicEditOperationsMutationTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     /**
-     * Verifies that {@code canMakeFirstSecondEnding} applies the correct terminal constraint
-     * when the split is a {@code REPEAT_LEFT_RIGHT}: the second ending must end with
-     * {@code REPEAT_RIGHT} or {@code REPEAT_LEFT_RIGHT}.
+     * Verifies that {@code canMakeFirstSecondEnding} is valid for a {@code REPEAT_LEFT_RIGHT}
+     * split regardless of the outer end's element type. #306 removed the end-type gate that
+     * used to require the second ending to close with {@code REPEAT_RIGHT} or
+     * {@code REPEAT_LEFT_RIGHT} — any terminal (or content) end is now accepted.
      *
      * <p>Canonical line layout for all tests in this class:
      * <pre>
@@ -1157,19 +1195,26 @@ class MusicEditOperationsMutationTest extends UnitTest {
         }
 
         @Test
-        void testSingleBarlineTerminalIsInvalid() {
-            // SINGLE_BARLINE does not close the second ending's repeat — invalid
+        void testSingleBarlineTerminalIsValid() {
+            // #306: the end-type gate is removed entirely — the outer end no longer needs
+            // to close the REPEAT_LEFT_RIGHT split's repeat, so a SINGLE_BARLINE terminal
+            // is now valid too.
             var env = buildEnv(singleBarline());
             ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
-            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isFalse();
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+                .as("SINGLE_BARLINE outer end is valid after the #306 end-type gate removal")
+                .isTrue();
         }
 
         @Test
-        void testRepeatLeftTerminalIsInvalid() {
-            // REPEAT_LEFT does not close any repeat — invalid
+        void testRepeatLeftTerminalIsValid() {
+            // #306: same relaxation — REPEAT_LEFT no longer needs to close a repeat to be
+            // a valid outer end.
             var env = buildEnv(repeatLeft());
             ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
-            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isFalse();
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+                .as("REPEAT_LEFT outer end is valid after the #306 end-type gate removal")
+                .isTrue();
         }
     }
 

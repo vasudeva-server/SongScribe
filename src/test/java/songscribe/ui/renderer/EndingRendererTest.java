@@ -29,6 +29,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import module java.desktop;
 
@@ -38,6 +39,8 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.engraving.SMuFLConstants;
+import songscribe.layout.ElementColumn;
 import songscribe.layout.Ending;
 import songscribe.layout.LayoutResult;
 
@@ -76,7 +79,11 @@ class EndingRendererTest extends UnitTest {
         line.addElement(note2);
         var ending = new Ending(note1, note2);
         line.addRangeElement(ending);
-        ending.computeBracketRanges(line, e -> 5.0);
+        // Exact geometry does not matter for these tests (only Y-translation is asserted),
+        // so every element maps to an identical stub column with a note-head-width extent.
+        ending.computeBracketRanges(line, e -> new ElementColumn(
+            e, List.of(), 0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS,
+            SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0, 0, null, 0, false));
         return new LineWithEnding(line, ending);
     }
 

@@ -668,6 +668,11 @@ public final class MusicXmlWriter {
             // O(n)) per element per span.
             var spanIndex = buildSpanIndex(line);
 
+            // A note-terminated ending end (issue #306) whose boundary note is the
+            // line's last element folds its <ending type="discontinue"> onto the
+            // end-of-line invisible right barline, avoiding a redundant second one.
+            List<EndingMarker> lastNoteEndingMarkers = List.of();
+
             for (int i = 0; i < elements.size(); i++) {
                 var element = elements.get(i);
                 var type = element.getType();
@@ -744,6 +749,15 @@ public final class MusicXmlWriter {
                     var typeToken = NoteTypeMapping.typeToken(type);
 
                     if (typeToken != null) {
+                        // A note-anchored ending start (issue #306) has no barline
+                        // element to host it, so it rides on an invisible left
+                        // barline emitted immediately before the note.
+                        var endingStartMarkers = markers.endingLeftBarlineMarkers();
+
+                        if (!endingStartMarkers.isEmpty()) {
+                            writeInvisibleLeftBarline(pw, endingStartMarkers);
+                        }
+
                         // A tempo <direction> precedes the note it marks. The first
                         // element of the first line carries the song base tempo; any
                         // element with its own TempoChangeAttachment carries a
@@ -787,6 +801,21 @@ public final class MusicXmlWriter {
                         writeNote(pw, ctx);
                         // getGlissando() is null unless this note starts a glissando.
                         pendingGlissando = element.getGlissando();
+
+                        // A note-terminated ending end (issue #306) has no barline
+                        // element to host its <ending ... type="discontinue">. When
+                        // the boundary note is the line's last element, defer the
+                        // marker to the end-of-line invisible right barline; else
+                        // emit an invisible right barline immediately after the note.
+                        var endingEndMarkers = markers.endingRightBarlineMarkers();
+
+                        if (!endingEndMarkers.isEmpty()) {
+                            if (element == lastElement) {
+                                lastNoteEndingMarkers = endingEndMarkers;
+                            } else {
+                                writeInvisibleRightBarline(pw, endingEndMarkers);
+                            }
+                        }
                     }
                 }
             }
@@ -797,7 +826,7 @@ public final class MusicXmlWriter {
             // If measureOpen is false, the last element was a real barline that
             // already closed its measure — no spurious empty measure is emitted.
             if (measureOpen) {
-                writeInvisibleRightBarline(pw);
+                writeInvisibleRightBarline(pw, lastNoteEndingMarkers);
                 closeMeasure(pw);
             }
         }
@@ -1885,27 +1914,39 @@ public final class MusicXmlWriter {
             var hasSplit = splitIdx >= 0 && splitIdx < count;
 
             // Anchor: <ending number="1" type="start">. A REPEAT_LEFT anchor is
-            // written as a forward (left) barline; any other anchor (SINGLE_BARLINE)
-            // closes the previous measure as a right barline.
+            // written as a forward (left) barline; a note anchor (no barline
+            // element, per issue #306) rides on an invisible left barline the note
+            // branch emits immediately before the note — both go in the left
+            // bucket. Any other anchor (SINGLE_BARLINE) closes the previous measure
+            // as a right barline.
             var anchorStart = new EndingMarker(MusicXmlTags.NUMBER_1, MusicXmlTags.TYPE_START);
             var anchorBuilder = builders[anchorIdx];
+            var anchorType = line.getElement(anchorIdx).getType();
 
-            if (line.getElement(anchorIdx).getType() == ElementType.REPEAT_LEFT) {
+            if (anchorType == ElementType.REPEAT_LEFT || anchorType.isContentElement()) {
                 anchorBuilder.endingLeftBarlineMarkers = appendLazily(anchorBuilder.endingLeftBarlineMarkers, anchorStart);
             } else {
                 anchorBuilder.endingRightBarlineMarkers = appendLazily(anchorBuilder.endingRightBarlineMarkers, anchorStart);
             }
 
-            // End: <ending number type="stop">. number is 2 for a two-bracket
-            // ending (a split exists) and 1 for a split-less single bracket.
+            // End: number is 2 for a two-bracket ending (a split exists) and 1 for a
+            // split-less single bracket. A barline/repeat end closes with
+            // type="stop"; a note end (no barline element, per issue #306) closes
+            // with type="discontinue" (an open bracket) on an invisible right
+            // barline the note branch emits immediately after the note.
             var endNumber = hasSplit ? MusicXmlTags.NUMBER_2 : MusicXmlTags.NUMBER_1;
-            var endStop = new EndingMarker(endNumber, MusicXmlTags.TYPE_STOP);
             var endBuilder = builders[endIdx];
+            var endType = line.getElement(endIdx).getType();
 
-            if (line.getElement(endIdx).getType() == ElementType.REPEAT_LEFT) {
-                endBuilder.endingLeftBarlineMarkers = appendLazily(endBuilder.endingLeftBarlineMarkers, endStop);
+            if (endType == ElementType.REPEAT_LEFT) {
+                endBuilder.endingLeftBarlineMarkers = appendLazily(endBuilder.endingLeftBarlineMarkers,
+                    new EndingMarker(endNumber, MusicXmlTags.TYPE_STOP));
+            } else if (endType.isContentElement()) {
+                endBuilder.endingRightBarlineMarkers = appendLazily(endBuilder.endingRightBarlineMarkers,
+                    new EndingMarker(endNumber, MusicXmlTags.ENDING_DISCONTINUE));
             } else {
-                endBuilder.endingRightBarlineMarkers = appendLazily(endBuilder.endingRightBarlineMarkers, endStop);
+                endBuilder.endingRightBarlineMarkers = appendLazily(endBuilder.endingRightBarlineMarkers,
+                    new EndingMarker(endNumber, MusicXmlTags.TYPE_STOP));
             }
 
             // Split: <ending number="1" type="stop"> closes volta 1 on the right
@@ -2181,7 +2222,17 @@ public final class MusicXmlWriter {
 
     /** Emits {@code <barline location="right"><bar-style>none</bar-style></barline>}. */
     private static void writeInvisibleRightBarline(PrintWriter pw) {
-        writeBarline(pw, BarlineStyleMapping.LOCATION_RIGHT, BarlineStyleMapping.BAR_STYLE_NONE, null, List.of());
+        writeInvisibleRightBarline(pw, List.of());
+    }
+
+    /**
+     * Emits {@code <barline location="right"><bar-style>none</bar-style>…</barline>}
+     * carrying {@code endings}. Used to host a note-terminated volta's
+     * {@code <ending ... type="discontinue">} after the boundary note, where no
+     * real right barline element exists.
+     */
+    private static void writeInvisibleRightBarline(PrintWriter pw, List<EndingMarker> endings) {
+        writeBarline(pw, BarlineStyleMapping.LOCATION_RIGHT, BarlineStyleMapping.BAR_STYLE_NONE, null, endings);
     }
 
     /**

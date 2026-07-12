@@ -56,7 +56,6 @@ import songscribe.message.mutation.CrescendoRemoval;
 import songscribe.message.mutation.DiminuendoAddition;
 import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementField;
-import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.RangeElementAddition;
 import songscribe.message.mutation.TieAddition;
@@ -382,23 +381,24 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @Test
-    void testHandleFirstSecondEndingEmitsOneNotificationWithBarlineAndEnding() {
+    void testHandleFirstSecondEndingEmitsOneNotificationWithEnding() {
         // The handler reads the cached EndingValidationResult from the singleton
         // FirstSecondEndingAction, which setUp() has replaced with a mock.
+        // #306: PrecedingAction.NONE no longer inserts a barline — the ending anchors
+        // directly to the note at the span start.
         var env = setupTest(crotchet(), crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectNote(env.coordinator(), 0);
 
         var validResult = EndingValidationResult.valid(
-            EndingValidationResult.PrecedingAction.INSERT_BARLINE, 0, 3);
+            EndingValidationResult.PrecedingAction.NONE, 0, 3);
         setCachedEndingResult(validResult);
 
         env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
 
         var notification = captureSingleDidChange();
-        assertThat(notification.getMutations()).hasSize(2);
-        assertThat(notification.getMutations().get(0)).isInstanceOf(ElementInsertion.class);
-        assertThat(notification.getMutations().get(1)).isInstanceOf(RangeElementAddition.class);
-        assertThat(((RangeElementAddition) notification.getMutations().get(1)).element())
+        assertThat(notification.getMutations()).hasSize(1);
+        assertThat(notification.getMutations().get(0)).isInstanceOf(RangeElementAddition.class);
+        assertThat(((RangeElementAddition) notification.getMutations().get(0)).element())
             .isInstanceOf(Ending.class);
     }
 

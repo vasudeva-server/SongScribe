@@ -84,7 +84,6 @@ class EndingConfirmsTest extends UnitTest {
     private static final int END_INDEX = 6;
 
     // Actions used to trigger element replacements via SelectionCoordinator
-    private ElementTypeAction DOUBLE_BARLINE_ACTION;
     private ElementTypeAction LEFT_REPEAT_ACTION;
     private ElementTypeAction RIGHT_REPEAT_ACTION;
     private ElementTypeAction LEFT_RIGHT_REPEAT_ACTION;
@@ -97,7 +96,6 @@ class EndingConfirmsTest extends UnitTest {
         when(rootPane.getInputMap(anyInt())).thenReturn(new InputMap());
         when(rootPane.getActionMap()).thenReturn(new ActionMap());
         when(mainFrame.getRootPane()).thenReturn(rootPane);
-        DOUBLE_BARLINE_ACTION = ElementTypeAction.createDoubleBarlineAction(mainFrame);
         LEFT_REPEAT_ACTION = ElementTypeAction.createLeftRepeatAction(mainFrame);
         RIGHT_REPEAT_ACTION = ElementTypeAction.createRightRepeatAction(mainFrame);
         LEFT_RIGHT_REPEAT_ACTION = ElementTypeAction.createLeftRightRepeatAction(mainFrame);
@@ -192,12 +190,15 @@ class EndingConfirmsTest extends UnitTest {
         }
 
         @Test
-        void testReplaceAnchorWithDoubleBarlineAbortsWhenUserDeclines() {
+        void testReplaceSplitWithSingleBarlineAbortsWhenUserDeclines() {
+            // #306: the anchor no longer invalidates on a DOUBLE_BARLINE replacement (barlines
+            // are now a valid anchor type). Use the split (Condition 2), which still invalidates
+            // on a non-repeat replacement, to exercise the Invalidate confirm-dialog flow.
             var env = setupPrimaryLine();
-            ReflectionTestHelper.selectNote(env.coordinator(), ANCHOR_INDEX);
-            env.coordinator().applyActionToSelection(DOUBLE_BARLINE_ACTION, true, null);
+            ReflectionTestHelper.selectNote(env.coordinator(), SPLIT_INDEX);
+            env.coordinator().applyActionToSelection(SINGLE_BARLINE_ACTION, true, null);
 
-            assertThat(env.line().getElement(ANCHOR_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
+            assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getRangeElements()).contains(env.ending());
         }
     }
@@ -227,15 +228,17 @@ class EndingConfirmsTest extends UnitTest {
         }
 
         @Test
-        void testReplaceAnchorWithDoubleBarlineProceedsWhenUserConfirms() {
+        void testReplaceSplitWithSingleBarlineProceedsWhenUserConfirms() {
+            // #306: see testReplaceSplitWithSingleBarlineAbortsWhenUserDeclines — the split
+            // (Condition 2) still invalidates on a non-repeat replacement.
             var env = setupPrimaryLine();
 
             try (var od = simulateYes()) {
-                ReflectionTestHelper.selectNote(env.coordinator(), ANCHOR_INDEX);
-                env.coordinator().applyActionToSelection(DOUBLE_BARLINE_ACTION, true, null);
+                ReflectionTestHelper.selectNote(env.coordinator(), SPLIT_INDEX);
+                env.coordinator().applyActionToSelection(SINGLE_BARLINE_ACTION, true, null);
             }
 
-            assertThat(env.line().getElement(ANCHOR_INDEX).getType()).isEqualTo(ElementType.DOUBLE_BARLINE);
+            assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
             assertThat(env.line().getRangeElements()).doesNotContain(env.ending());
         }
     }

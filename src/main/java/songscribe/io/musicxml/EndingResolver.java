@@ -81,14 +81,21 @@ final class EndingResolver {
     // (wrong) split-less one from the tentative end.
     private boolean pendingEndingSawSecondVolta = false;
 
+    // True once a note-anchored <ending number="1" type="start"> is seen (issue
+    // #306): it rides on an invisible left barline preceding the anchor note, so
+    // the anchor binds to the next element appended to the line, not to a barline.
+    private boolean pendingAnchorFromNextElement = false;
+
     /**
      * Resolves the {@code <ending>} markers collected on one {@code <barline>}
      * against that barline's just-created {@link StaffElement}, advancing the
      * ending state machine.
      *
-     * <p>{@code element} is null only for invisible barlines, which host at most a
-     * volta-2 {@code number="2" type="start"} split marker — a no-op needing no
-     * element.
+     * <p>{@code element} is null for invisible barlines. Besides the volta-2
+     * {@code number="2" type="start"} split marker (a no-op), these now also host
+     * note-anchored markers (issue #306): a {@code number="1" type="start"} start,
+     * deferred to the next appended element, and a {@code type="discontinue"} end,
+     * bound to the current line's last element.
      */
     void attachBarlineEndings(@Nullable StaffElement element, List<EndingMarker> endings) {
         for (var ending : endings) {
@@ -103,18 +110,29 @@ final class EndingResolver {
                 // (build a complete split-less one, or drop a dangling/partial one).
                 finalizeOrDropPendingEnding();
 
+                pendingEndingEnd = null;
+                pendingEndingSawSecondVolta = false;
+                pendingAnchorFromNextElement = false;
+
                 if (element == null) {
-                    LOG.warn("Ignoring <ending number=\"1\" type=\"start\"> on a barline with no element");
+                    // Note-anchored start (issue #306): the invisible left barline
+                    // precedes the anchor note, so bind the anchor to the next
+                    // element appended to the line.
+                    pendingAnchorFromNextElement = true;
+                    pendingEndingAnchor = null;
                     continue;
                 }
 
                 pendingEndingAnchor = element;
-                pendingEndingEnd = null;
-                pendingEndingSawSecondVolta = false;
             } else if (isTwo && isStop) {
-                // Definite end of a two-bracket ending.
-                if (pendingEndingAnchor != null && element != null) {
-                    buildEnding(pendingEndingAnchor, element);
+                // Definite end of a two-bracket ending. A note-terminated end
+                // (issue #306) rides on an invisible right barline (element == null)
+                // emitted after the boundary note, so bind to the line's last
+                // element in that case.
+                var end = element != null ? element : lastElementOfCurrentLine();
+
+                if (pendingEndingAnchor != null && end != null) {
+                    buildEnding(pendingEndingAnchor, end);
                     clearPendingEnding();
                 } else {
                     LOG.warn("Ignoring <ending number=\"2\" type=\"stop\"> with no open ending");
@@ -174,6 +192,34 @@ final class EndingResolver {
         pendingEndingAnchor = null;
         pendingEndingEnd = null;
         pendingEndingSawSecondVolta = false;
+        pendingAnchorFromNextElement = false;
+    }
+
+    /**
+     * Binds a note-anchored ending start (issue #306) to the just-appended
+     * {@code element}. The start marker was hosted on an invisible left barline
+     * preceding the anchor note, deferring the anchor to this next element.
+     */
+    void resolvePendingNextAnchor(StaffElement element) {
+        if (pendingAnchorFromNextElement) {
+            pendingEndingAnchor = element;
+            pendingAnchorFromNextElement = false;
+        }
+    }
+
+    /**
+     * Returns the last element appended to the current line, or null if there is
+     * no current line or it is empty. Used to bind a note-terminated ending end.
+     */
+    @Nullable
+    private StaffElement lastElementOfCurrentLine() {
+        var currentLine = reader.getCurrentLine();
+
+        if (currentLine == null || currentLine.elementCount() == 0) {
+            return null;
+        }
+
+        return currentLine.getElement(currentLine.elementCount() - 1);
     }
 
     /**

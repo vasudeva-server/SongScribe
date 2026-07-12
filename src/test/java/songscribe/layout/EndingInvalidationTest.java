@@ -200,10 +200,10 @@ class EndingInvalidationTest extends UnitTest {
     class IsInvalidatedByReplacement {
 
         @Test
-        void testAnchorReplacedWithDoubleBarlineReturnsTrue() {
-            // Condition 1: DOUBLE_BARLINE is not an allowed anchor type
+        void testAnchorReplacedWithDoubleBarlineReturnsFalse() {
+            // #306: Condition 1 — DOUBLE_BARLINE is a barline, an allowed anchor type
             var newElement = new StaffElement(ElementType.DOUBLE_BARLINE);
-            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isTrue();
+            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isFalse();
         }
 
         @Test
@@ -214,9 +214,16 @@ class EndingInvalidationTest extends UnitTest {
         }
 
         @Test
-        void testAnchorReplacedWithRepeatRightReturnsTrue() {
-            // Condition 1: REPEAT_RIGHT is not an allowed anchor type
+        void testAnchorReplacedWithRepeatRightReturnsFalse() {
+            // #306: Condition 1 — REPEAT_RIGHT is a repeat, an allowed anchor type
             var newElement = new StaffElement(ElementType.REPEAT_RIGHT);
+            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isFalse();
+        }
+
+        @Test
+        void testAnchorReplacedWithGraceNoteReturnsTrue() {
+            // Condition 1: GRACE_QUAVER is neither content, barline, nor repeat — invalidates
+            var newElement = new StaffElement(ElementType.GRACE_QUAVER);
             assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isTrue();
         }
 
@@ -228,6 +235,20 @@ class EndingInvalidationTest extends UnitTest {
         }
 
         @Test
+        void testAnchorReplacedWithNoteReturnsFalse() {
+            // #306: Condition 1 — a content element is now a valid anchor type
+            var newElement = new StaffElement(ElementType.CROTCHET);
+            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isFalse();
+        }
+
+        @Test
+        void testAnchorReplacedWithRepeatLeftRightReturnsFalse() {
+            // #306: Condition 1 — REPEAT_LEFT_RIGHT is now a valid anchor type (isRepeat())
+            var newElement = new StaffElement(ElementType.REPEAT_LEFT_RIGHT);
+            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isFalse();
+        }
+
+        @Test
         void testEndReplacedWithDoubleBarlineReturnsFalse() {
             // Condition 3: DOUBLE_BARLINE is a barline — end replacement is allowed
             var newElement = new StaffElement(ElementType.DOUBLE_BARLINE);
@@ -235,10 +256,11 @@ class EndingInvalidationTest extends UnitTest {
         }
 
         @Test
-        void testEndReplacedWithNoteReturnsTrue() {
-            // Condition 3: replacing the end element with a non-barline/non-repeat invalidates
+        void testEndReplacedWithNoteReturnsFalse() {
+            // #306: Condition 3 — a note end needs no split compensation; a content
+            // replacement is a valid end regardless of split type.
             var newElement = new StaffElement(ElementType.CROTCHET);
-            assertThat(ending.isInvalidatedByReplacement(end, newElement, line)).isTrue();
+            assertThat(ending.isInvalidatedByReplacement(end, newElement, line)).isFalse();
         }
 
         @Test
@@ -361,14 +383,9 @@ class EndingInvalidationTest extends UnitTest {
         // --- Invalidate ---
 
         @Test
-        void testAnchorReplacedWithDoubleBarlineReturnsInvalidate() {
-            var effect = ending.checkReplacement(anchor, new StaffElement(ElementType.DOUBLE_BARLINE), line);
-            assertThat(effect).isEqualTo(new Ending.EndingEffect.Invalidate(ending));
-        }
-
-        @Test
-        void testAnchorReplacedWithRepeatRightReturnsInvalidate() {
-            var effect = ending.checkReplacement(anchor, new StaffElement(ElementType.REPEAT_RIGHT), line);
+        void testAnchorReplacedWithGraceNoteReturnsInvalidate() {
+            // #306: GRACE_QUAVER is neither content, barline, nor repeat — invalidates
+            var effect = ending.checkReplacement(anchor, new StaffElement(ElementType.GRACE_QUAVER), line);
             assertThat(effect).isEqualTo(new Ending.EndingEffect.Invalidate(ending));
         }
 
@@ -387,16 +404,9 @@ class EndingInvalidationTest extends UnitTest {
         }
 
         @Test
-        void testEndSingleBarlineToNoteReturnsInvalidate() {
-            // Non-barline, non-repeat replacement of the end element invalidates
-            var effect = ending.checkReplacement(end, new StaffElement(ElementType.CROTCHET), line);
-            assertThat(effect).isEqualTo(new Ending.EndingEffect.Invalidate(ending));
-        }
-
-        @Test
-        void testEndSingleBarlineToBreathMarkReturnsInvalidate() {
-            // BREATH_MARK is neither a barline nor a repeat
-            var effect = ending.checkReplacement(end, new StaffElement(ElementType.BREATH_MARK), line);
+        void testEndSingleBarlineToGraceNoteReturnsInvalidate() {
+            // #306: Condition 3 — GRACE_QUAVER is non-content, non-barline, non-repeat
+            var effect = ending.checkReplacement(end, new StaffElement(ElementType.GRACE_QUAVER), line);
             assertThat(effect).isEqualTo(new Ending.EndingEffect.Invalidate(ending));
         }
 
@@ -432,6 +442,27 @@ class EndingInvalidationTest extends UnitTest {
         void testEndReplacedWithRepeatLeftReturnsNone() {
             // REPEAT_LEFT isTerminal() and split is REPEAT_RIGHT
             var effect = ending.checkReplacement(end, new StaffElement(ElementType.REPEAT_LEFT), line);
+            assertThat(effect).isEqualTo(new Ending.EndingEffect.None());
+        }
+
+        @Test
+        void testEndReplacedWithNoteReturnsNone() {
+            // #306: Condition 3 — a note end needs no split compensation, regardless of split type
+            var effect = ending.checkReplacement(end, new StaffElement(ElementType.CROTCHET), line);
+            assertThat(effect).isEqualTo(new Ending.EndingEffect.None());
+        }
+
+        @Test
+        void testAnchorReplacedWithNoteReturnsNone() {
+            // #306: Condition 1 — a content element is now a valid anchor type
+            var effect = ending.checkReplacement(anchor, new StaffElement(ElementType.CROTCHET), line);
+            assertThat(effect).isEqualTo(new Ending.EndingEffect.None());
+        }
+
+        @Test
+        void testAnchorReplacedWithRepeatLeftRightReturnsNone() {
+            // #306: Condition 1 — REPEAT_LEFT_RIGHT is now a valid anchor type (isRepeat())
+            var effect = ending.checkReplacement(anchor, new StaffElement(ElementType.REPEAT_LEFT_RIGHT), line);
             assertThat(effect).isEqualTo(new Ending.EndingEffect.None());
         }
 
@@ -494,13 +525,21 @@ class EndingInvalidationTest extends UnitTest {
             // --- Invalidate ---
 
             @Test
-            void testEndRepeatRightToNoteReturnsInvalidate() {
-                // Non-barline, non-repeat replacement of the end element invalidates
-                var effect = ending2.checkReplacement(end2, new StaffElement(ElementType.CROTCHET), line2);
+            void testEndRepeatRightToGraceNoteReturnsInvalidate() {
+                // #306: Condition 3 — GRACE_QUAVER is non-content, non-barline, non-repeat
+                var effect = ending2.checkReplacement(end2, new StaffElement(ElementType.GRACE_QUAVER), line2);
                 assertThat(effect).isEqualTo(new Ending.EndingEffect.Invalidate(ending2));
             }
 
             // --- None ---
+
+            @Test
+            void testEndRepeatRightToNoteReturnsNone() {
+                // #306: Condition 3 — a note end needs no split compensation, regardless of
+                // split type, including REPEAT_LEFT_RIGHT
+                var effect = ending2.checkReplacement(end2, new StaffElement(ElementType.CROTCHET), line2);
+                assertThat(effect).isEqualTo(new Ending.EndingEffect.None());
+            }
 
             @Test
             void testSplitRepeatLeftRightToRepeatLeftRightReturnsNone() {

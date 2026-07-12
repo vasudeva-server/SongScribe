@@ -21,8 +21,10 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.function.ToDoubleFunction;
+import java.util.List;
+import java.util.function.Function;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -214,23 +216,49 @@ class EndingTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Row 14 — computeBracketRanges(Line, ToDoubleFunction)
+    // Row 14 — computeBracketRanges(Line, Function<StaffElement, ElementColumn>)
     // -------------------------------------------------------------------------
 
     @Nested
     class ComputeBracketRanges {
 
-        /** Maps elements to their assigned X positions. */
-        private ToDoubleFunction<StaffElement> positionMap(
+        // Arbitrary extents used to stand in for "has an accidental" (left extent negative,
+        // extending further left than the glyph origin) and "has an augmentation dot" (right
+        // extent wider than a bare notehead) in the note-anchor geometry tests below.
+        private static final double ACCIDENTAL_LEFT_EXTENT_SS = -2.5;
+        private static final double DOTTED_RIGHT_EXTENT_SS = SMuFLConstants.NOTE_HEAD_WIDTH_SS + 1.0;
+
+        /** Maps elements to columns at their assigned X positions, with bare-notehead extents. */
+        private Function<StaffElement, ElementColumn> columnMap(
             StaffElement[] elements, double[] xs
+        ) {
+            return columnMap(elements, xs, null, null);
+        }
+
+        /**
+         * Maps elements to columns at their assigned X positions. {@code leftExtents} and
+         * {@code rightExtents} may be {@code null} (bare-notehead extents: 0.0 left,
+         * {@code NOTE_HEAD_WIDTH_SS} right) or parallel arrays overriding specific elements.
+         */
+        private Function<StaffElement, ElementColumn> columnMap(
+            StaffElement[] elements, double[] xs,
+            double @Nullable [] leftExtents, double @Nullable [] rightExtents
         ) {
             return el -> {
                 for (int i = 0; i < elements.length; i++) {
                     if (elements[i] == el) {
-                        return xs[i];
+                        var leftExtentSs = leftExtents == null ? 0.0 : leftExtents[i];
+                        var rightExtentSs = rightExtents == null
+                            ? SMuFLConstants.NOTE_HEAD_WIDTH_SS
+                            : rightExtents[i];
+                        var column = new ElementColumn(
+                            el, List.of(), leftExtentSs, rightExtentSs, rightExtentSs,
+                            0, 0, null, 0, false);
+                        column.setXSs(xs[i]);
+                        return column;
                     }
                 }
-                throw new IllegalArgumentException("No X for element: " + el);
+                throw new IllegalArgumentException("No column for element: " + el);
             };
         }
 
@@ -257,14 +285,15 @@ class EndingTest extends UnitTest {
             var elements = new StaffElement[]{anchor, end, terminal};
             var xs = new double[]{anchorX, endX, terminalX};
 
-            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs));
+            var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
 
-            // anchor=CROTCHET at index 0, not barline, no previous → x1 = anchorX
+            // #306: anchor=CROTCHET at index 0, not barline → note-start formula:
+            // x1 = anchorX + leftExtentSs(0.0, bare notehead) - ACCIDENTAL_PADDING_SS
             // end has a next element (terminal) → x2 = endX + (terminalX - endX) / 2
             assertThat(ranges).hasSize(1);
             var bracket = ranges.get(0);
             assertThat(bracket.number()).isEqualTo(1);
-            assertThat(bracket.x1Ss()).isEqualTo(anchorX);
+            assertThat(bracket.x1Ss()).isEqualTo(anchorX - NoteGeometry.ACCIDENTAL_PADDING_SS);
             assertThat(bracket.x2Ss()).isEqualTo(endX + (terminalX - endX) / 2.0);
             assertThat(bracket.hasClosingStroke()).isTrue();
         }
@@ -290,7 +319,7 @@ class EndingTest extends UnitTest {
             };
             var xs = new double[]{anchorX, note1X, note2X, splitX, note4X, note5X, endX};
 
-            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs));
+            var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
 
             assertThat(ranges).hasSize(2);
 
@@ -342,7 +371,7 @@ class EndingTest extends UnitTest {
             var elements = new StaffElement[]{prev, anchor, mid, end, terminal};
             var xs = new double[]{prevX, anchorX, midX, endX, terminalX};
 
-            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs));
+            var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
 
             assertThat(ranges).hasSize(1);
             // x1 anchored to the prev barline, not the anchor note
@@ -373,10 +402,95 @@ class EndingTest extends UnitTest {
             };
             var xs = new double[]{anchorX, note1X, note2X, splitX, note4X, note5X, endX};
 
-            var ranges = ending.computeBracketRanges(line, positionMap(elements, xs));
+            var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
 
             assertThat(ranges).hasSize(2);
             assertThat(ranges.get(1).hasClosingStroke()).isTrue();
+        }
+
+        // -------------------------------------------------------------------------
+        // #306 — note-anchored outer edges
+        // -------------------------------------------------------------------------
+
+        @Test
+        void testFirstBracketStartingOnNoteWithAccidentalUsesLeftExtentFormula() {
+            // Line: [CROTCHET(anchor,0, has accidental), CROTCHET(note2,1),
+            //        REPEAT_RIGHT(split,2), CROTCHET(note4,3), CROTCHET(end,4)]
+            // Detached line (no auto-appended terminal) — no element precedes the anchor, so it
+            // is not pulled onto a barline — the 1st bracket's left edge anchors directly to the
+            // note via the left-extent formula.
+            var line = detachedLine();
+            var anchor = new StaffElement(ElementType.CROTCHET);
+            var note2 = new StaffElement(ElementType.CROTCHET);
+            var split = new StaffElement(ElementType.REPEAT_RIGHT);
+            var note4 = new StaffElement(ElementType.CROTCHET);
+            var end = new StaffElement(ElementType.CROTCHET);
+            var ending = new Ending(anchor, end);
+            line.addElement(anchor);
+            line.addElement(note2);
+            line.addElement(split);
+            line.addElement(note4);
+            line.addElement(end);
+            line.addRangeElement(ending);
+
+            double anchorX = 10.0;
+            var elements = new StaffElement[]{anchor, note2, split, note4, end};
+            var xs = new double[]{
+                anchorX, anchorX + 10.0, anchorX + 20.0, anchorX + 30.0, anchorX + 40.0
+            };
+            // Only the anchor has an accidental-inclusive left extent; the rest are bare noteheads.
+            var leftExtents = new double[]{ACCIDENTAL_LEFT_EXTENT_SS, 0.0, 0.0, 0.0, 0.0};
+
+            var ranges = ending.computeBracketRanges(
+                line, columnMap(elements, xs, leftExtents, null));
+
+            assertThat(ranges).hasSize(2);
+            var expectedX1 = anchorX + ACCIDENTAL_LEFT_EXTENT_SS - NoteGeometry.ACCIDENTAL_PADDING_SS;
+            assertThat(ranges.get(0).x1Ss()).isEqualTo(expectedX1);
+        }
+
+        @Test
+        void testSecondBracketEndingOnNoteWithAugmentationDotUsesRightExtentFormulaAndNoClosingStroke() {
+            // Line: [SINGLE_BARLINE(anchor,0), CROTCHET(note2,1), REPEAT_RIGHT(split,2),
+            //        CROTCHET(note4,3), CROTCHET(end,4, has augmentation dot)]
+            // Detached line (no auto-appended terminal) — no element follows the end note, so it
+            // is not pulled onto a trailing barline — the 2nd bracket's right edge anchors
+            // directly to the note via the right-extent formula, with no closing stroke.
+            var line = detachedLine();
+            var anchor = new StaffElement(ElementType.SINGLE_BARLINE);
+            var note2 = new StaffElement(ElementType.CROTCHET);
+            var split = new StaffElement(ElementType.REPEAT_RIGHT);
+            var note4 = new StaffElement(ElementType.CROTCHET);
+            var end = new StaffElement(ElementType.CROTCHET);
+            var ending = new Ending(anchor, end);
+            line.addElement(anchor);
+            line.addElement(note2);
+            line.addElement(split);
+            line.addElement(note4);
+            line.addElement(end);
+            line.addRangeElement(ending);
+
+            double anchorX = 10.0;
+            var elements = new StaffElement[]{anchor, note2, split, note4, end};
+            var xs = new double[]{
+                anchorX, anchorX + 10.0, anchorX + 20.0, anchorX + 30.0, anchorX + 40.0
+            };
+            var endX = xs[4];
+            // Only the end note has a dot-inclusive right extent; the rest are bare noteheads.
+            var rightExtents = new double[]{
+                SMuFLConstants.NOTE_HEAD_WIDTH_SS, SMuFLConstants.NOTE_HEAD_WIDTH_SS,
+                SMuFLConstants.NOTE_HEAD_WIDTH_SS, SMuFLConstants.NOTE_HEAD_WIDTH_SS,
+                DOTTED_RIGHT_EXTENT_SS
+            };
+
+            var ranges = ending.computeBracketRanges(
+                line, columnMap(elements, xs, null, rightExtents));
+
+            assertThat(ranges).hasSize(2);
+            var bracket2 = ranges.get(1);
+            var expectedX2 = endX + DOTTED_RIGHT_EXTENT_SS + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
+            assertThat(bracket2.x2Ss()).isEqualTo(expectedX2);
+            assertThat(bracket2.hasClosingStroke()).isFalse();
         }
     }
 }

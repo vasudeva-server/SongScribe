@@ -308,13 +308,14 @@ class LineEndingSupportTest extends UnitTest {
 
         @Test
         void testOneEndingAffectedReturnsItsEffect() {
-            // Primary fixture: replacing the anchor (SINGLE_BARLINE) with DOUBLE_BARLINE
+            // Primary fixture: replacing the anchor (SINGLE_BARLINE) with GRACE_QUAVER
             // triggers Ending.EndingEffect.Invalidate.
             var fixture = EndingLineFixture.primary();
             var line    = fixture.line();
             var ending  = fixture.ending();
-            // Anchor is at index 0; replacing with DOUBLE_BARLINE is not an allowed anchor type.
-            var replacement = new StaffElement(ElementType.DOUBLE_BARLINE);
+            // Anchor is at index 0; replacing with GRACE_QUAVER is not an allowed anchor type
+            // (#306: content, barline, and repeat types are now all allowed anchors).
+            var replacement = new StaffElement(ElementType.GRACE_QUAVER);
 
             var effect = LineEndingSupport.findEndingReplacementEffect(line, 0, replacement);
 
@@ -323,7 +324,7 @@ class LineEndingSupportTest extends UnitTest {
 
         @Test
         void testTwoEndingsAffectedReturnsFirstNonNoneEffect() {
-            // Two endings sharing index 0 as their anchor. Replacing element 0 with DOUBLE_BARLINE
+            // Two endings sharing index 0 as their anchor. Replacing element 0 with GRACE_QUAVER
             // will produce Invalidate for the first ending; the method must return that first effect.
             //
             // Layout:
@@ -345,7 +346,7 @@ class LineEndingSupportTest extends UnitTest {
                 line.addRangeElement(ending1);
                 line.addRangeElement(ending2);
             });
-            var replacement = new StaffElement(ElementType.DOUBLE_BARLINE);
+            var replacement = new StaffElement(ElementType.GRACE_QUAVER);
 
             var effect = LineEndingSupport.findEndingReplacementEffect(line, 0, replacement);
 

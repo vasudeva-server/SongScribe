@@ -29,8 +29,6 @@ public final class EndingValidationResult {
     public enum PrecedingAction {
         /** No adjustment needed (preceding element is already suitable). */
         NONE,
-        /** A single barline must be inserted at the span start. */
-        INSERT_BARLINE,
         /** The span start must be extended backward to include the preceding element. */
         EXTEND_SPAN
     }

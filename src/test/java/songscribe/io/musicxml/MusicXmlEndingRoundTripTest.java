@@ -207,4 +207,117 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
             .as("split index: no split element must return -1")
             .isEqualTo(-1);
     }
+
+    @Test
+    void testNoteTerminatedEndingRoundTrips() throws Exception {
+        // Line layout: REPEAT_LEFT(0) | C(1) | REPEAT_RIGHT(2) | C(3)
+        // Ending: anchor=REPEAT_LEFT, split=REPEAT_RIGHT, end=C(3) (a note, issue #306)
+        //
+        // The 2nd bracket ends on a note with no terminal barline, so the writer
+        // has no barline to host the volta-2 stop.  It emits <ending number="2"
+        // type="discontinue"> on the end-of-line invisible right barline (the note
+        // is the line's last element, so the marker folds onto that barline rather
+        // than a redundant second one).
+        //
+        // Reader recovers REPEAT_LEFT(0), C(1), REPEAT_RIGHT(2), C(3):
+        //   the discontinue binds to the line's last element (the note) →
+        //   Ending(element0, element3); getSplitIndex scans [1,3) → 2
+        var song = buildSong(line -> {
+            var anchorElement = ElementType.REPEAT_LEFT.newInstance();
+            var splitElement = ElementType.REPEAT_RIGHT.newInstance();
+            var endElement = ElementType.CROTCHET.newInstance();
+            line.addElement(anchorElement);
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(splitElement);
+            line.addElement(endElement);
+            line.addRangeElement(new Ending(anchorElement, endElement));
+        });
+
+        var song2 = roundTrip(song);
+        var line2 = song2.getLine(0);
+        var endings = LineEndingSupport.findEndings(line2);
+
+        assertThat(endings).as("ending count").hasSize(1);
+        var ending = endings.get(0);
+        assertRangeElementEquals(ending, 0, 3, "note-terminated ending");
+        assertThat(ending.getSplitIndex(line2))
+            .as("split index: REPEAT_RIGHT must be at index 2")
+            .isEqualTo(2);
+    }
+
+    @Test
+    void testNoteAnchoredAndNoteTerminatedEndingRoundTrips() throws Exception {
+        // Line layout: C(0) | C(1) | REPEAT_RIGHT(2) | C(3)
+        // Ending: anchor=C(0) (a note), split=REPEAT_RIGHT, end=C(3) (a note) — both
+        // outer edges are notes (issue #306), the fully barline-free boundary case.
+        //
+        // Writer emits:
+        //   invisible-left [1 start] before C(0), volta-1 notes
+        //   backward-right barline [1 stop] + invisible-left [2 start], volta-2 note
+        //   end-of-line invisible right barline [2 discontinue]
+        //
+        // Reader recovers C(0), C(1), REPEAT_RIGHT(2), C(3):
+        //   the [1 start] on the invisible left barline binds to the next element
+        //   (C(0)); the [2 discontinue] binds to the last element (C(3)) →
+        //   Ending(element0, element3); getSplitIndex scans [1,3) → 2
+        var song = buildSong(line -> {
+            var anchorElement = ElementType.CROTCHET.newInstance();
+            var splitElement = ElementType.REPEAT_RIGHT.newInstance();
+            var endElement = ElementType.CROTCHET.newInstance();
+            line.addElement(anchorElement);
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(splitElement);
+            line.addElement(endElement);
+            line.addRangeElement(new Ending(anchorElement, endElement));
+        });
+
+        var song2 = roundTrip(song);
+        var line2 = song2.getLine(0);
+        var endings = LineEndingSupport.findEndings(line2);
+
+        assertThat(endings).as("ending count").hasSize(1);
+        var ending = endings.get(0);
+        assertRangeElementEquals(ending, 0, 3, "note-anchored, note-terminated ending");
+        assertThat(ending.getSplitIndex(line2))
+            .as("split index: REPEAT_RIGHT must be at index 2")
+            .isEqualTo(2);
+    }
+
+    @Test
+    void testMidLineNoteTerminatedEndingRoundTrips() throws Exception {
+        // Line layout: REPEAT_LEFT(0) | C(1) | REPEAT_RIGHT(2) | C(3) | C(4)
+        // Ending: anchor=REPEAT_LEFT, split=REPEAT_RIGHT, end=C(3) (a note) with a
+        // trailing note C(4) after the ending (issue #306).
+        //
+        // Because the boundary note is NOT the line's last element, the writer
+        // emits the volta-2 <ending ... type="discontinue"> on its own invisible
+        // right barline immediately after C(3) (the inline path, not folded onto
+        // the end-of-line barline).
+        //
+        // Reader recovers REPEAT_LEFT(0), C(1), REPEAT_RIGHT(2), C(3), C(4):
+        //   the discontinue binds to the last element appended when it is parsed
+        //   (C(3)) → Ending(element0, element3); getSplitIndex scans [1,3) → 2
+        var song = buildSong(line -> {
+            var anchorElement = ElementType.REPEAT_LEFT.newInstance();
+            var splitElement = ElementType.REPEAT_RIGHT.newInstance();
+            var endElement = ElementType.CROTCHET.newInstance();
+            line.addElement(anchorElement);
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(splitElement);
+            line.addElement(endElement);
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addRangeElement(new Ending(anchorElement, endElement));
+        });
+
+        var song2 = roundTrip(song);
+        var line2 = song2.getLine(0);
+        var endings = LineEndingSupport.findEndings(line2);
+
+        assertThat(endings).as("ending count").hasSize(1);
+        var ending = endings.get(0);
+        assertRangeElementEquals(ending, 0, 3, "mid-line note-terminated ending");
+        assertThat(ending.getSplitIndex(line2))
+            .as("split index: REPEAT_RIGHT must be at index 2")
+            .isEqualTo(2);
+    }
 }

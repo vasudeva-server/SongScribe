@@ -673,10 +673,11 @@ class LineMutationTest extends UnitTest {
         // -------------------------------------------------------------------
 
         @Test
-        void testSetElementAnchorWithDoubleBarlineRemovesEnding() {
-            // Condition 1: DOUBLE_BARLINE is not an allowed anchor type
+        void testSetElementAnchorWithGraceNoteRemovesEnding() {
+            // #306: Condition 1 — GRACE_QUAVER is neither content, barline, nor repeat —
+            // not an allowed anchor type
             song.withModification(() ->
-                line.setElement(0, new StaffElement(ElementType.DOUBLE_BARLINE)));
+                line.setElement(0, new StaffElement(ElementType.GRACE_QUAVER)));
 
             assertThat(line.getRangeElements()).doesNotContain(ending);
         }
@@ -686,6 +687,24 @@ class LineMutationTest extends UnitTest {
             // Condition 1: REPEAT_LEFT is an allowed anchor type
             song.withModification(() ->
                 line.setElement(0, new StaffElement(ElementType.REPEAT_LEFT)));
+
+            assertThat(line.getRangeElements()).contains(ending);
+        }
+
+        @Test
+        void testSetElementAnchorWithDoubleBarlineRetainsEnding() {
+            // #306: Condition 1 — DOUBLE_BARLINE is a barline, an allowed anchor type
+            song.withModification(() ->
+                line.setElement(0, new StaffElement(ElementType.DOUBLE_BARLINE)));
+
+            assertThat(line.getRangeElements()).contains(ending);
+        }
+
+        @Test
+        void testSetElementAnchorWithNoteRetainsEnding() {
+            // #306: Condition 1 — a content element is now a valid anchor type
+            song.withModification(() ->
+                line.setElement(0, new StaffElement(ElementType.CROTCHET)));
 
             assertThat(line.getRangeElements()).contains(ending);
         }
@@ -737,10 +756,20 @@ class LineMutationTest extends UnitTest {
         }
 
         @Test
-        void testSetElementEndWithNoteRemovesEnding() {
-            // Condition 3: a content element is not an allowed end type
+        void testSetElementEndWithNoteRetainsEnding() {
+            // #306: Condition 3 — a note end needs no split compensation, regardless of split
+            // type, so replacing the end with content no longer invalidates
             song.withModification(() ->
                 line.setElement(6, new StaffElement(ElementType.CROTCHET)));
+
+            assertThat(line.getRangeElements()).contains(ending);
+        }
+
+        @Test
+        void testSetElementEndWithGraceNoteRemovesEnding() {
+            // #306: Condition 3 — GRACE_QUAVER is non-content, non-barline, non-repeat
+            song.withModification(() ->
+                line.setElement(6, new StaffElement(ElementType.GRACE_QUAVER)));
 
             assertThat(line.getRangeElements()).doesNotContain(ending);
         }

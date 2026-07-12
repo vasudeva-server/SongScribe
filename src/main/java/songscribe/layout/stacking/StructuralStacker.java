@@ -185,7 +185,7 @@ public class StructuralStacker {
                             "No column for element");
                     }
 
-                    return col.getXSs();
+                    return col;
                 });
 
             if (brackets.isEmpty()) {

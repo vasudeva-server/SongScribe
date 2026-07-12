@@ -24,7 +24,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.ToDoubleFunction;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
@@ -180,13 +180,14 @@ public class Ending extends RangeElement {
      * {@code EndingRenderer.renderEndings()} to ensure stacking and rendering
      * use identical positions.
      *
-     * @param line    the line containing this ending
-     * @param elementXSs function that returns the X position of an element in staff spaces
+     * @param line     the line containing this ending
+     * @param columnFn function that returns the {@link ElementColumn} of an element,
+     *                 from which its X position and horizontal extents are read
      * @return the computed bracket ranges (also stored on this Ending)
      */
     public List<BracketRange> computeBracketRanges(
         Line line,
-        ToDoubleFunction<? super StaffElement> elementXSs
+        Function<? super StaffElement, ElementColumn> columnFn
     ) {
         var start = getAnchorElementIndex();
         var end = getEndElementIndex();
@@ -225,26 +226,24 @@ public class Ending extends RangeElement {
 
         // First bracket (before repeat, or entire span if no repeat)
         if (start < repeatSplitIndex || repeatSplitIndex == -1) {
-            var x1 = elementXSs.applyAsDouble(startElement);
+            var startColumn = columnFn.apply(startElement);
+            var x1 = startColumn.getXSs();
             var startType = startElement.getType();
 
             // For barlines and repeats, align to the governing thin barline center.
-            // For notes/rests, go halfway to the previous element's right edge.
+            // For notes/rests, anchor to the element's left extent.
             if (startType.isBarLine() || startType.isRepeat()) {
                 x1 += startType.endingAnchorXOffsetSs();
             }
-            else if (start > 0) {
-                var prevElement = line.getElement(start - 1);
-                var prevX = elementXSs.applyAsDouble(prevElement)
-                    + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
-                x1 -= (x1 - prevX) / 2.0;
+            else {
+                x1 = startColumn.getLeftEdgeXSs() - NoteGeometry.ACCIDENTAL_PADDING_SS;
             }
 
             double x2;
 
             if (repeatSplitIndex != -1) {
-                var repeatElementX = elementXSs.applyAsDouble(
-                    line.getElement(repeatSplitIndex));
+                var repeatElementX = columnFn.apply(
+                    line.getElement(repeatSplitIndex)).getXSs();
                 x2 = repeatElementX
                     + LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
                 repeatX = repeatElementX
@@ -252,11 +251,11 @@ public class Ending extends RangeElement {
                     - LineThickness.VOLTA_BRACKET_SS / 2;
             }
             else {
-                x2 = elementXSs.applyAsDouble(endElement);
+                x2 = columnFn.apply(endElement).getXSs();
 
                 if (end + 1 < line.elementCount()) {
-                    var nextX = elementXSs.applyAsDouble(
-                        line.getElement(end + 1));
+                    var nextX = columnFn.apply(
+                        line.getElement(end + 1)).getXSs();
                     x2 += (nextX - x2) / 2.0;
                 }
                 else {
@@ -269,7 +268,8 @@ public class Ending extends RangeElement {
 
         // Second bracket (after repeat)
         if (repeatSplitIndex != -1 && end > repeatSplitIndex) {
-            var x2 = elementXSs.applyAsDouble(endElement);
+            var endColumn = columnFn.apply(endElement);
+            var x2 = endColumn.getXSs();
             var endType = endElement.getType();
 
             // Extend to the next barline/repeat if end element is not one
@@ -280,7 +280,7 @@ public class Ending extends RangeElement {
 
                 if (nextType.isBarLine() || nextType.isRepeat()) {
                     endType = nextType;
-                    x2 = elementXSs.applyAsDouble(nextElement);
+                    x2 = columnFn.apply(nextElement).getXSs();
                 }
             }
 
@@ -301,14 +301,7 @@ public class Ending extends RangeElement {
                 }
                 case REPEAT_LEFT -> hasClosingStroke = false;
                 default -> {
-                    if (end + 1 < line.elementCount()) {
-                        var nextElement = line.getElement(end + 1);
-                        x2 += (elementXSs.applyAsDouble(nextElement) - x2) / 2.0;
-                    }
-                    else {
-                        x2 += SMuFLConstants.NOTE_HEAD_WIDTH_SS;
-                    }
-
+                    x2 = endColumn.getRightEdgeXSs() + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
                     hasClosingStroke = false;
                 }
             }
@@ -468,9 +461,11 @@ public class Ending extends RangeElement {
     ) {
         var newType = newElement.getType();
 
-        // Condition 1 — anchor replaced
+        // Condition 1 — anchor replaced. A note, barline, or repeat (including
+        // REPEAT_LEFT_RIGHT) is a valid anchor; only a non-content, non-barline,
+        // non-repeat type (e.g. clef/key signature) invalidates.
         if (oldElement == getAnchorElement()) {
-            return (newType == ElementType.SINGLE_BARLINE || newType == ElementType.REPEAT_LEFT)
+            return (newType.isContentElement() || newType.isBarLine() || newType.isRepeat())
                 ? EndingEffect.None.INSTANCE
                 : new EndingEffect.Invalidate(this);
         }
@@ -504,6 +499,11 @@ public class Ending extends RangeElement {
 
         // Condition 3 — end element replaced
         if (oldElement == getEndElement()) {
+            // A note end needs no split compensation, regardless of split type.
+            if (newType.isContentElement()) {
+                return EndingEffect.None.INSTANCE;
+            }
+
             if (!newType.isBarLine() && !newType.isRepeat()) {
                 return new EndingEffect.Invalidate(this);
             }

@@ -1340,6 +1340,10 @@ public final class MusicXmlReader extends DefaultHandler {
         var element = note.appendStaffElement(currentLine);
         var markers = note.spanMarkers();
 
+        // A note-anchored ending start (issue #306) was hosted on an invisible left
+        // barline preceding this note; bind that pending anchor to this element.
+        endings.resolvePendingNextAnchor(element);
+
         spans.resolveSlide(element, markers);
 
         // Collapse this note's per-note range-span markers into RangeElements,
