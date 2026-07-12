@@ -22,6 +22,8 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import java.util.Optional;
+
 import net.engio.mbassy.listener.Handler;
 
 import org.jspecify.annotations.Nullable;
@@ -144,7 +146,7 @@ public final class ScoreViewController {
     }
 
     private void syncPreviewElementWithSelectedDuration() {
-        var selected = Actions.DURATION_ACTION_GROUP.getSelected();
+        var selected = Optional.ofNullable(Actions.DURATION_ACTION_GROUP.getSelected()).orElseGet(() -> Actions.NON_DURATION_ACTION_GROUP.getSelected());
 
         if (selected != null) {
             score.setPreviewElement(EditModeManager.makePreviewElement(selected.getType()));
