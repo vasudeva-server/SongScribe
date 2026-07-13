@@ -95,7 +95,7 @@ public class BeatChangeAttachment extends MetronomeAttachment {
         var regions = new ArrayList<CollisionRegion>(3);
 
         var leftNoteWidthSs = noteWidthSs(beatChange.duration().getNote());
-        var equalsWidthSs = ScaleContext.textWidthSs(attrFont, "=");
+        var equalsWidthSs = ScaleContext.textWidthSs(attrFont, "=").value();
         var rightNoteWidthSs = noteWidthSs(beatChange.beat().getNote());
 
         regions.add(new CollisionRegion(0, 0, leftNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));

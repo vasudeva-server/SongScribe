@@ -26,7 +26,10 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.ui.ViewScale;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Container panel for under-lyrics text sections.
@@ -54,6 +57,10 @@ public class TextPanel extends JPanel {
     /** The song model. */
     @Nullable
     private Song song;
+
+    /** The owning score view, or null when detached (tests). Supplies the view zoom. */
+    @Nullable
+    private ScoreView scoreView;
 
     /**
      * Creates a new TextPanel.
@@ -88,6 +95,22 @@ public class TextPanel extends JPanel {
         translationComponent.setSong(song);
         revalidate();
         repaint();
+    }
+
+    /**
+     * Sets the owning {@link ScoreView} and fans it out to the once-created leaf
+     * components so their text scales with the view zoom.
+     */
+    public void setScoreView(ScoreView scoreView) {
+        this.scoreView = scoreView;
+        underLyricsComponent.setScoreView(scoreView);
+        banglaLyricsComponent.setScoreView(scoreView);
+        translationComponent.setScoreView(scoreView);
+    }
+
+    /** The view zoom, or {@link ViewScale#IDENTITY} when detached. */
+    private ViewScale viewScale() {
+        return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
     }
 
     /**
@@ -130,8 +153,12 @@ public class TextPanel extends JPanel {
             var unionWidth = calculateUnionWidth(g2);
 
             if (unionWidth > 0) {
+                // The union width is measured with zoom-scaled fonts, so center against
+                // the view-scaled (zoomed) line width.
+                var lineWidthPx =
+                    (int) Math.round(ScaleContext.ssToPx(song.getLineWidthSs()) * viewScale().factor());
                 var contentX = (float) Math.round(
-                    (song.getLineWidthPx() - unionWidth) / 2
+                    (lineWidthPx - unionWidth) / 2
                 );
                 underLyricsComponent.setContentX(contentX);
                 banglaLyricsComponent.setContentX(contentX);

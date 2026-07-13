@@ -43,6 +43,7 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.action.UIAction.AppMenuAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.SongSettingsDialog;
+import songscribe.util.UIUtils;
 
 /**
  * This class serves as a repository for global action-related constants and action groups.
@@ -176,6 +177,13 @@ public final class Actions {
     public static DeleteAction DELETE_ACTION;
     public static SelectLineAction SELECT_LINE_ACTION;
     public static DeselectAction DESELECT_ACTION;
+
+    //
+    // Zoom actions
+    //
+    public static ZoomAction ZOOM_IN_ACTION;
+    public static ZoomAction ZOOM_OUT_ACTION;
+    public static ResetZoomAction RESET_ZOOM_ACTION;
 
     // Strong reference prevents GC (mbassy uses weak references)
     private static final ResetHandler RESET_HANDLER = new ResetHandler();
@@ -361,6 +369,21 @@ public final class Actions {
         DELETE_ACTION = DeleteAction.createAction(mainFrame);
         SELECT_LINE_ACTION = SelectLineAction.createAction(mainFrame);
         DESELECT_ACTION = DeselectAction.createAction(mainFrame);
+
+        //
+        // Zoom actions
+        //
+        ZOOM_IN_ACTION = ZoomAction.createZoomInAction(mainFrame);
+        ZOOM_OUT_ACTION = ZoomAction.createZoomOutAction(mainFrame);
+        RESET_ZOOM_ACTION = ResetZoomAction.createAction(mainFrame);
+
+        // Cmd+Shift+= is a secondary accelerator for zoom-in (alongside Cmd+=), matching
+        // the common "=" / "+" key ambiguity across keyboard layouts.
+        UIUtils.registerActionKeystroke(
+            mainFrame.getRootPane(),
+            KeyStroke.getKeyStroke(KeyEvent.VK_EQUALS, MENU_SHORTCUT_MASK | InputEvent.SHIFT_DOWN_MASK),
+            ZOOM_IN_ACTION
+        );
 
         // Invalidate the cached reflection list so it is rebuilt with the new instances.
         appMenuActions = null;

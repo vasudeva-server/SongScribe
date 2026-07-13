@@ -29,14 +29,23 @@ int    elementCount;       // count — no suffix
 | `ssToRoundedPx(ss)`     | `Ss → Px`        | `int`    |
 | `pxToSs(px)`            | `Px → Ss`        | `double` |
 | `scaleFont(font)`       | px-sized font → ss-sized font | `Font` |
-| `textWidthSs(font, s)`  | AWT text advance → `Ss`       | `double` |
-| `textHeightSs(font)`    | AWT ascent+descent → `Ss`     | `double` |
-| `fontAscentSs(font)`    | AWT ascent → `Ss`             | `double` |
-| `fontMaxAscentSs(font)` | AWT max ascent → `Ss`         | `double` |
-| `fontDescentSs(font)`   | AWT descent → `Ss`            | `double` |
+| `textWidthSs(font, s)`  | AWT text advance → `Ss`       | `Ss` |
+| `textHeightSs(font)`    | AWT ascent+descent → `Ss`     | `Ss` |
+| `fontAscentSs(font)`    | AWT ascent → `Ss`             | `Ss` |
+| `fontMaxAscentSs(font)` | AWT max ascent → `Ss`         | `Ss` |
+| `fontDescentSs(font)`   | AWT descent → `Ss`            | `Ss` |
 | `getScaleTransform()`   | `AffineTransform` scaling `Ss → Px` | `AffineTransform` |
 
-AWT font metrics are always in pixels. Convert them with the `font*Ss` / `text*Ss` helpers — do **not** hand-roll `pxToSs(lm.getAscent())`. (Some existing call sites still do; prefer the helper in new code.)
+AWT font metrics are always in pixels. Convert them with the `font*Ss` / `text*Ss` helpers — do **not** hand-roll `pxToSs(lm.getAscent())`. (Some existing call sites still do; prefer the helper in new code.) These helpers are a **typed seam**: unwrap the returned `Ss` with `.value()` at the call site rather than threading the typed value further into plain-`double` layout math.
+
+##### Zoom is per-view, not part of `ScaleContext`
+
+`ScaleContext` is a **fixed document scale** (`pixelsPerStaffSpace` is always
+`DEFAULT_PIXELS_PER_STAFF_SPACE`) — `ssToPx` / `pxToSs` never vary with on-screen
+zoom. Zoom is applied separately, per view, only at view boundaries (the paint
+transform, component sizes, mouse input, page sizing). See
+[zoom.md](zoom.md) for the full model: the `Ss` / `DocPx` / `ViewPx` unit types,
+`ScaleContext` vs. `ViewScale`, and where each conversion belongs.
 
 #### `StaffExtents` — `Sp` ↔ `Ss`
 

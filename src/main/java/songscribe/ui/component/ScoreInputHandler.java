@@ -49,7 +49,7 @@ import songscribe.util.UIUtils;
  * handled by {@link LineComponent}.
  */
 public final class ScoreInputHandler extends KeyAdapter
-    implements MouseListener, MouseMotionListener {
+    implements MouseListener, MouseMotionListener, MouseWheelListener {
 
     private final InputHandlerCallback callback;
 
@@ -125,6 +125,22 @@ public final class ScoreInputHandler extends KeyAdapter
     @Override
     public void mouseMoved(MouseEvent e) {
         // Interface requires mouseMoved to be implemented
+    }
+
+    //***********************
+    // MouseWheelListener methods
+    //***********************
+    @Override
+    public void mouseWheelMoved(MouseWheelEvent e) {
+        if ((e.getModifiersEx() & UIUtils.MENU_SHORTCUT_MASK) != UIUtils.MENU_SHORTCUT_MASK) {
+            callback.forwardWheelScroll(e);
+            return;
+        }
+
+        // The menu-shortcut modifier held during a wheel/two-finger-scroll gesture is the
+        // platform zoom convention (Cmd+scroll on macOS, Ctrl+scroll elsewhere).
+        e.consume();
+        callback.zoomByWheel(e.getPreciseWheelRotation(), e.getPoint());
     }
 
     //***********************

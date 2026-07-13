@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.MockedStatic;
 
 import songscribe.ui.Mode;
+import songscribe.ui.ViewScale;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
@@ -72,6 +73,9 @@ public final class MockEnvHelper {
         when(mockFrame.getScoreView()).thenReturn(mockScore);
         when(mockFrame.requireScoreView()).thenReturn(mockScore);
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
+        // ZoomController (reached via Actions.initialize → ZoomAction) reads the active
+        // view's zoom, so give the mock a real ViewScale rather than a null.
+        when(mockScore.getViewScale()).thenReturn(new ViewScale());
         when(mockScore.getMode()).thenReturn(Mode.EDIT);
         when(mockScore.getSelectionSize()).thenReturn(0);
         when(mockScore.getController()).thenReturn(mockCtrl);

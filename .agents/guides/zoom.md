@@ -1,0 +1,136 @@
+# Zoom Architecture
+
+Zoom is **per-view state**, not part of the document scale. Read this guide before touching anything under `ui/ViewScale.java`, the `Ss`/`DocPx`/`ViewPx` records in `songscribe.dom`, `ScoreView`'s zoom-apply path, `ZoomController`, `PageModel`'s page-dimension getters, or `LineComponent.paintComponent`'s scale transform.
+
+## The model
+
+- **`ScaleContext`** — a **fixed document scale**. `pixelsPerStaffSpace` is always `ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE` (8.0); `ssToPx`/`pxToSs` never vary with on-screen zoom. This is the document's authoring scale — the same regardless of what any view currently shows.
+- **`ViewScale`** (`songscribe.ui.ViewScale`) — per-view zoom state, owned by a single `ScoreView`. Holds `zoomPercent` (default 100) and `factor()` (`zoomPercent / 100.0`). Applied **only at view boundaries**: the paint transform, component preferred sizes, mouse-input conversion, overlay bounds, and page sizing. Nothing else knows about zoom.
+
+Because `ScaleContext` is fixed, `Ss` staff-space distances and `DocPx` document pixels are two names for values at the *same* underlying scale — `DocPx` is just `Ss` after applying `ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE`. A `ViewScale` is the only thing that folds the current zoom on top, producing `ViewPx`.
+
+## The three unit types (`songscribe.dom`)
+
+| Type | Regime | Produced by |
+|---|---|---|
+| `Ss` | Staff spaces — the zoom- and device-independent layout unit | Layout code, DOM element geometry |
+| `DocPx` | Document pixels at the fixed 100%-zoom document scale | `ScaleContext`, `PageModel` |
+| `ViewPx` | On-screen pixels at the *current* view zoom | `ViewScale` conversions, Swing component geometry, mouse events |
+
+All three are plain records (`record Ss(double value)`, etc.) — thin typed wrappers, not full value types. `DocPx` and `ViewPx` each expose two int accessors mirroring the crossing rules from [unit-conversion.md](unit-conversion.md#rounding-when-crossing-to-px):
+
+- **`roundedPx()`** — nearest integer. Use for **positions** (coordinates, margins) so placement stays centered.
+- **`ceilPx()`** — rounds up. Use for **sizes** (widths, heights) so content is never clipped at high zoom.
+
+There is deliberately no single ambiguous `rounded()` — every call site must say which rule it means.
+
+`Ss` has no int accessor: staff-space values stay in `double` until they cross into a pixel regime through `ScaleContext` or `ViewScale`.
+
+## `ViewScale` conversions
+
+```
+ViewPx toViewPx(Ss ss)        Ss → ViewPx, folding in ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE and factor()
+Ss     toSs(ViewPx viewPx)    inverse
+ViewPx toViewPx(DocPx docPx)  DocPx → ViewPx, folding in factor() only
+DocPx  toDocPx(ViewPx viewPx) inverse
+Point  toDocumentPoint(Point) 2D convenience for mouse input
+Point  toViewPoint(Point)     2D convenience for the reverse
+Font   zoomedFont(Font base)  scales a font's point size by factor(); identity shortcut at 100%
+```
+
+`ViewScale.IDENTITY` is a shared, **read-only** instance (100% zoom) — see "Read-on-demand channel" below. Never call `setZoomPercent` on it.
+
+`ViewScale` is EDT-only by contract: all reads and writes must happen on the AWT event-dispatch thread. No locking is performed.
+
+## ViewScale data flow
+
+```
+                 ZoomController (static, stateless orchestrator)
+                        │ zoomIn/out/reset/setZoomPercent
+                        │   → reads active view; no-op when null
+                        ▼
+            MainFrame.<singleton>.getScoreView() ──► ScoreView
+                                                      │ owns viewScale : ViewScale   ◄── SOLE SOURCE OF TRUTH
+                                                      │ applyZoomPercent(newPercent):
+                                                      │   capture anchor → viewScale.setZoomPercent
+                                                      │   → layoutPage → invalidate tree → scrollPane.validate()
+                                                      │   → computeAnchoredViewPosition → setViewPosition
+                                                      │   → active LyricEditor.refreshFont()+recomputeBounds()
+                                                      │   → repaint
+     ┌────────────────────────────────────────────────┼───────────────────────────────────┐
+     │ direct + synchronous (above)                    │ bus: ZoomDidChangeNotification(old,new)
+     ▼                                                 ▼                                    ▼
+ score tree + LyricEditor                     ZoomAction enabled-state            ZoomStatusBarPanel
+ read viewScale ON DEMAND:                    (below MAX / above MIN)             (percent text, check marks)
+   ScoreComponent.getViewScale() =
+     scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY
+   ├─ LineComponent          — has scoreView backref (set in LinePanel ctor)
+   ├─ LineInvariants         — captures score.getViewScale() per render
+   ├─ header/lyric leaves    — inherit scoreView backref from ScoreComponent
+   └─ containers (MainPanel, StaffPanel, ComponentHierarchyNavigator) — ctor-passed ScoreView/ViewScale
+   detached previews (SongSettingsDialog) — no scoreView → IDENTITY (natural size)
+```
+
+`ScoreView.viewScale` is the **sole source of truth** for a view's zoom. `ZoomController` is a static, stateless orchestrator — it holds no zoom state of its own; it resolves the active `ScoreView` via the `MainFrame` singleton accessor and no-ops when there is none. `ZoomDidChangeNotification` on the message bus exists only for loosely-coupled observers (`ZoomAction` enabled-state, `ZoomStatusBarPanel`) — the score tree and the `LyricEditor` overlay are driven directly and synchronously by `ScoreView.applyZoomPercent`, not through the bus.
+
+## Read-on-demand channel, not field propagation
+
+`ViewScale` is never pushed into components as a mutable field. Instead, `ScoreComponent` holds a `@Nullable ScoreView scoreView` back-reference and exposes:
+
+```java
+public ViewScale getViewScale() {
+    return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
+}
+```
+
+Every on-score consumer reads the current zoom through this accessor at the moment it needs it, rather than caching a factor that could go stale. This matters because `LineComponent`s are created in `StaffPanel.rebuildLayout` → `new LinePanel` → `new LineComponent`, **not** through the `setSong` fan-out — a `setViewScale`-style push would leave a freshly rebuilt line rendering at 100% while the rest of the tree stayed zoomed. Read-on-demand makes that class of staleness structurally impossible.
+
+Off-score consumers with no `ScoreView` (dialog previews, exporters) get `ViewScale.IDENTITY` and render at natural (document) size regardless of any live view's zoom — e.g. `SongSettingsDialog`'s title/subtitle previews are never given a `ScoreView`.
+
+## The paint-pipeline: single factor application
+
+```
+LineComponent.paintComponent
+    scale = ScaleContext.getPixelsPerStaffSpace() * getViewScale().factor()
+    g2.scale(scale, scale)
+        │
+        ▼
+    renderers draw entirely in Ss — they never re-multiply by factor()
+        │
+        ▼
+    exception: the stripped-transform lyric path (LyricTextRenderer) draws
+    outside the Ss transform, in pixel space, so it reads
+    LineInvariants.getViewPixelsPerStaffSpace() (= pxPerSs × factor) directly —
+    the ONE place a zoomed pixel-per-staff-space value is read explicitly by name
+```
+
+The zoom factor is applied **once**, at the `LineComponent` paint transform. Everything drawn inside that transform (via any renderer) works in `Ss` and must never multiply by a zoom factor again — doing so double-scales. The only sanctioned exception is the lyric text path, which draws outside the `Ss` transform (so text stays crisp at the font's natural rasterization) and therefore needs its own explicitly-named zoomed pixels-per-staff-space reader, `LineInvariants.getViewPixelsPerStaffSpace()`. The name states plainly that it carries zoom, so it cannot be confused with a document-scale value.
+
+## No typed seam inside `paintComponent`
+
+Typed units (`Ss`, `DocPx`, `ViewPx`) exist to guard **seams** — layout, measurement, mouse, and page boundaries — where getting the wrong unit is a real, easy-to-make bug. They are deliberately **not** used inside the per-frame paint path:
+
+- `LineComponent.paintComponent` and everything it calls stay on plain-`double` `ssToPx`/`pxToSs` arithmetic.
+- `ScaleContext`'s measurement helpers (`textWidthSs`, `fontAscentSs`, etc.) do return typed `Ss` at their own boundary, but callers inside or adjacent to the paint path unwrap immediately with `.value()` rather than threading the typed value further into paint-time math (see `AnnotationRenderer`, `MetronomeRenderer`).
+- `scaleFont` keeps returning a plain `Font` — no typed wrapper.
+
+This is a deliberate performance boundary: typed records are cheap but not free, and the paint path runs every frame. Introducing a typed seam there would be a correctness no-op with a needless allocation cost — flag it in review.
+
+## Mouse input: view→document boundary conversion
+
+Mouse events arrive in `ViewPx` (on-screen coordinates). Hit-testing, drag handlers, and the DOM's `*Px` getters all operate in document space (`ScaleContext`-fixed, effectively `DocPx`). Convert **once**, at the event entry point — `getViewScale().toDocumentPoint(...)` on the incoming `Point` (or a synthesized `MouseEvent`, as `PreviewElementManager` does) — so everything downstream (`ElementHitTest`, `LineSelectionHandler`, `NoteDragHandler`, `GraceModeManager`, `VerticalAdjustment`/`HorizontalAdjustment`) works in unchanged document px without re-deriving the zoom factor at every step.
+
+## `roundedPx()` vs `ceilPx()` at the page seam
+
+`PageModel`'s page-dimension getters (`getPageWidthPx`, `getPageHeightPx`, `getTopMarginPx`, `getBottomMarginPx`, `getHorizontalMarginPx`) return `DocPx`. `ScoreView.layoutPage` converts each through the view's `ViewScale`:
+
+- Widths/heights (`pageWidthPx`, `pageHeightPx`) are **sizes** → `viewScale.toViewPx(...).ceilPx()`.
+- Margins and positions (`topMarginPx`, `bottomMarginPx`, `horizontalMarginPx`) → `viewScale.toViewPx(...).roundedPx()`.
+
+## Export sizing is zoom-independent by construction
+
+`ScoreView.getSheetWidthPx()` reads `ScaleContext.ssToRoundedPx(getSong().getLineWidthSs())` — pure document-scale, never touches `ViewScale`. `getSheetHeightPx()` must likewise never derive its answer by dividing a zoomed, already-rounded/clamped on-screen value (e.g. `getHeight()`) back down by `factor()` — that round-trip loses information at the max-clamp in `layoutPage` and accumulates rounding error. Instead it reproduces the page/content-height arithmetic directly against `PageModel`'s `DocPx` getters, converting only the one still-necessary view-scaled read (the live content's preferred height) back to document space via the view's own `ViewScale.toDocPx`, before any clamping — never after. This keeps future exporters immune to whatever zoom level the view happens to be showing.
+
+## See also
+
+- [unit-conversion.md](unit-conversion.md) — the `Ss`/`Px`/`Sp` suffix conventions, `ScaleContext` converters, and the general staff-space-first authoring discipline. This guide covers the zoom layer that sits on top of it.

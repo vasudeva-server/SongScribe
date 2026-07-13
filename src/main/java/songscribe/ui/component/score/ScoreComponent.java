@@ -27,6 +27,10 @@ import songscribe.error.RuntimeError;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Song;
+import songscribe.dom.Ss;
+import songscribe.dom.ViewPx;
+import songscribe.ui.ViewScale;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -46,6 +50,14 @@ public abstract class ScoreComponent extends JComponent {
     /** Reference to the song model. */
     @Nullable
     protected Song song;
+
+    /**
+     * The owning {@link ScoreView}, or {@code null} when this component is detached
+     * (dialog previews, exporters). Read on demand through {@link #getViewScale()} so
+     * a rebuilt tree never renders at a stale zoom.
+     */
+    @Nullable
+    protected ScoreView scoreView;
 
     /** Margin values (top, right, bottom, left) in pixels. */
     protected int marginTop = 0;
@@ -72,6 +84,36 @@ public abstract class ScoreComponent extends JComponent {
         this.song = song;
         revalidate();
         repaint();
+    }
+
+    /**
+     * Sets the owning {@link ScoreView}. On-score components are given one; detached
+     * previews are not, so they fall back to {@link ViewScale#IDENTITY}.
+     *
+     * @param scoreView the owning score view
+     */
+    public void setScoreView(ScoreView scoreView) {
+        this.scoreView = scoreView;
+    }
+
+    /**
+     * Returns the owning {@link ScoreView}, or {@code null} when detached.
+     */
+    public @Nullable ScoreView getScoreView() {
+        return scoreView;
+    }
+
+    /**
+     * Returns this component's {@link ViewScale}: the owning view's when attached,
+     * otherwise the shared read-only {@link ViewScale#IDENTITY} (natural size).
+     */
+    protected ViewScale getViewScale() {
+        return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
+    }
+
+    /** Converts a staff-space distance to view pixels through this component's zoom. */
+    protected ViewPx toViewPx(Ss ss) {
+        return getViewScale().toViewPx(ss);
     }
 
     /**
@@ -179,7 +221,10 @@ public abstract class ScoreComponent extends JComponent {
         }
 
         var textWidth = GraphicUtils.getTextBlockWidth(text, g2);
-        return (float) ((getSong().getLineWidthPx() - textWidth) / 2);
+        // The measured text width comes from a zoom-scaled font, so center it against the
+        // view-scaled (zoomed) line width, not the document-pixel width.
+        var lineWidthPx = toViewPx(new Ss(getSong().getLineWidthSs())).roundedPx();
+        return (float) ((lineWidthPx - textWidth) / 2);
     }
 
     /**
@@ -221,6 +266,16 @@ public abstract class ScoreComponent extends JComponent {
      * @param g2 The Graphics2D context with antialiasing enabled
      */
     protected abstract void render(Graphics2D g2);
+
+    /**
+     * Returns {@code base} scaled to the current zoom. Score text is drawn in absolute
+     * pixel coordinates with no zoom transform on the {@code Graphics2D}, so the zoom
+     * must be baked into the font; this is the shared entry point score text components
+     * use for both painting and measuring.
+     */
+    protected Font zoomedFont(Font base) {
+        return getViewScale().zoomedFont(base);
+    }
 
     /**
      * Returns the maximum size for this component.

@@ -22,7 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.dom.ScaleContext;
+import songscribe.dom.Ss;
 import songscribe.util.GraphicsState;
 import songscribe.util.GraphicUtils;
 
@@ -42,10 +42,12 @@ public class FootnotesComponent extends ScoreComponent {
     private static final double MAX_WIDTH_PERCENTAGE = 2.0 / 3.0;
 
     /**
-     * Creates a new FootnotesComponent.
+     * The top margin in view pixels, recomputed per layout so it tracks the current
+     * zoom instead of caching a value frozen at construction.
      */
-    public FootnotesComponent() {
-        setMarginTop(ScaleContext.ssToRoundedPx(FOOTNOTES_MIN_MARGIN_TOP_SS));
+    @Override
+    public int getMarginTop() {
+        return toViewPx(new Ss(FOOTNOTES_MIN_MARGIN_TOP_SS)).roundedPx();
     }
 
     @Override
@@ -65,7 +67,7 @@ public class FootnotesComponent extends ScoreComponent {
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR
         )) {
-            var font = getFont();
+            var font = zoomedFont(getFont());
             g2.setFont(font);
             g2.setColor(Color.BLACK);
 
@@ -75,7 +77,7 @@ public class FootnotesComponent extends ScoreComponent {
             // Calculate text width (capped at max width) and derive the centered x position
             var textWidth = GraphicUtils.getTextBlockWidth(footnotes, g2);
             var x = calculateRenderX(textWidth);
-            var y = (float) (marginTop + metrics.getAscent());
+            var y = (float) (getMarginTop() + metrics.getAscent());
 
             // Draw each line
             var lines = footnotes.split("\n");
@@ -103,7 +105,9 @@ public class FootnotesComponent extends ScoreComponent {
             return 0;
         }
 
-        var lineWidthPx = song.getLineWidthPx();
+        // The text width is measured with a zoom-scaled font, so center against the
+        // view-scaled (zoomed) line width.
+        var lineWidthPx = toViewPx(new Ss(song.getLineWidthSs())).roundedPx();
         var maxWidth = lineWidthPx * MAX_WIDTH_PERCENTAGE;
         var actualWidth = Math.min(textWidth, maxWidth);
         return (float) ((lineWidthPx - actualWidth) / 2);
@@ -121,13 +125,13 @@ public class FootnotesComponent extends ScoreComponent {
             return new Dimension(0, 0);
         }
 
-        var font = getFont();
+        var font = zoomedFont(getFont());
         var metrics = getFontMetrics(font);
 
         var lines = footnotes.split("\n");
         var lineHeight = metrics.getHeight();
-        var height = marginTop + (lineHeight * lines.length);
+        var height = getMarginTop() + (lineHeight * lines.length);
 
-        return new Dimension(song.getLineWidthPx(), height);
+        return new Dimension(toViewPx(new Ss(song.getLineWidthSs())).roundedPx(), height);
     }
 }

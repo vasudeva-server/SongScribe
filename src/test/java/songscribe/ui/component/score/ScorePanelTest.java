@@ -32,6 +32,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.ui.FlatLafKey;
+import songscribe.ui.FlatLafProps;
 
 /**
  * Unit tests for {@link ScorePanel}: the width-max logic in
@@ -72,21 +74,22 @@ class ScorePanelTest extends UnitTest {
     class GetPreferredSize {
 
         /**
-         * When content is wider than the parent, the content width is used.
-         * Height always matches the content height.
+         * When content is wider than the parent, the content width plus the minimum
+         * horizontal padding gutter is used. Height always matches the content height.
          */
         @Test
         void testContentWiderThanParentUsesContentWidth() {
             var contentWidth = 800;
             var contentHeight = 600;
             var parentWidth = 500;
+            var minHorizontalPaddingPx = FlatLafProps.getInt(FlatLafKey.SCORE_PANEL_MIN_HORIZONTAL_PADDING);
 
             var panel = scorePanelIn(contentWidth, contentHeight, parentWidth, 400);
             var size = panel.getPreferredSize();
 
             assertThat(size.width)
-                .as("content wider than parent → content width wins")
-                .isEqualTo(contentWidth);
+                .as("content wider than parent → content width plus padding wins")
+                .isEqualTo(contentWidth + 2 * minHorizontalPaddingPx);
             assertThat(size.height)
                 .as("height always equals content height")
                 .isEqualTo(contentHeight);
@@ -100,7 +103,15 @@ class ScorePanelTest extends UnitTest {
         void testParentWiderThanContentUsesParentWidth() {
             var contentWidth = 400;
             var contentHeight = 300;
-            var parentWidth = 900;
+
+            // Make the parent clearly wider than the padded content width, so this case
+            // holds regardless of the SCORE_PANEL_MIN_HORIZONTAL_PADDING value (otherwise
+            // a larger padding could silently push the padded content past parentWidth and
+            // flip which branch wins).
+            var minHorizontalPaddingPx = FlatLafProps.getInt(FlatLafKey.SCORE_PANEL_MIN_HORIZONTAL_PADDING);
+            var paddedContentWidth = contentWidth + 2 * minHorizontalPaddingPx;
+            var parentWidthMarginPx = 500;
+            var parentWidth = paddedContentWidth + parentWidthMarginPx;
 
             var panel = scorePanelIn(contentWidth, contentHeight, parentWidth, 500);
             var size = panel.getPreferredSize();

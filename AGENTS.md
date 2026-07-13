@@ -22,6 +22,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 
 - **User-facing strings** (new, changed, moved, or referenced): [Strings](.agents/guides/strings.md).
 - **Pixels, staff-spaces, or conversion between them**: [Unit Conversion](.agents/guides/unit-conversion.md).
+- **Zoom** — `ViewScale`, `ScoreView`'s zoom-apply path, `ZoomController`, the `Ss`/`DocPx`/`ViewPx` unit types, or the paint-transform scale factor: [Zoom](.agents/guides/zoom.md).
 - **MBassador message bus** — posting, subscribing, `@Handler` methods, or reading code that uses them: [Message System](.agents/guides/messages.md).
 - **Undo — `Mutation` records**, modification brackets, or `SongDidChangeNotification`: [Mutation System](.agents/guides/mutations.md).
 - **`JOptionPane`-based alerts, confirms, or input prompts**: [OptionDialogs](.agents/guides/option-dialogs.md).

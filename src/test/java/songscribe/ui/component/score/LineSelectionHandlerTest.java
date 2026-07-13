@@ -42,6 +42,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.layout.LayoutResult;
+import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.renderer.SlideRenderer;
 import songscribe.ui.selection.LineSelectionState;
@@ -76,6 +77,7 @@ class LineSelectionHandlerTest extends UnitTest {
         mockScoreView = mock(ScoreView.class);
 
         when(lc.getScoreView()).thenReturn(mockScoreView);
+        when(lc.getViewScale()).thenReturn(ViewScale.IDENTITY);
         when(lc.getLineSelectionState()).thenReturn(null);
         when(lc.getLine()).thenReturn(null);
 

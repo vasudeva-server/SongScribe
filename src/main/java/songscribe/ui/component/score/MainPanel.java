@@ -28,6 +28,8 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Song;
 import songscribe.dom.ScaleContext;
+import songscribe.ui.ViewScale;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Top-level panel for the score component hierarchy.
@@ -79,8 +81,9 @@ public class MainPanel extends JPanel {
     @Nullable
     private Song song;
 
-    /** Spacing between title and score. */
-    private final int scoreMarginTop;
+    /** The owning score view, or null when detached (tests). Supplies the view zoom. */
+    @Nullable
+    private ScoreView scoreView;
 
     /**
      * Creates a new MainPanel.
@@ -88,8 +91,6 @@ public class MainPanel extends JPanel {
     public MainPanel() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
-
-        scoreMarginTop = ScaleContext.ssToRoundedPx(SCORE_MARGIN_TOP_SS);
 
         titleComponent = new TitleComponent();
         titleComponent.setAlignmentX(LEFT_ALIGNMENT);
@@ -108,10 +109,34 @@ public class MainPanel extends JPanel {
 
         add(titleComponent);
         add(subtitleComponent);
-        add(Box.createVerticalStrut(scoreMarginTop));
+        add(Box.createVerticalStrut(scoreMarginTopPx()));
         add(staffPanel);
         add(textPanel);
         add(footnotesComponent);
+    }
+
+    /**
+     * Sets the owning {@link ScoreView} and fans it out to the once-created leaf
+     * components and the child panels so every on-score component reads the same
+     * view zoom on demand.
+     */
+    public void setScoreView(ScoreView scoreView) {
+        this.scoreView = scoreView;
+        titleComponent.setScoreView(scoreView);
+        subtitleComponent.setScoreView(scoreView);
+        footnotesComponent.setScoreView(scoreView);
+        staffPanel.setScoreView(scoreView);
+        textPanel.setScoreView(scoreView);
+    }
+
+    /** The view zoom, or {@link ViewScale#IDENTITY} when detached. */
+    private ViewScale viewScale() {
+        return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
+    }
+
+    /** Spacing between title and score, scaled to the current view zoom. */
+    private int scoreMarginTopPx() {
+        return (int) Math.round(ScaleContext.ssToPx(SCORE_MARGIN_TOP_SS) * viewScale().factor());
     }
 
     /**
@@ -238,7 +263,7 @@ public class MainPanel extends JPanel {
         var height = titleSize.height + subtitleSize.height;
 
         if (height > 0 && scoreSize.height > 0) {
-            height += scoreMarginTop;
+            height += scoreMarginTopPx();
         }
 
         height += scoreSize.height;

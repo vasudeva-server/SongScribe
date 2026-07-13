@@ -35,6 +35,12 @@ import songscribe.UnitTest;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
+/**
+ * Unit tests for {@link ScaleContext} at its post-rewrite fixed-scale semantics:
+ * {@code pixelsPerStaffSpace} is a document-scale constant with no zoom concept —
+ * zoom lives entirely in {@link songscribe.ui.ViewScale}, exercised separately in
+ * {@code ViewScaleTest}.
+ */
 class ScaleContextTest extends UnitTest {
 
     // Pixels-per-staff-space value used for all conversion tests; chosen to be
@@ -66,13 +72,7 @@ class ScaleContextTest extends UnitTest {
     // Negative pps value used to verify the guard in setPixelsPerStaffSpace.
     private static final double NEGATIVE_PPS = -5.0;
 
-    // Zoom percentages used for setZoomPercent / getZoomPercent tests.
-    private static final int ZOOM_PERCENT_DEFAULT = 100;
-    private static final int ZOOM_PERCENT_HALF = 50;
-    private static final int ZOOM_PERCENT_DOUBLE = 200;
-    private static final int ZOOM_PERCENT_NEGATIVE = -10;
-
-    // Font used for rows 47–49: a plain, headless-safe font with a fixed size.
+    // Font used for the font-metric wrapper tests: a plain, headless-safe font with a fixed size.
     private static final int TEST_FONT_SIZE_PT = 12;
     private static final Font TEST_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, TEST_FONT_SIZE_PT);
 
@@ -93,7 +93,7 @@ class ScaleContextTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Row 43 — ssToPx(ss) = pps × ss
+    // ssToPx(ss) = pps × ss
     // -------------------------------------------------------------------------
 
     @Test
@@ -105,7 +105,7 @@ class ScaleContextTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Row 44 — ssToRoundedPx(ss) rounds to nearest int (both directions)
+    // ssToRoundedPx(ss) rounds to nearest int (both directions)
     // -------------------------------------------------------------------------
 
     @Test
@@ -121,7 +121,7 @@ class ScaleContextTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Row 45 — pxToSs(px) = px / pps, inverse of ssToPx
+    // pxToSs(px) = px / pps, inverse of ssToPx
     // -------------------------------------------------------------------------
 
     @Test
@@ -140,7 +140,7 @@ class ScaleContextTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Row 46 — setPixelsPerStaffSpace throws IllegalArgumentException for ≤ 0
+    // setPixelsPerStaffSpace throws IllegalArgumentException for ≤ 0
     // -------------------------------------------------------------------------
 
     @Test
@@ -156,51 +156,7 @@ class ScaleContextTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // setZoomPercent / getZoomPercent — 100% maps to the default pps
-    // -------------------------------------------------------------------------
-
-    @Test
-    void testSetZoomPercentAtDefaultSetsDefaultPps() {
-        ScaleContext.setZoomPercent(ZOOM_PERCENT_DEFAULT);
-
-        assertThat(ScaleContext.getPixelsPerStaffSpace())
-            .isCloseTo(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE, within(DOUBLE_EPSILON));
-    }
-
-    @Test
-    void testSetZoomPercentScalesPpsProportionally() {
-        ScaleContext.setZoomPercent(ZOOM_PERCENT_HALF);
-        assertThat(ScaleContext.getPixelsPerStaffSpace())
-            .isCloseTo(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE * ZOOM_PERCENT_HALF / ZOOM_PERCENT_DEFAULT, within(DOUBLE_EPSILON));
-
-        ScaleContext.setZoomPercent(ZOOM_PERCENT_DOUBLE);
-        assertThat(ScaleContext.getPixelsPerStaffSpace())
-            .isCloseTo(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE * ZOOM_PERCENT_DOUBLE / ZOOM_PERCENT_DEFAULT, within(DOUBLE_EPSILON));
-    }
-
-    @Test
-    void testGetZoomPercentIsInverseOfSetZoomPercent() {
-        ScaleContext.setZoomPercent(ZOOM_PERCENT_HALF);
-        assertThat(ScaleContext.getZoomPercent()).isEqualTo(ZOOM_PERCENT_HALF);
-
-        ScaleContext.setZoomPercent(ZOOM_PERCENT_DOUBLE);
-        assertThat(ScaleContext.getZoomPercent()).isEqualTo(ZOOM_PERCENT_DOUBLE);
-    }
-
-    @Test
-    void testSetZoomPercentThrowsForZero() {
-        assertThatThrownBy(() -> ScaleContext.setZoomPercent(0))
-            .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    void testSetZoomPercentThrowsForNegativeValue() {
-        assertThatThrownBy(() -> ScaleContext.setZoomPercent(ZOOM_PERCENT_NEGATIVE))
-            .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    // -------------------------------------------------------------------------
-    // Row 47 — getScaleTransform() returns AffineTransform scaled by pps
+    // getScaleTransform() returns AffineTransform scaled by pps
     // -------------------------------------------------------------------------
 
     @Test
@@ -215,40 +171,40 @@ class ScaleContextTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Row 48 — scaleFont(font) converts font size from px to staff-space units
+    // scaleFont(font) converts font size from px to staff-space units at the
+    // current (fixed) pps — no zoom concept remains in ScaleContext.
     // -------------------------------------------------------------------------
 
     @Test
     void testScaleFontConvertsPointSizeThroughPxToSs() {
-        // The production method returns font.deriveFont((float) pxToSs(font.getSize())).
         float expectedSize = (float) ScaleContext.pxToSs(TEST_FONT.getSize());
         Font scaledFont = ScaleContext.scaleFont(TEST_FONT);
         assertThat(scaledFont.getSize2D()).isCloseTo(expectedSize, within((float) DOUBLE_EPSILON));
     }
 
     // -------------------------------------------------------------------------
-    // Row 49 — font-metric wrappers each return pxToSs(<raw pixel metric>)
+    // Font-metric wrappers each return a typed Ss wrapping pxToSs(<raw pixel metric>)
     // -------------------------------------------------------------------------
 
     @Test
     void testFontAscentSsEqualsPxToSsOfLineMetricAscent() {
         double rawAscentPx = TEST_FONT.getLineMetrics("", GraphicUtils.SCREEN_FRC).getAscent();
         double expectedSs = ScaleContext.pxToSs(rawAscentPx);
-        assertThat(ScaleContext.fontAscentSs(TEST_FONT)).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
+        assertThat(ScaleContext.fontAscentSs(TEST_FONT).value()).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
     }
 
     @Test
     void testFontDescentSsEqualsPxToSsOfLineMetricDescent() {
         double rawDescentPx = TEST_FONT.getLineMetrics("", GraphicUtils.SCREEN_FRC).getDescent();
         double expectedSs = ScaleContext.pxToSs(rawDescentPx);
-        assertThat(ScaleContext.fontDescentSs(TEST_FONT)).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
+        assertThat(ScaleContext.fontDescentSs(TEST_FONT).value()).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
     }
 
     @Test
     void testFontMaxAscentSsEqualsPxToSsOfFontMetricsMaxAscent() {
         double rawMaxAscentPx = MyFontUtils.getFontMetrics(TEST_FONT).getMaxAscent();
         double expectedSs = ScaleContext.pxToSs(rawMaxAscentPx);
-        assertThat(ScaleContext.fontMaxAscentSs(TEST_FONT)).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
+        assertThat(ScaleContext.fontMaxAscentSs(TEST_FONT).value()).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
     }
 
     @Test
@@ -256,13 +212,13 @@ class ScaleContextTest extends UnitTest {
         var lm = TEST_FONT.getLineMetrics("", GraphicUtils.SCREEN_FRC);
         double rawHeightPx = lm.getAscent() + lm.getDescent();
         double expectedSs = ScaleContext.pxToSs(rawHeightPx);
-        assertThat(ScaleContext.textHeightSs(TEST_FONT)).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
+        assertThat(ScaleContext.textHeightSs(TEST_FONT).value()).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
     }
 
     @Test
     void testTextWidthSsEqualsPxToSsOfTextLayoutAdvance() {
         double rawAdvancePx = new TextLayout(TEST_TEXT, TEST_FONT, GraphicUtils.SCREEN_FRC).getAdvance();
         double expectedSs = ScaleContext.pxToSs(rawAdvancePx);
-        assertThat(ScaleContext.textWidthSs(TEST_FONT, TEST_TEXT)).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
+        assertThat(ScaleContext.textWidthSs(TEST_FONT, TEST_TEXT).value()).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
     }
 }

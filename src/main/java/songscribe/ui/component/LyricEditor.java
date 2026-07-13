@@ -38,13 +38,13 @@ import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.action.EditLyricAction;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.layout.InsetsSs;
-import songscribe.dom.ScaleContext;
 import songscribe.util.UIUtils;
 
 /**
@@ -192,8 +192,8 @@ public final class LyricEditor extends MyJTextField {
      */
     private final boolean openedAsExtender;
 
-    /** Font metrics for the lyrics font; fixed for the editor's lifetime. */
-    private final FontMetrics fontMetrics;
+    /** Font metrics for the current (zoom-scaled) lyrics font; refreshed by {@link #refreshFont}. */
+    private FontMetrics fontMetrics = getFontMetrics(getFont());
 
     /**
      * When {@code true}, {@link #applyDismissAdjustment()} clears the flag and returns
@@ -245,7 +245,6 @@ public final class LyricEditor extends MyJTextField {
         lineComponent = lineIndex >= 0 ? score.getLineComponent(lineIndex) : null;
 
         configureLAF();
-        fontMetrics = getFontMetrics(getFont());
 
         // Tab/Shift-Tab are focus-traversal keys by default; clear both sets so VK_TAB
         // (with and without Shift) reaches the input map rather than moving focus.
@@ -274,7 +273,7 @@ public final class LyricEditor extends MyJTextField {
 
     private void configureLAF() {
         setUI(new LyricTextFieldUI());
-        setFont(score.getDocumentFonts().getLyricsFont());
+        refreshFont();
         setOpaque(true);
         setBackground(FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND));
         setForeground(Color.BLACK);
@@ -292,6 +291,18 @@ public final class LyricEditor extends MyJTextField {
                 rightPaddingPx
             )
         ));
+    }
+
+    /**
+     * Derives the editor's font from the document's base lyrics font scaled by the
+     * current zoom factor, since (unlike canvas-rendered text) this overlay is a real
+     * {@link JComponent} positioned in absolute pixel coordinates rather than drawn
+     * inside a staff-space {@code Graphics2D} transform.
+     */
+    void refreshFont() {
+        var zoomedFont = score.getViewScale().zoomedFont(score.getDocumentFonts().getLyricsFont());
+        setFont(zoomedFont);
+        fontMetrics = getFontMetrics(zoomedFont);
     }
 
     /** The three legal shapes a committed syllable can have. */
@@ -617,8 +628,11 @@ public final class LyricEditor extends MyJTextField {
         var advanceLeftSs = anchor.centerXSs() - advanceSs / 2.0;
         var heightSs = lyricRenderMetrics.lyricBoxHeightSs();
 
-        var advancePx = ScaleContext.ssToPx(advanceSs);
-        var roundedAdvancePx = (int) Math.ceil(advancePx);
+        // The editor is a real overlay component positioned in absolute view pixels, so
+        // ss→px conversions here honor the current zoom via the view scale (not the
+        // fixed document scale). Sizes round up (ceilPx); positions round to nearest.
+        var viewScale = score.getViewScale();
+        var roundedAdvancePx = viewScale.toViewPx(new Ss(advanceSs)).ceilPx();
         var trailingCaretRoomPx = text.isEmpty()
             ? MIN_TRAILING_CARET_ROOM_PX
             : 0;
@@ -627,16 +641,16 @@ public final class LyricEditor extends MyJTextField {
         // getHeight() = ascent+descent+leading. Adding leading here makes fieldViewSlopPx
         // equal to SELECTION_MARGIN_PX*2, so the selection gets exactly SELECTION_MARGIN_PX
         // pixels of breathing room above and below.
-        var contentHeightPx = (int) Math.ceil(ScaleContext.ssToPx(heightSs))
+        var contentHeightPx = viewScale.toViewPx(new Ss(heightSs)).ceilPx()
             + fontMetrics.getLeading();
 
         var insets = getInsets();
 
         // Snap content_left exactly to the advance-origin pixel: JTextField paints there,
         // and any rounding drift would visibly shift the painted text within the box.
-        var contentLeftPx = ScaleContext.ssToRoundedPx(advanceLeftSs);
+        var contentLeftPx = viewScale.toViewPx(new Ss(advanceLeftSs)).roundedPx();
 
-        var baselineYPxInt = ScaleContext.ssToRoundedPx(anchor.baselineYSs());
+        var baselineYPxInt = viewScale.toViewPx(new Ss(anchor.baselineYSs())).roundedPx();
         var fieldViewSlopPx = contentHeightPx - fontMetrics.getHeight();
         var contentTopPx = baselineYPxInt - fontMetrics.getAscent() - fieldViewSlopPx / 2;
 

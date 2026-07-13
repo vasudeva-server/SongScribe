@@ -52,6 +52,7 @@ import songscribe.layout.LyricRenderMetrics;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.ui.ViewScale;
 
 @SuppressWarnings("resource")
 abstract class LyricEditorTestSupport extends UnitTest {
@@ -71,6 +72,7 @@ abstract class LyricEditorTestSupport extends UnitTest {
         var documentFonts = new DocumentFonts();
         documentFonts.setFont(FontKey.LYRICS, LYRICS_FONT);
         when(score.getDocumentFonts()).thenReturn(documentFonts);
+        when(score.getViewScale()).thenReturn(new ViewScale());
         when(score.getSong()).thenReturn(song);
         when(score.getLineComponent(anyInt())).thenReturn(null);
         when(score.getLayout()).thenReturn(new BorderLayout());

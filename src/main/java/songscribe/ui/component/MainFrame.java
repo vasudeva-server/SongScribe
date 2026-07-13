@@ -658,24 +658,9 @@ public class MainFrame extends JFrame implements Printable {
 
         requireScoreView().init();
 
-        contentPane.add(createCenterContent(), BorderLayout.CENTER);
+        contentPane.add(requireScoreView().requireScrollPane(), BorderLayout.CENTER);
         contentPane.add(new StatusBar(), BorderLayout.SOUTH);
 
-    }
-
-    private JSplitPane createCenterContent() {
-        var pane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-
-        // Since it's a split pane, we want to resize it continuously as the pane is resized
-        pane.setContinuousLayout(true);
-
-        // There is an unknown rendering problem in Linux
-        pane.setResizeWeight(SystemInfo.isLinux ? 0.85 : 1.0);
-        pane.setBorder(BorderFactory.createEmptyBorder());
-        pane.setDividerSize(0);
-        pane.setTopComponent(requireScoreView().requireScrollPane());
-
-        return pane;
     }
 
     public void setFrameSize() {

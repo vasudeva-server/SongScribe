@@ -23,6 +23,8 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
+
+import songscribe.dom.Ss;
 import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
 
@@ -65,6 +67,22 @@ public abstract class BaseTitleComponent extends ScoreComponent {
         this.previewText = previewText;
         revalidate();
         repaint();
+    }
+
+    /**
+     * The line width in pixels used for text wrapping, centering, and the component
+     * width: the document line width scaled by this component's zoom. On the score it
+     * tracks the view zoom; a detached preview (no {@code ScoreView}) resolves to
+     * {@link songscribe.ui.ViewScale#IDENTITY} and so renders at natural size.
+     */
+    private int lineWidthPx() {
+        var theSong = song;
+
+        if (theSong == null) {
+            return 0;
+        }
+
+        return toViewPx(new Ss(theSong.getLineWidthSs())).roundedPx();
     }
 
     /**
@@ -121,13 +139,13 @@ public abstract class BaseTitleComponent extends ScoreComponent {
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR
         )) {
-            var font = getFont();
+            var font = zoomedFont(getFont());
             g2.setFont(font);
             g2.setColor(Color.BLACK);
             var metrics = g2.getFontMetrics();
 
             // Wrap the text to fit in the line width
-            var lineWidthPx = song.getLineWidthPx();
+            var lineWidthPx = lineWidthPx();
             var textLines = StringUtils.wrapText(text, metrics, lineWidthPx);
 
             // Calculate max width of wrapped lines for centering
@@ -165,11 +183,11 @@ public abstract class BaseTitleComponent extends ScoreComponent {
             return new Dimension(0, 0);
         }
 
-        var font = getFont();
+        var font = zoomedFont(getFont());
         var metrics = getFontMetrics(font);
 
         // Wrap the text to calculate height
-        var textLines = StringUtils.wrapText(text, metrics, song.getLineWidthPx());
+        var textLines = StringUtils.wrapText(text, metrics, lineWidthPx());
 
         // Tight bounding box: each line is ascent + descent tall, with the font's
         // leading inserted only *between* lines, never below the last descender.
@@ -180,6 +198,6 @@ public abstract class BaseTitleComponent extends ScoreComponent {
         // Top gap only applies when there is text to display.
         var height = topGapPx() + textBlockHeight;
 
-        return new Dimension(song.getLineWidthPx(), height);
+        return new Dimension(lineWidthPx(), height);
     }
 }

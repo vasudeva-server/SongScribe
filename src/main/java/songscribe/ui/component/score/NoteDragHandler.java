@@ -110,7 +110,7 @@ class NoteDragHandler {
 
         dragMoved = false;
 
-        var hitIndex = ElementHitTest.hitTestElement(lc, e.getPoint());
+        var hitIndex = ElementHitTest.hitTestElement(lc, lc.getViewScale().toDocumentPoint(e.getPoint()));
 
         if (hitIndex == -1) {
             return false;
@@ -180,7 +180,9 @@ class NoteDragHandler {
         // a change to aboveStaffSs (which shifts the staff within the line component) nor
         // a reposition of the line component within its parent can perturb the mapping.
         var deltaYPx = e.getYOnScreen() - dragPressScreenYPx;
-        var deltaYSs = ScaleContext.pxToSs(deltaYPx);
+        // The screen-Y delta is in view pixels; divide by the zoom factor to reach document
+        // pixels before the fixed-scale ss conversion, so a drag tracks on-screen motion 1:1.
+        var deltaYSs = ScaleContext.pxToSs(deltaYPx / lc.getViewScale().factor());
         var deltaSp = Staff.ssToSp(deltaYSs);
         var newPositionSp = originalDragStaffPositionSp + deltaSp;
 

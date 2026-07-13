@@ -53,6 +53,7 @@ import songscribe.message.mutation.ElementModification;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.ui.ViewScale;
 
 @SuppressWarnings({ "OverlyBroadThrowsClause", "DataFlowIssue" })
 class LyricEditorTest extends LyricEditorTestSupport {
@@ -72,6 +73,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         var documentFonts = new DocumentFonts();
         documentFonts.setFont(FontKey.LYRICS, LYRICS_FONT);
         when(score.getDocumentFonts()).thenReturn(documentFonts);
+        when(score.getViewScale()).thenReturn(new ViewScale());
         when(score.getSong()).thenReturn(song);
         when(score.getLineComponent(anyInt())).thenReturn(null);
         when(score.getLayout()).thenReturn(new BorderLayout());

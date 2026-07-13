@@ -75,8 +75,7 @@ public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
             g2.setFont(ScaleContext.scaleFont(annotationFont));
             RenderingUtils.applyDecorationColor(g2, element, invariants, frame);
 
-            var metrics = g2.getFontMetrics(annotationFont);
-            var ascentSs = ScaleContext.pxToSs(metrics.getAscent());
+            var ascentSs = ScaleContext.fontAscentSs(annotationFont).value();
             var xSs = decorationLayout.xSs();
             var baselineYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants) + ascentSs;
 

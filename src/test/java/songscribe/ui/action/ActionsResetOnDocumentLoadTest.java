@@ -34,6 +34,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.dom.Song;
 import songscribe.ui.Mode;
+import songscribe.ui.ViewScale;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -66,6 +67,11 @@ class ActionsResetOnDocumentLoadTest extends UnitTest {
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
         when(mockScore.getMode()).thenReturn(Mode.EDIT);
         when(mockCoordinator.getSelection()).thenReturn(null);
+        // This test wires the mock onto the real MainFrame singleton (see class Javadoc),
+        // which leaks past this test's lifetime; stub getViewScale() so later tests that
+        // read MainFrame.getInstance().getScoreView().getViewScale() (ZoomController,
+        // ScoreComponent) do not NPE on the leaked mock.
+        when(mockScore.getViewScale()).thenReturn(new ViewScale());
 
         MainFrame.getInstance().setScoreView(mockScore);
     }

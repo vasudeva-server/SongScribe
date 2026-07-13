@@ -119,10 +119,6 @@ public class LineComponent extends ScoreComponent
     @Nullable
     private SelectionProvider selectionProvider;
 
-    /** Reference to the ScoreView for accessing song and services. */
-    @Nullable
-    private ScoreView scoreView;
-
     /** Index of the currently playing note (-1 if not playing). */
     private int playingNoteIndex = -1;
 
@@ -253,7 +249,7 @@ public class LineComponent extends ScoreComponent
      * Will be removed when renderers and mouse code are converted.
      */
     public int getMiddleLineYPx() {
-        return (int) Math.round(ScaleContext.ssToPx(getMiddleLineYSs()));
+        return (int) Math.round(ScaleContext.ssToPx(getMiddleLineYSs()) * getViewScale().factor());
     }
 
     /**
@@ -263,7 +259,8 @@ public class LineComponent extends ScoreComponent
      * @return Y coordinate in pixels
      */
     public int staffPositionToYPx(int staffPositionSp) {
-        return getMiddleLineYPx() + (int) Math.round(ScaleContext.ssToPx(Staff.spToSs(staffPositionSp)));
+        return getMiddleLineYPx()
+            + (int) Math.round(ScaleContext.ssToPx(Staff.spToSs(staffPositionSp)) * getViewScale().factor());
     }
 
     /**
@@ -280,8 +277,9 @@ public class LineComponent extends ScoreComponent
      *
      * @param scoreView The ScoreView component
      */
+    @Override
     public void setScoreView(ScoreView scoreView) {
-        this.scoreView = scoreView;
+        super.setScoreView(scoreView);
 
         // Register LineSelectionState with coordinator when score is set
         if (lineSelectionState != null) {
@@ -395,12 +393,18 @@ public class LineComponent extends ScoreComponent
         if (isFirstLine) {
             attribution = song.getAttributionElement();
             var pane = song.getAttributionPane();
-            var attrFont = view.getAttributionFont();
-            var subAttrFont = view.getSubAttributionFont();
+            // The attribution is drawn in pixel space with no zoom transform (see render),
+            // so the zoom must be baked into the fonts. Scaling here too keeps the measured
+            // staff-space dimensions zoom-invariant: getContentSizePx grows with the zoom
+            // factor, so divide by the zoomed scale (document scale × factor) to divide it
+            // back out and recover the natural-size staff-space dimensions.
+            var factor = getViewScale().factor();
+            var attrFont = zoomedFont(view.getAttributionFont());
+            var subAttrFont = zoomedFont(view.getSubAttributionFont());
             var sizePx = pane.getContentSizePx(attrFont, subAttrFont);
             attribution.setDimensionsSs(
-                ScaleContext.pxToSs(sizePx.width),
-                ScaleContext.pxToSs(sizePx.height));
+                ScaleContext.pxToSs(sizePx.width) / factor,
+                ScaleContext.pxToSs(sizePx.height) / factor);
         }
 
         var result = layoutEngine.layout(
@@ -456,9 +460,21 @@ public class LineComponent extends ScoreComponent
 
         middleLineYSs = calculateMiddleLineYSs();
 
-        // Apply staff-space to pixel scale transform at the render boundary.
-        // All downstream drawing uses staff-space coordinates.
-        var scale = ScaleContext.getPixelsPerStaffSpace();
+        // ── Paint pipeline: the zoom factor is applied EXACTLY ONCE ─────────────────
+        //
+        //   g2.scale(pxPerSs × factor)              <- single factor application, here
+        //        │
+        //        ├─► LineRenderer + all element renderers draw in Ss; they NEVER
+        //        │   re-multiply by pxPerSs or factor (a ssToPx inside a renderer is a bug).
+        //        │
+        //        └─► exception: LyricTextRenderer strips this transform and re-derives its
+        //            own integer-pixel coords from LineInvariants.getViewPixelsPerStaffSpace()
+        //            (= pxPerSs × factor) — the sole reader of the zoomed scale.
+        //
+        //   Attribution below is drawn in pixel space OUTSIDE the transform, so it applies
+        //   the factor explicitly (positions/sizes × factor, fonts via zoomedFont).
+        // ────────────────────────────────────────────────────────────────────────────
+        var scale = ScaleContext.getPixelsPerStaffSpace() * getViewScale().factor();
 
         // layoutResult is null only when the very first layout could not fit the
         // content (issue #449); with no prior layout to fall back on, skip drawing
@@ -479,13 +495,16 @@ public class LineComponent extends ScoreComponent
 
             if (layout != null) {
                 var view = scoreView;
-                var xPx = ScaleContext.ssToPx(layout.xSs());
-                var yPx = ScaleContext.ssToPx(layout.ySs() + middleLineYSs);
-                var widthPx = ScaleContext.ssToPx(layout.widthSs());
+                // Drawn in pixel space outside the ss transform: apply the view factor to the
+                // (zoom-invariant) staff-space positions/size, and bake zoom into the fonts.
+                var factor = getViewScale().factor();
+                var xPx = ScaleContext.ssToPx(layout.xSs()) * factor;
+                var yPx = ScaleContext.ssToPx(layout.ySs() + middleLineYSs) * factor;
+                var widthPx = ScaleContext.ssToPx(layout.widthSs()) * factor;
                 song.getAttributionPane().render(
                     g2, xPx, yPx, widthPx,
-                    view.getAttributionFont(),
-                    view.getSubAttributionFont()
+                    zoomedFont(view.getAttributionFont()),
+                    zoomedFont(view.getSubAttributionFont())
                 );
             }
         }
@@ -507,6 +526,7 @@ public class LineComponent extends ScoreComponent
 
         var result = layoutResult;
         var metrics = getScoreView().getSongLayoutMetrics();
+        var factor = getViewScale().factor();
 
         if (result == null) {
             if (lineDoesNotFit) {
@@ -514,15 +534,15 @@ public class LineComponent extends ScoreComponent
                 // prior layout to size from. Report a zero-width line of the normal
                 // height so the scroll pane stays sane until a later layout fits.
                 return new Dimension(
-                    0, (int) Math.ceil(ScaleContext.ssToPx(metrics.totalLineHeightSs())));
+                    0, (int) Math.ceil(ScaleContext.ssToPx(metrics.totalLineHeightSs()) * factor));
             }
 
             throw unexpectedNullLayout();
         }
 
         return new Dimension(
-            (int) Math.ceil(ScaleContext.ssToPx(result.getLineWidthSs())),
-            (int) Math.ceil(ScaleContext.ssToPx(metrics.totalLineHeightSs())));
+            (int) Math.ceil(ScaleContext.ssToPx(result.getLineWidthSs()) * factor),
+            (int) Math.ceil(ScaleContext.ssToPx(metrics.totalLineHeightSs()) * factor));
     }
 
     private double calculateMiddleLineYSs() {
@@ -723,9 +743,10 @@ public class LineComponent extends ScoreComponent
     // ==========================================================================
 
     /**
-     * Returns the ScoreView reference.
+     * Returns the ScoreView reference, which a live line component always has.
      */
-    ScoreView getScoreView() {
+    @Override
+    public ScoreView getScoreView() {
         if (scoreView == null) {
             throw RuntimeError.exit("ScoreView reference not set on LineComponent");
         }
@@ -796,9 +817,15 @@ public class LineComponent extends ScoreComponent
 
     private LayoutResult.@Nullable LyricHit hitTestLyric(Point pointPx) {
         var ready = readyLayout();
-        return ready != null
-            ? ready.layoutResult().hitTestLyric(getScoreView().getLyricRenderMetrics(), ready.line(), pointPx)
-            : null;
+
+        if (ready == null) {
+            return null;
+        }
+
+        // Convert the view-pixel event point to document pixels once, at this input
+        // boundary, so the layout hit-test operates in the zoom-independent document space.
+        var pointDocPx = getViewScale().toDocumentPoint(pointPx);
+        return ready.layoutResult().hitTestLyric(getScoreView().getLyricRenderMetrics(), ready.line(), pointDocPx);
     }
 
     /** Package-private for testing. */

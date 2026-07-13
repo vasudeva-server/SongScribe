@@ -35,6 +35,9 @@ public class ScorePanel extends JPanel implements Scrollable {
 
     private final Component content;
 
+    /** Cached from the LAF in {@link #updateUI}, avoiding a property lookup on every layout pass. */
+    private int minHorizontalPaddingPx;
+
     public ScorePanel(Component content) {
         this.content = content;
         setLayout(new GridBagLayout());
@@ -48,13 +51,15 @@ public class ScorePanel extends JPanel implements Scrollable {
         super.updateUI();
 
         setBackground(FlatLafProps.getColor(FlatLafKey.SCORE_PANEL_BACKGROUND));
+        minHorizontalPaddingPx = FlatLafProps.getInt(FlatLafKey.SCORE_PANEL_MIN_HORIZONTAL_PADDING);
     }
 
     @Override
     public Dimension getPreferredSize() {
         var contentSize = content.getPreferredSize();
         var parentSize = getParent().getSize();
-        var width = Math.max(contentSize.width, parentSize.width);
+        var minWidth = contentSize.width + 2 * minHorizontalPaddingPx;
+        var width = Math.max(minWidth, parentSize.width);
         return new Dimension(width, contentSize.height);
     }
 

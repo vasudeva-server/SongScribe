@@ -32,6 +32,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.dom.ViewPx;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -752,8 +753,15 @@ public final class GraceModeManager {
      * click in the insert phase.
      */
     private boolean isMouseLeftOfGraceNote(MouseEvent e) {
+        if (graceLineComponent == null) {
+            return false;
+        }
+
         var threshold = internalGetCancelThresholdPx();
-        return threshold >= 0 && e.getX() <= threshold;
+        // The threshold is a fixed-scale document pixel; convert the view-pixel event x
+        // to document pixels before comparing.
+        var mouseXDocPx = graceLineComponent.getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).roundedPx();
+        return threshold >= 0 && mouseXDocPx <= threshold;
     }
 
     /**
@@ -761,8 +769,15 @@ public final class GraceModeManager {
      * of the grace note's right edge. Used for connect detection during drag.
      */
     private boolean isMouseRightOfGraceNote(MouseEvent e) {
+        if (graceLineComponent == null) {
+            return false;
+        }
+
         var threshold = internalGetConnectThresholdPx();
-        return threshold >= 0 && e.getX() >= threshold;
+        // The threshold is a fixed-scale document pixel; convert the view-pixel event x
+        // to document pixels before comparing.
+        var mouseXDocPx = graceLineComponent.getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).roundedPx();
+        return threshold >= 0 && mouseXDocPx >= threshold;
     }
 
     private int internalGetCancelThresholdPx() {

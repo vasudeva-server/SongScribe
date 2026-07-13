@@ -19,6 +19,7 @@
 */
 package songscribe.layout;
 
+import songscribe.dom.DocPx;
 import songscribe.dom.ScaleContext;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -77,38 +78,38 @@ public final class PageModel {
         return "a4".equalsIgnoreCase(value) ? Size.A4 : Size.LETTER;
     }
 
-    /** Full page width in pixels. */
-    public static int getPageWidthPx() {
-        return inchesToPx(getSize().widthInches());
+    /** Full page width in document pixels (fixed document scale, independent of view zoom). */
+    public static DocPx getPageWidthPx() {
+        return new DocPx(inchesToPx(getSize().widthInches()));
     }
 
-    /** Full page height in pixels. */
-    public static int getPageHeightPx() {
-        return inchesToPx(getSize().heightInches());
+    /** Full page height in document pixels (fixed document scale, independent of view zoom). */
+    public static DocPx getPageHeightPx() {
+        return new DocPx(inchesToPx(getSize().heightInches()));
     }
 
-    /** Top margin in pixels (fixed 0.5"). */
-    public static int getTopMarginPx() {
-        return inchesToPx(VERTICAL_MARGIN_INCHES);
+    /** Top margin in document pixels (fixed 0.5"). */
+    public static DocPx getTopMarginPx() {
+        return new DocPx(inchesToPx(VERTICAL_MARGIN_INCHES));
     }
 
-    /** Bottom margin in pixels (fixed 0.5"). */
-    public static int getBottomMarginPx() {
-        return inchesToPx(VERTICAL_MARGIN_INCHES);
+    /** Bottom margin in document pixels (fixed 0.5"). */
+    public static DocPx getBottomMarginPx() {
+        return new DocPx(inchesToPx(VERTICAL_MARGIN_INCHES));
     }
 
     /**
-     * Horizontal margin per side in pixels, computed to center the content
-     * within the page. Returns 0 if the line width equals or exceeds the page width.
+     * Horizontal margin per side in document pixels, computed to center
+     * {@code lineWidthPx} (document pixels) within the page. Returns 0 if the
+     * line width equals or exceeds the page width.
      */
-    public static int getHorizontalMarginPx(int lineWidthPx) {
-        var pageWidthPx = getPageWidthPx();
-        return Math.max(0, (pageWidthPx - lineWidthPx) / 2);
+    public static DocPx getHorizontalMarginPx(int lineWidthPx) {
+        return new DocPx(Math.max(0, (getPageWidthPx().value() - lineWidthPx) / 2));
     }
 
     /** Content area width in pixels (page width minus default horizontal margins on each side). */
     public static int getContentAreaWidthPx() {
-        return getPageWidthPx() - 2 * inchesToPx(DEFAULT_HORIZONTAL_MARGIN_INCHES);
+        return getPageWidthPx().roundedPx() - 2 * inchesToPx(DEFAULT_HORIZONTAL_MARGIN_INCHES);
     }
 
     /** Maximum line width in inches (constant, derived from A4 constraint). */

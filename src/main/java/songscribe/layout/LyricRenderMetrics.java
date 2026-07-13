@@ -65,7 +65,7 @@ public record LyricRenderMetrics(
             return 0.0;
         }
 
-        return ScaleContext.textWidthSs(lyricsFont, text);
+        return ScaleContext.textWidthSs(lyricsFont, text).value();
     }
 
     /**
@@ -113,6 +113,6 @@ public record LyricRenderMetrics(
      * change height as characters with descenders are typed or deleted.
      */
     public double lyricBoxHeightSs() {
-        return ScaleContext.fontAscentSs(lyricsFont) + ScaleContext.fontDescentSs(lyricsFont);
+        return ScaleContext.fontAscentSs(lyricsFont).value() + ScaleContext.fontDescentSs(lyricsFont).value();
     }
 }

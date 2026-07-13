@@ -135,7 +135,7 @@ public class SystemStacker {
         var staffPosition = note.getStaffPosition();
         var annotationFont = fonts.getAnnotationFont();
         var widthSs = annotation.computeContentWidthSs(annotationFont);
-        var heightSs = ScaleContext.textHeightSs(annotationFont);
+        var heightSs = ScaleContext.textHeightSs(annotationFont).value();
 
         // xAlignment is 0.0 (left), 0.5 (center), or 1.0 (right). The text is
         // anchored to the matching point on the notehead: left edge → left,

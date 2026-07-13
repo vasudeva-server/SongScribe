@@ -44,6 +44,7 @@ import songscribe.layout.InsertionSpacingCalculator.InsertionResult;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.SongLayoutMetrics;
 import songscribe.engraving.Staff;
+import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
@@ -251,6 +252,7 @@ class LineComponentTest extends UnitTest {
             var mockCoordinator = mock(SelectionCoordinator.class);
             when(mockScoreView.getSelectionCoordinator()).thenReturn(mockCoordinator);
             when(mockScoreView.getSongLayoutMetrics()).thenReturn(metrics);
+            when(mockScoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
 
             // Set ScoreView before setting line (lineSelectionState is null → no coordinator call).
             lc.setScoreView(mockScoreView);

@@ -157,8 +157,7 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
             g2.setFont(ScaleContext.scaleFont(attrFont));
             g2.drawString(MetronomeAttachment.EQUALS_STR, (float) xSs, (float) textBaselineYSs);
 
-            var equalsWidthSs = ScaleContext.pxToSs(
-                attrFont.getStringBounds(MetronomeAttachment.EQUALS_STR, g2.getFontRenderContext()).getWidth());
+            var equalsWidthSs = ScaleContext.textWidthSs(attrFont, MetronomeAttachment.EQUALS_STR).value();
             xSs += equalsWidthSs;
         }
 

@@ -64,6 +64,9 @@ class LyricRenderMetricsTest extends UnitTest {
 
     @AfterEach
     void tearDown() {
+        // Restore the default scale so a test that changed the zoom does not pollute
+        // later tests sharing the JVM-global ScaleContext singleton.
+        ScaleContext.setPixelsPerStaffSpace(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
         messageCenterMock.close();
     }
 
@@ -109,7 +112,7 @@ class LyricRenderMetricsTest extends UnitTest {
         // This is NOT f(x)≈f(x) — it catches any divergence if the production method
         // switches to a different width-computation path.
         final var text = "do";
-        final var expectedWidthSs = ScaleContext.textWidthSs(LYRICS_FONT, text);
+        final var expectedWidthSs = ScaleContext.textWidthSs(LYRICS_FONT, text).value();
         assertThat(LYRIC_METRICS.lyricBoxWidthSs(text)).isCloseTo(expectedWidthSs, within(TOLERANCE));
     }
 
@@ -151,7 +154,7 @@ class LyricRenderMetricsTest extends UnitTest {
     @Test
     void testLyricBoxHeightSsIsPositiveAndEqualsAscentPlusDescent() {
         final var expectedHeightSs =
-            ScaleContext.fontAscentSs(LYRICS_FONT) + ScaleContext.fontDescentSs(LYRICS_FONT);
+            ScaleContext.fontAscentSs(LYRICS_FONT).value() + ScaleContext.fontDescentSs(LYRICS_FONT).value();
         assertAll(
             () -> assertThat(LYRIC_METRICS.lyricBoxHeightSs())
                       .describedAs("height must be positive for a real font")

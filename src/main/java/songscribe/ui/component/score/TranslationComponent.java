@@ -22,7 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.dom.ScaleContext;
+import songscribe.dom.Ss;
 import songscribe.util.GraphicsState;
 import songscribe.util.GraphicUtils;
 
@@ -35,7 +35,7 @@ import songscribe.util.GraphicUtils;
 public class TranslationComponent extends ScoreComponent {
 
     /** Vertical spacing for translation block (2 staff lines). */
-    private static final int TRANSLATION_TOP_MARGIN = ScaleContext.ssToRoundedPx(2.0);
+    private static final double TRANSLATION_TOP_MARGIN_SS = 2.0;
 
     /** Translation header for official translations. */
     private static final String TRANSLATION_HEADER_OFFICIAL = "Sri Chinmoy's translation:";
@@ -44,10 +44,11 @@ public class TranslationComponent extends ScoreComponent {
     private static final String TRANSLATION_HEADER_UNOFFICIAL = "Unofficial translation:";
 
     /**
-     * Creates a new TranslationComponent.
+     * The top margin in view pixels, recomputed per layout so it tracks the current zoom.
      */
-    public TranslationComponent() {
-        setMarginTop(TRANSLATION_TOP_MARGIN);
+    @Override
+    public int getMarginTop() {
+        return toViewPx(new Ss(TRANSLATION_TOP_MARGIN_SS)).roundedPx();
     }
 
     /**
@@ -67,7 +68,7 @@ public class TranslationComponent extends ScoreComponent {
             return 0;
         }
 
-        var lyricsFont = getFont();
+        var lyricsFont = zoomedFont(getFont());
         var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
         double maxWidth = 0;
@@ -108,7 +109,7 @@ public class TranslationComponent extends ScoreComponent {
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR
         )) {
-            var lyricsFont = getFont();
+            var lyricsFont = zoomedFont(getFont());
             var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
             // Draw header
@@ -123,7 +124,7 @@ public class TranslationComponent extends ScoreComponent {
 
             var x = resolveContentX(headerText, g2);
 
-            var y = (float) (marginTop + headerMetrics.getAscent());
+            var y = (float) (getMarginTop() + headerMetrics.getAscent());
 
             g2.drawString(headerText, x, y);
             y += headerMetrics.getHeight();
@@ -156,12 +157,12 @@ public class TranslationComponent extends ScoreComponent {
             return new Dimension(0, 0);
         }
 
-        var lyricsFont = getFont();
+        var lyricsFont = zoomedFont(getFont());
         var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
         // Calculate header height
         var headerMetrics = getFontMetrics(headerFont);
-        var height = (float) marginTop + headerMetrics.getHeight();
+        var height = (float) getMarginTop() + headerMetrics.getHeight();
 
         // Margin below header
         height += lyricsFont.getSize2D() / 4f;
@@ -171,6 +172,6 @@ public class TranslationComponent extends ScoreComponent {
         var lines = translation.split("\n");
         height += textMetrics.getHeight() * lines.length;
 
-        return new Dimension(song.getLineWidthPx(), (int) height);
+        return new Dimension(toViewPx(new Ss(song.getLineWidthSs())).roundedPx(), (int) height);
     }
 }

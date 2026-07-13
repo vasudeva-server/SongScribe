@@ -38,6 +38,7 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
+import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.playback.PlaybackController;
@@ -81,6 +82,7 @@ abstract class PreviewElementManagerTestBase extends UnitTest {
 
         when(lc.isEditMode()).thenReturn(true);
         when(lc.getScoreView()).thenReturn(score);
+        when(lc.getViewScale()).thenReturn(ViewScale.IDENTITY);
         when(lc.getLine()).thenReturn(line);
         when(score.getControl()).thenReturn(Control.MOUSE);
         when(score.getMode()).thenReturn(Mode.EDIT);

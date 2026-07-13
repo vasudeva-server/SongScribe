@@ -29,6 +29,7 @@ import songscribe.error.RuntimeError;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Song;
+import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.layout.SongLayoutMetricsBuilder;
 import songscribe.layout.LayoutResult;
@@ -56,9 +57,9 @@ public class StaffPanel extends JPanel {
     /** List of line panels, one per staff line. */
     private final List<LinePanel> linePanels = new ArrayList<>();
 
-    /** Spacing between lines. */
-    private final int lineMargin;
-
+    /** The owning score view, or null when detached (tests). Supplies the view zoom. */
+    @Nullable
+    private ScoreView scoreView;
 
     /**
      * Creates a new StaffPanel.
@@ -66,8 +67,21 @@ public class StaffPanel extends JPanel {
     public StaffPanel() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
+    }
 
-        lineMargin = ScaleContext.ssToRoundedPx(LINE_MARGIN_BOTTOM_SS);
+    /** Sets the owning {@link ScoreView} so the inter-line spacing tracks the view zoom. */
+    public void setScoreView(ScoreView scoreView) {
+        this.scoreView = scoreView;
+    }
+
+    /** The view zoom, or {@link ViewScale#IDENTITY} when detached. */
+    private ViewScale viewScale() {
+        return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
+    }
+
+    /** Spacing between staff lines, scaled to the current view zoom. */
+    private int lineMarginPx() {
+        return (int) Math.round(ScaleContext.ssToPx(LINE_MARGIN_BOTTOM_SS) * viewScale().factor());
     }
 
     /**
@@ -119,7 +133,7 @@ public class StaffPanel extends JPanel {
 
             // Add spacing after each line except the last
             if (i < lineCount - 1) {
-                add(Box.createVerticalStrut(lineMargin));
+                add(Box.createVerticalStrut(lineMarginPx()));
             }
         }
 
@@ -192,7 +206,7 @@ public class StaffPanel extends JPanel {
 
             // Add spacing after each line except the last
             if (i < linePanels.size() - 1) {
-                height += lineMargin;
+                height += lineMarginPx();
             }
         }
 
@@ -220,7 +234,7 @@ public class StaffPanel extends JPanel {
         // leading stub on the next.
         var layouts = getLayoutResults();
         var lyricsFont = scoreView.getLyricsFont();
-        var lyricAscentSs = ScaleContext.fontAscentSs(lyricsFont);
+        var lyricAscentSs = ScaleContext.fontAscentSs(lyricsFont).value();
         var metrics = SongLayoutMetricsBuilder.build(layouts, lyricAscentSs);
         scoreView.setSongLayoutMetrics(metrics);
     }

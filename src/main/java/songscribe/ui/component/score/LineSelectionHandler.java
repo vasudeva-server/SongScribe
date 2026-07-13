@@ -26,6 +26,7 @@ import java.awt.event.MouseEvent;
 
 import songscribe.Strings;
 import songscribe.dom.StaffElement;
+import songscribe.dom.ViewPx;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
@@ -126,7 +127,9 @@ class LineSelectionHandler {
         dragStart.setLocation(e.getPoint());
         dragRectangle.setBounds(0, 0, 0, 0);
 
-        pressHitResult = hitTest(e.getPoint());
+        // Hit-test in document pixels; the drag rectangle stays in view pixels (below)
+        // because it is a pixel-space overlay rendered outside the staff-space transform.
+        pressHitResult = hitTest(lc.getViewScale().toDocumentPoint(e.getPoint()));
 
         var lineSelectionState = lc.getLineSelectionState();
 
@@ -382,12 +385,15 @@ class LineSelectionHandler {
         coordinator.activateLine(lc.getLineIndex());
         lineSelectionState.clearSelection();
 
-        // Convert pixel drag rect to staff spaces for intersection with hit rects
+        // Convert the view-pixel drag rect to document pixels (honoring the current zoom),
+        // then to staff spaces on the fixed document scale for intersection with the
+        // document-space element hit rects.
+        var viewScale = lc.getViewScale();
         var dragRectSs = new Rectangle2D.Double(
-            ScaleContext.pxToSs(dragRect.x),
-            ScaleContext.pxToSs(dragRect.y),
-            ScaleContext.pxToSs(dragRect.width),
-            ScaleContext.pxToSs(dragRect.height)
+            ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.x)).value()),
+            ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.y)).value()),
+            ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.width)).value()),
+            ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.height)).value())
         );
         var helper = new Rectangle2D.Double();
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {

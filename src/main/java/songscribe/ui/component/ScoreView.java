@@ -44,9 +44,12 @@ import songscribe.export.SVGExporter;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongFileLoader;
 import songscribe.message.MessageCenter;
+import songscribe.dom.DocPx;
 import songscribe.dom.Song;
+import songscribe.dom.Ss;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.dom.ViewPx;
 import songscribe.ui.MusicEditOperations;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.notification.DocumentDidLoadNotification;
@@ -58,6 +61,8 @@ import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
+import songscribe.ui.ViewScale;
+import songscribe.ui.ZoomController;
 import songscribe.ui.action.Actions;
 import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
@@ -134,6 +139,10 @@ public final class ScoreView
     private JPopupMenu popup = null;
 
     private final Dimension sheetSize = new Dimension();
+
+    // Per-view zoom state — the sole source of truth for this view's zoom.
+    // On-score components read it on demand via getViewScale().
+    private final ViewScale viewScale = new ViewScale();
 
     // Called when a file is successfully opened (e.g. to update the window title)
     private final @Nullable Consumer<? super File> onFileOpened;
@@ -244,6 +253,7 @@ public final class ScoreView
             inputHandler = null;
         } else {
             hierarchyNavigator = new ComponentHierarchyNavigator(this);
+            hierarchyNavigator.setScoreView(this);
             var handler = new ScoreInputHandler(this);
             inputHandler = handler;
             setLayout(new BorderLayout());
@@ -280,6 +290,7 @@ public final class ScoreView
         if (inputHandler != null) {
             addMouseMotionListener(inputHandler);
             addMouseListener(inputHandler);
+            addMouseWheelListener(inputHandler);
         }
 
         initEditPopup();
@@ -325,6 +336,51 @@ public final class ScoreView
         scrollPane = new JScrollPane(scorePanel);
         scrollPane.setBorder(new ThemeAwareMatteBorder(1, 0, 1, 0, "ToolBar.separatorColor"));
         updateScoreSurroundBackground();
+
+        if (LOG.isDebugEnabled()) {
+            installViewportDebugLogging(scrollPane);
+        }
+    }
+
+    /**
+     * DEBUG-ONLY: logs every viewport position/size change with a filtered stack
+     * trace so a re-layout that unexpectedly shifts the scroll position reveals its
+     * trigger. Remove once the first-line scroll-shift bug (refs #128) is resolved.
+     */
+    private void installViewportDebugLogging(JScrollPane scrollPane) {
+        var viewport = scrollPane.getViewport();
+        var lastPosition = new Point[] {viewport.getViewPosition()};
+
+        viewport.addChangeListener(event -> {
+            var position = viewport.getViewPosition();
+
+            if (position.equals(lastPosition[0])) {
+                return;
+            }
+
+            LOG.debug(
+                "viewport pos {} -> {} (viewSize={}, extent={})\n{}",
+                lastPosition[0],
+                position,
+                viewport.getViewSize(),
+                viewport.getExtentSize(),
+                songscribeStackTrace()
+            );
+            lastPosition[0] = position;
+        });
+    }
+
+    /** DEBUG-ONLY helper: compact call stack limited to songscribe frames. */
+    private static String songscribeStackTrace() {
+        var builder = new StringBuilder();
+
+        for (var frame : Thread.currentThread().getStackTrace()) {
+            if (frame.getClassName().startsWith("songscribe.")) {
+                builder.append("    at ").append(frame).append('\n');
+            }
+        }
+
+        return builder.toString();
     }
 
     @Override
@@ -348,6 +404,7 @@ public final class ScoreView
 
     private void initMainPanel() {
         mainPanel = new MainPanel();
+        mainPanel.setScoreView(this);
         mainPanel.setSong(getSong());
         mainPanel.setVisible(true);
         add(mainPanel, BorderLayout.CENTER);
@@ -690,6 +747,41 @@ public final class ScoreView
         repaint();
     }
 
+    @Override
+    public void zoomByWheel(double preciseWheelRotation, Point viewPoint) {
+        ZoomController.zoomByWheel(preciseWheelRotation, viewPoint);
+    }
+
+    @Override
+    public void forwardWheelScroll(MouseWheelEvent e) {
+        if (scrollPane == null) {
+            return;
+        }
+
+        // Rebuild the event with the scroll pane as source/target so it is delivered
+        // straight to JScrollPane's own listeners, bypassing AWT's ancestor search
+        // (which would otherwise stop at this view, since it has its own wheel listener).
+        var pointInScrollPane = SwingUtilities.convertPoint(this, e.getPoint(), scrollPane);
+        var forwardedEvent = new MouseWheelEvent(
+            scrollPane,
+            e.getID(),
+            e.getWhen(),
+            e.getModifiersEx(),
+            pointInScrollPane.x,
+            pointInScrollPane.y,
+            e.getXOnScreen(),
+            e.getYOnScreen(),
+            e.getClickCount(),
+            e.isPopupTrigger(),
+            e.getScrollType(),
+            e.getScrollAmount(),
+            e.getWheelRotation(),
+            e.getPreciseWheelRotation()
+        );
+
+        scrollPane.dispatchEvent(forwardedEvent);
+    }
+
     public int getSelectionSize() {
         return selectionCoordinator.getSelectionSize();
     }
@@ -734,6 +826,10 @@ public final class ScoreView
 
     public void setSong(Song song) {
         this.song = song;
+
+        // Reset zoom to 100% for the new/opened song before laying out at the old zoom.
+        ZoomController.resetZoom();
+
         var lineWidthPx = ScaleContext.ssToRoundedPx(song.getLineWidthSs());
 
         // Core setup needed for both headless and interactive modes
@@ -819,7 +915,22 @@ public final class ScoreView
 
     public int getSheetHeightPx() {
         // TODO: Calculate from component hierarchy
-        return getHeight();
+        //
+        // Zoom-independent by construction: unlike ScoreView's own getHeight() (which is
+        // clamped against the page height and rounded at the view scale in layoutPage),
+        // this reproduces that max/margin arithmetic entirely in document space so future
+        // exporters never inherit view zoom. mainPanel's preferred height is the one
+        // remaining view-scaled read; it is converted back to document px via the view's
+        // own ViewScale rather than a raw factor() division, and is not first clamped or
+        // rounded against the page height, so no page-height information is lost in the
+        // round trip.
+        var contentHeightViewPx = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
+        var contentHeightDocPx = viewScale.toDocPx(new ViewPx(contentHeightViewPx));
+        var topMarginPx = PageModel.getTopMarginPx();
+        var bottomMarginPx = PageModel.getBottomMarginPx();
+        var minPageHeightDocPx = contentHeightDocPx.value() + topMarginPx.value() + bottomMarginPx.value();
+        var pageHeightDocPx = PageModel.getPageHeightPx();
+        return new DocPx(Math.max(pageHeightDocPx.value(), minPageHeightDocPx)).roundedPx();
     }
 
     /**
@@ -833,7 +944,7 @@ public final class ScoreView
     public int getSheetHeightPx(ExportOptions options) {
         // TODO: Calculate height based on options without relying on component layout.
         // For now, returns full height since rendering is not yet implemented.
-        return getHeight();
+        return getSheetHeightPx();
     }
 
     @Override
@@ -947,22 +1058,48 @@ public final class ScoreView
         this.dragDisabled = dragDisabled;
     }
 
-    public void updatePageLayout(int lineWidthPx) {
-        getSong().setLineWidthSs(ScaleContext.pxToSs(lineWidthPx));
+    public void updatePageLayout(int lineWidthDocPx) {
+        getSong().setLineWidthSs(ScaleContext.pxToSs(lineWidthDocPx));
+        // layoutPage expects view px; the width arrives in document px, so fold in the
+        // current zoom. Skipping this left the page centered for the wrong width at any
+        // zoom other than 100% (content against the left edge when zoomed out, clipped
+        // on the right when zoomed in).
+        layoutPage(viewScale.toViewPx(new DocPx(lineWidthDocPx)).roundedPx());
+    }
 
-        var pageWidthPx = PageModel.getPageWidthPx();
+    /**
+     * Re-sizes the page canvas and re-centers the content for {@code lineWidthPx}
+     * at the current zoom, <em>without</em> mutating the song's stored line width.
+     * {@link #updatePageLayout} writes the width to the model first and then calls
+     * this; the zoom handler calls it directly so a pure view change never records
+     * a document mutation or undo entry.
+     */
+    private void layoutPage(int lineWidthPx) {
+        // PageModel returns document (100%-zoom) page dimensions; scale them through this
+        // view's ViewScale to size the page the same way zoom scales the staff content.
+        // Sizes (widths/heights) round up via ceilPx() so content is never clipped at high
+        // zoom; positions/margins round to nearest via roundedPx().
+        var pageWidthPx = viewScale.toViewPx(PageModel.getPageWidthPx()).ceilPx();
+        var pageHeightPx = viewScale.toViewPx(PageModel.getPageHeightPx()).ceilPx();
+        var topMarginPx = viewScale.toViewPx(PageModel.getTopMarginPx()).roundedPx();
+        var bottomMarginPx = viewScale.toViewPx(PageModel.getBottomMarginPx()).roundedPx();
+
         var contentHeight = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
-        var minPageHeight = contentHeight + PageModel.getTopMarginPx() + PageModel.getBottomMarginPx();
+        var minPageHeight = contentHeight + topMarginPx + bottomMarginPx;
 
         preferredSizePx.width = pageWidthPx;
-        preferredSizePx.height = Math.max(PageModel.getPageHeightPx(), minPageHeight);
+        preferredSizePx.height = Math.max(pageHeightPx, minPageHeight);
         setPreferredSize(preferredSizePx);
 
-        var horizontalMarginPx = PageModel.getHorizontalMarginPx(lineWidthPx);
+        // getHorizontalMarginPx operates in document space; convert lineWidthPx (view px) to
+        // document px before the call, then convert the resulting margin back to view px.
+        var lineWidthDocPx = viewScale.toDocPx(new ViewPx(lineWidthPx)).roundedPx();
+        var horizontalMarginPx =
+            viewScale.toViewPx(PageModel.getHorizontalMarginPx(lineWidthDocPx)).roundedPx();
         setBorder(BorderFactory.createEmptyBorder(
-            PageModel.getTopMarginPx(),
+            topMarginPx,
             horizontalMarginPx,
-            PageModel.getBottomMarginPx(),
+            bottomMarginPx,
             horizontalMarginPx
         ));
         invalidate();
@@ -976,6 +1113,135 @@ public final class ScoreView
         }
 
         repaint();
+    }
+
+    /** The per-view zoom state. On-score components read it on demand. */
+    public ViewScale getViewScale() {
+        return viewScale;
+    }
+
+    /**
+     * Applies {@code newPercent} to this view's {@link ViewScale} and re-anchors
+     * the viewport around {@code anchorPoint}, a point in this ScoreView's local
+     * (content) coordinate space — e.g. the cursor position for wheel/pinch zoom.
+     * When {@code anchorPoint} is null, anchors at the viewport's horizontal
+     * center and top edge instead (menu/keyboard zoom).
+     * <p>
+     * Drives the re-layout directly and synchronously off this view's own state:
+     * {@link songscribe.ui.ZoomController} calls this on the active view and posts
+     * a {@code ZoomDidChangeNotification} only for loosely-coupled observers. On-
+     * score components read {@link #getViewScale()} on demand, so nothing is
+     * pushed into the tree here. EDT-only, per the {@code ZoomController} contract.
+     */
+    public void applyZoomPercent(int newPercent, @Nullable Point anchorPoint) {
+        if (scrollPane == null) {
+            return;
+        }
+
+        var viewport = scrollPane.getViewport();
+        var extentSize = viewport.getExtentSize();
+
+        Point anchorViewportOffset;
+        Point anchorContentPoint;
+
+        if (anchorPoint == null) {
+            // Horizontally anchor at the viewport's center; vertically anchor at the
+            // current scroll position (the viewport's top edge).
+            anchorViewportOffset = new Point(extentSize.width / 2, 0);
+
+            // Convert the anchor to ScoreView-content coordinates using the pre-revalidate
+            // bounds — component bounds still reflect the old zoom at this point.
+            anchorContentPoint = SwingUtilities.convertPoint(viewport, anchorViewportOffset, this);
+        } else {
+            // anchorPoint already arrives in ScoreView-content coordinates (it comes
+            // from a MouseEvent whose listener is registered directly on this view).
+            anchorContentPoint = anchorPoint;
+            anchorViewportOffset = SwingUtilities.convertPoint(this, anchorPoint, viewport);
+        }
+
+        var oldPercent = viewScale.getZoomPercent();
+        viewScale.setZoomPercent(newPercent);
+
+        // Recompute the canvas's preferred size at the new zoom before re-layout. Go through
+        // layoutPage (not updatePageLayout) so this pure view change does not write the
+        // round-tripped width back to the model and record a spurious undo entry.
+        layoutPage(viewScale.toViewPx(new Ss(getSong().getLineWidthSs())).roundedPx());
+
+        // Force synchronous re-layout so the new (post-zoom) sizes are realized before
+        // we read them below; plain revalidate() is async and would leave stale sizes.
+        invalidate();
+
+        if (mainPanel != null) {
+            mainPanel.invalidate();
+        }
+
+        if (scorePanel != null) {
+            scorePanel.invalidate();
+        }
+
+        scrollPane.validate();
+
+        var zoomRatio = newPercent / (double) oldPercent;
+        var view = viewport.getView();
+
+        // ScoreView's origin within the scrolled view (ScorePanel), post-validate.
+        var contentOrigin = SwingUtilities.convertPoint(this, 0, 0, view);
+
+        var newViewPosition = computeAnchoredViewPosition(
+            anchorContentPoint,
+            zoomRatio,
+            contentOrigin,
+            anchorViewportOffset,
+            viewport.getViewSize(),
+            extentSize
+        );
+
+        viewport.setViewPosition(newViewPosition);
+
+        // Drive the active lyric-editor overlay directly and synchronously: it is an
+        // absolutely-positioned JComponent, not a layout-managed child, so it must
+        // re-derive its zoomed font and bounds here — after validate(), before repaint().
+        var activeEditor = getActiveLyricEditor();
+
+        if (activeEditor != null) {
+            activeEditor.refreshFont();
+            activeEditor.recomputeBounds();
+        }
+
+        repaint();
+    }
+
+    /**
+     * Computes the post-zoom scroll position that keeps {@code anchorContentPoint}
+     * (a point in old-zoom ScoreView-content coordinates) under
+     * {@code anchorViewportOffset} (a point in viewport-local coordinates).
+     * <p>
+     * Pure function of its arguments — no Swing component access — so it can be
+     * unit-tested. Scales the content anchor by {@code zoomRatio}, offsets it by the
+     * post-validate content origin within the scrolled view, subtracts the viewport
+     * anchor offset, and clamps into {@code [0, viewSize - extentSize]} per axis.
+     */
+    static Point computeAnchoredViewPosition(
+        Point anchorContentPoint,
+        double zoomRatio,
+        Point contentOrigin,
+        Point anchorViewportOffset,
+        Dimension viewSize,
+        Dimension extentSize
+    ) {
+        var scaledAnchorX = anchorContentPoint.x * zoomRatio;
+        var scaledAnchorY = anchorContentPoint.y * zoomRatio;
+
+        var targetX = contentOrigin.x + scaledAnchorX - anchorViewportOffset.x;
+        var targetY = contentOrigin.y + scaledAnchorY - anchorViewportOffset.y;
+
+        var maxX = Math.max(0, viewSize.width - extentSize.width);
+        var maxY = Math.max(0, viewSize.height - extentSize.height);
+
+        var clampedX = (int) Math.round(Math.clamp(targetX, 0, maxX));
+        var clampedY = (int) Math.round(Math.clamp(targetY, 0, maxY));
+
+        return new Point(clampedX, clampedY);
     }
 
     @Override
@@ -1076,8 +1342,8 @@ public final class ScoreView
         lyricRenderMetrics = new LyricRenderMetrics(
             lyricsFont,
             ScaleContext.scaleFont(lyricsFont),
-            ScaleContext.textWidthSs(lyricsFont, "-"),
-            ScaleContext.textWidthSs(lyricsFont, "  "));
+            ScaleContext.textWidthSs(lyricsFont, "-").value(),
+            ScaleContext.textWidthSs(lyricsFont, "  ").value());
     }
 
     @Nullable

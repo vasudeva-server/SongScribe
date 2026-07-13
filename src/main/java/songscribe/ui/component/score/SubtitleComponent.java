@@ -20,7 +20,7 @@
 
 package songscribe.ui.component.score;
 
-import songscribe.dom.ScaleContext;
+import songscribe.dom.Ss;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 
@@ -34,19 +34,18 @@ import songscribe.ui.FlatLafProps;
  */
 public class SubtitleComponent extends BaseTitleComponent {
 
-    // The gap is a fixed FlatLaf property, so resolve it once at construction
-    // instead of on every paint/measure. The component is only ever built after
-    // FlatLaf defaults are installed (app startup, or the test @BeforeAll).
-    private final int topGapPx =
-        ScaleContext.ssToRoundedPx(FlatLafProps.getFloat(FlatLafKey.SCORE_SUBTITLE_GAP));
-
     @Override
     protected String songText() {
         return getSong().getSubtitle();
     }
 
+    /**
+     * The gap above the subtitle, in view pixels. The gap is a fixed FlatLaf property
+     * (in staff spaces) but is converted per layout through the view zoom rather than
+     * cached, so it tracks the current zoom.
+     */
     @Override
     protected int topGapPx() {
-        return topGapPx;
+        return toViewPx(new Ss(FlatLafProps.getFloat(FlatLafKey.SCORE_SUBTITLE_GAP))).roundedPx();
     }
 }

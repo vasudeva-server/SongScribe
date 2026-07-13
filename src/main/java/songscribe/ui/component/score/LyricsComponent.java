@@ -22,6 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
+import songscribe.dom.Ss;
 import songscribe.util.GraphicsState;
 import songscribe.util.GraphicUtils;
 
@@ -60,7 +61,7 @@ public abstract class LyricsComponent extends ScoreComponent {
         }
 
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.FONT)) {
-            g2.setFont(getLyricsFont());
+            g2.setFont(zoomedFont(getLyricsFont()));
             return GraphicUtils.getTextBlockWidth(lyrics, g2);
         }
     }
@@ -82,7 +83,7 @@ public abstract class LyricsComponent extends ScoreComponent {
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR
         )) {
-            g2.setFont(getLyricsFont());
+            g2.setFont(zoomedFont(getLyricsFont()));
             g2.setColor(Color.BLACK);
 
             var metrics = g2.getFontMetrics();
@@ -90,7 +91,7 @@ public abstract class LyricsComponent extends ScoreComponent {
 
             var x = resolveContentX(lyrics, g2);
 
-            var y = (float) (marginTop + metrics.getAscent());
+            var y = (float) (getMarginTop() + metrics.getAscent());
 
             var lines = lyrics.split("\n");
 
@@ -113,13 +114,14 @@ public abstract class LyricsComponent extends ScoreComponent {
             return new Dimension(0, 0);
         }
 
-        var font = getLyricsFont();
+        var font = zoomedFont(getLyricsFont());
         var metrics = getFontMetrics(font);
 
         var lines = lyrics.split("\n");
         var lineHeight = metrics.getHeight();
         var height = lineHeight * lines.length;
 
-        return new Dimension(song.getLineWidthPx(), height + marginTop);
+        return new Dimension(
+            toViewPx(new Ss(song.getLineWidthSs())).roundedPx(), height + getMarginTop());
     }
 }

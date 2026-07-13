@@ -26,7 +26,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Point;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
@@ -65,6 +67,7 @@ import songscribe.layout.PageModel;
 import songscribe.engraving.Staff;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.ui.component.score.MainPanel;
 
 /**
  * Unit tests for {@link ScoreView} behaviors not covered by {@link ScoreViewSetFontsTest}:
@@ -274,6 +277,267 @@ class ScoreViewTest extends UnitTest {
             );
 
             assertThat(scoreView.getNoteYPosPx(staffPosition, lineIndex)).isEqualTo(expected);
+        }
+    }
+
+    /**
+     * Unit tests for the export-sizing core promise (Phase 6, gap): {@link ScoreView#getSheetWidthPx()}
+     * and {@link ScoreView#getSheetHeightPx()} must not vary with the view's current zoom, so exporters
+     * never inherit view zoom.
+     */
+    @Nested
+    class ExportSizing {
+
+        private static final int LINE_WIDTH_PX = 800;
+
+        // Deliberately larger than any page-height-plus-margins value in document px, so the
+        // content term dominates the max() in getSheetHeightPx and the test actually exercises
+        // the ViewPx -> DocPx conversion rather than trivially returning the page height.
+        private static final int DOMINANT_CONTENT_HEIGHT_VIEW_PX = 100_000;
+
+        private static final int ZOOM_PERCENT_QUADRUPLE = 400;
+
+        /** Returns a ScoreView whose song reports the given lineWidthPx. */
+        private ScoreView scoreViewWithLineWidth(int lineWidthPx) {
+            var songMock = mock(Song.class);
+            when(songMock.getLineWidthPx()).thenReturn(lineWidthPx);
+            when(songMock.getLineWidthSs()).thenReturn(ScaleContext.pxToSs(lineWidthPx));
+            var scoreView = new ScoreView(null);
+            scoreView.setSong(songMock);
+            return scoreView;
+        }
+
+        @Test
+        void testGetSheetWidthPxIsZoomIndependent() {
+            var scoreView = scoreViewWithLineWidth(LINE_WIDTH_PX);
+            var widthAtDefaultZoom = scoreView.getSheetWidthPx();
+
+            scoreView.getViewScale().setZoomPercent(ZOOM_PERCENT_QUADRUPLE);
+
+            assertThat(scoreView.getSheetWidthPx()).isEqualTo(widthAtDefaultZoom);
+        }
+
+        @Test
+        void testGetSheetHeightPxIsZoomIndependent() {
+            var scoreView = scoreViewWithLineWidth(LINE_WIDTH_PX);
+            var mainPanelMock = mock(MainPanel.class);
+            when(mainPanelMock.getPreferredSize())
+                .thenReturn(new Dimension(LINE_WIDTH_PX, DOMINANT_CONTENT_HEIGHT_VIEW_PX));
+            scoreView.setMainPanel(mainPanelMock);
+            var heightAtDefaultZoom = scoreView.getSheetHeightPx();
+
+            // Simulate the real-world effect of zooming: on-screen preferred sizes grow with
+            // the view factor, so the mocked mainPanel's preferred height grows proportionally.
+            scoreView.getViewScale().setZoomPercent(ZOOM_PERCENT_QUADRUPLE);
+            when(mainPanelMock.getPreferredSize()).thenReturn(new Dimension(
+                LINE_WIDTH_PX * ZOOM_PERCENT_QUADRUPLE / 100,
+                DOMINANT_CONTENT_HEIGHT_VIEW_PX * ZOOM_PERCENT_QUADRUPLE / 100
+            ));
+
+            assertThat(scoreView.getSheetHeightPx()).isEqualTo(heightAtDefaultZoom);
+        }
+    }
+
+    /**
+     * Unit tests for {@link ScoreView#computeAnchoredViewPosition}: the pure,
+     * Swing-free helper that computes the post-zoom scroll position. Most tests
+     * use {@link #DEFAULT_ANCHOR_VIEWPORT_OFFSET} — the viewport center
+     * horizontally, its top edge vertically — matching the default (non-cursor)
+     * menu/keyboard zoom anchor; with {@link #EXTENT_SIZE} that's (200, 0).
+     */
+    @Nested
+    class ComputeAnchoredViewPosition {
+
+        private static final Point ORIGIN = new Point(0, 0);
+        private static final Dimension EXTENT_SIZE = new Dimension(400, 300);
+        private static final double UNITY_ZOOM_RATIO = 1.0;
+        private static final Point DEFAULT_ANCHOR_VIEWPORT_OFFSET = new Point(EXTENT_SIZE.width / 2, 0);
+
+        @Test
+        void testAnchoringWithUnchangedZoomReturnsUnscaledTarget() {
+            // ratio == 1.0: content point maps straight through; only the horizontal
+            // center offset (200) is subtracted, the vertical top offset is 0.
+            var anchorContentPoint = new Point(500, 300);
+            var viewSize = new Dimension(2000, 1500);
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, UNITY_ZOOM_RATIO, ORIGIN, DEFAULT_ANCHOR_VIEWPORT_OFFSET, viewSize, EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(300, 300));
+        }
+
+        @Test
+        void testZoomInRatioScalesAnchorUpByRatio() {
+            // ratio == 2.0 (e.g. 200% zoom from 100%): the anchor content coordinates
+            // must be doubled before subtracting the horizontal center offset.
+            var anchorContentPoint = new Point(500, 300);
+            var zoomInRatio = 2.0;
+            var viewSize = new Dimension(4000, 3000);
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, zoomInRatio, ORIGIN, DEFAULT_ANCHOR_VIEWPORT_OFFSET, viewSize, EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(800, 600));
+        }
+
+        @Test
+        void testZoomOutRatioScalesAnchorDownByRatio() {
+            // ratio == 0.5 (e.g. 50% zoom from 100%): the anchor content coordinates
+            // must be halved before subtracting the horizontal center offset.
+            var anchorContentPoint = new Point(500, 300);
+            var zoomOutRatio = 0.5;
+            var viewSize = new Dimension(1000, 750);
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, zoomOutRatio, ORIGIN, DEFAULT_ANCHOR_VIEWPORT_OFFSET, viewSize, EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(50, 150));
+        }
+
+        @Test
+        void testUsesContentOriginOffset() {
+            // A non-zero content origin (the ScoreView's post-validate position within the
+            // scrolled view) must be added to both axes. Dropping the contentOrigin term
+            // would yield (300, 300) instead of (400, 380).
+            var contentOrigin = new Point(100, 80);
+            var anchorContentPoint = new Point(500, 300);
+            var viewSize = new Dimension(2000, 1500);
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint,
+                UNITY_ZOOM_RATIO,
+                contentOrigin,
+                DEFAULT_ANCHOR_VIEWPORT_OFFSET,
+                viewSize,
+                EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(400, 380));
+        }
+
+        @Test
+        void testClampsToMinXWhenTargetIsNegative() {
+            // Anchor near the content's left edge pushes targetX below 0 — must clamp to 0.
+            var anchorContentPoint = new Point(10, 500);
+            var viewSize = new Dimension(2000, 1500);
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, UNITY_ZOOM_RATIO, ORIGIN, DEFAULT_ANCHOR_VIEWPORT_OFFSET, viewSize, EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(0, 500));
+        }
+
+        @Test
+        void testClampsToMaxXWhenTargetExceedsViewWidth() {
+            // Anchor near the content's right edge pushes targetX past viewSize - extentSize.
+            var anchorContentPoint = new Point(1900, 500);
+            var viewSize = new Dimension(2000, 1500);
+            var maxX = viewSize.width - EXTENT_SIZE.width;
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, UNITY_ZOOM_RATIO, ORIGIN, DEFAULT_ANCHOR_VIEWPORT_OFFSET, viewSize, EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(maxX, 500));
+        }
+
+        @Test
+        void testClampsToMinYWhenTargetIsNegative() {
+            // An anchor content point above the ScoreView origin yields a negative targetY
+            // (the vertical anchor offset is 0, so only a negative content Y drives this) —
+            // must clamp to 0.
+            var anchorContentPoint = new Point(500, -50);
+            var viewSize = new Dimension(2000, 1500);
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, UNITY_ZOOM_RATIO, ORIGIN, DEFAULT_ANCHOR_VIEWPORT_OFFSET, viewSize, EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(300, 0));
+        }
+
+        @Test
+        void testClampsToMaxYWhenTargetExceedsViewHeight() {
+            // Anchor near the content's bottom edge pushes targetY past viewSize - extentSize.
+            var anchorContentPoint = new Point(500, 1400);
+            var viewSize = new Dimension(2000, 1500);
+            var maxY = viewSize.height - EXTENT_SIZE.height;
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, UNITY_ZOOM_RATIO, ORIGIN, DEFAULT_ANCHOR_VIEWPORT_OFFSET, viewSize, EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(300, maxY));
+        }
+
+        @Test
+        void testClampsToZeroWhenViewIsSmallerThanExtent() {
+            // Content smaller than the viewport: max = Math.max(0, viewSize - extentSize)
+            // is 0 on both axes, so any target pins to (0, 0). Without the Math.max(0, …)
+            // guard, maxX/maxY would be negative and Math.clamp would throw.
+            var anchorContentPoint = new Point(500, 300);
+            var viewSize = new Dimension(200, 150);
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, UNITY_ZOOM_RATIO, ORIGIN, DEFAULT_ANCHOR_VIEWPORT_OFFSET, viewSize, EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(0, 0));
+        }
+
+        @Test
+        void testAnchorAtContentOriginClampsToZeroRegardlessOfZoom() {
+            // The anchor is the content origin (0, 0), so scaling by the ratio leaves it at
+            // 0; after subtracting the center offset and clamping, the result pins to (0, 0)
+            // for any zoom ratio. Verifies the origin/clamp path, not ratio scaling (which
+            // testZoomIn/OutRatio cover).
+            var anchorContentPoint = new Point(0, 0);
+            var zoomInRatio = 2.0;
+            var viewSize = new Dimension(4000, 3000);
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, zoomInRatio, ORIGIN, DEFAULT_ANCHOR_VIEWPORT_OFFSET, viewSize, EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(0, 0));
+        }
+
+        @Test
+        void testCustomAnchorViewportOffsetTargetsThatOffsetInsteadOfCenter() {
+            // A cursor-driven zoom anchors at an arbitrary viewport offset, not the
+            // center/top default — the anchor content point must land under that
+            // offset instead.
+            var anchorContentPoint = new Point(500, 300);
+            var cursorViewportOffset = new Point(50, 120);
+            var viewSize = new Dimension(2000, 1500);
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, UNITY_ZOOM_RATIO, ORIGIN, cursorViewportOffset, viewSize, EXTENT_SIZE
+            );
+
+            assertThat(result).isEqualTo(new Point(450, 180));
+        }
+
+        @Test
+        void testCustomAnchorViewportOffsetCombinesWithNonUnityZoomRatio() {
+            // The real cursor-zoom path always has both non-trivial at once: the anchor
+            // is first scaled by the ratio, THEN the cursor offset is subtracted. Order
+            // matters — scaling the offset (or subtracting before scaling) would fail here.
+            var anchorContentPoint = new Point(500, 300);
+            var zoomInRatio = 2.0;
+            var cursorViewportOffset = new Point(50, 120);
+            var viewSize = new Dimension(4000, 3000);
+
+            var result = ScoreView.computeAnchoredViewPosition(
+                anchorContentPoint, zoomInRatio, ORIGIN, cursorViewportOffset, viewSize, EXTENT_SIZE
+            );
+
+            // (500*2 - 50, 300*2 - 120) = (950, 480), within bounds so unclamped.
+            assertThat(result).isEqualTo(new Point(950, 480));
         }
     }
 

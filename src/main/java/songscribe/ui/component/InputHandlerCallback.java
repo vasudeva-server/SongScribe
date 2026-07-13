@@ -56,4 +56,22 @@ public interface InputHandlerCallback {
      * to extend or shrink the selection to.
      */
     void extendSelectionTo(int targetIndex);
+
+    /**
+     * Zooms in or out around {@code viewPoint} (in this view's local coordinate
+     * space) in response to a Cmd+wheel (macOS) or Ctrl+wheel (other platforms)
+     * gesture. {@code preciseWheelRotation} is the raw rotation from the
+     * originating {@link MouseWheelEvent}; negative values zoom in, positive
+     * values zoom out.
+     */
+    void zoomByWheel(double preciseWheelRotation, Point viewPoint);
+
+    /**
+     * Forwards a non-zoom wheel event to the scroll pane's own default scroll
+     * handling. Required because registering a {@code MouseWheelListener} directly
+     * on this view makes AWT stop its ancestor search here instead of continuing
+     * up to the {@code JScrollPane}, so ordinary scroll gestures would otherwise
+     * silently do nothing once a wheel listener is present.
+     */
+    void forwardWheelScroll(MouseWheelEvent e);
 }

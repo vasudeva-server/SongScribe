@@ -30,6 +30,8 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Song;
+import songscribe.ui.ViewScale;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Unit tests for {@link ScoreComponent}:
@@ -211,6 +213,47 @@ class ScoreComponentTest extends UnitTest {
             assertThat(component.getMarginRight()).isEqualTo(2);
             assertThat(component.getMarginBottom()).isEqualTo(3);
             assertThat(component.getMarginLeft()).isEqualTo(4);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // getViewScale — read-on-demand fallback (Phase 6, gap 1A)
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class GetViewScale {
+
+        private TitleComponent component;
+
+        @BeforeEach
+        void setUp() {
+            component = new TitleComponent();
+        }
+
+        /**
+         * A component with no owning {@link ScoreView} (a detached dialog preview)
+         * must fall back to {@link ViewScale#IDENTITY} — factor 1.0 — regardless of
+         * any other view's current zoom, so it always measures at natural size.
+         */
+        @Test
+        void testDetachedComponentReturnsIdentity() {
+            assertThat(component.getViewScale()).isSameAs(ViewScale.IDENTITY);
+            assertThat(component.getViewScale().factor()).isEqualTo(1.0);
+        }
+
+        /**
+         * A component attached to a {@link ScoreView} must read that view's own
+         * {@link ViewScale} on demand, not a stale snapshot taken at attach time.
+         */
+        @Test
+        void testAttachedComponentReturnsOwningViewsViewScale() {
+            var scoreView = new ScoreView(null);
+            scoreView.getViewScale().setZoomPercent(200);
+            component.setScoreView(scoreView);
+
+            assertThat(component.getViewScale()).isSameAs(scoreView.getViewScale());
+            assertThat(component.getViewScale().getZoomPercent()).isEqualTo(200);
         }
     }
 }

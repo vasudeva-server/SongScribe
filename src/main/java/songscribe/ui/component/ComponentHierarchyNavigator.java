@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.ui.ViewScale;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.StaffPanel;
 import songscribe.dom.ScaleContext;
@@ -32,8 +33,22 @@ public final class ComponentHierarchyNavigator {
 
     private final ComponentHierarchyProvider provider;
 
+    /** The owning score view, or null when detached (tests). Supplies the view zoom. */
+    @Nullable
+    private ScoreView scoreView;
+
     public ComponentHierarchyNavigator(ComponentHierarchyProvider provider) {
         this.provider = provider;
+    }
+
+    /** Sets the owning {@link ScoreView} so the single-line fallback spacing tracks zoom. */
+    public void setScoreView(ScoreView scoreView) {
+        this.scoreView = scoreView;
+    }
+
+    /** The view zoom, or {@link ViewScale#IDENTITY} when detached. */
+    private ViewScale viewScale() {
+        return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
     }
 
     /**
@@ -146,8 +161,11 @@ public final class ComponentHierarchyNavigator {
             rowHeightPx = getActualLineMiddleYPx(1) - getActualLineMiddleYPx(0);
         } else {
             var linePanel = linePanels.getFirst();
+            // getHeight() is already view pixels, so scale the inter-line margin by the
+            // view zoom too rather than reading a document-scale value.
             rowHeightPx = linePanel.getLineComponent().getHeight()
-                + ScaleContext.ssToRoundedPx(StaffPanel.LINE_MARGIN_BOTTOM_SS);
+                + (int) Math.round(
+                    ScaleContext.ssToPx(StaffPanel.LINE_MARGIN_BOTTOM_SS) * viewScale().factor());
         }
 
         layoutUpdater.accept(new int[]{middleLineYPx, rowHeightPx});

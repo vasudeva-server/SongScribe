@@ -157,7 +157,7 @@ class LayoutResultTest extends UnitTest {
         var lyricsFont = DocumentFonts.defaultFonts().getLyricsFont();
         var baselineYSs = 1.0 + Staff.STAFF_HEIGHT_SS + 0.5
             + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
-            + ScaleContext.fontAscentSs(lyricsFont);
+            + ScaleContext.fontAscentSs(lyricsFont).value();
         var layoutResult = LayoutResult.builder()
             .setAboveStaffSs(1.0)
             .setBelowContentSs(0.5)

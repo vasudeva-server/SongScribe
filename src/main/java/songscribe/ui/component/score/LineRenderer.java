@@ -140,6 +140,7 @@ class LineRenderer {
             .setEditMode(lc.isEditMode())
             .setPlayingNoteIndex(lc.getPlayingNoteIndex())
             .setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex())
+            .setViewScale(score.getViewScale())
             .build();
 
         // The line-level frame carries the grace-note insert preview shift (rightward

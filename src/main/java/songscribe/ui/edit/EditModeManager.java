@@ -118,12 +118,21 @@ public final class EditModeManager {
     }
 
     /**
-     * Sets whether the preview element is visible.
+     * Sets whether the preview element is visible. Notifies listeners (e.g. the status
+     * bar) of the visibility change; hiding the preview element clears its displayed
+     * content since there is no longer anything positioned to describe.
      *
      * @param visible true to show the preview element, false to hide it
      */
     public static void setPreviewElementVisible(boolean visible) {
-        instance().previewElementIsVisible = visible;
+        var manager = instance();
+
+        if (manager.previewElementIsVisible == visible) {
+            return;
+        }
+
+        manager.previewElementIsVisible = visible;
+        MessageCenter.post(new PreviewElementDidChangeNotification(visible ? manager.previewElement : null));
     }
 
     /**

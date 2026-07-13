@@ -59,8 +59,8 @@ class TiedScriptStackingTest extends UnitTest {
 
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
-        var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-");
-        var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ");
+        var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-").value();
+        var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ").value();
         var metrics = new LyricRenderMetrics(
             lyricsFont, ScaleContext.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
         return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());

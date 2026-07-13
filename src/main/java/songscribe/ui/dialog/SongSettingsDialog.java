@@ -65,6 +65,7 @@ import songscribe.dom.AttributionLine;
 import songscribe.dom.AttributionPane;
 import songscribe.dom.SongMetadata;
 import songscribe.layout.PageModel;
+import songscribe.dom.DocPx;
 import songscribe.dom.ScaleContext;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
@@ -477,6 +478,9 @@ public class SongSettingsDialog extends StandardDialog {
             titlePreview.setBackground(pageBackground);
             subtitlePreview.setOpaque(true);
             subtitlePreview.setBackground(pageBackground);
+
+            // Previews show the chosen font at its natural size: they are never given a
+            // ScoreView, so getViewScale() resolves to ViewScale.IDENTITY (no zoom).
 
             // Keep the title preview in sync as the user edits the number/title,
             // which together form the numbered title the score actually renders.
@@ -1614,9 +1618,12 @@ public class SongSettingsDialog extends StandardDialog {
                 getKeyTypeAndCountFromCombo()
             );
 
+            // The field holds physical inches; convert to document pixels, then to staff
+            // spaces, then back to pixels for updatePageLayout.
             var widthInches = validateLineWidth();
-            var lineWidthPx = (int) Math.round(widthInches * GraphicUtils.getDpi());
-            requireScoreView().updatePageLayout(lineWidthPx);
+            var lineWidthDocPx = new DocPx(widthInches * GraphicUtils.getDpi());
+            var lineWidthSs = ScaleContext.pxToSs(lineWidthDocPx.value());
+            requireScoreView().updatePageLayout(ScaleContext.ssToRoundedPx(lineWidthSs));
         }
 
         @Override
@@ -1640,9 +1647,8 @@ public class SongSettingsDialog extends StandardDialog {
 
         private void revertLineWidthField() {
             var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
-            var lineWidthInches = ScaleContext.ssToPx(
-                getSong().getLineWidthSs()
-            ) / GraphicUtils.getDpi();
+            var lineWidthDocPx = new DocPx(ScaleContext.ssToPx(getSong().getLineWidthSs()));
+            var lineWidthInches = lineWidthDocPx.value() / GraphicUtils.getDpi();
             var displayValue = isMetric
                 ? lineWidthInches * GraphicUtils.CM_PER_INCH
                 : lineWidthInches;

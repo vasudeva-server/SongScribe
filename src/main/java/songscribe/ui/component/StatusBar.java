@@ -103,7 +103,7 @@ public final class StatusBar extends JComponent {
     private @Nullable Accidental resolvedAccidental;
 
     public StatusBar() {
-        setLayout(new BorderLayout());
+        setLayout(new GridBagLayout());
         setOpaque(true);
         setBackground(FlatLafProps.getColor(FlatLafKey.STATUS_BAR_BACKGROUND));
         setBorder(UIUtils.spacingBorder(FlatLafKey.STATUS_BAR_PADDING));
@@ -112,7 +112,7 @@ public final class StatusBar extends JComponent {
             (float) (accidentalLabel.getFont().getSize() * ACCIDENTAL_FONT_SIZE_FACTOR)
         ));
         accidentalLabel.setBorder(BorderFactory.createEmptyBorder(
-            0, ACCIDENTAL_HORIZONTAL_PADDING_PX * 2, 0, ACCIDENTAL_HORIZONTAL_PADDING_PX
+            0, ACCIDENTAL_HORIZONTAL_PADDING_PX * 2, 0, ACCIDENTAL_HORIZONTAL_PADDING_PX * 2
         ));
 
         var notePanel = new JPanel(new FlowLayout(FlowLayout.LEADING, 0, 0));
@@ -120,7 +120,21 @@ public final class StatusBar extends JComponent {
         notePanel.add(baseLabel);
         notePanel.add(accidentalLabel);
         notePanel.add(octaveDurationLabel);
-        add(notePanel, BorderLayout.CENTER);
+
+        // BorderLayout stretches CENTER/LINE_END children to the bar's full height, but
+        // FlowLayout only centers a row within its own natural height, leaving the shorter
+        // panel's content pinned at the top. GridBagLayout's LINE_START/LINE_END anchors
+        // center vertically while still packing each panel to its leading/trailing edge.
+        var noteConstraints = new GridBagConstraints();
+        noteConstraints.gridx = 0;
+        noteConstraints.weightx = 1.0;
+        noteConstraints.anchor = GridBagConstraints.LINE_START;
+        add(notePanel, noteConstraints);
+
+        var zoomConstraints = new GridBagConstraints();
+        zoomConstraints.gridx = 1;
+        zoomConstraints.anchor = GridBagConstraints.LINE_END;
+        add(new ZoomStatusBarPanel(), zoomConstraints);
 
         MessageCenter.subscribe(this);
     }

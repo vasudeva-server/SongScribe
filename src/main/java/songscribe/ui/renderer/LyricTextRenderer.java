@@ -27,7 +27,6 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
 import module java.desktop;
 
 import songscribe.dom.StaffElement;
-import songscribe.dom.ScaleContext;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricBoxLayout;
 import songscribe.layout.SongLayoutMetrics;
@@ -73,24 +72,29 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
 
         var metrics = invariants.getSongLayoutMetrics();
         var lyricRenderMetrics = invariants.getLyricRenderMetrics();
-        var pxPerSs = invariants.getPixelsPerStaffSpace();
+        // The zoomed scale: the outer transform (which we strip below) is pxPerSs × factor,
+        // so we re-derive integer pixel coordinates from the same zoomed value.
+        var viewPxPerSs = invariants.getViewPixelsPerStaffSpace();
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT, TRANSFORM)) {
-            // Strip only the staff-space → pixel factor from the current transform,
-            // leaving any HiDPI / zoom scale intact. This makes the renderer go through
-            // the same rasterization path JTextField uses: unscaled lyricsFont drawn at
-            // integer logical-pixel coordinates. Drawing through the SS scale instead
+            // Strip the staff-space → pixel transform (which also carries the current
+            // zoom factor) so this renderer goes through the same rasterization path
+            // JTextField uses: a font drawn at integer logical-pixel coordinates rather
+            // than through an arbitrary affine scale. Drawing through the SS scale instead
             // (with scaledLyricsFont) takes a different float-ascent rounding path that
             // shifts the baseline by up to one device pixel relative to the editor.
-            g2.scale(1.0 / pxPerSs, 1.0 / pxPerSs);
-            g2.setFont(lyricRenderMetrics.lyricsFont());
+            // Since the transform's zoom is stripped along with it, re-derive the font at
+            // the current zoom so glyph size still tracks zoom like everything else drawn
+            // inside the transform.
+            g2.scale(1.0 / viewPxPerSs, 1.0 / viewPxPerSs);
+            g2.setFont(invariants.getViewScale().zoomedFont(lyricRenderMetrics.lyricsFont()));
 
             for (var box : boxes) {
                 g2.setColor(invariants.getLyricColor(frame.currentElementIndex(), element, box.verseIndex()));
 
                 var baselineYSs = metrics.verseYSsInLine(box.verseIndex());
-                var xPx = ScaleContext.ssToRoundedPx(box.xSs());
-                var yPx = ScaleContext.ssToRoundedPx(baselineYSs);
+                var xPx = (int) Math.round(box.xSs() * viewPxPerSs);
+                var yPx = (int) Math.round(baselineYSs * viewPxPerSs);
                 g2.drawString(box.text(), xPx, yPx);
             }
         }

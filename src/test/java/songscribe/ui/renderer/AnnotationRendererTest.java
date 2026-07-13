@@ -76,11 +76,11 @@ class AnnotationRendererTest extends UnitTest {
 
     /**
      * Computes the expected baseline Y in staff-space units using the same formula
-     * as the renderer: {@code middleLineYSs + decorationYSs + pxToSs(ascent)}.
+     * as the renderer: {@code middleLineYSs + decorationYSs + fontAscentSs(font)}. The
+     * ascent term is a document-scale staff-space quantity ({@code pxToSs}-based).
      */
     private static double expectedBaselineYSs(Font font, double middleLineYSs, double decorationYSs) {
-        var g2 = realG2();
-        var ascentSs = ScaleContext.pxToSs(g2.getFontMetrics(font).getAscent());
+        var ascentSs = ScaleContext.fontAscentSs(font).value();
         return middleLineYSs + decorationYSs + ascentSs;
     }
 
@@ -133,7 +133,7 @@ class AnnotationRendererTest extends UnitTest {
             .isCloseTo(DECORATION_X_SS, within(TOLERANCE));
 
         assertThat((double) yCaptor.getValue())
-            .as("y passed to drawString must equal middleLineYSs + decorationYSs + pxToSs(ascent)")
+            .as("y passed to drawString must equal middleLineYSs + decorationYSs + fontAscentSs(font)")
             .isCloseTo(expectedY, within(TOLERANCE));
     }
 

@@ -76,7 +76,7 @@ class AnnotationAttachmentTest extends UnitTest {
             song.withoutMutationTracking(() -> line.addElement(note));
 
             var font = DocumentFonts.defaultFonts().getAnnotationFont();
-            var expected = ScaleContext.textHeightSs(font);
+            var expected = ScaleContext.textHeightSs(font).value();
 
             assertThat(attachment.computeContentHeightSs(font)).isCloseTo(expected, within(EPSILON));
         }

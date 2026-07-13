@@ -113,7 +113,7 @@ public class TempoChangeAttachment extends MetronomeAttachment {
             return 0;
         }
 
-        return ScaleContext.textWidthSs(attrFont, text);
+        return ScaleContext.textWidthSs(attrFont, text).value();
     }
 
 }

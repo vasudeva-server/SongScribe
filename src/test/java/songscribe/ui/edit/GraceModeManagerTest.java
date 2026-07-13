@@ -52,6 +52,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
@@ -231,6 +232,8 @@ class GraceModeManagerTest extends UnitTest {
             // Place grace note at xSs = 10.0 → with 8 px/ss → 80 px
             when(layout.getElementXSs(graceNote)).thenReturn(10.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
             manager.setGraceNote(graceNote);
             manager.setGraceLineComponent(lineComponent);
 
@@ -247,6 +250,8 @@ class GraceModeManagerTest extends UnitTest {
 
             when(layout.getElementColumn(graceNote)).thenReturn(null);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
             manager.setGraceNote(graceNote);
             manager.setGraceLineComponent(lineComponent);
 
@@ -266,6 +271,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(layout.getElementColumn(graceNote)).thenReturn(column);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
             manager.setGraceNote(graceNote);
             manager.setGraceLineComponent(lineComponent);
 
@@ -328,6 +335,8 @@ class GraceModeManagerTest extends UnitTest {
             var layout = mock(LayoutResult.class);
             when(layout.getElementColumn(graceNote)).thenReturn(null);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
             manager.setGraceNote(graceNote);
             manager.setGraceLine(detachedLine());
             manager.setGraceLineComponent(lineComponent);
@@ -348,6 +357,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(1.5);
             when(layout.getElementColumn(graceNote)).thenReturn(column);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
 
             manager.setGraceNote(graceNote);
             manager.setGraceLine(detachedLine());
@@ -375,6 +386,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(layout.getElementColumn(graceNote)).thenReturn(column);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
 
             manager.setGraceNote(graceNote);
             manager.setGraceLine(detachedLine());
@@ -740,6 +753,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getXSs()).thenReturn(10.0);
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
 
             manager.setState(GraceModeManager.State.GRACE_NOTE);
             manager.setGraceNote(graceNote);
@@ -775,6 +790,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getXSs()).thenReturn(10.0);
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
 
             manager.setState(GraceModeManager.State.GRACE_NOTE);
             manager.setGraceNote(graceNote);
@@ -810,6 +827,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getXSs()).thenReturn(10.0);
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
 
             manager.setState(GraceModeManager.State.GRACE_NOTE);
             manager.setGraceNote(graceNote);
@@ -918,6 +937,8 @@ class GraceModeManagerTest extends UnitTest {
             // Grace note at xSs=10.0 → cancelThreshold = round(10*8) - 4 = 76
             when(layout.getElementXSs(graceNote)).thenReturn(10.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
 
             manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
             manager.setGraceNote(graceNote);
@@ -989,6 +1010,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getRightExtentSs()).thenReturn(1.0);
             when(layout.getElementColumn(graceNote)).thenReturn(column);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
 
             editModeManagerMock.when(EditModeManager::getPreviewElement).thenReturn(hostPreview);
 
@@ -1226,6 +1249,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getXSs()).thenReturn(10.0);
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
 
             manager.setState(GraceModeManager.State.GRACE_NOTE);
             manager.setGraceNote(graceNote);
@@ -1259,6 +1284,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getXSs()).thenReturn(10.0);
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
 
             manager.setState(GraceModeManager.State.GRACE_NOTE);
             manager.setGraceNote(graceNote);
@@ -1291,6 +1318,8 @@ class GraceModeManagerTest extends UnitTest {
             when(column.getXSs()).thenReturn(10.0);
             when(column.getRightExtentSs()).thenReturn(2.0);
             when(lineComponent.getLayoutResult()).thenReturn(layout);
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
 
             manager.setState(GraceModeManager.State.GRACE_NOTE);
             manager.setGraceNote(graceNote);
@@ -1538,5 +1567,14 @@ class GraceModeManagerTest extends UnitTest {
         );
     }
 
-
+    /**
+     * Returns a mock ScoreView with an identity ViewScale, so the grace-mode threshold
+     * checks (which convert the view-pixel event x to document pixels via the line
+     * component's ScoreView) resolve to a 1:1 mapping under test.
+     */
+    private static ScoreView graceScoreViewStub() {
+        var scoreView = mock(ScoreView.class);
+        when(scoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
+        return scoreView;
+    }
 }

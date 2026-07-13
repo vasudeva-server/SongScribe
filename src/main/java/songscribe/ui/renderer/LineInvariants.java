@@ -33,6 +33,7 @@ import songscribe.dom.Song;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
+import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
@@ -89,7 +90,7 @@ public final class LineInvariants {
     private final Color selectionColor;
     private final int playingNoteIndex;
     private final int playingGraceNoteIndex;
-    private final double pixelsPerStaffSpace;
+    private final ViewScale viewScale;
 
     /** Tie span containing the playing note, resolved once; null when nothing is playing. */
     @Nullable
@@ -118,7 +119,7 @@ public final class LineInvariants {
         selectionColor = b.selectionColor;
         playingNoteIndex = b.playingNoteIndex;
         playingGraceNoteIndex = b.playingGraceNoteIndex;
-        pixelsPerStaffSpace = ScaleContext.getPixelsPerStaffSpace();
+        viewScale = b.viewScale;
         playingTieSpan = (b.playingNoteIndex >= 0 && b.currentLine != null)
             ? b.currentLine.findTieAt(b.playingNoteIndex)
             : null;
@@ -185,11 +186,18 @@ public final class LineInvariants {
     }
 
     /**
-     * Returns the pixels-per-staff-space scale factor.
-     * Convenience accessor for renderers that need pixel conversion.
+     * Returns the zoomed staff-space-to-pixel scale (document {@code pixelsPerStaffSpace}
+     * × the view zoom factor). The name states that this value already carries the zoom, so
+     * it cannot be confused with the document-scale conversion. This is the sole reader of
+     * the zoomed scale — used only by the stripped-transform lyric path.
      */
-    public double getPixelsPerStaffSpace() {
-        return pixelsPerStaffSpace;
+    public double getViewPixelsPerStaffSpace() {
+        return ScaleContext.getPixelsPerStaffSpace() * viewScale.factor();
+    }
+
+    /** Returns the view zoom captured for this render pass. */
+    public ViewScale getViewScale() {
+        return viewScale;
     }
 
     /**
@@ -492,6 +500,7 @@ public final class LineInvariants {
         private Color selectionColor = ScoreView.getSelectionColor();
         private int playingNoteIndex = -1;
         private int playingGraceNoteIndex = -1;
+        private ViewScale viewScale = ViewScale.IDENTITY;
 
         private Builder(Song song, DocumentFontsHolder fonts) {
             this.song = song;
@@ -555,6 +564,15 @@ public final class LineInvariants {
 
         public Builder setPlayingGraceNoteIndex(int playingGraceNoteIndex) {
             this.playingGraceNoteIndex = playingGraceNoteIndex;
+            return this;
+        }
+
+        /**
+         * Captures the view zoom for this render pass. Defaults to
+         * {@link ViewScale#IDENTITY} (natural size) when not set, e.g. in tests.
+         */
+        public Builder setViewScale(ViewScale viewScale) {
+            this.viewScale = viewScale;
             return this;
         }
 

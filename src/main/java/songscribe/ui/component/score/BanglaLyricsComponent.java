@@ -22,7 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.dom.ScaleContext;
+import songscribe.dom.Ss;
 
 /**
  * Component that renders Bengali (Bangla) lyrics.
@@ -33,13 +33,14 @@ import songscribe.dom.ScaleContext;
 public class BanglaLyricsComponent extends LyricsComponent {
 
     /** Vertical spacing for Bangla lyrics (2 staff lines). */
-    private static final int BANGLA_LYRICS_TOP_MARGIN = ScaleContext.ssToRoundedPx(2.0);
+    private static final double BANGLA_LYRICS_TOP_MARGIN_SS = 2.0;
 
     /**
-     * Creates a new BanglaLyricsComponent.
+     * The top margin in view pixels, recomputed per layout so it tracks the current zoom.
      */
-    public BanglaLyricsComponent() {
-        setMarginTop(BANGLA_LYRICS_TOP_MARGIN);
+    @Override
+    public int getMarginTop() {
+        return toViewPx(new Ss(BANGLA_LYRICS_TOP_MARGIN_SS)).roundedPx();
     }
 
     @Override

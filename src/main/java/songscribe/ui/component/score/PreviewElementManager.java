@@ -39,6 +39,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
+import songscribe.dom.ViewPx;
 import songscribe.ui.Control;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.component.MainFrame;
@@ -185,6 +186,10 @@ public final class PreviewElementManager {
             currentSlideZone = null;
             oldLine.repaint();
         }
+
+        // Nothing is positioned to preview anymore, so it can no longer be visible;
+        // this also clears the status bar's pitch/duration display.
+        EditModeManager.setPreviewElementVisible(false);
     }
 
     /**
@@ -533,8 +538,12 @@ public final class PreviewElementManager {
             return;
         }
 
-        // Convert mouse pixel coordinates to staff-space units
-        var mouseYss = ScaleContext.pxToSs(e.getY());
+        // Convert the view-pixel event coordinates to document pixels at this single choke
+        // point. Both the real path (LineComponent.mouseMoved) and the synthetic path
+        // (restorePreviewElement) funnel through here, so the ss math below stays on the
+        // fixed document scale.
+        var viewScale = lc.getViewScale();
+        var mouseYss = ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(e.getY())).value());
 
         // In grace mode, lock the x-position to the host note slot
         var graceModeManager = EditModeManager.getGraceModeManager();
@@ -543,7 +552,7 @@ public final class PreviewElementManager {
         if (graceModeManager.isInProgress()) {
             mouseXss = graceModeManager.getLockedInsertionXSs();
         } else {
-            mouseXss = ScaleContext.pxToSs(e.getX());
+            mouseXss = ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(e.getX())).value());
         }
 
         currentMouseXSs = mouseXss;
@@ -665,12 +674,18 @@ public final class PreviewElementManager {
         // The preview shows the user what pitch/type will replace the existing element.
         // Exceptions: breath marks must follow a note or rest, and grace notes may never
         // be replaced, so suppress the ghost in either case.
-        EditModeManager.setPreviewElementVisible(!breathMarkBlocked && !graceNoteBlocked);
+        var previewElementVisible = !breathMarkBlocked && !graceNoteBlocked;
+        EditModeManager.setPreviewElementVisible(previewElementVisible);
 
         // Rests snap to their default staff position; pitched notes follow the mouse Y
         if (previewElement != null) {
             applyStaffPosition(previewElement, staffPosition);
-            MessageCenter.post(new PreviewElementDidChangeNotification(previewElement, line, xIndex));
+
+            // Only report content for a visible preview; when hidden, setPreviewElementVisible
+            // has already cleared the status bar and this must not overwrite that.
+            if (previewElementVisible) {
+                MessageCenter.post(new PreviewElementDidChangeNotification(previewElement, line, xIndex));
+            }
         }
 
         // Repaint this line

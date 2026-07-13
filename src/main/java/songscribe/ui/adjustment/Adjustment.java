@@ -55,7 +55,10 @@ public abstract class Adjustment extends MouseAdapter {
         }
 
         startedDrag = true;
-        startPoint = e.getPoint();
+        // Convert the view-pixel event point to document pixels once, at this input
+        // boundary, so the subclasses' math against document-scale element positions
+        // (getXOffsetPx, getLineWidthPx, ...) is zoom-independent.
+        startPoint = scoreView.getViewScale().toDocumentPoint(e.getPoint());
         startedDrag();
 
         if (startedDrag) {
@@ -83,7 +86,10 @@ public abstract class Adjustment extends MouseAdapter {
         }
 
         if (startedDrag) {
-            var x = e.getX();
+            // Convert the view-pixel event point to document pixels so it shares the
+            // coordinate space of the (document-scale) drag bounds and element positions.
+            var documentPoint = scoreView.getViewScale().toDocumentPoint(e.getPoint());
+            var x = documentPoint.x;
 
             if (x < topLeftDragBounds.x) {
                 x = topLeftDragBounds.x;
@@ -91,7 +97,7 @@ public abstract class Adjustment extends MouseAdapter {
                 x = bottomRightDragBounds.x - 1;
             }
 
-            var y = e.getY();
+            var y = documentPoint.y;
 
             if (y < topLeftDragBounds.y) {
                 y = topLeftDragBounds.y;
