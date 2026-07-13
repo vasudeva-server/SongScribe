@@ -23,6 +23,7 @@ package songscribe.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static songscribe.dom.StaffElementFactory.createNote;
+import static songscribe.dom.StaffElementFactory.repeatRight;
 
 import java.util.List;
 
@@ -68,6 +69,24 @@ class StructuralTierStackingTest extends UnitTest {
         );
         column.setXSs(xSs);
         return column;
+    }
+
+    /**
+     * Adds note1, a REPEAT_RIGHT split, and note2 to the line (every ending must have a
+     * split between its two brackets) and returns their three stacking columns, laid out
+     * left-to-right at the NOTE1/NOTE2/NOTE3 X positions. Shared by the ending fixtures.
+     */
+    private static List<ElementColumn> addSplitEndingElements(
+        Line line, StaffElement note1, StaffElement note2
+    ) {
+        var split = repeatRight();
+        line.addElement(note1);
+        line.addElement(split);
+        line.addElement(note2);
+        return List.of(
+            columnFor(note1, NOTE1_X_SS),
+            columnFor(split, NOTE2_X_SS),
+            columnFor(note2, NOTE3_X_SS));
     }
 
     private static LayoutResult stackColumns(List<ElementColumn> columns, Line line) {
@@ -600,15 +619,12 @@ class StructuralTierStackingTest extends UnitTest {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
-            line.addElement(note1);
-            line.addElement(note2);
+            var columns = addSplitEndingElements(line, note1, note2);
 
             var ending = new Ending(note1, note2);
             line.addRangeElement(ending);
 
-            var result = stackColumns(
-                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
-                line);
+            var result = stackColumns(columns, line);
 
             var layout = require(
                 result.getDecorationLayout(ending),
@@ -622,15 +638,12 @@ class StructuralTierStackingTest extends UnitTest {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
-            line.addElement(note1);
-            line.addElement(note2);
+            var columns = addSplitEndingElements(line, note1, note2);
 
             var ending = new Ending(note1, note2);
             line.addRangeElement(ending);
 
-            var result = stackColumns(
-                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
-                line);
+            var result = stackColumns(columns, line);
 
             var layout = require(
                 result.getDecorationLayout(ending),
@@ -646,8 +659,7 @@ class StructuralTierStackingTest extends UnitTest {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
-            line.addElement(note1);
-            line.addElement(note2);
+            var columns = addSplitEndingElements(line, note1, note2);
 
             var crescendo = new Crescendo(note1, note2);
             line.addRangeElement(crescendo);
@@ -655,9 +667,7 @@ class StructuralTierStackingTest extends UnitTest {
             var ending = new Ending(note1, note2);
             line.addRangeElement(ending);
 
-            var result = stackColumns(
-                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
-                line);
+            var result = stackColumns(columns, line);
 
             var hairpinLayout = require(
                 result.getDecorationLayout(crescendo),
@@ -675,15 +685,12 @@ class StructuralTierStackingTest extends UnitTest {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
-            line.addElement(note1);
-            line.addElement(note2);
+            var columns = addSplitEndingElements(line, note1, note2);
 
             var ending = new Ending(note1, note2);
             line.addRangeElement(ending);
 
-            var result = stackColumns(
-                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
-                line);
+            var result = stackColumns(columns, line);
 
             var decorationLayout = require(
                 result.getDecorationLayout(ending),
@@ -706,8 +713,7 @@ class StructuralTierStackingTest extends UnitTest {
                 DynamicAttachment.DynamicType.FORTE));
 
             var line = detachedLine();
-            line.addElement(note1);
-            line.addElement(note2);
+            var columns = addSplitEndingElements(line, note1, note2);
 
             var crescendo = new Crescendo(note1, note2);
             line.addRangeElement(crescendo);
@@ -715,9 +721,7 @@ class StructuralTierStackingTest extends UnitTest {
             var ending = new Ending(note1, note2);
             line.addRangeElement(ending);
 
-            var result = stackColumns(
-                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
-                line);
+            var result = stackColumns(columns, line);
 
             var fermataLayout = require(
                 result.findAttachmentDecorationLayout(note1, FermataAttachment.class),

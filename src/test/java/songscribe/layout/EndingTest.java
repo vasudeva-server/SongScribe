@@ -263,42 +263,6 @@ class EndingTest extends UnitTest {
         }
 
         @Test
-        void testNoSplitProducesSingleBracketWithExpectedCoords() {
-            // Line: [CROTCHET(anchor,0), CROTCHET(end,1), FINAL_DOUBLE_BARLINE(2)]
-            // Song always appends a terminal FINAL_DOUBLE_BARLINE; the next-element midpoint path fires.
-            var song = new Song();
-            var line = song.getLine(0);
-            var anchor = new StaffElement(ElementType.CROTCHET);
-            var end = new StaffElement(ElementType.CROTCHET);
-            var ending = new Ending(anchor, end);
-            song.withoutMutationTracking(() -> {
-                line.addElement(anchor);
-                line.addElement(end);
-                line.addRangeElement(ending);
-            });
-            // FINAL_DOUBLE_BARLINE was added by Song; it is at index 2
-            var terminal = line.getElement(line.elementCount() - 1);
-
-            double anchorX = 10.0;
-            double endX = 20.0;
-            double terminalX = 30.0;
-            var elements = new StaffElement[]{anchor, end, terminal};
-            var xs = new double[]{anchorX, endX, terminalX};
-
-            var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
-
-            // #306: anchor=CROTCHET at index 0, not barline → note-start formula:
-            // x1 = anchorX + leftExtentSs(0.0, bare notehead) - ACCIDENTAL_PADDING_SS
-            // end has a next element (terminal) → x2 = endX + (terminalX - endX) / 2
-            assertThat(ranges).hasSize(1);
-            var bracket = ranges.get(0);
-            assertThat(bracket.number()).isEqualTo(1);
-            assertThat(bracket.x1Ss()).isEqualTo(anchorX - NoteGeometry.ACCIDENTAL_PADDING_SS);
-            assertThat(bracket.x2Ss()).isEqualTo(endX + (terminalX - endX) / 2.0);
-            assertThat(bracket.hasClosingStroke()).isTrue();
-        }
-
-        @Test
         void testSplitProducesTwoBracketsWithGapAtRepeat() {
             // Primary fixture: anchor=SINGLE_BARLINE(0), note1(1), note2(2),
             //                  split=REPEAT_RIGHT(3), note4(4), note5(5), end=SINGLE_BARLINE(6)
@@ -343,20 +307,21 @@ class EndingTest extends UnitTest {
 
         @Test
         void testStartAdjustPullsBracketLeftwardToBarline() {
-            // Line: [SINGLE_BARLINE(prev,0), CROTCHET(anchor,1), CROTCHET(mid,2),
+            // Line: [SINGLE_BARLINE(prev,0), CROTCHET(anchor,1), REPEAT_RIGHT(split,2),
             //        CROTCHET(end,3), FINAL_DOUBLE_BARLINE(4)]
-            // Previous element of anchor is a barline → start adjusted leftward to idx 0
+            // Previous element of anchor is a barline → start adjusted leftward to idx 0.
+            // A REPEAT_RIGHT splits the two brackets so this is a valid ending.
             var song = new Song();
             var line = song.getLine(0);
             var prev = new StaffElement(ElementType.SINGLE_BARLINE);
             var anchor = new StaffElement(ElementType.CROTCHET);
-            var mid = new StaffElement(ElementType.CROTCHET);
+            var split = new StaffElement(ElementType.REPEAT_RIGHT);
             var end = new StaffElement(ElementType.CROTCHET);
             var ending = new Ending(anchor, end);
             song.withoutMutationTracking(() -> {
                 line.addElement(prev);
                 line.addElement(anchor);
-                line.addElement(mid);
+                line.addElement(split);
                 line.addElement(end);
                 line.addRangeElement(ending);
             });
@@ -365,16 +330,16 @@ class EndingTest extends UnitTest {
 
             double prevX = 5.0;
             double anchorX = 15.0;
-            double midX = 25.0;
+            double splitX = 25.0;
             double endX = 35.0;
             double terminalX = 45.0;
-            var elements = new StaffElement[]{prev, anchor, mid, end, terminal};
-            var xs = new double[]{prevX, anchorX, midX, endX, terminalX};
+            var elements = new StaffElement[]{prev, anchor, split, end, terminal};
+            var xs = new double[]{prevX, anchorX, splitX, endX, terminalX};
 
             var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
 
-            assertThat(ranges).hasSize(1);
-            // x1 anchored to the prev barline, not the anchor note
+            assertThat(ranges).hasSize(2);
+            // First bracket x1 anchored to the prev barline, not the anchor note
             double expectedX1 = prevX + ElementType.SINGLE_BARLINE.endingAnchorXOffsetSs();
             assertThat(ranges.get(0).x1Ss()).isEqualTo(expectedX1);
             // and it is left of the anchor — confirming the leftward pull

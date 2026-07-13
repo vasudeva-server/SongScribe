@@ -739,9 +739,15 @@ public final class ScoreView
         // Core setup needed for both headless and interactive modes
         updatePageLayout(lineWidthPx);
 
-        for (var i = 0; i < song.lineCount(); i++) {
-            drawWidthIfWiderLine(song.getLine(i), true);
-        }
+        // The fit pass records ELEMENT_SPACING_RATIO changes through a
+        // mutation-tracked setter. On load there is no open modification bracket,
+        // and this normalization is not a user edit — suspend tracking so it
+        // neither throws nor pollutes undo history or the modified flag.
+        song.withoutMutationTracking(() -> {
+            for (var i = 0; i < song.lineCount(); i++) {
+                drawWidthIfWiderLine(song.getLine(i), true);
+            }
+        });
 
         song.setModified(false);
 

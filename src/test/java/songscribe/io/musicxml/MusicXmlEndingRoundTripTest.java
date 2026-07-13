@@ -21,6 +21,7 @@
 package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -50,8 +51,10 @@ import songscribe.layout.LineEndingSupport;
 //      the REPEAT_LEFT_RIGHT-split path (split straddles a measure boundary).
 //   3. SINGLE_BARLINE anchor — exercises the plain-barline element path
 //      (anchor is not a forward repeat, so it rides on a right barline).
-//   4. Split-less single-bracket ending — only a number="1" start → stop
-//      pair; getSplitIndex() must return -1.
+//
+// Every ending must have a split (the two brackets are meaningless without a
+// repeat between them), so a split-less span is not a valid ending: writing one
+// throws, and importing one drops it. Both are asserted below.
 // -------------------------------------------------------------------------
 class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
@@ -173,20 +176,12 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
     }
 
     @Test
-    void testSplitLessSingleBracketEndingRoundTrips() throws Exception {
+    void testWritingSplitLessEndingThrows() {
         // Line layout: REPEAT_LEFT(0) | C(1) | FINAL_DOUBLE_BARLINE(2)
-        // Ending: anchor=REPEAT_LEFT, no split, end=FINAL_DOUBLE_BARLINE
+        // Ending: anchor=REPEAT_LEFT, no split, end=FINAL_DOUBLE_BARLINE.
         //
-        // A split-less ending emits only a number="1" start → stop pair.  The
-        // reader finalizes it via finalizeOrDropPendingEnding at part end rather
-        // than waiting for a number="2" stop.
-        //
-        // Writer emits:
-        //   forward-left barline [1 start], single-bracket note
-        //   light-heavy right barline [1 stop]   (endNumber=1 since hasSplit=false)
-        //
-        // Reader recovers REPEAT_LEFT(0), C(1), FINAL_DOUBLE_BARLINE(2):
-        //   Ending(element0, element2); getSplitIndex scans [1,2) → -1 (no repeat)
+        // A split-less ending is not a valid ending: the writer resolves its split via
+        // getSplitIndex(), which throws because there is no REPEAT between anchor and end.
         var song = buildSong(line -> {
             var anchorElement = ElementType.REPEAT_LEFT.newInstance();
             var endElement = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
@@ -196,16 +191,42 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
             line.addRangeElement(new Ending(anchorElement, endElement));
         });
 
-        var song2 = roundTrip(song);
-        var line2 = song2.getLine(0);
-        var endings = LineEndingSupport.findEndings(line2);
+        assertThatThrownBy(() -> writeToString(song))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("no split element");
+    }
 
-        assertThat(endings).as("ending count").hasSize(1);
-        var ending = endings.get(0);
-        assertRangeElementEquals(ending, 0, 2, "split-less single-bracket ending");
-        assertThat(ending.getSplitIndex(line2))
-            .as("split index: no split element must return -1")
-            .isEqualTo(-1);
+    @Test
+    void testImportedSplitLessEndingIsDropped() throws Exception {
+        // A foreign file whose volta spans a note with no REPEAT between anchor and end:
+        //   invisible left barline [1 start]  → note-anchored start (issue #306)
+        //   note
+        //   light-heavy right barline [2 stop] → end, no split between the two
+        //
+        // The reader binds the anchor to the note and the end to the terminal barline,
+        // then buildEnding finds no split and drops the ending. The note and its closing
+        // barline survive, so import otherwise proceeds normally.
+        var xml = scoreWithMeasureBody(
+            "      <barline location=\"left\"><bar-style>none</bar-style>"
+                + "<ending number=\"1\" type=\"start\"/></barline>\n"
+            + "      <note>\n"
+            + "        <pitch><step>B</step><octave>4</octave></pitch>\n"
+            + "        <duration>480</duration>\n"
+            + "        <type>quarter</type>\n"
+            + "      </note>\n"
+            + "      <barline location=\"right\"><bar-style>light-heavy</bar-style>"
+                + "<ending number=\"2\" type=\"stop\"/></barline>\n"
+        );
+
+        var song = parse(xml);
+        var line = song.getLine(0);
+
+        assertThat(LineEndingSupport.findEndings(line))
+            .as("a split-less ending must be dropped on import")
+            .isEmpty();
+        assertThat(line.getElements())
+            .as("the note and its closing terminal barline survive")
+            .hasSize(2);
     }
 
     @Test

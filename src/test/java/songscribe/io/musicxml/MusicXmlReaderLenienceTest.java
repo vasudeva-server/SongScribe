@@ -501,7 +501,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testPartialEndingMissingSecondStopProducesNoEnding() throws Exception {
         // A number="1" type="start" anchor with no number="2" type="stop" close —
-        // finalizeOrDropPendingEnding drops it at part-end flush.
+        // dropPendingEnding drops it at part-end flush.
         var xml = scoreWithMeasureBody(
             "      <note>\n" +
             "        <pitch><step>B</step><octave>4</octave></pitch>\n" +

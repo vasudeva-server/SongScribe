@@ -58,28 +58,19 @@ final class EndingResolver {
     //   1 start ─► pendingEndingAnchor (the barline StaffElement)
     //   2 stop  ─► Ending(anchor, this barline); the split is recomputed live
     //             via Ending.findRepeatSplitIndex — never stored.
-    //   1 stop  ─► tentative split-less end (overwritten by a later 2 stop)
-    //   2 start ─► marks a second volta (distinguishes a partial two-bracket
-    //             ending — dropped — from a complete split-less ending — built).
+    //   1 stop  ─► ignored (the volta-1 split close; the split is recomputed live)
+    //   2 start ─► ignored (the volta-2 open; the split is recomputed live)
     //
-    // A split-less ending (only 1 start ─► 1 stop) builds Ending(anchor, end)
-    // directly. The build is deferred to the next anchor or to the line/part
-    // flush so a trailing 2 start can still be observed.
+    // Every ending must have a split. A split-less span — only a 1 start ─► 1 stop
+    // from a foreign file, or a 1 start ─► 2 stop with no REPEAT between anchor and
+    // end — is not a valid ending and is rejected on import: an anchor still open at
+    // the next anchor or the line/part flush is dropped, and buildEnding discards any
+    // span whose live split cannot be found.
     // -------------------------------------------------------------------------
 
     // The open ending's anchor barline (set on <ending number="1" type="start">).
     @Nullable
     private StaffElement pendingEndingAnchor = null;
-
-    // The tentative end barline of a split-less ending (set on a number="1" stop),
-    // overwritten by a number="2" stop in a two-bracket ending.
-    @Nullable
-    private StaffElement pendingEndingEnd = null;
-
-    // True once a <ending number="2" type="start"> is seen: marks a two-bracket
-    // ending, so a missing number="2" stop drops the ending instead of building a
-    // (wrong) split-less one from the tentative end.
-    private boolean pendingEndingSawSecondVolta = false;
 
     // True once a note-anchored <ending number="1" type="start"> is seen (issue
     // #306): it rides on an invisible left barline preceding the anchor note, so
@@ -106,12 +97,11 @@ final class EndingResolver {
                 || MusicXmlTags.ENDING_DISCONTINUE.equals(ending.type());
 
             if (isOne && isStart) {
-                // Anchor of a new ending. Finalize any still-open ending first
-                // (build a complete split-less one, or drop a dangling/partial one).
-                finalizeOrDropPendingEnding();
+                // Anchor of a new ending. Drop any still-open ending first: a complete
+                // two-bracket ending was already built and cleared on its number="2"
+                // stop, so anything still pending here is not a valid ending.
+                dropPendingEnding();
 
-                pendingEndingEnd = null;
-                pendingEndingSawSecondVolta = false;
                 pendingAnchorFromNextElement = false;
 
                 if (element == null) {
@@ -137,46 +127,36 @@ final class EndingResolver {
                 } else {
                     LOG.warn("Ignoring <ending number=\"2\" type=\"stop\"> with no open ending");
                 }
-            } else if (isOne && isStop) {
-                // Either a volta-1 split stop or a split-less end — tentative until a
-                // number="2" start (split) or number="2" stop (two-bracket end) decides.
-                if (pendingEndingAnchor != null && element != null) {
-                    pendingEndingEnd = element;
-                } else {
-                    LOG.warn("Ignoring <ending number=\"1\" type=\"stop\"> with no open ending");
-                }
-            } else if (isTwo && isStart) {
-                // Volta-2 split start — no stored value (the split is recomputed
-                // live), but it marks the ending as two-bracket.
-                pendingEndingSawSecondVolta = true;
             }
+            // A number="1" stop (volta-1 split close) and a number="2" start (volta-2
+            // open) carry no state: the split is recomputed live from the element types
+            // between anchor and end, so only the number="1" start and number="2" stop
+            // bounding the whole ending are tracked.
         }
     }
 
     /**
-     * Completes a pending split-less ending (anchor + tentative end, no second
-     * volta) by building it, or drops a dangling/partial one (no end, or a second
-     * volta seen but no {@code number="2"} stop). Clears the pending ending state.
+     * Drops a still-open pending ending. A complete ending is built and its state is
+     * cleared on its {@code number="2"} stop, so anything still pending here is either
+     * incomplete (no {@code number="2"} stop) or a split-less single bracket — neither
+     * is a valid ending, so it is discarded.
      */
-    private void finalizeOrDropPendingEnding() {
+    private void dropPendingEnding() {
         if (pendingEndingAnchor == null) {
             return;
         }
 
-        if (pendingEndingEnd != null && !pendingEndingSawSecondVolta) {
-            buildEnding(pendingEndingAnchor, pendingEndingEnd);
-        } else {
-            LOG.warn("Dropping incomplete <ending> with no number=\"2\" stop");
-        }
-
+        LOG.warn("Dropping incomplete <ending> with no number=\"2\" stop");
         clearPendingEnding();
     }
 
     /**
-     * Builds one {@link Ending} over [{@code anchor}, {@code end}] and adds it to
-     * the current line. Both endpoints are barline {@link StaffElement}s already
-     * appended to the line, so the ending's index pair recovers via
-     * {@code getAnchorElementIndex()}/{@code getEndElementIndex()}.
+     * Builds one {@link Ending} over [{@code anchor}, {@code end}] and adds it to the
+     * current line, unless it is split-less. Both endpoints are {@link StaffElement}s
+     * already appended to the line, so the ending's index pair recovers via
+     * {@code getAnchorElementIndex()}/{@code getEndElementIndex()} and its split can be
+     * found live. Every ending must have a REPEAT splitting its two brackets; a span with
+     * no such element is not a valid ending and is dropped on import.
      */
     private void buildEnding(StaffElement anchor, StaffElement end) {
         var currentLine = reader.getCurrentLine();
@@ -185,13 +165,18 @@ final class EndingResolver {
             return;
         }
 
-        currentLine.addRangeElement(new Ending(anchor, end));
+        var ending = new Ending(anchor, end);
+
+        if (ending.findRepeatSplitElement(currentLine) == null) {
+            LOG.warn("Dropping split-less <ending> on import (no repeat between anchor and end)");
+            return;
+        }
+
+        currentLine.addRangeElement(ending);
     }
 
     private void clearPendingEnding() {
         pendingEndingAnchor = null;
-        pendingEndingEnd = null;
-        pendingEndingSawSecondVolta = false;
         pendingAnchorFromNextElement = false;
     }
 
@@ -223,10 +208,11 @@ final class EndingResolver {
     }
 
     /**
-     * Builds or drops a pending ending still open at a line or part boundary.
+     * Drops a pending ending still open at a line or part boundary (no valid ending can
+     * remain open across the boundary).
      */
     void flushPendingEnding() {
-        finalizeOrDropPendingEnding();
+        dropPendingEnding();
     }
 
     /**

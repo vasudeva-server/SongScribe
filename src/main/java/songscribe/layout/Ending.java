@@ -155,14 +155,27 @@ public class Ending extends RangeElement {
 
     /**
      * Returns the element index of the REPEAT_RIGHT or REPEAT_LEFT_RIGHT that separates
-     * the first and second sub-spans of this ending, computed live from the line, or -1
-     * if there is no split element (degenerate single-bracket ending).
+     * the first and second sub-spans of this ending, computed live from the line.
+     * <p>
+     * Every ending must have a split: the two brackets are meaningless without a repeat
+     * between them. A missing split therefore signals corrupt state — a split-less ending
+     * that should have been rejected on import or removed by invalidation — and throws.
+     * Callers that merely <em>detect</em> whether a split exists must use the tolerant
+     * {@link #findRepeatSplitElement} instead of this method.
      * <p>
      * This recomputes from the current line state rather than relying on a value cached
      * during layout, so it is reliable during MIDI generation.
      */
     public int getSplitIndex(Line line) {
-        return findRepeatSplitIndex(line);
+        var splitIndex = findRepeatSplitIndex(line);
+
+        if (splitIndex < 0) {
+            throw new IllegalStateException(
+                "Ending spanning elements [" + getAnchorElementIndex() + "," + getEndElementIndex()
+                    + "] has no split element; every ending must have a REPEAT between its two brackets");
+        }
+
+        return splitIndex;
     }
 
     /**
@@ -207,6 +220,12 @@ public class Ending extends RangeElement {
             .findFirst()
             .orElse(-1);
 
+        if (repeatSplitIndex < 0) {
+            throw new IllegalStateException(
+                "Ending spanning elements [" + start + "," + end
+                    + "] has no split element; every ending must have a REPEAT between its two brackets");
+        }
+
         var startElement = line.getElement(start);
 
         // Adjust start leftward if previous element is a barline or repeat
@@ -224,8 +243,8 @@ public class Ending extends RangeElement {
         var ranges = new ArrayList<BracketRange>(2);
         var repeatX = 0.0;
 
-        // First bracket (before repeat, or entire span if no repeat)
-        if (start < repeatSplitIndex || repeatSplitIndex == -1) {
+        // First bracket (anchor up to the split repeat)
+        if (start < repeatSplitIndex) {
             var startColumn = columnFn.apply(startElement);
             var x1 = startColumn.getXSs();
             var startType = startElement.getType();
@@ -239,35 +258,19 @@ public class Ending extends RangeElement {
                 x1 = startColumn.getLeftEdgeXSs() - NoteGeometry.ACCIDENTAL_PADDING_SS;
             }
 
-            double x2;
-
-            if (repeatSplitIndex != -1) {
-                var repeatElementX = columnFn.apply(
-                    line.getElement(repeatSplitIndex)).getXSs();
-                x2 = repeatElementX
-                    + LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
-                repeatX = repeatElementX
-                    + LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS
-                    - LineThickness.VOLTA_BRACKET_SS / 2;
-            }
-            else {
-                x2 = columnFn.apply(endElement).getXSs();
-
-                if (end + 1 < line.elementCount()) {
-                    var nextX = columnFn.apply(
-                        line.getElement(end + 1)).getXSs();
-                    x2 += (nextX - x2) / 2.0;
-                }
-                else {
-                    x2 += SMuFLConstants.NOTE_HEAD_WIDTH_SS;
-                }
-            }
+            var repeatElementX = columnFn.apply(
+                line.getElement(repeatSplitIndex)).getXSs();
+            var x2 = repeatElementX
+                + LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
+            repeatX = repeatElementX
+                + LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS
+                - LineThickness.VOLTA_BRACKET_SS / 2;
 
             ranges.add(new BracketRange(x1, x2, 1, true));
         }
 
-        // Second bracket (after repeat)
-        if (repeatSplitIndex != -1 && end > repeatSplitIndex) {
+        // Second bracket (after the split repeat)
+        if (end > repeatSplitIndex) {
             var endColumn = columnFn.apply(endElement);
             var x2 = endColumn.getXSs();
             var endType = endElement.getType();

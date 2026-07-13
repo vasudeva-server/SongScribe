@@ -91,11 +91,6 @@ class MidiSequenceBuilderTest extends UnitTest {
     // repeats OFF: common once + second-ending notes (first ending skipped)
     private static final int MULTI_NOTE_REPEATS_OFF_NOTE_ONS = 1 + MULTI_SECOND_ENDING_NOTES;
 
-    // Degenerate single-bracket ending (no split): two notes inside one bracket.
-    // Repeats ON → each note plays REPEAT_PLAY_COUNT times; repeats OFF → each plays once.
-    private static final int DEGENERATE_REPEATS_ON_NOTE_ONS = REPEAT_PLAY_COUNT + REPEAT_PLAY_COUNT;
-    private static final int DEGENERATE_REPEATS_OFF_NOTE_ONS = 1 + 1;
-
     // In the repeats-OFF primary line the common crotchet (PPQ ticks) precedes the second
     // ending, so the second-ending note-on lands exactly one crotchet in.
     private static final int SECOND_ENDING_NOTE_ON_TICK = PPQ;
@@ -424,18 +419,6 @@ class MidiSequenceBuilderTest extends UnitTest {
         }
 
         @Test
-        void testDegenerateSingleBracketEndingRepeatsOff() throws InvalidMidiDataException {
-            // Degenerate ending (getSplitIndex == -1): nothing is skipped, the whole line
-            // plays once.
-            var line = degenerateEndingLine();
-
-            var track = buildFirstTrack(songWith(line), SETTINGS_NO_REPEATS);
-            assertThat(noteOnEvents(track))
-                .as("degenerate ending, repeats OFF: both notes play once (nothing skipped)")
-                .hasSize(DEGENERATE_REPEATS_OFF_NOTE_ONS);
-        }
-
-        @Test
         void testFirstEndingPartialBuildSkipsRemainderOfFirstEnding()
             throws InvalidMidiDataException {
             // Partial build starting inside the first ending (buildFromNoteToEnd with a
@@ -540,18 +523,6 @@ class MidiSequenceBuilderTest extends UnitTest {
                 .hasSize(MULTI_NOTE_REPEATS_ON_NOTE_ONS);
         }
 
-        @Test
-        void testDegenerateSingleBracketEndingRepeatsOn() throws InvalidMidiDataException {
-            // Degenerate ending: one bracket over two notes, no split element between
-            // anchor and end (getSplitIndex == -1). The surrounding REPEAT_LEFT/REPEAT_RIGHT
-            // still repeats normally; the ending is simply played through on both passes.
-            var line = degenerateEndingLine();
-
-            var track = buildFirstTrack(songWith(line), SETTINGS_WITH_REPEATS);
-            assertThat(noteOnEvents(track))
-                .as("degenerate ending, repeats ON: both notes play " + REPEAT_PLAY_COUNT + "×")
-                .hasSize(DEGENERATE_REPEATS_ON_NOTE_ONS);
-        }
     }
 
     // -------------------------------------------------------------------------
@@ -687,26 +658,4 @@ class MidiSequenceBuilderTest extends UnitTest {
         return line;
     }
 
-    /**
-     * Degenerate single-bracket ending (no split element between anchor and end):
-     * <pre>
-     *   [REPEAT_LEFT, noteA, noteB, REPEAT_RIGHT]
-     *   Ending(anchor=noteA@1, end=noteB@2) → getSplitIndex == -1
-     * </pre>
-     */
-    private static Line degenerateEndingLine() {
-        var repeatLeft = ElementType.REPEAT_LEFT.newInstance();
-        var noteA = crotchetAt(STAFF_POS_A);
-        var noteB = crotchetAt(STAFF_POS_B);
-        var repeatRight = ElementType.REPEAT_RIGHT.newInstance();
-
-        var line = detachedLine();
-        line.addElement(repeatLeft);  // index 0
-        line.addElement(noteA);       // index 1 (anchor)
-        line.addElement(noteB);       // index 2 (end)
-        line.addElement(repeatRight); // index 3
-
-        line.addRangeElement(new Ending(noteA, noteB));
-        return line;
-    }
 }

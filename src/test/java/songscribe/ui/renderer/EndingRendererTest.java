@@ -68,14 +68,17 @@ class EndingRendererTest extends UnitTest {
     private record LineWithEnding(Line line, Ending ending) {}
 
     /**
-     * Creates a line with two crotchet notes and an {@link Ending} spanning them,
-     * with bracket ranges pre-computed.
+     * Creates a line with two crotchet notes, a REPEAT_RIGHT split between them (every
+     * ending must have a split), and an {@link Ending} spanning them, with bracket ranges
+     * pre-computed.
      */
     private LineWithEnding makeLineWithEnding() {
         var line = detachedLine();
         var note1 = ElementType.CROTCHET.newInstance();
+        var split = ElementType.REPEAT_RIGHT.newInstance();
         var note2 = ElementType.CROTCHET.newInstance();
         line.addElement(note1);
+        line.addElement(split);
         line.addElement(note2);
         var ending = new Ending(note1, note2);
         line.addRangeElement(ending);

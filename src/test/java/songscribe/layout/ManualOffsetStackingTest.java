@@ -23,6 +23,7 @@ package songscribe.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static songscribe.dom.StaffElementFactory.createNote;
+import static songscribe.dom.StaffElementFactory.repeatRight;
 
 import java.util.List;
 
@@ -64,6 +65,7 @@ class ManualOffsetStackingTest extends UnitTest {
     private static final double TOLERANCE = 0.001;
     private static final double NOTE1_X_SS = 10.0;
     private static final double NOTE2_X_SS = 30.0;
+    private static final double NOTE3_X_SS = 50.0;
 
     @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
@@ -508,10 +510,10 @@ class ManualOffsetStackingTest extends UnitTest {
         @Test
         void testEndingYPositionApplied() {
             var note1 = createNote(0, false);
+            var split = repeatRight();
             var note2 = createNote(0, false);
             var line = newLine();
-            populate(line,note1);
-            populate(line,note2);
+            populate(line, note1, split, note2);
 
             var yPositionSs = -2;
             var ending = new Ending(note1, note2);
@@ -519,7 +521,7 @@ class ManualOffsetStackingTest extends UnitTest {
             setupTest(() -> line.addRangeElement(ending));
 
             var resultWithOffset = stackColumns(
-                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(split, NOTE2_X_SS), columnFor(note2, NOTE3_X_SS)),
                 line);
             var layoutWithOffset = require(
                 resultWithOffset.getDecorationLayout(ending),
@@ -527,16 +529,16 @@ class ManualOffsetStackingTest extends UnitTest {
 
             // Create baseline
             var note3 = createNote(0, false);
+            var split2 = repeatRight();
             var note4 = createNote(0, false);
             var line2 = newLine();
-            populate(line2,note3);
-            populate(line2,note4);
+            populate(line2, note3, split2, note4);
 
             var ending2 = new Ending(note3, note4);
             setupTest(() -> line2.addRangeElement(ending2));
 
             var resultBaseline = stackColumns(
-                List.of(columnFor(note3, NOTE1_X_SS), columnFor(note4, NOTE2_X_SS)),
+                List.of(columnFor(note3, NOTE1_X_SS), columnFor(split2, NOTE2_X_SS), columnFor(note4, NOTE3_X_SS)),
                 line2);
             var layoutBaseline = require(
                 resultBaseline.getDecorationLayout(ending2),

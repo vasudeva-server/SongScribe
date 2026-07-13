@@ -1892,8 +1892,7 @@ public final class MusicXmlWriter {
         //   [1 start]            [1 stop] [2 start]            [2 stop]
         //        '------ volta 1 -------'  '------- volta 2 -------'
         //
-        // A split-less ending (no REPEAT between anchor and end) is a single
-        // bracket: [1 start] at the anchor → [1 stop] at the end.
+        // Every ending has a split, so it always expands to two voltas.
         //
         // Markers are bucketed per element index as left-barline vs right-barline
         // children so the element loop can attach them to the correct <barline>
@@ -1901,7 +1900,7 @@ public final class MusicXmlWriter {
         //   - REPEAT_LEFT anchor  → forward (left) barline   → left bucket
         //   - SINGLE_BARLINE anchor / terminal end / split stop → right barline
         //   - split [2 start]     → forward (left) barline    → left bucket
-        // getSplitIndex() returns -1 for split-less single-bracket endings.
+        // getSplitIndex() throws if an ending has no split (should never happen).
         for (var ending : LineEndingSupport.findEndings(line)) {
             var anchorIdx = ending.getAnchorElementIndex();
             var endIdx = ending.getEndElementIndex();
@@ -1911,7 +1910,6 @@ public final class MusicXmlWriter {
             }
 
             var splitIdx = ending.getSplitIndex(line);
-            var hasSplit = splitIdx >= 0 && splitIdx < count;
 
             // Anchor: <ending number="1" type="start">. A REPEAT_LEFT anchor is
             // written as a forward (left) barline; a note anchor (no barline
@@ -1929,12 +1927,12 @@ public final class MusicXmlWriter {
                 anchorBuilder.endingRightBarlineMarkers = appendLazily(anchorBuilder.endingRightBarlineMarkers, anchorStart);
             }
 
-            // End: number is 2 for a two-bracket ending (a split exists) and 1 for a
-            // split-less single bracket. A barline/repeat end closes with
-            // type="stop"; a note end (no barline element, per issue #306) closes
-            // with type="discontinue" (an open bracket) on an invisible right
-            // barline the note branch emits immediately after the note.
-            var endNumber = hasSplit ? MusicXmlTags.NUMBER_2 : MusicXmlTags.NUMBER_1;
+            // End: always number="2" — every ending has a split, so the end closes
+            // volta 2. A barline/repeat end closes with type="stop"; a note end (no
+            // barline element, per issue #306) closes with type="discontinue" (an open
+            // bracket) on an invisible right barline the note branch emits immediately
+            // after the note.
+            var endNumber = MusicXmlTags.NUMBER_2;
             var endBuilder = builders[endIdx];
             var endType = line.getElement(endIdx).getType();
 
@@ -1952,13 +1950,11 @@ public final class MusicXmlWriter {
             // Split: <ending number="1" type="stop"> closes volta 1 on the right
             // (backward) barline; <ending number="2" type="start"> opens volta 2
             // on the left (forward) barline.
-            if (hasSplit) {
-                var splitBuilder = builders[splitIdx];
-                splitBuilder.endingRightBarlineMarkers = appendLazily(splitBuilder.endingRightBarlineMarkers,
-                    new EndingMarker(MusicXmlTags.NUMBER_1, MusicXmlTags.TYPE_STOP));
-                splitBuilder.endingLeftBarlineMarkers = appendLazily(splitBuilder.endingLeftBarlineMarkers,
-                    new EndingMarker(MusicXmlTags.NUMBER_2, MusicXmlTags.TYPE_START));
-            }
+            var splitBuilder = builders[splitIdx];
+            splitBuilder.endingRightBarlineMarkers = appendLazily(splitBuilder.endingRightBarlineMarkers,
+                new EndingMarker(MusicXmlTags.NUMBER_1, MusicXmlTags.TYPE_STOP));
+            splitBuilder.endingLeftBarlineMarkers = appendLazily(splitBuilder.endingLeftBarlineMarkers,
+                new EndingMarker(MusicXmlTags.NUMBER_2, MusicXmlTags.TYPE_START));
         }
 
         // Assemble the final immutable per-index records.

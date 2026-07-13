@@ -270,20 +270,12 @@ public class MidiSequenceBuilder {
                 // first pass the split marker triggers the backward jump above before the
                 // second ending is reached, so no early-skip handling is needed there.
                 if (repeating && ending != null) {
-                    var splitIndex = ending.getSplitIndex(line);
-
-                    if (splitIndex >= 0) {
-                        // splitIndex names the split marker itself, already handled above as
-                        // the repeat trigger. Jump there so the loop's noteIndex++ lands on
-                        // the first element of the second ending. Clear repeating so we don't
-                        // jump back again.
-                        noteIndex = splitIndex;
-                        repeating = false;
-                        continue;
-                    }
-
-                    // splitIndex == -1: degenerate single-bracket ending with no split —
-                    // fall through and play normally.
+                    // splitIndex names the split marker itself, already handled above as the
+                    // repeat trigger. Jump there so the loop's noteIndex++ lands on the first
+                    // element of the second ending. Clear repeating so we don't jump back again.
+                    noteIndex = ending.getSplitIndex(line);
+                    repeating = false;
+                    continue;
                 }
 
                 // Add the note to the track (one note at a time), sharing the
@@ -320,8 +312,8 @@ public class MidiSequenceBuilder {
      *
      * A single {@link SlideMidiHelper} is shared across all emitted segments so
      * grace-note/slide state survives the skipped gaps; pending resets are flushed
-     * once at the end. Endings with no split element ({@code splitIndex == -1}) are not
-     * skipped (degenerate single-bracket ending plays normally).
+     * once at the end. Every ending has a split, so each contributes exactly one
+     * first-ending skip span.
      *
      * @param track The MIDI track to add to
      * @param builder The track builder for this line
@@ -350,14 +342,11 @@ public class MidiSequenceBuilder {
 
         for (var ending : endings) {
             var splitIndex = ending.getSplitIndex(line);
+            var spanStart = Math.max(ending.getAnchorElementIndex(), lineStart);
+            var spanEnd = Math.min(splitIndex, lineEnd);
 
-            if (splitIndex >= 0) {
-                var spanStart = Math.max(ending.getAnchorElementIndex(), lineStart);
-                var spanEnd = Math.min(splitIndex, lineEnd);
-
-                if (spanStart <= spanEnd) {
-                    skipSpans.add(new SkipSpan(spanStart, spanEnd));
-                }
+            if (spanStart <= spanEnd) {
+                skipSpans.add(new SkipSpan(spanStart, spanEnd));
             }
         }
 
