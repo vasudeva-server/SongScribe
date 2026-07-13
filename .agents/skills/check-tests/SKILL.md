@@ -2,6 +2,7 @@
 name: check-tests
 description: Audit unit tests for correctness, usefulness, and code coverage
 model: opus
+effort: high
 disable-model-invocation: true
 ---
 
