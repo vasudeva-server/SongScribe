@@ -2,6 +2,7 @@
 name: check
 description: Code review and cleanup
 model: opus
+effort: high
 disable-model-invocation: true
 ---
 
