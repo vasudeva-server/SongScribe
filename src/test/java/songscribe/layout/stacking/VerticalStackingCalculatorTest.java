@@ -34,6 +34,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
+import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
@@ -218,7 +219,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         var builder = LayoutResult.builder();
         // Provide a StemLayout so seedNoteBounds uses stemLayout.bottomYSs() as botSs.
         // topYSs is above center (negative); bottomYSs is the downward stem tip.
-        builder.putStemLayout(note, new LayoutResult.StemLayout(-2.0, stemBotSs, 0.0, false));
+        builder.putStemLayout(note, new LayoutResult.StemLayout(-2.0, stemBotSs, 0.0, 0.0, false));
 
         var calculator = new VerticalStackingCalculator();
         calculator.calculate(
@@ -230,5 +231,39 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
         var result = builder.build();
         assertThat(result.getBelowContentSs()).isEqualTo(expectedBelowContentSs);
+    }
+
+    // ======================================================================
+    // applyDecorationOffsets -- drag preservation of a sloped tuplet bracket
+    // ======================================================================
+
+    @Test
+    void testApplyDecorationOffsetsShiftsYSsButPreservesDySsForSlopedTuplet() {
+        // A dragged (user-offset) sloped tuplet must translate rigidly: ySs shifts by the
+        // drag offset, but dySs (the slope itself) is untouched -- the whole bracket moves,
+        // it does not re-tilt.
+        final double originalYSs = -4.0;
+        final double slopeDySs = 1.5;
+        final int dragOffsetSs = -2;
+
+        var anchor = ElementType.QUAVER.newInstance();
+        var end = ElementType.QUAVER.newInstance();
+        var line = detachedLine();
+        line.addElement(anchor);
+        line.addElement(end);
+        var tuplet = new Tuplet(anchor, end, 3);
+        line.addRangeElement(tuplet);
+        tuplet.setVerticalPositionSs(dragOffsetSs);
+
+        var originalLayout = new LayoutResult.DecorationLayout(
+            1.0, originalYSs, slopeDySs, 4.0, 1.0, 0.5, List.of());
+        var builder = LayoutResult.builder();
+        builder.putDecorationLayout(tuplet, originalLayout);
+
+        new VerticalStackingCalculator().applyDecorationOffsets(builder);
+
+        var shiftedLayout = require(builder.getDecorationLayout(tuplet), "shifted tuplet decoration layout");
+        assertThat(shiftedLayout.ySs()).isEqualTo(originalYSs + dragOffsetSs);
+        assertThat(shiftedLayout.dySs()).isEqualTo(slopeDySs);
     }
 }

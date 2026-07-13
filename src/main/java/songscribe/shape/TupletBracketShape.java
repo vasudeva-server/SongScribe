@@ -27,6 +27,18 @@ import module java.desktop;
  * left vertical, up to the corner, then across to the gap; the right arm mirrors it. Each arm is a
  * single polyline so its corner joins cleanly when stroked.
  * <p>
+ * A sloped bracket gives each corner its own Y, so the horizontal segments tilt with the note
+ * contour. The verticals still hang straight down from their (sloped) corners by a fixed arm
+ * height. The four corner Ys are supplied by the caller; this class only orders the points.
+ * <pre>
+ *   left corner                          right corner
+ *   (leftXSs, leftYSs)                    (rightXSs, rightYSs)
+ *        o___________                       ___________o
+ *        |           \___         gap   ___/           |
+ *        |               o (gapLeftYSs)  o (gapRightYSs)|
+ *        |                                              |
+ *        o (leftXSs, armBottomYSs)   (rightXSs, armBottomYSs) o
+ * </pre>
  * All coordinates are plain staff-space values; the caller derives the number gap from the shaped
  * glyph and does the font drawing. This class holds no layout or renderer dependency.
  */
@@ -35,45 +47,49 @@ public final class TupletBracketShape {
     private TupletBracketShape() {}
 
     /**
-     * Builds the left bracket arm: down the vertical, up to the corner, across to the gap.
+     * Builds the left bracket arm: down the vertical, up to the sloped corner, across to the gap.
      *
-     * @param leftXSs     left edge of the bracket, in staff spaces
-     * @param gapLeftXSs  left edge of the number gap, in staff spaces
-     * @param bracketYSs  y of the horizontal bracket line, in staff spaces
+     * @param leftXSs      left edge of the bracket, in staff spaces
+     * @param gapLeftXSs   left edge of the number gap, in staff spaces
+     * @param leftYSs      y of the left corner (sloped bracket line), in staff spaces
+     * @param gapLeftYSs   y of the bracket line at the gap's left edge, in staff spaces
      * @param armBottomYSs y of the vertical arm's lower end, in staff spaces
      * @return the left arm corner points, in draw order
      */
     public static Point2D[] leftArm(
         double leftXSs,
         double gapLeftXSs,
-        double bracketYSs,
+        double leftYSs,
+        double gapLeftYSs,
         double armBottomYSs
     ) {
         return new Point2D[]{
             new Point2D.Double(leftXSs, armBottomYSs),
-            new Point2D.Double(leftXSs, bracketYSs),
-            new Point2D.Double(gapLeftXSs, bracketYSs)
+            new Point2D.Double(leftXSs, leftYSs),
+            new Point2D.Double(gapLeftXSs, gapLeftYSs)
         };
     }
 
     /**
-     * Builds the right bracket arm: from the gap across to the right edge, then down the vertical.
+     * Builds the right bracket arm: from the gap across to the sloped corner, then down the vertical.
      *
      * @param gapRightXSs  right edge of the number gap, in staff spaces
      * @param rightXSs     right edge of the bracket, in staff spaces
-     * @param bracketYSs   y of the horizontal bracket line, in staff spaces
+     * @param gapRightYSs  y of the bracket line at the gap's right edge, in staff spaces
+     * @param rightYSs     y of the right corner (sloped bracket line), in staff spaces
      * @param armBottomYSs y of the vertical arm's lower end, in staff spaces
      * @return the right arm corner points, in draw order
      */
     public static Point2D[] rightArm(
         double gapRightXSs,
         double rightXSs,
-        double bracketYSs,
+        double gapRightYSs,
+        double rightYSs,
         double armBottomYSs
     ) {
         return new Point2D[]{
-            new Point2D.Double(gapRightXSs, bracketYSs),
-            new Point2D.Double(rightXSs, bracketYSs),
+            new Point2D.Double(gapRightXSs, gapRightYSs),
+            new Point2D.Double(rightXSs, rightYSs),
             new Point2D.Double(rightXSs, armBottomYSs)
         };
     }

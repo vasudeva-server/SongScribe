@@ -24,8 +24,9 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 
 import module java.desktop;
 
+import java.util.function.DoubleUnaryOperator;
+
 import songscribe.dom.Line;
-import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
 import songscribe.dom.Tuplet;
@@ -103,42 +104,61 @@ public final class TupletRenderer {
             var anchorXSs = decorLayout.xSs();
             var endXSs = anchorXSs + decorLayout.widthSs();
             var isUpper = anchorNote.getDirection().isUp();
-            var stemSs = LineThickness.STEM_SS;
-            var leftXSs = anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS
-                - (isUpper ? stemSs : SMuFLConstants.NOTE_HEAD_WIDTH_SS)
-                - Tuplet.ARM_EXTENSION_SS;
-            var rightXSs = endXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS + Tuplet.ARM_EXTENSION_SS;
+            var leftXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, isUpper, LineThickness.STEM_SS);
+            var rightXSs = Tuplet.bracketRightEdgeXSs(endXSs);
 
             var numberOnly = tuplet.isNumberOnly(line);
+            var bracketLine = new BracketLine(anchorXSs, decorLayout.widthSs(),
+                decorLayout.ySs(), decorLayout.dySs());
 
-            renderTuplet(g2, invariants, leftXSs, rightXSs, decorLayout.ySs(), tuplet.getGrade(), numberOnly);
+            renderTuplet(g2, invariants, bracketLine, leftXSs, rightXSs, tuplet.getGrade(),
+                numberOnly);
         }
+    }
+
+    /**
+     * The tuplet bracket line's slope origin and rise, in layout-relative staff spaces.
+     *
+     * @param anchorXSs X of the anchor element column — the slope origin the line is measured from
+     * @param widthSs   anchor→end element run that {@code dySs} is the rise over
+     * @param ySs       Y of the reserved box top (left endpoint, at {@code anchorXSs}) in layout space
+     * @param dySs      rise of the bracket line over {@code widthSs} (negative = ascending contour)
+     */
+    private record BracketLine(double anchorXSs, double widthSs, double ySs, double dySs) {
     }
 
     /**
      * Renders a single tuplet bracket (or number-only for beamed groups) using
      * pre-computed bracket coordinates in layout-relative staff spaces.
      *
-     * @param g2         graphics context (scale transform already applied)
-     * @param invariants        line invariants
-     * @param leftXSs    left edge of the visual bracket
-     * @param rightXSs   right edge of the visual bracket
-     * @param ySs        Y of the reserved box top in layout space
-     * @param grade      tuplet number (3 for triplet, 5 for quintuplet, etc.)
-     * @param numberOnly true to draw only the number (no bracket)
+     * @param g2          graphics context (scale transform already applied)
+     * @param invariants  line invariants
+     * @param bracketLine slope origin and rise of the bracket line
+     * @param leftXSs     left edge of the visual bracket
+     * @param rightXSs    right edge of the visual bracket
+     * @param grade       tuplet number (3 for triplet, 5 for quintuplet, etc.)
+     * @param numberOnly  true to draw only the number (no bracket)
      */
     private void renderTuplet(
         Graphics2D g2,
         LineInvariants invariants,
+        BracketLine bracketLine,
         double leftXSs,
         double rightXSs,
-        double ySs,
         int grade,
         boolean numberOnly
     ) {
-        // Convert layout Y to component Y — this is the top of the reserved box
-        var boxTopYSs = RenderingUtils.layoutYToComponentYSs(ySs, invariants);
+        var anchorXSs = bracketLine.anchorXSs();
+
+        // Convert layout Y to component Y — this is the top of the reserved box at the anchor X.
+        // The conversion is a pure translation, so evaluating the sloped line in component space
+        // (boxTop + slope * dx) matches converting each endpoint's layout Y individually.
+        var boxTopYSs = RenderingUtils.layoutYToComponentYSs(bracketLine.ySs(), invariants);
         var centerXSs = (leftXSs + rightXSs) / 2.0;
+
+        // Slope stays constant across the wider arm span; extrapolate from the anchor origin over
+        // the same run dySs was fit to. widthSs is always positive (anchor→end element run).
+        var slope = bracketLine.dySs() / bracketLine.widthSs();
 
         // Shape the number once; its bounds drive both the bracket gap and centering
         var glyphVector = Tuplet.TUPLET_FONT.createGlyphVector(
@@ -159,30 +179,45 @@ public final class TupletRenderer {
             double numberBaselineYSs;
 
             if (numberOnly) {
-                // Number-only: ink top sits at the box top
+                // Number-only: ink top sits at the flat box top (no slope, no arms)
                 numberBaselineYSs = boxTopYSs - inkBounds.getY();
             } else {
-                // Bracketed: bracket line sits inside the box at inkH/2 from the top
-                var bracketYSs = boxTopYSs + Tuplet.bracketLineOffsetSs();
+                // Bracketed: the bracket line sits inside the box at inkH/2 from the top, then
+                // tilts by the slope. Evaluate the line at each corner X from the anchor origin.
+                var bracketLineOffsetSs = Tuplet.bracketLineOffsetSs();
                 var armHeightSs = Tuplet.BRACKET_ARM_HEIGHT_SS;
                 var gapLeftXSs = gapCenterXSs - halfGapSs;
                 var gapRightXSs = gapCenterXSs + halfGapSs;
 
-                var armBottomYSs = bracketYSs + armHeightSs;
+                DoubleUnaryOperator lineYAtSs =
+                    xSs -> boxTopYSs + bracketLineOffsetSs + slope * (xSs - anchorXSs);
+
+                var leftBracketYSs = lineYAtSs.applyAsDouble(leftXSs);
+                var rightBracketYSs = lineYAtSs.applyAsDouble(rightXSs);
+                var gapLeftYSs = lineYAtSs.applyAsDouble(gapLeftXSs);
+                var gapRightYSs = lineYAtSs.applyAsDouble(gapRightXSs);
+
+                // Each vertical arm hangs straight down from its own sloped corner.
+                var leftArmBottomYSs = leftBracketYSs + armHeightSs;
+                var rightArmBottomYSs = rightBracketYSs + armHeightSs;
 
                 // Each side is a single path so its arm corner joins cleanly: down the vertical
                 // arm, up to the corner, then across to the number gap. The number gap splits the
                 // bracket into two separate paths.
                 GraphicUtils.drawPath(g2,
-                    TupletBracketShape.leftArm(leftXSs, gapLeftXSs, bracketYSs, armBottomYSs),
+                    TupletBracketShape.leftArm(leftXSs, gapLeftXSs, leftBracketYSs, gapLeftYSs,
+                        leftArmBottomYSs),
                     thicknessSs);
 
                 GraphicUtils.drawPath(g2,
-                    TupletBracketShape.rightArm(gapRightXSs, rightXSs, bracketYSs, armBottomYSs),
+                    TupletBracketShape.rightArm(gapRightXSs, rightXSs, gapRightYSs, rightBracketYSs,
+                        rightArmBottomYSs),
                     thicknessSs);
 
-                // Number is centered on the bracket line
-                numberBaselineYSs = bracketYSs - inkBounds.getCenterY();
+                // Number is centered on the sloped line at the gap center (off the geometric
+                // midpoint by the italic correction), so it sits on the bracket as it tilts.
+                var numberYSs = lineYAtSs.applyAsDouble(gapCenterXSs);
+                numberBaselineYSs = numberYSs - inkBounds.getCenterY();
             }
 
             // Center the number horizontally on the gap, then draw the shaped glyphs

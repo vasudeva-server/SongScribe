@@ -40,6 +40,7 @@ import songscribe.font.DocumentFonts;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
+import songscribe.dom.StaffElement;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.shape.BezierBow;
@@ -367,9 +368,14 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var stem = require(result.getStemLayout(element), "StemLayout");
 
+        // A manual down-stem below the middle line opposes defaultDirection (UP), so it is itself
+        // forced and shortened (Ross & Gourlay) -- distinct from the auto-correction this test guards.
         var elementYSs = Staff.spToSs(SP_BELOW_MIDDLE_MANUAL);
+        var forcedShorteningSs = NoteGeometry.forcedShorteningSs(
+            SP_BELOW_MIDDLE_MANUAL, StaffElement.Direction.DOWN, false);
         assertThat(stem.topYSs()).describedAs("manual stem-down top Y").isCloseTo(elementYSs, within(TOLERANCE));
-        assertThat(stem.bottomYSs()).describedAs("manual stem-down bottom Y").isCloseTo(elementYSs + SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
+        assertThat(stem.bottomYSs()).describedAs("manual stem-down bottom Y")
+            .isCloseTo(elementYSs + SMuFLConstants.STEM_LENGTH_SS - forcedShorteningSs, within(TOLERANCE));
     }
 
     // T12a: Beamed group with all notes above the middle line → auto stem direction is down (stemsUp=false)
@@ -1190,11 +1196,14 @@ class LayoutEngineTest extends UnitTest {
                 .describedAs("stem pointing away from centre is not lengthened")
                 .isCloseTo(0.0, within(TOLERANCE));
 
-            // Tip keeps the natural stem length, moving further from centre rather than toward it.
+            // Tip is not lengthened toward centre, but this forced up-stem (opposing defaultDirection
+            // DOWN at sp <= 0) is still shortened (Ross & Gourlay) -- a distinct, disjoint concern.
             var elementYSs = Staff.spToSs(SP_LEDGER_ABOVE_2);
+            var forcedShorteningSs =
+                NoteGeometry.forcedShorteningSs(SP_LEDGER_ABOVE_2, StaffElement.Direction.UP, false);
             assertThat(stem.topYSs())
-                .describedAs("away-from-centre up-stem keeps its natural length")
-                .isCloseTo(elementYSs - SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
+                .describedAs("away-from-centre up-stem is not lengthened, but is forced-shortened")
+                .isCloseTo(elementYSs - SMuFLConstants.STEM_LENGTH_SS + forcedShorteningSs, within(TOLERANCE));
         }
     }
 }

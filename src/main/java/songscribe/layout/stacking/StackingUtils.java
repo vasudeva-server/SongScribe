@@ -146,6 +146,15 @@ public final class StackingUtils {
     }
 
     /**
+     * Clamps an obstacle's top Y to never sit lower (larger Y) than the top staff line, mirroring
+     * {@link #anchorCeilingSs}'s within-staff clamp for callers that bypass it (e.g. a sloped
+     * ceiling that must keep the raw per-tip Y rather than {@link #anchorCeilingSs}'s flattening).
+     */
+    public static double staffTopClampSs(double obstacleTopYSs) {
+        return Math.min(obstacleTopYSs, STAFF_TOP_Y_SS);
+    }
+
+    /**
      * Returns the anchor floor Y for the given staff position.
      */
     public static double anchorFloorSs(int staffPosition) {
@@ -597,7 +606,7 @@ public final class StackingUtils {
 
         builder.putDecorationLayout(element,
             new LayoutResult.DecorationLayout(
-                xSs, elementYSs, widthSs, overallHeightSs, marginSs, regions));
+                xSs, elementYSs, 0.0, widthSs, overallHeightSs, marginSs, regions));
 
     }
 

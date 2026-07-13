@@ -601,7 +601,9 @@ public class LayoutEngine {
                     // Delegated to BeamMath so the writer can use the same rule.
                     var stubRight = BeamMath.stubRight(line, i, beamStart, beamEnd);
 
-                    stemLayouts.put(element, new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, stubRight));
+                    stemLayouts.put(
+                        element,
+                        new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, 0.0, stubRight));
                 }
             }
 
@@ -648,8 +650,9 @@ public class LayoutEngine {
             }
 
             var direction = element.getDirection();
+            var isGraceNote = element.getType().isGraceNote();
             var elementYSs = Staff.spToSs(element.getStaffPosition());
-            var stemLenSs = element.getType().isGraceNote()
+            var stemLenSs = isGraceNote
                 ? SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS
                 : MIN_STEM_SS;
 
@@ -658,15 +661,23 @@ public class LayoutEngine {
             // travel toward center is elementYSs for an up-stem and -elementYSs for a down-stem;
             // a stem pointing away from center (only via a manual override) is never extended.
             var distanceTowardCenterSs = direction.isUp() ? elementYSs : -elementYSs;
-            var lengtheningSs = element.getType().isGraceNote()
+            var lengtheningSs = isGraceNote
                 ? 0.0
                 : Math.max(0.0, distanceTowardCenterSs - MIN_STEM_SS);
 
-            // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
-            var topYSs = direction.isUp() ? elementYSs - (stemLenSs + lengtheningSs) : elementYSs;
-            var bottomYSs = direction.isUp() ? elementYSs : elementYSs + (stemLenSs + lengtheningSs);
+            // Shorten a stem forced into its unnatural direction (Ross & Gourlay). Disjoint from
+            // lengthening — a stem is lengthened, natural, or shortened, never two at once.
+            var forcedShorteningSs =
+                NoteGeometry.forcedShorteningSs(element.getStaffPosition(), direction, isGraceNote);
+            var effectiveLenSs = stemLenSs + lengtheningSs - forcedShorteningSs;
 
-            builder.putStemLayout(element, new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, false));
+            // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
+            var topYSs = direction.isUp() ? elementYSs - effectiveLenSs : elementYSs;
+            var bottomYSs = direction.isUp() ? elementYSs : elementYSs + effectiveLenSs;
+
+            builder.putStemLayout(
+                element,
+                new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, forcedShorteningSs, false));
         }
     }
 

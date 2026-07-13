@@ -238,7 +238,7 @@ class BeamGroupRendererTest extends UnitTest {
 
     @Test
     void testStemTipYSsOffset_withLayout_stemUp_returnsTopYSs() {
-        var layout = new LayoutResult.StemLayout(-3.5, 0.5, 0.0, false);
+        var layout = new LayoutResult.StemLayout(-3.5, 0.5, 0.0, 0.0, false);
         var element = ElementType.QUAVER.newInstance();
 
         var result = BeamGroupRenderer.stemTipYSsOffset(layout, StaffElement.Direction.UP, element);
@@ -248,7 +248,7 @@ class BeamGroupRendererTest extends UnitTest {
 
     @Test
     void testStemTipYSsOffset_withLayout_stemDown_returnsBottomYSs() {
-        var layout = new LayoutResult.StemLayout(-3.5, 0.5, 0.0, false);
+        var layout = new LayoutResult.StemLayout(-3.5, 0.5, 0.0, 0.0, false);
         var element = ElementType.QUAVER.newInstance();
 
         var result = BeamGroupRenderer.stemTipYSsOffset(layout, StaffElement.Direction.DOWN, element);

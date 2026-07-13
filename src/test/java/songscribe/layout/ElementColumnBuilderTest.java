@@ -21,6 +21,7 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -401,21 +402,58 @@ class ElementColumnBuilderTest extends UnitTest {
     @Nested
     class StemGeometry {
 
+        private static final double TOLERANCE = 1e-9;
+
+        // Below the middle line: defaultDirection is UP, so an up-stem here is natural (unshortened)
+        // and a down-stem here is forced.
+        private static final int BELOW_MIDDLE_LINE_STAFF_POSITION = 2;
+
+        // Above the middle line (but not at the exact boundary): an up-stem here is still forced
+        // (sp <= 0), and further from the middle line than sp=0, so the shortening differs from it.
+        private static final int ABOVE_MIDDLE_LINE_STAFF_POSITION = -2;
+
         private final ElementColumnBuilder builder = new ElementColumnBuilder(mock(LyricRenderMetrics.class));
 
         @Test
-        void testStemTopSsStemUp() {
-            // isUpper=false (default) → stem extends upward: top = -STEM_LENGTH_SS
+        void testStemTopSsStemDown() {
+            // Default direction is DOWN (stem-down), sp=0 -> natural (forcedDown needs sp>0)
+            // -> top = element head top = -HALF_NOTE_HEAD_SS
             var note = element(ElementType.CROTCHET);
-            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-SMuFLConstants.STEM_LENGTH_SS);
+            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-ElementColumnBuilder.HALF_NOTE_HEAD_SS);
         }
 
         @Test
-        void testStemTopSsStemDown() {
-            // isUpper=true → stem extends downward: top = element head top = -HALF_NOTE_HEAD_SS
+        void testStemTopSsStemUpAtMiddleLineIsForcedAndShortened() {
+            // isUpper=true, sp=0 -> forced (defaultDirection at sp<=0 is DOWN) -> top is the
+            // shortened tip, not the full natural length.
             var note = element(ElementType.CROTCHET);
             note.setUpper(true);
-            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+            var expectedShorteningSs = NoteGeometry.forcedShorteningSs(0, StaffElement.Direction.UP, false);
+
+            assertThat(builder.calculateStemTopSs(note))
+                .isCloseTo(-(SMuFLConstants.STEM_LENGTH_SS - expectedShorteningSs), within(TOLERANCE));
+        }
+
+        @Test
+        void testStemTopSsForcedUpStemFartherFromMiddleLineShortensMore() {
+            var note = element(ElementType.CROTCHET);
+            note.setStaffPosition(ABOVE_MIDDLE_LINE_STAFF_POSITION);
+            note.setUpper(true);
+            var expectedShorteningSs = NoteGeometry.forcedShorteningSs(
+                ABOVE_MIDDLE_LINE_STAFF_POSITION, StaffElement.Direction.UP, false);
+
+            assertThat(builder.calculateStemTopSs(note))
+                .isCloseTo(-(SMuFLConstants.STEM_LENGTH_SS - expectedShorteningSs), within(TOLERANCE));
+        }
+
+        @Test
+        void testStemTopSsNaturalUpStemBelowMiddleLineIsFullLength() {
+            // sp > 0: defaultDirection is UP, so an up-stem here is natural -> unshortened.
+            var note = element(ElementType.CROTCHET);
+            note.setStaffPosition(BELOW_MIDDLE_LINE_STAFF_POSITION);
+            note.setUpper(true);
+
+            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-SMuFLConstants.STEM_LENGTH_SS);
         }
 
         @Test
@@ -426,18 +464,31 @@ class ElementColumnBuilderTest extends UnitTest {
         }
 
         @Test
-        void testStemBottomSsStemUp() {
-            // isUpper=false (default) → stem up: bottom = element head bottom = HALF_NOTE_HEAD_SS
+        void testStemBottomSsStemDown() {
+            // Default direction is DOWN (stem-down), sp=0 -> natural -> bottom = stem tip = STEM_LENGTH_SS
             var note = element(ElementType.CROTCHET);
-            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(SMuFLConstants.STEM_LENGTH_SS);
         }
 
         @Test
-        void testStemBottomSsStemDown() {
-            // isUpper=true → stem extends downward: bottom = STEM_LENGTH_SS
+        void testStemBottomSsForcedDownStemBelowMiddleLineIsShortened() {
+            // sp > 0, direction DOWN -> forced (defaultDirection at sp>0 is UP) -> bottom is shortened.
+            var note = element(ElementType.CROTCHET);
+            note.setStaffPosition(BELOW_MIDDLE_LINE_STAFF_POSITION);
+            var expectedShorteningSs = NoteGeometry.forcedShorteningSs(
+                BELOW_MIDDLE_LINE_STAFF_POSITION, StaffElement.Direction.DOWN, false);
+
+            assertThat(builder.calculateStemBottomSs(note))
+                .isCloseTo(SMuFLConstants.STEM_LENGTH_SS - expectedShorteningSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testStemBottomSsStemUp() {
+            // isUpper=true, sp=0 -> bottom = element head bottom = HALF_NOTE_HEAD_SS, unaffected by
+            // the (top-side) forced shortening.
             var note = element(ElementType.CROTCHET);
             note.setUpper(true);
-            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(SMuFLConstants.STEM_LENGTH_SS);
+            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(ElementColumnBuilder.HALF_NOTE_HEAD_SS);
         }
 
         @Test

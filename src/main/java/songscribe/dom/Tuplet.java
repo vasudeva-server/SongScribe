@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import module java.desktop;
 
+import songscribe.engraving.SMuFLConstants;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
@@ -41,13 +42,18 @@ public class Tuplet extends RangeElement {
     public static final double ARM_EXTENSION_SS = 0.2;  // 1.6px
 
     /** Italic serif font for tuplet numbers (font size in staff-spaces). */
-    public static final float TUPLET_FONT_SIZE_SS = 1.8f;
+    public static final float TUPLET_FONT_SIZE_SS = 1.65f;
 
     /** Italic serif font for tuplet numbers. */
     public static final Font TUPLET_FONT = MyFontUtils.getLocalFont("C059-Italic.otf", TUPLET_FONT_SIZE_SS);
 
     /** Vertical arm height of bracket endpoints (LilyPond: 0.7ss). */
     public static final double BRACKET_ARM_HEIGHT_SS = 0.7;  // 5.6px
+
+
+
+    /** Maximum bracket slope, as a fraction of rise over run (LilyPond: 0.5). */
+    public static final double MAX_SLOPE_FACTOR = 0.5;
 
     /** Measured ink height of a tuplet number in staff-spaces (representative digit "3"). */
     public static final double TUPLET_NUMBER_INK_HEIGHT_SS = measureNumberInkHeightSs();
@@ -118,6 +124,32 @@ public class Tuplet extends RangeElement {
      */
     public static double bracketLineOffsetSs() {
         return TUPLET_NUMBER_INK_HEIGHT_SS / 2.0;
+    }
+
+    /**
+     * X of the visual bracket's left edge — where the left arm is drawn — given the anchor column's
+     * reference X, the anchor note's stem direction, and the stem thickness. The arm sits on the
+     * anchor note's stem side (insetting a full notehead width for a down-stem, only the stem width
+     * for an up-stem) and extends {@link #ARM_EXTENSION_SS} outward past it.
+     * <p>
+     * Shared by the renderer ({@code TupletRenderer.renderTupletsFromLine}) and the stacker's sloped
+     * clearance ({@code StructuralStacker.computeTupletClearanceLeftYSs}) so the reserved arm position
+     * and the drawn arm position stay in lockstep — mirroring LilyPond's use of the bracket's visual
+     * X-bounds {@code x0}/{@code x1} for both slope and placement (tuplet-bracket.cc).
+     */
+    public static double bracketLeftEdgeXSs(double anchorXSs, boolean anchorStemUp, double stemSs) {
+        return anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS
+            - (anchorStemUp ? stemSs : SMuFLConstants.NOTE_HEAD_WIDTH_SS)
+            - ARM_EXTENSION_SS;
+    }
+
+    /**
+     * X of the visual bracket's right edge — where the right arm is drawn — given the end column's
+     * reference X. The arm clears the end notehead and extends {@link #ARM_EXTENSION_SS} outward past
+     * it. See {@link #bracketLeftEdgeXSs} for why this is shared with the renderer.
+     */
+    public static double bracketRightEdgeXSs(double endXSs) {
+        return endXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS + ARM_EXTENSION_SS;
     }
 
     /**

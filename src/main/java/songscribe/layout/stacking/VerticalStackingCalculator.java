@@ -300,7 +300,7 @@ public class VerticalStackingCalculator {
     /**
      * Applies manual offsets to all {@link LayoutResult.DecorationLayout} entries.
      */
-    private void applyDecorationOffsets(LayoutResult.Builder builder) {
+    void applyDecorationOffsets(LayoutResult.Builder builder) {
         // Collect entries to avoid ConcurrentModificationException during iteration
         var entries = List.copyOf(builder.getDecorationLayoutEntries());
 
@@ -335,6 +335,7 @@ public class VerticalStackingCalculator {
                 builder.putDecorationLayout(element, new LayoutResult.DecorationLayout(
                     layout.xSs() + xOffsetSs + x1ExtraSs,
                     layout.ySs() + yOffsetSs,
+                    layout.dySs(),
                     layout.widthSs() + x2ExtraSs - x1ExtraSs,
                     layout.heightSs(),
                     layout.marginSs(),

@@ -753,6 +753,97 @@ class NoteGeometryTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // forcedShorteningSs — Ross & Gourlay forced-direction stem shortening
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class ForcedShorteningSs {
+
+        private static final double TOLERANCE = 1e-9;
+
+        // Staff position at which the forced-shorten formula first hits MAX_FORCED_SHORTEN_SS:
+        // FORCED_SHORTEN_PER_STEP_SS * (1 + |sp|) == MAX_FORCED_SHORTEN_SS => |sp| == 5.
+        private static final int FLOOR_STAFF_POSITION = 5;
+
+        @Test
+        void testForcedUpStemAtMiddleLineShortensByOneStep() {
+            // sp=0, direction UP: defaultDirection(sp<=0) is DOWN, so UP is forced.
+            var shorteningSs = NoteGeometry.forcedShorteningSs(0, StaffElement.Direction.UP, false);
+
+            assertThat(shorteningSs).isCloseTo(NoteGeometry.FORCED_SHORTEN_PER_STEP_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testForcedUpStemShortensProgressivelyWithDistanceFromMiddleLine() {
+            var nearSs = NoteGeometry.forcedShorteningSs(-1, StaffElement.Direction.UP, false);
+            var farSs = NoteGeometry.forcedShorteningSs(-3, StaffElement.Direction.UP, false);
+
+            assertThat(farSs).isGreaterThan(nearSs);
+            assertThat(nearSs).isCloseTo(
+                NoteGeometry.FORCED_SHORTEN_PER_STEP_SS * 2, within(TOLERANCE));
+            assertThat(farSs).isCloseTo(
+                NoteGeometry.FORCED_SHORTEN_PER_STEP_SS * 4, within(TOLERANCE));
+        }
+
+        @Test
+        void testForcedUpStemCapsAtMaxShortenAtFloorStaffPosition() {
+            var shorteningSs = NoteGeometry.forcedShorteningSs(
+                -FLOOR_STAFF_POSITION, StaffElement.Direction.UP, false);
+
+            assertThat(shorteningSs).isCloseTo(NoteGeometry.MAX_FORCED_SHORTEN_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testForcedUpStemBeyondFloorStaffPositionStaysCapped() {
+            var shorteningSs = NoteGeometry.forcedShorteningSs(
+                -(FLOOR_STAFF_POSITION + 10), StaffElement.Direction.UP, false);
+
+            assertThat(shorteningSs).isCloseTo(NoteGeometry.MAX_FORCED_SHORTEN_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testNaturalUpStemBelowMiddleLineIsNotShortened() {
+            // sp=3 > 0: defaultDirection is UP, so an UP stem here is natural, not forced.
+            var shorteningSs = NoteGeometry.forcedShorteningSs(3, StaffElement.Direction.UP, false);
+
+            assertThat(shorteningSs).isZero();
+        }
+
+        @Test
+        void testForcedDownStemBelowMiddleLineShortensProgressively() {
+            // sp=3 > 0: defaultDirection is UP, so a DOWN stem here is forced (symmetric case).
+            var shorteningSs = NoteGeometry.forcedShorteningSs(3, StaffElement.Direction.DOWN, false);
+
+            assertThat(shorteningSs).isCloseTo(
+                NoteGeometry.FORCED_SHORTEN_PER_STEP_SS * 4, within(TOLERANCE));
+        }
+
+        @Test
+        void testNaturalDownStemAboveMiddleLineIsNotShortened() {
+            var shorteningSs = NoteGeometry.forcedShorteningSs(-3, StaffElement.Direction.DOWN, false);
+
+            assertThat(shorteningSs).isZero();
+        }
+
+        @Test
+        void testDownStemExactlyOnMiddleLineIsTreatedAsNatural() {
+            // forcedDown requires sp > 0 strictly, so sp=0 is the resolved boundary: natural.
+            var shorteningSs = NoteGeometry.forcedShorteningSs(0, StaffElement.Direction.DOWN, false);
+
+            assertThat(shorteningSs).isZero();
+        }
+
+        @Test
+        void testGraceNoteIsNeverShortenedRegardlessOfDirectionOrPosition() {
+            var upSs = NoteGeometry.forcedShorteningSs(-FLOOR_STAFF_POSITION, StaffElement.Direction.UP, true);
+            var downSs = NoteGeometry.forcedShorteningSs(FLOOR_STAFF_POSITION, StaffElement.Direction.DOWN, true);
+
+            assertThat(upSs).isZero();
+            assertThat(downSs).isZero();
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Row 26: getNoteheadRightEdgeSs — SMuFL bbox + fallback
     // -----------------------------------------------------------------------
 

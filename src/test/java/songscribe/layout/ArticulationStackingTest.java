@@ -405,7 +405,7 @@ class ArticulationStackingTest extends UnitTest {
             var builder = new LayoutResult.Builder();
             var stemTopSs = -3.5;
             builder.putStemLayout(note,
-                new LayoutResult.StemLayout(stemTopSs, 0.0, 0.0, false));
+                new LayoutResult.StemLayout(stemTopSs, 0.0, 0.0, 0.0, false));
 
             var calculator = new VerticalStackingCalculator();
             calculator.calculate(List.of(column), detachedLine(), builder, LINE_WIDTH_SS, DocumentFonts.defaultFonts());
@@ -607,7 +607,7 @@ class ArticulationStackingTest extends UnitTest {
             var column = columnFor(fullNote);
             var builder = new LayoutResult.Builder();
             builder.putStemLayout(fullNote,
-                new LayoutResult.StemLayout(EXPLICIT_STEM_TOP_SS, EXPLICIT_STEM_BOTTOM_SS, 0.0, false));
+                new LayoutResult.StemLayout(EXPLICIT_STEM_TOP_SS, EXPLICIT_STEM_BOTTOM_SS, 0.0, 0.0, false));
 
             var calculator = new VerticalStackingCalculator();
             calculator.calculate(List.of(column), detachedLine(), builder, LINE_WIDTH_SS, DocumentFonts.defaultFonts());

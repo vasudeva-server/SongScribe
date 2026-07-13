@@ -275,8 +275,19 @@ public class ElementColumnBuilder {
 
     /**
      * Calculates the Y position of the stem top.
-     * For stem-up elements, this is above the element head.
+     * For stem-up elements, this is the stem tip above the element head.
      * For stem-down or stemless elements, this is the element head top.
+     *
+     * <pre>
+     * Stem up:            Stem down:
+     *   |  <- top (tip)     ==o==  <- top (notehead top)
+     *   |                     |
+     *   |                     |
+     *  ==o==                  |  <- bottom (tip)
+     * </pre>
+     *
+     * A stem forced into its unnatural direction is shortened (Ross &amp; Gourlay), so the reported
+     * tip floats correspondingly lower — this keeps {@code getAbsoluteTopYSs()} on the real tip.
      *
      * @param element The element
      * @return Stem top Y position in ss (relative to staff, negative = above)
@@ -289,9 +300,11 @@ public class ElementColumnBuilder {
             return -HALF_NOTE_HEAD_SS;
         }
 
-        // Stem up: stem extends upward
-        if (element.getDirection().isDown()) {
-            return -SMuFLConstants.STEM_LENGTH_SS;
+        // Stem up: stem extends upward, so the top is the stem tip (shortened if forced)
+        if (element.getDirection().isUp()) {
+            var forcedShorteningSs = NoteGeometry.forcedShorteningSs(
+                element.getStaffPosition(), element.getDirection(), elementType.isGraceNote());
+            return -(SMuFLConstants.STEM_LENGTH_SS - forcedShorteningSs);
         }
 
         // Stem down: top is just above element head
@@ -300,8 +313,11 @@ public class ElementColumnBuilder {
 
     /**
      * Calculates the Y position of the stem bottom.
-     * For stem-down elements, this is below the element head.
+     * For stem-down elements, this is the stem tip below the element head.
      * For stem-up or stemless elements, this is the element head bottom.
+     *
+     * A stem forced into its unnatural direction is shortened (Ross &amp; Gourlay), so the reported
+     * tip floats correspondingly higher.
      *
      * @param element The element
      * @return Stem bottom Y position in ss (relative to staff, positive = below)
@@ -314,9 +330,11 @@ public class ElementColumnBuilder {
             return HALF_NOTE_HEAD_SS;
         }
 
-        // Stem down: stem extends downward
-        if (element.getDirection().isUp()) {
-            return SMuFLConstants.STEM_LENGTH_SS;
+        // Stem down: stem extends downward, so the bottom is the stem tip (shortened if forced)
+        if (element.getDirection().isDown()) {
+            var forcedShorteningSs = NoteGeometry.forcedShorteningSs(
+                element.getStaffPosition(), element.getDirection(), elementType.isGraceNote());
+            return SMuFLConstants.STEM_LENGTH_SS - forcedShorteningSs;
         }
 
         // Stem up: bottom is just below element head

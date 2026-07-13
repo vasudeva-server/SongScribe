@@ -1298,6 +1298,9 @@ public final class LayoutResult {
      * @param lengtheningSs Extra stem extension beyond the natural minimum length (≥ 0): for a beamed
      *                   note, the amount needed to reach the beam; for an unbeamed note, the amount
      *                   needed to extend the tip to the staff center (Y=0)
+     * @param forcedShorteningSs Amount (≥ 0, ss) this stem is shortened because it points in its
+     *                   forced (unnatural) direction, per Ross &amp; Gourlay; 0 for every natural,
+     *                   auto-direction, and grace stem. Bracket-independent — not a tuplet trim.
      * @param stubRight  For partial-beam notes: true if the stub extends to the right, false to the left.
      *                   Meaningless for full-beam and unbeamed notes.
      */
@@ -1305,6 +1308,7 @@ public final class LayoutResult {
         double topYSs,
         double bottomYSs,
         double lengtheningSs,
+        double forcedShorteningSs,
         boolean stubRight) {}
 
     /**
@@ -1383,6 +1387,9 @@ public final class LayoutResult {
      *
      * @param xSs      X position (left edge) of the decoration
      * @param ySs      Y position (top edge) of the decoration
+     * @param dySs     Rise (in staff spaces) over the {@code widthSs} run, from the left (anchor)
+     *                 edge to the right (end) edge; 0 for a flat decoration. Currently only
+     *                 populated for sloped tuplet brackets — all other decoration types are flat.
      * @param widthSs  Width of the decoration
      * @param heightSs Height of the decoration
      * @param marginSs Bottom margin (space between element bottom and the tier below)
@@ -1391,19 +1398,21 @@ public final class LayoutResult {
     public record DecorationLayout(
         double xSs,
         double ySs,
+        double dySs,
         double widthSs,
         double heightSs,
         double marginSs,
         List<CollisionRegion> regions) {
 
         /**
-         * Creates a DecorationLayout without collision sub-regions (simple elements).
+         * Creates a flat DecorationLayout without collision sub-regions (simple elements).
+         * {@code dySs} defaults to 0.0 (flat) and {@code regions} to empty.
          */
         public DecorationLayout(
             double xSs, double ySs, double widthSs,
             double heightSs, double marginSs
         ) {
-            this(xSs, ySs, widthSs, heightSs, marginSs, List.of());
+            this(xSs, ySs, 0.0, widthSs, heightSs, marginSs, List.of());
         }
     }
 

@@ -154,7 +154,7 @@ class NoteAttachedStackerTest extends UnitTest {
             var builder = new LayoutResult.Builder();
             // Extreme stem values ensure the min/max clamps always select the stem.
             builder.putStemLayout(note,
-                new LayoutResult.StemLayout(EXTREME_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, true));
+                new LayoutResult.StemLayout(EXTREME_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, 0, true));
 
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
             var extents = new StaffExtents(LINE_WIDTH_SS);
@@ -210,7 +210,7 @@ class NoteAttachedStackerTest extends UnitTest {
             // Extreme stem makes botSs = EXTREME_STEM_BOT_SS, which exceeds the initial
             // STAFF_HALF_SS (2.0) so the context field is updated.
             builder.putStemLayout(note,
-                new LayoutResult.StemLayout(EXTREME_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, true));
+                new LayoutResult.StemLayout(EXTREME_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, 0, true));
 
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
             new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
@@ -320,9 +320,9 @@ class NoteAttachedStackerTest extends UnitTest {
             // Stem sets botContentExtentSs to EXTREME_STEM_BOT_SS (10.0); arc at 20.0
             // is further down, so the tie becomes the bottoming constraint.
             builder.putStemLayout(startNote,
-                new LayoutResult.StemLayout(EXTREME_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, true));
+                new LayoutResult.StemLayout(EXTREME_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, 0, true));
             builder.putStemLayout(endNote,
-                new LayoutResult.StemLayout(EXTREME_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, true));
+                new LayoutResult.StemLayout(EXTREME_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, 0, true));
             builder.putTieLayout(tie,
                 flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, DOWNWARD_ARC_Y_SS));
 
@@ -784,9 +784,9 @@ class NoteAttachedStackerTest extends UnitTest {
         // Both notes share the same real support edge, via an explicit stem top rather than
         // relying on notehead geometry to land in the narrow window described above.
         builder.putStemLayout(anchorNote,
-            new LayoutResult.StemLayout(MULTI_NOTE_TRILL_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, true));
+            new LayoutResult.StemLayout(MULTI_NOTE_TRILL_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, 0, true));
         builder.putStemLayout(endNote,
-            new LayoutResult.StemLayout(MULTI_NOTE_TRILL_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, true));
+            new LayoutResult.StemLayout(MULTI_NOTE_TRILL_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, 0, true));
 
         var context = new StackingContext(
             List.of(mockColumnAt(anchorNote, START_NOTE_X_SS), mockColumnAt(endNote, END_NOTE_X_SS)),

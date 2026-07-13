@@ -25,6 +25,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.StaffElement;
+import songscribe.engraving.Staff;
 
 /**
  * The fundamental horizontal spacing unit in the engraving system.
@@ -255,6 +256,15 @@ public final class ElementColumn {
      */
     public double getStemBottomSs() {
         return stemBottomSs;
+    }
+
+    /**
+     * Returns the absolute layout-Y top of this column: the element's staff position converted
+     * to ss, plus the note-local stem top extent. Single source of truth for the absolute top used
+     * when building skyline contours.
+     */
+    public double getAbsoluteTopYSs() {
+        return Staff.spToSs(getElement().getStaffPosition()) + getStemTopSs();
     }
 
     // ==========================================================================

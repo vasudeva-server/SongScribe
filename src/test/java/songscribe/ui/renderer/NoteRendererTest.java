@@ -22,16 +22,25 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import module java.desktop;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
@@ -353,6 +362,153 @@ class NoteRendererTest extends UnitTest {
             var firstX = dots.get(0)[0];
             var secondX = dots.get(1)[0];
             assertThat(secondX - firstX).isCloseTo(NoteGeometry.DOT_SPACING_SS, within(TOLERANCE));
+        }
+    }
+
+    // ==========================================================================
+    // renderStem — forced-shortening reads the layout-supplied forcedShorteningSs
+    // ==========================================================================
+
+    @Nested
+    class RenderStemForcedShortening {
+
+        private static final double TOLERANCE = 1e-9;
+
+        /** A mock Graphics2D paired with the local (pre-transform) shapes it filled. */
+        private record RecordingG2(Graphics2D g2, List<Shape> filledShapes) {}
+
+        private static RecordingG2 recordingG2() {
+            var g2 = mock(Graphics2D.class);
+            when(g2.getTransform()).thenReturn(new AffineTransform());
+            var filledShapes = new ArrayList<Shape>();
+            doAnswer(invocation -> {
+                filledShapes.add(invocation.getArgument(0));
+                return null;
+            }).when(g2).fill(any(Shape.class));
+            doAnswer(invocation -> null).when(g2).translate(anyDouble(), anyDouble());
+
+            return new RecordingG2(g2, filledShapes);
+        }
+
+        private static LineInvariants buildInvariantsWithStemLayout(
+            StaffElement note, LayoutResult.StemLayout stemLayout
+        ) {
+            var line = detachedLine();
+            line.addElement(note);
+            var layoutResult = LayoutResult.builder()
+                .putStemLayout(note, stemLayout)
+                .build();
+
+            return RenderContextTestHelper.newContext(new Song())
+                .setCurrentLine(line)
+                .setLayoutResult(layoutResult)
+                .build();
+        }
+
+        // renderStem draws stemLeftXSs/drawTop/(drawBottom-drawTop) directly as the fill Shape's
+        // local coordinates (translate() on a mock does not transform the Shape argument), so an
+        // unbeamed up-stem's rendered length is exactly -shape.getBounds2D().getMinY().
+        private static double renderedUpStemLengthSs(StaffElement note, LayoutResult.StemLayout stemLayout) {
+            var invariants = buildInvariantsWithStemLayout(note, stemLayout);
+            var recording = recordingG2();
+
+            NoteRenderer.getInstance().render(invariants, ElementFrame.LINE_LEVEL, note, recording.g2());
+
+            assertThat(recording.filledShapes()).describedAs("stem fill call").hasSize(1);
+            return -recording.filledShapes().getFirst().getBounds2D().getMinY();
+        }
+
+        // Mirrors renderedUpStemLengthSs: an unbeamed down-stem's stemTipY is +stemLength, drawn
+        // directly as drawBottom, so its rendered length is exactly shape.getBounds2D().getMaxY().
+        private static double renderedDownStemLengthSs(StaffElement note, LayoutResult.StemLayout stemLayout) {
+            var invariants = buildInvariantsWithStemLayout(note, stemLayout);
+            var recording = recordingG2();
+
+            NoteRenderer.getInstance().render(invariants, ElementFrame.LINE_LEVEL, note, recording.g2());
+
+            assertThat(recording.filledShapes()).describedAs("stem fill call").hasSize(1);
+            return recording.filledShapes().getFirst().getBounds2D().getMaxY();
+        }
+
+        @Test
+        void testForcedUpStemDrawsShorterByForcedShorteningSs() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(0);
+            var forcedShorteningSs = 0.3;
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, forcedShorteningSs, false);
+
+            var renderedLengthSs = renderedUpStemLengthSs(note, stemLayout);
+
+            assertThat(renderedLengthSs).isCloseTo(
+                SMuFLConstants.STEM_LENGTH_SS - forcedShorteningSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testNaturalUpStemDrawsAtFullNaturalLength() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(0);
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, 0.0, false);
+
+            var renderedLengthSs = renderedUpStemLengthSs(note, stemLayout);
+
+            assertThat(renderedLengthSs).isCloseTo(SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testForcedShorteningCombinesWithLengtheningInTheRenderedStem() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(0);
+            var lengtheningSs = 0.8;
+            var forcedShorteningSs = 0.3;
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, lengtheningSs, forcedShorteningSs, false);
+
+            var renderedLengthSs = renderedUpStemLengthSs(note, stemLayout);
+
+            assertThat(renderedLengthSs).isCloseTo(
+                SMuFLConstants.STEM_LENGTH_SS + lengtheningSs - forcedShorteningSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testForcedDownStemDrawsShorterByForcedShorteningSs() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(false);
+            note.setStaffPosition(0);
+            var forcedShorteningSs = 0.3;
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, forcedShorteningSs, false);
+
+            var renderedLengthSs = renderedDownStemLengthSs(note, stemLayout);
+
+            assertThat(renderedLengthSs).isCloseTo(
+                SMuFLConstants.STEM_LENGTH_SS - forcedShorteningSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testNaturalDownStemDrawsAtFullNaturalLength() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(false);
+            note.setStaffPosition(0);
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, 0.0, false);
+
+            var renderedLengthSs = renderedDownStemLengthSs(note, stemLayout);
+
+            assertThat(renderedLengthSs).isCloseTo(SMuFLConstants.STEM_LENGTH_SS, within(TOLERANCE));
+        }
+
+        @Test
+        void testStemLengthClampsToForcedStemFloorWhenForcedShorteningExceedsIt() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(0);
+            var outOfRangeForcedShorteningSs = SMuFLConstants.STEM_LENGTH_SS;
+            var stemLayout =
+                new LayoutResult.StemLayout(0.0, 0.0, 0.0, outOfRangeForcedShorteningSs, false);
+
+            var renderedLengthSs = renderedUpStemLengthSs(note, stemLayout);
+
+            assertThat(renderedLengthSs).isCloseTo(NoteGeometry.FORCED_STEM_FLOOR_SS, within(TOLERANCE));
         }
     }
 

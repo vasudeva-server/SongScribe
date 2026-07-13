@@ -278,6 +278,129 @@ class TupletRendererTest extends UnitTest {
         verify(g2, never()).drawString(any(String.class), any(float.class), any(float.class));
     }
 
+    // ======================================================================
+    // Sloped bracket tests (dySs)
+    // ======================================================================
+
+    /**
+     * Builds a two-note line with a tuplet whose {@link LayoutResult.DecorationLayout} carries
+     * an explicit slope {@code dySs}. Unbeamed and stem-up so both bracket arms are drawn.
+     */
+    private static LineInvariants buildInvariantsWithSlopedTuplet(double dySs) {
+        var line = detachedLine();
+        var anchor = ElementType.QUAVER.newInstance();
+        anchor.setUpper(true);
+        var end = ElementType.QUAVER.newInstance();
+        end.setUpper(true);
+        line.addElement(anchor);
+        line.addElement(end);
+
+        var tuplet = new Tuplet(anchor, end, 3);
+        line.addRangeElement(tuplet);
+
+        // decorLayout.xSs() = 1.0 (anchorXSs), decorLayout.widthSs() = 4.0
+        var decorLayout = new LayoutResult.DecorationLayout(1.0, -2.0, dySs, 4.0, 1.0, 0.0, List.of());
+        var layoutResult = LayoutResult.builder()
+            .putDecorationLayout(tuplet, decorLayout)
+            .build();
+
+        return RenderContextTestHelper.newContext(new Song())
+            .setCurrentLine(line)
+            .setLayoutResult(layoutResult)
+            .build();
+    }
+
+    /**
+     * Extracts the exact (unmodified) sloped-corner point at path segment {@code segmentIndex} of
+     * a drawn bracket-arm {@code Shape}. {@link songscribe.util.GraphicUtils#drawPath} only insets
+     * the first and last points for round-cap compensation; interior points (the sloped corner)
+     * pass through unchanged, so segment index 1 of a 3-point arm is the exact corner Y.
+     */
+    private static double cornerYSs(Shape shape, int segmentIndex) {
+        var iterator = shape.getPathIterator(null);
+        var coords = new double[6];
+        var index = 0;
+
+        while (!iterator.isDone()) {
+            iterator.currentSegment(coords);
+
+            if (index == segmentIndex) {
+                return coords[1];
+            }
+
+            index++;
+            iterator.next();
+        }
+
+        throw new IllegalStateException("Segment index " + segmentIndex + " not found in path");
+    }
+
+    @Test
+    void testRenderTupletsFromLine_ascendingContour_rightBracketHigherThanLeft() {
+        // Negative dySs is the documented ascending-contour convention (right end higher,
+        // smaller/more-negative layout Y).
+        var recording = recordingG2();
+        var g2 = recording.g2();
+        var invariants = buildInvariantsWithSlopedTuplet(-1.0);
+
+        RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
+            ElementFrame.LINE_LEVEL);
+
+        var leftCornerYSs = cornerYSs(recording.placedShapes().get(0), 1);
+        var rightCornerYSs = cornerYSs(recording.placedShapes().get(1), 1);
+
+        assertThat(rightCornerYSs).isLessThan(leftCornerYSs);
+    }
+
+    @Test
+    void testRenderTupletsFromLine_flatContour_bracketCornersEqual() {
+        var recording = recordingG2();
+        var g2 = recording.g2();
+        var invariants = buildInvariantsWithSlopedTuplet(0.0);
+
+        RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
+            ElementFrame.LINE_LEVEL);
+
+        var leftCornerYSs = cornerYSs(recording.placedShapes().get(0), 1);
+        var rightCornerYSs = cornerYSs(recording.placedShapes().get(1), 1);
+
+        assertThat(rightCornerYSs).isCloseTo(leftCornerYSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testRenderTupletsFromLine_slopedBracket_extrapolatesFromAnchorOverWidth() {
+        // Pins the exact Step 2->4 reconciliation: the renderer must re-derive slope as
+        // dySs / widthSs and evaluate the line from anchorXSs, extrapolating out to the arm
+        // X positions (which sit past the anchor/end columns by ARM_EXTENSION_SS) rather than
+        // re-fitting dySs across the wider arm span.
+        var dySs = -2.0;
+        var invariants = buildInvariantsWithSlopedTuplet(dySs);
+        var recording = recordingG2();
+        var g2 = recording.g2();
+
+        RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
+            ElementFrame.LINE_LEVEL);
+
+        var anchorXSs = 1.0;
+        var widthSs = 4.0;
+        var endXSs = anchorXSs + widthSs;
+        var slope = dySs / widthSs;
+        var stemSs = LineThickness.STEM_SS;
+        var leftXSs = anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS - stemSs - Tuplet.ARM_EXTENSION_SS;
+        var rightXSs = endXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS + Tuplet.ARM_EXTENSION_SS;
+
+        var boxTopYSs = -2.0;  // middleLineYSs defaults to 0, so component Y == layout ySs
+        var bracketLineOffsetSs = Tuplet.bracketLineOffsetSs();
+        var expectedLeftYSs = boxTopYSs + bracketLineOffsetSs + slope * (leftXSs - anchorXSs);
+        var expectedRightYSs = boxTopYSs + bracketLineOffsetSs + slope * (rightXSs - anchorXSs);
+
+        var actualLeftYSs = cornerYSs(recording.placedShapes().get(0), 1);
+        var actualRightYSs = cornerYSs(recording.placedShapes().get(1), 1);
+
+        assertThat(actualLeftYSs).isCloseTo(expectedLeftYSs, within(TOLERANCE));
+        assertThat(actualRightYSs).isCloseTo(expectedRightYSs, within(TOLERANCE));
+    }
+
     @Test
     void testRenderTupletsFromLine_nullAnchorNote_skipsWithoutDrawing() {
         // A tuplet whose anchor element is null must be skipped silently

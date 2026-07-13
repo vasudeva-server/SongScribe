@@ -298,6 +298,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         var layoutResult = invariants.getLayoutResult();
         var stemLayout = layoutResult.getStemLayout(note);
         var lengtheningSs = (stemLayout != null) ? stemLayout.lengtheningSs() : 0.0;
+        var forcedShorteningSs = (stemLayout != null) ? stemLayout.forcedShorteningSs() : 0.0;
 
         var beamThickeningSs = 0.0;
 
@@ -316,7 +317,9 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
         // Stem length is measured from notehead center (y=0), not from the anchor.
         // The anchor only determines where the stem visually attaches to the notehead.
-        var stemLength = geom.lengthSs() + lengtheningSs;
+        // The forced-shortening formula already caps at the floor; guard here defensively.
+        var stemLength = Math.max(
+            NoteGeometry.FORCED_STEM_FLOOR_SS, geom.lengthSs() + lengtheningSs - forcedShorteningSs);
         var anchorY = geom.anchorYSs();
 
         // For beamed notes, shorten the rendered stem by half the (thickened) beam

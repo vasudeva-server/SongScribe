@@ -36,6 +36,26 @@ public final class NoteGeometry {
     /** Stem width in staff-space units (LilyPond multiplier-derived). */
     public static final double STEM_WIDTH_SS = LineThickness.STEM_SS;
 
+    /**
+     * Shortening applied per diatonic step of distance from the middle line to a stem forced into its
+     * unnatural direction. LilyPond's {@code shortening_step} of 0.3333 half-spaces, halved to ss
+     * (see {@code stem.cc:519-555}).
+     */
+    public static final double FORCED_SHORTEN_PER_STEP_SS = 1.0 / 6.0;
+
+    /**
+     * Maximum a forced stem may be shortened, in staff spaces. LilyPond's {@code 2·stem-shorten[0]}
+     * of 2.0 half-spaces, halved to ss.
+     */
+    public static final double MAX_FORCED_SHORTEN_SS = 1.0;
+
+    /**
+     * Floor a forced stem may be shortened to, in staff spaces. The forced-shortening formula caps at
+     * {@link #MAX_FORCED_SHORTEN_SS}, so a forced stem never falls below this; kept as a named
+     * constant for defensive flooring at the renderer.
+     */
+    public static final double FORCED_STEM_FLOOR_SS = SMuFLConstants.STEM_LENGTH_SS - MAX_FORCED_SHORTEN_SS;
+
     // ==========================================================================
     // Font Constants
     // ==========================================================================
@@ -177,6 +197,41 @@ public final class NoteGeometry {
      * @param direction UP for stem-up, DOWN for stem-down
      * @return The base stem geometry
      */
+    /**
+     * Returns the amount (≥ 0, ss) a stem is shortened because it points in its <em>forced</em>
+     * (unnatural) direction, per Ross &amp; Gourlay (LilyPond {@code stem.cc:519-555}).
+     *
+     * <p>A stem is forced when its direction opposes the default: an up-stem at or above the middle
+     * line ({@code staffPosition <= 0}) or a down-stem below it ({@code staffPosition > 0}). Because
+     * an auto stem always equals the default direction, it is never forced, so this returns 0 for
+     * every auto stem regardless of when direction is resolved. Grace stems are never shortened.
+     *
+     * <p>The shortening grows {@link #FORCED_SHORTEN_PER_STEP_SS} per diatonic step of distance from
+     * the middle line and caps at {@link #MAX_FORCED_SHORTEN_SS}, reaching the cap (a
+     * {@link #FORCED_STEM_FLOOR_SS} residual stem) one diatonic step beyond the top staff line.
+     *
+     * @param staffPosition integer diatonic steps from the middle line (positive = below)
+     * @param direction     the note's stem direction
+     * @param isGraceNote   whether the note is a grace note
+     * @return the shortening in staff spaces (0 for natural, auto, and grace stems)
+     */
+    public static double forcedShorteningSs(
+        int staffPosition, StaffElement.Direction direction, boolean isGraceNote) {
+        if (isGraceNote) {
+            return 0.0;
+        }
+
+        var forcedUp = direction.isUp() && staffPosition <= 0;
+        var forcedDown = direction.isDown() && staffPosition > 0;
+
+        if (!forcedUp && !forcedDown) {
+            return 0.0;
+        }
+
+        var shortenSs = FORCED_SHORTEN_PER_STEP_SS * (1 + Math.abs(staffPosition));
+        return Math.min(MAX_FORCED_SHORTEN_SS, shortenSs);
+    }
+
     public static StemGeometry computeBaseStemGeometry(ElementType noteType, StaffElement.Direction direction) {
         var isMinim = noteType == ElementType.MINIM;
         var isGrace = noteType.isGraceNote();

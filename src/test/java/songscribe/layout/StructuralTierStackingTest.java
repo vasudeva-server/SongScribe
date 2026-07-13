@@ -369,8 +369,14 @@ class StructuralTierStackingTest extends UnitTest {
         }
 
         @Test
-        void testTupletYEqualsAnchorCeilingMinusMarginMinusHeight() {
-            // Fresh extents (top=0.0), sp=0 → ceilingSs = anchorCeilingSs(0).
+        void testTupletYEqualsTipCeilingMinusMarginMinusHeight() {
+            // Both notes at the same staff position -> flat contour (dySs == 0), so the
+            // left-endpoint ceiling is just the shared tip's absolute top. Tuplets place via the
+            // tip-based verbatim-anchor placement (not the staffPosition/anchorCeilingSs path), so
+            // the raw ceiling is ElementColumn.getAbsoluteTopYSs(), not anchorCeilingSs(0).
+            // The clearance then applies a staff-top clamp: a tip below the top staff line raises
+            // the ceiling to STAFF_TOP_Y_SS so the bracket stays above the staff. These notes sit
+            // at the middle line (tip below the staff top), so the clamp binds here.
             // Tuplets are stacked before hairpins, so no prior structural reservation.
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
@@ -384,11 +390,50 @@ class StructuralTierStackingTest extends UnitTest {
             var result = stackDirectly(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
 
-            var ceilingSs = StackingUtils.anchorCeilingSs(0);
-            var expectedYSs = ceilingSs - StructuralStacker.TUPLET_MARGIN_SS
+            // The bracket LINE floats TUPLET_BRACKET_PADDING_SS above the tip (StructuralStacker's
+            // TUPLET_ARM_MARGIN_SS, applied to the box/arm bottom, is the padding minus the arm
+            // height so the line lands exactly there).
+            var tipCeilingSs =
+                StackingUtils.staffTopClampSs(columnFor(note1, NOTE1_X_SS).getAbsoluteTopYSs());
+            var expectedYSs = tipCeilingSs - StructuralStacker.TUPLET_ARM_MARGIN_SS
                 - tuplet.getContentHeightSs();
             var layout = require(result.getDecorationLayout(tuplet), "tuplet layout");
             assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testTupletWithNullAnchorOrEndElementIsSkippedWithoutDecorationLayout() {
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+            tuplet.setEndElement(null);
+
+            var result = stackDirectly(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
+
+            assertThat(result.getDecorationLayout(tuplet)).isNull();
+        }
+
+        @Test
+        void testTupletWithMissingColumnForEndElementIsSkippedWithoutDecorationLayout() {
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+
+            // note2's column is omitted, so columnsByElement.get(endNote) resolves to null.
+            var result = stackDirectly(List.of(columnFor(note1, NOTE1_X_SS)), line);
+
+            assertThat(result.getDecorationLayout(tuplet)).isNull();
         }
 
         @Test
