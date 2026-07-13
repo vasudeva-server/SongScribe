@@ -254,12 +254,14 @@ public final class OptionDialogs {
     }
 
     private static void showOptionPane(JOptionPane pane, @Nullable Component parent, String title) {
-        var dialog = pane.createDialog(parent, title);
-
-        // createDialog has already laid out and packed the pane; widen the message
-        // labels and re-pack so the dialog grows to the corrected width.
+        // Pad the message labels BEFORE the dialog is created. createDialog packs the pane
+        // exactly once, at whatever the labels then prefer, so padding here folds the clip
+        // compensation into that single pack. Padding after createDialog instead would need
+        // a second pack, which races the not-yet-settled native peer and clips the widest
+        // label the first time such a dialog is shown in the session (#459).
         padMessageLabels(pane);
-        dialog.pack();
+
+        var dialog = pane.createDialog(parent, title);
 
         UIUtils.addStandardDialogKeyBindings(dialog);
         UIUtils.positionDialog(dialog, parent);
