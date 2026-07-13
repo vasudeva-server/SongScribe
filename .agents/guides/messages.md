@@ -7,7 +7,7 @@ MessageCenter.post(message) // Synchronous; all handlers run on calling thread b
 MessageCenter.subscribe(listener) // in constructor
 ```
 
-**Weak references.** MBassador holds subscribers weakly. Every subscriber MUST be reachable via a strong reference (static field, instance field on a long-lived owner) for its intended lifetime.
+**Weak references.** MBassador holds subscribers weakly. Every subscriber MUST be reachable via a strong reference (static field, instance field on a long-lived owner) for its intended lifetime. There is NO need to unsubscribe; when the subscriber is garbage collected, it will no longer receive messages.
 
 ### Message kinds
 
