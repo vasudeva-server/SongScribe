@@ -1240,7 +1240,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
             assertThat(result.isValid())
                 .as("a content note is a valid outer end after the #306 end-type gate removal")
                 .isTrue();
-            assertThat(env.line().getElement(result.getSpanEnd()).getType().isContentElement())
+            assertThat(env.line().getElement(result.getSpanEnd()).getType().isDuration())
                 .as("the ending's outer end stays the content note, not widened to a barline")
                 .isTrue();
         }

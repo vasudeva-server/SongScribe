@@ -412,7 +412,7 @@ public final class MusicEditOperations {
                 return false;
             }
 
-            if (type.isContentElement()) {
+            if (type.isDuration()) {
                 hasContent = true;
             }
         }
@@ -509,8 +509,8 @@ public final class MusicEditOperations {
         var precedingLine = song.getLine(precedingLineIndex);
         var precedingType = precedingLine.getElement(precedingElementIndex).getType();
 
-        if (precedingType.isContentElement()) {
-            // Content predecessor — anchor the 1st bracket to the note at
+        if (precedingType.isDuration()) {
+            // Note/rest predecessor — anchor the 1st bracket to the note at
             // selectionBegin, whether or not the selection begins with a barline.
             return EndingValidationResult.valid(
                 EndingValidationResult.PrecedingAction.NONE,

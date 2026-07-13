@@ -224,8 +224,10 @@ class ElementTypeTest extends UnitTest {
     }
 
     @Test
-    void testIsContentElementAndIsNonContentElementAreNeverBothTrue() {
-        // No type may simultaneously be a content element AND a non-content element
+    void testIsDurationAndIsNonContentElementAreNeverBothTrue() {
+        // The ending-anchor set (isDuration) and the skipped-but-present set
+        // (isNonContentElement) must stay disjoint: no type may both anchor an
+        // ending and be skipped during ending validation.
         for (var type : new ElementType[]{
             ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
             ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
@@ -236,32 +238,9 @@ class ElementTypeTest extends UnitTest {
             ElementType.BREATH_MARK,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
-            assertThat(type.isContentElement() && type.isNonContentElement())
-                .as("isContentElement() AND isNonContentElement() for %s should never both be true", type)
+            assertThat(type.isDuration() && type.isNonContentElement())
+                .as("isDuration() AND isNonContentElement() for %s should never both be true", type)
                 .isFalse();
-        }
-    }
-
-    @Test
-    void testIsContentElementMembership() {
-        // True set: pitched notes, rests, breath mark
-        for (var type : new ElementType[]{
-            ElementType.SEMIBREVE, ElementType.MINIM, ElementType.CROTCHET,
-            ElementType.QUAVER, ElementType.SEMIQUAVER, ElementType.DEMI_SEMIQUAVER,
-            ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
-            ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
-            ElementType.BREATH_MARK
-        }) {
-            assertThat(type.isContentElement()).as("%s.isContentElement()", type).isTrue();
-        }
-
-        // False set: grace notes, glissando, repeats, barlines
-        for (var type : new ElementType[]{
-            ElementType.GRACE_QUAVER, ElementType.SLIDE,
-            ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
-            ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
-        }) {
-            assertThat(type.isContentElement()).as("%s.isContentElement()", type).isFalse();
         }
     }
 
@@ -355,9 +334,10 @@ class ElementTypeTest extends UnitTest {
 
     @Test
     void testIsNonContentElementMembership() {
-        // True set: grace notes and glissando
+        // True set: grace notes, glissando, breath mark
         assertThat(ElementType.GRACE_QUAVER.isNonContentElement()).isTrue();
         assertThat(ElementType.SLIDE.isNonContentElement()).isTrue();
+        assertThat(ElementType.BREATH_MARK.isNonContentElement()).isTrue();
 
         // False set: all other types
         for (var type : new ElementType[]{
@@ -366,7 +346,6 @@ class ElementTypeTest extends UnitTest {
             ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
-            ElementType.BREATH_MARK,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
             assertThat(type.isNonContentElement()).as("%s.isNonContentElement()", type).isFalse();

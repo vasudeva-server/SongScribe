@@ -440,11 +440,11 @@ public class Ending extends RangeElement {
             var splitIndex = line.getElementIndex(splitElement);
             var firstContent = IntStream.range(anchorIndex + 1, splitIndex)
                 .mapToObj(line::getElement)
-                .filter(el -> el.getType().isContentElement())
+                .filter(el -> el.getType().isDuration())
                 .toList();
             var secondContent = IntStream.range(splitIndex + 1, endIndex)
                 .mapToObj(line::getElement)
-                .filter(el -> el.getType().isContentElement())
+                .filter(el -> el.getType().isDuration())
                 .toList();
 
             return (!firstContent.isEmpty() && deletedElements.containsAll(firstContent))
@@ -453,7 +453,7 @@ public class Ending extends RangeElement {
 
         var singleContent = IntStream.range(anchorIndex + 1, endIndex)
             .mapToObj(line::getElement)
-            .filter(el -> el.getType().isContentElement())
+            .filter(el -> el.getType().isDuration())
             .toList();
 
         return !singleContent.isEmpty() && deletedElements.containsAll(singleContent);
@@ -475,7 +475,7 @@ public class Ending extends RangeElement {
         // REPEAT_LEFT_RIGHT) is a valid anchor; only a non-content, non-barline,
         // non-repeat type (e.g. clef/key signature) invalidates.
         if (oldElement == getAnchorElement()) {
-            return (newType.isContentElement() || newType.isBarLine() || newType.isRepeat())
+            return (newType.isDuration() || newType.isBarLine() || newType.isRepeat())
                 ? EndingEffect.None.INSTANCE
                 : new EndingEffect.Invalidate(this);
         }
@@ -510,7 +510,7 @@ public class Ending extends RangeElement {
         // Condition 3 — end element replaced
         if (oldElement == getEndElement()) {
             // A note end needs no split compensation, regardless of split type.
-            if (newType.isContentElement()) {
+            if (newType.isDuration()) {
                 return EndingEffect.None.INSTANCE;
             }
 

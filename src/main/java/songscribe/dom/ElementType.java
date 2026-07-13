@@ -410,19 +410,14 @@ public enum ElementType {
     }
 
     /**
-     * A content element is a note, rest, or breath mark — elements that carry
-     * musical content. Grace notes and slides are non-content.
-     */
-    public boolean isContentElement() {
-        return isPitchedNote() || isRest() || this == BREATH_MARK;
-    }
-
-    /**
      * Non-content elements are skipped during first-second ending validation
-     * but are allowed to be present in the selection.
+     * but are allowed to be present in the selection. Breath marks are
+     * non-content: they may sit inside an ending but cannot anchor or end it.
+     * The complement — the elements that can anchor or end an ending — is
+     * exactly {@link #isDuration()} (notes and rests).
      */
     public boolean isNonContentElement() {
-        return isGraceNote() || this == SLIDE;
+        return isGraceNote() || this == SLIDE || this == BREATH_MARK;
     }
 
     /**
