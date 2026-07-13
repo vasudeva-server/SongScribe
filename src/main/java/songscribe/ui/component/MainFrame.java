@@ -860,6 +860,12 @@ public class MainFrame extends JFrame implements Printable {
             true,
             new ExtensionFileFilter[] {
                 new ExtensionFileFilter(
+                    Strings.get(Strings.FILTER_ALL_SUPPORTED),
+                    FileExtensions.MUSICXML,
+                    FileExtensions.XML,
+                    FileExtensions.SONGWRITER
+                ),
+                new ExtensionFileFilter(
                     Strings.get(Strings.FILTER_MUSICXML),
                     FileExtensions.MUSICXML,
                     FileExtensions.XML
