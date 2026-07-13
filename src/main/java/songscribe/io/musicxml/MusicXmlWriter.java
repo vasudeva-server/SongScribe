@@ -739,8 +739,26 @@ public final class MusicXmlWriter {
                     }
 
                 } else if (type.isBreathMark()) {
-                    // Already serialized inside the preceding note's <notations>.
-                    // Skip here so the breath mark is not emitted a second time.
+                    // Already serialized inside the preceding note's <notations>,
+                    // so no <note> is emitted here. A breath mark is still a
+                    // content element (isContentElement()) and so can anchor or
+                    // end an ending (issue #306); honor its markers the same way
+                    // the note branch below does, or they would be silently lost.
+                    var endingStartMarkers = markers.endingLeftBarlineMarkers();
+
+                    if (!endingStartMarkers.isEmpty()) {
+                        writeInvisibleLeftBarline(pw, endingStartMarkers);
+                    }
+
+                    var endingEndMarkers = markers.endingRightBarlineMarkers();
+
+                    if (!endingEndMarkers.isEmpty()) {
+                        if (element == lastElement) {
+                            lastNoteEndingMarkers = endingEndMarkers;
+                        } else {
+                            writeInvisibleRightBarline(pw, endingEndMarkers);
+                        }
+                    }
 
                 } else {
                     // Note, rest, grace, or other element. Emit a <note> only when
