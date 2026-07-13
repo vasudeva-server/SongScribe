@@ -1130,16 +1130,21 @@ class LineIOTest extends UnitTest {
         @Test
         void testSecondCallAccumulatesBothBatches() throws Exception {
             // parseEndingPairs accumulates, consistent with all other parse* methods.
-            // Two XML_FSENDINGS tags → both batches survive.
+            // Two XML_FSENDINGS tags → both batches survive. Each span straddles a
+            // REPEAT_RIGHT so it survives the split-less drop guard (issue #306).
+            //  idx: 0        1            2        3            4
+            //       CROTCHET REPEAT_RIGHT CROTCHET REPEAT_RIGHT CROTCHET
             var reader = buildReaderWithNotes(
                 ElementType.CROTCHET,
+                ElementType.REPEAT_RIGHT,
                 ElementType.CROTCHET,
+                ElementType.REPEAT_RIGHT,
                 ElementType.CROTCHET
             );
-            // First batch: ending at 0–1
-            feedTag(reader, LineIO.XML_FSENDINGS, "0,1;");
-            // Second batch: ending at 1–2 — should accumulate with first
-            feedTag(reader, LineIO.XML_FSENDINGS, "1,2;");
+            // First batch: ending at 0–2 (split REPEAT_RIGHT at 1)
+            feedTag(reader, LineIO.XML_FSENDINGS, "0,2;");
+            // Second batch: ending at 2–4 (split REPEAT_RIGHT at 3) — accumulates with first
+            feedTag(reader, LineIO.XML_FSENDINGS, "2,4;");
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
@@ -1148,9 +1153,9 @@ class LineIOTest extends UnitTest {
             // Both batches survive — 2 endings total
             assertThat(endings).hasSize(2);
             assertThat(endings.get(0).getAnchorElementIndex()).isEqualTo(0);
-            assertThat(endings.get(0).getEndElementIndex()).isEqualTo(1);
-            assertThat(endings.get(1).getAnchorElementIndex()).isEqualTo(1);
-            assertThat(endings.get(1).getEndElementIndex()).isEqualTo(2);
+            assertThat(endings.get(0).getEndElementIndex()).isEqualTo(2);
+            assertThat(endings.get(1).getAnchorElementIndex()).isEqualTo(2);
+            assertThat(endings.get(1).getEndElementIndex()).isEqualTo(4);
         }
     }
 
@@ -1282,13 +1287,17 @@ class LineIOTest extends UnitTest {
         void testAllCreateMethodsInvokedOnLineClose() throws Exception {
             // Full start/chars/end sequence with all range element types:
             // beam, tie, tuplet, crescendo, diminuendo, trill, ending.
-            // Uses 5 notes (indices 0-4) with valid ranges for all types.
-            final int NOTE_COUNT = 5;
+            // Notes occupy indices 0-4 with valid ranges for all types; a trailing
+            // REPEAT_RIGHT(5) + CROTCHET(6) give the ending a split so it survives the
+            // split-less drop guard (issue #306).
+            final int ELEMENT_COUNT = 7;
             var reader = buildReaderWithNotes(
                 ElementType.QUAVER,
                 ElementType.QUAVER,
                 ElementType.CROTCHET,
                 ElementType.CROTCHET,
+                ElementType.CROTCHET,
+                ElementType.REPEAT_RIGHT,
                 ElementType.CROTCHET
             );
             feedTag(reader, LineIO.XML_BEAMINGS, "0,1;");
@@ -1297,12 +1306,13 @@ class LineIOTest extends UnitTest {
             feedTag(reader, LineIO.XML_CRESCENDO, "0,1;");
             feedTag(reader, LineIO.XML_DIMINUENDO, "2,3;");
             feedTag(reader, LineIO.XML_TRILLS, "3,4;");
-            feedTag(reader, LineIO.XML_FSENDINGS, "0,1;");
+            // Ending 4–6 straddles the REPEAT_RIGHT(5) split.
+            feedTag(reader, LineIO.XML_FSENDINGS, "4,6;");
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
             if (parsedLine == null) return;
-            assertThat(parsedLine.elementCount()).isEqualTo(NOTE_COUNT);
+            assertThat(parsedLine.elementCount()).isEqualTo(ELEMENT_COUNT);
             assertThat(parsedLine.findRangeElements(Beam.class)).hasSize(1);
             assertThat(parsedLine.findRangeElements(Tie.class)).hasSize(1);
             assertThat(parsedLine.findRangeElements(Tuplet.class)).hasSize(1);
@@ -1355,9 +1365,13 @@ class LineIOTest extends UnitTest {
 
         @Test
         void testValidEndingPairLoadsSuccessfully() throws Exception {
-            // Valid pair within bounds → Ending is created
-            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET);
-            feedTag(reader, LineIO.XML_FSENDINGS, "0,1;");
+            // Valid pair within bounds, straddling a REPEAT_RIGHT split (issue #306) → Ending
+            // is created.
+            //  idx: 0        1            2
+            //       CROTCHET REPEAT_RIGHT CROTCHET
+            var reader = buildReaderWithNotes(
+                ElementType.CROTCHET, ElementType.REPEAT_RIGHT, ElementType.CROTCHET);
+            feedTag(reader, LineIO.XML_FSENDINGS, "0,2;");
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();

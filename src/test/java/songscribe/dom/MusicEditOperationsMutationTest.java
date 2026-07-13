@@ -1183,7 +1183,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
             // REPEAT_RIGHT closes the second ending's repeat section — valid
             var env = buildEnv(repeatRight());
             ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
-            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isTrue();
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+                .as("REPEAT_RIGHT outer end closes the repeat section and is valid")
+                .isTrue();
         }
 
         @Test
@@ -1191,7 +1193,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
             // REPEAT_LEFT_RIGHT closes the second ending and opens a new repeat — valid
             var env = buildEnv(repeatLeftRight());
             ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
-            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isTrue();
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+                .as("REPEAT_LEFT_RIGHT outer end closes the repeat section and is valid")
+                .isTrue();
         }
 
         @Test
@@ -1214,6 +1218,30 @@ class MusicEditOperationsMutationTest extends UnitTest {
             ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
             assertThat(env.operations().canMakeFirstSecondEnding().isValid())
                 .as("REPEAT_LEFT outer end is valid after the #306 end-type gate removal")
+                .isTrue();
+        }
+
+        @Test
+        void testContentNoteOuterEndIsValid() {
+            // #306: the removed end-type gate lets the outer end be a plain content note, not
+            // just a barline/repeat. A content element AFTER the end note keeps the
+            // auto-maintained-terminal extension from widening the selection onto a barline, so
+            // validateEndingStructure actually sees a note as the end.
+            //  idx: 0           1        2        3                 4        5(end)   6        7
+            //       REPEAT_LEFT CROTCHET CROTCHET REPEAT_LEFT_RIGHT CROTCHET CROTCHET CROTCHET FINAL_DOUBLE_BARLINE
+            var env = setupEnv(
+                repeatLeft(), crotchet(), crotchet(), repeatLeftRight(),
+                crotchet(), crotchet(), crotchet(), finalDoubleBarline()
+            );
+            ReflectionTestHelper.selectRange(env.coordinator(), 1, 5);
+
+            var result = env.operations().canMakeFirstSecondEnding();
+
+            assertThat(result.isValid())
+                .as("a content note is a valid outer end after the #306 end-type gate removal")
+                .isTrue();
+            assertThat(env.line().getElement(result.getSpanEnd()).getType().isContentElement())
+                .as("the ending's outer end stays the content note, not widened to a barline")
                 .isTrue();
         }
     }

@@ -744,21 +744,9 @@ public final class MusicXmlWriter {
                     // content element (isContentElement()) and so can anchor or
                     // end an ending (issue #306); honor its markers the same way
                     // the note branch below does, or they would be silently lost.
-                    var endingStartMarkers = markers.endingLeftBarlineMarkers();
-
-                    if (!endingStartMarkers.isEmpty()) {
-                        writeInvisibleLeftBarline(pw, endingStartMarkers);
-                    }
-
-                    var endingEndMarkers = markers.endingRightBarlineMarkers();
-
-                    if (!endingEndMarkers.isEmpty()) {
-                        if (element == lastElement) {
-                            lastNoteEndingMarkers = endingEndMarkers;
-                        } else {
-                            writeInvisibleRightBarline(pw, endingEndMarkers);
-                        }
-                    }
+                    writeNoteAnchoredEndingStart(pw, markers);
+                    lastNoteEndingMarkers = writeOrDeferNoteEndingEnd(
+                        pw, markers, element, lastElement, lastNoteEndingMarkers);
 
                 } else {
                     // Note, rest, grace, or other element. Emit a <note> only when
@@ -770,11 +758,7 @@ public final class MusicXmlWriter {
                         // A note-anchored ending start (issue #306) has no barline
                         // element to host it, so it rides on an invisible left
                         // barline emitted immediately before the note.
-                        var endingStartMarkers = markers.endingLeftBarlineMarkers();
-
-                        if (!endingStartMarkers.isEmpty()) {
-                            writeInvisibleLeftBarline(pw, endingStartMarkers);
-                        }
+                        writeNoteAnchoredEndingStart(pw, markers);
 
                         // A tempo <direction> precedes the note it marks. The first
                         // element of the first line carries the song base tempo; any
@@ -825,15 +809,8 @@ public final class MusicXmlWriter {
                         // the boundary note is the line's last element, defer the
                         // marker to the end-of-line invisible right barline; else
                         // emit an invisible right barline immediately after the note.
-                        var endingEndMarkers = markers.endingRightBarlineMarkers();
-
-                        if (!endingEndMarkers.isEmpty()) {
-                            if (element == lastElement) {
-                                lastNoteEndingMarkers = endingEndMarkers;
-                            } else {
-                                writeInvisibleRightBarline(pw, endingEndMarkers);
-                            }
-                        }
+                        lastNoteEndingMarkers = writeOrDeferNoteEndingEnd(
+                            pw, markers, element, lastElement, lastNoteEndingMarkers);
                     }
                 }
             }
@@ -2257,6 +2234,50 @@ public final class MusicXmlWriter {
      */
     private static void writeInvisibleLeftBarline(PrintWriter pw, List<EndingMarker> endings) {
         writeBarline(pw, BarlineStyleMapping.LOCATION_LEFT, BarlineStyleMapping.BAR_STYLE_NONE, null, endings);
+    }
+
+    /**
+     * Emits a note-anchored ending's {@code <ending number="1" type="start">}
+     * (issue #306) on an invisible left barline immediately before the current
+     * element, when the anchor is a content element with no barline to host it.
+     * A no-op when the element carries no ending-start markers.
+     */
+    private static void writeNoteAnchoredEndingStart(PrintWriter pw, IndexSpanMarkers markers) {
+        var endingStartMarkers = markers.endingLeftBarlineMarkers();
+
+        if (!endingStartMarkers.isEmpty()) {
+            writeInvisibleLeftBarline(pw, endingStartMarkers);
+        }
+    }
+
+    /**
+     * Emits a note-terminated ending's {@code <ending ... type="discontinue">}
+     * (issue #306) on an invisible right barline immediately after
+     * {@code element}, when the end is a content element with no barline to host
+     * it. When {@code element} is the line's last element, the markers are instead
+     * returned so the caller can fold them onto the end-of-line invisible right
+     * barline, avoiding a redundant second one. Returns {@code lastNoteEndingMarkers}
+     * unchanged when the element carries no ending-end markers or is not the last.
+     */
+    private static List<EndingMarker> writeOrDeferNoteEndingEnd(
+        PrintWriter pw,
+        IndexSpanMarkers markers,
+        StaffElement element,
+        @Nullable StaffElement lastElement,
+        List<EndingMarker> lastNoteEndingMarkers
+    ) {
+        var endingEndMarkers = markers.endingRightBarlineMarkers();
+
+        if (endingEndMarkers.isEmpty()) {
+            return lastNoteEndingMarkers;
+        }
+
+        if (element == lastElement) {
+            return endingEndMarkers;
+        }
+
+        writeInvisibleRightBarline(pw, endingEndMarkers);
+        return lastNoteEndingMarkers;
     }
 
     /**

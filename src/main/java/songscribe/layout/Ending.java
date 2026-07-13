@@ -170,12 +170,21 @@ public class Ending extends RangeElement {
         var splitIndex = findRepeatSplitIndex(line);
 
         if (splitIndex < 0) {
-            throw new IllegalStateException(
-                "Ending spanning elements [" + getAnchorElementIndex() + "," + getEndElementIndex()
-                    + "] has no split element; every ending must have a REPEAT between its two brackets");
+            throw noSplitElementException(getAnchorElementIndex(), getEndElementIndex());
         }
 
         return splitIndex;
+    }
+
+    /**
+     * Builds the exception thrown when an ending is found to have no REPEAT splitting its
+     * two brackets — corrupt state that should have been rejected on import or removed by
+     * invalidation. Shared by {@link #getSplitIndex} and {@link #computeBracketRanges}.
+     */
+    private static IllegalStateException noSplitElementException(int anchorIndex, int endIndex) {
+        return new IllegalStateException(
+            "Ending spanning elements [" + anchorIndex + "," + endIndex
+                + "] has no split element; every ending must have a REPEAT between its two brackets");
     }
 
     /**
@@ -221,9 +230,7 @@ public class Ending extends RangeElement {
             .orElse(-1);
 
         if (repeatSplitIndex < 0) {
-            throw new IllegalStateException(
-                "Ending spanning elements [" + start + "," + end
-                    + "] has no split element; every ending must have a REPEAT between its two brackets");
+            throw noSplitElementException(start, end);
         }
 
         var startElement = line.getElement(start);

@@ -585,6 +585,16 @@ public final class LineIO {
                 var startElement = line.getElement(pair[0]);
                 var endElement = line.getElement(pair[1]);
                 var ending = new Ending(startElement, endElement);
+
+                // Every ending must have a REPEAT splitting its two brackets (issue #306).
+                // A split-less span — e.g. a pre-#306 single-bracket ending in an older
+                // .mssw file — would throw during layout or MIDI generation, so drop it on
+                // load, mirroring the MusicXML import path (EndingResolver.buildEnding).
+                if (ending.findRepeatSplitElement(line) == null) {
+                    LOG.warn("Dropping split-less <ending> on load (no repeat between anchor and end)");
+                    continue;
+                }
+
                 line.addRangeElement(ending);
             }
 

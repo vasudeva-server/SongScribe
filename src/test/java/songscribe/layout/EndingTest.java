@@ -20,6 +20,7 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.function.Function;
@@ -158,6 +159,45 @@ class EndingTest extends UnitTest {
             });
 
             assertThat(ending.findRepeatSplitElement(line)).isNull();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Row 14 — getSplitIndex(Line line)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class GetSplitIndex {
+
+        @Test
+        void testSplitLessEndingThrows() {
+            // Every ending must have a REPEAT splitting its two brackets (issue #306).
+            // A span with no interior REPEAT is corrupt state and must throw rather than
+            // silently degrade — the contract StructuralStacker/MidiSequenceBuilder rely on.
+            var song = new Song();
+            var line = song.getLine(0);
+            var anchor = new StaffElement(ElementType.CROTCHET);
+            var mid = new StaffElement(ElementType.CROTCHET);
+            var end = new StaffElement(ElementType.CROTCHET);
+            var ending = new Ending(anchor, end);
+            song.withoutMutationTracking(() -> {
+                line.addElement(anchor);
+                line.addElement(mid);
+                line.addElement(end);
+                line.addRangeElement(ending);
+            });
+
+            assertThatThrownBy(() -> ending.getSplitIndex(line))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("no split element");
+        }
+
+        @Test
+        void testEndingWithSplitReturnsSplitIndex() {
+            var fixture = EndingLineFixture.primary();
+
+            assertThat(fixture.ending().getSplitIndex(fixture.line()))
+                .isEqualTo(fixture.line().getElementIndex(fixture.split()));
         }
     }
 
@@ -373,6 +413,29 @@ class EndingTest extends UnitTest {
             assertThat(ranges.get(1).hasClosingStroke()).isTrue();
         }
 
+        @Test
+        void testSplitLessEndingThrows() {
+            // computeBracketRanges enforces the same "every ending has a split" invariant as
+            // getSplitIndex (issue #306): a span with no interior REPEAT throws rather than
+            // producing a degenerate single bracket. StructuralStacker calls this per ending.
+            var line = detachedLine();
+            var anchor = new StaffElement(ElementType.CROTCHET);
+            var mid = new StaffElement(ElementType.CROTCHET);
+            var end = new StaffElement(ElementType.CROTCHET);
+            var ending = new Ending(anchor, end);
+            line.addElement(anchor);
+            line.addElement(mid);
+            line.addElement(end);
+            line.addRangeElement(ending);
+
+            var elements = new StaffElement[]{anchor, mid, end};
+            var xs = new double[]{10.0, 20.0, 30.0};
+
+            assertThatThrownBy(() -> ending.computeBracketRanges(line, columnMap(elements, xs)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("no split element");
+        }
+
         // -------------------------------------------------------------------------
         // #306 — note-anchored outer edges
         // -------------------------------------------------------------------------
@@ -411,6 +474,39 @@ class EndingTest extends UnitTest {
 
             assertThat(ranges).hasSize(2);
             var expectedX1 = anchorX + ACCIDENTAL_LEFT_EXTENT_SS - NoteGeometry.ACCIDENTAL_PADDING_SS;
+            assertThat(ranges.get(0).x1Ss()).isEqualTo(expectedX1);
+        }
+
+        @Test
+        void testFirstBracketStartingOnBareNoteheadUsesLeftExtentFormula() {
+            // Same as the accidental case but the anchor is a bare notehead (left extent 0.0),
+            // so x1 collapses to anchorX - ACCIDENTAL_PADDING_SS — the plan flagged this exact
+            // bare-head case as one to confirm keeps a uniform gap.
+            var line = detachedLine();
+            var anchor = new StaffElement(ElementType.CROTCHET);
+            var note2 = new StaffElement(ElementType.CROTCHET);
+            var split = new StaffElement(ElementType.REPEAT_RIGHT);
+            var note4 = new StaffElement(ElementType.CROTCHET);
+            var end = new StaffElement(ElementType.CROTCHET);
+            var ending = new Ending(anchor, end);
+            line.addElement(anchor);
+            line.addElement(note2);
+            line.addElement(split);
+            line.addElement(note4);
+            line.addElement(end);
+            line.addRangeElement(ending);
+
+            double anchorX = 10.0;
+            var elements = new StaffElement[]{anchor, note2, split, note4, end};
+            var xs = new double[]{
+                anchorX, anchorX + 10.0, anchorX + 20.0, anchorX + 30.0, anchorX + 40.0
+            };
+
+            // All bare noteheads (left extent 0.0) — no accidental override.
+            var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
+
+            assertThat(ranges).hasSize(2);
+            var expectedX1 = anchorX - NoteGeometry.ACCIDENTAL_PADDING_SS;
             assertThat(ranges.get(0).x1Ss()).isEqualTo(expectedX1);
         }
 

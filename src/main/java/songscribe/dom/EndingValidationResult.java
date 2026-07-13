@@ -26,6 +26,17 @@ package songscribe.dom;
  */
 public final class EndingValidationResult {
 
+    /**
+     * How the span start relates to the preceding element.
+     * <p>
+     * Since issue #306 removed the auto-inserted barline, {@code NONE} and
+     * {@code EXTEND_SPAN} produce identical behavior in
+     * {@code MusicEditOperations.makeFirstSecondEnding} — both anchor at the
+     * pre-computed span bounds with no element insertion. The distinction is
+     * retained because it still describes <em>why</em> a span is valid (note anchor
+     * vs. backward-extended onto a preceding barline/repeat) and is asserted by the
+     * validation tests; production code no longer branches on it.
+     */
     public enum PrecedingAction {
         /** No adjustment needed (preceding element is already suitable). */
         NONE,
