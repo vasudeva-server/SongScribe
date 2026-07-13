@@ -34,6 +34,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import songscribe.MainFrameMockTest;
+import songscribe.RequiresDisplay;
 import songscribe.prefs.Prefs;
 import songscribe.ui.component.MainFrame;
 import songscribe.prefs.PrefsKey;
@@ -86,6 +87,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
     }
 
     @Test
+    @RequiresDisplay
     void testSecondOpenRestoresSavedLocation() {
         try (var construction = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
             var first = new TestDialog(mainFrame());
@@ -117,6 +119,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
     }
 
     @Test
+    @RequiresDisplay
     void testDistinctClassesHaveIndependentPositions() {
         // Each JDialog is constructed in the order: TestDialog open, TestDialog2 open,
         // TestDialog open again, TestDialog2 open again. Alternate between the two positions
@@ -229,6 +232,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
         }
 
         @Test
+        @RequiresDisplay
         void testRestoreFromPrefs() {
             prefsMock.when(() -> Prefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(
                 Map.of("TestDialog", Map.of("x", 200.0, "y", 300.0))
@@ -286,6 +290,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
         }
 
         @Test
+        @RequiresDisplay
         void testApplyGeometryResizableFloorWidth() {
             // packed = DEFAULT_DIALOG_SIZE; restored = NARROW_WIDTH × TALL_HEIGHT
             // floor: width = max(packedWidth, NARROW_WIDTH) = packedWidth; height = max(packedHeight, TALL_HEIGHT) = TALL_HEIGHT
@@ -318,6 +323,7 @@ class BaseDialogPositionTest extends MainFrameMockTest {
         }
 
         @Test
+        @RequiresDisplay
         void testApplyGeometryResizableCallsSetBoundsNotSetLocation() {
             // Verify that a resizable restore uses setBounds, not setLocation
             var restoredLocation = new Point(RESTORED_LOCATION_XY, RESTORED_LOCATION_XY);

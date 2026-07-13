@@ -53,6 +53,22 @@ if [[ ${#TEST_FILTERS[@]} -gt 0 && ${#TASKS[@]} -eq 0 ]]; then
   TASKS=("test")
 fi
 
+# Keep the Gradle daemon's display access in sync with this session. Test workers are
+# forked by the daemon and inherit its login session, so a daemon born in a headless
+# context (SSH / Background) keeps forking headless workers even after you return to a
+# GUI session — silently skipping the @RequiresDisplay UI tests. When this shell is in
+# a GUI (Aqua) session but the daemon reports headless, it is stale: stop it so the next
+# task spawns a fresh, display-capable daemon. On non-macOS, launchctl is absent and the
+# guard is a no-op.
+if [[ "$(launchctl managername 2>/dev/null || true)" == "Aqua" ]]; then
+  DAEMON_HEADLESS="$("$PROJECT_DIR/gradlew" -q daemonHeadless --project-dir "$PROJECT_DIR" 2>/dev/null || true)"
+
+  if [[ "$DAEMON_HEADLESS" == "true" ]]; then
+    echo "Restarting stale headless Gradle daemon so UI tests can run..."
+    "$PROJECT_DIR/gradlew" --stop >/dev/null 2>&1 || true
+  fi
+fi
+
 echo "Compiling tests..."
 
 if ! "$PROJECT_DIR/gradlew" -q testClasses --project-dir "$PROJECT_DIR"; then

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import songscribe.RequiresDisplay;
 import songscribe.UnitTest;
 
 /**
@@ -38,6 +39,7 @@ import songscribe.UnitTest;
  *   <li>Row 49 — {@code appRaisedToForeground()} restarts the cmd+Tab timer</li>
  * </ul>
  */
+@RequiresDisplay
 class ActivationGateTest extends UnitTest {
 
     private JFrame frame;

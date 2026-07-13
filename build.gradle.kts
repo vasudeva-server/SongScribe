@@ -299,6 +299,16 @@ tasks.register("printClasspath") {
     }
 }
 
+// Reports whether this daemon's JVM is headless. Test workers are forked by the daemon
+// and inherit its login session, so the daemon's value equals the workers' — test.sh
+// uses it to detect and restart a stale headless daemon. See scripts/test.sh.
+tasks.register("daemonHeadless") {
+    doLast {
+        val headless = Class.forName("java.awt.GraphicsEnvironment").getMethod("isHeadless").invoke(null)
+        logger.quiet(headless.toString())
+    }
+}
+
 // -- JaCoCo coverage --
 
 jacoco {

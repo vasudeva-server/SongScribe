@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import songscribe.RequiresDisplay;
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
@@ -55,6 +56,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * cached frame is the real singleton, the explicit {@code setScore} call here
  * supplies the scoreView it needs.
  */
+@RequiresDisplay
 class ActionsResetOnDocumentLoadTest extends UnitTest {
 
     @BeforeEach

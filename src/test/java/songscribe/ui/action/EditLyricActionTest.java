@@ -26,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
+import songscribe.RequiresDisplay;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.ui.component.LyricEditor;
@@ -99,6 +100,7 @@ class EditLyricActionTest extends MainFrameMockTest {
     }
 
     @Test
+    @RequiresDisplay
     void testIsEditingTextInReturnsFalseForUnfocusedWindow() {
         // No mockStatic needed — isEditingTextIn takes a Window directly.
         // In a headless test environment the focused frame is null, so editing is never active.

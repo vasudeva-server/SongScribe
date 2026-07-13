@@ -30,6 +30,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import songscribe.RequiresDisplay;
 import songscribe.UnitTest;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -48,6 +49,7 @@ import songscribe.prefs.PrefsKey;
  * <p>The test constructor {@code TipFrame(File)} is used to avoid the full
  * Swing layout, the initial {@code showTip()} call, and {@code setVisible(true)}.
  */
+@RequiresDisplay
 class TipFrameTest extends UnitTest {
 
     // The fixture file has exactly two tips (two non-empty lines):

@@ -48,6 +48,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
 import org.xml.sax.SAXException;
 
+import songscribe.RequiresDisplay;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
@@ -583,6 +584,7 @@ class ScoreViewTest extends UnitTest {
         }
 
         @Test
+        @RequiresDisplay
         void testOpenFileReturnsTrueOnSuccessInstallsFontsSetsSongAndFiresCallback()
             throws URISyntaxException {
 
@@ -604,6 +606,7 @@ class ScoreViewTest extends UnitTest {
         }
 
         @Test
+        @RequiresDisplay
         void testOpenFileReturnsTrueAndFiresCallbackWithFileForWriterProducedMusicXml(
             @TempDir Path tempDir
         ) throws Exception {
@@ -630,6 +633,7 @@ class ScoreViewTest extends UnitTest {
         }
 
         @Test
+        @RequiresDisplay
         void testOpenFileDoesNotFireCallbackWhenUpdateCurrentFileIsFalse()
             throws URISyntaxException {
 

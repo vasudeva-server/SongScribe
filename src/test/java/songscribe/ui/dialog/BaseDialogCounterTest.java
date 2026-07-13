@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
+import songscribe.RequiresDisplay;
 import songscribe.message.MessageCenter;
 import songscribe.ui.component.MainFrame;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
@@ -72,6 +73,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     }
 
     @Test
+    @RequiresDisplay
     void testIsAnyBlockingDialogVisibleTrueAfterOpen() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
             var dialog = new TestDialog(mainFrame());
@@ -83,6 +85,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     // -- nested dialogs --
 
     @Test
+    @RequiresDisplay
     void testNestedDialogsCounterTracksAllLevels() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
             var dialogA = new TestDialog(mainFrame());
@@ -105,6 +108,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     // -- resetVisibleBlockingDialogCount --
 
     @Test
+    @RequiresDisplay
     void testResetVisibleBlockingDialogCountResetsToZero() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
             var dialog = new TestDialog(mainFrame());
@@ -121,6 +125,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    @RequiresDisplay
     class NotificationTransitionTests {
 
         private MockedStatic<MessageCenter> messageCenterMock;
@@ -197,6 +202,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     // -- exclusive category increments counter --
 
     @Test
+    @RequiresDisplay
     void testExclusiveDialogIncrementsCounter() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
             var dialog = new TestExclusiveDialog(mainFrame());
@@ -335,6 +341,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     // -- informational dialogs do not affect counter --
 
     @Test
+    @RequiresDisplay
     void testInformationalDialogDoesNotIncrementCounter() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
             var dialog = new TestInformationalDialog(mainFrame());
@@ -356,6 +363,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
     // -- mixed informational and blocking dialogs --
 
     @Test
+    @RequiresDisplay
     void testMixedDialogsOnlyBlockingAffectsCounter() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
             var infoDialog = new TestInformationalDialog(mainFrame());
@@ -377,6 +385,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    @RequiresDisplay
     class InformationalNotificationTests {
 
         private MockedStatic<MessageCenter> messageCenterMock;
