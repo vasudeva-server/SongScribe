@@ -75,8 +75,8 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     // so they don't peek past the outer edge when the beam is angled.
     private static final double HALF_BEAM_THICKNESS_SS = SMuFLConstants.BEAM_THICKNESS_SS / 2.0;
 
-    // Stem end-cap arc diameter as a fraction of stem width (from LilyPond print analysis)
-    private static final double STEM_ARC_RATIO = 0.57;
+    // Stem end-cap arc diameter as a fraction of stem width (from LilyPond code analysis)
+    private static final double STEM_ARC_RATIO = 0.615;
 
     // Singleton instance
     private static final NoteRenderer INSTANCE = new NoteRenderer();
