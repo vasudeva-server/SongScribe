@@ -68,7 +68,7 @@ Pass only the production scope to agents in Phase 2. The test scope drives Phase
 
 ## Phase 2: Launch Three Review Agents in Parallel
 
-Use the Agent tool to launch all three agents concurrently in a single message. Pass each agent the review target so it has the complete context. Run all three agents (Reuse, Quality, Efficiency) with `model: sonnet` — they surface candidate findings that the orchestrator re-validates before fixing.
+Use the Agent tool to launch all three agents concurrently in a single message. Pass each agent the review target so it has the complete context. When spawning agents, include `model: "sonnet"` in each Agent tool call. The three agents (Reuse, Quality, Efficiency) with `model: sonnet` surface candidate findings that the orchestrator re-validates before fixing.
 
 ### Agent 1: Code Reuse Review
 

@@ -64,6 +64,7 @@ For each test in scope, identify its **production counterpart** (e.g.
 ## Phase 2: Static Review (parallel agents)
 
 Launch two review agents concurrently in a single message via the Agent tool.
+When spawning agents, include `model: "sonnet"` in each Agent tool call.
 Run both agents (Correctness, Usefulness) with `model: sonnet` — they surface
 candidate findings that the orchestrator re-validates before fixing. Begin each
 agent's prompt with:
