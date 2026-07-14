@@ -39,6 +39,7 @@ for arg in "$@"; do
 done
 
 java --enable-native-access=ALL-UNNAMED \
+  --add-opens java.desktop/com.apple.eawt.event=ALL-UNNAMED \
   -XX:+UseZGC \
   "${jvm_args[@]}" \
   -cp "$("$SCRIPT_DIR/../gradlew" -q printClasspath --project-dir "$PROJECT_DIR")" \

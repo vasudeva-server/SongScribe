@@ -113,7 +113,7 @@ public final class ZoomController {
      * status-bar percent menu. EDT-only.
      */
     public static void setZoomPercent(int percent) {
-        applyZoom(Math.clamp(percent, MIN_ZOOM_PERCENT, MAX_ZOOM_PERCENT), null);
+        applyZoom(clampZoomPercent(percent), null);
     }
 
     /**
@@ -123,7 +123,7 @@ public final class ZoomController {
      * space) rather than the viewport center. EDT-only.
      */
     public static void setZoomPercent(int percent, Point viewAnchorPoint) {
-        applyZoom(Math.clamp(percent, MIN_ZOOM_PERCENT, MAX_ZOOM_PERCENT), viewAnchorPoint);
+        applyZoom(clampZoomPercent(percent), viewAnchorPoint);
     }
 
     /**
@@ -147,6 +147,27 @@ public final class ZoomController {
         }
 
         setZoomPercent(newPercent, viewAnchorPoint);
+    }
+
+    /**
+     * Zooms in or out around {@code viewAnchorPoint} (or the viewport center when
+     * null) in response to a native macOS trackpad-pinch magnification gesture.
+     * {@code magnification} is the per-event delta from a {@code MagnificationEvent}:
+     * positive zooms in, negative zooms out. The delta is already a proportional
+     * fraction of the current scale, so it is applied directly as {@code 1 + magnification}
+     * with no {@link #WHEEL_ZOOM_FACTOR_PER_NOTCH}-style sensitivity constant. Unlike
+     * {@link #zoomByWheel}, there is no dead-gesture nudge — a pinch fires many events, so
+     * events whose proportional change rounds back to the current percent are filtered by
+     * {@link #applyZoom}'s unchanged-percent guard. No-op when there is no active view.
+     * EDT-only.
+     */
+    public static void zoomByMagnification(double magnification, @Nullable Point viewAnchorPoint) {
+        var newPercent = (int) Math.round(getZoomPercent() * (1 + magnification));
+
+        // Calls applyZoom directly rather than setZoomPercent(int, Point): that overload
+        // requires a non-null anchor, whereas a pinch anchors at the viewport center
+        // (null) whenever the cursor is unavailable or outside the view.
+        applyZoom(clampZoomPercent(newPercent), viewAnchorPoint);
     }
 
     /**
@@ -175,6 +196,11 @@ public final class ZoomController {
         }
 
         return percent;
+    }
+
+    /** Clamps {@code percent} into {@code [MIN_ZOOM_PERCENT, MAX_ZOOM_PERCENT]}. Pure. */
+    private static int clampZoomPercent(int percent) {
+        return Math.clamp(percent, MIN_ZOOM_PERCENT, MAX_ZOOM_PERCENT);
     }
 
     /**

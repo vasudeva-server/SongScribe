@@ -22,6 +22,8 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import com.formdev.flatlaf.util.SystemInfo;
+
 import java.io.File;
 import java.util.LinkedHashMap;
 import songscribe.error.RuntimeError;
@@ -63,6 +65,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.ViewScale;
 import songscribe.ui.ZoomController;
+import songscribe.ui.platform.mac.PinchZoomGesture;
 import songscribe.ui.action.Actions;
 import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
@@ -291,6 +294,10 @@ public final class ScoreView
             addMouseMotionListener(inputHandler);
             addMouseListener(inputHandler);
             addMouseWheelListener(inputHandler);
+
+            if (SystemInfo.isMacOS) {
+                PinchZoomGesture.installOn(this);
+            }
         }
 
         initEditPopup();
@@ -750,6 +757,11 @@ public final class ScoreView
     @Override
     public void zoomByWheel(double preciseWheelRotation, Point viewPoint) {
         ZoomController.zoomByWheel(preciseWheelRotation, viewPoint);
+    }
+
+    @Override
+    public void zoomByMagnification(double magnification, @Nullable Point viewPoint) {
+        ZoomController.zoomByMagnification(magnification, viewPoint);
     }
 
     @Override

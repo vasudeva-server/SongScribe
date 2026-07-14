@@ -67,6 +67,15 @@ public interface InputHandlerCallback {
     void zoomByWheel(double preciseWheelRotation, Point viewPoint);
 
     /**
+     * Zooms in or out around {@code viewPoint} (ScoreView-local coordinates, or
+     * {@code null} to anchor at the viewport center) in response to a native macOS
+     * trackpad-pinch magnification gesture. {@code magnification} is the per-event
+     * delta from {@link com.apple.eawt.event.MagnificationEvent}; positive zooms
+     * in, negative zooms out.
+     */
+    void zoomByMagnification(double magnification, @Nullable Point viewPoint);
+
+    /**
      * Forwards a non-zoom wheel event to the scroll pane's own default scroll
      * handling. Required because registering a {@code MouseWheelListener} directly
      * on this view makes AWT stop its ancestor search here instead of continuing

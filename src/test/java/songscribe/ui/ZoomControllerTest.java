@@ -76,6 +76,18 @@ class ZoomControllerTest extends UnitTest {
     /** Half a percent — the magnitude at which {@link Math#round} flips to the next integer. */
     private static final double ROUNDING_THRESHOLD_PERCENT = 0.5;
 
+    /** A magnification delta large enough to visibly zoom in (positive). */
+    private static final double MAGNIFICATION_ZOOM_IN = 0.1;
+
+    /** A magnification delta large enough to visibly zoom out (negative). */
+    private static final double MAGNIFICATION_ZOOM_OUT = -0.1;
+
+    /** Exact percent {@link #MAGNIFICATION_ZOOM_IN} yields from the default: {@code round(100 × 1.1)}. */
+    private static final int MAGNIFIED_IN_PERCENT = 110;
+
+    /** Exact percent {@link #MAGNIFICATION_ZOOM_OUT} yields from the default: {@code round(100 × 0.9)}. */
+    private static final int MAGNIFIED_OUT_PERCENT = 90;
+
     /** An arbitrary cursor anchor in ScoreView-local coordinates. */
     private static final Point ANCHOR = new Point(120, 340);
 
@@ -227,6 +239,13 @@ class ZoomControllerTest extends UnitTest {
         @Test
         void testZoomByWheelDoesNotThrowAndPostsNoNotification() {
             assertThatCode(() -> ZoomController.zoomByWheel(ONE_NOTCH_ZOOM_IN, ANCHOR))
+                .doesNotThrowAnyException();
+            assertThat(listener.received).isEmpty();
+        }
+
+        @Test
+        void testZoomByMagnificationDoesNotThrowAndPostsNoNotification() {
+            assertThatCode(() -> ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_IN, ANCHOR))
                 .doesNotThrowAnyException();
             assertThat(listener.received).isEmpty();
         }
@@ -474,6 +493,75 @@ class ZoomControllerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // zoomByMagnification — continuous, cursor-anchored trackpad-pinch zoom
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class MagnificationZoom {
+
+        @Test
+        void testPositiveMagnificationZoomsIn() {
+            var scoreView = stubActiveScoreView();
+
+            ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_IN, ANCHOR);
+
+            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(MAGNIFIED_IN_PERCENT);
+        }
+
+        @Test
+        void testNegativeMagnificationZoomsOut() {
+            var scoreView = stubActiveScoreView();
+
+            ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_OUT, ANCHOR);
+
+            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(MAGNIFIED_OUT_PERCENT);
+        }
+
+        @Test
+        void testZoomInAtMaxClampsAndPostsNoNotification() {
+            var scoreView = stubActiveScoreView();
+            scoreView.getViewScale().setZoomPercent(ZoomController.MAX_ZOOM_PERCENT);
+
+            ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_IN, ANCHOR);
+
+            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(ZoomController.MAX_ZOOM_PERCENT);
+            assertThat(listener.received).isEmpty();
+        }
+
+        @Test
+        void testZoomOutAtMinClampsAndPostsNoNotification() {
+            var scoreView = stubActiveScoreView();
+            scoreView.getViewScale().setZoomPercent(ZoomController.MIN_ZOOM_PERCENT);
+
+            ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_OUT, ANCHOR);
+
+            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(ZoomController.MIN_ZOOM_PERCENT);
+            assertThat(listener.received).isEmpty();
+        }
+
+        @Test
+        void testSubThresholdMagnificationIsNoOp() {
+            var scoreView = stubActiveScoreView();
+
+            // Unlike zoomByWheel, there is no dead-gesture nudge: a magnification too
+            // small to move the rounded percent must leave applyZoomPercent uncalled.
+            ZoomController.zoomByMagnification(subStepMagnification(ZoomController.DEFAULT_ZOOM_PERCENT), ANCHOR);
+
+            verify(scoreView, never()).applyZoomPercent(anyInt(), any());
+            assertThat(listener.received).isEmpty();
+        }
+
+        /**
+         * A magnification small enough that its proportional percent change at
+         * {@code atPercent} rounds back to {@code atPercent}; half the rounding
+         * threshold keeps it well inside the dead zone.
+         */
+        private double subStepMagnification(int atPercent) {
+            return ROUNDING_THRESHOLD_PERCENT / atPercent / 2;
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Anchor-point forwarding to ScoreView.applyZoomPercent
     // -------------------------------------------------------------------------
 
@@ -485,6 +573,15 @@ class ZoomControllerTest extends UnitTest {
             var scoreView = stubActiveScoreView();
 
             ZoomController.zoomByWheel(ONE_NOTCH_ZOOM_IN, ANCHOR);
+
+            assertThat(capturedAnchor(scoreView)).isEqualTo(ANCHOR);
+        }
+
+        @Test
+        void testZoomByMagnificationForwardsAnchorPoint() {
+            var scoreView = stubActiveScoreView();
+
+            ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_IN, ANCHOR);
 
             assertThat(capturedAnchor(scoreView)).isEqualTo(ANCHOR);
         }

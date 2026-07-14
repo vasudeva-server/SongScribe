@@ -126,6 +126,8 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf(
         "-XDcompilePolicy=simple",
         "--should-stop=ifError=FLOW",
+        "-XDignore.symbol.file",
+        "--add-exports", "java.desktop/com.apple.eawt.event=ALL-UNNAMED",
     ))
     options.errorprone {
         disableAllChecks = true
