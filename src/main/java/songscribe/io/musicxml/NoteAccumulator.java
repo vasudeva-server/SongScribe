@@ -364,7 +364,7 @@ final class NoteAccumulator {
             return null;
         }
 
-        return MusicXmlReader.parseDoubleOrThrow(MusicXmlTags.ATTR_RELATIVE_Y, relativeY);
+        return MusicXmlUnits.parseDoubleOrThrow(MusicXmlTags.ATTR_RELATIVE_Y, relativeY);
     }
 
     // -------------------------------------------------------------------------

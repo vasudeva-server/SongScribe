@@ -96,7 +96,7 @@ final class WedgeResolver {
 
         if (MusicXmlTags.TYPE_STOP.equals(type)) {
             pendingStopWedge = true;
-            pendingStopWedgeX2Ss = MusicXmlReader.optionalTenthsAttrToSs(attributes, MusicXmlTags.ATTR_RELATIVE_X);
+            pendingStopWedgeX2Ss = MusicXmlUnits.optionalTenthsAttrToSs(attributes, MusicXmlTags.ATTR_RELATIVE_X);
             return;
         }
 
@@ -117,8 +117,8 @@ final class WedgeResolver {
         }
 
         pendingStartWedgeKind = wedgeKind;
-        pendingStartWedgeX1Ss = MusicXmlReader.optionalTenthsAttrToSs(attributes, MusicXmlTags.ATTR_RELATIVE_X);
-        pendingStartWedgeYSs = MusicXmlReader.optionalTenthsAttrToSs(attributes, MusicXmlTags.ATTR_RELATIVE_Y);
+        pendingStartWedgeX1Ss = MusicXmlUnits.optionalTenthsAttrToSs(attributes, MusicXmlTags.ATTR_RELATIVE_X);
+        pendingStartWedgeYSs = MusicXmlUnits.optionalTenthsAttrToSs(attributes, MusicXmlTags.ATTR_RELATIVE_Y);
     }
 
     /**

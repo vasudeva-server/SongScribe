@@ -22,10 +22,12 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 import org.xml.sax.SAXException;
 
+import songscribe.Constants;
 import songscribe.dom.Beam;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
@@ -696,5 +698,110 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         assertThat(song.getDay())
             .as("a malformed composition-date must reload with day 0")
             .isZero();
+    }
+
+    // -------------------------------------------------------------------------
+    // Provenance/version characterization: these gate the Phase 1-6 static-utility
+    // relocation plan (plans/548-refactor-musicxmlreader.md) — the exact exception
+    // types below must survive every phase of that refactor unchanged.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testForeignSoftwareThrows() {
+        var xml = scoreWithSoftware("<software>SomeOtherApp</software>");
+
+        var exception = assertThrows(MusicXmlReader.ForeignSoftwareException.class, () -> parse(xml));
+        // Assert the captured value, not just the type: foreign and missing both
+        // throw ForeignSoftwareException, so a wrong-disjunct bug would pass a
+        // type-only check.
+        assertThat(exception.software()).isEqualTo("SomeOtherApp");
+    }
+
+    @Test
+    void testBlankSoftwareThrows() {
+        // A present-but-blank <software> passes handleEndSoftware's mid-parse
+        // foreign check (which ignores blank text) and is rejected only by
+        // checkProvenance's isBlank() branch at endDocument — a distinct branch
+        // from the missing-tag (null) case below.
+        var xml = scoreWithSoftware("<software></software>");
+
+        var exception = assertThrows(MusicXmlReader.ForeignSoftwareException.class, () -> parse(xml));
+        assertThat(exception.software()).isBlank();
+    }
+
+    @Test
+    void testMissingSoftwareThrows() {
+        // No <identification>/<software> block at all: the provenance gate fires
+        // at endDocument, not mid-parse, so the document must otherwise be valid.
+        var xml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<score-partwise version=\"4.0\">\n" +
+            "  <part-list>\n" +
+            "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
+            "  </part-list>\n" +
+            "  <part id=\"P1\">\n" +
+            "    <measure number=\"1\">\n" +
+            "      <print new-system=\"yes\"/>\n" +
+            "      <attributes>\n" +
+            "        <divisions>480</divisions>\n" +
+            "        <key><fifths>0</fifths></key>\n" +
+            "        <time print-object=\"no\"><senza-misura/></time>\n" +
+            "        <clef><sign>G</sign><line>2</line></clef>\n" +
+            "      </attributes>\n" +
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>quarter</type>\n" +
+            "      </note>\n" +
+            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n" +
+            "    </measure>\n" +
+            "  </part>\n" +
+            "</score-partwise>\n";
+
+        var exception = assertThrows(MusicXmlReader.ForeignSoftwareException.class, () -> parse(xml));
+        // Missing tag → software() is null, distinguishing it from the blank case.
+        assertThat(exception.software()).isNull();
+    }
+
+    @Test
+    void testMissingVersionThrows() {
+        var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<score-partwise></score-partwise>\n";
+
+        var exception = assertThrows(MusicXmlReader.UnsupportedFormatException.class, () -> parse(xml));
+        assertThat(exception.detail()).isEqualTo("missing version attribute");
+    }
+
+    @Test
+    void testUnparseableVersionThrows() {
+        var xml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<score-partwise version=\"abc\"></score-partwise>\n";
+
+        var exception = assertThrows(MusicXmlReader.UnsupportedFormatException.class, () -> parse(xml));
+        // detail() names the offending value, distinguishing this branch from the
+        // missing/too-old branches that share the exception type.
+        assertThat(exception.detail()).contains("abc");
+    }
+
+    @Test
+    void testTooOldVersionThrows() {
+        var xml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<score-partwise version=\"1.0\"></score-partwise>\n";
+
+        var exception = assertThrows(MusicXmlReader.UnsupportedFormatException.class, () -> parse(xml));
+        assertThat(exception.detail()).contains("1.0");
+    }
+
+    private static String scoreWithSoftware(String softwareElement) {
+        return scoreWithMeasureBody(
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>quarter</type>\n" +
+            "      </note>\n" +
+            "      <barline location=\"right\"><bar-style>none</bar-style></barline>\n"
+        ).replace(
+            "<software>" + Constants.PACKAGE_NAME + "</software>",
+            softwareElement
+        );
     }
 }

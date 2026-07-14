@@ -21,7 +21,16 @@ package songscribe.io.musicxml;
 
 import java.util.Locale;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
+
+import songscribe.io.DocumentValidation;
+
 final class MusicXmlUnits {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MusicXmlUnits.class);
 
     // DIVISIONS is defined in NoteTypeMapping (which owns the tick math).
     // DIVISIONS = 480 ensures that the smallest representable note fraction
@@ -85,5 +94,48 @@ final class MusicXmlUnits {
      */
     static String formatSsAsTenths(double ss) {
         return formatTenths(ssToTenths(ss));
+    }
+
+    /**
+     * Converts a MusicXML {@code relative-y}/{@code relative-x} value in tenths to
+     * SongScribe staff-spaces (tenths ÷ 10), rounded to the nearest integer.
+     */
+    static int tenthsToSs(double tenths) {
+        return (int) Math.round(tenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE);
+    }
+
+    /**
+     * Reads an optional {@code tenths}-valued attribute and converts it to
+     * SongScribe staff-spaces, returning 0 when the attribute is absent.
+     */
+    static int optionalTenthsAttrToSs(Attributes attributes, String attrName) throws SAXException {
+        var raw = attributes.getValue(attrName);
+
+        if (raw == null) {
+            return 0;
+        }
+
+        return tenthsToSs(parseDoubleOrThrow(attrName, raw));
+    }
+
+    /**
+     * Parses {@code raw} (trimmed) as an integer, throwing a {@link SAXException}
+     * if it is not a valid integer. Delegates to the shared
+     * {@link DocumentValidation#parseIntOrThrow}, supplying this class's logger so
+     * the {@code .mssw} and MusicXML readers report corrupt values one way. The
+     * trim tolerates the surrounding whitespace SAX character data can carry.
+     */
+    static int parseIntOrThrow(String tag, String raw) throws SAXException {
+        return DocumentValidation.parseIntOrThrow(LOG, tag, raw.trim());
+    }
+
+    /**
+     * Parses {@code raw} (trimmed) as a double, throwing a {@link SAXException} if
+     * it is not a valid number. Used for positional attributes (tenths), which
+     * MusicXML permits to be fractional. Delegates to the shared
+     * {@link DocumentValidation#parseDoubleOrThrow}, supplying this class's logger.
+     */
+    static double parseDoubleOrThrow(String attr, String raw) throws SAXException {
+        return DocumentValidation.parseDoubleOrThrow(LOG, attr, raw.trim());
     }
 }

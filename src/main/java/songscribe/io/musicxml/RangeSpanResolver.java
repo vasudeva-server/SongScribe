@@ -191,7 +191,7 @@ final class RangeSpanResolver {
             pendingTupletStart = element;
             pendingTupletGrade = markers.actualNotes();
             pendingTupletVerticalPositionSs = markers.tupletRelativeYPresent()
-                ? MusicXmlReader.tenthsToSs(markers.tupletRelativeYTenths())
+                ? MusicXmlUnits.tenthsToSs(markers.tupletRelativeYTenths())
                 : 0;
         }
 
@@ -224,7 +224,7 @@ final class RangeSpanResolver {
             flushPendingTrillStart();
             pendingTrillStart = element;
             pendingTrillYPositionSs = markers.trillRelativeYPresent()
-                ? MusicXmlReader.tenthsToSs(markers.trillRelativeYTenths())
+                ? MusicXmlUnits.tenthsToSs(markers.trillRelativeYTenths())
                 : 0;
         }
 
