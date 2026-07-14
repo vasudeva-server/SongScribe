@@ -59,16 +59,8 @@ public final class LineInvariants {
     // Constants
     // ==========================================================================
 
-    /** Alpha for the replaced-element highlight (semi-transparent red). */
-    private static final int REPLACED_ELEMENT_ALPHA = 90;
-
     /** Color for an existing element that will be replaced by the current preview element. */
-    static final Color REPLACED_ELEMENT_COLOR = new Color(
-        Color.RED.getRed(),
-        Color.RED.getGreen(),
-        Color.RED.getBlue(),
-        REPLACED_ELEMENT_ALPHA
-    );
+    static final Color REPLACED_ELEMENT_COLOR = new Color(249, 161, 161);
 
     // ==========================================================================
     // Instance Fields
