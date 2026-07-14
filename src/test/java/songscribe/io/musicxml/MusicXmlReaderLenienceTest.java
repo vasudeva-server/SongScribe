@@ -32,7 +32,6 @@ import songscribe.dom.Beam;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Trill;
-import songscribe.dom.Tuplet;
 import songscribe.layout.LineEndingSupport;
 
 /**
@@ -437,7 +436,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     }
 
     @Test
-    void testDanglingTupletStartProducesNoTuplet() throws Exception {
+    void testDanglingTupletStartThrows() {
         var xml = scoreWithMeasureBody(
             "      <note>\n" +
             "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
@@ -449,11 +448,32 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
             "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
         );
 
-        var song = parse(xml);
-        assertThat(song.lineCount()).as("parsing completes with one line").isEqualTo(1);
-        assertThat(song.getLine(0).findRangeElements(Tuplet.class))
-            .as("a tuplet start with no matching stop must build no span")
-            .isEmpty();
+        assertThatThrownBy(() -> parse(xml))
+            .as("a tuplet start with no matching stop is not a legitimate document state (#518)")
+            .isInstanceOf(SAXException.class)
+            .hasMessageContaining("tuplet");
+    }
+
+    @Test
+    void testSingleNoteTupletThrows() {
+        var xml = scoreWithMeasureBody(
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>quarter</type>\n" +
+            "        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>\n" +
+            "        <notations>\n" +
+            "          <tuplet type=\"start\" number=\"1\"/>\n" +
+            "          <tuplet type=\"stop\" number=\"1\"/>\n" +
+            "        </notations>\n" +
+            "      </note>\n" +
+            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+        );
+
+        assertThatThrownBy(() -> parse(xml))
+            .as("a tuplet spanning a single note has no meaningful span (#518)")
+            .isInstanceOf(SAXException.class)
+            .hasMessageContaining("tuplet does not span at least two non-rest notes");
     }
 
     @Test
@@ -562,7 +582,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     }
 
     @Test
-    void testOrphanTupletStopIsIgnored() throws Exception {
+    void testOrphanTupletStopThrows() {
         var xml = scoreWithMeasureBody(
             "      <note>\n" +
             "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
@@ -573,11 +593,10 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
             "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
         );
 
-        var song = parse(xml);
-        assertThat(song.lineCount()).as("parsing completes with one line").isEqualTo(1);
-        assertThat(song.getLine(0).findRangeElements(Tuplet.class))
-            .as("a tuplet stop with no pending start must build no span")
-            .isEmpty();
+        assertThatThrownBy(() -> parse(xml))
+            .as("a tuplet stop with no pending start is not a legitimate document state (#518)")
+            .isInstanceOf(SAXException.class)
+            .hasMessageContaining("tuplet");
     }
 
     @Test

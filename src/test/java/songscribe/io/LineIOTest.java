@@ -854,6 +854,28 @@ class LineIOTest extends UnitTest {
                 .isInstanceOf(SAXException.class)
                 .hasMessageContaining("tuplet index out of range");
         }
+
+        @Test
+        void testSingleNonRestNoteThrowsSAXException() throws Exception {
+            // anchor == end (a lone note) → fewer than two non-rest notes spanned
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET_REST, ElementType.CROTCHET_REST);
+            feedTag(reader, LineIO.XML_TUPLETS, "0,0,3;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("tuplet does not span at least two non-rest notes");
+        }
+
+        @Test
+        void testNoteRestRestThrowsSAXException() throws Exception {
+            // one non-rest note flanked by rests → still only one non-rest note in the span
+            var reader = buildReaderWithNotes(ElementType.CROTCHET, ElementType.CROTCHET_REST, ElementType.CROTCHET_REST);
+            feedTag(reader, LineIO.XML_TUPLETS, "0,2,3;");
+
+            assertThatThrownBy(() -> reader.endElement11("line"))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("tuplet does not span at least two non-rest notes");
+        }
     }
 
     // -------------------------------------------------------------------------

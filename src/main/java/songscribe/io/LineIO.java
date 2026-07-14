@@ -428,6 +428,12 @@ public final class LineIO {
                 var anchorElement = line.getElement(anchorIdx);
                 var endElement = line.getElement(endIdx);
                 var tuplet = new Tuplet(anchorElement, endElement, grade);
+
+                if (!tuplet.hasValidSpan(line)) {
+                    throw DocumentValidation.corrupt(
+                        LOG, "Corrupt document: tuplet does not span at least two non-rest notes: {}, {}", anchorIdx, endIdx);
+                }
+
                 tuplet.setVerticalPositionSs(verticalPositionSs);
                 line.addRangeElement(tuplet);
             }

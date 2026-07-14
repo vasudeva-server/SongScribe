@@ -22,6 +22,7 @@ package songscribe.io.musicxml;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
 import songscribe.dom.Beam;
 import songscribe.dom.Line;
@@ -54,9 +55,12 @@ import songscribe.dom.Tuplet;
  *              (anchor == note ─► single-note Trill(anchor))
  * </pre>
  *
- * <p>Lenient read (both directions): a dangling start (no matching end) is
- * dropped and logged at part-end flush; an orphan stop/end (no pending anchor)
- * is ignored and logged.
+ * <p>Lenient read (both directions) for slide, beam, tie, and trill: a dangling
+ * start (no matching end) is dropped and logged at part-end flush; an orphan
+ * stop/end (no pending anchor) is ignored and logged. A tuplet is not a
+ * legitimate document state without both anchors and a span of at least two
+ * non-rest notes (#518), so a dangling start, an orphan stop, or an
+ * insufficient span is instead rejected with a {@link org.xml.sax.SAXException}.
  */
 final class RangeSpanResolver {
 
@@ -182,11 +186,14 @@ final class RangeSpanResolver {
      * {@code <time-modification>}, which precedes {@code <notations>}); the
      * repeated per-note {@code <time-modification>} is otherwise ignored. The
      * {@code verticalPositionSs} is restored from the start marker's
-     * {@code relative-y}. A dangling start is dropped, an orphan stop ignored.
+     * {@code relative-y}. Unlike the other per-note spans, a tuplet is not a
+     * legitimate document state without both a start and an end anchor spanning at
+     * least two non-rest notes (see #518), so a dangling start or an orphan stop
+     * is rejected as a corrupt document rather than silently dropped.
      */
-    void resolveTuplet(Line line, StaffElement element, NoteAccumulator.SpanMarkers markers) {
+    void resolveTuplet(Line line, StaffElement element, NoteAccumulator.SpanMarkers markers) throws SAXException {
         if (markers.tupletStart()) {
-            // A still-pending earlier start never received its stop — drop it.
+            // A still-pending earlier start never received its stop — reject it.
             flushPendingTupletStart();
             pendingTupletStart = element;
             pendingTupletGrade = markers.actualNotes();
@@ -199,6 +206,10 @@ final class RangeSpanResolver {
             if (pendingTupletStart != null) {
                 var tuplet = new Tuplet(pendingTupletStart, element, pendingTupletGrade);
 
+                if (!tuplet.hasValidSpan(line)) {
+                    throw new SAXException("Corrupt document: tuplet does not span at least two non-rest notes");
+                }
+
                 if (pendingTupletVerticalPositionSs != 0) {
                     tuplet.setVerticalPositionSs(pendingTupletVerticalPositionSs);
                 }
@@ -206,7 +217,7 @@ final class RangeSpanResolver {
                 line.addTuplet(tuplet);
                 pendingTupletStart = null;
             } else {
-                LOG.warn("Ignoring <tuplet type=\"stop\"> with no matching start");
+                throw new SAXException("Corrupt document: <tuplet type=\"stop\"> with no matching start");
             }
         }
     }
@@ -253,9 +264,11 @@ final class RangeSpanResolver {
     /**
      * Drops any per-note range-span run still open at the end of the part — each
      * is a dangling start whose closing marker never arrived (e.g. truncated
-     * input). A range needs both endpoints, so the run builds nothing.
+     * input). A range needs both endpoints, so the run builds nothing. A dangling
+     * tuplet start is rejected as a corrupt document rather than dropped (see
+     * {@link #resolveTuplet}).
      */
-    void flushPendingSpanStarts() {
+    void flushPendingSpanStarts() throws SAXException {
         flushPendingBeamStart();
         flushPendingTieStart();
         flushPendingTupletStart();
@@ -270,8 +283,10 @@ final class RangeSpanResolver {
         pendingTieStart = warnIfDangling(pendingTieStart, "Dropping dangling <tied type=\"start\"> with no matching stop");
     }
 
-    private void flushPendingTupletStart() {
-        pendingTupletStart = warnIfDangling(pendingTupletStart, "Dropping dangling <tuplet type=\"start\"> with no matching stop");
+    private void flushPendingTupletStart() throws SAXException {
+        if (pendingTupletStart != null) {
+            throw new SAXException("Corrupt document: dangling <tuplet type=\"start\"> with no matching stop");
+        }
     }
 
     private void flushPendingTrillStart() {

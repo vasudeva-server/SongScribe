@@ -55,6 +55,9 @@ public class Tuplet extends RangeElement {
     /** Maximum bracket slope, as a fraction of rise over run (LilyPond: 0.5). */
     public static final double MAX_SLOPE_FACTOR = 0.5;
 
+    /** Minimum number of non-rest notes a tuplet must span to have a meaningful bracket. */
+    private static final int MIN_NON_REST_NOTES = 2;
+
     /** Measured ink height of a tuplet number in staff-spaces (representative digit "3"). */
     public static final double TUPLET_NUMBER_INK_HEIGHT_SS = measureNumberInkHeightSs();
 
@@ -166,6 +169,42 @@ public class Tuplet extends RangeElement {
         return line.findBeamAt(getAnchorElementIndex()) != null
             && line.findBeamAt(getEndElementIndex()) != null
             && anchor.getDirection().isUp();
+    }
+
+    /**
+     * Returns whether this tuplet's anchor and end elements are both set and span at
+     * least {@value #MIN_NON_REST_NOTES} non-rest notes. A tuplet bracket has no
+     * meaningful slope to compute across fewer notes, so a load-time validator should
+     * reject any tuplet for which this returns false.
+     */
+    public boolean hasValidSpan(Line line) {
+        var anchor = getAnchorElement();
+        var end = getEndElement();
+
+        if (anchor == null || end == null) {
+            return false;
+        }
+
+        var anchorIndex = getAnchorElementIndex();
+        var endIndex = getEndElementIndex();
+
+        if (anchorIndex < 0 || endIndex < 0) {
+            return false;
+        }
+
+        var nonRestCount = 0;
+
+        for (var index = anchorIndex; index <= endIndex; index++) {
+            if (!line.getElement(index).getType().isRest()) {
+                nonRestCount++;
+
+                if (nonRestCount >= MIN_NON_REST_NOTES) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     @Override
