@@ -35,12 +35,16 @@ import songscribe.ui.action.UIAction;
 import songscribe.util.UIUtils;
 
 /**
- * Status-bar cluster of zoom controls: a zoom-out button, a slider over the
- * discrete {@link ZoomController} levels, a zoom-in button, and a percent button
- * that opens a menu of the same levels. The two zoom buttons are driven by the
- * shared {@code ZOOM_OUT}/{@code ZOOM_IN} actions, so their icon, tooltip, and
- * enabled state track the actions automatically; this panel only keeps the
- * slider, percent label, and menu check marks in sync with the current zoom.
+ * Status-bar cluster of zoom controls: a zoom-out button, a continuous slider
+ * spanning {@link ZoomController#MIN_ZOOM_PERCENT} to
+ * {@link ZoomController#MAX_ZOOM_PERCENT}, a zoom-in button, and a percent button
+ * that opens a menu of the discrete {@link ZoomController} levels. The slider
+ * changes the zoom continuously as it drags — analogous to wheel and pinch zoom —
+ * rather than snapping to the discrete stops; the buttons and menu step between
+ * the discrete stops. The two zoom buttons are driven by the shared
+ * {@code ZOOM_OUT}/{@code ZOOM_IN} actions, so their icon, tooltip, and enabled
+ * state track the actions automatically; this panel only keeps the slider,
+ * percent label, and menu check marks in sync with the current zoom.
  */
 public final class ZoomStatusBarPanel extends JPanel {
 
@@ -57,12 +61,8 @@ public final class ZoomStatusBarPanel extends JPanel {
     private final JButton percentButton = new JButton();
     private final JPopupMenu percentMenu = new JPopupMenu();
     private final JCheckBoxMenuItem[] levelItems = new JCheckBoxMenuItem[ZoomController.ZOOM_LEVEL_PERCENTS.length];
-    private final TickSlider zoomSlider = new TickSlider(ZoomController.ZOOM_LEVEL_PERCENTS, zoomSliderLabels()) {
-        @Override
-        protected void tickDidChange(int tick) {
-            ZoomController.setZoomPercent(tick);
-        }
-    };
+    private final JSlider zoomSlider =
+        new JSlider(ZoomController.MIN_ZOOM_PERCENT, ZoomController.MAX_ZOOM_PERCENT, ZoomController.DEFAULT_ZOOM_PERCENT);
 
     public ZoomStatusBarPanel() {
         super(new FlowLayout(FlowLayout.LEADING, CONTROL_GAP_PX, 0));
@@ -70,10 +70,9 @@ public final class ZoomStatusBarPanel extends JPanel {
 
         add(new ZoomButton(Actions.ZOOM_OUT_ACTION));
 
-        zoomSlider.setPaintTicks(false);
-        zoomSlider.setPaintLabels(false);
         zoomSlider.setFocusable(false);
         zoomSlider.setOpaque(false);
+        zoomSlider.addChangeListener(_ -> ZoomController.setZoomPercent(zoomSlider.getValue()));
         add(zoomSlider);
 
         add(new ZoomButton(Actions.ZOOM_IN_ACTION));
@@ -106,21 +105,9 @@ public final class ZoomStatusBarPanel extends JPanel {
         }
     }
 
-    /** Builds label strings for every {@link ZoomController#ZOOM_LEVEL_PERCENTS} stop. */
-    private static String[] zoomSliderLabels() {
-        var levelPercents = ZoomController.ZOOM_LEVEL_PERCENTS;
-        var labels = new String[levelPercents.length];
-
-        for (var i = 0; i < levelPercents.length; i++) {
-            labels[i] = Strings.get(Strings.STATUS_ZOOM_PERCENT, levelPercents[i]);
-        }
-
-        return labels;
-    }
-
     private void updateState(int currentPercent) {
         percentButton.setText(Strings.get(Strings.STATUS_ZOOM_PERCENT, currentPercent) + DROP_DOWN_ARROW);
-        zoomSlider.setSnappedValue(currentPercent);
+        zoomSlider.setValue(currentPercent);
 
         var levelPercents = ZoomController.ZOOM_LEVEL_PERCENTS;
 
