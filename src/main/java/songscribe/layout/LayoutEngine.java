@@ -252,6 +252,15 @@ public class LayoutEngine {
         // so layout never precedes initialisation, regardless of paint/layout ordering.
         NoteGeometry.initializeAccidentalWidths();
 
+        // Step 0: Resolve auto stem directions before building columns.
+        // ElementColumn bakes each note's stem-tip extent from its direction at
+        // construction time (final fields), and downstream vertical stacking
+        // (e.g. tuplet clearance) reads those extents. Freshly loaded notes carry
+        // the DOWN default until direction is resolved, so resolving here — rather
+        // than later in steps 5/5b — keeps the first layout after load consistent
+        // with every subsequent layout (refs #554).
+        resolveStemDirections(line);
+
         // Step 1: Build note columns
         var columns = columnBuilder.buildColumns(line);
 
@@ -380,6 +389,77 @@ public class LayoutEngine {
     }
 
     /**
+     * Resolves auto stem directions for every note in the line and applies them to the
+     * model, before columns are built. Manual overrides are left untouched.
+     * <p>
+     * Unbeamed notes default by staff position ({@link StaffElement#defaultDirection}); beamed
+     * groups then override their auto members with the shared group direction. This must run
+     * before {@code buildColumns} because {@link ElementColumn} bakes each note's stem-tip
+     * extent from its direction at construction time (refs #554).
+     */
+    private void resolveStemDirections(Line line) {
+        for (var i = 0; i < line.elementCount(); i++) {
+            var element = line.getElement(i);
+
+            if (element.getType().isNoteWithStem() && element.isStemDirectionAuto()) {
+                element.setDirection(StaffElement.defaultDirection(element));
+            }
+        }
+
+        for (var beam : line.findRangeElements(Beam.class)) {
+            var beamStart = beam.getAnchorElementIndex();
+            var beamEnd = beam.getEndElementIndex();
+            var direction = groupStemDirection(line, beamStart, beamEnd);
+
+            for (var i = beamStart; i <= beamEnd; i++) {
+                var element = line.getElement(i);
+
+                if (element.isStemDirectionAuto()) {
+                    element.setDirection(direction);
+                }
+            }
+        }
+    }
+
+    /**
+     * Determines the shared stem direction for a beamed group from its pitch contour.
+     * The first manual override in the group wins; otherwise the direction follows the
+     * contour (staff position 0 = middle line; positive = below midpoint in Y-down, so
+     * stems up). (min + max) is compared to 0 rather than dividing, to keep integer arithmetic.
+     */
+    private StaffElement.Direction groupStemDirection(Line line, int beamStart, int beamEnd) {
+        var minStaffPos = Integer.MAX_VALUE;
+        var maxStaffPos = Integer.MIN_VALUE;
+
+        for (var i = beamStart; i <= beamEnd; i++) {
+            var pos = line.getElement(i).getStaffPosition();
+
+            if (pos < minStaffPos) {
+                minStaffPos = pos;
+            }
+
+            if (pos > maxStaffPos) {
+                maxStaffPos = pos;
+            }
+        }
+
+        // Scan for any manual override in the group; first one wins.
+        for (var i = beamStart; i <= beamEnd; i++) {
+            var element = line.getElement(i);
+
+            if (!element.isStemDirectionAuto()) {
+                return element.getDirection();
+            }
+        }
+
+        if ((minStaffPos + maxStaffPos) > 0) {
+            return StaffElement.Direction.UP;
+        }
+
+        return StaffElement.Direction.DOWN;
+    }
+
+    /**
      * Calculates beam geometry for all beamed note groups in the line.
      * Populates {@code builder} with a {@link LayoutResult.BeamLayout} for each beam span.
      */
@@ -401,55 +481,10 @@ public class LayoutEngine {
             var beamStart = beam.getAnchorElementIndex();
             var beamEnd = beam.getEndElementIndex();
 
-            // Determine stem direction from the pitch contour of the group.
-            // Staff position 0 = middle line; positive = below midpoint (Y-down) → stems up.
-            // We compare (min + max) to 0 rather than dividing to keep integer arithmetic.
-            var minStaffPos = Integer.MAX_VALUE;
-            var maxStaffPos = Integer.MIN_VALUE;
-
-            for (var i = beamStart; i <= beamEnd; i++) {
-                var pos = line.getElement(i).getStaffPosition();
-
-                if (pos < minStaffPos) {
-                    minStaffPos = pos;
-                }
-
-                if (pos > maxStaffPos) {
-                    maxStaffPos = pos;
-                }
-            }
-
-            // Scan for any manual override in the group; first one wins.
-            StaffElement.@Nullable Direction manualDirection = null;
-
-            for (var i = beamStart; i <= beamEnd; i++) {
-                var n = line.getElement(i);
-
-                if (!n.isStemDirectionAuto()) {
-                    manualDirection = n.getDirection();
-                    break;
-                }
-            }
-
-            StaffElement.Direction stemDirection;
-
-            if (manualDirection != null) {
-                stemDirection = manualDirection;
-            } else if ((minStaffPos + maxStaffPos) > 0) {
-                stemDirection = StaffElement.Direction.UP;
-            } else {
-                stemDirection = StaffElement.Direction.DOWN;
-            }
-
-            // Normalize auto-direction notes to the group stem direction.
-            // Manual overrides are left untouched.
-            for (var i = beamStart; i <= beamEnd; i++) {
-                var n = line.getElement(i);
-
-                if (n.isStemDirectionAuto()) {
-                    n.setDirection(stemDirection);
-                }
-            }
+            // Stem direction was already resolved and applied to the group by the
+            // Step 0 pre-pass (resolveStemDirections); recover it here for the beam
+            // geometry below.
+            var stemDirection = groupStemDirection(line, beamStart, beamEnd);
 
             // Compute beam slope (abc2svg algorithm with hyperbolic dampening).
             // Staff positions are in half-staff-spaces; ×0.5 converts to staff-space units.
@@ -644,11 +679,7 @@ public class LayoutEngine {
                 continue;
             }
 
-            // Set auto stem direction: elements below the middle line (staffPosition > 0) get stems up.
-            if (element.isStemDirectionAuto()) {
-                element.setDirection(StaffElement.defaultDirection(element));
-            }
-
+            // Stem direction was resolved by the Step 0 pre-pass (resolveStemDirections).
             var direction = element.getDirection();
             var isGraceNote = element.getType().isGraceNote();
             var elementYSs = Staff.spToSs(element.getStaffPosition());
