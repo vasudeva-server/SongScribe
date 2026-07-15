@@ -17,7 +17,7 @@ Several mutations identify *which* field changed via a field enum. Three shapes 
 
 - **Validated `Object` old/new values** — `LineKeyChange` (`KeyField`),
   `LineLayoutChange` (`LineLayoutField`), `MetadataChange` (`MetadataField`),
-  `LayoutChange` (`LayoutField`), `FontChange` (`FontField`). The record's canonical
+  `LayoutChange` (`LayoutField`). The record's canonical
   constructor calls `FieldTypeValidator.validate`, so a value whose runtime type does
   not match the field's `getExpectedType()` fails at construction rather than at cast
   time during undo replay or in a subscriber:
@@ -43,7 +43,9 @@ Several mutations identify *which* field changed via a field enum. Three shapes 
   after-state in `line.getElement(index)`. No `FieldTypeValidator`.
 
 - **Typed values, no validation** — `LyricsChange` carries `String oldText/newText`
-  with `LyricsField`; concrete field types make a runtime validator unnecessary.
+  with `LyricsField`, and `FontChange` carries full `DocumentFonts oldFonts/newFonts`
+  snapshots (no field enum — a multi-role commit is one undoable group); concrete
+  field types make a runtime validator unnecessary.
 
 ### Emitting
 
