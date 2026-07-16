@@ -155,6 +155,19 @@ public final class StackingUtils {
     }
 
     /**
+     * The beam-resolved top Y of {@code element}'s stem, or {@code fallbackTopSs} when
+     * {@code builder} has not yet resolved a {@link LayoutResult.StemLayout} for it (no stem, or
+     * beam layout not yet computed). Shared by callers that need the post-beam-layout stem top,
+     * distinct from a pre-beam estimate such as {@link songscribe.layout.ElementColumn#getAbsoluteTopYSs()}.
+     */
+    static double resolvedStemTopYSs(
+        LayoutResult.Builder builder, StaffElement element, double fallbackTopSs) {
+
+        var stemLayout = builder.getStemLayout(element);
+        return stemLayout != null ? stemLayout.topYSs() : fallbackTopSs;
+    }
+
+    /**
      * Returns the anchor floor Y for the given staff position.
      */
     public static double anchorFloorSs(int staffPosition) {

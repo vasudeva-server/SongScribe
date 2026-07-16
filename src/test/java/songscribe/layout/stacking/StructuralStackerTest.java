@@ -40,6 +40,8 @@ import songscribe.dom.Tuplet;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.ElementColumn;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.StaffExtents;
 
 /**
  * Unit tests for {@link StructuralStacker}'s pure tuplet-slope and rest-skipping helpers.
@@ -84,7 +86,7 @@ class StructuralStackerTest extends UnitTest {
             var right = mockColumn(WIDTH_SS, -3.0, -2);
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(dySs).isNegative();
         }
@@ -97,7 +99,7 @@ class StructuralStackerTest extends UnitTest {
             var right = mockColumn(WIDTH_SS, -3.0, 2);
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(dySs).isPositive();
         }
@@ -108,7 +110,7 @@ class StructuralStackerTest extends UnitTest {
             var right = mockColumn(WIDTH_SS, -2.0, 0);
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(dySs).isEqualTo(0.0);
         }
@@ -122,7 +124,7 @@ class StructuralStackerTest extends UnitTest {
             var right = mockColumn(WIDTH_SS, -3.0, 2);
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(dySs).isEqualTo(0.0);
         }
@@ -136,7 +138,7 @@ class StructuralStackerTest extends UnitTest {
             var right = mockColumn(WIDTH_SS, -100.0, -50);
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(dySs).isCloseTo(-Tuplet.MAX_SLOPE_FACTOR * WIDTH_SS, within(TOLERANCE));
         }
@@ -144,7 +146,7 @@ class StructuralStackerTest extends UnitTest {
         @Test
         void testAllRestSpanProducesZeroDySs() {
             // No non-rest columns at all -- defensive early-out.
-            var dySs = StructuralStacker.computeTupletSlopeDySs(List.of(), ANCHOR_X_SS, WIDTH_SS);
+            var dySs = StructuralStacker.computeTupletSlopeDySs(List.of(), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(dySs).isEqualTo(0.0);
         }
@@ -156,7 +158,7 @@ class StructuralStackerTest extends UnitTest {
             var only = mockColumn(0.0, -5.0, 0);
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(only), ANCHOR_X_SS, WIDTH_SS);
+                List.of(only), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(dySs).isEqualTo(0.0);
         }
@@ -175,7 +177,7 @@ class StructuralStackerTest extends UnitTest {
             var right = mockColumn(WIDTH_SS, -2.0, 3);   // low pitch, up-stem -> high tip
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(dySs).isEqualTo(0.0);
         }
@@ -188,7 +190,7 @@ class StructuralStackerTest extends UnitTest {
             var right = mockColumn(WIDTH_SS, -2.0, -3);   // high pitch, down-stem -> low tip
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(dySs).isEqualTo(0.0);
         }
@@ -206,7 +208,7 @@ class StructuralStackerTest extends UnitTest {
             var right = mockColumn(WIDTH_SS, rightTopYSs, 2);
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             var tipRiseSs = rightTopYSs - leftTopYSs;
             var edgeRunSs = WIDTH_SS + LineThickness.STEM_SS;
@@ -231,7 +233,7 @@ class StructuralStackerTest extends UnitTest {
             var right = mockColumn(WIDTH_SS, rightTopYSs, -2);
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             var tipRiseSs = rightTopYSs - leftTopYSs;
             var edgeRunSs = WIDTH_SS + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
@@ -256,7 +258,7 @@ class StructuralStackerTest extends UnitTest {
             right.getElement().setUpper(true);
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             var tipRiseSs = rightTopYSs - leftTopYSs;
             var x0 = SMuFLConstants.NOTE_HEAD_WIDTH_SS - LineThickness.STEM_SS;
@@ -281,7 +283,7 @@ class StructuralStackerTest extends UnitTest {
             // right stays default DOWN -- bound is the head edge.
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             var tipRiseSs = rightTopYSs - leftTopYSs;
             var x0 = SMuFLConstants.NOTE_HEAD_WIDTH_SS - LineThickness.STEM_SS;
@@ -306,7 +308,7 @@ class StructuralStackerTest extends UnitTest {
             var right = mockColumn(WIDTH_SS, rightRawTopYSs, -4);
 
             var dySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             var staffTopCeilingYSs = StackingUtils.STAFF_TOP_Y_SS - StructuralStacker.TUPLET_STAFF_PADDING_SS;
             var flooredLeftTopYSs = Math.min(leftRawTopYSs, staffTopCeilingYSs);
@@ -333,9 +335,9 @@ class StructuralStackerTest extends UnitTest {
             var tallInteriorDownStem = mockColumn(WIDTH_SS / 2.0, -8.0, 0);
 
             var endpointsOnlyDySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
             var withInteriorDySs = StructuralStacker.computeTupletSlopeDySs(
-                List.of(left, tallInteriorDownStem, right), ANCHOR_X_SS, WIDTH_SS);
+                List.of(left, tallInteriorDownStem, right), ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(withInteriorDySs).isCloseTo(endpointsOnlyDySs, within(TOLERANCE));
         }
@@ -422,7 +424,7 @@ class StructuralStackerTest extends UnitTest {
 
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
                 List.of(leftTip, middleTip, rightTip), NO_ARTICULATIONS, dySs, ANCHOR_X_SS, WIDTH_SS,
-                ANCHOR_X_SS, WIDTH_SS);
+                ANCHOR_X_SS, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(leftYSs).isCloseTo(expectedLeftYSs, within(TOLERANCE));
 
@@ -447,7 +449,7 @@ class StructuralStackerTest extends UnitTest {
 
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
                 List.of(weakEndpoint(0.0), interior, weakEndpoint(WIDTH_SS)),
-                NO_ARTICULATIONS, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS);
+                NO_ARTICULATIONS, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(leftYSs).isCloseTo(tallTopYSs, within(TOLERANCE));
         }
@@ -460,7 +462,7 @@ class StructuralStackerTest extends UnitTest {
 
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
                 List.of(weakEndpoint(0.0), interior, weakEndpoint(WIDTH_SS)),
-                NO_ARTICULATIONS, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS);
+                NO_ARTICULATIONS, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(leftYSs).isCloseTo(tallTopYSs, within(TOLERANCE));
         }
@@ -493,7 +495,7 @@ class StructuralStackerTest extends UnitTest {
 
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
                 List.of(weakEndpoint(0.0), weakEndpoint(WIDTH_SS)),
-                NO_ARTICULATIONS, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS);
+                NO_ARTICULATIONS, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(leftYSs).isCloseTo(staffTopCeilingYSs, within(TOLERANCE));
         }
@@ -514,7 +516,7 @@ class StructuralStackerTest extends UnitTest {
 
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
                 List.of(weakEndpoint(0.0), interior, weakEndpoint(WIDTH_SS)),
-                accentOnInterior, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS);
+                accentOnInterior, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(leftYSs).isCloseTo(accentTopYSs, within(TOLERANCE));
         }
@@ -534,7 +536,7 @@ class StructuralStackerTest extends UnitTest {
 
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
                 List.of(weakEndpoint(0.0), interior, weakEndpoint(WIDTH_SS)),
-                staccatoOnInterior, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS);
+                staccatoOnInterior, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             assertThat(leftYSs).isCloseTo(tipTopYSs, within(TOLERANCE));
         }
@@ -560,7 +562,7 @@ class StructuralStackerTest extends UnitTest {
             var rightArmXSs = WIDTH_SS + rightArmReachSs;
 
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
-                List.of(anchor, end), NO_ARTICULATIONS, dySs, 0.0, WIDTH_SS, 0.0, rightArmXSs);
+                List.of(anchor, end), NO_ARTICULATIONS, dySs, 0.0, WIDTH_SS, 0.0, rightArmXSs, ElementColumn::getAbsoluteTopYSs);
 
             // Cleared at the arm's X, not the end column's: the tip projected the full anchor→arm run.
             var expectedLeftYSs = endTipTopYSs - slope * rightArmXSs;
@@ -594,7 +596,7 @@ class StructuralStackerTest extends UnitTest {
             var rightArmXSs = WIDTH_SS + rightArmReachSs;
 
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
-                List.of(anchor, end), accentOnEnd, dySs, 0.0, WIDTH_SS, 0.0, rightArmXSs);
+                List.of(anchor, end), accentOnEnd, dySs, 0.0, WIDTH_SS, 0.0, rightArmXSs, ElementColumn::getAbsoluteTopYSs);
 
             // Bound by the accent projected from its center X (here the end column's own X), by the
             // interior loop -- not the further-out arm edge.
@@ -628,7 +630,7 @@ class StructuralStackerTest extends UnitTest {
                     : List.of();
 
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
-                List.of(anchor, end), accentAtCenter, dySs, 0.0, WIDTH_SS, 0.0, WIDTH_SS);
+                List.of(anchor, end), accentAtCenter, dySs, 0.0, WIDTH_SS, 0.0, WIDTH_SS, ElementColumn::getAbsoluteTopYSs);
 
             // Bound by the accent projected from its center X, not the column's own X.
             var expectedLeftYSs = accentTopYSs - slope * accentCenterXSs;
@@ -638,6 +640,80 @@ class StructuralStackerTest extends UnitTest {
             // true center) -- confirm the center projection binds strictly lower.
             var columnXProjectionYSs = accentTopYSs - slope * end.getXSs();
             assertThat(leftYSs).isLessThan(columnXProjectionYSs);
+        }
+    }
+
+    // ======================================================================
+    // rawObstacleTopSs: the obstacle top a column presents to the always-above tuplet (issue #556).
+    // Only a beamed up-stem column with a resolved StemLayout reports the beam's outer edge;
+    // every other combination falls back to the column's own natural tip.
+    // ======================================================================
+
+    @Nested
+    class RawObstacleTopSs {
+
+        private static StructuralStacker newStacker(LayoutResult.Builder builder) {
+            var context = new StackingContext(List.of(), detachedLine(), builder);
+            return new StructuralStacker(context, new StaffExtents(WIDTH_SS));
+        }
+
+        @Test
+        void testUnbeamedUpStemColumnUsesItsOwnNaturalTip() {
+            var naturalTopYSs = -3.0;
+            var column = mockColumn(0.0, naturalTopYSs, 0);
+            column.getElement().setUpper(true);
+            when(column.isBeamed()).thenReturn(false);
+
+            var stacker = newStacker(new LayoutResult.Builder());
+
+            assertThat(stacker.rawObstacleTopSs(column)).isCloseTo(naturalTopYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testBeamedUpStemColumnWithNoResolvedStemLayoutFallsBackToNaturalTip() {
+            var naturalTopYSs = -3.0;
+            var column = mockColumn(0.0, naturalTopYSs, 0);
+            column.getElement().setUpper(true);
+            when(column.isBeamed()).thenReturn(true);
+
+            // No stem layout put into the builder for this element -- getStemLayout returns null.
+            var stacker = newStacker(new LayoutResult.Builder());
+
+            assertThat(stacker.rawObstacleTopSs(column)).isCloseTo(naturalTopYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testBeamedUpStemColumnUsesTheResolvedBeamTopNotTheNaturalTip() {
+            var naturalTopYSs = -3.0;
+            var beamTopYSs = -5.0;  // beam edge sits above the tucked-in stem tip
+            var column = mockColumn(0.0, naturalTopYSs, 0);
+            column.getElement().setUpper(true);
+            when(column.isBeamed()).thenReturn(true);
+
+            var builder = new LayoutResult.Builder();
+            builder.putStemLayout(column.getElement(),
+                new LayoutResult.StemLayout(beamTopYSs, 0.0, 0.0, 0.0, false));
+            var stacker = newStacker(builder);
+
+            assertThat(stacker.rawObstacleTopSs(column)).isCloseTo(beamTopYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testBeamedDownStemColumnUsesItsOwnNaturalTipNotTheBeam() {
+            // A down-stem beam sits below the noteheads, so it is never the ceiling an always-above
+            // tuplet needs to clear -- only a beamed UP-stem column is special-cased.
+            var naturalTopYSs = -3.0;
+            var beamTopYSs = -99.0;
+            var column = mockColumn(0.0, naturalTopYSs, 0);
+            // Default direction is DOWN.
+            when(column.isBeamed()).thenReturn(true);
+
+            var builder = new LayoutResult.Builder();
+            builder.putStemLayout(column.getElement(),
+                new LayoutResult.StemLayout(beamTopYSs, 0.0, 0.0, 0.0, false));
+            var stacker = newStacker(builder);
+
+            assertThat(stacker.rawObstacleTopSs(column)).isCloseTo(naturalTopYSs, within(TOLERANCE));
         }
     }
 }

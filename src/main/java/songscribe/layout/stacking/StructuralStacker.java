@@ -244,29 +244,28 @@ public class StructuralStacker {
         double anchorXSs,
         double widthSs,
         double leftArmXSs,
-        double rightArmXSs) {
-
-        return computeTupletClearanceLeftYSs(nonRestColumns, scriptObstacles, dySs, anchorXSs,
-            widthSs, leftArmXSs, rightArmXSs, ElementColumn::getAbsoluteTopYSs);
-    }
-
-    static double computeTupletClearanceLeftYSs(
-        List<ElementColumn> nonRestColumns,
-        Function<ElementColumn, List<ScriptObstacle>> scriptObstacles,
-        double dySs,
-        double anchorXSs,
-        double widthSs,
-        double leftArmXSs,
         double rightArmXSs,
         ToDoubleFunction<ElementColumn> obstacleTopSs) {
 
         var slope = dySs / widthSs;
         var leftYSs = Double.POSITIVE_INFINITY;
+        var anchorTipTopYSs = 0.0;
+        var endTipTopYSs = 0.0;
 
-        for (var column : nonRestColumns) {
+        for (var i = 0; i < nonRestColumns.size(); i++) {
+            var column = nonRestColumns.get(i);
+
             // The notehead/stem/beam tip folds at the column's own X (its note-column bounds).
             var tipTopYSs = columnTipTopSs(column, obstacleTopSs);
             leftYSs = Math.min(leftYSs, tipTopYSs - slope * (column.getXSs() - anchorXSs));
+
+            if (i == 0) {
+                anchorTipTopYSs = tipTopYSs;
+            }
+
+            if (i == nonRestColumns.size() - 1) {
+                endTipTopYSs = tipTopYSs;
+            }
 
             // Each script folds at its own center X, mirroring LilyPond's script_x.center().
             for (var script : scriptObstacles.apply(column)) {
@@ -275,11 +274,6 @@ public class StructuralStacker {
         }
 
         if (!nonRestColumns.isEmpty()) {
-            var anchorColumn = nonRestColumns.get(0);
-            var endColumn = nonRestColumns.get(nonRestColumns.size() - 1);
-            var anchorTipTopYSs = columnTipTopSs(anchorColumn, obstacleTopSs);
-            var endTipTopYSs = columnTipTopSs(endColumn, obstacleTopSs);
-
             leftYSs = Math.min(leftYSs, anchorTipTopYSs - slope * (leftArmXSs - anchorXSs));
             leftYSs = Math.min(leftYSs, endTipTopYSs - slope * (rightArmXSs - anchorXSs));
         }
@@ -318,18 +312,15 @@ public class StructuralStacker {
      * up-stem beam, in the same staff-Y space as {@code getAbsoluteTopYSs()}. Every other column
      * (unbeamed, or a down-stem beam whose beam sits below the noteheads) keeps its natural tip.
      */
-    private double rawObstacleTopSs(ElementColumn column) {
+    double rawObstacleTopSs(ElementColumn column) {
         var element = column.getElement();
+        var naturalTopYSs = column.getAbsoluteTopYSs();
 
         if (column.isBeamed() && element.getDirection().isUp()) {
-            var stemLayout = context.getBuilder().getStemLayout(element);
-
-            if (stemLayout != null) {
-                return stemLayout.topYSs();
-            }
+            return StackingUtils.resolvedStemTopYSs(context.getBuilder(), element, naturalTopYSs);
         }
 
-        return column.getAbsoluteTopYSs();
+        return naturalTopYSs;
     }
 
     /**
@@ -430,15 +421,6 @@ public class StructuralStacker {
     static double computeTupletSlopeDySs(
         List<ElementColumn> nonRestColumns,
         double anchorXSs,
-        double widthSs) {
-
-        return computeTupletSlopeDySs(nonRestColumns, anchorXSs, widthSs,
-            ElementColumn::getAbsoluteTopYSs);
-    }
-
-    static double computeTupletSlopeDySs(
-        List<ElementColumn> nonRestColumns,
-        double anchorXSs,
         double widthSs,
         ToDoubleFunction<ElementColumn> obstacleTopSs) {
 
@@ -457,10 +439,10 @@ public class StructuralStacker {
         // Each outer endpoint floors to the staff-top ceiling first, mirroring LilyPond's
         // rv.unite(staff) / lv.unite(staff): an endpoint whose own tip sits inside the staff
         // contributes the staff edge, not its tip. Layout Y is up-negative, so "higher of tip /
-        // staff edge" is Math.min.
-        var staffTopCeilingYSs = StackingUtils.STAFF_TOP_Y_SS - TUPLET_STAFF_PADDING_SS;
-        var leftTopYSs = Math.min(obstacleTopSs.applyAsDouble(leftEnd), staffTopCeilingYSs);
-        var rightTopYSs = Math.min(obstacleTopSs.applyAsDouble(rightEnd), staffTopCeilingYSs);
+        // staff edge" is Math.min. Shares columnTipTopSs's ceiling with the clearance path so the
+        // two never drift apart.
+        var leftTopYSs = columnTipTopSs(leftEnd, obstacleTopSs);
+        var rightTopYSs = columnTipTopSs(rightEnd, obstacleTopSs);
         var tipRise = rightTopYSs - leftTopYSs;
         var edgeRunSs = boundEdgeXSs(rightEnd, true) - boundEdgeXSs(leftEnd, false);
         var slope = tipRise / edgeRunSs;

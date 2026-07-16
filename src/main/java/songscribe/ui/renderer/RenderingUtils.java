@@ -30,7 +30,6 @@ import java.util.function.DoubleConsumer;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -323,15 +322,8 @@ public final class RenderingUtils {
      * @return X offset from note reference point to stem center, in staff spaces
      */
     static double stemCenterXOffsetSs(ElementType noteType, StaffElement.Direction direction) {
-        var isMinim = noteType == ElementType.MINIM;
+        var anchorX = NoteGeometry.stemSideAnchor(noteType, direction).x();
         var upper = direction.isUp();
-        double anchorX;
-
-        if (isMinim) {
-            anchorX = (upper ? SMuFLConstants.NOTEHEAD_HALF_STEM_UP_SE : SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW).x();
-        } else {
-            anchorX = (upper ? SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE : SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW).x();
-        }
 
         // upper: SE anchor is the stem's right edge; center = anchorX - half stem width
         // lower: NW anchor is the stem's left edge; center = anchorX + half stem width

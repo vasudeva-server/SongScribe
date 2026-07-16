@@ -38,6 +38,7 @@ import java.util.List;
 import module java.desktop;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
@@ -287,6 +288,14 @@ class TupletRendererTest extends UnitTest {
      * an explicit slope {@code dySs}. Unbeamed and stem-up so both bracket arms are drawn.
      */
     private static LineInvariants buildInvariantsWithSlopedTuplet(double dySs) {
+        return buildInvariantsWithSlopedTuplet(dySs, false);
+    }
+
+    /**
+     * As {@link #buildInvariantsWithSlopedTuplet(double)}, but optionally beamed (stem-up) so the
+     * tuplet renders number-only.
+     */
+    private static LineInvariants buildInvariantsWithSlopedTuplet(double dySs, boolean addBeam) {
         var line = detachedLine();
         var anchor = ElementType.QUAVER.newInstance();
         anchor.setUpper(true);
@@ -294,6 +303,10 @@ class TupletRendererTest extends UnitTest {
         end.setUpper(true);
         line.addElement(anchor);
         line.addElement(end);
+
+        if (addBeam) {
+            line.addRangeElement(new Beam(anchor, end));
+        }
 
         var tuplet = new Tuplet(anchor, end, 3);
         line.addRangeElement(tuplet);
@@ -399,6 +412,65 @@ class TupletRendererTest extends UnitTest {
 
         assertThat(actualLeftYSs).isCloseTo(expectedLeftYSs, within(TOLERANCE));
         assertThat(actualRightYSs).isCloseTo(expectedRightYSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testRenderTupletsFromLine_bracketArmBottomReachesCapInclusiveInkExtent() {
+        // The arm's rendered (round-cap-inset) bottom must land exactly BRACKET_ARM_HEIGHT_SS
+        // below the sloped corner: armHeightSs bakes in an extra thicknessSs/2.0 (issue #556)
+        // specifically to cancel drawPath's round-cap inset at that endpoint, so the ink extent
+        // matches LilyPond's un-inset arm height exactly rather than falling short by half the
+        // bracket's line thickness.
+        var invariants = buildInvariantsWithSlopedTuplet(-2.0);
+        var recording = recordingG2();
+        var g2 = recording.g2();
+
+        RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
+            ElementFrame.LINE_LEVEL);
+
+        var leftCornerYSs = cornerYSs(recording.placedShapes().get(0), 1);
+        var leftArmBottomYSs = cornerYSs(recording.placedShapes().get(0), 0);
+
+        assertThat(leftArmBottomYSs - leftCornerYSs)
+            .isCloseTo(Tuplet.BRACKET_ARM_HEIGHT_SS, within(TOLERANCE));
+    }
+
+    @Test
+    void testRenderTupletsFromLine_numberOnly_baselineEvaluatesSlopeAtGapCenter() {
+        // Number-only mode still reserves a sloped box; the baseline must evaluate the slope at
+        // the gap center, not sit at the flat left-endpoint Y, or the number drops onto an
+        // ascending beam at the center (issue #556). Comparing a flat and a sloped render isolates
+        // the slope contribution without depending on font-metric internals for the absolute value.
+        var dySs = -2.0;
+        var flatInvariants = buildInvariantsWithSlopedTuplet(0.0, true);
+        var slopedInvariants = buildInvariantsWithSlopedTuplet(dySs, true);
+
+        var flatG2 = mockG2();
+        RENDERER.renderTupletsFromLine(flatG2, flatInvariants.requireCurrentLine(), flatInvariants,
+            ElementFrame.LINE_LEVEL);
+        var flatYCaptor = ArgumentCaptor.forClass(Float.class);
+        verify(flatG2).drawGlyphVector(any(GlyphVector.class), any(Float.class), flatYCaptor.capture());
+
+        var slopedG2 = mockG2();
+        RENDERER.renderTupletsFromLine(slopedG2, slopedInvariants.requireCurrentLine(), slopedInvariants,
+            ElementFrame.LINE_LEVEL);
+        var slopedYCaptor = ArgumentCaptor.forClass(Float.class);
+        verify(slopedG2).drawGlyphVector(any(GlyphVector.class), any(Float.class), slopedYCaptor.capture());
+
+        // centerXSs is the midpoint of the ARM edges (leftXSs/rightXSs), not the anchor/end
+        // columns directly -- see testRenderTupletsFromLine_slopedBracket_extrapolatesFromAnchorOverWidth.
+        var anchorXSs = 1.0;
+        var widthSs = 4.0;
+        var endXSs = anchorXSs + widthSs;
+        var stemSs = LineThickness.STEM_SS;
+        var leftXSs = anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS - stemSs - Tuplet.ARM_EXTENSION_SS;
+        var rightXSs = endXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS + Tuplet.ARM_EXTENSION_SS;
+        var centerXSs = (leftXSs + rightXSs) / 2.0;  // numberOnly: gapCenterXSs == centerXSs
+        var slope = dySs / widthSs;
+        var expectedDeltaYSs = slope * (centerXSs - anchorXSs);
+        var actualDeltaYSs = slopedYCaptor.getValue() - flatYCaptor.getValue();
+
+        assertThat((double) actualDeltaYSs).isCloseTo(expectedDeltaYSs, within(TOLERANCE));
     }
 
     @Test

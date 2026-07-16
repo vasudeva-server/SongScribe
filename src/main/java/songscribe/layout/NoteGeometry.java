@@ -233,19 +233,8 @@ public final class NoteGeometry {
     }
 
     public static StemGeometry computeBaseStemGeometry(ElementType noteType, StaffElement.Direction direction) {
-        var isMinim = noteType == ElementType.MINIM;
         var isGrace = noteType.isGraceNote();
-
-        GlyphAnchors.Anchor anchor;
-
-        if (isGrace) {
-            anchor = STEM_UP_SE_BLACK_SMALL;
-        } else if (direction.isUp()) {
-            anchor = isMinim ? SMuFLConstants.NOTEHEAD_HALF_STEM_UP_SE : SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE;
-        } else {
-            anchor = isMinim ? SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW : SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW;
-        }
-
+        var anchor = isGrace ? STEM_UP_SE_BLACK_SMALL : stemSideAnchor(noteType, direction);
         var anchorX = anchor.x();
 
         // Stem left edge: the anchor marks the stem's RIGHT edge for up-stems (back off a full
@@ -255,6 +244,23 @@ public final class NoteGeometry {
         var stemLength = isGrace ? SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS : SMuFLConstants.STEM_LENGTH_SS;
 
         return new StemGeometry(stemLeftX, anchor.y(), stemLength);
+    }
+
+    /**
+     * The stem-side notehead anchor (SE for up-stems, NW for down-stems) per SMuFL's
+     * per-notehead-shape metrics, for a non-grace note. Grace notes use a separate, smaller
+     * anchor — see {@link #computeBaseStemGeometry}. Shared with
+     * {@link songscribe.ui.renderer.RenderingUtils#stemCenterXOffsetSs} so the anchor lookup is
+     * defined once.
+     */
+    public static GlyphAnchors.Anchor stemSideAnchor(ElementType noteType, StaffElement.Direction direction) {
+        var isMinim = noteType == ElementType.MINIM;
+
+        if (direction.isUp()) {
+            return isMinim ? SMuFLConstants.NOTEHEAD_HALF_STEM_UP_SE : SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE;
+        }
+
+        return isMinim ? SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW : SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW;
     }
 
     /**
