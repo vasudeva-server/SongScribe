@@ -193,7 +193,7 @@ class RenderingUtilsTest extends UnitTest {
 
     @Test
     void testStemCenterXOffsetSsMinimDown() {
-        var expected = SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW.x();
+        var expected = SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW.x() + NoteGeometry.STEM_WIDTH_SS / 2.0;
         assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.MINIM, StaffElement.Direction.DOWN))
             .isCloseTo(expected, within(1e-9));
     }
@@ -207,7 +207,7 @@ class RenderingUtilsTest extends UnitTest {
 
     @Test
     void testStemCenterXOffsetSsBlackNoteheadDown() {
-        var expected = SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW.x();
+        var expected = SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW.x() + NoteGeometry.STEM_WIDTH_SS / 2.0;
         assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.CROTCHET, StaffElement.Direction.DOWN))
             .isCloseTo(expected, within(1e-9));
     }

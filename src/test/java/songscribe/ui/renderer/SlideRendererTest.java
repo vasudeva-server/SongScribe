@@ -386,10 +386,8 @@ class SlideRendererTest extends UnitTest {
     @Test
     void testResolveNoteContext_mapsEachExtentToItsFieldAndStaffPositionToY() {
         // Pins resolveNoteContext's wiring: the fall anchor comes from the stem-full extent, the
-        // glissando attach edges from the stem-free extent (note their left is negative and right
-        // positive, so a glissLeft/glissRight swap is caught), and cySs from the staff position.
-        // A down-stem note is used so the stem-free notehead left is strictly negative (an up-stem
-        // crotchet's notehead left sits exactly at the origin).
+        // glissando attach edges from the stem-free extent (left < right, so a glissLeft/glissRight
+        // swap is caught), and cySs from the staff position.
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(false);
         note.setStaffPosition(0);
@@ -408,9 +406,9 @@ class SlideRendererTest extends UnitTest {
         assertThat(ctx.columnRightXSs()).isCloseTo(fullExtent.rightSs(), within(0.001));
         assertThat(ctx.glissRightXSs()).isCloseTo(attachExtent.rightSs(), within(0.001));
         assertThat(ctx.glissLeftXSs()).isCloseTo(attachExtent.leftSs(), within(0.001));
-        // The attach edges straddle the origin: a glissLeft/glissRight swap would flip these signs.
-        assertThat(ctx.glissLeftXSs()).isLessThan(0.0);
-        assertThat(ctx.glissRightXSs()).isGreaterThan(0.0);
+        // A glissLeft/glissRight swap would flip the ordering (left at the notehead left edge, 0;
+        // right at the notehead right edge, positive).
+        assertThat(ctx.glissLeftXSs()).isLessThan(ctx.glissRightXSs());
         assertThat(ctx.cySs()).isCloseTo(
             RenderingUtils.noteStaffPositionToCoordinateSs(0, middleLineYSs), within(0.001));
     }

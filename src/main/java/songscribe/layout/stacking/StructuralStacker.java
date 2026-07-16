@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Line;
@@ -147,7 +148,8 @@ public class StructuralStacker {
             var widthSs = tuplet.getSpanWidthSs(anchorXSs, endColumn.getXSs());
 
             var nonRestColumns = collectNonRestSpannedColumns(line, tuplet, columnsByElement);
-            var dySs = computeTupletSlopeDySs(nonRestColumns, anchorXSs, widthSs);
+            var dySs = computeTupletSlopeDySs(nonRestColumns, anchorXSs, widthSs,
+                this::rawObstacleTopSs);
 
             // The visual bracket arms extend past the outer note columns; the clearance folds each
             // outer obstacle in again at its arm's X so the extended, sloped arm — not just the line
@@ -167,7 +169,7 @@ public class StructuralStacker {
             // heightSs out.
             var leftYSs = computeTupletClearanceLeftYSs(
                 nonRestColumns, this::scriptObstacles, dySs, anchorXSs, widthSs,
-                leftArmXSs, rightArmXSs);
+                leftArmXSs, rightArmXSs, this::rawObstacleTopSs);
             var finalLeftYSs = leftYSs - TUPLET_ARM_MARGIN_SS - heightSs;
 
             // Reserve the bracket's true sloped outer edge so later structural elements and line
@@ -244,12 +246,26 @@ public class StructuralStacker {
         double leftArmXSs,
         double rightArmXSs) {
 
+        return computeTupletClearanceLeftYSs(nonRestColumns, scriptObstacles, dySs, anchorXSs,
+            widthSs, leftArmXSs, rightArmXSs, ElementColumn::getAbsoluteTopYSs);
+    }
+
+    static double computeTupletClearanceLeftYSs(
+        List<ElementColumn> nonRestColumns,
+        Function<ElementColumn, List<ScriptObstacle>> scriptObstacles,
+        double dySs,
+        double anchorXSs,
+        double widthSs,
+        double leftArmXSs,
+        double rightArmXSs,
+        ToDoubleFunction<ElementColumn> obstacleTopSs) {
+
         var slope = dySs / widthSs;
         var leftYSs = Double.POSITIVE_INFINITY;
 
         for (var column : nonRestColumns) {
-            // The notehead/stem tip folds at the column's own X (its note-column bounds).
-            var tipTopYSs = columnTipTopSs(column);
+            // The notehead/stem/beam tip folds at the column's own X (its note-column bounds).
+            var tipTopYSs = columnTipTopSs(column, obstacleTopSs);
             leftYSs = Math.min(leftYSs, tipTopYSs - slope * (column.getXSs() - anchorXSs));
 
             // Each script folds at its own center X, mirroring LilyPond's script_x.center().
@@ -261,8 +277,8 @@ public class StructuralStacker {
         if (!nonRestColumns.isEmpty()) {
             var anchorColumn = nonRestColumns.get(0);
             var endColumn = nonRestColumns.get(nonRestColumns.size() - 1);
-            var anchorTipTopYSs = columnTipTopSs(anchorColumn);
-            var endTipTopYSs = columnTipTopSs(endColumn);
+            var anchorTipTopYSs = columnTipTopSs(anchorColumn, obstacleTopSs);
+            var endTipTopYSs = columnTipTopSs(endColumn, obstacleTopSs);
 
             leftYSs = Math.min(leftYSs, anchorTipTopYSs - slope * (leftArmXSs - anchorXSs));
             leftYSs = Math.min(leftYSs, endTipTopYSs - slope * (rightArmXSs - anchorXSs));
@@ -272,17 +288,48 @@ public class StructuralStacker {
     }
 
     /**
-     * The notehead/stem tip a column presents to the bracket, staff-top-clamped, WITHOUT any
+     * The obstacle top a column presents to the bracket, staff-top-clamped, WITHOUT any
      * articulation. Used both by the interior tip fold and the arm-reach fold so a script is never
      * projected from the arm edge — LilyPond folds scripts only at their own center X
-     * (tuplet-bracket.cc, avoid-scripts).
+     * (tuplet-bracket.cc, avoid-scripts). The raw top comes from {@code obstacleTopSs} so a beamed
+     * up-stem column can report its beam edge rather than its tucked-in stem tip (issue #556).
      * <p>
-     * Staff-top clamp: a tip below the top staff line raises to the staff top (never lower), so the
-     * bracket stays at least the margin above the staff — mirroring the staff-position path's
-     * {@code anchorCeilingSs} clamp, which the verbatim-anchor tuplet placement bypasses.
+     * Staff-top clamp: a tip below the top staff line raises to the staff-padding-widened staff top
+     * (never lower), so the bracket stays at least the margin above the staff. The ceiling is the
+     * staff-line centerline widened by {@link #TUPLET_STAFF_PADDING_SS}, matching LilyPond's
+     * {@code staff.widen(0.25)} and the slope path's floor in {@link #computeTupletSlopeDySs} — not
+     * the bare centerline, which would let the bracket sit 0.25ss too low against within-staff notes.
      */
-    private static double columnTipTopSs(ElementColumn column) {
-        return StackingUtils.staffTopClampSs(column.getAbsoluteTopYSs());
+    private static double columnTipTopSs(
+        ElementColumn column, ToDoubleFunction<ElementColumn> obstacleTopSs) {
+        var staffTopCeilingYSs = StackingUtils.STAFF_TOP_Y_SS - TUPLET_STAFF_PADDING_SS;
+        return Math.min(obstacleTopSs.applyAsDouble(column), staffTopCeilingYSs);
+    }
+
+    /**
+     * The raw (unclamped) obstacle top a column presents to the always-above tuplet: for a beamed
+     * up-stem column the beam's outer (top) edge, otherwise the column's natural stem/head tip.
+     * <p>
+     * A beamed up-stem's rendered stem is shortened so it tucks inside the beam and never protrudes
+     * past the beam's outer edge, so the column's {@link ElementColumn#getAbsoluteTopYSs()} — the
+     * natural stem tip — sits <em>below</em> the beam the tuplet must actually clear. Measuring to it
+     * lets the number/bracket drop onto the beam (issue #556); the beam's outer edge is the real
+     * ceiling. The beam layout's {@link LayoutResult.StemLayout#topYSs()} is that outer edge for an
+     * up-stem beam, in the same staff-Y space as {@code getAbsoluteTopYSs()}. Every other column
+     * (unbeamed, or a down-stem beam whose beam sits below the noteheads) keeps its natural tip.
+     */
+    private double rawObstacleTopSs(ElementColumn column) {
+        var element = column.getElement();
+
+        if (column.isBeamed() && element.getDirection().isUp()) {
+            var stemLayout = context.getBuilder().getStemLayout(element);
+
+            if (stemLayout != null) {
+                return stemLayout.topYSs();
+            }
+        }
+
+        return column.getAbsoluteTopYSs();
     }
 
     /**
@@ -385,6 +432,16 @@ public class StructuralStacker {
         double anchorXSs,
         double widthSs) {
 
+        return computeTupletSlopeDySs(nonRestColumns, anchorXSs, widthSs,
+            ElementColumn::getAbsoluteTopYSs);
+    }
+
+    static double computeTupletSlopeDySs(
+        List<ElementColumn> nonRestColumns,
+        double anchorXSs,
+        double widthSs,
+        ToDoubleFunction<ElementColumn> obstacleTopSs) {
+
         // Defensive early-out: an all-rest span or a single non-rest column has no contour and a
         // zero tip run (which would divide to NaN). Such tuplets are also rejected on load (#518).
         if (nonRestColumns.size() < 2) {
@@ -402,8 +459,8 @@ public class StructuralStacker {
         // contributes the staff edge, not its tip. Layout Y is up-negative, so "higher of tip /
         // staff edge" is Math.min.
         var staffTopCeilingYSs = StackingUtils.STAFF_TOP_Y_SS - TUPLET_STAFF_PADDING_SS;
-        var leftTopYSs = Math.min(leftEnd.getAbsoluteTopYSs(), staffTopCeilingYSs);
-        var rightTopYSs = Math.min(rightEnd.getAbsoluteTopYSs(), staffTopCeilingYSs);
+        var leftTopYSs = Math.min(obstacleTopSs.applyAsDouble(leftEnd), staffTopCeilingYSs);
+        var rightTopYSs = Math.min(obstacleTopSs.applyAsDouble(rightEnd), staffTopCeilingYSs);
         var tipRise = rightTopYSs - leftTopYSs;
         var edgeRunSs = boundEdgeXSs(rightEnd, true) - boundEdgeXSs(leftEnd, false);
         var slope = tipRise / edgeRunSs;

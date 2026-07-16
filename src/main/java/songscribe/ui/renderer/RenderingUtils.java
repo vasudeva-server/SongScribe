@@ -238,9 +238,9 @@ public final class RenderingUtils {
      * The glyph's visual left edge is at {@code origin + bboxLeft}, so centering
      * the visual content requires offsetting by {@code bboxLeft}.
      * <p>
-     * Uses the notehead-only width (excluding flag extent) and accounts for the
-     * down-stem notehead shift so ornaments stay centered over the notehead
-     * regardless of note duration or stem direction.
+     * Uses the notehead-only width (excluding flag extent) so ornaments stay centered over the
+     * notehead regardless of note duration or stem direction (noteheads are not shifted by stem
+     * direction — see {@link NoteGeometry#getNoteheadXOffsetSs}).
      *
      * @param layoutXSs     the layout X position (left edge of the note column)
      * @param note          the note whose notehead center is used
@@ -334,7 +334,8 @@ public final class RenderingUtils {
         }
 
         // upper: SE anchor is the stem's right edge; center = anchorX - half stem width
-        // lower: NW anchor is the stem's left edge (after notehead shift); center = anchorX
-        return upper ? anchorX - NoteGeometry.STEM_WIDTH_SS / 2.0 : anchorX;
+        // lower: NW anchor is the stem's left edge; center = anchorX + half stem width
+        var halfStemWidthSs = NoteGeometry.STEM_WIDTH_SS / 2.0;
+        return upper ? anchorX - halfStemWidthSs : anchorX + halfStemWidthSs;
     }
 }

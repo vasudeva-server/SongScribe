@@ -248,10 +248,10 @@ public final class NoteGeometry {
 
         var anchorX = anchor.x();
 
-        // Stem left edge: for up-stems, the anchor marks the RIGHT edge of the stem;
-        // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
-        // left by STEM_WIDTH_SS/2, so we compensate.
-        var stemLeftX = anchorX - (direction.isUp() ? STEM_WIDTH_SS : STEM_WIDTH_SS / 2);
+        // Stem left edge: the anchor marks the stem's RIGHT edge for up-stems (back off a full
+        // stem width) and its LEFT edge for down-stems (use the anchor directly). Both leave the
+        // stem's outer edge flush with the notehead's outer edge, overlapping inward by its width.
+        var stemLeftX = direction.isUp() ? anchorX - STEM_WIDTH_SS : anchorX;
         var stemLength = isGrace ? SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS : SMuFLConstants.STEM_LENGTH_SS;
 
         return new StemGeometry(stemLeftX, anchor.y(), stemLength);
@@ -643,14 +643,12 @@ public final class NoteGeometry {
     }
 
     /**
-     * Returns the X offset of the notehead origin relative to the note's column X,
-     * in staff spaces. Stem-down notes shift left by half a stem width.
+     * Returns the X offset of the notehead origin relative to the note's column X, in staff spaces.
+     * Always zero: noteheads are drawn at the column X regardless of stem direction, so up-stem and
+     * down-stem noteheads align horizontally. (Down-stem heads were formerly shifted left by half a
+     * stem width; that shift only pushed the whole note off its reference and has been removed.)
      */
     public static float getNoteheadXOffsetSs(ElementType noteType, StaffElement.Direction direction) {
-        if (noteType.isNoteWithStem() && direction.isDown()) {
-            return (float) -(STEM_WIDTH_SS / 2);
-        }
-
         return 0f;
     }
 

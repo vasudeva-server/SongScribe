@@ -155,7 +155,8 @@ class NoteRendererTest extends UnitTest {
         void testBlackNoteHeadStemDownUsesBlackDownAnchor() {
             var geom = NoteGeometry.computeBaseStemGeometry(ElementType.CROTCHET, StaffElement.Direction.DOWN);
             var anchor = SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW;
-            var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS / 2;
+            // Down-stem: anchor marks the stem's LEFT edge, used directly (no head-shift compensation).
+            var expectedStemLeftX = anchor.x();
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));
@@ -177,7 +178,8 @@ class NoteRendererTest extends UnitTest {
         void testMinimStemDownUsesHalfDownAnchor() {
             var geom = NoteGeometry.computeBaseStemGeometry(ElementType.MINIM, StaffElement.Direction.DOWN);
             var anchor = SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW;
-            var expectedStemLeftX = anchor.x() - NoteGeometry.STEM_WIDTH_SS / 2;
+            // Down-stem: anchor marks the stem's LEFT edge, used directly (no head-shift compensation).
+            var expectedStemLeftX = anchor.x();
 
             assertThat(geom.stemLeftXSs()).isCloseTo(expectedStemLeftX, within(TOLERANCE));
             assertThat(geom.anchorYSs()).isCloseTo(anchor.y(), within(TOLERANCE));

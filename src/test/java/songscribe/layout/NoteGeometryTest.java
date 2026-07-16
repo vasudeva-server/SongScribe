@@ -328,8 +328,9 @@ class NoteGeometryTest extends UnitTest {
         }
 
         @Test
-        void testStemDownCrotchetExtentAccountsForNoteheadOffset() {
-            // stem-down shifts the notehead left by STEM_WIDTH_SS/2, which displaces the whole extent
+        void testStemDownCrotchetExtentMatchesStemUp() {
+            // Noteheads are no longer shifted by stem direction, so the ledger extent is identical
+            // for stem-down and stem-up.
             var note = ElementType.CROTCHET.newInstance();
             note.setUpper(false);
             note.setStaffPosition(LEDGER_POSITION_SP);
@@ -337,12 +338,11 @@ class NoteGeometryTest extends UnitTest {
             var actual = NoteGeometry.getLedgerLineBaseExtentSs(note);
             assertProportionalExtent(actual, ElementType.CROTCHET, StaffElement.Direction.DOWN);
 
-            // stem-down ledgerLeft is further left than stem-up, since the notehead is shifted left
             var stemUpNote = ElementType.CROTCHET.newInstance();
             stemUpNote.setUpper(true);
             stemUpNote.setStaffPosition(LEDGER_POSITION_SP);
             assertThat(actual.leftSs())
-                .isLessThan(NoteGeometry.getLedgerLineBaseExtentSs(stemUpNote).leftSs());
+                .isCloseTo(NoteGeometry.getLedgerLineBaseExtentSs(stemUpNote).leftSs(), within(TOLERANCE));
         }
 
         @Test
@@ -707,12 +707,10 @@ class NoteGeometryTest extends UnitTest {
     class NoteheadXOffset {
 
         @Test
-        void testStemDownShiftsLeftByHalfStemWidth() {
-            // direction=DOWN means stem-down; offset = -(STEM_WIDTH_SS / 2)
+        void testStemDownReturnsZero() {
+            // Down-stem heads are no longer shifted: they align with up-stem heads at the column X.
             final var direction = StaffElement.Direction.DOWN;
-            final float expectedOffsetSs = (float) -(NoteGeometry.STEM_WIDTH_SS / 2);
-            assertThat(NoteGeometry.getNoteheadXOffsetSs(ElementType.CROTCHET, direction))
-                .isEqualTo(expectedOffsetSs);
+            assertThat(NoteGeometry.getNoteheadXOffsetSs(ElementType.CROTCHET, direction)).isEqualTo(0f);
         }
 
         @Test

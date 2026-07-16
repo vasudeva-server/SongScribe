@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -465,28 +466,36 @@ class StructuralStackerTest extends UnitTest {
         }
 
         @Test
-        void testInteriorBeamedUpStemObstacleIsItsOwnNaturalTip() {
-            var tallTopYSs = -3.0;
-            var interior = mockColumn(WIDTH_SS / 2.0, tallTopYSs, 0);
+        void testClearanceFoldsTheObstacleResolverTopNotTheColumnTip() {
+            // A beamed up-stem's stem tucks inside the beam, so the tuplet must clear the beam's
+            // outer edge, not the shorter natural tip getAbsoluteTopYSs() reports (issue #556). The
+            // resolver overload supplies that beam top; the clearance must fold the resolved value.
+            var naturalTipYSs = -3.0;
+            var beamTopYSs = -5.0;  // beam edge sits above the tucked-in stem tip
+            var interior = mockColumn(WIDTH_SS / 2.0, naturalTipYSs, 0);
             interior.getElement().setUpper(true);
-            when(interior.isBeamed()).thenReturn(true);
+
+            ToDoubleFunction<ElementColumn> beamTopForInterior =
+                column -> column == interior ? beamTopYSs : column.getAbsoluteTopYSs();
 
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
                 List.of(weakEndpoint(0.0), interior, weakEndpoint(WIDTH_SS)),
-                NO_ARTICULATIONS, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS);
+                NO_ARTICULATIONS, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS, beamTopForInterior);
 
-            assertThat(leftYSs).isCloseTo(tallTopYSs, within(TOLERANCE));
+            assertThat(leftYSs).isCloseTo(beamTopYSs, within(TOLERANCE));
         }
 
         @Test
         void testStaffTopClampRaisesAWeakObstacleRegardlessOfDirection() {
-            // A tip below the top staff line is clamped up to STAFF_TOP_Y_SS so the bracket never
-            // dips below the staff, even for a flat span with no taller obstacle.
+            // A tip below the top staff line is clamped up to the staff-padding-widened staff top so
+            // the bracket never dips below the staff, even for a flat span with no taller obstacle.
+            var staffTopCeilingYSs = StackingUtils.STAFF_TOP_Y_SS - StructuralStacker.TUPLET_STAFF_PADDING_SS;
+
             var leftYSs = StructuralStacker.computeTupletClearanceLeftYSs(
                 List.of(weakEndpoint(0.0), weakEndpoint(WIDTH_SS)),
                 NO_ARTICULATIONS, 0.0, 0.0, WIDTH_SS, 0.0, WIDTH_SS);
 
-            assertThat(leftYSs).isCloseTo(StackingUtils.STAFF_TOP_Y_SS, within(TOLERANCE));
+            assertThat(leftYSs).isCloseTo(staffTopCeilingYSs, within(TOLERANCE));
         }
 
         @Test
@@ -543,8 +552,9 @@ class StructuralStackerTest extends UnitTest {
 
             var anchor = weakEndpoint(0.0);
             var end = weakEndpoint(WIDTH_SS);
-            // weakEndpoint's tip (-0.5) is below the top staff line, so it clamps up to the staff top.
-            var endTipTopYSs = StackingUtils.STAFF_TOP_Y_SS;
+            // weakEndpoint's tip (-0.5) is below the top staff line, so it clamps up to the
+            // staff-padding-widened staff top.
+            var endTipTopYSs = StackingUtils.STAFF_TOP_Y_SS - StructuralStacker.TUPLET_STAFF_PADDING_SS;
 
             var rightArmReachSs = 1.4;
             var rightArmXSs = WIDTH_SS + rightArmReachSs;

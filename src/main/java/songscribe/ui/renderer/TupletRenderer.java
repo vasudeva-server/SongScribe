@@ -179,13 +179,22 @@ public final class TupletRenderer {
             double numberBaselineYSs;
 
             if (numberOnly) {
-                // Number-only: ink top sits at the flat box top (no slope, no arms)
-                numberBaselineYSs = boxTopYSs - inkBounds.getY();
+                // Number-only: no arms, but the box top is reserved sloped, so evaluate it at the
+                // gap center along the slope. Placing the ink top at the flat left-endpoint Y instead
+                // drops the number onto an ascending beam at the center (issue #556).
+                var boxTopAtCenterYSs = boxTopYSs + slope * (gapCenterXSs - anchorXSs);
+                numberBaselineYSs = boxTopAtCenterYSs - inkBounds.getY();
             } else {
                 // Bracketed: the bracket line sits inside the box at inkH/2 from the top, then
                 // tilts by the slope. Evaluate the line at each corner X from the anchor origin.
                 var bracketLineOffsetSs = Tuplet.bracketLineOffsetSs();
-                var armHeightSs = Tuplet.BRACKET_ARM_HEIGHT_SS;
+
+                // LilyPond's arm is a line of BRACKET_ARM_HEIGHT_SS from the bracket line's
+                // centerline whose round cap bulges a further half line-width past that end
+                // (bracket.cc, make_bracket). drawPath instead lands ink exactly on the endpoint it
+                // is given, so ask it for the cap-inclusive tip to reach the same ink extent.
+                var armHeightSs = Tuplet.BRACKET_ARM_HEIGHT_SS + thicknessSs / 2.0;
+
                 var gapLeftXSs = gapCenterXSs - halfGapSs;
                 var gapRightXSs = gapCenterXSs + halfGapSs;
 

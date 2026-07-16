@@ -274,26 +274,12 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         var geom = NoteGeometry.computeBaseStemGeometry(noteType, direction);
         var stemWidthSs = LineThickness.STEM_SS;
 
-        // A down-stem sits flush with the notehead's LEFT edge, which is the glyph
-        // origin — and the font snaps that origin to an integer device pixel. The
-        // anti-aliased stem fill would otherwise land between pixels, leaving the
-        // down-stem one pixel left of the notehead. Snap its left edge to the same
-        // device pixel. Snapping must happen in absolute (device) coordinates
-        // because the graphics context has been translated to the note's position —
-        // rounding in local coordinates won't align to actual screen pixels.
-        //
-        // An up-stem sits at the notehead's RIGHT edge, which is origin + advance —
-        // a fractional device position, not an integer pixel. Snapping it would pull
-        // the stem off the notehead and, since beams derive their endpoints from the
-        // same un-snapped stem centre, drag the beam ends out of alignment too. So
-        // up-stems keep their exact (sub-pixel) position and follow the notehead.
-        double stemLeftXSs;
-
-        if (upper) {
-            stemLeftXSs = geom.stemLeftXSs();
-        } else {
-            stemLeftXSs = snapXToDevicePixel(g2, geom.stemLeftXSs());
-        }
+        // Both stem directions keep their exact (sub-pixel) position. The score draws glyphs with
+        // FRACTIONALMETRICS_ON (GraphicUtils.setRenderingHints), so the notehead's origin is NOT
+        // snapped to an integer device pixel; rounding the stem to one would shift it off the
+        // notehead edge it is meant to sit flush with, and drag beam ends — derived from the same
+        // stem centre — out of alignment with it.
+        var stemLeftXSs = geom.stemLeftXSs();
 
         var layoutResult = invariants.getLayoutResult();
         var stemLayout = layoutResult.getStemLayout(note);
@@ -349,28 +335,6 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             stemLeftXSs, drawTop, stemWidthSs, drawBottom - drawTop,
             arcDiameter, arcDiameter));
         return new Point2D.Double(stemLeftXSs, stemTipY);
-    }
-
-    /**
-     * Snaps a local X coordinate to the nearest device-pixel boundary. Transforms
-     * to absolute device space using the current graphics transform, rounds, and
-     * inverse-transforms back to local (staff-space) coordinates. This keeps vertical
-     * stems crisp and aligned with the font-snapped notehead regardless of the current
-     * translation or Retina scaling.
-     */
-    private static double snapXToDevicePixel(Graphics2D g2, double localXSs) {
-        var transform = g2.getTransform();
-        var devicePt = new Point2D.Double();
-        transform.transform(new Point2D.Double(localXSs, 0), devicePt);
-        devicePt.x = Math.round(devicePt.x);
-
-        try {
-            transform.inverseTransform(devicePt, devicePt);
-        } catch (NoninvertibleTransformException e) {
-            return localXSs;
-        }
-
-        return devicePt.x;
     }
 
     // ==========================================================================

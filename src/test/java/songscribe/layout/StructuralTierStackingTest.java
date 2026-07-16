@@ -375,8 +375,8 @@ class StructuralTierStackingTest extends UnitTest {
             // tip-based verbatim-anchor placement (not the staffPosition/anchorCeilingSs path), so
             // the raw ceiling is ElementColumn.getAbsoluteTopYSs(), not anchorCeilingSs(0).
             // The clearance then applies a staff-top clamp: a tip below the top staff line raises
-            // the ceiling to STAFF_TOP_Y_SS so the bracket stays above the staff. These notes sit
-            // at the middle line (tip below the staff top), so the clamp binds here.
+            // the ceiling to the staff-padding-widened staff top so the bracket stays above the
+            // staff. These notes sit at the middle line (tip below the staff top), so the clamp binds.
             // Tuplets are stacked before hairpins, so no prior structural reservation.
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
@@ -393,8 +393,11 @@ class StructuralTierStackingTest extends UnitTest {
             // The bracket LINE floats TUPLET_BRACKET_PADDING_SS above the tip (StructuralStacker's
             // TUPLET_ARM_MARGIN_SS, applied to the box/arm bottom, is the padding minus the arm
             // height so the line lands exactly there).
-            var tipCeilingSs =
-                StackingUtils.staffTopClampSs(columnFor(note1, NOTE1_X_SS).getAbsoluteTopYSs());
+            // The tip sits below the staff top, so the clamp binds: staffTopClampSs returns the
+            // staff-top centerline, from which the tuplet path subtracts its staff-padding.
+            var tipCeilingSs = StackingUtils.staffTopClampSs(
+                columnFor(note1, NOTE1_X_SS).getAbsoluteTopYSs())
+                - StructuralStacker.TUPLET_STAFF_PADDING_SS;
             var expectedYSs = tipCeilingSs - StructuralStacker.TUPLET_ARM_MARGIN_SS
                 - tuplet.getContentHeightSs();
             var layout = require(result.getDecorationLayout(tuplet), "tuplet layout");

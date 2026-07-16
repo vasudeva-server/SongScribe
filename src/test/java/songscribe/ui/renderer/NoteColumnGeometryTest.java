@@ -97,7 +97,7 @@ class NoteColumnGeometryTest extends UnitTest {
     // ======================================================================
 
     @Test
-    void testCrotchetDownStem_leftSsIsNegativeAndDistinctFromUpStem() {
+    void testCrotchetDownStem_leftSsMatchesUpStemAtNoteheadLeft() {
         var upStemNote = ElementType.CROTCHET.newInstance();
         upStemNote.setUpper(true);
 
@@ -107,9 +107,10 @@ class NoteColumnGeometryTest extends UnitTest {
         var upExtent = NoteColumnGeometry.extentSs(upStemNote, false);
         var downExtent = NoteColumnGeometry.extentSs(downStemNote, false);
 
-        // Stem-down note: stem is to the left of the notehead, pushing leftSs further left.
-        assertThat(downExtent.leftSs()).isLessThan(0.0);
-        assertThat(downExtent.leftSs()).isLessThan(upExtent.leftSs());
+        // Noteheads align across stem directions and neither stem protrudes past the notehead's
+        // outer edge, so both left extents sit at the notehead left edge (0).
+        assertThat(downExtent.leftSs()).isCloseTo(0.0, within(TOLERANCE_SS));
+        assertThat(downExtent.leftSs()).isCloseTo(upExtent.leftSs(), within(TOLERANCE_SS));
     }
 
     // ======================================================================
@@ -236,12 +237,11 @@ class NoteColumnGeometryTest extends UnitTest {
     }
 
     @Test
-    void testGlissandoAttachExtent_downStemCrotchet_leftSsExcludesStemAndIsNoteheadDriven() {
-        // Stem-down crotchet: the stem extends leftward, pushing the full extent's left further
-        // negative. The stem-free attach extent stops at the notehead left, so it must be (a) less
-        // negative than the stem-full left and (b) exactly the notehead left edge (notehead X
-        // offset + glyph left bbox). A partial (wrong) stem retraction would satisfy (a) but
-        // fail (b).
+    void testGlissandoAttachExtent_downStemCrotchet_leftSsIsNoteheadLeftEdge() {
+        // Stem-down crotchet: the down-stem sits flush with the notehead's left edge and overlaps
+        // inward, so it no longer protrudes past the notehead. The stem-free attach extent's left is
+        // the notehead left edge (notehead X offset + glyph left bbox), and (a) the full extent's
+        // left coincides with it because the stem adds no leftward width.
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(false);
 
@@ -253,9 +253,9 @@ class NoteColumnGeometryTest extends UnitTest {
             NoteGeometry.getNoteheadXOffsetSs(ElementType.CROTCHET, StaffElement.Direction.DOWN)
                 + SMuFLMetadata.requireBBox(glyph).left();
 
-        // (a) Stem-free left is less negative (closer to zero) than stem-full left.
-        assertThat(attachExtent.leftSs()).isGreaterThan(fullExtent.leftSs());
-        // (b) Stem-free left is exactly the notehead left edge.
+        // (a) The stem no longer widens the extent leftward: full and attach lefts coincide.
+        assertThat(attachExtent.leftSs()).isCloseTo(fullExtent.leftSs(), within(TOLERANCE_SS));
+        // (b) Attach left is exactly the notehead left edge.
         assertThat(attachExtent.leftSs()).isCloseTo(noteheadLeftSs, within(TOLERANCE_SS));
     }
 
