@@ -55,6 +55,7 @@ import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.action.NewAction;
 import songscribe.ui.action.OpenAction;
 import songscribe.ui.action.OpenRecentAction;
+import songscribe.ui.action.RevertToSavedAction;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.action.SaveAsAction;
 import songscribe.ui.component.MainFrame;
@@ -129,6 +130,7 @@ public class MenuController {
 
         menu.add(SaveAction.createAction(mainFrame));
         menu.add(SaveAsAction.createAction(mainFrame));
+        menu.add(RevertToSavedAction.createAction(mainFrame));
 
         menu.addSeparator();
 

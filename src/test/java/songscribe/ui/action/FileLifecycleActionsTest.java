@@ -22,6 +22,7 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -34,18 +35,22 @@ import org.mockito.MockedStatic;
 import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.MainFrameMockTest;
+import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
 import songscribe.message.command.PrintCommand;
+import songscribe.message.command.RevertToSavedCommand;
 import songscribe.message.command.SaveAsCommand;
 import songscribe.message.command.SaveCommand;
 import songscribe.message.command.ShowOpenDialogCommand;
+import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.prefs.RecentDocumentsManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
@@ -299,6 +304,89 @@ class FileLifecycleActionsTest extends MainFrameMockTest {
 
                 messageCenterMock.verify(
                     () -> MessageCenter.post(any(SaveAsCommand.class)));
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // RevertToSavedAction
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class RevertToSavedActionTests {
+
+        @Test
+        void testConstructorSetsDisableWhenPlaying() {
+            var action = RevertToSavedAction.createAction(mainFrame());
+            assertAll(
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE)).isFalse(),
+                () -> assertThat(action.hasFlag(UIAction.Flag.OPENS_DIALOG)).isFalse()
+            );
+        }
+
+        private Song stubSong(boolean modified) {
+            var song = mock(Song.class);
+            when(song.isModified()).thenReturn(modified);
+            when(mockEnv().score().getSong()).thenReturn(song);
+            return song;
+        }
+
+        @Test
+        void testUpdateEnabledStateFalseWhenCurrentFileIsNull() {
+            when(mainFrame().getCurrentFile()).thenReturn(null);
+            stubSong(true);
+            var action = RevertToSavedAction.createAction(mainFrame());
+            assertThat(action.updateEnabledState()).isFalse();
+        }
+
+        @Test
+        void testUpdateEnabledStateFalseWhenNotModified() {
+            when(mainFrame().getCurrentFile()).thenReturn(new File("some-song.mssw"));
+            stubSong(false);
+            var action = RevertToSavedAction.createAction(mainFrame());
+            assertThat(action.updateEnabledState()).isFalse();
+        }
+
+        @Test
+        void testUpdateEnabledStateTrueWhenCurrentFileIsNotNullAndModified() {
+            when(mainFrame().getCurrentFile()).thenReturn(new File("some-song.mssw"));
+            stubSong(true);
+            var action = RevertToSavedAction.createAction(mainFrame());
+            assertThat(action.updateEnabledState()).isTrue();
+        }
+
+        @Test
+        void testUpdateEnabledStateFalseWhenScoreViewIsNull() {
+            when(mainFrame().getScoreView()).thenReturn(null);
+            when(mainFrame().getCurrentFile()).thenReturn(new File("some-song.mssw"));
+            var action = RevertToSavedAction.createAction(mainFrame());
+            assertThat(action.updateEnabledState()).isFalse();
+        }
+
+        @Test
+        void testDocumentWasSavedDisablesActionAfterSave() {
+            when(mainFrame().getCurrentFile()).thenReturn(new File("some-song.mssw"));
+            var song = stubSong(true);
+            var action = RevertToSavedAction.createAction(mainFrame());
+            assertThat(action.updateEnabledState()).isTrue();
+
+            // Saving clears the modified flag; the handler must re-disable the action.
+            when(song.isModified()).thenReturn(false);
+            action.documentWasSaved(new DocumentWasSavedNotification());
+
+            assertThat(action.isEnabled()).isFalse();
+        }
+
+        @Test
+        void testActionPerformedPostsRevertToSavedCommand() {
+            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
+                var action = RevertToSavedAction.createAction(mainFrame());
+                action.actionPerformed(
+                    new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "revert-to-saved"));
+
+                messageCenterMock.verify(
+                    () -> MessageCenter.post(any(RevertToSavedCommand.class)));
             }
         }
     }

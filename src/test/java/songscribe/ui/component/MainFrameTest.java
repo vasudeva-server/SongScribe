@@ -66,6 +66,7 @@ import songscribe.io.musicxml.MusicXmlWriter;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
+import songscribe.message.command.RevertToSavedCommand;
 import songscribe.message.command.ShowOpenDialogCommand;
 import songscribe.message.command.ToggleLoopPlaybackCommand;
 import songscribe.message.command.TogglePlayWithRepeatsCommand;
@@ -732,6 +733,7 @@ class MainFrameTest extends UnitTest {
             try (var recentDocsMock = mockStatic(RecentDocumentsManager.class)) {
                 frame.handleOpenFile(openFile);
 
+                verify(mockScore).openFile(openFile, true);
                 var expectedPath = openFile.toPath().toAbsolutePath();
                 recentDocsMock.verify(() -> RecentDocumentsManager.add(expectedPath));
                 recentDocsMock.verify(
@@ -757,7 +759,154 @@ class MainFrameTest extends UnitTest {
             try (var recentDocsMock = mockStatic(RecentDocumentsManager.class)) {
                 frame.handleOpenFile(openFile);
 
+                verify(mockScore).openFile(openFile, true);
                 var expectedPath = openFile.toPath().toAbsolutePath();
+                recentDocsMock.verify(() -> RecentDocumentsManager.remove(expectedPath));
+                recentDocsMock.verify(
+                    () -> RecentDocumentsManager.add(any()),
+                    never()
+                );
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleRevertToSaved(RevertToSavedCommand)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandleRevertToSaved {
+
+        /**
+         * When {@code scoreView} is null, {@code handleRevertToSaved} aborts without
+         * attempting to reload the file or touching the recent-documents list.
+         */
+        @Test
+        void testAbortWhenScoreViewIsNull() {
+            frame.scoreView = null;
+            frame.currentFile = new File("some-song.mssw");
+            doCallRealMethod().when(frame).handleRevertToSaved(any(RevertToSavedCommand.class));
+
+            try (var recentDocsMock = mockStatic(RecentDocumentsManager.class)) {
+                frame.handleRevertToSaved(new RevertToSavedCommand());
+
+                recentDocsMock.verify(
+                    () -> RecentDocumentsManager.add(any()),
+                    never()
+                );
+                recentDocsMock.verify(
+                    () -> RecentDocumentsManager.remove(any()),
+                    never()
+                );
+            }
+        }
+
+        /**
+         * When {@code currentFile} is null (document never saved), {@code handleRevertToSaved}
+         * aborts without attempting to reload or touching the recent-documents list.
+         */
+        @Test
+        void testAbortWhenCurrentFileIsNull() {
+            var mockScore = mock(ScoreView.class);
+            frame.scoreView = mockScore;
+            frame.currentFile = null;
+            doCallRealMethod().when(frame).handleRevertToSaved(any(RevertToSavedCommand.class));
+
+            try (var recentDocsMock = mockStatic(RecentDocumentsManager.class)) {
+                frame.handleRevertToSaved(new RevertToSavedCommand());
+
+                verify(mockScore, never()).openFile(any(), anyBoolean());
+                recentDocsMock.verify(
+                    () -> RecentDocumentsManager.add(any()),
+                    never()
+                );
+                recentDocsMock.verify(
+                    () -> RecentDocumentsManager.remove(any()),
+                    never()
+                );
+            }
+        }
+
+        /**
+         * When the user declines the discard-confirmation dialog, {@code handleRevertToSaved}
+         * aborts without reloading the file, preserving the unsaved changes.
+         */
+        @Test
+        void testAbortWhenConfirmationDeclined() {
+            var mockScore = mock(ScoreView.class);
+            frame.scoreView = mockScore;
+            frame.currentFile = new File("some-song.mssw");
+            doCallRealMethod().when(frame).handleRevertToSaved(any(RevertToSavedCommand.class));
+
+            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                optionDialogsMock.when(() -> OptionDialogs.showConfirmDialog(
+                    any(), anyString(), anyString(), anyInt(), anyInt()))
+                    .thenReturn(JOptionPane.NO_OPTION);
+
+                frame.handleRevertToSaved(new RevertToSavedCommand());
+
+                verify(mockScore, never()).openFile(any(), anyBoolean());
+            }
+        }
+
+        /**
+         * On a confirmed, successful reload, the current file is reloaded with
+         * {@code updateCurrentFile=true} and its absolute path is added to
+         * {@link RecentDocumentsManager}.
+         */
+        @Test
+        void testSuccessAddsToRecentDocumentsManager() {
+            var currentFile = new File("some-song.mssw");
+            var mockScore = mock(ScoreView.class);
+            frame.scoreView = mockScore;
+            frame.currentFile = currentFile;
+
+            when(mockScore.openFile(any(), anyBoolean())).thenReturn(true);
+            doCallRealMethod().when(frame).handleRevertToSaved(any(RevertToSavedCommand.class));
+
+            try (var recentDocsMock = mockStatic(RecentDocumentsManager.class);
+                 var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                optionDialogsMock.when(() -> OptionDialogs.showConfirmDialog(
+                    any(), anyString(), anyString(), anyInt(), anyInt()))
+                    .thenReturn(JOptionPane.YES_OPTION);
+
+                frame.handleRevertToSaved(new RevertToSavedCommand());
+
+                verify(mockScore).openFile(currentFile, true);
+                var expectedPath = currentFile.toPath().toAbsolutePath();
+                recentDocsMock.verify(() -> RecentDocumentsManager.add(expectedPath));
+                recentDocsMock.verify(
+                    () -> RecentDocumentsManager.remove(any()),
+                    never()
+                );
+            }
+        }
+
+        /**
+         * On a confirmed, failed reload, the current file's absolute path is removed from
+         * {@link RecentDocumentsManager}.
+         */
+        @Test
+        void testFailureRemovesFromRecentDocumentsManager() {
+            var currentFile = new File("some-song.mssw");
+            var mockScore = mock(ScoreView.class);
+            frame.scoreView = mockScore;
+            frame.currentFile = currentFile;
+
+            when(mockScore.openFile(any(), anyBoolean())).thenReturn(false);
+            doCallRealMethod().when(frame).handleRevertToSaved(any(RevertToSavedCommand.class));
+
+            try (var recentDocsMock = mockStatic(RecentDocumentsManager.class);
+                 var optionDialogsMock = mockStatic(OptionDialogs.class)) {
+                optionDialogsMock.when(() -> OptionDialogs.showConfirmDialog(
+                    any(), anyString(), anyString(), anyInt(), anyInt()))
+                    .thenReturn(JOptionPane.YES_OPTION);
+
+                frame.handleRevertToSaved(new RevertToSavedCommand());
+
+                verify(mockScore).openFile(currentFile, true);
+                var expectedPath = currentFile.toPath().toAbsolutePath();
                 recentDocsMock.verify(() -> RecentDocumentsManager.remove(expectedPath));
                 recentDocsMock.verify(
                     () -> RecentDocumentsManager.add(any()),

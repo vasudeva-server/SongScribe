@@ -49,6 +49,7 @@ import songscribe.message.MessageLogger;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
 import songscribe.message.command.PrintCommand;
+import songscribe.message.command.RevertToSavedCommand;
 import songscribe.message.command.SaveAsCommand;
 import songscribe.message.command.SaveCommand;
 import songscribe.message.command.ShowOpenDialogCommand;
@@ -881,6 +882,36 @@ public class MainFrame extends JFrame implements Printable {
 
     public void handleOpenFile(File file) {
         if (!showSaveDialog() || scoreView == null) {
+            return;
+        }
+
+        openFileAndUpdateRecents(file);
+    }
+
+    @Handler
+    public void handleRevertToSaved(RevertToSavedCommand message) {
+        if (scoreView == null || currentFile == null) {
+            return;
+        }
+
+        var answer = OptionDialogs.showConfirmDialog(
+            this,
+            Strings.CONFIRM_TITLE_REVERT_TO_SAVED,
+            Strings.CONFIRM_REVERT_TO_SAVED,
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE
+        );
+
+        if (answer != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        openFileAndUpdateRecents(currentFile);
+    }
+
+    // Loads the file into the score and records the result in the recent-documents list.
+    private void openFileAndUpdateRecents(File file) {
+        if (scoreView == null) {
             return;
         }
 
