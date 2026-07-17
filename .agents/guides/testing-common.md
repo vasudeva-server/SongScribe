@@ -138,6 +138,14 @@ When judging whether a test already covers a behavior adequately:
 - **Mockito** for mocking (`mock()`, `mockStatic()`, `when()`, `verify()`)
 - **AssertJ Swing** for E2E GUI testing (Robot, FrameFixture)
 
+## MBassador Subscribers
+
+MBassador holds subscribers via weak references. Any test that creates a
+non-persistent subscriber (e.g. a local object registered with the bus) MUST
+unsubscribe it at the end of the test — in an `@AfterEach`/finally block, not
+just at the end of a happy path — to prevent zombie subscribers from lingering
+and affecting later tests.
+
 ## Test Independence
 
 Classes and methods run in a fixed name order, but that order is an artifact of
