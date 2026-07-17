@@ -226,6 +226,12 @@ fun Test.applyCommonTestConfig() {
 tasks.named<Test>("test") {
     applyCommonTestConfig()
     exclude("**/e2e/**")
+    // The whole unit suite runs in one long-lived JVM, so memory retained across the ~400
+    // classes (Swing objects, mocks, bus subscribers) accumulates and, near the end,
+    // exhausts the default heap. Give the JVM enough headroom for the full suite. A single
+    // JVM (rather than forkEvery) is deliberate: the suite has cross-class initialization
+    // order dependencies that fresh forks would break.
+    maxHeapSize = "1g"
     // Unit tests run headlessly — suppress Dock icon and foreground activation.
     if (System.getProperty("os.name", "").startsWith("Mac")) {
         jvmArgs("-Dapple.awt.UIElement=true")
