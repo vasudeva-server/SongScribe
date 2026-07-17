@@ -44,6 +44,7 @@ public final class FirstSecondEndingAction extends UIAction {
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_GRACE_MODE
         );
+        setUndoOpNameKey(Strings.ACTION_EDIT_OP_MAKE_ENDING);
     }
 
     public void validate(ScoreViewController ctrl) {
@@ -60,7 +61,7 @@ public final class FirstSecondEndingAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new FirstSecondEndingCommand());
     }
 }

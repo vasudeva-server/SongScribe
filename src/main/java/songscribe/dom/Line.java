@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
@@ -143,6 +144,14 @@ public class Line {
         song.withModification(body);
     }
 
+    /**
+     * Executes {@code body} inside a modification bracket on the parent song that
+     * declares {@code label} as its op-name (Tier B).
+     */
+    public void withModification(String label, Runnable body) {
+        song.withModification(label, body);
+    }
+
     public void setKeyAccidentalCount(int keys) {
         if (this.keys == keys) {
             return;
@@ -191,12 +200,15 @@ public class Line {
 
     /**
      * Returns {@code true} when the terminal mutation guards in this class should
-     * be bypassed: mutation tracking is suspended (test setup or file load), or
-     * the song is currently auto-maintaining the invariant.
+     * be bypassed: mutation tracking is suspended (test setup or file load), the
+     * song is currently auto-maintaining the invariant, or undo/redo is replaying
+     * a recorded batch (whose intermediate states legitimately violate the
+     * invariant, e.g. undoing terminal maintenance before the line op).
      */
     private boolean isTerminalGuardBypassed() {
         return song.isMutationTrackingSuspended()
-            || song.isInAutoMaintenance();
+            || song.isInAutoMaintenance()
+            || song.isReplaying();
     }
 
     public void addElement(int index, StaffElement element) {
@@ -210,40 +222,45 @@ public class Line {
 
         element.setLine(this);
         element.setParentLine(this);
-        var tuplet = findTupletAt(index);
 
-        if (tuplet != null && index > tuplet.getAnchorElementIndex()) {
-            removeTuplet(tuplet);
+        // During replay the recorded batch already carries the companion
+        // mutations below — re-deriving them would double-apply.
+        if (!song.isReplaying()) {
+            var tuplet = findTupletAt(index);
+
+            if (tuplet != null && index > tuplet.getAnchorElementIndex()) {
+                removeTuplet(tuplet);
+            }
+
+            var insertedType = element.getType();
+            // Companion removals precede the primary insertion so reverse-order undo
+            // restores the primary element before re-adding dependent spans.
+            var endingsToRemove = rangeElements.stream()
+                .filter(r -> r.isInvalidatedByInsertion(index, insertedType, this))
+                .toList();
+            endingsToRemove.forEach(this::removeInvalidatedRangeElement);
+
+            // When prepending to a non-empty first line, the previous first element
+            // carried the initial tempo — move it to the new first element. The
+            // removal is a tracked modification; the attachment on the incoming
+            // element needs no record because the element is not yet in the document,
+            // so the ElementInsertion below captures its attached state.
+            if (index == 0 && !elements.isEmpty() && song.indexOfLine(this) == 0) {
+                var displacedFirstElement = elements.getFirst();
+                var displacedTempo =
+                    displacedFirstElement.findAttachment(TempoChangeAttachment.class);
+
+                if (displacedTempo != null) {
+                    modifyElement(0, ElementField.TEMPO_CHANGE,
+                        () -> displacedFirstElement.removeAttachment(displacedTempo));
+                    element.addAttachment(displacedTempo.copy(element));
+                }
+            }
         }
-
-        var insertedType = element.getType();
-        var endingsToRemove = rangeElements.stream()
-            .filter(r -> r.isInvalidatedByInsertion(index, insertedType, this))
-            .toList();
-
-        // When prepending to a non-empty first line, the previous first element
-        // carried the initial tempo — move it to the new first element.
-        var displacedFirstElement = (index == 0
-            && !elements.isEmpty()
-            && song.indexOfLine(this) == 0)
-            ? elements.getFirst()
-            : null;
-        var displacedTempo = displacedFirstElement != null
-            ? displacedFirstElement.findAttachment(TempoChangeAttachment.class)
-            : null;
 
         applyChange(
             new ElementInsertion(this, index, element),
-            () -> {
-                elements.add(index, element);
-
-                if (displacedFirstElement != null && displacedTempo != null) {
-                    displacedFirstElement.removeAttachment(displacedTempo);
-                    element.addAttachment(displacedTempo.copy(element));
-                }
-
-                rangeElements.removeIf(endingsToRemove::contains);
-            }
+            () -> elements.add(index, element)
         );
     }
 
@@ -257,10 +274,19 @@ public class Line {
         }
 
         var oldElement = elements.get(index);
-        // Pre-compute before the mutator so findRepeatSplitElement sees the pre-replacement line.
-        var endingsToRemove = rangeElements.stream()
-            .filter(r -> r.isInvalidatedByReplacement(oldElement, element, this))
-            .toList();
+
+        // Skipped during replay: the recorded batch already carries the removals.
+        // The anchor re-pointing in the mutator below still runs — it is
+        // self-inverting and required for span references to stay valid.
+        if (!song.isReplaying()) {
+            // Pre-compute before the mutator so findRepeatSplitElement sees the pre-replacement line.
+            // Companion removals precede the primary replacement so reverse-order undo
+            // restores the primary element before re-adding dependent spans.
+            var endingsToRemove = rangeElements.stream()
+                .filter(r -> r.isInvalidatedByReplacement(oldElement, element, this))
+                .toList();
+            endingsToRemove.forEach(this::removeInvalidatedRangeElement);
+        }
 
         applyChange(
             new ElementReplacement(this, index, oldElement, element),
@@ -268,7 +294,6 @@ public class Line {
                 element.setLine(this);
                 element.setParentLine(this);
                 elements.set(index, element);
-                rangeElements.removeIf(endingsToRemove::contains);
 
                 // Update stale anchor/end references in surviving range elements so that
                 // getAnchorElementIndex()/getEndElementIndex() remain valid after the swap.
@@ -297,12 +322,24 @@ public class Line {
     }
 
     public void modifyElement(int index, EnumSet<ElementField> fields, Runnable mutator) {
-        if (!Collections.disjoint(fields, ElementField.DURATION_AFFECTING)) {
+        // The replayer never calls modifyElement, but the gate keeps the
+        // suppression contract symmetric with the other helpers.
+        if (!song.isReplaying()
+                && !Collections.disjoint(fields, ElementField.DURATION_AFFECTING)) {
             removeOverlappingTuplets(index, index);
         }
 
-        var beforeClone = elements.get(index).clone();
-        applyChange(new ElementModification(this, index, fields, beforeClone), mutator);
+        // Run the mutator up front so the record can carry both the before and
+        // after clones; applyChange then only appends the record. Equivalent
+        // under withoutMutationTracking: the mutator has run, nothing is recorded.
+        var element = elements.get(index);
+        var beforeClone = element.clone();
+        mutator.run();
+        var afterClone = element.clone();
+        applyChange(
+            new ElementModification(this, index, fields, beforeClone, afterClone),
+            () -> {}
+        );
     }
 
     /**
@@ -863,20 +900,26 @@ public class Line {
                 "The auto-maintained terminal may not be removed");
         }
 
-        removeOverlappingTuplets(index, index);
         var deleted = elements.get(index);
-        var deletedList = List.of(deleted);
-        var endingsToRemove = rangeElements.stream()
-            .filter(r -> r.isInvalidatedByDeletion(deletedList, this))
-            .toList();
+
+        // During replay the recorded batch already carries the companion
+        // removals — re-deriving them would double-apply.
+        if (!song.isReplaying()) {
+            removeOverlappingTuplets(index, index);
+            var deletedList = List.of(deleted);
+
+            // Companion removals precede the primary deletion so reverse-order undo
+            // re-inserts the element before re-adding the spans anchored to it.
+            var invalidated = rangeElements.stream()
+                .filter(r -> r.isInvalidatedBy(deletedList)
+                    || r.isInvalidatedByDeletion(deletedList, this))
+                .toList();
+            invalidated.forEach(this::removeInvalidatedRangeElement);
+        }
 
         applyChange(
             new ElementDeletion(this, index, deleted),
-            () -> {
-                elements.remove(index);
-                rangeElements.removeIf(r ->
-                    r.isInvalidatedBy(deletedList) || endingsToRemove.contains(r));
-            }
+            () -> elements.remove(index)
         );
     }
 
@@ -895,19 +938,25 @@ public class Line {
                 "The auto-maintained terminal may not be removed");
         }
 
-        removeOverlappingTuplets(from, to);
         var deletedElements = List.copyOf(elements.subList(from, to + 1));
-        var endingsToRemove = rangeElements.stream()
-            .filter(r -> r.isInvalidatedByDeletion(deletedElements, this))
-            .toList();
+
+        // During replay the recorded batch already carries the companion
+        // removals — re-deriving them would double-apply.
+        if (!song.isReplaying()) {
+            removeOverlappingTuplets(from, to);
+
+            // Companion removals precede the primary deletion so reverse-order undo
+            // re-inserts the elements before re-adding the spans anchored to them.
+            var invalidated = rangeElements.stream()
+                .filter(r -> r.isInvalidatedBy(deletedElements)
+                    || r.isInvalidatedByDeletion(deletedElements, this))
+                .toList();
+            invalidated.forEach(this::removeInvalidatedRangeElement);
+        }
 
         applyChange(
             new ElementRangeDeletion(this, from, to, deletedElements),
-            () -> {
-                elements.subList(from, to + 1).clear();
-                rangeElements.removeIf(r ->
-                    r.isInvalidatedBy(deletedElements) || endingsToRemove.contains(r));
-            }
+            () -> elements.subList(from, to + 1).clear()
         );
     }
 
@@ -1021,6 +1070,20 @@ public class Line {
         applyChange(
             new LineLayoutChange(this, LineLayoutField.ELEMENT_SPACING_RATIO, old, newRatio),
             () -> elementSpacingRatio = newRatio
+        );
+    }
+
+    /**
+     * Sets the spacing ratio to an absolute value, emitting the same
+     * {@link LineLayoutChange} as {@link #changeElementSpacingRatio(float)}.
+     * Exists for undo replay: the multiplying setter would accumulate float
+     * error across undo/redo cycles.
+     */
+    public void setElementSpacingRatioAbsolute(float ratio) {
+        var old = elementSpacingRatio;
+        applyChange(
+            new LineLayoutChange(this, LineLayoutField.ELEMENT_SPACING_RATIO, old, ratio),
+            () -> elementSpacingRatio = ratio
         );
     }
 
@@ -1227,15 +1290,38 @@ public class Line {
      */
     public void addBeaming(Beam beam) {
         beam.setParentLine(this);
-        var anchorIdx = elements.indexOf(beam.getAnchorElement());
-        var endIdx = elements.indexOf(beam.getEndElement());
 
-        // Expand bounds to absorb adjacent/overlapping beams.
+        // During replay the recorded BeamingAddition already carries the merged
+        // span and the batch carries the subsumed-beam removals — just add.
+        if (!song.isReplaying()) {
+            mergeOverlappingSpans(beam, Beam.class, this::removeBeaming);
+        }
+
+        applyChange(new BeamingAddition(this, beam), () -> rangeElements.add(beam));
+    }
+
+    /**
+     * Absorbs same-type spans overlapping {@code span}'s endpoints: widens the span to
+     * cover them, then removes every {@code type} span fully subsumed by the widened
+     * range via {@code remover}. The tracked removals are emitted before the widened
+     * span's addition so undo restores the original spans after removing the merged
+     * one.
+     */
+    private <R extends RangeElement> void mergeOverlappingSpans(
+        R span,
+        Class<R> type,
+        Consumer<? super R> remover
+    ) {
+        var anchorIdx = elements.indexOf(span.getAnchorElement());
+        var endIdx = elements.indexOf(span.getEndElement());
+
+        // Expand bounds to absorb adjacent/overlapping spans.
         var mergedAnchorIdx = anchorIdx;
         var mergedEndIdx = endIdx;
 
         for (var re : rangeElements) {
-            if (re instanceof Beam existing) {
+            if (type.isInstance(re)) {
+                var existing = type.cast(re);
                 var existingAnchor = existing.getAnchorElementIndex();
                 var existingEnd = existing.getEndElementIndex();
 
@@ -1250,21 +1336,22 @@ public class Line {
         }
 
         if (mergedAnchorIdx != anchorIdx) {
-            beam.setAnchorElement(elements.get(mergedAnchorIdx));
+            span.setAnchorElement(elements.get(mergedAnchorIdx));
         }
 
         if (mergedEndIdx != endIdx) {
-            beam.setEndElement(elements.get(mergedEndIdx));
+            span.setEndElement(elements.get(mergedEndIdx));
         }
 
-        // Remove all beams fully subsumed by the merged range.
         final int finalMergedAnchor = mergedAnchorIdx;
         final int finalMergedEnd = mergedEndIdx;
-        rangeElements.removeIf(re -> re instanceof Beam b
-            && b.getAnchorElementIndex() >= finalMergedAnchor
-            && b.getEndElementIndex() <= finalMergedEnd);
-
-        applyChange(new BeamingAddition(this, beam), () -> rangeElements.add(beam));
+        var subsumedSpans = rangeElements.stream()
+            .filter(re -> type.isInstance(re)
+                && type.cast(re).getAnchorElementIndex() >= finalMergedAnchor
+                && type.cast(re).getEndElementIndex() <= finalMergedEnd)
+            .map(type::cast)
+            .toList();
+        subsumedSpans.forEach(remover);
     }
 
     /**
@@ -1294,12 +1381,17 @@ public class Line {
      */
     public void addTuplet(Tuplet tuplet) {
         tuplet.setParentLine(this);
-        var anchorIndex = elements.indexOf(tuplet.getAnchorElement());
-        var endIndex = elements.indexOf(tuplet.getEndElement());
 
-        // Remove any existing tuplets that overlap the new range.
-        rangeElements.removeIf(rangeElement ->
-            rangeElement instanceof Tuplet existingTuplet && existingTuplet.overlaps(anchorIndex, endIndex));
+        // During replay the recorded batch already carries the overlapping-tuplet
+        // removals — just add.
+        if (!song.isReplaying()) {
+            var anchorIndex = elements.indexOf(tuplet.getAnchorElement());
+            var endIndex = elements.indexOf(tuplet.getEndElement());
+
+            // Remove any existing tuplets that overlap the new range — tracked
+            // removals emitted before the addition so undo restores the originals.
+            removeOverlappingTuplets(anchorIndex, endIndex);
+        }
 
         applyChange(new TupletAddition(this, tuplet), () -> rangeElements.add(tuplet));
     }
@@ -1360,48 +1452,18 @@ public class Line {
      * Shared add logic for crescendo and diminuendo hairpins.
      * Merges overlapping/adjacent hairpins of the same type into one.
      */
-    @SuppressWarnings("unchecked")
     private <H extends Hairpin> void addHairpin(
         H hairpin,
         BiFunction<Line, H, ? extends Mutation> mutationFactory,
         Class<H> type
     ) {
         hairpin.setParentLine(this);
-        var anchorIdx = elements.indexOf(hairpin.getAnchorElement());
-        var endIdx = elements.indexOf(hairpin.getEndElement());
 
-        var mergedAnchorIdx = anchorIdx;
-        var mergedEndIdx = endIdx;
-
-        for (var re : rangeElements) {
-            if (type.isInstance(re)) {
-                var existing = (H) re;
-                var existingAnchor = existing.getAnchorElementIndex();
-                var existingEnd = existing.getEndElementIndex();
-
-                if (existingAnchor <= anchorIdx && anchorIdx <= existingEnd) {
-                    mergedAnchorIdx = Math.min(mergedAnchorIdx, existingAnchor);
-                }
-
-                if (existingAnchor <= endIdx && endIdx <= existingEnd) {
-                    mergedEndIdx = Math.max(mergedEndIdx, existingEnd);
-                }
-            }
+        // During replay the recorded addition already carries the merged span
+        // and the batch carries the absorbed-hairpin removals — just add.
+        if (!song.isReplaying()) {
+            mergeOverlappingSpans(hairpin, type, this::removeInvalidatedRangeElement);
         }
-
-        if (mergedAnchorIdx != anchorIdx) {
-            hairpin.setAnchorElement(elements.get(mergedAnchorIdx));
-        }
-
-        if (mergedEndIdx != endIdx) {
-            hairpin.setEndElement(elements.get(mergedEndIdx));
-        }
-
-        final int finalMergedAnchor = mergedAnchorIdx;
-        final int finalMergedEnd = mergedEndIdx;
-        rangeElements.removeIf(re -> type.isInstance(re)
-            && ((H) re).getAnchorElementIndex() >= finalMergedAnchor
-            && ((H) re).getEndElementIndex() <= finalMergedEnd);
 
         applyChange(mutationFactory.apply(this, hairpin), () -> rangeElements.add(hairpin));
     }
@@ -1583,6 +1645,24 @@ public class Line {
         );
 
         return true;
+    }
+
+    /**
+     * Removes a range element displaced by another change (invalidated by an
+     * element edit, or subsumed by a span merge) via its typed tracked removal,
+     * so the removal emits its proper mutation. A raw
+     * {@code rangeElements.removeIf} would drop the span with no record, making
+     * undo of the enclosing operation lossy.
+     */
+    private void removeInvalidatedRangeElement(RangeElement rangeElement) {
+        switch (rangeElement) {
+            case Beam beam -> removeBeaming(beam);
+            case Tie tie -> removeTie(tie);
+            case Tuplet tuplet -> removeTuplet(tuplet);
+            case Crescendo crescendo -> removeCrescendo(crescendo);
+            case Diminuendo diminuendo -> removeDiminuendo(diminuendo);
+            default -> removeRangeElement(rangeElement);
+        }
     }
 
     /**

@@ -95,7 +95,7 @@ public final class ZoomAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         zoomOperation.run();
     }
 

@@ -30,6 +30,7 @@ import songscribe.Strings;
 import songscribe.dom.Line;
 import songscribe.dom.Trill;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.LineSelectionState;
@@ -62,6 +63,7 @@ public final class TrillAction extends SelectableUIAction {
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_GRACE_MODE
         );
+        setUndoOpNameKey(Strings.ACTION_EDIT_OP_TOGGLE_TRILL);
     }
 
     @Override
@@ -87,7 +89,24 @@ public final class TrillAction extends SelectableUIAction {
         // Let the base recompute enabled from the flags (REQUIRES_SELECTION,
         // grace mode, etc.).
         super.musicSelectionDidChange(message);
+        refreshSelectedState();
+    }
 
+    @Override
+    @Handler
+    public void songDidChange(SongDidChangeNotification message) {
+        // A trill added/removed by undo/redo leaves the selection range intact,
+        // so no MusicSelectionDidChangeNotification fires; recompute the checked
+        // state here as well, or the menu item stays stale after undo.
+        super.songDidChange(message);
+        refreshSelectedState();
+    }
+
+    /**
+     * Sets the checked state to reflect whether the current selection overlaps
+     * any existing trill.
+     */
+    private void refreshSelectedState() {
         var scoreView = getScoreView();
         var state = (scoreView != null) ? activeSelectionOf(scoreView) : null;
 
@@ -108,7 +127,7 @@ public final class TrillAction extends SelectableUIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         toggleOnKeyboardShortcut(e);
 
         var state = activeSelectionOf(requireScoreView());

@@ -49,7 +49,7 @@ public final class RewindAction extends SequencerAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         PlaybackController.rewindToBeginning();
     }
 }

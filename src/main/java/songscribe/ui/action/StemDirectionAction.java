@@ -52,7 +52,8 @@ public final class StemDirectionAction extends UIAction {
             FLIP_ICON_SIZE,
             "flip-stem-direction",
             Strings.get(Strings.ACTION_STEM_FLIP_TOOLTIP),
-            FlipStemDirectionCommand::new
+            FlipStemDirectionCommand::new,
+            Strings.ACTION_EDIT_OP_FLIP_STEM
         );
     }
 
@@ -64,7 +65,8 @@ public final class StemDirectionAction extends UIAction {
             NO_ICON_SIZE,
             "auto-stem-direction",
             Strings.get(Strings.ACTION_STEM_AUTO_TOOLTIP),
-            AutoStemDirectionCommand::new
+            AutoStemDirectionCommand::new,
+            Strings.ACTION_EDIT_OP_AUTO_STEM
         );
     }
 
@@ -75,7 +77,8 @@ public final class StemDirectionAction extends UIAction {
         int size,
         String actionCommand,
         String tooltip,
-        Supplier<? extends Message> commandFactory
+        Supplier<? extends Message> commandFactory,
+        String undoOpNameKey
     ) {
         super(
             mainFrame,
@@ -92,6 +95,7 @@ public final class StemDirectionAction extends UIAction {
             Flag.DISABLE_IN_GRACE_MODE
         );
         this.commandFactory = commandFactory;
+        setUndoOpNameKey(undoOpNameKey);
     }
 
     @Override
@@ -107,8 +111,8 @@ public final class StemDirectionAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
-        super.actionPerformed(e);
+    protected void performAction(ActionEvent e) {
+        super.performAction(e);
         MessageCenter.post(commandFactory.get());
     }
 }

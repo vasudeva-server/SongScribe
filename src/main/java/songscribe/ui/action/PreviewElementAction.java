@@ -85,7 +85,7 @@ public class PreviewElementAction extends SelectableUIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         toggleOnKeyboardShortcut(e);
 
         if (applyToSelectionIfActive()) {

@@ -28,6 +28,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
+import songscribe.Strings;
 import songscribe.dom.KeyType;
 import songscribe.dom.Song;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
@@ -36,6 +37,7 @@ import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -120,7 +122,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
 
         dialog.setData();
 
-        verify(song, never()).postWithModification(any());
+        verify(song, never()).postWithModification(any(), any());
     }
 
     // ── Row 24: setData() — posts KeySignatureDidChangeNotification with correct fields ──
@@ -134,7 +136,8 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
         dialog.setData();
 
         var captor = ArgumentCaptor.forClass(KeySignatureDidChangeNotification.class);
-        verify(song).postWithModification(captor.capture());
+        verify(song).postWithModification(
+            eq(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY)), captor.capture());
 
         var notification = captor.getValue();
         assertThat(notification.getKeyType())

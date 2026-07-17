@@ -190,7 +190,7 @@ final class FontSettingRow {
         }
 
         @Override
-        public void actionPerformed(ActionEvent e) {
+        protected void performAction(ActionEvent e) {
             applyFont(FontDialog.showDialog(getMainFrame(), currentFont.get()), fontDescription, onFontChosen);
         }
     }
@@ -218,7 +218,7 @@ final class FontSettingRow {
         }
 
         @Override
-        public void actionPerformed(ActionEvent e) {
+        protected void performAction(ActionEvent e) {
             applyFont(defaultFont(fontKey), fontDescription, onFontChosen);
         }
     }

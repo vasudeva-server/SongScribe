@@ -30,7 +30,9 @@ import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.edit.GraceModeManager;
 import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.Line;
 import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Beam;
@@ -328,6 +330,32 @@ class LineRenderer {
     private void renderSlides(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var line = invariants.requireCurrentLine();
         SlideRenderer.getInstance().renderSlidesFromLine(g2, line, invariants, frame);
+        renderPendingConnectGlissando(g2, line, invariants);
+    }
+
+    /**
+     * Renders the grace-mode drag-right connect feedback as a preview glissando. The pending
+     * connection is render-only state — mutating the grace note's slide during the drag would
+     * leak an untracked change into undo's before-state clones.
+     */
+    private void renderPendingConnectGlissando(Graphics2D g2, Line line, LineInvariants invariants) {
+        // Common case: no grace-mode drag is active anywhere — skip the per-element scan.
+        if (!GraceModeManager.hasPendingConnect()) {
+            return;
+        }
+
+        for (var i = 0; i < line.effectiveElementCount(); i++) {
+            if (!lc.isPendingConnectElement(line.getElement(i))) {
+                continue;
+            }
+
+            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+                g2.setColor(ScoreView.getPreviewElementColor());
+                SlideRenderer.getInstance().renderPreviewGlissando(g2, i, line, invariants);
+            }
+
+            return;
+        }
     }
 
     /**

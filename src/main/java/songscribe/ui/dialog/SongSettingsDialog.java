@@ -144,9 +144,11 @@ public class SongSettingsDialog extends StandardDialog {
      */
     @Override
     protected void setData() {
-        super.setData();
-        commitMetadata();
-        commitFonts();
+        getSong().withModification(Strings.get(Strings.ACTION_EDIT_OP_SONG_SETTINGS), () -> {
+            super.setData();
+            commitMetadata();
+            commitFonts();
+        });
     }
 
     /**
@@ -775,7 +777,7 @@ public class SongSettingsDialog extends StandardDialog {
             }
 
             @Override
-            public void actionPerformed(ActionEvent e) {
+            protected void performAction(ActionEvent e) {
                 var maxWords = ((Number) takeFirstWordsSpinnerModel.getValue()).intValue();
                 titleField.setText(extractLyricsTitle(getSong().getLyricsText(), maxWords));
             }

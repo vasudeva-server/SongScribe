@@ -90,13 +90,15 @@ class MutationRecordsTest extends UnitTest {
         void testElementModificationExposesFields() {
             var line = detachedLine();
             var beforeClone = ElementType.CROTCHET.newInstance();
+            var afterClone = ElementType.CROTCHET.newInstance();
             var fields = EnumSet.of(ElementField.PITCH);
-            var mutation = new ElementModification(line, 1, fields, beforeClone);
+            var mutation = new ElementModification(line, 1, fields, beforeClone, afterClone);
 
             assertThat(mutation.line()).isSameAs(line);
             assertThat(mutation.index()).isEqualTo(1);
             assertThat(mutation.fields()).isEqualTo(fields);
             assertThat(mutation.beforeElement()).isSameAs(beforeClone);
+            assertThat(mutation.afterElement()).isSameAs(afterClone);
             assertThat(mutation.getLine()).isSameAs(line);
         }
 
@@ -195,7 +197,8 @@ class MutationRecordsTest extends UnitTest {
                 .isInstanceOf(LineScopedMutation.class);
             assertThat(new ElementRangeDeletion(line, 0, 0, List.of(ElementType.CROTCHET.newInstance())))
                 .isInstanceOf(LineScopedMutation.class);
-            assertThat(new ElementModification(line, 0, EnumSet.of(ElementField.PITCH), ElementType.CROTCHET.newInstance()))
+            assertThat(new ElementModification(line, 0, EnumSet.of(ElementField.PITCH),
+                    ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance()))
                 .isInstanceOf(LineScopedMutation.class);
         }
     }

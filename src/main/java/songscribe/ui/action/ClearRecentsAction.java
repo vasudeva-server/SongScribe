@@ -42,7 +42,7 @@ public final class ClearRecentsAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         RecentDocumentsManager.clear();
     }
 }

@@ -48,7 +48,7 @@ public final class DeselectAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new DeselectCommand());
     }
 }

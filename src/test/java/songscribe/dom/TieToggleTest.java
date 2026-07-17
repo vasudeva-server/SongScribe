@@ -27,6 +27,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.message.MessageCenter;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -54,6 +55,12 @@ class TieToggleTest extends UnitTest {
         song = loadFixture("connections");
         line = song.getLine(0);
         coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+
+        // These tests drive the coordinator directly; on the bus its songDidChange
+        // would NPE on the uninitialized Actions constants every time the real
+        // fixture song posts, aborting delivery to lower-priority subscribers.
+        MessageCenter.unsubscribe(coordinator);
+
         operations = new MusicEditOperations(song, coordinator);
     }
 

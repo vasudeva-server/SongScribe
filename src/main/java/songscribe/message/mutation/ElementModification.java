@@ -30,10 +30,13 @@ import songscribe.dom.StaffElement;
  * {@code fields} identifies which fields changed; it lets subscribers filter
  * without inspecting {@code beforeElement} field-by-field.
  * {@code beforeElement} is a clone of the element captured before the mutation runs
- * and is the source of truth for undo to revert. The post-mutation state is
- * accessible via {@code line.getElement(index)}.
+ * and is the source of truth for undo to revert; {@code afterElement} is a clone
+ * captured after it runs and is the source of truth for redo to re-apply.
+ * Replay restores either snapshot in place via
+ * {@code StaffElement.copyStateFrom}, preserving element identity.
  */
-public record ElementModification(Line line, int index, EnumSet<ElementField> fields, StaffElement beforeElement)
+public record ElementModification(Line line, int index, EnumSet<ElementField> fields,
+                                  StaffElement beforeElement, StaffElement afterElement)
     implements Mutation, LineScopedMutation {
 
     @Override

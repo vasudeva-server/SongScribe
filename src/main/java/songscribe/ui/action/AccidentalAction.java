@@ -45,7 +45,8 @@ public final class AccidentalAction extends NoteOnlyAction {
             mainFrame,
             StaffElement.Accidental.FLAT,
             Strings.get(Strings.ACTION_ACCIDENTAL_FLAT), "@\uF388", 18,
-            "flat", Strings.get(Strings.ACTION_ACCIDENTAL_FLAT_TOOLTIP), 0, 0
+            "flat", Strings.get(Strings.ACTION_ACCIDENTAL_FLAT_TOOLTIP), 0, 0,
+            Strings.ACTION_EDIT_OP_TOGGLE_FLAT
         );
     }
 
@@ -55,7 +56,8 @@ public final class AccidentalAction extends NoteOnlyAction {
             StaffElement.Accidental.DOUBLE_FLAT,
             Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_FLAT), "@\uF389", 18,
             "double-flat", Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_FLAT_TOOLTIP),
-            KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK
+            KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK,
+            Strings.ACTION_EDIT_OP_TOGGLE_DOUBLE_FLAT
         );
     }
 
@@ -64,7 +66,8 @@ public final class AccidentalAction extends NoteOnlyAction {
             mainFrame,
             StaffElement.Accidental.NATURAL_FLAT,
             Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT), "#\uE267", 32,
-            "natural-flat", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT_TOOLTIP), 0, 0
+            "natural-flat", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT_TOOLTIP), 0, 0,
+            Strings.ACTION_EDIT_OP_TOGGLE_NATURAL_FLAT
         );
     }
 
@@ -74,7 +77,8 @@ public final class AccidentalAction extends NoteOnlyAction {
             StaffElement.Accidental.NATURAL,
             Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL), "@\uF387", 18,
             "natural", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_TOOLTIP),
-            KeyEvent.VK_N, 0
+            KeyEvent.VK_N, 0,
+            Strings.ACTION_EDIT_OP_TOGGLE_NATURAL
         );
     }
 
@@ -83,7 +87,8 @@ public final class AccidentalAction extends NoteOnlyAction {
             mainFrame,
             StaffElement.Accidental.SHARP,
             Strings.get(Strings.ACTION_ACCIDENTAL_SHARP), "@\uF386", 18,
-            "sharp", Strings.get(Strings.ACTION_ACCIDENTAL_SHARP_TOOLTIP), 0, 0
+            "sharp", Strings.get(Strings.ACTION_ACCIDENTAL_SHARP_TOOLTIP), 0, 0,
+            Strings.ACTION_EDIT_OP_TOGGLE_SHARP
         );
     }
 
@@ -92,7 +97,8 @@ public final class AccidentalAction extends NoteOnlyAction {
             mainFrame,
             StaffElement.Accidental.DOUBLE_SHARP,
             Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP), "@\uF38A", 18,
-            "double-sharp", Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP_TOOLTIP), 0, 0
+            "double-sharp", Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP_TOOLTIP), 0, 0,
+            Strings.ACTION_EDIT_OP_TOGGLE_DOUBLE_SHARP
         );
     }
 
@@ -101,7 +107,8 @@ public final class AccidentalAction extends NoteOnlyAction {
             mainFrame,
             StaffElement.Accidental.NATURAL_SHARP,
             Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP), "#\uE268", 32,
-            "natural-sharp", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP_TOOLTIP), 0, 0
+            "natural-sharp", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP_TOOLTIP), 0, 0,
+            Strings.ACTION_EDIT_OP_TOGGLE_NATURAL_SHARP
         );
     }
 
@@ -114,7 +121,8 @@ public final class AccidentalAction extends NoteOnlyAction {
         String actionCommand,
         String tooltip,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        String undoOpNameKey
     ) {
         super(
             mainFrame,
@@ -128,6 +136,7 @@ public final class AccidentalAction extends NoteOnlyAction {
             NoteOnlyAction.FLAGS
         );
         this.accidental = accidental;
+        setUndoOpNameKey(undoOpNameKey);
     }
 
     public StaffElement.Accidental getAccidental() {
@@ -150,7 +159,7 @@ public final class AccidentalAction extends NoteOnlyAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         toggleOnKeyboardShortcut(e);
 
         if (!applyToSelectionIfActive()) {

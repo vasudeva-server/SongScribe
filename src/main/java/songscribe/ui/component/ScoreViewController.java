@@ -64,6 +64,7 @@ import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.prefs.PrefsKey;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.ui.EndingConfirms;
@@ -80,6 +81,7 @@ import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.dom.EndingValidationResult;
 import songscribe.ui.selection.TupletToggleInfo;
+import songscribe.undo.OpNames;
 
 /**
  * Coordinates message handling for the ScoreView component.
@@ -318,6 +320,15 @@ public final class ScoreViewController {
             return;
         }
 
+        // Three mutually exclusive cases, checked in order:
+        //   full relayout?  ──yes──▶ invalidate every LinePanel's layout
+        //          │no
+        //          ▼
+        //   line insert/delete? ──yes──▶ rebuild the LinePanel list (add/remove panels)
+        //          │no
+        //          ▼
+        //   line-scoped change?  ──yes──▶ invalidate just the affected LinePanel
+        //
         // Font, metadata, and layout changes (e.g. a Song Settings commit) all
         // require re-laying out every line, not just repainting: invalidating each
         // line clears its cached LayoutResult so positions are recomputed.
@@ -325,6 +336,16 @@ public final class ScoreViewController {
             for (var linePanel : mainPanel.getStaffPanel().getLinePanels()) {
                 linePanel.getLineComponent().invalidateLayout();
             }
+        } else if (message.hasMutationOf(LineInsertion.class) || message.hasMutationOf(LineDeletion.class)) {
+            // StaffPanel.rebuildLayout() is the only add/remove primitive for LinePanels;
+            // per-panel invalidation cannot add a panel for an inserted line or remove one
+            // for a deleted line. Coarse (recreates every LinePanel) but correct for both
+            // forward edits and undo/redo replay, which funnel through this same handler.
+            mainPanel.getStaffPanel().rebuildLayout();
+            // rebuildLayout() creates fresh LineComponents with only song and line set;
+            // re-wire the scoreView into each (as document load does) so their next
+            // performLayout() has a live scoreView and does not produce a null layout.
+            score.setupLineComponentState();
         } else if (hasLineLayoutMutation(message)) {
             var staffPanel = mainPanel.getStaffPanel();
             var targetLine = message.getLine();
@@ -482,7 +503,7 @@ public final class ScoreViewController {
             var verse = lyricSelection.verse();
 
             if (index >= 0) {
-                song.withModification(() -> {
+                song.withModification(Strings.get(Strings.ACTION_EDIT_OP_DELETE_LYRIC), () -> {
                     line.modifyElement(index, ElementField.LYRIC, () ->
                         line.getElement(index).setLyricForVerse(verse, null, false, "", Lyric.Extend.NONE));
                     line.adjustNeighborsForLyricDeletion(index, verse);
@@ -509,6 +530,13 @@ public final class ScoreViewController {
                 }
             }
 
+            // Name the undo step from the categories of the user-selected elements
+            // (computed before removal, while they are still present on the line).
+            var selectedTypes = line.getElements(begin, end).stream()
+                .map(StaffElement::getType)
+                .toList();
+            var deleteLabel = OpNames.deleteLabel(selectedTypes);
+
             // Clear the selection before removing elements so that action handlers
             // reacting to SongDidChangeNotification (posted synchronously when the
             // modification bracket closes) don't query selection indices that no
@@ -519,7 +547,7 @@ public final class ScoreViewController {
             // deleteNote must remove it along with the first selected note — a non-contiguous
             // operation that cannot be expressed as a single range. Fall back to the per-element loop.
             if (line.isHostOfPairedGraceNote(begin)) {
-                song.withModification(() -> deleteSelection(begin, end, line));
+                song.withModification(deleteLabel, () -> deleteSelection(begin, end, line));
             } else {
                 // A breath mark immediately after the selection is positionally attached
                 // to the last selected element, so include it in the range to delete.
@@ -551,7 +579,7 @@ public final class ScoreViewController {
                     }
                 }
 
-                song.withModification(() -> {
+                song.withModification(deleteLabel, () -> {
                     // Mirror deleteNote: adjust syllable relations and melisma extends
                     // on neighbors before removing. Both helpers require the target
                     // elements to still be present in the list.
@@ -570,11 +598,18 @@ public final class ScoreViewController {
         } else if (state != null && state.hasSlideSelection()) {
             var line = state.getLine();
             var elementIndex = state.getSelectedSlideElementIndex();
+            var slideElement = line.getElement(elementIndex);
+            var slide = slideElement.getSlide();
 
-            line.withModification(() -> line.modifyElement(
-                elementIndex, ElementField.SLIDE, line.getElement(elementIndex)::removeSlide));
+            // hasSlideSelection() guarantees the element carries a slide; guard anyway
+            // so the @Nullable getSlide() result is not passed on unchecked.
+            if (slide != null) {
+                line.withModification(OpNames.deleteSlideLabel(slide), () -> line.modifyElement(
+                    elementIndex, ElementField.SLIDE, slideElement::removeSlide));
+            }
         } else if (score.canDeleteLine()) {
-            song.removeLine(selectionCoordinator.getSelectedLine());
+            song.withModification(OpNames.deleteLineLabel(),
+                () -> song.removeLine(selectionCoordinator.getSelectedLine()));
         }
 
         // Discard saved action states — the song has changed, so restoring

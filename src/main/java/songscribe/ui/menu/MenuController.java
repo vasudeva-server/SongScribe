@@ -267,6 +267,10 @@ public class MenuController {
     static JMenu initEditMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_EDIT));
 
+        menu.add(Actions.UNDO_ACTION);
+        menu.add(Actions.REDO_ACTION);
+        menu.addSeparator();
+
         menu.add(Actions.CUT_ACTION);
         menu.add(Actions.COPY_ACTION);
         menu.add(Actions.PASTE_ACTION);

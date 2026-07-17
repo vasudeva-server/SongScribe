@@ -43,7 +43,8 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
             DotLevel.SINGLE,
             Strings.get(Strings.ACTION_DOT_SINGLE), "@\uF372", 18,
             "add-dot", Strings.get(Strings.ACTION_DOT_SINGLE_TOOLTIP),
-            KeyEvent.VK_PERIOD, 0
+            KeyEvent.VK_PERIOD, 0,
+            Strings.ACTION_EDIT_OP_TOGGLE_DOT
         );
     }
 
@@ -53,7 +54,8 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
             DotLevel.DOUBLE,
             Strings.get(Strings.ACTION_DOT_DOUBLE), "@\uF395", 18,
             "add-double-dot", Strings.get(Strings.ACTION_DOT_DOUBLE_TOOLTIP),
-            0, 0
+            0, 0,
+            Strings.ACTION_EDIT_OP_TOGGLE_DOUBLE_DOT
         );
     }
 
@@ -66,7 +68,8 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
         String actionCommand,
         String tooltip,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        String undoOpNameKey
     ) {
         super(
             mainFrame,
@@ -84,6 +87,7 @@ public final class DotAction extends PreviewElementAction implements UIAction.El
             Flag.DISABLE_WHEN_EDITING_TEXT
         );
         this.dotLevel = dotLevel;
+        setUndoOpNameKey(undoOpNameKey);
     }
 
     public DotLevel getDotLevel() {

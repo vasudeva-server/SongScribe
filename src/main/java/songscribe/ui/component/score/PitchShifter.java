@@ -271,10 +271,11 @@ public final class PitchShifter {
     static List<Integer> commitPitchShift(Line line, List<PitchShiftEntry> group) {
         var removedIndices = new ArrayList<Integer>();
 
-        line.withModification(() -> {
+        line.withModification(Strings.get(Strings.ACTION_EDIT_OP_MOVE_NOTE), () -> {
             for (var entry : group) {
                 line.applyChange(
-                        new ElementModification(line, entry.index(), EnumSet.of(ElementField.PITCH), entry.beforeClone()),
+                        new ElementModification(line, entry.index(), EnumSet.of(ElementField.PITCH),
+                                entry.beforeClone(), line.getElement(entry.index()).clone()),
                         () -> {}
                 );
             }

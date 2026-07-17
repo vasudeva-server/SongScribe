@@ -47,7 +47,7 @@ public final class PrintAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new PrintCommand());
     }
 }

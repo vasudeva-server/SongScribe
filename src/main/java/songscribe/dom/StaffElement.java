@@ -157,29 +157,48 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     protected StaffElement(StaffElement note) {
-        type = note.type;
-        xOffset = note.xOffset;
-        staffPosition = note.staffPosition;
-        dotCount = note.dotCount;
-        accidental = note.accidental;
-        isAccidentalInParentheses = note.isAccidentalInParentheses;
-        line = note.line;
-        direction = note.direction;
-        slide = note.slide;
-        stemDirectionAuto = note.stemDirectionAuto;
+        copyStateFrom(note);
+    }
+
+    /**
+     * Copies all cloneable state from {@code source} onto this element,
+     * replacing the existing state while preserving this element's identity.
+     * <p>
+     * This is the single authoritative field list for element state copying:
+     * the copy constructor (and therefore {@link #clone()}) delegates here, so
+     * the three paths cannot drift. Undo replay of an
+     * {@code ElementModification} restores in place through this method — a
+     * swap via {@code setElement} would leave stale references inside span
+     * records still sitting on the undo/redo stacks.
+     */
+    public final void copyStateFrom(StaffElement source) {
+        type = source.type;
+        xOffset = source.xOffset;
+        staffPosition = source.staffPosition;
+        dotCount = source.dotCount;
+        accidental = source.accidental;
+        isAccidentalInParentheses = source.isAccidentalInParentheses;
+        line = source.line;
+        direction = source.direction;
+        slide = source.slide;
+        stemDirectionAuto = source.stemDirectionAuto;
 
         // Copy LineElement hierarchy data
-        setParentLine(note.getParentLine());
+        setParentLine(source.getParentLine());
 
         // Deep-copy attachments
-        for (var attachment : note.attachments) {
+        clearAttachments();
+
+        for (var attachment : source.attachments) {
             addAttachment(attachment.copy(this));
         }
 
-        copyArticulationsFrom(note);
+        // clearArticulations + deep copy
+        copyArticulationsFrom(source);
 
-        // Deep-copy lyrics
-        lyrics.addAll(note.lyrics);
+        // Deep-copy lyrics (Lyric is an immutable record)
+        lyrics.clear();
+        lyrics.addAll(source.lyrics);
     }
 
     public ElementType getType() {

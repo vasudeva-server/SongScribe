@@ -115,6 +115,15 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     }
 
     @Override
+    protected String opLabel(AttachmentOp op) {
+        return switch (op) {
+            case ADD -> Strings.get(Strings.ACTION_EDIT_OP_ADD_ANNOTATION);
+            case CHANGE -> Strings.get(Strings.ACTION_EDIT_OP_CHANGE_ANNOTATION);
+            case REMOVE -> Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ANNOTATION);
+        };
+    }
+
+    @Override
     protected @Nullable Annotation getExistingChange(StaffElement element) {
         var attachment = element.findAttachment(AnnotationAttachment.class);
         return attachment != null ? attachment.getAnnotation() : null;

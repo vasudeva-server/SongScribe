@@ -40,7 +40,9 @@ Several mutations identify *which* field changed via a field enum. Three shapes 
 
 - **`EnumSet<ElementField>`** — `ElementModification` carries the *set* of changed
   fields, not old/new values; the before-state lives in `beforeElement`, the
-  after-state in `line.getElement(index)`. No `FieldTypeValidator`.
+  after-state in `afterElement` (both clones — undo/redo restore either one in
+  place via `StaffElement.copyStateFrom`, preserving element identity). No
+  `FieldTypeValidator`.
 
 - **Typed values, no validation** — `LyricsChange` carries `String oldText/newText`
   with `LyricsField`, and `FontChange` carries full `DocumentFonts oldFonts/newFonts`
@@ -53,6 +55,24 @@ Mutations may only be recorded inside an open **modification bracket**. Brackets
 **nest** — the notification fires once, when the outermost bracket closes, and only
 if at least one mutation was accumulated (an empty bracket posts nothing and does not
 set the modified flag).
+
+**Complete-emission invariant:** *every* state change made inside a modification
+bracket must be recorded as a `Mutation` in that bracket's batch. Undo replays the
+recorded batch mechanically, so an untracked side change (e.g. a raw
+`rangeElements.removeIf`) is invisible to undo and makes the round-trip lossy. When
+a helper must drop dependent state (invalidated endings, spans anchored to a deleted
+element, spans subsumed by a merge), it routes each removal through the typed tracked
+helper (`removeBeaming`/`removeTie`/… — `Line.removeInvalidatedRangeElement`
+dispatches) so the proper removal mutation lands in the batch.
+
+**Companion-ordering rule:** companion mutations that *remove* dependent state
+(span removals, the initial-tempo displacement modification in
+`Line.addElement(int, StaffElement)`) are emitted **before** the primary structural
+mutation. Reverse-order undo then restores the primary element first, so span
+re-additions find their anchor elements live. Line-terminal maintenance companions
+are emitted **after** the primary `LineInsertion`/`LineDeletion` — reverse-order
+undo handles them before the line op, which is correct because they target the
+*other* line.
 
 Bracket + record entry points exist on both `Song` and `Line` (`Line` delegates to
 its `Song` — use whichever the call site already holds):
@@ -67,16 +87,16 @@ its `Song` — use whichever the call site already holds):
   `Line` helper. `Line.applyChange` additionally runs the mutator *without* recording
   when `withoutMutationTracking` is active.
 
-Canonical direct-`applyChange` example — `NoteDragHandler.handleRelease` (uses the
+Canonical direct-`applyChange` example — `PitchShifter.commitPitchShift` (uses the
 `Line` variants; pitch already changed during the drag, so each `ElementModification`
-carries an empty mutator and a press-time clone):
+carries an empty mutator, a press-time before clone, and a current after clone):
 
 ```java
 line.withModification(() -> {
-    for (var entry : dragGroup) {
+    for (var entry : group) {
         line.applyChange(
-            new ElementModification(line, entry.index(),
-                                    EnumSet.of(ElementField.PITCH), entry.beforeClone()),
+            new ElementModification(line, entry.index(), EnumSet.of(ElementField.PITCH),
+                                    entry.beforeClone(), line.getElement(entry.index()).clone()),
             () -> {});
     }
     // follow-up cleanup (glissando/grace-note removal) emits into the same bracket
@@ -103,10 +123,23 @@ For any new mutation pattern that doesn't require a caller-supplied snapshot, ad
 helper to `Line`.
 
 **`ElementModification.beforeElement`** must be a clone captured *before* the mutator
-runs. `Line.modifyElement` does this automatically.
+runs, and **`afterElement`** a clone captured *after* it runs. `Line.modifyElement`
+does both automatically.
 
-**`Song.withoutMutationTracking(Runnable)`** — suspends tracking (no notification, no
-undo, no modified flag). **Tests only.**
+**`Song.withoutMutationTracking(Runnable)`** — full suspension: records nothing (no
+notification, no undo, no modified flag). Used by test setup and by production
+file-load infrastructure (`MusicXmlReader`, `SongIO`, `ScoreView.setSong`).
+
+**`Song.withReplay(Runnable)` / `isReplaying()`** — replay mode, used by the undo
+engine while it re-applies a recorded batch inside an open bracket. Unlike
+suspension, mutations ARE still recorded into the bracket; what replay changes is
+that the helpers apply raw state only — companion side-work (terminal maintenance,
+`applyLineDefaults`, span invalidation, tuplet auto-removal, span merging) is
+suppressed and the `Line` terminal guards are bypassed, because the recorded batch
+already contains every change and mid-replay intermediate states legitimately
+violate the guards. The anchor re-pointing in `Line.setElement` is NOT suppressed
+(self-inverting, required for span references to stay valid). Nestable
+(depth-counted).
 
 ### Subscribing
 

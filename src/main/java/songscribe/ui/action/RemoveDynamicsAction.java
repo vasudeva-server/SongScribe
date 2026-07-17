@@ -51,6 +51,7 @@ public final class RemoveDynamicsAction extends UIAction {
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_IN_GRACE_MODE
         );
+        setUndoOpNameKey(Strings.ACTION_EDIT_OP_REMOVE_DYNAMICS);
     }
 
     @Override
@@ -66,7 +67,7 @@ public final class RemoveDynamicsAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new RemoveDynamicsCommand());
     }
 }

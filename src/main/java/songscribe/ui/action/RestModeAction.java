@@ -65,7 +65,7 @@ public final class RestModeAction extends SelectableUIAction implements UIAction
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         toggleOnKeyboardShortcut(e);
         MessageCenter.post(new RestModeDidChangeNotification());
     }

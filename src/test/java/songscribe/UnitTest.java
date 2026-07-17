@@ -38,13 +38,17 @@ import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
+import songscribe.message.MessageCenterTestHelper;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.action.Actions;
+import songscribe.undo.UndoController;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.xml.sax.SAXException;
@@ -70,6 +74,7 @@ public abstract class UnitTest {
     static void suppressDialogs() throws Exception {
         OptionDialogs.setSuppressDialogs(true);
         RuntimeErrorTestHelper.install();
+        MessageCenterTestHelper.install();
         installFlatLafDefaults();
 
         if (!bannerShown) {
@@ -78,9 +83,32 @@ public abstract class UnitTest {
         }
     }
 
+    // MBassador holds subscribers weakly, so the action singletons a test creates via
+    // Actions.initialize() linger as zombie bus listeners until GC — still handling later
+    // tests' notifications and throwing in the torn-down/mocked environment, which routes to
+    // RuntimeError and pollutes unrelated tests. Unsubscribe them after every test.
+    // Actions.unsubscribeForTest() is null-safe (it skips uninitialized fields) and
+    // idempotent, so this is a harmless no-op for tests that never touch Actions.
+    @AfterEach
+    void unsubscribeActionSubscribers() {
+        Actions.unsubscribeForTest();
+        UndoController.unsubscribeForTest();
+
+        // Every listener subscribed during this test (usually via production
+        // constructors) is removed so it cannot linger as a zombie that fires against
+        // torn-down mocks in later tests.
+        MessageCenterTestHelper.unsubscribeTrackedListeners();
+
+        // Last, so the unsubscribes above always run: fail loudly if any @Handler threw
+        // during a post in this test — MBassador swallows the error and silently aborts
+        // delivery to the post's remaining subscribers, so nothing else reports it.
+        MessageCenterTestHelper.assertNoPublicationErrors();
+    }
+
     @BeforeEach
     void resetRuntimeError() {
         RuntimeErrorTestHelper.reset();
+        MessageCenterTestHelper.clearPublicationErrors();
     }
 
     /**
@@ -157,9 +185,9 @@ public abstract class UnitTest {
     }
 
     /**
-     * Creates a minimal Song mock with mutation tracking suspended and
-     * {@code withModification} delegating directly to the runnable.
-     * Shared by {@link #detachedLine()} and
+     * Creates a minimal Song mock with mutation tracking suspended and both
+     * {@code withModification} overloads (plain and labeled) delegating directly to
+     * the runnable. Shared by {@link #detachedLine()} and
      * {@link songscribe.ui.selection.ReflectionTestHelper}.
      */
     @SuppressWarnings("ReturnOfNull")
@@ -168,6 +196,8 @@ public abstract class UnitTest {
         when(songMock.isMutationTrackingSuspended()).thenReturn(true);
         doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
             .when(songMock).withModification(any(Runnable.class));
+        doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })
+            .when(songMock).withModification(any(String.class), any(Runnable.class));
         return songMock;
     }
 

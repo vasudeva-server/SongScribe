@@ -66,7 +66,7 @@ public final class ExportImageAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         var scoreView = requireScoreView();
 
         fileDialog.setFile(scoreView.getSuggestedFileName());

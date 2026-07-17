@@ -70,7 +70,7 @@ public final class EditLyricAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         var scoreView = requireScoreView();
         var element = scoreView.getSelectionCoordinator().getSingleSelectedElement();
 

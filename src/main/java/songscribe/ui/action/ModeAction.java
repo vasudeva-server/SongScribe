@@ -111,7 +111,7 @@ public final class ModeAction extends SelectableUIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         toggleOnKeyboardShortcut(e);
         MessageCenter.post(new ModeDidChangeNotification(this));
     }

@@ -445,7 +445,7 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
         var action = new UIAction(mainFrame(), "Test", "test-cmd") {
             @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
+            protected void performAction(java.awt.event.ActionEvent e) {
                 capturedSource[0] = e.getSource();
             }
         };
@@ -461,7 +461,7 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
         var action = new UIAction(mainFrame(), "Test", "test-cmd") {
             @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
+            protected void performAction(java.awt.event.ActionEvent e) {
                 capturedSource[0] = e.getSource();
             }
         };

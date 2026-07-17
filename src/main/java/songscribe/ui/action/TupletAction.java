@@ -25,6 +25,7 @@ import module java.desktop;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleTupletCommand;
@@ -182,8 +183,54 @@ public final class TupletAction extends UIAction {
         }
     }
 
+    /**
+     * Resolves the Tier-A undo op-name from the current selection state. Because this
+     * runs on every dispatch (including no-selection ones that only set mode state), it
+     * null-guards the selection and falls back to the action's base add-size key when
+     * there is no controller or no existing tuplet — never dereferencing a null element.
+     *
+     * <ul>
+     *   <li>Remove action → {@code Remove Tuplet}.</li>
+     *   <li>No existing tuplet at the selection → {@code Add <Size>}.</li>
+     *   <li>Existing tuplet present (different grade chosen) → {@code Change Tuplet Grade}.</li>
+     * </ul>
+     */
     @Override
-    public void actionPerformed(ActionEvent e) {
+    public String getUndoOpName() {
+        if (tuplet == Tuplet.REMOVE) {
+            return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TUPLET);
+        }
+
+        var baseAddKey = baseAddKey();
+        var ctrl = getScoreViewController();
+
+        if (ctrl == null) {
+            return Strings.get(baseAddKey);
+        }
+
+        var existing = ctrl.canToggleTuplet().existing();
+
+        if (existing != null) {
+            return Strings.get(Strings.ACTION_EDIT_OP_CHANGE_TUPLET_GRADE);
+        }
+
+        return Strings.get(baseAddKey);
+    }
+
+    private String baseAddKey() {
+        return switch (tuplet) {
+            case DUPLET -> Strings.ACTION_EDIT_OP_ADD_DUPLET;
+            case TRIPLET -> Strings.ACTION_EDIT_OP_ADD_TRIPLET;
+            case QUADRUPLET -> Strings.ACTION_EDIT_OP_ADD_QUADRUPLET;
+            case QUINTUPLET -> Strings.ACTION_EDIT_OP_ADD_QUINTUPLET;
+            case SEXTUPLET -> Strings.ACTION_EDIT_OP_ADD_SEXTUPLET;
+            case SEPTUPLET -> Strings.ACTION_EDIT_OP_ADD_SEPTUPLET;
+            case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_TUPLET;
+        };
+    }
+
+    @Override
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new ToggleTupletCommand(this));
     }
 }

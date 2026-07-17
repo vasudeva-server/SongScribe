@@ -49,13 +49,10 @@ import songscribe.ui.selection.SelectionCoordinator;
  * {@code DURATION_ACTION_GROUP.select(...)}, which fire {@code perform()} on
  * the selected action; that path ends up in {@code UIAction.requireScoreView()}.
  * {@code UIAction} stores the injected {@code MainFrame} in a final field at
- * construction, so whichever frame was in scope the first time {@code Actions}
- * was loaded is the frame these calls go through. Rather than fight that
- * cache, this test wires the real {@code MainFrame} singleton to a mock
- * {@code ScoreView} — if some earlier test cached a Mockito mock frame, that mock
- * already has {@code requireScoreView} stubbed by {@link MockEnvHelper}; if the
- * cached frame is the real singleton, the explicit {@code setScore} call here
- * supplies the scoreView it needs.
+ * construction, so this test initializes {@code Actions} itself against the real
+ * {@code MainFrame} singleton and wires that same singleton to a mock
+ * {@code ScoreView} — making the setup self-contained rather than depending on
+ * whichever frame some earlier test happened to load {@code Actions} with.
  */
 @RequiresDisplay
 class ActionsResetOnDocumentLoadTest extends UnitTest {
@@ -73,7 +70,11 @@ class ActionsResetOnDocumentLoadTest extends UnitTest {
         // ScoreComponent) do not NPE on the leaked mock.
         when(mockScore.getViewScale()).thenReturn(new ViewScale());
 
-        MainFrame.getInstance().setScoreView(mockScore);
+        var mainFrame = MainFrame.getInstance();
+        mainFrame.setScoreView(mockScore);
+        // Initialize Actions against the real singleton frame wired above so the action
+        // constants exist regardless of whether an earlier test class loaded Actions.
+        Actions.initialize(mainFrame);
     }
 
     @Test

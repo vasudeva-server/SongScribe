@@ -49,7 +49,7 @@ public final class AnnotationAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         new AnnotationDialog(getMainFrame()).setVisible(true);
     }
 }

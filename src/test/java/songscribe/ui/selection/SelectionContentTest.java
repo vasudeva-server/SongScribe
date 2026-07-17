@@ -339,7 +339,7 @@ class SelectionContentTest extends MainFrameMockTest {
         }
 
         @Override
-        public void actionPerformed(ActionEvent e) {
+        protected void performAction(ActionEvent e) {
             // Not used in tests
         }
     }

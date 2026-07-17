@@ -26,6 +26,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -186,6 +187,13 @@ class MessageCenterTest extends UnitTest {
             } catch (java.lang.reflect.InvocationTargetException e) {
                 throw e.getCause();
             }
+        }
+
+        // These tests drive the error path deliberately; discard what the probe recorded
+        // so UnitTest's teardown does not flag it as an unexpected handler failure.
+        @AfterEach
+        void discardDeliberateErrors() {
+            MessageCenterTestHelper.clearPublicationErrors();
         }
 
         // Row 6: when cause is non-null, RuntimeError.exit(detail, cause) is called and

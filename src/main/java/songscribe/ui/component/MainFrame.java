@@ -57,6 +57,7 @@ import songscribe.message.command.TogglePlayWithRepeatsCommand;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
+import songscribe.message.notification.UndoStateDidChangeNotification;
 import songscribe.dom.Song;
 import songscribe.layout.PageModel;
 import songscribe.prefs.Prefs;
@@ -755,6 +756,16 @@ public class MainFrame extends JFrame implements Printable {
 
     @Handler
     public void documentWasSaved(DocumentWasSavedNotification message) {
+        updateTitle();
+    }
+
+    /**
+     * Undo/redo recomputes the modified flag after the replay bracket's
+     * SongDidChangeNotification has already refreshed the title with the stale
+     * flag, so the title must be refreshed again once the new state is known.
+     */
+    @Handler
+    public void undoStateDidChange(UndoStateDidChangeNotification message) {
         updateTitle();
     }
 

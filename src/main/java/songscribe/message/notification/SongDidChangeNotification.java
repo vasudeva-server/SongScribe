@@ -43,20 +43,37 @@ public class SongDidChangeNotification extends Message {
     private final List<Mutation> mutations;
     private final Song song;
 
+    // Op-name declared by the initiator of this edit (Tier A/B), or null when the
+    // edit declared no name — UndoController then derives a type-based fallback label.
+    @Nullable
+    private final String opName;
+
     // Lazy cache for getLine(). null is a valid result, so we need a separate flag.
     private boolean lineIsCached;
     @Nullable
     private Line cachedLine;
 
     /**
+     * Constructs a notification with no declared op-name; delegates to the
+     * {@linkplain #SongDidChangeNotification(List, Song, String) three-arg constructor}.
+     */
+    public SongDidChangeNotification(List<Mutation> mutations, Song song) {
+        this(mutations, song, null);
+    }
+
+    /**
      * Constructs a notification that takes ownership of an already-immutable
      * mutation list. The caller must not retain or mutate the list after
      * construction — {@code Song.endModification} uses this to avoid
      * defensively copying the accumulated list a second time.
+     *
+     * @param opName the declared op-name for this edit, or {@code null} to let
+     *               {@code UndoController} derive a type-based fallback label
      */
-    public SongDidChangeNotification(List<Mutation> mutations, Song song) {
+    public SongDidChangeNotification(List<Mutation> mutations, Song song, @Nullable String opName) {
         this.mutations = mutations;
         this.song = song;
+        this.opName = opName;
     }
 
     public List<Mutation> getMutations() {
@@ -65,6 +82,15 @@ public class SongDidChangeNotification extends Message {
 
     public Song getSong() {
         return song;
+    }
+
+    /**
+     * Returns the op-name declared by this edit's initiator, or {@code null} when the
+     * edit declared no name (the type-based fallback label applies).
+     */
+    @Nullable
+    public String getOpName() {
+        return opName;
     }
 
     /**

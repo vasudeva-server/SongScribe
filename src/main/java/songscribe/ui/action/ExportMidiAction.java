@@ -39,7 +39,7 @@ public final class ExportMidiAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         var scoreView = requireScoreView();
         var saveFile = PlatformFileDialog.showSaveDialog(
             getMainFrame(),

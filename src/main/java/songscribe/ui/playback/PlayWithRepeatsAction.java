@@ -52,7 +52,7 @@ public final class PlayWithRepeatsAction extends SelectableUIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new TogglePlayWithRepeatsCommand(isSelected()));
     }
 }

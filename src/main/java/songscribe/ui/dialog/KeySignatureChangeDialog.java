@@ -87,10 +87,12 @@ public class KeySignatureChangeDialog extends StandardDialog {
         }
 
         var score = requireScoreView();
-        score.getSong().postWithModification(new KeySignatureDidChangeNotification(
-            score.getSelectedLine(),
-            keyType,
-            (Integer) keysSpinner.getValue()
-        ));
+        score.getSong().postWithModification(
+            Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY),
+            new KeySignatureDidChangeNotification(
+                score.getSelectedLine(),
+                keyType,
+                (Integer) keysSpinner.getValue()
+            ));
     }
 }

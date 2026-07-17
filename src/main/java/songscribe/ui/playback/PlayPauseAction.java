@@ -73,7 +73,7 @@ public final class PlayPauseAction extends SequencerAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         toggleAction();
         PlaybackController.togglePlayPause();
     }

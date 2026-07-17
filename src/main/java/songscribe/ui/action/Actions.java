@@ -43,6 +43,7 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.action.UIAction.AppMenuAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.SongSettingsDialog;
+import songscribe.undo.UndoController;
 import songscribe.util.UIUtils;
 
 /**
@@ -171,6 +172,9 @@ public final class Actions {
     public static PrintAction PRINT_ACTION;
     public static QuitAction QUIT_ACTION;
 
+    public static UndoAction UNDO_ACTION;
+    public static RedoAction REDO_ACTION;
+
     public static CutAction CUT_ACTION;
     public static CopyAction COPY_ACTION;
     public static PasteAction PASTE_ACTION;
@@ -188,10 +192,6 @@ public final class Actions {
     // Strong reference prevents GC (mbassy uses weak references)
     private static final ResetHandler RESET_HANDLER = new ResetHandler();
 
-    static {
-        MessageCenter.subscribe(RESET_HANDLER);
-    }
-
     /**
      * Initializes all action constants using {@code mainFrame} as the owner.
      *
@@ -201,6 +201,14 @@ public final class Actions {
      */
     public static void initialize(MainFrame mainFrame) {
         Actions.mainFrame = mainFrame;
+
+        // Subscribed here rather than in a static initializer so that merely loading
+        // this class (e.g. a test teardown calling unsubscribeForTest) cannot register
+        // the handler before the constants it dereferences exist. Subscribing is
+        // idempotent, so repeated initialize() calls in tests are safe.
+        MessageCenter.subscribe(RESET_HANDLER);
+
+        UndoController.initialize();
 
         //
         // Control actions
@@ -363,6 +371,9 @@ public final class Actions {
         PRINT_ACTION = PrintAction.createAction(mainFrame);
         QUIT_ACTION = QuitAction.createAction(mainFrame);
 
+        UNDO_ACTION = UndoAction.createAction(mainFrame);
+        REDO_ACTION = RedoAction.createAction(mainFrame);
+
         CUT_ACTION = CutAction.createAction(mainFrame);
         COPY_ACTION = CopyAction.createAction(mainFrame);
         PASTE_ACTION = PasteAction.createAction(mainFrame);
@@ -469,6 +480,12 @@ public final class Actions {
      * base classes that own the mock lifecycle, before the next test re-initializes.
      */
     public static void unsubscribeForTest() {
+        // The reflection loop below only covers the public action constants, so the
+        // private reset handler must be removed explicitly — otherwise it lingers as a
+        // zombie whose resetToDefaults() throws once the constants reference torn-down
+        // mocks, aborting delivery to every lower-priority subscriber of that post.
+        MessageCenter.unsubscribe(RESET_HANDLER);
+
         var requiredModifiers = Modifier.PUBLIC | Modifier.STATIC;
 
         for (var field : Actions.class.getDeclaredFields()) {

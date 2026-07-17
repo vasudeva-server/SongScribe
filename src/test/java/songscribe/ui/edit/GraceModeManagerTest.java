@@ -62,8 +62,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class GraceModeManagerTest extends UnitTest {
@@ -772,7 +775,7 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testPendingConnectSetAndGlissandoAddedWhenDragRightWithEligibleHost() {
+        void testPendingConnectSetWithoutMutatingSlideWhenDragRightWithEligibleHost() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var hostNote = ElementType.CROTCHET.newInstance();
@@ -800,21 +803,21 @@ class GraceModeManagerTest extends UnitTest {
             manager.setGraceLineComponent(lineComponent);
             setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
 
-            // Mouse x >= connectThreshold (100) → pendingConnect should become true
+            // Mouse x >= connectThreshold (100) → pendingConnect should become true.
+            // The glissando feedback is render-only (drawn from the pendingConnect flag);
+            // the drag must not mutate the element, or the untracked slide change would
+            // corrupt undo's before-state clone in the tracked connect commit.
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 105, 0, MouseEvent.BUTTON1);
             manager.mouseDragged(lineComponent, e);
 
             assertThat(manager.isPendingConnect()).isTrue();
-            assertThat(graceNote.hasGlissando()).isTrue();
+            assertThat(graceNote.hasGlissando()).isFalse();
         }
 
         @Test
-        void testGlissandoRemovedWhenPendingConnectBecomesFlase() {
+        void testPendingConnectClearedWithoutMutatingSlideWhenDragBackLeft() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
-            // Pre-attach a glissando (as if drag-right had fired before)
-            graceNote.setGlissando();
-
             var line = detachedLine();
             line.addElement(graceNote);
 
@@ -1042,7 +1045,7 @@ class GraceModeManagerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // finish(cancel=true) wraps in withModification — row 23
+    // abort() removes the grace note without tracking (no undo step) — row 23
     // -------------------------------------------------------------------------
 
     @Nested
@@ -1076,14 +1079,19 @@ class GraceModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testCancelRemovesGraceNoteViaModificationBracket() {
+        void testCancelRemovesGraceNoteWithoutModificationBracket() {
             var manager = new GraceModeManager(editModeManager, selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
 
+            // detachedLine's song mock leaves withoutMutationTracking a no-op by default;
+            // stub it to run its body so abort()'s untracked removal actually executes.
+            doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
+                .when(line.getSong()).withoutMutationTracking(any(Runnable.class));
+
             manager.setState(GraceModeManager.State.GRACE_NOTE);
-            setField(manager, "mouseDownPoint", null);  // triggers finish(cancel=true)
+            setField(manager, "mouseDownPoint", null);  // triggers abort()
             manager.setGraceNote(graceNote);
             setField(manager, "graceNoteIndex", 0);
             manager.setGraceLine(line);
@@ -1092,8 +1100,11 @@ class GraceModeManagerTest extends UnitTest {
             var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
             manager.mouseReleased(mock(LineComponent.class), e);
 
-            // Grace note must have been removed inside withModification
+            // The grace note is removed via withoutMutationTracking, so no undo step is
+            // created: the removal must not open a modification bracket.
             assertThat(line.elementCount()).isEqualTo(0);
+            verify(line.getSong()).withoutMutationTracking(any(Runnable.class));
+            verify(line.getSong(), never()).withModification(any(Runnable.class));
         }
 
         @Test

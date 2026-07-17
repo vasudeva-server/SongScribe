@@ -41,6 +41,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Song;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
@@ -932,8 +933,39 @@ public final class SelectionCoordinator {
      * Fires at LOW_PRIORITY so it runs after all UIAction handlers have processed
      * the selection-changed message.
      */
-    @Handler()
+    @Handler
     public void musicSelectionDidChangeReflectSelection(MusicSelectionDidChangeNotification message) {
+        triggerReflection();
+    }
+
+    /**
+     * Re-reflects action state when a mutation changes the content of the
+     * selected line without changing the selection range.
+     * <p>
+     * An undo/redo (e.g. toggling a fermata or trill on the selected note, then
+     * undoing it) reverts the element's attributes but leaves the selection range
+     * intact. {@link #triggerReflection()} would short-circuit on the unchanged
+     * range and leave toggle actions stuck in their pre-undo checked state, so we
+     * clear the guard and force a fresh reflection.
+     */
+    @Handler
+    public void songDidChange(SongDidChangeNotification message) {
+        var selection = getSelection();
+
+        if (selection == null) {
+            return;
+        }
+
+        // Only the mutations targeting the selected line can change the checked
+        // state of the reflectable actions; getLine() is null for song-scoped or
+        // multi-line changes, which never match the selection's line.
+        if (message.getLine() != selection.line()) {
+            return;
+        }
+
+        // Bypass the range-equality guard: the selection range is unchanged but
+        // the underlying element attributes may not be.
+        lastReflectedSelection = null;
         triggerReflection();
     }
 

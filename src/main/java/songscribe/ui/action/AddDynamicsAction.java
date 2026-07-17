@@ -59,6 +59,7 @@ public final class AddDynamicsAction extends UIAction {
             Flag.DISABLE_IN_GRACE_MODE
         );
         this.isCrescendo = isCrescendo;
+        setUndoOpNameKey(isCrescendo ? Strings.ACTION_EDIT_OP_ADD_CRESCENDO : Strings.ACTION_EDIT_OP_ADD_DIMINUENDO);
     }
 
     public boolean isCrescendo() {
@@ -78,7 +79,7 @@ public final class AddDynamicsAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new AddDynamicsCommand(isCrescendo));
     }
 }

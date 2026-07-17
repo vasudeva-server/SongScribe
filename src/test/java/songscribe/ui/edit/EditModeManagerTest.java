@@ -27,6 +27,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.JRootPane;
+
 import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
@@ -34,16 +38,39 @@ import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class EditModeManagerTest extends UnitTest {
+
+    // These tests read and mutate the Actions.* constants (accent, articulation, dot,
+    // accidental, rest, ...) but do not otherwise own Actions. Initialize them here with a
+    // minimal mock frame rather than depending on some earlier test class having called
+    // Actions.initialize() in the shared JVM — that hidden ordering coupling breaks the
+    // moment the class runs in a fresh JVM. UnitTest's teardown unsubscribes the actions.
+    @BeforeEach
+    void initializeActions() {
+        var mockFrame = mock(MainFrame.class);
+        var mockScore = mock(ScoreView.class);
+        var mockRootPane = mock(JRootPane.class);
+        when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
+        when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
+        when(mockFrame.getRootPane()).thenReturn(mockRootPane);
+        when(mockFrame.requireScoreView()).thenReturn(mockScore);
+        when(mockFrame.getScoreView()).thenReturn(mockScore);
+        when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+        Actions.initialize(mockFrame);
+    }
 
     // Resets the EditModeManager and GraceModeManager singletons between tests.
     @AfterEach

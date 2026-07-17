@@ -45,5 +45,6 @@ public final class ForceArticulationAction extends ArticulationAction {
         String tooltip
     ) {
         super(mainFrame, articulationType, name, icon, size, actionCommand, tooltip);
+        setUndoOpNameKey(Strings.ACTION_EDIT_OP_TOGGLE_ACCENT);
     }
 }

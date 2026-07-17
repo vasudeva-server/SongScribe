@@ -22,6 +22,7 @@ package songscribe.ui.action;
 
 import java.util.EnumSet;
 
+import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.StaffElement;
 import songscribe.ui.component.MainFrame;
@@ -45,6 +46,7 @@ public final class AccidentalInParensAction extends NoteOnlyAction {
             "Add accidental in parentheses",
             NoteOnlyAction.FLAGS
         );
+        setUndoOpNameKey(Strings.ACTION_EDIT_OP_TOGGLE_PARENTHESIZED_ACCIDENTAL);
     }
 
     @Override

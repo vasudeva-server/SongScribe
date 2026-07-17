@@ -61,11 +61,11 @@ public final class FinalTerminalAction extends ElementTypeAction {
         String actionCommand,
         String tooltip
     ) {
-        super(mainFrame, Kind.NON_DURATION, type, null, name, icon, 24, actionCommand, tooltip, 0, 0, NON_DURATION_FLAGS);
+        super(mainFrame, Kind.NON_DURATION, type, null, name, icon, 24, actionCommand, tooltip, 0, 0, null, NON_DURATION_FLAGS);
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         getSong().replaceTerminal(getType());
     }
 

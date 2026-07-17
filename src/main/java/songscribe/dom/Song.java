@@ -50,6 +50,7 @@ import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.notification.SongMetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
+import songscribe.undo.UndoController;
 import songscribe.util.StringUtils;
 
 /**
@@ -208,6 +209,13 @@ public final class Song {
     // populates lines without emitting notifications or recording undo history.
     private int suspensionDepth = 0;
 
+    // Replay depth counter. While > 0, undo/redo is mechanically re-applying a
+    // recorded mutation batch: mutations are still recorded into the open
+    // bracket, but companion side-work (auto-maintenance, span invalidation,
+    // merging) is suppressed and the Line terminal guards are bypassed, because
+    // the recorded batch already contains every change.
+    private int replayDepth = 0;
+
     // While true, Line mutation guards are bypassed so Song can auto-maintain
     // the terminal invariant without triggering the guards that protect against
     // user-driven invariant violations.
@@ -215,6 +223,13 @@ public final class Song {
 
     @Nullable
     private ArrayList<Mutation> accumulatedMutations;
+
+    // The op-name resolved when the outermost bracket opened (depth 0→1), held for
+    // the lifetime of that bracket and shipped on the SongDidChangeNotification at
+    // depth 1→0. Resolves an explicit bracket label, or the Tier-A pending op-name
+    // held by UndoController. EDT-only, no synchronization.
+    @Nullable
+    private String capturedOpName;
 
     // Wire the pane to this Song instance — runs before every constructor body.
     {
@@ -262,6 +277,18 @@ public final class Song {
 
     private Song(Stub ignored) {
         MessageCenter.subscribe(this);
+    }
+
+    /**
+     * Detaches this Song from the message bus so it stops handling broadcast
+     * command notifications (metadata/tempo/key, etc.). MBassador holds listeners
+     * by weak reference, so a discarded Song keeps responding to broadcasts — and
+     * posting spurious undo steps against the dead document — until it is
+     * garbage-collected. Call this when replacing the active Song to make the
+     * detach deterministic rather than GC-timing-dependent.
+     */
+    public void unsubscribeFromBus() {
+        MessageCenter.unsubscribe(this);
     }
 
     @Handler
@@ -789,7 +816,8 @@ public final class Song {
             return;
         }
 
-        withModification(() -> applyChange(new LyricsChange(field, current, newValue), apply));
+        withModification(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_LYRICS),
+            () -> applyChange(new LyricsChange(field, current, newValue), apply));
     }
 
     // -- Structure setters --
@@ -842,10 +870,15 @@ public final class Song {
             applyChange(new LineInsertion(lineIndex, line), () -> {
                 lines.add(lineIndex, line);
 
-                applyLineDefaults(line);
+                // A replayed line (undo of a deletion) carries its own key
+                // state — a keyless (0, null) line would otherwise be
+                // clobbered with the document default.
+                if (!isReplaying()) {
+                    applyLineDefaults(line);
+                }
             });
 
-            if (willBecomeNewLast && !isMutationTrackingSuspended()) {
+            if (willBecomeNewLast && !isMutationTrackingSuspended() && !isReplaying()) {
                 maintainTerminalOnLastLineChange(previousLastLine, line);
             }
         }));
@@ -887,7 +920,8 @@ public final class Song {
                 () -> lines.remove(index)
             );
 
-            if (wasLast && !lines.isEmpty() && !isMutationTrackingSuspended()) {
+            if (wasLast && !lines.isEmpty() && !isMutationTrackingSuspended()
+                    && !isReplaying()) {
                 maintainTerminalOnLastLineChange(null, lines.getLast());
             }
         }));
@@ -1160,6 +1194,32 @@ public final class Song {
     }
 
     /**
+     * Runs {@code body} in replay mode. Used by the undo engine while it
+     * mechanically re-applies a recorded mutation batch inside an open
+     * modification bracket: the batch already contains every change, so the
+     * helpers' companion side-work (terminal maintenance, line defaults, span
+     * invalidation, tuplet auto-removal, span merging) must not re-run — it
+     * would double-apply changes the batch carries — and the {@link Line}
+     * terminal guards must accept the legitimate intermediate states that
+     * arise mid-replay. Mutations are still recorded into the bracket, unlike
+     * {@link #withoutMutationTracking(Runnable)}. Nestable.
+     */
+    public void withReplay(Runnable body) {
+        replayDepth++;
+
+        try {
+            body.run();
+        } finally {
+            replayDepth--;
+        }
+    }
+
+    /** Returns {@code true} while a recorded mutation batch is being replayed. */
+    public boolean isReplaying() {
+        return replayDepth > 0;
+    }
+
+    /**
      * Suspends mutation tracking until the matching {@link #endSuspendMutationTracking()}.
      * Use {@link #withoutMutationTracking(Runnable)} when the suspended scope fits in a
      * single block; this pair exists for callers (e.g. SAX parsing) whose suspension
@@ -1183,11 +1243,31 @@ public final class Song {
     }
 
     /**
-     * Opens a modification bracket. Mutations accumulate while the bracket is open.
-     * Brackets may be nested; the notification fires only when the outermost bracket closes.
+     * Opens a modification bracket with no explicit label. Mutations accumulate while
+     * the bracket is open. Brackets may be nested; the notification fires only when the
+     * outermost bracket closes.
      */
     public void beginModification() {
-        // TODO: snapshot song state here for undo grouping (#14)
+        beginModification(null);
+    }
+
+    /**
+     * Opens a modification bracket, declaring {@code explicitLabel} as the op-name
+     * (Tier B) if this is the outermost bracket. Mutations accumulate while the bracket
+     * is open; the notification fires only when the outermost bracket closes.
+     *
+     * <p>The op-name is captured only at the depth 0→1 transition, resolving as
+     * {@code explicitLabel != null ? explicitLabel : pendingOpName}. A nested labeled
+     * bracket inside an already-open bracket never re-captures.
+     */
+    public void beginModification(@Nullable String explicitLabel) {
+        if (modificationDepth == 0) {
+            // UndoController holds the Tier-A pending op-name, set by the UIAction
+            // template around synchronous action dispatch (see UIAction.actionPerformed);
+            // explicitLabel is the Tier-B name from the labeled withModification overload.
+            capturedOpName = explicitLabel != null ? explicitLabel : UndoController.getPendingOpName();
+        }
+
         modificationDepth++;
     }
 
@@ -1206,7 +1286,9 @@ public final class Song {
             // copy a list whose only reference is about to be dropped.
             var mutations = Collections.unmodifiableList(accumulatedMutations);
             accumulatedMutations = null;
-            MessageCenter.post(new SongDidChangeNotification(mutations, this));
+            var opName = capturedOpName;
+            capturedOpName = null;
+            MessageCenter.post(new SongDidChangeNotification(mutations, this, opName));
         }
     }
 
@@ -1218,6 +1300,22 @@ public final class Song {
      */
     public void withModification(Runnable body) {
         beginModification();
+
+        try {
+            body.run();
+        } finally {
+            endModification();
+        }
+    }
+
+    /**
+     * Executes {@code body} inside a modification bracket that declares {@code label}
+     * as its op-name (Tier B), then posts a single {@link SongDidChangeNotification}.
+     * The label is captured only if this is the outermost bracket (see
+     * {@link #beginModification(String)}).
+     */
+    public void withModification(String label, Runnable body) {
+        beginModification(label);
 
         try {
             body.run();
@@ -1239,12 +1337,23 @@ public final class Song {
     }
 
     /**
+     * Like {@link #postWithModification(Message)} but declares an explicit undo
+     * op-name {@code label} for the resulting batch (see
+     * {@link #withModification(String, Runnable)}).
+     */
+    public void postWithModification(String label, Message message) {
+        withModification(label, () -> MessageCenter.post(message));
+    }
+
+    /**
      * Applies a single mutation within an open modification bracket.
      * <p>
      * Runs {@code mutator}, then records {@code mutation} in the accumulated list.
      * <p>
      * <pre>
-     * withModification(() -&gt; {                              ┐
+     * withModification([label], () -&gt; {                     ┐
+     *   ├─ depth 0 → 1: capturedOpName =                    │
+     *   │     label != null ? label : pendingOpName         │
      *   │                                                    │
      *   ├─ applyChange(mutation₁, mutator₁)                 │ caller's
      *   │     ├─ throws if depth == 0                       │ bracket
@@ -1256,13 +1365,22 @@ public final class Song {
      *   │                                                    │
      * })  // bracket closes                                  │
      *   ├─ depth → 0                                         │
-     *   ├─ push undo entry (future, #14)                     │
-     *   └─ post SongDidChangeNotification(accumulated)┘
+     *   └─ post SongDidChangeNotification(                   │
+     *          accumulated, capturedOpName)          ────────┘
      * </pre>
      *
      * @throws IllegalStateException if called outside a modification bracket
      */
     public void applyChange(Mutation mutation, Runnable mutator) {
+        // Suspended tracking (e.g. SAX file load): apply the state change but
+        // record nothing, so no SongDidChangeNotification fires mid-load. Mirrors
+        // the guard in Line.applyChange for song-scoped setters that call here
+        // directly (e.g. setMetadata).
+        if (isMutationTrackingSuspended()) {
+            mutator.run();
+            return;
+        }
+
         if (modificationDepth == 0) {
             throw new IllegalStateException("applyChange called outside a modification bracket");
         }

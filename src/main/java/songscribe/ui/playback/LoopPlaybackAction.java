@@ -52,7 +52,7 @@ public final class LoopPlaybackAction extends SelectableUIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new ToggleLoopPlaybackCommand(isSelected()));
     }
 }

@@ -53,7 +53,8 @@ public final class ToggleNotationAction extends UIAction {
             Strings.get(Strings.ACTION_BEAM_TOGGLE_TOOLTIP),
             KeyEvent.VK_B,
             ScoreViewController::canToggleBeaming,
-            ToggleBeamCommand::new
+            ToggleBeamCommand::new,
+            Strings.ACTION_EDIT_OP_TOGGLE_BEAM
         );
     }
 
@@ -67,7 +68,8 @@ public final class ToggleNotationAction extends UIAction {
             Strings.get(Strings.ACTION_TIE_TOGGLE_TOOLTIP),
             KeyEvent.VK_T,
             ScoreViewController::canToggleTie,
-            ToggleTieCommand::new
+            ToggleTieCommand::new,
+            Strings.ACTION_EDIT_OP_TOGGLE_TIE
         );
     }
 
@@ -80,7 +82,8 @@ public final class ToggleNotationAction extends UIAction {
         String tooltip,
         int virtualKey,
         Predicate<? super ScoreViewController> canToggle,
-        Supplier<? extends Message> commandFactory
+        Supplier<? extends Message> commandFactory,
+        String undoOpNameKey
     ) {
         super(
             mainFrame,
@@ -100,6 +103,7 @@ public final class ToggleNotationAction extends UIAction {
         );
         this.canToggle = canToggle;
         this.commandFactory = commandFactory;
+        setUndoOpNameKey(undoOpNameKey);
     }
 
     @Override
@@ -129,7 +133,7 @@ public final class ToggleNotationAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(commandFactory.get());
     }
 }

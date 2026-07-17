@@ -42,5 +42,6 @@ public final class CutAction extends PasteboardAction {
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_PLAYING
         );
+        setUndoOpNameKey(Strings.ACTION_EDIT_OP_CUT);
     }
 }

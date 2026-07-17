@@ -46,7 +46,7 @@ public final class SaveAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new SaveCommand());
     }
 }

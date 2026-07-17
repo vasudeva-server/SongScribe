@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.ElementInsertion;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
@@ -170,6 +171,24 @@ public final class GraceModeManager {
      */
     public static boolean isPendingCancel(StaffElement element) {
         return instance != null && instance.pendingCancel && element == instance.graceNote;
+    }
+
+    /**
+     * Returns whether the given element is a grace note with a pending drag-right connect.
+     * Used by {@code LineRenderer.renderSlides()} to draw a preview glissando — render-only
+     * state, so the drag never mutates the element's slide (see {@code mouseDragged}).
+     */
+    public static boolean isPendingConnect(StaffElement element) {
+        return instance != null && instance.pendingConnect && element == instance.graceNote;
+    }
+
+    /**
+     * Returns whether any grace note has a pending drag-right connect, regardless of
+     * element. Lets {@code LineRenderer} skip its per-element scan in the common case
+     * of no active grace-mode drag.
+     */
+    public static boolean hasPendingConnect() {
+        return instance != null && instance.pendingConnect;
     }
 
     /**
@@ -388,7 +407,7 @@ public final class GraceModeManager {
         }
 
         if (mouseDownPoint == null || graceNote == null || graceLine == null) {
-            finish(true);
+            abort();
             return true;
         }
 
@@ -405,13 +424,13 @@ public final class GraceModeManager {
 
         // Drag left past notehead: cancel
         if (pendingCancel) {
-            finish(true);
+            abort();
             return true;
         }
 
         // Drag right past right edge with eligible host note: connect
         if (pendingConnect) {
-            enterGraceNotePaired(true);
+            enterGraceNotePaired(true, lineComponent);
             return true;
         }
 
@@ -441,21 +460,17 @@ public final class GraceModeManager {
         hidePreviewAndSetDefaultCursor(lineComponent);
 
         var wasPendingCancel = pendingCancel;
+        var wasPendingConnect = pendingConnect;
         var isDrag = System.currentTimeMillis() - mouseDownTime >= MIN_DRAG_MILLIS;
         pendingCancel = isDrag && isMouseLeftOfGraceNote(e);
         pendingConnect = isDrag && !pendingCancel
             && isMouseRightOfGraceNote(e) && hasEligibleHostNote();
 
-        var hasGlissando = graceNote != null
-            && graceNote.hasGlissando();
-
-        if (pendingConnect && !hasGlissando && graceNote != null) {
-            graceNote.setGlissando();
-        } else if (!pendingConnect && hasGlissando && graceNote != null) {
-            graceNote.removeSlide();
-        }
-
-        if ((pendingCancel != wasPendingCancel || pendingConnect != hasGlissando)
+        // The pending glissando is drawn from this flag by LineRenderer — the grace note's
+        // slide state must not be touched here: an untracked mid-drag mutation would leak
+        // into the before-state clone of the commit path's tracked SLIDE modification,
+        // making undo of the connect step leave the glissando behind.
+        if ((pendingCancel != wasPendingCancel || pendingConnect != wasPendingConnect)
             && graceLineComponent != null) {
             graceLineComponent.repaint();
         }
@@ -486,42 +501,20 @@ public final class GraceModeManager {
 
         // Cancel if click is on a different line
         if (lineComponent != graceLineComponent) {
-            finish(true);
+            abort();
             return true;
         }
 
         // Cancel if click is >= GRACE_SLOP_PX to the left of the grace note's left edge
         if (isMouseLeftOfGraceNote(e)) {
-            finish(true);
+            abort();
             return true;
         }
 
-        // Coalesce the host-note insertion, the grace-note glissando connection,
-        // and the subsequent enterGraceNotePaired/finish work into a single
-        // SongDidChangeNotification.
-        var line = graceLine;
-
-        if (line == null) {
-            return true;
-        }
-
-        line.withModification(() -> {
-            // Insert the host note at the locked x position
-            PreviewElementManager.handleClick(lineComponent, true);
-
-            // Connect grace note to host note with a connecting glissando
-            var note = graceNote;
-
-            if (note != null) {
-                line.modifyElement(
-                    graceNoteIndex,
-                    ElementField.SLIDE,
-                    note::setGlissando
-                );
-            }
-
-            enterGraceNotePaired(false);
-        });
+        // enterGraceNotePaired validates the pitch, records the retroactive grace-note
+        // insertion, inserts the host note, and connects the glissando inside a single
+        // modification bracket — one undoable step for the whole pairing.
+        enterGraceNotePaired(false, lineComponent);
         return true;
     }
 
@@ -531,7 +524,7 @@ public final class GraceModeManager {
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-            finish(true);
+            abort();
         }
 
         // Duration/embellishment keys pass through to normal handling
@@ -549,16 +542,22 @@ public final class GraceModeManager {
         selectionCoordinator.saveActionStates();
         selectionCoordinator.setInSelectMode(false);
 
-        // Insert the grace note via the existing insertion code path
-        PreviewElementManager.handleClick(lineComponent);
-
-        // Record state
         var line = lineComponent.getLine();
 
         if (line == null) {
-            finish(true);
+            abort();
             return;
         }
+
+        // Insert the grace note via the existing insertion code path, but WITHOUT
+        // recording a mutation: a lone grace note is not undoable. It only becomes part
+        // of an undo step once it is paired with a host note (see enterGraceNotePaired,
+        // which retroactively records the insertion into the pairing's bracket).
+        line.getSong().withoutMutationTracking(() -> PreviewElementManager.handleClick(lineComponent));
+
+        // No SongDidChangeNotification fires while tracking is suspended, so invalidate
+        // the line's layout directly to lay out and render the new grace note.
+        lineComponent.invalidateLayout();
 
         graceLineComponent = lineComponent;
         graceLine = line;
@@ -568,7 +567,7 @@ public final class GraceModeManager {
 
         if (insertedIndex < 0 || insertedIndex >= line.elementCount()) {
             // Insertion failed (e.g. triplet boundary)
-            finish(true);
+            abort();
             return;
         }
 
@@ -615,7 +614,7 @@ public final class GraceModeManager {
         var lockedXSs = getLockedInsertionXSs();
 
         if (lockedXSs == 0) {
-            finish(true);
+            abort();
             return;
         }
 
@@ -630,9 +629,9 @@ public final class GraceModeManager {
         var hostInsertion = computeHostInsertion();
 
         if (hostInsertion == null) {
-            // Save the component reference before finish() clears graceLineComponent.
+            // Save the component reference before abort() clears graceLineComponent.
             var component = graceLineComponent;
-            finish(true);
+            abort();
             OptionDialogs.showErrorMessage(
                 SwingUtilities.getWindowAncestor(component),
                 Strings.ALERT_TITLE_INSERT_ERROR,
@@ -645,76 +644,125 @@ public final class GraceModeManager {
         PreviewElementManager.restorePreviewElement(graceLineComponent);
     }
 
-    private void enterGraceNotePaired(boolean connectNext) {
+    /**
+     * Commits the grace-note pairing. When {@code connectNext} is true the grace note
+     * connects to the already-existing next pitched note (drag-right); when false a new
+     * host note is inserted at the locked x position (click in GRACE_NOTE_INSERT).
+     */
+    private void enterGraceNotePaired(boolean connectNext, LineComponent lineComponent) {
         var note = graceNote;
         var line = graceLine;
         var component = graceLineComponent;
 
         if (note == null || line == null || component == null) {
-            finish(true);
+            abort();
             return;
         }
 
         var hostNoteIndex = graceNoteIndex + 1;
 
-        if (hostNoteIndex >= line.elementCount()) {
-            finish(true);
-            return;
-        }
+        // Determine the host note's pitch up front. For a drag-right connection the host
+        // already exists on the line; for a host-note insertion the pitch comes from the
+        // preview element about to be inserted. Validating before opening the modification
+        // bracket lets a same-pitch pairing be rejected leaving no undo step.
+        int hostStaffPosition;
 
-        var hostNote = line.getElement(hostNoteIndex);
-
-        line.withModification(() -> {
-            // Grace note and host note must have different pitches
-            if (note.getStaffPosition() == hostNote.getStaffPosition()) {
-                // If the host note was just inserted (not connecting to existing),
-                // remove it before cancelling.
-                if (!connectNext) {
-                    line.removeElement(hostNoteIndex);
-                }
-
-                // Remove the grace note (and its connecting slide) before showing
-                // the dialog. showErrorMessage is modal and pumps the EDT, so an
-                // intervening repaint would otherwise render the grace note's slide
-                // against the now-following barline and crash on its missing glyph.
-                finish(true);
-
-                OptionDialogs.showErrorMessage(
-                    SwingUtilities.getWindowAncestor(component),
-                    Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
-                    Strings.ERROR_GRACE_NOTE_SAME_PITCH
-                );
-
+        if (connectNext) {
+            if (hostNoteIndex >= line.elementCount()) {
+                abort();
                 return;
             }
 
-            if (connectNext) {
-                // Coming from GRACE_NOTE (drag-right): connect to the existing next pitched note.
-                // When coming from GRACE_NOTE_INSERT, the glissando was already added in mouseClicked.
-                line.modifyElement(
-                    graceNoteIndex,
-                    ElementField.SLIDE,
-                    note::setGlissando
-                );
+            hostStaffPosition = line.getElement(hostNoteIndex).getStaffPosition();
+        } else {
+            var previewElement = editModeManager.getPreviewElement();
+
+            if (previewElement == null) {
+                abort();
+                return;
             }
 
-            // Mirror the host note's attributes onto the toolbar
-            selectionCoordinator.reflectElement(hostNote);
-
-            finish(false);
-        });
-    }
-
-    private void finish(boolean cancel) {
-        if (cancel && graceNote != null && graceLine != null && graceNoteIndex != -1) {
-            // Wrap in withModification so the deletion is recorded even when finish()
-            // runs outside an outer bracket (e.g. via Esc / drag-left cancel paths).
-            // Brackets nest, so this is a no-op if a caller already opened one.
-            var line = graceLine;
-            var idx = graceNoteIndex;
-            line.withModification(() -> line.removeElement(idx));
+            hostStaffPosition = previewElement.getStaffPosition();
         }
 
+        // Grace note and host note must have different pitches.
+        if (note.getStaffPosition() == hostStaffPosition) {
+            // abort() removes the grace note before showErrorMessage pumps the EDT, so no
+            // intervening repaint renders its (never-added) connecting slide.
+            abort();
+
+            OptionDialogs.showErrorMessage(
+                SwingUtilities.getWindowAncestor(component),
+                Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
+                Strings.ERROR_GRACE_NOTE_SAME_PITCH
+            );
+
+            return;
+        }
+
+        // A single modification bracket coalesces the whole pairing into one undoable
+        // SongDidChangeNotification: the retroactive grace-note insertion, the optional
+        // host-note insertion, and the connecting glissando.
+        line.withModification(() -> {
+            // The grace note was inserted without tracking; record its insertion now so
+            // undo removes it too. The element is already on the line, so the mutator is
+            // empty (the PitchShifter pattern) — the record exists only to drive undo/redo.
+            line.applyChange(new ElementInsertion(line, graceNoteIndex, note), () -> {});
+
+            if (!connectNext) {
+                // Insert the host note at the locked x position.
+                PreviewElementManager.handleClick(lineComponent, true);
+            }
+
+            var hostNote = line.getElement(hostNoteIndex);
+
+            // Connect the grace note to the host note with a connecting glissando.
+            line.modifyElement(graceNoteIndex, ElementField.SLIDE, note::setGlissando);
+
+            // Mirror the host note's attributes onto the toolbar.
+            selectionCoordinator.reflectElement(hostNote);
+        });
+
+        commit();
+    }
+
+    /**
+     * Cancels the in-progress grace operation, leaving no undo step. The grace note was
+     * inserted without mutation tracking, so it is removed the same way — a cancelled
+     * operation must not appear in the undo history.
+     */
+    private void abort() {
+        var line = graceLine;
+        var component = graceLineComponent;
+        var idx = graceNoteIndex;
+
+        if (graceNote != null && line != null && idx != -1) {
+            line.getSong().withoutMutationTracking(() -> line.removeElement(idx));
+
+            // No SongDidChangeNotification fires while tracking is suspended, so
+            // invalidate the line's layout directly to reflect the removal.
+            if (component != null) {
+                component.invalidateLayout();
+            }
+        }
+
+        resetState();
+    }
+
+    /**
+     * Finalizes a successful grace-note pairing. The pairing's mutations were already
+     * recorded by {@link #enterGraceNotePaired}'s modification bracket; this only tears
+     * down the grace-mode UI state.
+     */
+    private void commit() {
+        resetState();
+    }
+
+    /**
+     * Restores action states and clears all grace-mode tracking fields. Shared teardown
+     * for {@link #abort()} and {@link #commit()}.
+     */
+    private void resetState() {
         // Restore only DISABLE_IN_GRACE_MODE actions to their pre-grace-mode state.
         // All other actions (duration, embellishments, etc.) keep their current state.
         selectionCoordinator.restoreActionStatesWithFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE);

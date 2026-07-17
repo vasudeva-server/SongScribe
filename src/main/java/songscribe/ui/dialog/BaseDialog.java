@@ -66,10 +66,6 @@ public abstract class BaseDialog {
     private static final Map<Class<?>, DialogGeometry> SAVED_GEOMETRY = new HashMap<>();
     private static final GeometryResetSubscriber GEOMETRY_RESET_SUBSCRIBER = new GeometryResetSubscriber();
 
-    static {
-        MessageCenter.subscribe(GEOMETRY_RESET_SUBSCRIBER);
-    }
-
     private final MainFrame mainFrame;
     protected final String dialogTitle;
     protected final boolean isModal;
@@ -91,6 +87,13 @@ public abstract class BaseDialog {
     }
 
     protected BaseDialog(MainFrame mainFrame, String title, boolean isModal, DialogCategory category) {
+        // Subscribed here rather than in a static initializer: geometry can only be
+        // saved once a dialog exists, so first-construction subscription loses nothing,
+        // merely loading the class cannot register the handler, and a test teardown
+        // that unsubscribes it is healed by the next dialog construction. Subscribing
+        // is idempotent, so repeated constructions are safe.
+        MessageCenter.subscribe(GEOMETRY_RESET_SUBSCRIBER);
+
         this.mainFrame = mainFrame;
         dialogTitle = title;
         this.isModal = isModal;

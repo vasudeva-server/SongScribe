@@ -55,7 +55,7 @@ class SelectableUIActionTest extends MainFrameMockTest {
     void testIsSelectedReturnsFalseOnConstruction() {
         var action = new SelectableUIAction(mainFrame(), "Test", "test-cmd") {
             @Override
-            public void actionPerformed(ActionEvent e) {}
+            protected void performAction(ActionEvent e) {}
         };
 
         assertThat(action.isSelected()).isFalse();
@@ -67,7 +67,7 @@ class SelectableUIActionTest extends MainFrameMockTest {
     void testResetSetsSelectedToFalse() {
         var action = new SelectableUIAction(mainFrame(), "Test", "test-cmd") {
             @Override
-            public void actionPerformed(ActionEvent e) {}
+            protected void performAction(ActionEvent e) {}
         };
 
         action.setSelected(true);
@@ -84,7 +84,7 @@ class SelectableUIActionTest extends MainFrameMockTest {
 
         var action = new SelectableUIAction(mainFrame(), "Test", null, 0, "test-cmd", null, PrefsKey.CONTROL) {
             @Override
-            public void actionPerformed(ActionEvent e) {}
+            protected void performAction(ActionEvent e) {}
         };
 
         assertThat(action.isSelected()).isTrue();

@@ -44,6 +44,7 @@ import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.action.EditLyricAction;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.undo.OpNames;
 import songscribe.layout.InsetsSs;
 import songscribe.util.UIUtils;
 
@@ -449,7 +450,7 @@ public final class LyricEditor extends MyJTextField {
 
             focused = false;
             var commitSpec = navigationCommitSpec();
-            line.withModification(() -> {
+            line.withModification(commitOpName(), () -> {
                 commitInner(commitSpec.kind(), commitSpec.extend());
                 applyDismissAdjustment();
             });
@@ -551,7 +552,7 @@ public final class LyricEditor extends MyJTextField {
 
         bindKey(KeyEvent.VK_ENTER, ACTION_KEY_ENTER, () -> {
             var commitSpec = navigationCommitSpec();
-            line.withModification(() -> {
+            line.withModification(commitOpName(), () -> {
                 commitInner(commitSpec.kind(), commitSpec.extend());
                 applyDismissAdjustment();
             });
@@ -674,7 +675,20 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private void commit(CommitKind kind, Lyric.Extend extend) {
-        line.withModification(() -> commitInner(kind, extend));
+        line.withModification(commitOpName(), () -> commitInner(kind, extend));
+    }
+
+    /**
+     * The add/edit/delete op-name for committing the editor's current text into
+     * {@code element}'s lyric, derived from before/after text emptiness. Evaluate
+     * this <em>before</em> opening the modification bracket (as the labeled
+     * {@code withModification} argument) so the op-name is captured at the depth
+     * 0->1 transition — a nested bracket never re-captures.
+     */
+    private String commitOpName() {
+        var existingLyric = element.getLyricForVerse(CURRENT_VERSE);
+        var beforeText = existingLyric != null ? existingLyric.text() : "";
+        return OpNames.lyricLabel(beforeText, getText());
     }
 
     /**
@@ -760,7 +774,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private void advanceWithIndex(CommitKind kind, Lyric.Extend extend, int nextIndex) {
-        line.withModification(() -> {
+        line.withModification(commitOpName(), () -> {
             commitInner(kind, extend);
             applyDismissAdjustment();
         });
@@ -770,7 +784,7 @@ public final class LyricEditor extends MyJTextField {
     // Must NOT be inside an open modification bracket — opens its own.
     private void breakChainCommitAndAdvance(CommitKind kind, int nextIndex) {
         var currentIndex = line.getElementIndex(element);
-        line.withModification(() -> {
+        line.withModification(commitOpName(), () -> {
             breakChainAtCurrentElement(currentIndex);
             suppressDismissAdjustment = true;
             commitInner(kind, Lyric.Extend.NONE);
@@ -1026,7 +1040,7 @@ public final class LyricEditor extends MyJTextField {
 
         focused = false;
         var commitSpec = navigationCommitSpec();
-        line.withModification(() -> {
+        line.withModification(commitOpName(), () -> {
             commitInner(commitSpec.kind(), commitSpec.extend());
             applyDismissAdjustment();
         });

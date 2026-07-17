@@ -62,6 +62,15 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
     }
 
     @Override
+    protected String opLabel(AttachmentOp op) {
+        return switch (op) {
+            case ADD -> Strings.get(Strings.ACTION_EDIT_OP_ADD_BEAT_CHANGE);
+            case CHANGE -> Strings.get(Strings.ACTION_EDIT_OP_CHANGE_BEAT_CHANGE);
+            case REMOVE -> Strings.get(Strings.ACTION_EDIT_OP_REMOVE_BEAT_CHANGE);
+        };
+    }
+
+    @Override
     protected @Nullable BeatChange getExistingChange(StaffElement element) {
         var attachment = element.findAttachment(BeatChangeAttachment.class);
         return attachment != null ? attachment.getBeatChange() : null;

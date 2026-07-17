@@ -62,6 +62,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_GRACE), "grace.svg", 26,
             "duration-grace-eighth", Strings.get(Strings.ACTION_DURATION_GRACE_TOOLTIP),
             KeyEvent.VK_G, 0,
+            null,
             withFlags(DURATION_FLAGS, Flag.DISABLE_IN_REST_MODE, Flag.DISABLE_IN_SELECT_MODE, Flag.DISABLE_IN_GRACE_MODE)
         );
     }
@@ -73,6 +74,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND), "@\uF36B", 18,
             "duration-thirty-second", Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND_TOOLTIP),
             KeyEvent.VK_1, 0,
+            Strings.ACTION_EDIT_OP_CHANGE_DURATION,
             DURATION_FLAGS
         );
     }
@@ -84,6 +86,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_SIXTEENTH), "@\uF36A", 18,
             "duration-sixteenth", Strings.get(Strings.ACTION_DURATION_SIXTEENTH_TOOLTIP),
             KeyEvent.VK_2, 0,
+            Strings.ACTION_EDIT_OP_CHANGE_DURATION,
             DURATION_FLAGS
         );
     }
@@ -95,6 +98,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_EIGHTH), "@\uF369", 18,
             "duration-eighth", Strings.get(Strings.ACTION_DURATION_EIGHTH_TOOLTIP),
             KeyEvent.VK_3, 0,
+            Strings.ACTION_EDIT_OP_CHANGE_DURATION,
             DURATION_FLAGS
         );
     }
@@ -106,6 +110,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_QUARTER), "@\uF368", 18,
             "duration-quarter", Strings.get(Strings.ACTION_DURATION_QUARTER_TOOLTIP),
             KeyEvent.VK_4, 0,
+            Strings.ACTION_EDIT_OP_CHANGE_DURATION,
             DURATION_FLAGS
         );
     }
@@ -117,6 +122,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_HALF), "@\uF367", 18,
             "duration-half", Strings.get(Strings.ACTION_DURATION_HALF_TOOLTIP),
             KeyEvent.VK_5, 0,
+            Strings.ACTION_EDIT_OP_CHANGE_DURATION,
             DURATION_FLAGS
         );
     }
@@ -128,6 +134,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_WHOLE), "@\uF366", 18,
             "duration-whole", Strings.get(Strings.ACTION_DURATION_WHOLE_TOOLTIP),
             KeyEvent.VK_6, 0,
+            Strings.ACTION_EDIT_OP_CHANGE_DURATION,
             DURATION_FLAGS
         );
     }
@@ -139,6 +146,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_GLISSANDO), "connecting-glissando.svg", 26,
             "glissando", Strings.get(Strings.ACTION_DURATION_GLISSANDO_TOOLTIP),
             KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK,
+            Strings.ACTION_EDIT_OP_ADD_GLISSANDO,
             withFlags(NON_DURATION_FLAGS, Flag.DISABLE_IN_SELECT_MODE) // Glissandos do not have a duration
         );
     }
@@ -150,6 +158,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_DURATION_FALL), "fall.svg", 26,
             "fall", Strings.get(Strings.ACTION_DURATION_FALL_TOOLTIP),
             KeyEvent.VK_F, 0,
+            Strings.ACTION_EDIT_OP_ADD_FALL,
             withFlags(NON_DURATION_FLAGS, Flag.DISABLE_IN_SELECT_MODE) // Falls do not have a duration
         );
     }
@@ -161,6 +170,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_REPEAT_LEFT), "@\uEF68", 24,
             "left-repeat", Strings.get(Strings.ACTION_REPEAT_LEFT_TOOLTIP),
             KeyEvent.VK_L, 0,
+            null,
             NON_DURATION_FLAGS
         );
     }
@@ -172,6 +182,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_REPEAT_RIGHT), "@\uF345", 24,
             "right-repeat", Strings.get(Strings.ACTION_REPEAT_RIGHT_TOOLTIP),
             KeyEvent.VK_R, InputEvent.SHIFT_DOWN_MASK,
+            null,
             NON_DURATION_FLAGS
         );
     }
@@ -183,6 +194,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_REPEAT_LEFT_RIGHT), "@\uF34B", 24,
             "left-right-repeat", Strings.get(Strings.ACTION_REPEAT_LEFT_RIGHT_TOOLTIP),
             0, 0,
+            null,
             NON_DURATION_FLAGS
         );
     }
@@ -194,6 +206,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE), "@\uF347", 24,
             "double-barline", Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE_TOOLTIP),
             KeyEvent.VK_D, 0,
+            null,
             NON_DURATION_FLAGS
         );
     }
@@ -205,6 +218,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_BARLINE_SINGLE), "@\uF346", 24,
             "single-barline", Strings.get(Strings.ACTION_BARLINE_SINGLE_TOOLTIP),
             0, 0,
+            null,
             NON_DURATION_FLAGS
         );
     }
@@ -216,6 +230,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Strings.get(Strings.ACTION_BREATH_MARK), null, 0,
             "breath-mark", Strings.get(Strings.ACTION_BREATH_MARK_TOOLTIP),
             0, 0,
+            Strings.ACTION_EDIT_OP_ADD_BREATH_MARK,
             NON_DURATION_FLAGS
         );
     }
@@ -231,9 +246,10 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         String tooltip,
         int virtualKey,
         int modifiers,
+        @Nullable String undoOpNameKey,
         Flag... flags
     ) {
-        this(mainFrame, kind, type, null, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
+        this(mainFrame, kind, type, null, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, undoOpNameKey, flags);
     }
 
     protected ElementTypeAction(
@@ -248,12 +264,14 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         String tooltip,
         int virtualKey,
         int modifiers,
+        @Nullable String undoOpNameKey,
         Flag... flags
     ) {
         super(mainFrame, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
         this.kind = kind;
         this.type = type;
         this.slideZone = slideZone;
+        setUndoOpNameKey(undoOpNameKey);
     }
 
     public ElementType getType() {
@@ -298,8 +316,57 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         return new StaffElement(targetType, element);
     }
 
+    /**
+     * Whether this action replaces a barline or repeat element. Only these dynamic
+     * replace actions (and {@link FinalTerminalAction}) compute a from-category label;
+     * durations, slides and breath marks keep their static Tier-A key.
+     */
+    private boolean isBarLineOrRepeatReplace() {
+        return kind == Kind.NON_DURATION && (type.isBarLine() || type.isRepeat());
+    }
+
+    /**
+     * Resolves the Tier-A undo op-name. For barline/repeat replace actions the label
+     * names the <em>selected</em> element's category ({@code Change Barline} /
+     * {@code Change Repeat}), reusing {@link ElementType#isBarLine()}/{@link
+     * ElementType#isRepeat()} — the same taxonomy the delete logic uses. Because this
+     * runs on every dispatch (including no-selection ones that only set pen state), it
+     * null-guards the selection and returns the static base key (super) when there is no
+     * initialized score or nothing selected — never dereferencing a null element.
+     */
     @Override
-    public void actionPerformed(ActionEvent e) {
+    public @Nullable String getUndoOpName() {
+        if (!isBarLineOrRepeatReplace()) {
+            return super.getUndoOpName();
+        }
+
+        var scoreView = getScoreView();
+
+        if (scoreView == null || !scoreView.isInitialized()) {
+            return super.getUndoOpName();
+        }
+
+        var selectedElements = scoreView.getSelectionCoordinator().getSelectedElements();
+
+        if (selectedElements.isEmpty()) {
+            return super.getUndoOpName();
+        }
+
+        var selectedType = selectedElements.getFirst().getType();
+
+        if (selectedType.isRepeat()) {
+            return Strings.get(Strings.ACTION_EDIT_OP_CHANGE_REPEAT);
+        }
+
+        if (selectedType.isBarLine()) {
+            return Strings.get(Strings.ACTION_EDIT_OP_CHANGE_BARLINE);
+        }
+
+        return super.getUndoOpName();
+    }
+
+    @Override
+    protected void performAction(ActionEvent e) {
         if (!doActionPerformed(e)) {
             return;
         }

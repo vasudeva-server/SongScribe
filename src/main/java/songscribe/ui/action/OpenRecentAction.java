@@ -42,7 +42,7 @@ public class OpenRecentAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         if (!Files.exists(path)) {
             OptionDialogs.showErrorMessage(
                 getMainFrame(),

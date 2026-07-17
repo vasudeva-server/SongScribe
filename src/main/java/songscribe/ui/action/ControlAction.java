@@ -51,7 +51,7 @@ public final class ControlAction extends SelectableUIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new ControlDidChangeNotification(control));
     }
 }

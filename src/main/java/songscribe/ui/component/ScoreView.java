@@ -837,6 +837,13 @@ public final class ScoreView
     }
 
     public void setSong(Song song) {
+        // MBassador holds Song subscribers by weak reference, so the outgoing Song
+        // keeps handling broadcast commands — spawning spurious undo steps against
+        // the dead document — until GC clears it. Detach it deterministically here.
+        if (this.song != null && this.song != song) {
+            this.song.unsubscribeFromBus();
+        }
+
         this.song = song;
 
         // Reset zoom to 100% for the new/opened song before laying out at the old zoom.

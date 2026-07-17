@@ -34,7 +34,7 @@ class StickyUIActionTest extends MainFrameMockTest {
     private StickyUIAction makeAction() {
         return new StickyUIAction(mainFrame(), "Sticky", null, 0, "sticky-cmd", "tooltip", 0, 0) {
             @Override
-            public void actionPerformed(ActionEvent e) {
+            protected void performAction(ActionEvent e) {
                 doActionPerformed(e);
             }
         };

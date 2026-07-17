@@ -56,7 +56,7 @@ public final class CycleModeAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         currentIndex = (currentIndex + 1) % MODES.length;
         MODES[currentIndex].perform(e.getSource());
     }

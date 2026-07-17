@@ -31,6 +31,7 @@ import net.engio.mbassy.listener.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.BarWasSelectedNotification;
@@ -54,9 +55,36 @@ import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.undo.UndoController;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
+/**
+ * Base class for all application actions. {@link #actionPerformed(ActionEvent)} is a
+ * {@code final} template: subclasses override the {@link #performAction(ActionEvent)}
+ * hook instead, and the template sets the Tier-A undo op-name on {@code UndoController}
+ * around the hook so that whatever outermost modification bracket opens
+ * <em>synchronously</em> during dispatch captures that name.
+ *
+ * <pre>
+ * actionPerformed(e)  // final template                            ┐
+ *   ├─ UndoController.setPendingOpName(getUndoOpName())            │
+ *   │                                                              │ dispatch
+ *   ├─ performAction(e)  // subclass hook                          │ window
+ *   │     └─ …edit… → song.withModification(() -> {                │
+ *   │            depth 0 → 1: capturedOpName = pending op-name     │  bracket
+ *   │            applyChange(mutation, mutator)                    │  captures
+ *   │        })  // bracket closes → SongDidChangeNotification     │  the name
+ *   │                                                              │
+ *   └─ finally: UndoController.setPendingOpName(priorOpName)  ─────┘  restore
+ * </pre>
+ *
+ * <p>Capture works only for brackets opened on the synchronous dispatch stack (modal
+ * dialogs block, so they qualify). A bracket opened off-stack ({@code invokeLater},
+ * {@code Timer}, {@code SwingWorker}, or a non-modal dialog) opens after the
+ * {@code finally} has cleared {@code pendingOpName}; such sites declare their name via
+ * the labeled {@code withModification(String, Runnable)} overload (Tier B) instead.
+ */
 public class UIAction extends AbstractAction {
 
     public enum Flag {
@@ -194,6 +222,13 @@ public class UIAction extends AbstractAction {
     private final MainFrame mainFrame;
 
     private int flags = 0;
+
+    /**
+     * The {@link Strings} key naming this action's Tier-A undo op-name, or {@code null}
+     * if the action declares no static name. Assigned by the action's factory/constructor
+     * (see {@code Actions.initialize}).
+     */
+    private @Nullable String undoOpNameKey;
 
     public UIAction(MainFrame mainFrame, @Nullable String name, @Nullable String actionCommand, Flag... flags) {
         this(mainFrame, name, null, 0, actionCommand, null, 0, 0, flags);
@@ -370,10 +405,56 @@ public class UIAction extends AbstractAction {
         return true;
     }
 
+    /**
+     * Sets the {@link Strings} key naming this action's Tier-A undo op-name.
+     * Called by the action's factory/constructor.
+     */
+    protected void setUndoOpNameKey(@Nullable String undoOpNameKey) {
+        this.undoOpNameKey = undoOpNameKey;
+    }
+
+    /**
+     * Returns this action's Tier-A undo op-name (the resolved {@link Strings} value),
+     * or {@code null} if none is declared. Overridden by actions whose label depends on
+     * runtime state (e.g. tuplet/barline actions).
+     */
+    public @Nullable String getUndoOpName() {
+        return undoOpNameKey == null ? null : Strings.get(undoOpNameKey);
+    }
+
+    /**
+     * The final dispatch template. Sets the Tier-A op-name on the current {@link Song}
+     * around {@link #performAction(ActionEvent)} so the outermost bracket that opens
+     * synchronously during the hook captures it, restoring the prior value afterwards
+     * (including on exception). Subclasses override {@code performAction}, not this.
+     */
     @Override
-    public void actionPerformed(ActionEvent e) {
-        // Subclasses override this. Selectable actions should call
-        // toggleOnKeyboardShortcut(e) for keyboard shortcut support.
+    public final void actionPerformed(ActionEvent e) {
+        var scoreView = getScoreView();
+
+        // When no initialized song exists no modification bracket can open, so there
+        // is nothing to capture; skip straight to the hook (and avoid getSong() throwing).
+        if (scoreView == null || !scoreView.isInitialized()) {
+            performAction(e);
+            return;
+        }
+
+        var priorOpName = UndoController.getPendingOpName();
+        UndoController.setPendingOpName(getUndoOpName());
+
+        try {
+            performAction(e);
+        } finally {
+            UndoController.setPendingOpName(priorOpName);
+        }
+    }
+
+    /**
+     * Performs the action. Default is a no-op. Subclasses override this instead of
+     * {@link #actionPerformed(ActionEvent)}. Selectable actions should call
+     * {@code toggleOnKeyboardShortcut(e)} for keyboard shortcut support.
+     */
+    protected void performAction(ActionEvent e) {
     }
 
     public boolean updateEnabledState() {

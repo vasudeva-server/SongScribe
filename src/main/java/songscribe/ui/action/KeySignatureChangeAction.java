@@ -72,7 +72,7 @@ public final class KeySignatureChangeAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         new KeySignatureChangeDialog(getMainFrame()).setVisible(true);
     }
 }

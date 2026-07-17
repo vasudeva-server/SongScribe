@@ -38,39 +38,40 @@ public final class DynamicMarkingAction extends NoteOnlyAction {
 
     public static DynamicMarkingAction createPianissimoAction(MainFrame mainFrame) {
         return new DynamicMarkingAction(mainFrame, DynamicType.PIANISSIMO,
-            Strings.ACTION_DYNAMIC_PP, "dynamic-pp");
+            Strings.ACTION_DYNAMIC_PP, "dynamic-pp", Strings.ACTION_EDIT_OP_TOGGLE_PP);
     }
 
     public static DynamicMarkingAction createPianoAction(MainFrame mainFrame) {
         return new DynamicMarkingAction(mainFrame, DynamicType.PIANO,
-            Strings.ACTION_DYNAMIC_P, "dynamic-p");
+            Strings.ACTION_DYNAMIC_P, "dynamic-p", Strings.ACTION_EDIT_OP_TOGGLE_P);
     }
 
     public static DynamicMarkingAction createMezzoPianoAction(MainFrame mainFrame) {
         return new DynamicMarkingAction(mainFrame, DynamicType.MEZZO_PIANO,
-            Strings.ACTION_DYNAMIC_MP, "dynamic-mp");
+            Strings.ACTION_DYNAMIC_MP, "dynamic-mp", Strings.ACTION_EDIT_OP_TOGGLE_MP);
     }
 
     public static DynamicMarkingAction createMezzoForteAction(MainFrame mainFrame) {
         return new DynamicMarkingAction(mainFrame, DynamicType.MEZZO_FORTE,
-            Strings.ACTION_DYNAMIC_MF, "dynamic-mf");
+            Strings.ACTION_DYNAMIC_MF, "dynamic-mf", Strings.ACTION_EDIT_OP_TOGGLE_MF);
     }
 
     public static DynamicMarkingAction createForteAction(MainFrame mainFrame) {
         return new DynamicMarkingAction(mainFrame, DynamicType.FORTE,
-            Strings.ACTION_DYNAMIC_F, "dynamic-f");
+            Strings.ACTION_DYNAMIC_F, "dynamic-f", Strings.ACTION_EDIT_OP_TOGGLE_F);
     }
 
     public static DynamicMarkingAction createFortissimoAction(MainFrame mainFrame) {
         return new DynamicMarkingAction(mainFrame, DynamicType.FORTISSIMO,
-            Strings.ACTION_DYNAMIC_FF, "dynamic-ff");
+            Strings.ACTION_DYNAMIC_FF, "dynamic-ff", Strings.ACTION_EDIT_OP_TOGGLE_FF);
     }
 
     private DynamicMarkingAction(
         MainFrame mainFrame,
         DynamicType dynamicType,
         String stringsKey,
-        String actionCommand
+        String actionCommand,
+        String undoOpNameKey
     ) {
         super(
             mainFrame,
@@ -82,6 +83,7 @@ public final class DynamicMarkingAction extends NoteOnlyAction {
             withFlags(NoteOnlyAction.FLAGS, Flag.REQUIRES_SINGLE_SELECTION)
         );
         this.dynamicType = dynamicType;
+        setUndoOpNameKey(undoOpNameKey);
     }
 
     public DynamicType getDynamicType() {

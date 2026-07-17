@@ -45,7 +45,7 @@ public final class ResetZoomAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         ZoomController.resetZoom();
     }
 }

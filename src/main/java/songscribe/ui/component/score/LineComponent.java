@@ -786,6 +786,11 @@ public class LineComponent extends ScoreComponent
         return GraceModeManager.isPendingCancel(element);
     }
 
+    /** Returns whether the given element is a grace note pending a drag-right connect. */
+    boolean isPendingConnectElement(StaffElement element) {
+        return GraceModeManager.isPendingConnect(element);
+    }
+
     /**
      * Returns the line-level {@link ElementFrame} for this paint, carrying the grace-mode
      * host-insertion preview shift when this is the active grace line. {@code LineRenderer}

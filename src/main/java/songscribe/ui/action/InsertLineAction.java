@@ -58,6 +58,7 @@ public final class InsertLineAction extends UIAction {
             Flag.DISABLE_IN_GRACE_MODE
         );
         this.shift = shift;
+        setUndoOpNameKey(Strings.ACTION_EDIT_OP_INSERT_LINE);
     }
 
     private static String getActionCommand(int shift) {
@@ -69,7 +70,7 @@ public final class InsertLineAction extends UIAction {
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    protected void performAction(ActionEvent e) {
         MessageCenter.post(new InsertLineCommand(shift));
     }
 }

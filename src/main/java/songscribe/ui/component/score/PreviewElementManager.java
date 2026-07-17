@@ -48,6 +48,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ElementTypeAction;
+import songscribe.undo.OpNames;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
@@ -59,7 +60,6 @@ import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.engraving.Staff;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.layout.StaffExtents;
 import songscribe.ui.playback.PlaybackController;
 
 /**
@@ -741,7 +741,7 @@ public final class PreviewElementManager {
 
             var sourceNote = line.getElement(noteIndex);
 
-            line.withModification(() -> line.modifyElement(
+            line.withModification(OpNames.addSlideLabel(zone == SlideZone.FALL), () -> line.modifyElement(
                 noteIndex,
                 ElementField.SLIDE,
                 () -> zone.applyTo(sourceNote)
@@ -789,11 +789,17 @@ public final class PreviewElementManager {
         var isFirstLine = song.indexOfLine(line) == 0;
         var hadPitchedNoteBefore = isFirstLine && line.firstPitchedElement() != null;
 
+        // shouldHandlePreviewElement (checked at entry) guarantees a preview element;
+        // this guard proves that to the null-checker before deriving the op-name.
+        if (previewElement == null) {
+            return;
+        }
+
         // Determine action based on position. Wrap in a modification bracket so the
         // line.add/setElement calls inside actually accumulate mutations and fire a
         // SongDidChangeNotification, which the ScoreViewController uses to
         // invalidate the line's cached layout.
-        line.withModification(() -> {
+        line.withModification(OpNames.addLabel(previewElement.getType()), () -> {
             if (currentXIndex == line.elementCount()) {
                 addPreviewElement(lc, line);
             } else if (!forceInsert && xPosSsMatchesElement) {
