@@ -95,17 +95,24 @@ public class StructuralStacker {
     }
 
     /**
-     * Stacks all structural-tier decorations in order: tuplets, hairpins,
-     * text dynamics, endings.
+     * Stacks the tuplet brackets (tier 3a).
+     * <p>
+     * Split from {@link #stackRemaining} because the outside-priority scripts (fermata, trill) stack
+     * between the two: they float above the bracket, so it must reserve its footprint first. See
+     * {@link VerticalStackingCalculator} for the full tier order.
      */
-    public void stack() {
+    public void stackTuplets() {
+        stackTuplets(context.getLine(), context.getColumnsByElement(), context.getBuilder());
+    }
+
+    /**
+     * Stacks the rest of the structural tier in order: hairpins, text dynamics, endings.
+     */
+    public void stackRemaining() {
         var columns = context.getColumns();
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
         var builder = context.getBuilder();
-
-        // Tier 3a: Tuplet brackets
-        stackTuplets(line, columnsByElement, builder);
 
         // Tier 3b: Hairpins (crescendo/diminuendo)
         stackHairpins(line, columnsByElement, builder);

@@ -47,8 +47,11 @@ import static songscribe.layout.stacking.StackingUtils.stackStaccato;
 /**
  * Seeds note bounds and stacks note-attached decorations (tiers 1-2).
  * <p>
- * Tier 1: near-note decorations (articulations — staccato, accent).
- * Tier 2: note decorations (fermata, trill).
+ * Tier 1: near-note decorations (articulations — staccato, accent), via {@link #stackInner()}.
+ * Tier 2: note decorations (fermata, trill), via {@link #stackOuterScripts}.
+ * <p>
+ * The two are separate entry points, and the tuplet-bracket pass runs between them. See
+ * {@link VerticalStackingCalculator} for the full tier order and why it is this way.
  */
 public class NoteAttachedStacker {
 
@@ -196,9 +199,16 @@ public class NoteAttachedStacker {
     }
 
     /**
-     * Seeds note bounds and tie bounds, then stacks all note-attached decorations.
+     * Seeds note and tie bounds, then stacks the priority-less scripts — the ones that sit closest
+     * to the note and are folded into a tuplet bracket's clearance rather than pushed outside it.
+     * <p>
+     * This is the first of the two note-attached phases. The outer scripts (fermata, trill) are
+     * stacked separately by {@link #stackOuterScripts}, because the tuplet bracket must be placed
+     * between the two: it clears the inner scripts and they must therefore already be placed, while
+     * the outer scripts float above the bracket and must therefore be placed after it. See
+     * {@link VerticalStackingCalculator} for the full tier order.
      */
-    public void stack() {
+    public void stackInner() {
         var columns = context.getColumns();
         var builder = context.getBuilder();
 
@@ -226,13 +236,29 @@ public class NoteAttachedStacker {
         for (var column : columns) {
             stackAccentColumn(column, builder);
         }
+    }
 
-        // Tier 2: Note decorations (fermata, trill)
-        for (var column : columns) {
-            stackFermata(column, builder);
+    /**
+     * Stacks the outside-priority scripts (fermata, trill) against {@code outerExtents}.
+     * <p>
+     * These are the scripts LilyPond gives an {@code outside-staff-priority} and which its tuplet
+     * bracket therefore skips (tuplet-bracket.cc lines 688-690): rather than being cleared by the
+     * bracket, they float outside it. The full pipeline honours that by running this phase after the
+     * bracket has reserved its footprint and passing the layer holding it, so the skyline query below
+     * pushes them clear (issue #520). The bracket's own placement is unaffected — it never consults
+     * the skyline, deriving its ceiling from note tips and inner scripts alone.
+     *
+     * @param outerExtents the layer to stack against and reserve into: the tuplet bracket's layer in
+     *                     the full pipeline, or this stacker's own layer where no bracket exists
+     */
+    public void stackOuterScripts(StaffExtents outerExtents) {
+        var builder = context.getBuilder();
+
+        for (var column : context.getColumns()) {
+            stackFermata(column, outerExtents, builder);
         }
 
-        stackTrills(builder);
+        stackTrills(outerExtents, builder);
     }
 
     /**
@@ -683,11 +709,12 @@ public class NoteAttachedStacker {
      */
     private void stackFermata(
         ElementColumn column,
+        StaffExtents outerExtents,
         LayoutResult.Builder builder) {
 
         var note = column.getElement();
 
-        stackFermataAt(note.findAttachment(FermataAttachment.class), noteAttachedExtents,
+        stackFermataAt(note.findAttachment(FermataAttachment.class), outerExtents,
             note, column.getXSs(), builder);
     }
 
@@ -732,13 +759,13 @@ public class NoteAttachedStacker {
      * Processes {@link Trill} range elements from {@code line.findRangeElements(Trill.class)}.
      * Multi-note trills reserve the full horizontal span so subsequent layers clear them.
      */
-    private void stackTrills(LayoutResult.Builder builder) {
+    private void stackTrills(StaffExtents outerExtents, LayoutResult.Builder builder) {
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
         var trills = line.findRangeElements(Trill.class);
 
         for (var trill : trills) {
-            stackSingleTrill(trill, columnsByElement, builder);
+            stackSingleTrill(trill, outerExtents, columnsByElement, builder);
         }
     }
 
@@ -757,6 +784,7 @@ public class NoteAttachedStacker {
      */
     private void stackSingleTrill(
         Trill trill,
+        StaffExtents outerExtents,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
@@ -829,7 +857,7 @@ public class NoteAttachedStacker {
                 paddingSs = TRILL_SPANNER_PADDING_SS;
             }
 
-            var support = noteAttachedExtents.clearance(true, footprintXSs, profile,
+            var support = outerExtents.clearance(true, footprintXSs, profile,
                 paddingSs, StackingUtils.SCRIPT_HORIZON_PADDING_SS);
 
             // An empty footprint carries no real reservation, so only the staff clamp applies.
@@ -843,7 +871,7 @@ public class NoteAttachedStacker {
         // Reserve the full span at the computed inner edge; the per-note padding is already folded
         // in, so the placement core adds no further margin.
         var widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
-        StackingUtils.placeAndReserve(Direction.UP, noteAttachedExtents, trill, anchorXSs, widthSs,
+        StackingUtils.placeAndReserve(Direction.UP, outerExtents, trill, anchorXSs, widthSs,
             trill.getContentHeightSs(), innerEdgeYSs, 0.0, builder);
     }
 

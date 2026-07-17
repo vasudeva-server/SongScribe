@@ -49,15 +49,23 @@ import songscribe.layout.NoteGeometry;
  * <p>
  * Tier order:
  * <ol>
- *   <li><b>Note-attached layer</b> ({@link NoteAttachedStacker}): seeds note/tie bounds,
- *       then stacks articulations, fermata, and trills</li>
- *   <li><b>Structural layer</b> ({@link StructuralStacker}): dynamics hairpins, text dynamics,
- *       volta endings, tuplets — imports the note-attached top extents</li>
+ *   <li><b>Note-attached layer</b> ({@link NoteAttachedStacker#stackInner()}): seeds note/tie
+ *       bounds, then stacks the inner articulations (staccato, accent)</li>
+ *   <li><b>Structural layer</b> ({@link StructuralStacker}) — imports the note-attached top
+ *       extents, then stacks tuplet brackets, the outer scripts, and the remaining structural
+ *       elements (dynamics hairpins, text dynamics, volta endings) in that order</li>
  *   <li><b>System layer</b> ({@link SystemStacker}): tempo, beat changes, annotations —
  *       imports the structural top extents</li>
  * </ol>
  * Each layer starts by importing the previous layer's top extents, ensuring higher layers
  * clear all lower-layer elements.
+ * <p>
+ * The outer scripts (fermata, trill) come from {@link NoteAttachedStacker} but stack into the
+ * structural layer, between the tuplet brackets and the elements that follow them. This mirrors
+ * LilyPond's {@code outside-staff-priority}: a tuplet bracket clears the priority-less scripts
+ * (staccato, accent) but skips the priority ones, which then float outside the bracket
+ * (tuplet-bracket.cc, {@code calc_position_and_height}). Their placement is therefore ordered
+ * after the bracket's, so the bracket's reserved footprint pushes them clear.
  */
 public class VerticalStackingCalculator {
 
@@ -110,18 +118,31 @@ public class VerticalStackingCalculator {
 
         var context = new StackingContext(columns, line, builder);
 
-        // Tiers 0-2: seed note/tie bounds and stack note-attached decorations
-        new NoteAttachedStacker(context, noteAttachedExtents).stack();
+        // Tiers 0-1: seed note/tie bounds and stack the inner, priority-less scripts
+        var noteAttachedStacker = new NoteAttachedStacker(context, noteAttachedExtents);
+        noteAttachedStacker.stackInner();
 
         // Initialize structural layer from note-attached layer
         structuralExtents.copyTopFrom(noteAttachedExtents);
 
-        // Must run after copyTopFrom(noteAttachedExtents) so note-attached stackers
-        // (articulations/fermata/trills) ignore accidentals.
+        var structuralStacker = new StructuralStacker(context, structuralExtents);
+
+        // Tier 3a: tuplet brackets. The bracket derives its own ceiling from the note tips and the
+        // inner scripts, which the pass above has therefore already placed. It reserves that
+        // footprint here so the outer scripts below stack clear of it.
+        structuralStacker.stackTuplets();
+
+        // Tier 2: the outside-priority scripts (fermata, trill). They stack into the structural
+        // layer rather than their own so that a tuplet bracket, already reserved above, pushes them
+        // outside it instead of colliding with them (issue #520).
+        noteAttachedStacker.stackOuterScripts(structuralExtents);
+
+        // Must run after every script has been stacked so they all ignore accidentals, and before
+        // the remaining structural elements, which do clear them.
         seedAccidentalsIntoStructural(columns, structuralExtents);
 
-        // Tier 3: structural decorations (tuplets, hairpins, dynamics, endings)
-        new StructuralStacker(context, structuralExtents).stack();
+        // Tiers 3b-d: the rest of the structural decorations (hairpins, dynamics, endings)
+        structuralStacker.stackRemaining();
 
         // Tier 4: system-level stacking (tempo, beat changes, annotations)
         systemExtents.copyTopFrom(structuralExtents);

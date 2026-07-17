@@ -28,6 +28,7 @@ import static songscribe.dom.StaffElementFactory.repeatRight;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +38,7 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Beam;
+import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 
@@ -51,11 +53,26 @@ import songscribe.layout.NoteGeometry;
 
 class StructuralTierStackingTest extends UnitTest {
 
+    @BeforeAll
+    static void initializeAccidentalWidths() {
+        NoteGeometry.initializeAccidentalWidths();
+    }
+
     private static final double LINE_WIDTH_SS = 64.0;
     private static final double TOLERANCE = 0.001;
     private static final double NOTE1_X_SS = 10.0;
     private static final double NOTE2_X_SS = 30.0;
     private static final double NOTE3_X_SS = 50.0;
+
+    // An ascending run of staff positions. The rising note tips tilt the tuplet bracket, so a
+    // script on the middle note meets an interpolated bracket height rather than an endpoint one.
+    private static final int SLOPED_RUN_LOW_SP = -4;
+    private static final int SLOPED_RUN_MID_SP = -2;
+    private static final int SLOPED_RUN_HIGH_SP = 0;
+
+    // A note above staff center, high enough that an accidental beside it reaches the fermata's
+    // horizontal neighbourhood.
+    private static final int ABOVE_CENTER_SP = -2;
 
     @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
@@ -103,7 +120,9 @@ class StructuralTierStackingTest extends UnitTest {
     private static LayoutResult stackDirectly(List<ElementColumn> columns, Line line) {
         var builder = new LayoutResult.Builder();
         var context = new StackingContext(columns, line, builder);
-        new StructuralStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        var stacker = new StructuralStacker(context, new StaffExtents(LINE_WIDTH_SS));
+        stacker.stackTuplets();
+        stacker.stackRemaining();
         return builder.build();
     }
 
@@ -341,8 +360,12 @@ class StructuralTierStackingTest extends UnitTest {
             assertThat(layout.heightSs()).isGreaterThan(0.0);
         }
 
+        // A fermata and a trill carry an outside-staff-priority in LilyPond, so the tuplet bracket
+        // skips them (tuplet-bracket.cc lines 688-690) and they float outside it instead. The two
+        // clearance tests below pin that: each script must end up clear of the bracket (issue #520).
+
         @Test
-        void testTupletPositionedAboveNoteDecorationsWhenPresent() {
+        void testFermataOnTupletNoteClearsBracket() {
             var note1 = createNote(-2, false);
             note1.addAttachment(new FermataAttachment(note1));
             var note2 = createNote(0, false);
@@ -364,8 +387,114 @@ class StructuralTierStackingTest extends UnitTest {
                 result.getDecorationLayout(tuplet),
                 "tuplet DecorationLayout");
 
-            // Tuplet should be above fermata (more negative Y)
-            assertThat(tupletLayout.ySs()).isLessThan(fermataLayout.ySs());
+            // The fermata sits on the anchor note, where the sloped bracket's top edge is exactly
+            // its layout ySs. The fermata's bottom must not reach it.
+            assertThat(fermataLayout.ySs() + fermataLayout.heightSs())
+                .isLessThanOrEqualTo(tupletLayout.ySs());
+        }
+
+        @Test
+        void testTrillOnTupletNoteClearsBracket() {
+            var note1 = createNote(-2, false);
+            var note2 = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+            var trill = new Trill(note1, note2);
+            line.addRangeElement(trill);
+
+            var result = stackColumns(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
+                line);
+
+            var trillLayout = require(result.getDecorationLayout(trill), "trill DecorationLayout");
+            var tupletLayout = require(result.getDecorationLayout(tuplet), "tuplet DecorationLayout");
+
+            // The trill is flat and the bracket is linear in x, so the bracket's highest point under
+            // the trill's span is at whichever end is more outward.
+            var bracketTopSs = Math.min(tupletLayout.ySs(), tupletLayout.ySs() + tupletLayout.dySs());
+            assertThat(trillLayout.ySs() + trillLayout.heightSs()).isLessThanOrEqualTo(bracketTopSs);
+        }
+
+        @Test
+        void testFermataOnInteriorTupletNoteClearsBracket() {
+            // The scripts above sit on the anchor, where the bracket's top edge is exactly its
+            // layout ySs. An interior note instead meets the sloped edge at an interpolated height,
+            // so this pins that the clearance is read at the script's own X rather than an endpoint.
+            var note1 = createNote(SLOPED_RUN_LOW_SP, false);
+            var note2 = createNote(SLOPED_RUN_MID_SP, false);
+            note2.addAttachment(new FermataAttachment(note2));
+            var note3 = createNote(SLOPED_RUN_HIGH_SP, false);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+            line.addElement(note3);
+
+            var tuplet = new Tuplet(note1, note3, 3);
+            line.addRangeElement(tuplet);
+
+            var result = stackColumns(
+                List.of(
+                    columnFor(note1, NOTE1_X_SS),
+                    columnFor(note2, NOTE2_X_SS),
+                    columnFor(note3, NOTE3_X_SS)),
+                line);
+
+            var fermataLayout = require(
+                result.findAttachmentDecorationLayout(note2, FermataAttachment.class),
+                "fermata DecorationLayout");
+            var tupletLayout = require(
+                result.getDecorationLayout(tuplet),
+                "tuplet DecorationLayout");
+
+            // The bracket's top edge is linear from its anchor over widthSs, so its height at the
+            // interior note's X is the anchor Y plus the slope's share of that run.
+            var interiorFractionOfSpan =
+                (NOTE2_X_SS - tupletLayout.xSs()) / tupletLayout.widthSs();
+            var bracketTopAtNote2Ss =
+                tupletLayout.ySs() + tupletLayout.dySs() * interiorFractionOfSpan;
+
+            assertThat(fermataLayout.ySs() + fermataLayout.heightSs())
+                .describedAs("interior-note fermata clears the sloped bracket at its own X")
+                .isLessThanOrEqualTo(bracketTopAtNote2Ss);
+        }
+
+        // The converse of the two tests above, and structural rather than a #520 regression guard:
+        // the bracket's ceiling is derived from note tips and the staccato/accent obstacle set alone
+        // (StructuralStacker.scriptObstacles), so a fermata is not an input to it and cannot move
+        // it. This held before #520 as well. It pins the exclusion against a future change that
+        // folds fermata into that obstacle set.
+        @Test
+        void testBracketIgnoresFermataOnItsOwnNote() {
+            var withFermataYSs = stackTupletOverTwoNotes(true);
+            var withoutFermataYSs = stackTupletOverTwoNotes(false);
+
+            assertThat(withFermataYSs).isCloseTo(withoutFermataYSs, within(TOLERANCE));
+        }
+
+        private static double stackTupletOverTwoNotes(boolean withFermata) {
+            var note1 = createNote(-2, false);
+
+            if (withFermata) {
+                note1.addAttachment(new FermataAttachment(note1));
+            }
+
+            var note2 = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+
+            var result = stackColumns(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
+                line);
+
+            return require(result.getDecorationLayout(tuplet), "tuplet DecorationLayout").ySs();
         }
 
         @Test
@@ -788,6 +917,38 @@ class StructuralTierStackingTest extends UnitTest {
             assertThat(endingLayout.ySs())
                 .describedAs("ending above fermata")
                 .isLessThan(fermataLayout.ySs());
+        }
+
+        // Scripts must ignore accidentals: the accidental is seeded into the structural layer only
+        // after the outer scripts have stacked against it. Before #520 the scripts stacked against
+        // their own layer, which accidentals never touched, so this could not regress; now they
+        // share a layer and only the call order in VerticalStackingCalculator keeps them apart.
+        @Test
+        void testFermataIgnoresAccidentalOnSameNote() {
+            var withAccidentalYSs = stackFermataNote(true);
+            var withoutAccidentalYSs = stackFermataNote(false);
+
+            assertThat(withAccidentalYSs)
+                .describedAs("accidental does not push the fermata outward")
+                .isCloseTo(withoutAccidentalYSs, within(TOLERANCE));
+        }
+
+        private static double stackFermataNote(boolean withAccidental) {
+            var note = createNote(ABOVE_CENTER_SP, false);
+            note.addAttachment(new FermataAttachment(note));
+
+            if (withAccidental) {
+                note.setAccidental(StaffElement.Accidental.SHARP);
+            }
+
+            var line = detachedLine();
+            line.addElement(note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            return require(
+                result.findAttachmentDecorationLayout(note, FermataAttachment.class),
+                "fermata DecorationLayout").ySs();
         }
     }
 }

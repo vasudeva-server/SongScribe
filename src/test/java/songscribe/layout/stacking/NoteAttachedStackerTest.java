@@ -163,7 +163,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
             var extents = new StaffExtents(LINE_WIDTH_SS);
-            new NoteAttachedStacker(context, extents).stack();
+            stackNoteAttached(context, extents);
 
             assertThat(extents.yGet(true, START_NOTE_X_SS, SMuFLConstants.NOTE_HEAD_WIDTH_SS))
                 .isCloseTo(EXTREME_STEM_TOP_SS, within(TOLERANCE));
@@ -178,7 +178,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)));
             var extents = new StaffExtents(LINE_WIDTH_SS);
-            new NoteAttachedStacker(context, extents).stack();
+            stackNoteAttached(context, extents);
 
             // topSs for a stem-down note at staff center is negative (notehead top is
             // above center), so it beats the initial 0.0 and is captured by yGet.
@@ -201,7 +201,7 @@ class NoteAttachedStackerTest extends UnitTest {
             note.setStaffPosition(LEDGER_LINE_BELOW_SP);
 
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)));
-            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+            stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
             var expected =
                 Staff.spToSs(LEDGER_LINE_BELOW_SP) + StackingUtils.NOTE_HEAD_RADIUS_SS;
@@ -218,7 +218,7 @@ class NoteAttachedStackerTest extends UnitTest {
                 new LayoutResult.StemLayout(EXTREME_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, 0, true));
 
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
-            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+            stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
             assertThat(context.getBotContentExtentSs())
                 .isCloseTo(EXTREME_STEM_BOT_SS, within(TOLERANCE));
@@ -250,7 +250,7 @@ class NoteAttachedStackerTest extends UnitTest {
                     mockColumnAt(endNote, END_NOTE_X_SS)),
                 line, builder);
             var extents = new StaffExtents(LINE_WIDTH_SS);
-            new NoteAttachedStacker(context, extents).stack();
+            stackNoteAttached(context, extents);
 
             // Query at mid-span — the entire tie arc is sampled above, so the min equals arcY.
             var midTieXSs = (START_NOTE_X_SS + END_NOTE_X_SS) / 2.0;
@@ -276,7 +276,7 @@ class NoteAttachedStackerTest extends UnitTest {
                     mockColumnAt(endNote, END_NOTE_X_SS)),
                 line, builder);
             var extents = new StaffExtents(LINE_WIDTH_SS);
-            new NoteAttachedStacker(context, extents).stack();
+            stackNoteAttached(context, extents);
 
             // The control points sit at the span's thirds, so the Bezier's x is exactly linear in t
             // and the curve's Y at a given x is directly comparable to what was reserved there.
@@ -335,7 +335,7 @@ class NoteAttachedStackerTest extends UnitTest {
                 List.of(mockColumnAt(startNote, START_NOTE_X_SS),
                     mockColumnAt(endNote, END_NOTE_X_SS)),
                 line, builder);
-            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+            stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
             assertThat(context.getBotContentExtentSs())
                 .isCloseTo(DOWNWARD_ARC_Y_SS, within(TOLERANCE));
@@ -359,7 +359,7 @@ class NoteAttachedStackerTest extends UnitTest {
                     mockColumnAt(endNote, END_NOTE_X_SS)),
                 line, builder);
             var extents = new StaffExtents(LINE_WIDTH_SS);
-            new NoteAttachedStacker(context, extents).stack();
+            stackNoteAttached(context, extents);
 
             var midTieXSs = (START_NOTE_X_SS + END_NOTE_X_SS) / 2.0;
             assertThat(extents.yGet(false, midTieXSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS))
@@ -405,7 +405,7 @@ class NoteAttachedStackerTest extends UnitTest {
                     mockColumnAt(endNote, END_NOTE_X_SS)),
                 line, builder);
             var extents = new StaffExtents(LINE_WIDTH_SS);
-            new NoteAttachedStacker(context, extents).stack();
+            stackNoteAttached(context, extents);
 
             var midTieXSs = (START_NOTE_X_SS + END_NOTE_X_SS) / 2.0;
             assertThat(extents.yGet(true, midTieXSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS))
@@ -548,7 +548,7 @@ class NoteAttachedStackerTest extends UnitTest {
             }
 
             var context = new StackingContext(columns, line, builder);
-            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+            stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
             var result = builder.build();
             return new ArticulationLayouts(
@@ -571,7 +571,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var builder = new LayoutResult.Builder();
         var context = new StackingContext(
             List.of(mockColumnAt(note, START_NOTE_X_SS)), detachedLine(), builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var layout = require(builder.build().findAttachmentDecorationLayout(note, FermataAttachment.class));
 
@@ -626,7 +626,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var builder = new LayoutResult.Builder();
         var context = new StackingContext(
             List.of(mockColumnAt(note, START_NOTE_X_SS)), detachedLine(), builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var layout =
             require(builder.build().findAttachmentDecorationLayout(note, FermataAttachment.class));
@@ -658,7 +658,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var context = new StackingContext(
             List.of(mockColumnAt(startNote, START_NOTE_X_SS), mockColumnAt(endNote, END_NOTE_X_SS)),
             line, builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var layout = require(
             builder.build().findAttachmentDecorationLayout(startNote, FermataAttachment.class));
@@ -686,7 +686,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var builder = new LayoutResult.Builder();
         var context = new StackingContext(
             List.of(mockColumnAt(note, START_NOTE_X_SS)), line, builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var layout = require(builder.build().getDecorationLayout(trill));
 
@@ -710,7 +710,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var builder = new LayoutResult.Builder();
         var context = new StackingContext(
             List.of(mockColumnAt(note, START_NOTE_X_SS)), line, builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var layout = require(builder.build().getDecorationLayout(trill));
 
@@ -737,7 +737,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var contextWithRest = new StackingContext(
             List.of(mockColumnAt(anchorNote, START_NOTE_X_SS), mockColumnAt(endNote, END_NOTE_X_SS)),
             lineWithRest, builderWithRest);
-        new NoteAttachedStacker(contextWithRest, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(contextWithRest, new StaffExtents(LINE_WIDTH_SS));
         var layoutWithRest = require(builderWithRest.build().getDecorationLayout(trillWithRest));
 
         var anchorNoteNoRest = stemDownNote(STAFF_CENTER_SP);
@@ -754,7 +754,7 @@ class NoteAttachedStackerTest extends UnitTest {
             List.of(mockColumnAt(anchorNoteNoRest, START_NOTE_X_SS),
                 mockColumnAt(endNoteNoRest, END_NOTE_X_SS)),
             lineNoRest, builderNoRest);
-        new NoteAttachedStacker(contextNoRest, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(contextNoRest, new StaffExtents(LINE_WIDTH_SS));
         var layoutNoRest = require(builderNoRest.build().getDecorationLayout(trillNoRest));
 
         assertThat(layoutWithRest.ySs())
@@ -796,7 +796,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var context = new StackingContext(
             List.of(mockColumnAt(anchorNote, START_NOTE_X_SS), mockColumnAt(endNote, END_NOTE_X_SS)),
             line, builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var layout = require(builder.build().getDecorationLayout(trill));
 
@@ -829,7 +829,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
             var builder = new LayoutResult.Builder();
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
-            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+            stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
             var layout = require(builder.build().getDecorationLayout(accent));
             assertThat(layout.ySs())
@@ -845,7 +845,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
             var builder = new LayoutResult.Builder();
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
-            new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+            stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
             var layout = require(builder.build().getDecorationLayout(accent));
             assertThat(layout.ySs())
@@ -878,7 +878,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var builder = new LayoutResult.Builder();
         var context = new StackingContext(
             List.of(mockColumnAt(note, START_NOTE_X_SS)), line, builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var result = builder.build();
         var accentLayout = require(result.getDecorationLayout(accent));
@@ -909,7 +909,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
         var builder = new LayoutResult.Builder();
         var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var result = builder.build();
         var accentLayout = require(result.getDecorationLayout(accent));
@@ -938,7 +938,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
         var builder = new LayoutResult.Builder();
         var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var accentLayout = require(builder.build().getDecorationLayout(accent));
         var clearanceFromStaffLineSs = -Staff.STAFF_HALF_SS
@@ -961,7 +961,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
         var builder = new LayoutResult.Builder();
         var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var result = builder.build();
         var fermataLayout =
@@ -996,7 +996,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
         var builder = new LayoutResult.Builder();
         var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         assertThat(builder.build().getDecorationLayouts())
             .describedAs("only the staccato is placed; no accent decoration when the note has none")
@@ -1033,7 +1033,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var context = new StackingContext(
             List.of(mockColumnAt(startNote, START_NOTE_X_SS), mockColumnAt(endNote, END_NOTE_X_SS)),
             line, builder);
-        new NoteAttachedStacker(context, new StaffExtents(LINE_WIDTH_SS)).stack();
+        stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
         var result = builder.build();
         var aboveAccentLayout = require(result.getDecorationLayout(aboveAccent));
@@ -1072,6 +1072,17 @@ class NoteAttachedStackerTest extends UnitTest {
         when(column.getElement()).thenReturn(element);
         when(column.getXSs()).thenReturn(xSs);
         return column;
+    }
+
+    /**
+     * Runs both note-attached phases against a single layer. The full pipeline splits them around
+     * the tuplet-bracket pass and hands the outer scripts the structural layer; with no bracket in
+     * play the two layers are equivalent, so these tests drive both phases over one.
+     */
+    private static void stackNoteAttached(StackingContext context, StaffExtents extents) {
+        var stacker = new NoteAttachedStacker(context, extents);
+        stacker.stackInner();
+        stacker.stackOuterScripts(extents);
     }
 
     private static StackingContext contextWith(List<ElementColumn> columns) {
