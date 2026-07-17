@@ -35,6 +35,6 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **SMuFL glyph names, codepoints, or ranges**: look up at `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`.
 - **LilyPond source**: If the user mentions LilyPond source, it is found at ~/Developer/projects/lilypond/lily/.
 
-The guides above trigger on *what a task touches*. One guide triggers on *how hard a task is*, independent of subsystem:
+The guides above trigger on *what a task touches*. One guide triggers on *how hard a task is*, independent of subsystem, iff the current model is NOT fable:
 
 - **Before any ambiguous, multi-phase, or irreversible task** — design work, migrations, debugging with no obvious cause, or anything touching deletes, pushes, or external systems — read [Fable Reasoning Manual](.agents/guides/fable-reasoning-manual.md) first. It is procedure, not philosophy: request decomposition, risk localization, verification by re-derivation, and a pre-send checklist. Skip it for routine, single-step, reversible work.
