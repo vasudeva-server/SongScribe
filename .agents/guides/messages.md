@@ -49,7 +49,7 @@ public class AddDynamicsCommand extends Message {
 
 ### Priority
 
-`@Handler(priority = N)` — higher runs first. Default is `Message.MEDIUM_PRIORITY` (13). Constants `HIGH_PRIORITY` (27), `MEDIUM_PRIORITY` (13), `LOW_PRIORITY` (0) are conventions only; any `int` (define as a constant) is valid. Specify only when multiple handlers for the same message class and ordering matters.
+`@Handler(priority = N)` — higher runs first. The MBassador default is **0**, i.e. `Message.LOW_PRIORITY` — a bare `@Handler` runs *after* every handler with an explicit `MEDIUM_PRIORITY` or higher. Constants `HIGH_PRIORITY` (27), `MEDIUM_PRIORITY` (13), `LOW_PRIORITY` (0) are conventions only; any `int` (define as a constant) is valid. Specify only when multiple handlers for the same message class and ordering matters.
 
 ### Handler method naming
 
