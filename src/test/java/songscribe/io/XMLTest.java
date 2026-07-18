@@ -36,13 +36,9 @@ import songscribe.UnitTest;
 
 class XMLTest extends UnitTest {
 
-    private static final int INDENT_NONE = 0;
-    private static final int INDENT_TWO = 2;
-    private static final int INDENT_FOUR = 4;
-
     @AfterEach
     void resetIndent() {
-        XML.setIndent(INDENT_NONE);
+        XML.resetIndent();
     }
 
     // Row 62 — escapeXML: each special character individually, plus combined
@@ -109,7 +105,8 @@ class XMLTest extends UnitTest {
 
     @Test
     void testWriteValueRespectsIndent() {
-        XML.setIndent(INDENT_TWO);
+        XML.resetIndent();
+        XML.indent();
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
         XML.writeValue(pw, "n", "x");
@@ -148,7 +145,8 @@ class XMLTest extends UnitTest {
 
     @Test
     void testWriteTagsRespectIndent() {
-        XML.setIndent(INDENT_TWO);
+        XML.resetIndent();
+        XML.indent();
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
         XML.writeBeginTag(pw, "a");
@@ -159,12 +157,14 @@ class XMLTest extends UnitTest {
         assertThat(lines).allMatch(line -> line.startsWith("  "));
     }
 
-    // Row 67 — setIndent/printIndent: shared static state
+    // Row 67 — indent/dedent/printIndent: shared static state
 
     @Test
-    void testSetIndentFourProducesFourSpacePrefix() {
+    void testIndentTwiceProducesFourSpacePrefix() {
         // XML.indent is static — changes affect all concurrent code in the same JVM.
-        XML.setIndent(INDENT_FOUR);
+        XML.resetIndent();
+        XML.indent();
+        XML.indent();
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
         XML.writeEmptyTag(pw, "x");
